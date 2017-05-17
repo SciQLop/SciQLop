@@ -15,7 +15,7 @@ ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/sqpcore")
 #
 # Compile the gui
 #
-ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/sqpgui")
+#ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/sqpgui")
 
 #
 # Compile the app
