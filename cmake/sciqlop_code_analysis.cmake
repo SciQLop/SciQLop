@@ -23,7 +23,7 @@ IF (ANALYZE_CODE)
     # Make sure cppcheck has been found, otherwise the source code can't be 
     # analyzed
     IF (CPPCHECK_FOUND)
-        SET (CPPCHECK_EXTRA_ARGS --inline-suppr --xml --enable=style --force -v
+        SET (CPPCHECK_EXTRA_ARGS --inline-suppr --xml --xml-version=2 --enable="warning,style" --force -v
             CACHE STRING "Extra arguments for cppcheck")
         MARK_AS_ADVANCED (CPPCHECK_EXTRA_ARGS)
 
