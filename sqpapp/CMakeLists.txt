@@ -28,7 +28,7 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../sqpcore/src")
 list(APPEND SHARED_LIBRARIES ${SQPCORE_SHARED_LIBRARIES})
 
 # Retrieve the location of the dynamic library to copy it to the output path
-get_property(sqpcoreLocation TARGET ${SQPCORE_LIBRARY_NAME} PROPERTY LOCATION)
+#get_property(sqpcoreLocation TARGET ${SQPCORE_LIBRARY_NAME} PROPERTY LOCATION)
 list(APPEND SHARED_LIBRARIES_FROM_TARGETS ${sqpcoreLocation})
 
 #
