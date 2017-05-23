@@ -36,3 +36,4 @@ INCLUDE ("cmake/sciqlop_doxygen.cmake")
 # Source code analysis
 #
 INCLUDE ("cmake/sciqlop_code_analysis.cmake")
+INCLUDE ("cmake/sciqlop_code_cppcheck.cmake")

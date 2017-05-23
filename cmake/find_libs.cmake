@@ -18,9 +18,11 @@ FIND_PACKAGE(Qt5Gui REQUIRED)
 FIND_PACKAGE(Doxygen)
 
 # 
-# Cppcheck tool
+# Analyzer tools
 #
+LIST( APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/analyzer/cmake")
 FIND_PACKAGE(cppcheck)
+FIND_PACKAGE(ClangAnalyzer)
 
 #
 # Formatting tools

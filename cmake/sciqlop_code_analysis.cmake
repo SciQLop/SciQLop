@@ -1,12 +1,12 @@
 #
 # sciqlop_code_analysis.cmake
 
-# Launch code source analysis with cppcheck. Can be activated with the 
-# ANALYZE_CODE option.
+# Launch code source analysis with CLANGANALYZER. Can be activated with the 
+# ENABLE_ANALYSIS option.
 # 
 # The following CACHE variables are available: 
-#   * CPPCHECK_EXTRA_ARGS: extra arguments for cppcheck; 
-#   * CPPCHECK_OUTPUT: path to the xml report of cppcheck.
+#   * CLANGANALYZER_EXTRA_ARGS: extra arguments for CLANGANALYZER; 
+#   * CLANGANALYZER_OUTPUT: path to the xml report of CLANGANALYZER.
 # 
 # The following variables are used (must be set by the cmake file calling this 
 # one):
@@ -15,38 +15,30 @@
 #   
 
 # 
-# Analyze the source code with cppcheck
+# Analyze the source code with CLANGANALYZER
 # 
-OPTION (ANALYZE_CODE "Analyze the source code with cppcheck" ON)
-IF (ANALYZE_CODE)
+OPTION (ENABLE_ANALYSIS "Analyze the source code with clang_analyze" ON)
+IF (ENABLE_ANALYSIS)
     
-    # Make sure cppcheck has been found, otherwise the source code can't be 
+    # Make sure CLANGANALYZER has been found, otherwise the source code can't be 
     # analyzed
-    IF (CPPCHECK_FOUND)
-        SET (CPPCHECK_EXTRA_ARGS --inline-suppr --xml --xml-version=2 --enable="warning,style" --force -v
-            CACHE STRING "Extra arguments for cppcheck")
-        MARK_AS_ADVANCED (CPPCHECK_EXTRA_ARGS)
+    IF (CLANGANALYZER_FOUND)
 
-        SET (CPPCHECK_OUTPUT "${CMAKE_BINARY_DIR}/cppcheck-report.xml"
-            CACHE STRING "Output file for the cppcheck report")
-        MARK_AS_ADVANCED (CPPCHECK_OUTPUT)
+	SET (CLANGANALYZER_OUTPUT "${CMAKE_BINARY_DIR}/clang-analyzer-ouput"
+            CACHE STRING "Output file for the CLANGANALYZER report")
+        MARK_AS_ADVANCED (CLANGANALYZER_OUTPUT)
 
-        SET (CPPCHECK_EXCLUDE_DIRS)
-        FOREACH (dir ${ANALYSIS_EXCLUDE_DIRS})
-            LIST (APPEND CPPCHECK_EXCLUDE_DIRS "-i${dir}")
-        ENDFOREACH ()
+        SET (CLANGANALYZER_EXTRA_ARGS -o ${CLANGANALYZER_OUTPUT}
+            CACHE STRING "Extra arguments for CLANGANALYZER")
+        MARK_AS_ADVANCED (CLANGANALYZER_EXTRA_ARGS)
 
-        # Add the analyze target to launch cppcheck
+        # Add the analyze target to launch CLANGANALYZER
         ADD_CUSTOM_TARGET (analyze
             COMMAND
-            ${CPPCHECK_EXECUTABLE}
-            ${CPPCHECK_EXTRA_ARGS}
-            ${ANALYSIS_INPUT_DIRS}
-            ${CPPCHECK_EXCLUDE_DIRS}
-            2> ${CPPCHECK_OUTPUT}
+            sh ${CMAKE_CURRENT_SOURCE_DIR}/analyzer/launch-clang-analyzer-linux.sh
             )
 
-    ELSE (CPPCHECK_FOUND)
-        MESSAGE (STATUS "The source code won't be analyzed - Cppcheck not found")
-    ENDIF (CPPCHECK_FOUND)
-ENDIF (ANALYZE_CODE)
+    ELSE (CLANGANALYZER_FOUND)
+        MESSAGE (STATUS "The source code won't be analyzed - CLANGANALYZER not found")
+    ENDIF (CLANGANALYZER_FOUND)
+ENDIF (ENABLE_ANALYSIS)

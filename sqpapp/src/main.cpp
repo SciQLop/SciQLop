@@ -23,7 +23,7 @@
 #include <QApplication>
 #include <QProcessEnvironment>
 #include <QThread>
-#include <omp.h>
+//#include <omp.h>
 #include <qglobal.h>
 
 int main(int argc, char *argv[])
