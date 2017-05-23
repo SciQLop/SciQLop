@@ -26,7 +26,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFileDialog>
-#include <omp.h>
+//#include <omp.h>
 //#include <network/filedownloader.h>
 //#include <qlopdatabase.h>
 //#include <qlopsettings.h>
