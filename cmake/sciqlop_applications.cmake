@@ -10,9 +10,15 @@ SET (LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist/${CMAKE_BUILD_TYPE})
 #
 # Compile the diffents modules
 #
-ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/sqpcore")
-#ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/sqpgui")
-ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/sqpapp")
+set(sciqlop-core_DIR "${CMAKE_SOURCE_DIR}/core/cmake")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-core_DIR}")
+ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/core")
+
+set(sciqlop-gui_DIR "${CMAKE_SOURCE_DIR}/gui/cmake")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-gui_DIR}")
+ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/gui")
+
+ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/app")
 
 #
 # Code formatting
