@@ -8,18 +8,10 @@ SET (LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist/${CMAKE_BUILD_TYPE})
 
 
 #
-# Compile the core
+# Compile the diffents modules
 #
 ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/sqpcore")
-
-#
-# Compile the gui
-#
 #ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/sqpgui")
-
-#
-# Compile the app
-#
 ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/sqpapp")
 
 #
