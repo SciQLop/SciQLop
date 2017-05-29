@@ -17,6 +17,15 @@
 #    SET (DEBUG_SUFFIX "")
 #ENDIF()
 
+IF(CMAKE_BUILD_TYPE MATCHES "Debug")
+    SET (CMAKE_BUILD_TYPE "Debug")
+    SET (DEBUG_SUFFIX "d")
+ELSE()
+    MESSAGE (STATUS "Build in Release")
+    SET (SCIQLOP_BUILD_TYPE "Release")
+    SET (DEBUG_SUFFIX "")
+ENDIF()
+
 #
 # Need to compile tests?
 #
