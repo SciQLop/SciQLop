@@ -1,0 +1,4 @@
+# On ignore toutes les règles vera++ pour le fichier spimpl
+
+.*IPSIS_S04_METHOD.*found: Q_DECLARE_LOGGING_CATEGORY.*
+.*IPSIS_S04_VARIABLE.*found: impl.*

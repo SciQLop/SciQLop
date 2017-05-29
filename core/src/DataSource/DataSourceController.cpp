@@ -3,7 +3,10 @@
 #include <QMutex>
 #include <QThread>
 
-Q_LOGGING_CATEGORY(LOG_DataSourceController, "dataSourceController")
+#include <QDir>
+#include <QStandardPaths>
+
+Q_LOGGING_CATEGORY(LOG_DataSourceController, "DataSourceController")
 
 class DataSourceController::DataSourceControllerPrivate {
 public:

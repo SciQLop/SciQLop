@@ -16,7 +16,6 @@ SCIQLOP_FIND_QT(Core Widgets)
 # ========================
 find_package(sciqlop-gui)
 
-message("Librairies inclues dans APP: ${SCIQLOP-GUI_LIBRARIES}")
 SET(LIBRARIES ${SCIQLOP-GUI_LIBRARIES})
 SET(EXTERN_SHARED_LIBRARIES)
 

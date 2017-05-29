@@ -30,7 +30,6 @@
 #include <memory>
 #include <type_traits>
 
-
 #if defined _MSC_VER && _MSC_VER < 1900 // MS Visual Studio before VS2015
 #define SPIMPL_NO_CPP11_NOEXCEPT
 #define SPIMPL_NO_CPP11_CONSTEXPR

@@ -8,10 +8,9 @@ Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")
 class SqpApplication::SqpApplicationPrivate {
 public:
     SqpApplicationPrivate() {}
-    ~SqpApplicationPrivate()
+    virtual ~SqpApplicationPrivate()
     {
         qCInfo(LOG_SqpApplication()) << tr("Desctruction du SqpApplicationPrivate");
-        ;
         m_DataSourceControllerThread.quit();
         m_DataSourceControllerThread.wait();
     }

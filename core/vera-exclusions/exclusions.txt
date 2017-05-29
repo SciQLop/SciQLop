@@ -1,0 +1,3 @@
+# On ignore toutes les règles vera++ pour le fichier spimpl
+Common/spimpl\.h:\d+:.*
+

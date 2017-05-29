@@ -18,6 +18,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_SqpApplication)
  * method will ba able to access it.
  * You can load a data source driver plugin then create a data source.
  */
+
 class SqpApplication : public QApplication {
     Q_OBJECT
 public:
