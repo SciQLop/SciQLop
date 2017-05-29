@@ -23,6 +23,9 @@ ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/app")
 #
 # Code formatting
 #
+# Vera++ exclusion files
+LIST(APPEND CHECKSTYLE_EXCLUSION_FILES ${CMAKE_CURRENT_SOURCE_DIR}/formatting/vera-exclusions/exclusions.txt)
+SCIQLOP_SET_TO_PARENT_SCOPE(CHECKSTYLE_EXCLUSION_FILES)
 INCLUDE ("cmake/sciqlop_formatting.cmake")
 
 #
