@@ -34,8 +34,6 @@ IF (ENABLE_CHECKSTYLE)
             LIST(APPEND EXCLUSIONS EXCLUSION ${e})
         ENDFOREACH()
 
-        message("Exclusions de vera++: ${EXCLUSIONS}")
-
         ADD_VERA_TARGETS(${CHECKSTYLE_INPUT_FILES}
             ADD_TO_ALL
             PROFILE "sciqlop"

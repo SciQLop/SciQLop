@@ -24,7 +24,6 @@ SCIQLOP_FIND_QT(Core Widgets)
 # ========================
 find_package(sciqlop-core)
 
-message("Librairies inclues dans APP: ${SCIQLOP-CORE_LIBRARIES}")
 SET(LIBRARIES ${SCIQLOP-CORE_LIBRARIES})
 
 INCLUDE_DIRECTORIES(${SCIQLOP-CORE_INCLUDE_DIR})
