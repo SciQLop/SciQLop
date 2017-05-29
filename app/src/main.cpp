@@ -20,18 +20,18 @@
 -- Mail : alexis.jeandet@member.fsf.org
 ----------------------------------------------------------------------------*/
 #include "mainwindow.h"
-#include <QApplication>
 #include <QProcessEnvironment>
 #include <QThread>
-//#include <omp.h>
+#include <SqpApplication.h>
+#include <omp.h>
 #include <qglobal.h>
 
 int main(int argc, char *argv[])
 {
-    QApplication a(argc, argv);
-    QApplication::setOrganizationName("LPP");
-    QApplication::setOrganizationDomain("lpp.fr");
-    QApplication::setApplicationName("SciQLop");
+    SqpApplication a(argc, argv);
+    SqpApplication::setOrganizationName("LPP");
+    SqpApplication::setOrganizationDomain("lpp.fr");
+    SqpApplication::setApplicationName("SciQLop");
     MainWindow w;
     w.show();
 

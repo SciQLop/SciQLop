@@ -4,18 +4,18 @@
 # Debug or release
 #
 # As the "NMake Makefiles" forces by default the CMAKE_BUILD_TYPE variable to Debug, SCIQLOP_BUILD_TYPE variable is used to be sure that the debug mode is a user choice
-SET(SCIQLOP_BUILD_TYPE "Release" CACHE STRING "Choose to compile in Debug or Release mode")
+#SET(SCIQLOP_BUILD_TYPE "Release" CACHE STRING "Choose to compile in Debug or Release mode")
 
-IF(SCIQLOP_BUILD_TYPE MATCHES "Debug")
-    MESSAGE (STATUS "Build in Debug")
-    SET (CMAKE_BUILD_TYPE "Debug")
-    SET (DEBUG_SUFFIX "d")
-ELSE()
-    MESSAGE (STATUS "Build in Release")
-    SET (CMAKE_BUILD_TYPE "Release")
-    SET (SCIQLOP_BUILD_TYPE "Release")
-    SET (DEBUG_SUFFIX "")
-ENDIF()
+#IF(SCIQLOP_BUILD_TYPE MATCHES "Debug")
+#    MESSAGE (STATUS "Build in Debug")
+#    SET (CMAKE_BUILD_TYPE "Debug")
+#    SET (DEBUG_SUFFIX "d")
+#ELSE()
+#    MESSAGE (STATUS "Build in Release")
+#    SET (CMAKE_BUILD_TYPE "Release")
+#    SET (SCIQLOP_BUILD_TYPE "Release")
+#    SET (DEBUG_SUFFIX "")
+#ENDIF()
 
 #
 # Need to compile tests?

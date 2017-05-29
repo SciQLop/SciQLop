@@ -14,15 +14,19 @@ SCIQLOP_FIND_QT(Core Widgets)
 #
 # Find dependent libraries
 # ========================
-SET(LIBRARIES)
-SET(EXTERN_LIBRARIES)
+find_package(sciqlop-gui)
+
+message("Librairies inclues dans APP: ${SCIQLOP-GUI_LIBRARIES}")
+SET(LIBRARIES ${SCIQLOP-GUI_LIBRARIES})
 SET(EXTERN_SHARED_LIBRARIES)
+
+INCLUDE_DIRECTORIES(${SCIQLOP-GUI_INCLUDE_DIR})
 
 # Add sqpcore to the list of libraries to use
 list(APPEND LIBRARIES ${SQPCORE_LIBRARY_NAME})
 
-# Include sqpcore directory
-include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../sqpcore/src")
+# Include core directory
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/../core/include")
 
 # Add dependent shared libraries
 list(APPEND SHARED_LIBRARIES ${SQPCORE_SHARED_LIBRARIES})
@@ -61,7 +65,6 @@ QT5_WRAP_UI(UIS_HDRS
 ADD_EXECUTABLE(${EXECUTABLE_NAME} ${APPLICATION_SOURCES} ${RCC_HDRS} ${UIS_HDRS})
 set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${EXECUTABLE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
-
 target_link_libraries(${EXECUTABLE_NAME}
     ${LIBRARIES})
 	
@@ -83,7 +86,7 @@ IF(BUILD_TESTS)
 	INCLUDE_DIRECTORIES(${SOURCES_DIR})
 	FILE (GLOB_RECURSE TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Test*.cpp)
 	FILE (GLOB_RECURSE TESTS_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/Test*.h)
-	SET( TEST_LIBRARIES ${LIBRARIES} ${EXTERN_LIBRARIES})
+        SET( TEST_LIBRARIES ${LIBRARIES})
 
 	FOREACH( testFile ${TESTS_SOURCES} )
 		GET_FILENAME_COMPONENT( testDirectory ${testFile} DIRECTORY )
@@ -104,7 +107,7 @@ IF(BUILD_TESTS)
 
 		ADD_TEST( NAME ${testName} COMMAND ${testName} )
 
-                SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName} ${EXTERN_SHARED_LIBRARIES})
+                SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName})
 	ENDFOREACH( testFile )
 
 	LIST(APPEND testFilesToFormat ${TESTS_SOURCES})
