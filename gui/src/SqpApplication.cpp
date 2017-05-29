@@ -8,6 +8,13 @@ Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")
 class SqpApplication::SqpApplicationPrivate {
 public:
     SqpApplicationPrivate() {}
+    ~SqpApplicationPrivate()
+    {
+        qCInfo(LOG_SqpApplication()) << tr("Desctruction du SqpApplicationPrivate");
+        ;
+        m_DataSourceControllerThread.quit();
+        m_DataSourceControllerThread.wait();
+    }
 
     std::unique_ptr<DataSourceController> m_DataSourceController;
     QThread m_DataSourceControllerThread;
@@ -32,7 +39,6 @@ SqpApplication::SqpApplication(int &argc, char **argv)
 
 SqpApplication::~SqpApplication()
 {
-    impl->m_DataSourceControllerThread.quit();
 }
 
 void SqpApplication::initialize()

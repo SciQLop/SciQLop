@@ -9,39 +9,37 @@ class DataSourceController::DataSourceControllerPrivate {
 public:
     DataSourceControllerPrivate() {}
 
-
     QMutex m_WorkingMutex;
 };
 
 DataSourceController::DataSourceController(QObject *parent)
         : impl{spimpl::make_unique_impl<DataSourceControllerPrivate>()}
 {
-    qCInfo(LOG_DataSourceController()) << tr("Construction du DataSourceController");
+    qCDebug(LOG_DataSourceController()) << tr("Construction du DataSourceController")
+                                        << QThread::currentThread();
 }
 
 DataSourceController::~DataSourceController()
 {
-    //    delete impl;
+    qCDebug(LOG_DataSourceController()) << tr("Desctruction du DataSourceController")
+                                        << QThread::currentThread();
     this->waitForFinish();
 }
 
 void DataSourceController::initialize()
 {
-    qCInfo(LOG_DataSourceController()) << tr("initialize du DataSourceController");
+    qCDebug(LOG_DataSourceController()) << tr("initialize du DataSourceController")
+                                        << QThread::currentThread();
     impl->m_WorkingMutex.lock();
-    qCInfo(LOG_DataSourceController()) << tr("initialize du DataSourceController END");
+    qCDebug(LOG_DataSourceController()) << tr("initialize du DataSourceController END");
 }
 
 void DataSourceController::finalize()
 {
-    qCInfo(LOG_DataSourceController()) << tr("finalize du DataSourceController");
     impl->m_WorkingMutex.unlock();
-    qCInfo(LOG_DataSourceController()) << tr("finalize du DataSourceController END");
 }
 
 void DataSourceController::waitForFinish()
 {
-    qCInfo(LOG_DataSourceController()) << tr("waitForFinish du DataSourceController");
     QMutexLocker locker(&impl->m_WorkingMutex);
-    qCInfo(LOG_DataSourceController()) << tr("waitForFinish du DataSourceController END");
 }
