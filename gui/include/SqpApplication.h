@@ -10,6 +10,8 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_SqpApplication)
 
+class DataSourceController;
+
 /**
  * @brief The SqpApplication class aims to make the link between SciQlop
  * and its plugins. This is the intermediate class that SciQlop has to use
@@ -25,6 +27,8 @@ public:
     explicit SqpApplication(int &argc, char **argv);
     virtual ~SqpApplication();
     void initialize();
+
+    DataSourceController &dataSourceController() const noexcept;
 
 private:
     class SqpApplicationPrivate;

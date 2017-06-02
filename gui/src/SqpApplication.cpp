@@ -44,3 +44,8 @@ SqpApplication::~SqpApplication()
 void SqpApplication::initialize()
 {
 }
+
+DataSourceController &SqpApplication::dataSourceController() const noexcept
+{
+    return *impl->m_DataSourceController;
+}
