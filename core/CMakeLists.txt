@@ -79,10 +79,12 @@ IF(BUILD_TESTS)
 			${testDirectory}/*.c
 			${testDirectory}/*.cpp
 			${testDirectory}/*.h)
-		LIST (REMOVE_ITEM currentTestSources ${TESTS_SOURCES})
-		LIST (REMOVE_ITEM currentTestSources ${TESTS_HEADERS})
+        LIST (REMOVE_ITEM currentTestSources ${TESTS_SOURCES})
+        # LIST (REMOVE_ITEM currentTestSources ${TESTS_HEADERS})
 
 		ADD_EXECUTABLE(${testName} ${testFile} ${currentTestSources})
+        set_property(TARGET ${testName} PROPERTY CXX_STANDARD 14)
+        set_property(TARGET ${testName} PROPERTY CXX_STANDARD_REQUIRED ON)
 		TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES} )
 		qt5_use_modules(${testName} Test)
 
