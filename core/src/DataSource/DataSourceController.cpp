@@ -11,6 +11,7 @@ Q_LOGGING_CATEGORY(LOG_DataSourceController, "DataSourceController")
 class DataSourceController::DataSourceControllerPrivate {
 public:
     QMutex m_WorkingMutex;
+    QHash<QUuid, QString> m_DataSources;
 };
 
 DataSourceController::DataSourceController(QObject *parent)
@@ -25,6 +26,14 @@ DataSourceController::~DataSourceController()
     qCDebug(LOG_DataSourceController())
         << tr("DataSourceController destruction") << QThread::currentThread();
     this->waitForFinish();
+}
+
+QUuid DataSourceController::registerDataSource(const QString &dataSourceName) noexcept
+{
+    auto dataSourceUid = QUuid::createUuid();
+    impl->m_DataSources.insert(dataSourceUid, dataSourceName);
+
+    return dataSourceUid;
 }
 
 void DataSourceController::initialize()
