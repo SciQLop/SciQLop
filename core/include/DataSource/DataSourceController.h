@@ -9,6 +9,8 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_DataSourceController)
 
+class DataSourceItem;
+
 /**
  * @brief The DataSourceController class aims to make the link between SciQlop and its plugins. This
  * is the intermediate class that SciQlop has to use in the way to connect a data source. Please
@@ -30,10 +32,24 @@ public:
      */
     QUuid registerDataSource(const QString &dataSourceName) noexcept;
 
+    /**
+     * Sets the structure of a data source. The controller takes ownership of the structure.
+     * @param dataSourceUid the unique id with which the data source has been registered into the
+     * controller. If it is invalid, the method has no effect.
+     * @param dataSourceItem the structure of the data source
+     * @sa registerDataSource()
+     */
+    void setDataSourceItem(const QUuid &dataSourceUid,
+                           std::unique_ptr<DataSourceItem> dataSourceItem) noexcept;
+
 public slots:
     /// Manage init/end of the controller
     void initialize();
     void finalize();
+
+signals:
+    /// Signal emitted when a structure has been set for a data source
+    void dataSourceItemSet(const DataSourceItem &dataSourceItem);
 
 private:
     void waitForFinish();
