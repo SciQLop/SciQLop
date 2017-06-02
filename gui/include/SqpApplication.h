@@ -10,6 +10,11 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_SqpApplication)
 
+#if defined(sqpApp)
+#undef sqpApp
+#endif
+#define sqpApp (static_cast<SqpApplication *>(QCoreApplication::instance()))
+
 class DataSourceController;
 
 /**
