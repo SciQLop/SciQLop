@@ -23,11 +23,11 @@
 #include <QProcessEnvironment>
 #include <QThread>
 #include <SqpApplication.h>
-#include <omp.h>
 #include <qglobal.h>
 
 int main(int argc, char *argv[])
 {
+    int ad;
     SqpApplication a(argc, argv);
     SqpApplication::setOrganizationName("LPP");
     SqpApplication::setOrganizationDomain("lpp.fr");
