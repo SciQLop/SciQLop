@@ -26,7 +26,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFileDialog>
-#include <omp.h>
+//#include <omp.h>
 //#include <network/filedownloader.h>
 //#include <qlopdatabase.h>
 //#include <qlopsettings.h>
@@ -37,7 +37,6 @@
 //#include "cdfcodec.h"
 //#include "amdatxtcodec.h"
 //#include <qlopplotmanager.h>
-
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
