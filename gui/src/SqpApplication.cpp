@@ -7,10 +7,14 @@ Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")
 
 class SqpApplication::SqpApplicationPrivate {
 public:
-    SqpApplicationPrivate() {}
+    SqpApplicationPrivate() : m_DataSourceController{std::make_unique<DataSourceController>()}
+    {
+        m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
+    }
+
     virtual ~SqpApplicationPrivate()
     {
-        qCInfo(LOG_SqpApplication()) << tr("Desctruction du SqpApplicationPrivate");
+        qCInfo(LOG_SqpApplication()) << tr("SqpApplicationPrivate destruction");
         m_DataSourceControllerThread.quit();
         m_DataSourceControllerThread.wait();
     }
@@ -21,12 +25,9 @@ public:
 
 
 SqpApplication::SqpApplication(int &argc, char **argv)
-        : QApplication(argc, argv), impl{spimpl::make_unique_impl<SqpApplicationPrivate>()}
+        : QApplication{argc, argv}, impl{spimpl::make_unique_impl<SqpApplicationPrivate>()}
 {
-    qCInfo(LOG_SqpApplication()) << tr("Construction du SqpApplication");
-
-    impl->m_DataSourceController = std::make_unique<DataSourceController>();
-    impl->m_DataSourceController->moveToThread(&impl->m_DataSourceControllerThread);
+    qCInfo(LOG_SqpApplication()) << tr("SqpApplication construction");
 
     connect(&impl->m_DataSourceControllerThread, &QThread::started,
             impl->m_DataSourceController.get(), &DataSourceController::initialize);
@@ -42,4 +43,9 @@ SqpApplication::~SqpApplication()
 
 void SqpApplication::initialize()
 {
+}
+
+DataSourceController &SqpApplication::dataSourceController() const noexcept
+{
+    return *impl->m_DataSourceController;
 }
