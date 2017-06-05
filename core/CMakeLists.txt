@@ -69,8 +69,9 @@ IF(BUILD_TESTS)
 	FILE (GLOB_RECURSE TESTS_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/Test*.h)
         SET( TEST_LIBRARIES ${SQPCORE_LIBRARY_NAME})
 
+        SET(TARGETS_COV)
 	FOREACH( testFile ${TESTS_SOURCES} )
-		GET_FILENAME_COMPONENT( testDirectory ${testFile} DIRECTORY )
+                GET_FILENAME_COMPONENT( testDirectory ${testFile} DIRECTORY )
 		GET_FILENAME_COMPONENT( testName ${testFile} NAME_WE )
 
 		# Add to the list of sources files all the sources in the same
@@ -88,12 +89,20 @@ IF(BUILD_TESTS)
                 TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES} )
                 qt5_use_modules(${testName} Test)
 
-                ADD_TEST( NAME ${testName} COMMAND ${testDirectory} )
+                ADD_TEST( NAME ${testName} COMMAND ${testName} )
 
                 SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName} ${EXTERN_SHARED_LIBRARIES})
                 set(Coverage_NAME ${testName})
                 SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage OUTPUT ${testFile}-path NAME ${testFile} EXECUTABLE ${testName})
-                ENDFOREACH( testFile )
+                LIST( APPEND TARGETS_COV ${testName}_coverage)
+
+        ENDFOREACH( testFile )
+
+        add_custom_target(coverage)
+
+        FOREACH( target_cov ${TARGETS_COV} )
+            add_custom_command(TARGET coverage PRE_BUILD COMMAND make ${target_cov})
+        ENDFOREACH( target_cov )
 
 	LIST(APPEND testFilesToFormat ${TESTS_SOURCES})
 	LIST(APPEND testFilesToFormat ${TESTS_HEADERS})

@@ -102,7 +102,7 @@ IF(BUILD_TESTS)
 		LIST (REMOVE_ITEM currentTestSources ${TESTS_HEADERS})
 
 		ADD_EXECUTABLE(${testName} ${testFile} ${currentTestSources})
-                TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES} gcov)
+                TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES})
 		qt5_use_modules(${testName} Test)
 
 		ADD_TEST( NAME ${testName} COMMAND ${testName} )
