@@ -90,14 +90,9 @@ IF(BUILD_TESTS)
 
                 ADD_TEST( NAME ${testName} COMMAND ${testDirectory} )
 
-                set({testGCNO} ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${testName}.dir/tests/)
-
-#                MESSAGE("Current build did :" ${testGCNO})
-                MESSAGE("Current build did :" ${CMAKE_FILES_DIRECTORY})
-                MESSAGE("Current build did :" ${currentTestSources})
                 SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName} ${EXTERN_SHARED_LIBRARIES})
                 set(Coverage_NAME ${testName})
-                SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage NAME ${testFile} EXECUTABLE ${testName})
+                SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage OUTPUT ${testFile}-path NAME ${testFile} EXECUTABLE ${testName})
                 ENDFOREACH( testFile )
 
 	LIST(APPEND testFilesToFormat ${TESTS_SOURCES})

@@ -15,6 +15,10 @@ ENDIF()
 
 INCLUDE ("cmake/sciqlop_code_coverage.cmake")
 
+if(BUILD_TESTS)
+    APPEND_COVERAGE_COMPILER_FLAGS()
+endif(BUILD_TESTS)
+
 #
 # Compile the diffents modules
 #

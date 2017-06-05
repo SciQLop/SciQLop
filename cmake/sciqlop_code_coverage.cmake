@@ -124,7 +124,6 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     message(WARNING "Code coverage results with an optimised (non-Debug) build may be misleading")
 endif() # NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
 
-message( CMAKE_BUILD_TYPE : ${CMAKE_BUILD_TYPE})
 if(CMAKE_COMPILER_IS_GNUCXX)
     link_libraries(gcov)
 else()
@@ -144,37 +143,32 @@ endif()
 function(SETUP_TARGET_FOR_COVERAGE)
 
     set(options NONE)
-    set(oneValueArgs NAME TARGET GCNO)
+    set(oneValueArgs NAME TARGET OUTPUT)
     set(multiValueArgs EXECUTABLE EXECUTABLE_ARGS DEPENDENCIES)
     cmake_parse_arguments(Coverage "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT LCOV_PATH)
-#        message(FATAL_ERROR "lcov not found! Aborting...")
+        message(FATAL_ERROR "lcov not found! Aborting...")
     endif() # NOT LCOV_PATH
 
     if(NOT GENHTML_PATH)
-#        message(FATAL_ERROR "genhtml not found! Aborting...")
+        message(FATAL_ERROR "genhtml not found! Aborting...")
     endif() # NOT GENHTML_PATH
-    message("Coverage target: " ${Coverage_TARGET})
-    message("Coverage name: " ${Coverage_NAME})
-    message("Coverage exe: " ${Coverage_EXECUTABLE})
-    message("Coverage gcno: " ${Coverage_GCNO})
 
     # Setup target
     add_custom_target(${Coverage_TARGET}
 
         # Cleanup lcov
-#        COMMAND ${LCOV_PATH} --directory . --zerocounters
+        COMMAND ${LCOV_PATH} --directory . --zerocounters
 
         # Run tests
         COMMAND ${Coverage_EXECUTABLE}
-        # Capturing lcov counters and generating report
-        COMMAND gcov ${Coverage_NAME} --object-file ${Coverage_GCNO}
 
-        #        COMMAND ${LCOV_PATH} --directory . --capture --output-file ${Coverage_NAME}.info
-#        COMMAND ${LCOV_PATH} --remove ${Coverage_NAME}.info ${COVERAGE_EXCLUDES} --output-file ${Coverage_NAME}.info.cleaned
-#        COMMAND ${GENHTML_PATH} -o ${Coverage_NAME} ${Coverage_NAME}.info.cleaned
-#        COMMAND ${CMAKE_COMMAND} -E remove ${Coverage_NAME}.info ${Coverage_NAME}.info.cleaned
+        # Capturing lcov counters and generating report
+        COMMAND ${LCOV_PATH} --directory . --capture --output-file ${Coverage_NAME}.info
+        COMMAND ${LCOV_PATH} --remove ${Coverage_NAME}.info ${COVERAGE_EXCLUDES} --output-file ${Coverage_NAME}.info.cleaned
+        COMMAND ${GENHTML_PATH} -o  ${Coverage_OUTPUT} ${Coverage_NAME}.info.cleaned
+        COMMAND ${CMAKE_COMMAND} -E remove ${Coverage_NAME}.info ${Coverage_NAME}.info.cleaned
 
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
         DEPENDS ${Coverage_DEPENDENCIES}
@@ -188,59 +182,7 @@ function(SETUP_TARGET_FOR_COVERAGE)
 #        COMMENT "Open ./${Coverage_NAME}/index.html in your browser to view the coverage report."
 #    )
 
-endfunction() # SETUP_TARGET_FOR_COVERAGE
-
-# Defines a target for running and collection code coverage information
-# Builds dependencies, runs the given executable and outputs reports.
-# NOTE! The executable should always have a ZERO as exit code otherwise
-# the coverage generation will not complete.
-#
-# SETUP_TARGET_FOR_COVERAGE_COBERTURA(
-#     NAME ctest_coverage                    # New target name
-#     EXECUTABLE ctest -j ${PROCESSOR_COUNT} # Executable in PROJECT_BINARY_DIR
-#     DEPENDENCIES executable_target         # Dependencies to build first
-# )
-function(SETUP_TARGET_FOR_COVERAGE_COBERTURA)
-
-    set(options NONE)
-    set(oneValueArgs NAME)
-    set(multiValueArgs EXECUTABLE EXECUTABLE_ARGS DEPENDENCIES)
-    cmake_parse_arguments(Coverage "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
-
-    if(NOT SIMPLE_PYTHON_EXECUTABLE)
-        message(FATAL_ERROR "python not found! Aborting...")
-    endif() # NOT SIMPLE_PYTHON_EXECUTABLE
-
-    if(NOT GCOVR_PATH)
-        message(FATAL_ERROR "gcovr not found! Aborting...")
-    endif() # NOT GCOVR_PATH
-
-    # Combine excludes to several -e arguments
-    set(COBERTURA_EXCLUDES "")
-    foreach(EXCLUDE ${COVERAGE_EXCLUDES})
-        set(COBERTURA_EXCLUDES "-e ${EXCLUDE} ${COBERTURA_EXCLUDES}")
-    endforeach()
-
-    add_custom_target(${Coverage_NAME}
-
-        # Run tests
-        ${Coverage_EXECUTABLE}
-
-        # Running gcovr
-        COMMAND ${GCOVR_PATH} -x -r ${CMAKE_SOURCE_DIR} ${COBERTURA_EXCLUDES}
-            -o ${Coverage_NAME}.xml
-        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-        DEPENDS ${Coverage_DEPENDENCIES}
-        COMMENT "Running gcovr to produce Cobertura code coverage report."
-    )
-
-    # Show info where to find the report
-    add_custom_command(TARGET ${Coverage_NAME} POST_BUILD
-        COMMAND ;
-        COMMENT "Cobertura code coverage report saved in ${Coverage_NAME}.xml."
-    )
-
-endfunction() # SETUP_TARGET_FOR_COVERAGE_COBERTURA
+endfunction()
 
 function(APPEND_COVERAGE_COMPILER_FLAGS)
     set(CMAKE_C_FLAGS "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILER_FLAGS}" PARENT_SCOPE)
