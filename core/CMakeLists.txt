@@ -78,20 +78,27 @@ IF(BUILD_TESTS)
 		FILE (GLOB currentTestSources
 			${testDirectory}/*.c
 			${testDirectory}/*.cpp
-			${testDirectory}/*.h)
-        LIST (REMOVE_ITEM currentTestSources ${TESTS_SOURCES})
-        # LIST (REMOVE_ITEM currentTestSources ${TESTS_HEADERS})
+                        ${testDirectory}/*.h)
+                LIST (REMOVE_ITEM currentTestSources ${TESTS_SOURCES})
+                # LIST (REMOVE_ITEM currentTestSources ${TESTS_HEADERS})
 
-		ADD_EXECUTABLE(${testName} ${testFile} ${currentTestSources})
-        set_property(TARGET ${testName} PROPERTY CXX_STANDARD 14)
-        set_property(TARGET ${testName} PROPERTY CXX_STANDARD_REQUIRED ON)
-		TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES} )
-		qt5_use_modules(${testName} Test)
+                ADD_EXECUTABLE(${testName} ${testFile} ${currentTestSources})
+                set_property(TARGET ${testName} PROPERTY CXX_STANDARD 14)
+                set_property(TARGET ${testName} PROPERTY CXX_STANDARD_REQUIRED ON)
+                TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES} )
+                qt5_use_modules(${testName} Test)
 
-		ADD_TEST( NAME ${testName} COMMAND ${testName} )
+                ADD_TEST( NAME ${testName} COMMAND ${testDirectory} )
 
+                set({testGCNO} ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${testName}.dir/tests/)
+
+#                MESSAGE("Current build did :" ${testGCNO})
+                MESSAGE("Current build did :" ${CMAKE_FILES_DIRECTORY})
+                MESSAGE("Current build did :" ${currentTestSources})
                 SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName} ${EXTERN_SHARED_LIBRARIES})
-	ENDFOREACH( testFile )
+                set(Coverage_NAME ${testName})
+                SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage NAME ${testFile} EXECUTABLE ${testName})
+                ENDFOREACH( testFile )
 
 	LIST(APPEND testFilesToFormat ${TESTS_SOURCES})
 	LIST(APPEND testFilesToFormat ${TESTS_HEADERS})

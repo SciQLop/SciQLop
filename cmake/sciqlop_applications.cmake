@@ -13,6 +13,8 @@ ELSE()
     SET (CONFIG_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist/${CMAKE_BUILD_TYPE})
 ENDIF()
 
+INCLUDE ("cmake/sciqlop_code_coverage.cmake")
+
 #
 # Compile the diffents modules
 #
@@ -36,7 +38,7 @@ FILE(COPY ${QTLOGGING_INI_FILE} DESTINATION ${CONFIG_OUTPUT_PATH})
 #
 # Vera++ exclusion files
 LIST(APPEND CHECKSTYLE_EXCLUSION_FILES ${CMAKE_CURRENT_SOURCE_DIR}/formatting/vera-exclusions/exclusions.txt)
-SCIQLOP_SET_TO_PARENT_SCOPE(CHECKSTYLE_EXCLUSION_FILES)
+#SCIQLOP_SET_TO_PARENT_SCOPE(CHECKSTYLE_EXCLUSION_FILES)
 INCLUDE ("cmake/sciqlop_formatting.cmake")
 
 #
