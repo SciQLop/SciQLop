@@ -12,10 +12,10 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_SqpApplication)
 
 /**
  * @brief The SqpApplication class aims to make the link between SciQlop
- * and its plugins. This is the intermediate class that SciQlop have to use
- * in the way to connect a data source. Please first use load method to intialize
+ * and its plugins. This is the intermediate class that SciQlop has to use
+ * in the way to connect a data source. Please first use load method to initialize
  * a plugin specified by its metadata name (JSON plugin source) then others specifics
- * method will ba able to access it.
+ * method will be able to access it.
  * You can load a data source driver plugin then create a data source.
  */
 

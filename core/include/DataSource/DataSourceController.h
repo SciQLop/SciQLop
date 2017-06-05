@@ -1,8 +1,6 @@
 #ifndef SCIQLOP_DATASOURCECONTROLLER_H
 #define SCIQLOP_DATASOURCECONTROLLER_H
 
-#include "DataSourceController.h"
-
 #include <QLoggingCategory>
 #include <QObject>
 

@@ -89,8 +89,9 @@ using default_copier_t = typename default_copier<T>::type;
 
 template <class T, class D, class C>
 struct is_default_manageable
-    : public std::integral_constant<bool, std::is_same<D, default_deleter_t<T> >::value
-                                              && std::is_same<C, default_copier_t<T> >::value> {
+    : public std::integral_constant<bool,
+                                    std::is_same<D, default_deleter_t<T> >::value
+                                        && std::is_same<C, default_copier_t<T> >::value> {
 };
 }
 
@@ -131,10 +132,11 @@ public:
     }
 
     template <class U>
-    impl_ptr(U *u, typename std::enable_if<std::is_convertible<U *, pointer>::value
-                                               && is_default_manageable::value,
-                                           dummy_t_>::type
-                   = dummy_t_()) SPIMPL_NOEXCEPT
+    impl_ptr(U *u,
+             typename std::enable_if<std::is_convertible<U *, pointer>::value
+                                         && is_default_manageable::value,
+                                     dummy_t_>::type
+             = dummy_t_()) SPIMPL_NOEXCEPT
         : impl_ptr(u, &details::default_delete<T>, &details::default_copy<T>)
     {
     }
@@ -151,12 +153,12 @@ public:
 
 #ifdef SPIMPL_HAS_AUTO_PTR
     template <class U>
-    impl_ptr(std::auto_ptr<U> &&u, typename std::enable_if<std::is_convertible<U *, pointer>::value
-                                                               && is_default_manageable::value,
-                                                           dummy_t_>::type
-                                   = dummy_t_()) SPIMPL_NOEXCEPT
-        : ptr_(u.release(), &details::default_delete<T>),
-          copier_(&details::default_copy<T>)
+    impl_ptr(std::auto_ptr<U> &&u,
+             typename std::enable_if<std::is_convertible<U *, pointer>::value
+                                         && is_default_manageable::value,
+                                     dummy_t_>::type
+             = dummy_t_()) SPIMPL_NOEXCEPT : ptr_(u.release(), &details::default_delete<T>),
+                                             copier_(&details::default_copy<T>)
     {
     }
 #endif

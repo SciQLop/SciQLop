@@ -27,8 +27,7 @@
 
 int main(int argc, char *argv[])
 {
-    int ad;
-    SqpApplication a(argc, argv);
+    SqpApplication a{argc, argv};
     SqpApplication::setOrganizationName("LPP");
     SqpApplication::setOrganizationDomain("lpp.fr");
     SqpApplication::setApplicationName("SciQLop");
