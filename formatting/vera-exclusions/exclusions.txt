@@ -2,3 +2,7 @@
 
 .*IPSIS_S04_METHOD.*found: Q_DECLARE_LOGGING_CATEGORY.*
 .*IPSIS_S04_VARIABLE.*found: impl.*
+
+# Ignore false positive relative to 'noexcept' keyword
+.*IPSIS_S04_VARIABLE.*found: noexcept
+.*IPSIS_S06.*found: noexcept

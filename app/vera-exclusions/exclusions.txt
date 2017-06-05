@@ -1,0 +1,3 @@
+# Ignore false positive relative to sqpApp macro
+SqpApplication\.h:\d+:.IPSIS_S03.*found: sqpApp
+SqpApplication\.h:\d+:.IPSIS_S04_VARIABLE.*found: sqpApp
