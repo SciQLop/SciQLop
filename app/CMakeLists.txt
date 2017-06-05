@@ -82,6 +82,7 @@ SCIQLOP_SET_TO_PARENT_SCOPE(CHECKSTYLE_EXCLUSION_FILES)
 # Compile the tests
 #
 IF(BUILD_TESTS)
+
 	INCLUDE_DIRECTORIES(${SOURCES_DIR})
 	FILE (GLOB_RECURSE TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Test*.cpp)
 	FILE (GLOB_RECURSE TESTS_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/Test*.h)
@@ -89,7 +90,7 @@ IF(BUILD_TESTS)
 
 	FOREACH( testFile ${TESTS_SOURCES} )
 		GET_FILENAME_COMPONENT( testDirectory ${testFile} DIRECTORY )
-		GET_FILENAME_COMPONENT( testName ${testFile} NAME_WE )
+                GET_FILENAME_COMPONENT( testName ${testFile} NAME_WE )
 
 		# Add to the list of sources files all the sources in the same
 		# directory that aren't another test
@@ -101,7 +102,7 @@ IF(BUILD_TESTS)
 		LIST (REMOVE_ITEM currentTestSources ${TESTS_HEADERS})
 
 		ADD_EXECUTABLE(${testName} ${testFile} ${currentTestSources})
-		TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES} )
+                TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES} gcov)
 		qt5_use_modules(${testName} Test)
 
 		ADD_TEST( NAME ${testName} COMMAND ${testName} )
@@ -112,6 +113,7 @@ IF(BUILD_TESTS)
 	LIST(APPEND testFilesToFormat ${TESTS_SOURCES})
 	LIST(APPEND testFilesToFormat ${TESTS_HEADERS})
 	LIST(APPEND FORMATTING_INPUT_FILES ${testFilesToFormat})
+
         SCIQLOP_SET_TO_PARENT_SCOPE(FORMATTING_INPUT_FILES)
 ENDIF(BUILD_TESTS)
 
