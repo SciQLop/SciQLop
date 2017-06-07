@@ -73,6 +73,10 @@ IF(BUILD_TESTS)
 	FILE (GLOB_RECURSE TESTS_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/Test*.h)
         SET( TEST_LIBRARIES ${SQPCORE_LIBRARY_NAME})
 
+        # Set tests resources path
+        SET(RESOURCES_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tests-resources/)
+        add_definitions(-DSCQCORE_TESTS_RESOURCES_PATH="${RESOURCES_PATH}")
+
         SET(TARGETS_COV)
 	FOREACH( testFile ${TESTS_SOURCES} )
                 GET_FILENAME_COMPONENT( testDirectory ${testFile} DIRECTORY )
