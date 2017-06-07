@@ -33,12 +33,57 @@
     </size>
    </property>
    <layout class="QHBoxLayout" name="horizontalLayout">
+    <property name="spacing">
+     <number>3</number>
+    </property>
+    <property name="leftMargin">
+     <number>0</number>
+    </property>
+    <property name="topMargin">
+     <number>0</number>
+    </property>
+    <property name="rightMargin">
+     <number>0</number>
+    </property>
+    <property name="bottomMargin">
+     <number>0</number>
+    </property>
     <item>
      <widget class="QWidget" name="leftInspectorWidget" native="true">
       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <property name="spacing">
+        <number>3</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
        <item>
         <widget class="QWidget" name="widget" native="true">
          <layout class="QVBoxLayout" name="verticalLayout">
+          <property name="spacing">
+           <number>3</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
           <item>
            <widget class="QWidget" name="dateSourceWidget" native="true"/>
           </item>
@@ -52,18 +97,82 @@
         </widget>
        </item>
        <item>
-        <widget class="QWidget" name="leftInspectorSidePane" native="true">
-         <layout class="QVBoxLayout" name="verticalLayout_2"/>
+        <widget class="SqpSidePane" name="leftInspectorSidePane" native="true">
+         <layout class="QVBoxLayout" name="verticalLayout_2">
+          <property name="spacing">
+           <number>3</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+         </layout>
         </widget>
        </item>
       </layout>
      </widget>
     </item>
     <item>
-     <widget class="QWidget" name="viewWidget" native="true"/>
+     <widget class="VisualizationWidget" name="view" native="true"/>
     </item>
     <item>
-     <widget class="QWidget" name="rightInspectorWidget" native="true"/>
+     <widget class="QWidget" name="rightInspectorWidget" native="true">
+      <layout class="QHBoxLayout" name="horizontalLayout_3">
+       <property name="spacing">
+        <number>3</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="SqpSidePane" name="rightInspectorSidePane" native="true"/>
+       </item>
+       <item>
+        <widget class="QWidget" name="widget_2" native="true">
+         <layout class="QVBoxLayout" name="verticalLayout_3">
+          <property name="spacing">
+           <number>3</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QWidget" name="commonPropertyInspectorWidget" native="true"/>
+          </item>
+          <item>
+           <widget class="QWidget" name="catalogWidget" native="true"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
     </item>
    </layout>
   </widget>
@@ -78,13 +187,22 @@
    </property>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-  <action name="actionIndex_Viewer">
-   <property name="text">
-    <string>Index Viewer</string>
-   </property>
-  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
+ <customwidgets>
+  <customwidget>
+   <class>VisualizationWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">visualization/VisualizationWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>SqpSidePane</class>
+   <extends>QWidget</extends>
+   <header location="global">sidepane/SqpSidePane.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

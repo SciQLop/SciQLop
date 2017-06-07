@@ -44,13 +44,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_Ui(new Ui::Main
 {
     m_Ui->setupUi(this);
 
-    QToolBar *actionToolbar = new QToolBar(this);
-    actionToolbar->setOrientation(Qt::Vertical);
-    actionToolbar->addAction("ACTION");
-    actionToolbar->addAction("ACTION 2");
-    actionToolbar->addAction("ACTION 3");
-    m_Ui->leftInspectorSidePane->layout()->addWidget(actionToolbar);
+    auto leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
+    leftSidePane->addAction("ACTION L1");
+    leftSidePane->addAction("ACTION L2");
+    leftSidePane->addAction("ACTION L3");
 
+    auto rightSidePane = m_Ui->rightInspectorSidePane->sidePane();
+    rightSidePane->addAction("ACTION R1");
+    rightSidePane->addAction("ACTION R2");
+    rightSidePane->addAction("ACTION R3");
+
+    this->menuBar()->addAction("File");
+    auto mainToolBar = this->addToolBar("MainToolBar");
+    mainToolBar->addAction("A1");
     /*    QLopGUI::registerMenuBar(menuBar());
         this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));
         this->m_progressWidget = new QWidget();
