@@ -1574,7 +1574,10 @@ void QCPLayerable::applyAntialiasingHint(QCPPainter *painter, bool localAntialia
 
   \see initializeParentPlot
 */
-void QCPLayerable::parentPlotInitialized(QCustomPlot *parentPlot){Q_UNUSED(parentPlot)}
+void QCPLayerable::parentPlotInitialized(QCustomPlot *parentPlot)
+{
+    Q_UNUSED(parentPlot)
+}
 
 /*! \internal
 
@@ -9254,16 +9257,14 @@ void QCPAxisPainterPrivate::draw(QCPPainter *painter)
     painter->setBrush(QBrush(basePen.color()));
     QCPVector2D baseLineVector(baseLine.dx(), baseLine.dy());
     if (lowerEnding.style() != QCPLineEnding::esNone)
-        lowerEnding.draw(painter,
-                         QCPVector2D(baseLine.p1())
-                             - baseLineVector.normalized() * lowerEnding.realLength()
-                                   * (lowerEnding.inverted() ? -1 : 1),
+        lowerEnding.draw(painter, QCPVector2D(baseLine.p1())
+                                      - baseLineVector.normalized() * lowerEnding.realLength()
+                                            * (lowerEnding.inverted() ? -1 : 1),
                          -baseLineVector);
     if (upperEnding.style() != QCPLineEnding::esNone)
-        upperEnding.draw(painter,
-                         QCPVector2D(baseLine.p2())
-                             + baseLineVector.normalized() * upperEnding.realLength()
-                                   * (upperEnding.inverted() ? -1 : 1),
+        upperEnding.draw(painter, QCPVector2D(baseLine.p2())
+                                      + baseLineVector.normalized() * upperEnding.realLength()
+                                            * (upperEnding.inverted() ? -1 : 1),
                          baseLineVector);
     painter->setAntialiasing(antialiasingBackup);
 
@@ -16468,9 +16469,8 @@ void QCPColorGradient::updateColorBuffer()
                             hue -= 1.0;
                         if (useAlpha) {
                             const QRgb rgb
-                                = QColor::fromHsvF(hue,
-                                                   (1 - t) * lowHsv.saturationF()
-                                                       + t * highHsv.saturationF(),
+                                = QColor::fromHsvF(hue, (1 - t) * lowHsv.saturationF()
+                                                            + t * highHsv.saturationF(),
                                                    (1 - t) * lowHsv.valueF() + t * highHsv.valueF())
                                       .rgb();
                             const float alpha = (1 - t) * lowHsv.alphaF() + t * highHsv.alphaF();
@@ -16479,9 +16479,8 @@ void QCPColorGradient::updateColorBuffer()
                         }
                         else {
                             mColorBuffer[i]
-                                = QColor::fromHsvF(hue,
-                                                   (1 - t) * lowHsv.saturationF()
-                                                       + t * highHsv.saturationF(),
+                                = QColor::fromHsvF(hue, (1 - t) * lowHsv.saturationF()
+                                                            + t * highHsv.saturationF(),
                                                    (1 - t) * lowHsv.valueF() + t * highHsv.valueF())
                                       .rgb();
                         }
@@ -19839,14 +19838,12 @@ void QCPColorScale::update(UpdatePhase phase)
     switch (phase) {
         case upMargins: {
             if (mType == QCPAxis::atBottom || mType == QCPAxis::atTop) {
-                setMaximumSize(QWIDGETSIZE_MAX,
-                               mBarWidth + mAxisRect.data()->margins().top()
-                                   + mAxisRect.data()->margins().bottom() + margins().top()
-                                   + margins().bottom());
-                setMinimumSize(0,
-                               mBarWidth + mAxisRect.data()->margins().top()
-                                   + mAxisRect.data()->margins().bottom() + margins().top()
-                                   + margins().bottom());
+                setMaximumSize(QWIDGETSIZE_MAX, mBarWidth + mAxisRect.data()->margins().top()
+                                                    + mAxisRect.data()->margins().bottom()
+                                                    + margins().top() + margins().bottom());
+                setMinimumSize(0, mBarWidth + mAxisRect.data()->margins().top()
+                                      + mAxisRect.data()->margins().bottom() + margins().top()
+                                      + margins().bottom());
             }
             else {
                 setMaximumSize(mBarWidth + mAxisRect.data()->margins().left()
