@@ -114,6 +114,5 @@ void PluginManager::loadPlugins(const QDir &pluginDir)
 
 int PluginManager::nbPluginsLoaded() const noexcept
 {
-    /// @todo ALX
-    return 0;
+    return impl->m_RegisteredPlugins.size();
 }
