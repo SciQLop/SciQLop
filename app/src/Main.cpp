@@ -25,6 +25,16 @@
 #include <SqpApplication.h>
 #include <qglobal.h>
 
+#include <Plugin/PluginManager.h>
+#include <QDir>
+
+namespace {
+
+/// Name of the directory containing the plugins
+const auto PLUGIN_DIRECTORY_NAME = QStringLiteral("plugins");
+
+} // namespace
+
 int main(int argc, char *argv[])
 {
     SqpApplication a{argc, argv};
@@ -33,6 +43,17 @@ int main(int argc, char *argv[])
     SqpApplication::setApplicationName("SciQLop");
     MainWindow w;
     w.show();
+
+    // Loads plugins
+    auto pluginDir = QDir{sqpApp->applicationDirPath()};
+    pluginDir.mkdir(PLUGIN_DIRECTORY_NAME);
+    pluginDir.cd(PLUGIN_DIRECTORY_NAME);
+
+    qCDebug(LOG_PluginManager())
+        << QObject::tr("Plugin directory: %1").arg(pluginDir.absolutePath());
+
+    PluginManager pluginManager{};
+    pluginManager.loadPlugins(pluginDir);
 
     return a.exec();
 }
