@@ -16,7 +16,11 @@ CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/resources/Version.h.in"
         "${INCLUDES_DIR}/Version.h")
 CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/resources/Version.cpp.in"
 	"${SOURCES_DIR}/Version.cpp")
-	
+
+# Find dependent modules
+find_package(sciqlop-plugin)
+INCLUDE_DIRECTORIES(${SCIQLOP-PLUGIN_INCLUDE_DIR})
+
 #
 # Find Qt modules
 #
@@ -68,6 +72,10 @@ IF(BUILD_TESTS)
 	FILE (GLOB_RECURSE TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Test*.cpp)
 	FILE (GLOB_RECURSE TESTS_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/Test*.h)
         SET( TEST_LIBRARIES ${SQPCORE_LIBRARY_NAME})
+
+        # Set tests resources path
+        SET(RESOURCES_PATH ${CMAKE_CURRENT_SOURCE_DIR}/tests-resources/)
+        add_definitions(-DSCQCORE_TESTS_RESOURCES_PATH="${RESOURCES_PATH}")
 
         SET(TARGETS_COV)
 	FOREACH( testFile ${TESTS_SOURCES} )
