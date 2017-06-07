@@ -21,6 +21,10 @@ endif(BUILD_TESTS)
 #
 # Compile the diffents modules
 #
+set(sciqlop-plugin_DIR "${CMAKE_SOURCE_DIR}/plugin/cmake")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-plugin_DIR}")
+ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/plugin")
+
 set(sciqlop-core_DIR "${CMAKE_SOURCE_DIR}/core/cmake")
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-core_DIR}")
 ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/core")
