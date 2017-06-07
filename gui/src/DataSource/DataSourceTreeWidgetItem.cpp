@@ -1,7 +1,32 @@
 #include <DataSource/DataSourceItem.h>
 #include <DataSource/DataSourceTreeWidgetItem.h>
 
+#include <SqpApplication.h>
+
 Q_LOGGING_CATEGORY(LOG_DataSourceTreeWidgetItem, "DataSourceTreeWidgetItem")
+
+namespace {
+
+QIcon itemIcon(const DataSourceItem *dataSource)
+{
+    if (dataSource) {
+        auto dataSourceType = dataSource->type();
+        switch (dataSourceType) {
+            case DataSourceItemType::NODE:
+                return sqpApp->style()->standardIcon(QStyle::SP_DirIcon);
+            case DataSourceItemType::PRODUCT:
+                return sqpApp->style()->standardIcon(QStyle::SP_FileIcon);
+            default:
+                // No action
+                break;
+        }
+    }
+
+    // Default cases
+    return QIcon{};
+}
+
+} // namespace
 
 struct DataSourceTreeWidgetItem::DataSourceTreeWidgetItemPrivate {
     explicit DataSourceTreeWidgetItemPrivate(const DataSourceItem *data) : m_Data{data} {}
@@ -20,6 +45,8 @@ DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(QTreeWidget *parent, const Da
         : QTreeWidgetItem{parent, type},
           impl{spimpl::make_unique_impl<DataSourceTreeWidgetItemPrivate>(data)}
 {
+    // Sets the icon depending on the data source
+    setIcon(0, itemIcon(impl->m_Data));
 }
 
 QVariant DataSourceTreeWidgetItem::data(int column, int role) const
