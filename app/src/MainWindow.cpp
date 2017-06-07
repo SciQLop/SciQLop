@@ -37,10 +37,20 @@
 //#include "cdfcodec.h"
 //#include "amdatxtcodec.h"
 //#include <qlopplotmanager.h>
-
+#include <QAction>
+#include <QToolBar>
+#include <memory.h>
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_Ui(new Ui::MainWindow)
 {
     m_Ui->setupUi(this);
+
+    QToolBar *actionToolbar = new QToolBar(this);
+    actionToolbar->setOrientation(Qt::Vertical);
+    actionToolbar->addAction("ACTION");
+    actionToolbar->addAction("ACTION 2");
+    actionToolbar->addAction("ACTION 3");
+    m_Ui->leftInspectorSidePane->layout()->addWidget(actionToolbar);
+
     /*    QLopGUI::registerMenuBar(menuBar());
         this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));
         this->m_progressWidget = new QWidget();

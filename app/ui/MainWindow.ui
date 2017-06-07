@@ -32,6 +32,40 @@
      <height>16777215</height>
     </size>
    </property>
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QWidget" name="leftInspectorWidget" native="true">
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QWidget" name="widget" native="true">
+         <layout class="QVBoxLayout" name="verticalLayout">
+          <item>
+           <widget class="QWidget" name="dateSourceWidget" native="true"/>
+          </item>
+          <item>
+           <widget class="QWidget" name="dateTimeWidget" native="true"/>
+          </item>
+          <item>
+           <widget class="QWidget" name="variableInspectorWidget" native="true"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QWidget" name="leftInspectorSidePane" native="true">
+         <layout class="QVBoxLayout" name="verticalLayout_2"/>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QWidget" name="viewWidget" native="true"/>
+    </item>
+    <item>
+     <widget class="QWidget" name="rightInspectorWidget" native="true"/>
+    </item>
+   </layout>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -39,7 +73,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>45</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>
