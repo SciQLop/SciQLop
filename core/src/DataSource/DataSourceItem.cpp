@@ -3,18 +3,19 @@
 #include <QVector>
 
 struct DataSourceItem::DataSourceItemPrivate {
-    explicit DataSourceItemPrivate(QVector<QVariant> data)
-            : m_Parent{nullptr}, m_Children{}, m_Data{std::move(data)}
+    explicit DataSourceItemPrivate(DataSourceItemType type, QVector<QVariant> data)
+            : m_Parent{nullptr}, m_Children{}, m_Type{type}, m_Data{std::move(data)}
     {
     }
 
     DataSourceItem *m_Parent;
     std::vector<std::unique_ptr<DataSourceItem> > m_Children;
+    DataSourceItemType m_Type;
     QVector<QVariant> m_Data;
 };
 
-DataSourceItem::DataSourceItem(QVector<QVariant> data)
-        : impl{spimpl::make_unique_impl<DataSourceItemPrivate>(data)}
+DataSourceItem::DataSourceItem(DataSourceItemType type, QVector<QVariant> data)
+        : impl{spimpl::make_unique_impl<DataSourceItemPrivate>(type, std::move(data))}
 {
 }
 
@@ -47,4 +48,9 @@ QVariant DataSourceItem::data(int dataIndex) const noexcept
 DataSourceItem *DataSourceItem::parentItem() const noexcept
 {
     return impl->m_Parent;
+}
+
+DataSourceItemType DataSourceItem::type() const noexcept
+{
+    return impl->m_Type;
 }
