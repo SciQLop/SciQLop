@@ -16,7 +16,11 @@ CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/resources/Version.h.in"
         "${INCLUDES_DIR}/Version.h")
 CONFIGURE_FILE("${CMAKE_CURRENT_SOURCE_DIR}/resources/Version.cpp.in"
 	"${SOURCES_DIR}/Version.cpp")
-	
+
+# Find dependent modules
+find_package(sciqlop-plugin)
+INCLUDE_DIRECTORIES(${SCIQLOP-PLUGIN_INCLUDE_DIR})
+
 #
 # Find Qt modules
 #
@@ -93,8 +97,10 @@ IF(BUILD_TESTS)
 
                 SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName} ${EXTERN_SHARED_LIBRARIES})
                 set(Coverage_NAME ${testName})
-                SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage OUTPUT ${testFile}-path NAME ${testFile} EXECUTABLE ${testName})
-                LIST( APPEND TARGETS_COV ${testName}_coverage)
+                if(UNIX)
+                    SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage OUTPUT ${testFile}-path NAME ${testFile} EXECUTABLE ${testName})
+                    LIST( APPEND TARGETS_COV ${testName}_coverage)
+                endif(UNIX)
 
         ENDFOREACH( testFile )
 

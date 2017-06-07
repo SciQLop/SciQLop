@@ -1,6 +1,6 @@
 /*------------------------------------------------------------------------------
--- This file is a part of the QLop Software
--- Copyright (C) 2015, Plasma Physics Laboratory - CNRS
+-- This file is a part of the SciQLop Software
+-- Copyright (C) 2017, Plasma Physics Laboratory - CNRS
 --
 -- This program is free software; you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
 /*-- Author : Alexis Jeandet
 -- Mail : alexis.jeandet@member.fsf.org
 ----------------------------------------------------------------------------*/
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#ifndef SCIQLOP_MAINWINDOW_H
+#define SCIQLOP_MAINWINDOW_H
 
 #include <QListWidgetItem>
 #include <QMainWindow>
@@ -32,29 +32,29 @@
 //#include "../Core/qlopservice.h"
 //#include "../Core/qlopgui.h"
 
+#include <memory>
 
 namespace Ui {
 class MainWindow;
-}
+} // namespace Ui
+
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
     explicit MainWindow(QWidget *parent = 0);
-    ~MainWindow();
+    virtual ~MainWindow();
 public slots:
 
 protected:
     void changeEvent(QEvent *e);
 
 private:
-    Ui::MainWindow *ui;
-    QList<QProgressBar *> m_progress;
-    int *m_progressThreadIds;
-    QWidget *m_progressWidget;
-    QVBoxLayout *m_progressLayout;
+    std::unique_ptr<Ui::MainWindow> m_Ui;
+    //    QWidget *m_progressWidget;
+    //    QVBoxLayout *m_progressLayout;
     // QList<QLopService*> m_qlopServices;
 };
 
-#endif // MAINWINDOW_H
+#endif // SCIQLOP_MAINWINDOW_H
