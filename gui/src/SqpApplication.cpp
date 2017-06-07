@@ -8,9 +8,12 @@ Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")
 
 class SqpApplication::SqpApplicationPrivate {
 public:
-    SqpApplicationPrivate() : m_DataSourceController{std::make_unique<DataSourceController>()}
+    SqpApplicationPrivate()
+            : m_DataSourceController{std::make_unique<DataSourceController>()},
+              m_VisualizationController{std::make_unique<VisualizationController>()}
     {
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
+        m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
     }
 
     virtual ~SqpApplicationPrivate()
@@ -19,14 +22,14 @@ public:
         m_DataSourceControllerThread.quit();
         m_DataSourceControllerThread.wait();
 
-        m_VisualizationThread.quit();
-        m_VisualizationThread.wait();
+        m_VisualizationControllerThread.quit();
+        m_VisualizationControllerThread.wait();
     }
 
     std::unique_ptr<DataSourceController> m_DataSourceController;
     std::unique_ptr<VisualizationController> m_VisualizationController;
     QThread m_DataSourceControllerThread;
-    QThread m_VisualizationThread;
+    QThread m_VisualizationControllerThread;
 };
 
 
@@ -40,14 +43,14 @@ SqpApplication::SqpApplication(int &argc, char **argv)
     connect(&impl->m_DataSourceControllerThread, &QThread::finished,
             impl->m_DataSourceController.get(), &DataSourceController::finalize);
 
-    connect(&impl->m_VisualizationThread, &QThread::started, impl->m_VisualizationController.get(),
-            &VisualizationController::initialize);
-    connect(&impl->m_VisualizationThread, &QThread::finished, impl->m_VisualizationController.get(),
-            &VisualizationController::finalize);
+    connect(&impl->m_VisualizationControllerThread, &QThread::started,
+            impl->m_VisualizationController.get(), &VisualizationController::initialize);
+    connect(&impl->m_VisualizationControllerThread, &QThread::finished,
+            impl->m_VisualizationController.get(), &VisualizationController::finalize);
 
 
     impl->m_DataSourceControllerThread.start();
-    impl->m_VisualizationThread.start();
+    impl->m_VisualizationControllerThread.start();
 }
 
 SqpApplication::~SqpApplication()
