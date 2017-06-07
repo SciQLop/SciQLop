@@ -17,6 +17,14 @@ class DataSourceWidget : public QWidget {
 public:
     explicit DataSourceWidget(QWidget *parent = 0);
 
+public slots:
+    /**
+     * Adds a data source. An item associated to the data source is created and then added to the
+     * representation tree
+     * @param dataSource the data source to add
+     */
+    void addDataSource(DataSourceItem &dataSource) noexcept;
+
 private:
     class DataSourceWidgetPrivate;
     spimpl::unique_impl_ptr<DataSourceWidgetPrivate> impl;
