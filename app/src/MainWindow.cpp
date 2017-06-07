@@ -1,6 +1,6 @@
 /*------------------------------------------------------------------------------
--- This file is a part of the QLop Software
--- Copyright (C) 2015, Plasma Physics Laboratory - CNRS
+-- This file is a part of the SciQLop Software
+-- Copyright (C) 2017, Plasma Physics Laboratory - CNRS
 --
 -- This program is free software; you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -19,8 +19,8 @@
 /*-- Author : Alexis Jeandet
 -- Mail : alexis.jeandet@member.fsf.org
 ----------------------------------------------------------------------------*/
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
+#include "MainWindow.h"
+#include "ui_MainWindow.h"
 #include <QAction>
 #include <QDate>
 #include <QDateTime>
@@ -37,10 +37,26 @@
 //#include "cdfcodec.h"
 //#include "amdatxtcodec.h"
 //#include <qlopplotmanager.h>
-
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
+#include <QAction>
+#include <QToolBar>
+#include <memory.h>
+MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_Ui(new Ui::MainWindow)
 {
-    ui->setupUi(this);
+    m_Ui->setupUi(this);
+
+    auto leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
+    leftSidePane->addAction("ACTION L1");
+    leftSidePane->addAction("ACTION L2");
+    leftSidePane->addAction("ACTION L3");
+
+    auto rightSidePane = m_Ui->rightInspectorSidePane->sidePane();
+    rightSidePane->addAction("ACTION R1");
+    rightSidePane->addAction("ACTION R2");
+    rightSidePane->addAction("ACTION R3");
+
+    this->menuBar()->addAction("File");
+    auto mainToolBar = this->addToolBar("MainToolBar");
+    mainToolBar->addAction("A1");
     /*    QLopGUI::registerMenuBar(menuBar());
         this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));
         this->m_progressWidget = new QWidget();
@@ -86,7 +102,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 MainWindow::~MainWindow()
 {
-    delete ui;
 }
 
 
@@ -95,7 +110,7 @@ void MainWindow::changeEvent(QEvent *e)
     QMainWindow::changeEvent(e);
     switch (e->type()) {
         case QEvent::LanguageChange:
-            ui->retranslateUi(this);
+            m_Ui->retranslateUi(this);
             break;
         default:
             break;
