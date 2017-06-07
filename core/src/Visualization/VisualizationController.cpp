@@ -16,21 +16,21 @@ public:
 VisualizationController::VisualizationController(QObject *parent)
         : impl{spimpl::make_unique_impl<VisualizationControllerPrivate>()}
 {
-    qCDebug(LOG_VisualizationController())
-        << tr("VisualizationController construction") << QThread::currentThread();
+    qCDebug(LOG_VisualizationController()) << tr("VisualizationController construction")
+                                           << QThread::currentThread();
 }
 
 VisualizationController::~VisualizationController()
 {
-    qCDebug(LOG_VisualizationController())
-        << tr("VisualizationController destruction") << QThread::currentThread();
+    qCDebug(LOG_VisualizationController()) << tr("VisualizationController destruction")
+                                           << QThread::currentThread();
     this->waitForFinish();
 }
 
 void VisualizationController::initialize()
 {
-    qCDebug(LOG_VisualizationController())
-        << tr("VisualizationController init") << QThread::currentThread();
+    qCDebug(LOG_VisualizationController()) << tr("VisualizationController init")
+                                           << QThread::currentThread();
     impl->m_WorkingMutex.lock();
     qCDebug(LOG_VisualizationController()) << tr("VisualizationController init END");
 }
