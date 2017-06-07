@@ -97,8 +97,10 @@ IF(BUILD_TESTS)
 
                 SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName} ${EXTERN_SHARED_LIBRARIES})
                 set(Coverage_NAME ${testName})
-                SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage OUTPUT ${testFile}-path NAME ${testFile} EXECUTABLE ${testName})
-                LIST( APPEND TARGETS_COV ${testName}_coverage)
+                if(UNIX)
+                    SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage OUTPUT ${testFile}-path NAME ${testFile} EXECUTABLE ${testName})
+                    LIST( APPEND TARGETS_COV ${testName}_coverage)
+                endif(UNIX)
 
         ENDFOREACH( testFile )
 
