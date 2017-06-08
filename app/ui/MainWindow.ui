@@ -77,7 +77,7 @@
          <widget class="QWidget" name="dateTimeWidget" native="true"/>
         </item>
         <item>
-         <widget class="QWidget" name="variableInspectorWidget" native="true"/>
+         <widget class="VariableInspectorWidget" name="variableInspectorWidget" native="true"/>
         </item>
        </layout>
       </widget>
@@ -126,7 +126,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>28</height>
+     <height>26</height>
     </rect>
    </property>
   </widget>
@@ -150,6 +150,12 @@
    <class>DataSourceWidget</class>
    <extends>QWidget</extends>
    <header location="global">DataSource/DataSourceWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>VariableInspectorWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">Variable/VariableInspectorWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
