@@ -19,20 +19,23 @@
      <property name="currentIndex">
       <number>0</number>
      </property>
-     <widget class="QWidget" name="firstView">
+     <widget class="VisualizationTabWidget" name="firstView">
       <attribute name="title">
        <string>View 1</string>
-      </attribute>
-     </widget>
-     <widget class="QWidget" name="secondView">
-      <attribute name="title">
-       <string>+</string>
       </attribute>
      </widget>
     </widget>
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>VisualizationTabWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">visualization/VisualizationTabWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>
