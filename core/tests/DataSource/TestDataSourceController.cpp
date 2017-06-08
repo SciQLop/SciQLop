@@ -26,7 +26,7 @@ void TestDataSourceController::testSetDataSourceItem()
     DataSourceController dataSourceController{};
 
     // Spy to test controllers' signals
-    QSignalSpy signalSpy{&dataSourceController, SIGNAL(dataSourceItemSet(const DataSourceItem &))};
+    QSignalSpy signalSpy{&dataSourceController, SIGNAL(dataSourceItemSet(DataSourceItem *))};
 
     // Create a data source item
     auto source1Name = QStringLiteral("Source1");

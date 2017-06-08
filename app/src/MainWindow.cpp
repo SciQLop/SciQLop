@@ -64,8 +64,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow{parent}, m_Ui{new Ui::Main
     mainToolBar->addAction("A1");
 
     // Widgets / controllers connections
-    connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem &)),
-            m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem &)));
+    connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem *)),
+            m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem *)));
 
     /*    QLopGUI::registerMenuBar(menuBar());
         this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));

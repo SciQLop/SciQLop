@@ -21,9 +21,9 @@ public slots:
     /**
      * Adds a data source. An item associated to the data source is created and then added to the
      * representation tree
-     * @param dataSource the data source to add
+     * @param dataSource the data source to add. The pointer has to be not null
      */
-    void addDataSource(DataSourceItem &dataSource) noexcept;
+    void addDataSource(DataSourceItem *dataSource) noexcept;
 
 private:
     class DataSourceWidgetPrivate;

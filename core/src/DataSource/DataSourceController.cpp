@@ -49,7 +49,7 @@ void DataSourceController::setDataSourceItem(
         // Retrieves the data source item to emit the signal with it
         auto it = impl->m_DataSourceItems.find(dataSourceUid);
         if (it != impl->m_DataSourceItems.end()) {
-            emit dataSourceItemSet(*it->second);
+            emit dataSourceItemSet(it->second.get());
         }
     }
     else {
