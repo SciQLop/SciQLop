@@ -45,7 +45,7 @@
 #include <QAction>
 #include <QToolBar>
 #include <memory.h>
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_Ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent) : QMainWindow{parent}, m_Ui{new Ui::MainWindow}
 {
     m_Ui->setupUi(this);
 
