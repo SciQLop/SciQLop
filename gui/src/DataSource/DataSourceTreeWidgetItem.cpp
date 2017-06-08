@@ -20,6 +20,13 @@ QIcon itemIcon(const DataSourceItem *dataSource)
                 // No action
                 break;
         }
+
+        qCWarning(LOG_DataSourceTreeWidgetItem())
+            << QObject::tr("Can't set data source icon : unknown data source type");
+    }
+    else {
+        qCWarning(LOG_DataSourceTreeWidgetItem())
+            << QObject::tr("Can't set data source icon : the data source is null");
     }
 
     // Default cases
