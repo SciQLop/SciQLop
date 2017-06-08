@@ -1,4 +1,4 @@
-#include "sidepane/SqpSidePane.h"
+#include "SidePane/SqpSidePane.h"
 #include "ui_SqpSidePane.h"
 
 #include <QAction>
@@ -22,7 +22,7 @@ static const QString SQPSIDEPANESTYLESHEET
       " }";
 }
 
-SqpSidePane::SqpSidePane(QWidget *parent) : QWidget(parent), ui(new Ui::SqpSidePane)
+SqpSidePane::SqpSidePane(QWidget *parent) : QWidget{parent}, ui{new Ui::SqpSidePane}
 {
     QVBoxLayout *sidePaneLayout = new QVBoxLayout(this);
     sidePaneLayout->setContentsMargins(0, 0, 0, 0);

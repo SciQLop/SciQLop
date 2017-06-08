@@ -85,7 +85,7 @@
            <number>0</number>
           </property>
           <item>
-           <widget class="QWidget" name="dateSourceWidget" native="true"/>
+           <widget class="DataSourceWidget" name="dataSourceWidget" native="true"/>
           </item>
           <item>
            <widget class="QWidget" name="dateTimeWidget" native="true"/>
@@ -193,13 +193,19 @@
   <customwidget>
    <class>VisualizationWidget</class>
    <extends>QWidget</extends>
-   <header location="global">visualization/VisualizationWidget.h</header>
+   <header location="global">Visualization/VisualizationWidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>SqpSidePane</class>
    <extends>QWidget</extends>
-   <header location="global">sidepane/SqpSidePane.h</header>
+   <header location="global">SidePane/SqpSidePane.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>DataSourceWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">DataSource/DataSourceWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -1,8 +1,8 @@
-#include "visualization/VisualizationTabWidget.h"
+#include "Visualization/VisualizationTabWidget.h"
 #include "ui_VisualizationTabWidget.h"
 
 VisualizationTabWidget::VisualizationTabWidget(QWidget *parent)
-        : QWidget(parent), ui(new Ui::VisualizationTabWidget)
+        : QWidget{parent}, ui{new Ui::VisualizationTabWidget}
 {
     ui->setupUi(this);
 }

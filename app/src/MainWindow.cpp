@@ -21,6 +21,11 @@
 ----------------------------------------------------------------------------*/
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
+
+#include <DataSource/DataSourceController.h>
+#include <DataSource/DataSourceWidget.h>
+#include <SqpApplication.h>
+
 #include <QAction>
 #include <QDate>
 #include <QDateTime>
@@ -40,7 +45,7 @@
 #include <QAction>
 #include <QToolBar>
 #include <memory.h>
-MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_Ui(new Ui::MainWindow)
+MainWindow::MainWindow(QWidget *parent) : QMainWindow{parent}, m_Ui{new Ui::MainWindow}
 {
     m_Ui->setupUi(this);
 
@@ -57,6 +62,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), m_Ui(new Ui::Main
     this->menuBar()->addAction("File");
     auto mainToolBar = this->addToolBar("MainToolBar");
     mainToolBar->addAction("A1");
+
+    // Widgets / controllers connections
+    connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem *)),
+            m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem *)));
+
     /*    QLopGUI::registerMenuBar(menuBar());
         this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));
         this->m_progressWidget = new QWidget();

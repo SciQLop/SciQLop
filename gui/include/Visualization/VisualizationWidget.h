@@ -1,7 +1,10 @@
 #ifndef SCIQLOP_VISUALIZATIONWIDGET_H
 #define SCIQLOP_VISUALIZATIONWIDGET_H
 
+#include <QLoggingCategory>
 #include <QWidget>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationWidget)
 
 namespace Ui {
 class VisualizationWidget;
