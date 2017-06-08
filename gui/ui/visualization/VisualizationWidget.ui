@@ -32,7 +32,7 @@
   <customwidget>
    <class>VisualizationTabWidget</class>
    <extends>QWidget</extends>
-   <header location="global">visualization/VisualizationTabWidget.h</header>
+   <header location="global">Visualization/VisualizationTabWidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

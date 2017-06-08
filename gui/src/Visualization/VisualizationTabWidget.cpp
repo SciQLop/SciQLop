@@ -1,4 +1,4 @@
-#include "visualization/VisualizationTabWidget.h"
+#include "Visualization/VisualizationTabWidget.h"
 #include "ui_VisualizationTabWidget.h"
 
 VisualizationTabWidget::VisualizationTabWidget(QWidget *parent)

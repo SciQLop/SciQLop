@@ -1,6 +1,6 @@
-#include "visualization/VisualizationWidget.h"
+#include "Visualization/VisualizationWidget.h"
+#include "Visualization/VisualizationTabWidget.h"
 #include "ui_VisualizationWidget.h"
-#include "visualization/VisualizationTabWidget.h"
 
 #include <QDebug>
 #include <QToolButton>

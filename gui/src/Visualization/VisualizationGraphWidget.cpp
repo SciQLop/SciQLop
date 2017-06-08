@@ -1,4 +1,4 @@
-#include "visualization/VisualizationGraphWidget.h"
+#include "Visualization/VisualizationGraphWidget.h"
 #include "ui_VisualizationGraphWidget.h"
 
 VisualizationGraphWidget::VisualizationGraphWidget(QWidget *parent)

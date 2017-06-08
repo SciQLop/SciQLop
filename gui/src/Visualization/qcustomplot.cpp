@@ -23,7 +23,7 @@
 **          Version: 2.0.0-beta                                           **
 ****************************************************************************/
 
-#include "visualization/qcustomplot.h"
+#include "Visualization/qcustomplot.h"
 
 
 /* including file 'src/vector2d.cpp', size 7340                              */

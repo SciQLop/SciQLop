@@ -1,4 +1,4 @@
-#include "sidepane/SqpSidePane.h"
+#include "SidePane/SqpSidePane.h"
 #include "ui_SqpSidePane.h"
 
 #include <QAction>
