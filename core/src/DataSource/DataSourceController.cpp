@@ -21,14 +21,14 @@ public:
 DataSourceController::DataSourceController(QObject *parent)
         : impl{spimpl::make_unique_impl<DataSourceControllerPrivate>()}
 {
-    qCDebug(LOG_DataSourceController())
-        << tr("DataSourceController construction") << QThread::currentThread();
+    qCDebug(LOG_DataSourceController()) << tr("DataSourceController construction")
+                                        << QThread::currentThread();
 }
 
 DataSourceController::~DataSourceController()
 {
-    qCDebug(LOG_DataSourceController())
-        << tr("DataSourceController destruction") << QThread::currentThread();
+    qCDebug(LOG_DataSourceController()) << tr("DataSourceController destruction")
+                                        << QThread::currentThread();
     this->waitForFinish();
 }
 
@@ -61,8 +61,8 @@ void DataSourceController::setDataSourceItem(
 
 void DataSourceController::initialize()
 {
-    qCDebug(LOG_DataSourceController())
-        << tr("DataSourceController init") << QThread::currentThread();
+    qCDebug(LOG_DataSourceController()) << tr("DataSourceController init")
+                                        << QThread::currentThread();
     impl->m_WorkingMutex.lock();
     qCDebug(LOG_DataSourceController()) << tr("DataSourceController init END");
 }

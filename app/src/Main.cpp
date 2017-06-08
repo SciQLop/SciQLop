@@ -19,7 +19,7 @@
 /*-- Author : Alexis Jeandet
 -- Mail : alexis.jeandet@member.fsf.org
 ----------------------------------------------------------------------------*/
-#include "mainwindow.h"
+#include "MainWindow.h"
 #include <QProcessEnvironment>
 #include <QThread>
 #include <SqpApplication.h>
