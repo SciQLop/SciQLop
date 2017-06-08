@@ -10,12 +10,12 @@
 Q_LOGGING_CATEGORY(LOG_VisualizationWidget, "VisualizationWidget")
 
 VisualizationWidget::VisualizationWidget(QWidget *parent)
-        : QWidget(parent), ui(new Ui::VisualizationWidget)
+        : QWidget{parent}, ui{new Ui::VisualizationWidget}
 {
     ui->setupUi(this);
 
-    auto *addTabViewButton = new QToolButton(ui->tabWidget);
-    addTabViewButton->setText("Add View");
+    auto addTabViewButton = new QToolButton{ui->tabWidget};
+    addTabViewButton->setText(tr("Add View"));
     addTabViewButton->setCursor(Qt::ArrowCursor);
     addTabViewButton->setAutoRaise(true);
     ui->tabWidget->setCornerWidget(addTabViewButton, Qt::TopRightCorner);
