@@ -7,6 +7,11 @@
 #include <QVector>
 
 /**
+ * Possible types of an item
+ */
+enum class DataSourceItemType { NODE, PRODUCT };
+
+/**
  * @brief The DataSourceItem class aims to represent a structure element of a data source.
  * A data source has a tree structure that is made up of a main DataSourceItem object (root)
  * containing other DataSourceItem objects (children).
@@ -14,7 +19,7 @@
  */
 class DataSourceItem {
 public:
-    explicit DataSourceItem(QVector<QVariant> data = {});
+    explicit DataSourceItem(DataSourceItemType type, QVector<QVariant> data = {});
 
     /**
      * Adds a child to the item. The item takes ownership of the child.
@@ -43,6 +48,8 @@ public:
      * @return a pointer to the parent if it exists, nullptr if the item is a root
      */
     DataSourceItem *parentItem() const noexcept;
+
+    DataSourceItemType type() const noexcept;
 
 private:
     class DataSourceItemPrivate;

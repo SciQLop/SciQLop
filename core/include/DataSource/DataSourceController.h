@@ -49,7 +49,7 @@ public slots:
 
 signals:
     /// Signal emitted when a structure has been set for a data source
-    void dataSourceItemSet(const DataSourceItem &dataSourceItem);
+    void dataSourceItemSet(DataSourceItem &dataSourceItem);
 
 private:
     void waitForFinish();
