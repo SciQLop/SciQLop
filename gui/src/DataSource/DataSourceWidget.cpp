@@ -53,9 +53,11 @@ DataSourceWidget::DataSourceWidget(QWidget *parent)
 {
 }
 
-void DataSourceWidget::addDataSource(DataSourceItem &dataSource) noexcept
+void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
 {
     // Creates the item associated to the source and adds it to the tree widget. The tree widget
     // takes the ownership of the item
-    impl->m_Ui->treeWidget->addTopLevelItem(createTreeWidgetItem(&dataSource));
+    if (dataSource) {
+        impl->m_Ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
+    }
 }
