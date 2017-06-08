@@ -1,3 +1,6 @@
 # On ignore toutes les règles vera++ pour le fichier spimpl
 Common/spimpl\.h:\d+:.*
 
+# Ignore false positive relative to two class definitions in a same file
+DataSourceItem\.h:\d+:.*IPSIS_S01.*
+

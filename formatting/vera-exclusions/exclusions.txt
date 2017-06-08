@@ -6,3 +6,7 @@
 # Ignore false positive relative to 'noexcept' keyword
 .*IPSIS_S04_VARIABLE.*found: noexcept
 .*IPSIS_S06.*found: noexcept
+
+# Ignore false positive relative to 'override' keyword
+.*IPSIS_S04_VARIABLE.*found: override
+.*IPSIS_S06.*found: override
