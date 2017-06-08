@@ -35,6 +35,13 @@ ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/gui")
 
 ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/app")
 
+OPTION (BUILD_PLUGINS "Build the plugins" OFF)
+IF(BUILD_PLUGINS)
+    set(sciqlop-mockplugin_DIR "${CMAKE_SOURCE_DIR}/plugins/mockplugin/cmake")
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-mockplugin_DIR}")
+    ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/plugins/mockplugin")
+ENDIF(BUILD_PLUGINS)
+
 # LOGGER
 set(QTLOGGING_INI_FILE "${CMAKE_SOURCE_DIR}/config/QtProject/qtlogging.ini")
 FILE(COPY ${QTLOGGING_INI_FILE} DESTINATION ${CONFIG_OUTPUT_PATH})
