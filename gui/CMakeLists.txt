@@ -67,6 +67,9 @@ set_property(TARGET ${SQPGUI_LIBRARY_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 TARGET_LINK_LIBRARIES(${SQPGUI_LIBRARY_NAME} ${LIBRARIES})
 qt5_use_modules(${SQPGUI_LIBRARY_NAME} Core Widgets PrintSupport)
 
+add_dependencies(${SQPGUI_LIBRARY_NAME} ${SQPCORE_LIBRARY_NAME})
+
+
 # From cmake documentation: http://www.cmake.org/cmake/help/v3.0/manual/cmake-buildsystem.7.html
 # Entries in the COMPILE_DEFINITIONS are prefixed with -D or /D and added to the compile line in an unspecified order.
 # The DEFINE_SYMBOL target property is also added as a compile definition as a special convenience case for SHARED and MODULE library targets
