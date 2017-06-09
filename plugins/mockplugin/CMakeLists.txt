@@ -51,6 +51,8 @@ set_property(TARGET ${SQPMOCKPLUGIN_LIBRARY_NAME} PROPERTY CXX_STANDARD_REQUIRED
 
 TARGET_LINK_LIBRARIES(${SQPMOCKPLUGIN_LIBRARY_NAME} ${LIBRARIES})
 qt5_use_modules(${SQPMOCKPLUGIN_LIBRARY_NAME} Core Widgets)
+
+add_dependencies(${SQPMOCKPLUGIN_LIBRARY_NAME} ${SQPPLUGIN_LIBRARY_NAME} ${SQPGUI_LIBRARY_NAME} ${SQPCORE_LIBRARY_NAME})
 	
 # From cmake documentation: http://www.cmake.org/cmake/help/v3.0/manual/cmake-buildsystem.7.html
 # Entries in the COMPILE_DEFINITIONS are prefixed with -D or /D and added to the compile line in an unspecified order.
