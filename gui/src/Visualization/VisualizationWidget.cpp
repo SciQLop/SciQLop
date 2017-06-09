@@ -20,7 +20,7 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     addTabViewButton->setAutoRaise(true);
     ui->tabWidget->setCornerWidget(addTabViewButton, Qt::TopRightCorner);
 
-    auto addTabView = [&](bool checked) {
+    auto addTabView = [&]() {
         auto index = ui->tabWidget->addTab(new VisualizationTabWidget(ui->tabWidget),
                                            QString("View %1").arg(ui->tabWidget->count() + 1));
         qCInfo(LOG_VisualizationWidget()) << tr("add the tab of index %1").arg(index);

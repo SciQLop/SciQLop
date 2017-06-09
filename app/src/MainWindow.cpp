@@ -24,6 +24,7 @@
 
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceWidget.h>
+#include <SidePane/SqpSidePane.h>
 #include <SqpApplication.h>
 
 #include <QAction>
@@ -31,6 +32,9 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFileDialog>
+#include <QToolBar>
+#include <memory.h>
+
 //#include <omp.h>
 //#include <network/filedownloader.h>
 //#include <qlopdatabase.h>
@@ -42,26 +46,118 @@
 //#include "cdfcodec.h"
 //#include "amdatxtcodec.h"
 //#include <qlopplotmanager.h>
-#include <QAction>
-#include <QToolBar>
-#include <memory.h>
-MainWindow::MainWindow(QWidget *parent) : QMainWindow{parent}, m_Ui{new Ui::MainWindow}
+
+#include "iostream"
+
+Q_LOGGING_CATEGORY(LOG_MainWindow, "MainWindow")
+
+namespace {
+const auto LEFTMAININSPECTORWIDGETSPLITTERINDEX = 0;
+const auto LEFTINSPECTORSIDEPANESPLITTERINDEX = 1;
+const auto VIEWPLITTERINDEX = 2;
+const auto RIGHTINSPECTORSIDEPANESPLITTERINDEX = 3;
+const auto RIGHTMAININSPECTORWIDGETSPLITTERINDEX = 4;
+}
+
+class MainWindow::MainWindowPrivate {
+public:
+    QSize m_LastOpenLeftInspectorSize;
+    QSize m_LastOpenRightInspectorSize;
+};
+
+MainWindow::MainWindow(QWidget *parent)
+        : QMainWindow{parent},
+          m_Ui{new Ui::MainWindow},
+          impl{spimpl::make_unique_impl<MainWindowPrivate>()}
 {
     m_Ui->setupUi(this);
 
-    auto leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
-    leftSidePane->addAction("ACTION L1");
-    leftSidePane->addAction("ACTION L2");
-    leftSidePane->addAction("ACTION L3");
+    m_Ui->splitter->setCollapsible(LEFTINSPECTORSIDEPANESPLITTERINDEX, false);
+    m_Ui->splitter->setCollapsible(RIGHTINSPECTORSIDEPANESPLITTERINDEX, false);
+
+    // NOTE: These lambda could be factorized. Be careful of theirs parameters
+    // Lambda that defines what's happened when clicking on the leftSidePaneInspector open button
+    auto openLeftInspector = [this](bool checked) {
+
+        // Update of the last opened geometry
+        if (checked) {
+            impl->m_LastOpenLeftInspectorSize = m_Ui->leftMainInspectorWidget->size();
+        }
+
+        auto startSize = impl->m_LastOpenLeftInspectorSize;
+        auto endSize = startSize;
+        endSize.setWidth(0);
+
+        auto currentSizes = m_Ui->splitter->sizes();
+        if (checked) {
+            // adjust sizes individually here, e.g.
+            currentSizes[LEFTMAININSPECTORWIDGETSPLITTERINDEX]
+                -= impl->m_LastOpenLeftInspectorSize.width();
+            currentSizes[VIEWPLITTERINDEX] += impl->m_LastOpenLeftInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+        else {
+            // adjust sizes individually here, e.g.
+            currentSizes[LEFTMAININSPECTORWIDGETSPLITTERINDEX]
+                += impl->m_LastOpenLeftInspectorSize.width();
+            currentSizes[VIEWPLITTERINDEX] -= impl->m_LastOpenLeftInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+
+    };
+
+    // Lambda that defines what's happened when clicking on the SidePaneInspector open button
+    auto openRightInspector = [this](bool checked) {
+
+        // Update of the last opened geometry
+        if (checked) {
+            impl->m_LastOpenRightInspectorSize = m_Ui->rightMainInspectorWidget->size();
+        }
+
+        auto startSize = impl->m_LastOpenRightInspectorSize;
+        auto endSize = startSize;
+        endSize.setWidth(0);
+
+        auto currentSizes = m_Ui->splitter->sizes();
+        if (checked) {
+            // adjust sizes individually here, e.g.
+            currentSizes[RIGHTMAININSPECTORWIDGETSPLITTERINDEX]
+                -= impl->m_LastOpenRightInspectorSize.width();
+            currentSizes[VIEWPLITTERINDEX] += impl->m_LastOpenRightInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+        else {
+            // adjust sizes individually here, e.g.
+            currentSizes[RIGHTMAININSPECTORWIDGETSPLITTERINDEX]
+                += impl->m_LastOpenRightInspectorSize.width();
+            currentSizes[VIEWPLITTERINDEX] -= impl->m_LastOpenRightInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+
+    };
+
+
+    QToolBar *leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
+    auto openLeftInspectorAction = leftSidePane->addAction(
+        QIcon{
+            ":/icones/openInspector.png",
+        },
+        tr("Show/hide the left inspector"), openLeftInspector);
+
+    openLeftInspectorAction->setCheckable(true);
 
     auto rightSidePane = m_Ui->rightInspectorSidePane->sidePane();
-    rightSidePane->addAction("ACTION R1");
-    rightSidePane->addAction("ACTION R2");
-    rightSidePane->addAction("ACTION R3");
+    auto openRightInspectorAction = rightSidePane->addAction(
+        QIcon{
+            ":/icones/openInspector.png",
+        },
+        tr("Show/hide the right inspector"), openRightInspector);
 
-    this->menuBar()->addAction("File");
-    auto mainToolBar = this->addToolBar("MainToolBar");
-    mainToolBar->addAction("A1");
+    openRightInspectorAction->setCheckable(true);
+
+    this->menuBar()->addAction(tr("File"));
+    auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
+    mainToolBar->addAction(QStringLiteral("A1"));
 
     // Widgets / controllers connections
     connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem *)),
