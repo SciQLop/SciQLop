@@ -23,16 +23,19 @@
 #define SCIQLOP_MAINWINDOW_H
 
 #include <QListWidgetItem>
+#include <QLoggingCategory>
 #include <QMainWindow>
 #include <QProgressBar>
 #include <QProgressDialog>
 #include <QThread>
 #include <QVBoxLayout>
 #include <QWidget>
-//#include "../Core/qlopservice.h"
-//#include "../Core/qlopgui.h"
+
+#include <Common/spimpl.h>
 
 #include <memory>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_MainWindow)
 
 namespace Ui {
 class MainWindow;
@@ -55,6 +58,8 @@ private:
     //    QWidget *m_progressWidget;
     //    QVBoxLayout *m_progressLayout;
     // QList<QLopService*> m_qlopServices;
+    class MainWindowPrivate;
+    spimpl::unique_impl_ptr<MainWindowPrivate> impl;
 };
 
 #endif // SCIQLOP_MAINWINDOW_H

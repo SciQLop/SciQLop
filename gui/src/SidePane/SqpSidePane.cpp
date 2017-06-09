@@ -24,16 +24,23 @@ static const QString SQPSIDEPANESTYLESHEET
 
 SqpSidePane::SqpSidePane(QWidget *parent) : QWidget{parent}, ui{new Ui::SqpSidePane}
 {
-    QVBoxLayout *sidePaneLayout = new QVBoxLayout(this);
-    sidePaneLayout->setContentsMargins(0, 0, 0, 0);
-    this->setLayout(sidePaneLayout);
+    //    QVBoxLayout *sidePaneLayout = new QVBoxLayout(this);
+    //    sidePaneLayout->setContentsMargins(0, 0, 0, 0);
+    //    this->setLayout(sidePaneLayout);
 
     ui->setupUi(this);
-    m_SidePaneToolbar = new QToolBar(this);
+    m_SidePaneToolbar = new QToolBar();
     m_SidePaneToolbar->setOrientation(Qt::Vertical);
-    sidePaneLayout->addWidget(m_SidePaneToolbar);
+    this->layout()->addWidget(m_SidePaneToolbar);
 
     m_SidePaneToolbar->setStyleSheet(SQPSIDEPANESTYLESHEET);
+
+    this->setStyleSheet(
+        " QWidget {"
+        "background: red;"
+
+        "border: 1px;"
+        " }");
 }
 
 SqpSidePane::~SqpSidePane()

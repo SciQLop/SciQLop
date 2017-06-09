@@ -24,6 +24,7 @@
 
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceWidget.h>
+#include <SidePane/SqpSidePane.h>
 #include <SqpApplication.h>
 
 #include <QAction>
@@ -31,6 +32,9 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFileDialog>
+#include <QToolBar>
+#include <memory.h>
+
 //#include <omp.h>
 //#include <network/filedownloader.h>
 //#include <qlopdatabase.h>
@@ -42,22 +46,102 @@
 //#include "cdfcodec.h"
 //#include "amdatxtcodec.h"
 //#include <qlopplotmanager.h>
-#include <QAction>
-#include <QToolBar>
-#include <memory.h>
-MainWindow::MainWindow(QWidget *parent) : QMainWindow{parent}, m_Ui{new Ui::MainWindow}
+
+#include "iostream"
+
+Q_LOGGING_CATEGORY(LOG_MainWindow, "MainWindow")
+
+class MainWindow::MainWindowPrivate {
+public:
+    QSize m_LastOpenLeftInspectorSize;
+    QSize m_LastOpenRightInspectorSize;
+};
+
+MainWindow::MainWindow(QWidget *parent)
+        : QMainWindow{parent},
+          m_Ui{new Ui::MainWindow},
+          impl{spimpl::make_unique_impl<MainWindowPrivate>()}
 {
     m_Ui->setupUi(this);
 
-    auto leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
-    leftSidePane->addAction("ACTION L1");
-    leftSidePane->addAction("ACTION L2");
-    leftSidePane->addAction("ACTION L3");
+
+    m_Ui->splitter->setCollapsible(1, false);
+    m_Ui->splitter->setCollapsible(3, false);
+    // Lambda that defines what's happened when clicking on the leftSidePaneInspector open button
+    auto openLeftInspector = [&](bool checked) {
+
+        // Update of the last opened geometry
+        if (checked) {
+            impl->m_LastOpenLeftInspectorSize = m_Ui->leftMainInspectorWidget->size();
+        }
+
+        auto startSize = impl->m_LastOpenLeftInspectorSize;
+        auto endSize = startSize;
+        endSize.setWidth(0);
+
+        QList<int> currentSizes = m_Ui->splitter->sizes();
+        if (checked) {
+            // adjust sizes individually here, e.g.
+            currentSizes[0] -= impl->m_LastOpenLeftInspectorSize.width();
+            currentSizes[2] += impl->m_LastOpenLeftInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+        else {
+            // adjust sizes individually here, e.g.
+            currentSizes[0] += impl->m_LastOpenLeftInspectorSize.width();
+            currentSizes[2] -= impl->m_LastOpenLeftInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+
+    };
+
+    // Lambda that defines what's happened when clicking on the SidePaneInspector open button
+    auto openRightInspector = [&](bool checked) {
+
+        // Update of the last opened geometry
+        if (checked) {
+            impl->m_LastOpenRightInspectorSize = m_Ui->rightMainInspectorWidget->size();
+        }
+
+        auto startSize = impl->m_LastOpenRightInspectorSize;
+        auto endSize = startSize;
+        endSize.setWidth(0);
+
+        QList<int> currentSizes = m_Ui->splitter->sizes();
+        if (checked) {
+            // adjust sizes individually here, e.g.
+            currentSizes[4] -= impl->m_LastOpenRightInspectorSize.width();
+            currentSizes[2] += impl->m_LastOpenRightInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+        else {
+            // adjust sizes individually here, e.g.
+            currentSizes[4] += impl->m_LastOpenRightInspectorSize.width();
+            currentSizes[2] -= impl->m_LastOpenRightInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+
+    };
+
+
+    QToolBar *leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
+    auto openLeftInspectorAction = leftSidePane->addAction(
+        QIcon{
+            ":/icones/openInspector.png",
+        },
+        "ACTION L1", openLeftInspector);
+
+    openLeftInspectorAction->setCheckable(true);
 
     auto rightSidePane = m_Ui->rightInspectorSidePane->sidePane();
-    rightSidePane->addAction("ACTION R1");
-    rightSidePane->addAction("ACTION R2");
-    rightSidePane->addAction("ACTION R3");
+    auto openRightInspectorAction = rightSidePane->addAction(
+        QIcon{
+            ":/icones/openInspector.png",
+        },
+        "ACTION L1", openRightInspector);
+
+    openRightInspectorAction->setCheckable(true);
+
 
     this->menuBar()->addAction("File");
     auto mainToolBar = this->addToolBar("MainToolBar");
