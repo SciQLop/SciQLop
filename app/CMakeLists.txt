@@ -14,6 +14,7 @@ include_directories("${INCLUDES_DIR}")
 # Find Qt modules
 #
 SCIQLOP_FIND_QT(Core Widgets)
+
 	
 #
 # Find dependent libraries
@@ -68,6 +69,10 @@ target_link_libraries(${EXECUTABLE_NAME}
 	
 # Link with Qt5 modules
 qt5_use_modules(${EXECUTABLE_NAME} Core Widgets)
+
+
+add_dependencies(${EXECUTABLE_NAME} ${SQPGUI_LIBRARY_NAME} ${SQPCORE_LIBRARY_NAME})
+
 		
 		
 # Add the files to the list of files to be analyzed
