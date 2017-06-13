@@ -1,4 +1,5 @@
 #include <Variable/VariableController.h>
+#include <Variable/VariableModel.h>
 
 #include <QMutex>
 #include <QThread>
@@ -7,11 +8,12 @@ Q_LOGGING_CATEGORY(LOG_VariableController, "VariableController")
 
 struct VariableController::VariableControllerPrivate {
     explicit VariableControllerPrivate()
-            : m_WorkingMutex{}
+            : m_WorkingMutex{}, m_VariableModel{std::make_unique<VariableModel>()}
     {
     }
 
     QMutex m_WorkingMutex;
+    std::unique_ptr<VariableModel> m_VariableModel;
 };
 
 VariableController::VariableController(QObject *parent)
@@ -26,6 +28,11 @@ VariableController::~VariableController()
     qCDebug(LOG_VariableController())
         << tr("VariableController destruction") << QThread::currentThread();
     this->waitForFinish();
+}
+
+Variable *VariableController::createVariable(const QString &name) noexcept
+{
+    return impl->m_VariableModel->createVariable(name);
 }
 
 void VariableController::initialize()

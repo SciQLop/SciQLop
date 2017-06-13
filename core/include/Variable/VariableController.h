@@ -6,6 +6,7 @@
 
 #include <Common/spimpl.h>
 
+class Variable;
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableController)
 
 /**
@@ -16,6 +17,13 @@ class VariableController : public QObject {
 public:
     explicit VariableController(QObject *parent = 0);
     virtual ~VariableController();
+
+    /**
+     * Creates a new variable
+     * @param name the name of the new variable
+     * @return the variable if it was created successfully, nullptr otherwise
+     */
+    Variable *createVariable(const QString &name) noexcept;
 
 public slots:
     void initialize();
