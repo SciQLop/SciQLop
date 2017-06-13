@@ -29,6 +29,10 @@ public slots:
 
 private:
     Ui::DataSourceWidget *ui;
+
+private slots:
+    /// Slot called when right clicking on an item in the tree (displays a menu)
+    void onTreeMenuRequested(const QPoint &pos) noexcept;
 };
 
 #endif // SCIQLOP_DATASOURCEWIDGET_H
