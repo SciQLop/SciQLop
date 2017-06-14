@@ -33,24 +33,13 @@ DataSourceTreeWidgetItem *createTreeWidgetItem(DataSourceItem *dataSource)
 
 } // namespace
 
-class DataSourceWidget::DataSourceWidgetPrivate {
-public:
-    explicit DataSourceWidgetPrivate(DataSourceWidget &widget)
-            : m_Ui{std::make_unique<Ui::DataSourceWidget>()}
-    {
-        m_Ui->setupUi(&widget);
-
-        // Set tree properties
-        m_Ui->treeWidget->setColumnCount(TREE_NB_COLUMNS);
-        m_Ui->treeWidget->setHeaderLabels(TREE_HEADER_LABELS);
-    }
-
-    std::unique_ptr<Ui::DataSourceWidget> m_Ui;
-};
-
-DataSourceWidget::DataSourceWidget(QWidget *parent)
-        : QWidget{parent}, impl{spimpl::make_unique_impl<DataSourceWidgetPrivate>(*this)}
+DataSourceWidget::DataSourceWidget(QWidget *parent) : QWidget{parent}, ui{new Ui::DataSourceWidget}
 {
+    ui->setupUi(this);
+
+    // Set tree properties
+    ui->treeWidget->setColumnCount(TREE_NB_COLUMNS);
+    ui->treeWidget->setHeaderLabels(TREE_HEADER_LABELS);
 }
 
 void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
@@ -58,6 +47,6 @@ void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
     // Creates the item associated to the source and adds it to the tree widget. The tree widget
     // takes the ownership of the item
     if (dataSource) {
-        impl->m_Ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
+        ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
     }
 }

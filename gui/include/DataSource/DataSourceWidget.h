@@ -1,9 +1,11 @@
 #ifndef SCIQLOP_DATASOURCEWIDGET_H
 #define SCIQLOP_DATASOURCEWIDGET_H
 
-#include <Common/spimpl.h>
-
 #include <QWidget>
+
+namespace Ui {
+class DataSourceWidget;
+} // Ui
 
 class DataSourceItem;
 
@@ -26,8 +28,7 @@ public slots:
     void addDataSource(DataSourceItem *dataSource) noexcept;
 
 private:
-    class DataSourceWidgetPrivate;
-    spimpl::unique_impl_ptr<DataSourceWidgetPrivate> impl;
+    Ui::DataSourceWidget *ui;
 };
 
 #endif // SCIQLOP_DATASOURCEWIDGET_H
