@@ -1,4 +1,5 @@
 #include <DataSource/DataSourceItem.h>
+#include <DataSource/DataSourceItemAction.h>
 #include <DataSource/DataSourceTreeWidgetItem.h>
 
 #include <SqpApplication.h>
@@ -60,7 +61,20 @@ DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(QTreeWidget *parent, const Da
     // Sets the icon depending on the data source
     setIcon(0, itemIcon(impl->m_Data));
 
-    /// @todo ALX : generate actions based on the DataSourceItem (model)
+    // Generates tree actions based on the item actions
+    auto createTreeAction = [this, &parent](const auto &itemAction) {
+        auto treeAction = new QAction{itemAction->name(), parent};
+
+        // Executes item action when tree action is triggered
+        QObject::connect(treeAction, &QAction::triggered, itemAction,
+                         &DataSourceItemAction::execute);
+
+        return treeAction;
+    };
+
+    auto itemActions = impl->m_Data->actions();
+    std::transform(std::cbegin(itemActions), std::cend(itemActions),
+                   std::back_inserter(impl->m_Actions), createTreeAction);
 }
 
 QVariant DataSourceTreeWidgetItem::data(int column, int role) const
