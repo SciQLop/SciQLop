@@ -3,6 +3,13 @@
 
 #include <QVector>
 
+namespace {
+
+/// Index of the 'name' value in the item
+const auto NAME_INDEX = 0;
+
+} // namespace
+
 struct DataSourceItem::DataSourceItemPrivate {
     explicit DataSourceItemPrivate(DataSourceItemType type, QVector<QVariant> data)
             : m_Parent{nullptr}, m_Children{}, m_Type{type}, m_Data{std::move(data)}, m_Actions{}
@@ -61,6 +68,11 @@ int DataSourceItem::childCount() const noexcept
 QVariant DataSourceItem::data(int dataIndex) const noexcept
 {
     return impl->m_Data.value(dataIndex);
+}
+
+QString DataSourceItem::name() const noexcept
+{
+    return data(NAME_INDEX).toString();
 }
 
 DataSourceItem *DataSourceItem::parentItem() const noexcept

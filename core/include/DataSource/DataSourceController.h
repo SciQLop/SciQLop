@@ -54,6 +54,12 @@ public:
     void setDataProvider(const QUuid &dataSourceUid,
                          std::unique_ptr<IDataProvider> dataProvider) noexcept;
 
+    /**
+     * Loads an item (product) as a variable in SciQlop
+     * @param productItem the item to load
+     */
+    void loadProductItem(const DataSourceItem &productItem) noexcept;
+
 public slots:
     /// Manage init/end of the controller
     void initialize();

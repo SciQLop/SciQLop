@@ -55,6 +55,8 @@ public:
      */
     QVariant data(int dataIndex) const noexcept;
 
+    QString name() const noexcept;
+
     /**
      * Get the item's parent
      * @return a pointer to the parent if it exists, nullptr if the item is a root
