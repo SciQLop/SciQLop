@@ -1,11 +1,10 @@
 #include "Visualization/VisualizationWidget.h"
 #include "Visualization/VisualizationTabWidget.h"
+#include "Visualization/qcustomplot.h"
+
 #include "ui_VisualizationWidget.h"
 
-#include <QDebug>
 #include <QToolButton>
-
-#include "iostream"
 
 Q_LOGGING_CATEGORY(LOG_VisualizationWidget, "VisualizationWidget")
 
@@ -40,4 +39,36 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
 VisualizationWidget::~VisualizationWidget()
 {
     delete ui;
+}
+
+void VisualizationWidget::addTab(VisualizationTabWidget *tabWidget)
+{
+    // NOTE: check is this method has to be deleted because of its dupplicated version visible as
+    // lambda function (in the constructor)
+}
+
+VisualizationTabWidget *VisualizationWidget::createTab()
+{
+}
+
+void VisualizationWidget::removeTab(VisualizationTabWidget *tab)
+{
+    // NOTE: check is this method has to be deleted because of its dupplicated version visible as
+    // lambda function (in the constructor)
+}
+
+void VisualizationWidget::accept(IVisualizationWidget *visitor)
+{
+    // TODO: manage the visitor
+}
+
+void VisualizationWidget::close()
+{
+    // The main view cannot be directly closed.
+    return;
+}
+
+QString VisualizationWidget::name() const
+{
+    return QStringLiteral("MainView");
 }
