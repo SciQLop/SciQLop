@@ -75,17 +75,17 @@ void SqpApplication::initialize()
 {
 }
 
-DataSourceController &SqpApplication::dataSourceController() const noexcept
+DataSourceController &SqpApplication::dataSourceController() noexcept
 {
     return *impl->m_DataSourceController;
 }
 
-VariableController &SqpApplication::variableController() const noexcept
+VariableController &SqpApplication::variableController() noexcept
 {
     return *impl->m_VariableController;
 }
 
-VisualizationController &SqpApplication::visualizationController() const noexcept
+VisualizationController &SqpApplication::visualizationController() noexcept
 {
     return *impl->m_VisualizationController;
 }

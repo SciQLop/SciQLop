@@ -36,9 +36,9 @@ public:
     void initialize();
 
     /// Accessors for the differents sciqlop controllers
-    DataSourceController &dataSourceController() const noexcept;
-    VariableController &variableController() const noexcept;
-    VisualizationController &visualizationController() const noexcept;
+    DataSourceController &dataSourceController() noexcept;
+    VariableController &variableController() noexcept;
+    VisualizationController &visualizationController() noexcept;
 
 private:
     class SqpApplicationPrivate;
