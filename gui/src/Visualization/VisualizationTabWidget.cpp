@@ -22,7 +22,7 @@ void VisualizationTabWidget::addZone(VisualizationZoneWidget *zoneWidget)
 
 VisualizationZoneWidget *VisualizationTabWidget::createZone()
 {
-    auto zoneWidget = new VisualizationZoneWidget(this);
+    auto zoneWidget = new VisualizationZoneWidget{this};
     this->addZone(zoneWidget);
 
     return zoneWidget;

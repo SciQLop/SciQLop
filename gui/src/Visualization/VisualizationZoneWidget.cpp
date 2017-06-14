@@ -21,7 +21,7 @@ void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)
 
 VisualizationGraphWidget *VisualizationZoneWidget::createGraph()
 {
-    auto graphWidget = new VisualizationGraphWidget(this);
+    auto graphWidget = new VisualizationGraphWidget{this};
     this->addGraph(graphWidget);
 
     return graphWidget;

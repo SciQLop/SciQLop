@@ -13,8 +13,8 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(QWidget *parent)
-        : QWidget(parent),
-          ui(new Ui::VisualizationGraphWidget),
+        : QWidget{parent},
+          ui{new Ui::VisualizationGraphWidget},
           impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>()}
 {
     ui->setupUi(this);
