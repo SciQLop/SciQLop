@@ -42,7 +42,7 @@ void VisualizationZoneWidget::close()
     return;
 }
 
-QString VisualizationZoneWidget::name()
+QString VisualizationZoneWidget::name() const
 {
     return QStringLiteral("MainView");
 }

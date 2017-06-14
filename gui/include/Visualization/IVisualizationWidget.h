@@ -17,7 +17,7 @@ public:
     /// Initializes the plugin
     virtual void accept(IVisualizationWidget *visitor) = 0;
     virtual void close() = 0;
-    virtual QString name() = 0;
+    virtual QString name() const = 0;
 };
 
 

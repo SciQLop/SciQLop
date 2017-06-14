@@ -28,9 +28,9 @@ public:
     void removeZone(VisualizationZoneWidget *zone);
 
     // IVisualizationWidget interface
-    void accept(IVisualizationWidget *visitor);
-    void close();
-    QString name();
+    void accept(IVisualizationWidget *visitor) override;
+    void close() override;
+    QString name() const override;
 
 private:
     Ui::VisualizationTabWidget *ui;

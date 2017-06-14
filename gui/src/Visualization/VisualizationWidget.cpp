@@ -68,7 +68,7 @@ void VisualizationWidget::close()
     return;
 }
 
-QString VisualizationWidget::name()
+QString VisualizationWidget::name() const
 {
     return QStringLiteral("MainView");
 }

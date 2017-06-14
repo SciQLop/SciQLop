@@ -28,9 +28,9 @@ public:
     void removeGraph(VisualizationGraphWidget *graph);
 
     // IVisualizationWidget interface
-    void accept(IVisualizationWidget *visitor);
-    void close();
-    QString name();
+    void accept(IVisualizationWidget *visitor) override;
+    void close() override;
+    QString name() const override;
 
 private:
     Ui::VisualizationZoneWidget *ui;

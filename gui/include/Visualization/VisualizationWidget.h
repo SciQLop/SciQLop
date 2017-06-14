@@ -31,9 +31,9 @@ public:
     void removeTab(VisualizationTabWidget *tab);
 
     // IVisualizationWidget interface
-    void accept(IVisualizationWidget *visitor);
-    void close();
-    QString name();
+    void accept(IVisualizationWidget *visitor) override;
+    void close() override;
+    QString name() const;
 
 private:
     Ui::VisualizationWidget *ui;

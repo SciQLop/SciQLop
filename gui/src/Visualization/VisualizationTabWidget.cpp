@@ -8,7 +8,6 @@ VisualizationTabWidget::VisualizationTabWidget(QWidget *parent)
         : QWidget{parent}, ui{new Ui::VisualizationTabWidget}
 {
     ui->setupUi(this);
-
 }
 
 VisualizationTabWidget::~VisualizationTabWidget()
@@ -44,7 +43,7 @@ void VisualizationTabWidget::close()
     return;
 }
 
-QString VisualizationTabWidget::name()
+QString VisualizationTabWidget::name() const
 {
     return QStringLiteral("MainView");
 }

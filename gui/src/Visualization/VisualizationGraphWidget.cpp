@@ -41,7 +41,7 @@ void VisualizationGraphWidget::close()
     return;
 }
 
-QString VisualizationGraphWidget::name()
+QString VisualizationGraphWidget::name() const
 {
     return QStringLiteral("MainView");
 }

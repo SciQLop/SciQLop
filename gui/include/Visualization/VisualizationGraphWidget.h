@@ -25,9 +25,9 @@ public:
     void addVariable(std::shared_ptr<Variable> variable);
 
     // IVisualizationWidget interface
-    void accept(IVisualizationWidget *visitor);
-    void close();
-    QString name();
+    void accept(IVisualizationWidget *visitor) override;
+    void close() override;
+    QString name() const;
 
 private:
     Ui::VisualizationGraphWidget *ui;
