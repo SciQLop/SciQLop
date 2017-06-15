@@ -34,6 +34,7 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QToolBar>
+#include <QToolButton>
 #include <memory.h>
 
 //#include <omp.h>
@@ -116,95 +117,53 @@ MainWindow::MainWindow(QWidget *parent)
     openLeftInspectorAction->setCheckable(true);
     openRightInspectorAction->setCheckable(true);
 
+    auto openInspector = [this](bool checked, bool right, auto action) {
 
-    // NOTE: These lambda could be factorized. Be careful of theirs parameters
-    // Lambda that defines what's happened when clicking on the leftSidePaneInspector open button
-    auto openLeftInspector = [this, openLeftInspectorAction](bool checked) {
+        action->setIcon(QIcon{(checked xor right) ? ":/icones/next.png" : ":/icones/previous.png"});
 
-        if (checked) {
-            openLeftInspectorAction->setIcon(QIcon{
-                ":/icones/next.png",
-            });
-        }
-        else {
-            openLeftInspectorAction->setIcon(QIcon{
-                ":/icones/previous.png",
-            });
-        }
+        auto &lastInspectorSize
+            = right ? impl->m_LastOpenRightInspectorSize : impl->m_LastOpenLeftInspectorSize;
+
+        auto nextInspectorSize = right ? m_Ui->rightMainInspectorWidget->size()
+                                       : m_Ui->leftMainInspectorWidget->size();
 
         // Update of the last opened geometry
         if (checked) {
-            impl->m_LastOpenLeftInspectorSize = m_Ui->leftMainInspectorWidget->size();
+            lastInspectorSize = nextInspectorSize;
         }
 
-        auto startSize = impl->m_LastOpenLeftInspectorSize;
+        auto startSize = lastInspectorSize;
         auto endSize = startSize;
         endSize.setWidth(0);
+
+        auto splitterInspectorIndex
+            = right ? RIGHTMAININSPECTORWIDGETSPLITTERINDEX : LEFTMAININSPECTORWIDGETSPLITTERINDEX;
 
         auto currentSizes = m_Ui->splitter->sizes();
         if (checked) {
             // adjust sizes individually here, e.g.
-            currentSizes[LEFTMAININSPECTORWIDGETSPLITTERINDEX]
-                -= impl->m_LastOpenLeftInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] += impl->m_LastOpenLeftInspectorSize.width();
+            currentSizes[splitterInspectorIndex] -= lastInspectorSize.width();
+            currentSizes[VIEWPLITTERINDEX] += lastInspectorSize.width();
             m_Ui->splitter->setSizes(currentSizes);
         }
         else {
             // adjust sizes individually here, e.g.
-            currentSizes[LEFTMAININSPECTORWIDGETSPLITTERINDEX]
-                += impl->m_LastOpenLeftInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] -= impl->m_LastOpenLeftInspectorSize.width();
-            m_Ui->splitter->setSizes(currentSizes);
-        }
-
-    };
-
-    // Lambda that defines what's happened when clicking on the SidePaneInspector open button
-    auto openRightInspector = [this, openRightInspectorAction](bool checked) {
-
-        if (checked) {
-            openRightInspectorAction->setIcon(QIcon{
-                ":/icones/previous.png",
-            });
-        }
-        else {
-            openRightInspectorAction->setIcon(QIcon{
-                ":/icones/next.png",
-            });
-        }
-
-
-        // Update of the last opened geometry
-        if (checked) {
-            impl->m_LastOpenRightInspectorSize = m_Ui->rightMainInspectorWidget->size();
-        }
-
-        auto startSize = impl->m_LastOpenRightInspectorSize;
-        auto endSize = startSize;
-        endSize.setWidth(0);
-
-        auto currentSizes = m_Ui->splitter->sizes();
-        if (checked) {
-            // adjust sizes individually here, e.g.
-            currentSizes[RIGHTMAININSPECTORWIDGETSPLITTERINDEX]
-                -= impl->m_LastOpenRightInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] += impl->m_LastOpenRightInspectorSize.width();
-            m_Ui->splitter->setSizes(currentSizes);
-        }
-        else {
-            // adjust sizes individually here, e.g.
-            currentSizes[RIGHTMAININSPECTORWIDGETSPLITTERINDEX]
-                += impl->m_LastOpenRightInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] -= impl->m_LastOpenRightInspectorSize.width();
+            currentSizes[splitterInspectorIndex] += lastInspectorSize.width();
+            currentSizes[VIEWPLITTERINDEX] -= lastInspectorSize.width();
             m_Ui->splitter->setSizes(currentSizes);
         }
 
     };
 
 
-    connect(openLeftInspectorAction, &QAction::triggered, openLeftInspector);
-    connect(openRightInspectorAction, &QAction::triggered, openRightInspector);
-
+    connect(openLeftInspectorAction, &QAction::triggered,
+            [openInspector, openLeftInspectorAction](bool checked) {
+                openInspector(checked, false, openLeftInspectorAction);
+            });
+    connect(openRightInspectorAction, &QAction::triggered,
+            [openInspector, openRightInspectorAction](bool checked) {
+                openInspector(checked, true, openRightInspectorAction);
+            });
 
     this->menuBar()->addAction(tr("File"));
     auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
