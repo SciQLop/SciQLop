@@ -26,12 +26,17 @@ VariableModel::VariableModel(QObject *parent)
 
 Variable *VariableModel::createVariable(const QString &name) noexcept
 {
+    auto insertIndex = rowCount();
+    beginInsertRows({}, insertIndex, insertIndex);
+
     /// @todo For the moment, the other data of the variable is initialized with default values
     auto variable
         = std::make_unique<Variable>(name, QStringLiteral("unit"), QStringLiteral("mission"));
     impl->m_Variables.push_back(std::move(variable));
 
-    return impl->m_Variables.back().get();
+    endInsertRows();
+
+    return impl->m_Variables.at(insertIndex).get();
 }
 
 int VariableModel::columnCount(const QModelIndex &parent) const
