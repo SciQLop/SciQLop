@@ -18,6 +18,12 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     addTabViewButton->setCursor(Qt::ArrowCursor);
     addTabViewButton->setAutoRaise(true);
     ui->tabWidget->setCornerWidget(addTabViewButton, Qt::TopRightCorner);
+    auto width = ui->tabWidget->cornerWidget()->width();
+    auto height = ui->tabWidget->cornerWidget()->height();
+    addTabViewButton->setMinimumHeight(height);
+    addTabViewButton->setMinimumWidth(width);
+    ui->tabWidget->setMinimumHeight(height);
+    ui->tabWidget->setMinimumWidth(width);
 
     auto addTabView = [&]() {
         auto index = ui->tabWidget->addTab(new VisualizationTabWidget(ui->tabWidget),
