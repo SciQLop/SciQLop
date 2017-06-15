@@ -6,6 +6,8 @@
 #include <QVariant>
 #include <QVector>
 
+class DataSourceItemAction;
+
 /**
  * Possible types of an item
  */
@@ -20,6 +22,16 @@ enum class DataSourceItemType { NODE, PRODUCT };
 class DataSourceItem {
 public:
     explicit DataSourceItem(DataSourceItemType type, QVector<QVariant> data = {});
+
+    /// @return the actions of the item as a vector
+    QVector<DataSourceItemAction *> actions() const noexcept;
+
+    /**
+     * Adds an action to the item. The item takes ownership of the action, and the action is
+     * automatically associated to the item
+     * @param action the action to add
+     */
+    void addAction(std::unique_ptr<DataSourceItemAction> action) noexcept;
 
     /**
      * Adds a child to the item. The item takes ownership of the child.
@@ -42,6 +54,8 @@ public:
      * @return the data found if index is valid, default QVariant otherwise
      */
     QVariant data(int dataIndex) const noexcept;
+
+    QString name() const noexcept;
 
     /**
      * Get the item's parent

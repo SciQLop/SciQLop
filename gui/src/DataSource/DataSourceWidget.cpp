@@ -5,6 +5,8 @@
 #include <DataSource/DataSourceItem.h>
 #include <DataSource/DataSourceTreeWidgetItem.h>
 
+#include <QMenu>
+
 namespace {
 
 /// Number of columns displayed in the tree
@@ -40,6 +42,11 @@ DataSourceWidget::DataSourceWidget(QWidget *parent) : QWidget{parent}, ui{new Ui
     // Set tree properties
     ui->treeWidget->setColumnCount(TREE_NB_COLUMNS);
     ui->treeWidget->setHeaderLabels(TREE_HEADER_LABELS);
+    ui->treeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // Connection to show a menu when right clicking on the tree
+    connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested, this,
+            &DataSourceWidget::onTreeMenuRequested);
 }
 
 void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
@@ -48,5 +55,18 @@ void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
     // takes the ownership of the item
     if (dataSource) {
         ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
+    }
+}
+
+void DataSourceWidget::onTreeMenuRequested(const QPoint &pos) noexcept
+{
+    // Retrieves the selected item in the tree, and build the menu from its actions
+    if (auto selectedItem = dynamic_cast<DataSourceTreeWidgetItem *>(ui->treeWidget->itemAt(pos))) {
+        QMenu treeMenu{};
+        treeMenu.addActions(selectedItem->actions());
+
+        if (!treeMenu.isEmpty()) {
+            treeMenu.exec(mapToGlobal(pos));
+        }
     }
 }

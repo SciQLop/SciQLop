@@ -3,6 +3,7 @@
 
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceItem.h>
+#include <DataSource/DataSourceItemAction.h>
 
 #include <SqpApplication.h>
 
@@ -19,19 +20,30 @@ std::unique_ptr<IDataProvider> createDataProvider() noexcept
     return std::make_unique<CosinusProvider>();
 }
 
+std::unique_ptr<DataSourceItem> createProductItem(const QString &productName)
+{
+    auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT,
+                                                   QVector<QVariant>{productName});
+
+    // Add action to load product from DataSourceController
+    result->addAction(std::make_unique<DataSourceItemAction>(
+        QObject::tr("Load %1 product").arg(productName), [productName](DataSourceItem &item) {
+            if (auto app = sqpApp) {
+                app->dataSourceController().loadProductItem(item);
+            }
+        }));
+
+    return result;
+}
+
 /// Creates the data source item relative to the plugin
 std::unique_ptr<DataSourceItem> createDataSourceItem() noexcept
 {
     // Magnetic field products
-    auto fgmProduct = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT,
-                                                       QVector<QVariant>{QStringLiteral("FGM")});
-    auto scProduct = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT,
-                                                      QVector<QVariant>{QStringLiteral("SC")});
-
     auto magneticFieldFolder = std::make_unique<DataSourceItem>(
         DataSourceItemType::NODE, QVector<QVariant>{QStringLiteral("Magnetic field")});
-    magneticFieldFolder->appendChild(std::move(fgmProduct));
-    magneticFieldFolder->appendChild(std::move(scProduct));
+    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("FGM")));
+    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("SC")));
 
     // Electric field products
     auto electricFieldFolder = std::make_unique<DataSourceItem>(
