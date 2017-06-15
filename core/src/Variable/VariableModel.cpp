@@ -64,9 +64,7 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
     }
 
     if (role == Qt::DisplayRole) {
-        const auto &variable = impl->m_Variables.at(index.row());
-
-        if (variable) {
+        if (auto variable = impl->m_Variables.at(index.row()).get()) {
             switch (index.column()) {
                 case NAME_COLUMN:
                     return variable->m_Name;
