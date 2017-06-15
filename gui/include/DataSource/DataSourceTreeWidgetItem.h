@@ -24,6 +24,9 @@ public:
     virtual QVariant data(int column, int role) const override;
     virtual void setData(int column, int role, const QVariant &value) override;
 
+    /// @return the actions associated to the item
+    QList<QAction *> actions() const noexcept;
+
 private:
     class DataSourceTreeWidgetItemPrivate;
     spimpl::unique_impl_ptr<DataSourceTreeWidgetItemPrivate> impl;

@@ -1,7 +1,10 @@
 #include <DataSource/DataSourceItem.h>
+#include <DataSource/DataSourceItemAction.h>
 #include <DataSource/DataSourceTreeWidgetItem.h>
 
 #include <SqpApplication.h>
+
+#include <QAction>
 
 Q_LOGGING_CATEGORY(LOG_DataSourceTreeWidgetItem, "DataSourceTreeWidgetItem")
 
@@ -40,6 +43,9 @@ struct DataSourceTreeWidgetItem::DataSourceTreeWidgetItemPrivate {
 
     /// Model used to retrieve data source information
     const DataSourceItem *m_Data;
+    /// Actions associated to the item. The parent of the item (QTreeWidget) takes the ownership of
+    /// the actions
+    QList<QAction *> m_Actions;
 };
 
 DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(const DataSourceItem *data, int type)
@@ -54,6 +60,21 @@ DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(QTreeWidget *parent, const Da
 {
     // Sets the icon depending on the data source
     setIcon(0, itemIcon(impl->m_Data));
+
+    // Generates tree actions based on the item actions
+    auto createTreeAction = [this, &parent](const auto &itemAction) {
+        auto treeAction = new QAction{itemAction->name(), parent};
+
+        // Executes item action when tree action is triggered
+        QObject::connect(treeAction, &QAction::triggered, itemAction,
+                         &DataSourceItemAction::execute);
+
+        return treeAction;
+    };
+
+    auto itemActions = impl->m_Data->actions();
+    std::transform(std::cbegin(itemActions), std::cend(itemActions),
+                   std::back_inserter(impl->m_Actions), createTreeAction);
 }
 
 QVariant DataSourceTreeWidgetItem::data(int column, int role) const
@@ -72,4 +93,9 @@ void DataSourceTreeWidgetItem::setData(int column, int role, const QVariant &val
     if (role != Qt::EditRole) {
         QTreeWidgetItem::setData(column, role, value);
     }
+}
+
+QList<QAction *> DataSourceTreeWidgetItem::actions() const noexcept
+{
+    return impl->m_Actions;
 }

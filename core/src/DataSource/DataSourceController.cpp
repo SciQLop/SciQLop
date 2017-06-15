@@ -76,6 +76,11 @@ void DataSourceController::setDataProvider(const QUuid &dataSourceUid,
     }
 }
 
+void DataSourceController::loadProductItem(const DataSourceItem &productItem) noexcept
+{
+    /// @todo ALX
+}
+
 void DataSourceController::initialize()
 {
     qCDebug(LOG_DataSourceController()) << tr("DataSourceController init")
