@@ -7,6 +7,8 @@
 #include <Common/spimpl.h>
 
 class Variable;
+class VariableModel;
+
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableController)
 
 /**
@@ -24,6 +26,8 @@ public:
      * @return the variable if it was created successfully, nullptr otherwise
      */
     Variable *createVariable(const QString &name) noexcept;
+
+    VariableModel *variableModel() noexcept;
 
 public slots:
     void initialize();
