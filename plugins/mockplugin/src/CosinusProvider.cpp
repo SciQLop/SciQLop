@@ -3,6 +3,8 @@
 #include <Data/DataProviderParameters.h>
 #include <Data/ScalarSeries.h>
 
+#include <cmath>
+
 std::unique_ptr<IDataSeries>
 CosinusProvider::retrieveData(const DataProviderParameters &parameters) const
 {

@@ -26,6 +26,7 @@
 #include <DataSource/DataSourceWidget.h>
 #include <SidePane/SqpSidePane.h>
 #include <SqpApplication.h>
+#include <TimeWidget/TimeWidget.h>
 
 #include <QAction>
 #include <QDate>
@@ -75,9 +76,61 @@ MainWindow::MainWindow(QWidget *parent)
     m_Ui->splitter->setCollapsible(LEFTINSPECTORSIDEPANESPLITTERINDEX, false);
     m_Ui->splitter->setCollapsible(RIGHTINSPECTORSIDEPANESPLITTERINDEX, false);
 
+
+    auto leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
+    auto openLeftInspectorAction = new QAction(
+        QIcon{
+            ":/icones/previous.png",
+        },
+        tr("Show/hide the left inspector"), this);
+
+
+    QWidget *spacerLeftTop = new QWidget();
+    spacerLeftTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    QWidget *spacerLeftBottom = new QWidget();
+    spacerLeftBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    leftSidePane->addWidget(spacerLeftTop);
+    leftSidePane->addAction(openLeftInspectorAction);
+    leftSidePane->addWidget(spacerLeftBottom);
+
+
+    auto rightSidePane = m_Ui->rightInspectorSidePane->sidePane();
+    auto openRightInspectorAction = new QAction(
+        QIcon{
+            ":/icones/next.png",
+        },
+        tr("Show/hide the right inspector"), this);
+
+    QWidget *spacerRightTop = new QWidget();
+    spacerRightTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    QWidget *spacerRightBottom = new QWidget();
+    spacerRightBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    rightSidePane->addWidget(spacerRightTop);
+    rightSidePane->addAction(openRightInspectorAction);
+    rightSidePane->addWidget(spacerRightBottom);
+
+    openLeftInspectorAction->setCheckable(true);
+    openRightInspectorAction->setCheckable(true);
+
+
     // NOTE: These lambda could be factorized. Be careful of theirs parameters
     // Lambda that defines what's happened when clicking on the leftSidePaneInspector open button
-    auto openLeftInspector = [this](bool checked) {
+    auto openLeftInspector = [this, openLeftInspectorAction](bool checked) {
+
+        if (checked) {
+            openLeftInspectorAction->setIcon(QIcon{
+                ":/icones/next.png",
+            });
+        }
+        else {
+            openLeftInspectorAction->setIcon(QIcon{
+                ":/icones/previous.png",
+            });
+        }
 
         // Update of the last opened geometry
         if (checked) {
@@ -107,7 +160,19 @@ MainWindow::MainWindow(QWidget *parent)
     };
 
     // Lambda that defines what's happened when clicking on the SidePaneInspector open button
-    auto openRightInspector = [this](bool checked) {
+    auto openRightInspector = [this, openRightInspectorAction](bool checked) {
+
+        if (checked) {
+            openRightInspectorAction->setIcon(QIcon{
+                ":/icones/previous.png",
+            });
+        }
+        else {
+            openRightInspectorAction->setIcon(QIcon{
+                ":/icones/next.png",
+            });
+        }
+
 
         // Update of the last opened geometry
         if (checked) {
@@ -137,27 +202,14 @@ MainWindow::MainWindow(QWidget *parent)
     };
 
 
-    QToolBar *leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
-    auto openLeftInspectorAction = leftSidePane->addAction(
-        QIcon{
-            ":/icones/openInspector.png",
-        },
-        tr("Show/hide the left inspector"), openLeftInspector);
+    connect(openLeftInspectorAction, &QAction::triggered, openLeftInspector);
+    connect(openRightInspectorAction, &QAction::triggered, openRightInspector);
 
-    openLeftInspectorAction->setCheckable(true);
-
-    auto rightSidePane = m_Ui->rightInspectorSidePane->sidePane();
-    auto openRightInspectorAction = rightSidePane->addAction(
-        QIcon{
-            ":/icones/openInspector.png",
-        },
-        tr("Show/hide the right inspector"), openRightInspector);
-
-    openRightInspectorAction->setCheckable(true);
 
     this->menuBar()->addAction(tr("File"));
     auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
-    mainToolBar->addAction(QStringLiteral("A1"));
+
+    mainToolBar->addWidget(new TimeWidget());
 
     // Widgets / controllers connections
     connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem *)),
