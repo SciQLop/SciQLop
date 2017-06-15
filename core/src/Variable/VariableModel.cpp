@@ -50,6 +50,38 @@ int VariableModel::rowCount(const QModelIndex &parent) const
 
 QVariant VariableModel::data(const QModelIndex &index, int role) const
 {
+    if (!index.isValid()) {
+        return QVariant{};
+    }
+
+    if (index.row() < 0 || index.row() >= rowCount()) {
+        return QVariant{};
+    }
+
+    if (role == Qt::DisplayRole) {
+        const auto &variable = impl->m_Variables.at(index.row());
+
+        if (variable) {
+            switch (index.column()) {
+                case NAME_COLUMN:
+                    return variable->m_Name;
+                case UNIT_COLUMN:
+                    return variable->m_Unit;
+                case MISSION_COLUMN:
+                    return variable->m_Mission;
+                default:
+                    // No action
+                    break;
+            }
+
+            qWarning(LOG_VariableModel())
+                << tr("Can't get data (unknown column %1)").arg(index.column());
+        }
+        else {
+            qWarning(LOG_VariableModel()) << tr("Can't get data (no variable)");
+        }
+    }
+
     return QVariant{};
 }
 
