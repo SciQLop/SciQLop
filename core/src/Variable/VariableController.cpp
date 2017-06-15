@@ -19,14 +19,14 @@ struct VariableController::VariableControllerPrivate {
 VariableController::VariableController(QObject *parent)
         : QObject{parent}, impl{spimpl::make_unique_impl<VariableControllerPrivate>()}
 {
-    qCDebug(LOG_VariableController())
-        << tr("VariableController construction") << QThread::currentThread();
+    qCDebug(LOG_VariableController()) << tr("VariableController construction")
+                                      << QThread::currentThread();
 }
 
 VariableController::~VariableController()
 {
-    qCDebug(LOG_VariableController())
-        << tr("VariableController destruction") << QThread::currentThread();
+    qCDebug(LOG_VariableController()) << tr("VariableController destruction")
+                                      << QThread::currentThread();
     this->waitForFinish();
 }
 

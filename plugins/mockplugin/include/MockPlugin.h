@@ -18,10 +18,6 @@ class MockPlugin : public QObject, public IPlugin {
 public:
     /// @sa IPlugin::initialize()
     void initialize() override;
-
-private:
-    /// Creates the data source item relative to the plugin
-    std::unique_ptr<DataSourceItem> createDataSourceItem() const noexcept;
 };
 
 #endif // SCIQLOP_MOCKPLUGIN_H

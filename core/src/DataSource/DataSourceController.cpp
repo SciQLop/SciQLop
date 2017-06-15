@@ -1,6 +1,8 @@
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceItem.h>
 
+#include <Data/IDataProvider.h>
+
 #include <QMutex>
 #include <QThread>
 
@@ -16,6 +18,8 @@ public:
     QHash<QUuid, QString> m_DataSources;
     /// Data sources structures
     std::map<QUuid, std::unique_ptr<DataSourceItem> > m_DataSourceItems;
+    /// Data providers registered
+    std::map<QUuid, std::unique_ptr<IDataProvider> > m_DataProviders;
 };
 
 DataSourceController::DataSourceController(QObject *parent)
@@ -55,6 +59,19 @@ void DataSourceController::setDataSourceItem(
     else {
         qCWarning(LOG_DataSourceController()) << tr("Can't set data source item for uid %1 : no "
                                                     "data source has been registered with the uid")
+                                                     .arg(dataSourceUid.toString());
+    }
+}
+
+void DataSourceController::setDataProvider(const QUuid &dataSourceUid,
+                                           std::unique_ptr<IDataProvider> dataProvider) noexcept
+{
+    if (impl->m_DataSources.contains(dataSourceUid)) {
+        impl->m_DataProviders.insert(std::make_pair(dataSourceUid, std::move(dataProvider)));
+    }
+    else {
+        qCWarning(LOG_DataSourceController()) << tr("Can't set data provider for uid %1 : no data "
+                                                    "source has been registered with the uid")
                                                      .arg(dataSourceUid.toString());
     }
 }
