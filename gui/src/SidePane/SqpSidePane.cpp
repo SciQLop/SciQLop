@@ -34,13 +34,6 @@ SqpSidePane::SqpSidePane(QWidget *parent) : QWidget{parent}, ui{new Ui::SqpSideP
     this->layout()->addWidget(m_SidePaneToolbar);
 
     m_SidePaneToolbar->setStyleSheet(SQPSIDEPANESTYLESHEET);
-
-    this->setStyleSheet(
-        " QWidget {"
-        "background: red;"
-
-        "border: 1px;"
-        " }");
 }
 
 SqpSidePane::~SqpSidePane()
