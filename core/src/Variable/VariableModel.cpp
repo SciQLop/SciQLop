@@ -6,6 +6,10 @@ Q_LOGGING_CATEGORY(LOG_VariableModel, "VariableModel")
 
 namespace {
 
+// Column indexes
+const auto NAME_COLUMN = 0;
+const auto UNIT_COLUMN = 1;
+const auto MISSION_COLUMN = 2;
 const auto NB_COLUMNS = 3;
 
 } // namespace
@@ -51,6 +55,26 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
 
 QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
+    if (role != Qt::DisplayRole) {
+        return QVariant{};
+    }
+
+    if (orientation == Qt::Horizontal) {
+        switch (section) {
+            case NAME_COLUMN:
+                return tr("Name");
+            case UNIT_COLUMN:
+                return tr("Unit");
+            case MISSION_COLUMN:
+                return tr("Mission");
+            default:
+                // No action
+                break;
+        }
+
+        qWarning(LOG_VariableModel())
+            << tr("Can't get header data (unknown column %1)").arg(section);
+    }
 
     return QVariant{};
 }
