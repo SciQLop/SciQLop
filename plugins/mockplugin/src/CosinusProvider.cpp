@@ -21,8 +21,8 @@ CosinusProvider::retrieveData(const DataProviderParameters &parameters) const
     auto scalarSeries
         = std::make_unique<ScalarSeries>(end - start, QStringLiteral("t"), QStringLiteral(""));
 
-    for (auto time = start; time < end; ++time) {
-        auto dataIndex = time - start;
+    auto dataIndex = 0;
+    for (auto time = start; time < end; ++time, ++dataIndex) {
         scalarSeries->setData(dataIndex, time, std::cos(time));
     }
 
