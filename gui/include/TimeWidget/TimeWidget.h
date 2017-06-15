@@ -7,8 +7,6 @@ namespace Ui {
 class TimeWidget;
 } // Ui
 
-class TimeWidget;
-
 class TimeWidget : public QWidget {
     Q_OBJECT
 

@@ -79,17 +79,16 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     auto leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
-    auto openLeftInspectorAction = new QAction(
-        QIcon{
-            ":/icones/previous.png",
-        },
-        tr("Show/hide the left inspector"), this);
+    auto openLeftInspectorAction = new QAction{QIcon{
+                                                   ":/icones/previous.png",
+                                               },
+                                               tr("Show/hide the left inspector"), this};
 
 
-    QWidget *spacerLeftTop = new QWidget();
+    auto spacerLeftTop = new QWidget{};
     spacerLeftTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    QWidget *spacerLeftBottom = new QWidget();
+    auto spacerLeftBottom = new QWidget{};
     spacerLeftBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     leftSidePane->addWidget(spacerLeftTop);
@@ -98,16 +97,15 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     auto rightSidePane = m_Ui->rightInspectorSidePane->sidePane();
-    auto openRightInspectorAction = new QAction(
-        QIcon{
-            ":/icones/next.png",
-        },
-        tr("Show/hide the right inspector"), this);
+    auto openRightInspectorAction = new QAction{QIcon{
+                                                    ":/icones/next.png",
+                                                },
+                                                tr("Show/hide the right inspector"), this};
 
-    QWidget *spacerRightTop = new QWidget();
+    auto spacerRightTop = new QWidget{};
     spacerRightTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    QWidget *spacerRightBottom = new QWidget();
+    auto spacerRightBottom = new QWidget{};
     spacerRightBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     rightSidePane->addWidget(spacerRightTop);
@@ -168,7 +166,7 @@ MainWindow::MainWindow(QWidget *parent)
     this->menuBar()->addAction(tr("File"));
     auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
 
-    mainToolBar->addWidget(new TimeWidget());
+    mainToolBar->addWidget(new TimeWidget{});
 
     // Widgets / controllers connections
     connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem *)),
