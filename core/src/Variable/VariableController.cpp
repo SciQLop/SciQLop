@@ -35,6 +35,11 @@ Variable *VariableController::createVariable(const QString &name) noexcept
     return impl->m_VariableModel->createVariable(name);
 }
 
+VariableModel *VariableController::variableModel() noexcept
+{
+    return impl->m_VariableModel.get();
+}
+
 void VariableController::initialize()
 {
     qCDebug(LOG_VariableController()) << tr("VariableController init") << QThread::currentThread();
