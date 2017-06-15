@@ -8,3 +8,6 @@ DataSourceItem\.h:\d+:.*IPSIS_S01.*
 ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (D)
 ArrayData\.h:\d+:.*IPSIS_S06.*found: (D)
 ArrayData\.h:\d+:.*IPSIS_S06.*found: (Dim)
+
+# Ignore false positive relative to an alias
+DataSourceItemAction\.h:\d+:.*IPSIS_S06.*found: (ExecuteFunction)
