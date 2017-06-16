@@ -8,6 +8,16 @@
 template <int Dim>
 class ArrayData;
 
+struct Unit {
+    explicit Unit(const QString &name = {}, bool timeUnit = false)
+            : m_Name{name}, m_TimeUnit{timeUnit}
+    {
+    }
+
+    QString m_Name;  ///< Unit name
+    bool m_TimeUnit; ///< The unit is a unit of time
+};
+
 /**
  * @brief The IDataSeries aims to declare a data series.
  *
@@ -29,9 +39,9 @@ public:
     /// Returns the x-axis dataset
     virtual std::shared_ptr<ArrayData<1> > xAxisData() = 0;
 
-    virtual QString xAxisUnit() const = 0;
+    virtual Unit xAxisUnit() const = 0;
 
-    virtual QString valuesUnit() const = 0;
+    virtual Unit valuesUnit() const = 0;
 };
 
 #endif // SCIQLOP_IDATASERIES_H
