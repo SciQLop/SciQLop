@@ -10,6 +10,7 @@
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationController)
 
 class DataSourceItem;
+class Variable;
 
 /**
  * @brief The VisualizationController class aims to make the link between SciQlop and its plugins.
@@ -25,6 +26,9 @@ public:
     virtual ~VisualizationController();
 
 public slots:
+    /// Slot called when a variable has been created in SciQlop
+    void onVariableCreated(std::shared_ptr<Variable> variable) noexcept;
+
     /// Manage init/end of the controller
     void initialize();
     void finalize();

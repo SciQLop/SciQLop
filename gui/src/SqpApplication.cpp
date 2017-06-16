@@ -3,6 +3,7 @@
 #include <Data/IDataProvider.h>
 #include <DataSource/DataSourceController.h>
 #include <QThread>
+#include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 #include <Visualization/VisualizationController.h>
 
@@ -25,6 +26,12 @@ public:
                 SIGNAL(variableCreationRequested(const QString &, std::shared_ptr<IDataProvider>)),
                 m_VariableController.get(),
                 SLOT(createVariable(const QString &, std::shared_ptr<IDataProvider>)));
+
+        // VariableController <-> VisualizationController
+        qRegisterMetaType<std::shared_ptr<Variable> >();
+        connect(m_VariableController.get(), SIGNAL(variableCreated(std::shared_ptr<Variable>)),
+                m_VisualizationController.get(),
+                SLOT(onVariableCreated(std::shared_ptr<Variable>)));
 
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
         m_VariableController->moveToThread(&m_VariableControllerThread);
@@ -72,7 +79,6 @@ SqpApplication::SqpApplication(int &argc, char **argv)
             impl->m_VisualizationController.get(), &VisualizationController::initialize);
     connect(&impl->m_VisualizationControllerThread, &QThread::finished,
             impl->m_VisualizationController.get(), &VisualizationController::finalize);
-
 
     impl->m_DataSourceControllerThread.start();
     impl->m_VariableControllerThread.start();

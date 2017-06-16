@@ -3,6 +3,8 @@
 
 #include <Common/spimpl.h>
 
+#include <QObject>
+
 class IDataSeries;
 class QString;
 
@@ -23,5 +25,8 @@ private:
     class VariablePrivate;
     spimpl::unique_impl_ptr<VariablePrivate> impl;
 };
+
+// Required for using shared_ptr in signals/slots
+Q_DECLARE_METATYPE(std::shared_ptr<Variable>)
 
 #endif // SCIQLOP_VARIABLE_H
