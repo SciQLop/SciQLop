@@ -71,6 +71,15 @@ signals:
     /// Signal emitted when a structure has been set for a data source
     void dataSourceItemSet(DataSourceItem *dataSourceItem);
 
+    /**
+     * Signal emitted when a variable creation is asked for a product
+     * @param variableName the name of the variable
+     * @param variableProvider the provider that will be used to retrieve the data of the variable
+     * (can be null)
+     */
+    void variableCreationRequested(const QString &variableName,
+                                   std::shared_ptr<IDataProvider> variableProvider);
+
 private:
     void waitForFinish();
 

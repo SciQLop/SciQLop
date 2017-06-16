@@ -1,5 +1,6 @@
 #include "SqpApplication.h"
 
+#include <Data/IDataProvider.h>
 #include <DataSource/DataSourceController.h>
 #include <QThread>
 #include <Variable/VariableController.h>
@@ -14,6 +15,17 @@ public:
               m_VariableController{std::make_unique<VariableController>()},
               m_VisualizationController{std::make_unique<VisualizationController>()}
     {
+        // /////////////////////////////// //
+        // Connections between controllers //
+        // /////////////////////////////// //
+
+        // VariableController <-> DataSourceController
+        qRegisterMetaType<std::shared_ptr<IDataProvider> >();
+        connect(m_DataSourceController.get(),
+                SIGNAL(variableCreationRequested(const QString &, std::shared_ptr<IDataProvider>)),
+                m_VariableController.get(),
+                SLOT(createVariable(const QString &, std::shared_ptr<IDataProvider>)));
+
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
         m_VariableController->moveToThread(&m_VariableControllerThread);
         m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
