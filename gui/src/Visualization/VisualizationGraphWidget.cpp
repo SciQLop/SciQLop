@@ -18,6 +18,10 @@ VisualizationGraphWidget::VisualizationGraphWidget(QWidget *parent)
           impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>()}
 {
     ui->setupUi(this);
+
+    // Set qcpplot properties :
+    // - Drag and zoom are enabled
+    ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
 }
 
 VisualizationGraphWidget::~VisualizationGraphWidget()
