@@ -1,4 +1,5 @@
 #include "Visualization/VisualizationGraphWidget.h"
+#include "Visualization/GraphPlottablesFactory.h"
 #include "ui_VisualizationGraphWidget.h"
 
 #include <Variable/Variable.h>
@@ -18,8 +19,7 @@ const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
     // 1 variable -> n qcpplot
-    std::unordered_map<std::shared_ptr<Variable>, std::unique_ptr<QCPAbstractPlottable> >
-        m_VariableToPlotMap;
+    std::unordered_map<std::shared_ptr<Variable>, QCPAbstractPlottable *> m_VariableToPlotMap;
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(QWidget *parent)
@@ -44,7 +44,12 @@ VisualizationGraphWidget::~VisualizationGraphWidget()
 
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
 {
-    // todo: first check is variable contains data then check how many plot have to be created
+    // Uses delegate to create the qcpplot components according to the variable
+    auto createdPlottables = GraphPlottablesFactory::create(variable.get(), *ui->widget);
+
+    for (auto createdPlottable : qAsConst(createdPlottables)) {
+        impl->m_VariableToPlotMap.insert({variable, createdPlottable});
+    }
 }
 
 void VisualizationGraphWidget::accept(IVisualizationWidget *visitor)
