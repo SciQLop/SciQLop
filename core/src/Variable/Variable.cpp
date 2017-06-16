@@ -1,0 +1,32 @@
+#include "Variable/Variable.h"
+
+struct Variable::VariablePrivate {
+    explicit VariablePrivate(const QString &name, const QString &unit, const QString &mission)
+            : m_Name{name}, m_Unit{unit}, m_Mission{mission}
+    {
+    }
+
+    QString m_Name;
+    QString m_Unit;
+    QString m_Mission;
+};
+
+Variable::Variable(const QString &name, const QString &unit, const QString &mission)
+        : impl{spimpl::make_unique_impl<VariablePrivate>(name, unit, mission)}
+{
+}
+
+QString Variable::name() const noexcept
+{
+    return impl->m_Name;
+}
+
+QString Variable::mission() const noexcept
+{
+    return impl->m_Mission;
+}
+
+QString Variable::unit() const noexcept
+{
+    return impl->m_Unit;
+}

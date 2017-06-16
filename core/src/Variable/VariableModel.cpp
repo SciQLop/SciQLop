@@ -1,6 +1,6 @@
+#include <Variable/Variable.h>
 #include <Variable/VariableModel.h>
 
-#include <Variable/Variable.h>
 
 Q_LOGGING_CATEGORY(LOG_VariableModel, "VariableModel")
 
@@ -67,11 +67,11 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
         if (auto variable = impl->m_Variables.at(index.row()).get()) {
             switch (index.column()) {
                 case NAME_COLUMN:
-                    return variable->m_Name;
+                    return variable->name();
                 case UNIT_COLUMN:
-                    return variable->m_Unit;
+                    return variable->unit();
                 case MISSION_COLUMN:
-                    return variable->m_Mission;
+                    return variable->mission();
                 default:
                     // No action
                     break;
