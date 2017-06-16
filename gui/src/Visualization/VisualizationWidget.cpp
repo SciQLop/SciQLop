@@ -78,3 +78,8 @@ QString VisualizationWidget::name() const
 {
     return QStringLiteral("MainView");
 }
+
+void VisualizationWidget::displayVariable(std::shared_ptr<Variable> variable) noexcept
+{
+    /// @todo ALX : add variable in a new graph
+}
