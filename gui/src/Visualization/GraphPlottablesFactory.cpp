@@ -9,6 +9,24 @@ Q_LOGGING_CATEGORY(LOG_GraphPlottablesFactory, "GraphPlottablesFactory")
 
 namespace {
 
+/// Format for datetimes on a axis
+const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
+
+/// Generates the appropriate ticker for an axis, depending on whether the axis displays time or
+/// non-time data
+QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
+{
+    if (isTimeAxis) {
+        auto dateTicker = QSharedPointer<QCPAxisTickerDateTime>::create();
+        dateTicker->setDateTimeFormat(DATETIME_TICKER_FORMAT);
+
+        return dateTicker;
+    }
+    else {
+        // default ticker
+        return QSharedPointer<QCPAxisTicker>::create();
+    }
+}
 
 QCPAbstractPlottable *createScalarSeriesComponent(ScalarSeries &scalarSeries, QCustomPlot &plot)
 {
@@ -18,6 +36,20 @@ QCPAbstractPlottable *createScalarSeriesComponent(ScalarSeries &scalarSeries, QC
         // Graph data
         component->setData(scalarSeries.xAxisData()->data(), scalarSeries.valuesData()->data(),
                            true);
+
+        // Axes properties
+        /// @todo : for the moment, no control is performed on the axes: the units and the tickers
+        /// are fixed for the default x-axis and y-axis of the plot, and according to the new graph
+
+        auto setAxisProperties = [](auto axis, const auto &unit) {
+            // label (unit name)
+            axis->setLabel(unit.m_Name);
+
+            // ticker (depending on the type of unit)
+            axis->setTicker(axisTicker(unit.m_TimeUnit));
+        };
+        setAxisProperties(plot.xAxis, scalarSeries.xAxisUnit());
+        setAxisProperties(plot.yAxis, scalarSeries.valuesUnit());
 
         // Display all data
         component->rescaleAxes();
