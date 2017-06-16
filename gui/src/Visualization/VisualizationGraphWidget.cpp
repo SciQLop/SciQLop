@@ -5,6 +5,16 @@
 
 #include <unordered_map>
 
+namespace {
+
+/// Key pressed to enable zoom on horizontal axis
+const auto HORIZONTAL_ZOOM_MODIFIER = Qt::NoModifier;
+
+/// Key pressed to enable zoom on vertical axis
+const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
+
+} // namespace
+
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
     // 1 variable -> n qcpplot
@@ -21,7 +31,9 @@ VisualizationGraphWidget::VisualizationGraphWidget(QWidget *parent)
 
     // Set qcpplot properties :
     // - Drag and zoom are enabled
+    // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
 }
 
 VisualizationGraphWidget::~VisualizationGraphWidget()
@@ -48,4 +60,21 @@ void VisualizationGraphWidget::close()
 QString VisualizationGraphWidget::name() const
 {
     return QStringLiteral("MainView");
+}
+
+void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
+{
+    auto zoomOrientations = QFlags<Qt::Orientation>{};
+
+    // Lambda that enables a zoom orientation if the key modifier related to this orientation has
+    // been pressed
+    auto enableOrientation
+        = [&zoomOrientations, event](const auto &orientation, const auto &modifier) {
+              auto orientationEnabled = event->modifiers().testFlag(modifier);
+              zoomOrientations.setFlag(orientation, orientationEnabled);
+          };
+    enableOrientation(Qt::Vertical, VERTICAL_ZOOM_MODIFIER);
+    enableOrientation(Qt::Horizontal, HORIZONTAL_ZOOM_MODIFIER);
+
+    ui->widget->axisRect()->setRangeZoom(zoomOrientations);
 }

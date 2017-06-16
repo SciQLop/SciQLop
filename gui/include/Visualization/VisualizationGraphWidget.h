@@ -34,6 +34,10 @@ private:
 
     class VisualizationGraphWidgetPrivate;
     spimpl::unique_impl_ptr<VisualizationGraphWidgetPrivate> impl;
+
+private slots:
+    /// Slot called when a mouse wheel was made, to perform some processing before the zoom is done
+    void onMouseWheel(QWheelEvent *event) noexcept;
 };
 
 #endif // SCIQLOP_VISUALIZATIONGRAPHWIDGET_H
