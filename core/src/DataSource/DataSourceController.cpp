@@ -82,7 +82,14 @@ void DataSourceController::setDataProvider(const QUuid &dataSourceUid,
 void DataSourceController::loadProductItem(const QUuid &dataSourceUid,
                                            const DataSourceItem &productItem) noexcept
 {
-    /// @todo ALX
+    if (productItem.type() == DataSourceItemType::PRODUCT) {
+        /// Retrieves the data provider of the data source (if any)
+        auto it = impl->m_DataProviders.find(dataSourceUid);
+        auto dataProvider = (it != impl->m_DataProviders.end()) ? it->second : nullptr;
+    }
+    else {
+        qCWarning(LOG_DataSourceController()) << tr("Can't load an item that is not a product");
+    }
 }
 
 void DataSourceController::initialize()
