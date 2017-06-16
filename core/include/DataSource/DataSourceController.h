@@ -56,9 +56,11 @@ public:
 
     /**
      * Loads an item (product) as a variable in SciQlop
+     * @param dataSourceUid the unique id of the data source containing the item. It is used to get
+     * the data provider associated to the data source, and pass it to for the variable creation
      * @param productItem the item to load
      */
-    void loadProductItem(const DataSourceItem &productItem) noexcept;
+    void loadProductItem(const QUuid &dataSourceUid, const DataSourceItem &productItem) noexcept;
 
 public slots:
     /// Manage init/end of the controller
