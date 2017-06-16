@@ -3,6 +3,7 @@
 
 #include <Common/spimpl.h>
 
+class IDataSeries;
 class QString;
 
 /**
@@ -15,6 +16,8 @@ public:
     QString name() const noexcept;
     QString mission() const noexcept;
     QString unit() const noexcept;
+
+    void addDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept;
 
 private:
     class VariablePrivate;
