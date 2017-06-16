@@ -21,6 +21,9 @@ public:
 
     void addDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept;
 
+    /// @return the data of the variable, nullptr if there is no data
+    IDataSeries *dataSeries() const noexcept;
+
 private:
     class VariablePrivate;
     spimpl::unique_impl_ptr<VariablePrivate> impl;
