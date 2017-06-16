@@ -8,6 +8,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableModel)
 
+class IDataSeries;
 class Variable;
 
 /**
@@ -20,9 +21,11 @@ public:
     /**
      * Creates a new variable in the model
      * @param name the name of the new variable
-     * @return the variable if it was created successfully, nullptr otherwise
+     * @param defaultDataSeries the default data of the new variable
+     * @return the pointer to the new variable
      */
-    Variable *createVariable(const QString &name) noexcept;
+    std::shared_ptr<Variable>
+    createVariable(const QString &name, std::unique_ptr<IDataSeries> defaultDataSeries) noexcept;
 
     // /////////////////////////// //
     // QAbstractTableModel methods //

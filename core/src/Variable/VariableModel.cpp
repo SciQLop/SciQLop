@@ -1,6 +1,7 @@
 #include <Variable/Variable.h>
 #include <Variable/VariableModel.h>
 
+#include <Data/IDataSeries.h>
 
 Q_LOGGING_CATEGORY(LOG_VariableModel, "VariableModel")
 
@@ -16,7 +17,7 @@ const auto NB_COLUMNS = 3;
 
 struct VariableModel::VariableModelPrivate {
     /// Variables created in SciQlop
-    std::vector<std::unique_ptr<Variable> > m_Variables;
+    std::vector<std::shared_ptr<Variable> > m_Variables;
 };
 
 VariableModel::VariableModel(QObject *parent)
@@ -24,19 +25,23 @@ VariableModel::VariableModel(QObject *parent)
 {
 }
 
-Variable *VariableModel::createVariable(const QString &name) noexcept
+std::shared_ptr<Variable>
+VariableModel::createVariable(const QString &name,
+                              std::unique_ptr<IDataSeries> defaultDataSeries) noexcept
 {
     auto insertIndex = rowCount();
     beginInsertRows({}, insertIndex, insertIndex);
 
     /// @todo For the moment, the other data of the variable is initialized with default values
     auto variable
-        = std::make_unique<Variable>(name, QStringLiteral("unit"), QStringLiteral("mission"));
-    impl->m_Variables.push_back(std::move(variable));
+        = std::make_shared<Variable>(name, QStringLiteral("unit"), QStringLiteral("mission"));
+    variable->addDataSeries(std::move(defaultDataSeries));
+
+    impl->m_Variables.push_back(variable);
 
     endInsertRows();
 
-    return impl->m_Variables.at(insertIndex).get();
+    return variable;
 }
 
 int VariableModel::columnCount(const QModelIndex &parent) const
