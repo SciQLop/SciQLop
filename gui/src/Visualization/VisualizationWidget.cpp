@@ -18,24 +18,36 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     auto addTabViewButton = new QToolButton{ui->tabWidget};
     addTabViewButton->setText(tr("Add View"));
     addTabViewButton->setCursor(Qt::ArrowCursor);
-    addTabViewButton->setAutoRaise(true);
     ui->tabWidget->setCornerWidget(addTabViewButton, Qt::TopRightCorner);
-    auto width = ui->tabWidget->cornerWidget()->width();
-    auto height = ui->tabWidget->cornerWidget()->height();
-    addTabViewButton->setMinimumHeight(height);
-    addTabViewButton->setMinimumWidth(width);
-    ui->tabWidget->setMinimumHeight(height);
-    ui->tabWidget->setMinimumWidth(width);
 
-    auto addTabView = [&]() {
+    auto enableMinimunCornerWidgetSize = [this](bool enable) {
+
+        auto tabViewCornerWidget = ui->tabWidget->cornerWidget();
+        auto width = enable ? tabViewCornerWidget->width() : 0;
+        auto height = enable ? tabViewCornerWidget->height() : 0;
+        tabViewCornerWidget->setMinimumHeight(height);
+        tabViewCornerWidget->setMinimumWidth(width);
+        ui->tabWidget->setMinimumHeight(height);
+        ui->tabWidget->setMinimumWidth(width);
+    };
+
+    auto addTabView = [this, enableMinimunCornerWidgetSize]() {
         auto index = ui->tabWidget->addTab(new VisualizationTabWidget(ui->tabWidget),
                                            QString("View %1").arg(ui->tabWidget->count() + 1));
+        if (ui->tabWidget->count() > 0) {
+            enableMinimunCornerWidgetSize(false);
+        }
         qCInfo(LOG_VisualizationWidget()) << tr("add the tab of index %1").arg(index);
     };
 
-    auto removeTabView = [&](int index) {
+    auto removeTabView = [this, enableMinimunCornerWidgetSize](int index) {
+        if (ui->tabWidget->count() == 1) {
+            enableMinimunCornerWidgetSize(true);
+        }
+
         ui->tabWidget->removeTab(index);
         qCInfo(LOG_VisualizationWidget()) << tr("remove the tab of index %1").arg(index);
+
     };
 
     ui->tabWidget->setTabsClosable(true);
