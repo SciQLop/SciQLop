@@ -7,17 +7,18 @@
 Q_LOGGING_CATEGORY(LOG_VariableController, "VariableController")
 
 struct VariableController::VariableControllerPrivate {
-    explicit VariableControllerPrivate()
-            : m_WorkingMutex{}, m_VariableModel{std::make_unique<VariableModel>()}
+    explicit VariableControllerPrivate(VariableController *parent)
+            : m_WorkingMutex{}, m_VariableModel{new VariableModel{parent}}
     {
     }
 
     QMutex m_WorkingMutex;
-    std::unique_ptr<VariableModel> m_VariableModel;
+    /// Variable model. The VariableController has the ownership
+    VariableModel *m_VariableModel;
 };
 
 VariableController::VariableController(QObject *parent)
-        : QObject{parent}, impl{spimpl::make_unique_impl<VariableControllerPrivate>()}
+        : QObject{parent}, impl{spimpl::make_unique_impl<VariableControllerPrivate>(this)}
 {
     qCDebug(LOG_VariableController()) << tr("VariableController construction")
                                       << QThread::currentThread();
@@ -37,7 +38,7 @@ Variable *VariableController::createVariable(const QString &name) noexcept
 
 VariableModel *VariableController::variableModel() noexcept
 {
-    return impl->m_VariableModel.get();
+    return impl->m_VariableModel;
 }
 
 void VariableController::initialize()
