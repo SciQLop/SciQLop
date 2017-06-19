@@ -31,12 +31,12 @@ public:
 
 protected:
     /// Protected ctor (DataSeries is abstract)
-    explicit DataSeries(std::shared_ptr<ArrayData<1> > xAxisData, Unit xAxisUnit,
-                        std::shared_ptr<ArrayData<Dim> > valuesData, Unit valuesUnit)
+    explicit DataSeries(std::shared_ptr<ArrayData<1> > xAxisData, const Unit &xAxisUnit,
+                        std::shared_ptr<ArrayData<Dim> > valuesData, const Unit &valuesUnit)
             : m_XAxisData{xAxisData},
-              m_XAxisUnit{std::move(xAxisUnit)},
+              m_XAxisUnit{xAxisUnit},
               m_ValuesData{valuesData},
-              m_ValuesUnit{std::move(valuesUnit)}
+              m_ValuesUnit{valuesUnit}
     {
     }
 

@@ -20,7 +20,7 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     addTabViewButton->setCursor(Qt::ArrowCursor);
     ui->tabWidget->setCornerWidget(addTabViewButton, Qt::TopRightCorner);
 
-    auto enableMinimunCornerWidgetSize = [this](bool enable) {
+    auto enableMinimumCornerWidgetSize = [this](bool enable) {
 
         auto tabViewCornerWidget = ui->tabWidget->cornerWidget();
         auto width = enable ? tabViewCornerWidget->width() : 0;
@@ -31,18 +31,18 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
         ui->tabWidget->setMinimumWidth(width);
     };
 
-    auto addTabView = [this, enableMinimunCornerWidgetSize]() {
+    auto addTabView = [this, enableMinimumCornerWidgetSize]() {
         auto index = ui->tabWidget->addTab(new VisualizationTabWidget(ui->tabWidget),
                                            QString("View %1").arg(ui->tabWidget->count() + 1));
         if (ui->tabWidget->count() > 0) {
-            enableMinimunCornerWidgetSize(false);
+            enableMinimumCornerWidgetSize(false);
         }
         qCInfo(LOG_VisualizationWidget()) << tr("add the tab of index %1").arg(index);
     };
 
-    auto removeTabView = [this, enableMinimunCornerWidgetSize](int index) {
+    auto removeTabView = [this, enableMinimumCornerWidgetSize](int index) {
         if (ui->tabWidget->count() == 1) {
-            enableMinimunCornerWidgetSize(true);
+            enableMinimumCornerWidgetSize(true);
         }
 
         ui->tabWidget->removeTab(index);
@@ -101,17 +101,17 @@ void VisualizationWidget::displayVariable(std::shared_ptr<Variable> variable) no
                 newGraph->addVariable(variable);
             }
             else {
-                qCDebug(LOG_VisualizationWidget())
+                qCCritical(LOG_VisualizationWidget())
                     << tr("Can't display the variable : can't create the graph");
             }
         }
         else {
-            qCDebug(LOG_VisualizationWidget())
+            qCCritical(LOG_VisualizationWidget())
                 << tr("Can't display the variable : can't create a new zone in the current tab");
         }
     }
     else {
-        qCDebug(LOG_VisualizationWidget())
+        qCCritical(LOG_VisualizationWidget())
             << tr("Can't display the variable : there is no current tab");
     }
 }

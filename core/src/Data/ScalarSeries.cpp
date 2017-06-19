@@ -1,8 +1,8 @@
 #include <Data/ScalarSeries.h>
 
-ScalarSeries::ScalarSeries(int size, Unit xAxisUnit, Unit valuesUnit)
-        : DataSeries{std::make_shared<ArrayData<1> >(size), std::move(xAxisUnit),
-                     std::make_shared<ArrayData<1> >(size), std::move(valuesUnit)}
+ScalarSeries::ScalarSeries(int size, const Unit &xAxisUnit, const Unit &valuesUnit)
+        : DataSeries{std::make_shared<ArrayData<1> >(size), xAxisUnit,
+                     std::make_shared<ArrayData<1> >(size), valuesUnit}
 {
 }
 

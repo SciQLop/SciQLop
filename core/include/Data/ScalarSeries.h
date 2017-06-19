@@ -14,7 +14,7 @@ public:
      * @param xAxisUnit x-axis unit
      * @param valuesUnit values unit
      */
-    explicit ScalarSeries(int size, Unit xAxisUnit, Unit valuesUnit);
+    explicit ScalarSeries(int size, const Unit &xAxisUnit, const Unit &valuesUnit);
 
     /**
      * Sets data for a specific index. The index has to be valid to be effective
