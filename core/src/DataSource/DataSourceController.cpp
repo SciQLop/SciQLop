@@ -1,5 +1,5 @@
-#include <DataSource/DataSourceController.h>
-#include <DataSource/DataSourceItem.h>
+#include "DataSource/DataSourceController.h"
+#include "DataSource/DataSourceItem.h"
 
 #include <Data/IDataProvider.h>
 
@@ -19,7 +19,9 @@ public:
     /// Data sources structures
     std::map<QUuid, std::unique_ptr<DataSourceItem> > m_DataSourceItems;
     /// Data providers registered
-    std::map<QUuid, std::unique_ptr<IDataProvider> > m_DataProviders;
+    /// @remarks Data providers are stored as shared_ptr as they can be sent to a variable and
+    /// continue to live without necessarily the data source controller
+    std::map<QUuid, std::shared_ptr<IDataProvider> > m_DataProviders;
 };
 
 DataSourceController::DataSourceController(QObject *parent)
@@ -48,6 +50,7 @@ void DataSourceController::setDataSourceItem(
     const QUuid &dataSourceUid, std::unique_ptr<DataSourceItem> dataSourceItem) noexcept
 {
     if (impl->m_DataSources.contains(dataSourceUid)) {
+        // The data provider is implicitly converted to a shared_ptr
         impl->m_DataSourceItems.insert(std::make_pair(dataSourceUid, std::move(dataSourceItem)));
 
         // Retrieves the data source item to emit the signal with it
@@ -76,9 +79,20 @@ void DataSourceController::setDataProvider(const QUuid &dataSourceUid,
     }
 }
 
-void DataSourceController::loadProductItem(const DataSourceItem &productItem) noexcept
+void DataSourceController::loadProductItem(const QUuid &dataSourceUid,
+                                           const DataSourceItem &productItem) noexcept
 {
-    /// @todo ALX
+    if (productItem.type() == DataSourceItemType::PRODUCT) {
+        /// Retrieves the data provider of the data source (if any)
+        auto it = impl->m_DataProviders.find(dataSourceUid);
+        auto dataProvider = (it != impl->m_DataProviders.end()) ? it->second : nullptr;
+
+        /// @todo retrieve timerange, and pass it to the signal
+        emit variableCreationRequested(productItem.name(), dataProvider);
+    }
+    else {
+        qCWarning(LOG_DataSourceController()) << tr("Can't load an item that is not a product");
+    }
 }
 
 void DataSourceController::initialize()

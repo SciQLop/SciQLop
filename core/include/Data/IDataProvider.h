@@ -3,6 +3,8 @@
 
 #include <memory>
 
+#include <QObject>
+
 class DataProviderParameters;
 class IDataSeries;
 
@@ -21,5 +23,8 @@ public:
     virtual std::unique_ptr<IDataSeries>
     retrieveData(const DataProviderParameters &parameters) const = 0;
 };
+
+// Required for using shared_ptr in signals/slots
+Q_DECLARE_METATYPE(std::shared_ptr<IDataProvider>)
 
 #endif // SCIQLOP_IDATAPROVIDER_H

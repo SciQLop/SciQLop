@@ -1,10 +1,33 @@
 #include <Variable/VariableController.h>
 #include <Variable/VariableModel.h>
 
+#include <Data/DataProviderParameters.h>
+#include <Data/IDataProvider.h>
+#include <Data/IDataSeries.h>
+
+#include <QDateTime>
 #include <QMutex>
 #include <QThread>
 
 Q_LOGGING_CATEGORY(LOG_VariableController, "VariableController")
+
+namespace {
+
+/// @todo Generates default dataseries, according to the provider passed in parameter. This method
+/// will be deleted when the timerange is recovered from SciQlop
+std::unique_ptr<IDataSeries> generateDefaultDataSeries(const IDataProvider &provider) noexcept
+{
+    auto parameters = DataProviderParameters{
+        // Remarks : we don't use toSecsSinceEpoch() here (method is for Qt 5.8 or above)
+        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 00}}.toMSecsSinceEpoch()
+                            / 1000.),
+        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 01}}.toMSecsSinceEpoch())
+            / 1000.};
+
+    return provider.retrieveData(parameters);
+}
+
+} // namespace
 
 struct VariableController::VariableControllerPrivate {
     explicit VariableControllerPrivate(VariableController *parent)
@@ -31,14 +54,23 @@ VariableController::~VariableController()
     this->waitForFinish();
 }
 
-Variable *VariableController::createVariable(const QString &name) noexcept
-{
-    return impl->m_VariableModel->createVariable(name);
-}
-
 VariableModel *VariableController::variableModel() noexcept
 {
     return impl->m_VariableModel;
+}
+
+void VariableController::createVariable(const QString &name,
+                                        std::shared_ptr<IDataProvider> provider) noexcept
+{
+    /// @todo : for the moment :
+    /// - the provider is only used to retrieve data from the variable for its initialization, but
+    /// it will be retained later
+    /// - default data are generated for the variable, without taking into account the timerange set
+    /// in sciqlop
+    if (auto newVariable
+        = impl->m_VariableModel->createVariable(name, generateDefaultDataSeries(*provider))) {
+        emit variableCreated(newVariable);
+    }
 }
 
 void VariableController::initialize()

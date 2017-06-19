@@ -20,16 +20,18 @@ std::unique_ptr<IDataProvider> createDataProvider() noexcept
     return std::make_unique<CosinusProvider>();
 }
 
-std::unique_ptr<DataSourceItem> createProductItem(const QString &productName)
+std::unique_ptr<DataSourceItem> createProductItem(const QString &productName,
+                                                  const QUuid &dataSourceUid)
 {
     auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT,
                                                    QVector<QVariant>{productName});
 
     // Add action to load product from DataSourceController
     result->addAction(std::make_unique<DataSourceItemAction>(
-        QObject::tr("Load %1 product").arg(productName), [productName](DataSourceItem &item) {
+        QObject::tr("Load %1 product").arg(productName),
+        [productName, dataSourceUid](DataSourceItem &item) {
             if (auto app = sqpApp) {
-                app->dataSourceController().loadProductItem(item);
+                app->dataSourceController().loadProductItem(dataSourceUid, item);
             }
         }));
 
@@ -37,13 +39,13 @@ std::unique_ptr<DataSourceItem> createProductItem(const QString &productName)
 }
 
 /// Creates the data source item relative to the plugin
-std::unique_ptr<DataSourceItem> createDataSourceItem() noexcept
+std::unique_ptr<DataSourceItem> createDataSourceItem(const QUuid &dataSourceUid) noexcept
 {
     // Magnetic field products
     auto magneticFieldFolder = std::make_unique<DataSourceItem>(
         DataSourceItemType::NODE, QVector<QVariant>{QStringLiteral("Magnetic field")});
-    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("FGM")));
-    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("SC")));
+    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("FGM"), dataSourceUid));
+    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("SC"), dataSourceUid));
 
     // Electric field products
     auto electricFieldFolder = std::make_unique<DataSourceItem>(
@@ -68,7 +70,7 @@ void MockPlugin::initialize()
         auto dataSourceUid = dataSourceController.registerDataSource(DATA_SOURCE_NAME);
 
         // Sets data source tree
-        dataSourceController.setDataSourceItem(dataSourceUid, createDataSourceItem());
+        dataSourceController.setDataSourceItem(dataSourceUid, createDataSourceItem(dataSourceUid));
 
         // Sets data provider
         dataSourceController.setDataProvider(dataSourceUid, createDataProvider());

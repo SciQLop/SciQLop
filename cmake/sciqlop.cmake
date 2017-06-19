@@ -21,7 +21,7 @@ INCLUDE("cmake/sciqlop_params.cmake")
 #
 # Configure the compiler
 #
-INCLUDE("cmake/compiler/compiler.cmake")
+#INCLUDE("cmake/compiler/compiler.cmake")
 
 #
 # Find all necessary dependencies

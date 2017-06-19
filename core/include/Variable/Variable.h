@@ -1,20 +1,32 @@
 #ifndef SCIQLOP_VARIABLE_H
 #define SCIQLOP_VARIABLE_H
 
-#include <QString>
+#include <Common/spimpl.h>
+
+#include <QObject>
+
+class IDataSeries;
+class QString;
 
 /**
- * @brief The Variable struct represents a variable in SciQlop.
+ * @brief The Variable class represents a variable in SciQlop.
  */
-struct Variable {
-    explicit Variable(const QString &name, const QString &unit, const QString &mission)
-            : m_Name{name}, m_Unit{unit}, m_Mission{mission}
-    {
-    }
+class Variable {
+public:
+    explicit Variable(const QString &name, const QString &unit, const QString &mission);
 
-    QString m_Name;
-    QString m_Unit;
-    QString m_Mission;
+    QString name() const noexcept;
+    QString mission() const noexcept;
+    QString unit() const noexcept;
+
+    void addDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept;
+
+private:
+    class VariablePrivate;
+    spimpl::unique_impl_ptr<VariablePrivate> impl;
 };
+
+// Required for using shared_ptr in signals/slots
+Q_DECLARE_METATYPE(std::shared_ptr<Variable>)
 
 #endif // SCIQLOP_VARIABLE_H
