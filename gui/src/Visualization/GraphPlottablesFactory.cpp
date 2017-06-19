@@ -66,7 +66,7 @@ QCPAbstractPlottable *createScalarSeriesComponent(ScalarSeries &scalarSeries, QC
 
 } // namespace
 
-QVector<QCPAbstractPlottable *> GraphPlottablesFactory::create(const Variable *variable,
+QVector<QCPAbstractPlottable *> GraphPlottablesFactory::create(std::shared_ptr<Variable> variable,
                                                                QCustomPlot &plot) noexcept
 {
     auto result = QVector<QCPAbstractPlottable *>{};

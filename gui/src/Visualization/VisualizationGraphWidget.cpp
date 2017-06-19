@@ -45,7 +45,7 @@ VisualizationGraphWidget::~VisualizationGraphWidget()
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
 {
     // Uses delegate to create the qcpplot components according to the variable
-    auto createdPlottables = GraphPlottablesFactory::create(variable.get(), *ui->widget);
+    auto createdPlottables = GraphPlottablesFactory::create(variable, *ui->widget);
 
     for (auto createdPlottable : qAsConst(createdPlottables)) {
         impl->m_VariableToPlotMap.insert({variable, createdPlottable});

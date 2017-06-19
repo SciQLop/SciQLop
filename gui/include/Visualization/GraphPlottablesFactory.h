@@ -4,6 +4,8 @@
 #include <QLoggingCategory>
 #include <QVector>
 
+#include <memory>
+
 Q_DECLARE_LOGGING_CATEGORY(LOG_GraphPlottablesFactory)
 
 class QCPAbstractPlottable;
@@ -23,7 +25,7 @@ struct GraphPlottablesFactory {
      * components.
      * @return the list of the components created
      */
-    static QVector<QCPAbstractPlottable *> create(const Variable *variable,
+    static QVector<QCPAbstractPlottable *> create(std::shared_ptr<Variable> variable,
                                                   QCustomPlot &plot) noexcept;
 };
 
