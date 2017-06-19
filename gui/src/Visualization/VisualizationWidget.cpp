@@ -1,5 +1,7 @@
 #include "Visualization/VisualizationWidget.h"
+#include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/VisualizationTabWidget.h"
+#include "Visualization/VisualizationZoneWidget.h"
 #include "Visualization/qcustomplot.h"
 
 #include "ui_VisualizationWidget.h"
@@ -77,4 +79,27 @@ void VisualizationWidget::close()
 QString VisualizationWidget::name() const
 {
     return QStringLiteral("MainView");
+}
+
+void VisualizationWidget::displayVariable(std::shared_ptr<Variable> variable) noexcept
+{
+    if (auto currentTab = dynamic_cast<VisualizationTabWidget *>(ui->tabWidget->currentWidget())) {
+        if (auto newZone = currentTab->createZone()) {
+            if (auto newGraph = newZone->createGraph()) {
+                newGraph->addVariable(variable);
+            }
+            else {
+                qCDebug(LOG_VisualizationWidget())
+                    << tr("Can't display the variable : can't create the graph");
+            }
+        }
+        else {
+            qCDebug(LOG_VisualizationWidget())
+                << tr("Can't display the variable : can't create a new zone in the current tab");
+        }
+    }
+    else {
+        qCDebug(LOG_VisualizationWidget())
+            << tr("Can't display the variable : there is no current tab");
+    }
 }

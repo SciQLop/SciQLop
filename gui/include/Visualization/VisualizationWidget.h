@@ -6,6 +6,7 @@
 #include <QLoggingCategory>
 #include <QWidget>
 
+class Variable;
 class VisualizationTabWidget;
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationWidget)
@@ -34,6 +35,15 @@ public:
     void accept(IVisualizationWidget *visitor) override;
     void close() override;
     QString name() const;
+
+public slots:
+    /**
+     * Displays a variable in a new graph of a new zone of the current tab
+     * @param variable the variable to display
+     * @todo this is a temporary method that will be replaced by own actions for each type of
+     * visualization widget
+     */
+    void displayVariable(std::shared_ptr<Variable> variable) noexcept;
 
 private:
     Ui::VisualizationWidget *ui;

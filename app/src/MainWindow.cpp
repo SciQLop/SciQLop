@@ -27,6 +27,8 @@
 #include <SidePane/SqpSidePane.h>
 #include <SqpApplication.h>
 #include <TimeWidget/TimeWidget.h>
+#include <Variable/Variable.h>
+#include <Visualization/VisualizationController.h>
 
 #include <QAction>
 #include <QDate>
@@ -171,6 +173,10 @@ MainWindow::MainWindow(QWidget *parent)
     // Widgets / controllers connections
     connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem *)),
             m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem *)));
+
+    qRegisterMetaType<std::shared_ptr<Variable> >();
+    connect(&sqpApp->visualizationController(), SIGNAL(variableCreated(std::shared_ptr<Variable>)),
+            m_Ui->view, SLOT(displayVariable(std::shared_ptr<Variable>)));
 
     /*    QLopGUI::registerMenuBar(menuBar());
         this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));

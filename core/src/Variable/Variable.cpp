@@ -41,3 +41,8 @@ void Variable::addDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept
     }
     /// @todo : else, merge the two data series (if possible)
 }
+
+IDataSeries *Variable::dataSeries() const noexcept
+{
+    return impl->m_DataSeries.get();
+}
