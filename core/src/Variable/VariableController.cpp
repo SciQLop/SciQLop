@@ -18,8 +18,11 @@ namespace {
 std::unique_ptr<IDataSeries> generateDefaultDataSeries(const IDataProvider &provider) noexcept
 {
     auto parameters = DataProviderParameters{
-        static_cast<double>(QDateTime{QDate{2017, 01, 01}}.toSecsSinceEpoch()),
-        static_cast<double>(QDateTime{QDate{2017, 01, 03}}.toSecsSinceEpoch())};
+        // Remarks : we don't use toSecsSinceEpoch() here (method is for Qt 5.8 or above)
+        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 00}}.toMSecsSinceEpoch()
+                            / 1000.),
+        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 01}}.toMSecsSinceEpoch())
+            / 1000.};
 
     return provider.retrieveData(parameters);
 }

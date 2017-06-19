@@ -11,3 +11,6 @@ ArrayData\.h:\d+:.*IPSIS_S06.*found: (Dim)
 
 # Ignore false positive relative to an alias
 DataSourceItemAction\.h:\d+:.*IPSIS_S06.*found: (ExecuteFunction)
+
+# Ignore false positive relative to unnamed namespace
+VariableController\.cpp:\d+:.*IPSIS_F13.*
