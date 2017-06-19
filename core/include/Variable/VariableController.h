@@ -6,6 +6,7 @@
 
 #include <Common/spimpl.h>
 
+class IDataProvider;
 class Variable;
 class VariableModel;
 
@@ -20,16 +21,20 @@ public:
     explicit VariableController(QObject *parent = 0);
     virtual ~VariableController();
 
-    /**
-     * Creates a new variable
-     * @param name the name of the new variable
-     * @return the variable if it was created successfully, nullptr otherwise
-     */
-    Variable *createVariable(const QString &name) noexcept;
-
     VariableModel *variableModel() noexcept;
 
+signals:
+    /// Signal emitted when a variable has been created
+    void variableCreated(std::shared_ptr<Variable> variable);
+
 public slots:
+    /**
+     * Creates a new variable and adds it to the model
+     * @param name the name of the new variable
+     * @param provider the data provider for the new variable
+     */
+    void createVariable(const QString &name, std::shared_ptr<IDataProvider> provider) noexcept;
+
     void initialize();
     void finalize();
 

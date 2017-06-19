@@ -30,7 +30,7 @@ DataSourceItem::DataSourceItem(DataSourceItemType type, QVector<QVariant> data)
 
 QVector<DataSourceItemAction *> DataSourceItem::actions() const noexcept
 {
-    QVector<DataSourceItemAction *> result{};
+    auto result = QVector<DataSourceItemAction *>{};
 
     std::transform(std::cbegin(impl->m_Actions), std::cend(impl->m_Actions),
                    std::back_inserter(result), [](const auto &action) { return action.get(); });
