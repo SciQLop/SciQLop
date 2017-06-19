@@ -16,6 +16,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_SqpApplication)
 #define sqpApp (static_cast<SqpApplication *>(QCoreApplication::instance()))
 
 class DataSourceController;
+class VariableController;
 class VisualizationController;
 
 /**
@@ -35,8 +36,9 @@ public:
     void initialize();
 
     /// Accessors for the differents sciqlop controllers
-    DataSourceController &dataSourceController() const noexcept;
-    VisualizationController &visualizationController() const noexcept;
+    DataSourceController &dataSourceController() noexcept;
+    VariableController &variableController() noexcept;
+    VisualizationController &visualizationController() noexcept;
 
 private:
     class SqpApplicationPrivate;

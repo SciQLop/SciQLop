@@ -26,6 +26,7 @@
 #include <DataSource/DataSourceWidget.h>
 #include <SidePane/SqpSidePane.h>
 #include <SqpApplication.h>
+#include <TimeWidget/TimeWidget.h>
 
 #include <QAction>
 #include <QDate>
@@ -33,6 +34,7 @@
 #include <QDir>
 #include <QFileDialog>
 #include <QToolBar>
+#include <QToolButton>
 #include <memory.h>
 
 //#include <omp.h>
@@ -75,89 +77,96 @@ MainWindow::MainWindow(QWidget *parent)
     m_Ui->splitter->setCollapsible(LEFTINSPECTORSIDEPANESPLITTERINDEX, false);
     m_Ui->splitter->setCollapsible(RIGHTINSPECTORSIDEPANESPLITTERINDEX, false);
 
-    // NOTE: These lambda could be factorized. Be careful of theirs parameters
-    // Lambda that defines what's happened when clicking on the leftSidePaneInspector open button
-    auto openLeftInspector = [this](bool checked) {
 
-        // Update of the last opened geometry
-        if (checked) {
-            impl->m_LastOpenLeftInspectorSize = m_Ui->leftMainInspectorWidget->size();
-        }
-
-        auto startSize = impl->m_LastOpenLeftInspectorSize;
-        auto endSize = startSize;
-        endSize.setWidth(0);
-
-        auto currentSizes = m_Ui->splitter->sizes();
-        if (checked) {
-            // adjust sizes individually here, e.g.
-            currentSizes[LEFTMAININSPECTORWIDGETSPLITTERINDEX]
-                -= impl->m_LastOpenLeftInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] += impl->m_LastOpenLeftInspectorSize.width();
-            m_Ui->splitter->setSizes(currentSizes);
-        }
-        else {
-            // adjust sizes individually here, e.g.
-            currentSizes[LEFTMAININSPECTORWIDGETSPLITTERINDEX]
-                += impl->m_LastOpenLeftInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] -= impl->m_LastOpenLeftInspectorSize.width();
-            m_Ui->splitter->setSizes(currentSizes);
-        }
-
-    };
-
-    // Lambda that defines what's happened when clicking on the SidePaneInspector open button
-    auto openRightInspector = [this](bool checked) {
-
-        // Update of the last opened geometry
-        if (checked) {
-            impl->m_LastOpenRightInspectorSize = m_Ui->rightMainInspectorWidget->size();
-        }
-
-        auto startSize = impl->m_LastOpenRightInspectorSize;
-        auto endSize = startSize;
-        endSize.setWidth(0);
-
-        auto currentSizes = m_Ui->splitter->sizes();
-        if (checked) {
-            // adjust sizes individually here, e.g.
-            currentSizes[RIGHTMAININSPECTORWIDGETSPLITTERINDEX]
-                -= impl->m_LastOpenRightInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] += impl->m_LastOpenRightInspectorSize.width();
-            m_Ui->splitter->setSizes(currentSizes);
-        }
-        else {
-            // adjust sizes individually here, e.g.
-            currentSizes[RIGHTMAININSPECTORWIDGETSPLITTERINDEX]
-                += impl->m_LastOpenRightInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] -= impl->m_LastOpenRightInspectorSize.width();
-            m_Ui->splitter->setSizes(currentSizes);
-        }
-
-    };
+    auto leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
+    auto openLeftInspectorAction = new QAction{QIcon{
+                                                   ":/icones/previous.png",
+                                               },
+                                               tr("Show/hide the left inspector"), this};
 
 
-    QToolBar *leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
-    auto openLeftInspectorAction = leftSidePane->addAction(
-        QIcon{
-            ":/icones/openInspector.png",
-        },
-        tr("Show/hide the left inspector"), openLeftInspector);
+    auto spacerLeftTop = new QWidget{};
+    spacerLeftTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    openLeftInspectorAction->setCheckable(true);
+    auto spacerLeftBottom = new QWidget{};
+    spacerLeftBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    leftSidePane->addWidget(spacerLeftTop);
+    leftSidePane->addAction(openLeftInspectorAction);
+    leftSidePane->addWidget(spacerLeftBottom);
+
 
     auto rightSidePane = m_Ui->rightInspectorSidePane->sidePane();
-    auto openRightInspectorAction = rightSidePane->addAction(
-        QIcon{
-            ":/icones/openInspector.png",
-        },
-        tr("Show/hide the right inspector"), openRightInspector);
+    auto openRightInspectorAction = new QAction{QIcon{
+                                                    ":/icones/next.png",
+                                                },
+                                                tr("Show/hide the right inspector"), this};
 
+    auto spacerRightTop = new QWidget{};
+    spacerRightTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    auto spacerRightBottom = new QWidget{};
+    spacerRightBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    rightSidePane->addWidget(spacerRightTop);
+    rightSidePane->addAction(openRightInspectorAction);
+    rightSidePane->addWidget(spacerRightBottom);
+
+    openLeftInspectorAction->setCheckable(true);
     openRightInspectorAction->setCheckable(true);
+
+    auto openInspector = [this](bool checked, bool right, auto action) {
+
+        action->setIcon(QIcon{(checked xor right) ? ":/icones/next.png" : ":/icones/previous.png"});
+
+        auto &lastInspectorSize
+            = right ? impl->m_LastOpenRightInspectorSize : impl->m_LastOpenLeftInspectorSize;
+
+        auto nextInspectorSize = right ? m_Ui->rightMainInspectorWidget->size()
+                                       : m_Ui->leftMainInspectorWidget->size();
+
+        // Update of the last opened geometry
+        if (checked) {
+            lastInspectorSize = nextInspectorSize;
+        }
+
+        auto startSize = lastInspectorSize;
+        auto endSize = startSize;
+        endSize.setWidth(0);
+
+        auto splitterInspectorIndex
+            = right ? RIGHTMAININSPECTORWIDGETSPLITTERINDEX : LEFTMAININSPECTORWIDGETSPLITTERINDEX;
+
+        auto currentSizes = m_Ui->splitter->sizes();
+        if (checked) {
+            // adjust sizes individually here, e.g.
+            currentSizes[splitterInspectorIndex] -= lastInspectorSize.width();
+            currentSizes[VIEWPLITTERINDEX] += lastInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+        else {
+            // adjust sizes individually here, e.g.
+            currentSizes[splitterInspectorIndex] += lastInspectorSize.width();
+            currentSizes[VIEWPLITTERINDEX] -= lastInspectorSize.width();
+            m_Ui->splitter->setSizes(currentSizes);
+        }
+
+    };
+
+
+    connect(openLeftInspectorAction, &QAction::triggered,
+            [openInspector, openLeftInspectorAction](bool checked) {
+                openInspector(checked, false, openLeftInspectorAction);
+            });
+    connect(openRightInspectorAction, &QAction::triggered,
+            [openInspector, openRightInspectorAction](bool checked) {
+                openInspector(checked, true, openRightInspectorAction);
+            });
 
     this->menuBar()->addAction(tr("File"));
     auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
-    mainToolBar->addAction(QStringLiteral("A1"));
+
+    mainToolBar->addWidget(new TimeWidget{});
 
     // Widgets / controllers connections
     connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem *)),

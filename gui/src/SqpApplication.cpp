@@ -2,6 +2,7 @@
 
 #include <DataSource/DataSourceController.h>
 #include <QThread>
+#include <Variable/VariableController.h>
 #include <Visualization/VisualizationController.h>
 
 Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")
@@ -10,9 +11,11 @@ class SqpApplication::SqpApplicationPrivate {
 public:
     SqpApplicationPrivate()
             : m_DataSourceController{std::make_unique<DataSourceController>()},
+              m_VariableController{std::make_unique<VariableController>()},
               m_VisualizationController{std::make_unique<VisualizationController>()}
     {
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
+        m_VariableController->moveToThread(&m_VariableControllerThread);
         m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
     }
 
@@ -22,13 +25,18 @@ public:
         m_DataSourceControllerThread.quit();
         m_DataSourceControllerThread.wait();
 
+        m_VariableControllerThread.quit();
+        m_VariableControllerThread.wait();
+
         m_VisualizationControllerThread.quit();
         m_VisualizationControllerThread.wait();
     }
 
     std::unique_ptr<DataSourceController> m_DataSourceController;
+    std::unique_ptr<VariableController> m_VariableController;
     std::unique_ptr<VisualizationController> m_VisualizationController;
     QThread m_DataSourceControllerThread;
+    QThread m_VariableControllerThread;
     QThread m_VisualizationControllerThread;
 };
 
@@ -43,6 +51,11 @@ SqpApplication::SqpApplication(int &argc, char **argv)
     connect(&impl->m_DataSourceControllerThread, &QThread::finished,
             impl->m_DataSourceController.get(), &DataSourceController::finalize);
 
+    connect(&impl->m_VariableControllerThread, &QThread::started, impl->m_VariableController.get(),
+            &VariableController::initialize);
+    connect(&impl->m_VariableControllerThread, &QThread::finished, impl->m_VariableController.get(),
+            &VariableController::finalize);
+
     connect(&impl->m_VisualizationControllerThread, &QThread::started,
             impl->m_VisualizationController.get(), &VisualizationController::initialize);
     connect(&impl->m_VisualizationControllerThread, &QThread::finished,
@@ -50,6 +63,7 @@ SqpApplication::SqpApplication(int &argc, char **argv)
 
 
     impl->m_DataSourceControllerThread.start();
+    impl->m_VariableControllerThread.start();
     impl->m_VisualizationControllerThread.start();
 }
 
@@ -61,12 +75,17 @@ void SqpApplication::initialize()
 {
 }
 
-DataSourceController &SqpApplication::dataSourceController() const noexcept
+DataSourceController &SqpApplication::dataSourceController() noexcept
 {
     return *impl->m_DataSourceController;
 }
 
-VisualizationController &SqpApplication::visualizationController() const noexcept
+VariableController &SqpApplication::variableController() noexcept
+{
+    return *impl->m_VariableController;
+}
+
+VisualizationController &SqpApplication::visualizationController() noexcept
 {
     return *impl->m_VisualizationController;
 }

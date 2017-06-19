@@ -1,9 +1,11 @@
 #ifndef SCIQLOP_DATASOURCEWIDGET_H
 #define SCIQLOP_DATASOURCEWIDGET_H
 
-#include <Common/spimpl.h>
-
 #include <QWidget>
+
+namespace Ui {
+class DataSourceWidget;
+} // Ui
 
 class DataSourceItem;
 
@@ -26,8 +28,11 @@ public slots:
     void addDataSource(DataSourceItem *dataSource) noexcept;
 
 private:
-    class DataSourceWidgetPrivate;
-    spimpl::unique_impl_ptr<DataSourceWidgetPrivate> impl;
+    Ui::DataSourceWidget *ui;
+
+private slots:
+    /// Slot called when right clicking on an item in the tree (displays a menu)
+    void onTreeMenuRequested(const QPoint &pos) noexcept;
 };
 
 #endif // SCIQLOP_DATASOURCEWIDGET_H

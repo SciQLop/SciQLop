@@ -5,6 +5,8 @@
 #include <DataSource/DataSourceItem.h>
 #include <DataSource/DataSourceTreeWidgetItem.h>
 
+#include <QMenu>
+
 namespace {
 
 /// Number of columns displayed in the tree
@@ -33,24 +35,18 @@ DataSourceTreeWidgetItem *createTreeWidgetItem(DataSourceItem *dataSource)
 
 } // namespace
 
-class DataSourceWidget::DataSourceWidgetPrivate {
-public:
-    explicit DataSourceWidgetPrivate(DataSourceWidget &widget)
-            : m_Ui{std::make_unique<Ui::DataSourceWidget>()}
-    {
-        m_Ui->setupUi(&widget);
-
-        // Set tree properties
-        m_Ui->treeWidget->setColumnCount(TREE_NB_COLUMNS);
-        m_Ui->treeWidget->setHeaderLabels(TREE_HEADER_LABELS);
-    }
-
-    std::unique_ptr<Ui::DataSourceWidget> m_Ui;
-};
-
-DataSourceWidget::DataSourceWidget(QWidget *parent)
-        : QWidget{parent}, impl{spimpl::make_unique_impl<DataSourceWidgetPrivate>(*this)}
+DataSourceWidget::DataSourceWidget(QWidget *parent) : QWidget{parent}, ui{new Ui::DataSourceWidget}
 {
+    ui->setupUi(this);
+
+    // Set tree properties
+    ui->treeWidget->setColumnCount(TREE_NB_COLUMNS);
+    ui->treeWidget->setHeaderLabels(TREE_HEADER_LABELS);
+    ui->treeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    // Connection to show a menu when right clicking on the tree
+    connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested, this,
+            &DataSourceWidget::onTreeMenuRequested);
 }
 
 void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
@@ -58,6 +54,19 @@ void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
     // Creates the item associated to the source and adds it to the tree widget. The tree widget
     // takes the ownership of the item
     if (dataSource) {
-        impl->m_Ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
+        ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
+    }
+}
+
+void DataSourceWidget::onTreeMenuRequested(const QPoint &pos) noexcept
+{
+    // Retrieves the selected item in the tree, and build the menu from its actions
+    if (auto selectedItem = dynamic_cast<DataSourceTreeWidgetItem *>(ui->treeWidget->itemAt(pos))) {
+        QMenu treeMenu{};
+        treeMenu.addActions(selectedItem->actions());
+
+        if (!treeMenu.isEmpty()) {
+            treeMenu.exec(mapToGlobal(pos));
+        }
     }
 }

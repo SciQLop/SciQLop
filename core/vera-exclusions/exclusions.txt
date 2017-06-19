@@ -4,3 +4,10 @@ Common/spimpl\.h:\d+:.*
 # Ignore false positive relative to two class definitions in a same file
 DataSourceItem\.h:\d+:.*IPSIS_S01.*
 
+# Ignore false positive relative to a template class
+ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (D)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (D)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (Dim)
+
+# Ignore false positive relative to an alias
+DataSourceItemAction\.h:\d+:.*IPSIS_S06.*found: (ExecuteFunction)
