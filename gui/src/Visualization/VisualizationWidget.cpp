@@ -1,5 +1,7 @@
 #include "Visualization/VisualizationWidget.h"
+#include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/VisualizationTabWidget.h"
+#include "Visualization/VisualizationZoneWidget.h"
 #include "Visualization/qcustomplot.h"
 
 #include "ui_VisualizationWidget.h"
@@ -16,24 +18,36 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     auto addTabViewButton = new QToolButton{ui->tabWidget};
     addTabViewButton->setText(tr("Add View"));
     addTabViewButton->setCursor(Qt::ArrowCursor);
-    addTabViewButton->setAutoRaise(true);
     ui->tabWidget->setCornerWidget(addTabViewButton, Qt::TopRightCorner);
-    auto width = ui->tabWidget->cornerWidget()->width();
-    auto height = ui->tabWidget->cornerWidget()->height();
-    addTabViewButton->setMinimumHeight(height);
-    addTabViewButton->setMinimumWidth(width);
-    ui->tabWidget->setMinimumHeight(height);
-    ui->tabWidget->setMinimumWidth(width);
 
-    auto addTabView = [&]() {
+    auto enableMinimumCornerWidgetSize = [this](bool enable) {
+
+        auto tabViewCornerWidget = ui->tabWidget->cornerWidget();
+        auto width = enable ? tabViewCornerWidget->width() : 0;
+        auto height = enable ? tabViewCornerWidget->height() : 0;
+        tabViewCornerWidget->setMinimumHeight(height);
+        tabViewCornerWidget->setMinimumWidth(width);
+        ui->tabWidget->setMinimumHeight(height);
+        ui->tabWidget->setMinimumWidth(width);
+    };
+
+    auto addTabView = [this, enableMinimumCornerWidgetSize]() {
         auto index = ui->tabWidget->addTab(new VisualizationTabWidget(ui->tabWidget),
                                            QString("View %1").arg(ui->tabWidget->count() + 1));
+        if (ui->tabWidget->count() > 0) {
+            enableMinimumCornerWidgetSize(false);
+        }
         qCInfo(LOG_VisualizationWidget()) << tr("add the tab of index %1").arg(index);
     };
 
-    auto removeTabView = [&](int index) {
+    auto removeTabView = [this, enableMinimumCornerWidgetSize](int index) {
+        if (ui->tabWidget->count() == 1) {
+            enableMinimumCornerWidgetSize(true);
+        }
+
         ui->tabWidget->removeTab(index);
         qCInfo(LOG_VisualizationWidget()) << tr("remove the tab of index %1").arg(index);
+
     };
 
     ui->tabWidget->setTabsClosable(true);
@@ -77,4 +91,27 @@ void VisualizationWidget::close()
 QString VisualizationWidget::name() const
 {
     return QStringLiteral("MainView");
+}
+
+void VisualizationWidget::displayVariable(std::shared_ptr<Variable> variable) noexcept
+{
+    if (auto currentTab = dynamic_cast<VisualizationTabWidget *>(ui->tabWidget->currentWidget())) {
+        if (auto newZone = currentTab->createZone()) {
+            if (auto newGraph = newZone->createGraph()) {
+                newGraph->addVariable(variable);
+            }
+            else {
+                qCCritical(LOG_VisualizationWidget())
+                    << tr("Can't display the variable : can't create the graph");
+            }
+        }
+        else {
+            qCCritical(LOG_VisualizationWidget())
+                << tr("Can't display the variable : can't create a new zone in the current tab");
+        }
+    }
+    else {
+        qCCritical(LOG_VisualizationWidget())
+            << tr("Can't display the variable : there is no current tab");
+    }
 }

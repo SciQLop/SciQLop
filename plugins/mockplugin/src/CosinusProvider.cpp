@@ -19,7 +19,7 @@ CosinusProvider::retrieveData(const DataProviderParameters &parameters) const
 
     // Generates scalar series containing cosinus values (one value per second)
     auto scalarSeries
-        = std::make_unique<ScalarSeries>(end - start, QStringLiteral("t"), QStringLiteral(""));
+        = std::make_unique<ScalarSeries>(end - start, Unit{QStringLiteral("t"), true}, Unit{});
 
     auto dataIndex = 0;
     for (auto time = start; time < end; ++time, ++dataIndex) {

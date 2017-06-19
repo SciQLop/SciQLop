@@ -29,12 +29,6 @@ VisualizationController::~VisualizationController()
     this->waitForFinish();
 }
 
-void VisualizationController::onVariableCreated(std::shared_ptr<Variable> variable) noexcept
-{
-    /// @todo ALX : make new graph for the variable
-    qCDebug(LOG_VisualizationController()) << "new variable to display";
-}
-
 void VisualizationController::initialize()
 {
     qCDebug(LOG_VisualizationController()) << tr("VisualizationController init")

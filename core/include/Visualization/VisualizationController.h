@@ -25,10 +25,11 @@ public:
     explicit VisualizationController(QObject *parent = 0);
     virtual ~VisualizationController();
 
-public slots:
-    /// Slot called when a variable has been created in SciQlop
-    void onVariableCreated(std::shared_ptr<Variable> variable) noexcept;
+signals:
+    /// Signal emitted when a variable has been created in SciQlop
+    void variableCreated(std::shared_ptr<Variable> variable);
 
+public slots:
     /// Manage init/end of the controller
     void initialize();
     void finalize();
