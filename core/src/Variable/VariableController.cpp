@@ -1,3 +1,4 @@
+#include <Variable/VariableCacheController.h>
 #include <Variable/VariableController.h>
 #include <Variable/VariableModel.h>
 
@@ -9,6 +10,8 @@
 #include <QDateTime>
 #include <QMutex>
 #include <QThread>
+
+#include <unordered_map>
 
 Q_LOGGING_CATEGORY(LOG_VariableController, "VariableController")
 
@@ -28,7 +31,9 @@ std::unique_ptr<IDataSeries> generateDefaultDataSeries(const IDataProvider &prov
 
 struct VariableController::VariableControllerPrivate {
     explicit VariableControllerPrivate(VariableController *parent)
-            : m_WorkingMutex{}, m_VariableModel{new VariableModel{parent}}
+            : m_WorkingMutex{},
+              m_VariableModel{new VariableModel{parent}},
+              m_VariableCacheController{std::make_unique<VariableCacheController>()}
     {
     }
 
@@ -36,7 +41,9 @@ struct VariableController::VariableControllerPrivate {
     /// Variable model. The VariableController has the ownership
     VariableModel *m_VariableModel;
 
+
     TimeController *m_TimeController{nullptr};
+    std::unique_ptr<VariableCacheController> m_VariableCacheController;
 };
 
 VariableController::VariableController(QObject *parent)
@@ -86,8 +93,14 @@ void VariableController::createVariable(const QString &name,
     /// it will be retained later
     /// - default data are generated for the variable, without taking into account the timerange set
     /// in sciqlop
+    auto dateTime = impl->m_TimeController->dateTime();
     if (auto newVariable = impl->m_VariableModel->createVariable(
-            name, generateDefaultDataSeries(*provider, impl->m_TimeController->dateTime()))) {
+            name, generateDefaultDataSeries(*provider, dateTime))) {
+
+        // store in cache
+        impl->m_VariableCacheController->addDateTime(newVariable, dateTime);
+
+        // notify the creation
         emit variableCreated(newVariable);
     }
 }
