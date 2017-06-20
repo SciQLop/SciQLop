@@ -8,9 +8,11 @@
 std::unique_ptr<IDataSeries>
 CosinusProvider::retrieveData(const DataProviderParameters &parameters) const
 {
+    auto dateTime = parameters.m_Time;
+
     // Gets the timerange from the parameters
-    auto start = parameters.m_TStart;
-    auto end = parameters.m_TEnd;
+    auto start = dateTime.m_TStart;
+    auto end = dateTime.m_TEnd;
 
     // We assure that timerange is valid
     if (end < start) {

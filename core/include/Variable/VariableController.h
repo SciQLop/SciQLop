@@ -7,6 +7,7 @@
 #include <Common/spimpl.h>
 
 class IDataProvider;
+class TimeController;
 class Variable;
 class VariableModel;
 
@@ -22,6 +23,8 @@ public:
     virtual ~VariableController();
 
     VariableModel *variableModel() noexcept;
+
+    void setTimeController(TimeController *timeController) noexcept;
 
 signals:
     /// Signal emitted when a variable has been created

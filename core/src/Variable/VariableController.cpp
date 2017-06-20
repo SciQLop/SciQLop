@@ -4,6 +4,7 @@
 #include <Data/DataProviderParameters.h>
 #include <Data/IDataProvider.h>
 #include <Data/IDataSeries.h>
+#include <Time/TimeController.h>
 
 #include <QDateTime>
 #include <QMutex>
@@ -15,14 +16,10 @@ namespace {
 
 /// @todo Generates default dataseries, according to the provider passed in parameter. This method
 /// will be deleted when the timerange is recovered from SciQlop
-std::unique_ptr<IDataSeries> generateDefaultDataSeries(const IDataProvider &provider) noexcept
+std::unique_ptr<IDataSeries> generateDefaultDataSeries(const IDataProvider &provider,
+                                                       const SqpDateTime &dateTime) noexcept
 {
-    auto parameters = DataProviderParameters{
-        // Remarks : we don't use toSecsSinceEpoch() here (method is for Qt 5.8 or above)
-        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 00}}.toMSecsSinceEpoch()
-                            / 1000.),
-        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 01}}.toMSecsSinceEpoch())
-            / 1000.};
+    auto parameters = DataProviderParameters{dateTime};
 
     return provider.retrieveData(parameters);
 }
@@ -38,6 +35,8 @@ struct VariableController::VariableControllerPrivate {
     QMutex m_WorkingMutex;
     /// Variable model. The VariableController has the ownership
     VariableModel *m_VariableModel;
+
+    TimeController *m_TimeController;
 };
 
 VariableController::VariableController(QObject *parent)
@@ -59,16 +58,36 @@ VariableModel *VariableController::variableModel() noexcept
     return impl->m_VariableModel;
 }
 
+void VariableController::setTimeController(TimeController *timeController) noexcept
+{
+    impl->m_TimeController = timeController;
+}
+
 void VariableController::createVariable(const QString &name,
                                         std::shared_ptr<IDataProvider> provider) noexcept
 {
+    // TORM
+    //    auto dateTime = SqpDateTime{
+    //        // Remarks : we don't use toSecsSinceEpoch() here (method is for Qt 5.8 or above)
+    //        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 00}}.toMSecsSinceEpoch()
+    //                            / 1000.),
+    //        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 01}}.toMSecsSinceEpoch())
+    //            / 1000.};
+
+    if (!impl->m_TimeController) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to create variable: The time controller is null");
+        return;
+    }
+
+
     /// @todo : for the moment :
     /// - the provider is only used to retrieve data from the variable for its initialization, but
     /// it will be retained later
     /// - default data are generated for the variable, without taking into account the timerange set
     /// in sciqlop
-    if (auto newVariable
-        = impl->m_VariableModel->createVariable(name, generateDefaultDataSeries(*provider))) {
+    if (auto newVariable = impl->m_VariableModel->createVariable(
+            name, generateDefaultDataSeries(*provider, impl->m_TimeController->dateTime()))) {
         emit variableCreated(newVariable);
     }
 }

@@ -3,6 +3,7 @@
 #include <Data/IDataProvider.h>
 #include <DataSource/DataSourceController.h>
 #include <QThread>
+#include <Time/TimeController.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 #include <Visualization/VisualizationController.h>
@@ -13,6 +14,7 @@ class SqpApplication::SqpApplicationPrivate {
 public:
     SqpApplicationPrivate()
             : m_DataSourceController{std::make_unique<DataSourceController>()},
+              m_TimeController{std::make_unique<TimeController>()},
               m_VariableController{std::make_unique<VariableController>()},
               m_VisualizationController{std::make_unique<VisualizationController>()}
     {
@@ -36,6 +38,9 @@ public:
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
         m_VariableController->moveToThread(&m_VariableControllerThread);
         m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
+
+        // Additionnal init
+        m_VariableController->setTimeController(m_TimeController.get());
     }
 
     virtual ~SqpApplicationPrivate()
@@ -53,6 +58,7 @@ public:
 
     std::unique_ptr<DataSourceController> m_DataSourceController;
     std::unique_ptr<VariableController> m_VariableController;
+    std::unique_ptr<TimeController> m_TimeController;
     std::unique_ptr<VisualizationController> m_VisualizationController;
     QThread m_DataSourceControllerThread;
     QThread m_VariableControllerThread;
@@ -96,6 +102,11 @@ void SqpApplication::initialize()
 DataSourceController &SqpApplication::dataSourceController() noexcept
 {
     return *impl->m_DataSourceController;
+}
+
+TimeController &SqpApplication::timeController() noexcept
+{
+    return *impl->m_TimeController;
 }
 
 VariableController &SqpApplication::variableController() noexcept
