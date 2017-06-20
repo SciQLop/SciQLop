@@ -1,6 +1,9 @@
 #include "Variable/Variable.h"
 
 #include <Data/IDataSeries.h>
+#include <Data/SqpDateTime.h>
+
+Q_LOGGING_CATEGORY(LOG_Variable, "Variable")
 
 struct Variable::VariablePrivate {
     explicit VariablePrivate(const QString &name, const QString &unit, const QString &mission)
@@ -11,6 +14,8 @@ struct Variable::VariablePrivate {
     QString m_Name;
     QString m_Unit;
     QString m_Mission;
+
+    SqpDateTime m_DateTime; // The dateTime available in the view and loaded. not the cache.
     std::unique_ptr<IDataSeries> m_DataSeries;
 };
 
@@ -45,4 +50,9 @@ void Variable::addDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept
 IDataSeries *Variable::dataSeries() const noexcept
 {
     return impl->m_DataSeries.get();
+}
+
+void Variable::onXRangeChanged(SqpDateTime dateTime)
+{
+    qCInfo(LOG_Variable()) << "onXRangeChanged detected";
 }

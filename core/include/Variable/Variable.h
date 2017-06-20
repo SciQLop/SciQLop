@@ -1,9 +1,15 @@
 #ifndef SCIQLOP_VARIABLE_H
 #define SCIQLOP_VARIABLE_H
 
+#include <Data/SqpDateTime.h>
+
+
+#include <QLoggingCategory>
+#include <QObject>
+
 #include <Common/spimpl.h>
 
-#include <QObject>
+Q_DECLARE_LOGGING_CATEGORY(LOG_Variable)
 
 class IDataSeries;
 class QString;
@@ -23,6 +29,9 @@ public:
 
     /// @return the data of the variable, nullptr if there is no data
     IDataSeries *dataSeries() const noexcept;
+
+public slots:
+    void onXRangeChanged(SqpDateTime dateTime);
 
 private:
     class VariablePrivate;
