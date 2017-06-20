@@ -36,7 +36,7 @@ struct VariableController::VariableControllerPrivate {
     /// Variable model. The VariableController has the ownership
     VariableModel *m_VariableModel;
 
-    TimeController *m_TimeController;
+    TimeController *m_TimeController{nullptr};
 };
 
 VariableController::VariableController(QObject *parent)

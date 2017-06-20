@@ -3,7 +3,6 @@
 
 /**
  * @brief The SqpDateTime struct holds the information of time parameters
- * @sa SqpDateTime
  */
 struct SqpDateTime {
     /// Start time
