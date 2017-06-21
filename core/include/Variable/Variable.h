@@ -19,7 +19,8 @@ class QString;
  */
 class Variable {
 public:
-    explicit Variable(const QString &name, const QString &unit, const QString &mission);
+    explicit Variable(const QString &name, const QString &unit, const QString &mission,
+                      const SqpDateTime &dateTime);
 
     QString name() const noexcept;
     QString mission() const noexcept;

@@ -95,7 +95,7 @@ void VariableController::createVariable(const QString &name,
     /// in sciqlop
     auto dateTime = impl->m_TimeController->dateTime();
     if (auto newVariable = impl->m_VariableModel->createVariable(
-            name, generateDefaultDataSeries(*provider, dateTime))) {
+            name, dateTime, generateDefaultDataSeries(*provider, dateTime))) {
 
         // store in cache
         impl->m_VariableCacheController->addDateTime(newVariable, dateTime);

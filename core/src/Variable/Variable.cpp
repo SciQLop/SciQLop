@@ -6,8 +6,13 @@
 Q_LOGGING_CATEGORY(LOG_Variable, "Variable")
 
 struct Variable::VariablePrivate {
-    explicit VariablePrivate(const QString &name, const QString &unit, const QString &mission)
-            : m_Name{name}, m_Unit{unit}, m_Mission{mission}, m_DataSeries{nullptr}
+    explicit VariablePrivate(const QString &name, const QString &unit, const QString &mission,
+                             const SqpDateTime &dateTime)
+            : m_Name{name},
+              m_Unit{unit},
+              m_Mission{mission},
+              m_DateTime{dateTime},
+              m_DataSeries{nullptr}
     {
     }
 
@@ -19,8 +24,9 @@ struct Variable::VariablePrivate {
     std::unique_ptr<IDataSeries> m_DataSeries;
 };
 
-Variable::Variable(const QString &name, const QString &unit, const QString &mission)
-        : impl{spimpl::make_unique_impl<VariablePrivate>(name, unit, mission)}
+Variable::Variable(const QString &name, const QString &unit, const QString &mission,
+                   const SqpDateTime &dateTime)
+        : impl{spimpl::make_unique_impl<VariablePrivate>(name, unit, mission, dateTime)}
 {
 }
 
@@ -55,4 +61,14 @@ IDataSeries *Variable::dataSeries() const noexcept
 void Variable::onXRangeChanged(SqpDateTime dateTime)
 {
     qCInfo(LOG_Variable()) << "onXRangeChanged detected";
+
+    if (!impl->m_DateTime.contains(dateTime)) {
+        // The current variable dateTime isn't enough to display the dateTime requested.
+        // We have to update it to the new dateTime requested.
+        // the correspondant new data to display will be given by the cache if possible and the
+        // provider if necessary.
+        qCInfo(LOG_Variable()) << "NEW DATE NEEDED";
+
+        impl->m_DateTime = dateTime;
+    }
 }
