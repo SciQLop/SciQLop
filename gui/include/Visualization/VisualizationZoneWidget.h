@@ -21,8 +21,12 @@ public:
     /// Add a graph widget
     void addGraph(VisualizationGraphWidget *graphWidget);
 
-    /// Create a graph using a Variable
-    VisualizationGraphWidget *createGraph();
+    /**
+     * Creates a graph using a variable. The variable will be displayed in the new graph.
+     * @param variable the variable for which to create the graph
+     * @return the pointer to the created graph
+     */
+    VisualizationGraphWidget *createGraph(std::shared_ptr<Variable> variable);
 
     /// Remove a graph
     void removeGraph(VisualizationGraphWidget *graph);
