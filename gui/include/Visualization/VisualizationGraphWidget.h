@@ -25,7 +25,8 @@ public:
     void addVariable(std::shared_ptr<Variable> variable);
 
     // IVisualizationWidget interface
-    void accept(IVisualizationWidget *visitor) override;
+    void accept(IVisualizationWidgetVisitor *visitor) override;
+    bool canDrop(const Variable &variable) const override;
     void close() override;
     QString name() const;
 

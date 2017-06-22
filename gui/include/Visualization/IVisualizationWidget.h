@@ -1,21 +1,23 @@
 #ifndef SCIQLOP_IVISUALIZATIONWIDGET_H
 #define SCIQLOP_IVISUALIZATIONWIDGET_H
 
-#include "Visualization/IVisualizationWidgetVisitor.h"
+#include "Visualization/IVariableContainer.h"
 
 #include <QString>
 #include <memory>
 
+class IVisualizationWidgetVisitor;
+
 /**
  * @brief The IVisualizationWidget handles the visualization widget.
  */
-class IVisualizationWidget {
+class IVisualizationWidget : public IVariableContainer {
 
 public:
     virtual ~IVisualizationWidget() = default;
 
     /// Initializes the plugin
-    virtual void accept(IVisualizationWidget *visitor) = 0;
+    virtual void accept(IVisualizationWidgetVisitor *visitor) = 0;
     virtual void close() = 0;
     virtual QString name() const = 0;
 };

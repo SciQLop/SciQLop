@@ -8,6 +8,7 @@ SqpApplication\.h:\d+:.IPSIS_S04_VARIABLE.*found: sqpApp
 
 # Ignore false positive relative to unnamed namespace
 DataSourceTreeWidgetItem\.cpp:\d+:.*IPSIS_F13.*
+GenerateVariableMenuOperation\.cpp:\d+:.*IPSIS_F13.*
 VisualizationTabWidget\.cpp:\d+:.*IPSIS_F13.*
 VisualizationZoneWidget\.cpp:\d+:.*IPSIS_F13.*
 

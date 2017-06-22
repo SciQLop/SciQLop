@@ -1,5 +1,6 @@
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/GraphPlottablesFactory.h"
+#include "Visualization/IVisualizationWidgetVisitor.h"
 #include "ui_VisualizationGraphWidget.h"
 
 #include <Variable/Variable.h>
@@ -56,9 +57,18 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
     }
 }
 
-void VisualizationGraphWidget::accept(IVisualizationWidget *visitor)
+void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
-    // TODO: manage the visitor
+    if (visitor) {
+        visitor->visit(this);
+    }
+}
+
+bool VisualizationGraphWidget::canDrop(const Variable &variable) const
+{
+    /// @todo : for the moment, a graph can always accomodate a variable
+    Q_UNUSED(variable);
+    return true;
 }
 
 void VisualizationGraphWidget::close()

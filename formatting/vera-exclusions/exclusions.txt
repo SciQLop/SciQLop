@@ -10,3 +10,7 @@
 # Ignore false positive relative to 'override' keyword
 .*IPSIS_S04_VARIABLE.*found: override
 .*IPSIS_S06.*found: override
+
+# Ignore false positive relative to 'final' keyword
+.*IPSIS_S04_VARIABLE.*found: final
+.*IPSIS_S06.*found: final

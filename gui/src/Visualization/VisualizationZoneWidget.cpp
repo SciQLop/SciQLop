@@ -1,4 +1,5 @@
 #include "Visualization/VisualizationZoneWidget.h"
+#include "Visualization/IVisualizationWidgetVisitor.h"
 #include "ui_VisualizationZoneWidget.h"
 
 #include "Visualization/VisualizationGraphWidget.h"
@@ -54,9 +55,31 @@ void VisualizationZoneWidget::removeGraph(VisualizationGraphWidget *graph)
 {
 }
 
-void VisualizationZoneWidget::accept(IVisualizationWidget *visitor)
+void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
-    // TODO: manage the visitor
+    if (visitor) {
+        visitor->visitEnter(this);
+
+        // Apply visitor to graph children
+        auto layout = ui->visualizationZoneFrame->layout();
+        for (auto i = 0; i < layout->count(); ++i) {
+            if (auto item = layout->itemAt(i)) {
+                if (auto visualizationGraphWidget
+                    = dynamic_cast<VisualizationGraphWidget *>(item->widget())) {
+                    visualizationGraphWidget->accept(visitor);
+                }
+            }
+        }
+
+        visitor->visitLeave(this);
+    }
+}
+
+bool VisualizationZoneWidget::canDrop(const Variable &variable) const
+{
+    // A tab can always accomodate a variable
+    Q_UNUSED(variable);
+    return true;
 }
 
 void VisualizationZoneWidget::close()

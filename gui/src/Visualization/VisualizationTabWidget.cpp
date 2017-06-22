@@ -1,4 +1,5 @@
 #include "Visualization/VisualizationTabWidget.h"
+#include "Visualization/IVisualizationWidgetVisitor.h"
 #include "ui_VisualizationTabWidget.h"
 
 #include "Visualization/VisualizationZoneWidget.h"
@@ -60,9 +61,30 @@ void VisualizationTabWidget::removeZone(VisualizationZoneWidget *zone)
 {
 }
 
-void VisualizationTabWidget::accept(IVisualizationWidget *visitor)
+void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
-    // TODO: manage the visitor
+    if (visitor) {
+        visitor->visitEnter(this);
+
+        // Apply visitor to zone children
+        for (auto i = 0; i < layout()->count(); ++i) {
+            if (auto item = layout()->itemAt(i)) {
+                if (auto visualizationZoneWidget
+                    = dynamic_cast<VisualizationZoneWidget *>(item->widget())) {
+                    visualizationZoneWidget->accept(visitor);
+                }
+            }
+        }
+
+        visitor->visitLeave(this);
+    }
+}
+
+bool VisualizationTabWidget::canDrop(const Variable &variable) const
+{
+    // A tab can always accomodate a variable
+    Q_UNUSED(variable);
+    return true;
 }
 
 void VisualizationTabWidget::close()
