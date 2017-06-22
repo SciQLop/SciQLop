@@ -75,6 +75,13 @@ void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
     }
 }
 
+bool VisualizationZoneWidget::canDrop(const Variable &variable) const
+{
+    // A tab can always accomodate a variable
+    Q_UNUSED(variable);
+    return true;
+}
+
 void VisualizationZoneWidget::close()
 {
     // The main view cannot be directly closed.

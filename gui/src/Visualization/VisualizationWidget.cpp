@@ -99,6 +99,13 @@ void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
     }
 }
 
+bool VisualizationWidget::canDrop(const Variable &variable) const
+{
+    // The main widget can never accomodate a variable
+    Q_UNUSED(variable);
+    return false;
+}
+
 void VisualizationWidget::close()
 {
     // The main view cannot be directly closed.

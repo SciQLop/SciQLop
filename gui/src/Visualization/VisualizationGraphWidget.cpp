@@ -64,6 +64,13 @@ void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
     }
 }
 
+bool VisualizationGraphWidget::canDrop(const Variable &variable) const
+{
+    /// @todo : for the moment, a graph can always accomodate a variable
+    Q_UNUSED(variable);
+    return true;
+}
+
 void VisualizationGraphWidget::close()
 {
     // The main view cannot be directly closed.
