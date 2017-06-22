@@ -5,8 +5,12 @@
 
 #include <Common/spimpl.h>
 
+#include <QLoggingCategory>
+
 class QMenu;
 class Variable;
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_GenerateVariableMenuOperation)
 
 /**
  * @brief The GenerateVariableMenuOperation class defines an operation that traverses all of
