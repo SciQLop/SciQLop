@@ -3,19 +3,19 @@
 
 #include "Visualization/IVisualizationWidget.h"
 
-class VisualizationGraphWidget;
-
 #include <QWidget>
 
 namespace Ui {
 class VisualizationZoneWidget;
 } // Ui
 
+class VisualizationGraphWidget;
+
 class VisualizationZoneWidget : public QWidget, public IVisualizationWidget {
     Q_OBJECT
 
 public:
-    explicit VisualizationZoneWidget(QWidget *parent = 0);
+    explicit VisualizationZoneWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationZoneWidget();
 
     /// Add a graph widget

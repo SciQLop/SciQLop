@@ -3,10 +3,12 @@
 
 #include "Visualization/VisualizationGraphWidget.h"
 
-VisualizationZoneWidget::VisualizationZoneWidget(QWidget *parent)
+VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *parent)
         : QWidget{parent}, ui{new Ui::VisualizationZoneWidget}
 {
     ui->setupUi(this);
+
+    ui->zoneNameLabel->setText(name);
 }
 
 VisualizationZoneWidget::~VisualizationZoneWidget()
@@ -44,5 +46,5 @@ void VisualizationZoneWidget::close()
 
 QString VisualizationZoneWidget::name() const
 {
-    return QStringLiteral("MainView");
+    return ui->zoneNameLabel->text();
 }
