@@ -81,7 +81,15 @@ struct MenuBuilder {
     void closeMenu()
     {
         if (!m_Menus.isEmpty()) {
-            m_Menus.pop();
+            if (auto closedMenu = m_Menus.pop()) {
+                // Purge menu : if the closed menu has no entries, we remove it from its parent (the
+                // current menu)
+                if (auto currMenu = currentMenu()) {
+                    if (closedMenu->isEmpty()) {
+                        currMenu->removeAction(closedMenu->menuAction());
+                    }
+                }
+            }
         }
     }
 
