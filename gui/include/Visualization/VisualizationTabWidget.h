@@ -23,8 +23,13 @@ public:
     /// Add a zone widget
     void addZone(VisualizationZoneWidget *zoneWidget);
 
-    /// Create a zone using a Variable
-    VisualizationZoneWidget *createZone();
+    /**
+     * Creates a zone using a variable. The variable will be displayed in a new graph of the new
+     * zone.
+     * @param variable the variable for which to create the zone
+     * @return the pointer to the created zone
+     */
+    VisualizationZoneWidget *createZone(std::shared_ptr<Variable> variable);
 
     /// Remove a zone
     void removeZone(VisualizationZoneWidget *zone);
