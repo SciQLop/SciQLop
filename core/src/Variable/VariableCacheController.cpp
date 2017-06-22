@@ -15,6 +15,10 @@ struct VariableCacheController::VariableCacheControllerPrivate {
     void addInCacheDataByStart(const SqpDateTime &dateTime, QVector<SqpDateTime> &dateTimeList,
                                QVector<SqpDateTime> &notInCache, int cacheIndex,
                                double currentTStart);
+
+
+    void addDateTimeRecurse(const SqpDateTime &dateTime, QVector<SqpDateTime> &dateTimeList,
+                            int cacheIndex);
 };
 
 
@@ -27,8 +31,27 @@ void VariableCacheController::addDateTime(std::shared_ptr<Variable> variable,
                                           const SqpDateTime &dateTime)
 {
     if (variable) {
-        // TODO: squeeze the map to let it only some SqpDateTime without intersection
-        impl->m_VariableToSqpDateTimeListMap[variable].push_back(dateTime);
+        auto findVariableIte = impl->m_VariableToSqpDateTimeListMap.find(variable);
+        if (findVariableIte == impl->m_VariableToSqpDateTimeListMap.end()) {
+            impl->m_VariableToSqpDateTimeListMap[variable].push_back(dateTime);
+        }
+        else {
+
+            // addDateTime modify the list<SqpDateTime> of the variable in a way to ensure
+            // that the list is ordered : l(0) < l(1). We assume also a < b
+            // (with a & b of type SqpDateTime) means ts(b) > te(a)
+
+            // The algorithm will try the merge of two interval:
+            // - dateTime will be compare with the first interval of the list:
+            //   A: if it is inferior, it will be inserted and it's finished.
+            //   B: if it is in intersection, it will be merge then the merged one
+            //      will be compared to the next interval. The old one is remove from the list
+            //   C: if it is superior, we do the same with the next interval of the list
+
+            int cacheIndex = 0;
+            impl->addDateTimeRecurse(dateTime, impl->m_VariableToSqpDateTimeListMap.at(variable),
+                                     cacheIndex);
+        }
     }
 }
 
@@ -47,6 +70,45 @@ VariableCacheController::provideNotInCacheDateTimeList(std::shared_ptr<Variable>
                                 notInCache, 0, dateTime.m_TStart);
 
     return notInCache;
+}
+
+QVector<SqpDateTime>
+VariableCacheController::dateCacheList(std::shared_ptr<Variable> variable) const noexcept
+{
+    return impl->m_VariableToSqpDateTimeListMap.at(variable);
+}
+
+void VariableCacheController::VariableCacheControllerPrivate::addDateTimeRecurse(
+    const SqpDateTime &dateTime, QVector<SqpDateTime> &dateTimeList, int cacheIndex)
+{
+    const auto dateTimeListSize = dateTimeList.count();
+    if (cacheIndex >= dateTimeListSize) {
+        dateTimeList.push_back(dateTime);
+        // there is no anymore interval to compore, we can just push_back it
+        return;
+    }
+
+    auto currentDateTime = dateTimeList[cacheIndex];
+
+    if (dateTime.m_TEnd < currentDateTime.m_TStart) {
+        // The compared one is < to current one compared, we can insert it
+        dateTimeList.insert(cacheIndex, dateTime);
+    }
+
+    else if (dateTime.m_TStart > currentDateTime.m_TEnd) {
+        // The compared one is > to current one compared  we can comparet if to the next one
+        addDateTimeRecurse(dateTime, dateTimeList, ++cacheIndex);
+    }
+    else {
+        // Merge cases: we need to merge the two interval, remove the old one from the list then
+        // rerun the algo from this index with the merged interval
+        auto mTStart = std::min(dateTime.m_TStart, currentDateTime.m_TStart);
+        auto mTEnd = std::max(dateTime.m_TEnd, currentDateTime.m_TEnd);
+        auto mergeDateTime = SqpDateTime{mTStart, mTEnd};
+
+        dateTimeList.remove(cacheIndex);
+        addDateTimeRecurse(mergeDateTime, dateTimeList, cacheIndex);
+    }
 }
 
 

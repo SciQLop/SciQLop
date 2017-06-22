@@ -18,6 +18,13 @@ public:
 
     void addDateTime(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);
 
+    /// Return all of the SqpDataTime part of the dateTime whose are not in the cache
+    QVector<SqpDateTime> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
+                                                       const SqpDateTime &dateTime);
+
+
+    QVector<SqpDateTime> dateCacheList(std::shared_ptr<Variable> variable) const noexcept;
+
 private:
     class VariableCacheControllerPrivate;
     spimpl::unique_impl_ptr<VariableCacheControllerPrivate> impl;
