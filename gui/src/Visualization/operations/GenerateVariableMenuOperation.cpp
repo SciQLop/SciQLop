@@ -68,6 +68,19 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     {
     }
 
+    void visitNodeEnter(const IVisualizationWidget &container)
+    {
+        // Opens a new menu associated to the node
+        m_MenuBuilder.addMenu(container.name());
+    }
+
+    template <typename ActionFun>
+    void visitNodeLeave()
+    {
+        // Closes the menu associated to the node
+        m_MenuBuilder.closeMenu();
+    }
+
     std::shared_ptr<Variable> m_Variable;
     MenuBuilder m_MenuBuilder;
 };
@@ -92,22 +105,30 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationWidget *widget)
 
 void GenerateVariableMenuOperation::visitEnter(VisualizationTabWidget *tabWidget)
 {
-    /// @todo ALX
+    if (tabWidget) {
+        impl->visitNodeEnter(*tabWidget);
+    }
 }
 
 void GenerateVariableMenuOperation::visitLeave(VisualizationTabWidget *tabWidget)
 {
-    /// @todo ALX
+    if (tabWidget) {
+        impl->visitNodeLeave();
+    }
 }
 
 void GenerateVariableMenuOperation::visitEnter(VisualizationZoneWidget *zoneWidget)
 {
-    /// @todo ALX
+    if (zoneWidget) {
+        impl->visitNodeEnter(*zoneWidget);
+    }
 }
 
 void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidget)
 {
-    /// @todo ALX
+    if (zoneWidget) {
+        impl->visitNodeLeave();
+    }
 }
 
 void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
