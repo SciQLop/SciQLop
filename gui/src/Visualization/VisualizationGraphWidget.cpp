@@ -22,7 +22,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     std::unordered_map<std::shared_ptr<Variable>, QCPAbstractPlottable *> m_VariableToPlotMap;
 };
 
-VisualizationGraphWidget::VisualizationGraphWidget(const QString name, QWidget *parent)
+VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
         : QWidget{parent},
           ui{new Ui::VisualizationGraphWidget},
           impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>()}
