@@ -3,6 +3,8 @@
 
 #include "Visualization/IVisualizationWidget.h"
 
+#include <Common/spimpl.h>
+
 #include <QWidget>
 
 class VisualizationZoneWidget;
@@ -15,7 +17,7 @@ class VisualizationTabWidget : public QWidget, public IVisualizationWidget {
     Q_OBJECT
 
 public:
-    explicit VisualizationTabWidget(QWidget *parent = 0);
+    explicit VisualizationTabWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationTabWidget();
 
     /// Add a zone widget
@@ -34,6 +36,9 @@ public:
 
 private:
     Ui::VisualizationTabWidget *ui;
+
+    class VisualizationTabWidgetPrivate;
+    spimpl::unique_impl_ptr<VisualizationTabWidgetPrivate> impl;
 };
 
 #endif // SCIQLOP_VISUALIZATIONTABWIDGET_H

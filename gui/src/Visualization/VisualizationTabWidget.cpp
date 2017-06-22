@@ -3,9 +3,16 @@
 
 #include "Visualization/VisualizationZoneWidget.h"
 
+struct VisualizationTabWidget::VisualizationTabWidgetPrivate {
+    explicit VisualizationTabWidgetPrivate(const QString &name) : m_Name{name} {}
 
-VisualizationTabWidget::VisualizationTabWidget(QWidget *parent)
-        : QWidget{parent}, ui{new Ui::VisualizationTabWidget}
+    QString m_Name;
+};
+
+VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *parent)
+        : QWidget{parent},
+          ui{new Ui::VisualizationTabWidget},
+          impl{spimpl::make_unique_impl<VisualizationTabWidgetPrivate>(name)}
 {
     ui->setupUi(this);
 }
@@ -45,5 +52,5 @@ void VisualizationTabWidget::close()
 
 QString VisualizationTabWidget::name() const
 {
-    return QStringLiteral("MainView");
+    return impl->m_Name;
 }

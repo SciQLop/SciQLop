@@ -32,8 +32,9 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     };
 
     auto addTabView = [this, enableMinimumCornerWidgetSize]() {
-        auto index = ui->tabWidget->addTab(new VisualizationTabWidget(ui->tabWidget),
-                                           QString("View %1").arg(ui->tabWidget->count() + 1));
+        auto widget = new VisualizationTabWidget{QString{"View %1"}.arg(ui->tabWidget->count() + 1),
+                                                 ui->tabWidget};
+        auto index = ui->tabWidget->addTab(widget, widget->name());
         if (ui->tabWidget->count() > 0) {
             enableMinimumCornerWidgetSize(false);
         }
