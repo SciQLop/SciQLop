@@ -62,6 +62,21 @@ struct MenuBuilder {
         }
     }
 
+    /// Adds a separator to the current menu. The separator is added only if the menu already
+    /// contains entries
+    void addSeparator()
+    {
+        if (auto currMenu = currentMenu()) {
+            if (!currMenu->isEmpty()) {
+                currMenu->addSeparator();
+            }
+        }
+        else {
+            qCCritical(LOG_GenerateVariableMenuOperation())
+                << QObject::tr("No current menu to attach the separator");
+        }
+    }
+
     /// Closes the current menu
     void closeMenu()
     {
@@ -92,8 +107,14 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     }
 
     template <typename ActionFun>
-    void visitNodeLeave()
+    void visitNodeLeave(const IVisualizationWidget &container, const QString &actionName,
+                        ActionFun actionFunction)
     {
+        if (m_Variable && container.canDrop(*m_Variable)) {
+            m_MenuBuilder.addSeparator();
+            m_MenuBuilder.addAction(actionName, actionFunction);
+        }
+
         // Closes the menu associated to the node
         m_MenuBuilder.closeMenu();
     }
@@ -139,7 +160,9 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationTabWidget *tabWidget
 void GenerateVariableMenuOperation::visitLeave(VisualizationTabWidget *tabWidget)
 {
     if (tabWidget) {
-        impl->visitNodeLeave();
+        impl->visitNodeLeave(
+            *tabWidget, QObject::tr("Open in a new zone"),
+            [ var = impl->m_Variable, tabWidget ]() { tabWidget->createZone(var); });
     }
 }
 
@@ -153,7 +176,9 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationZoneWidget *zoneWidg
 void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidget)
 {
     if (zoneWidget) {
-        impl->visitNodeLeave();
+        impl->visitNodeLeave(
+            *zoneWidget, QObject::tr("Open in a new graph"),
+            [ var = impl->m_Variable, zoneWidget ]() { zoneWidget->createGraph(var); });
     }
 }
 
