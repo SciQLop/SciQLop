@@ -33,7 +33,7 @@ public:
     void removeGraph(VisualizationGraphWidget *graph);
 
     // IVisualizationWidget interface
-    void accept(IVisualizationWidget *visitor) override;
+    void accept(IVisualizationWidgetVisitor *visitor) override;
     void close() override;
     QString name() const override;
 

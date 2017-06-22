@@ -1,4 +1,5 @@
 #include "Visualization/VisualizationWidget.h"
+#include "Visualization/IVisualizationWidgetVisitor.h"
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/VisualizationTabWidget.h"
 #include "Visualization/VisualizationZoneWidget.h"
@@ -81,7 +82,7 @@ void VisualizationWidget::removeTab(VisualizationTabWidget *tab)
     // lambda function (in the constructor)
 }
 
-void VisualizationWidget::accept(IVisualizationWidget *visitor)
+void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     // TODO: manage the visitor
 }

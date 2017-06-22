@@ -1,4 +1,5 @@
 #include "Visualization/VisualizationTabWidget.h"
+#include "Visualization/IVisualizationWidgetVisitor.h"
 #include "ui_VisualizationTabWidget.h"
 
 #include "Visualization/VisualizationZoneWidget.h"
@@ -60,7 +61,7 @@ void VisualizationTabWidget::removeZone(VisualizationZoneWidget *zone)
 {
 }
 
-void VisualizationTabWidget::accept(IVisualizationWidget *visitor)
+void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     // TODO: manage the visitor
 }

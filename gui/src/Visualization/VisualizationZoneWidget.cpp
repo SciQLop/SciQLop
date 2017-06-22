@@ -1,4 +1,5 @@
 #include "Visualization/VisualizationZoneWidget.h"
+#include "Visualization/IVisualizationWidgetVisitor.h"
 #include "ui_VisualizationZoneWidget.h"
 
 #include "Visualization/VisualizationGraphWidget.h"
@@ -54,7 +55,7 @@ void VisualizationZoneWidget::removeGraph(VisualizationGraphWidget *graph)
 {
 }
 
-void VisualizationZoneWidget::accept(IVisualizationWidget *visitor)
+void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     // TODO: manage the visitor
 }
