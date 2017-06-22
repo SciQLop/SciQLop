@@ -9,6 +9,7 @@ namespace Ui {
 class VisualizationZoneWidget;
 } // Ui
 
+class Variable;
 class VisualizationGraphWidget;
 
 class VisualizationZoneWidget : public QWidget, public IVisualizationWidget {

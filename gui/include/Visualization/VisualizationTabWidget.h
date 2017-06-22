@@ -7,6 +7,7 @@
 
 #include <QWidget>
 
+class Variable;
 class VisualizationZoneWidget;
 
 namespace Ui {
