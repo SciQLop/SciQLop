@@ -84,7 +84,19 @@ void VisualizationWidget::removeTab(VisualizationTabWidget *tab)
 
 void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
-    // TODO: manage the visitor
+    if (visitor) {
+        visitor->visitEnter(this);
+
+        // Apply visitor for tab children
+        for (auto i = 0; i < ui->tabWidget->count(); ++i) {
+            if (auto visualizationTabWidget
+                = dynamic_cast<VisualizationTabWidget *>(ui->tabWidget->widget(i))) {
+                visualizationTabWidget->accept(visitor);
+            }
+        }
+
+        visitor->visitLeave(this);
+    }
 }
 
 void VisualizationWidget::close()

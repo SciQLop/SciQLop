@@ -63,7 +63,21 @@ void VisualizationTabWidget::removeZone(VisualizationZoneWidget *zone)
 
 void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
-    // TODO: manage the visitor
+    if (visitor) {
+        visitor->visitEnter(this);
+
+        // Apply visitor to zone children
+        for (auto i = 0; i < layout()->count(); ++i) {
+            if (auto item = layout()->itemAt(i)) {
+                if (auto visualizationZoneWidget
+                    = dynamic_cast<VisualizationZoneWidget *>(item->widget())) {
+                    visualizationZoneWidget->accept(visitor);
+                }
+            }
+        }
+
+        visitor->visitLeave(this);
+    }
 }
 
 void VisualizationTabWidget::close()

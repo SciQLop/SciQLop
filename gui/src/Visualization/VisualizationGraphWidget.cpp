@@ -59,7 +59,9 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
 
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
-    // TODO: manage the visitor
+    if (visitor) {
+        visitor->visit(this);
+    }
 }
 
 void VisualizationGraphWidget::close()

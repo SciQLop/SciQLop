@@ -57,7 +57,22 @@ void VisualizationZoneWidget::removeGraph(VisualizationGraphWidget *graph)
 
 void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
-    // TODO: manage the visitor
+    if (visitor) {
+        visitor->visitEnter(this);
+
+        // Apply visitor to graph children
+        auto layout = ui->visualizationZoneFrame->layout();
+        for (auto i = 0; i < layout->count(); ++i) {
+            if (auto item = layout->itemAt(i)) {
+                if (auto visualizationGraphWidget
+                    = dynamic_cast<VisualizationGraphWidget *>(item->widget())) {
+                    visualizationGraphWidget->accept(visitor);
+                }
+            }
+        }
+
+        visitor->visitLeave(this);
+    }
 }
 
 void VisualizationZoneWidget::close()
