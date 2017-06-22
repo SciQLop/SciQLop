@@ -19,7 +19,7 @@ class VisualizationGraphWidget : public QWidget, public IVisualizationWidget {
     Q_OBJECT
 
 public:
-    explicit VisualizationGraphWidget(QWidget *parent = 0);
+    explicit VisualizationGraphWidget(const QString name = {}, QWidget *parent = 0);
     virtual ~VisualizationGraphWidget();
 
     void addVariable(std::shared_ptr<Variable> variable);

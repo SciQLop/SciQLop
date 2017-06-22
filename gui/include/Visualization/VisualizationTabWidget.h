@@ -3,8 +3,11 @@
 
 #include "Visualization/IVisualizationWidget.h"
 
+#include <Common/spimpl.h>
+
 #include <QWidget>
 
+class Variable;
 class VisualizationZoneWidget;
 
 namespace Ui {
@@ -15,14 +18,19 @@ class VisualizationTabWidget : public QWidget, public IVisualizationWidget {
     Q_OBJECT
 
 public:
-    explicit VisualizationTabWidget(QWidget *parent = 0);
+    explicit VisualizationTabWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationTabWidget();
 
     /// Add a zone widget
     void addZone(VisualizationZoneWidget *zoneWidget);
 
-    /// Create a zone using a Variable
-    VisualizationZoneWidget *createZone();
+    /**
+     * Creates a zone using a variable. The variable will be displayed in a new graph of the new
+     * zone.
+     * @param variable the variable for which to create the zone
+     * @return the pointer to the created zone
+     */
+    VisualizationZoneWidget *createZone(std::shared_ptr<Variable> variable);
 
     /// Remove a zone
     void removeZone(VisualizationZoneWidget *zone);
@@ -34,6 +42,9 @@ public:
 
 private:
     Ui::VisualizationTabWidget *ui;
+
+    class VisualizationTabWidgetPrivate;
+    spimpl::unique_impl_ptr<VisualizationTabWidgetPrivate> impl;
 };
 
 #endif // SCIQLOP_VISUALIZATIONTABWIDGET_H

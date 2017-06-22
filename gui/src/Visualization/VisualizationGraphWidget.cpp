@@ -22,12 +22,16 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     std::unordered_map<std::shared_ptr<Variable>, QCPAbstractPlottable *> m_VariableToPlotMap;
 };
 
-VisualizationGraphWidget::VisualizationGraphWidget(QWidget *parent)
+VisualizationGraphWidget::VisualizationGraphWidget(const QString name, QWidget *parent)
         : QWidget{parent},
           ui{new Ui::VisualizationGraphWidget},
           impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>()}
 {
     ui->setupUi(this);
+
+    // qcpplot title
+    ui->widget->plotLayout()->insertRow(0);
+    ui->widget->plotLayout()->addElement(0, 0, new QCPTextElement{ui->widget, name});
 
     // Set qcpplot properties :
     // - Drag (on x-axis) and zoom are enabled
@@ -65,7 +69,12 @@ void VisualizationGraphWidget::close()
 
 QString VisualizationGraphWidget::name() const
 {
-    return QStringLiteral("MainView");
+    if (auto title = dynamic_cast<QCPTextElement *>(ui->widget->plotLayout()->elementAt(0))) {
+        return title->text();
+    }
+    else {
+        return QString{};
+    }
 }
 
 void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
