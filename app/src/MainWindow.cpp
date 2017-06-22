@@ -26,6 +26,7 @@
 #include <DataSource/DataSourceWidget.h>
 #include <SidePane/SqpSidePane.h>
 #include <SqpApplication.h>
+#include <Time/TimeController.h>
 #include <TimeWidget/TimeWidget.h>
 #include <Variable/Variable.h>
 #include <Visualization/VisualizationController.h>
@@ -168,12 +169,20 @@ MainWindow::MainWindow(QWidget *parent)
     this->menuBar()->addAction(tr("File"));
     auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
 
-    mainToolBar->addWidget(new TimeWidget{});
+    auto timeWidget = new TimeWidget{};
+    mainToolBar->addWidget(timeWidget);
 
     // Widgets / controllers connections
+
+    // DataSource
     connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem *)),
             m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem *)));
 
+    // Time
+    connect(timeWidget, SIGNAL(timeUpdated(SqpDateTime)), &sqpApp->timeController(),
+            SLOT(onTimeToUpdate(SqpDateTime)));
+
+    // Variable
     qRegisterMetaType<std::shared_ptr<Variable> >();
     connect(&sqpApp->visualizationController(), SIGNAL(variableCreated(std::shared_ptr<Variable>)),
             m_Ui->view, SLOT(displayVariable(std::shared_ptr<Variable>)));

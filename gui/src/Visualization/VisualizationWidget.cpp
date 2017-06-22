@@ -32,8 +32,9 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     };
 
     auto addTabView = [this, enableMinimumCornerWidgetSize]() {
-        auto index = ui->tabWidget->addTab(new VisualizationTabWidget(ui->tabWidget),
-                                           QString("View %1").arg(ui->tabWidget->count() + 1));
+        auto widget = new VisualizationTabWidget{QString{"View %1"}.arg(ui->tabWidget->count() + 1),
+                                                 ui->tabWidget};
+        auto index = ui->tabWidget->addTab(widget, widget->name());
         if (ui->tabWidget->count() > 0) {
             enableMinimumCornerWidgetSize(false);
         }
@@ -54,6 +55,9 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
 
     connect(addTabViewButton, &QToolButton::clicked, addTabView);
     connect(ui->tabWidget, &QTabWidget::tabCloseRequested, removeTabView);
+
+    // Adds default tab
+    addTabView();
 }
 
 VisualizationWidget::~VisualizationWidget()
@@ -96,16 +100,7 @@ QString VisualizationWidget::name() const
 void VisualizationWidget::displayVariable(std::shared_ptr<Variable> variable) noexcept
 {
     if (auto currentTab = dynamic_cast<VisualizationTabWidget *>(ui->tabWidget->currentWidget())) {
-        if (auto newZone = currentTab->createZone()) {
-            if (auto newGraph = newZone->createGraph()) {
-                newGraph->addVariable(variable);
-            }
-            else {
-                qCCritical(LOG_VisualizationWidget())
-                    << tr("Can't display the variable : can't create the graph");
-            }
-        }
-        else {
+        if (!currentTab->createZone(variable)) {
             qCCritical(LOG_VisualizationWidget())
                 << tr("Can't display the variable : can't create a new zone in the current tab");
         }

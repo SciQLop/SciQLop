@@ -17,25 +17,12 @@
    <item>
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>-1</number>
      </property>
-     <widget class="VisualizationTabWidget" name="firstView">
-      <attribute name="title">
-       <string>View 1</string>
-      </attribute>
-     </widget>
     </widget>
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>VisualizationTabWidget</class>
-   <extends>QWidget</extends>
-   <header location="global">Visualization/VisualizationTabWidget.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

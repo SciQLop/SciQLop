@@ -3,6 +3,8 @@
 
 #include <QWidget>
 
+#include <Data/SqpDateTime.h>
+
 namespace Ui {
 class TimeWidget;
 } // Ui
@@ -13,6 +15,15 @@ class TimeWidget : public QWidget {
 public:
     explicit TimeWidget(QWidget *parent = 0);
     virtual ~TimeWidget();
+
+signals:
+    /// Signal emitted when the time parameters has beed updated
+    void timeUpdated(SqpDateTime time);
+
+public slots:
+    /// slot called when time parameters update has ben requested
+    void onTimeUpdateRequested();
+
 
 private:
     Ui::TimeWidget *ui;

@@ -3,10 +3,30 @@
 
 #include "Visualization/VisualizationGraphWidget.h"
 
-VisualizationZoneWidget::VisualizationZoneWidget(QWidget *parent)
+namespace {
+
+/// Generates a default name for a new graph, according to the number of graphs already displayed in
+/// the zone
+QString defaultGraphName(const QLayout &layout)
+{
+    auto count = 0;
+    for (auto i = 0; i < layout.count(); ++i) {
+        if (dynamic_cast<VisualizationGraphWidget *>(layout.itemAt(i)->widget())) {
+            count++;
+        }
+    }
+
+    return QObject::tr("Graph %1").arg(count + 1);
+}
+
+} // namespace
+
+VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *parent)
         : QWidget{parent}, ui{new Ui::VisualizationZoneWidget}
 {
     ui->setupUi(this);
+
+    ui->zoneNameLabel->setText(name);
 }
 
 VisualizationZoneWidget::~VisualizationZoneWidget()
@@ -19,10 +39,13 @@ void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)
     ui->visualizationZoneFrame->layout()->addWidget(graphWidget);
 }
 
-VisualizationGraphWidget *VisualizationZoneWidget::createGraph()
+VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<Variable> variable)
 {
-    auto graphWidget = new VisualizationGraphWidget{this};
+    auto graphWidget = new VisualizationGraphWidget{
+        defaultGraphName(*ui->visualizationZoneFrame->layout()), this};
     this->addGraph(graphWidget);
+
+    graphWidget->addVariable(variable);
 
     return graphWidget;
 }
@@ -44,5 +67,5 @@ void VisualizationZoneWidget::close()
 
 QString VisualizationZoneWidget::name() const
 {
-    return QStringLiteral("MainView");
+    return ui->zoneNameLabel->text();
 }

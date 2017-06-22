@@ -3,26 +3,31 @@
 
 #include "Visualization/IVisualizationWidget.h"
 
-class VisualizationGraphWidget;
-
 #include <QWidget>
 
 namespace Ui {
 class VisualizationZoneWidget;
 } // Ui
 
+class Variable;
+class VisualizationGraphWidget;
+
 class VisualizationZoneWidget : public QWidget, public IVisualizationWidget {
     Q_OBJECT
 
 public:
-    explicit VisualizationZoneWidget(QWidget *parent = 0);
+    explicit VisualizationZoneWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationZoneWidget();
 
     /// Add a graph widget
     void addGraph(VisualizationGraphWidget *graphWidget);
 
-    /// Create a graph using a Variable
-    VisualizationGraphWidget *createGraph();
+    /**
+     * Creates a graph using a variable. The variable will be displayed in the new graph.
+     * @param variable the variable for which to create the graph
+     * @return the pointer to the created graph
+     */
+    VisualizationGraphWidget *createGraph(std::shared_ptr<Variable> variable);
 
     /// Remove a graph
     void removeGraph(VisualizationGraphWidget *graph);
