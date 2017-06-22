@@ -31,6 +31,23 @@ struct MenuBuilder {
     }
 
     /**
+     * Adds action to the current menu
+     * @param actionName the name of the action
+     * @param actionFunction the function that will be executed when the action is triggered
+     */
+    template <typename ActionFun>
+    void addAction(const QString &actionName, ActionFun actionFunction)
+    {
+        if (auto currMenu = currentMenu()) {
+            currMenu->addAction(actionName, actionFunction);
+        }
+        else {
+            qCCritical(LOG_GenerateVariableMenuOperation())
+                << QObject::tr("No current menu to attach the action");
+        }
+    }
+
+    /**
      * Adds a new menu to the current menu
      * @param name the name of the menu
      */
@@ -79,6 +96,15 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     {
         // Closes the menu associated to the node
         m_MenuBuilder.closeMenu();
+    }
+
+    template <typename ActionFun>
+    void visitLeaf(const IVisualizationWidget &container, const QString &actionName,
+                   ActionFun actionFunction)
+    {
+        if (m_Variable && container.canDrop(*m_Variable)) {
+            m_MenuBuilder.addAction(actionName, actionFunction);
+        }
     }
 
     std::shared_ptr<Variable> m_Variable;
@@ -133,5 +159,9 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidg
 
 void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
 {
-    /// @todo ALX
+    if (graphWidget) {
+        impl->visitLeaf(
+            *graphWidget, QObject::tr("Open in %1").arg(graphWidget->name()),
+            [ var = impl->m_Variable, graphWidget ]() { graphWidget->addVariable(var); });
+    }
 }
