@@ -55,6 +55,9 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
 
     connect(addTabViewButton, &QToolButton::clicked, addTabView);
     connect(ui->tabWidget, &QTabWidget::tabCloseRequested, removeTabView);
+
+    // Adds default tab
+    addTabView();
 }
 
 VisualizationWidget::~VisualizationWidget()
