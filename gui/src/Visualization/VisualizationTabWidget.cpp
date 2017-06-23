@@ -71,6 +71,7 @@ void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
         // Apply visitor to zone children
         for (auto i = 0; i < layout()->count(); ++i) {
             if (auto item = layout()->itemAt(i)) {
+                // Widgets different from zones are not visited (no action)
                 if (auto visualizationZoneWidget
                     = dynamic_cast<VisualizationZoneWidget *>(item->widget())) {
                     visualizationZoneWidget->accept(visitor);

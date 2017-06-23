@@ -66,6 +66,7 @@ void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
         auto layout = ui->visualizationZoneFrame->layout();
         for (auto i = 0; i < layout->count(); ++i) {
             if (auto item = layout->itemAt(i)) {
+                // Widgets different from graphs are not visited (no action)
                 if (auto visualizationGraphWidget
                     = dynamic_cast<VisualizationGraphWidget *>(item->widget())) {
                     visualizationGraphWidget->accept(visitor);
