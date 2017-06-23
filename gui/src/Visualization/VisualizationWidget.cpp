@@ -97,6 +97,9 @@ void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
 
         visitor->visitLeave(this);
     }
+    else {
+        qCCritical(LOG_VisualizationWidget()) << tr("Can't visit widget : the visitor is null");
+    }
 }
 
 bool VisualizationWidget::canDrop(const Variable &variable) const

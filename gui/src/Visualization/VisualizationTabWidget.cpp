@@ -4,6 +4,8 @@
 
 #include "Visualization/VisualizationZoneWidget.h"
 
+Q_LOGGING_CATEGORY(LOG_VisualizationTabWidget, "VisualizationTabWidget")
+
 namespace {
 
 /// Generates a default name for a new zone, according to the number of zones already displayed in
@@ -77,6 +79,9 @@ void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
         }
 
         visitor->visitLeave(this);
+    }
+    else {
+        qCCritical(LOG_VisualizationTabWidget()) << tr("Can't visit widget : the visitor is null");
     }
 }
 

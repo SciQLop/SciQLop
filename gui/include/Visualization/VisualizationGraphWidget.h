@@ -3,11 +3,14 @@
 
 #include "Visualization/IVisualizationWidget.h"
 
+#include <QLoggingCategory>
 #include <QWidget>
 
 #include <memory>
 
 #include <Common/spimpl.h>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationGraphWidget)
 
 class Variable;
 

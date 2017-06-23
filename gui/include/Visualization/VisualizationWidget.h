@@ -6,10 +6,10 @@
 #include <QLoggingCategory>
 #include <QWidget>
 
+Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationWidget)
+
 class Variable;
 class VisualizationTabWidget;
-
-Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationWidget)
 
 namespace Ui {
 class VisualizationWidget;

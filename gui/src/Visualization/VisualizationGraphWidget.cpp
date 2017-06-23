@@ -7,6 +7,8 @@
 
 #include <unordered_map>
 
+Q_LOGGING_CATEGORY(LOG_VisualizationGraphWidget, "VisualizationGraphWidget")
+
 namespace {
 
 /// Key pressed to enable zoom on horizontal axis
@@ -61,6 +63,10 @@ void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {
         visitor->visit(this);
+    }
+    else {
+        qCCritical(LOG_VisualizationGraphWidget())
+            << tr("Can't visit widget : the visitor is null");
     }
 }
 

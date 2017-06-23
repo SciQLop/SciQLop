@@ -4,6 +4,8 @@
 
 #include "Visualization/VisualizationGraphWidget.h"
 
+Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
+
 namespace {
 
 /// Generates a default name for a new graph, according to the number of graphs already displayed in
@@ -72,6 +74,9 @@ void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
         }
 
         visitor->visitLeave(this);
+    }
+    else {
+        qCCritical(LOG_VisualizationZoneWidget()) << tr("Can't visit widget : the visitor is null");
     }
 }
 
