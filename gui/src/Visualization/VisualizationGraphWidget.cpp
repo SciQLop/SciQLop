@@ -67,8 +67,7 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
         impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
     }
 
-    connect(variable.get(), &Variable::dataCacheUpdated, this,
-            &VisualizationGraphWidget::onDataCacheVariableUpdated);
+    connect(variable.get(), SIGNAL(dataCacheUpdated()), this, SLOT(onDataCacheVariableUpdated()));
 }
 
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)

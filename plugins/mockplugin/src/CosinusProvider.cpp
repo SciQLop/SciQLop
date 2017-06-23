@@ -45,7 +45,7 @@ void CosinusProvider::requestDataLoading(const QVector<SqpDateTime> &dateTimeLis
 }
 
 
-std::shared_ptr<IDataSeries> retrieveDataSeries(const SqpDateTime &dateTime)
+std::shared_ptr<IDataSeries> CosinusProvider::retrieveDataSeries(const SqpDateTime &dateTime)
 {
 
     // Gets the timerange from the parameters
