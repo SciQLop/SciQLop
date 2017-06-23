@@ -35,7 +35,7 @@ VariableModel::createVariable(const QString &name, const SqpDateTime &dateTime,
     /// @todo For the moment, the other data of the variable is initialized with default values
     auto variable = std::make_shared<Variable>(name, QStringLiteral("unit"),
                                                QStringLiteral("mission"), dateTime);
-    variable->addDataSeries(std::move(defaultDataSeries));
+    variable->setDataSeries(std::move(defaultDataSeries));
 
     impl->m_Variables.push_back(variable);
 

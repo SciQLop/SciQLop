@@ -34,6 +34,9 @@ public:
     void close() override;
     QString name() const override;
 
+    void updateDisplay(std::shared_ptr<Variable> variable);
+
+
 private:
     Ui::VisualizationGraphWidget *ui;
 
@@ -46,6 +49,8 @@ private slots:
 
     /// Slot called when a mouse wheel was made, to perform some processing before the zoom is done
     void onMouseWheel(QWheelEvent *event) noexcept;
+
+    void onDataCacheVariableUpdated();
 };
 
 #endif // SCIQLOP_VISUALIZATIONGRAPHWIDGET_H

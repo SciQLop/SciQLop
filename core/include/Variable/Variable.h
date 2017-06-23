@@ -17,7 +17,10 @@ class QString;
 /**
  * @brief The Variable class represents a variable in SciQlop.
  */
-class Variable {
+class Variable : public QObject {
+
+    Q_OBJECT
+
 public:
     explicit Variable(const QString &name, const QString &unit, const QString &mission,
                       const SqpDateTime &dateTime);
@@ -25,14 +28,20 @@ public:
     QString name() const noexcept;
     QString mission() const noexcept;
     QString unit() const noexcept;
-
-    void addDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept;
+    SqpDateTime dateTime() const noexcept;
 
     /// @return the data of the variable, nullptr if there is no data
     IDataSeries *dataSeries() const noexcept;
 
+    bool contains(SqpDateTime dateTime);
+    void setDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept;
+
 public slots:
-    void onXRangeChanged(SqpDateTime dateTime);
+    void onAddDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
+
+signals:
+    void dataCacheUpdated();
+
 
 private:
     class VariablePrivate;

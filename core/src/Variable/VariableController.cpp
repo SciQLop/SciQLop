@@ -1,3 +1,4 @@
+#include <Variable/Variable.h>
 #include <Variable/VariableCacheController.h>
 #include <Variable/VariableController.h>
 #include <Variable/VariableModel.h>
@@ -8,6 +9,7 @@
 #include <Time/TimeController.h>
 
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QMutex>
 #include <QThread>
 
@@ -44,6 +46,9 @@ struct VariableController::VariableControllerPrivate {
 
     TimeController *m_TimeController{nullptr};
     std::unique_ptr<VariableCacheController> m_VariableCacheController;
+
+    std::unordered_map<std::shared_ptr<Variable>, std::shared_ptr<IDataProvider> >
+        m_VariableToProviderMap;
 };
 
 VariableController::VariableController(QObject *parent)
@@ -73,13 +78,6 @@ void VariableController::setTimeController(TimeController *timeController) noexc
 void VariableController::createVariable(const QString &name,
                                         std::shared_ptr<IDataProvider> provider) noexcept
 {
-    // TORM
-    //    auto dateTime = SqpDateTime{
-    //        // Remarks : we don't use toSecsSinceEpoch() here (method is for Qt 5.8 or above)
-    //        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 00}}.toMSecsSinceEpoch()
-    //                            / 1000.),
-    //        static_cast<double>(QDateTime{QDate{2017, 01, 01}, QTime{12, 01}}.toMSecsSinceEpoch())
-    //            / 1000.};
 
     if (!impl->m_TimeController) {
         qCCritical(LOG_VariableController())
@@ -97,6 +95,14 @@ void VariableController::createVariable(const QString &name,
     if (auto newVariable = impl->m_VariableModel->createVariable(
             name, dateTime, generateDefaultDataSeries(*provider, dateTime))) {
 
+        // store the provider
+        impl->m_VariableToProviderMap[newVariable] = provider;
+        qRegisterMetaType<std::shared_ptr<IDataSeries> >();
+        qRegisterMetaType<SqpDateTime>();
+        connect(provider.get(), &IDataProvider::dataProvided, newVariable.get(),
+                &Variable::onAddDataSeries);
+
+
         // store in cache
         impl->m_VariableCacheController->addDateTime(newVariable, dateTime);
 
@@ -104,6 +110,41 @@ void VariableController::createVariable(const QString &name,
         emit variableCreated(newVariable);
     }
 }
+
+
+void VariableController::requestDataLoading(std::shared_ptr<Variable> variable,
+                                            const SqpDateTime &dateTime)
+{
+    // we want to load data of the variable for the dateTime.
+    // First we check if the cache contains some of them.
+    // For the other, we ask the provider to give them.
+    if (variable) {
+
+        QElapsedTimer timer;
+        timer.start();
+        qCInfo(LOG_VariableController()) << "The slow s0 operation took" << timer.elapsed()
+                                         << "milliseconds";
+        auto dateTimeListNotInCache
+            = impl->m_VariableCacheController->provideNotInCacheDateTimeList(variable, dateTime);
+        qCInfo(LOG_VariableController()) << "The slow s1 operation took" << timer.elapsed()
+                                         << "milliseconds";
+
+        // Ask the provider for each data on the dateTimeListNotInCache
+        impl->m_VariableToProviderMap.at(variable)->requestDataLoading(dateTimeListNotInCache);
+
+        qCInfo(LOG_VariableController()) << "The slow s2 operation took" << timer.elapsed()
+                                         << "milliseconds";
+
+        // store in cache
+        impl->m_VariableCacheController->addDateTime(variable, dateTime);
+        qCInfo(LOG_VariableController()) << "The slow s3 operation took" << timer.elapsed()
+                                         << "milliseconds";
+    }
+    else {
+        qCCritical(LOG_VariableController()) << tr("Impossible to load data of a variable null");
+    }
+}
+
 
 void VariableController::initialize()
 {

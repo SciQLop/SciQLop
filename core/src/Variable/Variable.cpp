@@ -45,12 +45,25 @@ QString Variable::unit() const noexcept
     return impl->m_Unit;
 }
 
-void Variable::addDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept
+SqpDateTime Variable::dateTime() const noexcept
+{
+    return impl->m_DateTime;
+}
+
+void Variable::setDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept
 {
     if (!impl->m_DataSeries) {
         impl->m_DataSeries = std::move(dataSeries);
     }
-    /// @todo : else, merge the two data series (if possible)
+}
+
+void Variable::onAddDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
+{
+    if (impl->m_DataSeries) {
+        impl->m_DataSeries->merge(dataSeries.get());
+
+        emit dataCacheUpdated();
+    }
 }
 
 IDataSeries *Variable::dataSeries() const noexcept
@@ -58,10 +71,8 @@ IDataSeries *Variable::dataSeries() const noexcept
     return impl->m_DataSeries.get();
 }
 
-void Variable::onXRangeChanged(SqpDateTime dateTime)
+bool Variable::contains(SqpDateTime dateTime)
 {
-    qCInfo(LOG_Variable()) << "onXRangeChanged detected";
-
     if (!impl->m_DateTime.contains(dateTime)) {
         // The current variable dateTime isn't enough to display the dateTime requested.
         // We have to update it to the new dateTime requested.
@@ -70,5 +81,9 @@ void Variable::onXRangeChanged(SqpDateTime dateTime)
         qCInfo(LOG_Variable()) << "NEW DATE NEEDED";
 
         impl->m_DateTime = dateTime;
+
+        return false;
     }
+
+    return true;
 }

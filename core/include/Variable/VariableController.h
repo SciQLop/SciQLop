@@ -1,10 +1,13 @@
 #ifndef SCIQLOP_VARIABLECONTROLLER_H
 #define SCIQLOP_VARIABLECONTROLLER_H
 
+#include <Data/SqpDateTime.h>
+
 #include <QLoggingCategory>
 #include <QObject>
 
 #include <Common/spimpl.h>
+
 
 class IDataProvider;
 class TimeController;
@@ -25,6 +28,10 @@ public:
     VariableModel *variableModel() noexcept;
 
     void setTimeController(TimeController *timeController) noexcept;
+
+
+    /// Request the data loading of the variable whithin dateTime
+    void requestDataLoading(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);
 
 signals:
     /// Signal emitted when a variable has been created
