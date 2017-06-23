@@ -12,6 +12,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationGraphWidget)
 
+class QCPRange;
 class Variable;
 
 namespace Ui {
@@ -40,6 +41,9 @@ private:
     spimpl::unique_impl_ptr<VisualizationGraphWidgetPrivate> impl;
 
 private slots:
+
+    void onRangeChanged(const QCPRange &t1, const QCPRange &t2);
+
     /// Slot called when a mouse wheel was made, to perform some processing before the zoom is done
     void onMouseWheel(QWheelEvent *event) noexcept;
 };

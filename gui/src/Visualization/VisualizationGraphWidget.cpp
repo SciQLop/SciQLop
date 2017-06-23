@@ -4,7 +4,6 @@
 #include "ui_VisualizationGraphWidget.h"
 
 #include <Variable/Variable.h>
-
 #include <unordered_map>
 
 Q_LOGGING_CATEGORY(LOG_VisualizationGraphWidget, "VisualizationGraphWidget")
@@ -42,7 +41,11 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
+    connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
+                                   &QCPAxis::rangeChanged),
+            this, &VisualizationGraphWidget::onRangeChanged);
 }
+
 
 VisualizationGraphWidget::~VisualizationGraphWidget()
 {
@@ -90,6 +93,14 @@ QString VisualizationGraphWidget::name() const
     }
     else {
         return QString{};
+    }
+}
+
+void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
+{
+    for (auto it = impl->m_VariableToPlotMap.cbegin(); it != impl->m_VariableToPlotMap.cend();
+         ++it) {
+        it->first->onXRangeChanged(SqpDateTime{t2.lower, t2.upper});
     }
 }
 
