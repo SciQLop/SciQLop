@@ -93,7 +93,7 @@ struct MenuBuilder {
         }
     }
 
-    /// Gets the current menu (i.e. the top menu of the stack)
+    /// @return the current menu (i.e. the top menu of the stack), nullptr if there is no menu
     QMenu *currentMenu() const { return !m_Menus.isEmpty() ? m_Menus.top() : nullptr; }
 
     /// Stack of all menus currently opened
@@ -163,6 +163,10 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationTabWidget *tabWidget
     if (tabWidget) {
         impl->visitNodeEnter(*tabWidget);
     }
+    else {
+        qCCritical(LOG_GenerateVariableMenuOperation(),
+                   "Can't visit enter VisualizationTabWidget : the widget is null");
+    }
 }
 
 void GenerateVariableMenuOperation::visitLeave(VisualizationTabWidget *tabWidget)
@@ -172,12 +176,20 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationTabWidget *tabWidget
             *tabWidget, QObject::tr("Open in a new zone"),
             [ var = impl->m_Variable, tabWidget ]() { tabWidget->createZone(var); });
     }
+    else {
+        qCCritical(LOG_GenerateVariableMenuOperation(),
+                   "Can't visit leave VisualizationTabWidget : the widget is null");
+    }
 }
 
 void GenerateVariableMenuOperation::visitEnter(VisualizationZoneWidget *zoneWidget)
 {
     if (zoneWidget) {
         impl->visitNodeEnter(*zoneWidget);
+    }
+    else {
+        qCCritical(LOG_GenerateVariableMenuOperation(),
+                   "Can't visit enter VisualizationZoneWidget : the widget is null");
     }
 }
 
@@ -188,6 +200,10 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidg
             *zoneWidget, QObject::tr("Open in a new graph"),
             [ var = impl->m_Variable, zoneWidget ]() { zoneWidget->createGraph(var); });
     }
+    else {
+        qCCritical(LOG_GenerateVariableMenuOperation(),
+                   "Can't visit leave VisualizationZoneWidget : the widget is null");
+    }
 }
 
 void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
@@ -196,5 +212,9 @@ void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
         impl->visitLeaf(
             *graphWidget, QObject::tr("Open in %1").arg(graphWidget->name()),
             [ var = impl->m_Variable, graphWidget ]() { graphWidget->addVariable(var); });
+    }
+    else {
+        qCCritical(LOG_GenerateVariableMenuOperation(),
+                   "Can't visit VisualizationGraphWidget : the widget is null");
     }
 }
