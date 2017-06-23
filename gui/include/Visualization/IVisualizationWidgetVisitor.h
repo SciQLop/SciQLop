@@ -15,9 +15,12 @@ class IVisualizationWidgetVisitor {
 public:
     virtual ~IVisualizationWidgetVisitor() = default;
 
-    virtual void visit(VisualizationWidget *widget) = 0;
-    virtual void visit(VisualizationTabWidget *tabWidget) = 0;
-    virtual void visit(VisualizationZoneWidget *zoneWidget) = 0;
+    virtual void visitEnter(VisualizationWidget *widget) = 0;
+    virtual void visitLeave(VisualizationWidget *widget) = 0;
+    virtual void visitEnter(VisualizationTabWidget *tabWidget) = 0;
+    virtual void visitLeave(VisualizationTabWidget *tabWidget) = 0;
+    virtual void visitEnter(VisualizationZoneWidget *zoneWidget) = 0;
+    virtual void visitLeave(VisualizationZoneWidget *zoneWidget) = 0;
     virtual void visit(VisualizationGraphWidget *graphWidget) = 0;
 };
 
