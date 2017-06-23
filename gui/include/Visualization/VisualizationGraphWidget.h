@@ -28,7 +28,7 @@ public:
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
     void close() override;
-    QString name() const;
+    QString name() const override;
 
 private:
     Ui::VisualizationGraphWidget *ui;
