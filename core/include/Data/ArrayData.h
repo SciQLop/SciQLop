@@ -49,6 +49,32 @@ public:
         return m_Data.at(0);
     }
 
+    /**
+     * @return the data as a vector
+     * @remarks this method is only available for a unidimensional ArrayData
+     */
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    const QVector<double> &data(double tStart, double tEnd) const noexcept
+    {
+        return m_Data.at(tStart);
+    }
+
+    // TODO Comment
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    void merge(ArrayData<1> *arrayData)
+    {
+        if (!m_Data.empty()) {
+            m_Data[0] += arrayData->data();
+        }
+    }
+
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    int size()
+    {
+        return m_Data[0].size();
+    }
+
+
 private:
     QVector<QVector<double> > m_Data;
 };
