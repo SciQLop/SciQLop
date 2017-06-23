@@ -1,4 +1,5 @@
 #include "Visualization/operations/GenerateVariableMenuOperation.h"
+#include "Visualization/operations/MenuBuilder.h"
 
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/VisualizationTabWidget.h"
@@ -10,97 +11,6 @@
 #include <QStack>
 
 Q_LOGGING_CATEGORY(LOG_GenerateVariableMenuOperation, "GenerateVariableMenuOperation")
-
-namespace {
-
-/// Helper assigned to build the hierarchical menu associated with a variable
-struct MenuBuilder {
-    /**
-     * Ctor
-     * @param menu the parent menu
-     */
-    explicit MenuBuilder(QMenu *menu)
-    {
-        if (menu) {
-            m_Menus.push(menu);
-        }
-        else {
-            qCCritical(LOG_GenerateVariableMenuOperation())
-                << QObject::tr("No parent menu has been defined");
-        }
-    }
-
-    /**
-     * Adds action to the current menu
-     * @param actionName the name of the action
-     * @param actionFunction the function that will be executed when the action is triggered
-     */
-    template <typename ActionFun>
-    void addAction(const QString &actionName, ActionFun actionFunction)
-    {
-        if (auto currMenu = currentMenu()) {
-            currMenu->addAction(actionName, actionFunction);
-        }
-        else {
-            qCCritical(LOG_GenerateVariableMenuOperation())
-                << QObject::tr("No current menu to attach the action");
-        }
-    }
-
-    /**
-     * Adds a new menu to the current menu
-     * @param name the name of the menu
-     */
-    void addMenu(const QString &name)
-    {
-        if (auto currMenu = currentMenu()) {
-            m_Menus.push(currMenu->addMenu(name));
-        }
-        else {
-            qCCritical(LOG_GenerateVariableMenuOperation())
-                << QObject::tr("No current menu to attach the new menu");
-        }
-    }
-
-    /// Adds a separator to the current menu. The separator is added only if the menu already
-    /// contains entries
-    void addSeparator()
-    {
-        if (auto currMenu = currentMenu()) {
-            if (!currMenu->isEmpty()) {
-                currMenu->addSeparator();
-            }
-        }
-        else {
-            qCCritical(LOG_GenerateVariableMenuOperation())
-                << QObject::tr("No current menu to attach the separator");
-        }
-    }
-
-    /// Closes the current menu
-    void closeMenu()
-    {
-        if (!m_Menus.isEmpty()) {
-            if (auto closedMenu = m_Menus.pop()) {
-                // Purge menu : if the closed menu has no entries, we remove it from its parent (the
-                // current menu)
-                if (auto currMenu = currentMenu()) {
-                    if (closedMenu->isEmpty()) {
-                        currMenu->removeAction(closedMenu->menuAction());
-                    }
-                }
-            }
-        }
-    }
-
-    /// @return the current menu (i.e. the top menu of the stack), nullptr if there is no menu
-    QMenu *currentMenu() const { return !m_Menus.isEmpty() ? m_Menus.top() : nullptr; }
-
-    /// Stack of all menus currently opened
-    QStack<QMenu *> m_Menus{};
-};
-
-} // namespace
 
 struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     explicit GenerateVariableMenuOperationPrivate(QMenu *menu, std::shared_ptr<Variable> variable)
