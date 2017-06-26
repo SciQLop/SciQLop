@@ -49,6 +49,11 @@ DataSourceWidget::DataSourceWidget(QWidget *parent) : QWidget{parent}, ui{new Ui
             &DataSourceWidget::onTreeMenuRequested);
 }
 
+DataSourceWidget::~DataSourceWidget() noexcept
+{
+    delete ui;
+}
+
 void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
 {
     // Creates the item associated to the source and adds it to the tree widget. The tree widget

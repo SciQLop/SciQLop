@@ -5,6 +5,8 @@
 
 #include <QObject>
 
+#include <Data/SqpDateTime.h>
+
 class DataProviderParameters;
 class IDataSeries;
 
@@ -16,14 +18,21 @@ class IDataSeries;
  *
  * @sa IDataSeries
  */
-class IDataProvider {
+class IDataProvider : public QObject {
+
+    Q_OBJECT
 public:
     virtual ~IDataProvider() noexcept = default;
 
     virtual std::unique_ptr<IDataSeries>
     retrieveData(const DataProviderParameters &parameters) const = 0;
-};
 
+
+    virtual void requestDataLoading(const QVector<SqpDateTime> &dateTimeList) = 0;
+
+signals:
+    void dataProvided(std::shared_ptr<IDataSeries> dateSerie, SqpDateTime dateTime);
+};
 // Required for using shared_ptr in signals/slots
 Q_DECLARE_METATYPE(std::shared_ptr<IDataProvider>)
 

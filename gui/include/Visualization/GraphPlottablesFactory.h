@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_GRAPHPLOTTABLESFACTORY_H
 #define SCIQLOP_GRAPHPLOTTABLESFACTORY_H
 
+#include <Data/SqpDateTime.h>
+
 #include <QLoggingCategory>
 #include <QVector>
 
@@ -8,6 +10,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_GraphPlottablesFactory)
 
+class IDataSeries;
 class QCPAbstractPlottable;
 class QCustomPlot;
 class Variable;
@@ -27,6 +30,9 @@ struct GraphPlottablesFactory {
      */
     static QVector<QCPAbstractPlottable *> create(std::shared_ptr<Variable> variable,
                                                   QCustomPlot &plot) noexcept;
+
+    static void updateData(QVector<QCPAbstractPlottable *> plotableVect, IDataSeries *dataSeries,
+                           const SqpDateTime &dateTime);
 };
 
 #endif // SCIQLOP_GRAPHPLOTTABLESFACTORY_H
