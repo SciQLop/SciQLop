@@ -14,3 +14,6 @@
 # Ignore false positive relative to 'final' keyword
 .*IPSIS_S04_VARIABLE.*found: final
 .*IPSIS_S06.*found: final
+
+# Ignore false positive relative to unnamed namespace
+.*IPSIS_F13.*

@@ -89,6 +89,7 @@ void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
 
         // Apply visitor for tab children
         for (auto i = 0; i < ui->tabWidget->count(); ++i) {
+            // Widgets different from tabs are not visited (no action)
             if (auto visualizationTabWidget
                 = dynamic_cast<VisualizationTabWidget *>(ui->tabWidget->widget(i))) {
                 visualizationTabWidget->accept(visitor);
@@ -96,6 +97,9 @@ void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
         }
 
         visitor->visitLeave(this);
+    }
+    else {
+        qCCritical(LOG_VisualizationWidget()) << tr("Can't visit widget : the visitor is null");
     }
 }
 

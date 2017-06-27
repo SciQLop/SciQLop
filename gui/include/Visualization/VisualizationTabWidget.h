@@ -5,7 +5,10 @@
 
 #include <Common/spimpl.h>
 
+#include <QLoggingCategory>
 #include <QWidget>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationTabWidget)
 
 class Variable;
 class VisualizationZoneWidget;

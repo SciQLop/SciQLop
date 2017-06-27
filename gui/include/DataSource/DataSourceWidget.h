@@ -18,6 +18,7 @@ class DataSourceWidget : public QWidget {
 
 public:
     explicit DataSourceWidget(QWidget *parent = 0);
+    virtual ~DataSourceWidget() noexcept;
 
 public slots:
     /**

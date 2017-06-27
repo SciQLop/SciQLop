@@ -4,6 +4,8 @@
 
 #include "Visualization/VisualizationGraphWidget.h"
 
+Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
+
 namespace {
 
 /// Generates a default name for a new graph, according to the number of graphs already displayed in
@@ -64,6 +66,7 @@ void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
         auto layout = ui->visualizationZoneFrame->layout();
         for (auto i = 0; i < layout->count(); ++i) {
             if (auto item = layout->itemAt(i)) {
+                // Widgets different from graphs are not visited (no action)
                 if (auto visualizationGraphWidget
                     = dynamic_cast<VisualizationGraphWidget *>(item->widget())) {
                     visualizationGraphWidget->accept(visitor);
@@ -72,6 +75,9 @@ void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
         }
 
         visitor->visitLeave(this);
+    }
+    else {
+        qCCritical(LOG_VisualizationZoneWidget()) << tr("Can't visit widget : the visitor is null");
     }
 }
 

@@ -6,10 +6,10 @@
 #include <QLoggingCategory>
 #include <QWidget>
 
+Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationWidget)
+
 class Variable;
 class VisualizationTabWidget;
-
-Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationWidget)
 
 namespace Ui {
 class VisualizationWidget;
@@ -35,7 +35,7 @@ public:
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
     void close() override;
-    QString name() const;
+    QString name() const override;
 
 public slots:
     /**

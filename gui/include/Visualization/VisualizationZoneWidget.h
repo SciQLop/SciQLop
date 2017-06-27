@@ -3,7 +3,10 @@
 
 #include "Visualization/IVisualizationWidget.h"
 
+#include <QLoggingCategory>
 #include <QWidget>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationZoneWidget)
 
 namespace Ui {
 class VisualizationZoneWidget;

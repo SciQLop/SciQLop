@@ -1,10 +1,13 @@
 #ifndef SCIQLOP_VARIABLEMODEL_H
 #define SCIQLOP_VARIABLEMODEL_H
 
-#include <Common/spimpl.h>
+
+#include <Data/SqpDateTime.h>
 
 #include <QAbstractTableModel>
 #include <QLoggingCategory>
+
+#include <Common/spimpl.h>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableModel)
 
@@ -21,11 +24,13 @@ public:
     /**
      * Creates a new variable in the model
      * @param name the name of the new variable
+     * @param dateTime the dateTime of the new variable
      * @param defaultDataSeries the default data of the new variable
      * @return the pointer to the new variable
      */
     std::shared_ptr<Variable>
-    createVariable(const QString &name, std::unique_ptr<IDataSeries> defaultDataSeries) noexcept;
+    createVariable(const QString &name, const SqpDateTime &dateTime,
+                   std::unique_ptr<IDataSeries> defaultDataSeries) noexcept;
 
     // /////////////////////////// //
     // QAbstractTableModel methods //

@@ -4,6 +4,8 @@
 
 #include "Visualization/VisualizationZoneWidget.h"
 
+Q_LOGGING_CATEGORY(LOG_VisualizationTabWidget, "VisualizationTabWidget")
+
 namespace {
 
 /// Generates a default name for a new zone, according to the number of zones already displayed in
@@ -69,6 +71,7 @@ void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
         // Apply visitor to zone children
         for (auto i = 0; i < layout()->count(); ++i) {
             if (auto item = layout()->itemAt(i)) {
+                // Widgets different from zones are not visited (no action)
                 if (auto visualizationZoneWidget
                     = dynamic_cast<VisualizationZoneWidget *>(item->widget())) {
                     visualizationZoneWidget->accept(visitor);
@@ -77,6 +80,9 @@ void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
         }
 
         visitor->visitLeave(this);
+    }
+    else {
+        qCCritical(LOG_VisualizationTabWidget()) << tr("Can't visit widget : the visitor is null");
     }
 }
 

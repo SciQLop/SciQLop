@@ -63,6 +63,7 @@ FUNCTION(ADD_CLANGFORMAT_TARGETS)
         clangformat_incr(i)
     ENDWHILE()
     
+
     # Retrieve source files to format
     IF(recurse)
         FILE(GLOB_RECURSE srcs ${globs})
@@ -81,6 +82,16 @@ FUNCTION(ADD_CLANGFORMAT_TARGETS)
     # Create the directory where the touched files will be saved
     SET(formatDirectory "${CMAKE_CURRENT_BINARY_DIR}/format")
     FILE(MAKE_DIRECTORY ${formatDirectory})
+#    STRING(REPLACE "*.ui" "" srcs ${srcs})
+    FOREACH(item ${globs})
+      STRING(REGEX MATCH ".*\.ui$" item ${item})
+      IF(item)
+        LIST(APPEND UIS ${item})
+      ENDIF(item)
+    ENDFOREACH(item ${globs})
+
+    LIST(REMOVE_ITEM srcs ${UIS})
+    message("format lang: ${srcs}" )
     FOREACH (s ${srcs})
         SET(touchedFile ${formatDirectory}/format_touchedfile_${reportNb})
         IF(addToAll)
