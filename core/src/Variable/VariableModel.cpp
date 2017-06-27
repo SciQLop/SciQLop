@@ -16,17 +16,25 @@ const auto TEND_COLUMN = 2;
 const auto NB_COLUMNS = 3;
 
 // Column properties
+const auto DEFAULT_HEIGHT = 25;
+const auto DEFAULT_WIDTH = 100;
 
 struct ColumnProperties {
-    ColumnProperties(const QString &name = {}) : m_Name{name} {}
+    ColumnProperties(const QString &name = {}, int width = DEFAULT_WIDTH,
+                     int height = DEFAULT_HEIGHT)
+            : m_Name{name}, m_Width{width}, m_Height{height}
+    {
+    }
 
     QString m_Name;
+    int m_Width;
+    int m_Height;
 };
 
 const auto COLUMN_PROPERTIES
     = QHash<int, ColumnProperties>{{NAME_COLUMN, {QObject::tr("Name")}},
-                                   {TSTART_COLUMN, {QObject::tr("tStart")}},
-                                   {TEND_COLUMN, {QObject::tr("tEnd")}}};
+                                   {TSTART_COLUMN, {QObject::tr("tStart"), 180}},
+                                   {TEND_COLUMN, {QObject::tr("tEnd"), 180}}};
 
 /// Format for datetimes
 const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
