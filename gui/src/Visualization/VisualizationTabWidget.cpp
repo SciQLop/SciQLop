@@ -36,6 +36,9 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
           impl{spimpl::make_unique_impl<VisualizationTabWidgetPrivate>(name)}
 {
     ui->setupUi(this);
+
+    // Widget is deleted when closed
+    setAttribute(Qt::WA_DeleteOnClose);
 }
 
 VisualizationTabWidget::~VisualizationTabWidget()

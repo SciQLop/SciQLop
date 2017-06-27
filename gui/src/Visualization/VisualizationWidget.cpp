@@ -48,7 +48,13 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
             enableMinimumCornerWidgetSize(true);
         }
 
+        // Removes widget from tab and closes it
+        auto widget = ui->tabWidget->widget(index);
         ui->tabWidget->removeTab(index);
+        if (widget) {
+            widget->close();
+        }
+
         qCInfo(LOG_VisualizationWidget()) << tr("remove the tab of index %1").arg(index);
 
     };
