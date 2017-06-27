@@ -79,6 +79,17 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
 
 void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
 {
+    // Each component associated to the variable :
+    // - is removed from qcpplot (which deletes it)
+    // - is no longer referenced in the map
+    auto componentsIt = impl->m_VariableToPlotMultiMap.equal_range(variable);
+    for (auto it = componentsIt.first; it != componentsIt.second;) {
+        ui->widget->removePlottable(it->second);
+        it = impl->m_VariableToPlotMultiMap.erase(it);
+    }
+
+    // Updates graph
+    ui->widget->replot();
 }
 
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
