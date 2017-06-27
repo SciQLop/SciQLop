@@ -88,12 +88,6 @@ bool VisualizationGraphWidget::canDrop(const Variable &variable) const
     return true;
 }
 
-void VisualizationGraphWidget::close()
-{
-    // The main view cannot be directly closed.
-    return;
-}
-
 QString VisualizationGraphWidget::name() const
 {
     if (auto title = dynamic_cast<QCPTextElement *>(ui->widget->plotLayout()->elementAt(0))) {

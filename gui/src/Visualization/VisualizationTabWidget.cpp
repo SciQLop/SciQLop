@@ -93,12 +93,6 @@ bool VisualizationTabWidget::canDrop(const Variable &variable) const
     return true;
 }
 
-void VisualizationTabWidget::close()
-{
-    // The main view cannot be directly closed.
-    return;
-}
-
 QString VisualizationTabWidget::name() const
 {
     return impl->m_Name;

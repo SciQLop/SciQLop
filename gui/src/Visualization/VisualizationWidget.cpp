@@ -111,12 +111,6 @@ bool VisualizationWidget::canDrop(const Variable &variable) const
     return false;
 }
 
-void VisualizationWidget::close()
-{
-    // The main view cannot be directly closed.
-    return;
-}
-
 QString VisualizationWidget::name() const
 {
     return QStringLiteral("MainView");

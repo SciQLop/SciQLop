@@ -88,12 +88,6 @@ bool VisualizationZoneWidget::canDrop(const Variable &variable) const
     return true;
 }
 
-void VisualizationZoneWidget::close()
-{
-    // The main view cannot be directly closed.
-    return;
-}
-
 QString VisualizationZoneWidget::name() const
 {
     return ui->zoneNameLabel->text();
