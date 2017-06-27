@@ -53,6 +53,11 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
                                    &QCPAxis::rangeChanged),
             this, &VisualizationGraphWidget::onRangeChanged);
+
+    // Activates menu when right clicking on the graph
+    ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->widget, &QCustomPlot::customContextMenuRequested, this,
+            &VisualizationGraphWidget::onGraphMenuRequested);
 }
 
 
@@ -94,6 +99,16 @@ bool VisualizationGraphWidget::canDrop(const Variable &variable) const
 QString VisualizationGraphWidget::name() const
 {
     return ui->graphNameLabel->text();
+}
+
+void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
+{
+    QMenu graphMenu{};
+
+
+    if (!graphMenu.isEmpty()) {
+        graphMenu.exec(mapToGlobal(pos));
+    }
 }
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)

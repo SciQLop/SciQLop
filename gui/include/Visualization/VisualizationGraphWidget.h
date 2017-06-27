@@ -43,6 +43,8 @@ private:
     spimpl::unique_impl_ptr<VisualizationGraphWidgetPrivate> impl;
 
 private slots:
+    /// Slot called when right clicking on the graph (displays a menu)
+    void onGraphMenuRequested(const QPoint &pos) noexcept;
 
     void onRangeChanged(const QCPRange &t1, const QCPRange &t2);
 
