@@ -4,6 +4,8 @@
 
 #include "Visualization/VisualizationGraphWidget.h"
 
+#include <SqpApplication.h>
+
 Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 
 namespace {
@@ -30,6 +32,11 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
     ui->setupUi(this);
 
     ui->zoneNameLabel->setText(name);
+
+    // 'Close' options : widget is deleted when closed
+    setAttribute(Qt::WA_DeleteOnClose);
+    connect(ui->closeButton, &QToolButton::clicked, this, &VisualizationZoneWidget::close);
+    ui->closeButton->setIcon(sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
 }
 
 VisualizationZoneWidget::~VisualizationZoneWidget()
