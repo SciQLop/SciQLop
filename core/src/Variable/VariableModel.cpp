@@ -15,6 +15,19 @@ const auto TSTART_COLUMN = 1;
 const auto TEND_COLUMN = 2;
 const auto NB_COLUMNS = 3;
 
+// Column properties
+
+struct ColumnProperties {
+    ColumnProperties(const QString &name = {}) : m_Name{name} {}
+
+    QString m_Name;
+};
+
+const auto COLUMN_PROPERTIES
+    = QHash<int, ColumnProperties>{{NAME_COLUMN, {QObject::tr("Name")}},
+                                   {TSTART_COLUMN, {QObject::tr("tStart")}},
+                                   {TEND_COLUMN, {QObject::tr("tEnd")}}};
+
 /// Format for datetimes
 const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
 
@@ -116,20 +129,15 @@ QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int
     }
 
     if (orientation == Qt::Horizontal) {
-        switch (section) {
-            case NAME_COLUMN:
-                return tr("Name");
-            case UNIT_COLUMN:
-                return tr("tStart");
-            case MISSION_COLUMN:
-                return tr("tEnd");
-            default:
-                // No action
-                break;
+        auto propertiesIt = COLUMN_PROPERTIES.find(section);
+        if (propertiesIt != COLUMN_PROPERTIES.cend()) {
+            // Role is either DisplayRole or SizeHintRole
+            return QVariant{propertiesIt->m_Name};
         }
-
-        qWarning(LOG_VariableModel())
-            << tr("Can't get header data (unknown column %1)").arg(section);
+        else {
+            qWarning(LOG_VariableModel())
+                << tr("Can't get header data (unknown column %1)").arg(section);
+        }
     }
 
     return QVariant{};
