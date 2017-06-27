@@ -4,6 +4,7 @@
 #include <Data/IDataSeries.h>
 
 #include <QDateTime>
+#include <QSize>
 
 Q_LOGGING_CATEGORY(LOG_VariableModel, "VariableModel")
 
@@ -132,7 +133,7 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
 
 QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
-    if (role != Qt::DisplayRole) {
+    if (role != Qt::DisplayRole && role != Qt::SizeHintRole) {
         return QVariant{};
     }
 
@@ -140,7 +141,9 @@ QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int
         auto propertiesIt = COLUMN_PROPERTIES.find(section);
         if (propertiesIt != COLUMN_PROPERTIES.cend()) {
             // Role is either DisplayRole or SizeHintRole
-            return QVariant{propertiesIt->m_Name};
+            return (role == Qt::DisplayRole)
+                       ? QVariant{propertiesIt->m_Name}
+                       : QVariant{QSize{propertiesIt->m_Width, propertiesIt->m_Height}};
         }
         else {
             qWarning(LOG_VariableModel())
