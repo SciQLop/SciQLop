@@ -3,15 +3,20 @@
 
 #include <Data/IDataSeries.h>
 
+#include <QDateTime>
+
 Q_LOGGING_CATEGORY(LOG_VariableModel, "VariableModel")
 
 namespace {
 
 // Column indexes
 const auto NAME_COLUMN = 0;
-const auto UNIT_COLUMN = 1;
-const auto MISSION_COLUMN = 2;
+const auto TSTART_COLUMN = 1;
+const auto TEND_COLUMN = 2;
 const auto NB_COLUMNS = 3;
+
+/// Format for datetimes
+const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
 
 } // namespace
 
@@ -75,13 +80,19 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
 
     if (role == Qt::DisplayRole) {
         if (auto variable = impl->m_Variables.at(index.row()).get()) {
+            /// Lambda function that builds the variant to return for a time value
+            auto dateTimeVariant = [](double time) {
+                auto dateTime = QDateTime::fromMSecsSinceEpoch(time * 1000.);
+                return dateTime.toString(DATETIME_FORMAT);
+            };
+
             switch (index.column()) {
                 case NAME_COLUMN:
                     return variable->name();
-                case UNIT_COLUMN:
-                    return variable->unit();
-                case MISSION_COLUMN:
-                    return variable->mission();
+                case TSTART_COLUMN:
+                    return dateTimeVariant(variable->dateTime().m_TStart);
+                case TEND_COLUMN:
+                    return dateTimeVariant(variable->dateTime().m_TEnd);
                 default:
                     // No action
                     break;
@@ -109,9 +120,9 @@ QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int
             case NAME_COLUMN:
                 return tr("Name");
             case UNIT_COLUMN:
-                return tr("Unit");
+                return tr("tStart");
             case MISSION_COLUMN:
-                return tr("Mission");
+                return tr("tEnd");
             default:
                 // No action
                 break;
