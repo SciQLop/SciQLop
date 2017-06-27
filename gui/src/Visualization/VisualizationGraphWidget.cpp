@@ -37,9 +37,12 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
 {
     ui->setupUi(this);
 
-    // qcpplot title
-    ui->widget->plotLayout()->insertRow(0);
-    ui->widget->plotLayout()->addElement(0, 0, new QCPTextElement{ui->widget, name});
+    ui->graphNameLabel->setText(name);
+
+    // 'Close' options : widget is deleted when closed
+    setAttribute(Qt::WA_DeleteOnClose);
+    connect(ui->closeButton, &QToolButton::clicked, this, &VisualizationGraphWidget::close);
+    ui->closeButton->setIcon(sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
 
     // Set qcpplot properties :
     // - Drag (on x-axis) and zoom are enabled
@@ -90,12 +93,7 @@ bool VisualizationGraphWidget::canDrop(const Variable &variable) const
 
 QString VisualizationGraphWidget::name() const
 {
-    if (auto title = dynamic_cast<QCPTextElement *>(ui->widget->plotLayout()->elementAt(0))) {
-        return title->text();
-    }
-    else {
-        return QString{};
-    }
+    return ui->graphNameLabel->text();
 }
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
