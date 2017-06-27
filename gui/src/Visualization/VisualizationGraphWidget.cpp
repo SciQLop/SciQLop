@@ -1,6 +1,6 @@
 #include "Visualization/VisualizationGraphWidget.h"
-#include "Visualization/GraphPlottablesFactory.h"
 #include "Visualization/IVisualizationWidgetVisitor.h"
+#include "Visualization/VisualizationGraphHelper.h"
 #include "ui_VisualizationGraphWidget.h"
 
 #include <Data/ArrayData.h>
@@ -61,7 +61,7 @@ VisualizationGraphWidget::~VisualizationGraphWidget()
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
 {
     // Uses delegate to create the qcpplot components according to the variable
-    auto createdPlottables = GraphPlottablesFactory::create(variable, *ui->widget);
+    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
 
     for (auto createdPlottable : qAsConst(createdPlottables)) {
         impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
@@ -142,11 +142,19 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 
 void VisualizationGraphWidget::onDataCacheVariableUpdated()
 {
+    // NOTE:
+    //    We don't want to call the method for each component of a variable unitarily, but for all
+    //    its components at once (eg its three components in the case of a vector).
+
+    //    The unordered_multimap does not do this easily, so the question is whether to:
+    //    - use an ordered_multimap and the algos of std to group the values by key
+    //    - use a map (unique keys) and store as values directly the list of components
+
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
         auto variable = it->first;
-        GraphPlottablesFactory::updateData(QVector<QCPAbstractPlottable *>{} << it->second,
-                                           variable->dataSeries(), variable->dateTime());
+        VisualizationGraphHelper::updateData(QVector<QCPAbstractPlottable *>{} << it->second,
+                                             variable->dataSeries(), variable->dateTime());
     }
 }
 
@@ -160,6 +168,6 @@ void VisualizationGraphWidget::updateDisplay(std::shared_ptr<Variable> variable)
         abstractPlotableVect.push_back(it->second);
     }
 
-    GraphPlottablesFactory::updateData(abstractPlotableVect, variable->dataSeries(),
-                                       variable->dateTime());
+    VisualizationGraphHelper::updateData(abstractPlotableVect, variable->dataSeries(),
+                                         variable->dateTime());
 }

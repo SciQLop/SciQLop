@@ -1,4 +1,4 @@
-#include "Visualization/GraphPlottablesFactory.h"
+#include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/qcustomplot.h"
 
 #include <Data/ScalarSeries.h>
@@ -7,7 +7,7 @@
 
 #include <QElapsedTimer>
 
-Q_LOGGING_CATEGORY(LOG_GraphPlottablesFactory, "GraphPlottablesFactory")
+Q_LOGGING_CATEGORY(LOG_VisualizationGraphHelper, "VisualizationGraphHelper")
 
 namespace {
 
@@ -37,8 +37,8 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
     timer.start();
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
         // Clean the graph
-        qCDebug(LOG_GraphPlottablesFactory()) << "The slow s1 operation took" << timer.elapsed()
-                                              << "milliseconds";
+        qCDebug(LOG_VisualizationGraphHelper()) << "The slow s1 operation took" << timer.elapsed()
+                                                << "milliseconds";
         // NAIVE approch
         const auto &xData = scalarSeries.xAxisData()->data();
         const auto &valuesData = scalarSeries.valuesData()->data();
@@ -59,8 +59,8 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
 
         qcpGraph->setData(xValue, vValue);
 
-        qCDebug(LOG_GraphPlottablesFactory()) << "The slow s2 operation took" << timer.elapsed()
-                                              << "milliseconds";
+        qCDebug(LOG_VisualizationGraphHelper()) << "The slow s2 operation took" << timer.elapsed()
+                                                << "milliseconds";
     }
     else {
         /// @todo DEBUG
@@ -99,7 +99,7 @@ QCPAbstractPlottable *createScalarSeriesComponent(ScalarSeries &scalarSeries, QC
         plot.replot();
     }
     else {
-        qCDebug(LOG_GraphPlottablesFactory())
+        qCDebug(LOG_VisualizationGraphHelper())
             << QObject::tr("Can't create graph for the scalar series");
     }
 
@@ -108,8 +108,8 @@ QCPAbstractPlottable *createScalarSeriesComponent(ScalarSeries &scalarSeries, QC
 
 } // namespace
 
-QVector<QCPAbstractPlottable *> GraphPlottablesFactory::create(std::shared_ptr<Variable> variable,
-                                                               QCustomPlot &plot) noexcept
+QVector<QCPAbstractPlottable *> VisualizationGraphHelper::create(std::shared_ptr<Variable> variable,
+                                                                 QCustomPlot &plot) noexcept
 {
     auto result = QVector<QCPAbstractPlottable *>{};
 
@@ -120,27 +120,27 @@ QVector<QCPAbstractPlottable *> GraphPlottablesFactory::create(std::shared_ptr<V
             result.append(createScalarSeriesComponent(*scalarSeries, plot, variable->dateTime()));
         }
         else {
-            qCDebug(LOG_GraphPlottablesFactory())
+            qCDebug(LOG_VisualizationGraphHelper())
                 << QObject::tr("Can't create graph plottables : unmanaged data series type");
         }
     }
     else {
-        qCDebug(LOG_GraphPlottablesFactory())
+        qCDebug(LOG_VisualizationGraphHelper())
             << QObject::tr("Can't create graph plottables : the variable is null");
     }
 
     return result;
 }
 
-void GraphPlottablesFactory::updateData(QVector<QCPAbstractPlottable *> plotableVect,
-                                        IDataSeries *dataSeries, const SqpDateTime &dateTime)
+void VisualizationGraphHelper::updateData(QVector<QCPAbstractPlottable *> plotableVect,
+                                          IDataSeries *dataSeries, const SqpDateTime &dateTime)
 {
     if (auto scalarSeries = dynamic_cast<ScalarSeries *>(dataSeries)) {
         if (plotableVect.size() == 1) {
             updateScalarData(plotableVect.at(0), *scalarSeries, dateTime);
         }
         else {
-            qCCritical(LOG_GraphPlottablesFactory()) << QObject::tr(
+            qCCritical(LOG_VisualizationGraphHelper()) << QObject::tr(
                 "Can't update Data of a scalarSeries because there is not only one component "
                 "associated");
         }

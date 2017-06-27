@@ -71,7 +71,7 @@ IDataSeries *Variable::dataSeries() const noexcept
     return impl->m_DataSeries.get();
 }
 
-bool Variable::contains(SqpDateTime dateTime)
+bool Variable::contains(const SqpDateTime &dateTime)
 {
     if (!impl->m_DateTime.contains(dateTime)) {
         // The current variable dateTime isn't enough to display the dateTime requested.

@@ -51,9 +51,9 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     auto notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 1);
-    auto notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+    auto notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
 
 
     // second case ts < ts0 &&  ts0 < te <= te0
@@ -66,9 +66,9 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 1);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts0.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts0.toMSecsSinceEpoch()));
 
     // 3th case ts < ts0 &&  te0 < te <= ts1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
@@ -80,13 +80,13 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 2);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts0.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts0.toMSecsSinceEpoch()));
 
-    notInCashSqp = notInCach.at(1);
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.at(1);
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
 
     // 4th case ts < ts0 &&  ts1 < te <= te1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
@@ -98,13 +98,13 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 2);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts0.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts0.toMSecsSinceEpoch()));
 
-    notInCashSqp = notInCach.at(1);
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.at(1);
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
 
     // 5th case ts < ts0 &&  te3 < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
@@ -116,21 +116,21 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 4);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts0.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts0.toMSecsSinceEpoch()));
 
-    notInCashSqp = notInCach.at(1);
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.at(1);
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
 
-    notInCashSqp = notInCach.at(2);
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te1.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts2.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.at(2);
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te1.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts2.toMSecsSinceEpoch()));
 
-    notInCashSqp = notInCach.at(3);
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te2.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.at(3);
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te2.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
 
 
     // 6th case ts2 < ts
@@ -143,9 +143,9 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 1);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
 
     // 7th case ts = te0 && te < ts1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 0, 0}};
@@ -157,9 +157,9 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 1);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
 
     // 8th case ts0 < ts < te0 && te < ts1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 30, 0}};
@@ -171,9 +171,9 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 1);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
 
     // 9th case ts0 < ts < te0 &&  ts1 < te < te1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 30, 0}};
@@ -185,9 +185,9 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 1);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te0.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
 
     // 10th case te1 < ts < te < ts2
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 9, 0, 0}};
@@ -199,9 +199,9 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 1);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
 
     // 11th case te0 < ts < ts1 &&  te3 < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
@@ -213,17 +213,17 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 3);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
 
-    notInCashSqp = notInCach.at(1);
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te1.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts2.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.at(1);
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te1.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts2.toMSecsSinceEpoch()));
 
-    notInCashSqp = notInCach.at(2);
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te2.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.at(2);
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te2.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
 
     // 12th case te0 < ts < ts1 &&  te3 < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
@@ -234,13 +234,13 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
     QCOMPARE(notInCach.size(), 2);
-    notInCashSqp = notInCach.first();
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.first();
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(ts.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(ts1.toMSecsSinceEpoch()));
 
-    notInCashSqp = notInCach.at(1);
-    QCOMPARE(notInCashSqp.m_TStart, static_cast<double>(te1.toMSecsSinceEpoch()));
-    QCOMPARE(notInCashSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+    notInCacheSqp = notInCach.at(1);
+    QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te1.toMSecsSinceEpoch()));
+    QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
 }
 
 

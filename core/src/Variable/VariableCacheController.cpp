@@ -23,7 +23,7 @@ struct VariableCacheController::VariableCacheControllerPrivate {
 
 
 VariableCacheController::VariableCacheController(QObject *parent)
-        : QObject(parent), impl{spimpl::make_unique_impl<VariableCacheControllerPrivate>()}
+        : QObject{parent}, impl{spimpl::make_unique_impl<VariableCacheControllerPrivate>()}
 {
 }
 
@@ -48,9 +48,8 @@ void VariableCacheController::addDateTime(std::shared_ptr<Variable> variable,
             //      will be compared to the next interval. The old one is remove from the list
             //   C: if it is superior, we do the same with the next interval of the list
 
-            int cacheIndex = 0;
             impl->addDateTimeRecurse(dateTime, impl->m_VariableToSqpDateTimeListMap.at(variable),
-                                     cacheIndex);
+                                     0);
         }
     }
 }
@@ -94,7 +93,6 @@ void VariableCacheController::VariableCacheControllerPrivate::addDateTimeRecurse
         // The compared one is < to current one compared, we can insert it
         dateTimeList.insert(cacheIndex, dateTime);
     }
-
     else if (dateTime.m_TStart > currentDateTime.m_TEnd) {
         // The compared one is > to current one compared  we can comparet if to the next one
         addDateTimeRecurse(dateTime, dateTimeList, ++cacheIndex);
@@ -153,11 +151,10 @@ void VariableCacheController::VariableCacheControllerPrivate::addInCacheDataBySt
     }
 
     auto currentDateTimeI = dateTimeList[cacheIndex];
-    auto cacheIndexJ = cacheIndex;
     if (currentTStart < currentDateTimeI.m_TStart) {
 
         // ts localised between to interval: let's localized te
-        addInCacheDataByEnd(dateTime, dateTimeList, notInCache, cacheIndexJ, currentTStart);
+        addInCacheDataByEnd(dateTime, dateTimeList, notInCache, cacheIndex, currentTStart);
     }
     else if (dateTime.m_TStart < currentDateTimeI.m_TEnd) {
         // ts not localised before the current interval: we need to look at the next interval

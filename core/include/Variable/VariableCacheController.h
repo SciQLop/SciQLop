@@ -9,7 +9,7 @@
 
 class Variable;
 
-/// This class aims to store in the cash all of the dateTime already requested to the variable.
+/// This class aims to store in the cache all of the dateTime already requested to the variable.
 class VariableCacheController : public QObject {
     Q_OBJECT
 public:

@@ -4,7 +4,14 @@
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
 
+#include <QLoggingCategory>
+
 #include <memory>
+
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_DataSeries)
+Q_LOGGING_CATEGORY(LOG_DataSeries, "DataSeries")
+
 
 /**
  * @brief The DataSeries class is the base (abstract) implementation of IDataSeries.
@@ -35,6 +42,10 @@ public:
         if (auto dimDataSeries = dynamic_cast<DataSeries<Dim> *>(dataSeries)) {
             m_XAxisData->merge(dimDataSeries->xAxisData().get());
             m_ValuesData->merge(dimDataSeries->valuesData().get());
+        }
+        else {
+            qCWarning(LOG_DataSeries())
+                << QObject::tr("Dection of a type of IDataSeries we cannot merge with !");
         }
     }
 

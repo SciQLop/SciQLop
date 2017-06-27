@@ -122,22 +122,22 @@ void VariableController::requestDataLoading(std::shared_ptr<Variable> variable,
 
         QElapsedTimer timer;
         timer.start();
-        qCInfo(LOG_VariableController()) << "The slow s0 operation took" << timer.elapsed()
+        qCInfo(LOG_VariableController()) << "TORM: The slow s0 operation took" << timer.elapsed()
                                          << "milliseconds";
         auto dateTimeListNotInCache
             = impl->m_VariableCacheController->provideNotInCacheDateTimeList(variable, dateTime);
-        qCInfo(LOG_VariableController()) << "The slow s1 operation took" << timer.elapsed()
+        qCInfo(LOG_VariableController()) << "TORM: The slow s1 operation took" << timer.elapsed()
                                          << "milliseconds";
 
         // Ask the provider for each data on the dateTimeListNotInCache
         impl->m_VariableToProviderMap.at(variable)->requestDataLoading(dateTimeListNotInCache);
 
-        qCInfo(LOG_VariableController()) << "The slow s2 operation took" << timer.elapsed()
+        qCInfo(LOG_VariableController()) << "TORM: The slow s2 operation took" << timer.elapsed()
                                          << "milliseconds";
 
         // store in cache
         impl->m_VariableCacheController->addDateTime(variable, dateTime);
-        qCInfo(LOG_VariableController()) << "The slow s3 operation took" << timer.elapsed()
+        qCInfo(LOG_VariableController()) << "TORM: The slow s3 operation took" << timer.elapsed()
                                          << "milliseconds";
     }
     else {
