@@ -26,8 +26,7 @@ const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
     // 1 variable -> n qcpplot
-    std::unordered_multimap<std::shared_ptr<Variable>, QCPAbstractPlottable *>
-        m_VariableToPlotMultiMap;
+    std::multimap<std::shared_ptr<Variable>, QCPAbstractPlottable *> m_VariableToPlotMultiMap;
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
@@ -78,6 +77,10 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
     connect(variable.get(), SIGNAL(dataCacheUpdated()), this, SLOT(onDataCacheVariableUpdated()));
 }
 
+void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
+{
+}
+
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {
@@ -105,6 +108,14 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 {
     QMenu graphMenu{};
 
+    // Iterates on variables (unique keys)
+    for (auto it = impl->m_VariableToPlotMultiMap.cbegin(),
+              end = impl->m_VariableToPlotMultiMap.cend();
+         it != end; it = impl->m_VariableToPlotMultiMap.upper_bound(it->first)) {
+        // 'Remove variable' action
+        graphMenu.addAction(tr("Remove variable %1").arg(it->first->name()),
+                            [ this, var = it->first ]() { removeVariable(var); });
+    }
 
     if (!graphMenu.isEmpty()) {
         graphMenu.exec(mapToGlobal(pos));
