@@ -32,9 +32,6 @@ public:
      */
     VisualizationGraphWidget *createGraph(std::shared_ptr<Variable> variable);
 
-    /// Remove a graph
-    void removeGraph(VisualizationGraphWidget *graph);
-
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;

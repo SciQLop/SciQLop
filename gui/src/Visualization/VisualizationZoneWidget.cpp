@@ -60,10 +60,6 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     return graphWidget;
 }
 
-void VisualizationZoneWidget::removeGraph(VisualizationGraphWidget *graph)
-{
-}
-
 void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {

@@ -62,10 +62,6 @@ VisualizationZoneWidget *VisualizationTabWidget::createZone(std::shared_ptr<Vari
     return zoneWidget;
 }
 
-void VisualizationTabWidget::removeZone(VisualizationZoneWidget *zone)
-{
-}
-
 void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {

@@ -23,15 +23,6 @@ public:
     explicit VisualizationWidget(QWidget *parent = 0);
     virtual ~VisualizationWidget();
 
-    /// Add a zone widget
-    virtual void addTab(VisualizationTabWidget *tabWidget);
-
-    /// Create a tab using a Variable
-    VisualizationTabWidget *createTab();
-
-    /// Remove a tab
-    void removeTab(VisualizationTabWidget *tab);
-
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;

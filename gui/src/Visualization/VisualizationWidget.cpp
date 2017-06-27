@@ -73,22 +73,6 @@ VisualizationWidget::~VisualizationWidget()
     delete ui;
 }
 
-void VisualizationWidget::addTab(VisualizationTabWidget *tabWidget)
-{
-    // NOTE: check is this method has to be deleted because of its dupplicated version visible as
-    // lambda function (in the constructor)
-}
-
-VisualizationTabWidget *VisualizationWidget::createTab()
-{
-}
-
-void VisualizationWidget::removeTab(VisualizationTabWidget *tab)
-{
-    // NOTE: check is this method has to be deleted because of its dupplicated version visible as
-    // lambda function (in the constructor)
-}
-
 void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {
