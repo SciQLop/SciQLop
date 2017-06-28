@@ -111,13 +111,38 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
-        auto variable = it->first;
-        auto tolerance = 0.1 * (t2.upper - t2.lower);
-        auto dateTime = SqpDateTime{t2.lower - tolerance, t2.upper + tolerance};
 
-        qCInfo(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged")
-                                               << variable->dataSeries()->xAxisData()->size();
+        auto variable = it->first;
+        qCInfo(LOG_VisualizationGraphWidget())
+            << tr("TORM: VisualizationGraphWidget::onRangeChanged")
+            << variable->dataSeries()->xAxisData()->size();
+        auto dateTime = SqpDateTime{t2.lower, t2.upper};
+
         if (!variable->contains(dateTime)) {
+
+            if (variable->intersect(dateTime)) {
+                auto variableDateTime = variable->dateTime();
+                if (variableDateTime.m_TStart < dateTime.m_TStart) {
+                    dateTime.m_TStart = variableDateTime.m_TStart;
+                    // add 20% tolerance for left (start) side
+                    auto tolerance = 0.2 * (dateTime.m_TEnd - dateTime.m_TStart);
+                    dateTime.m_TStart -= tolerance;
+                }
+
+                if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
+                    dateTime.m_TEnd = variableDateTime.m_TEnd;
+                    // add 20% tolerance for right (end) side
+                    auto tolerance = 0.2 * (dateTime.m_TEnd - dateTime.m_TStart);
+                    dateTime.m_TEnd += tolerance;
+                }
+            }
+            else {
+                // add 10% tolerance for each side
+                auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+                dateTime.m_TStart -= tolerance;
+                dateTime.m_TEnd += tolerance;
+            }
+            // CHangement detected, we need to
             sqpApp->variableController().requestDataLoading(variable, dateTime);
         }
     }
