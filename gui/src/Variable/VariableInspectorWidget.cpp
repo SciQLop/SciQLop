@@ -18,9 +18,18 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
     sortFilterModel->setSourceModel(sqpApp->variableController().variableModel());
 
     ui->tableView->setModel(sortFilterModel);
+
+    // Connection to show a menu when right clicking on the tree
+    ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->tableView, &QTableView::customContextMenuRequested, this,
+            &VariableInspectorWidget::onTableMenuRequested);
 }
 
 VariableInspectorWidget::~VariableInspectorWidget()
 {
     delete ui;
+}
+
+void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
+{
 }
