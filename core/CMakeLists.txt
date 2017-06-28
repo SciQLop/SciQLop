@@ -40,7 +40,13 @@ set_property(TARGET ${SQPCORE_LIBRARY_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${SQPCORE_LIBRARY_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 TARGET_LINK_LIBRARIES(${SQPCORE_LIBRARY_NAME})
 qt5_use_modules(${SQPCORE_LIBRARY_NAME} Core)
-	
+
+INSTALL(TARGETS ${SQPCORE_LIBRARY_NAME}
+  RUNTIME DESTINATION ${INSTALL_BINARY_DIR}
+  LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+  ARCHIVE DESTINATION ${INSTALL_LIBRARY_DIR}
+)
+
 # From cmake documentation: http://www.cmake.org/cmake/help/v3.0/manual/cmake-buildsystem.7.html
 # Entries in the COMPILE_DEFINITIONS are prefixed with -D or /D and added to the compile line in an unspecified order.
 # The DEFINE_SYMBOL target property is also added as a compile definition as a special convenience case for SHARED and MODULE library targets

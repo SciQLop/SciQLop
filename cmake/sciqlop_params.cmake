@@ -44,6 +44,30 @@ else()
     set(libRootDirForceValue)
 endif()
 
+#
+# Sciqlop_modules.cmake
+#
+# Set ouptut directories
+#
+IF (UNIX)
+    # 32 or 64 bits compiler
+    IF( CMAKE_SIZEOF_VOID_P EQUAL 8 )
+        SET(defaultLib "lib64/sciqlop")
+    ELSE()
+        SET(defaultLib "lib/sciqlop")
+    ENDIF()
+    SET (EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/bin)
+    SET (CONFIG_OUTPUT_PATH $ENV{HOME}/.config/QtProject)
+    SET (LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/${defaultLib})
+ELSEIF(WIN32)
+    SET (EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist)
+    SET (LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist)
+    SET (CONFIG_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist/app/QtProject)
+ELSE()
+    SET (EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist)
+    SET (CONFIG_OUTPUT_PATH $ENV{HOME}/.config/QtProject)
+    SET (LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist)
+ENDIF()
 
 
 #
@@ -54,33 +78,51 @@ OPTION (BUILD_SHARED_LIBS "Build the shared libraries" ON)
 # Generate position independant code (-fPIC)
 SET(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 
-#
-# Configure installation directories
-#
+
+
+# Configuration for make install
+
+set(PROJECT_PLUGIN_PREFIX "SciQlop")
+
 IF (UNIX)
+    SET(CMAKE_INSTALL_PREFIX "/usr/local/${PROJECT_PLUGIN_PREFIX}")
     SET(defaultBin "bin")
     SET(defaultInc "include/sciqlop")
 
     # 32 or 64 bits compiler
     IF( CMAKE_SIZEOF_VOID_P EQUAL 8 )
-        SET(defaultLib "lib64/sciqlop")
+        SET(defaultLib "lib64")
+        SET(defaultPluginsLib "lib64/${PROJECT_PLUGIN_PREFIX}")
     ELSE()
-        SET(defaultLib "lib/sciqlop")
+        SET(defaultLib "lib/")
+        SET(defaultPluginsLib "lib/${PROJECT_PLUGIN_PREFIX}")
     ENDIF()
 
-    SET(defaultDoc "share/docs/sciqlop")
+    SET(defaultDoc "share/docs/${PROJECT_PLUGIN_PREFIX}")
 ELSE()
     SET(defaultBin "bin")
-    SET(defaultInc "include/sciqlop")
-    SET(defaultLib "lib/sciqlop")
-    SET(defaultDoc "docs/sciqlop")
+    SET(defaultInc "include/${PROJECT_PLUGIN_PREFIX}")
+    SET(defaultLib "lib")
+    SET(defaultPluginsLib "lib/${PROJECT_PLUGIN_PREFIX}")
+    SET(defaultDoc "docs/${PROJECT_PLUGIN_PREFIX}")
 ENDIF()
 
 SET(INSTALL_BINARY_DIR "${defaultBin}" CACHE STRING
     "Installation directory for binaries")
 SET(INSTALL_LIBRARY_DIR "${defaultLib}" CACHE STRING
     "Installation directory for libraries")
+SET(INSTALL_PLUGINS_LIBRARY_DIR "${defaultPluginsLib}" CACHE STRING
+    "Installation directory for libraries")
 SET(INSTALL_INCLUDE_DIR "${defaultInc}" CACHE STRING
     "Installation directory for headers")
 SET(INSTALL_DOCUMENTATION_DIR "${defaultDoc}" CACHE STRING
     "Installation directory for documentations")
+
+
+# Set the rpath when installing
+SET(CMAKE_SKIP_BUILD_RPATH FALSE)
+SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${INSTALL_LIBRARY_DIR}")
+SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+message("Install RPATH: ${CMAKE_INSTALL_PREFIX}/${INSTALL_LIBRARY_DIR}")
