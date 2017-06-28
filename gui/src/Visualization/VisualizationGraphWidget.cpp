@@ -111,14 +111,44 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
-        auto variable = it->first;
-        auto tolerance = 0.1 * (t2.upper - t2.lower);
-        auto dateTime = SqpDateTime{t2.lower - tolerance, t2.upper + tolerance};
 
-        qCInfo(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged")
-                                               << variable->dataSeries()->xAxisData()->size();
+        auto variable = it->first;
+        qCInfo(LOG_VisualizationGraphWidget())
+            << tr("TORM: VisualizationGraphWidget::onRangeChanged")
+            << variable->dataSeries()->xAxisData()->size();
+        auto dateTime = SqpDateTime{t2.lower, t2.upper};
+
         if (!variable->contains(dateTime)) {
-            sqpApp->variableController().requestDataLoading(variable, dateTime);
+
+            auto variableDateTimeWithTolerance = dateTime;
+            if (variable->intersect(dateTime)) {
+                auto variableDateTime = variable->dateTime();
+                if (variableDateTime.m_TStart < dateTime.m_TStart) {
+                    dateTime.m_TStart = variableDateTime.m_TStart;
+                    // START is set to the old one. tolerance have to be added to the right
+                    // add 10% tolerance for right (end) side
+                    auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+                    variableDateTimeWithTolerance.m_TEnd += tolerance;
+                }
+                if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
+                    dateTime.m_TEnd = variableDateTime.m_TEnd;
+                    // END is set to the old one. tolerance have to be added to the left
+                    // add 10% tolerance for left (start) side
+                    auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+                    variableDateTimeWithTolerance.m_TStart -= tolerance;
+                }
+            }
+            else {
+                // add 10% tolerance for each side
+                auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+                variableDateTimeWithTolerance.m_TStart -= tolerance;
+                variableDateTimeWithTolerance.m_TEnd += tolerance;
+            }
+            variable->setDateTime(dateTime);
+
+            // CHangement detected, we need to ask controller to request data loading
+            sqpApp->variableController().requestDataLoading(variable,
+                                                            variableDateTimeWithTolerance);
         }
     }
 }
@@ -127,7 +157,8 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 {
     auto zoomOrientations = QFlags<Qt::Orientation>{};
 
-    // Lambda that enables a zoom orientation if the key modifier related to this orientation has
+    // Lambda that enables a zoom orientation if the key modifier related to this orientation
+    // has
     // been pressed
     auto enableOrientation
         = [&zoomOrientations, event](const auto &orientation, const auto &modifier) {
@@ -143,7 +174,8 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 void VisualizationGraphWidget::onDataCacheVariableUpdated()
 {
     // NOTE:
-    //    We don't want to call the method for each component of a variable unitarily, but for all
+    //    We don't want to call the method for each component of a variable unitarily, but for
+    //    all
     //    its components at once (eg its three components in the case of a vector).
 
     //    The unordered_multimap does not do this easily, so the question is whether to:
