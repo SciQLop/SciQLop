@@ -1,10 +1,13 @@
 #ifndef SCIQLOP_VARIABLEINSPECTORWIDGET_H
 #define SCIQLOP_VARIABLEINSPECTORWIDGET_H
 
+#include <QLoggingCategory>
 #include <QMenu>
 #include <QWidget>
 
 #include <memory>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_VariableInspectorWidget)
 
 class Variable;
 

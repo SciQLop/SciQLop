@@ -8,6 +8,8 @@
 
 #include <SqpApplication.h>
 
+Q_LOGGING_CATEGORY(LOG_VariableInspectorWidget, "VariableInspectorWidget")
+
 VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
         : QWidget{parent}, ui{new Ui::VariableInspectorWidget}
 {
@@ -46,5 +48,10 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
                 tableMenu.exec(mapToGlobal(pos));
             }
         }
+    }
+    else {
+        qCCritical(LOG_VariableInspectorWidget())
+            << tr("Can't display menu : invalid index (%1;%2)")
+                   .arg(selectedIndex.row(), selectedIndex.column());
     }
 }
