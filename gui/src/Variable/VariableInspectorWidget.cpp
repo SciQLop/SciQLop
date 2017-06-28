@@ -1,10 +1,12 @@
 #include <Variable/VariableController.h>
 #include <Variable/VariableInspectorWidget.h>
+#include <Variable/VariableMenuHeaderWidget.h>
 #include <Variable/VariableModel.h>
 
 #include <ui_VariableInspectorWidget.h>
 
 #include <QSortFilterProxyModel>
+#include <QWidgetAction>
 
 #include <SqpApplication.h>
 
@@ -63,6 +65,12 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
     emit tableMenuAboutToBeDisplayed(&tableMenu, selectedVariables);
 
     if (!tableMenu.isEmpty()) {
+        // Generates menu header (inserted before first action)
+        auto firstAction = tableMenu.actions().first();
+        auto headerAction = new QWidgetAction{&tableMenu};
+        headerAction->setDefaultWidget(new VariableMenuHeaderWidget{selectedVariables, &tableMenu});
+        tableMenu.insertAction(firstAction, headerAction);
+
         // Displays menu
         tableMenu.exec(mapToGlobal(pos));
     }
