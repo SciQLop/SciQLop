@@ -36,7 +36,7 @@ CosinusProvider::retrieveData(const DataProviderParameters &parameters) const
 void CosinusProvider::requestDataLoading(const QVector<SqpDateTime> &dateTimeList)
 {
     // NOTE: Try to use multithread if possible
-    foreach (const auto &dateTime, dateTimeList) {
+    for (const auto &dateTime : dateTimeList) {
 
         auto scalarSeries = this->retrieveDataSeries(dateTime);
 

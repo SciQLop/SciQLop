@@ -91,7 +91,6 @@ FUNCTION(ADD_CLANGFORMAT_TARGETS)
     ENDFOREACH(item ${globs})
 
     LIST(REMOVE_ITEM srcs ${UIS})
-    message("format lang: ${srcs}" )
     FOREACH (s ${srcs})
         SET(touchedFile ${formatDirectory}/format_touchedfile_${reportNb})
         IF(addToAll)

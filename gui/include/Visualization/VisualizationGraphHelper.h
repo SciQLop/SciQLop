@@ -1,5 +1,5 @@
-#ifndef SCIQLOP_GRAPHPLOTTABLESFACTORY_H
-#define SCIQLOP_GRAPHPLOTTABLESFACTORY_H
+#ifndef SCIQLOP_VISUALIZATIONGRAPHHELPER_H
+#define SCIQLOP_VISUALIZATIONGRAPHHELPER_H
 
 #include <Data/SqpDateTime.h>
 
@@ -8,7 +8,7 @@
 
 #include <memory>
 
-Q_DECLARE_LOGGING_CATEGORY(LOG_GraphPlottablesFactory)
+Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationGraphHelper)
 
 class IDataSeries;
 class QCPAbstractPlottable;
@@ -16,10 +16,10 @@ class QCustomPlot;
 class Variable;
 
 /**
- * @brief The GraphPlottablesFactory class aims to create the QCustomPlot components relative to a
+ * @brief The VisualizationGraphHelper class aims to create the QCustomPlot components relative to a
  * variable, depending on the data series of this variable
  */
-struct GraphPlottablesFactory {
+struct VisualizationGraphHelper {
     /**
      * Creates (if possible) the QCustomPlot components relative to the variable passed in
      * parameter, and adds these to the plot passed in parameter.
@@ -35,4 +35,4 @@ struct GraphPlottablesFactory {
                            const SqpDateTime &dateTime);
 };
 
-#endif // SCIQLOP_GRAPHPLOTTABLESFACTORY_H
+#endif // SCIQLOP_VISUALIZATIONGRAPHHELPER_H

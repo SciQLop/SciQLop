@@ -33,7 +33,7 @@ public:
     /// @return the data of the variable, nullptr if there is no data
     IDataSeries *dataSeries() const noexcept;
 
-    bool contains(SqpDateTime dateTime);
+    bool contains(const SqpDateTime &dateTime);
     void setDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept;
 
 public slots:

@@ -31,7 +31,7 @@ public:
     virtual void requestDataLoading(const QVector<SqpDateTime> &dateTimeList) = 0;
 
 signals:
-    void dataProvided(std::shared_ptr<IDataSeries> dateSerie, SqpDateTime dateTime);
+    void dataProvided(std::shared_ptr<IDataSeries> dateSerie, const SqpDateTime &dateTime);
 };
 // Required for using shared_ptr in signals/slots
 Q_DECLARE_METATYPE(std::shared_ptr<IDataProvider>)
