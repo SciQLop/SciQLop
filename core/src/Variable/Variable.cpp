@@ -80,10 +80,15 @@ bool Variable::contains(const SqpDateTime &dateTime)
         // provider if necessary.
         qCInfo(LOG_Variable()) << "NEW DATE NEEDED";
 
-        impl->m_DateTime = dateTime;
+        //  impl->m_DateTime = dateTime;
 
         return false;
     }
 
     return true;
+}
+
+bool Variable::intersect(const SqpDateTime &dateTime)
+{
+    return impl->m_DateTime.intersect(dateTime);
 }
