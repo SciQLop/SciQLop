@@ -65,10 +65,12 @@ int main(int argc, char *argv[])
 
 #if __GNUC__
 #if __x86_64__ || __ppc64__
-    pluginDir.cd("../lib64/SciQlop");
+    if (!pluginDir.cd("../lib64/SciQlop")) {
+        pluginDir.cd("../lib64/sciqlop");
+    }
 #else
-    pluginDir.cd("../lib/SciQlop");
-#endif
+    __x86_64__ || __ppc64__ if (!pluginDir.cd("../lib/SciQlop")) { pluginDir.cd("../lib/sciqlop"); }
+    #endif
 #endif
     qCDebug(LOG_PluginManager())
         << QObject::tr("Plugin directory: %1").arg(pluginDir.absolutePath());

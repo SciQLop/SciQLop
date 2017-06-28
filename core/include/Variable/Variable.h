@@ -29,11 +29,13 @@ public:
     QString mission() const noexcept;
     QString unit() const noexcept;
     SqpDateTime dateTime() const noexcept;
+    void setDateTime(const SqpDateTime &dateTime) noexcept;
 
     /// @return the data of the variable, nullptr if there is no data
     IDataSeries *dataSeries() const noexcept;
 
     bool contains(const SqpDateTime &dateTime);
+    bool intersect(const SqpDateTime &dateTime);
     void setDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept;
 
 public slots:
