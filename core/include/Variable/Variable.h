@@ -29,6 +29,7 @@ public:
     QString mission() const noexcept;
     QString unit() const noexcept;
     SqpDateTime dateTime() const noexcept;
+    void setDateTime(const SqpDateTime &dateTime) noexcept;
 
     /// @return the data of the variable, nullptr if there is no data
     IDataSeries *dataSeries() const noexcept;

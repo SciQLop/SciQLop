@@ -120,30 +120,35 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
 
         if (!variable->contains(dateTime)) {
 
+            auto variableDateTimeWithTolerance = dateTime;
             if (variable->intersect(dateTime)) {
                 auto variableDateTime = variable->dateTime();
                 if (variableDateTime.m_TStart < dateTime.m_TStart) {
                     dateTime.m_TStart = variableDateTime.m_TStart;
-                    // add 20% tolerance for left (start) side
-                    auto tolerance = 0.2 * (dateTime.m_TEnd - dateTime.m_TStart);
-                    dateTime.m_TStart -= tolerance;
+                    // START is set to the old one. tolerance have to be added to the right
+                    // add 10% tolerance for right (end) side
+                    auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+                    variableDateTimeWithTolerance.m_TEnd += tolerance;
                 }
-
                 if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
                     dateTime.m_TEnd = variableDateTime.m_TEnd;
-                    // add 20% tolerance for right (end) side
-                    auto tolerance = 0.2 * (dateTime.m_TEnd - dateTime.m_TStart);
-                    dateTime.m_TEnd += tolerance;
+                    // END is set to the old one. tolerance have to be added to the left
+                    // add 10% tolerance for left (start) side
+                    auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+                    variableDateTimeWithTolerance.m_TStart -= tolerance;
                 }
             }
             else {
                 // add 10% tolerance for each side
                 auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
-                dateTime.m_TStart -= tolerance;
-                dateTime.m_TEnd += tolerance;
+                variableDateTimeWithTolerance.m_TStart -= tolerance;
+                variableDateTimeWithTolerance.m_TEnd += tolerance;
             }
-            // CHangement detected, we need to
-            sqpApp->variableController().requestDataLoading(variable, dateTime);
+            variable->setDateTime(dateTime);
+
+            // CHangement detected, we need to ask controller to request data loading
+            sqpApp->variableController().requestDataLoading(variable,
+                                                            variableDateTimeWithTolerance);
         }
     }
 }
@@ -152,7 +157,8 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 {
     auto zoomOrientations = QFlags<Qt::Orientation>{};
 
-    // Lambda that enables a zoom orientation if the key modifier related to this orientation has
+    // Lambda that enables a zoom orientation if the key modifier related to this orientation
+    // has
     // been pressed
     auto enableOrientation
         = [&zoomOrientations, event](const auto &orientation, const auto &modifier) {
@@ -168,7 +174,8 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 void VisualizationGraphWidget::onDataCacheVariableUpdated()
 {
     // NOTE:
-    //    We don't want to call the method for each component of a variable unitarily, but for all
+    //    We don't want to call the method for each component of a variable unitarily, but for
+    //    all
     //    its components at once (eg its three components in the case of a vector).
 
     //    The unordered_multimap does not do this easily, so the question is whether to:

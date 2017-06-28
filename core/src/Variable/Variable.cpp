@@ -50,6 +50,11 @@ SqpDateTime Variable::dateTime() const noexcept
     return impl->m_DateTime;
 }
 
+void Variable::setDateTime(const SqpDateTime &dateTime) noexcept
+{
+    impl->m_DateTime = dateTime;
+}
+
 void Variable::setDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept
 {
     if (!impl->m_DataSeries) {
@@ -73,19 +78,7 @@ IDataSeries *Variable::dataSeries() const noexcept
 
 bool Variable::contains(const SqpDateTime &dateTime)
 {
-    if (!impl->m_DateTime.contains(dateTime)) {
-        // The current variable dateTime isn't enough to display the dateTime requested.
-        // We have to update it to the new dateTime requested.
-        // the correspondant new data to display will be given by the cache if possible and the
-        // provider if necessary.
-        qCInfo(LOG_Variable()) << "NEW DATE NEEDED";
-
-        //  impl->m_DateTime = dateTime;
-
-        return false;
-    }
-
-    return true;
+    return impl->m_DateTime.contains(dateTime);
 }
 
 bool Variable::intersect(const SqpDateTime &dateTime)
