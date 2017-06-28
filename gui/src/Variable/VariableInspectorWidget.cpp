@@ -39,7 +39,8 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
         if (auto selectedVariable = model->variable(selectedIndex.row())) {
             QMenu tableMenu{};
 
-            /// @todo ALX : make menu
+            // Emit a signal so that potential receivers can populate the menu before displaying it
+            emit tableMenuAboutToBeDisplayed(&tableMenu, selectedVariable);
 
             if (!tableMenu.isEmpty()) {
                 tableMenu.exec(mapToGlobal(pos));

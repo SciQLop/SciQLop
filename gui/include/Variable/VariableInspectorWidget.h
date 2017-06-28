@@ -24,6 +24,17 @@ public:
     explicit VariableInspectorWidget(QWidget *parent = 0);
     virtual ~VariableInspectorWidget();
 
+signals:
+    /**
+     * Signal emitted before a menu concerning a variable is displayed. It is used for other widgets
+     * to complete the menu.
+     * @param tableMenu the menu to be completed
+     * @param variable the variable concerned by the menu
+     * @remarks To make the dynamic addition of menus work, the connections to this signal must be
+     * in Qt :: DirectConnection
+     */
+    void tableMenuAboutToBeDisplayed(QMenu *tableMenu, std::shared_ptr<Variable> variable);
+
 private:
     Ui::VariableInspectorWidget *ui;
 
