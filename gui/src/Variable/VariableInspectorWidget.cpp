@@ -32,4 +32,18 @@ VariableInspectorWidget::~VariableInspectorWidget()
 
 void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
 {
+    auto selectedIndex = ui->tableView->indexAt(pos);
+    if (selectedIndex.isValid()) {
+        // Gets the model to retrieve the underlying selected variable
+        auto model = sqpApp->variableController().variableModel();
+        if (auto selectedVariable = model->variable(selectedIndex.row())) {
+            QMenu tableMenu{};
+
+            /// @todo ALX : make menu
+
+            if (!tableMenu.isEmpty()) {
+                tableMenu.exec(mapToGlobal(pos));
+            }
+        }
+    }
 }
