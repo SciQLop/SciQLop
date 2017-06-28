@@ -15,11 +15,6 @@ struct SqpDateTime {
     {
         return (m_TStart <= dateTime.m_TStart && m_TEnd >= dateTime.m_TEnd);
     }
-
-    bool intersect(const SqpDateTime &dateTime)
-    {
-        return (m_TEnd >= dateTime.m_TStart && m_TStart <= dateTime.m_TEnd);
-    }
 };
 
 // Required for using shared_ptr in signals/slots
