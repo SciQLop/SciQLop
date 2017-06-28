@@ -34,7 +34,6 @@ public:
     IDataSeries *dataSeries() const noexcept;
 
     bool contains(const SqpDateTime &dateTime);
-    bool intersect(const SqpDateTime &dateTime);
     void setDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept;
 
 public slots:
