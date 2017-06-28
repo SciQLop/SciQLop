@@ -29,6 +29,10 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
             i, model->headerData(i, Qt::Horizontal, Qt::SizeHintRole).toSize().width());
     }
 
+    // Sets selection options
+    ui->tableView->setSelectionBehavior(QTableView::SelectRows);
+    ui->tableView->setSelectionMode(QTableView::ExtendedSelection);
+
     // Connection to show a menu when right clicking on the tree
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->tableView, &QTableView::customContextMenuRequested, this,
