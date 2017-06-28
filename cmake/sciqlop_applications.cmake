@@ -1,17 +1,3 @@
-#
-# Sciqlop_modules.cmake
-#
-# Set ouptut directories
-#
-SET (EXECUTABLE_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist)
-SET (LIBRARY_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist)
-IF (UNIX)
-    SET (CONFIG_OUTPUT_PATH $ENV{HOME}/.config/QtProject)
-ELSEIF(WIN32)
-    SET (CONFIG_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist/app/QtProject)
-ELSE()
-    SET (CONFIG_OUTPUT_PATH ${CMAKE_CURRENT_BINARY_DIR}/dist)
-ENDIF()
 
 if(BUILD_TESTS)
     INCLUDE ("cmake/sciqlop_code_coverage.cmake")

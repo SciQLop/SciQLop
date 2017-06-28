@@ -31,8 +31,19 @@
 namespace {
 
 /// Name of the directory containing the plugins
-const auto PLUGIN_DIRECTORY_NAME = QStringLiteral("plugins");
 
+#if _WIN32 || _WIN64
+const auto PLUGIN_DIRECTORY_NAME = QStringLiteral("plugins");
+#endif
+
+
+#if __GNUC__
+#if __x86_64__ || __ppc64__
+#define ENVIRONMENT64
+#else
+#define ENVIRONMENT32
+#endif
+#endif
 } // namespace
 
 int main(int argc, char *argv[])
@@ -46,9 +57,19 @@ int main(int argc, char *argv[])
 
     // Loads plugins
     auto pluginDir = QDir{sqpApp->applicationDirPath()};
+#if _WIN32 || _WIN64
     pluginDir.mkdir(PLUGIN_DIRECTORY_NAME);
     pluginDir.cd(PLUGIN_DIRECTORY_NAME);
+#endif
 
+
+#if __GNUC__
+#if __x86_64__ || __ppc64__
+    pluginDir.cd("../lib64/SciQlop");
+#else
+    pluginDir.cd("../lib/SciQlop");
+#endif
+#endif
     qCDebug(LOG_PluginManager())
         << QObject::tr("Plugin directory: %1").arg(pluginDir.absolutePath());
 

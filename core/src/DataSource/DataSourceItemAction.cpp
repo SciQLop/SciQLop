@@ -1,5 +1,7 @@
 #include <DataSource/DataSourceItemAction.h>
 
+#include <functional>
+
 Q_LOGGING_CATEGORY(LOG_DataSourceItemAction, "DataSourceItemAction")
 
 struct DataSourceItemAction::DataSourceItemActionPrivate {
