@@ -182,10 +182,16 @@ MainWindow::MainWindow(QWidget *parent)
     connect(timeWidget, SIGNAL(timeUpdated(SqpDateTime)), &sqpApp->timeController(),
             SLOT(onTimeToUpdate(SqpDateTime)));
 
-    // Variable
+    // Widgets / widgets connections
     qRegisterMetaType<std::shared_ptr<Variable> >();
-    connect(&sqpApp->visualizationController(), SIGNAL(variableCreated(std::shared_ptr<Variable>)),
-            m_Ui->view, SLOT(displayVariable(std::shared_ptr<Variable>)));
+
+    // For the following connections, we use DirectConnection to allow each widget that can
+    // potentially attach a menu to the variable's menu to do so before this menu is displayed.
+    // The order of connections is also important, since it determines the order in which each
+    // widget will attach its menu
+    connect(m_Ui->variableInspectorWidget,
+            SIGNAL(tableMenuAboutToBeDisplayed(QMenu *, std::shared_ptr<Variable>)), m_Ui->view,
+            SLOT(attachVariableMenu(QMenu *, std::shared_ptr<Variable>)), Qt::DirectConnection);
 
     /*    QLopGUI::registerMenuBar(menuBar());
         this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));

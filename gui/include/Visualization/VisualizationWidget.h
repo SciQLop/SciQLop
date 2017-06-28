@@ -8,6 +8,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationWidget)
 
+class QMenu;
 class Variable;
 class VisualizationTabWidget;
 
@@ -39,12 +40,11 @@ public:
 
 public slots:
     /**
-     * Displays a variable in a new graph of a new zone of the current tab
-     * @param variable the variable to display
-     * @todo this is a temporary method that will be replaced by own actions for each type of
-     * visualization widget
+     * Attaches to a menu the menu relating to the visualization of a variable
+     * @param menu the parent menu of the generated menu
+     * @param variable the variable for which to generate the menu
      */
-    void displayVariable(std::shared_ptr<Variable> variable) noexcept;
+    void attachVariableMenu(QMenu *menu, std::shared_ptr<Variable> variable) noexcept;
 
 private:
     Ui::VisualizationWidget *ui;

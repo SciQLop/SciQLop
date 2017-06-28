@@ -44,6 +44,11 @@ VariableModel::createVariable(const QString &name, const SqpDateTime &dateTime,
     return variable;
 }
 
+std::shared_ptr<Variable> VariableModel::variable(int index) const
+{
+    return (index >= 0 && index < impl->m_Variables.size()) ? impl->m_Variables.at(index) : nullptr;
+}
+
 int VariableModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);

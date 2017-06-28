@@ -3,6 +3,7 @@
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/VisualizationTabWidget.h"
 #include "Visualization/VisualizationZoneWidget.h"
+#include "Visualization/operations/GenerateVariableMenuOperation.h"
 #include "Visualization/qcustomplot.h"
 
 #include "ui_VisualizationWidget.h"
@@ -121,16 +122,10 @@ QString VisualizationWidget::name() const
     return QStringLiteral("MainView");
 }
 
-void VisualizationWidget::displayVariable(std::shared_ptr<Variable> variable) noexcept
+void VisualizationWidget::attachVariableMenu(QMenu *menu,
+                                             std::shared_ptr<Variable> variable) noexcept
 {
-    if (auto currentTab = dynamic_cast<VisualizationTabWidget *>(ui->tabWidget->currentWidget())) {
-        if (!currentTab->createZone(variable)) {
-            qCCritical(LOG_VisualizationWidget())
-                << tr("Can't display the variable : can't create a new zone in the current tab");
-        }
-    }
-    else {
-        qCCritical(LOG_VisualizationWidget())
-            << tr("Can't display the variable : there is no current tab");
-    }
+    // Generates the actions that make it possible to visualize the variable
+    auto generateVariableMenuOperation = GenerateVariableMenuOperation{menu, variable};
+    accept(&generateVariableMenuOperation);
 }
