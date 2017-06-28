@@ -60,7 +60,6 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
     QMenu tableMenu{};
 
     // Emits a signal so that potential receivers can populate the menu before displaying it
-    /// @todo ALX : handles list of variables in the signal
     emit tableMenuAboutToBeDisplayed(&tableMenu, selectedVariables);
 
     if (!tableMenu.isEmpty()) {
