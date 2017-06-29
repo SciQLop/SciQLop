@@ -14,26 +14,26 @@ Q_LOGGING_CATEGORY(LOG_GenerateVariableMenuOperation, "GenerateVariableMenuOpera
 
 struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     explicit GenerateVariableMenuOperationPrivate(QMenu *menu, std::shared_ptr<Variable> variable)
-            : m_Variable{variable}, m_MenuBuilder{menu}
+            : m_Variable{variable}, m_PlotMenuBuilder{menu}
     {
     }
 
     void visitRootEnter()
     {
         // Creates the root menu
-        m_MenuBuilder.addMenu(QObject::tr("Plot"), QIcon{":/icones/plot.png"});
+        m_PlotMenuBuilder.addMenu(QObject::tr("Plot"), QIcon{":/icones/plot.png"});
     }
 
     void visitRootLeave()
     {
         // Closes the root menu
-        m_MenuBuilder.closeMenu();
+        m_PlotMenuBuilder.closeMenu();
     }
 
     void visitNodeEnter(const IVisualizationWidget &container)
     {
         // Opens a new menu associated to the node
-        m_MenuBuilder.addMenu(container.name());
+        m_PlotMenuBuilder.addMenu(container.name());
     }
 
     template <typename ActionFun>
@@ -41,12 +41,12 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
                         ActionFun actionFunction)
     {
         if (m_Variable && container.canDrop(*m_Variable)) {
-            m_MenuBuilder.addSeparator();
-            m_MenuBuilder.addAction(actionName, actionFunction);
+            m_PlotMenuBuilder.addSeparator();
+            m_PlotMenuBuilder.addAction(actionName, actionFunction);
         }
 
         // Closes the menu associated to the node
-        m_MenuBuilder.closeMenu();
+        m_PlotMenuBuilder.closeMenu();
     }
 
     template <typename ActionFun>
@@ -54,12 +54,12 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
                    ActionFun actionFunction)
     {
         if (m_Variable && container.canDrop(*m_Variable)) {
-            m_MenuBuilder.addAction(actionName, actionFunction);
+            m_PlotMenuBuilder.addAction(actionName, actionFunction);
         }
     }
 
     std::shared_ptr<Variable> m_Variable;
-    MenuBuilder m_MenuBuilder;
+    MenuBuilder m_PlotMenuBuilder; ///< Builder for the 'Plot' menu
 };
 
 GenerateVariableMenuOperation::GenerateVariableMenuOperation(QMenu *menu,
