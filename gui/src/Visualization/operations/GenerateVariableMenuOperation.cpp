@@ -36,6 +36,7 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     {
         // Opens a new menu associated to the node
         m_PlotMenuBuilder.addMenu(container.name());
+        m_UnplotMenuBuilder.addMenu(container.name());
     }
 
     template <typename ActionFun>
@@ -92,6 +93,7 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationWidget *widget)
 void GenerateVariableMenuOperation::visitEnter(VisualizationTabWidget *tabWidget)
 {
     if (tabWidget) {
+        // 'Plot' and 'Unplot' menus
         impl->visitNodeEnter(*tabWidget);
     }
     else {
@@ -116,6 +118,7 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationTabWidget *tabWidget
 void GenerateVariableMenuOperation::visitEnter(VisualizationZoneWidget *zoneWidget)
 {
     if (zoneWidget) {
+        // 'Plot' and 'Unplot' menus
         impl->visitNodeEnter(*zoneWidget);
     }
     else {
