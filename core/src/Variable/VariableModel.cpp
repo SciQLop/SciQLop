@@ -3,15 +3,42 @@
 
 #include <Data/IDataSeries.h>
 
+#include <QDateTime>
+#include <QSize>
+
 Q_LOGGING_CATEGORY(LOG_VariableModel, "VariableModel")
 
 namespace {
 
 // Column indexes
 const auto NAME_COLUMN = 0;
-const auto UNIT_COLUMN = 1;
-const auto MISSION_COLUMN = 2;
+const auto TSTART_COLUMN = 1;
+const auto TEND_COLUMN = 2;
 const auto NB_COLUMNS = 3;
+
+// Column properties
+const auto DEFAULT_HEIGHT = 25;
+const auto DEFAULT_WIDTH = 100;
+
+struct ColumnProperties {
+    ColumnProperties(const QString &name = {}, int width = DEFAULT_WIDTH,
+                     int height = DEFAULT_HEIGHT)
+            : m_Name{name}, m_Width{width}, m_Height{height}
+    {
+    }
+
+    QString m_Name;
+    int m_Width;
+    int m_Height;
+};
+
+const auto COLUMN_PROPERTIES
+    = QHash<int, ColumnProperties>{{NAME_COLUMN, {QObject::tr("Name")}},
+                                   {TSTART_COLUMN, {QObject::tr("tStart"), 180}},
+                                   {TEND_COLUMN, {QObject::tr("tEnd"), 180}}};
+
+/// Format for datetimes
+const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
 
 } // namespace
 
@@ -75,13 +102,19 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
 
     if (role == Qt::DisplayRole) {
         if (auto variable = impl->m_Variables.at(index.row()).get()) {
+            /// Lambda function that builds the variant to return for a time value
+            auto dateTimeVariant = [](double time) {
+                auto dateTime = QDateTime::fromMSecsSinceEpoch(time * 1000.);
+                return dateTime.toString(DATETIME_FORMAT);
+            };
+
             switch (index.column()) {
                 case NAME_COLUMN:
                     return variable->name();
-                case UNIT_COLUMN:
-                    return variable->unit();
-                case MISSION_COLUMN:
-                    return variable->mission();
+                case TSTART_COLUMN:
+                    return dateTimeVariant(variable->dateTime().m_TStart);
+                case TEND_COLUMN:
+                    return dateTimeVariant(variable->dateTime().m_TEnd);
                 default:
                     // No action
                     break;
@@ -100,25 +133,22 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
 
 QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
-    if (role != Qt::DisplayRole) {
+    if (role != Qt::DisplayRole && role != Qt::SizeHintRole) {
         return QVariant{};
     }
 
     if (orientation == Qt::Horizontal) {
-        switch (section) {
-            case NAME_COLUMN:
-                return tr("Name");
-            case UNIT_COLUMN:
-                return tr("Unit");
-            case MISSION_COLUMN:
-                return tr("Mission");
-            default:
-                // No action
-                break;
+        auto propertiesIt = COLUMN_PROPERTIES.find(section);
+        if (propertiesIt != COLUMN_PROPERTIES.cend()) {
+            // Role is either DisplayRole or SizeHintRole
+            return (role == Qt::DisplayRole)
+                       ? QVariant{propertiesIt->m_Name}
+                       : QVariant{QSize{propertiesIt->m_Width, propertiesIt->m_Height}};
         }
-
-        qWarning(LOG_VariableModel())
-            << tr("Can't get header data (unknown column %1)").arg(section);
+        else {
+            qWarning(LOG_VariableModel())
+                << tr("Can't get header data (unknown column %1)").arg(section);
+        }
     }
 
     return QVariant{};
