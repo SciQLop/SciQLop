@@ -61,7 +61,9 @@ int main(int argc, char *argv[])
         pluginDir.cd("../lib64/sciqlop");
     }
 #else
-    __x86_64__ || __ppc64__ if (!pluginDir.cd("../lib/SciQlop")) { pluginDir.cd("../lib/sciqlop"); }
+    if (!pluginDir.cd("../lib/SciQlop")) {
+        pluginDir.cd("../lib/sciqlop");
+    }
 #endif
 #endif
     qCDebug(LOG_PluginManager())

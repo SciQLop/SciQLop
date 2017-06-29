@@ -27,11 +27,12 @@ public:
     virtual ~VisualizationGraphWidget();
 
     void addVariable(std::shared_ptr<Variable> variable);
+    /// Removes a variable from the graph
+    void removeVariable(std::shared_ptr<Variable> variable) noexcept;
 
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
-    void close() override;
     QString name() const override;
 
     void updateDisplay(std::shared_ptr<Variable> variable);
@@ -44,6 +45,8 @@ private:
     spimpl::unique_impl_ptr<VisualizationGraphWidgetPrivate> impl;
 
 private slots:
+    /// Slot called when right clicking on the graph (displays a menu)
+    void onGraphMenuRequested(const QPoint &pos) noexcept;
 
     void onRangeChanged(const QCPRange &t1, const QCPRange &t2);
 

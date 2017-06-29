@@ -48,7 +48,13 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
             enableMinimumCornerWidgetSize(true);
         }
 
+        // Removes widget from tab and closes it
+        auto widget = ui->tabWidget->widget(index);
         ui->tabWidget->removeTab(index);
+        if (widget) {
+            widget->close();
+        }
+
         qCInfo(LOG_VisualizationWidget()) << tr("remove the tab of index %1").arg(index);
 
     };
@@ -65,22 +71,6 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
 VisualizationWidget::~VisualizationWidget()
 {
     delete ui;
-}
-
-void VisualizationWidget::addTab(VisualizationTabWidget *tabWidget)
-{
-    // NOTE: check is this method has to be deleted because of its dupplicated version visible as
-    // lambda function (in the constructor)
-}
-
-VisualizationTabWidget *VisualizationWidget::createTab()
-{
-}
-
-void VisualizationWidget::removeTab(VisualizationTabWidget *tab)
-{
-    // NOTE: check is this method has to be deleted because of its dupplicated version visible as
-    // lambda function (in the constructor)
 }
 
 void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
@@ -109,12 +99,6 @@ bool VisualizationWidget::canDrop(const Variable &variable) const
     // The main widget can never accomodate a variable
     Q_UNUSED(variable);
     return false;
-}
-
-void VisualizationWidget::close()
-{
-    // The main view cannot be directly closed.
-    return;
 }
 
 QString VisualizationWidget::name() const
