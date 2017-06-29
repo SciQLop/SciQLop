@@ -99,6 +99,12 @@ bool VisualizationZoneWidget::canDrop(const Variable &variable) const
     return true;
 }
 
+bool VisualizationZoneWidget::contains(const Variable &variable) const
+{
+    Q_UNUSED(variable);
+    return false;
+}
+
 QString VisualizationZoneWidget::name() const
 {
     return ui->zoneNameLabel->text();

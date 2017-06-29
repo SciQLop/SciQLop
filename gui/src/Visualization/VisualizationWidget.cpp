@@ -101,6 +101,12 @@ bool VisualizationWidget::canDrop(const Variable &variable) const
     return false;
 }
 
+bool VisualizationWidget::contains(const Variable &variable) const
+{
+    Q_UNUSED(variable);
+    return false;
+}
+
 QString VisualizationWidget::name() const
 {
     return QStringLiteral("MainView");

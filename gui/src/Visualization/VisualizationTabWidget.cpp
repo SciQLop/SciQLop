@@ -93,6 +93,12 @@ bool VisualizationTabWidget::canDrop(const Variable &variable) const
     return true;
 }
 
+bool VisualizationTabWidget::contains(const Variable &variable) const
+{
+    Q_UNUSED(variable);
+    return false;
+}
+
 QString VisualizationTabWidget::name() const
 {
     return impl->m_Name;
