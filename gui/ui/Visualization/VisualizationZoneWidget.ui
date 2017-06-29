@@ -46,6 +46,16 @@
         </property>
        </widget>
       </item>
+      <item>
+       <widget class="QToolButton" name="closeButton">
+        <property name="styleSheet">
+         <string notr="true">background-color: transparent;</string>
+        </property>
+        <property name="text">
+         <string>Close</string>
+        </property>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>

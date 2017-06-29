@@ -26,8 +26,7 @@ const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
     // 1 variable -> n qcpplot
-    std::unordered_multimap<std::shared_ptr<Variable>, QCPAbstractPlottable *>
-        m_VariableToPlotMultiMap;
+    std::multimap<std::shared_ptr<Variable>, QCPAbstractPlottable *> m_VariableToPlotMultiMap;
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
@@ -37,9 +36,12 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
 {
     ui->setupUi(this);
 
-    // qcpplot title
-    ui->widget->plotLayout()->insertRow(0);
-    ui->widget->plotLayout()->addElement(0, 0, new QCPTextElement{ui->widget, name});
+    ui->graphNameLabel->setText(name);
+
+    // 'Close' options : widget is deleted when closed
+    setAttribute(Qt::WA_DeleteOnClose);
+    connect(ui->closeButton, &QToolButton::clicked, this, &VisualizationGraphWidget::close);
+    ui->closeButton->setIcon(sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
 
     // Set qcpplot properties :
     // - Drag (on x-axis) and zoom are enabled
@@ -50,6 +52,11 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
                                    &QCPAxis::rangeChanged),
             this, &VisualizationGraphWidget::onRangeChanged);
+
+    // Activates menu when right clicking on the graph
+    ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->widget, &QCustomPlot::customContextMenuRequested, this,
+            &VisualizationGraphWidget::onGraphMenuRequested);
 }
 
 
@@ -70,6 +77,21 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
     connect(variable.get(), SIGNAL(dataCacheUpdated()), this, SLOT(onDataCacheVariableUpdated()));
 }
 
+void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
+{
+    // Each component associated to the variable :
+    // - is removed from qcpplot (which deletes it)
+    // - is no longer referenced in the map
+    auto componentsIt = impl->m_VariableToPlotMultiMap.equal_range(variable);
+    for (auto it = componentsIt.first; it != componentsIt.second;) {
+        ui->widget->removePlottable(it->second);
+        it = impl->m_VariableToPlotMultiMap.erase(it);
+    }
+
+    // Updates graph
+    ui->widget->replot();
+}
+
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {
@@ -88,19 +110,26 @@ bool VisualizationGraphWidget::canDrop(const Variable &variable) const
     return true;
 }
 
-void VisualizationGraphWidget::close()
-{
-    // The main view cannot be directly closed.
-    return;
-}
-
 QString VisualizationGraphWidget::name() const
 {
-    if (auto title = dynamic_cast<QCPTextElement *>(ui->widget->plotLayout()->elementAt(0))) {
-        return title->text();
+    return ui->graphNameLabel->text();
+}
+
+void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
+{
+    QMenu graphMenu{};
+
+    // Iterates on variables (unique keys)
+    for (auto it = impl->m_VariableToPlotMultiMap.cbegin(),
+              end = impl->m_VariableToPlotMultiMap.cend();
+         it != end; it = impl->m_VariableToPlotMultiMap.upper_bound(it->first)) {
+        // 'Remove variable' action
+        graphMenu.addAction(tr("Remove variable %1").arg(it->first->name()),
+                            [ this, var = it->first ]() { removeVariable(var); });
     }
-    else {
-        return QString{};
+
+    if (!graphMenu.isEmpty()) {
+        graphMenu.exec(mapToGlobal(pos));
     }
 }
 
