@@ -124,15 +124,18 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
             if (variable->intersect(dateTime)) {
                 auto variableDateTime = variable->dateTime();
                 if (variableDateTime.m_TStart < dateTime.m_TStart) {
-                    dateTime.m_TStart = variableDateTime.m_TStart;
-                    // START is set to the old one. tolerance have to be added to the right
+
+                    auto diffEndToKeepDelta = dateTime.m_TEnd - variableDateTime.m_TEnd;
+                    dateTime.m_TStart = variableDateTime.m_TStart + diffEndToKeepDelta;
+                    // Tolerance have to be added to the right
                     // add 10% tolerance for right (end) side
                     auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TEnd += tolerance;
                 }
                 if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
-                    dateTime.m_TEnd = variableDateTime.m_TEnd;
-                    // END is set to the old one. tolerance have to be added to the left
+                    auto diffStartToKeepDelta = dateTime.m_TStart - dateTime.m_TStart;
+                    dateTime.m_TEnd = variableDateTime.m_TEnd - diffStartToKeepDelta;
+                    // Tolerance have to be added to the left
                     // add 10% tolerance for left (start) side
                     auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TStart -= tolerance;

@@ -36,14 +36,6 @@ namespace {
 const auto PLUGIN_DIRECTORY_NAME = QStringLiteral("plugins");
 #endif
 
-
-#if __GNUC__
-#if __x86_64__ || __ppc64__
-#define ENVIRONMENT64
-#else
-#define ENVIRONMENT32
-#endif
-#endif
 } // namespace
 
 int main(int argc, char *argv[])
@@ -70,7 +62,7 @@ int main(int argc, char *argv[])
     }
 #else
     __x86_64__ || __ppc64__ if (!pluginDir.cd("../lib/SciQlop")) { pluginDir.cd("../lib/sciqlop"); }
-    #endif
+#endif
 #endif
     qCDebug(LOG_PluginManager())
         << QObject::tr("Plugin directory: %1").arg(pluginDir.absolutePath());
