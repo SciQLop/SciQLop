@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 #endif
 
 
-#if __LINUX__ || __APPLE__
+#if __unix || __APPLE
 #if __x86_64__ || __ppc64__
     if (!pluginDir.cd("../lib64/SciQlop")) {
         pluginDir.cd("../lib64/sciqlop");
