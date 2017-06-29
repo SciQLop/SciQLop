@@ -4,6 +4,8 @@
 
 #include "Visualization/VisualizationGraphWidget.h"
 
+#include <SqpApplication.h>
+
 Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 
 namespace {
@@ -30,6 +32,11 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
     ui->setupUi(this);
 
     ui->zoneNameLabel->setText(name);
+
+    // 'Close' options : widget is deleted when closed
+    setAttribute(Qt::WA_DeleteOnClose);
+    connect(ui->closeButton, &QToolButton::clicked, this, &VisualizationZoneWidget::close);
+    ui->closeButton->setIcon(sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
 }
 
 VisualizationZoneWidget::~VisualizationZoneWidget()
@@ -51,10 +58,6 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     graphWidget->addVariable(variable);
 
     return graphWidget;
-}
-
-void VisualizationZoneWidget::removeGraph(VisualizationGraphWidget *graph)
-{
 }
 
 void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
@@ -86,12 +89,6 @@ bool VisualizationZoneWidget::canDrop(const Variable &variable) const
     // A tab can always accomodate a variable
     Q_UNUSED(variable);
     return true;
-}
-
-void VisualizationZoneWidget::close()
-{
-    // The main view cannot be directly closed.
-    return;
 }
 
 QString VisualizationZoneWidget::name() const

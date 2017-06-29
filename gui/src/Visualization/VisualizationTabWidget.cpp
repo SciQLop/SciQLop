@@ -36,6 +36,9 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
           impl{spimpl::make_unique_impl<VisualizationTabWidgetPrivate>(name)}
 {
     ui->setupUi(this);
+
+    // Widget is deleted when closed
+    setAttribute(Qt::WA_DeleteOnClose);
 }
 
 VisualizationTabWidget::~VisualizationTabWidget()
@@ -57,10 +60,6 @@ VisualizationZoneWidget *VisualizationTabWidget::createZone(std::shared_ptr<Vari
     zoneWidget->createGraph(variable);
 
     return zoneWidget;
-}
-
-void VisualizationTabWidget::removeZone(VisualizationZoneWidget *zone)
-{
 }
 
 void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
@@ -91,12 +90,6 @@ bool VisualizationTabWidget::canDrop(const Variable &variable) const
     // A tab can always accomodate a variable
     Q_UNUSED(variable);
     return true;
-}
-
-void VisualizationTabWidget::close()
-{
-    // The main view cannot be directly closed.
-    return;
 }
 
 QString VisualizationTabWidget::name() const
