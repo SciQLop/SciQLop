@@ -133,7 +133,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                     variableDateTimeWithTolerance.m_TEnd += tolerance;
                 }
                 if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
-                    auto diffStartToKeepDelta = dateTime.m_TStart - dateTime.m_TStart;
+                    auto diffStartToKeepDelta = variableDateTime.m_TStart - dateTime.m_TStart;
                     dateTime.m_TEnd = variableDateTime.m_TEnd - diffStartToKeepDelta;
                     // Tolerance have to be added to the left
                     // add 10% tolerance for left (start) side
