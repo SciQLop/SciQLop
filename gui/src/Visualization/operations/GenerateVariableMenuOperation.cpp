@@ -14,7 +14,7 @@ Q_LOGGING_CATEGORY(LOG_GenerateVariableMenuOperation, "GenerateVariableMenuOpera
 
 struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     explicit GenerateVariableMenuOperationPrivate(QMenu *menu, std::shared_ptr<Variable> variable)
-            : m_Variable{variable}, m_PlotMenuBuilder{menu}
+            : m_Variable{variable}, m_PlotMenuBuilder{menu}, m_UnplotMenuBuilder{menu}
     {
     }
 
@@ -22,12 +22,14 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     {
         // Creates the root menu
         m_PlotMenuBuilder.addMenu(QObject::tr("Plot"), QIcon{":/icones/plot.png"});
+        m_UnplotMenuBuilder.addMenu(QObject::tr("Unplot"), QIcon{":/icones/unplot.png"});
     }
 
     void visitRootLeave()
     {
         // Closes the root menu
         m_PlotMenuBuilder.closeMenu();
+        m_UnplotMenuBuilder.closeMenu();
     }
 
     void visitNodeEnter(const IVisualizationWidget &container)
@@ -60,6 +62,7 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
 
     std::shared_ptr<Variable> m_Variable;
     MenuBuilder m_PlotMenuBuilder; ///< Builder for the 'Plot' menu
+    MenuBuilder m_UnplotMenuBuilder;  ///< Builder for the 'Unplot' menu
 };
 
 GenerateVariableMenuOperation::GenerateVariableMenuOperation(QMenu *menu,
@@ -73,6 +76,7 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationWidget *widget)
     // VisualizationWidget is not intended to accommodate a variable
     Q_UNUSED(widget)
 
+    // 'Plot' and 'Unplot' menus
     impl->visitRootEnter();
 }
 
@@ -81,6 +85,7 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationWidget *widget)
     // VisualizationWidget is not intended to accommodate a variable
     Q_UNUSED(widget)
 
+    // 'Plot' and 'Unplot' menus
     impl->visitRootLeave();
 }
 

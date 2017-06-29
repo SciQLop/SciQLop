@@ -5,5 +5,6 @@
         <file>icones/next.png</file>
         <file>icones/plot.png</file>
         <file>icones/previous.png</file>
+        <file>icones/unplot.png</file>
     </qresource>
 </RCC>
