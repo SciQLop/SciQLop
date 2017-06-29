@@ -46,24 +46,25 @@ VariableInspectorWidget::~VariableInspectorWidget()
 
 void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
 {
-    auto selectedIndex = ui->tableView->indexAt(pos);
-    if (selectedIndex.isValid()) {
-        // Gets the model to retrieve the underlying selected variable
-        auto model = sqpApp->variableController().variableModel();
-        if (auto selectedVariable = model->variable(selectedIndex.row())) {
-            QMenu tableMenu{};
+    auto selectedRows = ui->tableView->selectionModel()->selectedRows();
 
-            // Emit a signal so that potential receivers can populate the menu before displaying it
-            emit tableMenuAboutToBeDisplayed(&tableMenu, selectedVariable);
-
-            if (!tableMenu.isEmpty()) {
-                tableMenu.exec(mapToGlobal(pos));
-            }
+    // Gets the model to retrieve the underlying selected variables
+    auto model = sqpApp->variableController().variableModel();
+    auto selectedVariables = QVector<std::shared_ptr<Variable> >{};
+    for (const auto &selectedRow : qAsConst(selectedRows)) {
+        if (auto selectedVariable = model->variable(selectedRow.row())) {
+            selectedVariables.push_back(selectedVariable);
         }
     }
-    else {
-        qCCritical(LOG_VariableInspectorWidget())
-            << tr("Can't display menu : invalid index (%1;%2)")
-                   .arg(selectedIndex.row(), selectedIndex.column());
+
+    QMenu tableMenu{};
+
+    // Emits a signal so that potential receivers can populate the menu before displaying it
+    /// @todo ALX : handles list of variables in the signal
+    emit tableMenuAboutToBeDisplayed(&tableMenu, selectedVariables);
+
+    if (!tableMenu.isEmpty()) {
+        // Displays menu
+        tableMenu.exec(mapToGlobal(pos));
     }
 }
