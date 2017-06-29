@@ -64,6 +64,17 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
     // Emits a signal so that potential receivers can populate the menu before displaying it
     emit tableMenuAboutToBeDisplayed(&tableMenu, selectedVariables);
 
+    // Adds menu-specific actions
+    if (!selectedVariables.isEmpty()) {
+        // 'Delete' action
+        auto deleteFun = []() {
+            /// @todo ALX : call variable deletion
+        };
+
+        tableMenu.addSeparator();
+        tableMenu.addAction(QIcon{":/icones/delete.png"}, tr("Delete"), deleteFun);
+    }
+
     if (!tableMenu.isEmpty()) {
         // Generates menu header (inserted before first action)
         auto firstAction = tableMenu.actions().first();
