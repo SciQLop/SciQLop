@@ -241,6 +241,16 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     notInCacheSqp = notInCach.at(1);
     QCOMPARE(notInCacheSqp.m_TStart, static_cast<double>(te1.toMSecsSinceEpoch()));
     QCOMPARE(notInCacheSqp.m_TEnd, static_cast<double>(te.toMSecsSinceEpoch()));
+
+
+    // 12th case ts0 < ts < te0
+    ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 10, 0}};
+    te = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 50, 0}};
+    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
+                      static_cast<double>(te.toMSecsSinceEpoch())};
+
+    notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
+    QCOMPARE(notInCach.size(), 0);
 }
 
 
