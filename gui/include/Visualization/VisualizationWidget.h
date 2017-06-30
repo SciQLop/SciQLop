@@ -30,11 +30,12 @@ public:
 
 public slots:
     /**
-     * Attaches to a menu the menu relating to the visualization of a variable
+     * Attaches to a menu the menu relative to the visualization of variables
      * @param menu the parent menu of the generated menu
-     * @param variable the variable for which to generate the menu
+     * @param variables the variables for which to generate the menu
      */
-    void attachVariableMenu(QMenu *menu, std::shared_ptr<Variable> variable) noexcept;
+    void attachVariableMenu(QMenu *menu,
+                            const QVector<std::shared_ptr<Variable> > &variables) noexcept;
 
 private:
     Ui::VisualizationWidget *ui;
