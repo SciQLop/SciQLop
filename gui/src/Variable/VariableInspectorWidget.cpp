@@ -21,6 +21,14 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
 
     ui->tableView->setModel(sortFilterModel);
 
+    // Fixes column sizes
+    auto model = ui->tableView->model();
+    const auto count = model->columnCount();
+    for (auto i = 0; i < count; ++i) {
+        ui->tableView->setColumnWidth(
+            i, model->headerData(i, Qt::Horizontal, Qt::SizeHintRole).toSize().width());
+    }
+
     // Connection to show a menu when right clicking on the tree
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->tableView, &QTableView::customContextMenuRequested, this,
