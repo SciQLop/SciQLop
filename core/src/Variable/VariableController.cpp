@@ -9,7 +9,6 @@
 #include <Time/TimeController.h>
 
 #include <QDateTime>
-#include <QElapsedTimer>
 #include <QMutex>
 #include <QThread>
 
@@ -112,33 +111,27 @@ void VariableController::createVariable(const QString &name,
 }
 
 
-void VariableController::requestDataLoading(std::shared_ptr<Variable> variable,
-                                            const SqpDateTime &dateTime)
+void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable,
+                                              const SqpDateTime &dateTime)
 {
     // we want to load data of the variable for the dateTime.
     // First we check if the cache contains some of them.
     // For the other, we ask the provider to give them.
     if (variable) {
 
-        QElapsedTimer timer;
-        timer.start();
-        qCInfo(LOG_VariableController()) << "TORM: The slow s0 operation took" << timer.elapsed()
-                                         << "milliseconds";
         auto dateTimeListNotInCache
             = impl->m_VariableCacheController->provideNotInCacheDateTimeList(variable, dateTime);
-        qCInfo(LOG_VariableController()) << "TORM: The slow s1 operation took" << timer.elapsed()
-                                         << "milliseconds";
 
-        // Ask the provider for each data on the dateTimeListNotInCache
-        impl->m_VariableToProviderMap.at(variable)->requestDataLoading(dateTimeListNotInCache);
-
-        qCInfo(LOG_VariableController()) << "TORM: The slow s2 operation took" << timer.elapsed()
-                                         << "milliseconds";
-
-        // store in cache
-        impl->m_VariableCacheController->addDateTime(variable, dateTime);
-        qCInfo(LOG_VariableController()) << "TORM: The slow s3 operation took" << timer.elapsed()
-                                         << "milliseconds";
+        if (!dateTimeListNotInCache.empty()) {
+            // Ask the provider for each data on the dateTimeListNotInCache
+            impl->m_VariableToProviderMap.at(variable)->requestDataLoading(
+                std::move(dateTimeListNotInCache));
+            // store in cache
+            impl->m_VariableCacheController->addDateTime(variable, dateTime);
+        }
+        else {
+            emit variable->updated();
+        }
     }
     else {
         qCCritical(LOG_VariableController()) << tr("Impossible to load data of a variable null");

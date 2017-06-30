@@ -5,6 +5,8 @@
 
 #include <cmath>
 
+#include <QDateTime>
+
 Q_LOGGING_CATEGORY(LOG_CosinusProvider, "CosinusProvider")
 
 std::unique_ptr<IDataSeries>
@@ -15,6 +17,7 @@ CosinusProvider::retrieveData(const DataProviderParameters &parameters) const
     // Gets the timerange from the parameters
     auto start = dateTime.m_TStart;
     auto end = dateTime.m_TEnd;
+
 
     // We assure that timerange is valid
     if (end < start) {
@@ -47,10 +50,12 @@ void CosinusProvider::requestDataLoading(const QVector<SqpDateTime> &dateTimeLis
 
 std::shared_ptr<IDataSeries> CosinusProvider::retrieveDataSeries(const SqpDateTime &dateTime)
 {
+    auto dataIndex = 0;
 
     // Gets the timerange from the parameters
-    auto start = dateTime.m_TStart;
-    auto end = dateTime.m_TEnd;
+    double freq = 100.0;
+    double start = dateTime.m_TStart * freq; // 100 htz
+    double end = dateTime.m_TEnd * freq;     // 100 htz
 
     // We assure that timerange is valid
     if (end < start) {
@@ -61,11 +66,9 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveDataSeries(const SqpDateTi
     auto scalarSeries
         = std::make_shared<ScalarSeries>(end - start, Unit{QStringLiteral("t"), true}, Unit{});
 
-    auto dataIndex = 0;
     for (auto time = start; time < end; ++time, ++dataIndex) {
-        scalarSeries->setData(dataIndex, time, std::cos(time));
+        const auto timeOnFreq = time / freq;
+        scalarSeries->setData(dataIndex, timeOnFreq, std::cos(timeOnFreq));
     }
-
-
     return scalarSeries;
 }
