@@ -21,6 +21,9 @@ SqpDateTime TimeController::dateTime() const noexcept
 void TimeController::onTimeToUpdate(SqpDateTime dateTime)
 {
     impl->m_DateTime = dateTime;
+}
 
-    emit timeUpdated(dateTime);
+void TimeController::onTimeNotify()
+{
+    emit timeUpdated(impl->m_DateTime);
 }
