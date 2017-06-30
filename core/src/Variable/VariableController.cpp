@@ -125,6 +125,7 @@ void VariableController::onDateTimeOnSelection(const SqpDateTime &dateTime)
     for (const auto &selectedRow : qAsConst(selectedRows)) {
         if (auto selectedVariable = impl->m_VariableModel->variable(selectedRow.row())) {
             selectedVariable->setDateTime(dateTime);
+            this->onRequestDataLoading(selectedVariable, dateTime);
         }
     }
 }
