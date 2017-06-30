@@ -42,7 +42,7 @@ public slots:
     void onAddDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
 
 signals:
-    void dataCacheUpdated();
+    void updated();
 
 
 private:

@@ -30,14 +30,13 @@ public:
     void setTimeController(TimeController *timeController) noexcept;
 
 
-    /// Request the data loading of the variable whithin dateTime
-    void requestDataLoading(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);
-
 signals:
     /// Signal emitted when a variable has been created
     void variableCreated(std::shared_ptr<Variable> variable);
 
 public slots:
+    /// Request the data loading of the variable whithin dateTime
+    void onRequestDataLoading(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);
     /**
      * Creates a new variable and adds it to the model
      * @param name the name of the new variable
