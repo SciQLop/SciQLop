@@ -8,8 +8,8 @@
 
 #include <Common/spimpl.h>
 
-
 class IDataProvider;
+class QItemSelectionModel;
 class TimeController;
 class Variable;
 class VariableModel;
@@ -26,6 +26,7 @@ public:
     virtual ~VariableController();
 
     VariableModel *variableModel() noexcept;
+    QItemSelectionModel *variableSelectionModel() noexcept;
 
     void setTimeController(TimeController *timeController) noexcept;
 
@@ -43,6 +44,9 @@ public slots:
      * @param provider the data provider for the new variable
      */
     void createVariable(const QString &name, std::shared_ptr<IDataProvider> provider) noexcept;
+
+    /// Update the temporal parameters of every selected variable to dateTime
+    void onDateTimeOnSelection(const SqpDateTime &dateTime);
 
     void initialize();
     void finalize();

@@ -11,6 +11,7 @@
 #include <QDateTime>
 #include <QMutex>
 #include <QThread>
+#include <QtCore/QItemSelectionModel>
 
 #include <unordered_map>
 
@@ -34,6 +35,7 @@ struct VariableController::VariableControllerPrivate {
     explicit VariableControllerPrivate(VariableController *parent)
             : m_WorkingMutex{},
               m_VariableModel{new VariableModel{parent}},
+              m_VariableSelectionModel{new QItemSelectionModel{m_VariableModel, parent}},
               m_VariableCacheController{std::make_unique<VariableCacheController>()}
     {
     }
@@ -41,6 +43,7 @@ struct VariableController::VariableControllerPrivate {
     QMutex m_WorkingMutex;
     /// Variable model. The VariableController has the ownership
     VariableModel *m_VariableModel;
+    QItemSelectionModel *m_VariableSelectionModel;
 
 
     TimeController *m_TimeController{nullptr};
@@ -67,6 +70,11 @@ VariableController::~VariableController()
 VariableModel *VariableController::variableModel() noexcept
 {
     return impl->m_VariableModel;
+}
+
+QItemSelectionModel *VariableController::variableSelectionModel() noexcept
+{
+    return impl->m_VariableSelectionModel;
 }
 
 void VariableController::setTimeController(TimeController *timeController) noexcept
@@ -107,6 +115,18 @@ void VariableController::createVariable(const QString &name,
 
         // notify the creation
         emit variableCreated(newVariable);
+    }
+}
+
+void VariableController::onDateTimeOnSelection(const SqpDateTime &dateTime)
+{
+    auto selectedRows = impl->m_VariableSelectionModel->selectedRows();
+
+    for (const auto &selectedRow : qAsConst(selectedRows)) {
+        if (auto selectedVariable = impl->m_VariableModel->variable(selectedRow.row())) {
+            selectedVariable->setDateTime(dateTime);
+            this->onRequestDataLoading(selectedVariable, dateTime);
+        }
     }
 }
 

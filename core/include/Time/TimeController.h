@@ -26,8 +26,11 @@ signals:
     void timeUpdated(SqpDateTime time);
 
 public slots:
-    /// Slot called when a new dateTime has been defined. Call timeUpdated signal
+    /// Slot called when a new dateTime has been defined.
     void onTimeToUpdate(SqpDateTime dateTime);
+
+    /// Slot called when the dateTime has to be notified. Call timeUpdated signal
+    void onTimeNotify();
 
 private:
     class TimeControllerPrivate;
