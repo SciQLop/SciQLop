@@ -55,7 +55,7 @@ void VariableCacheController::addDateTime(std::shared_ptr<Variable> variable,
                                          impl->m_VariableToSqpDateTimeListMap.at(variable), 0);
             }
             catch (const std::out_of_range &e) {
-                qCInfo(LOG_VariableCacheController()) << e.what();
+                qCWarning(LOG_VariableCacheController()) << e.what();
             }
         }
     }
@@ -77,7 +77,7 @@ VariableCacheController::provideNotInCacheDateTimeList(std::shared_ptr<Variable>
                                     notInCache, 0, dateTime.m_TStart);
     }
     catch (const std::out_of_range &e) {
-        qCInfo(LOG_VariableCacheController()) << e.what();
+        qCWarning(LOG_VariableCacheController()) << e.what();
     }
 
     return notInCache;
@@ -90,7 +90,7 @@ VariableCacheController::dateCacheList(std::shared_ptr<Variable> variable) const
         return impl->m_VariableToSqpDateTimeListMap.at(variable);
     }
     catch (const std::out_of_range &e) {
-        qCInfo(LOG_VariableCacheController()) << e.what();
+        qCWarning(LOG_VariableCacheController()) << e.what();
         return QVector<SqpDateTime>{};
     }
 }
