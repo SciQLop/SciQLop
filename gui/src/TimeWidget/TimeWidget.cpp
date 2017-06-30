@@ -20,6 +20,16 @@ TimeWidget::TimeWidget(QWidget *parent) : QWidget{parent}, ui{new Ui::TimeWidget
 
     connect(ui->applyToolButton, &QToolButton::clicked, &sqpApp->timeController(),
             &TimeController::onTimeNotify);
+
+    // Initialisation
+    ui->startDateTimeEdit->setDateTime(
+        QDateTime::currentDateTime().addSecs(-3600)); // one hour berefore
+    ui->endDateTimeEdit->setDateTime(QDateTime::currentDateTime());
+
+    auto dateTime
+        = SqpDateTime{QDateTime::currentDateTime().addSecs(-3600).toMSecsSinceEpoch() / 1000.0,
+                      QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000.0};
+    sqpApp->timeController().onTimeToUpdate(dateTime);
 }
 
 

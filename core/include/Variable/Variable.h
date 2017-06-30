@@ -44,7 +44,6 @@ public slots:
 signals:
     void updated();
 
-
 private:
     class VariablePrivate;
     spimpl::unique_impl_ptr<VariablePrivate> impl;
