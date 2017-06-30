@@ -5,9 +5,14 @@
 
 #include <Data/SqpDateTime.h>
 
+#include <QLoggingCategory>
+
 #include <Common/spimpl.h>
 
 class Variable;
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_VariableCacheController)
+
 
 /// This class aims to store in the cache all of the dateTime already requested to the variable.
 class VariableCacheController : public QObject {
@@ -24,6 +29,8 @@ public:
 
 
     QVector<SqpDateTime> dateCacheList(std::shared_ptr<Variable> variable) const noexcept;
+
+    void displayCache(std::shared_ptr<Variable> variable);
 
 private:
     class VariableCacheControllerPrivate;

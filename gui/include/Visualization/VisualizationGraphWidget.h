@@ -13,6 +13,7 @@
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationGraphWidget)
 
 class QCPRange;
+class SqpDateTime;
 class Variable;
 
 namespace Ui {
@@ -36,6 +37,9 @@ public:
     QString name() const override;
 
     void updateDisplay(std::shared_ptr<Variable> variable);
+
+signals:
+    void requestDataLoading(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);
 
 
 private:

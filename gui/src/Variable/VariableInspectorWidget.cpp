@@ -1,10 +1,12 @@
 #include <Variable/VariableController.h>
 #include <Variable/VariableInspectorWidget.h>
+#include <Variable/VariableMenuHeaderWidget.h>
 #include <Variable/VariableModel.h>
 
 #include <ui_VariableInspectorWidget.h>
 
 #include <QSortFilterProxyModel>
+#include <QWidgetAction>
 
 #include <SqpApplication.h>
 
@@ -29,6 +31,10 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
             i, model->headerData(i, Qt::Horizontal, Qt::SizeHintRole).toSize().width());
     }
 
+    // Sets selection options
+    ui->tableView->setSelectionBehavior(QTableView::SelectRows);
+    ui->tableView->setSelectionMode(QTableView::ExtendedSelection);
+
     // Connection to show a menu when right clicking on the tree
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->tableView, &QTableView::customContextMenuRequested, this,
@@ -42,24 +48,41 @@ VariableInspectorWidget::~VariableInspectorWidget()
 
 void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
 {
-    auto selectedIndex = ui->tableView->indexAt(pos);
-    if (selectedIndex.isValid()) {
-        // Gets the model to retrieve the underlying selected variable
-        auto model = sqpApp->variableController().variableModel();
-        if (auto selectedVariable = model->variable(selectedIndex.row())) {
-            QMenu tableMenu{};
+    auto selectedRows = ui->tableView->selectionModel()->selectedRows();
 
-            // Emit a signal so that potential receivers can populate the menu before displaying it
-            emit tableMenuAboutToBeDisplayed(&tableMenu, selectedVariable);
-
-            if (!tableMenu.isEmpty()) {
-                tableMenu.exec(mapToGlobal(pos));
-            }
+    // Gets the model to retrieve the underlying selected variables
+    auto model = sqpApp->variableController().variableModel();
+    auto selectedVariables = QVector<std::shared_ptr<Variable> >{};
+    for (const auto &selectedRow : qAsConst(selectedRows)) {
+        if (auto selectedVariable = model->variable(selectedRow.row())) {
+            selectedVariables.push_back(selectedVariable);
         }
     }
-    else {
-        qCCritical(LOG_VariableInspectorWidget())
-            << tr("Can't display menu : invalid index (%1;%2)")
-                   .arg(selectedIndex.row(), selectedIndex.column());
+
+    QMenu tableMenu{};
+
+    // Emits a signal so that potential receivers can populate the menu before displaying it
+    emit tableMenuAboutToBeDisplayed(&tableMenu, selectedVariables);
+
+    // Adds menu-specific actions
+    if (!selectedVariables.isEmpty()) {
+        // 'Delete' action
+        auto deleteFun = []() {
+            /// @todo ALX : call variable deletion
+        };
+
+        tableMenu.addSeparator();
+        tableMenu.addAction(QIcon{":/icones/delete.png"}, tr("Delete"), deleteFun);
+    }
+
+    if (!tableMenu.isEmpty()) {
+        // Generates menu header (inserted before first action)
+        auto firstAction = tableMenu.actions().first();
+        auto headerAction = new QWidgetAction{&tableMenu};
+        headerAction->setDefaultWidget(new VariableMenuHeaderWidget{selectedVariables, &tableMenu});
+        tableMenu.insertAction(firstAction, headerAction);
+
+        // Displays menu
+        tableMenu.exec(mapToGlobal(pos));
     }
 }

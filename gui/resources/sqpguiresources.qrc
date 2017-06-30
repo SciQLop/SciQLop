@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
+		<file>icones/delete.png</file>
         <file>icones/openInspector.png</file>
         <file>icones/next.png</file>
         <file>icones/previous.png</file>

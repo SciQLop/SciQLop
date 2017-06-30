@@ -57,6 +57,9 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->widget, &QCustomPlot::customContextMenuRequested, this,
             &VisualizationGraphWidget::onGraphMenuRequested);
+
+    connect(this, &VisualizationGraphWidget::requestDataLoading, &sqpApp->variableController(),
+            &VariableController::onRequestDataLoading);
 }
 
 
@@ -74,7 +77,7 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
         impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
     }
 
-    connect(variable.get(), SIGNAL(dataCacheUpdated()), this, SLOT(onDataCacheVariableUpdated()));
+    connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 }
 
 void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
@@ -142,9 +145,6 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
 
         auto variable = it->first;
-        qCInfo(LOG_VisualizationGraphWidget())
-            << tr("TORM: VisualizationGraphWidget::onRangeChanged")
-            << variable->dataSeries()->xAxisData()->size();
         auto dateTime = SqpDateTime{t2.lower, t2.upper};
 
         if (!variable->contains(dateTime)) {
@@ -179,8 +179,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
             variable->setDateTime(dateTime);
 
             // CHangement detected, we need to ask controller to request data loading
-            sqpApp->variableController().requestDataLoading(variable,
-                                                            variableDateTimeWithTolerance);
+            emit requestDataLoading(variable, variableDateTimeWithTolerance);
         }
     }
 }

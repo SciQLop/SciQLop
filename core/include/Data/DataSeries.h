@@ -40,8 +40,8 @@ public:
     void merge(IDataSeries *dataSeries) override
     {
         if (auto dimDataSeries = dynamic_cast<DataSeries<Dim> *>(dataSeries)) {
-            m_XAxisData->merge(dimDataSeries->xAxisData().get());
-            m_ValuesData->merge(dimDataSeries->valuesData().get());
+            m_XAxisData->merge(*dimDataSeries->xAxisData());
+            m_ValuesData->merge(*dimDataSeries->valuesData());
         }
         else {
             qCWarning(LOG_DataSeries())

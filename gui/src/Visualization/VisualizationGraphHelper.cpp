@@ -37,30 +37,32 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
     timer.start();
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
         // Clean the graph
-        qCDebug(LOG_VisualizationGraphHelper()) << "The slow s1 operation took" << timer.elapsed()
-                                                << "milliseconds";
         // NAIVE approch
         const auto &xData = scalarSeries.xAxisData()->data();
         const auto &valuesData = scalarSeries.valuesData()->data();
-
-        auto xValue = QVector<double>();
-        auto vValue = QVector<double>();
-
         const auto count = xData.count();
-        auto ite = 0;
+        qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points in cache" << xData.count();
+
+        auto xValue = QVector<double>(count);
+        auto vValue = QVector<double>(count);
+
+        int n = 0;
         for (auto i = 0; i < count; ++i) {
-            const auto x = xData.at(i);
+            const auto x = xData[i];
             if (x >= dateTime.m_TStart && x <= dateTime.m_TEnd) {
-                xValue.push_back(x);
-                vValue.push_back(valuesData.at(i));
-                ++ite;
+                xValue[n] = x;
+                vValue[n] = valuesData[i];
+                ++n;
             }
         }
 
-        qcpGraph->setData(xValue, vValue);
+        xValue.resize(n);
+        vValue.resize(n);
 
-        qCDebug(LOG_VisualizationGraphHelper()) << "The slow s2 operation took" << timer.elapsed()
-                                                << "milliseconds";
+        qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points displayed"
+                                               << xValue.count();
+
+        qcpGraph->setData(xValue, vValue);
     }
     else {
         /// @todo DEBUG

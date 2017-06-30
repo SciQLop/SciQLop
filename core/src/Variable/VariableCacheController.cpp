@@ -3,6 +3,8 @@
 #include "Variable/Variable.h"
 #include <unordered_map>
 
+Q_LOGGING_CATEGORY(LOG_VariableCacheController, "VariableCacheController")
+
 struct VariableCacheController::VariableCacheControllerPrivate {
 
     std::unordered_map<std::shared_ptr<Variable>, QVector<SqpDateTime> >
@@ -156,15 +158,26 @@ void VariableCacheController::VariableCacheControllerPrivate::addInCacheDataBySt
         // ts localised between to interval: let's localized te
         addInCacheDataByEnd(dateTime, dateTimeList, notInCache, cacheIndex, currentTStart);
     }
-    else if (dateTime.m_TStart < currentDateTimeI.m_TEnd) {
-        // ts not localised before the current interval: we need to look at the next interval
-        // We can assume now current tstart is the last interval tend, because data between them are
-        // in the cache
-        addInCacheDataByStart(dateTime, dateTimeList, notInCache, ++cacheIndex,
-                              currentDateTimeI.m_TEnd);
+    else if (currentTStart < currentDateTimeI.m_TEnd) {
+        if (dateTime.m_TEnd > currentDateTimeI.m_TEnd) {
+            // ts not localised before the current interval: we need to look at the next interval
+            // We can assume now current tstart is the last interval tend, because data between them
+            // are
+            // in the cache
+            addInCacheDataByStart(dateTime, dateTimeList, notInCache, ++cacheIndex,
+                                  currentDateTimeI.m_TEnd);
+        }
     }
     else {
         // ts not localised before the current interval: we need to look at the next interval
         addInCacheDataByStart(dateTime, dateTimeList, notInCache, ++cacheIndex, currentTStart);
     }
+}
+
+
+void VariableCacheController::displayCache(std::shared_ptr<Variable> variable)
+{
+    auto variableDateTimeList = impl->m_VariableToSqpDateTimeListMap.at(variable);
+    qCInfo(LOG_VariableCacheController()) << tr("VariableCacheController::displayCache")
+                                          << variableDateTimeList;
 }

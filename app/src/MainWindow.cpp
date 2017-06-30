@@ -189,9 +189,11 @@ MainWindow::MainWindow(QWidget *parent)
     // potentially attach a menu to the variable's menu to do so before this menu is displayed.
     // The order of connections is also important, since it determines the order in which each
     // widget will attach its menu
-    connect(m_Ui->variableInspectorWidget,
-            SIGNAL(tableMenuAboutToBeDisplayed(QMenu *, std::shared_ptr<Variable>)), m_Ui->view,
-            SLOT(attachVariableMenu(QMenu *, std::shared_ptr<Variable>)), Qt::DirectConnection);
+    connect(
+        m_Ui->variableInspectorWidget,
+        SIGNAL(tableMenuAboutToBeDisplayed(QMenu *, const QVector<std::shared_ptr<Variable> > &)),
+        m_Ui->view, SLOT(attachVariableMenu(QMenu *, const QVector<std::shared_ptr<Variable> > &)),
+        Qt::DirectConnection);
 
     /*    QLopGUI::registerMenuBar(menuBar());
         this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));

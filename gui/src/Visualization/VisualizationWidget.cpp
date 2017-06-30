@@ -106,10 +106,24 @@ QString VisualizationWidget::name() const
     return QStringLiteral("MainView");
 }
 
-void VisualizationWidget::attachVariableMenu(QMenu *menu,
-                                             std::shared_ptr<Variable> variable) noexcept
+void VisualizationWidget::attachVariableMenu(
+    QMenu *menu, const QVector<std::shared_ptr<Variable> > &variables) noexcept
 {
-    // Generates the actions that make it possible to visualize the variable
-    auto generateVariableMenuOperation = GenerateVariableMenuOperation{menu, variable};
-    accept(&generateVariableMenuOperation);
+    // Menu is generated only if there is a single variable
+    if (variables.size() == 1) {
+        if (auto variable = variables.first()) {
+            // Generates the actions that make it possible to visualize the variable
+            auto generateVariableMenuOperation = GenerateVariableMenuOperation{menu, variable};
+            accept(&generateVariableMenuOperation);
+        }
+        else {
+            qCCritical(LOG_VisualizationWidget()) << tr(
+                "Can't generate the menu relative to the visualization: the variable is null");
+        }
+    }
+    else {
+        qCDebug(LOG_VisualizationWidget())
+            << tr("No generation of the menu related to the visualization: several variables are "
+                  "selected");
+    }
 }

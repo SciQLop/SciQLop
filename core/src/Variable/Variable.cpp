@@ -67,7 +67,7 @@ void Variable::onAddDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
     if (impl->m_DataSeries) {
         impl->m_DataSeries->merge(dataSeries.get());
 
-        emit dataCacheUpdated();
+        emit updated();
     }
 }
 
