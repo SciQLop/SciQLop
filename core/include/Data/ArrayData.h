@@ -44,9 +44,9 @@ public:
      * @remarks this method is only available for a unidimensional ArrayData
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    QVector<double> data() const noexcept
+    const QVector<double> &data() const noexcept
     {
-        return m_Data.at(0);
+        return m_Data[0];
     }
 
     /**
@@ -61,10 +61,10 @@ public:
 
     // TODO Comment
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    void merge(ArrayData<1> *arrayData)
+    void merge(const ArrayData<1> &arrayData)
     {
         if (!m_Data.empty()) {
-            m_Data[0] += arrayData->data();
+            m_Data[0] += arrayData.data();
         }
     }
 
