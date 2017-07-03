@@ -99,8 +99,7 @@ void VariableController::createVariable(const QString &name,
     /// - default data are generated for the variable, without taking into account the timerange set
     /// in sciqlop
     auto dateTime = impl->m_TimeController->dateTime();
-    if (auto newVariable = impl->m_VariableModel->createVariable(
-            name, dateTime, generateDefaultDataSeries(*provider, dateTime))) {
+    if (auto newVariable = impl->m_VariableModel->createVariable(name, dateTime)) {
 
         // store the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
@@ -114,10 +113,7 @@ void VariableController::createVariable(const QString &name,
               };
 
         connect(provider.get(), &IDataProvider::dataProvided, addDateTimeAcquired);
-
-
-        // store in cache
-        impl->m_VariableCacheController->addDateTime(newVariable, dateTime);
+        this->onRequestDataLoading(newVariable, dateTime);
 
         // notify the creation
         emit variableCreated(newVariable);
