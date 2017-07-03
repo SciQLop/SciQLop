@@ -53,7 +53,7 @@ private slots:
     /// Slot called when right clicking on the graph (displays a menu)
     void onGraphMenuRequested(const QPoint &pos) noexcept;
 
-    void onRangeChanged(const QCPRange &t1, const QCPRange &t2);
+    void onRangeChanged(const QCPRange &t1);
 
     /// Slot called when a mouse wheel was made, to perform some processing before the zoom is done
     void onMouseWheel(QWheelEvent *event) noexcept;

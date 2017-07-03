@@ -49,9 +49,9 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
-    connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
-                                   &QCPAxis::rangeChanged),
-            this, &VisualizationGraphWidget::onRangeChanged);
+    connect(ui->widget->xAxis,
+            static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), this,
+            &VisualizationGraphWidget::onRangeChanged);
 
     // Activates menu when right clicking on the graph
     ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -168,18 +168,19 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
     }
 }
 
-void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
+void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
 {
 
-    qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged");
+    qCInfo(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged");
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
 
         auto variable = it->first;
-        auto dateTime = SqpDateTime{t2.lower, t2.upper};
+        auto dateTime = SqpDateTime{t1.lower, t1.upper};
 
         if (!variable->contains(dateTime)) {
+            qCInfo(LOG_VisualizationGraphWidget()) << dateTime << variable->dateTime();
 
             auto variableDateTimeWithTolerance = dateTime;
             if (variable->intersect(dateTime)) {
