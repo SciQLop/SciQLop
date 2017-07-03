@@ -30,7 +30,7 @@ public:
 
     QVector<SqpDateTime> dateCacheList(std::shared_ptr<Variable> variable) const noexcept;
 
-    void displayCache(std::shared_ptr<Variable> variable);
+    void displayCache(std::shared_ptr<Variable> variable) const;
 
 private:
     class VariableCacheControllerPrivate;

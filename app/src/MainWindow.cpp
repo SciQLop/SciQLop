@@ -29,6 +29,7 @@
 #include <Time/TimeController.h>
 #include <TimeWidget/TimeWidget.h>
 #include <Variable/Variable.h>
+#include <Variable/VariableController.h>
 #include <Visualization/VisualizationController.h>
 
 #include <QAction>
@@ -181,6 +182,10 @@ MainWindow::MainWindow(QWidget *parent)
     // Time
     connect(timeWidget, SIGNAL(timeUpdated(SqpDateTime)), &sqpApp->timeController(),
             SLOT(onTimeToUpdate(SqpDateTime)));
+
+    qRegisterMetaType<SqpDateTime>();
+    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(SqpDateTime)),
+            &sqpApp->variableController(), SLOT(onDateTimeOnSelection(SqpDateTime)));
 
     // Widgets / widgets connections
     qRegisterMetaType<std::shared_ptr<Variable> >();

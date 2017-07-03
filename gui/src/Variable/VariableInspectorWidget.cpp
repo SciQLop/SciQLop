@@ -18,10 +18,11 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
     ui->setupUi(this);
 
     // Sets model for table
-    auto sortFilterModel = new QSortFilterProxyModel{this};
-    sortFilterModel->setSourceModel(sqpApp->variableController().variableModel());
+    //    auto sortFilterModel = new QSortFilterProxyModel{this};
+    //    sortFilterModel->setSourceModel(sqpApp->variableController().variableModel());
 
-    ui->tableView->setModel(sortFilterModel);
+    ui->tableView->setModel(sqpApp->variableController().variableModel());
+    ui->tableView->setSelectionModel(sqpApp->variableController().variableSelectionModel());
 
     // Fixes column sizes
     auto model = ui->tableView->model();

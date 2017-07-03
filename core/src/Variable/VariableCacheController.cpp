@@ -50,8 +50,13 @@ void VariableCacheController::addDateTime(std::shared_ptr<Variable> variable,
             //      will be compared to the next interval. The old one is remove from the list
             //   C: if it is superior, we do the same with the next interval of the list
 
-            impl->addDateTimeRecurse(dateTime, impl->m_VariableToSqpDateTimeListMap.at(variable),
-                                     0);
+            try {
+                impl->addDateTimeRecurse(dateTime,
+                                         impl->m_VariableToSqpDateTimeListMap.at(variable), 0);
+            }
+            catch (const std::out_of_range &e) {
+                qCWarning(LOG_VariableCacheController()) << e.what();
+            }
         }
     }
 }
@@ -67,8 +72,13 @@ VariableCacheController::provideNotInCacheDateTimeList(std::shared_ptr<Variable>
     // We assume that the list is ordered in a way that l(0) < l(1). We assume also a < b
     // (with a & b of type SqpDateTime) means ts(b) > te(a)
 
-    impl->addInCacheDataByStart(dateTime, impl->m_VariableToSqpDateTimeListMap.at(variable),
-                                notInCache, 0, dateTime.m_TStart);
+    try {
+        impl->addInCacheDataByStart(dateTime, impl->m_VariableToSqpDateTimeListMap.at(variable),
+                                    notInCache, 0, dateTime.m_TStart);
+    }
+    catch (const std::out_of_range &e) {
+        qCWarning(LOG_VariableCacheController()) << e.what();
+    }
 
     return notInCache;
 }
@@ -76,7 +86,13 @@ VariableCacheController::provideNotInCacheDateTimeList(std::shared_ptr<Variable>
 QVector<SqpDateTime>
 VariableCacheController::dateCacheList(std::shared_ptr<Variable> variable) const noexcept
 {
-    return impl->m_VariableToSqpDateTimeListMap.at(variable);
+    try {
+        return impl->m_VariableToSqpDateTimeListMap.at(variable);
+    }
+    catch (const std::out_of_range &e) {
+        qCWarning(LOG_VariableCacheController()) << e.what();
+        return QVector<SqpDateTime>{};
+    }
 }
 
 void VariableCacheController::VariableCacheControllerPrivate::addDateTimeRecurse(
@@ -175,9 +191,15 @@ void VariableCacheController::VariableCacheControllerPrivate::addInCacheDataBySt
 }
 
 
-void VariableCacheController::displayCache(std::shared_ptr<Variable> variable)
+void VariableCacheController::displayCache(std::shared_ptr<Variable> variable) const
 {
-    auto variableDateTimeList = impl->m_VariableToSqpDateTimeListMap.at(variable);
-    qCInfo(LOG_VariableCacheController()) << tr("VariableCacheController::displayCache")
-                                          << variableDateTimeList;
+    auto variableDateTimeList = impl->m_VariableToSqpDateTimeListMap.find(variable);
+    if (variableDateTimeList != impl->m_VariableToSqpDateTimeListMap.end()) {
+        qCInfo(LOG_VariableCacheController()) << tr("VariableCacheController::displayCache")
+                                              << variableDateTimeList->second;
+    }
+    else {
+        qCWarning(LOG_VariableCacheController())
+            << tr("Cannot display a variable that is not in the cache");
+    }
 }
