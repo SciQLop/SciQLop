@@ -55,16 +55,18 @@ void Variable::setDateTime(const SqpDateTime &dateTime) noexcept
     impl->m_DateTime = dateTime;
 }
 
-void Variable::setDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept
+void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
-    if (!impl->m_DataSeries) {
-        impl->m_DataSeries = std::move(dataSeries);
+    if (!dataSeries) {
+        /// @todo ALX : log
+        return;
     }
-}
 
-void Variable::onAddDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
-{
-    if (impl->m_DataSeries) {
+    // Inits the data series of the variable
+    if (!impl->m_DataSeries) {
+        impl->m_DataSeries = dataSeries->clone();
+    }
+    else {
         impl->m_DataSeries->merge(dataSeries.get());
 
         emit updated();

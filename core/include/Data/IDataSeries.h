@@ -1,10 +1,10 @@
 #ifndef SCIQLOP_IDATASERIES_H
 #define SCIQLOP_IDATASERIES_H
 
+#include <Common/MetaTypes.h>
 
 #include <memory>
 
-#include <QObject>
 #include <QString>
 
 template <int Dim>
@@ -41,14 +41,19 @@ public:
     /// Returns the x-axis dataset
     virtual std::shared_ptr<ArrayData<1> > xAxisData() = 0;
 
+    /// Returns the x-axis dataset (as const)
+    virtual const std::shared_ptr<ArrayData<1> > xAxisData() const = 0;
+
     virtual Unit xAxisUnit() const = 0;
 
     virtual Unit valuesUnit() const = 0;
 
     virtual void merge(IDataSeries *dataSeries) = 0;
+
+    virtual std::unique_ptr<IDataSeries> clone() const = 0;
 };
 
 // Required for using shared_ptr in signals/slots
-Q_DECLARE_METATYPE(std::shared_ptr<IDataSeries>)
+SCIQLOP_REGISTER_META_TYPE(IDATASERIES_PTR_REGISTRY, std::shared_ptr<IDataSeries>)
 
 #endif // SCIQLOP_IDATASERIES_H
