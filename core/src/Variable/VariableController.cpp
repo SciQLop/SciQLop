@@ -21,7 +21,7 @@ namespace {
 
 /// @todo Generates default dataseries, according to the provider passed in parameter. This method
 /// will be deleted when the timerange is recovered from SciQlop
-std::unique_ptr<IDataSeries> generateDefaultDataSeries(const IDataProvider &provider,
+std::shared_ptr<IDataSeries> generateDefaultDataSeries(const IDataProvider &provider,
                                                        const SqpDateTime &dateTime) noexcept
 {
     auto parameters = DataProviderParameters{dateTime};
@@ -105,7 +105,7 @@ void VariableController::createVariable(const QString &name,
         // store the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
         connect(provider.get(), &IDataProvider::dataProvided, newVariable.get(),
-                &Variable::onAddDataSeries);
+                &Variable::setDataSeries);
 
 
         // store in cache

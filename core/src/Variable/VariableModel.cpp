@@ -54,7 +54,7 @@ VariableModel::VariableModel(QObject *parent)
 
 std::shared_ptr<Variable>
 VariableModel::createVariable(const QString &name, const SqpDateTime &dateTime,
-                              std::unique_ptr<IDataSeries> defaultDataSeries) noexcept
+                              std::shared_ptr<IDataSeries> defaultDataSeries) noexcept
 {
     auto insertIndex = rowCount();
     beginInsertRows({}, insertIndex, insertIndex);

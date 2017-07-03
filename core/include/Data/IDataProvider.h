@@ -26,7 +26,7 @@ class IDataProvider : public QObject {
 public:
     virtual ~IDataProvider() noexcept = default;
 
-    virtual std::unique_ptr<IDataSeries>
+    virtual std::shared_ptr<IDataSeries>
     retrieveData(const DataProviderParameters &parameters) const = 0;
 
 

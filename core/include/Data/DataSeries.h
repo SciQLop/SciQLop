@@ -26,12 +26,14 @@ class DataSeries : public IDataSeries {
 public:
     /// @sa IDataSeries::xAxisData()
     std::shared_ptr<ArrayData<1> > xAxisData() override { return m_XAxisData; }
+    const std::shared_ptr<ArrayData<1> > xAxisData() const { return m_XAxisData; }
 
     /// @sa IDataSeries::xAxisUnit()
     Unit xAxisUnit() const override { return m_XAxisUnit; }
 
     /// @return the values dataset
-    std::shared_ptr<ArrayData<Dim> > valuesData() const { return m_ValuesData; }
+    std::shared_ptr<ArrayData<Dim> > valuesData() { return m_ValuesData; }
+    const std::shared_ptr<ArrayData<Dim> > valuesData() const { return m_ValuesData; }
 
     /// @sa IDataSeries::valuesUnit()
     Unit valuesUnit() const override { return m_ValuesUnit; }
@@ -58,6 +60,27 @@ protected:
               m_ValuesData{valuesData},
               m_ValuesUnit{valuesUnit}
     {
+    }
+
+    /// Copy ctor
+    explicit DataSeries(const DataSeries<Dim> &other)
+            : m_XAxisData{std::make_shared<ArrayData<1> >(*other.m_XAxisData)},
+              m_XAxisUnit{other.m_XAxisUnit},
+              m_ValuesData{std::make_shared<ArrayData<Dim> >(*other.m_ValuesData)},
+              m_ValuesUnit{other.m_ValuesUnit}
+    {
+    }
+
+    /// Assignment operator
+    template <int D>
+    DataSeries &operator=(DataSeries<D> other)
+    {
+        std::swap(m_XAxisData, other.m_XAxisData);
+        std::swap(m_XAxisUnit, other.m_XAxisUnit);
+        std::swap(m_ValuesData, other.m_ValuesData);
+        std::swap(m_ValuesUnit, other.m_ValuesUnit);
+
+        return *this;
     }
 
 private:

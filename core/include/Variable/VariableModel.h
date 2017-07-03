@@ -30,7 +30,7 @@ public:
      */
     std::shared_ptr<Variable>
     createVariable(const QString &name, const SqpDateTime &dateTime,
-                   std::unique_ptr<IDataSeries> defaultDataSeries) noexcept;
+                   std::shared_ptr<IDataSeries> defaultDataSeries) noexcept;
 
     std::shared_ptr<Variable> variable(int index) const;
 

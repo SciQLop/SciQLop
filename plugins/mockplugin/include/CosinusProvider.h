@@ -13,7 +13,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_CosinusProvider)
 class CosinusProvider : public IDataProvider {
 public:
     /// @sa IDataProvider::retrieveData()
-    std::unique_ptr<IDataSeries>
+    std::shared_ptr<IDataSeries>
     retrieveData(const DataProviderParameters &parameters) const override;
 
     void requestDataLoading(const QVector<SqpDateTime> &dateTimeList) override;

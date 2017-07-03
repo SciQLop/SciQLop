@@ -36,10 +36,9 @@ public:
 
     bool contains(const SqpDateTime &dateTime);
     bool intersect(const SqpDateTime &dateTime);
-    void setDataSeries(std::unique_ptr<IDataSeries> dataSeries) noexcept;
 
 public slots:
-    void onAddDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
+    void setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
 
 signals:
     void updated();
