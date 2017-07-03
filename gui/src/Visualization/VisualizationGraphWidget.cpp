@@ -87,7 +87,6 @@ void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> v
     auto grapheRange = ui->widget->xAxis->range();
     auto dateTime = SqpDateTime{grapheRange.lower, grapheRange.upper};
     variable->setDateTime(dateTime);
-    qCInfo(LOG_VisualizationGraphWidget()) << "ADD Variable with range : " << dateTime;
 
     auto variableDateTimeWithTolerance = dateTime;
 
@@ -95,9 +94,6 @@ void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> v
     auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
     variableDateTimeWithTolerance.m_TStart -= tolerance;
     variableDateTimeWithTolerance.m_TEnd += tolerance;
-
-    qCInfo(LOG_VisualizationGraphWidget()) << "ADD Variable with range TOL: "
-                                           << variableDateTimeWithTolerance;
 
     // Uses delegate to create the qcpplot components according to the variable
     auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
@@ -170,8 +166,7 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
 {
-
-    qCInfo(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged");
+    qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged");
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
@@ -180,7 +175,6 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
         auto dateTime = SqpDateTime{t1.lower, t1.upper};
 
         if (!variable->contains(dateTime)) {
-            qCInfo(LOG_VisualizationGraphWidget()) << dateTime << variable->dateTime();
 
             auto variableDateTimeWithTolerance = dateTime;
             if (variable->intersect(dateTime)) {

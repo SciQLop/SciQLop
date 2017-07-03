@@ -59,8 +59,8 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
         xValue.resize(n);
         vValue.resize(n);
 
-        qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points displayed" << xValue.count()
-                                               << dateTime;
+        qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points displayed"
+                                               << xValue.count();
 
         qcpGraph->setData(xValue, vValue);
 
