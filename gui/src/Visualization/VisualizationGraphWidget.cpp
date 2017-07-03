@@ -49,9 +49,9 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
-    connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
-                                   &QCPAxis::rangeChanged),
-            this, &VisualizationGraphWidget::onRangeChanged);
+    connect(ui->widget->xAxis,
+            static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), this,
+            &VisualizationGraphWidget::onRangeChanged);
 
     // Activates menu when right clicking on the graph
     ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -78,6 +78,34 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
     }
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
+}
+
+void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> variable)
+{
+
+    // when adding a variable, we need to set its time range to the current graph range
+    auto grapheRange = ui->widget->xAxis->range();
+    auto dateTime = SqpDateTime{grapheRange.lower, grapheRange.upper};
+    variable->setDateTime(dateTime);
+
+    auto variableDateTimeWithTolerance = dateTime;
+
+    // add 10% tolerance for each side
+    auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+    variableDateTimeWithTolerance.m_TStart -= tolerance;
+    variableDateTimeWithTolerance.m_TEnd += tolerance;
+
+    // Uses delegate to create the qcpplot components according to the variable
+    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+
+    for (auto createdPlottable : qAsConst(createdPlottables)) {
+        impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
+    }
+
+    connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
+
+    // CHangement detected, we need to ask controller to request data loading
+    emit requestDataLoading(variable, variableDateTimeWithTolerance);
 }
 
 void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
@@ -136,23 +164,23 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
     }
 }
 
-void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
+void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
 {
-
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged");
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
 
         auto variable = it->first;
-        auto dateTime = SqpDateTime{t2.lower, t2.upper};
+        auto dateTime = SqpDateTime{t1.lower, t1.upper};
 
         if (!variable->contains(dateTime)) {
 
             auto variableDateTimeWithTolerance = dateTime;
-            if (variable->intersect(dateTime)) {
+            if (!variable->isInside(dateTime)) {
                 auto variableDateTime = variable->dateTime();
                 if (variableDateTime.m_TStart < dateTime.m_TStart) {
+                    qCDebug(LOG_VisualizationGraphWidget()) << tr("TDetection pan to right:");
 
                     auto diffEndToKeepDelta = dateTime.m_TEnd - variableDateTime.m_TEnd;
                     dateTime.m_TStart = variableDateTime.m_TStart + diffEndToKeepDelta;
@@ -161,7 +189,8 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                     auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TEnd += tolerance;
                 }
-                if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
+                else if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
+                    qCDebug(LOG_VisualizationGraphWidget()) << tr("Detection pan to left: ");
                     auto diffStartToKeepDelta = variableDateTime.m_TStart - dateTime.m_TStart;
                     dateTime.m_TEnd = variableDateTime.m_TEnd - diffStartToKeepDelta;
                     // Tolerance have to be added to the left
@@ -169,8 +198,13 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                     auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TStart -= tolerance;
                 }
+                else {
+                    qCWarning(LOG_VisualizationGraphWidget())
+                        << tr("Detection anormal zoom detection: ");
+                }
             }
             else {
+                qCDebug(LOG_VisualizationGraphWidget()) << tr("Detection zoom out: ");
                 // add 10% tolerance for each side
                 auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
                 variableDateTimeWithTolerance.m_TStart -= tolerance;
@@ -180,6 +214,9 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
 
             // CHangement detected, we need to ask controller to request data loading
             emit requestDataLoading(variable, variableDateTimeWithTolerance);
+        }
+        else {
+            qCDebug(LOG_VisualizationGraphWidget()) << tr("Detection zoom in: ");
         }
     }
 }

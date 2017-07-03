@@ -99,17 +99,21 @@ void VariableController::createVariable(const QString &name,
     /// - default data are generated for the variable, without taking into account the timerange set
     /// in sciqlop
     auto dateTime = impl->m_TimeController->dateTime();
-    if (auto newVariable = impl->m_VariableModel->createVariable(
-            name, dateTime, generateDefaultDataSeries(*provider, dateTime))) {
+    if (auto newVariable = impl->m_VariableModel->createVariable(name, dateTime)) {
 
         // store the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
-        connect(provider.get(), &IDataProvider::dataProvided, newVariable.get(),
-                &Variable::setDataSeries);
 
+        auto addDateTimeAcquired
+            = [this, newVariable](auto dataSeriesAcquired, auto dateTimeToPutInCache) {
 
-        // store in cache
-        impl->m_VariableCacheController->addDateTime(newVariable, dateTime);
+                  impl->m_VariableCacheController->addDateTime(newVariable, dateTimeToPutInCache);
+                  newVariable->setDataSeries(dataSeriesAcquired);
+
+              };
+
+        connect(provider.get(), &IDataProvider::dataProvided, addDateTimeAcquired);
+        this->onRequestDataLoading(newVariable, dateTime);
 
         // notify the creation
         emit variableCreated(newVariable);
@@ -144,8 +148,6 @@ void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable
             // Ask the provider for each data on the dateTimeListNotInCache
             impl->m_VariableToProviderMap.at(variable)->requestDataLoading(
                 std::move(dateTimeListNotInCache));
-            // store in cache
-            impl->m_VariableCacheController->addDateTime(variable, dateTime);
         }
         else {
             emit variable->updated();
