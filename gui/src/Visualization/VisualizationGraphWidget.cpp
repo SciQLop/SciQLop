@@ -80,6 +80,38 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 }
 
+void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> variable)
+{
+
+    // when adding a variable, we need to set its time range to the current graph range
+    auto grapheRange = ui->widget->xAxis->range();
+    auto dateTime = SqpDateTime{grapheRange.lower, grapheRange.upper};
+    variable->setDateTime(dateTime);
+    qCInfo(LOG_VisualizationGraphWidget()) << "ADD Variable with range : " << dateTime;
+
+    auto variableDateTimeWithTolerance = dateTime;
+
+    // add 10% tolerance for each side
+    auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+    variableDateTimeWithTolerance.m_TStart -= tolerance;
+    variableDateTimeWithTolerance.m_TEnd += tolerance;
+
+    qCInfo(LOG_VisualizationGraphWidget()) << "ADD Variable with range TOL: "
+                                           << variableDateTimeWithTolerance;
+
+    // Uses delegate to create the qcpplot components according to the variable
+    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+
+    for (auto createdPlottable : qAsConst(createdPlottables)) {
+        impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
+    }
+
+    connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
+
+    // CHangement detected, we need to ask controller to request data loading
+    emit requestDataLoading(variable, variableDateTimeWithTolerance);
+}
+
 void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
 {
     // Each component associated to the variable :

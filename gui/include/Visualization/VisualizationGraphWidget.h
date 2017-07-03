@@ -28,6 +28,7 @@ public:
     virtual ~VisualizationGraphWidget();
 
     void addVariable(std::shared_ptr<Variable> variable);
+    void addVariableUsingGraph(std::shared_ptr<Variable> variable);
     /// Removes a variable from the graph
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
 

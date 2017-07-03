@@ -137,7 +137,7 @@ void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
     if (graphWidget) {
         impl->visitLeaf(
             *graphWidget, QObject::tr("Open in %1").arg(graphWidget->name()),
-            [ var = impl->m_Variable, graphWidget ]() { graphWidget->addVariable(var); });
+            [ var = impl->m_Variable, graphWidget ]() { graphWidget->addVariableUsingGraph(var); });
     }
     else {
         qCCritical(LOG_GenerateVariableMenuOperation(),
