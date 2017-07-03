@@ -177,9 +177,10 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
         if (!variable->contains(dateTime)) {
 
             auto variableDateTimeWithTolerance = dateTime;
-            if (variable->intersect(dateTime)) {
+            if (!variable->isInside(dateTime)) {
                 auto variableDateTime = variable->dateTime();
                 if (variableDateTime.m_TStart < dateTime.m_TStart) {
+                    qCDebug(LOG_VisualizationGraphWidget()) << tr("TDetection pan to right:");
 
                     auto diffEndToKeepDelta = dateTime.m_TEnd - variableDateTime.m_TEnd;
                     dateTime.m_TStart = variableDateTime.m_TStart + diffEndToKeepDelta;
@@ -188,7 +189,8 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
                     auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TEnd += tolerance;
                 }
-                if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
+                else if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
+                    qCDebug(LOG_VisualizationGraphWidget()) << tr("Detection pan to left: ");
                     auto diffStartToKeepDelta = variableDateTime.m_TStart - dateTime.m_TStart;
                     dateTime.m_TEnd = variableDateTime.m_TEnd - diffStartToKeepDelta;
                     // Tolerance have to be added to the left
@@ -196,8 +198,13 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
                     auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TStart -= tolerance;
                 }
+                else {
+                    qCWarning(LOG_VisualizationGraphWidget())
+                        << tr("Detection anormal zoom detection: ");
+                }
             }
             else {
+                qCDebug(LOG_VisualizationGraphWidget()) << tr("Detection zoom out: ");
                 // add 10% tolerance for each side
                 auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
                 variableDateTimeWithTolerance.m_TStart -= tolerance;
@@ -207,6 +214,9 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
 
             // CHangement detected, we need to ask controller to request data loading
             emit requestDataLoading(variable, variableDateTimeWithTolerance);
+        }
+        else {
+            qCDebug(LOG_VisualizationGraphWidget()) << tr("Detection zoom in: ");
         }
     }
 }

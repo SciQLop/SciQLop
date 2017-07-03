@@ -17,12 +17,12 @@ struct SqpDateTime {
     /// End time
     double m_TEnd;
 
-    bool contains(const SqpDateTime &dateTime)
+    bool contains(const SqpDateTime &dateTime) const noexcept
     {
         return (m_TStart <= dateTime.m_TStart && m_TEnd >= dateTime.m_TEnd);
     }
 
-    bool intersect(const SqpDateTime &dateTime)
+    bool intersect(const SqpDateTime &dateTime) const noexcept
     {
         return (m_TEnd >= dateTime.m_TStart && m_TStart <= dateTime.m_TEnd);
     }

@@ -104,8 +104,16 @@ void VariableController::createVariable(const QString &name,
 
         // store the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
-        connect(provider.get(), &IDataProvider::dataProvided, newVariable.get(),
-                &Variable::setDataSeries);
+
+        auto addDateTimeAcquired
+            = [this, newVariable](auto dataSeriesAcquired, auto dateTimeToPutInCache) {
+
+                  impl->m_VariableCacheController->addDateTime(newVariable, dateTimeToPutInCache);
+                  newVariable->setDataSeries(dataSeriesAcquired);
+
+              };
+
+        connect(provider.get(), &IDataProvider::dataProvided, addDateTimeAcquired);
 
 
         // store in cache
@@ -144,8 +152,6 @@ void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable
             // Ask the provider for each data on the dateTimeListNotInCache
             impl->m_VariableToProviderMap.at(variable)->requestDataLoading(
                 std::move(dateTimeListNotInCache));
-            // store in cache
-            impl->m_VariableCacheController->addDateTime(variable, dateTime);
         }
         else {
             emit variable->updated();
