@@ -1,10 +1,10 @@
 #ifndef SCIQLOP_IDATASERIES_H
 #define SCIQLOP_IDATASERIES_H
 
+#include <Common/MetaTypes.h>
 
 #include <memory>
 
-#include <QObject>
 #include <QString>
 
 template <int Dim>
@@ -49,6 +49,6 @@ public:
 };
 
 // Required for using shared_ptr in signals/slots
-Q_DECLARE_METATYPE(std::shared_ptr<IDataSeries>)
+SCIQLOP_REGISTER_META_TYPE(IDATASERIES_PTR_REGISTRY, std::shared_ptr<IDataSeries>)
 
 #endif // SCIQLOP_IDATASERIES_H

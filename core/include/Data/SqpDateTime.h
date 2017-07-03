@@ -6,6 +6,8 @@
 #include <QDateTime>
 #include <QDebug>
 
+#include <Common/MetaTypes.h>
+
 /**
  * @brief The SqpDateTime struct holds the information of time parameters
  */
@@ -37,6 +39,6 @@ inline QDebug operator<<(QDebug d, SqpDateTime obj)
 }
 
 // Required for using shared_ptr in signals/slots
-Q_DECLARE_METATYPE(SqpDateTime)
+SCIQLOP_REGISTER_META_TYPE(SQPDATETIME_REGISTRY, SqpDateTime)
 
 #endif // SCIQLOP_SQPDATETIME_H

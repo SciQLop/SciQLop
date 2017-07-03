@@ -183,12 +183,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(timeWidget, SIGNAL(timeUpdated(SqpDateTime)), &sqpApp->timeController(),
             SLOT(onTimeToUpdate(SqpDateTime)));
 
-    qRegisterMetaType<SqpDateTime>();
     connect(&sqpApp->timeController(), SIGNAL(timeUpdated(SqpDateTime)),
             &sqpApp->variableController(), SLOT(onDateTimeOnSelection(SqpDateTime)));
 
     // Widgets / widgets connections
-    qRegisterMetaType<std::shared_ptr<Variable> >();
 
     // For the following connections, we use DirectConnection to allow each widget that can
     // potentially attach a menu to the variable's menu to do so before this menu is displayed.

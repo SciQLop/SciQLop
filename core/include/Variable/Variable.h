@@ -3,10 +3,10 @@
 
 #include <Data/SqpDateTime.h>
 
-
 #include <QLoggingCategory>
 #include <QObject>
 
+#include <Common/MetaTypes.h>
 #include <Common/spimpl.h>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_Variable)
@@ -50,6 +50,6 @@ private:
 };
 
 // Required for using shared_ptr in signals/slots
-Q_DECLARE_METATYPE(std::shared_ptr<Variable>)
+SCIQLOP_REGISTER_META_TYPE(VARIABLE_PTR_REGISTRY, std::shared_ptr<Variable>)
 
 #endif // SCIQLOP_VARIABLE_H

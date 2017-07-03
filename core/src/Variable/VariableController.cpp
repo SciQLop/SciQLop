@@ -104,8 +104,6 @@ void VariableController::createVariable(const QString &name,
 
         // store the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
-        qRegisterMetaType<std::shared_ptr<IDataSeries> >();
-        qRegisterMetaType<SqpDateTime>();
         connect(provider.get(), &IDataProvider::dataProvided, newVariable.get(),
                 &Variable::onAddDataSeries);
 
