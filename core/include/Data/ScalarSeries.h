@@ -23,6 +23,8 @@ public:
      * @param value the value data
      */
     void setData(int index, double x, double value) noexcept;
+
+    std::unique_ptr<IDataSeries> clone() const;
 };
 
 #endif // SCIQLOP_SCALARSERIES_H

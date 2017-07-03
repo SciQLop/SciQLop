@@ -41,6 +41,9 @@ public:
     QString name() const override;
 
 private:
+    /// @return the layout of tab in which zones are added
+    QLayout &tabLayout() const noexcept;
+
     Ui::VisualizationTabWidget *ui;
 
     class VisualizationTabWidgetPrivate;

@@ -48,12 +48,12 @@ VisualizationTabWidget::~VisualizationTabWidget()
 
 void VisualizationTabWidget::addZone(VisualizationZoneWidget *zoneWidget)
 {
-    this->layout()->addWidget(zoneWidget);
+    tabLayout().addWidget(zoneWidget);
 }
 
 VisualizationZoneWidget *VisualizationTabWidget::createZone(std::shared_ptr<Variable> variable)
 {
-    auto zoneWidget = new VisualizationZoneWidget{defaultZoneName(*layout()), this};
+    auto zoneWidget = new VisualizationZoneWidget{defaultZoneName(tabLayout()), this};
     this->addZone(zoneWidget);
 
     // Creates a new graph into the zone
@@ -68,8 +68,9 @@ void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
         visitor->visitEnter(this);
 
         // Apply visitor to zone children
-        for (auto i = 0; i < layout()->count(); ++i) {
-            if (auto item = layout()->itemAt(i)) {
+        auto &layout = tabLayout();
+        for (auto i = 0; i < layout.count(); ++i) {
+            if (auto item = layout.itemAt(i)) {
                 // Widgets different from zones are not visited (no action)
                 if (auto visualizationZoneWidget
                     = dynamic_cast<VisualizationZoneWidget *>(item->widget())) {
@@ -95,4 +96,9 @@ bool VisualizationTabWidget::canDrop(const Variable &variable) const
 QString VisualizationTabWidget::name() const
 {
     return impl->m_Name;
+}
+
+QLayout &VisualizationTabWidget::tabLayout() const noexcept
+{
+    return *ui->scrollAreaWidgetContents->layout();
 }

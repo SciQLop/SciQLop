@@ -11,3 +11,8 @@ void ScalarSeries::setData(int index, double x, double value) noexcept
     xAxisData()->setData(index, x);
     valuesData()->setData(index, value);
 }
+
+std::unique_ptr<IDataSeries> ScalarSeries::clone() const
+{
+    return std::make_unique<ScalarSeries>(*this);
+}

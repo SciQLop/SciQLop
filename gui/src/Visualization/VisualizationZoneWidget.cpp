@@ -10,6 +10,9 @@ Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 
 namespace {
 
+/// Minimum height for graph added in zones (in pixels)
+const auto GRAPH_MINIMUM_HEIGHT = 300;
+
 /// Generates a default name for a new graph, according to the number of graphs already displayed in
 /// the zone
 QString defaultGraphName(const QLayout &layout)
@@ -53,6 +56,11 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
 {
     auto graphWidget = new VisualizationGraphWidget{
         defaultGraphName(*ui->visualizationZoneFrame->layout()), this};
+
+    // Set graph properties
+    graphWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
+    graphWidget->setMinimumHeight(GRAPH_MINIMUM_HEIGHT);
+
     this->addGraph(graphWidget);
 
     graphWidget->addVariable(variable);

@@ -18,6 +18,18 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     {
     }
 
+    void visitRootEnter()
+    {
+        // Creates the root menu
+        m_MenuBuilder.addMenu(QObject::tr("Plot"));
+    }
+
+    void visitRootLeave()
+    {
+        // Closes the root menu
+        m_MenuBuilder.closeMenu();
+    }
+
     void visitNodeEnter(const IVisualizationWidget &container)
     {
         // Opens a new menu associated to the node
@@ -60,12 +72,16 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationWidget *widget)
 {
     // VisualizationWidget is not intended to accommodate a variable
     Q_UNUSED(widget)
+
+    impl->visitRootEnter();
 }
 
 void GenerateVariableMenuOperation::visitLeave(VisualizationWidget *widget)
 {
     // VisualizationWidget is not intended to accommodate a variable
     Q_UNUSED(widget)
+
+    impl->visitRootLeave();
 }
 
 void GenerateVariableMenuOperation::visitEnter(VisualizationTabWidget *tabWidget)
