@@ -42,7 +42,6 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
         const auto &valuesData = scalarSeries.valuesData()->data();
         const auto count = xData.count();
         qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points in cache" << xData.count();
-
         auto xValue = QVector<double>(count);
         auto vValue = QVector<double>(count);
 
@@ -65,7 +64,6 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
         qcpGraph->setData(xValue, vValue);
 
         // Display all data
-        // component->parentPlot()->xAxis->setRange(dateTime.m_TStart, dateTime.m_TEnd);
         component->rescaleAxes();
         component->parentPlot()->replot();
     }

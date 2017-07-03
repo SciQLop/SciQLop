@@ -78,12 +78,17 @@ IDataSeries *Variable::dataSeries() const noexcept
     return impl->m_DataSeries.get();
 }
 
-bool Variable::contains(const SqpDateTime &dateTime)
+bool Variable::contains(const SqpDateTime &dateTime) const noexcept
 {
     return impl->m_DateTime.contains(dateTime);
 }
 
-bool Variable::intersect(const SqpDateTime &dateTime)
+bool Variable::intersect(const SqpDateTime &dateTime) const noexcept
 {
     return impl->m_DateTime.intersect(dateTime);
+}
+
+bool Variable::isInside(const SqpDateTime &dateTime) const noexcept
+{
+    return dateTime.contains(SqpDateTime{impl->m_DateTime.m_TStart, impl->m_DateTime.m_TEnd});
 }

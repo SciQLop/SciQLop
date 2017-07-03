@@ -55,7 +55,7 @@ void VariableCacheController::addDateTime(std::shared_ptr<Variable> variable,
                                          impl->m_VariableToSqpDateTimeListMap.at(variable), 0);
             }
             catch (const std::out_of_range &e) {
-                qCWarning(LOG_VariableCacheController()) << e.what();
+                qCWarning(LOG_VariableCacheController()) << "addDateTime" << e.what();
             }
         }
     }
@@ -71,13 +71,12 @@ VariableCacheController::provideNotInCacheDateTimeList(std::shared_ptr<Variable>
     // list of date time request associated to the variable
     // We assume that the list is ordered in a way that l(0) < l(1). We assume also a < b
     // (with a & b of type SqpDateTime) means ts(b) > te(a)
-
-    try {
-        impl->addInCacheDataByStart(dateTime, impl->m_VariableToSqpDateTimeListMap.at(variable),
-                                    notInCache, 0, dateTime.m_TStart);
+    auto it = impl->m_VariableToSqpDateTimeListMap.find(variable);
+    if (it != impl->m_VariableToSqpDateTimeListMap.end()) {
+        impl->addInCacheDataByStart(dateTime, it->second, notInCache, 0, dateTime.m_TStart);
     }
-    catch (const std::out_of_range &e) {
-        qCWarning(LOG_VariableCacheController()) << e.what();
+    else {
+        notInCache << dateTime;
     }
 
     return notInCache;

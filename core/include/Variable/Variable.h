@@ -34,8 +34,9 @@ public:
     /// @return the data of the variable, nullptr if there is no data
     IDataSeries *dataSeries() const noexcept;
 
-    bool contains(const SqpDateTime &dateTime);
-    bool intersect(const SqpDateTime &dateTime);
+    bool contains(const SqpDateTime &dateTime) const noexcept;
+    bool intersect(const SqpDateTime &dateTime) const noexcept;
+    bool isInside(const SqpDateTime &dateTime) const noexcept;
 
 public slots:
     void setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
