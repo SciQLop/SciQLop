@@ -63,6 +63,11 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
                                                << xValue.count();
 
         qcpGraph->setData(xValue, vValue);
+
+        // Display all data
+        // component->parentPlot()->xAxis->setRange(dateTime.m_TStart, dateTime.m_TEnd);
+        component->rescaleAxes();
+        component->parentPlot()->replot();
     }
     else {
         /// @todo DEBUG
@@ -97,7 +102,6 @@ QCPAbstractPlottable *createScalarSeriesComponent(ScalarSeries &scalarSeries, QC
 
         // Display all data
         component->rescaleAxes();
-
         plot.replot();
     }
     else {

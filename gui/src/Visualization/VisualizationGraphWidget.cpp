@@ -49,9 +49,9 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
-    connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
-                                   &QCPAxis::rangeChanged),
-            this, &VisualizationGraphWidget::onRangeChanged);
+    connect(ui->widget->xAxis,
+            static_cast<void (QCPAxis::*)(const QCPRange &)>(&QCPAxis::rangeChanged), this,
+            &VisualizationGraphWidget::onRangeChanged);
 
     // Activates menu when right clicking on the graph
     ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -78,6 +78,34 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
     }
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
+}
+
+void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> variable)
+{
+
+    // when adding a variable, we need to set its time range to the current graph range
+    auto grapheRange = ui->widget->xAxis->range();
+    auto dateTime = SqpDateTime{grapheRange.lower, grapheRange.upper};
+    variable->setDateTime(dateTime);
+
+    auto variableDateTimeWithTolerance = dateTime;
+
+    // add 10% tolerance for each side
+    auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+    variableDateTimeWithTolerance.m_TStart -= tolerance;
+    variableDateTimeWithTolerance.m_TEnd += tolerance;
+
+    // Uses delegate to create the qcpplot components according to the variable
+    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+
+    for (auto createdPlottable : qAsConst(createdPlottables)) {
+        impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
+    }
+
+    connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
+
+    // CHangement detected, we need to ask controller to request data loading
+    emit requestDataLoading(variable, variableDateTimeWithTolerance);
 }
 
 void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
@@ -136,16 +164,15 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
     }
 }
 
-void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
+void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
 {
-
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged");
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
 
         auto variable = it->first;
-        auto dateTime = SqpDateTime{t2.lower, t2.upper};
+        auto dateTime = SqpDateTime{t1.lower, t1.upper};
 
         if (!variable->contains(dateTime)) {
 
