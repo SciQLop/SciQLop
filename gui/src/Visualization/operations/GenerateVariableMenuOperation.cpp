@@ -21,7 +21,7 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     void visitRootEnter()
     {
         // Creates the root menu
-        m_MenuBuilder.addMenu(QObject::tr("Plot"));
+        m_MenuBuilder.addMenu(QObject::tr("Plot"), QIcon{":/icones/plot.png"});
     }
 
     void visitRootLeave()

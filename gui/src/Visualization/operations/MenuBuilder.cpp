@@ -12,10 +12,10 @@ MenuBuilder::MenuBuilder(QMenu *menu)
     }
 }
 
-void MenuBuilder::addMenu(const QString &name)
+void MenuBuilder::addMenu(const QString &name, const QIcon &icon)
 {
     if (auto currMenu = currentMenu()) {
-        m_Menus.push(currMenu->addMenu(name));
+        m_Menus.push(currMenu->addMenu(icon, name));
     }
     else {
         qCCritical(LOG_MenuBuilder()) << QObject::tr("No current menu to attach the new menu");
