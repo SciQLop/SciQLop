@@ -14,52 +14,71 @@ Q_LOGGING_CATEGORY(LOG_GenerateVariableMenuOperation, "GenerateVariableMenuOpera
 
 struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     explicit GenerateVariableMenuOperationPrivate(QMenu *menu, std::shared_ptr<Variable> variable)
-            : m_Variable{variable}, m_MenuBuilder{menu}
+            : m_Variable{variable}, m_PlotMenuBuilder{menu}, m_UnplotMenuBuilder{menu}
     {
     }
 
     void visitRootEnter()
     {
         // Creates the root menu
-        m_MenuBuilder.addMenu(QObject::tr("Plot"));
+        m_PlotMenuBuilder.addMenu(QObject::tr("Plot"), QIcon{":/icones/plot.png"});
+        m_UnplotMenuBuilder.addMenu(QObject::tr("Unplot"), QIcon{":/icones/unplot.png"});
     }
 
     void visitRootLeave()
     {
         // Closes the root menu
-        m_MenuBuilder.closeMenu();
+        m_PlotMenuBuilder.closeMenu();
+        m_UnplotMenuBuilder.closeMenu();
     }
 
     void visitNodeEnter(const IVisualizationWidget &container)
     {
         // Opens a new menu associated to the node
-        m_MenuBuilder.addMenu(container.name());
+        m_PlotMenuBuilder.addMenu(container.name());
+        m_UnplotMenuBuilder.addMenu(container.name());
     }
 
     template <typename ActionFun>
-    void visitNodeLeave(const IVisualizationWidget &container, const QString &actionName,
-                        ActionFun actionFunction)
+    void visitNodeLeavePlot(const IVisualizationWidget &container, const QString &actionName,
+                            ActionFun actionFunction)
     {
         if (m_Variable && container.canDrop(*m_Variable)) {
-            m_MenuBuilder.addSeparator();
-            m_MenuBuilder.addAction(actionName, actionFunction);
+            m_PlotMenuBuilder.addSeparator();
+            m_PlotMenuBuilder.addAction(actionName, actionFunction);
         }
 
         // Closes the menu associated to the node
-        m_MenuBuilder.closeMenu();
+        m_PlotMenuBuilder.closeMenu();
+    }
+
+    void visitNodeLeaveUnplot()
+    {
+        // Closes the menu associated to the node
+        m_UnplotMenuBuilder.closeMenu();
     }
 
     template <typename ActionFun>
-    void visitLeaf(const IVisualizationWidget &container, const QString &actionName,
-                   ActionFun actionFunction)
+    void visitLeafPlot(const IVisualizationWidget &container, const QString &actionName,
+                       ActionFun actionFunction)
     {
         if (m_Variable && container.canDrop(*m_Variable)) {
-            m_MenuBuilder.addAction(actionName, actionFunction);
+            m_PlotMenuBuilder.addAction(actionName, actionFunction);
+        }
+    }
+
+    template <typename ActionFun>
+    void visitLeafUnplot(const IVisualizationWidget &container, const QString &actionName,
+                         ActionFun actionFunction)
+    {
+        if (m_Variable && container.contains(*m_Variable)) {
+            m_UnplotMenuBuilder.addAction(actionName, actionFunction);
         }
     }
 
     std::shared_ptr<Variable> m_Variable;
-    MenuBuilder m_MenuBuilder;
+    MenuBuilder m_PlotMenuBuilder;   ///< Builder for the 'Plot' menu
+    MenuBuilder m_UnplotMenuBuilder; ///< Builder for the 'Unplot' menu
 };
 
 GenerateVariableMenuOperation::GenerateVariableMenuOperation(QMenu *menu,
@@ -73,6 +92,7 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationWidget *widget)
     // VisualizationWidget is not intended to accommodate a variable
     Q_UNUSED(widget)
 
+    // 'Plot' and 'Unplot' menus
     impl->visitRootEnter();
 }
 
@@ -81,12 +101,14 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationWidget *widget)
     // VisualizationWidget is not intended to accommodate a variable
     Q_UNUSED(widget)
 
+    // 'Plot' and 'Unplot' menus
     impl->visitRootLeave();
 }
 
 void GenerateVariableMenuOperation::visitEnter(VisualizationTabWidget *tabWidget)
 {
     if (tabWidget) {
+        // 'Plot' and 'Unplot' menus
         impl->visitNodeEnter(*tabWidget);
     }
     else {
@@ -98,9 +120,13 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationTabWidget *tabWidget
 void GenerateVariableMenuOperation::visitLeave(VisualizationTabWidget *tabWidget)
 {
     if (tabWidget) {
-        impl->visitNodeLeave(
+        // 'Plot' menu
+        impl->visitNodeLeavePlot(
             *tabWidget, QObject::tr("Open in a new zone"),
             [ var = impl->m_Variable, tabWidget ]() { tabWidget->createZone(var); });
+
+        // 'Unplot' menu
+        impl->visitNodeLeaveUnplot();
     }
     else {
         qCCritical(LOG_GenerateVariableMenuOperation(),
@@ -111,6 +137,7 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationTabWidget *tabWidget
 void GenerateVariableMenuOperation::visitEnter(VisualizationZoneWidget *zoneWidget)
 {
     if (zoneWidget) {
+        // 'Plot' and 'Unplot' menus
         impl->visitNodeEnter(*zoneWidget);
     }
     else {
@@ -122,9 +149,13 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationZoneWidget *zoneWidg
 void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidget)
 {
     if (zoneWidget) {
-        impl->visitNodeLeave(
+        // 'Plot' menu
+        impl->visitNodeLeavePlot(
             *zoneWidget, QObject::tr("Open in a new graph"),
             [ var = impl->m_Variable, zoneWidget ]() { zoneWidget->createGraph(var); });
+
+        // 'Unplot' menu
+        impl->visitNodeLeaveUnplot();
     }
     else {
         qCCritical(LOG_GenerateVariableMenuOperation(),
@@ -135,9 +166,15 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidg
 void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
 {
     if (graphWidget) {
-        impl->visitLeaf(
+        // 'Plot' menu
+        impl->visitLeafPlot(
             *graphWidget, QObject::tr("Open in %1").arg(graphWidget->name()),
             [ var = impl->m_Variable, graphWidget ]() { graphWidget->addVariableUsingGraph(var); });
+
+        // 'Unplot' menu
+        impl->visitLeafUnplot(
+            *graphWidget, QObject::tr("Remove from %1").arg(graphWidget->name()),
+            [ var = impl->m_Variable, graphWidget ]() { graphWidget->removeVariable(var); });
     }
     else {
         qCCritical(LOG_GenerateVariableMenuOperation(),

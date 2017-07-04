@@ -4,6 +4,7 @@
 #include "Visualization/VisualizationTabWidget.h"
 #include "Visualization/VisualizationZoneWidget.h"
 #include "Visualization/operations/GenerateVariableMenuOperation.h"
+#include "Visualization/operations/RemoveVariableOperation.h"
 #include "Visualization/qcustomplot.h"
 
 #include "ui_VisualizationWidget.h"
@@ -101,6 +102,12 @@ bool VisualizationWidget::canDrop(const Variable &variable) const
     return false;
 }
 
+bool VisualizationWidget::contains(const Variable &variable) const
+{
+    Q_UNUSED(variable);
+    return false;
+}
+
 QString VisualizationWidget::name() const
 {
     return QStringLiteral("MainView");
@@ -126,4 +133,11 @@ void VisualizationWidget::attachVariableMenu(
             << tr("No generation of the menu related to the visualization: several variables are "
                   "selected");
     }
+}
+
+void VisualizationWidget::onVariableAboutToBeDeleted(std::shared_ptr<Variable> variable) noexcept
+{
+    // Calls the operation of removing all references to the variable in the visualization
+    auto removeVariableOperation = RemoveVariableOperation{variable};
+    accept(&removeVariableOperation);
 }

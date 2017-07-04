@@ -69,6 +69,32 @@ std::shared_ptr<Variable> VariableModel::createVariable(const QString &name,
     return variable;
 }
 
+void VariableModel::deleteVariable(std::shared_ptr<Variable> variable) noexcept
+{
+    if (!variable) {
+        qCCritical(LOG_Variable()) << "Can't delete a null variable from the model";
+        return;
+    }
+
+    // Finds variable in the model
+    auto begin = impl->m_Variables.cbegin();
+    auto end = impl->m_Variables.cend();
+    auto it = std::find(begin, end, variable);
+    if (it != end) {
+        auto removeIndex = std::distance(begin, it);
+
+        // Deletes variable
+        beginRemoveRows({}, removeIndex, removeIndex);
+        impl->m_Variables.erase(it);
+        endRemoveRows();
+    }
+    else {
+        qCritical(LOG_VariableModel())
+            << tr("Can't delete variable %1 from the model: the variable is not in the model")
+                   .arg(variable->name());
+    }
+}
+
 std::shared_ptr<Variable> VariableModel::variable(int index) const
 {
     return (index >= 0 && index < impl->m_Variables.size()) ? impl->m_Variables[index] : nullptr;

@@ -26,6 +26,7 @@ public:
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
+    bool contains(const Variable &variable) const override;
     QString name() const override;
 
 public slots:
@@ -36,6 +37,9 @@ public slots:
      */
     void attachVariableMenu(QMenu *menu,
                             const QVector<std::shared_ptr<Variable> > &variables) noexcept;
+
+    /// Slot called when a variable is about to be deleted from SciQlop
+    void onVariableAboutToBeDeleted(std::shared_ptr<Variable> variable) noexcept;
 
 private:
     Ui::VisualizationWidget *ui;

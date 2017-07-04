@@ -30,8 +30,29 @@ public:
 
     void setTimeController(TimeController *timeController) noexcept;
 
+    /**
+     * Deletes from the controller the variable passed in parameter.
+     *
+     * Delete a variable includes:
+     * - the deletion of the various references to the variable in SciQlop
+     * - the deletion of the model variable
+     * - the deletion of the provider associated with the variable
+     * - removing the cache associated with the variable
+     *
+     * @param variable the variable to delete from the controller.
+     */
+    void deleteVariable(std::shared_ptr<Variable> variable) noexcept;
+
+    /**
+     * Deletes from the controller the variables passed in parameter.
+     * @param variables the variables to delete from the controller.
+     * @sa deleteVariable()
+     */
+    void deleteVariables(const QVector<std::shared_ptr<Variable> > &variables) noexcept;
 
 signals:
+    /// Signal emitted when a variable is about to be deleted from the controller
+    void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
     /// Signal emitted when a variable has been created
     void variableCreated(std::shared_ptr<Variable> variable);
 

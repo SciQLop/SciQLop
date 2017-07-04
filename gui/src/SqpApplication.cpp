@@ -32,6 +32,10 @@ public:
         connect(m_VariableController.get(), SIGNAL(variableCreated(std::shared_ptr<Variable>)),
                 m_VisualizationController.get(),
                 SIGNAL(variableCreated(std::shared_ptr<Variable>)));
+        connect(m_VariableController.get(),
+                SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)),
+                m_VisualizationController.get(),
+                SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), Qt::DirectConnection);
 
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
         m_VariableController->moveToThread(&m_VariableControllerThread);

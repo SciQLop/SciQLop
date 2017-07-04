@@ -61,6 +61,22 @@ void VariableCacheController::addDateTime(std::shared_ptr<Variable> variable,
     }
 }
 
+void VariableCacheController::clear(std::shared_ptr<Variable> variable) noexcept
+{
+    if (!variable) {
+        qCCritical(LOG_VariableCacheController()) << "Can't clear variable cache: variable is null";
+        return;
+    }
+
+    auto nbEntries = impl->m_VariableToSqpDateTimeListMap.erase(variable);
+
+    auto clearCacheMessage
+        = (nbEntries != 0)
+              ? tr("Variable cache cleared for variable %1").arg(variable->name())
+              : tr("No deletion of variable cache: no cache was associated with the variable");
+    qCDebug(LOG_VariableCacheController()) << clearCacheMessage;
+}
+
 QVector<SqpDateTime>
 VariableCacheController::provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
                                                        const SqpDateTime &dateTime)

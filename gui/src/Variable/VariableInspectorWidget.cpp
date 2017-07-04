@@ -68,8 +68,8 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
     // Adds menu-specific actions
     if (!selectedVariables.isEmpty()) {
         // 'Delete' action
-        auto deleteFun = []() {
-            /// @todo ALX : call variable deletion
+        auto deleteFun = [&selectedVariables]() {
+            sqpApp->variableController().deleteVariables(selectedVariables);
         };
 
         tableMenu.addSeparator();
