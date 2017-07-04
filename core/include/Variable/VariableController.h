@@ -34,6 +34,7 @@ public:
      * Deletes from the controller the variable passed in parameter.
      *
      * Delete a variable includes:
+     * - the deletion of the model variable
      * - the deletion of the provider associated with the variable
      * - removing the cache associated with the variable
      *

@@ -30,6 +30,12 @@ public:
     std::shared_ptr<Variable> createVariable(const QString &name,
                                              const SqpDateTime &dateTime) noexcept;
 
+    /**
+     * Deletes a variable from the model, if it exists
+     * @param variable the variable to delete
+     */
+    void deleteVariable(std::shared_ptr<Variable> variable) noexcept;
+
     std::shared_ptr<Variable> variable(int index) const;
 
     // /////////////////////////// //

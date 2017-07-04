@@ -99,6 +99,9 @@ void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noex
     // Clears cache
     impl->m_VariableCacheController->clear(variable);
 
+    // Deletes from model
+    impl->m_VariableModel->deleteVariable(variable);
+}
 
 void VariableController::deleteVariables(
     const QVector<std::shared_ptr<Variable> > &variables) noexcept
