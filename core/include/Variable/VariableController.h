@@ -33,6 +33,8 @@ public:
     /**
      * Deletes from the controller the variable passed in parameter.
      *
+     * Delete a variable includes:
+     * - the deletion of the provider associated with the variable
      *
      * @param variable the variable to delete from the controller.
      */

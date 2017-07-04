@@ -89,7 +89,12 @@ void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noex
         return;
     }
 
-    /// @todo ALX
+
+    // Deletes provider
+    auto nbProvidersDeleted = impl->m_VariableToProviderMap.erase(variable);
+    qCDebug(LOG_VariableController())
+        << tr("Number of providers deleted for variable %1: %2")
+               .arg(variable->name(), QString::number(nbProvidersDeleted));
 
 
 void VariableController::deleteVariables(
