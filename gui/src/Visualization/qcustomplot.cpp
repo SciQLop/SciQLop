@@ -1049,8 +1049,9 @@ QCPLayer::~QCPLayer()
         mChildren.last()->setLayer(0); // removes itself from mChildren via removeChild()
 
     if (mParentPlot->currentLayer() == this)
-        qDebug() << Q_FUNC_INFO << "The parent plot's mCurrentLayer will be a dangling pointer. "
-                                   "Should have been set to a valid layer or 0 beforehand.";
+        qDebug() << Q_FUNC_INFO
+                 << "The parent plot's mCurrentLayer will be a dangling pointer. "
+                    "Should have been set to a valid layer or 0 beforehand.";
 }
 
 /*!
@@ -1574,10 +1575,7 @@ void QCPLayerable::applyAntialiasingHint(QCPPainter *painter, bool localAntialia
 
   \see initializeParentPlot
 */
-void QCPLayerable::parentPlotInitialized(QCustomPlot *parentPlot)
-{
-    Q_UNUSED(parentPlot)
-}
+void QCPLayerable::parentPlotInitialized(QCustomPlot *parentPlot){Q_UNUSED(parentPlot)}
 
 /*! \internal
 
@@ -8485,8 +8483,9 @@ void QCPAxis::scaleRange(double factor, double center)
                 mRange = newRange.sanitizedForLogScale();
         }
         else
-            qDebug() << Q_FUNC_INFO << "Center of scaling operation doesn't lie in same "
-                                       "logarithmic sign domain as range:"
+            qDebug() << Q_FUNC_INFO
+                     << "Center of scaling operation doesn't lie in same "
+                        "logarithmic sign domain as range:"
                      << center;
     }
     emit rangeChanged(mRange);
@@ -9257,14 +9256,16 @@ void QCPAxisPainterPrivate::draw(QCPPainter *painter)
     painter->setBrush(QBrush(basePen.color()));
     QCPVector2D baseLineVector(baseLine.dx(), baseLine.dy());
     if (lowerEnding.style() != QCPLineEnding::esNone)
-        lowerEnding.draw(painter, QCPVector2D(baseLine.p1())
-                                      - baseLineVector.normalized() * lowerEnding.realLength()
-                                            * (lowerEnding.inverted() ? -1 : 1),
+        lowerEnding.draw(painter,
+                         QCPVector2D(baseLine.p1())
+                             - baseLineVector.normalized() * lowerEnding.realLength()
+                                   * (lowerEnding.inverted() ? -1 : 1),
                          -baseLineVector);
     if (upperEnding.style() != QCPLineEnding::esNone)
-        upperEnding.draw(painter, QCPVector2D(baseLine.p2())
-                                      + baseLineVector.normalized() * upperEnding.realLength()
-                                            * (upperEnding.inverted() ? -1 : 1),
+        upperEnding.draw(painter,
+                         QCPVector2D(baseLine.p2())
+                             + baseLineVector.normalized() * upperEnding.realLength()
+                                   * (upperEnding.inverted() ? -1 : 1),
                          baseLineVector);
     painter->setAntialiasing(antialiasingBackup);
 
@@ -9570,14 +9571,16 @@ void QCPAxisPainterPrivate::placeTickLabel(QCPPainter *painter, double position,
         bool labelClippedByBorder = false;
         if (tickLabelSide == QCPAxis::lsOutside) {
             if (QCPAxis::orientation(type) == Qt::Horizontal)
-                labelClippedByBorder = finalPosition.x() + (labelData.rotatedTotalBounds.width()
-                                                            + labelData.rotatedTotalBounds.left())
+                labelClippedByBorder = finalPosition.x()
+                                               + (labelData.rotatedTotalBounds.width()
+                                                  + labelData.rotatedTotalBounds.left())
                                            > viewportRect.right()
                                        || finalPosition.x() + labelData.rotatedTotalBounds.left()
                                               < viewportRect.left();
             else
-                labelClippedByBorder = finalPosition.y() + (labelData.rotatedTotalBounds.height()
-                                                            + labelData.rotatedTotalBounds.top())
+                labelClippedByBorder = finalPosition.y()
+                                               + (labelData.rotatedTotalBounds.height()
+                                                  + labelData.rotatedTotalBounds.top())
                                            > viewportRect.bottom()
                                        || finalPosition.y() + labelData.rotatedTotalBounds.top()
                                               < viewportRect.top();
@@ -12528,8 +12531,9 @@ double QCPAbstractItem::rectDistance(const QRectF &rect, const QPointF &pos, boo
 */
 QPointF QCPAbstractItem::anchorPixelPosition(int anchorId) const
 {
-    qDebug() << Q_FUNC_INFO << "called on item which shouldn't have any anchors (this method not "
-                               "reimplemented). anchorId"
+    qDebug() << Q_FUNC_INFO
+             << "called on item which shouldn't have any anchors (this method not "
+                "reimplemented). anchorId"
              << anchorId;
     return QPointF();
 }
@@ -13455,9 +13459,10 @@ void QCustomPlot::setOpenGl(bool enabled, int multisampling)
     setupPaintBuffers();
 #else
     Q_UNUSED(enabled)
-    qDebug() << Q_FUNC_INFO << "QCustomPlot can't use OpenGL because QCUSTOMPLOT_USE_OPENGL was "
-                               "not defined during compilation (add 'DEFINES += "
-                               "QCUSTOMPLOT_USE_OPENGL' to your qmake .pro file)";
+    qDebug() << Q_FUNC_INFO
+             << "QCustomPlot can't use OpenGL because QCUSTOMPLOT_USE_OPENGL was "
+                "not defined during compilation (add 'DEFINES += "
+                "QCUSTOMPLOT_USE_OPENGL' to your qmake .pro file)";
 #endif
 }
 
@@ -13814,8 +13819,9 @@ QCPGraph *QCustomPlot::addGraph(QCPAxis *keyAxis, QCPAxis *valueAxis)
     if (!valueAxis)
         valueAxis = yAxis;
     if (!keyAxis || !valueAxis) {
-        qDebug() << Q_FUNC_INFO << "can't use default QCustomPlot xAxis or yAxis, because at least "
-                                   "one is invalid (has been deleted)";
+        qDebug() << Q_FUNC_INFO
+                 << "can't use default QCustomPlot xAxis or yAxis, because at least "
+                    "one is invalid (has been deleted)";
         return 0;
     }
     if (keyAxis->parentPlot() != this || valueAxis->parentPlot() != this) {
@@ -15237,8 +15243,9 @@ QCPAbstractPaintBuffer *QCustomPlot::createPaintBuffer()
         return new QCPPaintBufferGlPbuffer(viewport().size(), mBufferDevicePixelRatio,
                                            mOpenGlMultisamples);
 #else
-        qDebug() << Q_FUNC_INFO << "OpenGL enabled even though no support for it compiled in, this "
-                                   "shouldn't have happened. Falling back to pixmap paint buffer.";
+        qDebug() << Q_FUNC_INFO
+                 << "OpenGL enabled even though no support for it compiled in, this "
+                    "shouldn't have happened. Falling back to pixmap paint buffer.";
         return new QCPPaintBufferPixmap(viewport().size(), mBufferDevicePixelRatio);
 #endif
     }
@@ -16469,8 +16476,9 @@ void QCPColorGradient::updateColorBuffer()
                             hue -= 1.0;
                         if (useAlpha) {
                             const QRgb rgb
-                                = QColor::fromHsvF(hue, (1 - t) * lowHsv.saturationF()
-                                                            + t * highHsv.saturationF(),
+                                = QColor::fromHsvF(hue,
+                                                   (1 - t) * lowHsv.saturationF()
+                                                       + t * highHsv.saturationF(),
                                                    (1 - t) * lowHsv.valueF() + t * highHsv.valueF())
                                       .rgb();
                             const float alpha = (1 - t) * lowHsv.alphaF() + t * highHsv.alphaF();
@@ -16479,8 +16487,9 @@ void QCPColorGradient::updateColorBuffer()
                         }
                         else {
                             mColorBuffer[i]
-                                = QColor::fromHsvF(hue, (1 - t) * lowHsv.saturationF()
-                                                            + t * highHsv.saturationF(),
+                                = QColor::fromHsvF(hue,
+                                                   (1 - t) * lowHsv.saturationF()
+                                                       + t * highHsv.saturationF(),
                                                    (1 - t) * lowHsv.valueF() + t * highHsv.valueF())
                                       .rgb();
                         }
@@ -18570,7 +18579,7 @@ void QCPLegend::setIconSize(const QSize &size)
 }
 
 /*! \overload
-*/
+ */
 void QCPLegend::setIconSize(int width, int height)
 {
     mIconSize.setWidth(width);

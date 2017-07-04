@@ -6,8 +6,9 @@
 
 #include <QLoggingCategory>
 
+#include <QReadLocker>
+#include <QReadWriteLock>
 #include <memory>
-
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_DataSeries)
 Q_LOGGING_CATEGORY(LOG_DataSeries, "DataSeries")
@@ -38,18 +39,29 @@ public:
     /// @sa IDataSeries::valuesUnit()
     Unit valuesUnit() const override { return m_ValuesUnit; }
 
+    void clear()
+    {
+        m_XAxisData->clear();
+        m_ValuesData->clear();
+    }
+
     /// @sa IDataSeries::merge()
     void merge(IDataSeries *dataSeries) override
     {
         if (auto dimDataSeries = dynamic_cast<DataSeries<Dim> *>(dataSeries)) {
             m_XAxisData->merge(*dimDataSeries->xAxisData());
             m_ValuesData->merge(*dimDataSeries->valuesData());
+            dimDataSeries->clear();
         }
         else {
             qCWarning(LOG_DataSeries())
                 << QObject::tr("Dection of a type of IDataSeries we cannot merge with !");
         }
     }
+
+    virtual void lockRead() { m_Lock.lockForRead(); }
+    virtual void lockWrite() { m_Lock.lockForWrite(); }
+    virtual void unlock() { m_Lock.unlock(); }
 
 protected:
     /// Protected ctor (DataSeries is abstract)
@@ -88,6 +100,8 @@ private:
     Unit m_XAxisUnit;
     std::shared_ptr<ArrayData<Dim> > m_ValuesData;
     Unit m_ValuesUnit;
+
+    QReadWriteLock m_Lock;
 };
 
 #endif // SCIQLOP_DATASERIES_H

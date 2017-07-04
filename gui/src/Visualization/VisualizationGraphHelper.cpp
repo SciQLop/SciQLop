@@ -5,11 +5,15 @@
 
 #include <Variable/Variable.h>
 
-#include <QElapsedTimer>
-
 Q_LOGGING_CATEGORY(LOG_VisualizationGraphHelper, "VisualizationGraphHelper")
 
 namespace {
+
+class SqpDataContainer : public QCPGraphDataContainer {
+public:
+    void sqpAdd(const QCPGraphData &data) { mData.append(data); }
+};
+
 
 /// Format for datetimes on a axis
 const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
@@ -33,35 +37,36 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
 void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSeries,
                       const SqpDateTime &dateTime)
 {
-    QElapsedTimer timer;
-    timer.start();
+    qCInfo(LOG_VisualizationGraphHelper())
+        << "TORM: updateScalarData" << QThread::currentThread()->objectName();
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
         // Clean the graph
         // NAIVE approch
-        const auto &xData = scalarSeries.xAxisData()->data();
-        const auto &valuesData = scalarSeries.valuesData()->data();
-        const auto count = xData.count();
-        qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points in cache" << xData.count();
-        auto xValue = QVector<double>(count);
-        auto vValue = QVector<double>(count);
+        scalarSeries.lockRead();
+        {
+            const auto xData = scalarSeries.xAxisData()->data();
+            const auto valuesData = scalarSeries.valuesData()->data();
+            const auto count = xData.count();
+            qCInfo(LOG_VisualizationGraphHelper())
+                << "TORM: Current points in cache" << xData.count();
 
-        int n = 0;
-        for (auto i = 0; i < count; ++i) {
-            const auto x = xData[i];
-            if (x >= dateTime.m_TStart && x <= dateTime.m_TEnd) {
-                xValue[n] = x;
-                vValue[n] = valuesData[i];
-                ++n;
+            auto dataContainer = qcpGraph->data();
+            dataContainer->clear();
+            auto sqpDataContainer = QSharedPointer<SqpDataContainer>::create();
+            qcpGraph->setData(sqpDataContainer);
+
+            for (auto i = 0; i < count; ++i) {
+                const auto x = xData[i];
+                if (x >= dateTime.m_TStart && x <= dateTime.m_TEnd) {
+                    sqpDataContainer->sqpAdd(QCPGraphData(x, valuesData[i]));
+                }
             }
+            sqpDataContainer->sort();
+            qCInfo(LOG_VisualizationGraphHelper())
+                << "TORM: Current points displayed" << sqpDataContainer->size();
         }
+        scalarSeries.unlock();
 
-        xValue.resize(n);
-        vValue.resize(n);
-
-        qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points displayed"
-                                               << xValue.count();
-
-        qcpGraph->setData(xValue, vValue);
 
         // Display all data
         component->rescaleAxes();
