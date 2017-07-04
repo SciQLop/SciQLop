@@ -2,6 +2,7 @@
 
 #include <Data/IDataProvider.h>
 #include <DataSource/DataSourceController.h>
+#include <Network/NetworkController.h>
 #include <QThread>
 #include <Time/TimeController.h>
 #include <Variable/Variable.h>
@@ -14,6 +15,7 @@ class SqpApplication::SqpApplicationPrivate {
 public:
     SqpApplicationPrivate()
             : m_DataSourceController{std::make_unique<DataSourceController>()},
+              m_NetworkController{std::make_unique<NetworkController>()},
               m_TimeController{std::make_unique<TimeController>()},
               m_VariableController{std::make_unique<VariableController>()},
               m_VisualizationController{std::make_unique<VisualizationController>()}
@@ -34,6 +36,7 @@ public:
                 SIGNAL(variableCreated(std::shared_ptr<Variable>)));
 
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
+        m_NetworkController->moveToThread(&m_NetworkControllerThread);
         m_VariableController->moveToThread(&m_VariableControllerThread);
         m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
 
@@ -47,6 +50,9 @@ public:
         m_DataSourceControllerThread.quit();
         m_DataSourceControllerThread.wait();
 
+        m_NetworkControllerThread.quit();
+        m_NetworkControllerThread.wait();
+
         m_VariableControllerThread.quit();
         m_VariableControllerThread.wait();
 
@@ -57,8 +63,10 @@ public:
     std::unique_ptr<DataSourceController> m_DataSourceController;
     std::unique_ptr<VariableController> m_VariableController;
     std::unique_ptr<TimeController> m_TimeController;
+    std::unique_ptr<NetworkController> m_NetworkController;
     std::unique_ptr<VisualizationController> m_VisualizationController;
     QThread m_DataSourceControllerThread;
+    QThread m_NetworkControllerThread;
     QThread m_VariableControllerThread;
     QThread m_VisualizationControllerThread;
 };
@@ -74,6 +82,11 @@ SqpApplication::SqpApplication(int &argc, char **argv)
     connect(&impl->m_DataSourceControllerThread, &QThread::finished,
             impl->m_DataSourceController.get(), &DataSourceController::finalize);
 
+    connect(&impl->m_NetworkControllerThread, &QThread::started, impl->m_NetworkController.get(),
+            &NetworkController::initialize);
+    connect(&impl->m_NetworkControllerThread, &QThread::finished, impl->m_NetworkController.get(),
+            &NetworkController::finalize);
+
     connect(&impl->m_VariableControllerThread, &QThread::started, impl->m_VariableController.get(),
             &VariableController::initialize);
     connect(&impl->m_VariableControllerThread, &QThread::finished, impl->m_VariableController.get(),
@@ -85,6 +98,7 @@ SqpApplication::SqpApplication(int &argc, char **argv)
             impl->m_VisualizationController.get(), &VisualizationController::finalize);
 
     impl->m_DataSourceControllerThread.start();
+    impl->m_NetworkControllerThread.start();
     impl->m_VariableControllerThread.start();
     impl->m_VisualizationControllerThread.start();
 }
@@ -100,6 +114,11 @@ void SqpApplication::initialize()
 DataSourceController &SqpApplication::dataSourceController() noexcept
 {
     return *impl->m_DataSourceController;
+}
+
+NetworkController &SqpApplication::networkController() noexcept
+{
+    return *impl->m_NetworkController;
 }
 
 TimeController &SqpApplication::timeController() noexcept

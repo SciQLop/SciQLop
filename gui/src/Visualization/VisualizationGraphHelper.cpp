@@ -33,13 +33,11 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
 void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSeries,
                       const SqpDateTime &dateTime)
 {
-    QElapsedTimer timer;
-    timer.start();
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
         // Clean the graph
         // NAIVE approch
-        const auto &xData = scalarSeries.xAxisData()->data();
-        const auto &valuesData = scalarSeries.valuesData()->data();
+        const auto xData = scalarSeries.xAxisData()->data();
+        const auto valuesData = scalarSeries.valuesData()->data();
         const auto count = xData.count();
         qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points in cache" << xData.count();
         auto xValue = QVector<double>(count);
