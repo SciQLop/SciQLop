@@ -89,6 +89,9 @@ void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noex
         return;
     }
 
+    // Spreads in SciQlop that the variable will be deleted, so that potential receivers can
+    // make some treatments before the deletion
+    emit variableAboutToBeDeleted(variable);
 
     // Deletes provider
     auto nbProvidersDeleted = impl->m_VariableToProviderMap.erase(variable);
