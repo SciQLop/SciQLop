@@ -1,6 +1,8 @@
 #include "AmdaPlugin.h"
+#include "AmdaParser.h"
 
 #include <DataSource/DataSourceController.h>
+#include <DataSource/DataSourceItem.h>
 
 #include <SqpApplication.h>
 
@@ -24,7 +26,12 @@ void AmdaPlugin::initialize()
         auto dataSourceUid = dataSourceController.registerDataSource(DATA_SOURCE_NAME);
 
         // Sets data source tree
-        /// @todo ALX
+        if (auto dataSourceItem = AmdaParser::readJson(JSON_FILE_PATH)) {
+            dataSourceController.setDataSourceItem(dataSourceUid, std::move(dataSourceItem));
+        }
+        else {
+            qCCritical(LOG_AmdaPlugin()) << tr("No data source item could be generated for AMDA");
+        }
     }
     else {
         qCWarning(LOG_AmdaPlugin()) << tr("Can't access to SciQlop application");
