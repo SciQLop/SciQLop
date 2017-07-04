@@ -59,17 +59,26 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     }
 
     template <typename ActionFun>
-    void visitLeaf(const IVisualizationWidget &container, const QString &actionName,
-                   ActionFun actionFunction)
+    void visitLeafPlot(const IVisualizationWidget &container, const QString &actionName,
+                       ActionFun actionFunction)
     {
         if (m_Variable && container.canDrop(*m_Variable)) {
             m_PlotMenuBuilder.addAction(actionName, actionFunction);
         }
     }
 
+    template <typename ActionFun>
+    void visitLeafUnplot(const IVisualizationWidget &container, const QString &actionName,
+                         ActionFun actionFunction)
+    {
+        if (m_Variable && container.contains(*m_Variable)) {
+            m_UnplotMenuBuilder.addAction(actionName, actionFunction);
+        }
+    }
+
     std::shared_ptr<Variable> m_Variable;
-    MenuBuilder m_PlotMenuBuilder; ///< Builder for the 'Plot' menu
-    MenuBuilder m_UnplotMenuBuilder;  ///< Builder for the 'Unplot' menu
+    MenuBuilder m_PlotMenuBuilder;   ///< Builder for the 'Plot' menu
+    MenuBuilder m_UnplotMenuBuilder; ///< Builder for the 'Unplot' menu
 };
 
 GenerateVariableMenuOperation::GenerateVariableMenuOperation(QMenu *menu,
@@ -157,9 +166,15 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidg
 void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
 {
     if (graphWidget) {
-        impl->visitLeaf(
+        // 'Plot' menu
+        impl->visitLeafPlot(
             *graphWidget, QObject::tr("Open in %1").arg(graphWidget->name()),
             [ var = impl->m_Variable, graphWidget ]() { graphWidget->addVariableUsingGraph(var); });
+
+        // 'Unplot' menu
+        impl->visitLeafUnplot(
+            *graphWidget, QObject::tr("Remove from %1").arg(graphWidget->name()),
+            [ var = impl->m_Variable, graphWidget ]() { graphWidget->removeVariable(var); });
     }
     else {
         qCCritical(LOG_GenerateVariableMenuOperation(),
