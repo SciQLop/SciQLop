@@ -82,6 +82,24 @@ void VariableController::setTimeController(TimeController *timeController) noexc
     impl->m_TimeController = timeController;
 }
 
+void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noexcept
+{
+    if (!variable) {
+        qCCritical(LOG_VariableController()) << "Can't delete variable: variable is null";
+        return;
+    }
+
+    /// @todo ALX
+
+
+void VariableController::deleteVariables(
+    const QVector<std::shared_ptr<Variable> > &variables) noexcept
+{
+    for (auto variable : qAsConst(variables)) {
+        deleteVariable(variable);
+    }
+}
+
 void VariableController::createVariable(const QString &name,
                                         std::shared_ptr<IDataProvider> provider) noexcept
 {

@@ -30,6 +30,20 @@ public:
 
     void setTimeController(TimeController *timeController) noexcept;
 
+    /**
+     * Deletes from the controller the variable passed in parameter.
+     *
+     *
+     * @param variable the variable to delete from the controller.
+     */
+    void deleteVariable(std::shared_ptr<Variable> variable) noexcept;
+
+    /**
+     * Deletes from the controller the variables passed in parameter.
+     * @param variables the variables to delete from the controller.
+     * @sa deleteVariable()
+     */
+    void deleteVariables(const QVector<std::shared_ptr<Variable> > &variables) noexcept;
 
 signals:
     /// Signal emitted when a variable has been created
