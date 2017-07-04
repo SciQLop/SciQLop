@@ -96,6 +96,9 @@ void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noex
         << tr("Number of providers deleted for variable %1: %2")
                .arg(variable->name(), QString::number(nbProvidersDeleted));
 
+    // Clears cache
+    impl->m_VariableCacheController->clear(variable);
+
 
 void VariableController::deleteVariables(
     const QVector<std::shared_ptr<Variable> > &variables) noexcept

@@ -35,6 +35,7 @@ public:
      *
      * Delete a variable includes:
      * - the deletion of the provider associated with the variable
+     * - removing the cache associated with the variable
      *
      * @param variable the variable to delete from the controller.
      */

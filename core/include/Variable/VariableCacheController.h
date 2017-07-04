@@ -1,6 +1,7 @@
 #ifndef SCIQLOP_VARIABLECACHECONTROLLER_H
 #define SCIQLOP_VARIABLECACHECONTROLLER_H
 
+#include <QLoggingCategory>
 #include <QObject>
 
 #include <Data/SqpDateTime.h>
@@ -8,6 +9,8 @@
 #include <QLoggingCategory>
 
 #include <Common/spimpl.h>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_VariableCacheController)
 
 class Variable;
 
@@ -22,6 +25,9 @@ public:
 
 
     void addDateTime(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);
+
+    /// Clears cache concerning a variable
+    void clear(std::shared_ptr<Variable> variable) noexcept;
 
     /// Return all of the SqpDataTime part of the dateTime whose are not in the cache
     QVector<SqpDateTime> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
