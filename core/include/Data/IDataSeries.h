@@ -51,6 +51,10 @@ public:
     virtual void merge(IDataSeries *dataSeries) = 0;
 
     virtual std::unique_ptr<IDataSeries> clone() const = 0;
+
+    virtual void lockRead() = 0;
+    virtual void lockWrite() = 0;
+    virtual void unlock() = 0;
 };
 
 // Required for using shared_ptr in signals/slots

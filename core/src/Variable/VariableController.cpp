@@ -56,14 +56,14 @@ struct VariableController::VariableControllerPrivate {
 VariableController::VariableController(QObject *parent)
         : QObject{parent}, impl{spimpl::make_unique_impl<VariableControllerPrivate>(this)}
 {
-    qCDebug(LOG_VariableController()) << tr("VariableController construction")
-                                      << QThread::currentThread();
+    qCDebug(LOG_VariableController())
+        << tr("VariableController construction") << QThread::currentThread();
 }
 
 VariableController::~VariableController()
 {
-    qCDebug(LOG_VariableController()) << tr("VariableController destruction")
-                                      << QThread::currentThread();
+    qCDebug(LOG_VariableController())
+        << tr("VariableController destruction") << QThread::currentThread();
     this->waitForFinish();
 }
 
@@ -152,6 +152,8 @@ void VariableController::createVariable(const QString &name,
 
 void VariableController::onDateTimeOnSelection(const SqpDateTime &dateTime)
 {
+    qCDebug(LOG_VariableController())
+        << "VariableController::onDateTimeOnSelection" << QThread::currentThread()->objectName();
     auto selectedRows = impl->m_VariableSelectionModel->selectedRows();
 
     for (const auto &selectedRow : qAsConst(selectedRows)) {
@@ -166,6 +168,8 @@ void VariableController::onDateTimeOnSelection(const SqpDateTime &dateTime)
 void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable,
                                               const SqpDateTime &dateTime)
 {
+    qCDebug(LOG_VariableController())
+        << "VariableController::onRequestDataLoading" << QThread::currentThread()->objectName();
     // we want to load data of the variable for the dateTime.
     // First we check if the cache contains some of them.
     // For the other, we ask the provider to give them.
