@@ -38,6 +38,9 @@ public slots:
     void attachVariableMenu(QMenu *menu,
                             const QVector<std::shared_ptr<Variable> > &variables) noexcept;
 
+    /// Slot called when a variable is about to be deleted from SciQlop
+    void onVariableAboutToBeDeleted(std::shared_ptr<Variable> variable) noexcept;
+
 private:
     Ui::VisualizationWidget *ui;
 };
