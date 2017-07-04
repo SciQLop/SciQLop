@@ -173,6 +173,10 @@ MainWindow::MainWindow(QWidget *parent)
     auto timeWidget = new TimeWidget{};
     mainToolBar->addWidget(timeWidget);
 
+    // Controllers / controllers connections
+    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(SqpDateTime)),
+            &sqpApp->variableController(), SLOT(onDateTimeOnSelection(SqpDateTime)));
+
     // Widgets / controllers connections
 
     // DataSource
@@ -183,8 +187,10 @@ MainWindow::MainWindow(QWidget *parent)
     connect(timeWidget, SIGNAL(timeUpdated(SqpDateTime)), &sqpApp->timeController(),
             SLOT(onTimeToUpdate(SqpDateTime)));
 
-    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(SqpDateTime)),
-            &sqpApp->variableController(), SLOT(onDateTimeOnSelection(SqpDateTime)));
+    // Visualization
+    connect(&sqpApp->visualizationController(),
+            SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), m_Ui->view,
+            SLOT(onVariableAboutToBeDeleted(std::shared_ptr<Variable>)));
 
     // Widgets / widgets connections
 
