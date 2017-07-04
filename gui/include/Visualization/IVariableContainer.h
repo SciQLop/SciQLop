@@ -13,6 +13,9 @@ public:
 
     /// Checks if the container can handle the variable passed in parameter
     virtual bool canDrop(const Variable &variable) const = 0;
+
+    /// Checks if the container contains the variable passed in parameter
+    virtual bool contains(const Variable &variable) const = 0;
 };
 
 

@@ -35,6 +35,7 @@ public:
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
+    bool contains(const Variable &variable) const override;
     QString name() const override;
 
     void updateDisplay(std::shared_ptr<Variable> variable);

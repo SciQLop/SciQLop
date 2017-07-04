@@ -27,8 +27,9 @@ public:
     /**
      * Adds a new menu to the current menu
      * @param name the name of the menu
+     * @param icon the icon of the menu (can be null)
      */
-    void addMenu(const QString &name);
+    void addMenu(const QString &name, const QIcon &icon = {});
 
     /// Adds a separator to the current menu. The separator is added only if the menu already
     /// contains entries

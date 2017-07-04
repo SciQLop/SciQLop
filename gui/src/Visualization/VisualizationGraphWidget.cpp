@@ -141,6 +141,18 @@ bool VisualizationGraphWidget::canDrop(const Variable &variable) const
     return true;
 }
 
+bool VisualizationGraphWidget::contains(const Variable &variable) const
+{
+    // Finds the variable among the keys of the map
+    auto variablePtr = &variable;
+    auto findVariable
+        = [variablePtr](const auto &entry) { return variablePtr == entry.first.get(); };
+
+    auto end = impl->m_VariableToPlotMultiMap.cend();
+    auto it = std::find_if(impl->m_VariableToPlotMultiMap.cbegin(), end, findVariable);
+    return it != end;
+}
+
 QString VisualizationGraphWidget::name() const
 {
     return ui->graphNameLabel->text();

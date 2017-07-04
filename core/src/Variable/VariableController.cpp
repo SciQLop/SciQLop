@@ -82,6 +82,38 @@ void VariableController::setTimeController(TimeController *timeController) noexc
     impl->m_TimeController = timeController;
 }
 
+void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noexcept
+{
+    if (!variable) {
+        qCCritical(LOG_VariableController()) << "Can't delete variable: variable is null";
+        return;
+    }
+
+    // Spreads in SciQlop that the variable will be deleted, so that potential receivers can
+    // make some treatments before the deletion
+    emit variableAboutToBeDeleted(variable);
+
+    // Deletes provider
+    auto nbProvidersDeleted = impl->m_VariableToProviderMap.erase(variable);
+    qCDebug(LOG_VariableController())
+        << tr("Number of providers deleted for variable %1: %2")
+               .arg(variable->name(), QString::number(nbProvidersDeleted));
+
+    // Clears cache
+    impl->m_VariableCacheController->clear(variable);
+
+    // Deletes from model
+    impl->m_VariableModel->deleteVariable(variable);
+}
+
+void VariableController::deleteVariables(
+    const QVector<std::shared_ptr<Variable> > &variables) noexcept
+{
+    for (auto variable : qAsConst(variables)) {
+        deleteVariable(variable);
+    }
+}
+
 void VariableController::createVariable(const QString &name,
                                         std::shared_ptr<IDataProvider> provider) noexcept
 {
