@@ -177,8 +177,8 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
 {
-    qCDebug(LOG_VisualizationGraphWidget())
-        << tr("VisualizationGraphWidget::onRangeChanged") << QThread::currentThread()->objectName();
+    qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged")
+                                            << QThread::currentThread()->objectName();
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {

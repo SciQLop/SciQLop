@@ -37,8 +37,8 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
 void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSeries,
                       const SqpDateTime &dateTime)
 {
-    qCInfo(LOG_VisualizationGraphHelper())
-        << "TORM: updateScalarData" << QThread::currentThread()->objectName();
+    qCInfo(LOG_VisualizationGraphHelper()) << "TORM: updateScalarData"
+                                           << QThread::currentThread()->objectName();
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
         // Clean the graph
         // NAIVE approch
@@ -47,8 +47,8 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
             const auto xData = scalarSeries.xAxisData()->data();
             const auto valuesData = scalarSeries.valuesData()->data();
             const auto count = xData.count();
-            qCInfo(LOG_VisualizationGraphHelper())
-                << "TORM: Current points in cache" << xData.count();
+            qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points in cache"
+                                                   << xData.count();
 
             auto dataContainer = qcpGraph->data();
             dataContainer->clear();
@@ -62,8 +62,8 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
                 }
             }
             sqpDataContainer->sort();
-            qCInfo(LOG_VisualizationGraphHelper())
-                << "TORM: Current points displayed" << sqpDataContainer->size();
+            qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points displayed"
+                                                   << sqpDataContainer->size();
         }
         scalarSeries.unlock();
 
