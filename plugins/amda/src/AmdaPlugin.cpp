@@ -11,6 +11,9 @@ namespace {
 /// Name of the data source
 const auto DATA_SOURCE_NAME = QStringLiteral("AMDA");
 
+/// Path of the file used to generate the data source item for AMDA
+const auto JSON_FILE_PATH = QStringLiteral(":/samples/AmdaSample.json");
+
 } // namespace
 
 void AmdaPlugin::initialize()
