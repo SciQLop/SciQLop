@@ -3,15 +3,10 @@
 
 #include <QVector>
 
-namespace {
-
-/// Index of the 'name' value in the item
-const auto NAME_INDEX = 0;
-
-} // namespace
+const QString DataSourceItem::NAME_DATA_KEY = QStringLiteral("name");
 
 struct DataSourceItem::DataSourceItemPrivate {
-    explicit DataSourceItemPrivate(DataSourceItemType type, QVector<QVariant> data)
+    explicit DataSourceItemPrivate(DataSourceItemType type, QHash<QString, QVariant> data)
             : m_Parent{nullptr}, m_Children{}, m_Type{type}, m_Data{std::move(data)}, m_Actions{}
     {
     }
@@ -19,11 +14,16 @@ struct DataSourceItem::DataSourceItemPrivate {
     DataSourceItem *m_Parent;
     std::vector<std::unique_ptr<DataSourceItem> > m_Children;
     DataSourceItemType m_Type;
-    QVector<QVariant> m_Data;
+    QHash<QString, QVariant> m_Data;
     std::vector<std::unique_ptr<DataSourceItemAction> > m_Actions;
 };
 
-DataSourceItem::DataSourceItem(DataSourceItemType type, QVector<QVariant> data)
+DataSourceItem::DataSourceItem(DataSourceItemType type, const QString &name)
+        : DataSourceItem{type, QHash<QString, QVariant>{{NAME_DATA_KEY, name}}}
+{
+}
+
+DataSourceItem::DataSourceItem(DataSourceItemType type, QHash<QString, QVariant> data)
         : impl{spimpl::make_unique_impl<DataSourceItemPrivate>(type, std::move(data))}
 {
 }
@@ -65,14 +65,14 @@ int DataSourceItem::childCount() const noexcept
     return impl->m_Children.size();
 }
 
-QVariant DataSourceItem::data(int dataIndex) const noexcept
+QVariant DataSourceItem::data(const QString &key) const noexcept
 {
-    return impl->m_Data.value(dataIndex);
+    return impl->m_Data.value(key);
 }
 
 QString DataSourceItem::name() const noexcept
 {
-    return data(NAME_INDEX).toString();
+    return data(NAME_DATA_KEY).toString();
 }
 
 DataSourceItem *DataSourceItem::parentItem() const noexcept

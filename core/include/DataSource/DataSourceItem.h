@@ -21,7 +21,11 @@ enum class DataSourceItemType { NODE, PRODUCT };
  */
 class DataSourceItem {
 public:
-    explicit DataSourceItem(DataSourceItemType type, QVector<QVariant> data = {});
+    /// Key associated with the name of the item
+    static const QString NAME_DATA_KEY;
+
+    explicit DataSourceItem(DataSourceItemType type, const QString &name);
+    explicit DataSourceItem(DataSourceItemType type, QHash<QString, QVariant> data = {});
 
     /// @return the actions of the item as a vector
     QVector<DataSourceItemAction *> actions() const noexcept;
@@ -49,11 +53,11 @@ public:
     int childCount() const noexcept;
 
     /**
-     * Get the data associated to an index
-     * @param dataIndex the index to search
-     * @return the data found if index is valid, default QVariant otherwise
+     * Get the data associated to a key
+     * @param key the key to search
+     * @return the data found if key is valid, default QVariant otherwise
      */
-    QVariant data(int dataIndex) const noexcept;
+    QVariant data(const QString &key) const noexcept;
 
     QString name() const noexcept;
 
