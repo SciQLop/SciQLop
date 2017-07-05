@@ -90,6 +90,29 @@ DataSourceItem *DataSourceItem::parentItem() const noexcept
     return impl->m_Parent;
 }
 
+void DataSourceItem::setData(const QString &key, const QVariant &value, bool append) noexcept
+{
+    auto it = impl->m_Data.constFind(key);
+    if (append && it != impl->m_Data.constEnd()) {
+        // Case of an existing value to which we want to add to the new value
+        if (it->canConvert<QVariantList>()) {
+            auto variantList = it->value<QVariantList>();
+            variantList.append(value);
+
+            impl->m_Data.insert(key, variantList);
+        }
+        else {
+            impl->m_Data.insert(key, QVariantList{*it, value});
+        }
+    }
+    else {
+        // Other cases :
+        // - new value in map OR
+        // - replacement of an existing value (not appending)
+        impl->m_Data.insert(key, value);
+    }
+}
+
 DataSourceItemType DataSourceItem::type() const noexcept
 {
     return impl->m_Type;

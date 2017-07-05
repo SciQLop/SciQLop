@@ -72,6 +72,15 @@ public:
      */
     DataSourceItem *parentItem() const noexcept;
 
+    /**
+     * Sets or appends a value to a key
+     * @param key the key
+     * @param value the value
+     * @param append if true, the value is added to the values already existing for the key,
+     * otherwise it replaces the existing values
+     */
+    void setData(const QString &key, const QVariant &value, bool append = false) noexcept;
+
     DataSourceItemType type() const noexcept;
 
 private:
