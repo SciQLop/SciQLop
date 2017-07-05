@@ -146,9 +146,6 @@ void VariableController::createVariable(const QString &name,
 
         connect(provider.get(), &IDataProvider::dataProvided, addDateTimeAcquired);
         this->onRequestDataLoading(newVariable, dateTime);
-
-        // notify the creation
-        emit variableCreated(newVariable);
     }
 }
 
