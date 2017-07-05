@@ -31,6 +31,83 @@ struct ExpectedResults {
     std::shared_ptr<DataSourceItem> m_Item{nullptr};
 };
 
+// ///////////////////////////////// //
+// Set of expected results for tests //
+// ///////////////////////////////// //
+
+ExpectedResults validResults1()
+{
+    auto component1 = std::make_unique<DataSourceItem>(
+        DataSourceItemType::COMPONENT,
+        QHash<QString, QVariant>{{"name", "Bx"}, {"xml:id", "ice_b_cse(0)"}});
+    auto component2 = std::make_unique<DataSourceItem>(
+        DataSourceItemType::COMPONENT,
+        QHash<QString, QVariant>{{"name", "By"}, {"xml:id", "ice_b_cse(1)"}});
+    auto component3 = std::make_unique<DataSourceItem>(
+        DataSourceItemType::COMPONENT,
+        QHash<QString, QVariant>{{"name", "Bz"}, {"xml:id", "ice_b_cse(2)"}});
+    auto parameter1 = std::make_unique<DataSourceItem>(
+        DataSourceItemType::PRODUCT,
+        QHash<QString, QVariant>{
+            {"name", "B_cse"}, {"units", "nT"}, {"display_type", ""}, {"xml:id", "ice_b_cse"}});
+    parameter1->appendChild(std::move(component1));
+    parameter1->appendChild(std::move(component2));
+    parameter1->appendChild(std::move(component3));
+
+    auto parameter2 = std::make_unique<DataSourceItem>(
+        DataSourceItemType::PRODUCT,
+        QHash<QString, QVariant>{
+            {"name", "|B|"}, {"units", "nT"}, {"display_type", ""}, {"xml:id", "ice_b_tot"}});
+
+    auto dataset = std::make_unique<DataSourceItem>(
+        DataSourceItemType::NODE, QHash<QString, QVariant>{{"att", ""},
+                                                           {"restricted", ""},
+                                                           {"name", "Magnetic Field"},
+                                                           {"xml:id", "ice:mag:p21"},
+                                                           {"sampling", "0.3s"},
+                                                           {"maxSampling", ""},
+                                                           {"dataStart", "1985/09/10"},
+                                                           {"dataStop", "1985/09/14"},
+                                                           {"dataSource", "PDS"},
+                                                           {"target", ""}});
+    dataset->appendChild(std::move(parameter1));
+    dataset->appendChild(std::move(parameter2));
+
+    auto instrument = std::make_unique<DataSourceItem>(
+        DataSourceItemType::NODE, QHash<QString, QVariant>{{"att", ""},
+                                                           {"name", "MAG"},
+                                                           {"xml:id", "ICE@Giacobini-Zinner:MAG"},
+                                                           {"desc", "Vector Helium Magnetometer"},
+                                                           {"restricted", ""}});
+    instrument->appendChild(std::move(dataset));
+
+    auto mission = std::make_unique<DataSourceItem>(
+        DataSourceItemType::NODE,
+        QHash<QString, QVariant>{{"att", ""},
+                                 {"name", "ICE@Giacobini-Zinner"},
+                                 {"rank", "93"},
+                                 {"xml:id", "ICE@Giacobini-Zinner"},
+                                 {"desc", "International Cometary Explorer"},
+                                 {"target", "Comet"},
+                                 {"available", "1"}});
+    mission->appendChild(std::move(instrument));
+
+    auto item = std::make_shared<DataSourceItem>(DataSourceItemType::NODE,
+                                                 QHash<QString, QVariant>{
+                                                     {"name", "AMDA"},
+                                                     {"desc", "AMDA_Internal_Data_Base"},
+                                                     {"xml:id", "myLocalData-treeRootNode"},
+                                                 });
+    item->appendChild(std::move(mission));
+
+    return ExpectedResults{item};
+}
+
+ExpectedResults invalidResults()
+{
+    return ExpectedResults{};
+}
+
 } // namespace
 
 Q_DECLARE_METATYPE(ExpectedResults)
@@ -56,6 +133,23 @@ void TestAmdaParser::testReadJson_data()
     QTest::addColumn<QString>("inputFileName");
     // Expected results
     QTest::addColumn<ExpectedResults>("expectedResults");
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    // Valid file
+    QTest::newRow("Valid file") << QStringLiteral("ValidFile1.json") << validResults1();
+
+    // Invalid files
+    QTest::newRow("Invalid file (unexisting file)")
+        << QStringLiteral("UnexistingFile.json") << invalidResults();
+    QTest::newRow("Invalid file (two root objects)")
+        << QStringLiteral("TwoRootsFile.json") << invalidResults();
+    QTest::newRow("Invalid file (wrong root key)")
+        << QStringLiteral("WrongRootKey.json") << invalidResults();
+    QTest::newRow("Invalid file (wrong root type)")
+        << QStringLiteral("WrongRootType.json") << invalidResults();
 }
 
 void TestAmdaParser::testReadJson()
