@@ -136,13 +136,14 @@ void VariableController::createVariable(const QString &name,
         // store the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
 
-        auto addDateTimeAcquired
-            = [this, newVariable](auto dataSeriesAcquired, auto dateTimeToPutInCache) {
-
-                  impl->m_VariableCacheController->addDateTime(newVariable, dateTimeToPutInCache);
-                  newVariable->setDataSeries(dataSeriesAcquired);
-
-              };
+        auto addDateTimeAcquired = [ this, varW = std::weak_ptr<Variable>{newVariable} ](
+            auto dataSeriesAcquired, auto dateTimeToPutInCache)
+        {
+            if (auto variable = varW.lock()) {
+                impl->m_VariableCacheController->addDateTime(variable, dateTimeToPutInCache);
+                variable->setDataSeries(dataSeriesAcquired);
+            }
+        };
 
         connect(provider.get(), &IDataProvider::dataProvided, addDateTimeAcquired);
         this->onRequestDataLoading(newVariable, dateTime);
