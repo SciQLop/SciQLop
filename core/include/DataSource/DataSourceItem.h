@@ -59,6 +59,8 @@ public:
      */
     QVariant data(const QString &key) const noexcept;
 
+    bool isRoot() const noexcept;
+
     QString name() const noexcept;
 
     /**

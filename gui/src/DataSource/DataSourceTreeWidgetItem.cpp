@@ -16,8 +16,10 @@ QIcon itemIcon(const DataSourceItem *dataSource)
     if (dataSource) {
         auto dataSourceType = dataSource->type();
         switch (dataSourceType) {
-            case DataSourceItemType::NODE:
-                return QIcon{":/icones/dataSourceNode.png"};
+            case DataSourceItemType::NODE: {
+                return dataSource->isRoot() ? QIcon{":/icones/dataSourceRoot.png"}
+                                            : QIcon{":/icones/dataSourceNode.png"};
+            }
             case DataSourceItemType::PRODUCT:
                 return QIcon{":/icones/dataSourceProduct.png"};
             case DataSourceItemType::COMPONENT:
@@ -31,7 +33,7 @@ QIcon itemIcon(const DataSourceItem *dataSource)
             << QObject::tr("Can't set data source icon : unknown data source type");
     }
     else {
-        qCWarning(LOG_DataSourceTreeWidgetItem())
+        qCCritical(LOG_DataSourceTreeWidgetItem())
             << QObject::tr("Can't set data source icon : the data source is null");
     }
 
