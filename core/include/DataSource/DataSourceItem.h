@@ -59,6 +59,9 @@ public:
      */
     QVariant data(const QString &key) const noexcept;
 
+    /// Gets all data
+    const QHash<QString, QVariant> &data() const noexcept;
+
     bool isRoot() const noexcept;
 
     QString name() const noexcept;

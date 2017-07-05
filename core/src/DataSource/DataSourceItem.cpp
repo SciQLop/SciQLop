@@ -70,6 +70,11 @@ QVariant DataSourceItem::data(const QString &key) const noexcept
     return impl->m_Data.value(key);
 }
 
+const QHash<QString, QVariant> &DataSourceItem::data() const noexcept
+{
+    return impl->m_Data;
+}
+
 bool DataSourceItem::isRoot() const noexcept
 {
     return impl->m_Parent == nullptr;

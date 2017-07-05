@@ -41,6 +41,54 @@ QIcon itemIcon(const DataSourceItem *dataSource)
     return QIcon{};
 }
 
+/// @return the tooltip text for a variant. The text depends on whether the data is a simple variant
+/// or a list of variants
+QString tooltipValue(const QVariant &variant) noexcept
+{
+    // If the variant is a list of variants, the text of the tooltip is of the form: {val1, val2,
+    // ...}
+    if (variant.canConvert<QVariantList>()) {
+        auto valueString = QStringLiteral("{");
+
+        auto variantList = variant.value<QVariantList>();
+        for (auto it = variantList.cbegin(), end = variantList.cend(); it != end; ++it) {
+            valueString.append(it->toString());
+
+            if (std::distance(it, end) != 1) {
+                valueString.append(", ");
+            }
+        }
+
+        valueString.append(QStringLiteral("}"));
+
+        return valueString;
+    }
+    else {
+        return variant.toString();
+    }
+}
+
+QString itemTooltip(const DataSourceItem *dataSource) noexcept
+{
+    // The tooltip displays all item's data
+    if (dataSource) {
+        auto result = QString{};
+
+        const auto &data = dataSource->data();
+        for (auto it = data.cbegin(), end = data.cend(); it != end; ++it) {
+            result.append(QString{"<b>%1:</b> %2<br/>"}.arg(it.key(), tooltipValue(it.value())));
+        }
+
+        return result;
+    }
+    else {
+        qCCritical(LOG_DataSourceTreeWidgetItem())
+            << QObject::tr("Can't set data source tooltip : the data source is null");
+
+        return QString{};
+    }
+}
+
 } // namespace
 
 struct DataSourceTreeWidgetItem::DataSourceTreeWidgetItemPrivate {
@@ -63,8 +111,9 @@ DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(QTreeWidget *parent, const Da
         : QTreeWidgetItem{parent, type},
           impl{spimpl::make_unique_impl<DataSourceTreeWidgetItemPrivate>(data)}
 {
-    // Sets the icon depending on the data source
+    // Sets the icon and the tooltip depending on the data source
     setIcon(0, itemIcon(impl->m_Data));
+    setToolTip(0, itemTooltip(impl->m_Data));
 
     // Generates tree actions based on the item actions
     auto createTreeAction = [this, &parent](const auto &itemAction) {
