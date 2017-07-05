@@ -83,6 +83,9 @@ public:
 
     DataSourceItemType type() const noexcept;
 
+    bool operator==(const DataSourceItem &other);
+    bool operator!=(const DataSourceItem &other);
+
 private:
     class DataSourceItemPrivate;
     spimpl::unique_impl_ptr<DataSourceItemPrivate> impl;

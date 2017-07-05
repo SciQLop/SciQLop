@@ -117,3 +117,24 @@ DataSourceItemType DataSourceItem::type() const noexcept
 {
     return impl->m_Type;
 }
+
+bool DataSourceItem::operator==(const DataSourceItem &other)
+{
+    // Compares items' attributes
+    if (std::tie(impl->m_Type, impl->m_Data) == std::tie(other.impl->m_Type, other.impl->m_Data)) {
+        // Compares contents of items' children
+        return std::equal(std::cbegin(impl->m_Children), std::cend(impl->m_Children),
+                          std::cbegin(other.impl->m_Children),
+                          [](const auto &itemChild, const auto &otherChild) {
+                              return *itemChild == *otherChild;
+                          });
+    }
+    else {
+        return false;
+    }
+}
+
+bool DataSourceItem::operator!=(const DataSourceItem &other)
+{
+    return !(*this == other);
+}
