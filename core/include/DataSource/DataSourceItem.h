@@ -11,7 +11,7 @@ class DataSourceItemAction;
 /**
  * Possible types of an item
  */
-enum class DataSourceItemType { NODE, PRODUCT };
+enum class DataSourceItemType { NODE, PRODUCT, COMPONENT };
 
 /**
  * @brief The DataSourceItem class aims to represent a structure element of a data source.

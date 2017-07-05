@@ -2,8 +2,6 @@
 #include <DataSource/DataSourceItemAction.h>
 #include <DataSource/DataSourceTreeWidgetItem.h>
 
-#include <SqpApplication.h>
-
 #include <QAction>
 
 Q_LOGGING_CATEGORY(LOG_DataSourceTreeWidgetItem, "DataSourceTreeWidgetItem")
@@ -19,9 +17,11 @@ QIcon itemIcon(const DataSourceItem *dataSource)
         auto dataSourceType = dataSource->type();
         switch (dataSourceType) {
             case DataSourceItemType::NODE:
-                return sqpApp->style()->standardIcon(QStyle::SP_DirIcon);
+                return QIcon{":/icones/dataSourceNode.png"};
             case DataSourceItemType::PRODUCT:
-                return sqpApp->style()->standardIcon(QStyle::SP_FileIcon);
+                return QIcon{":/icones/dataSourceProduct.png"};
+            case DataSourceItemType::COMPONENT:
+                return QIcon{":/icones/dataSourceComponent.png"};
             default:
                 // No action
                 break;
