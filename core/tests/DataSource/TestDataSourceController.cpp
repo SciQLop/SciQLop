@@ -30,9 +30,7 @@ void TestDataSourceController::testSetDataSourceItem()
 
     // Create a data source item
     auto source1Name = QStringLiteral("Source1");
-    auto source1Values = QVector<QVariant>{source1Name};
-    auto source1Item
-        = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT, std::move(source1Values));
+    auto source1Item = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT, source1Name);
 
     // Add data source item to the controller and check that a signal has been emitted after setting
     // data source item in the controller

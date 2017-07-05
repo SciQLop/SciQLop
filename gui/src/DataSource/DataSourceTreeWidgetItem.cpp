@@ -10,6 +10,9 @@ Q_LOGGING_CATEGORY(LOG_DataSourceTreeWidgetItem, "DataSourceTreeWidgetItem")
 
 namespace {
 
+// Column indexes
+const auto NAME_COLUMN = 0;
+
 QIcon itemIcon(const DataSourceItem *dataSource)
 {
     if (dataSource) {
@@ -80,7 +83,23 @@ DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(QTreeWidget *parent, const Da
 QVariant DataSourceTreeWidgetItem::data(int column, int role) const
 {
     if (role == Qt::DisplayRole) {
-        return (impl->m_Data) ? impl->m_Data->data(column) : QVariant{};
+        if (impl->m_Data) {
+            switch (column) {
+                case NAME_COLUMN:
+                    return impl->m_Data->name();
+                default:
+                    // No action
+                    break;
+            }
+
+            qCWarning(LOG_DataSourceTreeWidgetItem())
+                << QObject::tr("Can't get data (unknown column %1)").arg(column);
+        }
+        else {
+            qCCritical(LOG_DataSourceTreeWidgetItem()) << QObject::tr("Can't get data (null item)");
+        }
+
+        return QVariant{};
     }
     else {
         return QTreeWidgetItem::data(column, role);
