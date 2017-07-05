@@ -38,6 +38,9 @@ FILE (GLOB_RECURSE PLUGIN_FILE ${RESOURCES_DIR}/mockplugin.json)
 #
 # Compile the library
 #
+
+ADD_DEFINITIONS(-DMOCKPLUGIN_LIB)
+
 FILE (GLOB_RECURSE MODULE_SOURCES
         ${INCLUDES_DIR}/*.h
         ${SOURCES_DIR}/*.c
