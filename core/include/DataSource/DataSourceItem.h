@@ -11,7 +11,7 @@ class DataSourceItemAction;
 /**
  * Possible types of an item
  */
-enum class DataSourceItemType { NODE, PRODUCT };
+enum class DataSourceItemType { NODE, PRODUCT, COMPONENT };
 
 /**
  * @brief The DataSourceItem class aims to represent a structure element of a data source.
@@ -21,7 +21,11 @@ enum class DataSourceItemType { NODE, PRODUCT };
  */
 class DataSourceItem {
 public:
-    explicit DataSourceItem(DataSourceItemType type, QVector<QVariant> data = {});
+    /// Key associated with the name of the item
+    static const QString NAME_DATA_KEY;
+
+    explicit DataSourceItem(DataSourceItemType type, const QString &name);
+    explicit DataSourceItem(DataSourceItemType type, QHash<QString, QVariant> data = {});
 
     /// @return the actions of the item as a vector
     QVector<DataSourceItemAction *> actions() const noexcept;
@@ -49,11 +53,16 @@ public:
     int childCount() const noexcept;
 
     /**
-     * Get the data associated to an index
-     * @param dataIndex the index to search
-     * @return the data found if index is valid, default QVariant otherwise
+     * Get the data associated to a key
+     * @param key the key to search
+     * @return the data found if key is valid, default QVariant otherwise
      */
-    QVariant data(int dataIndex) const noexcept;
+    QVariant data(const QString &key) const noexcept;
+
+    /// Gets all data
+    const QHash<QString, QVariant> &data() const noexcept;
+
+    bool isRoot() const noexcept;
 
     QString name() const noexcept;
 
@@ -63,7 +72,19 @@ public:
      */
     DataSourceItem *parentItem() const noexcept;
 
+    /**
+     * Sets or appends a value to a key
+     * @param key the key
+     * @param value the value
+     * @param append if true, the value is added to the values already existing for the key,
+     * otherwise it replaces the existing values
+     */
+    void setData(const QString &key, const QVariant &value, bool append = false) noexcept;
+
     DataSourceItemType type() const noexcept;
+
+    bool operator==(const DataSourceItem &other);
+    bool operator!=(const DataSourceItem &other);
 
 private:
     class DataSourceItemPrivate;

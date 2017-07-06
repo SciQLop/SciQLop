@@ -53,8 +53,6 @@ public:
 signals:
     /// Signal emitted when a variable is about to be deleted from the controller
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
-    /// Signal emitted when a variable has been created
-    void variableCreated(std::shared_ptr<Variable> variable);
 
 public slots:
     /// Request the data loading of the variable whithin dateTime

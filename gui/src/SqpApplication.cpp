@@ -29,9 +29,6 @@ public:
                 SLOT(createVariable(const QString &, std::shared_ptr<IDataProvider>)));
 
         // VariableController <-> VisualizationController
-        connect(m_VariableController.get(), SIGNAL(variableCreated(std::shared_ptr<Variable>)),
-                m_VisualizationController.get(),
-                SIGNAL(variableCreated(std::shared_ptr<Variable>)));
         connect(m_VariableController.get(),
                 SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)),
                 m_VisualizationController.get(),

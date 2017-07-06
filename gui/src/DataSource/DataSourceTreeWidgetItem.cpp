@@ -2,23 +2,28 @@
 #include <DataSource/DataSourceItemAction.h>
 #include <DataSource/DataSourceTreeWidgetItem.h>
 
-#include <SqpApplication.h>
-
 #include <QAction>
 
 Q_LOGGING_CATEGORY(LOG_DataSourceTreeWidgetItem, "DataSourceTreeWidgetItem")
 
 namespace {
 
+// Column indexes
+const auto NAME_COLUMN = 0;
+
 QIcon itemIcon(const DataSourceItem *dataSource)
 {
     if (dataSource) {
         auto dataSourceType = dataSource->type();
         switch (dataSourceType) {
-            case DataSourceItemType::NODE:
-                return sqpApp->style()->standardIcon(QStyle::SP_DirIcon);
+            case DataSourceItemType::NODE: {
+                return dataSource->isRoot() ? QIcon{":/icones/dataSourceRoot.png"}
+                                            : QIcon{":/icones/dataSourceNode.png"};
+            }
             case DataSourceItemType::PRODUCT:
-                return sqpApp->style()->standardIcon(QStyle::SP_FileIcon);
+                return QIcon{":/icones/dataSourceProduct.png"};
+            case DataSourceItemType::COMPONENT:
+                return QIcon{":/icones/dataSourceComponent.png"};
             default:
                 // No action
                 break;
@@ -28,12 +33,60 @@ QIcon itemIcon(const DataSourceItem *dataSource)
             << QObject::tr("Can't set data source icon : unknown data source type");
     }
     else {
-        qCWarning(LOG_DataSourceTreeWidgetItem())
+        qCCritical(LOG_DataSourceTreeWidgetItem())
             << QObject::tr("Can't set data source icon : the data source is null");
     }
 
     // Default cases
     return QIcon{};
+}
+
+/// @return the tooltip text for a variant. The text depends on whether the data is a simple variant
+/// or a list of variants
+QString tooltipValue(const QVariant &variant) noexcept
+{
+    // If the variant is a list of variants, the text of the tooltip is of the form: {val1, val2,
+    // ...}
+    if (variant.canConvert<QVariantList>()) {
+        auto valueString = QStringLiteral("{");
+
+        auto variantList = variant.value<QVariantList>();
+        for (auto it = variantList.cbegin(), end = variantList.cend(); it != end; ++it) {
+            valueString.append(it->toString());
+
+            if (std::distance(it, end) != 1) {
+                valueString.append(", ");
+            }
+        }
+
+        valueString.append(QStringLiteral("}"));
+
+        return valueString;
+    }
+    else {
+        return variant.toString();
+    }
+}
+
+QString itemTooltip(const DataSourceItem *dataSource) noexcept
+{
+    // The tooltip displays all item's data
+    if (dataSource) {
+        auto result = QString{};
+
+        const auto &data = dataSource->data();
+        for (auto it = data.cbegin(), end = data.cend(); it != end; ++it) {
+            result.append(QString{"<b>%1:</b> %2<br/>"}.arg(it.key(), tooltipValue(it.value())));
+        }
+
+        return result;
+    }
+    else {
+        qCCritical(LOG_DataSourceTreeWidgetItem())
+            << QObject::tr("Can't set data source tooltip : the data source is null");
+
+        return QString{};
+    }
 }
 
 } // namespace
@@ -58,8 +111,9 @@ DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(QTreeWidget *parent, const Da
         : QTreeWidgetItem{parent, type},
           impl{spimpl::make_unique_impl<DataSourceTreeWidgetItemPrivate>(data)}
 {
-    // Sets the icon depending on the data source
+    // Sets the icon and the tooltip depending on the data source
     setIcon(0, itemIcon(impl->m_Data));
+    setToolTip(0, itemTooltip(impl->m_Data));
 
     // Generates tree actions based on the item actions
     auto createTreeAction = [this, &parent](const auto &itemAction) {
@@ -80,7 +134,23 @@ DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(QTreeWidget *parent, const Da
 QVariant DataSourceTreeWidgetItem::data(int column, int role) const
 {
     if (role == Qt::DisplayRole) {
-        return (impl->m_Data) ? impl->m_Data->data(column) : QVariant{};
+        if (impl->m_Data) {
+            switch (column) {
+                case NAME_COLUMN:
+                    return impl->m_Data->name();
+                default:
+                    // No action
+                    break;
+            }
+
+            qCWarning(LOG_DataSourceTreeWidgetItem())
+                << QObject::tr("Can't get data (unknown column %1)").arg(column);
+        }
+        else {
+            qCCritical(LOG_DataSourceTreeWidgetItem()) << QObject::tr("Can't get data (null item)");
+        }
+
+        return QVariant{};
     }
     else {
         return QTreeWidgetItem::data(column, role);

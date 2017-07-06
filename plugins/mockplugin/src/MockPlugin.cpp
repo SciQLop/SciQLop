@@ -23,8 +23,7 @@ std::unique_ptr<IDataProvider> createDataProvider() noexcept
 std::unique_ptr<DataSourceItem> createProductItem(const QString &productName,
                                                   const QUuid &dataSourceUid)
 {
-    auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT,
-                                                   QVector<QVariant>{productName});
+    auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT, productName);
 
     // Add action to load product from DataSourceController
     result->addAction(std::make_unique<DataSourceItemAction>(
@@ -42,18 +41,17 @@ std::unique_ptr<DataSourceItem> createProductItem(const QString &productName,
 std::unique_ptr<DataSourceItem> createDataSourceItem(const QUuid &dataSourceUid) noexcept
 {
     // Magnetic field products
-    auto magneticFieldFolder = std::make_unique<DataSourceItem>(
-        DataSourceItemType::NODE, QVector<QVariant>{QStringLiteral("Magnetic field")});
+    auto magneticFieldFolder = std::make_unique<DataSourceItem>(DataSourceItemType::NODE,
+                                                                QStringLiteral("Magnetic field"));
     magneticFieldFolder->appendChild(createProductItem(QStringLiteral("FGM"), dataSourceUid));
     magneticFieldFolder->appendChild(createProductItem(QStringLiteral("SC"), dataSourceUid));
 
     // Electric field products
-    auto electricFieldFolder = std::make_unique<DataSourceItem>(
-        DataSourceItemType::NODE, QVector<QVariant>{QStringLiteral("Electric field")});
+    auto electricFieldFolder = std::make_unique<DataSourceItem>(DataSourceItemType::NODE,
+                                                                QStringLiteral("Electric field"));
 
     // Root
-    auto root = std::make_unique<DataSourceItem>(DataSourceItemType::NODE,
-                                                 QVector<QVariant>{DATA_SOURCE_NAME});
+    auto root = std::make_unique<DataSourceItem>(DataSourceItemType::NODE, DATA_SOURCE_NAME);
     root->appendChild(std::move(magneticFieldFolder));
     root->appendChild(std::move(electricFieldFolder));
 

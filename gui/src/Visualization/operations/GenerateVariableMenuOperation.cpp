@@ -121,9 +121,12 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationTabWidget *tabWidget
 {
     if (tabWidget) {
         // 'Plot' menu
-        impl->visitNodeLeavePlot(
-            *tabWidget, QObject::tr("Open in a new zone"),
-            [ var = impl->m_Variable, tabWidget ]() { tabWidget->createZone(var); });
+        impl->visitNodeLeavePlot(*tabWidget, QObject::tr("Open in a new zone"),
+                                 [ varW = std::weak_ptr<Variable>{impl->m_Variable}, tabWidget ]() {
+                                     if (auto var = varW.lock()) {
+                                         tabWidget->createZone(var);
+                                     }
+                                 });
 
         // 'Unplot' menu
         impl->visitNodeLeaveUnplot();
@@ -152,7 +155,11 @@ void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidg
         // 'Plot' menu
         impl->visitNodeLeavePlot(
             *zoneWidget, QObject::tr("Open in a new graph"),
-            [ var = impl->m_Variable, zoneWidget ]() { zoneWidget->createGraph(var); });
+            [ varW = std::weak_ptr<Variable>{impl->m_Variable}, zoneWidget ]() {
+                if (auto var = varW.lock()) {
+                    zoneWidget->createGraph(var);
+                }
+            });
 
         // 'Unplot' menu
         impl->visitNodeLeaveUnplot();
@@ -167,14 +174,20 @@ void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
 {
     if (graphWidget) {
         // 'Plot' menu
-        impl->visitLeafPlot(
-            *graphWidget, QObject::tr("Open in %1").arg(graphWidget->name()),
-            [ var = impl->m_Variable, graphWidget ]() { graphWidget->addVariableUsingGraph(var); });
+        impl->visitLeafPlot(*graphWidget, QObject::tr("Open in %1").arg(graphWidget->name()),
+                            [ varW = std::weak_ptr<Variable>{impl->m_Variable}, graphWidget ]() {
+                                if (auto var = varW.lock()) {
+                                    graphWidget->addVariableUsingGraph(var);
+                                }
+                            });
 
         // 'Unplot' menu
-        impl->visitLeafUnplot(
-            *graphWidget, QObject::tr("Remove from %1").arg(graphWidget->name()),
-            [ var = impl->m_Variable, graphWidget ]() { graphWidget->removeVariable(var); });
+        impl->visitLeafUnplot(*graphWidget, QObject::tr("Remove from %1").arg(graphWidget->name()),
+                              [ varW = std::weak_ptr<Variable>{impl->m_Variable}, graphWidget ]() {
+                                  if (auto var = varW.lock()) {
+                                      graphWidget->removeVariable(var);
+                                  }
+                              });
     }
     else {
         qCCritical(LOG_GenerateVariableMenuOperation(),

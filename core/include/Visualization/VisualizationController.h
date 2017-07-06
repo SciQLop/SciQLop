@@ -28,8 +28,6 @@ public:
 signals:
     /// Signal emitted when a variable is about to be deleted from SciQlop
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
-    /// Signal emitted when a variable has been created in SciQlop
-    void variableCreated(std::shared_ptr<Variable> variable);
 
 public slots:
     /// Manage init/end of the controller
