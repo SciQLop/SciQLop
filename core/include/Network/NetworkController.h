@@ -8,6 +8,8 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_NetworkController)
 
+class QNetworkReply;
+
 /**
  * @brief The NetworkController class aims to handle all network connection of SciQlop.
  */
@@ -16,9 +18,14 @@ class NetworkController : public QObject {
 public:
     explicit NetworkController(QObject *parent = 0);
 
+    void execute(QNetworkReply *reply);
+
 
     void initialize();
     void finalize();
+
+signals:
+    replyToRead();
 
 private:
     void waitForFinish();
