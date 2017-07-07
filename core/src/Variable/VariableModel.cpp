@@ -190,6 +190,8 @@ void VariableModel::onVariableUpdated() noexcept
         });
 
         if (it != end) {
+            // Gets the index of the variable in the model: we assume here that views have the same
+            // order as the model
             auto updateVariableIndex = std::distance(begin, it);
             emit dataChanged(createIndex(updateVariableIndex, 0),
                              createIndex(updateVariableIndex, columnCount() - 1));

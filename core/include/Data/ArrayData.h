@@ -23,18 +23,15 @@ public:
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     explicit ArrayData(int nbColumns) : m_Data{1, QVector<double>{}}
     {
-        QWriteLocker locker(&m_Lock);
+        QWriteLocker locker{&m_Lock};
         m_Data[0].resize(nbColumns);
     }
 
-    /**
-     * Ctor for a unidimensional ArrayData
-     * @param nbColumns the number of values the ArrayData will hold
-     */
+    /// Copy ctor
     explicit ArrayData(const ArrayData &other)
     {
-        QReadLocker otherLocker(&other.m_Lock);
-        QWriteLocker locker(&m_Lock);
+        QReadLocker otherLocker{&other.m_Lock};
+        QWriteLocker locker{&m_Lock};
         m_Data = other.m_Data;
     }
 
@@ -47,7 +44,7 @@ public:
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     void setData(int index, double data) noexcept
     {
-        QWriteLocker locker(&m_Lock);
+        QWriteLocker locker{&m_Lock};
         if (index >= 0 && index < m_Data.at(0).size()) {
             m_Data[0].replace(index, data);
         }
@@ -60,7 +57,7 @@ public:
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     QVector<double> data() const noexcept
     {
-        QReadLocker locker(&m_Lock);
+        QReadLocker locker{&m_Lock};
         return m_Data[0];
     }
 
@@ -71,7 +68,7 @@ public:
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     QVector<double> data(double tStart, double tEnd) const noexcept
     {
-        QReadLocker locker(&m_Lock);
+        QReadLocker locker{&m_Lock};
         return m_Data.at(tStart);
     }
 
@@ -79,9 +76,9 @@ public:
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     void merge(const ArrayData<1> &arrayData)
     {
-        QWriteLocker locker(&m_Lock);
+        QWriteLocker locker{&m_Lock};
         if (!m_Data.empty()) {
-            QReadLocker otherLocker(&arrayData.m_Lock);
+            QReadLocker otherLocker{&arrayData.m_Lock};
             m_Data[0] += arrayData.data();
         }
     }
@@ -89,13 +86,13 @@ public:
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     int size() const
     {
-        QReadLocker locker(&m_Lock);
+        QReadLocker locker{&m_Lock};
         return m_Data[0].size();
     }
 
     void clear()
     {
-        QWriteLocker locker(&m_Lock);
+        QWriteLocker locker{&m_Lock};
         m_Data.clear();
     }
 
