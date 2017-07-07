@@ -49,6 +49,12 @@ QUuid DataSourceController::registerDataSource(const QString &dataSourceName) no
 void DataSourceController::setDataSourceItem(
     const QUuid &dataSourceUid, std::unique_ptr<DataSourceItem> dataSourceItem) noexcept
 {
+    if (!dataSourceItem) {
+        qCWarning(LOG_DataSourceController())
+            << tr("Data source item can't be registered (null item)");
+        return;
+    }
+
     if (impl->m_DataSources.contains(dataSourceUid)) {
         // The data provider is implicitly converted to a shared_ptr
         impl->m_DataSourceItems.insert(std::make_pair(dataSourceUid, std::move(dataSourceItem)));

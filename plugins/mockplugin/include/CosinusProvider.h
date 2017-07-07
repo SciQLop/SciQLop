@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_COSINUSPROVIDER_H
 #define SCIQLOP_COSINUSPROVIDER_H
 
+#include "MockPluginGlobal.h"
+
 #include <Data/IDataProvider.h>
 
 #include <QLoggingCategory>
@@ -10,7 +12,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_CosinusProvider)
 /**
  * @brief The CosinusProvider class is an example of how a data provider can generate data
  */
-class CosinusProvider : public IDataProvider {
+class SCIQLOP_MOCKPLUGIN_EXPORT CosinusProvider : public IDataProvider {
 public:
     /// @sa IDataProvider::retrieveData()
     std::shared_ptr<IDataSeries>

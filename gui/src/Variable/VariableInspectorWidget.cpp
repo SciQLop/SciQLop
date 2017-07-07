@@ -21,7 +21,14 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
     //    auto sortFilterModel = new QSortFilterProxyModel{this};
     //    sortFilterModel->setSourceModel(sqpApp->variableController().variableModel());
 
-    ui->tableView->setModel(sqpApp->variableController().variableModel());
+    auto variableModel = sqpApp->variableController().variableModel();
+    ui->tableView->setModel(variableModel);
+
+    // Adds extra signal/slot between view and model, so the view can be updated instantly when
+    // there is a change of data in the model
+    connect(variableModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)), this,
+            SLOT(refresh()));
+
     ui->tableView->setSelectionModel(sqpApp->variableController().variableSelectionModel());
 
     // Fixes column sizes
@@ -86,4 +93,9 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
         // Displays menu
         tableMenu.exec(mapToGlobal(pos));
     }
+}
+
+void VariableInspectorWidget::refresh() noexcept
+{
+    ui->tableView->viewport()->update();
 }

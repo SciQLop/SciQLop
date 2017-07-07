@@ -63,6 +63,7 @@ std::shared_ptr<Variable> VariableModel::createVariable(const QString &name,
                                                QStringLiteral("mission"), dateTime);
 
     impl->m_Variables.push_back(variable);
+    connect(variable.get(), &Variable::updated, this, &VariableModel::onVariableUpdated);
 
     endInsertRows();
 
@@ -176,4 +177,24 @@ QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int
     }
 
     return QVariant{};
+}
+
+void VariableModel::onVariableUpdated() noexcept
+{
+    // Finds variable that has been updated in the model
+    if (auto updatedVariable = dynamic_cast<Variable *>(sender())) {
+        auto begin = std::cbegin(impl->m_Variables);
+        auto end = std::cend(impl->m_Variables);
+        auto it = std::find_if(begin, end, [updatedVariable](const auto &variable) {
+            return variable.get() == updatedVariable;
+        });
+
+        if (it != end) {
+            // Gets the index of the variable in the model: we assume here that views have the same
+            // order as the model
+            auto updateVariableIndex = std::distance(begin, it);
+            emit dataChanged(createIndex(updateVariableIndex, 0),
+                             createIndex(updateVariableIndex, columnCount() - 1));
+        }
+    }
 }

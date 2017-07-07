@@ -3,6 +3,9 @@
 #include <Data/IDataSeries.h>
 #include <Data/SqpDateTime.h>
 
+#include <QReadWriteLock>
+#include <QThread>
+
 Q_LOGGING_CATEGORY(LOG_Variable, "Variable")
 
 struct Variable::VariablePrivate {
@@ -57,6 +60,7 @@ void Variable::setDateTime(const SqpDateTime &dateTime) noexcept
 
 void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
+    qCDebug(LOG_Variable()) << "Variable::setDataSeries" << QThread::currentThread()->objectName();
     if (!dataSeries) {
         /// @todo ALX : log
         return;
@@ -67,8 +71,11 @@ void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
         impl->m_DataSeries = dataSeries->clone();
     }
     else {
+        dataSeries->lockWrite();
+        impl->m_DataSeries->lockWrite();
         impl->m_DataSeries->merge(dataSeries.get());
-
+        impl->m_DataSeries->unlock();
+        dataSeries->unlock();
         emit updated();
     }
 }

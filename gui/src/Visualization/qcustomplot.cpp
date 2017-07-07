@@ -18570,7 +18570,7 @@ void QCPLegend::setIconSize(const QSize &size)
 }
 
 /*! \overload
-*/
+ */
 void QCPLegend::setIconSize(int width, int height)
 {
     mIconSize.setWidth(width);

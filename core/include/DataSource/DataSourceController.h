@@ -37,7 +37,7 @@ public:
      * Sets the structure of a data source. The controller takes ownership of the structure.
      * @param dataSourceUid the unique id with which the data source has been registered into the
      * controller. If it is invalid, the method has no effect.
-     * @param dataSourceItem the structure of the data source
+     * @param dataSourceItem the structure of the data source. It must be not null to be registered
      * @sa registerDataSource()
      */
     void setDataSourceItem(const QUuid &dataSourceUid,

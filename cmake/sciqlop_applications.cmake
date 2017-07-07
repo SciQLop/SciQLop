@@ -26,6 +26,18 @@ IF(BUILD_PLUGINS)
     set(sciqlop-mockplugin_DIR "${CMAKE_SOURCE_DIR}/plugins/mockplugin/cmake")
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-mockplugin_DIR}")
     ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/plugins/mockplugin")
+
+    set(sciqlop-amda_DIR "${CMAKE_SOURCE_DIR}/plugins/amda/cmake")
+    set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-amda_DIR}")
+    ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/plugins/amda")
+
+    # Temporary target to copy to plugins dir
+    find_package(sciqlop-mockplugin)
+    find_package(sciqlop-amda)
+    ADD_CUSTOM_TARGET(plugins
+        COMMAND ${CMAKE_COMMAND} -E copy ${SCIQLOP-MOCKPLUGIN_LIBRARIES} "${LIBRARY_OUTPUT_PATH}/plugins/${SCIQLOP-MOCKPLUGIN_LIBRARIES_NAME}"
+        COMMAND ${CMAKE_COMMAND} -E copy ${SCIQLOP-AMDA_LIBRARIES} "${LIBRARY_OUTPUT_PATH}/plugins/${SCIQLOP-AMDA_LIBRARIES_NAME}"
+    )
 ENDIF(BUILD_PLUGINS)
 
 # LOGGER

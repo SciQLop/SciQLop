@@ -7,6 +7,7 @@
 #include <QAbstractTableModel>
 #include <QLoggingCategory>
 
+#include <Common/MetaTypes.h>
 #include <Common/spimpl.h>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableModel)
@@ -50,6 +51,13 @@ public:
 private:
     class VariableModelPrivate;
     spimpl::unique_impl_ptr<VariableModelPrivate> impl;
+
+private slots:
+    /// Slot called when data of a variable has been updated
+    void onVariableUpdated() noexcept;
 };
+
+// Registers QVector<int> metatype so it can be used in VariableModel::dataChanged() signal
+SCIQLOP_REGISTER_META_TYPE(QVECTOR_INT_REGISTRY, QVector<int>)
 
 #endif // SCIQLOP_VARIABLEMODEL_H
