@@ -1,8 +1,9 @@
 #ifndef SCIQLOP_ARRAYDATA_H
 #define SCIQLOP_ARRAYDATA_H
 
+#include <QReadLocker>
+#include <QReadWriteLock>
 #include <QVector>
-
 /**
  * @brief The ArrayData class represents a dataset for a data series.
  *
@@ -22,7 +23,19 @@ public:
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     explicit ArrayData(int nbColumns) : m_Data{1, QVector<double>{}}
     {
+        QWriteLocker locker(&m_Lock);
         m_Data[0].resize(nbColumns);
+    }
+
+    /**
+     * Ctor for a unidimensional ArrayData
+     * @param nbColumns the number of values the ArrayData will hold
+     */
+    explicit ArrayData(const ArrayData &other)
+    {
+        QReadLocker otherLocker(&other.m_Lock);
+        QWriteLocker locker(&m_Lock);
+        m_Data = other.m_Data;
     }
 
     /**
@@ -34,6 +47,7 @@ public:
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     void setData(int index, double data) noexcept
     {
+        QWriteLocker locker(&m_Lock);
         if (index >= 0 && index < m_Data.at(0).size()) {
             m_Data[0].replace(index, data);
         }
@@ -44,8 +58,9 @@ public:
      * @remarks this method is only available for a unidimensional ArrayData
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    const QVector<double> &data() const noexcept
+    QVector<double> data() const noexcept
     {
+        QReadLocker locker(&m_Lock);
         return m_Data[0];
     }
 
@@ -54,8 +69,9 @@ public:
      * @remarks this method is only available for a unidimensional ArrayData
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    const QVector<double> &data(double tStart, double tEnd) const noexcept
+    QVector<double> data(double tStart, double tEnd) const noexcept
     {
+        QReadLocker locker(&m_Lock);
         return m_Data.at(tStart);
     }
 
@@ -63,20 +79,30 @@ public:
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     void merge(const ArrayData<1> &arrayData)
     {
+        QWriteLocker locker(&m_Lock);
         if (!m_Data.empty()) {
+            QReadLocker otherLocker(&arrayData.m_Lock);
             m_Data[0] += arrayData.data();
         }
     }
 
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    int size()
+    int size() const
     {
+        QReadLocker locker(&m_Lock);
         return m_Data[0].size();
+    }
+
+    void clear()
+    {
+        QWriteLocker locker(&m_Lock);
+        m_Data.clear();
     }
 
 
 private:
     QVector<QVector<double> > m_Data;
+    mutable QReadWriteLock m_Lock;
 };
 
 #endif // SCIQLOP_ARRAYDATA_H

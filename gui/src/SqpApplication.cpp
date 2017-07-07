@@ -18,6 +18,14 @@ public:
               m_VariableController{std::make_unique<VariableController>()},
               m_VisualizationController{std::make_unique<VisualizationController>()}
     {
+        QThread::currentThread()->setObjectName("MainThread");
+        m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
+        m_DataSourceControllerThread.setObjectName("DataSourceControllerThread");
+        m_VariableController->moveToThread(&m_VariableControllerThread);
+        m_VariableControllerThread.setObjectName("VariableControllerThread");
+        m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
+        m_VisualizationControllerThread.setObjectName("VisualizationControllerThread");
+
         // /////////////////////////////// //
         // Connections between controllers //
         // /////////////////////////////// //
@@ -34,9 +42,6 @@ public:
                 m_VisualizationController.get(),
                 SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), Qt::DirectConnection);
 
-        m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
-        m_VariableController->moveToThread(&m_VariableControllerThread);
-        m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
 
         // Additionnal init
         m_VariableController->setTimeController(m_TimeController.get());
