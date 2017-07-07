@@ -33,8 +33,8 @@ VariableCacheController::VariableCacheController(QObject *parent)
 void VariableCacheController::addDateTime(std::shared_ptr<Variable> variable,
                                           const SqpDateTime &dateTime)
 {
-    qCInfo(LOG_VariableCacheController())
-        << "VariableCacheController::addDateTime" << QThread::currentThread()->objectName();
+    qCInfo(LOG_VariableCacheController()) << "VariableCacheController::addDateTime"
+                                          << QThread::currentThread()->objectName();
     if (variable) {
         auto findVariableIte = impl->m_VariableToSqpDateTimeListMap.find(variable);
         if (findVariableIte == impl->m_VariableToSqpDateTimeListMap.end()) {
@@ -107,8 +107,8 @@ VariableCacheController::provideNotInCacheDateTimeList(std::shared_ptr<Variable>
 QVector<SqpDateTime>
 VariableCacheController::dateCacheList(std::shared_ptr<Variable> variable) const noexcept
 {
-    qCInfo(LOG_VariableCacheController())
-        << "VariableCacheController::dateCacheList" << QThread::currentThread()->objectName();
+    qCInfo(LOG_VariableCacheController()) << "VariableCacheController::dateCacheList"
+                                          << QThread::currentThread()->objectName();
     try {
         return impl->m_VariableToSqpDateTimeListMap.at(variable);
     }
@@ -218,8 +218,8 @@ void VariableCacheController::displayCache(std::shared_ptr<Variable> variable) c
 {
     auto variableDateTimeList = impl->m_VariableToSqpDateTimeListMap.find(variable);
     if (variableDateTimeList != impl->m_VariableToSqpDateTimeListMap.end()) {
-        qCInfo(LOG_VariableCacheController())
-            << tr("VariableCacheController::displayCache") << variableDateTimeList->second;
+        qCInfo(LOG_VariableCacheController()) << tr("VariableCacheController::displayCache")
+                                              << variableDateTimeList->second;
     }
     else {
         qCWarning(LOG_VariableCacheController())
