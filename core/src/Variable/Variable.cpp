@@ -60,7 +60,7 @@ void Variable::setDateTime(const SqpDateTime &dateTime) noexcept
 
 void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
-    qCInfo(LOG_Variable()) << "Variable::setDataSeries" << QThread::currentThread()->objectName();
+    qCDebug(LOG_Variable()) << "Variable::setDataSeries" << QThread::currentThread()->objectName();
     if (!dataSeries) {
         /// @todo ALX : log
         return;

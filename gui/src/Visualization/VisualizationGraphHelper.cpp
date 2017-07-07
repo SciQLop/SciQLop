@@ -11,7 +11,7 @@ namespace {
 
 class SqpDataContainer : public QCPGraphDataContainer {
 public:
-    void sqpAdd(const QCPGraphData &data) { mData.append(data); }
+    void appendGraphDataUnsorted(const QCPGraphData &data) { mData.append(data); }
 };
 
 
@@ -37,8 +37,8 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
 void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSeries,
                       const SqpDateTime &dateTime)
 {
-    qCInfo(LOG_VisualizationGraphHelper()) << "TORM: updateScalarData"
-                                           << QThread::currentThread()->objectName();
+    qCDebug(LOG_VisualizationGraphHelper()) << "TORM: updateScalarData"
+                                            << QThread::currentThread()->objectName();
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
         // Clean the graph
         // NAIVE approch
@@ -58,7 +58,7 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
             for (auto i = 0; i < count; ++i) {
                 const auto x = xData[i];
                 if (x >= dateTime.m_TStart && x <= dateTime.m_TEnd) {
-                    sqpDataContainer->sqpAdd(QCPGraphData(x, valuesData[i]));
+                    sqpDataContainer->appendGraphDataUnsorted(QCPGraphData(x, valuesData[i]));
                 }
             }
             sqpDataContainer->sort();
