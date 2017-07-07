@@ -45,6 +45,8 @@ private:
 private slots:
     /// Slot called when right clicking on an variable in the table (displays a menu)
     void onTableMenuRequested(const QPoint &pos) noexcept;
+    /// Refreshes instantly the variable view
+    void refresh() noexcept;
 };
 
 #endif // SCIQLOP_VARIABLEINSPECTORWIDGET_H
