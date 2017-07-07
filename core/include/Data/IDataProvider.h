@@ -26,10 +26,6 @@ class IDataProvider : public QObject {
 public:
     virtual ~IDataProvider() noexcept = default;
 
-    virtual std::shared_ptr<IDataSeries>
-    retrieveData(const DataProviderParameters &parameters) const = 0;
-
-
     virtual void requestDataLoading(const QVector<SqpDateTime> &dateTimeList) = 0;
 
 signals:

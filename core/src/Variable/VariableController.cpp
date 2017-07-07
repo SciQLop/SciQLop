@@ -17,20 +17,6 @@
 
 Q_LOGGING_CATEGORY(LOG_VariableController, "VariableController")
 
-namespace {
-
-/// @todo Generates default dataseries, according to the provider passed in parameter. This method
-/// will be deleted when the timerange is recovered from SciQlop
-std::shared_ptr<IDataSeries> generateDefaultDataSeries(const IDataProvider &provider,
-                                                       const SqpDateTime &dateTime) noexcept
-{
-    auto parameters = DataProviderParameters{dateTime};
-
-    return provider.retrieveData(parameters);
-}
-
-} // namespace
-
 struct VariableController::VariableControllerPrivate {
     explicit VariableControllerPrivate(VariableController *parent)
             : m_WorkingMutex{},
