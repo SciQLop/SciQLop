@@ -142,14 +142,14 @@ void TestAmdaParser::testReadJson_data()
     QTest::newRow("Valid file") << QStringLiteral("ValidFile1.json") << validResults1();
 
     // Invalid files
-    QTest::newRow("Invalid file (unexisting file)")
-        << QStringLiteral("UnexistingFile.json") << invalidResults();
-    QTest::newRow("Invalid file (two root objects)")
-        << QStringLiteral("TwoRootsFile.json") << invalidResults();
-    QTest::newRow("Invalid file (wrong root key)")
-        << QStringLiteral("WrongRootKey.json") << invalidResults();
-    QTest::newRow("Invalid file (wrong root type)")
-        << QStringLiteral("WrongRootType.json") << invalidResults();
+    QTest::newRow("Invalid file (unexisting file)") << QStringLiteral("UnexistingFile.json")
+                                                    << invalidResults();
+    QTest::newRow("Invalid file (two root objects)") << QStringLiteral("TwoRootsFile.json")
+                                                     << invalidResults();
+    QTest::newRow("Invalid file (wrong root key)") << QStringLiteral("WrongRootKey.json")
+                                                   << invalidResults();
+    QTest::newRow("Invalid file (wrong root type)") << QStringLiteral("WrongRootType.json")
+                                                    << invalidResults();
 }
 
 void TestAmdaParser::testReadJson()
