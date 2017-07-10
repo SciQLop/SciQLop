@@ -2,10 +2,14 @@
 #include "AmdaResultParser.h"
 
 #include <Data/DataProviderParameters.h>
+#include <Network/NetworkController.h>
+#include <SqpApplication.h>
+#include <Variable/Variable.h>
 
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QTemporaryFile>
+#include <QThread>
 
 Q_LOGGING_CATEGORY(LOG_AmdaProvider, "AmdaProvider")
 
@@ -30,18 +34,26 @@ QString dateFormat(double sqpDateTime) noexcept
     return dateTime.toString(AMDA_TIME_FORMAT);
 }
 
+
 } // namespace
 
 struct AmdaProvider::AmdaProviderPrivate {
     DataProviderParameters m_Params{};
     std::unique_ptr<QNetworkAccessManager> m_AccessManager{nullptr};
     QNetworkReply *m_Reply{nullptr};
-    std::unique_ptr<QTemporaryFile> m_File{nullptr};
+    //    std::unique_ptr<QTemporaryFile> m_File{nullptr};
     QUuid m_Token;
 };
 
 AmdaProvider::AmdaProvider() : impl{spimpl::make_unique_impl<AmdaProviderPrivate>()}
 {
+    qCDebug(LOG_NetworkController()) << tr("AmdaProvider::AmdaProvider")
+                                     << QThread::currentThread();
+    if (auto app = sqpApp) {
+        auto &networkController = app->networkController();
+        connect(this, &AmdaProvider::requestConstructed, &networkController,
+                &NetworkController::onProcessRequested);
+    }
 }
 
 void AmdaProvider::requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList)
@@ -52,7 +64,7 @@ void AmdaProvider::requestDataLoading(QUuid token, const QVector<SqpDateTime> &d
     }
 }
 
-void AmdaProvider::retrieveData(QUuid token, const DataProviderParameters &parameters) const
+void AmdaProvider::retrieveData(QUuid token, const DataProviderParameters &parameters)
 {
     // /////////// //
     // Creates URL //
@@ -64,71 +76,53 @@ void AmdaProvider::retrieveData(QUuid token, const DataProviderParameters &param
 
     auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
 
+    auto tempFile = std::make_shared<QTemporaryFile>();
+
+
+    // LAMBDA
+    auto httpDownloadFinished = [this, tempFile](QNetworkReply *reply, QUuid dataId) noexcept {
+
+        if (tempFile) {
+            auto replyReadAll = reply->readAll();
+            if (!replyReadAll.isEmpty()) {
+                tempFile->write(replyReadAll);
+            }
+            tempFile->close();
+
+            // Parse results file
+            if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
+                emit dataProvided(impl->m_Token, dataSeries, impl->m_Params.m_Time);
+            }
+            else {
+                /// @todo ALX : debug
+            }
+        }
+
+        // Deletes reply
+        reply->deleteLater();
+        reply = nullptr;
+    };
+    auto httpFinishedLambda = [this, httpDownloadFinished, tempFile](QNetworkReply *reply,
+                                                                     QUuid dataId) noexcept {
+
+        auto downloadFileUrl = QUrl{QString{reply->readAll()}};
+        // Deletes old reply
+        reply->deleteLater();
+
+        // Executes request for downloading file //
+
+        // Creates destination file
+        if (tempFile->open()) {
+            // Executes request
+            emit requestConstructed(QNetworkRequest{downloadFileUrl}, dataId, httpDownloadFinished);
+        }
+    };
+
     // //////////////// //
     // Executes request //
     // //////////////// //
 
     impl->m_Token = token;
     impl->m_Params = parameters;
-    impl->m_AccessManager = std::make_unique<QNetworkAccessManager>();
-    impl->m_Reply = impl->m_AccessManager->get(QNetworkRequest{url});
-    connect(impl->m_Reply, &QNetworkReply::finished, this, &AmdaProvider::httpFinished);
-}
-
-void AmdaProvider::httpFinished() noexcept
-{
-    // ////////////////////// //
-    // Gets download file url //
-    // ////////////////////// //
-
-    auto downloadFileUrl = QUrl{QString{impl->m_Reply->readAll()}};
-
-    // ///////////////////////////////////// //
-    // Executes request for downloading file //
-    // ///////////////////////////////////// //
-
-    // Deletes old reply
-    impl->m_Reply->deleteLater();
-    impl->m_Reply = nullptr;
-
-    // Creates destination file
-    impl->m_File = std::make_unique<QTemporaryFile>();
-    if (impl->m_File->open()) {
-        qCDebug(LOG_AmdaProvider()) << "Temp file: " << impl->m_File->fileName();
-
-        // Executes request
-        impl->m_AccessManager = std::make_unique<QNetworkAccessManager>();
-        impl->m_Reply = impl->m_AccessManager->get(QNetworkRequest{downloadFileUrl});
-        connect(impl->m_Reply, &QNetworkReply::finished, this,
-                &AmdaProvider::httpDownloadReadyRead);
-        connect(impl->m_Reply, &QNetworkReply::finished, this, &AmdaProvider::httpDownloadFinished);
-    }
-}
-
-void AmdaProvider::httpDownloadFinished() noexcept
-{
-    if (impl->m_File) {
-        impl->m_File->close();
-
-        // Parse results file
-        if (auto dataSeries = AmdaResultParser::readTxt(impl->m_File->fileName())) {
-            emit dataProvided(impl->m_Token, dataSeries, impl->m_Params.m_Time);
-        }
-        else {
-            /// @todo ALX : debug
-        }
-
-        impl->m_File = nullptr;
-    }
-
-    // Deletes reply
-    impl->m_Reply->deleteLater();
-    impl->m_Reply = nullptr;
-}
-
-void AmdaProvider::httpDownloadReadyRead() noexcept
-{
-    if (impl->m_File) {
-        impl->m_File->write(impl->m_Reply->readAll());
-    }
+    emit requestConstructed(QNetworkRequest{url}, token, httpFinishedLambda);
 }
