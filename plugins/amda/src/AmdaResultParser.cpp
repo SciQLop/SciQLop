@@ -59,12 +59,6 @@ std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath) 
     }
 
     /// @todo ALX : handle units
-    auto scalarSeries = std::make_shared<ScalarSeries>(xData.size(), Unit{"nT", true}, Unit{});
-
-    const auto count = xData.size();
-    for (auto i = 0; i < count; ++i) {
-        scalarSeries->setData(i, xData.at(i), valuesData.at(i));
-    }
-
-    return scalarSeries;
+    return std::make_shared<ScalarSeries>(std::move(xData), std::move(valuesData), Unit{"nT", true},
+                                          Unit{});
 }
