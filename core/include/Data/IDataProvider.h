@@ -4,6 +4,7 @@
 #include <memory>
 
 #include <QObject>
+#include <QUuid>
 
 #include <Common/MetaTypes.h>
 
@@ -26,10 +27,11 @@ class IDataProvider : public QObject {
 public:
     virtual ~IDataProvider() noexcept = default;
 
-    virtual void requestDataLoading(const QVector<SqpDateTime> &dateTimeList) = 0;
+    virtual void requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList) = 0;
 
 signals:
-    void dataProvided(std::shared_ptr<IDataSeries> dateSerie, const SqpDateTime &dateTime);
+    void dataProvided(QUuid token, std::shared_ptr<IDataSeries> dateSerie,
+                      const SqpDateTime &dateTime);
 };
 
 // Required for using shared_ptr in signals/slots
