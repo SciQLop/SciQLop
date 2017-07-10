@@ -26,6 +26,9 @@ private:
 
     class AmdaProviderPrivate;
     spimpl::unique_impl_ptr<AmdaProviderPrivate> impl;
+
+private slots:
+    void httpFinished() noexcept;
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H
