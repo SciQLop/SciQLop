@@ -1,4 +1,6 @@
 #include "AmdaProvider.h"
+#include "AmdaResultParser.h"
+
 #include <Data/DataProviderParameters.h>
 
 #include <QNetworkAccessManager>
@@ -107,6 +109,15 @@ void AmdaProvider::httpDownloadFinished() noexcept
 {
     if (impl->m_File) {
         impl->m_File->close();
+
+        // Parse results file
+        if (auto dataSeries = AmdaResultParser::readTxt(impl->m_File->fileName())) {
+            emit dataProvided(impl->m_Token, dataSeries, impl->m_Params.m_Time);
+        }
+        else {
+            /// @todo ALX : debug
+        }
+
         impl->m_File = nullptr;
     }
 
