@@ -32,6 +32,9 @@ void AmdaPlugin::initialize()
         else {
             qCCritical(LOG_AmdaPlugin()) << tr("No data source item could be generated for AMDA");
         }
+
+        // Sets data provider
+        dataSourceController.setDataProvider(dataSourceUid, std::make_unique<AmdaProvider>());
     }
     else {
         qCWarning(LOG_AmdaPlugin()) << tr("Can't access to SciQlop application");
