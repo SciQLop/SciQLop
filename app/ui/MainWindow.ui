@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>QLop</string>
+   <string>SciQlop v0.0.1</string>
   </property>
   <property name="dockNestingEnabled">
    <bool>true</bool>
@@ -126,7 +126,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>26</height>
+     <height>28</height>
     </rect>
    </property>
   </widget>

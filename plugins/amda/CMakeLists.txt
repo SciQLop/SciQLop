@@ -13,7 +13,7 @@ INCLUDE_DIRECTORIES(${RESOURCES_DIR})
 #
 # Find Qt modules
 #
-SCIQLOP_FIND_QT(Core Widgets)
+SCIQLOP_FIND_QT(Core Widgets Network)
 
 #
 # Find dependent libraries
@@ -68,7 +68,7 @@ INSTALL(TARGETS ${SQPAMDA_LIBRARY_NAME}
 
 
 TARGET_LINK_LIBRARIES(${SQPAMDA_LIBRARY_NAME} ${LIBRARIES})
-qt5_use_modules(${SQPAMDA_LIBRARY_NAME} Core Widgets)
+qt5_use_modules(${SQPAMDA_LIBRARY_NAME} Core Widgets Network)
 
 add_dependencies(${SQPAMDA_LIBRARY_NAME} ${SQPPLUGIN_LIBRARY_NAME} ${SQPGUI_LIBRARY_NAME} ${SQPCORE_LIBRARY_NAME})
 	

@@ -14,7 +14,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_CosinusProvider)
  */
 class SCIQLOP_MOCKPLUGIN_EXPORT CosinusProvider : public IDataProvider {
 public:
-    void requestDataLoading(const QVector<SqpDateTime> &dateTimeList) override;
+    void requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList) override;
 
 
 private:
