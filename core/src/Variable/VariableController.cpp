@@ -11,25 +11,12 @@
 #include <QDateTime>
 #include <QMutex>
 #include <QThread>
+#include <QUuid>
 #include <QtCore/QItemSelectionModel>
 
 #include <unordered_map>
 
 Q_LOGGING_CATEGORY(LOG_VariableController, "VariableController")
-
-namespace {
-
-/// @todo Generates default dataseries, according to the provider passed in parameter. This method
-/// will be deleted when the timerange is recovered from SciQlop
-std::shared_ptr<IDataSeries> generateDefaultDataSeries(const IDataProvider &provider,
-                                                       const SqpDateTime &dateTime) noexcept
-{
-    auto parameters = DataProviderParameters{dateTime};
-
-    return provider.retrieveData(parameters);
-}
-
-} // namespace
 
 struct VariableController::VariableControllerPrivate {
     explicit VariableControllerPrivate(VariableController *parent)
@@ -51,6 +38,7 @@ struct VariableController::VariableControllerPrivate {
 
     std::unordered_map<std::shared_ptr<Variable>, std::shared_ptr<IDataProvider> >
         m_VariableToProviderMap;
+    std::unordered_map<std::shared_ptr<Variable>, QUuid> m_VariableToToken;
 };
 
 VariableController::VariableController(QObject *parent)
@@ -132,16 +120,21 @@ void VariableController::createVariable(const QString &name,
     /// in sciqlop
     auto dateTime = impl->m_TimeController->dateTime();
     if (auto newVariable = impl->m_VariableModel->createVariable(name, dateTime)) {
+        auto token = QUuid::createUuid();
 
         // store the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
+        impl->m_VariableToToken[newVariable] = token;
 
         auto addDateTimeAcquired = [ this, varW = std::weak_ptr<Variable>{newVariable} ](
-            auto dataSeriesAcquired, auto dateTimeToPutInCache)
+            QUuid token, auto dataSeriesAcquired, auto dateTimeToPutInCache)
         {
             if (auto variable = varW.lock()) {
-                impl->m_VariableCacheController->addDateTime(variable, dateTimeToPutInCache);
-                variable->setDataSeries(dataSeriesAcquired);
+                auto varToken = impl->m_VariableToToken.at(variable);
+                if (varToken == token) {
+                    impl->m_VariableCacheController->addDateTime(variable, dateTimeToPutInCache);
+                    variable->setDataSeries(dataSeriesAcquired);
+                }
             }
         };
 
@@ -180,8 +173,9 @@ void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable
 
         if (!dateTimeListNotInCache.empty()) {
             // Ask the provider for each data on the dateTimeListNotInCache
+            auto token = impl->m_VariableToToken.at(variable);
             impl->m_VariableToProviderMap.at(variable)->requestDataLoading(
-                std::move(dateTimeListNotInCache));
+                token, std::move(dateTimeListNotInCache));
         }
         else {
             emit variable->updated();

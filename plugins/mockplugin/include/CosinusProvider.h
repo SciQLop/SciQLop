@@ -14,14 +14,12 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_CosinusProvider)
  */
 class SCIQLOP_MOCKPLUGIN_EXPORT CosinusProvider : public IDataProvider {
 public:
-    /// @sa IDataProvider::retrieveData()
-    std::shared_ptr<IDataSeries>
-    retrieveData(const DataProviderParameters &parameters) const override;
-
-    void requestDataLoading(const QVector<SqpDateTime> &dateTimeList) override;
+    void requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList) override;
 
 
 private:
+    /// @sa IDataProvider::retrieveData()
+    std::shared_ptr<IDataSeries> retrieveData(const DataProviderParameters &parameters) const;
     std::shared_ptr<IDataSeries> retrieveDataSeries(const SqpDateTime &dateTime);
 };
 

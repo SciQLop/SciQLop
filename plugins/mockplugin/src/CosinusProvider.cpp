@@ -38,13 +38,13 @@ CosinusProvider::retrieveData(const DataProviderParameters &parameters) const
     return scalarSeries;
 }
 
-void CosinusProvider::requestDataLoading(const QVector<SqpDateTime> &dateTimeList)
+void CosinusProvider::requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList)
 {
     qCDebug(LOG_CosinusProvider()) << "CosinusProvider::requestDataLoading"
                                    << QThread::currentThread()->objectName();
     // NOTE: Try to use multithread if possible
     for (const auto &dateTime : dateTimeList) {
         auto scalarSeries = this->retrieveData(DataProviderParameters{dateTime});
-        emit dataProvided(scalarSeries, dateTime);
+        emit dataProvided(token, scalarSeries, dateTime);
     }
 }
