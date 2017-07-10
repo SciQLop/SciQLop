@@ -38,7 +38,7 @@ struct VariableController::VariableControllerPrivate {
 
     std::unordered_map<std::shared_ptr<Variable>, std::shared_ptr<IDataProvider> >
         m_VariableToProviderMap;
-    std::unordered_map<std::shared_ptr<Variable>, QUuid> m_VariableToToken;
+    std::unordered_map<std::shared_ptr<Variable>, QUuid> m_VariableToIdentifier;
 };
 
 VariableController::VariableController(QObject *parent)
@@ -120,18 +120,18 @@ void VariableController::createVariable(const QString &name,
     /// in sciqlop
     auto dateTime = impl->m_TimeController->dateTime();
     if (auto newVariable = impl->m_VariableModel->createVariable(name, dateTime)) {
-        auto token = QUuid::createUuid();
+        auto identifier = QUuid::createUuid();
 
         // store the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
-        impl->m_VariableToToken[newVariable] = token;
+        impl->m_VariableToIdentifier[newVariable] = identifier;
 
         auto addDateTimeAcquired = [ this, varW = std::weak_ptr<Variable>{newVariable} ](
-            QUuid token, auto dataSeriesAcquired, auto dateTimeToPutInCache)
+            QUuid identifier, auto dataSeriesAcquired, auto dateTimeToPutInCache)
         {
             if (auto variable = varW.lock()) {
-                auto varToken = impl->m_VariableToToken.at(variable);
-                if (varToken == token) {
+                auto varIdentifier = impl->m_VariableToIdentifier.at(variable);
+                if (varIdentifier == identifier) {
                     impl->m_VariableCacheController->addDateTime(variable, dateTimeToPutInCache);
                     variable->setDataSeries(dataSeriesAcquired);
                 }
@@ -173,9 +173,9 @@ void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable
 
         if (!dateTimeListNotInCache.empty()) {
             // Ask the provider for each data on the dateTimeListNotInCache
-            auto token = impl->m_VariableToToken.at(variable);
+            auto identifier = impl->m_VariableToIdentifier.at(variable);
             impl->m_VariableToProviderMap.at(variable)->requestDataLoading(
-                token, std::move(dateTimeListNotInCache));
+                identifier, std::move(dateTimeListNotInCache));
         }
         else {
             emit variable->updated();
