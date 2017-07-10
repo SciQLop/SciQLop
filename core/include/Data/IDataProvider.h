@@ -12,6 +12,8 @@
 
 class DataProviderParameters;
 class IDataSeries;
+class QNetworkReply;
+class QNetworkRequest;
 
 /**
  * @brief The IDataProvider interface aims to declare a data provider.
@@ -27,14 +29,32 @@ class IDataProvider : public QObject {
 public:
     virtual ~IDataProvider() noexcept = default;
 
-    virtual void requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList) = 0;
+    /**
+     * @brief requestDataLoading provide datas for the data identified by identifier for all
+     * SqpDateTime of dateTimeList
+     */
+    virtual void requestDataLoading(QUuid identifier, const QVector<SqpDateTime> &dateTimeList) = 0;
 
 signals:
-    void dataProvided(QUuid token, std::shared_ptr<IDataSeries> dateSerie,
+    /**
+     * @brief dataProvided send dataSeries under dateTime and that corresponds of the data
+     * identified by identifier
+     */
+    void dataProvided(QUuid identifier, std::shared_ptr<IDataSeries> dateSerie,
                       const SqpDateTime &dateTime);
+
+
+    /**
+     * @brief requestConstructed send a request for the data identified by identifier
+     * @callback is the methode call by the reply of the request when it is finished.
+     */
+    void requestConstructed(const QNetworkRequest &request, QUuid identifier,
+                            std::function<void(QNetworkReply *, QUuid)> callback);
 };
 
 // Required for using shared_ptr in signals/slots
 SCIQLOP_REGISTER_META_TYPE(IDATAPROVIDER_PTR_REGISTRY, std::shared_ptr<IDataProvider>)
+SCIQLOP_REGISTER_META_TYPE(IDATAPROVIDER_FUNCTION_REGISTRY,
+                           std::function<void(QNetworkReply *, QUuid)>)
 
 #endif // SCIQLOP_IDATAPROVIDER_H
