@@ -3,6 +3,7 @@
 
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QTemporaryFile>
 
 Q_LOGGING_CATEGORY(LOG_AmdaProvider, "AmdaProvider")
 
@@ -74,5 +75,49 @@ void AmdaProvider::retrieveData(QUuid token, const DataProviderParameters &param
 
 void AmdaProvider::httpFinished() noexcept
 {
-    /// @todo ALX
+    // ////////////////////// //
+    // Gets download file url //
+    // ////////////////////// //
+
+    auto downloadFileUrl = QUrl{QString{impl->m_Reply->readAll()}};
+
+    // ///////////////////////////////////// //
+    // Executes request for downloading file //
+    // ///////////////////////////////////// //
+
+    // Deletes old reply
+    impl->m_Reply->deleteLater();
+    impl->m_Reply = nullptr;
+
+    // Creates destination file
+    impl->m_File = std::make_unique<QTemporaryFile>();
+    if (impl->m_File->open()) {
+        qCDebug(LOG_AmdaProvider()) << "Temp file: " << impl->m_File->fileName();
+
+        // Executes request
+        impl->m_AccessManager = std::make_unique<QNetworkAccessManager>();
+        impl->m_Reply = impl->m_AccessManager->get(QNetworkRequest{downloadFileUrl});
+        connect(impl->m_Reply, &QNetworkReply::finished, this,
+                &AmdaProvider::httpDownloadReadyRead);
+        connect(impl->m_Reply, &QNetworkReply::finished, this, &AmdaProvider::httpDownloadFinished);
+    }
+}
+
+void AmdaProvider::httpDownloadFinished() noexcept
+{
+    if (impl->m_File) {
+        impl->m_File->close();
+        impl->m_File = nullptr;
+    }
+
+    // Deletes reply
+    impl->m_Reply->deleteLater();
+    impl->m_Reply = nullptr;
+}
+
+void AmdaProvider::httpDownloadReadyRead() noexcept
+{
+    if (impl->m_File) {
+        impl->m_File->write(impl->m_Reply->readAll());
+    }
 }

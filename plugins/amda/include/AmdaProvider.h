@@ -29,6 +29,8 @@ private:
 
 private slots:
     void httpFinished() noexcept;
+    void httpDownloadFinished() noexcept;
+    void httpDownloadReadyRead() noexcept;
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H
