@@ -3,8 +3,6 @@
 
 #include "AmdaGlobal.h"
 
-#include <Common/spimpl.h>
-
 #include <Data/IDataProvider.h>
 
 #include <QLoggingCategory>
@@ -25,14 +23,6 @@ public:
 
 private:
     void retrieveData(QUuid token, const SqpDateTime &dateTime);
-
-    class AmdaProviderPrivate;
-    spimpl::unique_impl_ptr<AmdaProviderPrivate> impl;
-
-    // private slots:
-    //    void httpFinished(QNetworkReply *reply, QUuid dataId) noexcept;
-    //    void httpDownloadFinished(QNetworkReply *reply, QUuid dataId) noexcept;
-    //    void httpDownloadReadyRead(QNetworkReply *reply, QUuid dataId) noexcept;
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H
