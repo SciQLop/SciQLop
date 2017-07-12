@@ -6,6 +6,13 @@ ScalarSeries::ScalarSeries(int size, const Unit &xAxisUnit, const Unit &valuesUn
 {
 }
 
+ScalarSeries::ScalarSeries(QVector<double> xAxisData, QVector<double> valuesData,
+                           const Unit &xAxisUnit, const Unit &valuesUnit)
+        : DataSeries{std::make_shared<ArrayData<1> >(std::move(xAxisData)), xAxisUnit,
+                     std::make_shared<ArrayData<1> >(std::move(valuesData)), valuesUnit}
+{
+}
+
 void ScalarSeries::setData(int index, double x, double value) noexcept
 {
     xAxisData()->setData(index, x);

@@ -17,6 +17,15 @@ public:
     explicit ScalarSeries(int size, const Unit &xAxisUnit, const Unit &valuesUnit);
 
     /**
+     * Ctor with two vectors. The vectors must have the same size, otherwise a ScalarSeries with no
+     * values will be created.
+     * @param xAxisData x-axis data
+     * @param valuesData values data
+     */
+    explicit ScalarSeries(QVector<double> xAxisData, QVector<double> valuesData,
+                          const Unit &xAxisUnit, const Unit &valuesUnit);
+
+    /**
      * Sets data for a specific index. The index has to be valid to be effective
      * @param index the index to which the data will be set
      * @param x the x-axis data
