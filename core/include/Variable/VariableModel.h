@@ -12,6 +12,9 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableModel)
 
+enum VariableRoles { progressRole = Qt::UserRole };
+
+
 class IDataSeries;
 class Variable;
 
@@ -37,11 +40,15 @@ public:
      */
     void deleteVariable(std::shared_ptr<Variable> variable) noexcept;
 
+
     std::shared_ptr<Variable> variable(int index) const;
+
+    void setDataProgress(std::shared_ptr<Variable> variable, double progress);
 
     // /////////////////////////// //
     // QAbstractTableModel methods //
     // /////////////////////////// //
+
     virtual int columnCount(const QModelIndex &parent = QModelIndex{}) const override;
     virtual int rowCount(const QModelIndex &parent = QModelIndex{}) const override;
     virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;

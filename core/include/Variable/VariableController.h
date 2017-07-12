@@ -67,6 +67,9 @@ public slots:
     /// Update the temporal parameters of every selected variable to dateTime
     void onDateTimeOnSelection(const SqpDateTime &dateTime);
 
+
+    void onVariableRetrieveDataInProgress(QUuid identifier, double progress);
+
     void initialize();
     void finalize();
 

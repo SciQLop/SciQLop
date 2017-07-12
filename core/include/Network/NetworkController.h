@@ -25,13 +25,16 @@ public:
     void finalize();
 
 public slots:
+    /// Execute request and call callback when the reply is finished. Identifier is attached to the
+    /// callback
     void onProcessRequested(const QNetworkRequest &request, QUuid identifier,
                             std::function<void(QNetworkReply *, QUuid)> callback);
+    /// Cancel the request of identifier
     void onReplyCanceled(QUuid identifier);
 
 signals:
     void replyFinished(QNetworkReply *reply, QUuid identifier);
-    void replyDownloadProgress(QUuid identifier);
+    void replyDownloadProgress(QUuid identifier, double progress);
 
 private:
     void waitForFinish();

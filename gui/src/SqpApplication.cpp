@@ -104,6 +104,11 @@ SqpApplication::SqpApplication(int &argc, char **argv)
     impl->m_NetworkControllerThread.start();
     impl->m_VariableControllerThread.start();
     impl->m_VisualizationControllerThread.start();
+
+    // Core connections:
+    // NetworkController <-> VariableController
+    connect(&sqpApp->networkController(), &NetworkController::replyDownloadProgress,
+            &sqpApp->variableController(), &VariableController::onVariableRetrieveDataInProgress);
 }
 
 SqpApplication::~SqpApplication()

@@ -26,8 +26,8 @@ NetworkController::NetworkController(QObject *parent)
 void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid identifier,
                                            std::function<void(QNetworkReply *, QUuid)> callback)
 {
-    qCDebug(LOG_NetworkController()) << tr("NetworkController registered")
-                                     << QThread::currentThread();
+    qCInfo(LOG_NetworkController()) << tr("NetworkController registered")
+                                    << QThread::currentThread();
     auto reply = impl->m_AccessManager->get(request);
 
     // Store the couple reply id
@@ -35,27 +35,26 @@ void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid
 
     auto onReplyFinished = [reply, this, identifier, callback]() {
 
-        qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished")
-                                         << QThread::currentThread();
+        qCInfo(LOG_NetworkController()) << tr("NetworkController onReplyFinished")
+                                        << QThread::currentThread();
         auto it = impl->m_NetworkReplyToVariableId.find(reply);
         if (it != impl->m_NetworkReplyToVariableId.cend()) {
             callback(reply, identifier);
         }
     };
 
-    auto onReplyDownloadProgress = [reply, this]() {
+    auto onReplyProgress = [reply, this](qint64 bytesRead, qint64 totalBytes) {
 
-        qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyDownloadProgress")
-                                         << QThread::currentThread();
+        double progress = (bytesRead * 100.0) / totalBytes;
         auto it = impl->m_NetworkReplyToVariableId.find(reply);
         if (it != impl->m_NetworkReplyToVariableId.cend()) {
-            emit this->replyDownloadProgress(it->second);
+            emit this->replyDownloadProgress(it->second, progress);
         }
     };
 
 
     connect(reply, &QNetworkReply::finished, this, onReplyFinished);
-    connect(reply, &QNetworkReply::downloadProgress, this, onReplyDownloadProgress);
+    connect(reply, &QNetworkReply::downloadProgress, this, onReplyProgress);
 }
 
 void NetworkController::initialize()

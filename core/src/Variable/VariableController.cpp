@@ -157,6 +157,17 @@ void VariableController::onDateTimeOnSelection(const SqpDateTime &dateTime)
     }
 }
 
+void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, double progress)
+{
+    auto findReply = [identifier](const auto &entry) { return identifier == entry.second; };
+
+    auto end = impl->m_VariableToIdentifier.cend();
+    auto it = std::find_if(impl->m_VariableToIdentifier.cbegin(), end, findReply);
+    if (it != end) {
+        impl->m_VariableModel->setDataProgress(it->first, progress);
+    }
+}
+
 
 void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable,
                                               const SqpDateTime &dateTime)
