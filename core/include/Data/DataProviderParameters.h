@@ -9,7 +9,7 @@
  * @sa IDataProvider
  */
 struct DataProviderParameters {
-    SqpDateTime m_Time;
+    QVector<SqpDateTime> m_Times;
 };
 
 #endif // SCIQLOP_DATAPROVIDERPARAMETERS_H

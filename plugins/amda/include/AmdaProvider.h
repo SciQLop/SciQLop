@@ -21,10 +21,10 @@ class SCIQLOP_AMDA_EXPORT AmdaProvider : public IDataProvider {
 public:
     explicit AmdaProvider();
 
-    void requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList) override;
+    void requestDataLoading(QUuid token, const DataProviderParameters &parameters) override;
 
 private:
-    void retrieveData(QUuid token, const DataProviderParameters &parameters);
+    void retrieveData(QUuid token, const SqpDateTime &dateTime);
 
     class AmdaProviderPrivate;
     spimpl::unique_impl_ptr<AmdaProviderPrivate> impl;

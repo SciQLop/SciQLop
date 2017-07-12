@@ -38,7 +38,7 @@ QString dateFormat(double sqpDateTime) noexcept
 } // namespace
 
 struct AmdaProvider::AmdaProviderPrivate {
-    DataProviderParameters m_Params{};
+    SqpDateTime m_DateTime{};
     std::unique_ptr<QNetworkAccessManager> m_AccessManager{nullptr};
     QNetworkReply *m_Reply{nullptr};
     //    std::unique_ptr<QTemporaryFile> m_File{nullptr};
@@ -56,22 +56,23 @@ AmdaProvider::AmdaProvider() : impl{spimpl::make_unique_impl<AmdaProviderPrivate
     }
 }
 
-void AmdaProvider::requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList)
+void AmdaProvider::requestDataLoading(QUuid token, const DataProviderParameters &parameters)
 {
     // NOTE: Try to use multithread if possible
-    for (const auto &dateTime : dateTimeList) {
-        retrieveData(token, DataProviderParameters{dateTime});
+    const auto times = parameters.m_Times;
+    for (const auto &dateTime : qAsConst(times)) {
+        retrieveData(token, dateTime);
     }
 }
 
-void AmdaProvider::retrieveData(QUuid token, const DataProviderParameters &parameters)
+void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime)
 {
     // /////////// //
     // Creates URL //
     // /////////// //
 
-    auto startDate = dateFormat(parameters.m_Time.m_TStart);
-    auto endDate = dateFormat(parameters.m_Time.m_TEnd);
+    auto startDate = dateFormat(dateTime.m_TStart);
+    auto endDate = dateFormat(dateTime.m_TEnd);
     auto productId = QStringLiteral("imf(0)");
 
     auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
@@ -91,7 +92,7 @@ void AmdaProvider::retrieveData(QUuid token, const DataProviderParameters &param
 
             // Parse results file
             if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
-                emit dataProvided(impl->m_Token, dataSeries, impl->m_Params.m_Time);
+                emit dataProvided(impl->m_Token, dataSeries, impl->m_DateTime);
             }
             else {
                 /// @todo ALX : debug
@@ -123,6 +124,6 @@ void AmdaProvider::retrieveData(QUuid token, const DataProviderParameters &param
     // //////////////// //
 
     impl->m_Token = token;
-    impl->m_Params = parameters;
+    impl->m_DateTime = dateTime;
     emit requestConstructed(QNetworkRequest{url}, token, httpFinishedLambda);
 }

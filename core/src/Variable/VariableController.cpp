@@ -186,7 +186,7 @@ void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable
             // Ask the provider for each data on the dateTimeListNotInCache
             auto identifier = impl->m_VariableToIdentifier.at(variable);
             impl->m_VariableToProviderMap.at(variable)->requestDataLoading(
-                identifier, std::move(dateTimeListNotInCache));
+                identifier, DataProviderParameters{std::move(dateTimeListNotInCache)});
         }
         else {
             emit variable->updated();
