@@ -6,7 +6,7 @@
 const QString DataSourceItem::NAME_DATA_KEY = QStringLiteral("name");
 
 struct DataSourceItem::DataSourceItemPrivate {
-    explicit DataSourceItemPrivate(DataSourceItemType type, QHash<QString, QVariant> data)
+    explicit DataSourceItemPrivate(DataSourceItemType type, QVariantHash data)
             : m_Parent{nullptr}, m_Children{}, m_Type{type}, m_Data{std::move(data)}, m_Actions{}
     {
     }
@@ -14,16 +14,16 @@ struct DataSourceItem::DataSourceItemPrivate {
     DataSourceItem *m_Parent;
     std::vector<std::unique_ptr<DataSourceItem> > m_Children;
     DataSourceItemType m_Type;
-    QHash<QString, QVariant> m_Data;
+    QVariantHash m_Data;
     std::vector<std::unique_ptr<DataSourceItemAction> > m_Actions;
 };
 
 DataSourceItem::DataSourceItem(DataSourceItemType type, const QString &name)
-        : DataSourceItem{type, QHash<QString, QVariant>{{NAME_DATA_KEY, name}}}
+        : DataSourceItem{type, QVariantHash{{NAME_DATA_KEY, name}}}
 {
 }
 
-DataSourceItem::DataSourceItem(DataSourceItemType type, QHash<QString, QVariant> data)
+DataSourceItem::DataSourceItem(DataSourceItemType type, QVariantHash data)
         : impl{spimpl::make_unique_impl<DataSourceItemPrivate>(type, std::move(data))}
 {
 }
@@ -70,7 +70,7 @@ QVariant DataSourceItem::data(const QString &key) const noexcept
     return impl->m_Data.value(key);
 }
 
-const QHash<QString, QVariant> &DataSourceItem::data() const noexcept
+QVariantHash DataSourceItem::data() const noexcept
 {
     return impl->m_Data;
 }
