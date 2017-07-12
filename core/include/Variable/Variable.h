@@ -22,7 +22,8 @@ class Variable : public QObject {
     Q_OBJECT
 
 public:
-    explicit Variable(const QString &name, const SqpDateTime &dateTime);
+    explicit Variable(const QString &name, const SqpDateTime &dateTime,
+                      const QVariantHash &metadata = {});
 
     QString name() const noexcept;
     SqpDateTime dateTime() const noexcept;
@@ -30,6 +31,8 @@ public:
 
     /// @return the data of the variable, nullptr if there is no data
     IDataSeries *dataSeries() const noexcept;
+
+    QVariantHash metadata() const noexcept;
 
     bool contains(const SqpDateTime &dateTime) const noexcept;
     bool intersect(const SqpDateTime &dateTime) const noexcept;
