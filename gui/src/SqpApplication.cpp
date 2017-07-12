@@ -78,7 +78,7 @@ public:
 SqpApplication::SqpApplication(int &argc, char **argv)
         : QApplication{argc, argv}, impl{spimpl::make_unique_impl<SqpApplicationPrivate>()}
 {
-    qCInfo(LOG_SqpApplication()) << tr("SqpApplication construction");
+    qCDebug(LOG_SqpApplication()) << tr("SqpApplication construction") << QThread::currentThread();
 
     connect(&impl->m_DataSourceControllerThread, &QThread::started,
             impl->m_DataSourceController.get(), &DataSourceController::initialize);
