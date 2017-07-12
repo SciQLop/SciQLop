@@ -25,11 +25,12 @@ public:
     void addAction(const QString &actionName, ActionFun actionFunction);
 
     /**
-     * Adds a new menu to the current menu
+     * Adds a new menu to the current menu and returns it
      * @param name the name of the menu
      * @param icon the icon of the menu (can be null)
+     * @returns the created menu, nullptr if it couldn't be created
      */
-    void addMenu(const QString &name, const QIcon &icon = {});
+    QMenu *addMenu(const QString &name, const QIcon &icon = {});
 
     /// Adds a separator to the current menu. The separator is added only if the menu already
     /// contains entries

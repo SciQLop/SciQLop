@@ -21,7 +21,11 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     void visitRootEnter()
     {
         // Creates the root menu
-        m_PlotMenuBuilder.addMenu(QObject::tr("Plot"), QIcon{":/icones/plot.png"});
+        if (auto plotMenu
+            = m_PlotMenuBuilder.addMenu(QObject::tr("Plot"), QIcon{":/icones/plot.png"})) {
+            plotMenu->setEnabled(m_Variable && m_Variable->dataSeries() != nullptr);
+        }
+
         m_UnplotMenuBuilder.addMenu(QObject::tr("Unplot"), QIcon{":/icones/unplot.png"});
     }
 
