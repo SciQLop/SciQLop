@@ -9,43 +9,25 @@
 Q_LOGGING_CATEGORY(LOG_Variable, "Variable")
 
 struct Variable::VariablePrivate {
-    explicit VariablePrivate(const QString &name, const QString &unit, const QString &mission,
-                             const SqpDateTime &dateTime)
-            : m_Name{name},
-              m_Unit{unit},
-              m_Mission{mission},
-              m_DateTime{dateTime},
-              m_DataSeries{nullptr}
+    explicit VariablePrivate(const QString &name, const SqpDateTime &dateTime)
+            : m_Name{name}, m_DateTime{dateTime}, m_DataSeries{nullptr}
     {
     }
 
     QString m_Name;
-    QString m_Unit;
-    QString m_Mission;
 
     SqpDateTime m_DateTime; // The dateTime available in the view and loaded. not the cache.
     std::unique_ptr<IDataSeries> m_DataSeries;
 };
 
-Variable::Variable(const QString &name, const QString &unit, const QString &mission,
-                   const SqpDateTime &dateTime)
-        : impl{spimpl::make_unique_impl<VariablePrivate>(name, unit, mission, dateTime)}
+Variable::Variable(const QString &name, const SqpDateTime &dateTime)
+        : impl{spimpl::make_unique_impl<VariablePrivate>(name, dateTime)}
 {
 }
 
 QString Variable::name() const noexcept
 {
     return impl->m_Name;
-}
-
-QString Variable::mission() const noexcept
-{
-    return impl->m_Mission;
-}
-
-QString Variable::unit() const noexcept
-{
-    return impl->m_Unit;
 }
 
 SqpDateTime Variable::dateTime() const noexcept

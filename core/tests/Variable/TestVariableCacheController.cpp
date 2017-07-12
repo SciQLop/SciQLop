@@ -35,7 +35,7 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     auto sqp2 = SqpDateTime{static_cast<double>(ts2.toMSecsSinceEpoch()),
                             static_cast<double>(te2.toMSecsSinceEpoch())};
 
-    auto var0 = std::make_shared<Variable>("", "", "", sqp0);
+    auto var0 = std::make_shared<Variable>("", sqp0);
 
     variableCacheController.addDateTime(var0, sqp0);
     variableCacheController.addDateTime(var0, sqp1);
@@ -289,7 +289,7 @@ void TestVariableCacheController::testAddDateTime()
                              static_cast<double>(te03.toMSecsSinceEpoch())};
 
 
-    auto var0 = std::make_shared<Variable>("", "", "", sqp0);
+    auto var0 = std::make_shared<Variable>("", sqp0);
 
 
     // First case: add the first interval to the variable :sqp0

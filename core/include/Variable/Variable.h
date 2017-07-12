@@ -22,12 +22,9 @@ class Variable : public QObject {
     Q_OBJECT
 
 public:
-    explicit Variable(const QString &name, const QString &unit, const QString &mission,
-                      const SqpDateTime &dateTime);
+    explicit Variable(const QString &name, const SqpDateTime &dateTime);
 
     QString name() const noexcept;
-    QString mission() const noexcept;
-    QString unit() const noexcept;
     SqpDateTime dateTime() const noexcept;
     void setDateTime(const SqpDateTime &dateTime) noexcept;
 
