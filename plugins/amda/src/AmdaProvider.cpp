@@ -43,8 +43,11 @@ AmdaProvider::AmdaProvider()
                                      << QThread::currentThread();
     if (auto app = sqpApp) {
         auto &networkController = app->networkController();
-        connect(this, &AmdaProvider::requestConstructed, &networkController,
-                &NetworkController::onProcessRequested);
+        connect(this, SIGNAL(requestConstructed(QNetworkRequest, QUuid,
+                                                std::function<void(QNetworkReply *, QUuid)>)),
+                &networkController,
+                SLOT(onProcessRequested(QNetworkRequest, QUuid,
+                                        std::function<void(QNetworkReply *, QUuid)>)));
     }
 }
 
