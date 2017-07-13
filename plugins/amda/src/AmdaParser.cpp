@@ -1,4 +1,5 @@
 #include "AmdaParser.h"
+#include "AmdaDefs.h"
 
 #include <DataSource/DataSourceItem.h>
 
@@ -11,18 +12,13 @@ Q_LOGGING_CATEGORY(LOG_AmdaParser, "AmdaParser")
 
 namespace {
 
-// Significant keys of an AMDA's JSON file
-const auto COMPONENT_KEY = QStringLiteral("component");
-const auto PRODUCT_KEY = QStringLiteral("parameter");
-const auto ROOT_KEY = QStringLiteral("dataCenter");
-
 /// Returns the correct item type according to the key passed in parameter
 DataSourceItemType itemType(const QString &key) noexcept
 {
-    if (key == PRODUCT_KEY) {
+    if (key == AMDA_PRODUCT_KEY) {
         return DataSourceItemType::PRODUCT;
     }
-    else if (key == COMPONENT_KEY) {
+    else if (key == AMDA_COMPONENT_KEY) {
         return DataSourceItemType::COMPONENT;
     }
     else {
@@ -98,16 +94,16 @@ std::unique_ptr<DataSourceItem> AmdaParser::readJson(const QString &filePath) no
     }
 
     auto jsonDocumentObject = jsonDocument.object();
-    if (!jsonDocumentObject.contains(ROOT_KEY)) {
+    if (!jsonDocumentObject.contains(AMDA_ROOT_KEY)) {
         qCCritical(LOG_AmdaParser())
             << QObject::tr(
                    "Can't retrieve data source tree from file %1: the file is malformed (the key "
                    "for the root element was not found (%2))")
-                   .arg(filePath, ROOT_KEY);
+                   .arg(filePath, AMDA_ROOT_KEY);
         return nullptr;
     }
 
-    auto rootValue = jsonDocumentObject.value(ROOT_KEY);
+    auto rootValue = jsonDocumentObject.value(AMDA_ROOT_KEY);
     if (!rootValue.isObject()) {
         qCCritical(LOG_AmdaParser())
             << QObject::tr(
