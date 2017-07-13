@@ -22,7 +22,7 @@ public:
     void requestDataLoading(QUuid token, const DataProviderParameters &parameters) override;
 
 private:
-    void retrieveData(QUuid token, const SqpDateTime &dateTime);
+    void retrieveData(QUuid token, const SqpDateTime &dateTime, const QVariantHash &data);
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H

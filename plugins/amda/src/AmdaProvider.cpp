@@ -1,4 +1,5 @@
 #include "AmdaProvider.h"
+#include "AmdaDefs.h"
 #include "AmdaResultParser.h"
 
 #include <Data/DataProviderParameters.h>
@@ -51,20 +52,27 @@ void AmdaProvider::requestDataLoading(QUuid token, const DataProviderParameters 
 {
     // NOTE: Try to use multithread if possible
     const auto times = parameters.m_Times;
+    const auto data = parameters.m_Data;
     for (const auto &dateTime : qAsConst(times)) {
-        retrieveData(token, dateTime);
+        retrieveData(token, dateTime, data);
     }
 }
 
-void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime)
+void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const QVariantHash &data)
 {
+    // Retrieves product ID from data: if the value is invalid, no request is made
+    auto productId = data.value(AMDA_XML_ID_KEY).toString();
+    if (productId.isNull()) {
+        qCCritical(LOG_AmdaProvider()) << tr("Can't retrieve data: unknown product id");
+        return;
+    }
+
     // /////////// //
     // Creates URL //
     // /////////// //
 
     auto startDate = dateFormat(dateTime.m_TStart);
     auto endDate = dateFormat(dateTime.m_TEnd);
-    auto productId = QStringLiteral("imf(0)");
 
     auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
 
