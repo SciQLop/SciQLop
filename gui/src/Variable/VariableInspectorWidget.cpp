@@ -17,13 +17,13 @@ Q_LOGGING_CATEGORY(LOG_VariableInspectorWidget, "VariableInspectorWidget")
 class QProgressBarItemDelegate : public QStyledItemDelegate {
 
 public:
-    QProgressBarItemDelegate(QObject *parent) : QStyledItemDelegate(parent) {}
+    QProgressBarItemDelegate(QObject *parent) : QStyledItemDelegate{parent} {}
 
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
                const QModelIndex &index) const
     {
         auto data = index.data(Qt::DisplayRole);
-        auto progressData = index.data(VariableRoles::progressRole);
+        auto progressData = index.data(VariableRoles::ProgressRole);
         if (data.isValid() && progressData.isValid()) {
             auto name = data.value<QString>();
             auto progress = progressData.value<double>();
@@ -51,7 +51,7 @@ public:
 VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
         : QWidget{parent},
           ui{new Ui::VariableInspectorWidget},
-          m_ProgressBarItemDelegate{new QProgressBarItemDelegate(this)}
+          m_ProgressBarItemDelegate{new QProgressBarItemDelegate{this}}
 {
     ui->setupUi(this);
 

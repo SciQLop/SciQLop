@@ -12,7 +12,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableModel)
 
-enum VariableRoles { progressRole = Qt::UserRole };
+enum VariableRoles { ProgressRole = Qt::UserRole };
 
 
 class IDataSeries;

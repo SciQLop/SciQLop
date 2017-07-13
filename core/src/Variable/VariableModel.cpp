@@ -50,7 +50,7 @@ struct VariableModel::VariableModelPrivate {
     std::unordered_map<std::shared_ptr<Variable>, double> m_VariableToProgress;
 
 
-    /// Return te row index of the variable
+    /// Return the row index of the variable. -1 if it's not found
     int indexOfVariable(Variable *variable) const noexcept;
 };
 
@@ -169,7 +169,7 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
             qWarning(LOG_VariableModel()) << tr("Can't get data (no variable)");
         }
     }
-    else if (role == VariableRoles::progressRole) {
+    else if (role == VariableRoles::ProgressRole) {
         if (auto variable = impl->m_Variables.at(index.row())) {
 
             auto it = impl->m_VariableToProgress.find(variable);
