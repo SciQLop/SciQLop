@@ -47,8 +47,7 @@ const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
 struct VariableModel::VariableModelPrivate {
     /// Variables created in SciQlop
     std::vector<std::shared_ptr<Variable> > m_Variables;
-    std::unordered_map<std::shared_ptr<Variable>, double> m_VariableToProgress;
-
+    std::unordered_map<Variable *, double> m_VariableToProgress;
 
     /// Return the row index of the variable. -1 if it's not found
     int indexOfVariable(Variable *variable) const noexcept;
@@ -110,8 +109,7 @@ std::shared_ptr<Variable> VariableModel::variable(int index) const
 
 void VariableModel::setDataProgress(std::shared_ptr<Variable> variable, double progress)
 {
-
-    impl->m_VariableToProgress[variable] = progress;
+    impl->m_VariableToProgress[variable.get()] = progress;
     auto modelIndex = createIndex(impl->indexOfVariable(variable.get()), NAME_COLUMN);
 
     emit dataChanged(modelIndex, modelIndex);
@@ -171,7 +169,7 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
     else if (role == VariableRoles::ProgressRole) {
         if (auto variable = impl->m_Variables.at(index.row())) {
 
-            auto it = impl->m_VariableToProgress.find(variable);
+            auto it = impl->m_VariableToProgress.find(variable.get());
             if (it != impl->m_VariableToProgress.cend()) {
                 return it->second;
             }
