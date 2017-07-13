@@ -26,9 +26,11 @@ public:
 
         // VariableController <-> DataSourceController
         connect(m_DataSourceController.get(),
-                SIGNAL(variableCreationRequested(const QString &, std::shared_ptr<IDataProvider>)),
+                SIGNAL(variableCreationRequested(const QString &, const QVariantHash &,
+                                                 std::shared_ptr<IDataProvider>)),
                 m_VariableController.get(),
-                SLOT(createVariable(const QString &, std::shared_ptr<IDataProvider>)));
+                SLOT(createVariable(const QString &, const QVariantHash &,
+                                    std::shared_ptr<IDataProvider>)));
 
         // VariableController <-> VisualizationController
         connect(m_VariableController.get(),

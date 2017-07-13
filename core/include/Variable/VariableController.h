@@ -60,9 +60,11 @@ public slots:
     /**
      * Creates a new variable and adds it to the model
      * @param name the name of the new variable
+     * @param metadata the metadata of the new variable
      * @param provider the data provider for the new variable
      */
-    void createVariable(const QString &name, std::shared_ptr<IDataProvider> provider) noexcept;
+    void createVariable(const QString &name, const QVariantHash &metadata,
+                        std::shared_ptr<IDataProvider> provider) noexcept;
 
     /// Update the temporal parameters of every selected variable to dateTime
     void onDateTimeOnSelection(const SqpDateTime &dateTime);

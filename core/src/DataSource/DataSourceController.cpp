@@ -88,13 +88,13 @@ void DataSourceController::setDataProvider(const QUuid &dataSourceUid,
 void DataSourceController::loadProductItem(const QUuid &dataSourceUid,
                                            const DataSourceItem &productItem) noexcept
 {
-    if (productItem.type() == DataSourceItemType::PRODUCT) {
+    if (productItem.type() == DataSourceItemType::PRODUCT
+        || productItem.type() == DataSourceItemType::COMPONENT) {
         /// Retrieves the data provider of the data source (if any)
         auto it = impl->m_DataProviders.find(dataSourceUid);
         auto dataProvider = (it != impl->m_DataProviders.end()) ? it->second : nullptr;
 
-        /// @todo retrieve timerange, and pass it to the signal
-        emit variableCreationRequested(productItem.name(), dataProvider);
+        emit variableCreationRequested(productItem.name(), productItem.data(), dataProvider);
     }
     else {
         qCWarning(LOG_DataSourceController()) << tr("Can't load an item that is not a product");

@@ -30,10 +30,9 @@ public:
     virtual ~IDataProvider() noexcept = default;
 
     /**
-     * @brief requestDataLoading provide datas for the data identified by identifier for all
-     * SqpDateTime of dateTimeList
+     * @brief requestDataLoading provide datas for the data identified by identifier and parameters
      */
-    virtual void requestDataLoading(QUuid identifier, const QVector<SqpDateTime> &dateTimeList) = 0;
+    virtual void requestDataLoading(QUuid identifier, const DataProviderParameters &parameters) = 0;
 
 signals:
     /**

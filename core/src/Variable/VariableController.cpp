@@ -102,7 +102,7 @@ void VariableController::deleteVariables(
     }
 }
 
-void VariableController::createVariable(const QString &name,
+void VariableController::createVariable(const QString &name, const QVariantHash &metadata,
                                         std::shared_ptr<IDataProvider> provider) noexcept
 {
 
@@ -112,14 +112,9 @@ void VariableController::createVariable(const QString &name,
         return;
     }
 
-
-    /// @todo : for the moment :
-    /// - the provider is only used to retrieve data from the variable for its initialization, but
-    /// it will be retained later
-    /// - default data are generated for the variable, without taking into account the timerange set
-    /// in sciqlop
     auto dateTime = impl->m_TimeController->dateTime();
-    if (auto newVariable = impl->m_VariableModel->createVariable(name, dateTime)) {
+
+    if (auto newVariable = impl->m_VariableModel->createVariable(name, dateTime, metadata)) {
         auto identifier = QUuid::createUuid();
 
         // store the provider
@@ -186,7 +181,8 @@ void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable
             // Ask the provider for each data on the dateTimeListNotInCache
             auto identifier = impl->m_VariableToIdentifier.at(variable);
             impl->m_VariableToProviderMap.at(variable)->requestDataLoading(
-                identifier, std::move(dateTimeListNotInCache));
+                identifier,
+                DataProviderParameters{std::move(dateTimeListNotInCache), variable->metadata()});
         }
         else {
             emit variable->updated();

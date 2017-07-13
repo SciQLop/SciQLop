@@ -1,4 +1,5 @@
 #include "AmdaProvider.h"
+#include "AmdaDefs.h"
 #include "AmdaResultParser.h"
 
 #include <Data/DataProviderParameters.h>
@@ -34,74 +35,77 @@ QString dateFormat(double sqpDateTime) noexcept
     return dateTime.toString(AMDA_TIME_FORMAT);
 }
 
-
 } // namespace
 
-struct AmdaProvider::AmdaProviderPrivate {
-    DataProviderParameters m_Params{};
-    std::unique_ptr<QNetworkAccessManager> m_AccessManager{nullptr};
-    QNetworkReply *m_Reply{nullptr};
-    //    std::unique_ptr<QTemporaryFile> m_File{nullptr};
-    QUuid m_Token;
-};
-
-AmdaProvider::AmdaProvider() : impl{spimpl::make_unique_impl<AmdaProviderPrivate>()}
+AmdaProvider::AmdaProvider()
 {
     qCDebug(LOG_NetworkController()) << tr("AmdaProvider::AmdaProvider")
                                      << QThread::currentThread();
     if (auto app = sqpApp) {
         auto &networkController = app->networkController();
-        connect(this, &AmdaProvider::requestConstructed, &networkController,
-                &NetworkController::onProcessRequested);
+        connect(this, SIGNAL(requestConstructed(QNetworkRequest, QUuid,
+                                                std::function<void(QNetworkReply *, QUuid)>)),
+                &networkController,
+                SLOT(onProcessRequested(QNetworkRequest, QUuid,
+                                        std::function<void(QNetworkReply *, QUuid)>)));
     }
 }
 
-void AmdaProvider::requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList)
+void AmdaProvider::requestDataLoading(QUuid token, const DataProviderParameters &parameters)
 {
     // NOTE: Try to use multithread if possible
-    for (const auto &dateTime : dateTimeList) {
-        retrieveData(token, DataProviderParameters{dateTime});
+    const auto times = parameters.m_Times;
+    const auto data = parameters.m_Data;
+    for (const auto &dateTime : qAsConst(times)) {
+        retrieveData(token, dateTime, data);
     }
 }
 
-void AmdaProvider::retrieveData(QUuid token, const DataProviderParameters &parameters)
+void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const QVariantHash &data)
 {
+    // Retrieves product ID from data: if the value is invalid, no request is made
+    auto productId = data.value(AMDA_XML_ID_KEY).toString();
+    if (productId.isNull()) {
+        qCCritical(LOG_AmdaProvider()) << tr("Can't retrieve data: unknown product id");
+        return;
+    }
+
     // /////////// //
     // Creates URL //
     // /////////// //
 
-    auto startDate = dateFormat(parameters.m_Time.m_TStart);
-    auto endDate = dateFormat(parameters.m_Time.m_TEnd);
-    auto productId = QStringLiteral("imf(0)");
+    auto startDate = dateFormat(dateTime.m_TStart);
+    auto endDate = dateFormat(dateTime.m_TEnd);
 
     auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
 
     auto tempFile = std::make_shared<QTemporaryFile>();
 
-
     // LAMBDA
-    auto httpDownloadFinished = [this, tempFile](QNetworkReply *reply, QUuid dataId) noexcept {
+    auto httpDownloadFinished
+        = [this, dateTime, tempFile, token](QNetworkReply *reply, QUuid dataId) noexcept {
+              Q_UNUSED(dataId);
 
-        if (tempFile) {
-            auto replyReadAll = reply->readAll();
-            if (!replyReadAll.isEmpty()) {
-                tempFile->write(replyReadAll);
-            }
-            tempFile->close();
+              if (tempFile) {
+                  auto replyReadAll = reply->readAll();
+                  if (!replyReadAll.isEmpty()) {
+                      tempFile->write(replyReadAll);
+                  }
+                  tempFile->close();
 
-            // Parse results file
-            if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
-                emit dataProvided(impl->m_Token, dataSeries, impl->m_Params.m_Time);
-            }
-            else {
-                /// @todo ALX : debug
-            }
-        }
+                  // Parse results file
+                  if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
+                      emit dataProvided(token, dataSeries, dateTime);
+                  }
+                  else {
+                      /// @todo ALX : debug
+                  }
+              }
 
-        // Deletes reply
-        reply->deleteLater();
-        reply = nullptr;
-    };
+              // Deletes reply
+              reply->deleteLater();
+              reply = nullptr;
+          };
     auto httpFinishedLambda = [this, httpDownloadFinished, tempFile](QNetworkReply *reply,
                                                                      QUuid dataId) noexcept {
 
@@ -121,8 +125,5 @@ void AmdaProvider::retrieveData(QUuid token, const DataProviderParameters &param
     // //////////////// //
     // Executes request //
     // //////////////// //
-
-    impl->m_Token = token;
-    impl->m_Params = parameters;
     emit requestConstructed(QNetworkRequest{url}, token, httpFinishedLambda);
 }

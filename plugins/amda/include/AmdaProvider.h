@@ -3,8 +3,6 @@
 
 #include "AmdaGlobal.h"
 
-#include <Common/spimpl.h>
-
 #include <Data/IDataProvider.h>
 
 #include <QLoggingCategory>
@@ -21,18 +19,10 @@ class SCIQLOP_AMDA_EXPORT AmdaProvider : public IDataProvider {
 public:
     explicit AmdaProvider();
 
-    void requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList) override;
+    void requestDataLoading(QUuid token, const DataProviderParameters &parameters) override;
 
 private:
-    void retrieveData(QUuid token, const DataProviderParameters &parameters);
-
-    class AmdaProviderPrivate;
-    spimpl::unique_impl_ptr<AmdaProviderPrivate> impl;
-
-    // private slots:
-    //    void httpFinished(QNetworkReply *reply, QUuid dataId) noexcept;
-    //    void httpDownloadFinished(QNetworkReply *reply, QUuid dataId) noexcept;
-    //    void httpDownloadReadyRead(QNetworkReply *reply, QUuid dataId) noexcept;
+    void retrieveData(QUuid token, const SqpDateTime &dateTime, const QVariantHash &data);
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H
