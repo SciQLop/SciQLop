@@ -6,14 +6,52 @@
 #include <ui_VariableInspectorWidget.h>
 
 #include <QSortFilterProxyModel>
+#include <QStyledItemDelegate>
 #include <QWidgetAction>
 
 #include <SqpApplication.h>
 
 Q_LOGGING_CATEGORY(LOG_VariableInspectorWidget, "VariableInspectorWidget")
 
+
+class QProgressBarItemDelegate : public QStyledItemDelegate {
+
+public:
+    QProgressBarItemDelegate(QObject *parent) : QStyledItemDelegate{parent} {}
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option,
+               const QModelIndex &index) const
+    {
+        auto data = index.data(Qt::DisplayRole);
+        auto progressData = index.data(VariableRoles::ProgressRole);
+        if (data.isValid() && progressData.isValid()) {
+            auto name = data.value<QString>();
+            auto progress = progressData.value<double>();
+            if (progress >= 0) {
+                auto progressBarOption = QStyleOptionProgressBar{};
+                progressBarOption.rect = option.rect;
+                progressBarOption.minimum = 0;
+                progressBarOption.maximum = 100;
+                progressBarOption.progress = progress;
+                progressBarOption.text
+                    = QString("%1 %2").arg(name).arg(QString::number(progress, 'f', 2) + "%");
+                progressBarOption.textVisible = true;
+                progressBarOption.textAlignment = Qt::AlignCenter;
+
+                QApplication::style()->drawControl(QStyle::CE_ProgressBar, &progressBarOption,
+                                                   painter);
+            }
+        }
+        else {
+            QStyledItemDelegate::paint(painter, option, index);
+        }
+    }
+};
+
 VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
-        : QWidget{parent}, ui{new Ui::VariableInspectorWidget}
+        : QWidget{parent},
+          ui{new Ui::VariableInspectorWidget},
+          m_ProgressBarItemDelegate{new QProgressBarItemDelegate{this}}
 {
     ui->setupUi(this);
 
@@ -30,6 +68,7 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
             SLOT(refresh()));
 
     ui->tableView->setSelectionModel(sqpApp->variableController().variableSelectionModel());
+    ui->tableView->setItemDelegateForColumn(0, m_ProgressBarItemDelegate);
 
     // Fixes column sizes
     auto model = ui->tableView->model();

@@ -5,6 +5,7 @@
 
 #include <QDateTime>
 #include <QSize>
+#include <unordered_map>
 
 Q_LOGGING_CATEGORY(LOG_VariableModel, "VariableModel")
 
@@ -40,11 +41,17 @@ const auto COLUMN_PROPERTIES
 /// Format for datetimes
 const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
 
+
 } // namespace
 
 struct VariableModel::VariableModelPrivate {
     /// Variables created in SciQlop
     std::vector<std::shared_ptr<Variable> > m_Variables;
+    std::unordered_map<std::shared_ptr<Variable>, double> m_VariableToProgress;
+
+
+    /// Return the row index of the variable. -1 if it's not found
+    int indexOfVariable(Variable *variable) const noexcept;
 };
 
 VariableModel::VariableModel(QObject *parent)
@@ -96,9 +103,19 @@ void VariableModel::deleteVariable(std::shared_ptr<Variable> variable) noexcept
     }
 }
 
+
 std::shared_ptr<Variable> VariableModel::variable(int index) const
 {
     return (index >= 0 && index < impl->m_Variables.size()) ? impl->m_Variables[index] : nullptr;
+}
+
+void VariableModel::setDataProgress(std::shared_ptr<Variable> variable, double progress)
+{
+
+    impl->m_VariableToProgress[variable] = progress;
+    auto modelIndex = createIndex(impl->indexOfVariable(variable.get()), NAME_COLUMN);
+
+    emit dataChanged(modelIndex, modelIndex);
 }
 
 int VariableModel::columnCount(const QModelIndex &parent) const
@@ -152,6 +169,15 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
             qWarning(LOG_VariableModel()) << tr("Can't get data (no variable)");
         }
     }
+    else if (role == VariableRoles::ProgressRole) {
+        if (auto variable = impl->m_Variables.at(index.row())) {
+
+            auto it = impl->m_VariableToProgress.find(variable);
+            if (it != impl->m_VariableToProgress.cend()) {
+                return it->second;
+            }
+        }
+    }
 
     return QVariant{};
 }
@@ -183,18 +209,28 @@ void VariableModel::onVariableUpdated() noexcept
 {
     // Finds variable that has been updated in the model
     if (auto updatedVariable = dynamic_cast<Variable *>(sender())) {
-        auto begin = std::cbegin(impl->m_Variables);
-        auto end = std::cend(impl->m_Variables);
-        auto it = std::find_if(begin, end, [updatedVariable](const auto &variable) {
-            return variable.get() == updatedVariable;
-        });
+        auto updatedVariableIndex = impl->indexOfVariable(updatedVariable);
 
-        if (it != end) {
-            // Gets the index of the variable in the model: we assume here that views have the same
-            // order as the model
-            auto updateVariableIndex = std::distance(begin, it);
-            emit dataChanged(createIndex(updateVariableIndex, 0),
-                             createIndex(updateVariableIndex, columnCount() - 1));
+        if (updatedVariableIndex > -1) {
+            emit dataChanged(createIndex(updatedVariableIndex, 0),
+                             createIndex(updatedVariableIndex, columnCount() - 1));
         }
+    }
+}
+
+int VariableModel::VariableModelPrivate::indexOfVariable(Variable *variable) const noexcept
+{
+    auto begin = std::cbegin(m_Variables);
+    auto end = std::cend(m_Variables);
+    auto it
+        = std::find_if(begin, end, [variable](const auto &var) { return var.get() == variable; });
+
+    if (it != end) {
+        // Gets the index of the variable in the model: we assume here that views have the same
+        // order as the model
+        return std::distance(begin, it);
+    }
+    else {
+        return -1;
     }
 }

@@ -11,6 +11,8 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_VariableInspectorWidget)
 
 class Variable;
 
+class QProgressBarItemDelegate;
+
 namespace Ui {
 class VariableInspectorWidget;
 } // Ui
@@ -41,6 +43,8 @@ signals:
 
 private:
     Ui::VariableInspectorWidget *ui;
+
+    QProgressBarItemDelegate *m_ProgressBarItemDelegate;
 
 private slots:
     /// Slot called when right clicking on an variable in the table (displays a menu)

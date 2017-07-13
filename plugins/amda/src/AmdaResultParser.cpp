@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QRegularExpression>
 
+#include <cmath>
+
 Q_LOGGING_CATEGORY(LOG_AmdaResultParser, "AmdaResultParser")
 
 namespace {
