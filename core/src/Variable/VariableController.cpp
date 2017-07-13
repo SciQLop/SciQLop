@@ -112,12 +112,6 @@ void VariableController::createVariable(const QString &name, const QVariantHash 
         return;
     }
 
-
-    /// @todo : for the moment :
-    /// - the provider is only used to retrieve data from the variable for its initialization, but
-    /// it will be retained later
-    /// - default data are generated for the variable, without taking into account the timerange set
-    /// in sciqlop
     auto dateTime = impl->m_TimeController->dateTime();
 
     if (auto newVariable = impl->m_VariableModel->createVariable(name, dateTime, metadata)) {

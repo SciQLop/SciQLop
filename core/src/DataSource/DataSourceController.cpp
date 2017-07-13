@@ -94,7 +94,6 @@ void DataSourceController::loadProductItem(const QUuid &dataSourceUid,
         auto it = impl->m_DataProviders.find(dataSourceUid);
         auto dataProvider = (it != impl->m_DataProviders.end()) ? it->second : nullptr;
 
-        /// @todo retrieve timerange, and pass it to the signal
         emit variableCreationRequested(productItem.name(), productItem.data(), dataProvider);
     }
     else {
