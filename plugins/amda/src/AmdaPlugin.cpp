@@ -20,16 +20,21 @@ const auto JSON_FILE_PATH = QStringLiteral(":/samples/AmdaSample.json");
 
 void associateActions(DataSourceItem &item, const QUuid &dataSourceUid)
 {
-    if (item.type() == DataSourceItemType::PRODUCT) {
-        auto itemName = item.name();
-
-        item.addAction(std::make_unique<DataSourceItemAction>(
-            QObject::tr("Load %1 product").arg(itemName),
-            [itemName, dataSourceUid](DataSourceItem &item) {
+    auto addLoadAction = [&item, dataSourceUid](const QString &label) {
+        item.addAction(
+            std::make_unique<DataSourceItemAction>(label, [dataSourceUid](DataSourceItem &item) {
                 if (auto app = sqpApp) {
                     app->dataSourceController().loadProductItem(dataSourceUid, item);
                 }
             }));
+    };
+
+    const auto itemType = item.type();
+    if (itemType == DataSourceItemType::PRODUCT) {
+        addLoadAction(QObject::tr("Load %1 product").arg(item.name()));
+    }
+    else if (itemType == DataSourceItemType::COMPONENT) {
+        addLoadAction(QObject::tr("Load %1 component").arg(item.name()));
     }
 
     auto count = item.childCount();
