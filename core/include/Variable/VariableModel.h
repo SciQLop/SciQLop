@@ -29,10 +29,11 @@ public:
      * Creates a new variable in the model
      * @param name the name of the new variable
      * @param dateTime the dateTime of the new variable
+     * @param metadata the metadata associated to the new variable
      * @return the pointer to the new variable
      */
-    std::shared_ptr<Variable> createVariable(const QString &name,
-                                             const SqpDateTime &dateTime) noexcept;
+    std::shared_ptr<Variable> createVariable(const QString &name, const SqpDateTime &dateTime,
+                                             const QVariantHash &metadata) noexcept;
 
     /**
      * Deletes a variable from the model, if it exists

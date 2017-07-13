@@ -74,10 +74,12 @@ signals:
     /**
      * Signal emitted when a variable creation is asked for a product
      * @param variableName the name of the variable
+     * @param variableMetadata the metadata of the variable
      * @param variableProvider the provider that will be used to retrieve the data of the variable
      * (can be null)
      */
     void variableCreationRequested(const QString &variableName,
+                                   const QVariantHash &variableMetadata,
                                    std::shared_ptr<IDataProvider> variableProvider);
 
 private:

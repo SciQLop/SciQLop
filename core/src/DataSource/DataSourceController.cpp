@@ -94,7 +94,7 @@ void DataSourceController::loadProductItem(const QUuid &dataSourceUid,
         auto dataProvider = (it != impl->m_DataProviders.end()) ? it->second : nullptr;
 
         /// @todo retrieve timerange, and pass it to the signal
-        emit variableCreationRequested(productItem.name(), dataProvider);
+        emit variableCreationRequested(productItem.name(), productItem.data(), dataProvider);
     }
     else {
         qCWarning(LOG_DataSourceController()) << tr("Can't load an item that is not a product");

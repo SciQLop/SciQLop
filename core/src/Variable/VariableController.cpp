@@ -102,7 +102,7 @@ void VariableController::deleteVariables(
     }
 }
 
-void VariableController::createVariable(const QString &name,
+void VariableController::createVariable(const QString &name, const QVariantHash &metadata,
                                         std::shared_ptr<IDataProvider> provider) noexcept
 {
 
@@ -119,7 +119,8 @@ void VariableController::createVariable(const QString &name,
     /// - default data are generated for the variable, without taking into account the timerange set
     /// in sciqlop
     auto dateTime = impl->m_TimeController->dateTime();
-    if (auto newVariable = impl->m_VariableModel->createVariable(name, dateTime)) {
+
+    if (auto newVariable = impl->m_VariableModel->createVariable(name, dateTime, metadata)) {
         auto identifier = QUuid::createUuid();
 
         // store the provider
