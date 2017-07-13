@@ -12,13 +12,16 @@ MenuBuilder::MenuBuilder(QMenu *menu)
     }
 }
 
-void MenuBuilder::addMenu(const QString &name, const QIcon &icon)
+QMenu *MenuBuilder::addMenu(const QString &name, const QIcon &icon)
 {
     if (auto currMenu = currentMenu()) {
-        m_Menus.push(currMenu->addMenu(icon, name));
+        auto menu = currMenu->addMenu(icon, name);
+        m_Menus.push(menu);
+        return menu;
     }
     else {
         qCCritical(LOG_MenuBuilder()) << QObject::tr("No current menu to attach the new menu");
+        return nullptr;
     }
 }
 

@@ -9,7 +9,10 @@
  * @sa IDataProvider
  */
 struct DataProviderParameters {
-    SqpDateTime m_Time;
+    /// Times for which retrieve data
+    QVector<SqpDateTime> m_Times;
+    /// Extra data that can be used by the provider to retrieve data
+    QVariantHash m_Data;
 };
 
 #endif // SCIQLOP_DATAPROVIDERPARAMETERS_H

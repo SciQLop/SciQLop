@@ -10,11 +10,8 @@
 
 Q_LOGGING_CATEGORY(LOG_CosinusProvider, "CosinusProvider")
 
-std::shared_ptr<IDataSeries>
-CosinusProvider::retrieveData(const DataProviderParameters &parameters) const
+std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(const SqpDateTime &dateTime) const
 {
-    auto dateTime = parameters.m_Time;
-
     auto dataIndex = 0;
 
     // Gets the timerange from the parameters
@@ -38,13 +35,14 @@ CosinusProvider::retrieveData(const DataProviderParameters &parameters) const
     return scalarSeries;
 }
 
-void CosinusProvider::requestDataLoading(QUuid token, const QVector<SqpDateTime> &dateTimeList)
+void CosinusProvider::requestDataLoading(QUuid token, const DataProviderParameters &parameters)
 {
     qCDebug(LOG_CosinusProvider()) << "CosinusProvider::requestDataLoading"
                                    << QThread::currentThread()->objectName();
     // NOTE: Try to use multithread if possible
-    for (const auto &dateTime : dateTimeList) {
-        auto scalarSeries = this->retrieveData(DataProviderParameters{dateTime});
+    const auto times = parameters.m_Times;
+    for (const auto &dateTime : qAsConst(times)) {
+        auto scalarSeries = this->retrieveData(dateTime);
         emit dataProvided(token, scalarSeries, dateTime);
     }
 }

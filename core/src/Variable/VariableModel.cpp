@@ -60,14 +60,13 @@ VariableModel::VariableModel(QObject *parent)
 }
 
 std::shared_ptr<Variable> VariableModel::createVariable(const QString &name,
-                                                        const SqpDateTime &dateTime) noexcept
+                                                        const SqpDateTime &dateTime,
+                                                        const QVariantHash &metadata) noexcept
 {
     auto insertIndex = rowCount();
     beginInsertRows({}, insertIndex, insertIndex);
 
-    /// @todo For the moment, the other data of the variable is initialized with default values
-    auto variable = std::make_shared<Variable>(name, QStringLiteral("unit"),
-                                               QStringLiteral("mission"), dateTime);
+    auto variable = std::make_shared<Variable>(name, dateTime, metadata);
 
     impl->m_Variables.push_back(variable);
     connect(variable.get(), &Variable::updated, this, &VariableModel::onVariableUpdated);

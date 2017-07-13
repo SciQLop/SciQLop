@@ -25,7 +25,7 @@ public:
     static const QString NAME_DATA_KEY;
 
     explicit DataSourceItem(DataSourceItemType type, const QString &name);
-    explicit DataSourceItem(DataSourceItemType type, QHash<QString, QVariant> data = {});
+    explicit DataSourceItem(DataSourceItemType type, QVariantHash data = {});
 
     /// @return the actions of the item as a vector
     QVector<DataSourceItemAction *> actions() const noexcept;
@@ -60,7 +60,7 @@ public:
     QVariant data(const QString &key) const noexcept;
 
     /// Gets all data
-    const QHash<QString, QVariant> &data() const noexcept;
+    QVariantHash data() const noexcept;
 
     bool isRoot() const noexcept;
 
