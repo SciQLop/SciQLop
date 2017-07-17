@@ -4,6 +4,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QReadWriteLock>
 #include <QThread>
 
 #include <unordered_map>
@@ -14,8 +15,13 @@ struct NetworkController::NetworkControllerPrivate {
     explicit NetworkControllerPrivate(NetworkController *parent) : m_WorkingMutex{} {}
     QMutex m_WorkingMutex;
 
+    QReadWriteLock m_Lock;
     std::unordered_map<QNetworkReply *, QUuid> m_NetworkReplyToVariableId;
     std::unique_ptr<QNetworkAccessManager> m_AccessManager{nullptr};
+
+    void lockRead() { m_Lock.lockForRead(); }
+    void lockWrite() { m_Lock.lockForWrite(); }
+    void unlock() { m_Lock.unlock(); }
 };
 
 NetworkController::NetworkController(QObject *parent)
@@ -26,30 +32,50 @@ NetworkController::NetworkController(QObject *parent)
 void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid identifier,
                                            std::function<void(QNetworkReply *, QUuid)> callback)
 {
-    qCInfo(LOG_NetworkController()) << tr("NetworkController registered")
-                                    << QThread::currentThread();
     auto reply = impl->m_AccessManager->get(request);
+    qCDebug(LOG_NetworkController()) << tr("NetworkController registered")
+                                     << QThread::currentThread() << reply;
 
     // Store the couple reply id
+    impl->lockWrite();
     impl->m_NetworkReplyToVariableId[reply] = identifier;
+    impl->unlock();
 
     auto onReplyFinished = [reply, this, identifier, callback]() {
 
-        qCInfo(LOG_NetworkController()) << tr("NetworkController onReplyFinished")
-                                        << QThread::currentThread();
+        qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished")
+                                         << QThread::currentThread() << reply;
+        impl->lockRead();
         auto it = impl->m_NetworkReplyToVariableId.find(reply);
+        impl->unlock();
         if (it != impl->m_NetworkReplyToVariableId.cend()) {
+            impl->lockWrite();
+            impl->m_NetworkReplyToVariableId.erase(reply);
+            impl->unlock();
+            // Deletes reply
             callback(reply, identifier);
+            reply->deleteLater();
+
+            emit this->replyDownloadProgress(identifier, 0);
         }
+
+        qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished END")
+                                         << QThread::currentThread() << reply;
     };
 
     auto onReplyProgress = [reply, this](qint64 bytesRead, qint64 totalBytes) {
 
         double progress = (bytesRead * 100.0) / totalBytes;
+        qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress") << progress
+                                         << QThread::currentThread() << reply;
+        impl->lockRead();
         auto it = impl->m_NetworkReplyToVariableId.find(reply);
+        impl->unlock();
         if (it != impl->m_NetworkReplyToVariableId.cend()) {
             emit this->replyDownloadProgress(it->second, progress);
         }
+        qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress END")
+                                         << QThread::currentThread() << reply;
     };
 
 
@@ -73,12 +99,19 @@ void NetworkController::finalize()
 void NetworkController::onReplyCanceled(QUuid identifier)
 {
     auto findReply = [identifier](const auto &entry) { return identifier == entry.second; };
+    qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyCanceled")
+                                     << QThread::currentThread();
 
+
+    impl->lockRead();
     auto end = impl->m_NetworkReplyToVariableId.cend();
     auto it = std::find_if(impl->m_NetworkReplyToVariableId.cbegin(), end, findReply);
+    impl->unlock();
     if (it != end) {
         it->first->abort();
     }
+    qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyCanceled END")
+                                     << QThread::currentThread();
 }
 
 void NetworkController::waitForFinish()

@@ -205,6 +205,13 @@ QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int
     return QVariant{};
 }
 
+void VariableModel::abortProgress(const QModelIndex &index)
+{
+    if (auto variable = impl->m_Variables.at(index.row())) {
+        emit abortProgessRequested(variable);
+    }
+}
+
 void VariableModel::onVariableUpdated() noexcept
 {
     // Finds variable that has been updated in the model

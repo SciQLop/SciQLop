@@ -21,6 +21,8 @@ public:
 
     void requestDataLoading(QUuid token, const DataProviderParameters &parameters) override;
 
+    void requestDataAborting(QUuid identifier) override;
+
 private:
     void retrieveData(QUuid token, const SqpDateTime &dateTime, const QVariantHash &data);
 };

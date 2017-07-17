@@ -46,6 +46,9 @@ VariableController::VariableController(QObject *parent)
 {
     qCDebug(LOG_VariableController()) << tr("VariableController construction")
                                       << QThread::currentThread();
+
+    connect(impl->m_VariableModel, &VariableModel::abortProgessRequested, this,
+            &VariableController::onAbortProgressRequested);
 }
 
 VariableController::~VariableController()
@@ -103,6 +106,10 @@ void VariableController::deleteVariables(
     for (auto variable : qAsConst(variables)) {
         deleteVariable(variable);
     }
+}
+
+void VariableController::abortProgress(std::shared_ptr<Variable> variable)
+{
 }
 
 void VariableController::createVariable(const QString &name, const QVariantHash &metadata,
@@ -163,6 +170,22 @@ void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, doub
     auto it = std::find_if(impl->m_VariableToIdentifierMap.cbegin(), end, findReply);
     if (it != end) {
         impl->m_VariableModel->setDataProgress(it->first, progress);
+    }
+}
+
+void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> variable)
+{
+    qCDebug(LOG_VariableController()) << "TORM: VariableController::onAbortProgressRequested"
+                                      << QThread::currentThread()->objectName();
+
+    auto it = impl->m_VariableToIdentifierMap.find(variable);
+    if (it != impl->m_VariableToIdentifierMap.cend()) {
+        impl->m_VariableToProviderMap.at(variable)->requestDataAborting(it->second);
+    }
+    else {
+        qCWarning(LOG_VariableController())
+            << tr("Aborting progression of inexistant variable detected !!!")
+            << QThread::currentThread()->objectName();
     }
 }
 

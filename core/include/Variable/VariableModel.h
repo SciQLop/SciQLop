@@ -22,6 +22,7 @@ class Variable;
  * @brief The VariableModel class aims to hold the variables that have been created in SciQlop
  */
 class VariableModel : public QAbstractTableModel {
+    Q_OBJECT
 public:
     explicit VariableModel(QObject *parent = nullptr);
 
@@ -46,6 +47,7 @@ public:
 
     void setDataProgress(std::shared_ptr<Variable> variable, double progress);
 
+
     // /////////////////////////// //
     // QAbstractTableModel methods //
     // /////////////////////////// //
@@ -55,6 +57,12 @@ public:
     virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     virtual QVariant headerData(int section, Qt::Orientation orientation,
                                 int role = Qt::DisplayRole) const override;
+
+
+    void abortProgress(const QModelIndex &index);
+
+signals:
+    void abortProgessRequested(std::shared_ptr<Variable> variable);
 
 private:
     class VariableModelPrivate;
