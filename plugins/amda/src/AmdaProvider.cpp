@@ -61,6 +61,14 @@ void AmdaProvider::requestDataLoading(QUuid token, const DataProviderParameters 
     }
 }
 
+void AmdaProvider::requestDataAborting(QUuid identifier)
+{
+    if (auto app = sqpApp) {
+        auto &networkController = app->networkController();
+        networkController.onReplyCanceled(identifier);
+    }
+}
+
 void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const QVariantHash &data)
 {
     // Retrieves product ID from data: if the value is invalid, no request is made
@@ -102,16 +110,13 @@ void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const 
                   }
               }
 
-              // Deletes reply
-              reply->deleteLater();
-              reply = nullptr;
+
           };
     auto httpFinishedLambda = [this, httpDownloadFinished, tempFile](QNetworkReply *reply,
                                                                      QUuid dataId) noexcept {
 
         auto downloadFileUrl = QUrl{QString{reply->readAll()}};
-        // Deletes old reply
-        reply->deleteLater();
+
 
         // Executes request for downloading file //
 

@@ -17,6 +17,9 @@ public:
     void requestDataLoading(QUuid token, const DataProviderParameters &parameters) override;
 
 
+    void requestDataAborting(QUuid identifier) override;
+
+
 private:
     /// @sa IDataProvider::retrieveData()
     std::shared_ptr<IDataSeries> retrieveData(const SqpDateTime &dateTime) const;

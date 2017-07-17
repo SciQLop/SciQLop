@@ -34,6 +34,11 @@ public:
      */
     virtual void requestDataLoading(QUuid identifier, const DataProviderParameters &parameters) = 0;
 
+    /**
+     * @brief requestDataAborting stop data loading of the data identified by identifier
+     */
+    virtual void requestDataAborting(QUuid identifier) = 0;
+
 signals:
     /**
      * @brief dataProvided send dataSeries under dateTime and that corresponds of the data

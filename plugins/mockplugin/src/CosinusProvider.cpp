@@ -46,3 +46,8 @@ void CosinusProvider::requestDataLoading(QUuid token, const DataProviderParamete
         emit dataProvided(token, scalarSeries, dateTime);
     }
 }
+
+void CosinusProvider::requestDataAborting(QUuid identifier)
+{
+    // TODO
+}
