@@ -178,8 +178,8 @@ void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> vari
     qCDebug(LOG_VariableController()) << "TORM: VariableController::onAbortProgressRequested"
                                       << QThread::currentThread()->objectName();
 
-    auto it = impl->m_VariableToIdentifier.find(variable);
-    if (it != impl->m_VariableToIdentifier.cend()) {
+    auto it = impl->m_VariableToIdentifierMap.find(variable);
+    if (it != impl->m_VariableToIdentifierMap.cend()) {
         impl->m_VariableToProviderMap.at(variable)->requestDataAborting(it->second);
     }
     else {
