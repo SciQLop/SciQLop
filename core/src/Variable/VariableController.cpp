@@ -144,6 +144,8 @@ void VariableController::createVariable(const QString &name, const QVariantHash 
         };
 
         connect(provider.get(), &IDataProvider::dataProvided, addDateTimeAcquired);
+        connect(provider.get(), &IDataProvider::dataProvidedProgress, this,
+                &VariableController::onVariableRetrieveDataInProgress);
         this->onRequestDataLoading(newVariable, dateTime);
     }
 }

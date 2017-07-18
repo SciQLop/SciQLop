@@ -47,6 +47,12 @@ signals:
     void dataProvided(QUuid identifier, std::shared_ptr<IDataSeries> dateSerie,
                       const SqpDateTime &dateTime);
 
+    /**
+        * @brief dataProvided send dataSeries under dateTime and that corresponds of the data
+        * identified by identifier
+        */
+    void dataProvidedProgress(QUuid identifier, double progress);
+
 
     /**
      * @brief requestConstructed send a request for the data identified by identifier

@@ -32,9 +32,9 @@ NetworkController::NetworkController(QObject *parent)
 void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid identifier,
                                            std::function<void(QNetworkReply *, QUuid)> callback)
 {
-    auto reply = impl->m_AccessManager->get(request);
     qCDebug(LOG_NetworkController()) << tr("NetworkController registered")
-                                     << QThread::currentThread() << reply;
+                                     << QThread::currentThread()->objectName();
+    auto reply = impl->m_AccessManager->get(request);
 
     // Store the couple reply id
     impl->lockWrite();
@@ -81,6 +81,8 @@ void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid
 
     connect(reply, &QNetworkReply::finished, this, onReplyFinished);
     connect(reply, &QNetworkReply::downloadProgress, this, onReplyProgress);
+    qCDebug(LOG_NetworkController()) << tr("NetworkController registered END")
+                                     << QThread::currentThread()->objectName() << reply;
 }
 
 void NetworkController::initialize()
@@ -88,6 +90,17 @@ void NetworkController::initialize()
     qCDebug(LOG_NetworkController()) << tr("NetworkController init") << QThread::currentThread();
     impl->m_WorkingMutex.lock();
     impl->m_AccessManager = std::make_unique<QNetworkAccessManager>();
+
+
+    auto onReplyErrors = [this](QNetworkReply *reply, const QList<QSslError> &errors) {
+
+        qCCritical(LOG_NetworkController()) << tr("NetworkAcessManager errors: ") << errors;
+
+    };
+
+
+    connect(impl->m_AccessManager.get(), &QNetworkAccessManager::sslErrors, this, onReplyErrors);
+
     qCDebug(LOG_NetworkController()) << tr("NetworkController init END");
 }
 

@@ -48,6 +48,10 @@ AmdaProvider::AmdaProvider()
                 &networkController,
                 SLOT(onProcessRequested(QNetworkRequest, QUuid,
                                         std::function<void(QNetworkReply *, QUuid)>)));
+
+
+        connect(&sqpApp->networkController(), SIGNAL(replyDownloadProgress(QUuid, double)), this,
+                SIGNAL(dataProvidedProgress(QUuid, double)));
     }
 }
 
