@@ -139,6 +139,7 @@ void VariableController::createVariable(const QString &name, const QVariantHash 
                 if (varIdentifier == identifier) {
                     impl->m_VariableCacheController->addDateTime(variable, dateTimeToPutInCache);
                     variable->setDataSeries(dataSeriesAcquired);
+                    emit variable->updated();
                 }
             }
         };
