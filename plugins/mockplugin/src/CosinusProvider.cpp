@@ -83,7 +83,7 @@ void CosinusProvider::requestDataAborting(QUuid identifier)
 {
     // TODO: Add Mutex
     qCDebug(LOG_CosinusProvider()) << "CosinusProvider::requestDataAborting" << identifier
-                                  << QThread::currentThread()->objectName();
+                                   << QThread::currentThread()->objectName();
     auto it = m_VariableToEnableProvider.find(identifier);
     if (it != m_VariableToEnableProvider.end()) {
         it.value() = false;

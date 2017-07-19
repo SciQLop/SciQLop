@@ -112,7 +112,12 @@ std::shared_ptr<Variable> VariableModel::variable(int index) const
 
 void VariableModel::setDataProgress(std::shared_ptr<Variable> variable, double progress)
 {
-    impl->m_VariableToProgress[variable] = progress;
+    if (progress > 0.0) {
+        impl->m_VariableToProgress[variable] = progress;
+    }
+    else {
+        impl->m_VariableToProgress.erase(variable);
+    }
     auto modelIndex = createIndex(impl->indexOfVariable(variable.get()), NAME_COLUMN);
 
     emit dataChanged(modelIndex, modelIndex);
