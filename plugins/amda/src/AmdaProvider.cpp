@@ -98,38 +98,45 @@ void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const 
         = [this, dateTime, tempFile, token](QNetworkReply *reply, QUuid dataId) noexcept {
               Q_UNUSED(dataId);
 
-              if (tempFile) {
-                  auto replyReadAll = reply->readAll();
-                  if (!replyReadAll.isEmpty()) {
-                      tempFile->write(replyReadAll);
-                  }
-                  tempFile->close();
+              // Don't do anything if the reply was abort
+              if (reply->error() != QNetworkReply::OperationCanceledError) {
 
-                  // Parse results file
-                  if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
-                      emit dataProvided(token, dataSeries, dateTime);
-                  }
-                  else {
-                      /// @todo ALX : debug
+                  if (tempFile) {
+                      auto replyReadAll = reply->readAll();
+                      if (!replyReadAll.isEmpty()) {
+                          tempFile->write(replyReadAll);
+                      }
+                      tempFile->close();
+
+                      // Parse results file
+                      if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
+                          emit dataProvided(token, dataSeries, dateTime);
+                      }
+                      else {
+                          /// @todo ALX : debug
+                      }
                   }
               }
 
-
           };
-    auto httpFinishedLambda = [this, httpDownloadFinished, tempFile](QNetworkReply *reply,
-                                                                     QUuid dataId) noexcept {
+    auto httpFinishedLambda
+        = [this, httpDownloadFinished, tempFile](QNetworkReply *reply, QUuid dataId) noexcept {
 
-        auto downloadFileUrl = QUrl{QString{reply->readAll()}};
+              // Don't do anything if the reply was abort
+              if (reply->error() != QNetworkReply::OperationCanceledError) {
+                  auto downloadFileUrl = QUrl{QString{reply->readAll()}};
 
 
-        // Executes request for downloading file //
+                  // Executes request for downloading file //
 
-        // Creates destination file
-        if (tempFile->open()) {
-            // Executes request
-            emit requestConstructed(QNetworkRequest{downloadFileUrl}, dataId, httpDownloadFinished);
-        }
-    };
+                  // Creates destination file
+                  if (tempFile->open()) {
+                      // Executes request
+                      emit requestConstructed(QNetworkRequest{downloadFileUrl}, dataId,
+                                              httpDownloadFinished);
+                  }
+              }
+          };
 
     // //////////////// //
     // Executes request //
