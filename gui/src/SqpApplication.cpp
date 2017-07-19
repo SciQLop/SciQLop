@@ -40,9 +40,13 @@ public:
 
 
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
+        m_DataSourceControllerThread.setObjectName("DataSourceControllerThread");
         m_NetworkController->moveToThread(&m_NetworkControllerThread);
+        m_NetworkControllerThread.setObjectName("NetworkControllerThread");
         m_VariableController->moveToThread(&m_VariableControllerThread);
+        m_VariableControllerThread.setObjectName("VariableControllerThread");
         m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
+        m_VisualizationControllerThread.setObjectName("VsualizationControllerThread");
 
 
         // Additionnal init
