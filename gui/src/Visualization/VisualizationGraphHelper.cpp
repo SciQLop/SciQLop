@@ -69,7 +69,6 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
 
 
         // Display all data
-        component->rescaleAxes();
         component->parentPlot()->replot();
     }
     else {
