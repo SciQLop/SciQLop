@@ -26,7 +26,7 @@ const auto AMDA_URL_FORMAT = QStringLiteral(
     "timeFormat=ISO8601&gzip=0");
 
 /// Dates format passed in the URL (e.g 2013-09-23T09:00)
-const auto AMDA_TIME_FORMAT = QStringLiteral("yyyy-MM-ddThh:ss");
+const auto AMDA_TIME_FORMAT = QStringLiteral("yyyy-MM-ddThh:mm:ss");
 
 /// Formats a time to a date that can be passed in URL
 QString dateFormat(double sqpDateTime) noexcept
@@ -81,6 +81,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const 
         qCCritical(LOG_AmdaProvider()) << tr("Can't retrieve data: unknown product id");
         return;
     }
+    qCInfo(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData") << dateTime;
 
     // /////////// //
     // Creates URL //
@@ -90,7 +91,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const 
     auto endDate = dateFormat(dateTime.m_TEnd);
 
     auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
-
+    qCInfo(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData url:") << url;
     auto tempFile = std::make_shared<QTemporaryFile>();
 
     // LAMBDA
@@ -127,6 +128,8 @@ void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const 
                   auto downloadFileUrl = QUrl{QString{reply->readAll()}};
 
 
+                  qCInfo(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData downloadFileUrl:")
+                                             << downloadFileUrl;
                   // Executes request for downloading file //
 
                   // Creates destination file
