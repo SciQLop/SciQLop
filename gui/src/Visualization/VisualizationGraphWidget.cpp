@@ -186,8 +186,8 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
 {
-    qCInfo(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged")
-                                           << QThread::currentThread()->objectName();
+    qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged")
+                                            << QThread::currentThread()->objectName();
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
@@ -202,8 +202,8 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
         variableDateTimeWithTolerance.m_TStart -= tolerance;
         variableDateTimeWithTolerance.m_TEnd += tolerance;
 
-        qCInfo(LOG_VisualizationGraphWidget()) << "v" << dateTime;
-        qCInfo(LOG_VisualizationGraphWidget()) << "vtol" << variableDateTimeWithTolerance;
+        qCDebug(LOG_VisualizationGraphWidget()) << "v" << dateTime;
+        qCDebug(LOG_VisualizationGraphWidget()) << "vtol" << variableDateTimeWithTolerance;
         // If new range with tol is upper than variable datetime parameters. we need to request new
         // data
         if (!variable->contains(variableDateTimeWithTolerance)) {
@@ -212,7 +212,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
             if (!variable->isInside(dateTime)) {
                 auto variableDateTime = variable->dateTime();
                 if (variableDateTime.m_TStart < dateTime.m_TStart) {
-                    qCInfo(LOG_VisualizationGraphWidget()) << tr("TORM: Detection pan to right:");
+                    qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Detection pan to right:");
 
                     auto diffEndToKeepDelta = dateTime.m_TEnd - variableDateTime.m_TEnd;
                     dateTime.m_TStart = variableDateTime.m_TStart + diffEndToKeepDelta;
@@ -222,7 +222,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
                     variableDateTimeWithTolerance.m_TEnd += tolerance;
                 }
                 else if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
-                    qCInfo(LOG_VisualizationGraphWidget()) << tr("TORM: Detection pan to left: ");
+                    qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Detection pan to left: ");
                     auto diffStartToKeepDelta = variableDateTime.m_TStart - dateTime.m_TStart;
                     dateTime.m_TEnd = variableDateTime.m_TEnd - diffStartToKeepDelta;
                     // Tolerance have to be added to the left
@@ -231,29 +231,29 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
                     variableDateTimeWithTolerance.m_TStart -= tolerance;
                 }
                 else {
-                    qCWarning(LOG_VisualizationGraphWidget())
+                    qCDebug(LOG_VisualizationGraphWidget())
                         << tr("Detection anormal zoom detection: ");
                 }
             }
             else {
-                qCInfo(LOG_VisualizationGraphWidget()) << tr("Detection zoom out: ");
+                qCDebug(LOG_VisualizationGraphWidget()) << tr("Detection zoom out: ");
                 // add 10% tolerance for each side
                 tolerance = 0.2 * (dateTime.m_TEnd - dateTime.m_TStart);
                 variableDateTimeWithTolerance.m_TStart -= tolerance;
                 variableDateTimeWithTolerance.m_TEnd += tolerance;
             }
             if (!variable->contains(dateTimeRange)) {
-                qCInfo(LOG_VisualizationGraphWidget())
+                qCDebug(LOG_VisualizationGraphWidget())
                     << "TORM: Modif on variable datetime detected" << dateTime;
                 variable->setDateTime(dateTime);
             }
 
-            qCInfo(LOG_VisualizationGraphWidget()) << tr("Request data detection: ");
+            qCDebug(LOG_VisualizationGraphWidget()) << tr("Request data detection: ");
             // CHangement detected, we need to ask controller to request data loading
             emit requestDataLoading(variable, variableDateTimeWithTolerance);
         }
         else {
-            qCInfo(LOG_VisualizationGraphWidget()) << tr("Detection zoom in: ");
+            qCDebug(LOG_VisualizationGraphWidget()) << tr("Detection zoom in: ");
         }
     }
 }
@@ -293,10 +293,10 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
         auto variable = it->first;
-        qCInfo(LOG_VisualizationGraphWidget())
+        qCDebug(LOG_VisualizationGraphWidget())
             << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated S"
             << variable->dateTime();
-        qCInfo(LOG_VisualizationGraphWidget())
+        qCDebug(LOG_VisualizationGraphWidget())
             << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated E" << dateTime;
         if (dateTime.contains(variable->dateTime()) || dateTime.intersect(variable->dateTime())) {
 
