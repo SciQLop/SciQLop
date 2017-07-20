@@ -122,6 +122,15 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
     ui->widget->replot();
 }
 
+void VisualizationGraphWidget::setRange(std::shared_ptr<Variable> variable,
+                                        const SqpDateTime &range)
+{
+    //    auto componentsIt = impl->m_VariableToPlotMultiMap.equal_range(variable);
+    //    for (auto it = componentsIt.first; it != componentsIt.second;) {
+    //    }
+    ui->widget->xAxis->setRange(range.m_TStart, range.m_TEnd);
+}
+
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {
@@ -187,7 +196,8 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
         auto dateTime = SqpDateTime{t1.lower, t1.upper};
         auto dateTimeRange = dateTime;
 
-        auto tolerance = 0.2 * (dateTime.m_TEnd - dateTime.m_TStart);
+        auto toleranceFactor = 0.2;
+        auto tolerance = toleranceFactor * (dateTime.m_TEnd - dateTime.m_TStart);
         auto variableDateTimeWithTolerance = dateTime;
         variableDateTimeWithTolerance.m_TStart -= tolerance;
         variableDateTimeWithTolerance.m_TEnd += tolerance;
@@ -207,9 +217,8 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
                     auto diffEndToKeepDelta = dateTime.m_TEnd - variableDateTime.m_TEnd;
                     dateTime.m_TStart = variableDateTime.m_TStart + diffEndToKeepDelta;
                     // Tolerance have to be added to the right
-                    // add 10% tolerance for right (end) side
-                    //                    auto tolerance = 0.1 * (dateTime.m_TEnd -
-                    //                    dateTime.m_TStart);
+                    // add tolerance for right (end) side
+                    tolerance = toleranceFactor * (dateTime.m_TEnd - dateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TEnd += tolerance;
                 }
                 else if (variableDateTime.m_TEnd > dateTime.m_TEnd) {
@@ -217,8 +226,8 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
                     auto diffStartToKeepDelta = variableDateTime.m_TStart - dateTime.m_TStart;
                     dateTime.m_TEnd = variableDateTime.m_TEnd - diffStartToKeepDelta;
                     // Tolerance have to be added to the left
-                    // add 10% tolerance for left (start) side
-                    tolerance = 0.2 * (dateTime.m_TEnd - dateTime.m_TStart);
+                    // add tolerance for left (start) side
+                    tolerance = toleranceFactor * (dateTime.m_TEnd - dateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TStart -= tolerance;
                 }
                 else {
@@ -234,7 +243,8 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1)
                 variableDateTimeWithTolerance.m_TEnd += tolerance;
             }
             if (!variable->contains(dateTimeRange)) {
-                qCInfo(LOG_VisualizationGraphWidget()) << "newv" << dateTime;
+                qCInfo(LOG_VisualizationGraphWidget())
+                    << "TORM: Modif on variable datetime detected" << dateTime;
                 variable->setDateTime(dateTime);
             }
 
@@ -294,18 +304,4 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
                                                  variable->dataSeries(), variable->dateTime());
         }
     }
-}
-
-void VisualizationGraphWidget::updateDisplay(std::shared_ptr<Variable> variable)
-{
-    auto abstractPlotableItPair = impl->m_VariableToPlotMultiMap.equal_range(variable);
-
-    auto abstractPlotableVect = QVector<QCPAbstractPlottable *>{};
-
-    for (auto it = abstractPlotableItPair.first; it != abstractPlotableItPair.second; ++it) {
-        abstractPlotableVect.push_back(it->second);
-    }
-
-    VisualizationGraphHelper::updateData(abstractPlotableVect, variable->dataSeries(),
-                                         variable->dateTime());
 }
