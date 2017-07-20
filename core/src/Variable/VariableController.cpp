@@ -161,6 +161,8 @@ void VariableController::onDateTimeOnSelection(const SqpDateTime &dateTime)
         if (auto selectedVariable = impl->m_VariableModel->variable(selectedRow.row())) {
             selectedVariable->setDateTime(dateTime);
             this->onRequestDataLoading(selectedVariable, dateTime);
+
+            // notify that rescale operation has to be done
             emit rangeChanged(selectedVariable, dateTime);
         }
     }
