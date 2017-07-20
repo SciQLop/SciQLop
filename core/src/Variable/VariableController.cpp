@@ -161,6 +161,7 @@ void VariableController::onDateTimeOnSelection(const SqpDateTime &dateTime)
         if (auto selectedVariable = impl->m_VariableModel->variable(selectedRow.row())) {
             selectedVariable->setDateTime(dateTime);
             this->onRequestDataLoading(selectedVariable, dateTime);
+            emit rangeChanged(selectedVariable, dateTime);
         }
     }
 }

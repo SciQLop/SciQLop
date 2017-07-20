@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_VISUALIZATIONCONTROLLER_H
 #define SCIQLOP_VISUALIZATIONCONTROLLER_H
 
+#include <Data/SqpDateTime.h>
+
 #include <QLoggingCategory>
 #include <QObject>
 #include <QUuid>
@@ -28,6 +30,9 @@ public:
 signals:
     /// Signal emitted when a variable is about to be deleted from SciQlop
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
+
+    /// Signal emitted when a data acquisition is requested on a range for a variable
+    void rangeChanged(std::shared_ptr<Variable> variable, const SqpDateTime &range);
 
 public slots:
     /// Manage init/end of the controller

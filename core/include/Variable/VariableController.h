@@ -59,6 +59,9 @@ signals:
     /// Signal emitted when a variable is about to be deleted from the controller
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
 
+    /// Signal emitted when a data acquisition is requested on a range for a variable
+    void rangeChanged(std::shared_ptr<Variable> variable, const SqpDateTime &range);
+
 public slots:
     /// Request the data loading of the variable whithin dateTime
     void onRequestDataLoading(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);
