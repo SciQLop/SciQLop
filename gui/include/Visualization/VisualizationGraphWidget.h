@@ -32,13 +32,14 @@ public:
     /// Removes a variable from the graph
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
 
+    /// Rescale the X axe to range parameter
+    void setRange(std::shared_ptr<Variable> variable, const SqpDateTime &range);
+
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
     bool contains(const Variable &variable) const override;
     QString name() const override;
-
-    void updateDisplay(std::shared_ptr<Variable> variable);
 
 signals:
     void requestDataLoading(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);

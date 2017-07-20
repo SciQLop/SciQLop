@@ -38,6 +38,11 @@ public:
                 m_VisualizationController.get(),
                 SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), Qt::DirectConnection);
 
+        connect(m_VariableController.get(),
+                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)),
+                m_VisualizationController.get(),
+                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)));
+
 
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
         m_DataSourceControllerThread.setObjectName("DataSourceControllerThread");

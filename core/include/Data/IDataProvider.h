@@ -10,6 +10,8 @@
 
 #include <Data/SqpDateTime.h>
 
+#include <functional>
+
 class DataProviderParameters;
 class IDataSeries;
 class QNetworkReply;

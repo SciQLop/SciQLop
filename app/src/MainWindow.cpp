@@ -192,6 +192,10 @@ MainWindow::MainWindow(QWidget *parent)
             SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), m_Ui->view,
             SLOT(onVariableAboutToBeDeleted(std::shared_ptr<Variable>)));
 
+    connect(&sqpApp->visualizationController(),
+            SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)), m_Ui->view,
+            SLOT(onRangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)));
+
     // Widgets / widgets connections
 
     // For the following connections, we use DirectConnection to allow each widget that can

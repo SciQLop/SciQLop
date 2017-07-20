@@ -6,6 +6,8 @@
 #include <QLoggingCategory>
 #include <QObject>
 
+#include <functional>
+
 Q_DECLARE_LOGGING_CATEGORY(LOG_DataSourceItemAction)
 
 class DataSourceItem;
