@@ -79,7 +79,6 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                 = dynamic_cast<VisualizationGraphWidget *>(frameLayout->itemAt(i)->widget());
             if (graphChild && (graphChild != graphWidget)) {
 
-                auto dateTimeThatKeepDelta = dateTime;
                 auto graphChildRange = graphChild->graphRange();
                 switch (zoomType) {
                     case VisualizationGraphWidgetZoomType::ZoomIn: {
@@ -87,30 +86,45 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         auto deltaRight = oldDateTime.m_TEnd - dateTime.m_TEnd;
                         graphChildRange.m_TStart += deltaLeft;
                         graphChildRange.m_TEnd -= deltaRight;
-                        dateTimeThatKeepDelta = graphChildRange;
+                        qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomIn");
+                        qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaLeft")
+                                                                  << deltaLeft;
+                        qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
+                                                                  << deltaRight;
+                        qCCritical(LOG_VisualizationZoneWidget())
+                            << tr("TORM: dt") << dateTime.m_TEnd - dateTime.m_TStart;
+
                         break;
                     }
 
                     case VisualizationGraphWidgetZoomType::ZoomOut: {
+                        qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomOut");
                         auto deltaLeft = oldDateTime.m_TStart - dateTime.m_TStart;
                         auto deltaRight = dateTime.m_TEnd - oldDateTime.m_TEnd;
+                        qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaLeft")
+                                                                  << deltaLeft;
+                        qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
+                                                                  << deltaRight;
+                        qCCritical(LOG_VisualizationZoneWidget())
+                            << tr("TORM: dt") << dateTime.m_TEnd - dateTime.m_TStart;
                         graphChildRange.m_TStart -= deltaLeft;
                         graphChildRange.m_TEnd += deltaRight;
-                        dateTimeThatKeepDelta = graphChildRange;
                         break;
                     }
                     case VisualizationGraphWidgetZoomType::PanRight: {
+                        qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: PanRight");
                         auto deltaRight = dateTime.m_TEnd - oldDateTime.m_TEnd;
                         graphChildRange.m_TStart += deltaRight;
                         graphChildRange.m_TEnd += deltaRight;
-                        dateTimeThatKeepDelta = graphChildRange;
+                        qCCritical(LOG_VisualizationZoneWidget())
+                            << tr("TORM: dt") << dateTime.m_TEnd - dateTime.m_TStart;
                         break;
                     }
                     case VisualizationGraphWidgetZoomType::PanLeft: {
+                        qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: PanLeft");
                         auto deltaLeft = oldDateTime.m_TStart - dateTime.m_TStart;
                         graphChildRange.m_TStart -= deltaLeft;
                         graphChildRange.m_TEnd -= deltaLeft;
-                        dateTimeThatKeepDelta = graphChildRange;
                         break;
                     }
                     case VisualizationGraphWidgetZoomType::Unknown: {
@@ -125,7 +139,13 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         break;
                 }
                 graphChild->enableSynchronize(false);
-                graphChild->setGraphRange(dateTimeThatKeepDelta);
+                qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: Range before: ")
+                                                          << graphChild->graphRange();
+                qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: Range after : ")
+                                                          << graphChildRange;
+                qCCritical(LOG_VisualizationZoneWidget())
+                    << tr("TORM: child dt") << graphChildRange.m_TEnd - graphChildRange.m_TStart;
+                graphChild->setGraphRange(graphChildRange);
                 graphChild->enableSynchronize(true);
             }
         }

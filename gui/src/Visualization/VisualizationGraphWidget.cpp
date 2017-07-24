@@ -25,12 +25,17 @@ const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
 
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
-    explicit VisualizationGraphWidgetPrivate() : m_DoSynchronize(true) {}
+    explicit VisualizationGraphWidgetPrivate() : m_DoSynchronize(true), m_IsCalibration(false) {}
+
+
+    // Return the operation when range changed
+    VisualizationGraphWidgetZoomType getZoomType(const QCPRange &t1, const QCPRange &t2);
 
     // 1 variable -> n qcpplot
     std::multimap<std::shared_ptr<Variable>, QCPAbstractPlottable *> m_VariableToPlotMultiMap;
 
     bool m_DoSynchronize;
+    bool m_IsCalibration;
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
@@ -52,10 +57,13 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
+    connect(ui->widget, &QCustomPlot::mousePress, this, &VisualizationGraphWidget::onMousePress);
+    connect(ui->widget, &QCustomPlot::mouseRelease, this,
+            &VisualizationGraphWidget::onMouseRelease);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
     connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
                                    &QCPAxis::rangeChanged),
-            this, &VisualizationGraphWidget::onRangeChanged);
+            this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
 
     // Activates menu when right clicking on the graph
     ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -149,8 +157,7 @@ SqpDateTime VisualizationGraphWidget::graphRange()
 
 void VisualizationGraphWidget::setGraphRange(const SqpDateTime &range)
 {
-    qCDebug(LOG_VisualizationGraphWidget())
-        << tr("VisualizationGraphWidget::setGraphRange START");
+    qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange START");
     ui->widget->xAxis->setRange(range.m_TStart, range.m_TEnd);
     ui->widget->replot();
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange END");
@@ -216,7 +223,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
 
     auto dateTimeRange = SqpDateTime{t1.lower, t1.upper};
 
-    auto zoomType = VisualizationGraphWidgetZoomType::ZoomOut;
+    auto zoomType = impl->getZoomType(t1, t2);
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
 
@@ -240,14 +247,13 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
             if (!variable->isInside(currentDateTime)) {
                 auto variableDateTime = variable->dateTime();
                 if (variable->contains(variableDateTimeWithTolerance)) {
-                    qCInfo(LOG_VisualizationGraphWidget())
+                    qCDebug(LOG_VisualizationGraphWidget())
                         << tr("TORM: Detection zoom in that need request:");
                     // add 10% tolerance for each side
                     tolerance
                         = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TStart -= tolerance;
                     variableDateTimeWithTolerance.m_TEnd += tolerance;
-                    zoomType = VisualizationGraphWidgetZoomType::ZoomIn;
                 }
                 else if (variableDateTime.m_TStart < currentDateTime.m_TStart) {
                     qCInfo(LOG_VisualizationGraphWidget()) << tr("TORM: Detection pan to right:");
@@ -259,10 +265,9 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                     tolerance
                         = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TEnd += tolerance;
-                    zoomType = VisualizationGraphWidgetZoomType::PanRight;
                 }
                 else if (variableDateTime.m_TEnd > currentDateTime.m_TEnd) {
-                    qCInfo(LOG_VisualizationGraphWidget()) << tr("TORM: Detection pan to left: ");
+                    qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Detection pan to left: ");
                     auto diffStartToKeepDelta
                         = variableDateTime.m_TStart - currentDateTime.m_TStart;
                     currentDateTime.m_TEnd = variableDateTime.m_TEnd - diffStartToKeepDelta;
@@ -271,16 +276,14 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                     tolerance
                         = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TStart -= tolerance;
-                    zoomType = VisualizationGraphWidgetZoomType::PanLeft;
                 }
                 else {
-                    qCInfo(LOG_VisualizationGraphWidget())
+                    qCCritical(LOG_VisualizationGraphWidget())
                         << tr("Detection anormal zoom detection: ");
-                    zoomType = VisualizationGraphWidgetZoomType::Unknown;
                 }
             }
             else {
-                qCInfo(LOG_VisualizationGraphWidget()) << tr("TORM: Detection zoom out: ");
+                qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Detection zoom out: ");
                 // add 10% tolerance for each side
                 tolerance = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
                 variableDateTimeWithTolerance.m_TStart -= tolerance;
@@ -288,12 +291,12 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                 zoomType = VisualizationGraphWidgetZoomType::ZoomOut;
             }
             if (!variable->contains(dateTimeRange)) {
-                qCInfo(LOG_VisualizationGraphWidget())
+                qCDebug(LOG_VisualizationGraphWidget())
                     << "TORM: Modif on variable datetime detected" << currentDateTime;
                 variable->setDateTime(currentDateTime);
             }
 
-            qCInfo(LOG_VisualizationGraphWidget()) << tr("TORM: Request data detection: ");
+            qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Request data detection: ");
             // CHangement detected, we need to ask controller to request data loading
             emit requestDataLoading(variable, variableDateTimeWithTolerance);
         }
@@ -304,7 +307,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
         }
     }
 
-    if (impl->m_DoSynchronize) {
+    if (impl->m_DoSynchronize && !impl->m_IsCalibration) {
         auto oldDateTime = SqpDateTime{t2.lower, t2.upper};
         qCDebug(LOG_VisualizationGraphWidget())
             << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
@@ -329,6 +332,16 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
     enableOrientation(Qt::Horizontal, HORIZONTAL_ZOOM_MODIFIER);
 
     ui->widget->axisRect()->setRangeZoom(zoomOrientations);
+}
+
+void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
+{
+    impl->m_IsCalibration = event->modifiers().testFlag(Qt::ControlModifier);
+}
+
+void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
+{
+    impl->m_IsCalibration = false;
 }
 
 void VisualizationGraphWidget::onDataCacheVariableUpdated()
@@ -359,4 +372,28 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
                                                  variable->dataSeries(), variable->dateTime());
         }
     }
+}
+
+VisualizationGraphWidgetZoomType
+VisualizationGraphWidget::VisualizationGraphWidgetPrivate::getZoomType(const QCPRange &t1,
+                                                                       const QCPRange &t2)
+{
+    // t1.lower <= t2.lower && t2.upper <= t1.upper
+    auto zoomType = VisualizationGraphWidgetZoomType::Unknown;
+    if (t1.lower <= t2.lower && t2.upper <= t1.upper) {
+        zoomType = VisualizationGraphWidgetZoomType::ZoomOut;
+    }
+    else if (t1.lower > t2.lower && t1.upper > t2.upper) {
+        zoomType = VisualizationGraphWidgetZoomType::PanRight;
+    }
+    else if (t1.lower < t2.lower && t1.upper < t2.upper) {
+        zoomType = VisualizationGraphWidgetZoomType::PanLeft;
+    }
+    else if (t1.lower > t2.lower && t2.upper > t1.upper) {
+        zoomType = VisualizationGraphWidgetZoomType::ZoomIn;
+    }
+    else {
+        qCCritical(LOG_VisualizationGraphWidget()) << "getZoomType: Unknown type detected";
+    }
+    return zoomType;
 }

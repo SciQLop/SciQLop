@@ -71,6 +71,10 @@ private slots:
 
     /// Slot called when a mouse wheel was made, to perform some processing before the zoom is done
     void onMouseWheel(QWheelEvent *event) noexcept;
+    /// Slot called when a mouse press was made, to activate the calibration of a graph
+    void onMousePress(QMouseEvent *event) noexcept;
+    /// Slot called when a mouse release was made, to deactivate the calibration of a graph
+    void onMouseRelease(QMouseEvent *event) noexcept;
 
     void onDataCacheVariableUpdated();
 };
