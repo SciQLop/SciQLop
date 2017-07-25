@@ -25,7 +25,7 @@ const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
 
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
-    explicit VisualizationGraphWidgetPrivate() : m_DoSynchronize(true), m_IsCalibration(false) {}
+    explicit VisualizationGraphWidgetPrivate() : m_DoSynchronize{true}, m_IsCalibration{false} {}
 
 
     // Return the operation when range changed
@@ -106,8 +106,8 @@ void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> v
 
     auto variableDateTimeWithTolerance = dateTime;
 
-    // add 10% tolerance for each side
-    auto tolerance = 0.1 * (dateTime.m_TEnd - dateTime.m_TStart);
+    // add 20% tolerance for each side
+    auto tolerance = 0.2 * (dateTime.m_TEnd - dateTime.m_TStart);
     variableDateTimeWithTolerance.m_TStart -= tolerance;
     variableDateTimeWithTolerance.m_TEnd += tolerance;
 
@@ -142,6 +142,8 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
 void VisualizationGraphWidget::setRange(std::shared_ptr<Variable> variable,
                                         const SqpDateTime &range)
 {
+    // Note: in case of different axes that depends on variable, we could start with a code like
+    // that:
     //    auto componentsIt = impl->m_VariableToPlotMultiMap.equal_range(variable);
     //    for (auto it = componentsIt.first; it != componentsIt.second;) {
     //    }
@@ -149,7 +151,7 @@ void VisualizationGraphWidget::setRange(std::shared_ptr<Variable> variable,
     ui->widget->replot();
 }
 
-SqpDateTime VisualizationGraphWidget::graphRange()
+SqpDateTime VisualizationGraphWidget::graphRange() const noexcept
 {
     auto grapheRange = ui->widget->xAxis->range();
     return SqpDateTime{grapheRange.lower, grapheRange.upper};

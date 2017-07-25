@@ -146,7 +146,7 @@ void VisualizationWidget::onVariableAboutToBeDeleted(std::shared_ptr<Variable> v
 void VisualizationWidget::onRangeChanged(std::shared_ptr<Variable> variable,
                                          const SqpDateTime &range) noexcept
 {
-    // Calls the operation of removing all references to the variable in the visualization
+    // Calls the operation of rescaling all graph that contrains variable in the visualization
     auto rescaleVariableOperation = RescaleAxeOperation{variable, range};
     accept(&rescaleVariableOperation);
 }

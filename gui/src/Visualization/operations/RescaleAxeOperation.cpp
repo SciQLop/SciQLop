@@ -6,7 +6,7 @@ Q_LOGGING_CATEGORY(LOG_RescaleAxeOperation, "RescaleAxeOperation")
 struct RescaleAxeOperation::RescaleAxeOperationPrivate {
     explicit RescaleAxeOperationPrivate(std::shared_ptr<Variable> variable,
                                         const SqpDateTime &range)
-            : m_Variable(variable), m_Range(range)
+            : m_Variable{variable}, m_Range{range}
     {
     }
 
@@ -59,7 +59,7 @@ void RescaleAxeOperation::visitLeave(VisualizationZoneWidget *zoneWidget)
 void RescaleAxeOperation::visit(VisualizationGraphWidget *graphWidget)
 {
     if (graphWidget) {
-        // If the widget contains the variable, removes it
+        // If the widget contains the variable, rescale it
         if (impl->m_Variable && graphWidget->contains(*impl->m_Variable)) {
             graphWidget->setRange(impl->m_Variable, impl->m_Range);
         }

@@ -78,9 +78,9 @@ public:
                 auto buttonRect = QRect(progressRect.right(), option.rect.top(), cancelButtonWidth,
                                         option.rect.height());
 
-                QMouseEvent *e = (QMouseEvent *)event;
-                int clickX = e->x();
-                int clickY = e->y();
+                auto e = (QMouseEvent *)event;
+                auto clickX = e->x();
+                auto clickY = e->y();
 
                 auto x = buttonRect.left();   // the X coordinate
                 auto y = buttonRect.top();    // the Y coordinate
@@ -89,7 +89,6 @@ public:
 
                 if (clickX > x && clickX < x + w) {
                     if (clickY > y && clickY < y + h) {
-                        qCritical(LOG_VariableInspectorWidget()) << tr("editorEvent CLIC");
                         auto variableModel = sqpApp->variableController().variableModel();
                         variableModel->abortProgress(index);
                     }

@@ -156,11 +156,11 @@ void TestAmdaResultParser::testReadTxt_data()
                QVector<double>{-2.71850, -2.52150}};
 
     // Invalid files
-    QTest::newRow("Invalid file (unexisting file)")
-        << QStringLiteral("UnexistingFile.txt") << ExpectedResults{};
+    QTest::newRow("Invalid file (unexisting file)") << QStringLiteral("UnexistingFile.txt")
+                                                    << ExpectedResults{};
 
-    QTest::newRow("Invalid file (file not found on server)")
-        << QStringLiteral("FileNotFound.txt") << ExpectedResults{};
+    QTest::newRow("Invalid file (file not found on server)") << QStringLiteral("FileNotFound.txt")
+                                                             << ExpectedResults{};
 }
 
 void TestAmdaResultParser::testReadTxt()

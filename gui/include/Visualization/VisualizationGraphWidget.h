@@ -40,7 +40,7 @@ public:
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
 
     void setRange(std::shared_ptr<Variable> variable, const SqpDateTime &range);
-    SqpDateTime graphRange();
+    SqpDateTime graphRange() const noexcept;
     void setGraphRange(const SqpDateTime &range);
 
     // IVisualizationWidget interface
