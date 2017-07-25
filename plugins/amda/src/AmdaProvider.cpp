@@ -26,7 +26,7 @@ const auto AMDA_URL_FORMAT = QStringLiteral(
     "timeFormat=ISO8601&gzip=0");
 
 /// Dates format passed in the URL (e.g 2013-09-23T09:00)
-const auto AMDA_TIME_FORMAT = QStringLiteral("yyyy-MM-ddThh:ss");
+const auto AMDA_TIME_FORMAT = QStringLiteral("yyyy-MM-ddThh:mm:ss");
 
 /// Formats a time to a date that can be passed in URL
 QString dateFormat(double sqpDateTime) noexcept
@@ -48,6 +48,10 @@ AmdaProvider::AmdaProvider()
                 &networkController,
                 SLOT(onProcessRequested(QNetworkRequest, QUuid,
                                         std::function<void(QNetworkReply *, QUuid)>)));
+
+
+        connect(&sqpApp->networkController(), SIGNAL(replyDownloadProgress(QUuid, double)), this,
+                SIGNAL(dataProvidedProgress(QUuid, double)));
     }
 }
 
@@ -61,6 +65,14 @@ void AmdaProvider::requestDataLoading(QUuid token, const DataProviderParameters 
     }
 }
 
+void AmdaProvider::requestDataAborting(QUuid identifier)
+{
+    if (auto app = sqpApp) {
+        auto &networkController = app->networkController();
+        networkController.onReplyCanceled(identifier);
+    }
+}
+
 void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const QVariantHash &data)
 {
     // Retrieves product ID from data: if the value is invalid, no request is made
@@ -69,6 +81,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const 
         qCCritical(LOG_AmdaProvider()) << tr("Can't retrieve data: unknown product id");
         return;
     }
+    qCInfo(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData") << dateTime;
 
     // /////////// //
     // Creates URL //
@@ -78,7 +91,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const 
     auto endDate = dateFormat(dateTime.m_TEnd);
 
     auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
-
+    qCInfo(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData url:") << url;
     auto tempFile = std::make_shared<QTemporaryFile>();
 
     // LAMBDA
@@ -86,41 +99,47 @@ void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const 
         = [this, dateTime, tempFile, token](QNetworkReply *reply, QUuid dataId) noexcept {
               Q_UNUSED(dataId);
 
-              if (tempFile) {
-                  auto replyReadAll = reply->readAll();
-                  if (!replyReadAll.isEmpty()) {
-                      tempFile->write(replyReadAll);
-                  }
-                  tempFile->close();
+              // Don't do anything if the reply was abort
+              if (reply->error() != QNetworkReply::OperationCanceledError) {
 
-                  // Parse results file
-                  if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
-                      emit dataProvided(token, dataSeries, dateTime);
-                  }
-                  else {
-                      /// @todo ALX : debug
+                  if (tempFile) {
+                      auto replyReadAll = reply->readAll();
+                      if (!replyReadAll.isEmpty()) {
+                          tempFile->write(replyReadAll);
+                      }
+                      tempFile->close();
+
+                      // Parse results file
+                      if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
+                          emit dataProvided(token, dataSeries, dateTime);
+                      }
+                      else {
+                          /// @todo ALX : debug
+                      }
                   }
               }
 
-              // Deletes reply
-              reply->deleteLater();
-              reply = nullptr;
           };
-    auto httpFinishedLambda = [this, httpDownloadFinished, tempFile](QNetworkReply *reply,
-                                                                     QUuid dataId) noexcept {
+    auto httpFinishedLambda
+        = [this, httpDownloadFinished, tempFile](QNetworkReply *reply, QUuid dataId) noexcept {
 
-        auto downloadFileUrl = QUrl{QString{reply->readAll()}};
-        // Deletes old reply
-        reply->deleteLater();
+              // Don't do anything if the reply was abort
+              if (reply->error() != QNetworkReply::OperationCanceledError) {
+                  auto downloadFileUrl = QUrl{QString{reply->readAll()}};
 
-        // Executes request for downloading file //
 
-        // Creates destination file
-        if (tempFile->open()) {
-            // Executes request
-            emit requestConstructed(QNetworkRequest{downloadFileUrl}, dataId, httpDownloadFinished);
-        }
-    };
+                  qCInfo(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData downloadFileUrl:")
+                                             << downloadFileUrl;
+                  // Executes request for downloading file //
+
+                  // Creates destination file
+                  if (tempFile->open()) {
+                      // Executes request
+                      emit requestConstructed(QNetworkRequest{downloadFileUrl}, dataId,
+                                              httpDownloadFinished);
+                  }
+              }
+          };
 
     // //////////////// //
     // Executes request //

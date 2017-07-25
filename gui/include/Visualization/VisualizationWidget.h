@@ -2,6 +2,7 @@
 #define SCIQLOP_VISUALIZATIONWIDGET_H
 
 #include "Visualization/IVisualizationWidget.h"
+#include <Data/SqpDateTime.h>
 
 #include <QLoggingCategory>
 #include <QWidget>
@@ -40,6 +41,8 @@ public slots:
 
     /// Slot called when a variable is about to be deleted from SciQlop
     void onVariableAboutToBeDeleted(std::shared_ptr<Variable> variable) noexcept;
+
+    void onRangeChanged(std::shared_ptr<Variable> variable, const SqpDateTime &range) noexcept;
 
 private:
     Ui::VisualizationWidget *ui;

@@ -10,6 +10,8 @@
 
 #include <Data/SqpDateTime.h>
 
+#include <functional>
+
 class DataProviderParameters;
 class IDataSeries;
 class QNetworkReply;
@@ -34,6 +36,11 @@ public:
      */
     virtual void requestDataLoading(QUuid identifier, const DataProviderParameters &parameters) = 0;
 
+    /**
+     * @brief requestDataAborting stop data loading of the data identified by identifier
+     */
+    virtual void requestDataAborting(QUuid identifier) = 0;
+
 signals:
     /**
      * @brief dataProvided send dataSeries under dateTime and that corresponds of the data
@@ -41,6 +48,12 @@ signals:
      */
     void dataProvided(QUuid identifier, std::shared_ptr<IDataSeries> dateSerie,
                       const SqpDateTime &dateTime);
+
+    /**
+        * @brief dataProvided send dataSeries under dateTime and that corresponds of the data
+        * identified by identifier
+        */
+    void dataProvidedProgress(QUuid identifier, double progress);
 
 
     /**

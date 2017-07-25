@@ -50,9 +50,17 @@ public:
      */
     void deleteVariables(const QVector<std::shared_ptr<Variable> > &variables) noexcept;
 
+    /**
+     * @brief abort the variable retrieve data progression
+     */
+    void abortProgress(std::shared_ptr<Variable> variable);
+
 signals:
     /// Signal emitted when a variable is about to be deleted from the controller
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
+
+    /// Signal emitted when a data acquisition is requested on a range for a variable
+    void rangeChanged(std::shared_ptr<Variable> variable, const SqpDateTime &range);
 
 public slots:
     /// Request the data loading of the variable whithin dateTime
@@ -71,6 +79,8 @@ public slots:
 
 
     void onVariableRetrieveDataInProgress(QUuid identifier, double progress);
+
+    void onAbortProgressRequested(std::shared_ptr<Variable> variable);
 
     void initialize();
     void finalize();

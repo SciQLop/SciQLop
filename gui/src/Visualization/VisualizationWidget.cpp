@@ -5,6 +5,7 @@
 #include "Visualization/VisualizationZoneWidget.h"
 #include "Visualization/operations/GenerateVariableMenuOperation.h"
 #include "Visualization/operations/RemoveVariableOperation.h"
+#include "Visualization/operations/RescaleAxeOperation.h"
 #include "Visualization/qcustomplot.h"
 
 #include "ui_VisualizationWidget.h"
@@ -140,4 +141,12 @@ void VisualizationWidget::onVariableAboutToBeDeleted(std::shared_ptr<Variable> v
     // Calls the operation of removing all references to the variable in the visualization
     auto removeVariableOperation = RemoveVariableOperation{variable};
     accept(&removeVariableOperation);
+}
+
+void VisualizationWidget::onRangeChanged(std::shared_ptr<Variable> variable,
+                                         const SqpDateTime &range) noexcept
+{
+    // Calls the operation of rescaling all graph that contrains variable in the visualization
+    auto rescaleVariableOperation = RescaleAxeOperation{variable, range};
+    accept(&rescaleVariableOperation);
 }

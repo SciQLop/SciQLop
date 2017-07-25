@@ -5,6 +5,7 @@
 
 #include <ui_VariableInspectorWidget.h>
 
+#include <QMouseEvent>
 #include <QSortFilterProxyModel>
 #include <QStyledItemDelegate>
 #include <QWidgetAction>
@@ -27,9 +28,12 @@ public:
         if (data.isValid() && progressData.isValid()) {
             auto name = data.value<QString>();
             auto progress = progressData.value<double>();
-            if (progress >= 0) {
+            if (progress > 0) {
+                auto cancelButtonWidth = 20;
                 auto progressBarOption = QStyleOptionProgressBar{};
-                progressBarOption.rect = option.rect;
+                auto progressRect = option.rect;
+                progressRect.setWidth(progressRect.width() - cancelButtonWidth);
+                progressBarOption.rect = progressRect;
                 progressBarOption.minimum = 0;
                 progressBarOption.maximum = 100;
                 progressBarOption.progress = progress;
@@ -38,12 +42,67 @@ public:
                 progressBarOption.textVisible = true;
                 progressBarOption.textAlignment = Qt::AlignCenter;
 
+
                 QApplication::style()->drawControl(QStyle::CE_ProgressBar, &progressBarOption,
                                                    painter);
+
+                // Cancel button
+                auto buttonRect = QRect(progressRect.right(), option.rect.top(), cancelButtonWidth,
+                                        option.rect.height());
+                auto buttonOption = QStyleOptionButton{};
+                buttonOption.rect = buttonRect;
+                buttonOption.text = "X";
+
+                QApplication::style()->drawControl(QStyle::CE_PushButton, &buttonOption, painter);
+            }
+            else {
+                QStyledItemDelegate::paint(painter, option, index);
             }
         }
         else {
             QStyledItemDelegate::paint(painter, option, index);
+        }
+    }
+
+    bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option,
+                     const QModelIndex &index)
+    {
+        if (event->type() == QEvent::MouseButtonRelease) {
+            auto data = index.data(Qt::DisplayRole);
+            auto progressData = index.data(VariableRoles::ProgressRole);
+            if (data.isValid() && progressData.isValid()) {
+                auto cancelButtonWidth = 20;
+                auto progressRect = option.rect;
+                progressRect.setWidth(progressRect.width() - cancelButtonWidth);
+                // Cancel button
+                auto buttonRect = QRect(progressRect.right(), option.rect.top(), cancelButtonWidth,
+                                        option.rect.height());
+
+                auto e = (QMouseEvent *)event;
+                auto clickX = e->x();
+                auto clickY = e->y();
+
+                auto x = buttonRect.left();   // the X coordinate
+                auto y = buttonRect.top();    // the Y coordinate
+                auto w = buttonRect.width();  // button width
+                auto h = buttonRect.height(); // button height
+
+                if (clickX > x && clickX < x + w) {
+                    if (clickY > y && clickY < y + h) {
+                        auto variableModel = sqpApp->variableController().variableModel();
+                        variableModel->abortProgress(index);
+                    }
+                }
+                else {
+                    QStyledItemDelegate::editorEvent(event, model, option, index);
+                }
+            }
+            else {
+                QStyledItemDelegate::editorEvent(event, model, option, index);
+            }
+        }
+        else {
+            QStyledItemDelegate::editorEvent(event, model, option, index);
         }
     }
 };

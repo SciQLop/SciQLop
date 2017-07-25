@@ -38,7 +38,7 @@ struct VariableController::VariableControllerPrivate {
 
     std::unordered_map<std::shared_ptr<Variable>, std::shared_ptr<IDataProvider> >
         m_VariableToProviderMap;
-    std::unordered_map<std::shared_ptr<Variable>, QUuid> m_VariableToIdentifier;
+    std::unordered_map<std::shared_ptr<Variable>, QUuid> m_VariableToIdentifierMap;
 };
 
 VariableController::VariableController(QObject *parent)
@@ -46,6 +46,9 @@ VariableController::VariableController(QObject *parent)
 {
     qCDebug(LOG_VariableController()) << tr("VariableController construction")
                                       << QThread::currentThread();
+
+    connect(impl->m_VariableModel, &VariableModel::abortProgessRequested, this,
+            &VariableController::onAbortProgressRequested);
 }
 
 VariableController::~VariableController()
@@ -81,6 +84,9 @@ void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noex
     // make some treatments before the deletion
     emit variableAboutToBeDeleted(variable);
 
+    // Deletes identifier
+    impl->m_VariableToIdentifierMap.erase(variable);
+
     // Deletes provider
     auto nbProvidersDeleted = impl->m_VariableToProviderMap.erase(variable);
     qCDebug(LOG_VariableController())
@@ -102,6 +108,10 @@ void VariableController::deleteVariables(
     }
 }
 
+void VariableController::abortProgress(std::shared_ptr<Variable> variable)
+{
+}
+
 void VariableController::createVariable(const QString &name, const QVariantHash &metadata,
                                         std::shared_ptr<IDataProvider> provider) noexcept
 {
@@ -119,21 +129,24 @@ void VariableController::createVariable(const QString &name, const QVariantHash 
 
         // store the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
-        impl->m_VariableToIdentifier[newVariable] = identifier;
+        impl->m_VariableToIdentifierMap[newVariable] = identifier;
 
         auto addDateTimeAcquired = [ this, varW = std::weak_ptr<Variable>{newVariable} ](
             QUuid identifier, auto dataSeriesAcquired, auto dateTimeToPutInCache)
         {
             if (auto variable = varW.lock()) {
-                auto varIdentifier = impl->m_VariableToIdentifier.at(variable);
+                auto varIdentifier = impl->m_VariableToIdentifierMap.at(variable);
                 if (varIdentifier == identifier) {
                     impl->m_VariableCacheController->addDateTime(variable, dateTimeToPutInCache);
                     variable->setDataSeries(dataSeriesAcquired);
+                    emit variable->updated();
                 }
             }
         };
 
         connect(provider.get(), &IDataProvider::dataProvided, addDateTimeAcquired);
+        connect(provider.get(), &IDataProvider::dataProvidedProgress, this,
+                &VariableController::onVariableRetrieveDataInProgress);
         this->onRequestDataLoading(newVariable, dateTime);
     }
 }
@@ -148,6 +161,9 @@ void VariableController::onDateTimeOnSelection(const SqpDateTime &dateTime)
         if (auto selectedVariable = impl->m_VariableModel->variable(selectedRow.row())) {
             selectedVariable->setDateTime(dateTime);
             this->onRequestDataLoading(selectedVariable, dateTime);
+
+            // notify that rescale operation has to be done
+            emit rangeChanged(selectedVariable, dateTime);
         }
     }
 }
@@ -156,10 +172,26 @@ void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, doub
 {
     auto findReply = [identifier](const auto &entry) { return identifier == entry.second; };
 
-    auto end = impl->m_VariableToIdentifier.cend();
-    auto it = std::find_if(impl->m_VariableToIdentifier.cbegin(), end, findReply);
+    auto end = impl->m_VariableToIdentifierMap.cend();
+    auto it = std::find_if(impl->m_VariableToIdentifierMap.cbegin(), end, findReply);
     if (it != end) {
         impl->m_VariableModel->setDataProgress(it->first, progress);
+    }
+}
+
+void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> variable)
+{
+    qCDebug(LOG_VariableController()) << "TORM: VariableController::onAbortProgressRequested"
+                                      << QThread::currentThread()->objectName();
+
+    auto it = impl->m_VariableToIdentifierMap.find(variable);
+    if (it != impl->m_VariableToIdentifierMap.cend()) {
+        impl->m_VariableToProviderMap.at(variable)->requestDataAborting(it->second);
+    }
+    else {
+        qCWarning(LOG_VariableController())
+            << tr("Aborting progression of inexistant variable detected !!!")
+            << QThread::currentThread()->objectName();
     }
 }
 
@@ -179,7 +211,7 @@ void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable
 
         if (!dateTimeListNotInCache.empty()) {
             // Ask the provider for each data on the dateTimeListNotInCache
-            auto identifier = impl->m_VariableToIdentifier.at(variable);
+            auto identifier = impl->m_VariableToIdentifierMap.at(variable);
             impl->m_VariableToProviderMap.at(variable)->requestDataLoading(
                 identifier,
                 DataProviderParameters{std::move(dateTimeListNotInCache), variable->metadata()});

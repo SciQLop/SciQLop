@@ -38,11 +38,20 @@ public:
                 m_VisualizationController.get(),
                 SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), Qt::DirectConnection);
 
+        connect(m_VariableController.get(),
+                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)),
+                m_VisualizationController.get(),
+                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)));
+
 
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);
+        m_DataSourceControllerThread.setObjectName("DataSourceControllerThread");
         m_NetworkController->moveToThread(&m_NetworkControllerThread);
+        m_NetworkControllerThread.setObjectName("NetworkControllerThread");
         m_VariableController->moveToThread(&m_VariableControllerThread);
+        m_VariableControllerThread.setObjectName("VariableControllerThread");
         m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
+        m_VisualizationControllerThread.setObjectName("VsualizationControllerThread");
 
 
         // Additionnal init
@@ -106,11 +115,6 @@ SqpApplication::SqpApplication(int &argc, char **argv)
     impl->m_NetworkControllerThread.start();
     impl->m_VariableControllerThread.start();
     impl->m_VisualizationControllerThread.start();
-
-    // Core connections:
-    // NetworkController <-> VariableController
-    connect(&sqpApp->networkController(), &NetworkController::replyDownloadProgress,
-            &sqpApp->variableController(), &VariableController::onVariableRetrieveDataInProgress);
 }
 
 SqpApplication::~SqpApplication()

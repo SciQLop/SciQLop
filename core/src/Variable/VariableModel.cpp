@@ -49,7 +49,6 @@ struct VariableModel::VariableModelPrivate {
     std::vector<std::shared_ptr<Variable> > m_Variables;
     std::unordered_map<std::shared_ptr<Variable>, double> m_VariableToProgress;
 
-
     /// Return the row index of the variable. -1 if it's not found
     int indexOfVariable(Variable *variable) const noexcept;
 };
@@ -100,6 +99,9 @@ void VariableModel::deleteVariable(std::shared_ptr<Variable> variable) noexcept
             << tr("Can't delete variable %1 from the model: the variable is not in the model")
                    .arg(variable->name());
     }
+
+    // Removes variable from progress map
+    impl->m_VariableToProgress.erase(variable);
 }
 
 
@@ -110,8 +112,12 @@ std::shared_ptr<Variable> VariableModel::variable(int index) const
 
 void VariableModel::setDataProgress(std::shared_ptr<Variable> variable, double progress)
 {
-
-    impl->m_VariableToProgress[variable] = progress;
+    if (progress > 0.0) {
+        impl->m_VariableToProgress[variable] = progress;
+    }
+    else {
+        impl->m_VariableToProgress.erase(variable);
+    }
     auto modelIndex = createIndex(impl->indexOfVariable(variable.get()), NAME_COLUMN);
 
     emit dataChanged(modelIndex, modelIndex);
@@ -202,6 +208,13 @@ QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int
     }
 
     return QVariant{};
+}
+
+void VariableModel::abortProgress(const QModelIndex &index)
+{
+    if (auto variable = impl->m_Variables.at(index.row())) {
+        emit abortProgessRequested(variable);
+    }
 }
 
 void VariableModel::onVariableUpdated() noexcept
