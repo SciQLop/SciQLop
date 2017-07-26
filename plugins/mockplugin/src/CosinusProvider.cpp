@@ -19,8 +19,8 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid token, const Sq
 
     // Gets the timerange from the parameters
     double freq = 100.0;
-    double start = dateTime.m_TStart * freq; // 100 htz
-    double end = dateTime.m_TEnd * freq;     // 100 htz
+    double start = std::ceil(dateTime.m_TStart * freq); // 100 htz
+    double end = std::floor(dateTime.m_TEnd * freq);    // 100 htz
 
     // We assure that timerange is valid
     if (end < start) {
@@ -28,17 +28,23 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid token, const Sq
     }
 
     // Generates scalar series containing cosinus values (one value per second)
-    auto scalarSeries
-        = std::make_shared<ScalarSeries>(end - start, Unit{QStringLiteral("t"), true}, Unit{});
+    auto dataCount = end - start;
 
+    auto xAxisData = QVector<double>{};
+    xAxisData.resize(dataCount);
+
+    auto valuesData = QVector<double>{};
+    valuesData.resize(dataCount);
 
     int progress = 0;
-    auto progressEnd = end - start;
+    auto progressEnd = dataCount;
     for (auto time = start; time < end; ++time, ++dataIndex) {
         auto it = m_VariableToEnableProvider.find(token);
         if (it != m_VariableToEnableProvider.end() && it.value()) {
             const auto timeOnFreq = time / freq;
-            scalarSeries->setData(dataIndex, timeOnFreq, std::cos(timeOnFreq));
+
+            xAxisData.replace(dataIndex, timeOnFreq);
+            valuesData.replace(dataIndex, std::cos(timeOnFreq));
 
             // progression
             int currentProgress = (time - start) * 100.0 / progressEnd;
@@ -58,8 +64,8 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid token, const Sq
     }
     emit dataProvidedProgress(token, 0.0);
 
-
-    return scalarSeries;
+    return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
+                                          Unit{QStringLiteral("t"), true}, Unit{});
 }
 
 void CosinusProvider::requestDataLoading(QUuid token, const DataProviderParameters &parameters)
