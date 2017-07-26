@@ -55,11 +55,7 @@ void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
         impl->m_DataSeries = dataSeries->clone();
     }
     else {
-        dataSeries->lockWrite();
-        impl->m_DataSeries->lockWrite();
         impl->m_DataSeries->merge(dataSeries.get());
-        impl->m_DataSeries->unlock();
-        dataSeries->unlock();
         //  emit updated();
     }
 }

@@ -98,14 +98,34 @@ public:
         return m_Data.at(0);
     }
 
-    // TODO Comment
+    /**
+     * Merges into the array data an other array data
+     * @param other the array data to merge with
+     * @param prepend if true, the other array data is inserted at the beginning, otherwise it is
+     * inserted at the end
+     * @remarks this method is only available for a unidimensional ArrayData
+     */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    void merge(const ArrayData<1> &arrayData)
+    void add(const ArrayData<1> &other, bool prepend = false)
     {
         QWriteLocker locker{&m_Lock};
         if (!m_Data.empty()) {
-            QReadLocker otherLocker{&arrayData.m_Lock};
-            m_Data[0] += arrayData.data();
+            QReadLocker otherLocker{&other.m_Lock};
+
+            if (prepend) {
+                const auto &otherData = other.data();
+                const auto otherDataSize = otherData.size();
+
+                auto &data = m_Data[0];
+                data.insert(data.begin(), otherDataSize, 0.);
+
+                for (auto i = 0; i < otherDataSize; ++i) {
+                    data.replace(i, otherData.at(i));
+                }
+            }
+            else {
+                m_Data[0] += other.data();
+            }
         }
     }
 
