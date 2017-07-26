@@ -2,6 +2,7 @@
 #define SCIQLOP_SORTUTILS_H
 
 #include <algorithm>
+#include <numeric>
 #include <vector>
 
 /**
