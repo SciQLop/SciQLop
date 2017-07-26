@@ -73,14 +73,14 @@ public:
     }
 
     /**
-     * @return the data as a vector
+     * @return the data as a vector, as a const reference
      * @remarks this method is only available for a unidimensional ArrayData
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    QVector<double> data(double tStart, double tEnd) const noexcept
+    const QVector<double> &cdata() const noexcept
     {
         QReadLocker locker{&m_Lock};
-        return m_Data.at(tStart);
+        return m_Data.at(0);
     }
 
     // TODO Comment

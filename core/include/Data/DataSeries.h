@@ -17,7 +17,9 @@ Q_LOGGING_CATEGORY(LOG_DataSeries, "DataSeries")
 /**
  * @brief The DataSeries class is the base (abstract) implementation of IDataSeries.
  *
- * It proposes to set a dimension for the values ​​data
+ * It proposes to set a dimension for the values ​​data.
+ *
+ * A DataSeries is always sorted on its x-axis data.
  *
  * @tparam Dim The dimension of the values data
  *
@@ -64,7 +66,9 @@ public:
     virtual void unlock() { m_Lock.unlock(); }
 
 protected:
-    /// Protected ctor (DataSeries is abstract)
+    /// Protected ctor (DataSeries is abstract). The vectors must have the same size, otherwise a
+    /// DataSeries with no values will be created.
+    /// @remarks data series is automatically sorted on its x-axis data
     explicit DataSeries(std::shared_ptr<ArrayData<1> > xAxisData, const Unit &xAxisUnit,
                         std::shared_ptr<ArrayData<Dim> > valuesData, const Unit &valuesUnit)
             : m_XAxisData{xAxisData},
@@ -72,6 +76,15 @@ protected:
               m_ValuesData{valuesData},
               m_ValuesUnit{valuesUnit}
     {
+        if (m_XAxisData->size() != m_ValuesData->size()) {
+            clear();
+        }
+
+        // Sorts data if it's not the case
+        const auto &xAxisCData = m_XAxisData->cdata();
+        if (!std::is_sorted(xAxisCData.cbegin(), xAxisCData.cend())) {
+            sort();
+        }
     }
 
     /// Copy ctor
@@ -81,6 +94,8 @@ protected:
               m_ValuesData{std::make_shared<ArrayData<Dim> >(*other.m_ValuesData)},
               m_ValuesUnit{other.m_ValuesUnit}
     {
+        // Since a series is ordered from its construction and is always ordered, it is not
+        // necessary to call the sort method here ('other' is sorted)
     }
 
     /// Assignment operator
@@ -96,6 +111,14 @@ protected:
     }
 
 private:
+    /**
+     * Sorts data series on its x-axis data
+     */
+    void sort() noexcept
+    {
+        /// @todo ALX
+    }
+
     std::shared_ptr<ArrayData<1> > m_XAxisData;
     Unit m_XAxisUnit;
     std::shared_ptr<ArrayData<Dim> > m_ValuesData;
