@@ -152,10 +152,12 @@ public:
 
         return std::make_shared<ArrayData<Dim> >(std::move(sortedData));
     }
+
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
     void clear()
     {
         QWriteLocker locker{&m_Lock};
-        m_Data.clear();
+        m_Data[0].clear();
     }
 
 
