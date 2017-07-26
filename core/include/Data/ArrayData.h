@@ -4,6 +4,9 @@
 #include <QReadLocker>
 #include <QReadWriteLock>
 #include <QVector>
+
+#include <memory>
+
 /**
  * @brief The ArrayData class represents a dataset for a data series.
  *
@@ -44,6 +47,18 @@ public:
         QReadLocker otherLocker{&other.m_Lock};
         QWriteLocker locker{&m_Lock};
         m_Data = other.m_Data;
+    }
+
+    /**
+     * @return the data at a specified index
+     * @remarks index must be a valid position
+     * @remarks this method is only available for a unidimensional ArrayData
+     */
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    double at(int index) const noexcept
+    {
+        QReadLocker locker{&m_Lock};
+        return m_Data[0].at(index);
     }
 
     /**
@@ -101,6 +116,22 @@ public:
         return m_Data[0].size();
     }
 
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    std::shared_ptr<ArrayData<Dim> > sort(const std::vector<int> sortPermutation)
+    {
+        QReadLocker locker{&m_Lock};
+
+        const auto &data = m_Data.at(0);
+
+        // Inits result
+        auto sortedData = QVector<double>{};
+        sortedData.resize(data.size());
+
+        std::transform(sortPermutation.cbegin(), sortPermutation.cend(), sortedData.begin(),
+                       [&data](int i) { return data[i]; });
+
+        return std::make_shared<ArrayData<Dim> >(std::move(sortedData));
+    }
     void clear()
     {
         QWriteLocker locker{&m_Lock};

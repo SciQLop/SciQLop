@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_DATASERIES_H
 #define SCIQLOP_DATASERIES_H
 
+#include <Common/SortUtils.h>
+
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
 
@@ -116,7 +118,9 @@ private:
      */
     void sort() noexcept
     {
-        /// @todo ALX
+        auto permutation = SortUtils::sortPermutation(*m_XAxisData, std::less<double>());
+        m_XAxisData = m_XAxisData->sort(permutation);
+        m_ValuesData = m_ValuesData->sort(permutation);
     }
 
     std::shared_ptr<ArrayData<1> > m_XAxisData;
