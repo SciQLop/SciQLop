@@ -4,6 +4,9 @@
 #include <QReadLocker>
 #include <QReadWriteLock>
 #include <QVector>
+
+#include <memory>
+
 /**
  * @brief The ArrayData class represents a dataset for a data series.
  *
@@ -47,6 +50,18 @@ public:
     }
 
     /**
+     * @return the data at a specified index
+     * @remarks index must be a valid position
+     * @remarks this method is only available for a unidimensional ArrayData
+     */
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    double at(int index) const noexcept
+    {
+        QReadLocker locker{&m_Lock};
+        return m_Data[0].at(index);
+    }
+
+    /**
      * Sets a data at a specified index. The index has to be valid to be effective
      * @param index the index to which the data will be set
      * @param data the data to set
@@ -73,24 +88,44 @@ public:
     }
 
     /**
-     * @return the data as a vector
+     * @return the data as a vector, as a const reference
      * @remarks this method is only available for a unidimensional ArrayData
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    QVector<double> data(double tStart, double tEnd) const noexcept
+    const QVector<double> &cdata() const noexcept
     {
         QReadLocker locker{&m_Lock};
-        return m_Data.at(tStart);
+        return m_Data.at(0);
     }
 
-    // TODO Comment
+    /**
+     * Merges into the array data an other array data
+     * @param other the array data to merge with
+     * @param prepend if true, the other array data is inserted at the beginning, otherwise it is
+     * inserted at the end
+     * @remarks this method is only available for a unidimensional ArrayData
+     */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    void merge(const ArrayData<1> &arrayData)
+    void add(const ArrayData<1> &other, bool prepend = false)
     {
         QWriteLocker locker{&m_Lock};
         if (!m_Data.empty()) {
-            QReadLocker otherLocker{&arrayData.m_Lock};
-            m_Data[0] += arrayData.data();
+            QReadLocker otherLocker{&other.m_Lock};
+
+            if (prepend) {
+                const auto &otherData = other.data();
+                const auto otherDataSize = otherData.size();
+
+                auto &data = m_Data[0];
+                data.insert(data.begin(), otherDataSize, 0.);
+
+                for (auto i = 0; i < otherDataSize; ++i) {
+                    data.replace(i, otherData.at(i));
+                }
+            }
+            else {
+                m_Data[0] += other.data();
+            }
         }
     }
 
@@ -101,10 +136,28 @@ public:
         return m_Data[0].size();
     }
 
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    std::shared_ptr<ArrayData<Dim> > sort(const std::vector<int> sortPermutation)
+    {
+        QReadLocker locker{&m_Lock};
+
+        const auto &data = m_Data.at(0);
+
+        // Inits result
+        auto sortedData = QVector<double>{};
+        sortedData.resize(data.size());
+
+        std::transform(sortPermutation.cbegin(), sortPermutation.cend(), sortedData.begin(),
+                       [&data](int i) { return data[i]; });
+
+        return std::make_shared<ArrayData<Dim> >(std::move(sortedData));
+    }
+
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
     void clear()
     {
         QWriteLocker locker{&m_Lock};
-        m_Data.clear();
+        m_Data[0].clear();
     }
 
 
