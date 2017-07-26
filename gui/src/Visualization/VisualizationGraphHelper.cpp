@@ -11,7 +11,7 @@ namespace {
 
 class SqpDataContainer : public QCPGraphDataContainer {
 public:
-    void appendGraphDataUnsorted(const QCPGraphData &data) { mData.append(data); }
+    void appendGraphData(const QCPGraphData &data) { mData.append(data); }
 };
 
 
@@ -40,30 +40,32 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
     qCDebug(LOG_VisualizationGraphHelper()) << "TORM: updateScalarData"
                                             << QThread::currentThread()->objectName();
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
-        // Clean the graph
-        // NAIVE approch
         scalarSeries.lockRead();
         {
-            const auto xData = scalarSeries.xAxisData()->data();
-            const auto valuesData = scalarSeries.valuesData()->data();
-            const auto count = xData.count();
-            qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points in cache"
-                                                   << xData.count();
+            const auto &xData = scalarSeries.xAxisData()->cdata();
+            const auto &valuesData = scalarSeries.valuesData()->cdata();
 
-            auto dataContainer = qcpGraph->data();
-            dataContainer->clear();
+            auto xDataBegin = xData.cbegin();
+            auto xDataEnd = xData.cend();
+
+            qCInfo(LOG_VisualizationGraphHelper())
+                << "TORM: Current points in cache" << xData.count();
+
             auto sqpDataContainer = QSharedPointer<SqpDataContainer>::create();
             qcpGraph->setData(sqpDataContainer);
 
-            for (auto i = 0; i < count; ++i) {
-                const auto x = xData[i];
-                if (x >= dateTime.m_TStart && x <= dateTime.m_TEnd) {
-                    sqpDataContainer->appendGraphDataUnsorted(QCPGraphData(x, valuesData[i]));
-                }
+            auto lowerIt = std::lower_bound(xDataBegin, xDataEnd, dateTime.m_TStart);
+            auto upperIt = std::upper_bound(xDataBegin, xDataEnd, dateTime.m_TEnd);
+            auto distance = std::distance(xDataBegin, lowerIt);
+
+            auto valuesDataIt = valuesData.cbegin() + distance;
+            for (auto xAxisDataIt = lowerIt; xAxisDataIt != upperIt;
+                 ++xAxisDataIt, ++valuesDataIt) {
+                sqpDataContainer->appendGraphData(QCPGraphData(*xAxisDataIt, *valuesDataIt));
             }
-            sqpDataContainer->sort();
-            qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points displayed"
-                                                   << sqpDataContainer->size();
+
+            qCInfo(LOG_VisualizationGraphHelper())
+                << "TORM: Current points displayed" << sqpDataContainer->size();
         }
         scalarSeries.unlock();
 
