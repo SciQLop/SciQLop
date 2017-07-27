@@ -14,9 +14,6 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_VariableCacheController)
 
 class Variable;
 
-Q_DECLARE_LOGGING_CATEGORY(LOG_VariableCacheController)
-
-
 /// This class aims to store in the cache all of the dateTime already requested to the variable.
 class VariableCacheController : public QObject {
     Q_OBJECT

@@ -251,7 +251,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                 if (variable->contains(variableDateTimeWithTolerance)) {
                     qCDebug(LOG_VisualizationGraphWidget())
                         << tr("TORM: Detection zoom in that need request:");
-                    // add 10% tolerance for each side
+                    // add tolerance for each side
                     tolerance
                         = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TStart -= tolerance;
@@ -286,7 +286,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
             }
             else {
                 qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Detection zoom out: ");
-                // add 10% tolerance for each side
+                // add tolerance for each side
                 tolerance = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
                 variableDateTimeWithTolerance.m_TStart -= tolerance;
                 variableDateTimeWithTolerance.m_TEnd += tolerance;

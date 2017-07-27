@@ -41,18 +41,6 @@
 #include <QToolButton>
 #include <memory.h>
 
-//#include <omp.h>
-//#include <network/filedownloader.h>
-//#include <qlopdatabase.h>
-//#include <qlopsettings.h>
-//#include <qlopgui.h>
-//#include <spacedata.h>
-//#include "qlopcore.h"
-//#include "qlopcodecmanager.h"
-//#include "cdfcodec.h"
-//#include "amdatxtcodec.h"
-//#include <qlopplotmanager.h>
-
 #include "iostream"
 
 Q_LOGGING_CATEGORY(LOG_MainWindow, "MainWindow")
@@ -207,54 +195,11 @@ MainWindow::MainWindow(QWidget *parent)
         SIGNAL(tableMenuAboutToBeDisplayed(QMenu *, const QVector<std::shared_ptr<Variable> > &)),
         m_Ui->view, SLOT(attachVariableMenu(QMenu *, const QVector<std::shared_ptr<Variable> > &)),
         Qt::DirectConnection);
-
-    /*    QLopGUI::registerMenuBar(menuBar());
-        this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));
-        this->m_progressWidget = new QWidget();
-        this->m_progressLayout = new QVBoxLayout(this->m_progressWidget);
-        this->m_progressWidget->setLayout(this->m_progressLayout);
-        this->m_progressWidget->setWindowModality(Qt::WindowModal);
-        m_progressThreadIds = (int*) malloc(OMP_THREADS*sizeof(int));
-        for(int i=0;i<OMP_THREADS;i++)
-        {
-            this->m_progress.append(new QProgressBar(this->m_progressWidget));
-            this->m_progress.last()->setMinimum(0);
-            this->m_progress.last()->setMaximum(100);
-            this->m_progressLayout->addWidget(this->m_progress.last());
-            this->m_progressWidget->hide();
-            this->m_progressThreadIds[i] = -1;
-        }
-        this->m_progressWidget->setWindowTitle("Loading File");
-        const QList<QLopService*>ServicesToLoad=QList<QLopService*>()
-                << QLopCore::self()
-                << QLopPlotManager::self()
-                << QLopCodecManager::self()
-                << FileDownloader::self()
-                << QLopDataBase::self()
-                << SpaceData::self();
-
-        CDFCodec::registerToManager();
-        AMDATXTCodec::registerToManager();
-
-
-        for(int i=0;i<ServicesToLoad.count();i++)
-        {
-            qDebug()<<ServicesToLoad.at(i)->serviceName();
-            ServicesToLoad.at(i)->initialize(); //must be called before getGUI
-            QDockWidget* wdgt=ServicesToLoad.at(i)->getGUI();
-            if(wdgt)
-            {
-                wdgt->setAllowedAreas(Qt::AllDockWidgetAreas);
-                this->addDockWidget(Qt::TopDockWidgetArea,wdgt);
-            }
-            PythonQt::self()->getMainModule().addObject(ServicesToLoad.at(i)->serviceName(),(QObject*)ServicesToLoad.at(i));
-        }*/
 }
 
 MainWindow::~MainWindow()
 {
 }
-
 
 void MainWindow::changeEvent(QEvent *e)
 {
