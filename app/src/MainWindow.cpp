@@ -175,7 +175,14 @@ MainWindow::MainWindow(QWidget *parent)
     this->menuBar()->addAction(tr("File"));
     auto toolsMenu = this->menuBar()->addMenu(tr("Tools"));
     toolsMenu->addAction(tr("Settings..."), [this]() {
-        impl->m_SettingsDialog->exec();
+        // Loads settings
+        impl->m_SettingsDialog->loadSettings();
+
+        // Open settings dialog and save settings if the dialog is accepted
+        if (impl->m_SettingsDialog->exec() == QDialog::Accepted) {
+            impl->m_SettingsDialog->saveSettings();
+        }
+
     });
 
     auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
