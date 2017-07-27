@@ -22,7 +22,7 @@ namespace {
 /// - %3: parameter id
 const auto AMDA_URL_FORMAT = QStringLiteral(
     "http://amda.irap.omp.eu/php/rest/"
-    "getParameter.php?startTime=%1&stopTime=%2&parameterID=%3&sampling=60&outputFormat=ASCII&"
+    "getParameter.php?startTime=%1&stopTime=%2&parameterID=%3&outputFormat=ASCII&"
     "timeFormat=ISO8601&gzip=0");
 
 /// Dates format passed in the URL (e.g 2013-09-23T09:00)
