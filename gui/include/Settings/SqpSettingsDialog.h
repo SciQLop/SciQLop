@@ -13,12 +13,18 @@ class SqpSettingsDialog;
  * @brief The SqpSettingsDialog class represents the dialog in which the parameters of SciQlop are
  * set
  */
-class SqpSettingsDialog : public QDialog {
+class SqpSettingsDialog : public QDialog, public ISqpSettingsBindable {
     Q_OBJECT
 
 public:
     explicit SqpSettingsDialog(QWidget *parent = 0);
     virtual ~SqpSettingsDialog() noexcept;
+
+    /// @sa ISqpSettingsBindable::loadSettings()
+    void loadSettings() override final;
+
+    /// @sa ISqpSettingsBindable::saveSettings()
+    void saveSettings() const override final;
 
     /**
      * Registers a widget into the dialog
