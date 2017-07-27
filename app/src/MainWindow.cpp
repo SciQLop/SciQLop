@@ -24,6 +24,7 @@
 
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceWidget.h>
+#include <Settings/SqpSettingsDialog.h>
 #include <SidePane/SqpSidePane.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
@@ -55,14 +56,23 @@ const auto RIGHTMAININSPECTORWIDGETSPLITTERINDEX = 4;
 
 class MainWindow::MainWindowPrivate {
 public:
+    explicit MainWindowPrivate(MainWindow *mainWindow)
+            : m_LastOpenLeftInspectorSize{},
+              m_LastOpenRightInspectorSize{},
+              m_SettingsDialog{new SqpSettingsDialog{mainWindow}}
+    {
+    }
+
     QSize m_LastOpenLeftInspectorSize;
     QSize m_LastOpenRightInspectorSize;
+    /// Settings dialog. MainWindow has the ownership
+    SqpSettingsDialog *m_SettingsDialog;
 };
 
 MainWindow::MainWindow(QWidget *parent)
         : QMainWindow{parent},
           m_Ui{new Ui::MainWindow},
-          impl{spimpl::make_unique_impl<MainWindowPrivate>()}
+          impl{spimpl::make_unique_impl<MainWindowPrivate>(this)}
 {
     m_Ui->setupUi(this);
 
@@ -155,11 +165,23 @@ MainWindow::MainWindow(QWidget *parent)
                 openInspector(checked, true, openRightInspectorAction);
             });
 
+    // //// //
+    // Menu //
+    // //// //
     this->menuBar()->addAction(tr("File"));
+    auto toolsMenu = this->menuBar()->addMenu(tr("Tools"));
+    toolsMenu->addAction(tr("Settings..."), [this]() {
+        impl->m_SettingsDialog->exec();
+    });
+
     auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
 
     auto timeWidget = new TimeWidget{};
     mainToolBar->addWidget(timeWidget);
+
+    // /////////// //
+    // Connections //
+    // /////////// //
 
     // Controllers / controllers connections
     connect(&sqpApp->timeController(), SIGNAL(timeUpdated(SqpDateTime)),
