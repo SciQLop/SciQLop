@@ -20,6 +20,13 @@ public:
     explicit SqpSettingsDialog(QWidget *parent = 0);
     virtual ~SqpSettingsDialog() noexcept;
 
+    /**
+     * Registers a widget into the dialog
+     * @param name the name under which the widget will appear in the dialog
+     * @param widget the widget to register
+     */
+    void registerWidget(const QString &name, QWidget *widget) noexcept;
+
 private:
     Ui::SqpSettingsDialog *ui;
 };
