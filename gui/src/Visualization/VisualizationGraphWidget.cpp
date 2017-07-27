@@ -230,8 +230,8 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
 {
-    qCInfo(LOG_VisualizationGraphWidget())
-        << tr("VisualizationGraphWidget::onRangeChanged") << QThread::currentThread()->objectName();
+    qCInfo(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged")
+                                           << QThread::currentThread()->objectName();
 
     auto dateTimeRange = SqpDateTime{t1.lower, t1.upper};
 
