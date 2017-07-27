@@ -29,6 +29,9 @@ SCIQLOP_FIND_QT(Core Network)
 #
 # Compile the library library
 #
+
+ADD_DEFINITIONS(-DCORE_LIB)
+
 FILE (GLOB_RECURSE MODULE_SOURCES
         ${INCLUDES_DIR}/*.h
         ${SOURCES_DIR}/*.c

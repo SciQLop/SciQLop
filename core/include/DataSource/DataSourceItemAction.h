@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_DATASOURCEITEMACTION_H
 #define SCIQLOP_DATASOURCEITEMACTION_H
 
+#include "CoreGlobal.h"
+
 #include <Common/spimpl.h>
 
 #include <QLoggingCategory>
@@ -17,7 +19,7 @@ class DataSourceItem;
  *
  * An action is a function that will be executed when the slot execute() is called.
  */
-class DataSourceItemAction : public QObject {
+class SCIQLOP_CORE_EXPORT DataSourceItemAction : public QObject {
 
     Q_OBJECT
 

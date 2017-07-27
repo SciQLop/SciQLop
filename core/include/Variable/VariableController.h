@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_VARIABLECONTROLLER_H
 #define SCIQLOP_VARIABLECONTROLLER_H
 
+#include "CoreGlobal.h"
+
 #include <Data/SqpDateTime.h>
 
 #include <QLoggingCategory>
@@ -19,7 +21,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_VariableController)
 /**
  * @brief The VariableController class aims to handle the variables in SciQlop.
  */
-class VariableController : public QObject {
+class SCIQLOP_CORE_EXPORT VariableController : public QObject {
     Q_OBJECT
 public:
     explicit VariableController(QObject *parent = 0);

@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_VARIABLECACHECONTROLLER_H
 #define SCIQLOP_VARIABLECACHECONTROLLER_H
 
+#include "CoreGlobal.h"
+
 #include <QLoggingCategory>
 #include <QObject>
 
@@ -15,7 +17,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_VariableCacheController)
 class Variable;
 
 /// This class aims to store in the cache all of the dateTime already requested to the variable.
-class VariableCacheController : public QObject {
+class SCIQLOP_CORE_EXPORT VariableCacheController : public QObject {
     Q_OBJECT
 public:
     explicit VariableCacheController(QObject *parent = 0);

@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_DATASOURCECONTROLLER_H
 #define SCIQLOP_DATASOURCECONTROLLER_H
 
+#include "CoreGlobal.h"
+
 #include <QLoggingCategory>
 #include <QObject>
 #include <QUuid>
@@ -19,7 +21,7 @@ class IDataProvider;
  * source) then others specifics method will be able to access it. You can load a data source driver
  * plugin then create a data source.
  */
-class DataSourceController : public QObject {
+class SCIQLOP_CORE_EXPORT DataSourceController : public QObject {
     Q_OBJECT
 public:
     explicit DataSourceController(QObject *parent = 0);

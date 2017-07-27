@@ -1,6 +1,7 @@
 #ifndef SCIQLOP_VARIABLEMODEL_H
 #define SCIQLOP_VARIABLEMODEL_H
 
+#include "CoreGlobal.h"
 
 #include <Data/SqpDateTime.h>
 
@@ -21,7 +22,7 @@ class Variable;
 /**
  * @brief The VariableModel class aims to hold the variables that have been created in SciQlop
  */
-class VariableModel : public QAbstractTableModel {
+class SCIQLOP_CORE_EXPORT VariableModel : public QAbstractTableModel {
     Q_OBJECT
 public:
     explicit VariableModel(QObject *parent = nullptr);
