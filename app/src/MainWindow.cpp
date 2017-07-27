@@ -25,6 +25,7 @@
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceWidget.h>
 #include <Settings/SqpSettingsDialog.h>
+#include <Settings/SqpSettingsGeneralWidget.h>
 #include <SidePane/SqpSidePane.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
@@ -59,12 +60,15 @@ public:
     explicit MainWindowPrivate(MainWindow *mainWindow)
             : m_LastOpenLeftInspectorSize{},
               m_LastOpenRightInspectorSize{},
+              m_GeneralSettingsWidget{new SqpSettingsGeneralWidget{mainWindow}},
               m_SettingsDialog{new SqpSettingsDialog{mainWindow}}
     {
     }
 
     QSize m_LastOpenLeftInspectorSize;
     QSize m_LastOpenRightInspectorSize;
+    /// General settings widget. MainWindow has the ownership
+    SqpSettingsGeneralWidget *m_GeneralSettingsWidget;
     /// Settings dialog. MainWindow has the ownership
     SqpSettingsDialog *m_SettingsDialog;
 };
@@ -178,6 +182,14 @@ MainWindow::MainWindow(QWidget *parent)
 
     auto timeWidget = new TimeWidget{};
     mainToolBar->addWidget(timeWidget);
+
+    // //////// //
+    // Settings //
+    // //////// //
+
+    // Registers "general settings" widget to the settings dialog
+    impl->m_SettingsDialog->registerWidget(QStringLiteral("General"),
+                                           impl->m_GeneralSettingsWidget);
 
     // /////////// //
     // Connections //
