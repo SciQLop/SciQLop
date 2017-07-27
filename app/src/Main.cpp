@@ -28,6 +28,10 @@
 #include <Plugin/PluginManager.h>
 #include <QDir>
 
+#include <QLoggingCategory>
+
+Q_LOGGING_CATEGORY(LOG_Main, "Main")
+
 namespace {
 
 /// Name of the directory containing the plugins
@@ -66,8 +70,7 @@ int main(int argc, char *argv[])
     }
 #endif
 #endif
-    qCDebug(LOG_PluginManager())
-        << QObject::tr("Plugin directory: %1").arg(pluginDir.absolutePath());
+    qCDebug(LOG_Main()) << QObject::tr("Plugin directory: %1").arg(pluginDir.absolutePath());
 
     PluginManager pluginManager{};
     pluginManager.loadPlugins(pluginDir);

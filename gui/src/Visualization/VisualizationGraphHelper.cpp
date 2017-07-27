@@ -48,8 +48,8 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
             auto xDataBegin = xData.cbegin();
             auto xDataEnd = xData.cend();
 
-            qCInfo(LOG_VisualizationGraphHelper())
-                << "TORM: Current points in cache" << xData.count();
+            qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points in cache"
+                                                   << xData.count();
 
             auto sqpDataContainer = QSharedPointer<SqpDataContainer>::create();
             qcpGraph->setData(sqpDataContainer);
@@ -64,8 +64,8 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
                 sqpDataContainer->appendGraphData(QCPGraphData(*xAxisDataIt, *valuesDataIt));
             }
 
-            qCInfo(LOG_VisualizationGraphHelper())
-                << "TORM: Current points displayed" << sqpDataContainer->size();
+            qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points displayed"
+                                                   << sqpDataContainer->size();
         }
         scalarSeries.unlock();
 

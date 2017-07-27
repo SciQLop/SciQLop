@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_DATASOURCEITEM_H
 #define SCIQLOP_DATASOURCEITEM_H
 
+#include "CoreGlobal.h"
+
 #include <Common/spimpl.h>
 
 #include <QVariant>
@@ -19,7 +21,7 @@ enum class DataSourceItemType { NODE, PRODUCT, COMPONENT };
  * containing other DataSourceItem objects (children).
  * For each DataSourceItem can be associated a set of data representing it.
  */
-class DataSourceItem {
+class SCIQLOP_CORE_EXPORT DataSourceItem {
 public:
     /// Key associated with the name of the item
     static const QString NAME_DATA_KEY;

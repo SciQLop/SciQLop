@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_IDATAPROVIDER_H
 #define SCIQLOP_IDATAPROVIDER_H
 
+#include "CoreGlobal.h"
+
 #include <memory>
 
 #include <QObject>
@@ -25,7 +27,7 @@ class QNetworkRequest;
  *
  * @sa IDataSeries
  */
-class IDataProvider : public QObject {
+class SCIQLOP_CORE_EXPORT IDataProvider : public QObject {
 
     Q_OBJECT
 public:

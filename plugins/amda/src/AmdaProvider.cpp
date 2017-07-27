@@ -39,8 +39,7 @@ QString dateFormat(double sqpDateTime) noexcept
 
 AmdaProvider::AmdaProvider()
 {
-    qCDebug(LOG_NetworkController()) << tr("AmdaProvider::AmdaProvider")
-                                     << QThread::currentThread();
+    qCDebug(LOG_AmdaProvider()) << tr("AmdaProvider::AmdaProvider") << QThread::currentThread();
     if (auto app = sqpApp) {
         auto &networkController = app->networkController();
         connect(this, SIGNAL(requestConstructed(QNetworkRequest, QUuid,

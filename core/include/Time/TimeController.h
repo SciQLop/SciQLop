@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_TIMECONTROLLER_H
 #define SCIQLOP_TIMECONTROLLER_H
 
+#include "CoreGlobal.h"
+
 #include <Data/SqpDateTime.h>
 
 #include <QLoggingCategory>
@@ -14,7 +16,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_TimeController)
 /**
  * @brief The TimeController class aims to handle the Time parameters notification in SciQlop.
  */
-class TimeController : public QObject {
+class SCIQLOP_CORE_EXPORT TimeController : public QObject {
     Q_OBJECT
 public:
     explicit TimeController(QObject *parent = 0);
