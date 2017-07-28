@@ -5,6 +5,7 @@
 
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
+#include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
@@ -20,6 +21,13 @@ const auto HORIZONTAL_ZOOM_MODIFIER = Qt::NoModifier;
 
 /// Key pressed to enable zoom on vertical axis
 const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
+
+/// Gets a tolerance value from application settings. If the setting can't be found, the default
+/// value passed in parameter is returned
+double toleranceValue(const QString &key, double defaultValue) noexcept
+{
+    return QSettings{}.value(key, defaultValue).toDouble();
+}
 
 } // namespace
 
@@ -106,8 +114,10 @@ void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> v
 
     auto variableDateTimeWithTolerance = dateTime;
 
-    // add 20% tolerance for each side
-    auto tolerance = 0.2 * (dateTime.m_TEnd - dateTime.m_TStart);
+    // add tolerance for each side
+    auto toleranceFactor
+        = toleranceValue(GENERAL_TOLERANCE_AT_INIT_KEY, GENERAL_TOLERANCE_AT_INIT_DEFAULT_VALUE);
+    auto tolerance = toleranceFactor * (dateTime.m_TEnd - dateTime.m_TStart);
     variableDateTimeWithTolerance.m_TStart -= tolerance;
     variableDateTimeWithTolerance.m_TEnd += tolerance;
 
@@ -232,7 +242,8 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
         auto variable = it->first;
         auto currentDateTime = dateTimeRange;
 
-        auto toleranceFactor = 0.2;
+        auto toleranceFactor = toleranceValue(GENERAL_TOLERANCE_AT_UPDATE_KEY,
+                                              GENERAL_TOLERANCE_AT_UPDATE_DEFAULT_VALUE);
         auto tolerance = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
         auto variableDateTimeWithTolerance = currentDateTime;
         variableDateTimeWithTolerance.m_TStart -= tolerance;
@@ -251,7 +262,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                 if (variable->contains(variableDateTimeWithTolerance)) {
                     qCDebug(LOG_VisualizationGraphWidget())
                         << tr("TORM: Detection zoom in that need request:");
-                    // add 10% tolerance for each side
+                    // add tolerance for each side
                     tolerance
                         = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
                     variableDateTimeWithTolerance.m_TStart -= tolerance;
@@ -286,7 +297,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
             }
             else {
                 qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Detection zoom out: ");
-                // add 10% tolerance for each side
+                // add tolerance for each side
                 tolerance = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
                 variableDateTimeWithTolerance.m_TStart -= tolerance;
                 variableDateTimeWithTolerance.m_TEnd += tolerance;

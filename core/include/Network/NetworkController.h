@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_NETWORKCONTROLLER_H
 #define SCIQLOP_NETWORKCONTROLLER_H
 
+#include "CoreGlobal.h"
+
 #include <QLoggingCategory>
 #include <QObject>
 #include <QUuid>
@@ -16,7 +18,7 @@ class QNetworkRequest;
 /**
  * @brief The NetworkController class aims to handle all network connection of SciQlop.
  */
-class NetworkController : public QObject {
+class SCIQLOP_CORE_EXPORT NetworkController : public QObject {
     Q_OBJECT
 public:
     explicit NetworkController(QObject *parent = 0);

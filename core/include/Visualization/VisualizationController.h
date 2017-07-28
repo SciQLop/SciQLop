@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_VISUALIZATIONCONTROLLER_H
 #define SCIQLOP_VISUALIZATIONCONTROLLER_H
 
+#include "CoreGlobal.h"
+
 #include <Data/SqpDateTime.h>
 
 #include <QLoggingCategory>
@@ -21,7 +23,7 @@ class Variable;
  * plugin source) then others specifics method will be able to access it. You can load a data source
  * driver plugin then create a data source.
  */
-class VisualizationController : public QObject {
+class SCIQLOP_CORE_EXPORT VisualizationController : public QObject {
     Q_OBJECT
 public:
     explicit VisualizationController(QObject *parent = 0);

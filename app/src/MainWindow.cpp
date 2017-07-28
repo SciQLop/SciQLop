@@ -24,6 +24,8 @@
 
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceWidget.h>
+#include <Settings/SqpSettingsDialog.h>
+#include <Settings/SqpSettingsGeneralWidget.h>
 #include <SidePane/SqpSidePane.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
@@ -41,18 +43,6 @@
 #include <QToolButton>
 #include <memory.h>
 
-//#include <omp.h>
-//#include <network/filedownloader.h>
-//#include <qlopdatabase.h>
-//#include <qlopsettings.h>
-//#include <qlopgui.h>
-//#include <spacedata.h>
-//#include "qlopcore.h"
-//#include "qlopcodecmanager.h"
-//#include "cdfcodec.h"
-//#include "amdatxtcodec.h"
-//#include <qlopplotmanager.h>
-
 #include "iostream"
 
 Q_LOGGING_CATEGORY(LOG_MainWindow, "MainWindow")
@@ -67,14 +57,26 @@ const auto RIGHTMAININSPECTORWIDGETSPLITTERINDEX = 4;
 
 class MainWindow::MainWindowPrivate {
 public:
+    explicit MainWindowPrivate(MainWindow *mainWindow)
+            : m_LastOpenLeftInspectorSize{},
+              m_LastOpenRightInspectorSize{},
+              m_GeneralSettingsWidget{new SqpSettingsGeneralWidget{mainWindow}},
+              m_SettingsDialog{new SqpSettingsDialog{mainWindow}}
+    {
+    }
+
     QSize m_LastOpenLeftInspectorSize;
     QSize m_LastOpenRightInspectorSize;
+    /// General settings widget. MainWindow has the ownership
+    SqpSettingsGeneralWidget *m_GeneralSettingsWidget;
+    /// Settings dialog. MainWindow has the ownership
+    SqpSettingsDialog *m_SettingsDialog;
 };
 
 MainWindow::MainWindow(QWidget *parent)
         : QMainWindow{parent},
           m_Ui{new Ui::MainWindow},
-          impl{spimpl::make_unique_impl<MainWindowPrivate>()}
+          impl{spimpl::make_unique_impl<MainWindowPrivate>(this)}
 {
     m_Ui->setupUi(this);
 
@@ -167,11 +169,38 @@ MainWindow::MainWindow(QWidget *parent)
                 openInspector(checked, true, openRightInspectorAction);
             });
 
+    // //// //
+    // Menu //
+    // //// //
     this->menuBar()->addAction(tr("File"));
+    auto toolsMenu = this->menuBar()->addMenu(tr("Tools"));
+    toolsMenu->addAction(tr("Settings..."), [this]() {
+        // Loads settings
+        impl->m_SettingsDialog->loadSettings();
+
+        // Open settings dialog and save settings if the dialog is accepted
+        if (impl->m_SettingsDialog->exec() == QDialog::Accepted) {
+            impl->m_SettingsDialog->saveSettings();
+        }
+
+    });
+
     auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
 
     auto timeWidget = new TimeWidget{};
     mainToolBar->addWidget(timeWidget);
+
+    // //////// //
+    // Settings //
+    // //////// //
+
+    // Registers "general settings" widget to the settings dialog
+    impl->m_SettingsDialog->registerWidget(QStringLiteral("General"),
+                                           impl->m_GeneralSettingsWidget);
+
+    // /////////// //
+    // Connections //
+    // /////////// //
 
     // Controllers / controllers connections
     connect(&sqpApp->timeController(), SIGNAL(timeUpdated(SqpDateTime)),
@@ -207,54 +236,11 @@ MainWindow::MainWindow(QWidget *parent)
         SIGNAL(tableMenuAboutToBeDisplayed(QMenu *, const QVector<std::shared_ptr<Variable> > &)),
         m_Ui->view, SLOT(attachVariableMenu(QMenu *, const QVector<std::shared_ptr<Variable> > &)),
         Qt::DirectConnection);
-
-    /*    QLopGUI::registerMenuBar(menuBar());
-        this->setWindowIcon(QIcon(":/sciqlopLOGO.svg"));
-        this->m_progressWidget = new QWidget();
-        this->m_progressLayout = new QVBoxLayout(this->m_progressWidget);
-        this->m_progressWidget->setLayout(this->m_progressLayout);
-        this->m_progressWidget->setWindowModality(Qt::WindowModal);
-        m_progressThreadIds = (int*) malloc(OMP_THREADS*sizeof(int));
-        for(int i=0;i<OMP_THREADS;i++)
-        {
-            this->m_progress.append(new QProgressBar(this->m_progressWidget));
-            this->m_progress.last()->setMinimum(0);
-            this->m_progress.last()->setMaximum(100);
-            this->m_progressLayout->addWidget(this->m_progress.last());
-            this->m_progressWidget->hide();
-            this->m_progressThreadIds[i] = -1;
-        }
-        this->m_progressWidget->setWindowTitle("Loading File");
-        const QList<QLopService*>ServicesToLoad=QList<QLopService*>()
-                << QLopCore::self()
-                << QLopPlotManager::self()
-                << QLopCodecManager::self()
-                << FileDownloader::self()
-                << QLopDataBase::self()
-                << SpaceData::self();
-
-        CDFCodec::registerToManager();
-        AMDATXTCodec::registerToManager();
-
-
-        for(int i=0;i<ServicesToLoad.count();i++)
-        {
-            qDebug()<<ServicesToLoad.at(i)->serviceName();
-            ServicesToLoad.at(i)->initialize(); //must be called before getGUI
-            QDockWidget* wdgt=ServicesToLoad.at(i)->getGUI();
-            if(wdgt)
-            {
-                wdgt->setAllowedAreas(Qt::AllDockWidgetAreas);
-                this->addDockWidget(Qt::TopDockWidgetArea,wdgt);
-            }
-            PythonQt::self()->getMainModule().addObject(ServicesToLoad.at(i)->serviceName(),(QObject*)ServicesToLoad.at(i));
-        }*/
 }
 
 MainWindow::~MainWindow()
 {
 }
-
 
 void MainWindow::changeEvent(QEvent *e)
 {

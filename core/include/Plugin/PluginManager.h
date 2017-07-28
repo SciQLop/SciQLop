@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_PLUGINMANAGER_H
 #define SCIQLOP_PLUGINMANAGER_H
 
+#include "CoreGlobal.h"
+
 #include <Common/spimpl.h>
 
 #include <QLoggingCategory>
@@ -12,7 +14,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_PluginManager)
 /**
  * @brief The PluginManager class aims to handle the plugins loaded dynamically into SciQLop.
  */
-class PluginManager {
+class SCIQLOP_CORE_EXPORT PluginManager {
 public:
     explicit PluginManager();
 

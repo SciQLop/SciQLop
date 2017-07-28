@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_VARIABLE_H
 #define SCIQLOP_VARIABLE_H
 
+#include "CoreGlobal.h"
+
 #include <Data/SqpDateTime.h>
 
 #include <QLoggingCategory>
@@ -17,7 +19,7 @@ class QString;
 /**
  * @brief The Variable class represents a variable in SciQlop.
  */
-class Variable : public QObject {
+class SCIQLOP_CORE_EXPORT Variable : public QObject {
 
     Q_OBJECT
 
