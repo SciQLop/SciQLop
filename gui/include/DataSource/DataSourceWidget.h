@@ -32,6 +32,9 @@ private:
     Ui::DataSourceWidget *ui;
 
 private slots:
+    /// Slot called when the filtering text has changed
+    void filterChanged(const QString &text) noexcept;
+
     /// Slot called when right clicking on an item in the tree (displays a menu)
     void onTreeMenuRequested(const QPoint &pos) noexcept;
 };

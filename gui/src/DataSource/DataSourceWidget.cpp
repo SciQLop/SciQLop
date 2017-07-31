@@ -47,6 +47,9 @@ DataSourceWidget::DataSourceWidget(QWidget *parent) : QWidget{parent}, ui{new Ui
     // Connection to show a menu when right clicking on the tree
     connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested, this,
             &DataSourceWidget::onTreeMenuRequested);
+
+    // Connection to filter tree
+    connect(ui->filterLineEdit, &QLineEdit::textChanged, this, &DataSourceWidget::filterChanged);
 }
 
 DataSourceWidget::~DataSourceWidget() noexcept
@@ -61,6 +64,10 @@ void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
     if (dataSource) {
         ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
     }
+}
+
+void DataSourceWidget::filterChanged(const QString &text) noexcept
+{
 }
 
 void DataSourceWidget::onTreeMenuRequested(const QPoint &pos) noexcept
