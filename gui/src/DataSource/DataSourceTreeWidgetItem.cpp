@@ -131,6 +131,11 @@ DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(QTreeWidget *parent, const Da
                    std::back_inserter(impl->m_Actions), createTreeAction);
 }
 
+const DataSourceItem *DataSourceTreeWidgetItem::data() const
+{
+    return impl->m_Data;
+}
+
 QVariant DataSourceTreeWidgetItem::data(int column, int role) const
 {
     if (role == Qt::DisplayRole) {

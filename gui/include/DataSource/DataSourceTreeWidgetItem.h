@@ -21,6 +21,8 @@ public:
     explicit DataSourceTreeWidgetItem(QTreeWidget *parent, const DataSourceItem *data,
                                       int type = Type);
 
+    const DataSourceItem *data() const;
+
     virtual QVariant data(int column, int role) const override;
     virtual void setData(int column, int role, const QVariant &value) override;
 
