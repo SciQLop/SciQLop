@@ -3,6 +3,7 @@
 #include <ui_DataSourceWidget.h>
 
 #include <DataSource/DataSourceItem.h>
+#include <DataSource/DataSourceTreeWidgetHelper.h>
 #include <DataSource/DataSourceTreeWidgetItem.h>
 
 #include <QMenu>
@@ -47,6 +48,9 @@ DataSourceWidget::DataSourceWidget(QWidget *parent) : QWidget{parent}, ui{new Ui
     // Connection to show a menu when right clicking on the tree
     connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested, this,
             &DataSourceWidget::onTreeMenuRequested);
+
+    // Connection to filter tree
+    connect(ui->filterLineEdit, &QLineEdit::textChanged, this, &DataSourceWidget::filterChanged);
 }
 
 DataSourceWidget::~DataSourceWidget() noexcept
@@ -61,6 +65,25 @@ void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
     if (dataSource) {
         ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
     }
+}
+
+void DataSourceWidget::filterChanged(const QString &text) noexcept
+{
+    auto validateItem = [&text](const DataSourceTreeWidgetItem &item) {
+        auto regExp = QRegExp{text, Qt::CaseInsensitive, QRegExp::Wildcard};
+
+        // An item is valid if any of its metadata validates the text filter
+        auto itemMetadata = item.data()->data();
+        auto itemMetadataEnd = itemMetadata.cend();
+        auto acceptFilter
+            = [&regExp](const auto &variant) { return variant.toString().contains(regExp); };
+
+        return std::find_if(itemMetadata.cbegin(), itemMetadataEnd, acceptFilter)
+               != itemMetadataEnd;
+    };
+
+    // Applies filter on tree widget
+    DataSourceTreeWidgetHelper::filter(*ui->treeWidget, validateItem);
 }
 
 void DataSourceWidget::onTreeMenuRequested(const QPoint &pos) noexcept
