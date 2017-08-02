@@ -104,7 +104,7 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
 
                 // Displays point tracer
                 impl->m_PointTracer->setGraph(graph);
-                impl->m_PointTracer->setGraphKey(mouseKey);
+                impl->m_PointTracer->setGraphKey(graphDataIt->key);
                 displayTracer(*impl->m_PointTracer);
 
                 // Displays text tracer
