@@ -1,5 +1,6 @@
 #include "AmdaResultParser.h"
 
+#include <Common/DateUtils.h>
 #include <Data/ScalarSeries.h>
 
 #include <QDateTime>
@@ -33,7 +34,8 @@ const auto UNIT_REGEX = QRegularExpression{QStringLiteral("-\\s*Units\\s*:\\s*(.
 double doubleDate(const QString &stringDate) noexcept
 {
     auto dateTime = QDateTime::fromString(stringDate, DATE_FORMAT);
-    return dateTime.isValid() ? (dateTime.toMSecsSinceEpoch() / 1000.)
+    dateTime.setTimeSpec(Qt::UTC);
+    return dateTime.isValid() ? DateUtils::secondsSinceEpoch(dateTime)
                               : std::numeric_limits<double>::quiet_NaN();
 }
 
