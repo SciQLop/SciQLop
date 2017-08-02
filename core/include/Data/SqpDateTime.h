@@ -3,9 +3,9 @@
 
 #include <QObject>
 
-#include <QDateTime>
 #include <QDebug>
 
+#include <Common/DateUtils.h>
 #include <Common/MetaTypes.h>
 
 /**
@@ -30,10 +30,9 @@ struct SqpDateTime {
 
 inline QDebug operator<<(QDebug d, SqpDateTime obj)
 {
-    auto tendDateTimeStart = QDateTime::fromMSecsSinceEpoch(obj.m_TStart * 1000);
-    auto tendDateTimeEnd = QDateTime::fromMSecsSinceEpoch(obj.m_TEnd * 1000);
+    auto tendDateTimeStart = DateUtils::dateTime(obj.m_TStart);
+    auto tendDateTimeEnd = DateUtils::dateTime(obj.m_TEnd);
 
-    //        QDebug << "ts: " << tendDateTimeStart << " te: " << tendDateTimeEnd;
     d << "ts: " << tendDateTimeStart << " te: " << tendDateTimeEnd;
     return d;
 }

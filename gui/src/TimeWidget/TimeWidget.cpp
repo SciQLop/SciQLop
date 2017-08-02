@@ -40,9 +40,8 @@ TimeWidget::~TimeWidget()
 
 void TimeWidget::onTimeUpdateRequested()
 {
-    auto dateTime = SqpDateTime{
-        static_cast<double>(ui->startDateTimeEdit->dateTime().toMSecsSinceEpoch() / 1000.),
-        static_cast<double>(ui->endDateTimeEdit->dateTime().toMSecsSinceEpoch()) / 1000.};
+    auto dateTime = SqpDateTime{DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
+                                DateUtils::secondsSinceEpoch(ui->endDateTimeEdit->dateTime())};
 
     emit timeUpdated(std::move(dateTime));
 }
