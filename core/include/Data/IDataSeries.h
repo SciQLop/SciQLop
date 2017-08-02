@@ -23,7 +23,7 @@ struct Unit {
     inline bool operator!=(const Unit &other) const { return !(*this == other); }
 
     QString m_Name;  ///< Unit name
-    bool m_TimeUnit; ///< The unit is a unit of time
+    bool m_TimeUnit; ///< The unit is a unit of time (UTC)
 };
 
 /**

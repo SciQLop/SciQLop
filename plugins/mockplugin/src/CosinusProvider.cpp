@@ -5,7 +5,6 @@
 
 #include <cmath>
 
-#include <QDateTime>
 #include <QFuture>
 #include <QThread>
 #include <QtConcurrent/QtConcurrent>

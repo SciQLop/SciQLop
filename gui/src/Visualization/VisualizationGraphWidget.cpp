@@ -1,6 +1,7 @@
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/IVisualizationWidgetVisitor.h"
 #include "Visualization/VisualizationGraphHelper.h"
+#include "Visualization/VisualizationGraphRenderingDelegate.h"
 #include "ui_VisualizationGraphWidget.h"
 
 #include <Data/ArrayData.h>
@@ -33,17 +34,21 @@ double toleranceValue(const QString &key, double defaultValue) noexcept
 
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
-    explicit VisualizationGraphWidgetPrivate() : m_DoSynchronize{true}, m_IsCalibration{false} {}
-
+    explicit VisualizationGraphWidgetPrivate()
+            : m_DoSynchronize{true}, m_IsCalibration{false}, m_RenderingDelegate{nullptr}
+    {
+    }
 
     // Return the operation when range changed
     VisualizationGraphWidgetZoomType getZoomType(const QCPRange &t1, const QCPRange &t2);
 
     // 1 variable -> n qcpplot
     std::multimap<std::shared_ptr<Variable>, QCPAbstractPlottable *> m_VariableToPlotMultiMap;
-
     bool m_DoSynchronize;
     bool m_IsCalibration;
+    QCPItemTracer *m_TextTracer;
+    /// Delegate used to attach rendering features to the plot
+    std::unique_ptr<VisualizationGraphRenderingDelegate> m_RenderingDelegate;
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
@@ -52,6 +57,9 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
           impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>()}
 {
     ui->setupUi(this);
+
+    // The delegate must be initialized after the ui as it uses the plot
+    impl->m_RenderingDelegate = std::make_unique<VisualizationGraphRenderingDelegate>(*ui->widget);
 
     ui->graphNameLabel->setText(name);
 
@@ -65,9 +73,11 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
+
     connect(ui->widget, &QCustomPlot::mousePress, this, &VisualizationGraphWidget::onMousePress);
     connect(ui->widget, &QCustomPlot::mouseRelease, this,
             &VisualizationGraphWidget::onMouseRelease);
+    connect(ui->widget, &QCustomPlot::mouseMove, this, &VisualizationGraphWidget::onMouseMove);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
     connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
                                    &QCPAxis::rangeChanged),
@@ -327,6 +337,12 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
             << QThread::currentThread()->objectName();
         emit synchronize(dateTimeRange, oldDateTime, zoomType);
     }
+}
+
+void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
+{
+    // Handles plot rendering when mouse is moving
+    impl->m_RenderingDelegate->onMouseMove(event);
 }
 
 void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept

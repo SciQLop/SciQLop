@@ -47,6 +47,9 @@
      <property name="calendarPopup">
       <bool>true</bool>
      </property>
+     <property name="timeSpec">
+      <enum>Qt::UTC</enum>
+     </property>
     </widget>
    </item>
    <item>
@@ -75,6 +78,9 @@
      </property>
      <property name="calendarPopup">
       <bool>true</bool>
+     </property>
+     <property name="timeSpec">
+      <enum>Qt::UTC</enum>
      </property>
     </widget>
    </item>

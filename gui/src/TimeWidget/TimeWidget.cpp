@@ -1,6 +1,7 @@
 #include "TimeWidget/TimeWidget.h"
 #include "ui_TimeWidget.h"
 
+#include <Common/DateUtils.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
 
@@ -22,13 +23,15 @@ TimeWidget::TimeWidget(QWidget *parent) : QWidget{parent}, ui{new Ui::TimeWidget
             &TimeController::onTimeNotify);
 
     // Initialisation
-    ui->startDateTimeEdit->setDateTime(
-        QDateTime::currentDateTime().addSecs(-3600)); // one hour berefore
-    ui->endDateTimeEdit->setDateTime(QDateTime::currentDateTime());
+    auto endDateTime = QDateTime::currentDateTimeUtc();
+    auto startDateTime = endDateTime.addSecs(-3600); // one hour before
 
-    auto dateTime
-        = SqpDateTime{QDateTime::currentDateTime().addSecs(-3600).toMSecsSinceEpoch() / 1000.0,
-                      QDateTime::currentDateTime().toMSecsSinceEpoch() / 1000.0};
+    ui->startDateTimeEdit->setDateTime(startDateTime);
+    ui->endDateTimeEdit->setDateTime(endDateTime);
+
+    auto dateTime = SqpDateTime{DateUtils::secondsSinceEpoch(startDateTime),
+                                DateUtils::secondsSinceEpoch(endDateTime)};
+
     sqpApp->timeController().onTimeToUpdate(dateTime);
 }
 
@@ -40,9 +43,8 @@ TimeWidget::~TimeWidget()
 
 void TimeWidget::onTimeUpdateRequested()
 {
-    auto dateTime = SqpDateTime{
-        static_cast<double>(ui->startDateTimeEdit->dateTime().toMSecsSinceEpoch() / 1000.),
-        static_cast<double>(ui->endDateTimeEdit->dateTime().toMSecsSinceEpoch()) / 1000.};
+    auto dateTime = SqpDateTime{DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
+                                DateUtils::secondsSinceEpoch(ui->endDateTimeEdit->dateTime())};
 
     emit timeUpdated(std::move(dateTime));
 }

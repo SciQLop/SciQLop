@@ -99,7 +99,7 @@ void TestAmdaResultParser::testReadTxt_data()
     // ////////// //
 
     auto dateTime = [](int year, int month, int day, int hours, int minutes, int seconds) {
-        return QDateTime{{year, month, day}, {hours, minutes, seconds}};
+        return QDateTime{{year, month, day}, {hours, minutes, seconds}, Qt::UTC};
     };
 
     // Valid file
