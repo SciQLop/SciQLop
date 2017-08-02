@@ -1,6 +1,8 @@
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
 #include "Visualization/qcustomplot.h"
 
+#include <Common/DateUtils.h>
+
 namespace {
 
 const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
@@ -14,9 +16,12 @@ const auto TRACER_TIMEOUT = 500;
 QString formatValue(double value, const QCPAxis &axis)
 {
     // If the axis is a time axis, formats the value as a date
-    return qSharedPointerDynamicCast<QCPAxisTickerDateTime>(axis.ticker())
-               ? QCPAxisTickerDateTime::keyToDateTime(value).toString(DATETIME_FORMAT)
-               : QString::number(value);
+    if (auto axisTicker = qSharedPointerDynamicCast<QCPAxisTickerDateTime>(axis.ticker())) {
+        return DateUtils::dateTime(value, axisTicker->dateTimeSpec()).toString(DATETIME_FORMAT);
+    }
+    else {
+        return QString::number(value);
+    }
 }
 
 void initPointTracerStyle(QCPItemTracer &tracer) noexcept
