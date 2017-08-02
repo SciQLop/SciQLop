@@ -2,6 +2,7 @@
 #include "AmdaDefs.h"
 #include "AmdaResultParser.h"
 
+#include <Common/DateUtils.h>
 #include <Data/DataProviderParameters.h>
 #include <Network/NetworkController.h>
 #include <SqpApplication.h>
@@ -31,7 +32,7 @@ const auto AMDA_TIME_FORMAT = QStringLiteral("yyyy-MM-ddThh:mm:ss");
 /// Formats a time to a date that can be passed in URL
 QString dateFormat(double sqpDateTime) noexcept
 {
-    auto dateTime = QDateTime::fromMSecsSinceEpoch(sqpDateTime * 1000.);
+    auto dateTime = DateUtils::dateTime(sqpDateTime);
     return dateTime.toString(AMDA_TIME_FORMAT);
 }
 

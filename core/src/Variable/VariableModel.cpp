@@ -1,9 +1,10 @@
 #include <Variable/Variable.h>
 #include <Variable/VariableModel.h>
 
+#include <Common/DateUtils.h>
+
 #include <Data/IDataSeries.h>
 
-#include <QDateTime>
 #include <QSize>
 #include <unordered_map>
 
@@ -150,8 +151,8 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
     if (role == Qt::DisplayRole) {
         if (auto variable = impl->m_Variables.at(index.row()).get()) {
             /// Lambda function that builds the variant to return for a time value
-            auto dateTimeVariant = [](double time) {
-                auto dateTime = QDateTime::fromMSecsSinceEpoch(time * 1000.);
+            auto dateTimeVariant = [](double secs) {
+                auto dateTime = DateUtils::dateTime(secs);
                 return dateTime.toString(DATETIME_FORMAT);
             };
 

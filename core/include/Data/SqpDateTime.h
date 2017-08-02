@@ -3,18 +3,18 @@
 
 #include <QObject>
 
-#include <QDateTime>
 #include <QDebug>
 
+#include <Common/DateUtils.h>
 #include <Common/MetaTypes.h>
 
 /**
  * @brief The SqpDateTime struct holds the information of time parameters
  */
 struct SqpDateTime {
-    /// Start time
+    /// Start time (UTC)
     double m_TStart;
-    /// End time
+    /// End time (UTC)
     double m_TEnd;
 
     bool contains(const SqpDateTime &dateTime) const noexcept
@@ -30,10 +30,9 @@ struct SqpDateTime {
 
 inline QDebug operator<<(QDebug d, SqpDateTime obj)
 {
-    auto tendDateTimeStart = QDateTime::fromMSecsSinceEpoch(obj.m_TStart * 1000);
-    auto tendDateTimeEnd = QDateTime::fromMSecsSinceEpoch(obj.m_TEnd * 1000);
+    auto tendDateTimeStart = DateUtils::dateTime(obj.m_TStart);
+    auto tendDateTimeEnd = DateUtils::dateTime(obj.m_TEnd);
 
-    //        QDebug << "ts: " << tendDateTimeStart << " te: " << tendDateTimeEnd;
     d << "ts: " << tendDateTimeStart << " te: " << tendDateTimeEnd;
     return d;
 }

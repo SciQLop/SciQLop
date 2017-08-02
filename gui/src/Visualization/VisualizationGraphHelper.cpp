@@ -25,6 +25,7 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
     if (isTimeAxis) {
         auto dateTicker = QSharedPointer<QCPAxisTickerDateTime>::create();
         dateTicker->setDateTimeFormat(DATETIME_TICKER_FORMAT);
+        dateTicker->setDateTimeSpec(Qt::UTC);
 
         return dateTicker;
     }
