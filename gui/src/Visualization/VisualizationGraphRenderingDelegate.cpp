@@ -50,6 +50,14 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
 
     auto showTracers = [ eventPos = event->pos(), this ]()
     {
+        // Lambda function to display a tracer
+        auto displayTracer = [this](auto &tracer) {
+            // Tracer is set on top of the plot's main layer
+            tracer.setLayer(impl->m_Plot.layer("main"));
+            tracer.setVisible(true);
+            impl->m_Plot.replot();
+        };
+
         // Reinits tracers
         impl->m_PointTracer->setGraph(nullptr);
         impl->m_PointTracer->setVisible(false);
@@ -67,6 +75,19 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
                 auto key = formatValue(graphDataIt->key, *graph->keyAxis());
                 auto value = formatValue(graphDataIt->value, *graph->valueAxis());
                 impl->m_TextTracer->setText(TEXT_TRACER_FORMAT.arg(key, value));
+
+                // Displays point tracer
+                impl->m_PointTracer->setGraph(graph);
+                impl->m_PointTracer->setGraphKey(mouseKey);
+                displayTracer(*impl->m_PointTracer);
+
+                // Displays text tracer
+                auto tracerPosition = impl->m_TextTracer->position;
+                tracerPosition->setAxes(graph->keyAxis(), graph->valueAxis());
+                tracerPosition->setCoords(impl->m_PointTracer->position->key(),
+                                          impl->m_PointTracer->position->value());
+                displayTracer(*impl->m_TextTracer);
+            }
         }
     };
 
