@@ -18,6 +18,25 @@ QString formatValue(double value, const QCPAxis &axis)
                ? QCPAxisTickerDateTime::keyToDateTime(value).toString(DATETIME_FORMAT)
                : QString::number(value);
 }
+
+void initPointTracerStyle(QCPItemTracer &tracer) noexcept
+{
+    tracer.setInterpolating(false);
+    tracer.setStyle(QCPItemTracer::tsPlus);
+    tracer.setPen(QPen(Qt::black));
+    tracer.setBrush(Qt::black);
+    tracer.setSize(10);
+}
+
+void initTextTracerStyle(QCPItemText &tracer) noexcept
+{
+    tracer.setPen(QPen{Qt::gray});
+    tracer.setBrush(Qt::white);
+    tracer.setPadding(QMargins{6, 6, 6, 6});
+    tracer.setPositionAlignment(Qt::AlignTop | Qt::AlignLeft);
+    tracer.setTextAlignment(Qt::AlignLeft);
+}
+
 } // namespace
 
 struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegatePrivate {
@@ -27,6 +46,8 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
               m_TextTracer{new QCPItemText{&plot}},
               m_TracerTimer{}
     {
+        initPointTracerStyle(*m_PointTracer);
+        initTextTracerStyle(*m_TextTracer);
 
         m_TracerTimer.setInterval(TRACER_TIMEOUT);
         m_TracerTimer.setSingleShot(true);
