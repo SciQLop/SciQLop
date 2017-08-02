@@ -69,6 +69,8 @@ private slots:
     /// Rescale the X axe to range parameter
     void onRangeChanged(const QCPRange &t1, const QCPRange &t2);
 
+    /// Slot called when a mouse move was made
+    void onMouseMove(QMouseEvent *event) noexcept;
     /// Slot called when a mouse wheel was made, to perform some processing before the zoom is done
     void onMouseWheel(QWheelEvent *event) noexcept;
     /// Slot called when a mouse press was made, to activate the calibration of a graph
