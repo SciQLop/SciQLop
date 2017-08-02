@@ -11,3 +11,7 @@ VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegate(QCustom
         : impl{spimpl::make_unique_impl<VisualizationGraphRenderingDelegatePrivate>(plot)}
 {
 }
+
+void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexcept
+{
+}

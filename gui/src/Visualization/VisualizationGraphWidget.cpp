@@ -73,9 +73,11 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
+
     connect(ui->widget, &QCustomPlot::mousePress, this, &VisualizationGraphWidget::onMousePress);
     connect(ui->widget, &QCustomPlot::mouseRelease, this,
             &VisualizationGraphWidget::onMouseRelease);
+    connect(ui->widget, &QCustomPlot::mouseMove, this, &VisualizationGraphWidget::onMouseMove);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
     connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
                                    &QCPAxis::rangeChanged),
@@ -335,6 +337,12 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
             << QThread::currentThread()->objectName();
         emit synchronize(dateTimeRange, oldDateTime, zoomType);
     }
+}
+
+void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
+{
+    // Handles plot rendering when mouse is moving
+    impl->m_RenderingDelegate->onMouseMove(event);
 }
 
 void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept

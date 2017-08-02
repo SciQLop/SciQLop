@@ -10,6 +10,8 @@ class VisualizationGraphRenderingDelegate {
 public:
     explicit VisualizationGraphRenderingDelegate(QCustomPlot &plot);
 
+    void onMouseMove(QMouseEvent *event) noexcept;
+
 private:
     class VisualizationGraphRenderingDelegatePrivate;
     spimpl::unique_impl_ptr<VisualizationGraphRenderingDelegatePrivate> impl;
