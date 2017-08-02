@@ -8,7 +8,6 @@
 #include <Data/IDataSeries.h>
 #include <Time/TimeController.h>
 
-#include <QDateTime>
 #include <QMutex>
 #include <QThread>
 #include <QUuid>

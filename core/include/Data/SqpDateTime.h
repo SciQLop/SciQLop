@@ -12,9 +12,9 @@
  * @brief The SqpDateTime struct holds the information of time parameters
  */
 struct SqpDateTime {
-    /// Start time
+    /// Start time (UTC)
     double m_TStart;
-    /// End time
+    /// End time (UTC)
     double m_TEnd;
 
     bool contains(const SqpDateTime &dateTime) const noexcept

@@ -36,7 +36,6 @@
 
 #include <QAction>
 #include <QDate>
-#include <QDateTime>
 #include <QDir>
 #include <QFileDialog>
 #include <QToolBar>
