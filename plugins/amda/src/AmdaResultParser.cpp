@@ -93,15 +93,23 @@ QPair<QVector<double>, QVector<double> > readResults(QTextStream &stream)
                 bool valueOk;
                 auto value = lineData.at(1).toDouble(&valueOk);
 
-                // Adds result only if x and value are valid
-                if (!std::isnan(x) && !std::isnan(value) && valueOk) {
+                // Adds result only if x is valid. Then, if value is invalid, it is set to NaN
+                if (!std::isnan(x)) {
                     xData.push_back(x);
+
+                    if (!valueOk) {
+                        qCWarning(LOG_AmdaResultParser())
+                            << QObject::tr(
+                                   "Value from line %1 is invalid and will be converted to NaN")
+                                   .arg(line);
+                        value = std::numeric_limits<double>::quiet_NaN();
+                    }
+
                     valuesData.push_back(value);
                 }
                 else {
                     qCWarning(LOG_AmdaResultParser())
-                        << QObject::tr(
-                               "Can't retrieve results from line %1: x and/or value are invalid")
+                        << QObject::tr("Can't retrieve results from line %1: x is invalid")
                                .arg(line);
                 }
             }
