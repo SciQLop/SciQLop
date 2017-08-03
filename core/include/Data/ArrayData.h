@@ -79,21 +79,6 @@ public:
     }
 
     /**
-     * Sets a data at a specified index. The index has to be valid to be effective
-     * @param index the index to which the data will be set
-     * @param data the data to set
-     * @remarks this method is only available for a unidimensional ArrayData
-     */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    void setData(int index, double data) noexcept
-    {
-        QWriteLocker locker{&m_Lock};
-        if (index >= 0 && index < m_Data.at(0).size()) {
-            m_Data[0].replace(index, data);
-        }
-    }
-
-    /**
      * @return the data as a vector
      * @remarks this method is only available for a unidimensional ArrayData
      */
