@@ -146,7 +146,8 @@ public:
         }
     }
 
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    /// @return the size (i.e. number of values) of a single component
+    /// @remarks in a case of a two-dimensional ArrayData, each component has the same size
     int size() const
     {
         QReadLocker locker{&m_Lock};
@@ -170,13 +171,15 @@ public:
         return std::make_shared<ArrayData<Dim> >(std::move(sortedData));
     }
 
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
     void clear()
     {
         QWriteLocker locker{&m_Lock};
-        m_Data[0].clear();
-    }
 
+        auto nbComponents = m_Data.size();
+        for (auto i = 0; i < nbComponents; ++i) {
+            m_Data[i].clear();
+        }
+    }
 
 private:
     QVector<QVector<double> > m_Data;
