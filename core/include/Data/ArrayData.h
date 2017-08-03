@@ -21,23 +21,11 @@ class ArrayData {
 public:
     /**
      * Ctor for a unidimensional ArrayData
-     * @param nbColumns the number of values the ArrayData will hold
-     */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    explicit ArrayData(int nbColumns) : m_Data{1, QVector<double>{}}
-    {
-        QWriteLocker locker{&m_Lock};
-        m_Data[0].resize(nbColumns);
-    }
-
-    /**
-     * Ctor for a unidimensional ArrayData
      * @param data the data the ArrayData will hold
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     explicit ArrayData(QVector<double> data) : m_Data{1, QVector<double>{}}
     {
-        QWriteLocker locker{&m_Lock};
         m_Data[0] = std::move(data);
     }
 
@@ -45,7 +33,6 @@ public:
     explicit ArrayData(const ArrayData &other)
     {
         QReadLocker otherLocker{&other.m_Lock};
-        QWriteLocker locker{&m_Lock};
         m_Data = other.m_Data;
     }
 
