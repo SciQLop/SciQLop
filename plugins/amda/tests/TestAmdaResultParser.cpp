@@ -11,6 +11,26 @@ namespace {
 const auto TESTS_RESOURCES_PATH
     = QFileInfo{QString{AMDA_TESTS_RESOURCES_DIR}, "TestAmdaResultParser"}.absoluteFilePath();
 
+/// Compares two vectors that can potentially contain NaN values
+bool compareVectors(const QVector<double> &v1, const QVector<double> &v2)
+{
+    if (v1.size() != v2.size()) {
+        return false;
+    }
+
+    auto result = true;
+    auto v2It = v2.cbegin();
+    for (auto v1It = v1.cbegin(), v1End = v1.cend(); v1It != v1End && result; ++v1It, ++v2It) {
+        auto v1Value = *v1It;
+        auto v2Value = *v2It;
+
+        // If v1 is NaN, v2 has to be NaN too
+        result = std::isnan(v1Value) ? std::isnan(v2Value) : (v1Value == v2Value);
+    }
+
+    return result;
+}
+
 QString inputFilePath(const QString &inputFileName)
 {
     return QFileInfo{TESTS_RESOURCES_PATH, inputFileName}.absoluteFilePath();
@@ -47,9 +67,10 @@ struct ExpectedResults {
             QVERIFY(scalarSeries->xAxisUnit() == m_XAxisUnit);
             QVERIFY(scalarSeries->valuesUnit() == m_ValuesUnit);
 
-            // Checks values
-            QVERIFY(scalarSeries->xAxisData()->data() == m_XAxisData);
-            QVERIFY(scalarSeries->valuesData()->data() == m_ValuesData);
+            // Checks values : as the vectors can potentially contain NaN values, we must use a
+            // custom vector comparison method
+            QVERIFY(compareVectors(scalarSeries->xAxisData()->data(), m_XAxisData));
+            QVERIFY(compareVectors(scalarSeries->valuesData()->data(), m_ValuesData));
         }
         else {
             QVERIFY(results == nullptr);
@@ -102,7 +123,7 @@ void TestAmdaResultParser::testReadTxt_data()
         return QDateTime{{year, month, day}, {hours, minutes, seconds}, Qt::UTC};
     };
 
-    // Valid file
+    // Valid files
     QTest::newRow("Valid file")
         << QStringLiteral("ValidScalar1.txt")
         << ExpectedResults{
@@ -114,6 +135,22 @@ void TestAmdaResultParser::testReadTxt_data()
                                   dateTime(2013, 9, 23, 9, 8, 30), dateTime(2013, 9, 23, 9, 9, 30)},
                QVector<double>{-2.83950, -2.71850, -2.52150, -2.57633, -2.58050, -2.48325, -2.63025,
                                -2.55800, -2.43250, -2.42200}};
+
+    QTest::newRow("Valid file (value of first line is invalid but it is converted to NaN")
+        << QStringLiteral("WrongValue.txt")
+        << ExpectedResults{
+               Unit{QStringLiteral("nT"), true}, Unit{},
+               QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
+                                  dateTime(2013, 9, 23, 9, 2, 30)},
+               QVector<double>{std::numeric_limits<double>::quiet_NaN(), -2.71850, -2.52150}};
+
+    QTest::newRow("Valid file that contains NaN values")
+        << QStringLiteral("NaNValue.txt")
+        << ExpectedResults{
+               Unit{QStringLiteral("nT"), true}, Unit{},
+               QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
+                                  dateTime(2013, 9, 23, 9, 2, 30)},
+               QVector<double>{std::numeric_limits<double>::quiet_NaN(), -2.71850, -2.52150}};
 
     // Valid files but with some invalid lines (wrong unit, wrong values, etc.)
     QTest::newRow("No unit file") << QStringLiteral("NoUnit.txt")
@@ -141,15 +178,8 @@ void TestAmdaResultParser::testReadTxt_data()
                QVector<QDateTime>{dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)},
                QVector<double>{-2.71850, -2.52150}};
 
-    QTest::newRow("Wrong results file (value of first line is invalid")
-        << QStringLiteral("WrongValue.txt")
-        << ExpectedResults{
-               Unit{QStringLiteral("nT"), true}, Unit{},
-               QVector<QDateTime>{dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)},
-               QVector<double>{-2.71850, -2.52150}};
-
-    QTest::newRow("Wrong results file (value of first line is NaN")
-        << QStringLiteral("NaNValue.txt")
+    QTest::newRow("Wrong results file (x of first line is NaN")
+        << QStringLiteral("NaNX.txt")
         << ExpectedResults{
                Unit{QStringLiteral("nT"), true}, Unit{},
                QVector<QDateTime>{dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)},
