@@ -6,6 +6,7 @@ DataSourceItem\.h:\d+:.*IPSIS_S01.*
 
 # Ignore false positive relative to a template class
 ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (D)
+ArrayData\.h:\d+:.*IPSIS_S04_NAMESPACE.*found: (arraydata_detail)
 ArrayData\.h:\d+:.*IPSIS_S06.*found: (D)
 ArrayData\.h:\d+:.*IPSIS_S06.*found: (Dim)
 DataSeries\.h:\d+:.*IPSIS_S04_VARIABLE.*
