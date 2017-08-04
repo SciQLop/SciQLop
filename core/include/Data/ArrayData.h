@@ -128,6 +128,19 @@ public:
     }
 
     /**
+     * @return the data of a component
+     * @param componentIndex the index of the component to retrieve the data
+     * @return the component's data, empty vector if the index is invalid
+     */
+    QVector<double> data(int componentIndex) const noexcept
+    {
+        QReadLocker locker{&m_Lock};
+
+        return (componentIndex >= 0 && componentIndex < m_Data.size()) ? m_Data.at(componentIndex)
+                                                                       : QVector<double>{};
+    }
+
+    /**
      * @return the data as a vector, as a const reference
      * @remarks this method is only available for a unidimensional ArrayData
      */
@@ -139,24 +152,28 @@ public:
     }
 
     /**
-     * Merges into the array data an other array data
+     * Merges into the array data an other array data. The two array datas must have the same number
+     * of components so the merge can be done
      * @param other the array data to merge with
      * @param prepend if true, the other array data is inserted at the beginning, otherwise it is
      * inserted at the end
-     * @remarks this method is only available for a unidimensional ArrayData
      */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    void add(const ArrayData<1> &other, bool prepend = false)
+    void add(const ArrayData<Dim> &other, bool prepend = false)
     {
         QWriteLocker locker{&m_Lock};
-        if (!m_Data.empty()) {
-            QReadLocker otherLocker{&other.m_Lock};
+        QReadLocker otherLocker{&other.m_Lock};
 
+        auto nbComponents = m_Data.size();
+        if (nbComponents != other.m_Data.size()) {
+            return;
+        }
+
+        for (auto componentIndex = 0; componentIndex < nbComponents; ++componentIndex) {
             if (prepend) {
-                const auto &otherData = other.data();
+                const auto &otherData = other.data(componentIndex);
                 const auto otherDataSize = otherData.size();
 
-                auto &data = m_Data[0];
+                auto &data = m_Data[componentIndex];
                 data.insert(data.begin(), otherDataSize, 0.);
 
                 for (auto i = 0; i < otherDataSize; ++i) {
@@ -164,7 +181,7 @@ public:
                 }
             }
             else {
-                m_Data[0] += other.data();
+                m_Data[componentIndex] += other.data(componentIndex);
             }
         }
     }
