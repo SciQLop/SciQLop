@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_ARRAYDATA_H
 #define SCIQLOP_ARRAYDATA_H
 
+#include <Common/SortUtils.h>
+
 #include <QReadLocker>
 #include <QReadWriteLock>
 #include <QVector>
@@ -140,20 +142,10 @@ public:
     }
 
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    std::shared_ptr<ArrayData<Dim> > sort(const std::vector<int> sortPermutation)
+    std::shared_ptr<ArrayData<Dim> > sort(const std::vector<int> &sortPermutation)
     {
         QReadLocker locker{&m_Lock};
-
-        const auto &data = m_Data.at(0);
-
-        // Inits result
-        auto sortedData = QVector<double>{};
-        sortedData.resize(data.size());
-
-        std::transform(sortPermutation.cbegin(), sortPermutation.cend(), sortedData.begin(),
-                       [&data](int i) { return data[i]; });
-
-        return std::make_shared<ArrayData<Dim> >(std::move(sortedData));
+        return std::make_shared<ArrayData<Dim> >(SortUtils::sort(m_Data.at(0), sortPermutation));
     }
 
     void clear()
