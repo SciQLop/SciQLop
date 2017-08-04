@@ -9,6 +9,42 @@
 
 #include <memory>
 
+template <int Dim>
+class ArrayData;
+
+using DataContainer = QVector<QVector<double> >;
+
+namespace arraydata_detail {
+
+/// Struct used to sort ArrayData
+template <int Dim>
+struct Sort {
+    static std::shared_ptr<ArrayData<Dim> > sort(const DataContainer &data,
+                                                 const std::vector<int> &sortPermutation)
+    {
+        auto nbComponents = data.size();
+        auto sortedData = DataContainer(nbComponents);
+
+        for (auto i = 0; i < nbComponents; ++i) {
+            sortedData[i] = SortUtils::sort(data.at(i), sortPermutation);
+        }
+
+        return std::make_shared<ArrayData<Dim> >(std::move(sortedData));
+    }
+};
+
+/// Specialization for uni-dimensional ArrayData
+template <>
+struct Sort<1> {
+    static std::shared_ptr<ArrayData<1> > sort(const DataContainer &data,
+                                               const std::vector<int> &sortPermutation)
+    {
+        return std::make_shared<ArrayData<1> >(SortUtils::sort(data.at(0), sortPermutation));
+    }
+};
+
+} // namespace arraydata_detail
+
 /**
  * @brief The ArrayData class represents a dataset for a data series.
  *
@@ -40,7 +76,7 @@ public:
      * @remarks if the number of values is not the same for each component, no value is set
      */
     template <int D = Dim, typename = std::enable_if_t<D == 2> >
-    explicit ArrayData(QVector<QVector<double> > data)
+    explicit ArrayData(DataContainer data)
     {
         auto nbComponents = data.size();
         if (nbComponents < 2) {
@@ -57,7 +93,7 @@ public:
             m_Data = std::move(data);
         }
         else {
-            m_Data = QVector<QVector<double> >{nbComponents, QVector<double>{}};
+            m_Data = DataContainer{nbComponents, QVector<double>{}};
         }
     }
 
@@ -141,11 +177,10 @@ public:
         return m_Data[0].size();
     }
 
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
     std::shared_ptr<ArrayData<Dim> > sort(const std::vector<int> &sortPermutation)
     {
         QReadLocker locker{&m_Lock};
-        return std::make_shared<ArrayData<Dim> >(SortUtils::sort(m_Data.at(0), sortPermutation));
+        return arraydata_detail::Sort<Dim>::sort(m_Data, sortPermutation);
     }
 
     void clear()
@@ -159,7 +194,7 @@ public:
     }
 
 private:
-    QVector<QVector<double> > m_Data;
+    DataContainer m_Data;
     mutable QReadWriteLock m_Lock;
 };
 
