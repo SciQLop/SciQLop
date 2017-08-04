@@ -58,6 +58,10 @@ struct Sort<1> {
 template <int Dim>
 class ArrayData {
 public:
+    // ///// //
+    // Ctors //
+    // ///// //
+
     /**
      * Ctor for a unidimensional ArrayData
      * @param data the data the ArrayData will hold
@@ -104,52 +108,9 @@ public:
         m_Data = other.m_Data;
     }
 
-    /**
-     * @return the data at a specified index
-     * @remarks index must be a valid position
-     * @remarks this method is only available for a unidimensional ArrayData
-     */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    double at(int index) const noexcept
-    {
-        QReadLocker locker{&m_Lock};
-        return m_Data[0].at(index);
-    }
-
-    /**
-     * @return the data as a vector
-     * @remarks this method is only available for a unidimensional ArrayData
-     */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    QVector<double> data() const noexcept
-    {
-        QReadLocker locker{&m_Lock};
-        return m_Data[0];
-    }
-
-    /**
-     * @return the data of a component
-     * @param componentIndex the index of the component to retrieve the data
-     * @return the component's data, empty vector if the index is invalid
-     */
-    QVector<double> data(int componentIndex) const noexcept
-    {
-        QReadLocker locker{&m_Lock};
-
-        return (componentIndex >= 0 && componentIndex < m_Data.size()) ? m_Data.at(componentIndex)
-                                                                       : QVector<double>{};
-    }
-
-    /**
-     * @return the data as a vector, as a const reference
-     * @remarks this method is only available for a unidimensional ArrayData
-     */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    const QVector<double> &cdata() const noexcept
-    {
-        QReadLocker locker{&m_Lock};
-        return m_Data.at(0);
-    }
+    // /////////////// //
+    // General methods //
+    // /////////////// //
 
     /**
      * Merges into the array data an other array data. The two array datas must have the same number
@@ -186,6 +147,29 @@ public:
         }
     }
 
+    void clear()
+    {
+        QWriteLocker locker{&m_Lock};
+
+        auto nbComponents = m_Data.size();
+        for (auto i = 0; i < nbComponents; ++i) {
+            m_Data[i].clear();
+        }
+    }
+
+    /**
+     * @return the data of a component
+     * @param componentIndex the index of the component to retrieve the data
+     * @return the component's data, empty vector if the index is invalid
+     */
+    QVector<double> data(int componentIndex) const noexcept
+    {
+        QReadLocker locker{&m_Lock};
+
+        return (componentIndex >= 0 && componentIndex < m_Data.size()) ? m_Data.at(componentIndex)
+                                                                       : QVector<double>{};
+    }
+
     /// @return the size (i.e. number of values) of a single component
     /// @remarks in a case of a two-dimensional ArrayData, each component has the same size
     int size() const
@@ -200,14 +184,42 @@ public:
         return arraydata_detail::Sort<Dim>::sort(m_Data, sortPermutation);
     }
 
-    void clear()
-    {
-        QWriteLocker locker{&m_Lock};
+    // ///////////// //
+    // 1-dim methods //
+    // ///////////// //
 
-        auto nbComponents = m_Data.size();
-        for (auto i = 0; i < nbComponents; ++i) {
-            m_Data[i].clear();
-        }
+    /**
+     * @return the data at a specified index
+     * @remarks index must be a valid position
+     * @remarks this method is only available for a unidimensional ArrayData
+     */
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    double at(int index) const noexcept
+    {
+        QReadLocker locker{&m_Lock};
+        return m_Data[0].at(index);
+    }
+
+    /**
+     * @return the data as a vector, as a const reference
+     * @remarks this method is only available for a unidimensional ArrayData
+     */
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    const QVector<double> &cdata() const noexcept
+    {
+        QReadLocker locker{&m_Lock};
+        return m_Data.at(0);
+    }
+
+    /**
+     * @return the data as a vector
+     * @remarks this method is only available for a unidimensional ArrayData
+     */
+    template <int D = Dim, typename = std::enable_if_t<D == 1> >
+    QVector<double> data() const noexcept
+    {
+        QReadLocker locker{&m_Lock};
+        return m_Data[0];
     }
 
 private:
