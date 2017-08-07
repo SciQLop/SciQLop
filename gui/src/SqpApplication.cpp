@@ -39,9 +39,9 @@ public:
                 SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), Qt::DirectConnection);
 
         connect(m_VariableController.get(),
-                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)),
+                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpRange &)),
                 m_VisualizationController.get(),
-                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)));
+                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpRange &)));
 
 
         m_DataSourceController->moveToThread(&m_DataSourceControllerThread);

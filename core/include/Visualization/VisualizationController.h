@@ -3,7 +3,7 @@
 
 #include "CoreGlobal.h"
 
-#include <Data/SqpDateTime.h>
+#include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
 #include <QObject>
@@ -34,7 +34,7 @@ signals:
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
 
     /// Signal emitted when a data acquisition is requested on a range for a variable
-    void rangeChanged(std::shared_ptr<Variable> variable, const SqpDateTime &range);
+    void rangeChanged(std::shared_ptr<Variable> variable, const SqpRange &range);
 
 public slots:
     /// Manage init/end of the controller

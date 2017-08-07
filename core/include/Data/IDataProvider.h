@@ -10,7 +10,7 @@
 
 #include <Common/MetaTypes.h>
 
-#include <Data/SqpDateTime.h>
+#include <Data/SqpRange.h>
 
 #include <functional>
 
@@ -49,7 +49,7 @@ signals:
      * identified by identifier
      */
     void dataProvided(QUuid identifier, std::shared_ptr<IDataSeries> dateSerie,
-                      const SqpDateTime &dateTime);
+                      const SqpRange &dateTime);
 
     /**
         * @brief dataProvided send dataSeries under dateTime and that corresponds of the data

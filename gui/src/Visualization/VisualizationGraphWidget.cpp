@@ -119,7 +119,7 @@ void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> v
 
     // when adding a variable, we need to set its time range to the current graph range
     auto grapheRange = ui->widget->xAxis->range();
-    auto dateTime = SqpDateTime{grapheRange.lower, grapheRange.upper};
+    auto dateTime = SqpRange{grapheRange.lower, grapheRange.upper};
     variable->setDateTime(dateTime);
 
     auto variableDateTimeWithTolerance = dateTime;
@@ -159,8 +159,7 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
     ui->widget->replot();
 }
 
-void VisualizationGraphWidget::setRange(std::shared_ptr<Variable> variable,
-                                        const SqpDateTime &range)
+void VisualizationGraphWidget::setRange(std::shared_ptr<Variable> variable, const SqpRange &range)
 {
     // Note: in case of different axes that depends on variable, we could start with a code like
     // that:
@@ -171,13 +170,13 @@ void VisualizationGraphWidget::setRange(std::shared_ptr<Variable> variable,
     ui->widget->replot();
 }
 
-SqpDateTime VisualizationGraphWidget::graphRange() const noexcept
+SqpRange VisualizationGraphWidget::graphRange() const noexcept
 {
     auto grapheRange = ui->widget->xAxis->range();
-    return SqpDateTime{grapheRange.lower, grapheRange.upper};
+    return SqpRange{grapheRange.lower, grapheRange.upper};
 }
 
-void VisualizationGraphWidget::setGraphRange(const SqpDateTime &range)
+void VisualizationGraphWidget::setGraphRange(const SqpRange &range)
 {
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange START");
     ui->widget->xAxis->setRange(range.m_TStart, range.m_TEnd);
@@ -243,7 +242,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
     qCInfo(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged")
                                            << QThread::currentThread()->objectName();
 
-    auto dateTimeRange = SqpDateTime{t1.lower, t1.upper};
+    auto dateTimeRange = SqpRange{t1.lower, t1.upper};
 
     auto zoomType = impl->getZoomType(t1, t2);
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
@@ -331,7 +330,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
     }
 
     if (impl->m_DoSynchronize && !impl->m_IsCalibration) {
-        auto oldDateTime = SqpDateTime{t2.lower, t2.upper};
+        auto oldDateTime = SqpRange{t2.lower, t2.upper};
         qCDebug(LOG_VisualizationGraphWidget())
             << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
             << QThread::currentThread()->objectName();
@@ -385,7 +384,7 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
     //    - use a map (unique keys) and store as values directly the list of components
 
     auto grapheRange = ui->widget->xAxis->range();
-    auto dateTime = SqpDateTime{grapheRange.lower, grapheRange.upper};
+    auto dateTime = SqpRange{grapheRange.lower, grapheRange.upper};
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {

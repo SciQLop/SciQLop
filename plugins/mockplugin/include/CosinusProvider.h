@@ -25,7 +25,7 @@ public:
 
 
 private:
-    std::shared_ptr<IDataSeries> retrieveData(QUuid token, const SqpDateTime &dateTime);
+    std::shared_ptr<IDataSeries> retrieveData(QUuid token, const SqpRange &dateTime);
 
     QHash<QUuid, bool> m_VariableToEnableProvider;
 };

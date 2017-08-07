@@ -3,7 +3,7 @@
 
 #include "CoreGlobal.h"
 
-#include <Data/SqpDateTime.h>
+#include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
 #include <QObject>
@@ -62,11 +62,11 @@ signals:
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
 
     /// Signal emitted when a data acquisition is requested on a range for a variable
-    void rangeChanged(std::shared_ptr<Variable> variable, const SqpDateTime &range);
+    void rangeChanged(std::shared_ptr<Variable> variable, const SqpRange &range);
 
 public slots:
     /// Request the data loading of the variable whithin dateTime
-    void onRequestDataLoading(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);
+    void onRequestDataLoading(std::shared_ptr<Variable> variable, const SqpRange &dateTime);
     /**
      * Creates a new variable and adds it to the model
      * @param name the name of the new variable
@@ -77,7 +77,7 @@ public slots:
                         std::shared_ptr<IDataProvider> provider) noexcept;
 
     /// Update the temporal parameters of every selected variable to dateTime
-    void onDateTimeOnSelection(const SqpDateTime &dateTime);
+    void onDateTimeOnSelection(const SqpRange &dateTime);
 
 
     void onVariableRetrieveDataInProgress(QUuid identifier, double progress);

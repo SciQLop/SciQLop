@@ -22,18 +22,18 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
 
     auto ts0 = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 0, 0}};
     auto te0 = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 0, 0}};
-    auto sqp0 = SqpDateTime{static_cast<double>(ts0.toMSecsSinceEpoch()),
-                            static_cast<double>(te0.toMSecsSinceEpoch())};
+    auto sqp0 = SqpRange{static_cast<double>(ts0.toMSecsSinceEpoch()),
+                         static_cast<double>(te0.toMSecsSinceEpoch())};
 
     auto ts1 = QDateTime{QDate{2017, 01, 01}, QTime{2, 6, 0, 0}};
     auto te1 = QDateTime{QDate{2017, 01, 01}, QTime{2, 8, 0, 0}};
-    auto sqp1 = SqpDateTime{static_cast<double>(ts1.toMSecsSinceEpoch()),
-                            static_cast<double>(te1.toMSecsSinceEpoch())};
+    auto sqp1 = SqpRange{static_cast<double>(ts1.toMSecsSinceEpoch()),
+                         static_cast<double>(te1.toMSecsSinceEpoch())};
 
     auto ts2 = QDateTime{QDate{2017, 01, 01}, QTime{2, 18, 0, 0}};
     auto te2 = QDateTime{QDate{2017, 01, 01}, QTime{2, 20, 0, 0}};
-    auto sqp2 = SqpDateTime{static_cast<double>(ts2.toMSecsSinceEpoch()),
-                            static_cast<double>(te2.toMSecsSinceEpoch())};
+    auto sqp2 = SqpRange{static_cast<double>(ts2.toMSecsSinceEpoch()),
+                         static_cast<double>(te2.toMSecsSinceEpoch())};
 
     auto var0 = std::make_shared<Variable>("", sqp0);
 
@@ -44,8 +44,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // first case [ts,te] < ts0
     auto ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
     auto te = QDateTime{QDate{2017, 01, 01}, QTime{2, 1, 0, 0}};
-    auto sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                           static_cast<double>(te.toMSecsSinceEpoch())};
+    auto sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                        static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     auto notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -59,8 +59,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // second case ts < ts0 &&  ts0 < te <= te0
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 30, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -73,8 +73,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 3th case ts < ts0 &&  te0 < te <= ts1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -91,8 +91,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 4th case ts < ts0 &&  ts1 < te <= te1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 7, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -109,8 +109,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 5th case ts < ts0 &&  te3 < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 22, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -136,8 +136,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 6th case ts2 < ts
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 45, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 47, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -150,8 +150,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 7th case ts = te0 && te < ts1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -164,8 +164,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 8th case ts0 < ts < te0 && te < ts1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 30, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -178,8 +178,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 9th case ts0 < ts < te0 &&  ts1 < te < te1
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 30, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 7, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -192,8 +192,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 10th case te1 < ts < te < ts2
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 9, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 10, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -206,8 +206,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 11th case te0 < ts < ts1 &&  te3 < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 47, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
@@ -228,8 +228,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 12th case te0 < ts < ts1 &&  te3 < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 10, 0, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
 
@@ -246,8 +246,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     // 12th case ts0 < ts < te0
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 10, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 50, 0}};
-    sqp = SqpDateTime{static_cast<double>(ts.toMSecsSinceEpoch()),
-                      static_cast<double>(te.toMSecsSinceEpoch())};
+    sqp = SqpRange{static_cast<double>(ts.toMSecsSinceEpoch()),
+                   static_cast<double>(te.toMSecsSinceEpoch())};
 
     notInCach = variableCacheController.provideNotInCacheDateTimeList(var0, sqp);
     QCOMPARE(notInCach.size(), 0);
@@ -260,33 +260,33 @@ void TestVariableCacheController::testAddDateTime()
 
     auto ts0 = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 0, 0}};
     auto te0 = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 0, 0}};
-    auto sqp0 = SqpDateTime{static_cast<double>(ts0.toMSecsSinceEpoch()),
-                            static_cast<double>(te0.toMSecsSinceEpoch())};
+    auto sqp0 = SqpRange{static_cast<double>(ts0.toMSecsSinceEpoch()),
+                         static_cast<double>(te0.toMSecsSinceEpoch())};
 
     auto ts1 = QDateTime{QDate{2017, 01, 01}, QTime{2, 6, 0, 0}};
     auto te1 = QDateTime{QDate{2017, 01, 01}, QTime{2, 8, 0, 0}};
-    auto sqp1 = SqpDateTime{static_cast<double>(ts1.toMSecsSinceEpoch()),
-                            static_cast<double>(te1.toMSecsSinceEpoch())};
+    auto sqp1 = SqpRange{static_cast<double>(ts1.toMSecsSinceEpoch()),
+                         static_cast<double>(te1.toMSecsSinceEpoch())};
 
     auto ts2 = QDateTime{QDate{2017, 01, 01}, QTime{2, 18, 0, 0}};
     auto te2 = QDateTime{QDate{2017, 01, 01}, QTime{2, 20, 0, 0}};
-    auto sqp2 = SqpDateTime{static_cast<double>(ts2.toMSecsSinceEpoch()),
-                            static_cast<double>(te2.toMSecsSinceEpoch())};
+    auto sqp2 = SqpRange{static_cast<double>(ts2.toMSecsSinceEpoch()),
+                         static_cast<double>(te2.toMSecsSinceEpoch())};
 
     auto ts01 = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 0, 0}};
     auto te01 = QDateTime{QDate{2017, 01, 01}, QTime{2, 6, 0, 0}};
-    auto sqp01 = SqpDateTime{static_cast<double>(ts01.toMSecsSinceEpoch()),
-                             static_cast<double>(te01.toMSecsSinceEpoch())};
+    auto sqp01 = SqpRange{static_cast<double>(ts01.toMSecsSinceEpoch()),
+                          static_cast<double>(te01.toMSecsSinceEpoch())};
 
     auto ts3 = QDateTime{QDate{2017, 01, 01}, QTime{2, 14, 0, 0}};
     auto te3 = QDateTime{QDate{2017, 01, 01}, QTime{2, 16, 0, 0}};
-    auto sqp3 = SqpDateTime{static_cast<double>(ts3.toMSecsSinceEpoch()),
-                            static_cast<double>(te3.toMSecsSinceEpoch())};
+    auto sqp3 = SqpRange{static_cast<double>(ts3.toMSecsSinceEpoch()),
+                         static_cast<double>(te3.toMSecsSinceEpoch())};
 
     auto ts03 = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 0, 0}};
     auto te03 = QDateTime{QDate{2017, 01, 01}, QTime{2, 22, 0, 0}};
-    auto sqp03 = SqpDateTime{static_cast<double>(ts03.toMSecsSinceEpoch()),
-                             static_cast<double>(te03.toMSecsSinceEpoch())};
+    auto sqp03 = SqpRange{static_cast<double>(ts03.toMSecsSinceEpoch()),
+                          static_cast<double>(te03.toMSecsSinceEpoch())};
 
 
     auto var0 = std::make_shared<Variable>("", sqp0);

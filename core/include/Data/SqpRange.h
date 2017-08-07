@@ -1,5 +1,5 @@
-#ifndef SCIQLOP_SQPDATETIME_H
-#define SCIQLOP_SQPDATETIME_H
+#ifndef SCIQLOP_SQPRANGE_H
+#define SCIQLOP_SQPRANGE_H
 
 #include <QObject>
 
@@ -9,26 +9,26 @@
 #include <Common/MetaTypes.h>
 
 /**
- * @brief The SqpDateTime struct holds the information of time parameters
+ * @brief The SqpRange struct holds the information of time parameters
  */
-struct SqpDateTime {
+struct SqpRange {
     /// Start time (UTC)
     double m_TStart;
     /// End time (UTC)
     double m_TEnd;
 
-    bool contains(const SqpDateTime &dateTime) const noexcept
+    bool contains(const SqpRange &dateTime) const noexcept
     {
         return (m_TStart <= dateTime.m_TStart && m_TEnd >= dateTime.m_TEnd);
     }
 
-    bool intersect(const SqpDateTime &dateTime) const noexcept
+    bool intersect(const SqpRange &dateTime) const noexcept
     {
         return (m_TEnd >= dateTime.m_TStart && m_TStart <= dateTime.m_TEnd);
     }
 };
 
-inline QDebug operator<<(QDebug d, SqpDateTime obj)
+inline QDebug operator<<(QDebug d, SqpRange obj)
 {
     auto tendDateTimeStart = DateUtils::dateTime(obj.m_TStart);
     auto tendDateTimeEnd = DateUtils::dateTime(obj.m_TEnd);
@@ -38,6 +38,6 @@ inline QDebug operator<<(QDebug d, SqpDateTime obj)
 }
 
 // Required for using shared_ptr in signals/slots
-SCIQLOP_REGISTER_META_TYPE(SQPDATETIME_REGISTRY, SqpDateTime)
+SCIQLOP_REGISTER_META_TYPE(SQPRANGE_REGISTRY, SqpRange)
 
-#endif // SCIQLOP_SQPDATETIME_H
+#endif // SCIQLOP_SQPRANGE_H

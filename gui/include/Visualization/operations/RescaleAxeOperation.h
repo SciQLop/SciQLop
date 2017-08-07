@@ -2,7 +2,7 @@
 #define SCIQLOP_RESCALEAXEOPERATION_H
 
 #include "Visualization/IVisualizationWidgetVisitor.h"
-#include <Data/SqpDateTime.h>
+#include <Data/SqpRange.h>
 
 #include <Common/spimpl.h>
 
@@ -24,7 +24,7 @@ public:
      * Ctor
      * @param variable the variable to remove from widgets
      */
-    explicit RescaleAxeOperation(std::shared_ptr<Variable> variable, const SqpDateTime &range);
+    explicit RescaleAxeOperation(std::shared_ptr<Variable> variable, const SqpRange &range);
 
     void visitEnter(VisualizationWidget *widget) override final;
     void visitLeave(VisualizationWidget *widget) override final;

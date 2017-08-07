@@ -36,7 +36,7 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
 }
 
 void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSeries,
-                      const SqpDateTime &dateTime)
+                      const SqpRange &dateTime)
 {
     qCDebug(LOG_VisualizationGraphHelper()) << "TORM: updateScalarData"
                                             << QThread::currentThread()->objectName();
@@ -80,7 +80,7 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
 }
 
 QCPAbstractPlottable *createScalarSeriesComponent(ScalarSeries &scalarSeries, QCustomPlot &plot,
-                                                  const SqpDateTime &dateTime)
+                                                  const SqpRange &dateTime)
 {
     auto component = plot.addGraph();
 
@@ -144,7 +144,7 @@ QVector<QCPAbstractPlottable *> VisualizationGraphHelper::create(std::shared_ptr
 }
 
 void VisualizationGraphHelper::updateData(QVector<QCPAbstractPlottable *> plotableVect,
-                                          IDataSeries *dataSeries, const SqpDateTime &dateTime)
+                                          IDataSeries *dataSeries, const SqpRange &dateTime)
 {
     if (auto scalarSeries = dynamic_cast<ScalarSeries *>(dataSeries)) {
         if (plotableVect.size() == 1) {
