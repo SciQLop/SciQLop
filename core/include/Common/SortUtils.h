@@ -34,6 +34,31 @@ struct SortUtils {
                   [&](int i, int j) { return compare(container.at(i), container.at(j)); });
         return permutation;
     }
+
+    /**
+     * Sorts a container according to indices passed in parameter
+     * @param container the container sorted
+     * @param sortPermutation the indices used to sort the container
+     * @return the container sorted
+     * @warning no verification is made on validity of sortPermutation (i.e. the vector has unique
+     * indices and its range is [0 ; vector.size()[ )
+     */
+    template <typename Container>
+    static Container sort(const Container &container, const std::vector<int> &sortPermutation)
+    {
+        if (container.size() != sortPermutation.size()) {
+            return Container{};
+        }
+
+        // Inits result
+        auto sortedData = Container{};
+        sortedData.resize(container.size());
+
+        std::transform(sortPermutation.cbegin(), sortPermutation.cend(), sortedData.begin(),
+                       [&container](int i) { return container.at(i); });
+
+        return sortedData;
+    }
 };
 
 #endif // SCIQLOP_SORTUTILS_H
