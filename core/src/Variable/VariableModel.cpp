@@ -160,9 +160,9 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
                 case NAME_COLUMN:
                     return variable->name();
                 case TSTART_COLUMN:
-                    return dateTimeVariant(variable->dateTime().m_TStart);
+                    return dateTimeVariant(variable->range().m_TStart);
                 case TEND_COLUMN:
-                    return dateTimeVariant(variable->dateTime().m_TEnd);
+                    return dateTimeVariant(variable->range().m_TEnd);
                 default:
                     // No action
                     break;
