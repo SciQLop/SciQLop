@@ -5,6 +5,10 @@
 class TestOneDimArrayData : public QObject {
     Q_OBJECT
 private slots:
+    /// Tests @sa ArrayData::data()
+    void testData_data();
+    void testData();
+
     /// Tests @sa ArrayData::data(int componentIndex)
     void testDataByComponentIndex_data();
     void testDataByComponentIndex();
@@ -12,6 +16,10 @@ private slots:
     /// Tests @sa ArrayData::add()
     void testAdd_data();
     void testAdd();
+
+    /// Tests @sa ArrayData::at(int index)
+    void testAt_data();
+    void testAt();
 
     /// Tests @sa ArrayData::clear()
     void testClear_data();
@@ -100,6 +108,37 @@ void TestOneDimArrayData::testAdd()
 
     arrayData.add(other, prepend);
     QVERIFY(arrayData.data() == expectedData);
+}
+
+void TestOneDimArrayData::testAt_data()
+{
+    // Test structure
+    QTest::addColumn<QVector<double> >("inputData"); // array data's input
+    QTest::addColumn<int>("index");                  // index to retrieve data
+    QTest::addColumn<double>("expectedData");        // expected data at index
+
+    // Test cases
+    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.} << 0 << 1.;
+    QTest::newRow("data2") << QVector<double>{1., 2., 3., 4., 5.} << 3 << 4.;
+}
+
+void TestOneDimArrayData::testAt()
+{
+    QFETCH(QVector<double>, inputData);
+    QFETCH(int, index);
+    QFETCH(double, expectedData);
+
+    ArrayData<1> arrayData{inputData};
+    QVERIFY(arrayData.at(index) == expectedData);
+}
+
+void TestOneDimArrayData::testClear_data()
+{
+    // Test structure
+    QTest::addColumn<QVector<double> >("inputData"); // array data's input
+
+    // Test cases
+    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.};
 }
 
 void TestOneDimArrayData::testClear()
