@@ -23,6 +23,9 @@ private slots:
     void testSize_data();
     void testSize();
 
+    /// Tests @sa ArrayData::sort()
+    void testSort_data();
+    void testSort();
 };
 
 void TestTwoDimArrayData::testDataByComponentIndex_data()
@@ -140,6 +143,39 @@ void TestTwoDimArrayData::testSize()
 
     ArrayData<2> arrayData{inputData};
     QVERIFY(arrayData.size() == expectedSize);
+}
+
+void TestTwoDimArrayData::testSort_data()
+{
+    // Test structure
+    QTest::addColumn<DataContainer>("inputData");           // array data's input
+    QTest::addColumn<std::vector<int> >("sortPermutation"); // permutation used to sort data
+    QTest::addColumn<DataContainer>("expectedData");        // expected data after sorting
+
+    // Test cases
+    QTest::newRow("data1")
+        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}}
+        << std::vector<int>{0, 2, 3, 1, 4}
+        << DataContainer{{1., 3., 4., 2., 5.}, {6., 8., 9., 7., 10.}, {11., 13., 14., 12., 15.}};
+    QTest::newRow("data2")
+        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}}
+        << std::vector<int>{2, 4, 3, 0, 1}
+        << DataContainer{{3., 5., 4., 1., 2.}, {8., 10., 9., 6., 7.}, {13., 15., 14., 11., 12.}};
+}
+
+void TestTwoDimArrayData::testSort()
+{
+    QFETCH(DataContainer, inputData);
+    QFETCH(std::vector<int>, sortPermutation);
+    QFETCH(DataContainer, expectedData);
+
+    ArrayData<2> arrayData{inputData};
+    auto sortedArrayData = arrayData.sort(sortPermutation);
+    QVERIFY(sortedArrayData);
+
+    for (auto i = 0; i < expectedData.size(); ++i) {
+        QVERIFY(sortedArrayData->data(i) == expectedData.at(i));
+    }
 }
 
 QTEST_MAIN(TestTwoDimArrayData)

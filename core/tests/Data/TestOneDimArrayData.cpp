@@ -21,7 +21,30 @@ private slots:
     void testSize_data();
     void testSize();
 
+    /// Tests @sa ArrayData::sort()
+    void testSort_data();
+    void testSort();
 };
+
+void TestOneDimArrayData::testData_data()
+{
+    // Test structure
+    QTest::addColumn<QVector<double> >("inputData");    // array's data input
+    QTest::addColumn<QVector<double> >("expectedData"); // expected data
+
+    // Test cases
+    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.}
+                           << QVector<double>{1., 2., 3., 4., 5.};
+}
+
+void TestOneDimArrayData::testData()
+{
+    QFETCH(QVector<double>, inputData);
+    QFETCH(QVector<double>, expectedData);
+
+    ArrayData<1> arrayData{inputData};
+    QVERIFY(arrayData.data() == expectedData);
+}
 
 void TestOneDimArrayData::testDataByComponentIndex_data()
 {
@@ -105,6 +128,32 @@ void TestOneDimArrayData::testSize()
 
     ArrayData<1> arrayData{inputData};
     QVERIFY(arrayData.size() == expectedSize);
+}
+
+void TestOneDimArrayData::testSort_data()
+{
+    // Test structure
+    QTest::addColumn<QVector<double> >("inputData");        // array data's input
+    QTest::addColumn<std::vector<int> >("sortPermutation"); // permutation used to sort data
+    QTest::addColumn<QVector<double> >("expectedData");     // expected data after sorting
+
+    // Test cases
+    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.} << std::vector<int>{0, 2, 3, 1, 4}
+                           << QVector<double>{1., 3., 4., 2., 5.};
+    QTest::newRow("data2") << QVector<double>{1., 2., 3., 4., 5.} << std::vector<int>{4, 1, 2, 3, 0}
+                           << QVector<double>{5., 2., 3., 4., 1.};
+}
+
+void TestOneDimArrayData::testSort()
+{
+    QFETCH(QVector<double>, inputData);
+    QFETCH(std::vector<int>, sortPermutation);
+    QFETCH(QVector<double>, expectedData);
+
+    ArrayData<1> arrayData{inputData};
+    auto sortedArrayData = arrayData.sort(sortPermutation);
+    QVERIFY(sortedArrayData);
+    QVERIFY(sortedArrayData->data() == expectedData);
 }
 
 QTEST_MAIN(TestOneDimArrayData)
