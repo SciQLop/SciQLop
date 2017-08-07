@@ -11,6 +11,10 @@ private slots:
     void testDataByComponentIndex_data();
     void testDataByComponentIndex();
 
+    /// Tests @sa ArrayData ctor
+    void testCtor_data();
+    void testCtor();
+
     /// Tests @sa ArrayData::add()
     void testAdd_data();
     void testAdd();
@@ -54,6 +58,44 @@ void TestTwoDimArrayData::testDataByComponentIndex()
 
     ArrayData<2> arrayData{inputData};
     QVERIFY(arrayData.data(componentIndex) == expectedData);
+}
+
+void TestTwoDimArrayData::testCtor_data()
+{
+    // Test structure
+    QTest::addColumn<DataContainer>("inputData");    // array data's input
+    QTest::addColumn<bool>("success");               // array data has been successfully constructed
+    QTest::addColumn<DataContainer>("expectedData"); // expected array data (when success)
+
+    // Test cases
+    QTest::newRow("validInput")
+        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}}
+        << true
+        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}};
+    QTest::newRow("malformedInput (components of the array data haven't the same size")
+        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8.}, {11., 12.}} << true
+        << DataContainer{{}, {}, {}};
+    QTest::newRow("invalidInput (less than tow components")
+        << DataContainer{{1., 2., 3., 4., 5.}} << false << DataContainer{{}, {}, {}};
+}
+
+void TestTwoDimArrayData::testCtor()
+{
+    QFETCH(DataContainer, inputData);
+    QFETCH(bool, success);
+
+    if (success) {
+        QFETCH(DataContainer, expectedData);
+
+        ArrayData<2> arrayData{inputData};
+
+        for (auto i = 0; i < expectedData.size(); ++i) {
+            QVERIFY(arrayData.data(i) == expectedData.at(i));
+        }
+    }
+    else {
+        QVERIFY_EXCEPTION_THROWN(ArrayData<2> arrayData{inputData}, std::invalid_argument);
+    }
 }
 
 void TestTwoDimArrayData::testAdd_data()
