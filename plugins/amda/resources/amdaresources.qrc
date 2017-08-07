@@ -1,5 +1,6 @@
 <RCC>
     <qresource prefix="/">
 		<file>samples/AmdaSample.json</file>
+		<file>samples/AmdaSampleV2.json</file>
     </qresource>
 </RCC>
