@@ -15,6 +15,14 @@ private slots:
     void testAdd_data();
     void testAdd();
 
+    /// Tests @sa ArrayData::clear()
+    void testClear_data();
+    void testClear();
+
+    /// Tests @sa ArrayData::size()
+    void testSize_data();
+    void testSize();
+
 };
 
 void TestTwoDimArrayData::testDataByComponentIndex_data()
@@ -87,6 +95,51 @@ void TestTwoDimArrayData::testAdd()
     for (auto i = 0; i < expectedData.size(); ++i) {
         QVERIFY(arrayData.data(i) == expectedData.at(i));
     }
+}
+
+void TestTwoDimArrayData::testClear_data()
+{
+    // Test structure
+    QTest::addColumn<DataContainer>("inputData"); // array data's input
+
+    // Test cases
+    QTest::newRow("data1") << DataContainer{
+        {1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}};
+}
+
+void TestTwoDimArrayData::testClear()
+{
+    QFETCH(DataContainer, inputData);
+
+    ArrayData<2> arrayData{inputData};
+    arrayData.clear();
+
+    for (auto i = 0; i < inputData.size(); ++i) {
+        QVERIFY(arrayData.data(i) == QVector<double>{});
+    }
+}
+
+void TestTwoDimArrayData::testSize_data()
+{
+    // Test structure
+    QTest::addColumn<QVector<QVector<double> > >("inputData"); // array data's input
+    QTest::addColumn<int>("expectedSize");                     // expected array data size
+
+    // Test cases
+    QTest::newRow("data1") << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}} << 5;
+    QTest::newRow("data2") << DataContainer{{1., 2., 3., 4., 5.},
+                                            {6., 7., 8., 9., 10.},
+                                            {11., 12., 13., 14., 15.}}
+                           << 5;
+}
+
+void TestTwoDimArrayData::testSize()
+{
+    QFETCH(DataContainer, inputData);
+    QFETCH(int, expectedSize);
+
+    ArrayData<2> arrayData{inputData};
+    QVERIFY(arrayData.size() == expectedSize);
 }
 
 QTEST_MAIN(TestTwoDimArrayData)

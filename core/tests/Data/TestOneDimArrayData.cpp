@@ -13,6 +13,14 @@ private slots:
     void testAdd_data();
     void testAdd();
 
+    /// Tests @sa ArrayData::clear()
+    void testClear_data();
+    void testClear();
+
+    /// Tests @sa ArrayData::size()
+    void testSize_data();
+    void testSize();
+
 };
 
 void TestOneDimArrayData::testDataByComponentIndex_data()
@@ -69,6 +77,34 @@ void TestOneDimArrayData::testAdd()
 
     arrayData.add(other, prepend);
     QVERIFY(arrayData.data() == expectedData);
+}
+
+void TestOneDimArrayData::testClear()
+{
+    QFETCH(QVector<double>, inputData);
+
+    ArrayData<1> arrayData{inputData};
+    arrayData.clear();
+    QVERIFY(arrayData.data() == QVector<double>{});
+}
+
+void TestOneDimArrayData::testSize_data()
+{
+    // Test structure
+    QTest::addColumn<QVector<double> >("inputData"); // array data's input
+    QTest::addColumn<int>("expectedSize");           // expected array data size
+
+    // Test cases
+    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.} << 5;
+}
+
+void TestOneDimArrayData::testSize()
+{
+    QFETCH(QVector<double>, inputData);
+    QFETCH(int, expectedSize);
+
+    ArrayData<1> arrayData{inputData};
+    QVERIFY(arrayData.size() == expectedSize);
 }
 
 QTEST_MAIN(TestOneDimArrayData)
