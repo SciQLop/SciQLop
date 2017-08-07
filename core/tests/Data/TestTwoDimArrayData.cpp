@@ -11,6 +11,10 @@ private slots:
     void testDataByComponentIndex_data();
     void testDataByComponentIndex();
 
+    /// Tests @sa ArrayData::add()
+    void testAdd_data();
+    void testAdd();
+
 };
 
 void TestTwoDimArrayData::testDataByComponentIndex_data()
@@ -39,6 +43,50 @@ void TestTwoDimArrayData::testDataByComponentIndex()
 
     ArrayData<2> arrayData{inputData};
     QVERIFY(arrayData.data(componentIndex) == expectedData);
+}
+
+void TestTwoDimArrayData::testAdd_data()
+{
+    // Test structure
+    QTest::addColumn<DataContainer>("inputData");    // array's data input
+    QTest::addColumn<DataContainer>("otherData");    // array data's input to merge with
+    QTest::addColumn<bool>("prepend");               // prepend or append merge
+    QTest::addColumn<DataContainer>("expectedData"); // expected data after merge
+
+    // Test cases
+    auto inputData
+        = DataContainer{{1., 2., 3., 4., 5.}, {11., 12., 13., 14., 15.}, {21., 22., 23., 24., 25.}};
+
+    auto vectorContainer = DataContainer{{6., 7., 8.}, {16., 17., 18.}, {26., 27., 28}};
+    auto tensorContainer = DataContainer{{6., 7., 8.},    {16., 17., 18.}, {26., 27., 28},
+                                         {36., 37., 38.}, {46., 47., 48.}, {56., 57., 58}};
+
+    QTest::newRow("appendMerge") << inputData << vectorContainer << false
+                                 << DataContainer{{1., 2., 3., 4., 5., 6., 7., 8.},
+                                                  {11., 12., 13., 14., 15., 16., 17., 18.},
+                                                  {21., 22., 23., 24., 25., 26., 27., 28}};
+    QTest::newRow("prependMerge") << inputData << vectorContainer << true
+                                  << DataContainer{{6., 7., 8., 1., 2., 3., 4., 5.},
+                                                   {16., 17., 18., 11., 12., 13., 14., 15.},
+                                                   {26., 27., 28, 21., 22., 23., 24., 25.}};
+    QTest::newRow("invalidMerge") << inputData << tensorContainer << false << inputData;
+}
+
+void TestTwoDimArrayData::testAdd()
+{
+    QFETCH(DataContainer, inputData);
+    QFETCH(DataContainer, otherData);
+    QFETCH(bool, prepend);
+    QFETCH(DataContainer, expectedData);
+
+    ArrayData<2> arrayData{inputData};
+    ArrayData<2> other{otherData};
+
+    arrayData.add(other, prepend);
+
+    for (auto i = 0; i < expectedData.size(); ++i) {
+        QVERIFY(arrayData.data(i) == expectedData.at(i));
+    }
 }
 
 QTEST_MAIN(TestTwoDimArrayData)
