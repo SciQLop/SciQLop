@@ -26,6 +26,9 @@ struct VariableController::VariableControllerPrivate {
     {
     }
 
+    QVector<SqpDateTime> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
+                                                       const SqpDateTime &dateTime);
+
     QMutex m_WorkingMutex;
     /// Variable model. The VariableController has the ownership
     VariableModel *m_VariableModel;
@@ -240,4 +243,34 @@ void VariableController::finalize()
 void VariableController::waitForFinish()
 {
     QMutexLocker locker{&impl->m_WorkingMutex};
+}
+
+
+QVector<SqpDateTime> VariableController::VariableControllerPrivate::provideNotInCacheDateTimeList(
+    std::shared_ptr<Variable> variable, const SqpDateTime &dateTime)
+{
+    auto notInCache = QVector<SqpDateTime>{};
+
+    if (!variable->contains(dateTime)) {
+        auto vDateTime = variable->dateTime();
+        if (dateTime.m_TEnd <= vDateTime.m_TStart || dateTime.m_TStart >= vDateTime.m_TEnd) {
+            notInCache << dateTime;
+        }
+        else if (dateTime.m_TStart < vDateTime.m_TStart && dateTime.m_TEnd <= vDateTime.m_TEnd) {
+            notInCache << SqpDateTime{dateTime.m_TStart, vDateTime.m_TStart};
+        }
+        else if (dateTime.m_TStart < vDateTime.m_TStart && dateTime.m_TEnd > vDateTime.m_TEnd) {
+            notInCache << SqpDateTime{dateTime.m_TStart, vDateTime.m_TStart}
+                       << SqpDateTime{vDateTime.m_TEnd, dateTime.m_TStart};
+        }
+        else if (dateTime.m_TStart < vDateTime.m_TEnd) {
+            notInCache << SqpDateTime{vDateTime.m_TEnd, dateTime.m_TStart};
+        }
+        else {
+            qCCritical(LOG_VariableController()) << tr("Detection of unknown case.")
+                                                 << QThread::currentThread();
+        }
+    }
+
+    return notInCache;
 }
