@@ -128,7 +128,7 @@ QVector<QCPAbstractPlottable *> VisualizationGraphHelper::create(std::shared_ptr
         // Gets the data series of the variable to call the creation of the right components
         // according to its type
         if (auto scalarSeries = dynamic_cast<ScalarSeries *>(variable->dataSeries())) {
-            result.append(createScalarSeriesComponent(*scalarSeries, plot, variable->dateTime()));
+            result.append(createScalarSeriesComponent(*scalarSeries, plot, variable->range()));
         }
         else {
             qCDebug(LOG_VisualizationGraphHelper())
