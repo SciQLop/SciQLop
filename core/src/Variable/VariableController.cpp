@@ -26,8 +26,8 @@ struct VariableController::VariableControllerPrivate {
     {
     }
 
-    QVector<SqpDateTime> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
-                                                       const SqpDateTime &dateTime);
+    QVector<SqpRange> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
+                                                    const SqpRange &dateTime);
 
     QMutex m_WorkingMutex;
     /// Variable model. The VariableController has the ownership
@@ -246,10 +246,10 @@ void VariableController::waitForFinish()
 }
 
 
-QVector<SqpDateTime> VariableController::VariableControllerPrivate::provideNotInCacheDateTimeList(
-    std::shared_ptr<Variable> variable, const SqpDateTime &dateTime)
+QVector<SqpRange> VariableController::VariableControllerPrivate::provideNotInCacheDateTimeList(
+    std::shared_ptr<Variable> variable, const SqpRange &dateTime)
 {
-    auto notInCache = QVector<SqpDateTime>{};
+    auto notInCache = QVector<SqpRange>{};
 
     if (!variable->contains(dateTime)) {
         auto vDateTime = variable->dateTime();
@@ -257,14 +257,14 @@ QVector<SqpDateTime> VariableController::VariableControllerPrivate::provideNotIn
             notInCache << dateTime;
         }
         else if (dateTime.m_TStart < vDateTime.m_TStart && dateTime.m_TEnd <= vDateTime.m_TEnd) {
-            notInCache << SqpDateTime{dateTime.m_TStart, vDateTime.m_TStart};
+            notInCache << SqpRange{dateTime.m_TStart, vDateTime.m_TStart};
         }
         else if (dateTime.m_TStart < vDateTime.m_TStart && dateTime.m_TEnd > vDateTime.m_TEnd) {
-            notInCache << SqpDateTime{dateTime.m_TStart, vDateTime.m_TStart}
-                       << SqpDateTime{vDateTime.m_TEnd, dateTime.m_TStart};
+            notInCache << SqpRange{dateTime.m_TStart, vDateTime.m_TStart}
+                       << SqpRange{vDateTime.m_TEnd, dateTime.m_TStart};
         }
         else if (dateTime.m_TStart < vDateTime.m_TEnd) {
-            notInCache << SqpDateTime{vDateTime.m_TEnd, dateTime.m_TStart};
+            notInCache << SqpRange{vDateTime.m_TEnd, dateTime.m_TStart};
         }
         else {
             qCCritical(LOG_VariableController()) << tr("Detection of unknown case.")

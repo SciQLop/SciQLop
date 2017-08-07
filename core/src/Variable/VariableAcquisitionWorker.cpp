@@ -8,7 +8,7 @@ Q_LOGGING_CATEGORY(LOG_VariableAcquisitionWorker, "VariableAcquisitionWorker")
 
 struct VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate {
 
-    std::unordered_map<std::shared_ptr<Variable>, QVector<SqpDateTime> >
+    std::unordered_map<std::shared_ptr<Variable>, QVector<SqpRange> >
         m_VariableToSqpDateTimeListMap;
 };
 
