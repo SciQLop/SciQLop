@@ -96,8 +96,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
 
     // LAMBDA
     auto httpDownloadFinished
-        = [this, dateTime, tempFile, token](QNetworkReply *reply, QUuid dataId) noexcept {
-              Q_UNUSED(dataId);
+        = [this, dateTime, tempFile](QNetworkReply *reply, QUuid dataId) noexcept {
 
               // Don't do anything if the reply was abort
               if (reply->error() != QNetworkReply::OperationCanceledError) {
@@ -111,7 +110,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
 
                       // Parse results file
                       if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
-                          emit dataProvided(token, dataSeries, dateTime);
+                          emit dataProvided(dataId, dataSeries, dateTime);
                       }
                       else {
                           /// @todo ALX : debug
