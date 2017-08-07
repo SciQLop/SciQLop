@@ -29,8 +29,8 @@ TimeWidget::TimeWidget(QWidget *parent) : QWidget{parent}, ui{new Ui::TimeWidget
     ui->startDateTimeEdit->setDateTime(startDateTime);
     ui->endDateTimeEdit->setDateTime(endDateTime);
 
-    auto dateTime = SqpDateTime{DateUtils::secondsSinceEpoch(startDateTime),
-                                DateUtils::secondsSinceEpoch(endDateTime)};
+    auto dateTime = SqpRange{DateUtils::secondsSinceEpoch(startDateTime),
+                             DateUtils::secondsSinceEpoch(endDateTime)};
 
     sqpApp->timeController().onTimeToUpdate(dateTime);
 }
@@ -43,8 +43,8 @@ TimeWidget::~TimeWidget()
 
 void TimeWidget::onTimeUpdateRequested()
 {
-    auto dateTime = SqpDateTime{DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
-                                DateUtils::secondsSinceEpoch(ui->endDateTimeEdit->dateTime())};
+    auto dateTime = SqpRange{DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
+                             DateUtils::secondsSinceEpoch(ui->endDateTimeEdit->dateTime())};
 
     emit timeUpdated(std::move(dateTime));
 }

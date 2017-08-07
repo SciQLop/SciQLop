@@ -4,18 +4,16 @@
 Q_LOGGING_CATEGORY(LOG_RescaleAxeOperation, "RescaleAxeOperation")
 
 struct RescaleAxeOperation::RescaleAxeOperationPrivate {
-    explicit RescaleAxeOperationPrivate(std::shared_ptr<Variable> variable,
-                                        const SqpDateTime &range)
+    explicit RescaleAxeOperationPrivate(std::shared_ptr<Variable> variable, const SqpRange &range)
             : m_Variable{variable}, m_Range{range}
     {
     }
 
     std::shared_ptr<Variable> m_Variable;
-    SqpDateTime m_Range;
+    SqpRange m_Range;
 };
 
-RescaleAxeOperation::RescaleAxeOperation(std::shared_ptr<Variable> variable,
-                                         const SqpDateTime &range)
+RescaleAxeOperation::RescaleAxeOperation(std::shared_ptr<Variable> variable, const SqpRange &range)
         : impl{spimpl::make_unique_impl<RescaleAxeOperationPrivate>(variable, range)}
 {
 }

@@ -24,7 +24,7 @@ public:
     void requestDataAborting(QUuid identifier) override;
 
 private:
-    void retrieveData(QUuid token, const SqpDateTime &dateTime, const QVariantHash &data);
+    void retrieveData(QUuid token, const SqpRange &dateTime, const QVariantHash &data);
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H

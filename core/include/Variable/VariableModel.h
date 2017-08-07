@@ -3,7 +3,7 @@
 
 #include "CoreGlobal.h"
 
-#include <Data/SqpDateTime.h>
+#include <Data/SqpRange.h>
 
 #include <QAbstractTableModel>
 #include <QLoggingCategory>
@@ -34,7 +34,7 @@ public:
      * @param metadata the metadata associated to the new variable
      * @return the pointer to the new variable
      */
-    std::shared_ptr<Variable> createVariable(const QString &name, const SqpDateTime &dateTime,
+    std::shared_ptr<Variable> createVariable(const QString &name, const SqpRange &dateTime,
                                              const QVariantHash &metadata) noexcept;
 
     /**

@@ -3,7 +3,7 @@
 
 #include "CoreGlobal.h"
 
-#include <Data/SqpDateTime.h>
+#include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
 #include <QObject>
@@ -21,15 +21,15 @@ class SCIQLOP_CORE_EXPORT TimeController : public QObject {
 public:
     explicit TimeController(QObject *parent = 0);
 
-    SqpDateTime dateTime() const noexcept;
+    SqpRange dateTime() const noexcept;
 
 signals:
     /// Signal emitted to notify that time parameters has beed updated
-    void timeUpdated(SqpDateTime time);
+    void timeUpdated(SqpRange time);
 
 public slots:
     /// Slot called when a new dateTime has been defined.
-    void onTimeToUpdate(SqpDateTime dateTime);
+    void onTimeToUpdate(SqpRange dateTime);
 
     /// Slot called when the dateTime has to be notified. Call timeUpdated signal
     void onTimeNotify();

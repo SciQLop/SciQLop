@@ -4,7 +4,7 @@ Q_LOGGING_CATEGORY(LOG_TimeController, "TimeController")
 
 struct TimeController::TimeControllerPrivate {
 
-    SqpDateTime m_DateTime;
+    SqpRange m_DateTime;
 };
 
 TimeController::TimeController(QObject *parent)
@@ -13,12 +13,12 @@ TimeController::TimeController(QObject *parent)
     qCDebug(LOG_TimeController()) << tr("TimeController construction");
 }
 
-SqpDateTime TimeController::dateTime() const noexcept
+SqpRange TimeController::dateTime() const noexcept
 {
     return impl->m_DateTime;
 }
 
-void TimeController::onTimeToUpdate(SqpDateTime dateTime)
+void TimeController::onTimeToUpdate(SqpRange dateTime)
 {
     impl->m_DateTime = dateTime;
 }
