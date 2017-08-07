@@ -9,6 +9,10 @@
 // General settings //
 // //////////////// //
 
+
+struct SCIQLOP_CORE_EXPORT SqpSettings {
+    static double toleranceValue(const QString &key, double defaultValue) noexcept;
+};
 extern SCIQLOP_CORE_EXPORT const QString GENERAL_TOLERANCE_AT_INIT_KEY;
 extern SCIQLOP_CORE_EXPORT const double GENERAL_TOLERANCE_AT_INIT_DEFAULT_VALUE;
 
