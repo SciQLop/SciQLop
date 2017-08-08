@@ -202,8 +202,8 @@ MainWindow::MainWindow(QWidget *parent)
     // /////////// //
 
     // Controllers / controllers connections
-    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(SqpDateTime)),
-            &sqpApp->variableController(), SLOT(onDateTimeOnSelection(SqpDateTime)));
+    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(SqpRange)), &sqpApp->variableController(),
+            SLOT(onDateTimeOnSelection(SqpRange)));
 
     // Widgets / controllers connections
 
@@ -212,8 +212,8 @@ MainWindow::MainWindow(QWidget *parent)
             m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem *)));
 
     // Time
-    connect(timeWidget, SIGNAL(timeUpdated(SqpDateTime)), &sqpApp->timeController(),
-            SLOT(onTimeToUpdate(SqpDateTime)));
+    connect(timeWidget, SIGNAL(timeUpdated(SqpRange)), &sqpApp->timeController(),
+            SLOT(onTimeToUpdate(SqpRange)));
 
     // Visualization
     connect(&sqpApp->visualizationController(),
@@ -221,8 +221,8 @@ MainWindow::MainWindow(QWidget *parent)
             SLOT(onVariableAboutToBeDeleted(std::shared_ptr<Variable>)));
 
     connect(&sqpApp->visualizationController(),
-            SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)), m_Ui->view,
-            SLOT(onRangeChanged(std::shared_ptr<Variable>, const SqpDateTime &)));
+            SIGNAL(rangeChanged(std::shared_ptr<Variable>, const SqpRange &)), m_Ui->view,
+            SLOT(onRangeChanged(std::shared_ptr<Variable>, const SqpRange &)));
 
     // Widgets / widgets connections
 

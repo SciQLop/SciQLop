@@ -3,7 +3,7 @@
 
 #include <QWidget>
 
-#include <Data/SqpDateTime.h>
+#include <Data/SqpRange.h>
 
 namespace Ui {
 class TimeWidget;
@@ -18,7 +18,7 @@ public:
 
 signals:
     /// Signal emitted when the time parameters has beed updated
-    void timeUpdated(SqpDateTime time);
+    void timeUpdated(SqpRange time);
 
 public slots:
     /// slot called when time parameters update has ben requested

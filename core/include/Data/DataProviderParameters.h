@@ -1,7 +1,7 @@
 #ifndef SCIQLOP_DATAPROVIDERPARAMETERS_H
 #define SCIQLOP_DATAPROVIDERPARAMETERS_H
 
-#include "SqpDateTime.h"
+#include "SqpRange.h"
 
 /**
  * @brief The DataProviderParameters struct holds the information needed to retrieve data from a
@@ -10,7 +10,7 @@
  */
 struct DataProviderParameters {
     /// Times for which retrieve data
-    QVector<SqpDateTime> m_Times;
+    QVector<SqpRange> m_Times;
     /// Extra data that can be used by the provider to retrieve data
     QVariantHash m_Data;
 };

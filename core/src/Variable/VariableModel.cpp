@@ -60,7 +60,7 @@ VariableModel::VariableModel(QObject *parent)
 }
 
 std::shared_ptr<Variable> VariableModel::createVariable(const QString &name,
-                                                        const SqpDateTime &dateTime,
+                                                        const SqpRange &dateTime,
                                                         const QVariantHash &metadata) noexcept
 {
     auto insertIndex = rowCount();

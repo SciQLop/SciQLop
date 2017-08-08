@@ -13,7 +13,7 @@
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationGraphWidget)
 
 class QCPRange;
-class SqpDateTime;
+class SqpRange;
 class Variable;
 
 /**
@@ -39,9 +39,9 @@ public:
     /// Removes a variable from the graph
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
 
-    void setRange(std::shared_ptr<Variable> variable, const SqpDateTime &range);
-    SqpDateTime graphRange() const noexcept;
-    void setGraphRange(const SqpDateTime &range);
+    void setRange(std::shared_ptr<Variable> variable, const SqpRange &range);
+    SqpRange graphRange() const noexcept;
+    void setGraphRange(const SqpRange &range);
 
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
@@ -51,8 +51,8 @@ public:
 
 
 signals:
-    void requestDataLoading(std::shared_ptr<Variable> variable, const SqpDateTime &dateTime);
-    void synchronize(const SqpDateTime &dateTime, const SqpDateTime &oldDateTime,
+    void requestDataLoading(std::shared_ptr<Variable> variable, const SqpRange &dateTime);
+    void synchronize(const SqpRange &dateTime, const SqpRange &oldDateTime,
                      VisualizationGraphWidgetZoomType zoomType);
 
 

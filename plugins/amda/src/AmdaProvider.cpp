@@ -30,9 +30,9 @@ const auto AMDA_URL_FORMAT = QStringLiteral(
 const auto AMDA_TIME_FORMAT = QStringLiteral("yyyy-MM-ddThh:mm:ss");
 
 /// Formats a time to a date that can be passed in URL
-QString dateFormat(double sqpDateTime) noexcept
+QString dateFormat(double sqpRange) noexcept
 {
-    auto dateTime = DateUtils::dateTime(sqpDateTime);
+    auto dateTime = DateUtils::dateTime(sqpRange);
     return dateTime.toString(AMDA_TIME_FORMAT);
 }
 
@@ -73,7 +73,7 @@ void AmdaProvider::requestDataAborting(QUuid identifier)
     }
 }
 
-void AmdaProvider::retrieveData(QUuid token, const SqpDateTime &dateTime, const QVariantHash &data)
+void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVariantHash &data)
 {
     // Retrieves product ID from data: if the value is invalid, no request is made
     auto productId = data.value(AMDA_XML_ID_KEY).toString();

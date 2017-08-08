@@ -11,7 +11,7 @@
 
 Q_LOGGING_CATEGORY(LOG_CosinusProvider, "CosinusProvider")
 
-std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid token, const SqpDateTime &dateTime)
+std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid token, const SqpRange &dateTime)
 {
     // TODO: Add Mutex
     auto dataIndex = 0;

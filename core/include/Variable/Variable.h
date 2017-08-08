@@ -3,7 +3,7 @@
 
 #include "CoreGlobal.h"
 
-#include <Data/SqpDateTime.h>
+#include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
 #include <QObject>
@@ -24,21 +24,21 @@ class SCIQLOP_CORE_EXPORT Variable : public QObject {
     Q_OBJECT
 
 public:
-    explicit Variable(const QString &name, const SqpDateTime &dateTime,
+    explicit Variable(const QString &name, const SqpRange &dateTime,
                       const QVariantHash &metadata = {});
 
     QString name() const noexcept;
-    SqpDateTime dateTime() const noexcept;
-    void setDateTime(const SqpDateTime &dateTime) noexcept;
+    SqpRange dateTime() const noexcept;
+    void setDateTime(const SqpRange &dateTime) noexcept;
 
     /// @return the data of the variable, nullptr if there is no data
     IDataSeries *dataSeries() const noexcept;
 
     QVariantHash metadata() const noexcept;
 
-    bool contains(const SqpDateTime &dateTime) const noexcept;
-    bool intersect(const SqpDateTime &dateTime) const noexcept;
-    bool isInside(const SqpDateTime &dateTime) const noexcept;
+    bool contains(const SqpRange &dateTime) const noexcept;
+    bool intersect(const SqpRange &dateTime) const noexcept;
+    bool isInside(const SqpRange &dateTime) const noexcept;
 
 public slots:
     void setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;

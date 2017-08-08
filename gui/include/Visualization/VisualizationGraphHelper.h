@@ -1,7 +1,7 @@
 #ifndef SCIQLOP_VISUALIZATIONGRAPHHELPER_H
 #define SCIQLOP_VISUALIZATIONGRAPHHELPER_H
 
-#include <Data/SqpDateTime.h>
+#include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
 #include <QVector>
@@ -32,7 +32,7 @@ struct VisualizationGraphHelper {
                                                   QCustomPlot &plot) noexcept;
 
     static void updateData(QVector<QCPAbstractPlottable *> plotableVect, IDataSeries *dataSeries,
-                           const SqpDateTime &dateTime);
+                           const SqpRange &dateTime);
 };
 
 #endif // SCIQLOP_VISUALIZATIONGRAPHHELPER_H

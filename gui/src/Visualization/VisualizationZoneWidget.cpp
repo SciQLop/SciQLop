@@ -1,6 +1,6 @@
 #include "Visualization/VisualizationZoneWidget.h"
 
-#include "Data/SqpDateTime.h"
+#include "Data/SqpRange.h"
 
 #include "Visualization/IVisualizationWidgetVisitor.h"
 #include "Visualization/VisualizationGraphWidget.h"
@@ -70,8 +70,8 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     graphWidget->addVariable(variable);
 
     // Lambda to synchronize zone widget
-    auto synchronizeZoneWidget = [this, graphWidget](const SqpDateTime &dateTime,
-                                                     const SqpDateTime &oldDateTime,
+    auto synchronizeZoneWidget = [this, graphWidget](const SqpRange &dateTime,
+                                                     const SqpRange &oldDateTime,
                                                      VisualizationGraphWidgetZoomType zoomType) {
         auto frameLayout = ui->visualizationZoneFrame->layout();
         for (auto i = 0; i < frameLayout->count(); ++i) {

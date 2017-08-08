@@ -150,7 +150,7 @@ void VariableController::createVariable(const QString &name, const QVariantHash 
     }
 }
 
-void VariableController::onDateTimeOnSelection(const SqpDateTime &dateTime)
+void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
 {
     qCDebug(LOG_VariableController()) << "VariableController::onDateTimeOnSelection"
                                       << QThread::currentThread()->objectName();
@@ -196,7 +196,7 @@ void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> vari
 
 
 void VariableController::onRequestDataLoading(std::shared_ptr<Variable> variable,
-                                              const SqpDateTime &dateTime)
+                                              const SqpRange &dateTime)
 {
     qCDebug(LOG_VariableController()) << "VariableController::onRequestDataLoading"
                                       << QThread::currentThread()->objectName();
