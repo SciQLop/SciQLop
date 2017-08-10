@@ -47,10 +47,8 @@ public:
     bool cacheIsInside(const SqpRange &range) const noexcept;
 
     QVector<SqpRange> provideNotInCacheRangeList(const SqpRange &range);
-
-
-public slots:
     void setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
+    void mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
 
 signals:
     void updated();
@@ -62,5 +60,6 @@ private:
 
 // Required for using shared_ptr in signals/slots
 SCIQLOP_REGISTER_META_TYPE(VARIABLE_PTR_REGISTRY, std::shared_ptr<Variable>)
+SCIQLOP_REGISTER_META_TYPE(VARIABLE_PTR_VECTOR_REGISTRY, QVector<std::shared_ptr<Variable> >)
 
 #endif // SCIQLOP_VARIABLE_H

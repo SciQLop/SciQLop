@@ -61,6 +61,26 @@ void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
         return;
     }
 
+    impl->m_DataSeries = dataSeries->clone();
+
+    //    // Inits the data series of the variable
+    //    if (!impl->m_DataSeries) {
+    //        impl->m_DataSeries = dataSeries->clone();
+    //    }
+    //    else {
+    //        impl->m_DataSeries->merge(dataSeries.get());
+    //    }
+}
+
+void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
+{
+    qCDebug(LOG_Variable()) << "Variable::setDataSeries" << QThread::currentThread()->objectName();
+    if (!dataSeries) {
+        /// @todo ALX : log
+        return;
+    }
+
+    // Add or merge the data
     // Inits the data series of the variable
     if (!impl->m_DataSeries) {
         impl->m_DataSeries = dataSeries->clone();
@@ -68,6 +88,13 @@ void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
     else {
         impl->m_DataSeries->merge(dataSeries.get());
     }
+
+    // sub the data
+    auto subData = this->dataSeries()->subData(this->cacheRange());
+    qCCritical(LOG_Variable()) << "TORM: Variable::mergeDataSeries sub" << subData->range();
+    this->setDataSeries(subData);
+    qCCritical(LOG_Variable()) << "TORM: Variable::mergeDataSeries set"
+                               << this->dataSeries()->range();
 }
 
 IDataSeries *Variable::dataSeries() const noexcept
@@ -127,10 +154,10 @@ QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &range)
         else if (range.m_TStart < impl->m_CacheRange.m_TStart
                  && range.m_TEnd > impl->m_CacheRange.m_TEnd) {
             notInCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TStart}
-                       << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TStart};
+                       << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
         }
         else if (range.m_TStart < impl->m_CacheRange.m_TEnd) {
-            notInCache << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TStart};
+            notInCache << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
         }
         else {
             qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
