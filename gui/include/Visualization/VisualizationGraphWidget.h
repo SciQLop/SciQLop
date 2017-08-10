@@ -52,6 +52,9 @@ signals:
                             const SqpRange &oldRange, bool synchronise);
 
 
+    void variableAdded(std::shared_ptr<Variable> var);
+
+
 private:
     Ui::VisualizationGraphWidget *ui;
 

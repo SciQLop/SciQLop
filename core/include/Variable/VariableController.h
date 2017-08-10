@@ -102,6 +102,7 @@ public slots:
     /// synchronization group methods
     void onAddSynchronizationGroupId(QUuid synchronizationGroupId);
     void onRemoveSynchronizationGroupId(QUuid synchronizationGroupId);
+    void onAddSynchronized(std::shared_ptr<Variable> variable, QUuid synchronizationGroupId);
 
     void initialize();
     void finalize();

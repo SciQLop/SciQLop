@@ -95,44 +95,30 @@ void VisualizationGraphWidget::enableAcquisition(bool enable)
 
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
 {
+    auto calibrationState = impl->m_IsCalibration;
+    impl->m_IsCalibration = true;
     // Uses delegate to create the qcpplot components according to the variable
     auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+    impl->m_IsCalibration = calibrationState;
 
     for (auto createdPlottable : qAsConst(createdPlottables)) {
         impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
     }
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
+
+    emit variableAdded(variable);
 }
 void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> variable)
 {
-    // TODO
-    //    // when adding a variable, we need to set its time range to the current graph range
-    //    auto grapheRange = ui->widget->xAxis->range();
-    //    auto dateTime = SqpRange{grapheRange.lower, grapheRange.upper};
-    //    variable->setDateTime(dateTime);
+    // Uses delegate to create the qcpplot components according to the variable
+    this->addVariable(variable);
 
-    //    auto variableDateTimeWithTolerance = dateTime;
+    // Request range for the variable
+    auto graphRange = ui->widget->xAxis->range();
 
-    //    // add tolerance for each side
-    //    auto toleranceFactor
-    //        = toleranceValue(GENERAL_TOLERANCE_AT_INIT_KEY,
-    //        GENERAL_TOLERANCE_AT_INIT_DEFAULT_VALUE);
-    //    auto tolerance = toleranceFactor * (dateTime.m_TEnd - dateTime.m_TStart);
-    //    variableDateTimeWithTolerance.m_TStart -= tolerance;
-    //    variableDateTimeWithTolerance.m_TEnd += tolerance;
-
-    //    // Uses delegate to create the qcpplot components according to the variable
-    //    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
-
-    //    for (auto createdPlottable : qAsConst(createdPlottables)) {
-    //        impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
-    //    }
-
-    //    connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
-
-    //    // CHangement detected, we need to ask controller to request data loading
-    //    emit requestDataLoading(variable, variableDateTimeWithTolerance);
+    emit requestDataLoading(QVector<std::shared_ptr<Variable> >() << variable,
+                            SqpRange{graphRange.lower, graphRange.upper}, variable->range(), false);
 }
 
 void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
@@ -249,9 +235,9 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                                 !impl->m_IsCalibration);
 
         if (!impl->m_IsCalibration) {
-            qCDebug(LOG_VisualizationGraphWidget())
+            qCInfo(LOG_VisualizationGraphWidget())
                 << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
-                << QThread::currentThread()->objectName();
+                << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
             emit synchronize(graphRange, oldGraphRange);
         }
     }

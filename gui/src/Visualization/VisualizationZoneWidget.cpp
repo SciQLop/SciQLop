@@ -79,9 +79,6 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     graphWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
     graphWidget->setMinimumHeight(GRAPH_MINIMUM_HEIGHT);
 
-    this->addGraph(graphWidget);
-
-    graphWidget->addVariable(variable);
 
     // Lambda to synchronize zone widget
     auto synchronizeZoneWidget = [this, graphWidget](const SqpRange &grapheRange,
@@ -168,6 +165,12 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
 
     // connection for synchronization
     connect(graphWidget, &VisualizationGraphWidget::synchronize, synchronizeZoneWidget);
+    connect(graphWidget, &VisualizationGraphWidget::variableAdded, this,
+            &VisualizationZoneWidget::onVariableAdded);
+
+    this->addGraph(graphWidget);
+
+    graphWidget->addVariable(variable);
 
     return graphWidget;
 }
@@ -212,4 +215,11 @@ bool VisualizationZoneWidget::contains(const Variable &variable) const
 QString VisualizationZoneWidget::name() const
 {
     return ui->zoneNameLabel->text();
+}
+
+void VisualizationZoneWidget::onVariableAdded(std::shared_ptr<Variable> variable)
+{
+    QMetaObject::invokeMethod(&sqpApp->variableController(), "onAddSynchronized",
+                              Qt::QueuedConnection, Q_ARG(std::shared_ptr<Variable>, variable),
+                              Q_ARG(QUuid, impl->m_SynchronisationGroupId));
 }

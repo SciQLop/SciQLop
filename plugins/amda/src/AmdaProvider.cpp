@@ -61,7 +61,8 @@ void AmdaProvider::requestDataLoading(QUuid acqIdentifier, const DataProviderPar
     const auto times = parameters.m_Times;
     const auto data = parameters.m_Data;
     for (const auto &dateTime : qAsConst(times)) {
-        retrieveData(acqIdentifier, dateTime, data);
+        this->retrieveData(acqIdentifier, dateTime, data);
+        QThread::msleep(200);
     }
 }
 

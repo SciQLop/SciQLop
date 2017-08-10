@@ -263,18 +263,16 @@ void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &range
                                         const SqpRange &cacheRangeRequested,
                                         QVector<AcquisitionDataPacket> dataAcquired)
 {
-    qCCritical(LOG_VariableController()) << tr("onDataProvided") << dataAcquired.isEmpty();
-
     auto var = impl->findVariable(vIdentifier);
     if (var != nullptr) {
         var->setRange(rangeRequested);
         var->setCacheRange(cacheRangeRequested);
-        qCCritical(LOG_VariableController()) << tr("1: onDataProvided") << rangeRequested;
-        qCCritical(LOG_VariableController()) << tr("2: onDataProvided") << cacheRangeRequested;
+        qCDebug(LOG_VariableController()) << tr("1: onDataProvided") << rangeRequested;
+        qCDebug(LOG_VariableController()) << tr("2: onDataProvided") << cacheRangeRequested;
 
         auto retrievedDataSeries = impl->retrieveDataSeries(dataAcquired);
-        qCCritical(LOG_VariableController()) << tr("3: onDataProvided")
-                                             << retrievedDataSeries->range();
+        qCDebug(LOG_VariableController()) << tr("3: onDataProvided")
+                                          << retrievedDataSeries->range();
         var->mergeDataSeries(retrievedDataSeries);
         emit var->updated();
     }
@@ -313,6 +311,9 @@ void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> vari
 
 void VariableController::onAddSynchronizationGroupId(QUuid synchronizationGroupId)
 {
+    qCDebug(LOG_VariableController()) << "TORM: VariableController::onAddSynchronizationGroupId"
+                                      << QThread::currentThread()->objectName()
+                                      << synchronizationGroupId;
     auto vSynchroGroup = std::make_shared<VariableSynchronizationGroup>();
     impl->m_GroupIdToVariableSynchronizationGroupMap.insert(
         std::make_pair(synchronizationGroupId, vSynchroGroup));
@@ -321,6 +322,33 @@ void VariableController::onAddSynchronizationGroupId(QUuid synchronizationGroupI
 void VariableController::onRemoveSynchronizationGroupId(QUuid synchronizationGroupId)
 {
     impl->m_GroupIdToVariableSynchronizationGroupMap.erase(synchronizationGroupId);
+}
+
+void VariableController::onAddSynchronized(std::shared_ptr<Variable> variable,
+                                           QUuid synchronizationGroupId)
+
+{
+    qCDebug(LOG_VariableController()) << "TORM: VariableController::onAddSynchronized"
+                                      << synchronizationGroupId;
+    auto vToVIdit = impl->m_VariableToIdentifierMap.find(variable);
+    if (vToVIdit != impl->m_VariableToIdentifierMap.cend()) {
+        auto itSynchroGroup
+            = impl->m_GroupIdToVariableSynchronizationGroupMap.find(synchronizationGroupId);
+        if (itSynchroGroup != impl->m_GroupIdToVariableSynchronizationGroupMap.cend()) {
+            impl->m_VariableIdGroupIdMap.insert(
+                std::make_pair(vToVIdit->second, synchronizationGroupId));
+            itSynchroGroup->second->addVariableId(vToVIdit->second);
+        }
+        else {
+            qCCritical(LOG_VariableController())
+                << tr("Impossible to synchronize a variable with an unknown sycnhronization group")
+                << variable->name();
+        }
+    }
+    else {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to synchronize a variable with no identifier") << variable->name();
+    }
 }
 
 
@@ -337,24 +365,24 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
     // For the other, we ask the provider to give them.
 
     foreach (auto var, variables) {
-        qCInfo(LOG_VariableController()) << "processRequest for" << var->name();
+        qCDebug(LOG_VariableController()) << "processRequest for" << var->name();
         impl->processRequest(var, range);
     }
 
     if (synchronise) {
         // Get the group ids
-        qCInfo(LOG_VariableController())
+        qCDebug(LOG_VariableController())
             << "VariableController::onRequestDataLoading for synchro var ENABLE";
         auto groupIds = std::set<QUuid>();
         foreach (auto var, variables) {
-            auto vToVIdit = impl->m_VariableToIdentifierMap.find(var);
-            if (vToVIdit != impl->m_VariableToIdentifierMap.cend()) {
-                auto vId = vToVIdit->second;
-
-                auto vIdToGIdit = impl->m_VariableIdGroupIdMap.find(vId);
-                if (vIdToGIdit != impl->m_VariableIdGroupIdMap.cend()) {
-                    auto gId = vToVIdit->second;
+            auto varToVarIdIt = impl->m_VariableToIdentifierMap.find(var);
+            if (varToVarIdIt != impl->m_VariableToIdentifierMap.cend()) {
+                auto vId = varToVarIdIt->second;
+                auto varIdToGroupIdIt = impl->m_VariableIdGroupIdMap.find(vId);
+                if (varIdToGroupIdIt != impl->m_VariableIdGroupIdMap.cend()) {
+                    auto gId = varIdToGroupIdIt->second;
                     if (groupIds.find(gId) == groupIds.cend()) {
+                        qCDebug(LOG_VariableController()) << "Synchro detect group " << gId;
                         groupIds.insert(gId);
                     }
                 }
@@ -365,17 +393,24 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
         foreach (auto gId, groupIds) {
             auto vSynchronizationGroup = impl->m_GroupIdToVariableSynchronizationGroupMap.at(gId);
             auto vSyncIds = vSynchronizationGroup->getIds();
+            qCDebug(LOG_VariableController()) << "Var in synchro group ";
             for (auto vId : vSyncIds) {
                 auto var = impl->findVariable(vId);
-                if (var != nullptr) {
-                    qCInfo(LOG_VariableController()) << "processRequest synchro for" << var->name();
-                    auto vSyncRangeRequested
-                        = computeSynchroRangeRequested(var->range(), range, oldRange);
-                    impl->processRequest(var, vSyncRangeRequested);
-                }
-                else {
-                    qCCritical(LOG_VariableController())
-                        << tr("Impossible to synchronize a null variable");
+
+                // Don't process already processed var
+                if (!variables.contains(var)) {
+                    if (var != nullptr) {
+                        qCDebug(LOG_VariableController()) << "processRequest synchro for"
+                                                          << var->name();
+                        auto vSyncRangeRequested
+                            = computeSynchroRangeRequested(var->range(), range, oldRange);
+                        impl->processRequest(var, vSyncRangeRequested);
+                    }
+                    else {
+                        qCCritical(LOG_VariableController())
+
+                            << tr("Impossible to synchronize a null variable");
+                    }
                 }
             }
         }
@@ -503,6 +538,6 @@ void VariableController::VariableControllerPrivate::registerProvider(
                 &VariableAcquisitionWorker::onVariableRetrieveDataInProgress);
     }
     else {
-        qCInfo(LOG_VariableController()) << tr("Cannot register provider, it already exists ");
+        qCDebug(LOG_VariableController()) << tr("Cannot register provider, it already exists ");
     }
 }

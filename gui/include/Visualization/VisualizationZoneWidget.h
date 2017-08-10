@@ -42,6 +42,10 @@ public:
     bool contains(const Variable &variable) const override;
     QString name() const override;
 
+
+private slots:
+    void onVariableAdded(std::shared_ptr<Variable> variable);
+
 private:
     Ui::VisualizationZoneWidget *ui;
 
