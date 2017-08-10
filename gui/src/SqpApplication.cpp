@@ -60,7 +60,7 @@ public:
 
     virtual ~SqpApplicationPrivate()
     {
-        qCInfo(LOG_SqpApplication()) << tr("SqpApplicationPrivate destruction");
+        qCDebug(LOG_SqpApplication()) << tr("SqpApplicationPrivate destruction");
         m_DataSourceControllerThread.quit();
         m_DataSourceControllerThread.wait();
 

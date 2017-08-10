@@ -17,15 +17,16 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_CosinusProvider)
 class SCIQLOP_MOCKPLUGIN_EXPORT CosinusProvider : public IDataProvider {
 public:
     /// @sa IDataProvider::requestDataLoading(). The current impl isn't thread safe.
-    void requestDataLoading(QUuid token, const DataProviderParameters &parameters) override;
+    void requestDataLoading(QUuid acqIdentifier, const DataProviderParameters &parameters) override;
 
 
     /// @sa IDataProvider::requestDataAborting(). The current impl isn't thread safe.
-    void requestDataAborting(QUuid identifier) override;
+    void requestDataAborting(QUuid acqIdentifier) override;
 
 
 private:
-    std::shared_ptr<IDataSeries> retrieveData(QUuid token, const SqpRange &dateTime);
+    std::shared_ptr<IDataSeries> retrieveData(QUuid acqIdentifier,
+                                              const SqpRange &dataRangeRequested);
 
     QHash<QUuid, bool> m_VariableToEnableProvider;
 };

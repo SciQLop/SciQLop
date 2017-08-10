@@ -8,6 +8,8 @@
 #include <QObject>
 #include <QUuid>
 
+#include <Data/AcquisitionDataPacket.h>
+#include <Data/IDataSeries.h>
 #include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
@@ -24,11 +26,34 @@ class SCIQLOP_CORE_EXPORT VariableAcquisitionWorker : public QObject {
     Q_OBJECT
 public:
     explicit VariableAcquisitionWorker(QObject *parent = 0);
+    virtual ~VariableAcquisitionWorker();
 
-    void pushVariableRequest(QUuid vIdentifier, SqpRange rangeRequest, SqpRange cacheRangeRequested,
-                             DataProviderParameters parameters, IDataProvider *provider);
+    void pushVariableRequest(QUuid vIdentifier, SqpRange rangeRequested,
+                             SqpRange cacheRangeRequested, DataProviderParameters parameters,
+                             std::shared_ptr<IDataProvider> provider);
+
+    void abortProgressRequested(QUuid vIdentifier);
+
+    void initialize();
+    void finalize();
+signals:
+    void dataProvided(QUuid vIdentifier, const SqpRange &rangeRequested,
+                      const SqpRange &cacheRangeRequested,
+                      QVector<AcquisitionDataPacket> dataAcquired);
+
+    void variableRequestInProgress(QUuid vIdentifier, double progress);
+
+public slots:
+    void onVariableDataAcquired(QUuid acqIdentifier, std::shared_ptr<IDataSeries> dataSeries,
+                                SqpRange dataRangeAcquired);
+    void onVariableRetrieveDataInProgress(QUuid acqIdentifier, double progress);
+
+private slots:
+    void onExecuteRequest(QUuid acqIdentifier);
 
 private:
+    void waitForFinish();
+
     class VariableAcquisitionWorkerPrivate;
     spimpl::unique_impl_ptr<VariableAcquisitionWorkerPrivate> impl;
 };

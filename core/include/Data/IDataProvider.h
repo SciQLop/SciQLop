@@ -34,35 +34,37 @@ public:
     virtual ~IDataProvider() noexcept = default;
 
     /**
-     * @brief requestDataLoading provide datas for the data identified by identifier and parameters
+     * @brief requestDataLoading provide datas for the data identified by acqIdentifier and
+     * parameters
      */
-    virtual void requestDataLoading(QUuid identifier, const DataProviderParameters &parameters) = 0;
+    virtual void requestDataLoading(QUuid acqIdentifier, const DataProviderParameters &parameters)
+        = 0;
 
     /**
-     * @brief requestDataAborting stop data loading of the data identified by identifier
+     * @brief requestDataAborting stop data loading of the data identified by acqIdentifier
      */
-    virtual void requestDataAborting(QUuid identifier) = 0;
+    virtual void requestDataAborting(QUuid acqIdentifier) = 0;
 
 signals:
     /**
      * @brief dataProvided send dataSeries under dateTime and that corresponds of the data
-     * identified by identifier
+     * identified by acqIdentifier
      */
-    void dataProvided(QUuid identifier, std::shared_ptr<IDataSeries> dateSerie,
-                      const SqpRange &dateTime);
+    void dataProvided(QUuid acqIdentifier, std::shared_ptr<IDataSeries> dateSeriesAcquired,
+                      const SqpRange &dataRangeAcquired);
 
     /**
         * @brief dataProvided send dataSeries under dateTime and that corresponds of the data
         * identified by identifier
         */
-    void dataProvidedProgress(QUuid identifier, double progress);
+    void dataProvidedProgress(QUuid acqIdentifier, double progress);
 
 
     /**
-     * @brief requestConstructed send a request for the data identified by identifier
+     * @brief requestConstructed send a request for the data identified by acqIdentifier
      * @callback is the methode call by the reply of the request when it is finished.
      */
-    void requestConstructed(const QNetworkRequest &request, QUuid identifier,
+    void requestConstructed(const QNetworkRequest &request, QUuid acqIdentifier,
                             std::function<void(QNetworkReply *, QUuid)> callback);
 };
 

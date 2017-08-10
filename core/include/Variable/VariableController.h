@@ -3,6 +3,7 @@
 
 #include "CoreGlobal.h"
 
+#include <Data/AcquisitionDataPacket.h>
 #include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
@@ -17,6 +18,13 @@ class Variable;
 class VariableModel;
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableController)
+
+
+/**
+ * Possible types of zoom operation
+ */
+enum class AcquisitionZoomType { ZoomOut, ZoomIn, PanRight, PanLeft, Unknown };
+
 
 /**
  * @brief The VariableController class aims to handle the variables in SciQlop.
@@ -57,6 +65,7 @@ public:
      */
     void abortProgress(std::shared_ptr<Variable> variable);
 
+    static AcquisitionZoomType getZoomType(const SqpRange &range, const SqpRange &oldRange);
 signals:
     /// Signal emitted when a variable is about to be deleted from the controller
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
@@ -65,8 +74,9 @@ signals:
     void rangeChanged(std::shared_ptr<Variable> variable, const SqpRange &range);
 
 public slots:
-    /// Request the data loading of the variable whithin dateTime
-    void onRequestDataLoading(std::shared_ptr<Variable> variable, const SqpRange &dateTime);
+    /// Request the data loading of the variable whithin range
+    void onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables, const SqpRange &range,
+                              const SqpRange &oldRange, bool synchronise);
     /**
      * Creates a new variable and adds it to the model
      * @param name the name of the new variable
@@ -80,9 +90,18 @@ public slots:
     void onDateTimeOnSelection(const SqpRange &dateTime);
 
 
+    void onDataProvided(QUuid vIdentifier, const SqpRange &rangeRequested,
+                        const SqpRange &cacheRangeRequested,
+                        QVector<AcquisitionDataPacket> dataAcquired);
+
     void onVariableRetrieveDataInProgress(QUuid identifier, double progress);
 
+    /// Cancel the current request for the variable
     void onAbortProgressRequested(std::shared_ptr<Variable> variable);
+
+    /// synchronization group methods
+    void onAddSynchronizationGroupId(QUuid synchronizationGroupId);
+    void onRemoveSynchronizationGroupId(QUuid synchronizationGroupId);
 
     void initialize();
     void finalize();

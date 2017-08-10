@@ -19,7 +19,9 @@ public:
     explicit ScalarSeries(QVector<double> xAxisData, QVector<double> valuesData,
                           const Unit &xAxisUnit, const Unit &valuesUnit);
 
-    std::unique_ptr<IDataSeries> clone() const;
+    std::unique_ptr<IDataSeries> clone() const override;
+
+    std::shared_ptr<IDataSeries> subData(const SqpRange &range) override;
 };
 
 #endif // SCIQLOP_SCALARSERIES_H

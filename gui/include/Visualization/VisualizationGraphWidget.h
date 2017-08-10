@@ -16,11 +16,6 @@ class QCPRange;
 class SqpRange;
 class Variable;
 
-/**
- * Possible types of zoom operation
- */
-enum class VisualizationGraphWidgetZoomType { ZoomOut, ZoomIn, PanRight, PanLeft, Unknown };
-
 namespace Ui {
 class VisualizationGraphWidget;
 } // namespace Ui
@@ -32,7 +27,8 @@ public:
     explicit VisualizationGraphWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationGraphWidget();
 
-    void enableSynchronize(bool enable);
+    /// If acquisition isn't enable, requestDataLoading signal cannot be emit
+    void enableAcquisition(bool enable);
 
     void addVariable(std::shared_ptr<Variable> variable);
     void addVariableUsingGraph(std::shared_ptr<Variable> variable);
@@ -51,9 +47,9 @@ public:
 
 
 signals:
-    void requestDataLoading(std::shared_ptr<Variable> variable, const SqpRange &dateTime);
-    void synchronize(const SqpRange &dateTime, const SqpRange &oldDateTime,
-                     VisualizationGraphWidgetZoomType zoomType);
+    void synchronize(const SqpRange &range, const SqpRange &oldRange);
+    void requestDataLoading(QVector<std::shared_ptr<Variable> > variable, const SqpRange &range,
+                            const SqpRange &oldRange, bool synchronise);
 
 
 private:

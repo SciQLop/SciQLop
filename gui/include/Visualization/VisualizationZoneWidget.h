@@ -6,6 +6,10 @@
 #include <QLoggingCategory>
 #include <QWidget>
 
+#include <memory>
+
+#include <Common/spimpl.h>
+
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationZoneWidget)
 
 namespace Ui {
@@ -40,6 +44,9 @@ public:
 
 private:
     Ui::VisualizationZoneWidget *ui;
+
+    class VisualizationZoneWidgetPrivate;
+    spimpl::unique_impl_ptr<VisualizationZoneWidgetPrivate> impl;
 };
 
 #endif // SCIQLOP_VISUALIZATIONZONEWIDGET_H
