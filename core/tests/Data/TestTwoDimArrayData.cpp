@@ -213,7 +213,7 @@ void TestTwoDimArrayData::testSort()
 
     ArrayData<2> arrayData{inputData};
     auto sortedArrayData = arrayData.sort(sortPermutation);
-    QVERIFY(sortedArrayData);
+    QVERIFY(sortedArrayData != nullptr);
 
     for (auto i = 0; i < expectedData.size(); ++i) {
         QVERIFY(sortedArrayData->data(i) == expectedData.at(i));
