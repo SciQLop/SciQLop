@@ -191,7 +191,7 @@ void TestOneDimArrayData::testSort()
 
     ArrayData<1> arrayData{inputData};
     auto sortedArrayData = arrayData.sort(sortPermutation);
-    QVERIFY(sortedArrayData);
+    QVERIFY(sortedArrayData != nullptr);
     QVERIFY(sortedArrayData->data() == expectedData);
 }
 
