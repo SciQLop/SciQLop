@@ -6,6 +6,7 @@
 #include "ui_VisualizationZoneWidget.h"
 
 #include <Data/SqpRange.h>
+#include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 
 #include <QUuid>
@@ -168,9 +169,27 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     connect(graphWidget, &VisualizationGraphWidget::variableAdded, this,
             &VisualizationZoneWidget::onVariableAdded);
 
+    auto range = SqpRange{};
+
+    // Apply visitor to graph children
+    auto layout = ui->visualizationZoneFrame->layout();
+    if (layout->count() > 0) {
+        // Case of a new graph in a existant zone
+        if (auto visualizationGraphWidget
+            = dynamic_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
+            range = visualizationGraphWidget->graphRange();
+        }
+    }
+    else {
+        // Case of a new graph as the first of the zone
+        range = variable->range();
+    }
+
     this->addGraph(graphWidget);
 
-    graphWidget->addVariable(variable);
+    graphWidget->addVariable(variable, range);
+    // TODO: get y using variable range
+    graphWidget->setYRange(SqpRange{-10, 10});
 
     return graphWidget;
 }

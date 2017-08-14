@@ -79,6 +79,29 @@ void updateScalarData(QCPAbstractPlottable *component, std::shared_ptr<ScalarSer
     }
 }
 
+QCPAbstractPlottable *createScalarSeriesComponentV2(std::shared_ptr<ScalarSeries> scalarSeries,
+                                                    QCustomPlot &plot)
+{
+    auto component = plot.addGraph();
+
+    if (component) {
+        // Axes properties
+        /// @todo : for the moment, no control is performed on the axes: the units and the tickers
+        /// are fixed for the default x-axis and y-axis of the plot, and according to the new graph
+
+        auto setAxisProperties = [](auto axis, const auto &unit) {
+            // label (unit name)
+            axis->setLabel(unit.m_Name);
+
+            // ticker (depending on the type of unit)
+            axis->setTicker(axisTicker(unit.m_TimeUnit));
+        };
+        setAxisProperties(plot.xAxis, scalarSeries->xAxisUnit());
+        setAxisProperties(plot.yAxis, scalarSeries->valuesUnit());
+    }
+    return component;
+}
+
 QCPAbstractPlottable *createScalarSeriesComponent(std::shared_ptr<ScalarSeries> scalarSeries,
                                                   QCustomPlot &plot, const SqpRange &dateTime)
 {
@@ -118,6 +141,30 @@ QCPAbstractPlottable *createScalarSeriesComponent(std::shared_ptr<ScalarSeries> 
 }
 
 } // namespace
+
+QVector<QCPAbstractPlottable *>
+VisualizationGraphHelper::createV2(std::shared_ptr<Variable> variable, QCustomPlot &plot) noexcept
+{
+    auto result = QVector<QCPAbstractPlottable *>{};
+
+    if (variable) {
+        // Gets the data series of the variable to call the creation of the right components
+        // according to its type
+        if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(variable->dataSeries())) {
+            result.append(createScalarSeriesComponentV2(scalarSeries, plot));
+        }
+        else {
+            qCDebug(LOG_VisualizationGraphHelper())
+                << QObject::tr("Can't create graph plottables : unmanaged data series type");
+        }
+    }
+    else {
+        qCDebug(LOG_VisualizationGraphHelper())
+            << QObject::tr("Can't create graph plottables : the variable is null");
+    }
+
+    return result;
+}
 
 QVector<QCPAbstractPlottable *> VisualizationGraphHelper::create(std::shared_ptr<Variable> variable,
                                                                  QCustomPlot &plot) noexcept
