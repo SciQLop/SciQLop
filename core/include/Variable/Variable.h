@@ -34,7 +34,7 @@ public:
     void setCacheRange(const SqpRange &cacheRange) noexcept;
 
     /// @return the data of the variable, nullptr if there is no data
-    IDataSeries *dataSeries() const noexcept;
+    std::shared_ptr<IDataSeries> dataSeries() const noexcept;
 
     QVariantHash metadata() const noexcept;
 
