@@ -274,6 +274,7 @@ void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &range
         qCDebug(LOG_VariableController()) << tr("3: onDataProvided")
                                           << retrievedDataSeries->range();
         var->mergeDataSeries(retrievedDataSeries);
+        qCDebug(LOG_VariableController()) << tr("4: onDataProvided");
         emit var->updated();
     }
     else {
@@ -358,8 +359,8 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
 {
     // NOTE: oldRange isn't really necessary since oldRange == variable->range().
 
-    qCDebug(LOG_VariableController()) << "VariableController::onRequestDataLoading"
-                                      << QThread::currentThread()->objectName();
+    qCInfo(LOG_VariableController()) << "VariableController::onRequestDataLoading"
+                                     << QThread::currentThread()->objectName();
     // we want to load data of the variable for the dateTime.
     // First we check if the cache contains some of them.
     // For the other, we ask the provider to give them.
@@ -466,8 +467,6 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
     auto notInCacheRangeList = var->provideNotInCacheRangeList(varRangesRequested.second);
 
     if (!notInCacheRangeList.empty()) {
-        // Display part of data which are already there
-        // Ask the provider for each data on the dateTimeListNotInCache
         auto identifier = m_VariableToIdentifierMap.at(var);
         auto varProvider = m_VariableToProviderMap.at(var);
         if (varProvider != nullptr) {
@@ -511,8 +510,8 @@ VariableController::VariableControllerPrivate::findVariable(QUuid vIdentifier)
 std::shared_ptr<IDataSeries> VariableController::VariableControllerPrivate::retrieveDataSeries(
     const QVector<AcquisitionDataPacket> acqDataPacketVector)
 {
-    qCInfo(LOG_VariableController()) << tr("TORM: retrieveDataSeries acqDataPacketVector size")
-                                     << acqDataPacketVector.size();
+    qCDebug(LOG_VariableController()) << tr("TORM: retrieveDataSeries acqDataPacketVector size")
+                                      << acqDataPacketVector.size();
     std::shared_ptr<IDataSeries> dataSeries;
     if (!acqDataPacketVector.isEmpty()) {
         dataSeries = acqDataPacketVector[0].m_DateSeries;
@@ -520,7 +519,8 @@ std::shared_ptr<IDataSeries> VariableController::VariableControllerPrivate::retr
             dataSeries->merge(acqDataPacketVector[i].m_DateSeries.get());
         }
     }
-
+    qCDebug(LOG_VariableController()) << tr("TORM: retrieveDataSeries acqDataPacketVector size END")
+                                      << acqDataPacketVector.size();
     return dataSeries;
 }
 
@@ -528,8 +528,8 @@ void VariableController::VariableControllerPrivate::registerProvider(
     std::shared_ptr<IDataProvider> provider)
 {
     if (m_ProviderSet.find(provider) == m_ProviderSet.end()) {
-        qCInfo(LOG_VariableController()) << tr("Registering of a new provider")
-                                         << provider->objectName();
+        qCDebug(LOG_VariableController()) << tr("Registering of a new provider")
+                                          << provider->objectName();
         m_ProviderSet.insert(provider);
         connect(provider.get(), &IDataProvider::dataProvided, m_VariableAcquisitionWorker.get(),
                 &VariableAcquisitionWorker::onVariableDataAcquired);

@@ -25,7 +25,7 @@ struct Variable::VariablePrivate {
     SqpRange m_Range;
     SqpRange m_CacheRange;
     QVariantHash m_Metadata;
-    std::unique_ptr<IDataSeries> m_DataSeries;
+    std::shared_ptr<IDataSeries> m_DataSeries;
 
     QReadWriteLock m_Lock;
 };
@@ -75,7 +75,8 @@ void Variable::setCacheRange(const SqpRange &cacheRange) noexcept
 
 void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
-    qCInfo(LOG_Variable()) << "Variable::setDataSeries" << QThread::currentThread()->objectName();
+    qCDebug(LOG_Variable()) << "TORM Variable::setDataSeries"
+                            << QThread::currentThread()->objectName();
     if (!dataSeries) {
         /// @todo ALX : log
         return;
@@ -87,7 +88,7 @@ void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 
 void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
-    qCDebug(LOG_Variable()) << "Variable::mergeDataSeries"
+    qCDebug(LOG_Variable()) << "TORM Variable::mergeDataSeries"
                             << QThread::currentThread()->objectName();
     if (!dataSeries) {
         /// @todo ALX : log
@@ -107,16 +108,15 @@ void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 
     // sub the data
     auto subData = this->dataSeries()->subData(this->cacheRange());
-    qCCritical(LOG_Variable()) << "TORM: Variable::mergeDataSeries sub" << subData->range();
+    qCDebug(LOG_Variable()) << "TORM: Variable::mergeDataSeries sub" << subData->range();
     this->setDataSeries(subData);
-    qCCritical(LOG_Variable()) << "TORM: Variable::mergeDataSeries set"
-                               << this->dataSeries()->range();
+    qCDebug(LOG_Variable()) << "TORM: Variable::mergeDataSeries set" << this->dataSeries()->range();
 }
 
-IDataSeries *Variable::dataSeries() const noexcept
+std::shared_ptr<IDataSeries> Variable::dataSeries() const noexcept
 {
     impl->lockRead();
-    auto dataSeries = impl->m_DataSeries.get();
+    auto dataSeries = impl->m_DataSeries;
     impl->unlock();
 
     return dataSeries;

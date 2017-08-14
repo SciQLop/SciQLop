@@ -235,7 +235,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                                 !impl->m_IsCalibration);
 
         if (!impl->m_IsCalibration) {
-            qCInfo(LOG_VisualizationGraphWidget())
+            qCDebug(LOG_VisualizationGraphWidget())
                 << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
                 << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
             emit synchronize(graphRange, oldGraphRange);

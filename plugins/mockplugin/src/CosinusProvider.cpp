@@ -81,6 +81,7 @@ void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
     for (const auto &dateTime : qAsConst(times)) {
         if (m_VariableToEnableProvider[acqIdentifier]) {
             auto scalarSeries = this->retrieveData(acqIdentifier, dateTime);
+            qCCritical(LOG_CosinusProvider()) << "CosinusProvider::dataProvided";
             emit dataProvided(acqIdentifier, scalarSeries, dateTime);
         }
     }
