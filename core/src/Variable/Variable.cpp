@@ -3,6 +3,7 @@
 #include <Data/IDataSeries.h>
 #include <Data/SqpRange.h>
 
+#include <QMutex>
 #include <QReadWriteLock>
 #include <QThread>
 
@@ -15,12 +16,18 @@ struct Variable::VariablePrivate {
     {
     }
 
+    void lockRead() { m_Lock.lockForRead(); }
+    void lockWrite() { m_Lock.lockForWrite(); }
+    void unlock() { m_Lock.unlock(); }
+
     QString m_Name;
 
     SqpRange m_Range;
     SqpRange m_CacheRange;
     QVariantHash m_Metadata;
     std::unique_ptr<IDataSeries> m_DataSeries;
+
+    QReadWriteLock m_Lock;
 };
 
 Variable::Variable(const QString &name, const SqpRange &dateTime, const QVariantHash &metadata)
@@ -30,51 +37,58 @@ Variable::Variable(const QString &name, const SqpRange &dateTime, const QVariant
 
 QString Variable::name() const noexcept
 {
-    return impl->m_Name;
+    impl->lockRead();
+    auto name = impl->m_Name;
+    impl->unlock();
+    return name;
 }
 
 SqpRange Variable::range() const noexcept
 {
-    return impl->m_Range;
+    impl->lockRead();
+    auto range = impl->m_Range;
+    impl->unlock();
+    return range;
 }
 
 void Variable::setRange(const SqpRange &range) noexcept
 {
+    impl->lockWrite();
     impl->m_Range = range;
+    impl->unlock();
 }
 
 SqpRange Variable::cacheRange() const noexcept
 {
-    return impl->m_CacheRange;
+    impl->lockRead();
+    auto cacheRange = impl->m_CacheRange;
+    impl->unlock();
+    return cacheRange;
 }
 
 void Variable::setCacheRange(const SqpRange &cacheRange) noexcept
 {
+    impl->lockWrite();
     impl->m_CacheRange = cacheRange;
+    impl->unlock();
 }
 
 void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
-    qCDebug(LOG_Variable()) << "Variable::setDataSeries" << QThread::currentThread()->objectName();
+    qCInfo(LOG_Variable()) << "Variable::setDataSeries" << QThread::currentThread()->objectName();
     if (!dataSeries) {
         /// @todo ALX : log
         return;
     }
-
+    impl->lockWrite();
     impl->m_DataSeries = dataSeries->clone();
-
-    //    // Inits the data series of the variable
-    //    if (!impl->m_DataSeries) {
-    //        impl->m_DataSeries = dataSeries->clone();
-    //    }
-    //    else {
-    //        impl->m_DataSeries->merge(dataSeries.get());
-    //    }
+    impl->unlock();
 }
 
 void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
-    qCDebug(LOG_Variable()) << "Variable::setDataSeries" << QThread::currentThread()->objectName();
+    qCDebug(LOG_Variable()) << "Variable::mergeDataSeries"
+                            << QThread::currentThread()->objectName();
     if (!dataSeries) {
         /// @todo ALX : log
         return;
@@ -82,12 +96,14 @@ void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 
     // Add or merge the data
     // Inits the data series of the variable
+    impl->lockWrite();
     if (!impl->m_DataSeries) {
         impl->m_DataSeries = dataSeries->clone();
     }
     else {
         impl->m_DataSeries->merge(dataSeries.get());
     }
+    impl->unlock();
 
     // sub the data
     auto subData = this->dataSeries()->subData(this->cacheRange());
@@ -99,46 +115,72 @@ void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 
 IDataSeries *Variable::dataSeries() const noexcept
 {
-    return impl->m_DataSeries.get();
+    impl->lockRead();
+    auto dataSeries = impl->m_DataSeries.get();
+    impl->unlock();
+
+    return dataSeries;
 }
 
 QVariantHash Variable::metadata() const noexcept
 {
-    return impl->m_Metadata;
+    impl->lockRead();
+    auto metadata = impl->m_Metadata;
+    impl->unlock();
+    return metadata;
 }
 
 bool Variable::contains(const SqpRange &range) const noexcept
 {
-    return impl->m_Range.contains(range);
+    impl->lockRead();
+    auto res = impl->m_Range.contains(range);
+    impl->unlock();
+    return res;
 }
 
 bool Variable::intersect(const SqpRange &range) const noexcept
 {
-    return impl->m_Range.intersect(range);
+
+    impl->lockRead();
+    auto res = impl->m_Range.intersect(range);
+    impl->unlock();
+    return res;
 }
 
 bool Variable::isInside(const SqpRange &range) const noexcept
 {
-    return range.contains(SqpRange{impl->m_Range.m_TStart, impl->m_Range.m_TEnd});
+    impl->lockRead();
+    auto res = range.contains(SqpRange{impl->m_Range.m_TStart, impl->m_Range.m_TEnd});
+    impl->unlock();
+    return res;
 }
 
 bool Variable::cacheContains(const SqpRange &range) const noexcept
 {
-    return impl->m_CacheRange.contains(range);
+    impl->lockRead();
+    auto res = impl->m_CacheRange.contains(range);
+    impl->unlock();
+    return res;
 }
 
 bool Variable::cacheIntersect(const SqpRange &range) const noexcept
 {
-    return impl->m_CacheRange.intersect(range);
+    impl->lockRead();
+    auto res = impl->m_CacheRange.intersect(range);
+    impl->unlock();
+    return res;
 }
 
 bool Variable::cacheIsInside(const SqpRange &range) const noexcept
 {
-    return range.contains(SqpRange{impl->m_CacheRange.m_TStart, impl->m_CacheRange.m_TEnd});
+    impl->lockRead();
+    auto res = range.contains(SqpRange{impl->m_CacheRange.m_TStart, impl->m_CacheRange.m_TEnd});
+    impl->unlock();
+    return res;
 }
 
 
-QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &range)
+QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &range) const noexcept
 {
     auto notInCache = QVector<SqpRange>{};
 
