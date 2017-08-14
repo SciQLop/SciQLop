@@ -19,9 +19,9 @@ class SCIQLOP_AMDA_EXPORT AmdaProvider : public IDataProvider {
 public:
     explicit AmdaProvider();
 
-    void requestDataLoading(QUuid token, const DataProviderParameters &parameters) override;
+    void requestDataLoading(QUuid acqIdentifier, const DataProviderParameters &parameters) override;
 
-    void requestDataAborting(QUuid identifier) override;
+    void requestDataAborting(QUuid acqIdentifier) override;
 
 private:
     void retrieveData(QUuid token, const SqpRange &dateTime, const QVariantHash &data);

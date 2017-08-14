@@ -55,21 +55,22 @@ AmdaProvider::AmdaProvider()
     }
 }
 
-void AmdaProvider::requestDataLoading(QUuid token, const DataProviderParameters &parameters)
+void AmdaProvider::requestDataLoading(QUuid acqIdentifier, const DataProviderParameters &parameters)
 {
     // NOTE: Try to use multithread if possible
     const auto times = parameters.m_Times;
     const auto data = parameters.m_Data;
     for (const auto &dateTime : qAsConst(times)) {
-        retrieveData(token, dateTime, data);
+        this->retrieveData(acqIdentifier, dateTime, data);
+        QThread::msleep(200);
     }
 }
 
-void AmdaProvider::requestDataAborting(QUuid identifier)
+void AmdaProvider::requestDataAborting(QUuid acqIdentifier)
 {
     if (auto app = sqpApp) {
         auto &networkController = app->networkController();
-        networkController.onReplyCanceled(identifier);
+        networkController.onReplyCanceled(acqIdentifier);
     }
 }
 
@@ -81,7 +82,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
         qCCritical(LOG_AmdaProvider()) << tr("Can't retrieve data: unknown product id");
         return;
     }
-    qCInfo(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData") << dateTime;
+    qCDebug(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData") << dateTime;
 
     // /////////// //
     // Creates URL //
@@ -96,8 +97,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
 
     // LAMBDA
     auto httpDownloadFinished
-        = [this, dateTime, tempFile, token](QNetworkReply *reply, QUuid dataId) noexcept {
-              Q_UNUSED(dataId);
+        = [this, dateTime, tempFile](QNetworkReply *reply, QUuid dataId) noexcept {
 
               // Don't do anything if the reply was abort
               if (reply->error() != QNetworkReply::OperationCanceledError) {
@@ -111,7 +111,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
 
                       // Parse results file
                       if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
-                          emit dataProvided(token, dataSeries, dateTime);
+                          emit dataProvided(dataId, dataSeries, dateTime);
                       }
                       else {
                           /// @todo ALX : debug

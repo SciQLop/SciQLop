@@ -75,8 +75,8 @@ void TestTwoDimArrayData::testCtor_data()
     QTest::newRow("malformedInput (components of the array data haven't the same size")
         << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8.}, {11., 12.}} << true
         << DataContainer{{}, {}, {}};
-    QTest::newRow("invalidInput (less than tow components")
-        << DataContainer{{1., 2., 3., 4., 5.}} << false << DataContainer{{}, {}, {}};
+    QTest::newRow("invalidInput (less than tow components") << DataContainer{{1., 2., 3., 4., 5.}}
+                                                            << false << DataContainer{{}, {}, {}};
 }
 
 void TestTwoDimArrayData::testCtor()

@@ -2,6 +2,7 @@
 #define SCIQLOP_IDATASERIES_H
 
 #include <Common/MetaTypes.h>
+#include <Data/SqpRange.h>
 
 #include <memory>
 
@@ -55,8 +56,10 @@ public:
     virtual Unit valuesUnit() const = 0;
 
     virtual void merge(IDataSeries *dataSeries) = 0;
+    virtual std::shared_ptr<IDataSeries> subData(const SqpRange &range) = 0;
 
     virtual std::unique_ptr<IDataSeries> clone() const = 0;
+    virtual SqpRange range() const = 0;
 
     virtual void lockRead() = 0;
     virtual void lockWrite() = 0;

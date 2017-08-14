@@ -35,21 +35,21 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
     }
 }
 
-void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSeries,
+void updateScalarData(QCPAbstractPlottable *component, std::shared_ptr<ScalarSeries> scalarSeries,
                       const SqpRange &dateTime)
 {
     qCDebug(LOG_VisualizationGraphHelper()) << "TORM: updateScalarData"
                                             << QThread::currentThread()->objectName();
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
-        scalarSeries.lockRead();
+        scalarSeries->lockRead();
         {
-            const auto &xData = scalarSeries.xAxisData()->cdata();
-            const auto &valuesData = scalarSeries.valuesData()->cdata();
+            const auto &xData = scalarSeries->xAxisData()->cdata();
+            const auto &valuesData = scalarSeries->valuesData()->cdata();
 
             auto xDataBegin = xData.cbegin();
             auto xDataEnd = xData.cend();
 
-            qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points in cache"
+            qCInfo(LOG_VisualizationGraphHelper()) << "TODEBUG: Current points in cache"
                                                    << xData.count();
 
             auto sqpDataContainer = QSharedPointer<SqpDataContainer>::create();
@@ -65,10 +65,10 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
                 sqpDataContainer->appendGraphData(QCPGraphData(*xAxisDataIt, *valuesDataIt));
             }
 
-            qCInfo(LOG_VisualizationGraphHelper()) << "TORM: Current points displayed"
+            qCInfo(LOG_VisualizationGraphHelper()) << "TODEBUG: Current points displayed"
                                                    << sqpDataContainer->size();
         }
-        scalarSeries.unlock();
+        scalarSeries->unlock();
 
 
         // Display all data
@@ -79,14 +79,14 @@ void updateScalarData(QCPAbstractPlottable *component, ScalarSeries &scalarSerie
     }
 }
 
-QCPAbstractPlottable *createScalarSeriesComponent(ScalarSeries &scalarSeries, QCustomPlot &plot,
-                                                  const SqpRange &dateTime)
+QCPAbstractPlottable *createScalarSeriesComponent(std::shared_ptr<ScalarSeries> scalarSeries,
+                                                  QCustomPlot &plot, const SqpRange &dateTime)
 {
     auto component = plot.addGraph();
 
     if (component) {
         //        // Graph data
-        component->setData(scalarSeries.xAxisData()->data(), scalarSeries.valuesData()->data(),
+        component->setData(scalarSeries->xAxisData()->data(), scalarSeries->valuesData()->data(),
                            true);
 
         updateScalarData(component, scalarSeries, dateTime);
@@ -102,8 +102,8 @@ QCPAbstractPlottable *createScalarSeriesComponent(ScalarSeries &scalarSeries, QC
             // ticker (depending on the type of unit)
             axis->setTicker(axisTicker(unit.m_TimeUnit));
         };
-        setAxisProperties(plot.xAxis, scalarSeries.xAxisUnit());
-        setAxisProperties(plot.yAxis, scalarSeries.valuesUnit());
+        setAxisProperties(plot.xAxis, scalarSeries->xAxisUnit());
+        setAxisProperties(plot.yAxis, scalarSeries->valuesUnit());
 
         // Display all data
         component->rescaleAxes();
@@ -127,8 +127,8 @@ QVector<QCPAbstractPlottable *> VisualizationGraphHelper::create(std::shared_ptr
     if (variable) {
         // Gets the data series of the variable to call the creation of the right components
         // according to its type
-        if (auto scalarSeries = dynamic_cast<ScalarSeries *>(variable->dataSeries())) {
-            result.append(createScalarSeriesComponent(*scalarSeries, plot, variable->dateTime()));
+        if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(variable->dataSeries())) {
+            result.append(createScalarSeriesComponent(scalarSeries, plot, variable->range()));
         }
         else {
             qCDebug(LOG_VisualizationGraphHelper())
@@ -144,11 +144,12 @@ QVector<QCPAbstractPlottable *> VisualizationGraphHelper::create(std::shared_ptr
 }
 
 void VisualizationGraphHelper::updateData(QVector<QCPAbstractPlottable *> plotableVect,
-                                          IDataSeries *dataSeries, const SqpRange &dateTime)
+                                          std::shared_ptr<IDataSeries> dataSeries,
+                                          const SqpRange &dateTime)
 {
-    if (auto scalarSeries = dynamic_cast<ScalarSeries *>(dataSeries)) {
+    if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(dataSeries)) {
         if (plotableVect.size() == 1) {
-            updateScalarData(plotableVect.at(0), *scalarSeries, dateTime);
+            updateScalarData(plotableVect.at(0), scalarSeries, dateTime);
         }
         else {
             qCCritical(LOG_VisualizationGraphHelper()) << QObject::tr(
