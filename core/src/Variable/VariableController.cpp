@@ -23,36 +23,36 @@ Q_LOGGING_CATEGORY(LOG_VariableController, "VariableController")
 
 namespace {
 
-SqpRange computeSynchroRangeRequested(const SqpRange &varRange, const SqpRange &grapheRange,
+SqpRange computeSynchroRangeRequested(const SqpRange &varRange, const SqpRange &graphRange,
                                       const SqpRange &oldGraphRange)
 {
-    auto zoomType = VariableController::getZoomType(grapheRange, oldGraphRange);
+    auto zoomType = VariableController::getZoomType(graphRange, oldGraphRange);
 
     auto varRangeRequested = varRange;
     switch (zoomType) {
         case AcquisitionZoomType::ZoomIn: {
-            auto deltaLeft = grapheRange.m_TStart - oldGraphRange.m_TStart;
-            auto deltaRight = oldGraphRange.m_TEnd - grapheRange.m_TEnd;
+            auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
+            auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
             varRangeRequested.m_TStart += deltaLeft;
             varRangeRequested.m_TEnd -= deltaRight;
             break;
         }
 
         case AcquisitionZoomType::ZoomOut: {
-            auto deltaLeft = oldGraphRange.m_TStart - grapheRange.m_TStart;
-            auto deltaRight = grapheRange.m_TEnd - oldGraphRange.m_TEnd;
+            auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+            auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
             varRangeRequested.m_TStart -= deltaLeft;
             varRangeRequested.m_TEnd += deltaRight;
             break;
         }
         case AcquisitionZoomType::PanRight: {
-            auto deltaRight = grapheRange.m_TEnd - oldGraphRange.m_TEnd;
+            auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
             varRangeRequested.m_TStart += deltaRight;
             varRangeRequested.m_TEnd += deltaRight;
             break;
         }
         case AcquisitionZoomType::PanLeft: {
-            auto deltaLeft = oldGraphRange.m_TStart - grapheRange.m_TStart;
+            auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
             varRangeRequested.m_TStart -= deltaLeft;
             varRangeRequested.m_TEnd -= deltaLeft;
             break;
@@ -263,8 +263,7 @@ void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &range
                                         const SqpRange &cacheRangeRequested,
                                         QVector<AcquisitionDataPacket> dataAcquired)
 {
-    auto var = impl->findVariable(vIdentifier);
-    if (var != nullptr) {
+    if (auto var = impl->findVariable(vIdentifier)) {
         var->setRange(rangeRequested);
         var->setCacheRange(cacheRangeRequested);
         qCDebug(LOG_VariableController()) << tr("1: onDataProvided") << rangeRequested;
@@ -284,8 +283,7 @@ void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &range
 
 void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, double progress)
 {
-    auto var = impl->findVariable(identifier);
-    if (var != nullptr) {
+    if (auto var = impl->findVariable(identifier)) {
         impl->m_VariableModel->setDataProgress(var, progress);
     }
     else {
@@ -331,14 +329,14 @@ void VariableController::onAddSynchronized(std::shared_ptr<Variable> variable,
 {
     qCDebug(LOG_VariableController()) << "TORM: VariableController::onAddSynchronized"
                                       << synchronizationGroupId;
-    auto vToVIdit = impl->m_VariableToIdentifierMap.find(variable);
-    if (vToVIdit != impl->m_VariableToIdentifierMap.cend()) {
-        auto itSynchroGroup
+    auto varToVarIdIt = impl->m_VariableToIdentifierMap.find(variable);
+    if (varToVarIdIt != impl->m_VariableToIdentifierMap.cend()) {
+        auto groupIdToVSGIt
             = impl->m_GroupIdToVariableSynchronizationGroupMap.find(synchronizationGroupId);
-        if (itSynchroGroup != impl->m_GroupIdToVariableSynchronizationGroupMap.cend()) {
+        if (groupIdToVSGIt != impl->m_GroupIdToVariableSynchronizationGroupMap.cend()) {
             impl->m_VariableIdGroupIdMap.insert(
-                std::make_pair(vToVIdit->second, synchronizationGroupId));
-            itSynchroGroup->second->addVariableId(vToVIdit->second);
+                std::make_pair(varToVarIdIt->second, synchronizationGroupId));
+            groupIdToVSGIt->second->addVariableId(varToVarIdIt->second);
         }
         else {
             qCCritical(LOG_VariableController())
@@ -359,13 +357,13 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
 {
     // NOTE: oldRange isn't really necessary since oldRange == variable->range().
 
-    qCInfo(LOG_VariableController()) << "VariableController::onRequestDataLoading"
-                                     << QThread::currentThread()->objectName();
+    qCDebug(LOG_VariableController()) << "VariableController::onRequestDataLoading"
+                                      << QThread::currentThread()->objectName();
     // we want to load data of the variable for the dateTime.
     // First we check if the cache contains some of them.
     // For the other, we ask the provider to give them.
 
-    foreach (auto var, variables) {
+    for (const auto &var : variables) {
         qCDebug(LOG_VariableController()) << "processRequest for" << var->name();
         impl->processRequest(var, range);
     }
@@ -373,9 +371,9 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
     if (synchronise) {
         // Get the group ids
         qCDebug(LOG_VariableController())
-            << "VariableController::onRequestDataLoading for synchro var ENABLE";
+            << "TORM VariableController::onRequestDataLoading for synchro var ENABLE";
         auto groupIds = std::set<QUuid>();
-        foreach (auto var, variables) {
+        for (const auto &var : variables) {
             auto varToVarIdIt = impl->m_VariableToIdentifierMap.find(var);
             if (varToVarIdIt != impl->m_VariableToIdentifierMap.cend()) {
                 auto vId = varToVarIdIt->second;
@@ -391,7 +389,7 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
         }
 
         // We assume here all group ids exist
-        foreach (auto gId, groupIds) {
+        for (const auto &gId : groupIds) {
             auto vSynchronizationGroup = impl->m_GroupIdToVariableSynchronizationGroupMap.at(gId);
             auto vSyncIds = vSynchronizationGroup->getIds();
             qCDebug(LOG_VariableController()) << "Var in synchro group ";

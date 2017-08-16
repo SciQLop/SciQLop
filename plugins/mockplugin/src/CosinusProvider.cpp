@@ -73,7 +73,7 @@ void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
 {
     // TODO: Add Mutex
     m_VariableToEnableProvider[acqIdentifier] = true;
-    qCDebug(LOG_CosinusProvider()) << "CosinusProvider::requestDataLoading"
+    qCDebug(LOG_CosinusProvider()) << "TORM: CosinusProvider::requestDataLoading"
                                    << QThread::currentThread()->objectName();
     // NOTE: Try to use multithread if possible
     const auto times = parameters.m_Times;
@@ -81,7 +81,7 @@ void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
     for (const auto &dateTime : qAsConst(times)) {
         if (m_VariableToEnableProvider[acqIdentifier]) {
             auto scalarSeries = this->retrieveData(acqIdentifier, dateTime);
-            qCCritical(LOG_CosinusProvider()) << "CosinusProvider::dataProvided";
+            qCDebug(LOG_CosinusProvider()) << "TORM: CosinusProvider::dataProvided";
             emit dataProvided(acqIdentifier, scalarSeries, dateTime);
         }
     }

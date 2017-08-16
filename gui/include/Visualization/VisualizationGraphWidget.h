@@ -30,12 +30,13 @@ public:
     /// If acquisition isn't enable, requestDataLoading signal cannot be emit
     void enableAcquisition(bool enable);
 
-    void addVariable(std::shared_ptr<Variable> variable);
-    void addVariableUsingGraph(std::shared_ptr<Variable> variable);
+    void addVariable(std::shared_ptr<Variable> variable, SqpRange range);
+
     /// Removes a variable from the graph
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
 
     void setRange(std::shared_ptr<Variable> variable, const SqpRange &range);
+    void setYRange(const SqpRange &range);
     SqpRange graphRange() const noexcept;
     void setGraphRange(const SqpRange &range);
 

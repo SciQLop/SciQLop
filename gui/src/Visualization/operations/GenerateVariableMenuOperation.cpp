@@ -155,6 +155,7 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationZoneWidget *zoneWidg
 
 void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidget)
 {
+    qCCritical(LOG_GenerateVariableMenuOperation(), "Open in a new graph DETECTED !!");
     if (zoneWidget) {
         // 'Plot' menu
         impl->visitNodeLeavePlot(
@@ -181,7 +182,7 @@ void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
         impl->visitLeafPlot(*graphWidget, QObject::tr("Open in %1").arg(graphWidget->name()),
                             [ varW = std::weak_ptr<Variable>{impl->m_Variable}, graphWidget ]() {
                                 if (auto var = varW.lock()) {
-                                    graphWidget->addVariableUsingGraph(var);
+                                    graphWidget->addVariable(var, graphWidget->graphRange());
                                 }
                             });
 

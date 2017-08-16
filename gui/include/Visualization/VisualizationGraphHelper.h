@@ -30,6 +30,8 @@ struct VisualizationGraphHelper {
      */
     static QVector<QCPAbstractPlottable *> create(std::shared_ptr<Variable> variable,
                                                   QCustomPlot &plot) noexcept;
+    static QVector<QCPAbstractPlottable *> createV2(std::shared_ptr<Variable> variable,
+                                                    QCustomPlot &plot) noexcept;
 
     static void updateData(QVector<QCPAbstractPlottable *> plotableVect,
                            std::shared_ptr<IDataSeries> dataSeries, const SqpRange &dateTime);

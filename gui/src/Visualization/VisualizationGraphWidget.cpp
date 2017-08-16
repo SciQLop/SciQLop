@@ -93,13 +93,10 @@ void VisualizationGraphWidget::enableAcquisition(bool enable)
     impl->m_DoAcquisition = enable;
 }
 
-void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
+void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, SqpRange range)
 {
-    auto calibrationState = impl->m_IsCalibration;
-    impl->m_IsCalibration = true;
     // Uses delegate to create the qcpplot components according to the variable
-    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
-    impl->m_IsCalibration = calibrationState;
+    auto createdPlottables = VisualizationGraphHelper::createV2(variable, *ui->widget);
 
     for (auto createdPlottable : qAsConst(createdPlottables)) {
         impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
@@ -107,18 +104,16 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 
+    auto varRange = variable->range();
+
+    this->enableAcquisition(false);
+    this->setGraphRange(range);
+    this->enableAcquisition(true);
+
+    emit requestDataLoading(QVector<std::shared_ptr<Variable> >() << variable, range, varRange,
+                            false);
+
     emit variableAdded(variable);
-}
-void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> variable)
-{
-    // Uses delegate to create the qcpplot components according to the variable
-    this->addVariable(variable);
-
-    // Request range for the variable
-    auto graphRange = ui->widget->xAxis->range();
-
-    emit requestDataLoading(QVector<std::shared_ptr<Variable> >() << variable,
-                            SqpRange{graphRange.lower, graphRange.upper}, variable->range(), false);
 }
 
 void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
@@ -147,10 +142,15 @@ void VisualizationGraphWidget::setRange(std::shared_ptr<Variable> variable, cons
     ui->widget->replot();
 }
 
+void VisualizationGraphWidget::setYRange(const SqpRange &range)
+{
+    ui->widget->yAxis->setRange(range.m_TStart, range.m_TEnd);
+}
+
 SqpRange VisualizationGraphWidget::graphRange() const noexcept
 {
-    auto grapheRange = ui->widget->xAxis->range();
-    return SqpRange{grapheRange.lower, grapheRange.upper};
+    auto graphRange = ui->widget->xAxis->range();
+    return SqpRange{graphRange.lower, graphRange.upper};
 }
 
 void VisualizationGraphWidget::setGraphRange(const SqpRange &range)
@@ -288,8 +288,8 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
     //    - use an ordered_multimap and the algos of std to group the values by key
     //    - use a map (unique keys) and store as values directly the list of components
 
-    auto grapheRange = ui->widget->xAxis->range();
-    auto dateTime = SqpRange{grapheRange.lower, grapheRange.upper};
+    auto graphRange = ui->widget->xAxis->range();
+    auto dateTime = SqpRange{graphRange.lower, graphRange.upper};
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {

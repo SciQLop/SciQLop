@@ -62,7 +62,9 @@ void AmdaProvider::requestDataLoading(QUuid acqIdentifier, const DataProviderPar
     const auto data = parameters.m_Data;
     for (const auto &dateTime : qAsConst(times)) {
         this->retrieveData(acqIdentifier, dateTime, data);
-        QThread::msleep(200);
+
+        // TORM
+        // QThread::msleep(200);
     }
 }
 
@@ -92,7 +94,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     auto endDate = dateFormat(dateTime.m_TEnd);
 
     auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
-    qCInfo(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData url:") << url;
+    qCInfo(LOG_AmdaProvider()) << tr("TORM AmdaProvider::retrieveData url:") << url;
     auto tempFile = std::make_shared<QTemporaryFile>();
 
     // LAMBDA
@@ -128,8 +130,8 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
                   auto downloadFileUrl = QUrl{QString{reply->readAll()}};
 
 
-                  qCInfo(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData downloadFileUrl:")
-                                             << downloadFileUrl;
+                  qCInfo(LOG_AmdaProvider())
+                      << tr("TORM AmdaProvider::retrieveData downloadFileUrl:") << downloadFileUrl;
                   // Executes request for downloading file //
 
                   // Creates destination file
