@@ -13,15 +13,16 @@ Q_LOGGING_CATEGORY(LOG_NetworkController, "NetworkController")
 
 struct NetworkController::NetworkControllerPrivate {
     explicit NetworkControllerPrivate(NetworkController *parent) : m_WorkingMutex{} {}
+
+    void lockRead() { m_Lock.lockForRead(); }
+    void lockWrite() { m_Lock.lockForWrite(); }
+    void unlock() { m_Lock.unlock(); }
+
     QMutex m_WorkingMutex;
 
     QReadWriteLock m_Lock;
     std::unordered_map<QNetworkReply *, QUuid> m_NetworkReplyToVariableId;
     std::unique_ptr<QNetworkAccessManager> m_AccessManager{nullptr};
-
-    void lockRead() { m_Lock.lockForRead(); }
-    void lockWrite() { m_Lock.lockForWrite(); }
-    void unlock() { m_Lock.unlock(); }
 };
 
 NetworkController::NetworkController(QObject *parent)

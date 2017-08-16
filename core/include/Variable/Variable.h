@@ -28,20 +28,27 @@ public:
                       const QVariantHash &metadata = {});
 
     QString name() const noexcept;
-    SqpRange dateTime() const noexcept;
-    void setDateTime(const SqpRange &dateTime) noexcept;
+    SqpRange range() const noexcept;
+    void setRange(const SqpRange &range) noexcept;
+    SqpRange cacheRange() const noexcept;
+    void setCacheRange(const SqpRange &cacheRange) noexcept;
 
     /// @return the data of the variable, nullptr if there is no data
-    IDataSeries *dataSeries() const noexcept;
+    std::shared_ptr<IDataSeries> dataSeries() const noexcept;
 
     QVariantHash metadata() const noexcept;
 
-    bool contains(const SqpRange &dateTime) const noexcept;
-    bool intersect(const SqpRange &dateTime) const noexcept;
-    bool isInside(const SqpRange &dateTime) const noexcept;
+    bool contains(const SqpRange &range) const noexcept;
+    bool intersect(const SqpRange &range) const noexcept;
+    bool isInside(const SqpRange &range) const noexcept;
 
-public slots:
+    bool cacheContains(const SqpRange &range) const noexcept;
+    bool cacheIntersect(const SqpRange &range) const noexcept;
+    bool cacheIsInside(const SqpRange &range) const noexcept;
+
+    QVector<SqpRange> provideNotInCacheRangeList(const SqpRange &range) const noexcept;
     void setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
+    void mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
 
 signals:
     void updated();
@@ -53,5 +60,6 @@ private:
 
 // Required for using shared_ptr in signals/slots
 SCIQLOP_REGISTER_META_TYPE(VARIABLE_PTR_REGISTRY, std::shared_ptr<Variable>)
+SCIQLOP_REGISTER_META_TYPE(VARIABLE_PTR_VECTOR_REGISTRY, QVector<std::shared_ptr<Variable> >)
 
 #endif // SCIQLOP_VARIABLE_H

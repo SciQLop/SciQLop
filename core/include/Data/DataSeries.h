@@ -43,6 +43,16 @@ public:
     /// @sa IDataSeries::valuesUnit()
     Unit valuesUnit() const override { return m_ValuesUnit; }
 
+
+    SqpRange range() const override
+    {
+        if (!m_XAxisData->cdata().isEmpty()) {
+            return SqpRange{m_XAxisData->cdata().first(), m_XAxisData->cdata().last()};
+        }
+
+        return SqpRange{};
+    }
+
     void clear()
     {
         m_XAxisData->clear();

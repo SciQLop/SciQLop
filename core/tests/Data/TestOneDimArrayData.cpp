@@ -64,8 +64,8 @@ void TestOneDimArrayData::testDataByComponentIndex_data()
     // Test cases
     QTest::newRow("validIndex") << QVector<double>{1., 2., 3., 4., 5.} << 0
                                 << QVector<double>{1., 2., 3., 4., 5.};
-    QTest::newRow("invalidIndex1")
-        << QVector<double>{1., 2., 3., 4., 5.} << -1 << QVector<double>{};
+    QTest::newRow("invalidIndex1") << QVector<double>{1., 2., 3., 4., 5.} << -1
+                                   << QVector<double>{};
     QTest::newRow("invalidIndex2") << QVector<double>{1., 2., 3., 4., 5.} << 1 << QVector<double>{};
 }
 

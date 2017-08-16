@@ -1,12 +1,14 @@
 #include "Visualization/VisualizationZoneWidget.h"
 
-#include "Data/SqpRange.h"
 
 #include "Visualization/IVisualizationWidgetVisitor.h"
 #include "Visualization/VisualizationGraphWidget.h"
 #include "ui_VisualizationZoneWidget.h"
 
+#include <Data/SqpRange.h>
+#include <Variable/VariableController.h>
 
+#include <QUuid>
 #include <SqpApplication.h>
 
 Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
@@ -32,8 +34,16 @@ QString defaultGraphName(const QLayout &layout)
 
 } // namespace
 
+struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
+
+    explicit VisualizationZoneWidgetPrivate() : m_SynchronisationGroupId{QUuid::createUuid()} {}
+    QUuid m_SynchronisationGroupId;
+};
+
 VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *parent)
-        : QWidget{parent}, ui{new Ui::VisualizationZoneWidget}
+        : QWidget{parent},
+          ui{new Ui::VisualizationZoneWidget},
+          impl{spimpl::make_unique_impl<VisualizationZoneWidgetPrivate>()}
 {
     ui->setupUi(this);
 
@@ -43,6 +53,10 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
     setAttribute(Qt::WA_DeleteOnClose);
     connect(ui->closeButton, &QToolButton::clicked, this, &VisualizationZoneWidget::close);
     ui->closeButton->setIcon(sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
+
+    // Synchronisation id
+    QMetaObject::invokeMethod(&sqpApp->variableController(), "onAddSynchronizationGroupId",
+                              Qt::QueuedConnection, Q_ARG(QUuid, impl->m_SynchronisationGroupId));
 }
 
 VisualizationZoneWidget::~VisualizationZoneWidget()
@@ -65,14 +79,12 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     graphWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::MinimumExpanding);
     graphWidget->setMinimumHeight(GRAPH_MINIMUM_HEIGHT);
 
-    this->addGraph(graphWidget);
-
-    graphWidget->addVariable(variable);
 
     // Lambda to synchronize zone widget
-    auto synchronizeZoneWidget = [this, graphWidget](const SqpRange &dateTime,
-                                                     const SqpRange &oldDateTime,
-                                                     VisualizationGraphWidgetZoomType zoomType) {
+    auto synchronizeZoneWidget = [this, graphWidget](const SqpRange &grapheRange,
+                                                     const SqpRange &oldGraphRange) {
+
+        auto zoomType = VariableController::getZoomType(grapheRange, oldGraphRange);
         auto frameLayout = ui->visualizationZoneFrame->layout();
         for (auto i = 0; i < frameLayout->count(); ++i) {
             auto graphChild
@@ -81,9 +93,9 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
 
                 auto graphChildRange = graphChild->graphRange();
                 switch (zoomType) {
-                    case VisualizationGraphWidgetZoomType::ZoomIn: {
-                        auto deltaLeft = dateTime.m_TStart - oldDateTime.m_TStart;
-                        auto deltaRight = oldDateTime.m_TEnd - dateTime.m_TEnd;
+                    case AcquisitionZoomType::ZoomIn: {
+                        auto deltaLeft = grapheRange.m_TStart - oldGraphRange.m_TStart;
+                        auto deltaRight = oldGraphRange.m_TEnd - grapheRange.m_TEnd;
                         graphChildRange.m_TStart += deltaLeft;
                         graphChildRange.m_TEnd -= deltaRight;
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomIn");
@@ -92,42 +104,42 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
                                                                   << deltaRight;
                         qCCritical(LOG_VisualizationZoneWidget())
-                            << tr("TORM: dt") << dateTime.m_TEnd - dateTime.m_TStart;
+                            << tr("TORM: dt") << grapheRange.m_TEnd - grapheRange.m_TStart;
 
                         break;
                     }
 
-                    case VisualizationGraphWidgetZoomType::ZoomOut: {
+                    case AcquisitionZoomType::ZoomOut: {
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomOut");
-                        auto deltaLeft = oldDateTime.m_TStart - dateTime.m_TStart;
-                        auto deltaRight = dateTime.m_TEnd - oldDateTime.m_TEnd;
+                        auto deltaLeft = oldGraphRange.m_TStart - grapheRange.m_TStart;
+                        auto deltaRight = grapheRange.m_TEnd - oldGraphRange.m_TEnd;
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaLeft")
                                                                   << deltaLeft;
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
                                                                   << deltaRight;
                         qCCritical(LOG_VisualizationZoneWidget())
-                            << tr("TORM: dt") << dateTime.m_TEnd - dateTime.m_TStart;
+                            << tr("TORM: dt") << grapheRange.m_TEnd - grapheRange.m_TStart;
                         graphChildRange.m_TStart -= deltaLeft;
                         graphChildRange.m_TEnd += deltaRight;
                         break;
                     }
-                    case VisualizationGraphWidgetZoomType::PanRight: {
+                    case AcquisitionZoomType::PanRight: {
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: PanRight");
-                        auto deltaRight = dateTime.m_TEnd - oldDateTime.m_TEnd;
+                        auto deltaRight = grapheRange.m_TEnd - oldGraphRange.m_TEnd;
                         graphChildRange.m_TStart += deltaRight;
                         graphChildRange.m_TEnd += deltaRight;
                         qCCritical(LOG_VisualizationZoneWidget())
-                            << tr("TORM: dt") << dateTime.m_TEnd - dateTime.m_TStart;
+                            << tr("TORM: dt") << grapheRange.m_TEnd - grapheRange.m_TStart;
                         break;
                     }
-                    case VisualizationGraphWidgetZoomType::PanLeft: {
+                    case AcquisitionZoomType::PanLeft: {
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: PanLeft");
-                        auto deltaLeft = oldDateTime.m_TStart - dateTime.m_TStart;
+                        auto deltaLeft = oldGraphRange.m_TStart - grapheRange.m_TStart;
                         graphChildRange.m_TStart -= deltaLeft;
                         graphChildRange.m_TEnd -= deltaLeft;
                         break;
                     }
-                    case VisualizationGraphWidgetZoomType::Unknown: {
+                    case AcquisitionZoomType::Unknown: {
                         qCCritical(LOG_VisualizationZoneWidget())
                             << tr("Impossible to synchronize: zoom type unknown");
                         break;
@@ -138,7 +150,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         // No action
                         break;
                 }
-                graphChild->enableSynchronize(false);
+                graphChild->enableAcquisition(false);
                 qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: Range before: ")
                                                           << graphChild->graphRange();
                 qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: Range after : ")
@@ -146,13 +158,19 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                 qCCritical(LOG_VisualizationZoneWidget())
                     << tr("TORM: child dt") << graphChildRange.m_TEnd - graphChildRange.m_TStart;
                 graphChild->setGraphRange(graphChildRange);
-                graphChild->enableSynchronize(true);
+                graphChild->enableAcquisition(true);
             }
         }
     };
 
     // connection for synchronization
     connect(graphWidget, &VisualizationGraphWidget::synchronize, synchronizeZoneWidget);
+    connect(graphWidget, &VisualizationGraphWidget::variableAdded, this,
+            &VisualizationZoneWidget::onVariableAdded);
+
+    this->addGraph(graphWidget);
+
+    graphWidget->addVariable(variable);
 
     return graphWidget;
 }
@@ -197,4 +215,11 @@ bool VisualizationZoneWidget::contains(const Variable &variable) const
 QString VisualizationZoneWidget::name() const
 {
     return ui->zoneNameLabel->text();
+}
+
+void VisualizationZoneWidget::onVariableAdded(std::shared_ptr<Variable> variable)
+{
+    QMetaObject::invokeMethod(&sqpApp->variableController(), "onAddSynchronized",
+                              Qt::QueuedConnection, Q_ARG(std::shared_ptr<Variable>, variable),
+                              Q_ARG(QUuid, impl->m_SynchronisationGroupId));
 }

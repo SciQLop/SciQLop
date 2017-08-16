@@ -23,28 +23,18 @@ const auto HORIZONTAL_ZOOM_MODIFIER = Qt::NoModifier;
 /// Key pressed to enable zoom on vertical axis
 const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
 
-/// Gets a tolerance value from application settings. If the setting can't be found, the default
-/// value passed in parameter is returned
-double toleranceValue(const QString &key, double defaultValue) noexcept
-{
-    return QSettings{}.value(key, defaultValue).toDouble();
-}
-
 } // namespace
 
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
     explicit VisualizationGraphWidgetPrivate()
-            : m_DoSynchronize{true}, m_IsCalibration{false}, m_RenderingDelegate{nullptr}
+            : m_DoAcquisition{true}, m_IsCalibration{false}, m_RenderingDelegate{nullptr}
     {
     }
 
-    // Return the operation when range changed
-    VisualizationGraphWidgetZoomType getZoomType(const QCPRange &t1, const QCPRange &t2);
-
     // 1 variable -> n qcpplot
     std::multimap<std::shared_ptr<Variable>, QCPAbstractPlottable *> m_VariableToPlotMultiMap;
-    bool m_DoSynchronize;
+    bool m_DoAcquisition;
     bool m_IsCalibration;
     QCPItemTracer *m_TextTracer;
     /// Delegate used to attach rendering features to the plot
@@ -98,50 +88,37 @@ VisualizationGraphWidget::~VisualizationGraphWidget()
     delete ui;
 }
 
-void VisualizationGraphWidget::enableSynchronize(bool enable)
+void VisualizationGraphWidget::enableAcquisition(bool enable)
 {
-    impl->m_DoSynchronize = enable;
+    impl->m_DoAcquisition = enable;
 }
 
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable)
 {
+    auto calibrationState = impl->m_IsCalibration;
+    impl->m_IsCalibration = true;
     // Uses delegate to create the qcpplot components according to the variable
     auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+    impl->m_IsCalibration = calibrationState;
 
     for (auto createdPlottable : qAsConst(createdPlottables)) {
         impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
     }
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
+
+    emit variableAdded(variable);
 }
 void VisualizationGraphWidget::addVariableUsingGraph(std::shared_ptr<Variable> variable)
 {
-
-    // when adding a variable, we need to set its time range to the current graph range
-    auto grapheRange = ui->widget->xAxis->range();
-    auto dateTime = SqpRange{grapheRange.lower, grapheRange.upper};
-    variable->setDateTime(dateTime);
-
-    auto variableDateTimeWithTolerance = dateTime;
-
-    // add tolerance for each side
-    auto toleranceFactor
-        = toleranceValue(GENERAL_TOLERANCE_AT_INIT_KEY, GENERAL_TOLERANCE_AT_INIT_DEFAULT_VALUE);
-    auto tolerance = toleranceFactor * (dateTime.m_TEnd - dateTime.m_TStart);
-    variableDateTimeWithTolerance.m_TStart -= tolerance;
-    variableDateTimeWithTolerance.m_TEnd += tolerance;
-
     // Uses delegate to create the qcpplot components according to the variable
-    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+    this->addVariable(variable);
 
-    for (auto createdPlottable : qAsConst(createdPlottables)) {
-        impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
-    }
+    // Request range for the variable
+    auto graphRange = ui->widget->xAxis->range();
 
-    connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
-
-    // CHangement detected, we need to ask controller to request data loading
-    emit requestDataLoading(variable, variableDateTimeWithTolerance);
+    emit requestDataLoading(QVector<std::shared_ptr<Variable> >() << variable,
+                            SqpRange{graphRange.lower, graphRange.upper}, variable->range(), false);
 }
 
 void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable) noexcept
@@ -239,102 +216,30 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
 {
-    qCInfo(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::onRangeChanged")
-                                           << QThread::currentThread()->objectName();
+    qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: VisualizationGraphWidget::onRangeChanged")
+                                            << QThread::currentThread()->objectName() << "DoAcqui"
+                                            << impl->m_DoAcquisition;
 
-    auto dateTimeRange = SqpRange{t1.lower, t1.upper};
+    auto graphRange = SqpRange{t1.lower, t1.upper};
+    auto oldGraphRange = SqpRange{t2.lower, t2.upper};
 
-    auto zoomType = impl->getZoomType(t1, t2);
-    for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
-         it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
+    if (impl->m_DoAcquisition) {
+        QVector<std::shared_ptr<Variable> > variableUnderGraphVector;
 
-        auto variable = it->first;
-        auto currentDateTime = dateTimeRange;
-
-        auto toleranceFactor = toleranceValue(GENERAL_TOLERANCE_AT_UPDATE_KEY,
-                                              GENERAL_TOLERANCE_AT_UPDATE_DEFAULT_VALUE);
-        auto tolerance = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
-        auto variableDateTimeWithTolerance = currentDateTime;
-        variableDateTimeWithTolerance.m_TStart -= tolerance;
-        variableDateTimeWithTolerance.m_TEnd += tolerance;
-
-        qCDebug(LOG_VisualizationGraphWidget()) << "r" << currentDateTime;
-        qCDebug(LOG_VisualizationGraphWidget()) << "t" << variableDateTimeWithTolerance;
-        qCDebug(LOG_VisualizationGraphWidget()) << "v" << variable->dateTime();
-        // If new range with tol is upper than variable datetime parameters. we need to request new
-        // data
-        if (!variable->contains(variableDateTimeWithTolerance)) {
-
-            auto variableDateTimeWithTolerance = currentDateTime;
-            if (!variable->isInside(currentDateTime)) {
-                auto variableDateTime = variable->dateTime();
-                if (variable->contains(variableDateTimeWithTolerance)) {
-                    qCDebug(LOG_VisualizationGraphWidget())
-                        << tr("TORM: Detection zoom in that need request:");
-                    // add tolerance for each side
-                    tolerance
-                        = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
-                    variableDateTimeWithTolerance.m_TStart -= tolerance;
-                    variableDateTimeWithTolerance.m_TEnd += tolerance;
-                }
-                else if (variableDateTime.m_TStart < currentDateTime.m_TStart) {
-                    qCInfo(LOG_VisualizationGraphWidget()) << tr("TORM: Detection pan to right:");
-
-                    auto diffEndToKeepDelta = currentDateTime.m_TEnd - variableDateTime.m_TEnd;
-                    currentDateTime.m_TStart = variableDateTime.m_TStart + diffEndToKeepDelta;
-                    // Tolerance have to be added to the right
-                    // add tolerance for right (end) side
-                    tolerance
-                        = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
-                    variableDateTimeWithTolerance.m_TEnd += tolerance;
-                }
-                else if (variableDateTime.m_TEnd > currentDateTime.m_TEnd) {
-                    qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Detection pan to left: ");
-                    auto diffStartToKeepDelta
-                        = variableDateTime.m_TStart - currentDateTime.m_TStart;
-                    currentDateTime.m_TEnd = variableDateTime.m_TEnd - diffStartToKeepDelta;
-                    // Tolerance have to be added to the left
-                    // add tolerance for left (start) side
-                    tolerance
-                        = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
-                    variableDateTimeWithTolerance.m_TStart -= tolerance;
-                }
-                else {
-                    qCCritical(LOG_VisualizationGraphWidget())
-                        << tr("Detection anormal zoom detection: ");
-                }
-            }
-            else {
-                qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Detection zoom out: ");
-                // add tolerance for each side
-                tolerance = toleranceFactor * (currentDateTime.m_TEnd - currentDateTime.m_TStart);
-                variableDateTimeWithTolerance.m_TStart -= tolerance;
-                variableDateTimeWithTolerance.m_TEnd += tolerance;
-                zoomType = VisualizationGraphWidgetZoomType::ZoomOut;
-            }
-            if (!variable->contains(dateTimeRange)) {
-                qCDebug(LOG_VisualizationGraphWidget())
-                    << "TORM: Modif on variable datetime detected" << currentDateTime;
-                variable->setDateTime(currentDateTime);
-            }
-
-            qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: Request data detection: ");
-            // CHangement detected, we need to ask controller to request data loading
-            emit requestDataLoading(variable, variableDateTimeWithTolerance);
+        for (auto it = impl->m_VariableToPlotMultiMap.begin(),
+                  end = impl->m_VariableToPlotMultiMap.end();
+             it != end; it = impl->m_VariableToPlotMultiMap.upper_bound(it->first)) {
+            variableUnderGraphVector.push_back(it->first);
         }
-        else {
-            qCInfo(LOG_VisualizationGraphWidget())
-                << tr("TORM: Detection zoom in that doesn't need request: ");
-            zoomType = VisualizationGraphWidgetZoomType::ZoomIn;
-        }
-    }
+        emit requestDataLoading(std::move(variableUnderGraphVector), graphRange, oldGraphRange,
+                                !impl->m_IsCalibration);
 
-    if (impl->m_DoSynchronize && !impl->m_IsCalibration) {
-        auto oldDateTime = SqpRange{t2.lower, t2.upper};
-        qCDebug(LOG_VisualizationGraphWidget())
-            << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
-            << QThread::currentThread()->objectName();
-        emit synchronize(dateTimeRange, oldDateTime, zoomType);
+        if (!impl->m_IsCalibration) {
+            qCDebug(LOG_VisualizationGraphWidget())
+                << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
+                << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
+            emit synchronize(graphRange, oldGraphRange);
+        }
     }
 }
 
@@ -390,38 +295,13 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
         auto variable = it->first;
         qCDebug(LOG_VisualizationGraphWidget())
-            << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated S"
-            << variable->dateTime();
+            << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated S" << variable->range();
         qCDebug(LOG_VisualizationGraphWidget())
             << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated E" << dateTime;
-        if (dateTime.contains(variable->dateTime()) || dateTime.intersect(variable->dateTime())) {
+        if (dateTime.contains(variable->range()) || dateTime.intersect(variable->range())) {
 
             VisualizationGraphHelper::updateData(QVector<QCPAbstractPlottable *>{} << it->second,
-                                                 variable->dataSeries(), variable->dateTime());
+                                                 variable->dataSeries(), variable->range());
         }
     }
-}
-
-VisualizationGraphWidgetZoomType
-VisualizationGraphWidget::VisualizationGraphWidgetPrivate::getZoomType(const QCPRange &t1,
-                                                                       const QCPRange &t2)
-{
-    // t1.lower <= t2.lower && t2.upper <= t1.upper
-    auto zoomType = VisualizationGraphWidgetZoomType::Unknown;
-    if (t1.lower <= t2.lower && t2.upper <= t1.upper) {
-        zoomType = VisualizationGraphWidgetZoomType::ZoomOut;
-    }
-    else if (t1.lower > t2.lower && t1.upper > t2.upper) {
-        zoomType = VisualizationGraphWidgetZoomType::PanRight;
-    }
-    else if (t1.lower < t2.lower && t1.upper < t2.upper) {
-        zoomType = VisualizationGraphWidgetZoomType::PanLeft;
-    }
-    else if (t1.lower > t2.lower && t2.upper > t1.upper) {
-        zoomType = VisualizationGraphWidgetZoomType::ZoomIn;
-    }
-    else {
-        qCCritical(LOG_VisualizationGraphWidget()) << "getZoomType: Unknown type detected";
-    }
-    return zoomType;
 }
