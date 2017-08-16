@@ -75,6 +75,12 @@ public:
     DataSourceItem *parentItem() const noexcept;
 
     /**
+     * Gets the item's root
+     * @return the top parent, the item itself if it's the root item
+     */
+    const DataSourceItem &rootItem() const noexcept;
+
+    /**
      * Sets or appends a value to a key
      * @param key the key
      * @param value the value
