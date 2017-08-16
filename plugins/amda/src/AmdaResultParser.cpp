@@ -125,8 +125,15 @@ QPair<QVector<double>, QVector<double> > readResults(QTextStream &stream)
 
 } // namespace
 
-std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath) noexcept
+std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
+                                                       ValueType valueType) noexcept
 {
+    if (valueType == ValueType::UNKNOWN) {
+        qCCritical(LOG_AmdaResultParser())
+            << QObject::tr("Can't retrieve AMDA data: the type of values to be read is unknown");
+        return nullptr;
+    }
+
     QFile file{filePath};
 
     if (!file.open(QFile::ReadOnly | QIODevice::Text)) {
