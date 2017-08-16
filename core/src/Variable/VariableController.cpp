@@ -481,7 +481,7 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
     else {
         var->setRange(rangeRequested);
         var->setCacheRange(varRangesRequested.second);
-        var->setDataSeries(var->dataSeries()->subData(varRangesRequested.second));
+        var->setDataSeries(var->dataSeries()->subDataSeries(varRangesRequested.second));
         emit var->updated();
     }
 }
