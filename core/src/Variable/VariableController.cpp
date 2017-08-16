@@ -23,36 +23,36 @@ Q_LOGGING_CATEGORY(LOG_VariableController, "VariableController")
 
 namespace {
 
-SqpRange computeSynchroRangeRequested(const SqpRange &varRange, const SqpRange &grapheRange,
+SqpRange computeSynchroRangeRequested(const SqpRange &varRange, const SqpRange &graphRange,
                                       const SqpRange &oldGraphRange)
 {
-    auto zoomType = VariableController::getZoomType(grapheRange, oldGraphRange);
+    auto zoomType = VariableController::getZoomType(graphRange, oldGraphRange);
 
     auto varRangeRequested = varRange;
     switch (zoomType) {
         case AcquisitionZoomType::ZoomIn: {
-            auto deltaLeft = grapheRange.m_TStart - oldGraphRange.m_TStart;
-            auto deltaRight = oldGraphRange.m_TEnd - grapheRange.m_TEnd;
+            auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
+            auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
             varRangeRequested.m_TStart += deltaLeft;
             varRangeRequested.m_TEnd -= deltaRight;
             break;
         }
 
         case AcquisitionZoomType::ZoomOut: {
-            auto deltaLeft = oldGraphRange.m_TStart - grapheRange.m_TStart;
-            auto deltaRight = grapheRange.m_TEnd - oldGraphRange.m_TEnd;
+            auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+            auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
             varRangeRequested.m_TStart -= deltaLeft;
             varRangeRequested.m_TEnd += deltaRight;
             break;
         }
         case AcquisitionZoomType::PanRight: {
-            auto deltaRight = grapheRange.m_TEnd - oldGraphRange.m_TEnd;
+            auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
             varRangeRequested.m_TStart += deltaRight;
             varRangeRequested.m_TEnd += deltaRight;
             break;
         }
         case AcquisitionZoomType::PanLeft: {
-            auto deltaLeft = oldGraphRange.m_TStart - grapheRange.m_TStart;
+            auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
             varRangeRequested.m_TStart -= deltaLeft;
             varRangeRequested.m_TEnd -= deltaLeft;
             break;

@@ -142,7 +142,7 @@ void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
 
             if (it != impl->m_VIdentifierToCurrrentAcqIdNextIdPairMap.cend()) {
                 if (it->second.second.isNull()) {
-                    // There is no next request, we can remove the varibale request
+                    // There is no next request, we can remove the variable request
                     impl->removeVariableRequest(acqRequest.m_vIdentifier);
                 }
                 else {

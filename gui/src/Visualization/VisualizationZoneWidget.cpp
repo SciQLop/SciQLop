@@ -81,10 +81,10 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
 
 
     // Lambda to synchronize zone widget
-    auto synchronizeZoneWidget = [this, graphWidget](const SqpRange &grapheRange,
+    auto synchronizeZoneWidget = [this, graphWidget](const SqpRange &graphRange,
                                                      const SqpRange &oldGraphRange) {
 
-        auto zoomType = VariableController::getZoomType(grapheRange, oldGraphRange);
+        auto zoomType = VariableController::getZoomType(graphRange, oldGraphRange);
         auto frameLayout = ui->visualizationZoneFrame->layout();
         for (auto i = 0; i < frameLayout->count(); ++i) {
             auto graphChild
@@ -94,8 +94,8 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                 auto graphChildRange = graphChild->graphRange();
                 switch (zoomType) {
                     case AcquisitionZoomType::ZoomIn: {
-                        auto deltaLeft = grapheRange.m_TStart - oldGraphRange.m_TStart;
-                        auto deltaRight = oldGraphRange.m_TEnd - grapheRange.m_TEnd;
+                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
+                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
                         graphChildRange.m_TStart += deltaLeft;
                         graphChildRange.m_TEnd -= deltaRight;
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomIn");
@@ -104,37 +104,37 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
                                                                   << deltaRight;
                         qCCritical(LOG_VisualizationZoneWidget())
-                            << tr("TORM: dt") << grapheRange.m_TEnd - grapheRange.m_TStart;
+                            << tr("TORM: dt") << graphRange.m_TEnd - graphRange.m_TStart;
 
                         break;
                     }
 
                     case AcquisitionZoomType::ZoomOut: {
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomOut");
-                        auto deltaLeft = oldGraphRange.m_TStart - grapheRange.m_TStart;
-                        auto deltaRight = grapheRange.m_TEnd - oldGraphRange.m_TEnd;
+                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaLeft")
                                                                   << deltaLeft;
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
                                                                   << deltaRight;
                         qCCritical(LOG_VisualizationZoneWidget())
-                            << tr("TORM: dt") << grapheRange.m_TEnd - grapheRange.m_TStart;
+                            << tr("TORM: dt") << graphRange.m_TEnd - graphRange.m_TStart;
                         graphChildRange.m_TStart -= deltaLeft;
                         graphChildRange.m_TEnd += deltaRight;
                         break;
                     }
                     case AcquisitionZoomType::PanRight: {
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: PanRight");
-                        auto deltaRight = grapheRange.m_TEnd - oldGraphRange.m_TEnd;
+                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
                         graphChildRange.m_TStart += deltaRight;
                         graphChildRange.m_TEnd += deltaRight;
                         qCCritical(LOG_VisualizationZoneWidget())
-                            << tr("TORM: dt") << grapheRange.m_TEnd - grapheRange.m_TStart;
+                            << tr("TORM: dt") << graphRange.m_TEnd - graphRange.m_TStart;
                         break;
                     }
                     case AcquisitionZoomType::PanLeft: {
                         qCCritical(LOG_VisualizationZoneWidget()) << tr("TORM: PanLeft");
-                        auto deltaLeft = oldGraphRange.m_TStart - grapheRange.m_TStart;
+                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
                         graphChildRange.m_TStart -= deltaLeft;
                         graphChildRange.m_TEnd -= deltaLeft;
                         break;

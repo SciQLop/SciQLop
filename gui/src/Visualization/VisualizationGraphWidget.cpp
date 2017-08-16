@@ -149,8 +149,8 @@ void VisualizationGraphWidget::setRange(std::shared_ptr<Variable> variable, cons
 
 SqpRange VisualizationGraphWidget::graphRange() const noexcept
 {
-    auto grapheRange = ui->widget->xAxis->range();
-    return SqpRange{grapheRange.lower, grapheRange.upper};
+    auto graphRange = ui->widget->xAxis->range();
+    return SqpRange{graphRange.lower, graphRange.upper};
 }
 
 void VisualizationGraphWidget::setGraphRange(const SqpRange &range)
@@ -288,8 +288,8 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
     //    - use an ordered_multimap and the algos of std to group the values by key
     //    - use a map (unique keys) and store as values directly the list of components
 
-    auto grapheRange = ui->widget->xAxis->range();
-    auto dateTime = SqpRange{grapheRange.lower, grapheRange.upper};
+    auto graphRange = ui->widget->xAxis->range();
+    auto dateTime = SqpRange{graphRange.lower, graphRange.upper};
 
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
          it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
