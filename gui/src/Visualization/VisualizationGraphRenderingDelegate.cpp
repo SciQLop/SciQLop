@@ -30,10 +30,10 @@ QString formatValue(double value, const QCPAxis &axis)
 void initPointTracerStyle(QCPItemTracer &tracer) noexcept
 {
     tracer.setInterpolating(false);
-    tracer.setStyle(QCPItemTracer::tsPlus);
+    tracer.setStyle(QCPItemTracer::tsCircle);
+    tracer.setSize(3);
     tracer.setPen(QPen(Qt::black));
     tracer.setBrush(Qt::black);
-    tracer.setSize(10);
 }
 
 } // namespace
