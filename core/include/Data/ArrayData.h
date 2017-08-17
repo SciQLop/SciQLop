@@ -290,6 +290,21 @@ public:
         return m_Data[0];
     }
 
+    // ///////////// //
+    // 2-dim methods //
+    // ///////////// //
+
+    /**
+     * @return the data
+     * @remarks this method is only available for a two-dimensional ArrayData
+     */
+    template <int D = Dim, typename = std::enable_if_t<D == 2> >
+    DataContainer data() const noexcept
+    {
+        QReadLocker locker{&m_Lock};
+        return m_Data;
+    }
+
 private:
     DataContainer m_Data;
     mutable QReadWriteLock m_Lock;
