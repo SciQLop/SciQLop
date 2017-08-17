@@ -58,6 +58,67 @@ struct Sort<1> {
 template <int Dim>
 class ArrayData {
 public:
+    class IteratorValue {
+    public:
+        explicit IteratorValue(const DataContainer &container, bool begin) : m_Its{}
+        {
+            for (auto i = 0; i < container.size(); ++i) {
+                m_Its.push_back(begin ? container.at(i).cbegin() : container.at(i).cend());
+            }
+        }
+
+        double at(int index) const { return *m_Its.at(index); }
+        double first() const { return *m_Its.front(); }
+
+        void next()
+        {
+            for (auto &it : m_Its) {
+                ++it;
+            }
+        }
+
+        bool operator==(const IteratorValue &other) const { return m_Its == other.m_Its; }
+
+    private:
+        std::vector<DataContainer::value_type::const_iterator> m_Its;
+    };
+
+    class Iterator {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = const IteratorValue;
+        using difference_type = std::ptrdiff_t;
+        using pointer = value_type *;
+        using reference = value_type &;
+
+        Iterator(const DataContainer &container, bool begin) : m_CurrentValue{container, begin} {}
+
+        virtual ~Iterator() noexcept = default;
+        Iterator(const Iterator &) = default;
+        Iterator(Iterator &&) = default;
+        Iterator &operator=(const Iterator &) = default;
+        Iterator &operator=(Iterator &&) = default;
+
+        Iterator &operator++()
+        {
+            m_CurrentValue.next();
+            return *this;
+        }
+
+        pointer operator->() const { return &m_CurrentValue; }
+        reference operator*() const { return m_CurrentValue; }
+
+        bool operator==(const Iterator &other) const
+        {
+            return m_CurrentValue == other.m_CurrentValue;
+        }
+
+        bool operator!=(const Iterator &other) const { return !(*this == other); }
+
+    private:
+        IteratorValue m_CurrentValue;
+    };
+
     // ///// //
     // Ctors //
     // ///// //
@@ -183,6 +244,13 @@ public:
         QReadLocker locker{&m_Lock};
         return arraydata_detail::Sort<Dim>::sort(m_Data, sortPermutation);
     }
+
+    // ///////// //
+    // Iterators //
+    // ///////// //
+
+    Iterator cbegin() const { return Iterator{m_Data, true}; }
+    Iterator cend() const { return Iterator{m_Data, false}; }
 
     // ///////////// //
     // 1-dim methods //
