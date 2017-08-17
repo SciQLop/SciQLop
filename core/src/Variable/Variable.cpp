@@ -107,7 +107,7 @@ void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
     impl->unlock();
 
     // sub the data
-    auto subData = this->dataSeries()->subData(this->cacheRange());
+    auto subData = this->dataSeries()->subDataSeries(this->cacheRange());
     qCDebug(LOG_Variable()) << "TORM: Variable::mergeDataSeries sub" << subData->range();
     this->setDataSeries(subData);
     qCDebug(LOG_Variable()) << "TORM: Variable::mergeDataSeries set" << this->dataSeries()->range();

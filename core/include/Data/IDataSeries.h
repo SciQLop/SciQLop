@@ -56,7 +56,8 @@ public:
     virtual Unit valuesUnit() const = 0;
 
     virtual void merge(IDataSeries *dataSeries) = 0;
-    virtual std::shared_ptr<IDataSeries> subData(const SqpRange &range) = 0;
+    /// @todo Review the name and signature of this method
+    virtual std::shared_ptr<IDataSeries> subDataSeries(const SqpRange &range) = 0;
 
     virtual std::unique_ptr<IDataSeries> clone() const = 0;
     virtual SqpRange range() const = 0;
