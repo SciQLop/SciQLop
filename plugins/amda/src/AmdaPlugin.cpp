@@ -32,15 +32,6 @@ void associateActions(DataSourceItem &item, const QUuid &dataSourceUid)
 
     const auto itemType = item.type();
     if (itemType == DataSourceItemType::PRODUCT) {
-        /// @todo : As for the moment we do not manage the loading of vectors, in the case of a
-        /// parameter, we update the identifier of download of the data:
-        /// - if the parameter has no component, the identifier remains the same
-        /// - if the parameter has at least one component, the identifier is that of the first
-        /// component (for example, "imf" becomes "imf (0)")
-        if (item.childCount() != 0) {
-            item.setData(AMDA_XML_ID_KEY, item.child(0)->data(AMDA_XML_ID_KEY));
-        }
-
         addLoadAction(QObject::tr("Load %1 product").arg(item.name()));
     }
     else if (itemType == DataSourceItemType::COMPONENT) {

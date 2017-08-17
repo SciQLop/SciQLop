@@ -1,20 +1,25 @@
 #ifndef SCIQLOP_DATASERIES_H
 #define SCIQLOP_DATASERIES_H
 
+#include "CoreGlobal.h"
+
 #include <Common/SortUtils.h>
 
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
 
 #include <QLoggingCategory>
-
 #include <QReadLocker>
 #include <QReadWriteLock>
 #include <memory>
 
-Q_DECLARE_LOGGING_CATEGORY(LOG_DataSeries)
-Q_LOGGING_CATEGORY(LOG_DataSeries, "DataSeries")
-
+// We don't use the Qt macro since the log is used in the header file, which causes multiple log
+// definitions with inheritance. Inline method is used instead
+inline const QLoggingCategory &LOG_DataSeries()
+{
+    static const QLoggingCategory category{"DataSeries"};
+    return category;
+}
 
 /**
  * @brief The DataSeries class is the base (abstract) implementation of IDataSeries.
@@ -27,7 +32,7 @@ Q_LOGGING_CATEGORY(LOG_DataSeries, "DataSeries")
  *
  */
 template <int Dim>
-class DataSeries : public IDataSeries {
+class SCIQLOP_CORE_EXPORT DataSeries : public IDataSeries {
 public:
     class IteratorValue {
     public:

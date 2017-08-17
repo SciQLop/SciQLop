@@ -9,6 +9,7 @@ ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (D)
 ArrayData\.h:\d+:.*IPSIS_S04_NAMESPACE.*found: (arraydata_detail)
 ArrayData\.h:\d+:.*IPSIS_S06.*found: (D)
 ArrayData\.h:\d+:.*IPSIS_S06.*found: (Dim)
+DataSeries\.h:\d+:.*IPSIS_S04_METHOD.*found: LOG_DataSeries
 DataSeries\.h:\d+:.*IPSIS_S04_VARIABLE.*
 
 # Ignore false positive relative to iterators

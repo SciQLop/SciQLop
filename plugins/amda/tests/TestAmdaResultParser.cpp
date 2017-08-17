@@ -1,6 +1,7 @@
 #include "AmdaResultParser.h"
 
 #include <Data/ScalarSeries.h>
+#include <Data/VectorSeries.h>
 
 #include <QObject>
 #include <QtTest>
@@ -10,6 +11,11 @@ namespace {
 /// Path for the tests
 const auto TESTS_RESOURCES_PATH
     = QFileInfo{QString{AMDA_TESTS_RESOURCES_DIR}, "TestAmdaResultParser"}.absoluteFilePath();
+
+QDateTime dateTime(int year, int month, int day, int hours, int minutes, int seconds)
+{
+    return QDateTime{{year, month, day}, {hours, minutes, seconds}, Qt::UTC};
+}
 
 /// Compares two vectors that can potentially contain NaN values
 bool compareVectors(const QVector<double> &v1, const QVector<double> &v2)
@@ -31,17 +37,50 @@ bool compareVectors(const QVector<double> &v1, const QVector<double> &v2)
     return result;
 }
 
+bool compareVectors(const QVector<QVector<double> > &v1, const QVector<QVector<double> > &v2)
+{
+    if (v1.size() != v2.size()) {
+        return false;
+    }
+
+    auto result = true;
+    for (auto i = 0; i < v1.size() && result; ++i) {
+        result &= compareVectors(v1.at(i), v2.at(i));
+    }
+
+    return result;
+}
+
+QVector<QVector<double> > valuesData(const ArrayData<1> &arrayData)
+{
+    return QVector<QVector<double> >{arrayData.data()};
+}
+
+QVector<QVector<double> > valuesData(const ArrayData<2> &arrayData)
+{
+    return arrayData.data();
+}
+
+
 QString inputFilePath(const QString &inputFileName)
 {
     return QFileInfo{TESTS_RESOURCES_PATH, inputFileName}.absoluteFilePath();
 }
 
+template <typename T>
 struct ExpectedResults {
     explicit ExpectedResults() = default;
 
-    /// Ctor with QVector<QDateTime> as x-axis data. Datetimes are converted to doubles
     explicit ExpectedResults(Unit xAxisUnit, Unit valuesUnit, const QVector<QDateTime> &xAxisData,
                              QVector<double> valuesData)
+            : ExpectedResults(xAxisUnit, valuesUnit, xAxisData,
+                              QVector<QVector<double> >{std::move(valuesData)})
+    {
+    }
+
+    /// Ctor with QVector<QDateTime> as x-axis data. Datetimes are converted to doubles
+    explicit ExpectedResults(Unit xAxisUnit, Unit valuesUnit, const QVector<QDateTime> &xAxisData,
+                             QVector<QVector<double> > valuesData)
             : m_ParsingOK{true},
               m_XAxisUnit{xAxisUnit},
               m_ValuesUnit{valuesUnit},
@@ -60,17 +99,17 @@ struct ExpectedResults {
     void validate(std::shared_ptr<IDataSeries> results)
     {
         if (m_ParsingOK) {
-            auto scalarSeries = dynamic_cast<ScalarSeries *>(results.get());
-            QVERIFY(scalarSeries != nullptr);
+            auto dataSeries = dynamic_cast<T *>(results.get());
+            QVERIFY(dataSeries != nullptr);
 
             // Checks units
-            QVERIFY(scalarSeries->xAxisUnit() == m_XAxisUnit);
-            QVERIFY(scalarSeries->valuesUnit() == m_ValuesUnit);
+            QVERIFY(dataSeries->xAxisUnit() == m_XAxisUnit);
+            QVERIFY(dataSeries->valuesUnit() == m_ValuesUnit);
 
             // Checks values : as the vectors can potentially contain NaN values, we must use a
             // custom vector comparison method
-            QVERIFY(compareVectors(scalarSeries->xAxisData()->data(), m_XAxisData));
-            QVERIFY(compareVectors(scalarSeries->valuesData()->data(), m_ValuesData));
+            QVERIFY(compareVectors(dataSeries->xAxisData()->data(), m_XAxisData));
+            QVERIFY(compareVectors(valuesData(*dataSeries->valuesData()), m_ValuesData));
         }
         else {
             QVERIFY(results == nullptr);
@@ -86,47 +125,74 @@ struct ExpectedResults {
     // Expected x-axis data
     QVector<double> m_XAxisData{};
     // Expected values data
-    QVector<double> m_ValuesData{};
+    QVector<QVector<double> > m_ValuesData{};
 };
 
 } // namespace
 
-Q_DECLARE_METATYPE(ExpectedResults)
+Q_DECLARE_METATYPE(ExpectedResults<ScalarSeries>)
+Q_DECLARE_METATYPE(ExpectedResults<VectorSeries>)
 
 class TestAmdaResultParser : public QObject {
     Q_OBJECT
+private:
+    template <typename T>
+    void testReadDataStructure()
+    {
+        // ////////////// //
+        // Test structure //
+        // ////////////// //
+
+        // Name of TXT file to read
+        QTest::addColumn<QString>("inputFileName");
+        // Expected results
+        QTest::addColumn<ExpectedResults<T> >("expectedResults");
+    }
+
+    template <typename T>
+    void testRead(AmdaResultParser::ValueType valueType)
+    {
+        QFETCH(QString, inputFileName);
+        QFETCH(ExpectedResults<T>, expectedResults);
+
+        // Parses file
+        auto filePath = inputFilePath(inputFileName);
+        auto results = AmdaResultParser::readTxt(filePath, valueType);
+
+        // ///////////////// //
+        // Validates results //
+        // ///////////////// //
+        expectedResults.validate(results);
+    }
+
 private slots:
     /// Input test data
-    /// @sa testTxtJson()
-    void testReadTxt_data();
+    /// @sa testReadScalarTxt()
+    void testReadScalarTxt_data();
 
-    /// Tests parsing of a TXT file
-    void testReadTxt();
+    /// Tests parsing scalar series of a TXT file
+    void testReadScalarTxt();
+
+    /// Input test data
+    /// @sa testReadVectorTxt()
+    void testReadVectorTxt_data();
+
+    /// Tests parsing vector series of a TXT file
+    void testReadVectorTxt();
 };
 
-void TestAmdaResultParser::testReadTxt_data()
+void TestAmdaResultParser::testReadScalarTxt_data()
 {
-    // ////////////// //
-    // Test structure //
-    // ////////////// //
-
-    // Name of TXT file to read
-    QTest::addColumn<QString>("inputFileName");
-    // Expected results
-    QTest::addColumn<ExpectedResults>("expectedResults");
+    testReadDataStructure<ScalarSeries>();
 
     // ////////// //
     // Test cases //
     // ////////// //
 
-    auto dateTime = [](int year, int month, int day, int hours, int minutes, int seconds) {
-        return QDateTime{{year, month, day}, {hours, minutes, seconds}, Qt::UTC};
-    };
-
     // Valid files
     QTest::newRow("Valid file")
         << QStringLiteral("ValidScalar1.txt")
-        << ExpectedResults{
+        << ExpectedResults<ScalarSeries>{
                Unit{QStringLiteral("nT"), true}, Unit{},
                QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
                                   dateTime(2013, 9, 23, 9, 2, 30), dateTime(2013, 9, 23, 9, 3, 30),
@@ -138,7 +204,7 @@ void TestAmdaResultParser::testReadTxt_data()
 
     QTest::newRow("Valid file (value of first line is invalid but it is converted to NaN")
         << QStringLiteral("WrongValue.txt")
-        << ExpectedResults{
+        << ExpectedResults<ScalarSeries>{
                Unit{QStringLiteral("nT"), true}, Unit{},
                QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
                                   dateTime(2013, 9, 23, 9, 2, 30)},
@@ -146,7 +212,7 @@ void TestAmdaResultParser::testReadTxt_data()
 
     QTest::newRow("Valid file that contains NaN values")
         << QStringLiteral("NaNValue.txt")
-        << ExpectedResults{
+        << ExpectedResults<ScalarSeries>{
                Unit{QStringLiteral("nT"), true}, Unit{},
                QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
                                   dateTime(2013, 9, 23, 9, 2, 30)},
@@ -154,58 +220,90 @@ void TestAmdaResultParser::testReadTxt_data()
 
     // Valid files but with some invalid lines (wrong unit, wrong values, etc.)
     QTest::newRow("No unit file") << QStringLiteral("NoUnit.txt")
-                                  << ExpectedResults{Unit{QStringLiteral(""), true}, Unit{},
-                                                     QVector<QDateTime>{}, QVector<double>{}};
+                                  << ExpectedResults<ScalarSeries>{Unit{QStringLiteral(""), true},
+                                                                   Unit{}, QVector<QDateTime>{},
+                                                                   QVector<double>{}};
     QTest::newRow("Wrong unit file")
         << QStringLiteral("WrongUnit.txt")
-        << ExpectedResults{Unit{QStringLiteral(""), true}, Unit{},
-                           QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30),
-                                              dateTime(2013, 9, 23, 9, 1, 30),
-                                              dateTime(2013, 9, 23, 9, 2, 30)},
-                           QVector<double>{-2.83950, -2.71850, -2.52150}};
+        << ExpectedResults<ScalarSeries>{Unit{QStringLiteral(""), true}, Unit{},
+                                         QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30),
+                                                            dateTime(2013, 9, 23, 9, 1, 30),
+                                                            dateTime(2013, 9, 23, 9, 2, 30)},
+                                         QVector<double>{-2.83950, -2.71850, -2.52150}};
 
     QTest::newRow("Wrong results file (date of first line is invalid")
         << QStringLiteral("WrongDate.txt")
-        << ExpectedResults{
+        << ExpectedResults<ScalarSeries>{
                Unit{QStringLiteral("nT"), true}, Unit{},
                QVector<QDateTime>{dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)},
                QVector<double>{-2.71850, -2.52150}};
 
     QTest::newRow("Wrong results file (too many values for first line")
         << QStringLiteral("TooManyValues.txt")
-        << ExpectedResults{
+        << ExpectedResults<ScalarSeries>{
                Unit{QStringLiteral("nT"), true}, Unit{},
                QVector<QDateTime>{dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)},
                QVector<double>{-2.71850, -2.52150}};
 
     QTest::newRow("Wrong results file (x of first line is NaN")
         << QStringLiteral("NaNX.txt")
-        << ExpectedResults{
+        << ExpectedResults<ScalarSeries>{
                Unit{QStringLiteral("nT"), true}, Unit{},
                QVector<QDateTime>{dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)},
                QVector<double>{-2.71850, -2.52150}};
 
-    // Invalid files
-    QTest::newRow("Invalid file (unexisting file)") << QStringLiteral("UnexistingFile.txt")
-                                                    << ExpectedResults{};
+    QTest::newRow("Invalid file type (vector)")
+        << QStringLiteral("ValidVector1.txt")
+        << ExpectedResults<ScalarSeries>{Unit{QStringLiteral("nT"), true}, Unit{},
+                                         QVector<QDateTime>{}, QVector<double>{}};
 
-    QTest::newRow("Invalid file (file not found on server)") << QStringLiteral("FileNotFound.txt")
-                                                             << ExpectedResults{};
+    // Invalid files
+    QTest::newRow("Invalid file (unexisting file)")
+        << QStringLiteral("UnexistingFile.txt") << ExpectedResults<ScalarSeries>{};
+
+    QTest::newRow("Invalid file (file not found on server)")
+        << QStringLiteral("FileNotFound.txt") << ExpectedResults<ScalarSeries>{};
 }
 
-void TestAmdaResultParser::testReadTxt()
+void TestAmdaResultParser::testReadScalarTxt()
 {
-    QFETCH(QString, inputFileName);
-    QFETCH(ExpectedResults, expectedResults);
+    testRead<ScalarSeries>(AmdaResultParser::ValueType::SCALAR);
+}
 
-    // Parses file
-    auto filePath = inputFilePath(inputFileName);
-    auto results = AmdaResultParser::readTxt(filePath);
+void TestAmdaResultParser::testReadVectorTxt_data()
+{
+    testReadDataStructure<VectorSeries>();
 
-    // ///////////////// //
-    // Validates results //
-    // ///////////////// //
-    expectedResults.validate(results);
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    // Valid files
+    QTest::newRow("Valid file")
+        << QStringLiteral("ValidVector1.txt")
+        << ExpectedResults<VectorSeries>{
+               Unit{QStringLiteral("nT"), true}, Unit{},
+               QVector<QDateTime>{dateTime(2013, 7, 2, 9, 13, 50), dateTime(2013, 7, 2, 9, 14, 6),
+                                  dateTime(2013, 7, 2, 9, 14, 22), dateTime(2013, 7, 2, 9, 14, 38),
+                                  dateTime(2013, 7, 2, 9, 14, 54), dateTime(2013, 7, 2, 9, 15, 10),
+                                  dateTime(2013, 7, 2, 9, 15, 26), dateTime(2013, 7, 2, 9, 15, 42),
+                                  dateTime(2013, 7, 2, 9, 15, 58), dateTime(2013, 7, 2, 9, 16, 14)},
+               QVector<QVector<double> >{
+                   {-0.332, -1.011, -1.457, -1.293, -1.217, -1.443, -1.278, -1.202, -1.22, -1.259},
+                   {3.206, 2.999, 2.785, 2.736, 2.612, 2.564, 2.892, 2.862, 2.859, 2.764},
+                   {0.058, 0.496, 1.018, 1.485, 1.662, 1.505, 1.168, 1.244, 1.15, 1.358}}};
+
+    // Valid files but with some invalid lines (wrong unit, wrong values, etc.)
+    QTest::newRow("Invalid file type (scalar)")
+        << QStringLiteral("ValidScalar1.txt")
+        << ExpectedResults<VectorSeries>{Unit{QStringLiteral("nT"), true}, Unit{},
+                                         QVector<QDateTime>{},
+                                         QVector<QVector<double> >{{}, {}, {}}};
+}
+
+void TestAmdaResultParser::testReadVectorTxt()
+{
+    testRead<VectorSeries>(AmdaResultParser::ValueType::VECTOR);
 }
 
 QTEST_MAIN(TestAmdaResultParser)
