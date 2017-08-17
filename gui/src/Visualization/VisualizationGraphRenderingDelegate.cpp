@@ -9,6 +9,9 @@ const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
 
 const auto TOOLTIP_FORMAT = QStringLiteral("key: %1\nvalue: %2");
 
+/// Offset used to shift the tooltip of the mouse
+const auto TOOLTIP_OFFSET = QPoint{20, 20};
+
 /// Tooltip display rectangle (the tooltip is hidden when the mouse leaves this rectangle)
 const auto TOOLTIP_RECT = QRect{10, 10, 10, 10};
 
@@ -91,8 +94,8 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
             // Starts timer to show tooltip after timeout
             auto showTooltip = [ tooltip = TOOLTIP_FORMAT.arg(key, value), eventPos, this ]()
             {
-                QToolTip::showText(impl->m_Plot.mapToGlobal(eventPos), tooltip, &impl->m_Plot,
-                                   TOOLTIP_RECT);
+                QToolTip::showText(impl->m_Plot.mapToGlobal(eventPos) + TOOLTIP_OFFSET, tooltip,
+                                   &impl->m_Plot, TOOLTIP_RECT);
             };
 
             QObject::connect(&impl->m_TracerTimer, &QTimer::timeout, showTooltip);
