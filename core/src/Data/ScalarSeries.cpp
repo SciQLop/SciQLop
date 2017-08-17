@@ -12,7 +12,7 @@ std::unique_ptr<IDataSeries> ScalarSeries::clone() const
     return std::make_unique<ScalarSeries>(*this);
 }
 
-std::shared_ptr<IDataSeries> ScalarSeries::subData(const SqpRange &range)
+std::shared_ptr<IDataSeries> ScalarSeries::subDataSeries(const SqpRange &range)
 {
     auto subXAxisData = QVector<double>();
     auto subValuesData = QVector<double>();
