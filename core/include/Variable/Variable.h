@@ -47,6 +47,7 @@ public:
     bool cacheIsInside(const SqpRange &range) const noexcept;
 
     QVector<SqpRange> provideNotInCacheRangeList(const SqpRange &range) const noexcept;
+    QVector<SqpRange> provideInCacheRangeList(const SqpRange &range) const noexcept;
     void setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
     void mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
 
