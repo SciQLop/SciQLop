@@ -80,6 +80,9 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
 
     connect(this, &VisualizationGraphWidget::requestDataLoading, &sqpApp->variableController(),
             &VariableController::onRequestDataLoading);
+
+    connect(&sqpApp->variableController(), &VariableController::updateVarDisplaying, this,
+            &VisualizationGraphWidget::onUpdateVarDisplaying);
 }
 
 
@@ -303,5 +306,15 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
             VisualizationGraphHelper::updateData(QVector<QCPAbstractPlottable *>{} << it->second,
                                                  variable->dataSeries(), variable->range());
         }
+    }
+}
+
+void VisualizationGraphWidget::onUpdateVarDisplaying(std::shared_ptr<Variable> variable,
+                                                     const SqpRange &range)
+{
+    auto componentsIt = impl->m_VariableToPlotMultiMap.equal_range(variable);
+    for (auto it = componentsIt.first; it != componentsIt.second;) {
+        VisualizationGraphHelper::updateData(QVector<QCPAbstractPlottable *>{} << it->second,
+                                             variable->dataSeries(), range);
     }
 }

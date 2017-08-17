@@ -79,6 +79,8 @@ private slots:
     void onMouseRelease(QMouseEvent *event) noexcept;
 
     void onDataCacheVariableUpdated();
+
+    void onUpdateVarDisplaying(std::shared_ptr<Variable> variable, const SqpRange &range);
 };
 
 #endif // SCIQLOP_VISUALIZATIONGRAPHWIDGET_H

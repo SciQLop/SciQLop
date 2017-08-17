@@ -73,6 +73,9 @@ signals:
     /// Signal emitted when a data acquisition is requested on a range for a variable
     void rangeChanged(std::shared_ptr<Variable> variable, const SqpRange &range);
 
+    /// Signal emitted when a sub range of the cacheRange of the variable can be displayed
+    void updateVarDisplaying(std::shared_ptr<Variable> variable, const SqpRange &range);
+
 public slots:
     /// Request the data loading of the variable whithin range
     void onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables, const SqpRange &range,

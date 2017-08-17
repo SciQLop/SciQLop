@@ -43,27 +43,28 @@ void updateScalarData(QCPAbstractPlottable *component, std::shared_ptr<ScalarSer
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
         scalarSeries->lockRead();
         {
-            const auto &xData = scalarSeries->xAxisData()->cdata();
-            const auto &valuesData = scalarSeries->valuesData()->cdata();
+//            auto bounds = scalarSeries->subData(rang
+//            const auto &xData = scalarSeries->xAxisData()->cdata();
+//            const auto &valuesData = scalarSeries->valuesData()->cdata();
 
-            auto xDataBegin = xData.cbegin();
-            auto xDataEnd = xData.cend();
+//            auto xDataBegin = xData.cbegin();
+//            auto xDataEnd = xData.cend();
 
-            qCInfo(LOG_VisualizationGraphHelper()) << "TODEBUG: Current points in cache"
-                                                   << xData.count();
+//            qCInfo(LOG_VisualizationGraphHelper()) << "TODEBUG: Current points in cache"
+//                                                   << xData.count();
 
-            auto sqpDataContainer = QSharedPointer<SqpDataContainer>::create();
-            qcpGraph->setData(sqpDataContainer);
+//            auto sqpDataContainer = QSharedPointer<SqpDataContainer>::create();
+//            qcpGraph->setData(sqpDataContainer);
 
-            auto lowerIt = std::lower_bound(xDataBegin, xDataEnd, dateTime.m_TStart);
-            auto upperIt = std::upper_bound(xDataBegin, xDataEnd, dateTime.m_TEnd);
-            auto distance = std::distance(xDataBegin, lowerIt);
+//            auto lowerIt = std::lower_bound(xDataBegin, xDataEnd, dateTime.m_TStart);
+//            auto upperIt = std::upper_bound(xDataBegin, xDataEnd, dateTime.m_TEnd);
+//            auto distance = std::distance(xDataBegin, lowerIt);
 
-            auto valuesDataIt = valuesData.cbegin() + distance;
-            for (auto xAxisDataIt = lowerIt; xAxisDataIt != upperIt;
-                 ++xAxisDataIt, ++valuesDataIt) {
-                sqpDataContainer->appendGraphData(QCPGraphData(*xAxisDataIt, *valuesDataIt));
-            }
+//            auto valuesDataIt = valuesData.cbegin() + distance;
+//            for (auto xAxisDataIt = lowerIt; xAxisDataIt != upperIt;
+//                 ++xAxisDataIt, ++valuesDataIt) {
+//                sqpDataContainer->appendGraphData(QCPGraphData(*xAxisDataIt, *valuesDataIt));
+//            }
 
             qCInfo(LOG_VisualizationGraphHelper()) << "TODEBUG: Current points displayed"
                                                    << sqpDataContainer->size();
