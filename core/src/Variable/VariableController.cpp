@@ -80,7 +80,8 @@ struct VariableController::VariableControllerPrivate {
               m_VariableSelectionModel{new QItemSelectionModel{m_VariableModel, parent}},
               m_VariableCacheController{std::make_unique<VariableCacheController>()},
               m_VariableCacheStrategy{std::make_unique<VariableCacheStrategy>()},
-              m_VariableAcquisitionWorker{std::make_unique<VariableAcquisitionWorker>()}
+              m_VariableAcquisitionWorker{std::make_unique<VariableAcquisitionWorker>()},
+              q{parent}
     {
 
         m_VariableAcquisitionWorker->moveToThread(&m_VariableAcquisitionWorkerThread);
@@ -126,6 +127,9 @@ struct VariableController::VariableControllerPrivate {
         m_GroupIdToVariableSynchronizationGroupMap;
     std::map<QUuid, QUuid> m_VariableIdGroupIdMap;
     std::set<std::shared_ptr<IDataProvider> > m_ProviderSet;
+
+
+    VariableController *q;
 };
 
 
@@ -463,6 +467,7 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
     auto varRangesRequested
         = m_VariableCacheStrategy->computeCacheRange(var->range(), rangeRequested);
     auto notInCacheRangeList = var->provideNotInCacheRangeList(varRangesRequested.second);
+    auto inCacheRangeList = var->provideInCacheRangeList(varRangesRequested.second);
 
     if (!notInCacheRangeList.empty()) {
         auto identifier = m_VariableToIdentifierMap.at(var);
@@ -476,6 +481,10 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
         else {
             qCCritical(LOG_VariableController())
                 << "Impossible to provide data with a null provider";
+        }
+
+        if (!inCacheRangeList.empty()) {
+            emit q->updateVarDisplaying(var, inCacheRangeList.first());
         }
     }
     else {
