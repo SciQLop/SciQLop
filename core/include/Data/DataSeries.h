@@ -29,6 +29,71 @@ Q_LOGGING_CATEGORY(LOG_DataSeries, "DataSeries")
 template <int Dim>
 class DataSeries : public IDataSeries {
 public:
+    class IteratorValue {
+    public:
+        explicit IteratorValue(const DataSeries &dataSeries, bool begin)
+                : m_XIt(begin ? dataSeries.xAxisData()->cbegin() : dataSeries.xAxisData()->cend()),
+                  m_ValuesIt(begin ? dataSeries.valuesData()->cbegin()
+                                   : dataSeries.valuesData()->cend())
+        {
+        }
+
+        double x() const { return m_XIt->at(0); }
+        double value() const { return m_ValuesIt->at(0); }
+        double value(int componentIndex) const { return m_ValuesIt->at(componentIndex); }
+
+        void next()
+        {
+            ++m_XIt;
+            ++m_ValuesIt;
+        }
+
+        bool operator==(const IteratorValue &other) const
+        {
+            return std::tie(m_XIt, m_ValuesIt) == std::tie(other.m_XIt, other.m_ValuesIt);
+        }
+
+    private:
+        ArrayData<1>::Iterator m_XIt;
+        typename ArrayData<Dim>::Iterator m_ValuesIt;
+    };
+
+    class Iterator {
+    public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = const IteratorValue;
+        using difference_type = std::ptrdiff_t;
+        using pointer = value_type *;
+        using reference = value_type &;
+
+        Iterator(const DataSeries &dataSeries, bool begin) : m_CurrentValue{dataSeries, begin} {}
+        virtual ~Iterator() noexcept = default;
+        Iterator(const Iterator &) = default;
+        Iterator(Iterator &&) = default;
+        Iterator &operator=(const Iterator &) = default;
+        Iterator &operator=(Iterator &&) = default;
+
+        Iterator &operator++()
+        {
+            m_CurrentValue.next();
+            return *this;
+        }
+
+        pointer operator->() const { return &m_CurrentValue; }
+
+        reference operator*() const { return m_CurrentValue; }
+
+        bool operator==(const Iterator &other) const
+        {
+            return m_CurrentValue == other.m_CurrentValue;
+        }
+
+        bool operator!=(const Iterator &other) const { return !(*this == other); }
+
+    private:
+        IteratorValue m_CurrentValue;
+    };
+
     /// @sa IDataSeries::xAxisData()
     std::shared_ptr<ArrayData<1> > xAxisData() override { return m_XAxisData; }
     const std::shared_ptr<ArrayData<1> > xAxisData() const { return m_XAxisData; }
@@ -118,6 +183,18 @@ public:
         unlock();
         dataSeries->unlock();
     }
+
+    // ///////// //
+    // Iterators //
+    // ///////// //
+
+    Iterator cbegin() const { return Iterator{*this, true}; }
+
+    Iterator cend() const { return Iterator{*this, false}; }
+
+    // /////// //
+    // Mutexes //
+    // /////// //
 
     virtual void lockRead() { m_Lock.lockForRead(); }
     virtual void lockWrite() { m_Lock.lockForWrite(); }
