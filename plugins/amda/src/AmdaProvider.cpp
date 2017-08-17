@@ -36,6 +36,19 @@ QString dateFormat(double sqpRange) noexcept
     return dateTime.toString(AMDA_TIME_FORMAT);
 }
 
+AmdaResultParser::ValueType valueType(const QString &valueType)
+{
+    if (valueType == QStringLiteral("scalar")) {
+        return AmdaResultParser::ValueType::SCALAR;
+    }
+    else if (valueType == QStringLiteral("vector")) {
+        return AmdaResultParser::ValueType::VECTOR;
+    }
+    else {
+        return AmdaResultParser::ValueType::UNKNOWN;
+    }
+}
+
 } // namespace
 
 AmdaProvider::AmdaProvider()
@@ -86,6 +99,10 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     }
     qCDebug(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData") << dateTime;
 
+    // Retrieves the data type that determines whether the expected format for the result file is
+    // scalar, vector...
+    auto productValueType = valueType(data.value(AMDA_DATA_TYPE_KEY).toString());
+
     // /////////// //
     // Creates URL //
     // /////////// //
@@ -98,30 +115,31 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     auto tempFile = std::make_shared<QTemporaryFile>();
 
     // LAMBDA
-    auto httpDownloadFinished
-        = [this, dateTime, tempFile](QNetworkReply *reply, QUuid dataId) noexcept {
+    auto httpDownloadFinished = [this, dateTime, tempFile,
+                                 productValueType](QNetworkReply *reply, QUuid dataId) noexcept {
 
-              // Don't do anything if the reply was abort
-              if (reply->error() != QNetworkReply::OperationCanceledError) {
+        // Don't do anything if the reply was abort
+        if (reply->error() != QNetworkReply::OperationCanceledError) {
 
-                  if (tempFile) {
-                      auto replyReadAll = reply->readAll();
-                      if (!replyReadAll.isEmpty()) {
-                          tempFile->write(replyReadAll);
-                      }
-                      tempFile->close();
+            if (tempFile) {
+                auto replyReadAll = reply->readAll();
+                if (!replyReadAll.isEmpty()) {
+                    tempFile->write(replyReadAll);
+                }
+                tempFile->close();
 
-                      // Parse results file
-                      if (auto dataSeries = AmdaResultParser::readTxt(tempFile->fileName())) {
-                          emit dataProvided(dataId, dataSeries, dateTime);
-                      }
-                      else {
-                          /// @todo ALX : debug
-                      }
-                  }
-              }
+                // Parse results file
+                if (auto dataSeries
+                    = AmdaResultParser::readTxt(tempFile->fileName(), productValueType)) {
+                    emit dataProvided(dataId, dataSeries, dateTime);
+                }
+                else {
+                    /// @todo ALX : debug
+                }
+            }
+        }
 
-          };
+    };
     auto httpFinishedLambda
         = [this, httpDownloadFinished, tempFile](QNetworkReply *reply, QUuid dataId) noexcept {
 
