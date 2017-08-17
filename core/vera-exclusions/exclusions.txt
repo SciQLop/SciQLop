@@ -11,6 +11,32 @@ ArrayData\.h:\d+:.*IPSIS_S06.*found: (D)
 ArrayData\.h:\d+:.*IPSIS_S06.*found: (Dim)
 DataSeries\.h:\d+:.*IPSIS_S04_VARIABLE.*
 
+# Ignore false positive relative to iterators
+ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (forward_iterator_tag)
+ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (IteratorValue)
+ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (ptrdiff_t)
+ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (value_type)
+ArrayData\.h:\d+:.*IPSIS_S05.*
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (iterator_category)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (forward_iterator_tag)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (value_type)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (IteratorValue)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (difference_type)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (ptrdiff_t)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (pointer)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (reference)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (value_type)
+DataSeries\.h:\d+:.*IPSIS_S05.*
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (iterator_category)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (forward_iterator_tag)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (value_type)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (IteratorValue)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (difference_type)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (ptrdiff_t)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (pointer)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (reference)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (value_type)
+
 # Ignore false positive relative to an alias
 DataSourceItemAction\.h:\d+:.*IPSIS_S06.*found: (ExecuteFunction)
 
