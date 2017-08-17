@@ -2,6 +2,7 @@
 
 #include <Common/DateUtils.h>
 #include <Data/ScalarSeries.h>
+#include <Data/VectorSeries.h>
 
 #include <QDateTime>
 #include <QFile>
@@ -45,6 +46,25 @@ bool isCommentLine(const QString &line)
     return line.startsWith("#");
 }
 
+/// @return the number of lines to be read depending on the type of value passed in parameter
+int nbValues(AmdaResultParser::ValueType valueType) noexcept
+{
+    switch (valueType) {
+        case AmdaResultParser::ValueType::SCALAR:
+            return 1;
+        case AmdaResultParser::ValueType::VECTOR:
+            return 3;
+        case AmdaResultParser::ValueType::UNKNOWN:
+            // Invalid case
+            break;
+    }
+
+    // Invalid cases
+    qCCritical(LOG_AmdaResultParser())
+        << QObject::tr("Can't get the number of values to read: unsupported type");
+    return 0;
+}
+
 /**
  * Reads stream to retrieve x-axis unit
  * @param stream the stream to read
@@ -74,10 +94,13 @@ Unit readXAxisUnit(QTextStream &stream)
  * @param stream the stream to read
  * @return the pair of vectors x-axis data/values data that has been read in the stream
  */
-QPair<QVector<double>, QVector<double> > readResults(QTextStream &stream)
+QPair<QVector<double>, QVector<QVector<double> > >
+readResults(QTextStream &stream, AmdaResultParser::ValueType valueType)
 {
+    auto expectedNbValues = nbValues(valueType);
+
     auto xData = QVector<double>{};
-    auto valuesData = QVector<double>{};
+    auto valuesData = QVector<QVector<double> >(expectedNbValues);
 
     QString line{};
 
@@ -85,27 +108,31 @@ QPair<QVector<double>, QVector<double> > readResults(QTextStream &stream)
         // Ignore comment lines
         if (!isCommentLine(line)) {
             auto lineData = line.split(RESULT_LINE_SEPARATOR, QString::SkipEmptyParts);
-            if (lineData.size() == 2) {
+            if (lineData.size() == expectedNbValues + 1) {
                 // X : the data is converted from date to double (in secs)
                 auto x = doubleDate(lineData.at(0));
-
-                // Value
-                bool valueOk;
-                auto value = lineData.at(1).toDouble(&valueOk);
 
                 // Adds result only if x is valid. Then, if value is invalid, it is set to NaN
                 if (!std::isnan(x)) {
                     xData.push_back(x);
 
-                    if (!valueOk) {
-                        qCWarning(LOG_AmdaResultParser())
-                            << QObject::tr(
-                                   "Value from line %1 is invalid and will be converted to NaN")
-                                   .arg(line);
-                        value = std::numeric_limits<double>::quiet_NaN();
-                    }
+                    // Values
+                    for (auto valueIndex = 0; valueIndex < expectedNbValues; ++valueIndex) {
+                        auto column = valueIndex + 1;
 
-                    valuesData.push_back(value);
+                        bool valueOk;
+                        auto value = lineData.at(column).toDouble(&valueOk);
+
+                        if (!valueOk) {
+                            qCWarning(LOG_AmdaResultParser())
+                                << QObject::tr(
+                                       "Value from (line %1, column %2) is invalid and will be "
+                                       "converted to NaN")
+                                       .arg(line, column);
+                            value = std::numeric_limits<double>::quiet_NaN();
+                        }
+                        valuesData[valueIndex].append(value);
+                    }
                 }
                 else {
                     qCWarning(LOG_AmdaResultParser())
@@ -125,8 +152,15 @@ QPair<QVector<double>, QVector<double> > readResults(QTextStream &stream)
 
 } // namespace
 
-std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath) noexcept
+std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
+                                                       ValueType valueType) noexcept
 {
+    if (valueType == ValueType::UNKNOWN) {
+        qCCritical(LOG_AmdaResultParser())
+            << QObject::tr("Can't retrieve AMDA data: the type of values to be read is unknown");
+        return nullptr;
+    }
+
     QFile file{filePath};
 
     if (!file.open(QFile::ReadOnly | QIODevice::Text)) {
@@ -153,8 +187,30 @@ std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath) 
 
     // Reads results
     stream.seek(0); // returns to the beginning of the file
-    auto results = readResults(stream);
+    auto results = readResults(stream, valueType);
 
-    return std::make_shared<ScalarSeries>(std::move(results.first), std::move(results.second),
-                                          xAxisUnit, Unit{});
+    // Creates data series
+    switch (valueType) {
+        case ValueType::SCALAR:
+            Q_ASSERT(results.second.size() == 1);
+            return std::make_shared<ScalarSeries>(
+                std::move(results.first), std::move(results.second.takeFirst()), xAxisUnit, Unit{});
+        case ValueType::VECTOR: {
+            Q_ASSERT(results.second.size() == 3);
+            auto xValues = results.second.takeFirst();
+            auto yValues = results.second.takeFirst();
+            auto zValues = results.second.takeFirst();
+            return std::make_shared<VectorSeries>(std::move(results.first), std::move(xValues),
+                                                  std::move(yValues), std::move(zValues), xAxisUnit,
+                                                  Unit{});
+        }
+        case ValueType::UNKNOWN:
+            // Invalid case
+            break;
+    }
+
+    // Invalid cases
+    qCCritical(LOG_AmdaResultParser())
+        << QObject::tr("Can't create data series: unsupported value type");
+    return nullptr;
 }

@@ -18,20 +18,10 @@ std::shared_ptr<IDataSeries> ScalarSeries::subDataSeries(const SqpRange &range)
     auto subValuesData = QVector<double>();
     this->lockRead();
     {
-        const auto &currentXData = this->xAxisData()->cdata();
-        const auto &currentValuesData = this->valuesData()->cdata();
-
-        auto xDataBegin = currentXData.cbegin();
-        auto xDataEnd = currentXData.cend();
-
-        auto lowerIt = std::lower_bound(xDataBegin, xDataEnd, range.m_TStart);
-        auto upperIt = std::upper_bound(xDataBegin, xDataEnd, range.m_TEnd);
-        auto distance = std::distance(xDataBegin, lowerIt);
-
-        auto valuesDataIt = currentValuesData.cbegin() + distance;
-        for (auto xAxisDataIt = lowerIt; xAxisDataIt != upperIt; ++xAxisDataIt, ++valuesDataIt) {
-            subXAxisData.append(*xAxisDataIt);
-            subValuesData.append(*valuesDataIt);
+        auto bounds = subData(range.m_TStart, range.m_TEnd);
+        for (auto it = bounds.first; it != bounds.second; ++it) {
+            subXAxisData.append(it->x());
+            subValuesData.append(it->value());
         }
     }
     this->unlock();
