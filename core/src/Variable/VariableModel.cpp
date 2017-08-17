@@ -16,7 +16,10 @@ namespace {
 const auto NAME_COLUMN = 0;
 const auto TSTART_COLUMN = 1;
 const auto TEND_COLUMN = 2;
-const auto NB_COLUMNS = 3;
+const auto UNIT_COLUMN = 3;
+const auto MISSION_COLUMN = 4;
+const auto PLUGIN_COLUMN = 5;
+const auto NB_COLUMNS = 6;
 
 // Column properties
 const auto DEFAULT_HEIGHT = 25;
@@ -34,10 +37,10 @@ struct ColumnProperties {
     int m_Height;
 };
 
-const auto COLUMN_PROPERTIES
-    = QHash<int, ColumnProperties>{{NAME_COLUMN, {QObject::tr("Name")}},
-                                   {TSTART_COLUMN, {QObject::tr("tStart"), 180}},
-                                   {TEND_COLUMN, {QObject::tr("tEnd"), 180}}};
+const auto COLUMN_PROPERTIES = QHash<int, ColumnProperties>{
+    {NAME_COLUMN, {QObject::tr("Name")}},       {TSTART_COLUMN, {QObject::tr("tStart"), 180}},
+    {TEND_COLUMN, {QObject::tr("tEnd"), 180}},  {UNIT_COLUMN, {QObject::tr("Unit")}},
+    {MISSION_COLUMN, {QObject::tr("Mission")}}, {PLUGIN_COLUMN, {QObject::tr("Plugin")}}};
 
 /// Format for datetimes
 const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
@@ -163,6 +166,12 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
                     return dateTimeVariant(variable->range().m_TStart);
                 case TEND_COLUMN:
                     return dateTimeVariant(variable->range().m_TEnd);
+                case UNIT_COLUMN:
+                    return variable->metadata().value(QStringLiteral("units"));
+                case MISSION_COLUMN:
+                    return variable->metadata().value(QStringLiteral("mission"));
+                case PLUGIN_COLUMN:
+                    return variable->metadata().value(QStringLiteral("plugin"));
                 default:
                     // No action
                     break;

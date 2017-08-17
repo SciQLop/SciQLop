@@ -90,6 +90,11 @@ DataSourceItem *DataSourceItem::parentItem() const noexcept
     return impl->m_Parent;
 }
 
+const DataSourceItem &DataSourceItem::rootItem() const noexcept
+{
+    return isRoot() ? *this : parentItem()->rootItem();
+}
+
 void DataSourceItem::setData(const QString &key, const QVariant &value, bool append) noexcept
 {
     auto it = impl->m_Data.constFind(key);
