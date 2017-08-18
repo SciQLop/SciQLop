@@ -36,33 +36,18 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
 }
 
 void updateScalarData(QCPAbstractPlottable *component, std::shared_ptr<ScalarSeries> scalarSeries,
-                      const SqpRange &dateTime)
+                      const SqpRange &range)
 {
     qCDebug(LOG_VisualizationGraphHelper()) << "TORM: updateScalarData"
                                             << QThread::currentThread()->objectName();
     if (auto qcpGraph = dynamic_cast<QCPGraph *>(component)) {
         scalarSeries->lockRead();
         {
-            const auto &xData = scalarSeries->xAxisData()->cdata();
-            const auto &valuesData = scalarSeries->valuesData()->cdata();
-
-            auto xDataBegin = xData.cbegin();
-            auto xDataEnd = xData.cend();
-
-            qCInfo(LOG_VisualizationGraphHelper()) << "TODEBUG: Current points in cache"
-                                                   << xData.count();
-
             auto sqpDataContainer = QSharedPointer<SqpDataContainer>::create();
             qcpGraph->setData(sqpDataContainer);
-
-            auto lowerIt = std::lower_bound(xDataBegin, xDataEnd, dateTime.m_TStart);
-            auto upperIt = std::upper_bound(xDataBegin, xDataEnd, dateTime.m_TEnd);
-            auto distance = std::distance(xDataBegin, lowerIt);
-
-            auto valuesDataIt = valuesData.cbegin() + distance;
-            for (auto xAxisDataIt = lowerIt; xAxisDataIt != upperIt;
-                 ++xAxisDataIt, ++valuesDataIt) {
-                sqpDataContainer->appendGraphData(QCPGraphData(*xAxisDataIt, *valuesDataIt));
+            auto bounds = scalarSeries->subData(range.m_TStart, range.m_TEnd);
+            for (auto it = bounds.first; it != bounds.second; ++it) {
+                sqpDataContainer->appendGraphData(QCPGraphData(it->x(), it->value()));
             }
 
             qCInfo(LOG_VisualizationGraphHelper()) << "TODEBUG: Current points displayed"

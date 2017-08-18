@@ -258,11 +258,11 @@ void TestAmdaResultParser::testReadScalarTxt_data()
                                          QVector<QDateTime>{}, QVector<double>{}};
 
     // Invalid files
-    QTest::newRow("Invalid file (unexisting file)")
-        << QStringLiteral("UnexistingFile.txt") << ExpectedResults<ScalarSeries>{};
+    QTest::newRow("Invalid file (unexisting file)") << QStringLiteral("UnexistingFile.txt")
+                                                    << ExpectedResults<ScalarSeries>{};
 
-    QTest::newRow("Invalid file (file not found on server)")
-        << QStringLiteral("FileNotFound.txt") << ExpectedResults<ScalarSeries>{};
+    QTest::newRow("Invalid file (file not found on server)") << QStringLiteral("FileNotFound.txt")
+                                                             << ExpectedResults<ScalarSeries>{};
 }
 
 void TestAmdaResultParser::testReadScalarTxt()

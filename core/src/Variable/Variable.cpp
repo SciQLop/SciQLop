@@ -182,6 +182,8 @@ bool Variable::cacheIsInside(const SqpRange &range) const noexcept
 
 QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &range) const noexcept
 {
+    // This code assume that cach in contigue. Can return 0, 1 or 2 SqpRange
+
     auto notInCache = QVector<SqpRange>{};
 
     if (!this->cacheContains(range)) {
@@ -208,4 +210,34 @@ QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &range) co
     }
 
     return notInCache;
+}
+
+QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &range) const noexcept
+{
+    // This code assume that cach in contigue. Can return 0 or 1 SqpRange
+
+    auto inCache = QVector<SqpRange>{};
+
+
+    if (this->cacheContains(range)) {
+        if (range.m_TStart <= impl->m_CacheRange.m_TEnd
+            && range.m_TEnd >= impl->m_CacheRange.m_TEnd) {
+            inCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TEnd};
+        }
+
+        else if (range.m_TStart >= impl->m_CacheRange.m_TStart
+                 && range.m_TEnd < impl->m_CacheRange.m_TEnd) {
+            inCache << range;
+        }
+        else if (range.m_TStart < impl->m_CacheRange.m_TStart
+                 && range.m_TEnd >= impl->m_CacheRange.m_TStart) {
+            inCache << SqpRange{impl->m_CacheRange.m_TStart, range.m_TEnd};
+        }
+        else {
+            qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
+                                       << QThread::currentThread();
+        }
+    }
+
+    return inCache;
 }
