@@ -1,5 +1,6 @@
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/IVisualizationWidgetVisitor.h"
+#include "Visualization/VisualizationDefs.h"
 #include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
 #include "ui_VisualizationGraphWidget.h"
@@ -33,7 +34,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     }
 
     // 1 variable -> n qcpplot
-    std::multimap<std::shared_ptr<Variable>, QCPAbstractPlottable *> m_VariableToPlotMultiMap;
+    std::map<std::shared_ptr<Variable>, PlottablesMap> m_VariableToPlotMultiMap;
     bool m_DoAcquisition;
     bool m_IsCalibration;
     QCPItemTracer *m_TextTracer;
@@ -99,11 +100,8 @@ void VisualizationGraphWidget::enableAcquisition(bool enable)
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, SqpRange range)
 {
     // Uses delegate to create the qcpplot components according to the variable
-    auto createdPlottables = VisualizationGraphHelper::createV2(variable, *ui->widget);
-
-    for (auto createdPlottable : qAsConst(createdPlottables)) {
-        impl->m_VariableToPlotMultiMap.insert({variable, createdPlottable});
-    }
+    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+    impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 
@@ -124,10 +122,17 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
     // Each component associated to the variable :
     // - is removed from qcpplot (which deletes it)
     // - is no longer referenced in the map
-    auto componentsIt = impl->m_VariableToPlotMultiMap.equal_range(variable);
-    for (auto it = componentsIt.first; it != componentsIt.second;) {
-        ui->widget->removePlottable(it->second);
-        it = impl->m_VariableToPlotMultiMap.erase(it);
+    auto variableIt = impl->m_VariableToPlotMultiMap.find(variable);
+    if (variableIt != impl->m_VariableToPlotMultiMap.cend()) {
+        auto &plottablesMap = variableIt->second;
+
+        for (auto plottableIt = plottablesMap.cbegin(), plottableEnd = plottablesMap.cend();
+             plottableIt != plottableEnd;) {
+            ui->widget->removePlottable(plottableIt->second);
+            plottableIt = plottablesMap.erase(plottableIt);
+        }
+
+        impl->m_VariableToPlotMultiMap.erase(variableIt);
     }
 
     // Updates graph
@@ -282,29 +287,18 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
 
 void VisualizationGraphWidget::onDataCacheVariableUpdated()
 {
-    // NOTE:
-    //    We don't want to call the method for each component of a variable unitarily, but for
-    //    all
-    //    its components at once (eg its three components in the case of a vector).
-
-    //    The unordered_multimap does not do this easily, so the question is whether to:
-    //    - use an ordered_multimap and the algos of std to group the values by key
-    //    - use a map (unique keys) and store as values directly the list of components
-
     auto graphRange = ui->widget->xAxis->range();
     auto dateTime = SqpRange{graphRange.lower, graphRange.upper};
 
-    for (auto it = impl->m_VariableToPlotMultiMap.cbegin();
-         it != impl->m_VariableToPlotMultiMap.cend(); ++it) {
-        auto variable = it->first;
+    for (auto &variableEntry : impl->m_VariableToPlotMultiMap) {
+        auto variable = variableEntry.first;
         qCDebug(LOG_VisualizationGraphWidget())
             << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated S" << variable->range();
         qCDebug(LOG_VisualizationGraphWidget())
             << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated E" << dateTime;
         if (dateTime.contains(variable->range()) || dateTime.intersect(variable->range())) {
-
-            VisualizationGraphHelper::updateData(QVector<QCPAbstractPlottable *>{} << it->second,
-                                                 variable->dataSeries(), variable->range());
+            VisualizationGraphHelper::updateData(variableEntry.second, variable->dataSeries().get(),
+                                                 variable->range());
         }
     }
 }
@@ -312,9 +306,8 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
 void VisualizationGraphWidget::onUpdateVarDisplaying(std::shared_ptr<Variable> variable,
                                                      const SqpRange &range)
 {
-    auto componentsIt = impl->m_VariableToPlotMultiMap.equal_range(variable);
-    for (auto it = componentsIt.first; it != componentsIt.second;) {
-        VisualizationGraphHelper::updateData(QVector<QCPAbstractPlottable *>{} << it->second,
-                                             variable->dataSeries(), range);
+    auto it = impl->m_VariableToPlotMultiMap.find(variable);
+    if (it != impl->m_VariableToPlotMultiMap.end()) {
+        VisualizationGraphHelper::updateData(it->second, variable->dataSeries().get(), range);
     }
 }
