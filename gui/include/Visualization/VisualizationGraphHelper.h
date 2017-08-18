@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_VISUALIZATIONGRAPHHELPER_H
 #define SCIQLOP_VISUALIZATIONGRAPHHELPER_H
 
+#include "Visualization/VisualizationDefs.h"
+
 #include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
@@ -28,13 +30,10 @@ struct VisualizationGraphHelper {
      * components.
      * @return the list of the components created
      */
-    static QVector<QCPAbstractPlottable *> create(std::shared_ptr<Variable> variable,
-                                                  QCustomPlot &plot) noexcept;
-    static QVector<QCPAbstractPlottable *> createV2(std::shared_ptr<Variable> variable,
-                                                    QCustomPlot &plot) noexcept;
+    static PlottablesMap create(std::shared_ptr<Variable> variable, QCustomPlot &plot) noexcept;
 
-    static void updateData(QVector<QCPAbstractPlottable *> plotableVect,
-                           std::shared_ptr<IDataSeries> dataSeries, const SqpRange &dateTime);
+    static void updateData(PlottablesMap &plottables, IDataSeries *dataSeries,
+                           const SqpRange &dateTime);
 };
 
 #endif // SCIQLOP_VISUALIZATIONGRAPHHELPER_H
