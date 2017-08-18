@@ -1,6 +1,8 @@
 #include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/qcustomplot.h"
 
+#include <Common/ColorUtils.h>
+
 #include <Data/ScalarSeries.h>
 #include <Data/VectorSeries.h>
 
@@ -84,9 +86,12 @@ struct PlottablesCreator<T,
         // Gets the number of components of the data series
         auto componentCount = dataSeries.valuesData()->componentCount();
 
+        auto colors = ColorUtils::colors(Qt::blue, Qt::red, componentCount);
+
         // For each component of the data series, creates a QCPGraph to add to the plot
         for (auto i = 0; i < componentCount; ++i) {
             auto graph = plot.addGraph();
+            graph->setPen(QPen{colors.at(i)});
 
             result.insert({i, graph});
         }
