@@ -199,6 +199,17 @@ public:
             [](const auto &itValue, const auto &value) { return itValue.x() < value; });
     }
 
+    /// @sa IDataSeries::maxData()
+    DataSeriesIterator maxData(double maxXAxisData) const override
+    {
+        // Gets the first element that greater than max value
+        auto it = std::upper_bound(
+            cbegin(), cend(), maxXAxisData,
+            [](const auto &value, const auto &itValue) { return value < itValue.x(); });
+
+        return it == cbegin() ? cend() : --it;
+    }
+
     std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min, double max) const override
     {
         if (min > max) {

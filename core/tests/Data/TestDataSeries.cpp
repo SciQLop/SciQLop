@@ -30,6 +30,14 @@ private slots:
     /// Tests get min data of a data series
     void testMinData();
 
+    /// Input test data
+    /// @sa testMaxData()
+    void testMaxData_data();
+
+    /// Tests get max data of a data series
+    void testMaxData();
+
+    /// Input test data
     /// @sa testSubdata()
     void testSubdata_data();
 
@@ -226,6 +234,61 @@ void TestDataSeries::testMinData()
         QCOMPARE(expectedMin, it->x());
     }
 }
+
+void TestDataSeries::testMaxData_data()
+{
+    // ////////////// //
+    // Test structure //
+    // ////////////// //
+
+    // Data series to get max data
+    QTest::addColumn<std::shared_ptr<ScalarSeries> >("dataSeries");
+
+    // Max data
+    QTest::addColumn<double>("max");
+
+    // Expected results
+    QTest::addColumn<bool>(
+        "expectedOK"); // if true, expects to have a result (i.e. the iterator != end iterator)
+    QTest::addColumn<double>(
+        "expectedMax"); // Expected value when method doesn't return end iterator
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    QTest::newRow("maxData1") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 6. << true << 5.;
+    QTest::newRow("maxData2") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 5. << true << 5.;
+    QTest::newRow("maxData3") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 4.9 << true << 4.;
+    QTest::newRow("maxData4") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 1.1 << true << 1.;
+    QTest::newRow("maxData5") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 1. << true << 1.;
+    QTest::newRow("maxData6") << createSeries({}, {}) << 1.1 << false
+                              << std::numeric_limits<double>::quiet_NaN();
+}
+
+void TestDataSeries::testMaxData()
+{
+    QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
+    QFETCH(double, max);
+
+    QFETCH(bool, expectedOK);
+    QFETCH(double, expectedMax);
+
+    auto it = dataSeries->maxData(max);
+
+    QCOMPARE(expectedOK, it != dataSeries->cend());
+
+    // If the method doesn't return a end iterator, checks with expected value
+    if (expectedOK) {
+        QCOMPARE(expectedMax, it->x());
+    }
+}
+
 void TestDataSeries::testSubdata_data()
 {
     // ////////////// //
