@@ -22,6 +22,13 @@ private slots:
 
     /// Tests merge of two data series
     void testMerge();
+
+    /// Input test data
+    /// @sa testSubdata()
+    void testSubdata_data();
+
+    /// Tests get subdata of two data series
+    void testSubdata();
 };
 
 void TestDataSeries::testCtor_data()
@@ -158,6 +165,67 @@ void TestDataSeries::testMerge()
         std::equal(expectedXAxisData.cbegin(), expectedXAxisData.cend(), seriesXAxisData.cbegin()));
     QVERIFY(std::equal(expectedValuesData.cbegin(), expectedValuesData.cend(),
                        seriesValuesData.cbegin()));
+}
+
+void TestDataSeries::testSubdata_data()
+{
+    // ////////////// //
+    // Test structure //
+    // ////////////// //
+
+    // Data series to get subdata
+    QTest::addColumn<std::shared_ptr<ScalarSeries> >("dataSeries");
+
+    // Min/max values
+    QTest::addColumn<double>("min");
+    QTest::addColumn<double>("max");
+
+    // Expected values after subdata
+    QTest::addColumn<QVector<double> >("expectedXAxisData");
+    QTest::addColumn<QVector<double> >("expectedValuesData");
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    QTest::newRow("subData1") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << -1. << 3.2 << QVector<double>{1., 2., 3.}
+                              << QVector<double>{100., 200., 300.};
+    QTest::newRow("subData2") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 1. << 4. << QVector<double>{1., 2., 3., 4.}
+                              << QVector<double>{100., 200., 300., 400.};
+    QTest::newRow("subData3") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 1. << 3.9 << QVector<double>{1., 2., 3.}
+                              << QVector<double>{100., 200., 300.};
+    QTest::newRow("subData4") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 0. << 0.9 << QVector<double>{} << QVector<double>{};
+    QTest::newRow("subData5") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 0. << 1. << QVector<double>{1.} << QVector<double>{100.};
+    QTest::newRow("subData6") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 2.1 << 6. << QVector<double>{3., 4., 5.}
+                              << QVector<double>{300., 400., 500.};
+    QTest::newRow("subData7") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 6. << 9. << QVector<double>{} << QVector<double>{};
+    QTest::newRow("subData8") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 5. << 9. << QVector<double>{5.} << QVector<double>{500.};
+}
+
+void TestDataSeries::testSubdata()
+{
+    QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
+    QFETCH(double, min);
+    QFETCH(double, max);
+
+    QFETCH(QVector<double>, expectedXAxisData);
+    QFETCH(QVector<double>, expectedValuesData);
+
+    auto bounds = dataSeries->subData(min, max);
+    QVERIFY(std::equal(bounds.first, bounds.second, expectedXAxisData.cbegin(),
+                       expectedXAxisData.cend(),
+                       [](const auto &it, const auto &expectedX) { return it.x() == expectedX; }));
+    QVERIFY(std::equal(
+        bounds.first, bounds.second, expectedValuesData.cbegin(), expectedValuesData.cend(),
+        [](const auto &it, const auto &expectedVal) { return it.value() == expectedVal; }));
 }
 
 QTEST_MAIN(TestDataSeries)
