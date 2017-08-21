@@ -191,6 +191,14 @@ public:
             std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, false)}};
     }
 
+    /// @sa IDataSeries::minData()
+    DataSeriesIterator minData(double minXAxisData) const override
+    {
+        return std::lower_bound(
+            cbegin(), cend(), minXAxisData,
+            [](const auto &itValue, const auto &value) { return itValue.x() < value; });
+    }
+
     std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min, double max) const override
     {
         if (min > max) {

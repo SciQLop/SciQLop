@@ -24,6 +24,12 @@ private slots:
     void testMerge();
 
     /// Input test data
+    /// @sa testMinData()
+    void testMinData_data();
+
+    /// Tests get min data of a data series
+    void testMinData();
+
     /// @sa testSubdata()
     void testSubdata_data();
 
@@ -167,6 +173,59 @@ void TestDataSeries::testMerge()
                        seriesValuesData.cbegin()));
 }
 
+void TestDataSeries::testMinData_data()
+{
+    // ////////////// //
+    // Test structure //
+    // ////////////// //
+
+    // Data series to get min data
+    QTest::addColumn<std::shared_ptr<ScalarSeries> >("dataSeries");
+
+    // Min data
+    QTest::addColumn<double>("min");
+
+    // Expected results
+    QTest::addColumn<bool>(
+        "expectedOK"); // if true, expects to have a result (i.e. the iterator != end iterator)
+    QTest::addColumn<double>(
+        "expectedMin"); // Expected value when method doesn't return end iterator
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    QTest::newRow("minData1") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 0. << true << 1.;
+    QTest::newRow("minData2") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 1. << true << 1.;
+    QTest::newRow("minData3") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 1.1 << true << 2.;
+    QTest::newRow("minData4") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 5. << true << 5.;
+    QTest::newRow("minData5") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+                              << 5.1 << false << std::numeric_limits<double>::quiet_NaN();
+    QTest::newRow("minData6") << createSeries({}, {}) << 1.1 << false
+                              << std::numeric_limits<double>::quiet_NaN();
+}
+
+void TestDataSeries::testMinData()
+{
+    QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
+    QFETCH(double, min);
+
+    QFETCH(bool, expectedOK);
+    QFETCH(double, expectedMin);
+
+    auto it = dataSeries->minData(min);
+
+    QCOMPARE(expectedOK, it != dataSeries->cend());
+
+    // If the method doesn't return a end iterator, checks with expected value
+    if (expectedOK) {
+        QCOMPARE(expectedMin, it->x());
+    }
+}
 void TestDataSeries::testSubdata_data()
 {
     // ////////////// //
