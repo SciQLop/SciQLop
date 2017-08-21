@@ -208,11 +208,11 @@ public:
 
         auto lowerIt
             = std::lower_bound(begin, end, min, [](const auto &itValue, const auto &value) {
-                  return itValue.x() == value;
+                  return itValue.x() < value;
               });
         auto upperIt
             = std::upper_bound(begin, end, max, [](const auto &value, const auto &itValue) {
-                  return itValue.x() == value;
+                  return value < itValue.x();
               });
 
         return std::make_pair(lowerIt, upperIt);

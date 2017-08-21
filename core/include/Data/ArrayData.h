@@ -218,6 +218,8 @@ public:
         }
     }
 
+    int componentCount() const noexcept { return m_Data.size(); }
+
     /**
      * @return the data of a component
      * @param componentIndex the index of the component to retrieve the data
