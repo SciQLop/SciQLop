@@ -218,14 +218,14 @@ void VariableController::abortProgress(std::shared_ptr<Variable> variable)
 {
 }
 
-void VariableController::createVariable(const QString &name, const QVariantHash &metadata,
-                                        std::shared_ptr<IDataProvider> provider) noexcept
+std::shared_ptr<Variable>
+VariableController::createVariable(const QString &name, const QVariantHash &metadata,
+                                   std::shared_ptr<IDataProvider> provider) noexcept
 {
-
     if (!impl->m_TimeController) {
         qCCritical(LOG_VariableController())
             << tr("Impossible to create variable: The time controller is null");
-        return;
+        return nullptr;
     }
 
     auto range = impl->m_TimeController->dateTime();
@@ -242,6 +242,8 @@ void VariableController::createVariable(const QString &name, const QVariantHash 
 
 
         impl->processRequest(newVariable, range);
+
+        return newVariable;
     }
 }
 

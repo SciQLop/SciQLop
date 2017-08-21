@@ -56,7 +56,8 @@ void setAxesProperties(const DataSeries<Dim> &dataSeries, QCustomPlot &plot) noe
 }
 
 /**
- * Struct used to create plottables, depending on the type of the data series from which to create them
+ * Struct used to create plottables, depending on the type of the data series from which to create
+ * them
  * @tparam T the data series' type
  * @remarks Default implementation can't create plottables
  */
@@ -106,7 +107,8 @@ struct PlottablesCreator<T,
 };
 
 /**
- * Struct used to update plottables, depending on the type of the data series from which to update them
+ * Struct used to update plottables, depending on the type of the data series from which to update
+ * them
  * @tparam T the data series' type
  * @remarks Default implementation can't update plottables
  */
@@ -145,7 +147,8 @@ struct PlottablesUpdater<T,
         }
 
         // - Gets the data of the series included in the current range
-        // - Updates each plottable by adding, for each data item, a point that takes x-axis data and value data. The correct value is retrieved according to the index of the component
+        // - Updates each plottable by adding, for each data item, a point that takes x-axis data
+        // and value data. The correct value is retrieved according to the index of the component
         auto subDataIts = dataSeries.subData(range.m_TStart, range.m_TEnd);
         for (auto it = subDataIts.first; it != subDataIts.second; ++it) {
             for (const auto &dataContainer : dataContainers) {

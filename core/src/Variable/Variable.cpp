@@ -219,19 +219,24 @@ QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &range) const
     auto inCache = QVector<SqpRange>{};
 
 
-    if (this->cacheContains(range)) {
-        if (range.m_TStart <= impl->m_CacheRange.m_TEnd
-            && range.m_TEnd >= impl->m_CacheRange.m_TEnd) {
-            inCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TEnd};
+    if (this->intersect(range)) {
+        if (range.m_TStart <= impl->m_CacheRange.m_TStart
+            && range.m_TEnd >= impl->m_CacheRange.m_TStart
+            && range.m_TEnd < impl->m_CacheRange.m_TEnd) {
+            inCache << SqpRange{impl->m_CacheRange.m_TStart, range.m_TEnd};
         }
 
         else if (range.m_TStart >= impl->m_CacheRange.m_TStart
-                 && range.m_TEnd < impl->m_CacheRange.m_TEnd) {
+                 && range.m_TEnd <= impl->m_CacheRange.m_TEnd) {
             inCache << range;
         }
-        else if (range.m_TStart < impl->m_CacheRange.m_TStart
-                 && range.m_TEnd >= impl->m_CacheRange.m_TStart) {
-            inCache << SqpRange{impl->m_CacheRange.m_TStart, range.m_TEnd};
+        else if (range.m_TStart > impl->m_CacheRange.m_TStart
+                 && range.m_TEnd > impl->m_CacheRange.m_TEnd) {
+            inCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TEnd};
+        }
+        else if (range.m_TStart <= impl->m_CacheRange.m_TStart
+                 && range.m_TEnd >= impl->m_CacheRange.m_TEnd) {
+            inCache << impl->m_CacheRange;
         }
         else {
             qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
