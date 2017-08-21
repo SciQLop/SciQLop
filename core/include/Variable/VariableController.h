@@ -85,9 +85,10 @@ public slots:
      * @param name the name of the new variable
      * @param metadata the metadata of the new variable
      * @param provider the data provider for the new variable
+     * @return the pointer to the new variable or nullptr if the creation failed
      */
-    void createVariable(const QString &name, const QVariantHash &metadata,
-                        std::shared_ptr<IDataProvider> provider) noexcept;
+    std::shared_ptr<Variable> createVariable(const QString &name, const QVariantHash &metadata,
+                                             std::shared_ptr<IDataProvider> provider) noexcept;
 
     /// Update the temporal parameters of every selected variable to dateTime
     void onDateTimeOnSelection(const SqpRange &dateTime);
