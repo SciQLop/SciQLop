@@ -2,6 +2,7 @@
 #define SCIQLOP_IDATASERIES_H
 
 #include <Common/MetaTypes.h>
+#include <Data/DataSeriesIterator.h>
 #include <Data/SqpRange.h>
 
 #include <memory>
@@ -61,6 +62,20 @@ public:
 
     virtual std::unique_ptr<IDataSeries> clone() const = 0;
     virtual SqpRange range() const = 0;
+
+    // ///////// //
+    // Iterators //
+    // ///////// //
+
+    virtual DataSeriesIterator cbegin() const = 0;
+    virtual DataSeriesIterator cend() const = 0;
+
+    virtual std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min,
+                                                                      double max) const = 0;
+
+    // /////// //
+    // Mutexes //
+    // /////// //
 
     virtual void lockRead() = 0;
     virtual void lockWrite() = 0;

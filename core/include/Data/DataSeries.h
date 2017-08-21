@@ -191,7 +191,7 @@ public:
             std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, false)}};
     }
 
-    std::pair<Iterator, Iterator> subData(double min, double max) const
+    std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min, double max) const override
     {
         if (min > max) {
             std::swap(min, max);

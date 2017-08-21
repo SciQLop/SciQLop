@@ -77,6 +77,13 @@ public:
             }
         }
 
+        void prev()
+        {
+            for (auto &it : m_Its) {
+                --it;
+            }
+        }
+
         bool operator==(const IteratorValue &other) const { return m_Its == other.m_Its; }
 
     private:
@@ -102,6 +109,12 @@ public:
         Iterator &operator++()
         {
             m_CurrentValue.next();
+            return *this;
+        }
+
+        Iterator &operator--()
+        {
+            m_CurrentValue.prev();
             return *this;
         }
 
