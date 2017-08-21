@@ -297,7 +297,7 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
         qCDebug(LOG_VisualizationGraphWidget())
             << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated E" << dateTime;
         if (dateTime.contains(variable->range()) || dateTime.intersect(variable->range())) {
-            VisualizationGraphHelper::updateData(variableEntry.second, variable->dataSeries().get(),
+            VisualizationGraphHelper::updateData(variableEntry.second, variable->dataSeries(),
                                                  variable->range());
         }
     }
@@ -308,6 +308,6 @@ void VisualizationGraphWidget::onUpdateVarDisplaying(std::shared_ptr<Variable> v
 {
     auto it = impl->m_VariableToPlotMultiMap.find(variable);
     if (it != impl->m_VariableToPlotMultiMap.end()) {
-        VisualizationGraphHelper::updateData(it->second, variable->dataSeries().get(), range);
+        VisualizationGraphHelper::updateData(it->second, variable->dataSeries(), range);
     }
 }

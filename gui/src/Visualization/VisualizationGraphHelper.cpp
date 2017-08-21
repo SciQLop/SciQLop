@@ -201,12 +201,12 @@ struct PlottablesHelper : public IPlottablesHelper {
 };
 
 /// Creates IPlottablesHelper according to a data series
-std::unique_ptr<IPlottablesHelper> createHelper(IDataSeries *dataSeries) noexcept
+std::unique_ptr<IPlottablesHelper> createHelper(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
-    if (auto scalarSeries = dynamic_cast<ScalarSeries *>(dataSeries)) {
+    if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(dataSeries)) {
         return std::make_unique<PlottablesHelper<ScalarSeries> >(*scalarSeries);
     }
-    else if (auto vectorSeries = dynamic_cast<VectorSeries *>(dataSeries)) {
+    else if (auto vectorSeries = std::dynamic_pointer_cast<VectorSeries>(dataSeries)) {
         return std::make_unique<PlottablesHelper<VectorSeries> >(*vectorSeries);
     }
     else {
@@ -220,7 +220,7 @@ PlottablesMap VisualizationGraphHelper::create(std::shared_ptr<Variable> variabl
                                                QCustomPlot &plot) noexcept
 {
     if (variable) {
-        auto helper = createHelper(variable->dataSeries().get());
+        auto helper = createHelper(variable->dataSeries());
         auto plottables = helper->create(plot);
         return plottables;
     }
@@ -231,7 +231,8 @@ PlottablesMap VisualizationGraphHelper::create(std::shared_ptr<Variable> variabl
     }
 }
 
-void VisualizationGraphHelper::updateData(PlottablesMap &plottables, IDataSeries *dataSeries,
+void VisualizationGraphHelper::updateData(PlottablesMap &plottables,
+                                          std::shared_ptr<IDataSeries> dataSeries,
                                           const SqpRange &dateTime)
 {
     auto helper = createHelper(dataSeries);
