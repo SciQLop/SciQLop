@@ -83,6 +83,12 @@ public:
     virtual std::pair<DataSeriesIterator, DataSeriesIterator>
     xAxisRange(double minXAxisData, double maxXAxisData) const = 0;
 
+    /// @return two iterators pointing to the data that have respectively the min and the max value
+    /// data of a data series' range. The search is performed for a given x-axis range.
+    /// @sa xAxisRange()
+    virtual std::pair<DataSeriesIterator, DataSeriesIterator>
+    valuesBounds(double minXAxisData, double maxXAxisData) const = 0;
+
     // /////// //
     // Mutexes //
     // /////// //

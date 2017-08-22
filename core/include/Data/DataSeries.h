@@ -230,6 +230,21 @@ public:
         return std::make_pair(lowerIt, upperIt);
     }
 
+    std::pair<DataSeriesIterator, DataSeriesIterator>
+    valuesBounds(double minXAxisData, double maxXAxisData) const override
+    {
+        // Places iterators to the correct x-axis range
+        auto xAxisRangeIts = xAxisRange(minXAxisData, maxXAxisData);
+
+        // Returns end iterators if the range is empty
+        if (xAxisRangeIts.first == xAxisRangeIts.second) {
+            return std::make_pair(cend(), cend());
+        }
+
+        /// @todo ALX: complete
+
+    }
+
     // /////// //
     // Mutexes //
     // /////// //
