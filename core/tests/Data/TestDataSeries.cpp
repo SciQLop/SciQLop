@@ -43,6 +43,13 @@ private slots:
 
     /// Tests get x-axis range of a data series
     void testXAxisRange();
+
+    /// Input test data
+    /// @sa testValuesBounds()
+    void testValuesBounds_data();
+
+    /// Tests get values bounds of a data series
+    void testValuesBounds();
 };
 
 void TestDataSeries::testCtor_data()
@@ -356,6 +363,89 @@ void TestDataSeries::testXAxisRange()
     QVERIFY(std::equal(
         bounds.first, bounds.second, expectedValuesData.cbegin(), expectedValuesData.cend(),
         [](const auto &it, const auto &expectedVal) { return it.value() == expectedVal; }));
+}
+
+void TestDataSeries::testValuesBounds_data()
+{
+    // ////////////// //
+    // Test structure //
+    // ////////////// //
+
+    // Data series to get values bounds
+    QTest::addColumn<std::shared_ptr<ScalarSeries> >("dataSeries");
+
+    // x-axis range
+    QTest::addColumn<double>("minXAxis");
+    QTest::addColumn<double>("maxXAxis");
+
+    // Expected results
+    QTest::addColumn<bool>(
+        "expectedOK"); // Test is expected to be ok (i.e. method doesn't return end iterators)
+    QTest::addColumn<double>("expectedMinValue");
+    QTest::addColumn<double>("expectedMaxValue");
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    QTest::newRow("valuesBounds1")
+        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 0. << 6. << true
+        << 100. << 500.;
+    QTest::newRow("valuesBounds2")
+        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 2. << 4. << true
+        << 200. << 400.;
+    QTest::newRow("valuesBounds3")
+        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 0. << 0.5 << false
+        << std::numeric_limits<double>::quiet_NaN() << std::numeric_limits<double>::quiet_NaN();
+    QTest::newRow("valuesBounds4")
+        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 5.1 << 6. << false
+        << std::numeric_limits<double>::quiet_NaN() << std::numeric_limits<double>::quiet_NaN();
+    QTest::newRow("valuesBounds5")
+        << createSeries({1.}, {100.}) << 0. << 2. << true << 100. << 100.;
+    QTest::newRow("valuesBounds6")
+        << createSeries({}, {}) << 0. << 2. << false << std::numeric_limits<double>::quiet_NaN()
+        << std::numeric_limits<double>::quiet_NaN();
+
+    // Tests with NaN values: NaN values are not included in min/max search
+    QTest::newRow("valuesBounds7")
+        << createSeries({1., 2., 3., 4., 5.},
+                        {std::numeric_limits<double>::quiet_NaN(), 200., 300., 400.,
+                         std::numeric_limits<double>::quiet_NaN()})
+        << 0. << 6. << true << 200. << 400.;
+    QTest::newRow("valuesBounds8")
+        << createSeries(
+               {1., 2., 3., 4., 5.},
+               {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+                std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
+                std::numeric_limits<double>::quiet_NaN()})
+        << 0. << 6. << true << std::numeric_limits<double>::quiet_NaN()
+        << std::numeric_limits<double>::quiet_NaN();
+}
+
+void TestDataSeries::testValuesBounds()
+{
+    QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
+    QFETCH(double, minXAxis);
+    QFETCH(double, maxXAxis);
+
+    QFETCH(bool, expectedOK);
+    QFETCH(double, expectedMinValue);
+    QFETCH(double, expectedMaxValue);
+
+    auto minMaxIts = dataSeries->valuesBounds(minXAxis, maxXAxis);
+    auto end = dataSeries->cend();
+
+    // Checks iterators with expected result
+    QCOMPARE(expectedOK, minMaxIts.first != end && minMaxIts.second != end);
+
+    if (expectedOK) {
+        auto compare = [](const auto &v1, const auto &v2) {
+            return (std::isnan(v1) && std::isnan(v2)) || v1 == v2;
+        };
+
+        QVERIFY(compare(expectedMinValue, minMaxIts.first->minValue()));
+        QVERIFY(compare(expectedMaxValue, minMaxIts.second->maxValue()));
+    }
 }
 
 QTEST_MAIN(TestDataSeries)
