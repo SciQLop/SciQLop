@@ -1,6 +1,7 @@
 #ifndef SCIQLOP_ARRAYDATA_H
 #define SCIQLOP_ARRAYDATA_H
 
+#include "Data/ArrayDataIterator.h"
 #include <Common/SortUtils.h>
 
 #include <QReadLocker>
@@ -43,6 +44,68 @@ struct Sort<1> {
     }
 };
 
+template <int Dim>
+class IteratorValue : public ArrayDataIteratorValue::Impl {
+public:
+    explicit IteratorValue(const DataContainer &container, bool begin) : m_Its{}
+    {
+        for (auto i = 0; i < container.size(); ++i) {
+            m_Its.push_back(begin ? container.at(i).cbegin() : container.at(i).cend());
+        }
+    }
+
+    IteratorValue(const IteratorValue &other) = default;
+
+    std::unique_ptr<ArrayDataIteratorValue::Impl> clone() const override
+    {
+        return std::make_unique<IteratorValue<Dim> >(*this);
+    }
+
+    bool equals(const ArrayDataIteratorValue::Impl &other) const override try {
+        const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
+        return m_Its == otherImpl.m_Its;
+    }
+    catch (const std::bad_cast &) {
+        return false;
+    }
+
+    void next() override
+    {
+        for (auto &it : m_Its) {
+            ++it;
+        }
+    }
+
+    void prev() override
+    {
+        for (auto &it : m_Its) {
+            --it;
+        }
+    }
+
+    double at(int componentIndex) const override { return *m_Its.at(componentIndex); }
+    double first() const override { return *m_Its.front(); }
+    double min() const override
+    {
+        auto end = m_Its.cend();
+        auto it = std::min_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
+            return SortUtils::minCompareWithNaN(*it1, *it2);
+        });
+        return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
+    }
+    double max() const override
+    {
+        auto end = m_Its.cend();
+        auto it = std::max_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
+            return SortUtils::maxCompareWithNaN(*it1, *it2);
+        });
+        return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
+    }
+
+private:
+    std::vector<DataContainer::value_type::const_iterator> m_Its;
+};
+
 } // namespace arraydata_detail
 
 /**
@@ -58,100 +121,6 @@ struct Sort<1> {
 template <int Dim>
 class ArrayData {
 public:
-    class IteratorValue {
-    public:
-        explicit IteratorValue(const DataContainer &container, bool begin) : m_Its{}
-        {
-            for (auto i = 0; i < container.size(); ++i) {
-                m_Its.push_back(begin ? container.at(i).cbegin() : container.at(i).cend());
-            }
-        }
-
-        double at(int index) const { return *m_Its.at(index); }
-        double first() const { return *m_Its.front(); }
-
-        /// @return the min value among all components
-        double min() const
-        {
-            auto end = m_Its.cend();
-            auto it = std::min_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
-                return SortUtils::minCompareWithNaN(*it1, *it2);
-            });
-            return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
-        }
-
-        /// @return the max value among all components
-        double max() const
-        {
-            auto end = m_Its.cend();
-            auto it = std::max_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
-                return SortUtils::maxCompareWithNaN(*it1, *it2);
-            });
-            return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
-        }
-
-        void next()
-        {
-            for (auto &it : m_Its) {
-                ++it;
-            }
-        }
-
-        void prev()
-        {
-            for (auto &it : m_Its) {
-                --it;
-            }
-        }
-
-        bool operator==(const IteratorValue &other) const { return m_Its == other.m_Its; }
-
-    private:
-        std::vector<DataContainer::value_type::const_iterator> m_Its;
-    };
-
-    class Iterator {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using value_type = const IteratorValue;
-        using difference_type = std::ptrdiff_t;
-        using pointer = value_type *;
-        using reference = value_type &;
-
-        Iterator(const DataContainer &container, bool begin) : m_CurrentValue{container, begin} {}
-
-        virtual ~Iterator() noexcept = default;
-        Iterator(const Iterator &) = default;
-        Iterator(Iterator &&) = default;
-        Iterator &operator=(const Iterator &) = default;
-        Iterator &operator=(Iterator &&) = default;
-
-        Iterator &operator++()
-        {
-            m_CurrentValue.next();
-            return *this;
-        }
-
-        Iterator &operator--()
-        {
-            m_CurrentValue.prev();
-            return *this;
-        }
-
-        pointer operator->() const { return &m_CurrentValue; }
-        reference operator*() const { return m_CurrentValue; }
-
-        bool operator==(const Iterator &other) const
-        {
-            return m_CurrentValue == other.m_CurrentValue;
-        }
-
-        bool operator!=(const Iterator &other) const { return !(*this == other); }
-
-    private:
-        IteratorValue m_CurrentValue;
-    };
-
     // ///// //
     // Ctors //
     // ///// //
@@ -284,8 +253,16 @@ public:
     // Iterators //
     // ///////// //
 
-    Iterator cbegin() const { return Iterator{m_Data, true}; }
-    Iterator cend() const { return Iterator{m_Data, false}; }
+    ArrayDataIterator cbegin() const
+    {
+        return ArrayDataIterator{ArrayDataIteratorValue{
+            std::make_unique<arraydata_detail::IteratorValue<Dim> >(m_Data, true)}};
+    }
+    ArrayDataIterator cend() const
+    {
+        return ArrayDataIterator{ArrayDataIteratorValue{
+            std::make_unique<arraydata_detail::IteratorValue<Dim> >(m_Data, false)}};
+    }
 
     // ///////////// //
     // 1-dim methods //
