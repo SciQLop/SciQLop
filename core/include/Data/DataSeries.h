@@ -191,16 +191,16 @@ public:
             std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, false)}};
     }
 
-    /// @sa IDataSeries::minData()
-    DataSeriesIterator minData(double minXAxisData) const override
+    /// @sa IDataSeries::minXAxisData()
+    DataSeriesIterator minXAxisData(double minXAxisData) const override
     {
         return std::lower_bound(
             cbegin(), cend(), minXAxisData,
             [](const auto &itValue, const auto &value) { return itValue.x() < value; });
     }
 
-    /// @sa IDataSeries::maxData()
-    DataSeriesIterator maxData(double maxXAxisData) const override
+    /// @sa IDataSeries::maxXAxisData()
+    DataSeriesIterator maxXAxisData(double maxXAxisData) const override
     {
         // Gets the first element that greater than max value
         auto it = std::upper_bound(

@@ -72,11 +72,11 @@ public:
 
     /// @return the iterator to the first entry of the data series whose x-axis data is greater than
     /// or equal to the value passed in parameter, or the end iterator if there is no matching value
-    virtual DataSeriesIterator minData(double minXAxisData) const = 0;
+    virtual DataSeriesIterator minXAxisData(double minXAxisData) const = 0;
 
     /// @return the iterator to the last entry of the data series whose x-axis data is less than or
     /// equal to the value passed in parameter, or the end iterator if there is no matching value
-    virtual DataSeriesIterator maxData(double maxXAxisData) const = 0;
+    virtual DataSeriesIterator maxXAxisData(double maxXAxisData) const = 0;
 
     virtual std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min,
                                                                       double max) const = 0;

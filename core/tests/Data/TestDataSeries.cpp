@@ -24,18 +24,18 @@ private slots:
     void testMerge();
 
     /// Input test data
-    /// @sa testMinData()
-    void testMinData_data();
+    /// @sa testMinXAxisData()
+    void testMinXAxisData_data();
 
-    /// Tests get min data of a data series
-    void testMinData();
+    /// Tests get min x-axis data of a data series
+    void testMinXAxisData();
 
     /// Input test data
-    /// @sa testMaxData()
-    void testMaxData_data();
+    /// @sa testMaxXAxisData()
+    void testMaxXAxisData_data();
 
-    /// Tests get max data of a data series
-    void testMaxData();
+    /// Tests get max x-axis data of a data series
+    void testMaxXAxisData();
 
     /// Input test data
     /// @sa testSubdata()
@@ -181,7 +181,7 @@ void TestDataSeries::testMerge()
                        seriesValuesData.cbegin()));
 }
 
-void TestDataSeries::testMinData_data()
+void TestDataSeries::testMinXAxisData_data()
 {
     // ////////////// //
     // Test structure //
@@ -217,7 +217,7 @@ void TestDataSeries::testMinData_data()
                               << std::numeric_limits<double>::quiet_NaN();
 }
 
-void TestDataSeries::testMinData()
+void TestDataSeries::testMinXAxisData()
 {
     QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
     QFETCH(double, min);
@@ -225,7 +225,7 @@ void TestDataSeries::testMinData()
     QFETCH(bool, expectedOK);
     QFETCH(double, expectedMin);
 
-    auto it = dataSeries->minData(min);
+    auto it = dataSeries->minXAxisData(min);
 
     QCOMPARE(expectedOK, it != dataSeries->cend());
 
@@ -235,7 +235,7 @@ void TestDataSeries::testMinData()
     }
 }
 
-void TestDataSeries::testMaxData_data()
+void TestDataSeries::testMaxXAxisData_data()
 {
     // ////////////// //
     // Test structure //
@@ -271,7 +271,7 @@ void TestDataSeries::testMaxData_data()
                               << std::numeric_limits<double>::quiet_NaN();
 }
 
-void TestDataSeries::testMaxData()
+void TestDataSeries::testMaxXAxisData()
 {
     QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
     QFETCH(double, max);
@@ -279,7 +279,7 @@ void TestDataSeries::testMaxData()
     QFETCH(bool, expectedOK);
     QFETCH(double, expectedMax);
 
-    auto it = dataSeries->maxData(max);
+    auto it = dataSeries->maxXAxisData(max);
 
     QCOMPARE(expectedOK, it != dataSeries->cend());
 
