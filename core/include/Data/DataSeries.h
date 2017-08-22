@@ -65,6 +65,8 @@ public:
     double x() const override { return m_XIt->at(0); }
     double value() const override { return m_ValuesIt->at(0); }
     double value(int componentIndex) const override { return m_ValuesIt->at(componentIndex); }
+    double minValue() const override { return m_ValuesIt->min(); }
+    double maxValue() const override { return m_ValuesIt->max(); }
 
 private:
     ArrayData<1>::Iterator m_XIt;
@@ -241,8 +243,19 @@ public:
             return std::make_pair(cend(), cend());
         }
 
-        /// @todo ALX: complete
+        // Gets the iterator on the min of all values data
+        auto minIt = std::min_element(
+            xAxisRangeIts.first, xAxisRangeIts.second, [](const auto &it1, const auto &it2) {
+                return SortUtils::minCompareWithNaN(it1.minValue(), it2.minValue());
+            });
 
+        // Gets the iterator on the max of all values data
+        auto maxIt = std::max_element(
+            xAxisRangeIts.first, xAxisRangeIts.second, [](const auto &it1, const auto &it2) {
+                return SortUtils::maxCompareWithNaN(it1.maxValue(), it2.maxValue());
+            });
+
+        return std::make_pair(minIt, maxIt);
     }
 
     // /////// //
