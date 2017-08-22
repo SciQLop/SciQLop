@@ -56,30 +56,3 @@ double DataSeriesIteratorValue::maxValue() const
 {
     return m_Impl->maxValue();
 }
-
-DataSeriesIterator::DataSeriesIterator(DataSeriesIteratorValue value)
-        : m_CurrentValue{std::move(value)}
-{
-}
-
-DataSeriesIterator &DataSeriesIterator::operator++()
-{
-    m_CurrentValue.next();
-    return *this;
-}
-
-DataSeriesIterator &DataSeriesIterator::operator--()
-{
-    m_CurrentValue.prev();
-    return *this;
-}
-
-bool DataSeriesIterator::operator==(const DataSeriesIterator &other) const
-{
-    return m_CurrentValue.equals(other.m_CurrentValue);
-}
-
-bool DataSeriesIterator::operator!=(const DataSeriesIterator &other) const
-{
-    return !(*this == other);
-}
