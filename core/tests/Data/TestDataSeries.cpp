@@ -101,6 +101,13 @@ private slots:
 
     /// Tests get values bounds of a scalar series
     void testValuesBoundsScalar();
+
+    /// Input test data
+    /// @sa testValuesBoundsVector()
+    void testValuesBoundsVector_data();
+
+    /// Tests get values bounds of a vector series
+    void testValuesBoundsVector();
 };
 
 void TestDataSeries::testCtor_data()
@@ -169,6 +176,16 @@ namespace {
 std::shared_ptr<ScalarSeries> createSeries(QVector<double> xAxisData, QVector<double> valuesData)
 {
     return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData), Unit{},
+                                          Unit{});
+}
+
+std::shared_ptr<VectorSeries> createVectorSeries(QVector<double> xAxisData,
+                                                 QVector<double> xValuesData,
+                                                 QVector<double> yValuesData,
+                                                 QVector<double> zValuesData)
+{
+    return std::make_shared<VectorSeries>(std::move(xAxisData), std::move(xValuesData),
+                                          std::move(yValuesData), std::move(zValuesData), Unit{},
                                           Unit{});
 }
 
@@ -461,6 +478,43 @@ void TestDataSeries::testValuesBoundsScalar_data()
 void TestDataSeries::testValuesBoundsScalar()
 {
     testValuesBounds<ScalarSeries>();
+}
+
+void TestDataSeries::testValuesBoundsVector_data()
+{
+    testValuesBoundsStructure<VectorSeries>();
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    QTest::newRow("vectorBounds1")
+        << createVectorSeries({1., 2., 3., 4., 5.}, {10., 15., 20., 13., 12.},
+                              {35., 24., 10., 9., 0.3}, {13., 14., 12., 9., 24.})
+        << 0. << 6. << true << 0.3 << 35.; // min/max in same component
+    QTest::newRow("vectorBounds2")
+        << createVectorSeries({1., 2., 3., 4., 5.}, {2.3, 15., 20., 13., 12.},
+                              {35., 24., 10., 9., 4.}, {13., 14., 12., 9., 24.})
+        << 0. << 6. << true << 2.3 << 35.; // min/max in same entry
+    QTest::newRow("vectorBounds3")
+        << createVectorSeries({1., 2., 3., 4., 5.}, {2.3, 15., 20., 13., 12.},
+                              {35., 24., 10., 9., 4.}, {13., 14., 12., 9., 24.})
+        << 2. << 3. << true << 10. << 24.;
+
+    // Tests with NaN values: NaN values are not included in min/max search
+    QTest::newRow("vectorBounds4")
+        << createVectorSeries(
+               {1., 2.},
+               {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()},
+               {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()},
+               {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()})
+        << 0. << 6. << true << std::numeric_limits<double>::quiet_NaN()
+        << std::numeric_limits<double>::quiet_NaN();
+}
+
+void TestDataSeries::testValuesBoundsVector()
+{
+    testValuesBounds<VectorSeries>();
 }
 
 QTEST_MAIN(TestDataSeries)
