@@ -210,23 +210,22 @@ public:
         return it == cbegin() ? cend() : --it;
     }
 
-    std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min, double max) const override
+    std::pair<DataSeriesIterator, DataSeriesIterator> xAxisRange(double minXAxisData,
+                                                                 double maxXAxisData) const override
     {
-        if (min > max) {
-            std::swap(min, max);
+        if (minXAxisData > maxXAxisData) {
+            std::swap(minXAxisData, maxXAxisData);
         }
 
         auto begin = cbegin();
         auto end = cend();
 
-        auto lowerIt
-            = std::lower_bound(begin, end, min, [](const auto &itValue, const auto &value) {
-                  return itValue.x() < value;
-              });
-        auto upperIt
-            = std::upper_bound(begin, end, max, [](const auto &value, const auto &itValue) {
-                  return value < itValue.x();
-              });
+        auto lowerIt = std::lower_bound(
+            begin, end, minXAxisData,
+            [](const auto &itValue, const auto &value) { return itValue.x() < value; });
+        auto upperIt = std::upper_bound(
+            begin, end, maxXAxisData,
+            [](const auto &value, const auto &itValue) { return value < itValue.x(); });
 
         return std::make_pair(lowerIt, upperIt);
     }

@@ -38,11 +38,11 @@ private slots:
     void testMaxXAxisData();
 
     /// Input test data
-    /// @sa testSubdata()
-    void testSubdata_data();
+    /// @sa testXAxisRange()
+    void testXAxisRange_data();
 
-    /// Tests get subdata of two data series
-    void testSubdata();
+    /// Tests get x-axis range of a data series
+    void testXAxisRange();
 };
 
 void TestDataSeries::testCtor_data()
@@ -289,20 +289,20 @@ void TestDataSeries::testMaxXAxisData()
     }
 }
 
-void TestDataSeries::testSubdata_data()
+void TestDataSeries::testXAxisRange_data()
 {
     // ////////////// //
     // Test structure //
     // ////////////// //
 
-    // Data series to get subdata
+    // Data series to get x-axis range
     QTest::addColumn<std::shared_ptr<ScalarSeries> >("dataSeries");
 
     // Min/max values
     QTest::addColumn<double>("min");
     QTest::addColumn<double>("max");
 
-    // Expected values after subdata
+    // Expected values
     QTest::addColumn<QVector<double> >("expectedXAxisData");
     QTest::addColumn<QVector<double> >("expectedValuesData");
 
@@ -310,29 +310,37 @@ void TestDataSeries::testSubdata_data()
     // Test cases //
     // ////////// //
 
-    QTest::newRow("subData1") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-                              << -1. << 3.2 << QVector<double>{1., 2., 3.}
-                              << QVector<double>{100., 200., 300.};
-    QTest::newRow("subData2") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-                              << 1. << 4. << QVector<double>{1., 2., 3., 4.}
-                              << QVector<double>{100., 200., 300., 400.};
-    QTest::newRow("subData3") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-                              << 1. << 3.9 << QVector<double>{1., 2., 3.}
-                              << QVector<double>{100., 200., 300.};
-    QTest::newRow("subData4") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-                              << 0. << 0.9 << QVector<double>{} << QVector<double>{};
-    QTest::newRow("subData5") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-                              << 0. << 1. << QVector<double>{1.} << QVector<double>{100.};
-    QTest::newRow("subData6") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-                              << 2.1 << 6. << QVector<double>{3., 4., 5.}
-                              << QVector<double>{300., 400., 500.};
-    QTest::newRow("subData7") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-                              << 6. << 9. << QVector<double>{} << QVector<double>{};
-    QTest::newRow("subData8") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-                              << 5. << 9. << QVector<double>{5.} << QVector<double>{500.};
+    QTest::newRow("xAxisRange1") << createSeries({1., 2., 3., 4., 5.},
+                                                 {100., 200., 300., 400., 500.})
+                                 << -1. << 3.2 << QVector<double>{1., 2., 3.}
+                                 << QVector<double>{100., 200., 300.};
+    QTest::newRow("xAxisRange2") << createSeries({1., 2., 3., 4., 5.},
+                                                 {100., 200., 300., 400., 500.})
+                                 << 1. << 4. << QVector<double>{1., 2., 3., 4.}
+                                 << QVector<double>{100., 200., 300., 400.};
+    QTest::newRow("xAxisRange3") << createSeries({1., 2., 3., 4., 5.},
+                                                 {100., 200., 300., 400., 500.})
+                                 << 1. << 3.9 << QVector<double>{1., 2., 3.}
+                                 << QVector<double>{100., 200., 300.};
+    QTest::newRow("xAxisRange4") << createSeries({1., 2., 3., 4., 5.},
+                                                 {100., 200., 300., 400., 500.})
+                                 << 0. << 0.9 << QVector<double>{} << QVector<double>{};
+    QTest::newRow("xAxisRange5") << createSeries({1., 2., 3., 4., 5.},
+                                                 {100., 200., 300., 400., 500.})
+                                 << 0. << 1. << QVector<double>{1.} << QVector<double>{100.};
+    QTest::newRow("xAxisRange6") << createSeries({1., 2., 3., 4., 5.},
+                                                 {100., 200., 300., 400., 500.})
+                                 << 2.1 << 6. << QVector<double>{3., 4., 5.}
+                                 << QVector<double>{300., 400., 500.};
+    QTest::newRow("xAxisRange7") << createSeries({1., 2., 3., 4., 5.},
+                                                 {100., 200., 300., 400., 500.})
+                                 << 6. << 9. << QVector<double>{} << QVector<double>{};
+    QTest::newRow("xAxisRange8") << createSeries({1., 2., 3., 4., 5.},
+                                                 {100., 200., 300., 400., 500.})
+                                 << 5. << 9. << QVector<double>{5.} << QVector<double>{500.};
 }
 
-void TestDataSeries::testSubdata()
+void TestDataSeries::testXAxisRange()
 {
     QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
     QFETCH(double, min);
@@ -341,7 +349,7 @@ void TestDataSeries::testSubdata()
     QFETCH(QVector<double>, expectedXAxisData);
     QFETCH(QVector<double>, expectedValuesData);
 
-    auto bounds = dataSeries->subData(min, max);
+    auto bounds = dataSeries->xAxisRange(min, max);
     QVERIFY(std::equal(bounds.first, bounds.second, expectedXAxisData.cbegin(),
                        expectedXAxisData.cend(),
                        [](const auto &it, const auto &expectedX) { return it.x() == expectedX; }));

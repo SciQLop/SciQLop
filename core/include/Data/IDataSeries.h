@@ -78,8 +78,10 @@ public:
     /// equal to the value passed in parameter, or the end iterator if there is no matching value
     virtual DataSeriesIterator maxXAxisData(double maxXAxisData) const = 0;
 
-    virtual std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min,
-                                                                      double max) const = 0;
+    /// @return the iterators pointing to the range of data whose x-axis values are between min and
+    /// max passed in parameters
+    virtual std::pair<DataSeriesIterator, DataSeriesIterator>
+    xAxisRange(double minXAxisData, double maxXAxisData) const = 0;
 
     // /////// //
     // Mutexes //
