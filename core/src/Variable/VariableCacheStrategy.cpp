@@ -20,7 +20,7 @@ VariableCacheStrategy::VariableCacheStrategy(QObject *parent)
 }
 
 std::pair<SqpRange, SqpRange>
-VariableCacheStrategy::computeCacheRange(const SqpRange &vRange, const SqpRange &rangeRequested)
+VariableCacheStrategy::computeStrategyRanges(const SqpRange &vRange, const SqpRange &rangeRequested)
 {
 
     auto varRanges = std::pair<SqpRange, SqpRange>{};
