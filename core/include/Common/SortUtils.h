@@ -59,6 +59,58 @@ struct SortUtils {
 
         return sortedData;
     }
+
+    /**
+     * Compares two values that can be NaN. This method is intended to be used as a compare function
+     * for searching min value by excluding NaN values.
+     *
+     * Examples of use:
+     * - f({1, 3, 2, 4, 5}) will return 1
+     * - f({NaN, 3, 2, 4, 5}) will return 2 (NaN is excluded)
+     * - f({NaN, NaN, 3, NaN, NaN}) will return 3 (NaN are excluded)
+     * - f({NaN, NaN, NaN, NaN, NaN}) will return NaN (no existing value)
+     *
+     * @param v1 first value
+     * @param v2 second value
+     * @return true if v1 < v2, false otherwise
+     * @sa std::min_element
+     */
+    template <typename T>
+    static bool minCompareWithNaN(const T &v1, const T &v2)
+    {
+        // Table used with NaN values:
+        // NaN < v2 -> false
+        // v1 < NaN -> true
+        // NaN < NaN -> false
+        // v1 < v2 -> v1 < v2
+        return std::isnan(v1) ? false : std::isnan(v2) || (v1 < v2);
+    }
+
+    /**
+     * Compares two values that can be NaN. This method is intended to be used as a compare function
+     * for searching max value by excluding NaN values.
+     *
+     * Examples of use:
+     * - f({1, 3, 2, 4, 5}) will return 5
+     * - f({1, 3, 2, 4, NaN}) will return 4 (NaN is excluded)
+     * - f({NaN, NaN, 3, NaN, NaN}) will return 3 (NaN are excluded)
+     * - f({NaN, NaN, NaN, NaN, NaN}) will return NaN (no existing value)
+     *
+     * @param v1 first value
+     * @param v2 second value
+     * @return true if v1 < v2, false otherwise
+     * @sa std::max_element
+     */
+    template <typename T>
+    static bool maxCompareWithNaN(const T &v1, const T &v2)
+    {
+        // Table used with NaN values:
+        // NaN < v2 -> true
+        // v1 < NaN -> false
+        // NaN < NaN -> false
+        // v1 < v2 -> v1 < v2
+        return std::isnan(v1) ? true : !std::isnan(v2) && (v1 < v2);
+    }
 };
 
 #endif // SCIQLOP_SORTUTILS_H
