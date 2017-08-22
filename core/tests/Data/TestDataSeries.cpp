@@ -1,13 +1,64 @@
 #include "Data/DataSeries.h"
 #include "Data/ScalarSeries.h"
+#include "Data/VectorSeries.h"
 
 #include <QObject>
 #include <QtTest>
 
 Q_DECLARE_METATYPE(std::shared_ptr<ScalarSeries>)
+Q_DECLARE_METATYPE(std::shared_ptr<VectorSeries>)
 
 class TestDataSeries : public QObject {
     Q_OBJECT
+private:
+    template <typename T>
+    void testValuesBoundsStructure()
+    {
+        // ////////////// //
+        // Test structure //
+        // ////////////// //
+
+        // Data series to get values bounds
+        QTest::addColumn<std::shared_ptr<T> >("dataSeries");
+
+        // x-axis range
+        QTest::addColumn<double>("minXAxis");
+        QTest::addColumn<double>("maxXAxis");
+
+        // Expected results
+        QTest::addColumn<bool>(
+            "expectedOK"); // Test is expected to be ok (i.e. method doesn't return end iterators)
+        QTest::addColumn<double>("expectedMinValue");
+        QTest::addColumn<double>("expectedMaxValue");
+    }
+
+    template <typename T>
+    void testValuesBounds()
+    {
+        QFETCH(std::shared_ptr<T>, dataSeries);
+        QFETCH(double, minXAxis);
+        QFETCH(double, maxXAxis);
+
+        QFETCH(bool, expectedOK);
+        QFETCH(double, expectedMinValue);
+        QFETCH(double, expectedMaxValue);
+
+        auto minMaxIts = dataSeries->valuesBounds(minXAxis, maxXAxis);
+        auto end = dataSeries->cend();
+
+        // Checks iterators with expected result
+        QCOMPARE(expectedOK, minMaxIts.first != end && minMaxIts.second != end);
+
+        if (expectedOK) {
+            auto compare = [](const auto &v1, const auto &v2) {
+                return (std::isnan(v1) && std::isnan(v2)) || v1 == v2;
+            };
+
+            QVERIFY(compare(expectedMinValue, minMaxIts.first->minValue()));
+            QVERIFY(compare(expectedMaxValue, minMaxIts.second->maxValue()));
+        }
+    }
+
 private slots:
     /// Input test data
     /// @sa testCtor()
@@ -45,11 +96,11 @@ private slots:
     void testXAxisRange();
 
     /// Input test data
-    /// @sa testValuesBounds()
-    void testValuesBounds_data();
+    /// @sa testValuesBoundsScalar()
+    void testValuesBoundsScalar_data();
 
-    /// Tests get values bounds of a data series
-    void testValuesBounds();
+    /// Tests get values bounds of a scalar series
+    void testValuesBoundsScalar();
 };
 
 void TestDataSeries::testCtor_data()
@@ -365,24 +416,9 @@ void TestDataSeries::testXAxisRange()
         [](const auto &it, const auto &expectedVal) { return it.value() == expectedVal; }));
 }
 
-void TestDataSeries::testValuesBounds_data()
+void TestDataSeries::testValuesBoundsScalar_data()
 {
-    // ////////////// //
-    // Test structure //
-    // ////////////// //
-
-    // Data series to get values bounds
-    QTest::addColumn<std::shared_ptr<ScalarSeries> >("dataSeries");
-
-    // x-axis range
-    QTest::addColumn<double>("minXAxis");
-    QTest::addColumn<double>("maxXAxis");
-
-    // Expected results
-    QTest::addColumn<bool>(
-        "expectedOK"); // Test is expected to be ok (i.e. method doesn't return end iterators)
-    QTest::addColumn<double>("expectedMinValue");
-    QTest::addColumn<double>("expectedMaxValue");
+    testValuesBoundsStructure<ScalarSeries>();
 
     // ////////// //
     // Test cases //
@@ -422,30 +458,9 @@ void TestDataSeries::testValuesBounds_data()
         << std::numeric_limits<double>::quiet_NaN();
 }
 
-void TestDataSeries::testValuesBounds()
+void TestDataSeries::testValuesBoundsScalar()
 {
-    QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
-    QFETCH(double, minXAxis);
-    QFETCH(double, maxXAxis);
-
-    QFETCH(bool, expectedOK);
-    QFETCH(double, expectedMinValue);
-    QFETCH(double, expectedMaxValue);
-
-    auto minMaxIts = dataSeries->valuesBounds(minXAxis, maxXAxis);
-    auto end = dataSeries->cend();
-
-    // Checks iterators with expected result
-    QCOMPARE(expectedOK, minMaxIts.first != end && minMaxIts.second != end);
-
-    if (expectedOK) {
-        auto compare = [](const auto &v1, const auto &v2) {
-            return (std::isnan(v1) && std::isnan(v2)) || v1 == v2;
-        };
-
-        QVERIFY(compare(expectedMinValue, minMaxIts.first->minValue()));
-        QVERIFY(compare(expectedMaxValue, minMaxIts.second->maxValue()));
-    }
+    testValuesBounds<ScalarSeries>();
 }
 
 QTEST_MAIN(TestDataSeries)
