@@ -173,7 +173,8 @@ void TestDataSeries::testCtor()
 
 namespace {
 
-std::shared_ptr<ScalarSeries> createSeries(QVector<double> xAxisData, QVector<double> valuesData)
+std::shared_ptr<ScalarSeries> createScalarSeries(QVector<double> xAxisData,
+                                                 QVector<double> valuesData)
 {
     return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData), Unit{},
                                           Unit{});
@@ -210,26 +211,26 @@ void TestDataSeries::testMerge_data()
     // ////////// //
 
     QTest::newRow("sortedMerge")
-        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-        << createSeries({6., 7., 8., 9., 10.}, {600., 700., 800., 900., 1000.})
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+        << createScalarSeries({6., 7., 8., 9., 10.}, {600., 700., 800., 900., 1000.})
         << QVector<double>{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
         << QVector<double>{100., 200., 300., 400., 500., 600., 700., 800., 900., 1000.};
 
     QTest::newRow("unsortedMerge")
-        << createSeries({6., 7., 8., 9., 10.}, {600., 700., 800., 900., 1000.})
-        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+        << createScalarSeries({6., 7., 8., 9., 10.}, {600., 700., 800., 900., 1000.})
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
         << QVector<double>{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
         << QVector<double>{100., 200., 300., 400., 500., 600., 700., 800., 900., 1000.};
 
     QTest::newRow("unsortedMerge2")
-        << createSeries({1., 2., 8., 9., 10}, {100., 200., 300., 400., 500.})
-        << createSeries({3., 4., 5., 6., 7.}, {600., 700., 800., 900., 1000.})
+        << createScalarSeries({1., 2., 8., 9., 10}, {100., 200., 300., 400., 500.})
+        << createScalarSeries({3., 4., 5., 6., 7.}, {600., 700., 800., 900., 1000.})
         << QVector<double>{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
         << QVector<double>{100., 200., 600., 700., 800., 900., 1000., 300., 400., 500.};
 
     QTest::newRow("unsortedMerge3")
-        << createSeries({3., 5., 8., 7., 2}, {100., 200., 300., 400., 500.})
-        << createSeries({6., 4., 9., 10., 1.}, {600., 700., 800., 900., 1000.})
+        << createScalarSeries({3., 5., 8., 7., 2}, {100., 200., 300., 400., 500.})
+        << createScalarSeries({6., 4., 9., 10., 1.}, {600., 700., 800., 900., 1000.})
         << QVector<double>{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
         << QVector<double>{1000., 500., 100., 700., 200., 600., 400., 300., 800., 900.};
 }
@@ -278,17 +279,22 @@ void TestDataSeries::testMinXAxisData_data()
     // Test cases //
     // ////////// //
 
-    QTest::newRow("minData1") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("minData1") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 0. << true << 1.;
-    QTest::newRow("minData2") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("minData2") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 1. << true << 1.;
-    QTest::newRow("minData3") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("minData3") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 1.1 << true << 2.;
-    QTest::newRow("minData4") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("minData4") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 5. << true << 5.;
-    QTest::newRow("minData5") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("minData5") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 5.1 << false << std::numeric_limits<double>::quiet_NaN();
-    QTest::newRow("minData6") << createSeries({}, {}) << 1.1 << false
+    QTest::newRow("minData6") << createScalarSeries({}, {}) << 1.1 << false
                               << std::numeric_limits<double>::quiet_NaN();
 }
 
@@ -332,17 +338,22 @@ void TestDataSeries::testMaxXAxisData_data()
     // Test cases //
     // ////////// //
 
-    QTest::newRow("maxData1") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("maxData1") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 6. << true << 5.;
-    QTest::newRow("maxData2") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("maxData2") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 5. << true << 5.;
-    QTest::newRow("maxData3") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("maxData3") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 4.9 << true << 4.;
-    QTest::newRow("maxData4") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("maxData4") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 1.1 << true << 1.;
-    QTest::newRow("maxData5") << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+    QTest::newRow("maxData5") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                    {100., 200., 300., 400., 500.})
                               << 1. << true << 1.;
-    QTest::newRow("maxData6") << createSeries({}, {}) << 1.1 << false
+    QTest::newRow("maxData6") << createScalarSeries({}, {}) << 1.1 << false
                               << std::numeric_limits<double>::quiet_NaN();
 }
 
@@ -385,33 +396,33 @@ void TestDataSeries::testXAxisRange_data()
     // Test cases //
     // ////////// //
 
-    QTest::newRow("xAxisRange1") << createSeries({1., 2., 3., 4., 5.},
-                                                 {100., 200., 300., 400., 500.})
+    QTest::newRow("xAxisRange1") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                       {100., 200., 300., 400., 500.})
                                  << -1. << 3.2 << QVector<double>{1., 2., 3.}
                                  << QVector<double>{100., 200., 300.};
-    QTest::newRow("xAxisRange2") << createSeries({1., 2., 3., 4., 5.},
-                                                 {100., 200., 300., 400., 500.})
+    QTest::newRow("xAxisRange2") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                       {100., 200., 300., 400., 500.})
                                  << 1. << 4. << QVector<double>{1., 2., 3., 4.}
                                  << QVector<double>{100., 200., 300., 400.};
-    QTest::newRow("xAxisRange3") << createSeries({1., 2., 3., 4., 5.},
-                                                 {100., 200., 300., 400., 500.})
+    QTest::newRow("xAxisRange3") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                       {100., 200., 300., 400., 500.})
                                  << 1. << 3.9 << QVector<double>{1., 2., 3.}
                                  << QVector<double>{100., 200., 300.};
-    QTest::newRow("xAxisRange4") << createSeries({1., 2., 3., 4., 5.},
-                                                 {100., 200., 300., 400., 500.})
+    QTest::newRow("xAxisRange4") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                       {100., 200., 300., 400., 500.})
                                  << 0. << 0.9 << QVector<double>{} << QVector<double>{};
-    QTest::newRow("xAxisRange5") << createSeries({1., 2., 3., 4., 5.},
-                                                 {100., 200., 300., 400., 500.})
+    QTest::newRow("xAxisRange5") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                       {100., 200., 300., 400., 500.})
                                  << 0. << 1. << QVector<double>{1.} << QVector<double>{100.};
-    QTest::newRow("xAxisRange6") << createSeries({1., 2., 3., 4., 5.},
-                                                 {100., 200., 300., 400., 500.})
+    QTest::newRow("xAxisRange6") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                       {100., 200., 300., 400., 500.})
                                  << 2.1 << 6. << QVector<double>{3., 4., 5.}
                                  << QVector<double>{300., 400., 500.};
-    QTest::newRow("xAxisRange7") << createSeries({1., 2., 3., 4., 5.},
-                                                 {100., 200., 300., 400., 500.})
+    QTest::newRow("xAxisRange7") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                       {100., 200., 300., 400., 500.})
                                  << 6. << 9. << QVector<double>{} << QVector<double>{};
-    QTest::newRow("xAxisRange8") << createSeries({1., 2., 3., 4., 5.},
-                                                 {100., 200., 300., 400., 500.})
+    QTest::newRow("xAxisRange8") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                       {100., 200., 300., 400., 500.})
                                  << 5. << 9. << QVector<double>{5.} << QVector<double>{500.};
 }
 
@@ -440,39 +451,31 @@ void TestDataSeries::testValuesBoundsScalar_data()
     // ////////// //
     // Test cases //
     // ////////// //
+    auto nan = std::numeric_limits<double>::quiet_NaN();
 
-    QTest::newRow("valuesBounds1")
-        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 0. << 6. << true
-        << 100. << 500.;
-    QTest::newRow("valuesBounds2")
-        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 2. << 4. << true
-        << 200. << 400.;
-    QTest::newRow("valuesBounds3")
-        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 0. << 0.5 << false
-        << std::numeric_limits<double>::quiet_NaN() << std::numeric_limits<double>::quiet_NaN();
-    QTest::newRow("valuesBounds4")
-        << createSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 5.1 << 6. << false
-        << std::numeric_limits<double>::quiet_NaN() << std::numeric_limits<double>::quiet_NaN();
-    QTest::newRow("valuesBounds5")
-        << createSeries({1.}, {100.}) << 0. << 2. << true << 100. << 100.;
-    QTest::newRow("valuesBounds6")
-        << createSeries({}, {}) << 0. << 2. << false << std::numeric_limits<double>::quiet_NaN()
-        << std::numeric_limits<double>::quiet_NaN();
+    QTest::newRow("scalarBounds1")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 0. << 6.
+        << true << 100. << 500.;
+    QTest::newRow("scalarBounds2")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 2. << 4.
+        << true << 200. << 400.;
+    QTest::newRow("scalarBounds3")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 0. << 0.5
+        << false << nan << nan;
+    QTest::newRow("scalarBounds4")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 5.1 << 6.
+        << false << nan << nan;
+    QTest::newRow("scalarBounds5")
+        << createScalarSeries({1.}, {100.}) << 0. << 2. << true << 100. << 100.;
+    QTest::newRow("scalarBounds6") << createScalarSeries({}, {}) << 0. << 2. << false << nan << nan;
 
     // Tests with NaN values: NaN values are not included in min/max search
-    QTest::newRow("valuesBounds7")
-        << createSeries({1., 2., 3., 4., 5.},
-                        {std::numeric_limits<double>::quiet_NaN(), 200., 300., 400.,
-                         std::numeric_limits<double>::quiet_NaN()})
-        << 0. << 6. << true << 200. << 400.;
-    QTest::newRow("valuesBounds8")
-        << createSeries(
-               {1., 2., 3., 4., 5.},
-               {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
-                std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(),
-                std::numeric_limits<double>::quiet_NaN()})
-        << 0. << 6. << true << std::numeric_limits<double>::quiet_NaN()
-        << std::numeric_limits<double>::quiet_NaN();
+    QTest::newRow("scalarBounds7")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {nan, 200., 300., 400., nan}) << 0. << 6.
+        << true << 200. << 400.;
+    QTest::newRow("scalarBounds8")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {nan, nan, nan, nan, nan}) << 0. << 6. << true
+        << std::numeric_limits<double>::quiet_NaN() << std::numeric_limits<double>::quiet_NaN();
 }
 
 void TestDataSeries::testValuesBoundsScalar()
@@ -487,6 +490,7 @@ void TestDataSeries::testValuesBoundsVector_data()
     // ////////// //
     // Test cases //
     // ////////// //
+    auto nan = std::numeric_limits<double>::quiet_NaN();
 
     QTest::newRow("vectorBounds1")
         << createVectorSeries({1., 2., 3., 4., 5.}, {10., 15., 20., 13., 12.},
@@ -503,13 +507,8 @@ void TestDataSeries::testValuesBoundsVector_data()
 
     // Tests with NaN values: NaN values are not included in min/max search
     QTest::newRow("vectorBounds4")
-        << createVectorSeries(
-               {1., 2.},
-               {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()},
-               {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()},
-               {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()})
-        << 0. << 6. << true << std::numeric_limits<double>::quiet_NaN()
-        << std::numeric_limits<double>::quiet_NaN();
+        << createVectorSeries({1., 2.}, {nan, nan}, {nan, nan}, {nan, nan}) << 0. << 6. << true
+        << nan << nan;
 }
 
 void TestDataSeries::testValuesBoundsVector()
