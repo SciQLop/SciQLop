@@ -1,6 +1,5 @@
 #include <Variable/Variable.h>
 #include <Variable/VariableAcquisitionWorker.h>
-#include <Variable/VariableCacheController.h>
 #include <Variable/VariableCacheStrategy.h>
 #include <Variable/VariableController.h>
 #include <Variable/VariableModel.h>
@@ -80,7 +79,6 @@ struct VariableController::VariableControllerPrivate {
             : m_WorkingMutex{},
               m_VariableModel{new VariableModel{parent}},
               m_VariableSelectionModel{new QItemSelectionModel{m_VariableModel, parent}},
-              m_VariableCacheController{std::make_unique<VariableCacheController>()},
               m_VariableCacheStrategy{std::make_unique<VariableCacheStrategy>()},
               m_VariableAcquisitionWorker{std::make_unique<VariableAcquisitionWorker>()},
               q{parent}
@@ -123,7 +121,6 @@ struct VariableController::VariableControllerPrivate {
 
 
     TimeController *m_TimeController{nullptr};
-    std::unique_ptr<VariableCacheController> m_VariableCacheController;
     std::unique_ptr<VariableCacheStrategy> m_VariableCacheStrategy;
     std::unique_ptr<VariableAcquisitionWorker> m_VariableAcquisitionWorker;
     QThread m_VariableAcquisitionWorkerThread;
@@ -211,8 +208,6 @@ void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noex
         << tr("Number of providers deleted for variable %1: %2")
                .arg(variable->name(), QString::number(nbProvidersDeleted));
 
-    // Clears cache
-    impl->m_VariableCacheController->clear(variable);
 
     // Deletes from model
     impl->m_VariableModel->deleteVariable(variable);
@@ -369,16 +364,16 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
 {
     // NOTE: oldRange isn't really necessary since oldRange == variable->range().
 
-    qCDebug(LOG_VariableController()) << "VariableController::onRequestDataLoading"
-                                      << QThread::currentThread()->objectName();
     // we want to load data of the variable for the dateTime.
     // First we check if the cache contains some of them.
     // For the other, we ask the provider to give them.
 
     auto varRequestId = QUuid::createUuid();
+    qCInfo(LOG_VariableController()) << "VariableController::onRequestDataLoading"
+                                     << QThread::currentThread()->objectName() << varRequestId;
 
     for (const auto &var : variables) {
-        qCInfo(LOG_VariableController()) << "processRequest for" << var->name() << varRequestId;
+        qCDebug(LOG_VariableController()) << "processRequest for" << var->name() << varRequestId;
         impl->processRequest(var, range, varRequestId);
     }
 
@@ -386,7 +381,8 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
         // Get the group ids
         qCDebug(LOG_VariableController())
             << "TORM VariableController::onRequestDataLoading for synchro var ENABLE";
-        auto groupIds = std::set<QUuid>();
+        auto groupIds = std::set<QUuid>{};
+        auto groupIdToOldRangeMap = std::map<QUuid, SqpRange>{};
         for (const auto &var : variables) {
             auto varToVarIdIt = impl->m_VariableToIdentifierMap.find(var);
             if (varToVarIdIt != impl->m_VariableToIdentifierMap.cend()) {
@@ -394,6 +390,7 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
                 auto varIdToGroupIdIt = impl->m_VariableIdGroupIdMap.find(vId);
                 if (varIdToGroupIdIt != impl->m_VariableIdGroupIdMap.cend()) {
                     auto gId = varIdToGroupIdIt->second;
+                    groupIdToOldRangeMap.insert(std::make_pair(gId, var->range()));
                     if (groupIds.find(gId) == groupIds.cend()) {
                         qCDebug(LOG_VariableController()) << "Synchro detect group " << gId;
                         groupIds.insert(gId);
@@ -415,8 +412,9 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
                     if (var != nullptr) {
                         qCDebug(LOG_VariableController()) << "processRequest synchro for"
                                                           << var->name();
-                        auto vSyncRangeRequested
-                            = computeSynchroRangeRequested(var->range(), range, oldRange);
+                        auto vSyncRangeRequested = computeSynchroRangeRequested(
+                            var->range(), range, groupIdToOldRangeMap.at(gId));
+                        qCDebug(LOG_VariableController()) << "synchro RR" << vSyncRangeRequested;
                         impl->processRequest(var, vSyncRangeRequested, varRequestId);
                     }
                     else {
@@ -481,7 +479,6 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
     auto varRequest = VariableRequest{};
     auto varId = m_VariableToIdentifierMap.at(var);
 
-
     auto varStrategyRangesRequested
         = m_VariableCacheStrategy->computeStrategyRanges(var->range(), rangeRequested);
     auto notInCacheRangeList = var->provideNotInCacheRangeList(varStrategyRangesRequested.second);
@@ -490,6 +487,11 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
     if (!notInCacheRangeList.empty()) {
         varRequest.m_RangeRequested = varStrategyRangesRequested.first;
         varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
+        qCDebug(LOG_VariableAcquisitionWorker()) << tr("TORM processRequest RR ") << rangeRequested;
+        qCDebug(LOG_VariableAcquisitionWorker()) << tr("TORM processRequest R  ")
+                                                 << varStrategyRangesRequested.first;
+        qCDebug(LOG_VariableAcquisitionWorker()) << tr("TORM processRequest CR ")
+                                                 << varStrategyRangesRequested.second;
         // store VarRequest
         storeVariableRequest(varId, varRequestId, varRequest);
 
@@ -502,6 +504,8 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                 varProvider);
 
             if (!varRequestIdCanceled.isNull()) {
+                qCInfo(LOG_VariableAcquisitionWorker()) << tr("varRequestIdCanceled: ")
+                                                        << varRequestIdCanceled;
                 cancelVariableRequest(varRequestIdCanceled);
             }
         }
@@ -682,13 +686,13 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
                     auto &varRequest = varIdToVarRequestMapIt->second;
                     var->setRange(varRequest.m_RangeRequested);
                     var->setCacheRange(varRequest.m_CacheRangeRequested);
-                    qCInfo(LOG_VariableController()) << tr("1: onDataProvided")
-                                                     << varRequest.m_RangeRequested;
-                    qCInfo(LOG_VariableController()) << tr("2: onDataProvided")
-                                                     << varRequest.m_CacheRangeRequested;
+                    qCDebug(LOG_VariableController()) << tr("1: onDataProvided")
+                                                      << varRequest.m_RangeRequested;
+                    qCDebug(LOG_VariableController()) << tr("2: onDataProvided")
+                                                      << varRequest.m_CacheRangeRequested;
                     var->mergeDataSeries(varRequest.m_DataSeries);
-                    qCInfo(LOG_VariableController()) << tr("3: onDataProvided")
-                                                     << varRequest.m_DataSeries->range();
+                    qCDebug(LOG_VariableController()) << tr("3: onDataProvided")
+                                                      << varRequest.m_DataSeries->range();
                     qCDebug(LOG_VariableController()) << tr("4: onDataProvided");
                     emit var->updated();
                 }

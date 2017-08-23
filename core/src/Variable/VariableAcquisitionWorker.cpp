@@ -52,7 +52,7 @@ QUuid VariableAcquisitionWorker::pushVariableRequest(QUuid varRequestId, QUuid v
                                                      DataProviderParameters parameters,
                                                      std::shared_ptr<IDataProvider> provider)
 {
-    qCInfo(LOG_VariableAcquisitionWorker())
+    qCDebug(LOG_VariableAcquisitionWorker())
         << tr("TORM VariableAcquisitionWorker::pushVariableRequest ") << cacheRangeRequested;
     auto varRequestIdCanceled = QUuid();
 
@@ -186,7 +186,7 @@ void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
 
 void VariableAcquisitionWorker::onExecuteRequest(QUuid acqIdentifier)
 {
-    qCInfo(LOG_VariableAcquisitionWorker()) << tr("onExecuteRequest") << QThread::currentThread();
+    qCDebug(LOG_VariableAcquisitionWorker()) << tr("onExecuteRequest") << QThread::currentThread();
     impl->lockRead();
     auto it = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
     if (it != impl->m_AcqIdentifierToAcqRequestMap.cend()) {

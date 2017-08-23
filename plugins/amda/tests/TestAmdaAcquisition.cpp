@@ -130,8 +130,8 @@ void TestAmdaAcquisition::testAcquisition()
         QTimer::singleShot(timeToWaitMs, &loop, &QEventLoop::quit);
         loop.exec();
 
-        qDebug() << count << "RANGE     " << var->range();
-        qDebug() << count << "CACHERANGE" << var->cacheRange();
+        qInfo() << count << "RANGE     " << var->range();
+        qInfo() << count << "CACHERANGE" << var->cacheRange();
 
         QCOMPARE(var->range().m_TStart, nextSqpR.m_TStart);
         QCOMPARE(var->range().m_TEnd, nextSqpR.m_TEnd);
@@ -144,7 +144,7 @@ void TestAmdaAcquisition::testAcquisition()
     // 2 : pan (jump) left for one hour
     auto nextVarRS = QDateTime{QDate{2012, 01, 02}, QTime{2, 1, 0, 0}};
     auto nextVarRE = QDateTime{QDate{2012, 01, 02}, QTime{2, 2, 0, 0}};
-    // requestDataLoading(nextVarRS, nextVarRE);
+    requestDataLoading(nextVarRS, nextVarRE);
 
 
     // 3 : pan (jump) right for one hour
