@@ -1,0 +1,55 @@
+
+core_moc_headers = [
+  'include/Data/IDataProvider.h',
+  'include/DataSource/DataSourceController.h',
+  'include/DataSource/DataSourceItemAction.h',
+  'include/Network/NetworkController.h',
+  'include/Time/TimeController.h',
+  'include/Variable/Variable.h',
+  'include/Variable/VariableCacheController.h',
+  'include/Variable/VariableController.h',
+  'include/Variable/VariableAcquisitionWorker.h',
+  'include/Variable/VariableCacheStrategy.h',
+  'include/Variable/VariableSynchronizationGroup.h',
+  'include/Variable/VariableModel.h',
+  'include/Visualization/VisualizationController.h'
+]
+
+
+core_moc_files = qt5.preprocess(moc_headers : core_moc_headers)
+
+core_sources = [
+  'src/Common/DateUtils.cpp',
+  'src/Data/ScalarSeries.cpp',
+  'src/Data/DataSeriesIterator.cpp',
+  'src/Data/VectorSeries.cpp',
+  'src/DataSource/DataSourceController.cpp',
+  'src/DataSource/DataSourceItem.cpp',
+  'src/DataSource/DataSourceItemAction.cpp',
+  'src/Network/NetworkController.cpp',
+  'src/Plugin/PluginManager.cpp',
+  'src/Settings/SqpSettingsDefs.cpp',
+  'src/Time/TimeController.cpp',
+  'src/Variable/Variable.cpp',
+  'src/Variable/VariableCacheController.cpp',
+  'src/Variable/VariableController.cpp',
+  'src/Variable/VariableAcquisitionWorker.cpp',
+  'src/Variable/VariableCacheStrategy.cpp',
+  'src/Variable/VariableSynchronizationGroup.cpp',
+  'src/Variable/VariableModel.cpp',
+  'src/Visualization/VisualizationController.cpp'
+]
+
+core_inc = include_directories(['include', '../plugin/include'])
+
+sciqlop_core = library('sciqlopcore',
+                       core_sources,
+                       core_moc_files,
+                       cpp_args : '-DCORE_LIB',
+                       include_directories : core_inc,
+                       dependencies : [qt5core, qt5widgets, qt5network],
+                       install : true
+                       )
+
+subdir('tests')
+
