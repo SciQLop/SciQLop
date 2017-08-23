@@ -154,18 +154,31 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
     if (role == Qt::DisplayRole) {
         if (auto variable = impl->m_Variables.at(index.row()).get()) {
             /// Lambda function that builds the variant to return for a time value
-            auto dateTimeVariant = [](double secs) {
-                auto dateTime = DateUtils::dateTime(secs);
-                return dateTime.toString(DATETIME_FORMAT);
+            /// @param getValueFun function used to get for a data series the iterator on the entry
+            /// that contains the time value to display
+            auto dateTimeVariant = [variable](const auto &getValueFun) {
+                if (auto dataSeries = variable->dataSeries()) {
+                    auto it = getValueFun(*dataSeries);
+                    return (it != dataSeries->cend())
+                               ? DateUtils::dateTime(it->x()).toString(DATETIME_FORMAT)
+                               : QVariant{};
+                }
+                else {
+                    return QVariant{};
+                }
             };
 
             switch (index.column()) {
                 case NAME_COLUMN:
                     return variable->name();
                 case TSTART_COLUMN:
-                    return dateTimeVariant(variable->range().m_TStart);
+                    // Shows the min value of the data series above the range tstart
+                    return dateTimeVariant([min = variable->range().m_TStart](
+                        const auto &dataSeries) { return dataSeries.minData(min); });
                 case TEND_COLUMN:
-                    return dateTimeVariant(variable->range().m_TEnd);
+                    // Shows the max value of the data series under the range tend
+                    return dateTimeVariant([max = variable->range().m_TEnd](
+                        const auto &dataSeries) { return dataSeries.maxData(max); });
                 case UNIT_COLUMN:
                     return variable->metadata().value(QStringLiteral("units"));
                 case MISSION_COLUMN:

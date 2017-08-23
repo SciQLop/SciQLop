@@ -21,6 +21,57 @@ inline const QLoggingCategory &LOG_DataSeries()
     return category;
 }
 
+template <int Dim>
+class DataSeries;
+
+namespace dataseries_detail {
+
+template <int Dim>
+class IteratorValue : public DataSeriesIteratorValue::Impl {
+public:
+    explicit IteratorValue(const DataSeries<Dim> &dataSeries, bool begin)
+            : m_XIt(begin ? dataSeries.xAxisData()->cbegin() : dataSeries.xAxisData()->cend()),
+              m_ValuesIt(begin ? dataSeries.valuesData()->cbegin()
+                               : dataSeries.valuesData()->cend())
+    {
+    }
+    IteratorValue(const IteratorValue &other) = default;
+
+    std::unique_ptr<DataSeriesIteratorValue::Impl> clone() const override
+    {
+        return std::make_unique<IteratorValue<Dim> >(*this);
+    }
+
+    bool equals(const DataSeriesIteratorValue::Impl &other) const override try {
+        const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
+        return std::tie(m_XIt, m_ValuesIt) == std::tie(otherImpl.m_XIt, otherImpl.m_ValuesIt);
+    }
+    catch (const std::bad_cast &) {
+        return false;
+    }
+
+    void next() override
+    {
+        ++m_XIt;
+        ++m_ValuesIt;
+    }
+
+    void prev() override
+    {
+        --m_XIt;
+        --m_ValuesIt;
+    }
+
+    double x() const override { return m_XIt->at(0); }
+    double value() const override { return m_ValuesIt->at(0); }
+    double value(int componentIndex) const override { return m_ValuesIt->at(componentIndex); }
+
+private:
+    ArrayData<1>::Iterator m_XIt;
+    typename ArrayData<Dim>::Iterator m_ValuesIt;
+};
+} // namespace dataseries_detail
+
 /**
  * @brief The DataSeries class is the base (abstract) implementation of IDataSeries.
  *
@@ -34,71 +85,6 @@ inline const QLoggingCategory &LOG_DataSeries()
 template <int Dim>
 class SCIQLOP_CORE_EXPORT DataSeries : public IDataSeries {
 public:
-    class IteratorValue {
-    public:
-        explicit IteratorValue(const DataSeries &dataSeries, bool begin)
-                : m_XIt(begin ? dataSeries.xAxisData()->cbegin() : dataSeries.xAxisData()->cend()),
-                  m_ValuesIt(begin ? dataSeries.valuesData()->cbegin()
-                                   : dataSeries.valuesData()->cend())
-        {
-        }
-
-        double x() const { return m_XIt->at(0); }
-        double value() const { return m_ValuesIt->at(0); }
-        double value(int componentIndex) const { return m_ValuesIt->at(componentIndex); }
-
-        void next()
-        {
-            ++m_XIt;
-            ++m_ValuesIt;
-        }
-
-        bool operator==(const IteratorValue &other) const
-        {
-            return std::tie(m_XIt, m_ValuesIt) == std::tie(other.m_XIt, other.m_ValuesIt);
-        }
-
-    private:
-        ArrayData<1>::Iterator m_XIt;
-        typename ArrayData<Dim>::Iterator m_ValuesIt;
-    };
-
-    class Iterator {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using value_type = const IteratorValue;
-        using difference_type = std::ptrdiff_t;
-        using pointer = value_type *;
-        using reference = value_type &;
-
-        Iterator(const DataSeries &dataSeries, bool begin) : m_CurrentValue{dataSeries, begin} {}
-        virtual ~Iterator() noexcept = default;
-        Iterator(const Iterator &) = default;
-        Iterator(Iterator &&) = default;
-        Iterator &operator=(const Iterator &) = default;
-        Iterator &operator=(Iterator &&) = default;
-
-        Iterator &operator++()
-        {
-            m_CurrentValue.next();
-            return *this;
-        }
-
-        pointer operator->() const { return &m_CurrentValue; }
-
-        reference operator*() const { return m_CurrentValue; }
-
-        bool operator==(const Iterator &other) const
-        {
-            return m_CurrentValue == other.m_CurrentValue;
-        }
-
-        bool operator!=(const Iterator &other) const { return !(*this == other); }
-
-    private:
-        IteratorValue m_CurrentValue;
-    };
-
     /// @sa IDataSeries::xAxisData()
     std::shared_ptr<ArrayData<1> > xAxisData() override { return m_XAxisData; }
     const std::shared_ptr<ArrayData<1> > xAxisData() const { return m_XAxisData; }
@@ -193,11 +179,38 @@ public:
     // Iterators //
     // ///////// //
 
-    Iterator cbegin() const { return Iterator{*this, true}; }
+    DataSeriesIterator cbegin() const override
+    {
+        return DataSeriesIterator{DataSeriesIteratorValue{
+            std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, true)}};
+    }
 
-    Iterator cend() const { return Iterator{*this, false}; }
+    DataSeriesIterator cend() const override
+    {
+        return DataSeriesIterator{DataSeriesIteratorValue{
+            std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, false)}};
+    }
 
-    std::pair<Iterator, Iterator> subData(double min, double max) const
+    /// @sa IDataSeries::minData()
+    DataSeriesIterator minData(double minXAxisData) const override
+    {
+        return std::lower_bound(
+            cbegin(), cend(), minXAxisData,
+            [](const auto &itValue, const auto &value) { return itValue.x() < value; });
+    }
+
+    /// @sa IDataSeries::maxData()
+    DataSeriesIterator maxData(double maxXAxisData) const override
+    {
+        // Gets the first element that greater than max value
+        auto it = std::upper_bound(
+            cbegin(), cend(), maxXAxisData,
+            [](const auto &value, const auto &itValue) { return value < itValue.x(); });
+
+        return it == cbegin() ? cend() : --it;
+    }
+
+    std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min, double max) const override
     {
         if (min > max) {
             std::swap(min, max);
