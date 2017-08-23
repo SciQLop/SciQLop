@@ -2,6 +2,8 @@
 #include "Data/ScalarSeries.h"
 #include "Data/VectorSeries.h"
 
+#include <cmath>
+
 #include <QObject>
 #include <QtTest>
 

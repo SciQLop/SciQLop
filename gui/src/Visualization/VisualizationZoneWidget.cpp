@@ -9,6 +9,7 @@
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 
+#include <cmath>
 #include <QUuid>
 #include <SqpApplication.h>
 
