@@ -72,14 +72,22 @@ public:
 
     /// @return the iterator to the first entry of the data series whose x-axis data is greater than
     /// or equal to the value passed in parameter, or the end iterator if there is no matching value
-    virtual DataSeriesIterator minData(double minXAxisData) const = 0;
+    virtual DataSeriesIterator minXAxisData(double minXAxisData) const = 0;
 
     /// @return the iterator to the last entry of the data series whose x-axis data is less than or
     /// equal to the value passed in parameter, or the end iterator if there is no matching value
-    virtual DataSeriesIterator maxData(double maxXAxisData) const = 0;
+    virtual DataSeriesIterator maxXAxisData(double maxXAxisData) const = 0;
 
-    virtual std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min,
-                                                                      double max) const = 0;
+    /// @return the iterators pointing to the range of data whose x-axis values are between min and
+    /// max passed in parameters
+    virtual std::pair<DataSeriesIterator, DataSeriesIterator>
+    xAxisRange(double minXAxisData, double maxXAxisData) const = 0;
+
+    /// @return two iterators pointing to the data that have respectively the min and the max value
+    /// data of a data series' range. The search is performed for a given x-axis range.
+    /// @sa xAxisRange()
+    virtual std::pair<DataSeriesIterator, DataSeriesIterator>
+    valuesBounds(double minXAxisData, double maxXAxisData) const = 0;
 
     // /////// //
     // Mutexes //

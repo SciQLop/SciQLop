@@ -47,6 +47,16 @@ double DataSeriesIteratorValue::value(int componentIndex) const
     return m_Impl->value(componentIndex);
 }
 
+double DataSeriesIteratorValue::minValue() const
+{
+    return m_Impl->minValue();
+}
+
+double DataSeriesIteratorValue::maxValue() const
+{
+    return m_Impl->maxValue();
+}
+
 DataSeriesIterator::DataSeriesIterator(DataSeriesIteratorValue value)
         : m_CurrentValue{std::move(value)}
 {

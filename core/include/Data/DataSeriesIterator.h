@@ -24,6 +24,8 @@ public:
         virtual double x() const = 0;
         virtual double value() const = 0;
         virtual double value(int componentIndex) const = 0;
+        virtual double minValue() const = 0;
+        virtual double maxValue() const = 0;
     };
 
     explicit DataSeriesIteratorValue(std::unique_ptr<Impl> impl);
@@ -43,6 +45,10 @@ public:
     double value() const;
     /// Gets value data depending on an index
     double value(int componentIndex) const;
+    /// Gets min of all values data
+    double minValue() const;
+    /// Gets max of all values data
+    double maxValue() const;
 
 private:
     std::unique_ptr<Impl> m_Impl;

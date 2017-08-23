@@ -18,7 +18,7 @@ std::shared_ptr<IDataSeries> ScalarSeries::subDataSeries(const SqpRange &range)
     auto subValuesData = QVector<double>();
     this->lockRead();
     {
-        auto bounds = subData(range.m_TStart, range.m_TEnd);
+        auto bounds = xAxisRange(range.m_TStart, range.m_TEnd);
         for (auto it = bounds.first; it != bounds.second; ++it) {
             subXAxisData.append(it->x());
             subValuesData.append(it->value());

@@ -24,7 +24,7 @@ std::shared_ptr<IDataSeries> VectorSeries::subDataSeries(const SqpRange &range)
 
     this->lockRead();
     {
-        auto bounds = subData(range.m_TStart, range.m_TEnd);
+        auto bounds = xAxisRange(range.m_TStart, range.m_TEnd);
         for (auto it = bounds.first; it != bounds.second; ++it) {
             subXAxisData.append(it->x());
             subXValuesData.append(it->value(0));
