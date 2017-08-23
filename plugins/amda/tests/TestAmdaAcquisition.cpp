@@ -45,7 +45,7 @@ bool compareDataSeries(std::shared_ptr<IDataSeries> candidate, SqpRange candidat
     if (candidateDS && referenceDS) {
 
         auto itRefs
-            = referenceDS->subData(candidateCacheRange.m_TStart, candidateCacheRange.m_TEnd);
+            = referenceDS->xAxisRange(candidateCacheRange.m_TStart, candidateCacheRange.m_TEnd);
         qDebug() << " DISTANCE" << std::distance(candidateDS->cbegin(), candidateDS->cend())
                  << std::distance(itRefs.first, itRefs.second);
 

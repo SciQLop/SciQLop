@@ -65,6 +65,8 @@ public:
     double x() const override { return m_XIt->at(0); }
     double value() const override { return m_ValuesIt->at(0); }
     double value(int componentIndex) const override { return m_ValuesIt->at(componentIndex); }
+    double minValue() const override { return m_ValuesIt->min(); }
+    double maxValue() const override { return m_ValuesIt->max(); }
 
 private:
     ArrayData<1>::Iterator m_XIt;
@@ -191,16 +193,16 @@ public:
             std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, false)}};
     }
 
-    /// @sa IDataSeries::minData()
-    DataSeriesIterator minData(double minXAxisData) const override
+    /// @sa IDataSeries::minXAxisData()
+    DataSeriesIterator minXAxisData(double minXAxisData) const override
     {
         return std::lower_bound(
             cbegin(), cend(), minXAxisData,
             [](const auto &itValue, const auto &value) { return itValue.x() < value; });
     }
 
-    /// @sa IDataSeries::maxData()
-    DataSeriesIterator maxData(double maxXAxisData) const override
+    /// @sa IDataSeries::maxXAxisData()
+    DataSeriesIterator maxXAxisData(double maxXAxisData) const override
     {
         // Gets the first element that greater than max value
         auto it = std::upper_bound(
@@ -210,25 +212,50 @@ public:
         return it == cbegin() ? cend() : --it;
     }
 
-    std::pair<DataSeriesIterator, DataSeriesIterator> subData(double min, double max) const override
+    std::pair<DataSeriesIterator, DataSeriesIterator> xAxisRange(double minXAxisData,
+                                                                 double maxXAxisData) const override
     {
-        if (min > max) {
-            std::swap(min, max);
+        if (minXAxisData > maxXAxisData) {
+            std::swap(minXAxisData, maxXAxisData);
         }
 
         auto begin = cbegin();
         auto end = cend();
 
-        auto lowerIt
-            = std::lower_bound(begin, end, min, [](const auto &itValue, const auto &value) {
-                  return itValue.x() < value;
-              });
-        auto upperIt
-            = std::upper_bound(begin, end, max, [](const auto &value, const auto &itValue) {
-                  return value < itValue.x();
-              });
+        auto lowerIt = std::lower_bound(
+            begin, end, minXAxisData,
+            [](const auto &itValue, const auto &value) { return itValue.x() < value; });
+        auto upperIt = std::upper_bound(
+            begin, end, maxXAxisData,
+            [](const auto &value, const auto &itValue) { return value < itValue.x(); });
 
         return std::make_pair(lowerIt, upperIt);
+    }
+
+    std::pair<DataSeriesIterator, DataSeriesIterator>
+    valuesBounds(double minXAxisData, double maxXAxisData) const override
+    {
+        // Places iterators to the correct x-axis range
+        auto xAxisRangeIts = xAxisRange(minXAxisData, maxXAxisData);
+
+        // Returns end iterators if the range is empty
+        if (xAxisRangeIts.first == xAxisRangeIts.second) {
+            return std::make_pair(cend(), cend());
+        }
+
+        // Gets the iterator on the min of all values data
+        auto minIt = std::min_element(
+            xAxisRangeIts.first, xAxisRangeIts.second, [](const auto &it1, const auto &it2) {
+                return SortUtils::minCompareWithNaN(it1.minValue(), it2.minValue());
+            });
+
+        // Gets the iterator on the max of all values data
+        auto maxIt = std::max_element(
+            xAxisRangeIts.first, xAxisRangeIts.second, [](const auto &it1, const auto &it2) {
+                return SortUtils::maxCompareWithNaN(it1.maxValue(), it2.maxValue());
+            });
+
+        return std::make_pair(minIt, maxIt);
     }
 
     // /////// //

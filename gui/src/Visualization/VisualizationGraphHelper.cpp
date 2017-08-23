@@ -149,7 +149,7 @@ struct PlottablesUpdater<T,
         // - Gets the data of the series included in the current range
         // - Updates each plottable by adding, for each data item, a point that takes x-axis data
         // and value data. The correct value is retrieved according to the index of the component
-        auto subDataIts = dataSeries.subData(range.m_TStart, range.m_TEnd);
+        auto subDataIts = dataSeries.xAxisRange(range.m_TStart, range.m_TEnd);
         for (auto it = subDataIts.first; it != subDataIts.second; ++it) {
             for (const auto &dataContainer : dataContainers) {
                 auto componentIndex = dataContainer.first;

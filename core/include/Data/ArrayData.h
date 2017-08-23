@@ -70,6 +70,26 @@ public:
         double at(int index) const { return *m_Its.at(index); }
         double first() const { return *m_Its.front(); }
 
+        /// @return the min value among all components
+        double min() const
+        {
+            auto end = m_Its.cend();
+            auto it = std::min_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
+                return SortUtils::minCompareWithNaN(*it1, *it2);
+            });
+            return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
+        }
+
+        /// @return the max value among all components
+        double max() const
+        {
+            auto end = m_Its.cend();
+            auto it = std::max_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
+                return SortUtils::maxCompareWithNaN(*it1, *it2);
+            });
+            return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
+        }
+
         void next()
         {
             for (auto &it : m_Its) {

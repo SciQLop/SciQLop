@@ -174,11 +174,11 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
                 case TSTART_COLUMN:
                     // Shows the min value of the data series above the range tstart
                     return dateTimeVariant([min = variable->range().m_TStart](
-                        const auto &dataSeries) { return dataSeries.minData(min); });
+                        const auto &dataSeries) { return dataSeries.minXAxisData(min); });
                 case TEND_COLUMN:
                     // Shows the max value of the data series under the range tend
                     return dateTimeVariant([max = variable->range().m_TEnd](
-                        const auto &dataSeries) { return dataSeries.maxData(max); });
+                        const auto &dataSeries) { return dataSeries.maxXAxisData(max); });
                 case UNIT_COLUMN:
                     return variable->metadata().value(QStringLiteral("units"));
                 case MISSION_COLUMN:
