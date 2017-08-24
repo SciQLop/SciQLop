@@ -20,27 +20,22 @@ namespace arraydata_detail {
 /// Struct used to sort ArrayData
 template <int Dim>
 struct Sort {
-    static std::shared_ptr<ArrayData<Dim> > sort(const DataContainer &data,
+    static std::shared_ptr<ArrayData<Dim> > sort(const DataContainer &data, int nbComponents,
                                                  const std::vector<int> &sortPermutation)
     {
-        auto nbComponents = data.size();
-        auto sortedData = DataContainer(nbComponents);
-
-        for (auto i = 0; i < nbComponents; ++i) {
-            sortedData[i] = SortUtils::sort(data.at(i), sortPermutation);
-        }
-
-        return std::make_shared<ArrayData<Dim> >(std::move(sortedData));
+        return std::make_shared<ArrayData<Dim> >(
+            SortUtils::sort(data, nbComponents, sortPermutation), nbComponents);
     }
 };
 
 /// Specialization for uni-dimensional ArrayData
 template <>
 struct Sort<1> {
-    static std::shared_ptr<ArrayData<1> > sort(const DataContainer &data,
+    static std::shared_ptr<ArrayData<1> > sort(const DataContainer &data, int nbComponents,
                                                const std::vector<int> &sortPermutation)
     {
-        return std::make_shared<ArrayData<1> >(SortUtils::sort(data.at(0), sortPermutation));
+        Q_UNUSED(nbComponents)
+        return std::make_shared<ArrayData<1> >(SortUtils::sort(data, 1, sortPermutation));
     }
 };
 
