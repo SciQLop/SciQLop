@@ -11,12 +11,16 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_AmdaPlugin)
 
+#ifndef PLUGIN_JSON_FILE_PATH
+#define PLUGIN_JSON_FILE_PATH "mockplugin.json"
+#endif
+
 class DataSourceItem;
 
 class SCIQLOP_AMDA_EXPORT AmdaPlugin : public QObject, public IPlugin {
     Q_OBJECT
     Q_INTERFACES(IPlugin)
-    Q_PLUGIN_METADATA(IID "sciqlop.plugin.IPlugin" FILE "amda.json")
+    Q_PLUGIN_METADATA(IID "sciqlop.plugin.IPlugin" FILE PLUGIN_JSON_FILE_PATH)
 public:
     /// @sa IPlugin::initialize()
     void initialize() override;

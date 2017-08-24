@@ -8,6 +8,7 @@
 
 #include <QLoggingCategory>
 #include <QObject>
+#include <QUuid>
 
 #include <Common/spimpl.h>
 
