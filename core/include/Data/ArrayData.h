@@ -13,7 +13,7 @@
 template <int Dim>
 class ArrayData;
 
-using DataContainer = QVector<QVector<double> >;
+using DataContainer = QVector<double>;
 
 namespace arraydata_detail {
 
@@ -130,37 +130,34 @@ public:
      * @param data the data the ArrayData will hold
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    explicit ArrayData(QVector<double> data) : m_Data{1, QVector<double>{}}
+    explicit ArrayData(DataContainer data) : m_Data{std::move(data)}, m_NbComponents{1}
     {
-        m_Data[0] = std::move(data);
     }
 
     /**
-     * Ctor for a two-dimensional ArrayData. The number of components (number of vectors) must be
-     * greater than 2 and each component must have the same number of values
+     * Ctor for a two-dimensional ArrayData. The number of components (number of lines) must be
+     * greater than 2 and must be a divisor of the total number of data in the vector
      * @param data the data the ArrayData will hold
-     * @throws std::invalid_argument if the number of components is less than 2
-     * @remarks if the number of values is not the same for each component, no value is set
+     * @param nbComponents the number of components
+     * @throws std::invalid_argument if the number of components is less than 2 or is not a divisor
+     * of the size of the data
      */
     template <int D = Dim, typename = std::enable_if_t<D == 2> >
-    explicit ArrayData(DataContainer data)
+    explicit ArrayData(DataContainer data, int nbComponents)
+            : m_Data{std::move(data)}, m_NbComponents{nbComponents}
     {
-        auto nbComponents = data.size();
         if (nbComponents < 2) {
             throw std::invalid_argument{
-                QString{"A multidimensional ArrayData must have at least 2 components (found: %1"}
-                    .arg(data.size())
+                QString{"A multidimensional ArrayData must have at least 2 components (found: %1)"}
+                    .arg(nbComponents)
                     .toStdString()};
         }
 
-        auto nbValues = data.front().size();
-        if (std::all_of(data.cbegin(), data.cend(), [nbValues](const auto &component) {
-                return component.size() == nbValues;
-            })) {
-            m_Data = std::move(data);
-        }
-        else {
-            m_Data = DataContainer{nbComponents, QVector<double>{}};
+        if (m_Data.size() % m_NbComponents != 0) {
+            throw std::invalid_argument{QString{
+                "The number of components (%1) is inconsistent with the total number of data (%2)"}
+                                            .arg(m_Data.size(), nbComponents)
+                                            .toStdString()};
         }
     }
 
@@ -169,6 +166,7 @@ public:
     {
         QReadLocker otherLocker{&other.m_Lock};
         m_Data = other.m_Data;
+        m_NbComponents = other.m_NbComponents;
     }
 
     // /////////////// //
@@ -187,66 +185,42 @@ public:
         QWriteLocker locker{&m_Lock};
         QReadLocker otherLocker{&other.m_Lock};
 
-        auto nbComponents = m_Data.size();
-        if (nbComponents != other.m_Data.size()) {
+        if (m_NbComponents != other.componentCount()) {
             return;
         }
 
-        for (auto componentIndex = 0; componentIndex < nbComponents; ++componentIndex) {
-            if (prepend) {
-                const auto &otherData = other.data(componentIndex);
-                const auto otherDataSize = otherData.size();
-
-                auto &data = m_Data[componentIndex];
-                data.insert(data.begin(), otherDataSize, 0.);
-
-                for (auto i = 0; i < otherDataSize; ++i) {
-                    data.replace(i, otherData.at(i));
-                }
+        if (prepend) {
+            auto otherDataSize = other.m_Data.size();
+            m_Data.insert(m_Data.begin(), otherDataSize, 0.);
+            for (auto i = 0; i < otherDataSize; ++i) {
+                m_Data.replace(i, other.m_Data.at(i));
             }
-            else {
-                m_Data[componentIndex] += other.data(componentIndex);
-            }
+        }
+        else {
+            m_Data.append(other.m_Data);
         }
     }
 
     void clear()
     {
         QWriteLocker locker{&m_Lock};
-
-        auto nbComponents = m_Data.size();
-        for (auto i = 0; i < nbComponents; ++i) {
-            m_Data[i].clear();
-        }
+        m_Data.clear();
     }
 
-    int componentCount() const noexcept { return m_Data.size(); }
-
-    /**
-     * @return the data of a component
-     * @param componentIndex the index of the component to retrieve the data
-     * @return the component's data, empty vector if the index is invalid
-     */
-    QVector<double> data(int componentIndex) const noexcept
-    {
-        QReadLocker locker{&m_Lock};
-
-        return (componentIndex >= 0 && componentIndex < m_Data.size()) ? m_Data.at(componentIndex)
-                                                                       : QVector<double>{};
-    }
+    int componentCount() const noexcept { return m_NbComponents; }
 
     /// @return the size (i.e. number of values) of a single component
     /// @remarks in a case of a two-dimensional ArrayData, each component has the same size
     int size() const
     {
         QReadLocker locker{&m_Lock};
-        return m_Data[0].size();
+        return m_Data.size() / m_NbComponents;
     }
 
     std::shared_ptr<ArrayData<Dim> > sort(const std::vector<int> &sortPermutation)
     {
         QReadLocker locker{&m_Lock};
-        return arraydata_detail::Sort<Dim>::sort(m_Data, sortPermutation);
+        return arraydata_detail::Sort<Dim>::sort(m_Data, m_NbComponents, sortPermutation);
     }
 
     // ///////// //
@@ -277,7 +251,7 @@ public:
     double at(int index) const noexcept
     {
         QReadLocker locker{&m_Lock};
-        return m_Data[0].at(index);
+        return m_Data.at(index);
     }
 
     /**
@@ -319,6 +293,8 @@ public:
 
 private:
     DataContainer m_Data;
+    /// Number of components (lines). Is always 1 in a 1-dim ArrayData
+    int m_NbComponents;
     mutable QReadWriteLock m_Lock;
 };
 
