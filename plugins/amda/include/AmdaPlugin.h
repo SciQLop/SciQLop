@@ -12,7 +12,7 @@
 Q_DECLARE_LOGGING_CATEGORY(LOG_AmdaPlugin)
 
 #ifndef PLUGIN_JSON_FILE_PATH
-#define PLUGIN_JSON_FILE_PATH "mockplugin.json"
+#define PLUGIN_JSON_FILE_PATH "amda.json"
 #endif
 
 class DataSourceItem;
