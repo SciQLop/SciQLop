@@ -42,11 +42,9 @@ struct Sort<1> {
 template <int Dim>
 class IteratorValue : public ArrayDataIteratorValue::Impl {
 public:
-    explicit IteratorValue(const DataContainer &container, bool begin) : m_Its{}
+    explicit IteratorValue(const DataContainer &container, int nbComponents, bool begin)
+            : m_It{begin ? container.cbegin() : container.cend()}, m_NbComponents{nbComponents}
     {
-        for (auto i = 0; i < container.size(); ++i) {
-            m_Its.push_back(begin ? container.at(i).cbegin() : container.at(i).cend());
-        }
     }
 
     IteratorValue(const IteratorValue &other) = default;
@@ -58,47 +56,50 @@ public:
 
     bool equals(const ArrayDataIteratorValue::Impl &other) const override try {
         const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
-        return m_Its == otherImpl.m_Its;
+        return std::tie(m_It, m_NbComponents) == std::tie(otherImpl.m_It, otherImpl.m_NbComponents);
     }
     catch (const std::bad_cast &) {
         return false;
     }
 
-    void next() override
-    {
-        for (auto &it : m_Its) {
-            ++it;
-        }
-    }
+    void next() override { std::advance(m_It, m_NbComponents); }
+    void prev() override { std::advance(m_It, -m_NbComponents); }
 
-    void prev() override
-    {
-        for (auto &it : m_Its) {
-            --it;
-        }
-    }
-
-    double at(int componentIndex) const override { return *m_Its.at(componentIndex); }
-    double first() const override { return *m_Its.front(); }
+    double at(int componentIndex) const override { return *(m_It + componentIndex); }
+    double first() const override { return *m_It; }
     double min() const override
     {
-        auto end = m_Its.cend();
-        auto it = std::min_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
-            return SortUtils::minCompareWithNaN(*it1, *it2);
+        auto values = this->values();
+        auto end = values.cend();
+        auto it = std::min_element(values.cbegin(), end, [](const auto &v1, const auto &v2) {
+            return SortUtils::minCompareWithNaN(v1, v2);
         });
-        return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
+
+        return it != end ? *it : std::numeric_limits<double>::quiet_NaN();
     }
     double max() const override
     {
-        auto end = m_Its.cend();
-        auto it = std::max_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
-            return SortUtils::maxCompareWithNaN(*it1, *it2);
+        auto values = this->values();
+        auto end = values.cend();
+        auto it = std::max_element(values.cbegin(), end, [](const auto &v1, const auto &v2) {
+            return SortUtils::maxCompareWithNaN(v1, v2);
         });
-        return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
+        return it != end ? *it : std::numeric_limits<double>::quiet_NaN();
     }
 
 private:
-    std::vector<DataContainer::value_type::const_iterator> m_Its;
+    std::vector<double> values() const
+    {
+        auto result = std::vector<double>{};
+        for (auto i = 0; i < m_NbComponents; ++i) {
+            result.push_back(*(m_It + i));
+        }
+
+        return result;
+    }
+
+    DataContainer::const_iterator m_It;
+    int m_NbComponents;
 };
 
 } // namespace arraydata_detail
@@ -225,12 +226,13 @@ public:
     ArrayDataIterator cbegin() const
     {
         return ArrayDataIterator{ArrayDataIteratorValue{
-            std::make_unique<arraydata_detail::IteratorValue<Dim> >(m_Data, true)}};
+            std::make_unique<arraydata_detail::IteratorValue<Dim> >(m_Data, m_NbComponents, true)}};
     }
     ArrayDataIterator cend() const
     {
-        return ArrayDataIterator{ArrayDataIteratorValue{
-            std::make_unique<arraydata_detail::IteratorValue<Dim> >(m_Data, false)}};
+        return ArrayDataIterator{
+            ArrayDataIteratorValue{std::make_unique<arraydata_detail::IteratorValue<Dim> >(
+                m_Data, m_NbComponents, false)}};
     }
 
     // ///////////// //
