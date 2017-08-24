@@ -158,10 +158,13 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
             /// that contains the time value to display
             auto dateTimeVariant = [variable](const auto &getValueFun) {
                 if (auto dataSeries = variable->dataSeries()) {
+                    dataSeries->lockRead();
                     auto it = getValueFun(*dataSeries);
-                    return (it != dataSeries->cend())
+                    auto resVariant = (it != dataSeries->cend())
                                ? DateUtils::dateTime(it->x()).toString(DATETIME_FORMAT)
                                : QVariant{};
+                    dataSeries->unlock();
+                    return resVariant;
                 }
                 else {
                     return QVariant{};

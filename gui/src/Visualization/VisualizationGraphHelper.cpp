@@ -38,7 +38,7 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
     }
 }
 
-/// Sets axes properties according to the properties of a data series
+/// Sets axes properties according to the properties of a data series. Not thread safe
 template <int Dim>
 void setAxesProperties(const DataSeries<Dim> &dataSeries, QCustomPlot &plot) noexcept
 {
@@ -85,7 +85,9 @@ struct PlottablesCreator<T,
         PlottablesMap result{};
 
         // Gets the number of components of the data series
+        dataSeries.lockRead();
         auto componentCount = dataSeries.valuesData()->componentCount();
+        dataSeries.unlock();
 
         auto colors = ColorUtils::colors(Qt::blue, Qt::red, componentCount);
 
@@ -98,7 +100,9 @@ struct PlottablesCreator<T,
         }
 
         // Axes properties
+        dataSeries.lockRead();
         setAxesProperties(dataSeries, plot);
+        dataSeries.unlock();
 
         plot.replot();
 
@@ -133,7 +137,6 @@ struct PlottablesUpdater<T,
     static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const SqpRange &range,
                                  bool rescaleAxes)
     {
-        dataSeries.lockRead();
 
         // For each plottable to update, resets its data
         std::map<int, QSharedPointer<SqpDataContainer> > dataContainers{};
@@ -145,6 +148,7 @@ struct PlottablesUpdater<T,
                 dataContainers.insert({plottable.first, dataContainer});
             }
         }
+        dataSeries.lockRead();
 
         // - Gets the data of the series included in the current range
         // - Updates each plottable by adding, for each data item, a point that takes x-axis data
