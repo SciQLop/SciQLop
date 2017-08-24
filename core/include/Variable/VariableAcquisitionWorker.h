@@ -28,9 +28,9 @@ public:
     explicit VariableAcquisitionWorker(QObject *parent = 0);
     virtual ~VariableAcquisitionWorker();
 
-    void pushVariableRequest(QUuid vIdentifier, SqpRange rangeRequested,
-                             SqpRange cacheRangeRequested, DataProviderParameters parameters,
-                             std::shared_ptr<IDataProvider> provider);
+    QUuid pushVariableRequest(QUuid varRequestId, QUuid vIdentifier, SqpRange rangeRequested,
+                              SqpRange cacheRangeRequested, DataProviderParameters parameters,
+                              std::shared_ptr<IDataProvider> provider);
 
     void abortProgressRequested(QUuid vIdentifier);
 

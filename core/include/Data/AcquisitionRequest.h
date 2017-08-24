@@ -14,16 +14,16 @@
 #include <memory>
 
 /**
- * @brief The AcquisitionRequest struct holds the information of an acquisition request
+ * @brief The AcquisitionRequest struct holds the information of an variable request
  */
 struct AcquisitionRequest {
     AcquisitionRequest()
     {
-
         m_AcqIdentifier = QUuid::createUuid();
         m_Size = 0;
     }
 
+    QUuid m_VarRequestId;
     QUuid m_AcqIdentifier;
     QUuid m_vIdentifier;
     DataProviderParameters m_DataProviderParameters;

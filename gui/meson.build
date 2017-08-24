@@ -1,0 +1,72 @@
+
+gui_moc_headers = [
+  'include/DataSource/DataSourceWidget.h',
+  'include/Settings/SqpSettingsDialog.h',
+  'include/Settings/SqpSettingsGeneralWidget.h',
+  'include/SidePane/SqpSidePane.h',
+  'include/SqpApplication.h',
+  'include/TimeWidget/TimeWidget.h',
+  'include/Variable/VariableInspectorWidget.h',
+  'include/Visualization/qcustomplot.h',
+  'include/Visualization/VisualizationGraphWidget.h',
+  'include/Visualization/VisualizationTabWidget.h',
+  'include/Visualization/VisualizationWidget.h',
+  'include/Visualization/VisualizationZoneWidget.h'
+]
+
+gui_ui_files = [
+  'ui/DataSource/DataSourceWidget.ui',
+  'ui/Settings/SqpSettingsDialog.ui',
+  'ui/Settings/SqpSettingsGeneralWidget.ui',
+  'ui/SidePane/SqpSidePane.ui',
+  'ui/TimeWidget/TimeWidget.ui',
+  'ui/Variable/VariableInspectorWidget.ui',
+  'ui/Variable/VariableMenuHeaderWidget.ui',
+  'ui/Visualization/VisualizationGraphWidget.ui',
+  'ui/Visualization/VisualizationTabWidget.ui',
+  'ui/Visualization/VisualizationWidget.ui',
+  'ui/Visualization/VisualizationZoneWidget.ui'
+]
+
+gui_qresources = ['resources/sqpguiresources.qrc']
+
+gui_moc_files = qt5.preprocess(moc_headers : gui_moc_headers,
+                               ui_files : gui_ui_files,
+                               qresources : gui_qresources)
+
+gui_sources = [
+  'src/SqpApplication.cpp',
+  'src/Common/ColorUtils.cpp',
+  'src/DataSource/DataSourceTreeWidgetItem.cpp',
+  'src/DataSource/DataSourceTreeWidgetHelper.cpp',
+  'src/DataSource/DataSourceWidget.cpp',
+  'src/Settings/SqpSettingsDialog.cpp',
+  'src/Settings/SqpSettingsGeneralWidget.cpp',
+  'src/SidePane/SqpSidePane.cpp',
+  'src/TimeWidget/TimeWidget.cpp',
+  'src/Variable/VariableInspectorWidget.cpp',
+  'src/Variable/VariableMenuHeaderWidget.cpp',
+  'src/Visualization/VisualizationGraphHelper.cpp',
+  'src/Visualization/VisualizationGraphRenderingDelegate.cpp',
+  'src/Visualization/VisualizationGraphWidget.cpp',
+  'src/Visualization/VisualizationTabWidget.cpp',
+  'src/Visualization/VisualizationWidget.cpp',
+  'src/Visualization/VisualizationZoneWidget.cpp',
+  'src/Visualization/qcustomplot.cpp',
+  'src/Visualization/operations/GenerateVariableMenuOperation.cpp',
+  'src/Visualization/operations/MenuBuilder.cpp',
+  'src/Visualization/operations/RemoveVariableOperation.cpp',
+  'src/Visualization/operations/RescaleAxeOperation.cpp'
+]
+
+gui_inc = include_directories(['include'])
+
+sciqlop_gui = library('sciqlopgui',
+                       gui_sources,
+                       gui_moc_files,
+                       link_with : sciqlop_core,
+                       include_directories : [gui_inc, core_inc],
+                       dependencies : [qt5core, qt5printsupport, qt5gui, qt5widgets, qt5network],
+                       install : true
+                       )
+
