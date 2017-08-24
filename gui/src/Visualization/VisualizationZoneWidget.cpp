@@ -9,9 +9,9 @@
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 
-#include <cmath>
 #include <QUuid>
 #include <SqpApplication.h>
+#include <cmath>
 
 Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 
