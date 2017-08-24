@@ -235,21 +235,20 @@ public:
                 m_Data, m_NbComponents, false)}};
     }
 
-    // ///////////// //
-    // 1-dim methods //
-    // ///////////// //
 
     /**
      * @return the data at a specified index
      * @remarks index must be a valid position
-     * @remarks this method is only available for a unidimensional ArrayData
      */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
     double at(int index) const noexcept
     {
         QReadLocker locker{&m_Lock};
         return m_Data.at(index);
     }
+
+    // ///////////// //
+    // 1-dim methods //
+    // ///////////// //
 
     /**
      * @return the data as a vector, as a const reference
@@ -257,32 +256,6 @@ public:
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
     const QVector<double> &cdata() const noexcept
-    {
-        QReadLocker locker{&m_Lock};
-        return m_Data.at(0);
-    }
-
-    /**
-     * @return the data as a vector
-     * @remarks this method is only available for a unidimensional ArrayData
-     */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    QVector<double> data() const noexcept
-    {
-        QReadLocker locker{&m_Lock};
-        return m_Data[0];
-    }
-
-    // ///////////// //
-    // 2-dim methods //
-    // ///////////// //
-
-    /**
-     * @return the data
-     * @remarks this method is only available for a two-dimensional ArrayData
-     */
-    template <int D = Dim, typename = std::enable_if_t<D == 2> >
-    DataContainer data() const noexcept
     {
         QReadLocker locker{&m_Lock};
         return m_Data;
