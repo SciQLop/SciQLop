@@ -76,8 +76,8 @@ void AmdaProvider::requestDataLoading(QUuid acqIdentifier, const DataProviderPar
     for (const auto &dateTime : qAsConst(times)) {
         this->retrieveData(acqIdentifier, dateTime, data);
 
-        // TORM
-        // QThread::msleep(200);
+        // TORM when AMDA will support quick asynchrone request
+        QThread::msleep(1000);
     }
 }
 

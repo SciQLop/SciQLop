@@ -29,8 +29,8 @@ class SCIQLOP_CORE_EXPORT VariableCacheStrategy : public QObject {
 public:
     explicit VariableCacheStrategy(QObject *parent = 0);
 
-    std::pair<SqpRange, SqpRange> computeCacheRange(const SqpRange &vRange,
-                                                    const SqpRange &rangeRequested);
+    std::pair<SqpRange, SqpRange> computeStrategyRanges(const SqpRange &vRange,
+                                                        const SqpRange &rangeRequested);
 
 private:
     class VariableCacheStrategyPrivate;
