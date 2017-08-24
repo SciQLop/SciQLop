@@ -2,6 +2,7 @@
 #define SCIQLOP_DATASERIESITERATOR_H
 
 #include "CoreGlobal.h"
+#include "Data/SqpIterator.h"
 
 #include <memory>
 
@@ -54,35 +55,6 @@ private:
     std::unique_ptr<Impl> m_Impl;
 };
 
-/**
- * @brief The DataSeriesIterator class represents an iterator used for data series. It defines all
- * operators needed for a standard forward iterator
- * @sa http://www.cplusplus.com/reference/iterator/
- */
-class SCIQLOP_CORE_EXPORT DataSeriesIterator {
-public:
-    using iterator_category = std::forward_iterator_tag;
-    using value_type = const DataSeriesIteratorValue;
-    using difference_type = std::ptrdiff_t;
-    using pointer = value_type *;
-    using reference = value_type &;
-
-    explicit DataSeriesIterator(DataSeriesIteratorValue value);
-    virtual ~DataSeriesIterator() noexcept = default;
-    DataSeriesIterator(const DataSeriesIterator &) = default;
-    DataSeriesIterator(DataSeriesIterator &&) = default;
-    DataSeriesIterator &operator=(const DataSeriesIterator &) = default;
-    DataSeriesIterator &operator=(DataSeriesIterator &&) = default;
-
-    DataSeriesIterator &operator++();
-    DataSeriesIterator &operator--();
-    pointer operator->() const { return &m_CurrentValue; }
-    reference operator*() const { return m_CurrentValue; }
-    bool operator==(const DataSeriesIterator &other) const;
-    bool operator!=(const DataSeriesIterator &other) const;
-
-private:
-    DataSeriesIteratorValue m_CurrentValue;
-};
+using DataSeriesIterator = SqpIterator<DataSeriesIteratorValue>;
 
 #endif // SCIQLOP_DATASERIESITERATOR_H
