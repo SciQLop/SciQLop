@@ -30,7 +30,6 @@ cppcheck = find_program('cppcheck', required : false)
 if cppcheck.found()
   run_target('cppcheck',
               command : [cppcheck, '--enable=all',
-              '--project=' + join_paths(meson.build_root(), 'compile_commands.json')],
-              build_by_default : true
+              '--project=' + join_paths(meson.build_root(), 'compile_commands.json')]
               )
 endif
