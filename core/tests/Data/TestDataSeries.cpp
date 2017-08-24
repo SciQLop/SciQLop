@@ -10,6 +10,20 @@
 Q_DECLARE_METATYPE(std::shared_ptr<ScalarSeries>)
 Q_DECLARE_METATYPE(std::shared_ptr<VectorSeries>)
 
+namespace {
+
+void validateRange(DataSeriesIterator first, DataSeriesIterator last, const QVector<double> &xData,
+                   const QVector<double> &valuesData)
+{
+    QVERIFY(std::equal(first, last, xData.cbegin(), xData.cend(),
+                       [](const auto &it, const auto &expectedX) { return it.x() == expectedX; }));
+    QVERIFY(std::equal(
+        first, last, valuesData.cbegin(), valuesData.cend(),
+        [](const auto &it, const auto &expectedVal) { return it.value() == expectedVal; }));
+}
+
+} // namespace
+
 class TestDataSeries : public QObject {
     Q_OBJECT
 private:
@@ -164,13 +178,7 @@ void TestDataSeries::testCtor()
     QFETCH(QVector<double>, expectedXAxisData);
     QFETCH(QVector<double>, expectedValuesData);
 
-    auto seriesXAxisData = series->xAxisData()->data();
-    auto seriesValuesData = series->valuesData()->data();
-
-    QVERIFY(
-        std::equal(expectedXAxisData.cbegin(), expectedXAxisData.cend(), seriesXAxisData.cbegin()));
-    QVERIFY(std::equal(expectedValuesData.cbegin(), expectedValuesData.cend(),
-                       seriesValuesData.cbegin()));
+    validateRange(series->cbegin(), series->cend(), expectedXAxisData, expectedValuesData);
 }
 
 namespace {
@@ -250,13 +258,7 @@ void TestDataSeries::testMerge()
     QFETCH(QVector<double>, expectedXAxisData);
     QFETCH(QVector<double>, expectedValuesData);
 
-    auto seriesXAxisData = dataSeries->xAxisData()->data();
-    auto seriesValuesData = dataSeries->valuesData()->data();
-
-    QVERIFY(
-        std::equal(expectedXAxisData.cbegin(), expectedXAxisData.cend(), seriesXAxisData.cbegin()));
-    QVERIFY(std::equal(expectedValuesData.cbegin(), expectedValuesData.cend(),
-                       seriesValuesData.cbegin()));
+    validateRange(dataSeries->cbegin(), dataSeries->cend(), expectedXAxisData, expectedValuesData);
 }
 
 void TestDataSeries::testMinXAxisData_data()
@@ -438,12 +440,7 @@ void TestDataSeries::testXAxisRange()
     QFETCH(QVector<double>, expectedValuesData);
 
     auto bounds = dataSeries->xAxisRange(min, max);
-    QVERIFY(std::equal(bounds.first, bounds.second, expectedXAxisData.cbegin(),
-                       expectedXAxisData.cend(),
-                       [](const auto &it, const auto &expectedX) { return it.x() == expectedX; }));
-    QVERIFY(std::equal(
-        bounds.first, bounds.second, expectedValuesData.cbegin(), expectedValuesData.cend(),
-        [](const auto &it, const auto &expectedVal) { return it.value() == expectedVal; }));
+    validateRange(bounds.first, bounds.second, expectedXAxisData, expectedValuesData);
 }
 
 void TestDataSeries::testValuesBoundsScalar_data()

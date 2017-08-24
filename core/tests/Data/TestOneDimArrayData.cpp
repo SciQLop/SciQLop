@@ -2,16 +2,23 @@
 #include <QObject>
 #include <QtTest>
 
+namespace {
+
+void verifyArrayData(const ArrayData<1> &arrayData, const QVector<double> &expectedData)
+{
+    QVERIFY(std::equal(
+        arrayData.cbegin(), arrayData.cend(), expectedData.cbegin(), expectedData.cend(),
+        [](const auto &it, const auto &expectedData) { return it.at(0) == expectedData; }));
+}
+
+} // namespace
+
 class TestOneDimArrayData : public QObject {
     Q_OBJECT
 private slots:
     /// Tests @sa ArrayData::data()
     void testData_data();
     void testData();
-
-    /// Tests @sa ArrayData::data(int componentIndex)
-    void testDataByComponentIndex_data();
-    void testDataByComponentIndex();
 
     /// Tests @sa ArrayData::add()
     void testAdd_data();
@@ -51,32 +58,7 @@ void TestOneDimArrayData::testData()
     QFETCH(QVector<double>, expectedData);
 
     ArrayData<1> arrayData{inputData};
-    QVERIFY(arrayData.data() == expectedData);
-}
-
-void TestOneDimArrayData::testDataByComponentIndex_data()
-{
-    // Test structure
-    QTest::addColumn<QVector<double> >("inputData");    // array data's input
-    QTest::addColumn<int>("componentIndex");            // component index to test
-    QTest::addColumn<QVector<double> >("expectedData"); // expected data
-
-    // Test cases
-    QTest::newRow("validIndex") << QVector<double>{1., 2., 3., 4., 5.} << 0
-                                << QVector<double>{1., 2., 3., 4., 5.};
-    QTest::newRow("invalidIndex1") << QVector<double>{1., 2., 3., 4., 5.} << -1
-                                   << QVector<double>{};
-    QTest::newRow("invalidIndex2") << QVector<double>{1., 2., 3., 4., 5.} << 1 << QVector<double>{};
-}
-
-void TestOneDimArrayData::testDataByComponentIndex()
-{
-    QFETCH(QVector<double>, inputData);
-    QFETCH(int, componentIndex);
-    QFETCH(QVector<double>, expectedData);
-
-    ArrayData<1> arrayData{inputData};
-    QVERIFY(arrayData.data(componentIndex) == expectedData);
+    verifyArrayData(arrayData, expectedData);
 }
 
 void TestOneDimArrayData::testAdd_data()
@@ -107,7 +89,7 @@ void TestOneDimArrayData::testAdd()
     ArrayData<1> other{otherData};
 
     arrayData.add(other, prepend);
-    QVERIFY(arrayData.data() == expectedData);
+    verifyArrayData(arrayData, expectedData);
 }
 
 void TestOneDimArrayData::testAt_data()
@@ -147,7 +129,7 @@ void TestOneDimArrayData::testClear()
 
     ArrayData<1> arrayData{inputData};
     arrayData.clear();
-    QVERIFY(arrayData.data() == QVector<double>{});
+    verifyArrayData(arrayData, QVector<double>{});
 }
 
 void TestOneDimArrayData::testSize_data()
@@ -192,7 +174,7 @@ void TestOneDimArrayData::testSort()
     ArrayData<1> arrayData{inputData};
     auto sortedArrayData = arrayData.sort(sortPermutation);
     QVERIFY(sortedArrayData != nullptr);
-    QVERIFY(sortedArrayData->data() == expectedData);
+    verifyArrayData(*sortedArrayData, expectedData);
 }
 
 QTEST_MAIN(TestOneDimArrayData)
