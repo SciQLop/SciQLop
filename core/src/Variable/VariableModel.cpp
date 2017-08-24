@@ -161,8 +161,8 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
                     dataSeries->lockRead();
                     auto it = getValueFun(*dataSeries);
                     auto resVariant = (it != dataSeries->cend())
-                               ? DateUtils::dateTime(it->x()).toString(DATETIME_FORMAT)
-                               : QVariant{};
+                                          ? DateUtils::dateTime(it->x()).toString(DATETIME_FORMAT)
+                                          : QVariant{};
                     dataSeries->unlock();
                     return resVariant;
                 }

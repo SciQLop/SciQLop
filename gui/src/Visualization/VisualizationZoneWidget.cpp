@@ -193,7 +193,8 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     // get y using variable range
     if (auto dataSeries = variable->dataSeries()) {
         dataSeries->lockRead();
-        auto valuesBounds = dataSeries->valuesBounds(variable->range().m_TStart, variable->range().m_TEnd);
+        auto valuesBounds
+            = dataSeries->valuesBounds(variable->range().m_TStart, variable->range().m_TEnd);
         auto end = dataSeries->cend();
         if (valuesBounds.first != end && valuesBounds.second != end) {
             auto rangeValue = [](const auto &value) { return std::isnan(value) ? 0. : value; };
