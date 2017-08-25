@@ -17,51 +17,6 @@ QDateTime dateTime(int year, int month, int day, int hours, int minutes, int sec
     return QDateTime{{year, month, day}, {hours, minutes, seconds}, Qt::UTC};
 }
 
-/// Compares two vectors that can potentially contain NaN values
-bool compareVectors(const QVector<double> &v1, const QVector<double> &v2)
-{
-    if (v1.size() != v2.size()) {
-        return false;
-    }
-
-    auto result = true;
-    auto v2It = v2.cbegin();
-    for (auto v1It = v1.cbegin(), v1End = v1.cend(); v1It != v1End && result; ++v1It, ++v2It) {
-        auto v1Value = *v1It;
-        auto v2Value = *v2It;
-
-        // If v1 is NaN, v2 has to be NaN too
-        result = std::isnan(v1Value) ? std::isnan(v2Value) : (v1Value == v2Value);
-    }
-
-    return result;
-}
-
-bool compareVectors(const QVector<QVector<double> > &v1, const QVector<QVector<double> > &v2)
-{
-    if (v1.size() != v2.size()) {
-        return false;
-    }
-
-    auto result = true;
-    for (auto i = 0; i < v1.size() && result; ++i) {
-        result &= compareVectors(v1.at(i), v2.at(i));
-    }
-
-    return result;
-}
-
-QVector<QVector<double> > valuesData(const ArrayData<1> &arrayData)
-{
-    return QVector<QVector<double> >{arrayData.data()};
-}
-
-QVector<QVector<double> > valuesData(const ArrayData<2> &arrayData)
-{
-    return arrayData.data();
-}
-
-
 QString inputFilePath(const QString &inputFileName)
 {
     return QFileInfo{TESTS_RESOURCES_PATH, inputFileName}.absoluteFilePath();
@@ -106,10 +61,26 @@ struct ExpectedResults {
             QVERIFY(dataSeries->xAxisUnit() == m_XAxisUnit);
             QVERIFY(dataSeries->valuesUnit() == m_ValuesUnit);
 
-            // Checks values : as the vectors can potentially contain NaN values, we must use a
-            // custom vector comparison method
-            QVERIFY(compareVectors(dataSeries->xAxisData()->data(), m_XAxisData));
-            QVERIFY(compareVectors(valuesData(*dataSeries->valuesData()), m_ValuesData));
+            auto verifyRange = [dataSeries](const auto &expectedData, const auto &equalFun) {
+                QVERIFY(std::equal(dataSeries->cbegin(), dataSeries->cend(), expectedData.cbegin(),
+                                   expectedData.cend(),
+                                   [&equalFun](const auto &dataSeriesIt, const auto &expectedX) {
+                                       return equalFun(dataSeriesIt, expectedX);
+                                   }));
+            };
+
+            // Checks x-axis data
+            verifyRange(m_XAxisData, [](const auto &seriesIt, const auto &value) {
+                return seriesIt.x() == value;
+            });
+
+            // Checks values data of each component
+            for (auto i = 0; i < m_ValuesData.size(); ++i) {
+                verifyRange(m_ValuesData.at(i), [i](const auto &seriesIt, const auto &value) {
+                    auto itValue = seriesIt.value(i);
+                    return (std::isnan(itValue) && std::isnan(value)) || seriesIt.value(i) == value;
+                });
+            }
         }
         else {
             QVERIFY(results == nullptr);

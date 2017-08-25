@@ -69,8 +69,8 @@ public:
     double maxValue() const override { return m_ValuesIt->max(); }
 
 private:
-    ArrayData<1>::Iterator m_XIt;
-    typename ArrayData<Dim>::Iterator m_ValuesIt;
+    ArrayDataIterator m_XIt;
+    ArrayDataIterator m_ValuesIt;
 };
 } // namespace dataseries_detail
 

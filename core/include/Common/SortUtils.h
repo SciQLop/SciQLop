@@ -37,7 +37,23 @@ struct SortUtils {
     }
 
     /**
-     * Sorts a container according to indices passed in parameter
+     * Sorts a container according to indices passed in parameter. The number of data in the
+     * container must be a multiple of the number of indices used to sort the container.
+     *
+     * Example 1:
+     * container: {1, 2, 3, 4, 5, 6}
+     * sortPermutation: {1, 0}
+     *
+     * Values will be sorted three by three, and the result will be:
+     * {4, 5, 6, 1, 2, 3}
+     *
+     * Example 2:
+     * container: {1, 2, 3, 4, 5, 6}
+     * sortPermutation: {2, 0, 1}
+     *
+     * Values will be sorted two by two, and the result will be:
+     * {5, 6, 1, 2, 3, 4}
+     *
      * @param container the container sorted
      * @param sortPermutation the indices used to sort the container
      * @return the container sorted
@@ -45,18 +61,24 @@ struct SortUtils {
      * indices and its range is [0 ; vector.size()[ )
      */
     template <typename Container>
-    static Container sort(const Container &container, const std::vector<int> &sortPermutation)
+    static Container sort(const Container &container, int nbValues,
+                          const std::vector<int> &sortPermutation)
     {
-        if (container.size() != sortPermutation.size()) {
+        auto containerSize = container.size();
+        if (containerSize % nbValues != 0
+            || ((containerSize / nbValues) != sortPermutation.size())) {
             return Container{};
         }
 
         // Inits result
         auto sortedData = Container{};
-        sortedData.resize(container.size());
+        sortedData.reserve(containerSize);
 
-        std::transform(sortPermutation.cbegin(), sortPermutation.cend(), sortedData.begin(),
-                       [&container](int i) { return container.at(i); });
+        for (auto i = 0, componentIndex = 0, permutationIndex = 0; i < containerSize;
+             ++i, componentIndex = i % nbValues, permutationIndex = i / nbValues) {
+            auto insertIndex = sortPermutation.at(permutationIndex) * nbValues + componentIndex;
+            sortedData.append(container.at(insertIndex));
+        }
 
         return sortedData;
     }

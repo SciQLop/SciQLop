@@ -2,15 +2,55 @@
 #include <QObject>
 #include <QtTest>
 
-using DataContainer = QVector<QVector<double> >;
+using Container = QVector<QVector<double> >;
+using InputData = QPair<QVector<double>, int>;
+
+namespace {
+
+InputData flatten(const Container &container)
+{
+    if (container.isEmpty()) {
+        return {};
+    }
+
+    // We assume here that each component of the container have the same size
+    auto containerSize = container.size();
+    auto componentSize = container.first().size();
+
+    auto result = QVector<double>{};
+    result.reserve(componentSize * containerSize);
+
+    for (auto i = 0; i < componentSize; ++i) {
+        for (auto j = 0; j < containerSize; ++j) {
+            result.append(container.at(j).at(i));
+        }
+    }
+
+    return {result, containerSize};
+}
+
+void verifyArrayData(const ArrayData<2> &arrayData, const Container &expectedData)
+{
+    auto verifyComponent = [&arrayData](const auto &componentData, const auto &equalFun) {
+        QVERIFY(std::equal(arrayData.cbegin(), arrayData.cend(), componentData.cbegin(),
+                           componentData.cend(),
+                           [&equalFun](const auto &dataSeriesIt, const auto &expectedValue) {
+                               return equalFun(dataSeriesIt, expectedValue);
+                           }));
+    };
+
+    for (auto i = 0; i < expectedData.size(); ++i) {
+        verifyComponent(expectedData.at(i), [i](const auto &seriesIt, const auto &value) {
+            return seriesIt.at(i) == value;
+        });
+    }
+}
+
+} // namespace
 
 class TestTwoDimArrayData : public QObject {
     Q_OBJECT
 private slots:
-    /// Tests @sa ArrayData::data(int componentIndex)
-    void testDataByComponentIndex_data();
-    void testDataByComponentIndex();
-
     /// Tests @sa ArrayData ctor
     void testCtor_data();
     void testCtor();
@@ -32,192 +72,167 @@ private slots:
     void testSort();
 };
 
-void TestTwoDimArrayData::testDataByComponentIndex_data()
-{
-    // Test structure
-    QTest::addColumn<DataContainer>("inputData");       // array data's input
-    QTest::addColumn<int>("componentIndex");            // component index to test
-    QTest::addColumn<QVector<double> >("expectedData"); // expected data
-
-    // Test cases
-    auto inputData
-        = DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}};
-
-    QTest::newRow("validIndex1") << inputData << 0 << QVector<double>{1., 2., 3., 4., 5.};
-    QTest::newRow("validIndex2") << inputData << 1 << QVector<double>{6., 7., 8., 9., 10.};
-    QTest::newRow("validIndex3") << inputData << 2 << QVector<double>{11., 12., 13., 14., 15.};
-    QTest::newRow("invalidIndex1") << inputData << -1 << QVector<double>{};
-    QTest::newRow("invalidIndex2") << inputData << 3 << QVector<double>{};
-}
-
-void TestTwoDimArrayData::testDataByComponentIndex()
-{
-    QFETCH(DataContainer, inputData);
-    QFETCH(int, componentIndex);
-    QFETCH(QVector<double>, expectedData);
-
-    ArrayData<2> arrayData{inputData};
-    QVERIFY(arrayData.data(componentIndex) == expectedData);
-}
-
 void TestTwoDimArrayData::testCtor_data()
 {
     // Test structure
-    QTest::addColumn<DataContainer>("inputData");    // array data's input
-    QTest::addColumn<bool>("success");               // array data has been successfully constructed
-    QTest::addColumn<DataContainer>("expectedData"); // expected array data (when success)
+    QTest::addColumn<InputData>("inputData");    // array data's input
+    QTest::addColumn<bool>("success");           // array data has been successfully constructed
+    QTest::addColumn<Container>("expectedData"); // expected array data (when success)
 
     // Test cases
-    QTest::newRow("validInput")
-        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}}
-        << true
-        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}};
-    QTest::newRow("malformedInput (components of the array data haven't the same size")
-        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8.}, {11., 12.}} << true
-        << DataContainer{{}, {}, {}};
-    QTest::newRow("invalidInput (less than tow components") << DataContainer{{1., 2., 3., 4., 5.}}
-                                                            << false << DataContainer{{}, {}, {}};
+    QTest::newRow("validInput") << flatten(Container{{1., 2., 3., 4., 5.},
+                                                     {6., 7., 8., 9., 10.},
+                                                     {11., 12., 13., 14., 15.}})
+                                << true << Container{{1., 2., 3., 4., 5.},
+                                                     {6., 7., 8., 9., 10.},
+                                                     {11., 12., 13., 14., 15.}};
+    QTest::newRow("invalidInput (invalid data size")
+        << InputData{{1., 2., 3., 4., 5., 6., 7.}, 3} << false << Container{{}, {}, {}};
+    QTest::newRow("invalidInput (less than two components")
+        << flatten(Container{{1., 2., 3., 4., 5.}}) << false << Container{{}, {}, {}};
 }
 
 void TestTwoDimArrayData::testCtor()
 {
-    QFETCH(DataContainer, inputData);
+    QFETCH(InputData, inputData);
     QFETCH(bool, success);
 
     if (success) {
-        QFETCH(DataContainer, expectedData);
+        QFETCH(Container, expectedData);
 
-        ArrayData<2> arrayData{inputData};
-
-        for (auto i = 0; i < expectedData.size(); ++i) {
-            QVERIFY(arrayData.data(i) == expectedData.at(i));
-        }
+        ArrayData<2> arrayData{inputData.first, inputData.second};
+        verifyArrayData(arrayData, expectedData);
     }
     else {
-        QVERIFY_EXCEPTION_THROWN(ArrayData<2> arrayData{inputData}, std::invalid_argument);
+        QVERIFY_EXCEPTION_THROWN(ArrayData<2>(inputData.first, inputData.second),
+                                 std::invalid_argument);
     }
 }
 
 void TestTwoDimArrayData::testAdd_data()
 {
     // Test structure
-    QTest::addColumn<DataContainer>("inputData");    // array's data input
-    QTest::addColumn<DataContainer>("otherData");    // array data's input to merge with
-    QTest::addColumn<bool>("prepend");               // prepend or append merge
-    QTest::addColumn<DataContainer>("expectedData"); // expected data after merge
+    QTest::addColumn<InputData>("inputData");    // array's data input
+    QTest::addColumn<InputData>("otherData");    // array data's input to merge with
+    QTest::addColumn<bool>("prepend");           // prepend or append merge
+    QTest::addColumn<Container>("expectedData"); // expected data after merge
 
     // Test cases
-    auto inputData
-        = DataContainer{{1., 2., 3., 4., 5.}, {11., 12., 13., 14., 15.}, {21., 22., 23., 24., 25.}};
+    auto inputData = flatten(
+        Container{{1., 2., 3., 4., 5.}, {11., 12., 13., 14., 15.}, {21., 22., 23., 24., 25.}});
 
-    auto vectorContainer = DataContainer{{6., 7., 8.}, {16., 17., 18.}, {26., 27., 28}};
-    auto tensorContainer = DataContainer{{6., 7., 8.},    {16., 17., 18.}, {26., 27., 28},
-                                         {36., 37., 38.}, {46., 47., 48.}, {56., 57., 58}};
+    auto vectorContainer = flatten(Container{{6., 7., 8.}, {16., 17., 18.}, {26., 27., 28}});
+    auto tensorContainer = flatten(Container{{6., 7., 8.},
+                                             {16., 17., 18.},
+                                             {26., 27., 28},
+                                             {36., 37., 38.},
+                                             {46., 47., 48.},
+                                             {56., 57., 58}});
 
     QTest::newRow("appendMerge") << inputData << vectorContainer << false
-                                 << DataContainer{{1., 2., 3., 4., 5., 6., 7., 8.},
-                                                  {11., 12., 13., 14., 15., 16., 17., 18.},
-                                                  {21., 22., 23., 24., 25., 26., 27., 28}};
+                                 << Container{{1., 2., 3., 4., 5., 6., 7., 8.},
+                                              {11., 12., 13., 14., 15., 16., 17., 18.},
+                                              {21., 22., 23., 24., 25., 26., 27., 28}};
     QTest::newRow("prependMerge") << inputData << vectorContainer << true
-                                  << DataContainer{{6., 7., 8., 1., 2., 3., 4., 5.},
-                                                   {16., 17., 18., 11., 12., 13., 14., 15.},
-                                                   {26., 27., 28, 21., 22., 23., 24., 25.}};
-    QTest::newRow("invalidMerge") << inputData << tensorContainer << false << inputData;
+                                  << Container{{6., 7., 8., 1., 2., 3., 4., 5.},
+                                               {16., 17., 18., 11., 12., 13., 14., 15.},
+                                               {26., 27., 28, 21., 22., 23., 24., 25.}};
+    QTest::newRow("invalidMerge") << inputData << tensorContainer << false
+                                  << Container{{1., 2., 3., 4., 5.},
+                                               {11., 12., 13., 14., 15.},
+                                               {21., 22., 23., 24., 25.}};
 }
 
 void TestTwoDimArrayData::testAdd()
 {
-    QFETCH(DataContainer, inputData);
-    QFETCH(DataContainer, otherData);
+    QFETCH(InputData, inputData);
+    QFETCH(InputData, otherData);
     QFETCH(bool, prepend);
-    QFETCH(DataContainer, expectedData);
+    QFETCH(Container, expectedData);
 
-    ArrayData<2> arrayData{inputData};
-    ArrayData<2> other{otherData};
+    ArrayData<2> arrayData{inputData.first, inputData.second};
+    ArrayData<2> other{otherData.first, otherData.second};
 
     arrayData.add(other, prepend);
 
-    for (auto i = 0; i < expectedData.size(); ++i) {
-        QVERIFY(arrayData.data(i) == expectedData.at(i));
-    }
+    verifyArrayData(arrayData, expectedData);
 }
 
 void TestTwoDimArrayData::testClear_data()
 {
     // Test structure
-    QTest::addColumn<DataContainer>("inputData"); // array data's input
+    QTest::addColumn<InputData>("inputData"); // array data's input
 
     // Test cases
-    QTest::newRow("data1") << DataContainer{
-        {1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}};
+    QTest::newRow("data1") << flatten(
+        Container{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}});
 }
 
 void TestTwoDimArrayData::testClear()
 {
-    QFETCH(DataContainer, inputData);
+    QFETCH(InputData, inputData);
 
-    ArrayData<2> arrayData{inputData};
+    ArrayData<2> arrayData{inputData.first, inputData.second};
     arrayData.clear();
 
-    for (auto i = 0; i < inputData.size(); ++i) {
-        QVERIFY(arrayData.data(i) == QVector<double>{});
-    }
+    auto emptyData = Container(inputData.second, QVector<double>{});
+    verifyArrayData(arrayData, emptyData);
 }
 
 void TestTwoDimArrayData::testSize_data()
 {
     // Test structure
-    QTest::addColumn<QVector<QVector<double> > >("inputData"); // array data's input
-    QTest::addColumn<int>("expectedSize");                     // expected array data size
+    QTest::addColumn<InputData>("inputData"); // array data's input
+    QTest::addColumn<int>("expectedSize");    // expected array data size
 
     // Test cases
-    QTest::newRow("data1") << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}} << 5;
-    QTest::newRow("data2") << DataContainer{{1., 2., 3., 4., 5.},
-                                            {6., 7., 8., 9., 10.},
-                                            {11., 12., 13., 14., 15.}}
+    QTest::newRow("data1") << flatten(Container{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}}) << 5;
+    QTest::newRow("data2") << flatten(Container{{1., 2., 3., 4., 5.},
+                                                {6., 7., 8., 9., 10.},
+                                                {11., 12., 13., 14., 15.}})
                            << 5;
 }
 
 void TestTwoDimArrayData::testSize()
 {
-    QFETCH(DataContainer, inputData);
+    QFETCH(InputData, inputData);
     QFETCH(int, expectedSize);
 
-    ArrayData<2> arrayData{inputData};
+    ArrayData<2> arrayData{inputData.first, inputData.second};
     QVERIFY(arrayData.size() == expectedSize);
 }
 
 void TestTwoDimArrayData::testSort_data()
 {
     // Test structure
-    QTest::addColumn<DataContainer>("inputData");           // array data's input
+    QTest::addColumn<InputData>("inputData");               // array data's input
     QTest::addColumn<std::vector<int> >("sortPermutation"); // permutation used to sort data
-    QTest::addColumn<DataContainer>("expectedData");        // expected data after sorting
+    QTest::addColumn<Container>("expectedData");            // expected data after sorting
 
     // Test cases
     QTest::newRow("data1")
-        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}}
+        << flatten(
+               Container{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}})
         << std::vector<int>{0, 2, 3, 1, 4}
-        << DataContainer{{1., 3., 4., 2., 5.}, {6., 8., 9., 7., 10.}, {11., 13., 14., 12., 15.}};
+        << Container{{1., 3., 4., 2., 5.}, {6., 8., 9., 7., 10.}, {11., 13., 14., 12., 15.}};
     QTest::newRow("data2")
-        << DataContainer{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}}
+        << flatten(
+               Container{{1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.}, {11., 12., 13., 14., 15.}})
         << std::vector<int>{2, 4, 3, 0, 1}
-        << DataContainer{{3., 5., 4., 1., 2.}, {8., 10., 9., 6., 7.}, {13., 15., 14., 11., 12.}};
+        << Container{{3., 5., 4., 1., 2.}, {8., 10., 9., 6., 7.}, {13., 15., 14., 11., 12.}};
 }
 
 void TestTwoDimArrayData::testSort()
 {
-    QFETCH(DataContainer, inputData);
+    QFETCH(InputData, inputData);
     QFETCH(std::vector<int>, sortPermutation);
-    QFETCH(DataContainer, expectedData);
+    QFETCH(Container, expectedData);
 
-    ArrayData<2> arrayData{inputData};
+    ArrayData<2> arrayData{inputData.first, inputData.second};
     auto sortedArrayData = arrayData.sort(sortPermutation);
     QVERIFY(sortedArrayData != nullptr);
 
-    for (auto i = 0; i < expectedData.size(); ++i) {
-        QVERIFY(sortedArrayData->data(i) == expectedData.at(i));
-    }
+    verifyArrayData(*sortedArrayData, expectedData);
 }
 
 QTEST_MAIN(TestTwoDimArrayData)

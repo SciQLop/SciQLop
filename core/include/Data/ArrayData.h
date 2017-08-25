@@ -1,6 +1,7 @@
 #ifndef SCIQLOP_ARRAYDATA_H
 #define SCIQLOP_ARRAYDATA_H
 
+#include "Data/ArrayDataIterator.h"
 #include <Common/SortUtils.h>
 
 #include <QReadLocker>
@@ -12,35 +13,93 @@
 template <int Dim>
 class ArrayData;
 
-using DataContainer = QVector<QVector<double> >;
+using DataContainer = QVector<double>;
 
 namespace arraydata_detail {
 
 /// Struct used to sort ArrayData
 template <int Dim>
 struct Sort {
-    static std::shared_ptr<ArrayData<Dim> > sort(const DataContainer &data,
+    static std::shared_ptr<ArrayData<Dim> > sort(const DataContainer &data, int nbComponents,
                                                  const std::vector<int> &sortPermutation)
     {
-        auto nbComponents = data.size();
-        auto sortedData = DataContainer(nbComponents);
-
-        for (auto i = 0; i < nbComponents; ++i) {
-            sortedData[i] = SortUtils::sort(data.at(i), sortPermutation);
-        }
-
-        return std::make_shared<ArrayData<Dim> >(std::move(sortedData));
+        return std::make_shared<ArrayData<Dim> >(
+            SortUtils::sort(data, nbComponents, sortPermutation), nbComponents);
     }
 };
 
 /// Specialization for uni-dimensional ArrayData
 template <>
 struct Sort<1> {
-    static std::shared_ptr<ArrayData<1> > sort(const DataContainer &data,
+    static std::shared_ptr<ArrayData<1> > sort(const DataContainer &data, int nbComponents,
                                                const std::vector<int> &sortPermutation)
     {
-        return std::make_shared<ArrayData<1> >(SortUtils::sort(data.at(0), sortPermutation));
+        Q_UNUSED(nbComponents)
+        return std::make_shared<ArrayData<1> >(SortUtils::sort(data, 1, sortPermutation));
     }
+};
+
+template <int Dim>
+class IteratorValue : public ArrayDataIteratorValue::Impl {
+public:
+    explicit IteratorValue(const DataContainer &container, int nbComponents, bool begin)
+            : m_It{begin ? container.cbegin() : container.cend()}, m_NbComponents{nbComponents}
+    {
+    }
+
+    IteratorValue(const IteratorValue &other) = default;
+
+    std::unique_ptr<ArrayDataIteratorValue::Impl> clone() const override
+    {
+        return std::make_unique<IteratorValue<Dim> >(*this);
+    }
+
+    bool equals(const ArrayDataIteratorValue::Impl &other) const override try {
+        const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
+        return std::tie(m_It, m_NbComponents) == std::tie(otherImpl.m_It, otherImpl.m_NbComponents);
+    }
+    catch (const std::bad_cast &) {
+        return false;
+    }
+
+    void next() override { std::advance(m_It, m_NbComponents); }
+    void prev() override { std::advance(m_It, -m_NbComponents); }
+
+    double at(int componentIndex) const override { return *(m_It + componentIndex); }
+    double first() const override { return *m_It; }
+    double min() const override
+    {
+        auto values = this->values();
+        auto end = values.cend();
+        auto it = std::min_element(values.cbegin(), end, [](const auto &v1, const auto &v2) {
+            return SortUtils::minCompareWithNaN(v1, v2);
+        });
+
+        return it != end ? *it : std::numeric_limits<double>::quiet_NaN();
+    }
+    double max() const override
+    {
+        auto values = this->values();
+        auto end = values.cend();
+        auto it = std::max_element(values.cbegin(), end, [](const auto &v1, const auto &v2) {
+            return SortUtils::maxCompareWithNaN(v1, v2);
+        });
+        return it != end ? *it : std::numeric_limits<double>::quiet_NaN();
+    }
+
+private:
+    std::vector<double> values() const
+    {
+        auto result = std::vector<double>{};
+        for (auto i = 0; i < m_NbComponents; ++i) {
+            result.push_back(*(m_It + i));
+        }
+
+        return result;
+    }
+
+    DataContainer::const_iterator m_It;
+    int m_NbComponents;
 };
 
 } // namespace arraydata_detail
@@ -58,100 +117,6 @@ struct Sort<1> {
 template <int Dim>
 class ArrayData {
 public:
-    class IteratorValue {
-    public:
-        explicit IteratorValue(const DataContainer &container, bool begin) : m_Its{}
-        {
-            for (auto i = 0; i < container.size(); ++i) {
-                m_Its.push_back(begin ? container.at(i).cbegin() : container.at(i).cend());
-            }
-        }
-
-        double at(int index) const { return *m_Its.at(index); }
-        double first() const { return *m_Its.front(); }
-
-        /// @return the min value among all components
-        double min() const
-        {
-            auto end = m_Its.cend();
-            auto it = std::min_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
-                return SortUtils::minCompareWithNaN(*it1, *it2);
-            });
-            return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
-        }
-
-        /// @return the max value among all components
-        double max() const
-        {
-            auto end = m_Its.cend();
-            auto it = std::max_element(m_Its.cbegin(), end, [](const auto &it1, const auto &it2) {
-                return SortUtils::maxCompareWithNaN(*it1, *it2);
-            });
-            return it != end ? **it : std::numeric_limits<double>::quiet_NaN();
-        }
-
-        void next()
-        {
-            for (auto &it : m_Its) {
-                ++it;
-            }
-        }
-
-        void prev()
-        {
-            for (auto &it : m_Its) {
-                --it;
-            }
-        }
-
-        bool operator==(const IteratorValue &other) const { return m_Its == other.m_Its; }
-
-    private:
-        std::vector<DataContainer::value_type::const_iterator> m_Its;
-    };
-
-    class Iterator {
-    public:
-        using iterator_category = std::forward_iterator_tag;
-        using value_type = const IteratorValue;
-        using difference_type = std::ptrdiff_t;
-        using pointer = value_type *;
-        using reference = value_type &;
-
-        Iterator(const DataContainer &container, bool begin) : m_CurrentValue{container, begin} {}
-
-        virtual ~Iterator() noexcept = default;
-        Iterator(const Iterator &) = default;
-        Iterator(Iterator &&) = default;
-        Iterator &operator=(const Iterator &) = default;
-        Iterator &operator=(Iterator &&) = default;
-
-        Iterator &operator++()
-        {
-            m_CurrentValue.next();
-            return *this;
-        }
-
-        Iterator &operator--()
-        {
-            m_CurrentValue.prev();
-            return *this;
-        }
-
-        pointer operator->() const { return &m_CurrentValue; }
-        reference operator*() const { return m_CurrentValue; }
-
-        bool operator==(const Iterator &other) const
-        {
-            return m_CurrentValue == other.m_CurrentValue;
-        }
-
-        bool operator!=(const Iterator &other) const { return !(*this == other); }
-
-    private:
-        IteratorValue m_CurrentValue;
-    };
-
     // ///// //
     // Ctors //
     // ///// //
@@ -161,37 +126,34 @@ public:
      * @param data the data the ArrayData will hold
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    explicit ArrayData(QVector<double> data) : m_Data{1, QVector<double>{}}
+    explicit ArrayData(DataContainer data) : m_Data{std::move(data)}, m_NbComponents{1}
     {
-        m_Data[0] = std::move(data);
     }
 
     /**
-     * Ctor for a two-dimensional ArrayData. The number of components (number of vectors) must be
-     * greater than 2 and each component must have the same number of values
+     * Ctor for a two-dimensional ArrayData. The number of components (number of lines) must be
+     * greater than 2 and must be a divisor of the total number of data in the vector
      * @param data the data the ArrayData will hold
-     * @throws std::invalid_argument if the number of components is less than 2
-     * @remarks if the number of values is not the same for each component, no value is set
+     * @param nbComponents the number of components
+     * @throws std::invalid_argument if the number of components is less than 2 or is not a divisor
+     * of the size of the data
      */
     template <int D = Dim, typename = std::enable_if_t<D == 2> >
-    explicit ArrayData(DataContainer data)
+    explicit ArrayData(DataContainer data, int nbComponents)
+            : m_Data{std::move(data)}, m_NbComponents{nbComponents}
     {
-        auto nbComponents = data.size();
         if (nbComponents < 2) {
             throw std::invalid_argument{
-                QString{"A multidimensional ArrayData must have at least 2 components (found: %1"}
-                    .arg(data.size())
+                QString{"A multidimensional ArrayData must have at least 2 components (found: %1)"}
+                    .arg(nbComponents)
                     .toStdString()};
         }
 
-        auto nbValues = data.front().size();
-        if (std::all_of(data.cbegin(), data.cend(), [nbValues](const auto &component) {
-                return component.size() == nbValues;
-            })) {
-            m_Data = std::move(data);
-        }
-        else {
-            m_Data = DataContainer{nbComponents, QVector<double>{}};
+        if (m_Data.size() % m_NbComponents != 0) {
+            throw std::invalid_argument{QString{
+                "The number of components (%1) is inconsistent with the total number of data (%2)"}
+                                            .arg(m_Data.size(), nbComponents)
+                                            .toStdString()};
         }
     }
 
@@ -200,6 +162,7 @@ public:
     {
         QReadLocker otherLocker{&other.m_Lock};
         m_Data = other.m_Data;
+        m_NbComponents = other.m_NbComponents;
     }
 
     // /////////////// //
@@ -218,90 +181,74 @@ public:
         QWriteLocker locker{&m_Lock};
         QReadLocker otherLocker{&other.m_Lock};
 
-        auto nbComponents = m_Data.size();
-        if (nbComponents != other.m_Data.size()) {
+        if (m_NbComponents != other.componentCount()) {
             return;
         }
 
-        for (auto componentIndex = 0; componentIndex < nbComponents; ++componentIndex) {
-            if (prepend) {
-                const auto &otherData = other.data(componentIndex);
-                const auto otherDataSize = otherData.size();
-
-                auto &data = m_Data[componentIndex];
-                data.insert(data.begin(), otherDataSize, 0.);
-
-                for (auto i = 0; i < otherDataSize; ++i) {
-                    data.replace(i, otherData.at(i));
-                }
+        if (prepend) {
+            auto otherDataSize = other.m_Data.size();
+            m_Data.insert(m_Data.begin(), otherDataSize, 0.);
+            for (auto i = 0; i < otherDataSize; ++i) {
+                m_Data.replace(i, other.m_Data.at(i));
             }
-            else {
-                m_Data[componentIndex] += other.data(componentIndex);
-            }
+        }
+        else {
+            m_Data.append(other.m_Data);
         }
     }
 
     void clear()
     {
         QWriteLocker locker{&m_Lock};
-
-        auto nbComponents = m_Data.size();
-        for (auto i = 0; i < nbComponents; ++i) {
-            m_Data[i].clear();
-        }
+        m_Data.clear();
     }
 
-    int componentCount() const noexcept { return m_Data.size(); }
-
-    /**
-     * @return the data of a component
-     * @param componentIndex the index of the component to retrieve the data
-     * @return the component's data, empty vector if the index is invalid
-     */
-    QVector<double> data(int componentIndex) const noexcept
-    {
-        QReadLocker locker{&m_Lock};
-
-        return (componentIndex >= 0 && componentIndex < m_Data.size()) ? m_Data.at(componentIndex)
-                                                                       : QVector<double>{};
-    }
+    int componentCount() const noexcept { return m_NbComponents; }
 
     /// @return the size (i.e. number of values) of a single component
     /// @remarks in a case of a two-dimensional ArrayData, each component has the same size
     int size() const
     {
         QReadLocker locker{&m_Lock};
-        return m_Data[0].size();
+        return m_Data.size() / m_NbComponents;
     }
 
     std::shared_ptr<ArrayData<Dim> > sort(const std::vector<int> &sortPermutation)
     {
         QReadLocker locker{&m_Lock};
-        return arraydata_detail::Sort<Dim>::sort(m_Data, sortPermutation);
+        return arraydata_detail::Sort<Dim>::sort(m_Data, m_NbComponents, sortPermutation);
     }
 
     // ///////// //
     // Iterators //
     // ///////// //
 
-    Iterator cbegin() const { return Iterator{m_Data, true}; }
-    Iterator cend() const { return Iterator{m_Data, false}; }
+    ArrayDataIterator cbegin() const
+    {
+        return ArrayDataIterator{ArrayDataIteratorValue{
+            std::make_unique<arraydata_detail::IteratorValue<Dim> >(m_Data, m_NbComponents, true)}};
+    }
+    ArrayDataIterator cend() const
+    {
+        return ArrayDataIterator{
+            ArrayDataIteratorValue{std::make_unique<arraydata_detail::IteratorValue<Dim> >(
+                m_Data, m_NbComponents, false)}};
+    }
 
-    // ///////////// //
-    // 1-dim methods //
-    // ///////////// //
 
     /**
      * @return the data at a specified index
      * @remarks index must be a valid position
-     * @remarks this method is only available for a unidimensional ArrayData
      */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
     double at(int index) const noexcept
     {
         QReadLocker locker{&m_Lock};
-        return m_Data[0].at(index);
+        return m_Data.at(index);
     }
+
+    // ///////////// //
+    // 1-dim methods //
+    // ///////////// //
 
     /**
      * @return the data as a vector, as a const reference
@@ -311,37 +258,13 @@ public:
     const QVector<double> &cdata() const noexcept
     {
         QReadLocker locker{&m_Lock};
-        return m_Data.at(0);
-    }
-
-    /**
-     * @return the data as a vector
-     * @remarks this method is only available for a unidimensional ArrayData
-     */
-    template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    QVector<double> data() const noexcept
-    {
-        QReadLocker locker{&m_Lock};
-        return m_Data[0];
-    }
-
-    // ///////////// //
-    // 2-dim methods //
-    // ///////////// //
-
-    /**
-     * @return the data
-     * @remarks this method is only available for a two-dimensional ArrayData
-     */
-    template <int D = Dim, typename = std::enable_if_t<D == 2> >
-    DataContainer data() const noexcept
-    {
-        QReadLocker locker{&m_Lock};
         return m_Data;
     }
 
 private:
     DataContainer m_Data;
+    /// Number of components (lines). Is always 1 in a 1-dim ArrayData
+    int m_NbComponents;
     mutable QReadWriteLock m_Lock;
 };
 
