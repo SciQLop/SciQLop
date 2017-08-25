@@ -8,6 +8,12 @@ SqpSettingsGeneralWidget::SqpSettingsGeneralWidget(QWidget *parent)
         : QWidget{parent}, ui{new Ui::SqpSettingsGeneralWidget}
 {
     ui->setupUi(this);
+
+    // Value limits
+    ui->toleranceInitSpinBox->setMinimum(0.);
+    ui->toleranceInitSpinBox->setMaximum(std::numeric_limits<double>::max());
+    ui->toleranceUpdateSpinBox->setMinimum(0.);
+    ui->toleranceUpdateSpinBox->setMaximum(std::numeric_limits<double>::max());
 }
 
 SqpSettingsGeneralWidget::~SqpSettingsGeneralWidget() noexcept
