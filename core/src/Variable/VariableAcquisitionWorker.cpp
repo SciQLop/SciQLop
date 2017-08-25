@@ -12,6 +12,8 @@
 #include <QReadWriteLock>
 #include <QThread>
 
+#include <cmath>
+
 Q_LOGGING_CATEGORY(LOG_VariableAcquisitionWorker, "VariableAcquisitionWorker")
 
 struct VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate {
@@ -106,15 +108,45 @@ void VariableAcquisitionWorker::abortProgressRequested(QUuid vIdentifier)
 void VariableAcquisitionWorker::onVariableRetrieveDataInProgress(QUuid acqIdentifier,
                                                                  double progress)
 {
-    // TODO
+    impl->lockRead();
+    auto aIdToARit = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
+    if (aIdToARit != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
+        auto currentPartSize = (aIdToARit->second.m_Size != 0) ? 100 / aIdToARit->second.m_Size : 0;
+
+        auto currentPartProgress
+            = std::isnan(progress) ? 0.0 : (progress * currentPartSize) / 100.0;
+        auto currentAlreadyProgress = aIdToARit->second.m_Progression * currentPartSize;
+
+        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: progress :") << progress;
+        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress A:")
+                                                << aIdToARit->second.m_Progression
+                                                << aIdToARit->second.m_Size;
+        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress B:")
+                                                << currentPartSize;
+        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress C:")
+                                                << currentPartProgress;
+        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress D:")
+                                                << currentAlreadyProgress;
+        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress E:")
+                                                << currentAlreadyProgress + currentPartProgress
+                                                << "\n";
+
+        auto finalProgression = currentAlreadyProgress + currentPartProgress;
+        emit variableRequestInProgress(aIdToARit->second.m_vIdentifier, finalProgression);
+
+        if (finalProgression == 100.0) {
+            emit variableRequestInProgress(aIdToARit->second.m_vIdentifier, 0.0);
+        }
+    }
+    impl->unlock();
 }
 
 void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
                                                        std::shared_ptr<IDataSeries> dataSeries,
                                                        SqpRange dataRangeAcquired)
 {
-    qCDebug(LOG_VariableAcquisitionWorker()) << tr("onVariableDataAcquired on range ")
-                                             << acqIdentifier << dataRangeAcquired;
+    qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableDataAcquired on range ")
+                                            << acqIdentifier << dataRangeAcquired;
     impl->lockWrite();
     auto aIdToARit = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
     if (aIdToARit != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
@@ -137,11 +169,11 @@ void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
 
         // Decrement the counter of the request
         auto &acqRequest = aIdToARit->second;
-        acqRequest.m_Size = acqRequest.m_Size - 1;
+        acqRequest.m_Progression = acqRequest.m_Progression + 1;
 
         // if the counter is 0, we can return data then run the next request if it exists and
         // removed the finished request
-        if (acqRequest.m_Size == 0) {
+        if (acqRequest.m_Size == acqRequest.m_Progression) {
             // Return the data
             aIdToADPVit = impl->m_AcqIdentifierToAcqDataPacketVectorMap.find(acqIdentifier);
             if (aIdToADPVit != impl->m_AcqIdentifierToAcqDataPacketVectorMap.cend()) {
@@ -184,6 +216,23 @@ void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
     impl->unlock();
 }
 
+void VariableAcquisitionWorker::onExecuteRequest(QUuid acqIdentifier)
+{
+    qCDebug(LOG_VariableAcquisitionWorker()) << tr("onExecuteRequest") << QThread::currentThread();
+    impl->lockRead();
+    auto it = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
+    if (it != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
+        auto request = it->second;
+        impl->unlock();
+        emit variableRequestInProgress(request.m_vIdentifier, 0.1);
+        request.m_Provider->requestDataLoading(acqIdentifier, request.m_DataProviderParameters);
+    }
+    else {
+        impl->unlock();
+        // TODO log no acqIdentifier recognized
+    }
+}
+
 void VariableAcquisitionWorker::initialize()
 {
     qCDebug(LOG_VariableAcquisitionWorker()) << tr("VariableAcquisitionWorker init")
@@ -221,18 +270,18 @@ void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::removeVariable
     unlock();
 }
 
-void VariableAcquisitionWorker::onExecuteRequest(QUuid acqIdentifier)
-{
-    qCDebug(LOG_VariableAcquisitionWorker()) << tr("onExecuteRequest") << QThread::currentThread();
-    impl->lockRead();
-    auto it = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
-    if (it != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
-        auto request = it->second;
-        impl->unlock();
-        request.m_Provider->requestDataLoading(acqIdentifier, request.m_DataProviderParameters);
-    }
-    else {
-        impl->unlock();
-        // TODO log no acqIdentifier recognized
-    }
-}
+//void VariableAcquisitionWorker::onExecuteRequest(QUuid acqIdentifier)
+//{
+//    qCDebug(LOG_VariableAcquisitionWorker()) << tr("onExecuteRequest") << QThread::currentThread();
+//    impl->lockRead();
+//    auto it = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
+//    if (it != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
+//        auto request = it->second;
+//        impl->unlock();
+//        request.m_Provider->requestDataLoading(acqIdentifier, request.m_DataProviderParameters);
+//    }
+//    else {
+//        impl->unlock();
+//        // TODO log no acqIdentifier recognized
+//    }
+//}

@@ -36,7 +36,8 @@ public slots:
 
 signals:
     void replyFinished(QNetworkReply *reply, QUuid identifier);
-    void replyDownloadProgress(QUuid identifier, double progress);
+    void replyDownloadProgress(QUuid identifier, const QNetworkRequest &networkRequest,
+                               double progress);
 
 private:
     void waitForFinish();

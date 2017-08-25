@@ -42,7 +42,7 @@ void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid
     impl->m_NetworkReplyToVariableId[reply] = identifier;
     impl->unlock();
 
-    auto onReplyFinished = [reply, this, identifier, callback]() {
+    auto onReplyFinished = [request, reply, this, identifier, callback]() {
 
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished")
                                          << QThread::currentThread() << reply;
@@ -57,14 +57,14 @@ void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid
             callback(reply, identifier);
             reply->deleteLater();
 
-            emit this->replyDownloadProgress(identifier, 0);
+            emit this->replyDownloadProgress(identifier, request, 0);
         }
 
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished END")
                                          << QThread::currentThread() << reply;
     };
 
-    auto onReplyProgress = [reply, this](qint64 bytesRead, qint64 totalBytes) {
+    auto onReplyProgress = [reply, request, this](qint64 bytesRead, qint64 totalBytes) {
 
         double progress = (bytesRead * 100.0) / totalBytes;
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress") << progress
@@ -73,7 +73,7 @@ void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid
         auto it = impl->m_NetworkReplyToVariableId.find(reply);
         impl->unlock();
         if (it != impl->m_NetworkReplyToVariableId.cend()) {
-            emit this->replyDownloadProgress(it->second, progress);
+            emit this->replyDownloadProgress(it->second, request, progress);
         }
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress END")
                                          << QThread::currentThread() << reply;

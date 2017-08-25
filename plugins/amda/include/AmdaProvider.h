@@ -7,10 +7,12 @@
 
 #include <QLoggingCategory>
 
+#include <map>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_AmdaProvider)
 
 class QNetworkReply;
+class QNetworkRequest;
 
 /**
  * @brief The AmdaProvider class is an example of how a data provider can generate data
@@ -24,8 +26,17 @@ public:
 
     void requestDataAborting(QUuid acqIdentifier) override;
 
+private slots:
+    void onReplyDownloadProgress(QUuid, const QNetworkRequest &, double progress);
+
 private:
     void retrieveData(QUuid token, const SqpRange &dateTime, const QVariantHash &data);
+
+    void updateRequestProgress(QUuid acqIdentifier, std::shared_ptr<QNetworkRequest> request,
+                               double progress);
+
+    std::map<QUuid, std::map<std::shared_ptr<QNetworkRequest>, double> >
+        m_AcqIdToRequestProgressMap;
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H

@@ -322,6 +322,8 @@ void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &range
 
 void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, double progress)
 {
+    qCInfo(LOG_VariableController()) << "TORM: ariableController::onVariableRetrieveDataInProgress"
+                                     << QThread::currentThread()->objectName() << progress;
     if (auto var = impl->findVariable(identifier)) {
         impl->m_VariableModel->setDataProgress(var, progress);
     }
