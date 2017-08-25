@@ -218,7 +218,7 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
     }
 
     if (!graphMenu.isEmpty()) {
-        graphMenu.exec(mapToGlobal(pos));
+        graphMenu.exec(QCursor::pos());
     }
 }
 

@@ -94,7 +94,7 @@ void DataSourceWidget::onTreeMenuRequested(const QPoint &pos) noexcept
         treeMenu.addActions(selectedItem->actions());
 
         if (!treeMenu.isEmpty()) {
-            treeMenu.exec(mapToGlobal(pos));
+            treeMenu.exec(QCursor::pos());
         }
     }
 }
