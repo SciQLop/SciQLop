@@ -153,35 +153,21 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
 
     if (role == Qt::DisplayRole) {
         if (auto variable = impl->m_Variables.at(index.row()).get()) {
-            /// Lambda function that builds the variant to return for a time value
-            /// @param getValueFun function used to get for a data series the iterator on the entry
-            /// that contains the time value to display
-            auto dateTimeVariant = [variable](const auto &getValueFun) {
-                if (auto dataSeries = variable->dataSeries()) {
-                    dataSeries->lockRead();
-                    auto it = getValueFun(*dataSeries);
-                    auto resVariant = (it != dataSeries->cend())
-                                          ? DateUtils::dateTime(it->x()).toString(DATETIME_FORMAT)
-                                          : QVariant{};
-                    dataSeries->unlock();
-                    return resVariant;
-                }
-                else {
-                    return QVariant{};
-                }
-            };
-
             switch (index.column()) {
                 case NAME_COLUMN:
                     return variable->name();
-                case TSTART_COLUMN:
-                    // Shows the min value of the data series above the range tstart
-                    return dateTimeVariant([min = variable->range().m_TStart](
-                        const auto &dataSeries) { return dataSeries.minXAxisData(min); });
-                case TEND_COLUMN:
-                    // Shows the max value of the data series under the range tend
-                    return dateTimeVariant([max = variable->range().m_TEnd](
-                        const auto &dataSeries) { return dataSeries.maxXAxisData(max); });
+                case TSTART_COLUMN: {
+                    auto range = variable->realRange();
+                    return range != INVALID_RANGE
+                               ? DateUtils::dateTime(range.m_TStart).toString(DATETIME_FORMAT)
+                               : QVariant{};
+                }
+                case TEND_COLUMN: {
+                    auto range = variable->realRange();
+                    return range != INVALID_RANGE
+                               ? DateUtils::dateTime(range.m_TEnd).toString(DATETIME_FORMAT)
+                               : QVariant{};
+                }
                 case UNIT_COLUMN:
                     return variable->metadata().value(QStringLiteral("units"));
                 case MISSION_COLUMN:

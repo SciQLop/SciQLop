@@ -26,7 +26,20 @@ struct SqpRange {
     {
         return (m_TEnd >= dateTime.m_TStart && m_TStart <= dateTime.m_TEnd);
     }
+
+    bool operator==(const SqpRange &other) const
+    {
+        auto equals = [](const auto &v1, const auto &v2) {
+            return (std::isnan(v1) && std::isnan(v2)) || v1 == v2;
+        };
+
+        return equals(m_TStart, other.m_TStart) && equals(m_TEnd, other.m_TEnd);
+    }
+    bool operator!=(const SqpRange &other) const { return !(*this == other); }
 };
+
+const auto INVALID_RANGE
+    = SqpRange{std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
 
 inline QDebug operator<<(QDebug d, SqpRange obj)
 {
