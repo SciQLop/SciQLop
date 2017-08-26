@@ -22,6 +22,7 @@ core_sources = [
   'src/Common/DateUtils.cpp',
   'src/Data/ScalarSeries.cpp',
   'src/Data/DataSeriesIterator.cpp',
+  'src/Data/ArrayDataIterator.cpp',
   'src/Data/VectorSeries.cpp',
   'src/DataSource/DataSourceController.cpp',
   'src/DataSource/DataSourceItem.cpp',
