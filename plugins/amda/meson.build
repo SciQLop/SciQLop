@@ -18,7 +18,7 @@ amdaplugin_resources_files = [
 
 amdaplugin_inc = include_directories(['include', '../../plugin/include'])
 
-gen = generator(moc,
+moc_gen = generator(moc,
                 output  : 'moc_@BASENAME@.cpp',
                 arguments : ['@INPUT@',
                  '-DPLUGIN_JSON_FILE_PATH="'+meson.source_root()+'/plugins/amda/resources/amda.json"',
@@ -26,15 +26,24 @@ gen = generator(moc,
                  '-I', meson.current_source_dir()+'/../../plugin/include',
                  '-o', '@OUTPUT@'])
 
-amdaplugin_moc_plugin_files = gen.process(amdaplugin_moc_headers)
+rcc_gen = generator(rcc,
+                output  : 'qrc_@BASENAME@.cpp',
+                arguments : ['--name=@BASENAME@"',
+                 '--output',
+                 '@OUTPUT@',
+                 '@INPUT@'])
+
+amdaplugin_moc_plugin_files = moc_gen.process(amdaplugin_moc_headers)
+
+amdaplugin_rcc_plugin_files = rcc_gen.process(amdaplugin_resources_files)
 
 amdaplugin_moc_files = qt5.preprocess(
-                               ui_files : amdaplugin_ui_files,
-                               qresources : amdaplugin_resources_files)
+                               ui_files : amdaplugin_ui_files)
 
 sciqlop_amdaplugin = library('amdaplugin',
                        amdaplugin_sources,
                        amdaplugin_moc_files,
+                       amdaplugin_rcc_plugin_files,
                        amdaplugin_moc_plugin_files,
                        cpp_args : '-DAMDA_LIB',
                        link_with : [sciqlop_core, sciqlop_gui],
