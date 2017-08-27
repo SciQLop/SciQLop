@@ -34,11 +34,8 @@ Q_LOGGING_CATEGORY(LOG_Main, "Main")
 
 namespace {
 
-/// Name of the directory containing the plugins
-
-#if _WIN32 || _WIN64
 const auto PLUGIN_DIRECTORY_NAME = QStringLiteral("plugins");
-#endif
+
 
 } // namespace
 
@@ -52,28 +49,32 @@ int main(int argc, char *argv[])
     w.show();
 
     // Loads plugins
-    auto pluginDir = QDir{sqpApp->applicationDirPath()};
+    auto pluginDir = QDir{a.applicationDirPath()};
+    auto pluginLookupPath = {
+        a.applicationDirPath(),
+        a.applicationDirPath() + "/" + PLUGIN_DIRECTORY_NAME,
+        a.applicationDirPath() + "/../lib64/SciQlop",
+        a.applicationDirPath() + "/../lib64/sciqlop",
+        a.applicationDirPath() + "/../lib/SciQlop",
+        a.applicationDirPath() + "/../lib/sciqlop",
+        a.applicationDirPath() + "/../plugins",
+    };
+
 #if _WIN32 || _WIN64
     pluginDir.mkdir(PLUGIN_DIRECTORY_NAME);
     pluginDir.cd(PLUGIN_DIRECTORY_NAME);
 #endif
 
-
-#if __unix || __APPLE
-#if __x86_64__ || __ppc64__
-    if (!pluginDir.cd("../lib64/SciQlop")) {
-        pluginDir.cd("../lib64/sciqlop");
-    }
-#else
-    if (!pluginDir.cd("../lib/SciQlop")) {
-        pluginDir.cd("../lib/sciqlop");
-    }
-#endif
-#endif
-    qCDebug(LOG_Main()) << QObject::tr("Plugin directory: %1").arg(pluginDir.absolutePath());
-
     PluginManager pluginManager{};
-    pluginManager.loadPlugins(pluginDir);
+
+    for (auto &&path : pluginLookupPath) {
+        QDir directory{path};
+        if (directory.exists()) {
+            qCDebug(LOG_Main())
+                << QObject::tr("Plugin directory: %1").arg(directory.absolutePath());
+            pluginManager.loadPlugins(directory);
+        }
+    }
 
     return a.exec();
 }

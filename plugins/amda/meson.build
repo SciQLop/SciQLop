@@ -37,6 +37,9 @@ amdaplugin_moc_plugin_files = moc_gen.process(amdaplugin_moc_headers)
 
 amdaplugin_rcc_plugin_files = rcc_gen.process(amdaplugin_resources_files)
 
+#amdaplugin_rcc_plugin_files = qt5.preprocess(
+#                               qresources : amdaplugin_resources_files)
+
 amdaplugin_moc_files = qt5.preprocess(
                                ui_files : amdaplugin_ui_files)
 
@@ -45,7 +48,7 @@ sciqlop_amdaplugin = library('amdaplugin',
                        amdaplugin_moc_files,
                        amdaplugin_rcc_plugin_files,
                        amdaplugin_moc_plugin_files,
-                       cpp_args : '-DAMDA_LIB',
+                       cpp_args : ['-DAMDA_LIB','-DQT_PLUGIN'],
                        link_with : [sciqlop_core, sciqlop_gui],
                        include_directories : [amdaplugin_inc, core_inc, gui_inc],
                        dependencies : [qt5core, qt5gui, qt5widgets, qt5network],
