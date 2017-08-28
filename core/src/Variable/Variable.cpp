@@ -12,7 +12,11 @@ Q_LOGGING_CATEGORY(LOG_Variable, "Variable")
 struct Variable::VariablePrivate {
     explicit VariablePrivate(const QString &name, const SqpRange &dateTime,
                              const QVariantHash &metadata)
-            : m_Name{name}, m_Range{dateTime}, m_Metadata{metadata}, m_DataSeries{nullptr}
+            : m_Name{name},
+              m_Range{dateTime},
+              m_Metadata{metadata},
+              m_DataSeries{nullptr},
+              m_RealRange{INVALID_RANGE}
     {
     }
 
@@ -20,12 +24,32 @@ struct Variable::VariablePrivate {
     void lockWrite() { m_Lock.lockForWrite(); }
     void unlock() { m_Lock.unlock(); }
 
+    /// Updates real range according to current variable range and data series
+    void updateRealRange()
+    {
+        if (m_DataSeries) {
+            m_DataSeries->lockRead();
+            auto end = m_DataSeries->cend();
+            auto minXAxisIt = m_DataSeries->minXAxisData(m_Range.m_TStart);
+            auto maxXAxisIt = m_DataSeries->maxXAxisData(m_Range.m_TEnd);
+
+            m_RealRange = (minXAxisIt != end && maxXAxisIt != end)
+                              ? SqpRange{minXAxisIt->x(), maxXAxisIt->x()}
+                              : INVALID_RANGE;
+            m_DataSeries->unlock();
+        }
+        else {
+            m_RealRange = INVALID_RANGE;
+        }
+    }
+
     QString m_Name;
 
     SqpRange m_Range;
     SqpRange m_CacheRange;
     QVariantHash m_Metadata;
     std::shared_ptr<IDataSeries> m_DataSeries;
+    SqpRange m_RealRange;
 
     QReadWriteLock m_Lock;
 };
@@ -55,6 +79,7 @@ void Variable::setRange(const SqpRange &range) noexcept
 {
     impl->lockWrite();
     impl->m_Range = range;
+    impl->updateRealRange();
     impl->unlock();
 }
 
@@ -73,6 +98,11 @@ void Variable::setCacheRange(const SqpRange &cacheRange) noexcept
     impl->unlock();
 }
 
+SqpRange Variable::realRange() const noexcept
+{
+    return impl->m_RealRange;
+}
+
 void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
     qCDebug(LOG_Variable()) << "TORM Variable::setDataSeries"
@@ -83,6 +113,7 @@ void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
     }
     impl->lockWrite();
     impl->m_DataSeries = dataSeries->clone();
+    impl->updateRealRange();
     impl->unlock();
 }
 

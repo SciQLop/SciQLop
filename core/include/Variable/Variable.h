@@ -3,6 +3,7 @@
 
 #include "CoreGlobal.h"
 
+#include <Data/DataSeriesIterator.h>
 #include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
@@ -32,6 +33,14 @@ public:
     void setRange(const SqpRange &range) noexcept;
     SqpRange cacheRange() const noexcept;
     void setCacheRange(const SqpRange &cacheRange) noexcept;
+
+    /// Returns the real range of the variable, i.e. the min and max x-axis values of the data
+    /// series between the range of the variable. The real range is updated each time the variable
+    /// range or the data series changed
+    /// @return the real range, invalid range if the data series is null or empty
+    /// @sa setDataSeries()
+    /// @sa setRange()
+    SqpRange realRange() const noexcept;
 
     /// @return the data of the variable, nullptr if there is no data
     std::shared_ptr<IDataSeries> dataSeries() const noexcept;

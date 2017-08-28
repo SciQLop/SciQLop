@@ -189,7 +189,7 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
         tableMenu.insertAction(firstAction, headerAction);
 
         // Displays menu
-        tableMenu.exec(mapToGlobal(pos));
+        tableMenu.exec(QCursor::pos());
     }
 }
 

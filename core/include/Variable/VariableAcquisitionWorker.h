@@ -48,14 +48,14 @@ public slots:
                                 SqpRange dataRangeAcquired);
     void onVariableRetrieveDataInProgress(QUuid acqIdentifier, double progress);
 
-private slots:
-    void onExecuteRequest(QUuid acqIdentifier);
-
 private:
     void waitForFinish();
 
     class VariableAcquisitionWorkerPrivate;
     spimpl::unique_impl_ptr<VariableAcquisitionWorkerPrivate> impl;
+
+private slots:
+    void onExecuteRequest(QUuid acqIdentifier);
 };
 
 #endif // SCIQLOP_VARIABLEACQUISITIONWORKER_H
