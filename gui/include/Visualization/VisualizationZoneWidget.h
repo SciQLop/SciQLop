@@ -42,15 +42,14 @@ public:
     bool contains(const Variable &variable) const override;
     QString name() const override;
 
-
-private slots:
-    void onVariableAdded(std::shared_ptr<Variable> variable);
-
 private:
     Ui::VisualizationZoneWidget *ui;
 
     class VisualizationZoneWidgetPrivate;
     spimpl::unique_impl_ptr<VisualizationZoneWidgetPrivate> impl;
+
+private slots:
+    void onVariableAdded(std::shared_ptr<Variable> variable);
 };
 
 #endif // SCIQLOP_VISUALIZATIONZONEWIDGET_H

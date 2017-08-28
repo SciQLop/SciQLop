@@ -184,22 +184,6 @@ void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
     impl->unlock();
 }
 
-void VariableAcquisitionWorker::onExecuteRequest(QUuid acqIdentifier)
-{
-    qCDebug(LOG_VariableAcquisitionWorker()) << tr("onExecuteRequest") << QThread::currentThread();
-    impl->lockRead();
-    auto it = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
-    if (it != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
-        auto request = it->second;
-        impl->unlock();
-        request.m_Provider->requestDataLoading(acqIdentifier, request.m_DataProviderParameters);
-    }
-    else {
-        impl->unlock();
-        // TODO log no acqIdentifier recognized
-    }
-}
-
 void VariableAcquisitionWorker::initialize()
 {
     qCDebug(LOG_VariableAcquisitionWorker()) << tr("VariableAcquisitionWorker init")
@@ -235,4 +219,20 @@ void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::removeVariable
     }
     m_VIdentifierToCurrrentAcqIdNextIdPairMap.erase(vIdentifier);
     unlock();
+}
+
+void VariableAcquisitionWorker::onExecuteRequest(QUuid acqIdentifier)
+{
+    qCDebug(LOG_VariableAcquisitionWorker()) << tr("onExecuteRequest") << QThread::currentThread();
+    impl->lockRead();
+    auto it = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
+    if (it != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
+        auto request = it->second;
+        impl->unlock();
+        request.m_Provider->requestDataLoading(acqIdentifier, request.m_DataProviderParameters);
+    }
+    else {
+        impl->unlock();
+        // TODO log no acqIdentifier recognized
+    }
 }

@@ -2,6 +2,8 @@
 Common/spimpl\.h:\d+:.*
 
 # Ignore false positive relative to two class definitions in a same file
+ArrayData\.h:\d+:.*IPSIS_S01.*
+ArrayDataIterator\.h:\d+:.*IPSIS_S01.*
 DataSourceItem\.h:\d+:.*IPSIS_S01.*
 DataSeries\.h:\d+:.*IPSIS_S01.*
 DataSeriesIterator\.h:\d+:.*IPSIS_S01.*
@@ -16,34 +18,19 @@ DataSeries\.h:\d+:.*IPSIS_S04_VARIABLE.*
 DataSeries\.h:\d+:.*IPSIS_S04_NAMESPACE.*found: (dataseries_detail)
 
 # Ignore false positive relative to iterators
-ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (forward_iterator_tag)
-ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (IteratorValue)
-ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (ptrdiff_t)
-ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (value_type)
-ArrayData\.h:\d+:.*IPSIS_S05.*
-ArrayData\.h:\d+:.*IPSIS_S06.*found: (iterator_category)
-ArrayData\.h:\d+:.*IPSIS_S06.*found: (forward_iterator_tag)
-ArrayData\.h:\d+:.*IPSIS_S06.*found: (value_type)
-ArrayData\.h:\d+:.*IPSIS_S06.*found: (IteratorValue)
-ArrayData\.h:\d+:.*IPSIS_S06.*found: (difference_type)
-ArrayData\.h:\d+:.*IPSIS_S06.*found: (ptrdiff_t)
-ArrayData\.h:\d+:.*IPSIS_S06.*found: (pointer)
-ArrayData\.h:\d+:.*IPSIS_S06.*found: (reference)
-ArrayData\.h:\d+:.*IPSIS_S06.*found: (value_type)
-DataSeriesIterator\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (forward_iterator_tag)
-DataSeriesIterator\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (DataSeriesIteratorValue)
-DataSeriesIterator\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (ptrdiff_t)
-DataSeriesIterator\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (value_type)
-DataSeriesIterator\.h:\d+:.*IPSIS_S05.*
-DataSeriesIterator\.h:\d+:.*IPSIS_S06.*found: (iterator_category)
-DataSeriesIterator\.h:\d+:.*IPSIS_S06.*found: (forward_iterator_tag)
-DataSeriesIterator\.h:\d+:.*IPSIS_S06.*found: (value_type)
-DataSeriesIterator\.h:\d+:.*IPSIS_S06.*found: (DataSeriesIteratorValue)
-DataSeriesIterator\.h:\d+:.*IPSIS_S06.*found: (difference_type)
-DataSeriesIterator\.h:\d+:.*IPSIS_S06.*found: (ptrdiff_t)
-DataSeriesIterator\.h:\d+:.*IPSIS_S06.*found: (pointer)
-DataSeriesIterator\.h:\d+:.*IPSIS_S06.*found: (reference)
-DataSeriesIterator\.h:\d+:.*IPSIS_S06.*found: (value_type)
+SqpIterator\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (forward_iterator_tag)
+SqpIterator\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (T)
+SqpIterator\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (ptrdiff_t)
+SqpIterator\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (value_type)
+SqpIterator\.h:\d+:.*IPSIS_S06.*found: (iterator_category)
+SqpIterator\.h:\d+:.*IPSIS_S06.*found: (forward_iterator_tag)
+SqpIterator\.h:\d+:.*IPSIS_S06.*found: (value_type)
+SqpIterator\.h:\d+:.*IPSIS_S06.*found: (T)
+SqpIterator\.h:\d+:.*IPSIS_S06.*found: (difference_type)
+SqpIterator\.h:\d+:.*IPSIS_S06.*found: (ptrdiff_t)
+SqpIterator\.h:\d+:.*IPSIS_S06.*found: (pointer)
+SqpIterator\.h:\d+:.*IPSIS_S06.*found: (reference)
+SqpIterator\.h:\d+:.*IPSIS_S06.*found: (value_type)
 
 # Ignore false positive relative to an alias
 DataSourceItemAction\.h:\d+:.*IPSIS_S06.*found: (ExecuteFunction)
