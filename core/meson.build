@@ -43,14 +43,20 @@ core_sources = [
 
 core_inc = include_directories(['include', '../plugin/include'])
 
-sciqlop_core = library('sciqlopcore',
+sciqlop_core_lib = library('sciqlopcore',
                        core_sources,
                        core_moc_files,
                        cpp_args : '-DCORE_LIB',
                        include_directories : core_inc,
-                       dependencies : [qt5core, qt5widgets, qt5network],
+                       dependencies : [qt5core, qt5network],
                        install : true
                        )
+
+
+sciqlop_core = declare_dependency(link_with : sciqlop_core_lib,
+                                include_directories : core_inc,
+                                dependencies : [qt5core, qt5network])
+
 
 subdir('tests')
 

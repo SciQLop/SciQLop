@@ -25,9 +25,8 @@ sciqlop_mockplugin = library('mockplugin',
                        mockplugin_sources,
                        mockplugin_moc_files,
                        cpp_args : '-DMOCKPLUGIN_LIB',
-                       link_with : [sciqlop_core, sciqlop_gui],
-                       include_directories : [mockplugin_inc, core_inc, gui_inc],
-                       dependencies : [qt5core, qt5gui, qt5widgets, qt5network],
+                       include_directories : [mockplugin_inc],
+                       dependencies : [sciqlop_core, sciqlop_gui],
                        install : true
                        )
 
