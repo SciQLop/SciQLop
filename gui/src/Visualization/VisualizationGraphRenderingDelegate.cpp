@@ -90,6 +90,15 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
         // Inits "close button" in plot overlay
         m_ClosePixmap->setLayer(OVERLAY_LAYER);
         initClosePixmapStyle(*m_ClosePixmap);
+
+        // Connects pixmap selection to graph widget closing
+        QObject::connect(m_ClosePixmap, &QCPItemPixmap::selectionChanged,
+                         [&graphWidget](bool selected) {
+                             if (selected) {
+                                 graphWidget.close();
+                             }
+                         });
+
         // Inits graph name in plot overlay
         m_TitleText->setLayer(OVERLAY_LAYER);
         m_TitleText->setText(graphWidget.name());
