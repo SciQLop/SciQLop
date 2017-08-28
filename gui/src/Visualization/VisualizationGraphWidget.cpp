@@ -204,6 +204,11 @@ QString VisualizationGraphWidget::name() const
     return impl->m_Name;
 }
 
+QCustomPlot &VisualizationGraphWidget::plot() noexcept
+{
+    return *ui->widget;
+}
+
 void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 {
     QMenu graphMenu{};

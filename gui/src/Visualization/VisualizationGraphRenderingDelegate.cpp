@@ -1,4 +1,5 @@
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
+#include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/qcustomplot.h"
 
 #include <Common/DateUtils.h>
@@ -42,8 +43,10 @@ void initPointTracerStyle(QCPItemTracer &tracer) noexcept
 } // namespace
 
 struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegatePrivate {
-    explicit VisualizationGraphRenderingDelegatePrivate(QCustomPlot &plot)
-            : m_Plot{plot}, m_PointTracer{new QCPItemTracer{&plot}}, m_TracerTimer{}
+    explicit VisualizationGraphRenderingDelegatePrivate(VisualizationGraphWidget &graphWidget)
+            : m_Plot{graphWidget.plot()},
+              m_PointTracer{new QCPItemTracer{&m_Plot}},
+              m_TracerTimer{},
     {
         initPointTracerStyle(*m_PointTracer);
 
@@ -56,8 +59,9 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
     QTimer m_TracerTimer;
 };
 
-VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegate(QCustomPlot &plot)
-        : impl{spimpl::make_unique_impl<VisualizationGraphRenderingDelegatePrivate>(plot)}
+VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegate(
+    VisualizationGraphWidget &graphWidget)
+        : impl{spimpl::make_unique_impl<VisualizationGraphRenderingDelegatePrivate>(graphWidget)}
 {
 }
 
