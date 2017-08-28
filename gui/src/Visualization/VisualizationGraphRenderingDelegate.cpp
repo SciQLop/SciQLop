@@ -4,9 +4,14 @@
 
 #include <Common/DateUtils.h>
 
+#include <SqpApplication.h>
+
 namespace {
 
 const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
+
+/// Name of the overlay layer in QCustomPlot
+const auto OVERLAY_LAYER = QStringLiteral("overlay");
 
 const auto TOOLTIP_FORMAT = QStringLiteral("key: %1\nvalue: %2");
 
@@ -40,6 +45,33 @@ void initPointTracerStyle(QCPItemTracer &tracer) noexcept
     tracer.setBrush(Qt::black);
 }
 
+void initClosePixmapStyle(QCPItemPixmap &pixmap) noexcept
+{
+    // Icon
+    pixmap.setPixmap(
+        sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton).pixmap(QSize{16, 16}));
+
+    // Position
+    pixmap.topLeft->setType(QCPItemPosition::ptAxisRectRatio);
+    pixmap.topLeft->setCoords(1, 0);
+    pixmap.setClipToAxisRect(false);
+
+    // Can be selected
+    pixmap.setSelectable(true);
+}
+
+void initTitleTextStyle(QCPItemText &text) noexcept
+{
+    // Font and background styles
+    text.setColor(Qt::gray);
+    text.setBrush(Qt::white);
+
+    // Position
+    text.setPositionAlignment(Qt::AlignTop | Qt::AlignLeft);
+    text.position->setType(QCPItemPosition::ptAxisRectRatio);
+    text.position->setCoords(0.5, 0);
+}
+
 } // namespace
 
 struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegatePrivate {
@@ -47,16 +79,28 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
             : m_Plot{graphWidget.plot()},
               m_PointTracer{new QCPItemTracer{&m_Plot}},
               m_TracerTimer{},
+              m_ClosePixmap{new QCPItemPixmap{&m_Plot}},
+              m_TitleText{new QCPItemText{&m_Plot}}
     {
         initPointTracerStyle(*m_PointTracer);
 
         m_TracerTimer.setInterval(TOOLTIP_TIMEOUT);
         m_TracerTimer.setSingleShot(true);
+
+        // Inits "close button" in plot overlay
+        m_ClosePixmap->setLayer(OVERLAY_LAYER);
+        initClosePixmapStyle(*m_ClosePixmap);
+        // Inits graph name in plot overlay
+        m_TitleText->setLayer(OVERLAY_LAYER);
+        m_TitleText->setText(graphWidget.name());
+        initTitleTextStyle(*m_TitleText);
     }
 
     QCustomPlot &m_Plot;
     QCPItemTracer *m_PointTracer;
     QTimer m_TracerTimer;
+    QCPItemPixmap *m_ClosePixmap; /// Graph's close button
+    QCPItemText *m_TitleText;     /// Graph's title
 };
 
 VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegate(
