@@ -204,6 +204,18 @@ QString VisualizationGraphWidget::name() const
     return impl->m_Name;
 }
 
+void VisualizationGraphWidget::enterEvent(QEvent *event)
+{
+    Q_UNUSED(event);
+    impl->m_RenderingDelegate->showGraphOverlay(true);
+}
+
+void VisualizationGraphWidget::leaveEvent(QEvent *event)
+{
+    Q_UNUSED(event);
+    impl->m_RenderingDelegate->showGraphOverlay(false);
+}
+
 QCustomPlot &VisualizationGraphWidget::plot() noexcept
 {
     return *ui->widget;

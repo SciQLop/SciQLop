@@ -16,6 +16,9 @@ public:
 
     void onMouseMove(QMouseEvent *event) noexcept;
 
+    /// Shows or hides graph overlay (name, close button, etc.)
+    void showGraphOverlay(bool show) noexcept;
+
 private:
     class VisualizationGraphRenderingDelegatePrivate;
     spimpl::unique_impl_ptr<VisualizationGraphRenderingDelegatePrivate> impl;

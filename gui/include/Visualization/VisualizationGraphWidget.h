@@ -57,6 +57,9 @@ signals:
 
     void variableAdded(std::shared_ptr<Variable> var);
 
+protected:
+    void enterEvent(QEvent *event) override;
+    void leaveEvent(QEvent *event) override;
 
     QCustomPlot &plot() noexcept;
 

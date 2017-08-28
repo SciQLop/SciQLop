@@ -160,3 +160,10 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
         }
     }
 }
+
+void VisualizationGraphRenderingDelegate::showGraphOverlay(bool show) noexcept
+{
+    auto overlay = impl->m_Plot.layer(OVERLAY_LAYER);
+    overlay->setVisible(show);
+    overlay->replot();
+}
