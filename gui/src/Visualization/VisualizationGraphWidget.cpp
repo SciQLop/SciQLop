@@ -28,11 +28,15 @@ const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
 
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
-    explicit VisualizationGraphWidgetPrivate()
-            : m_DoAcquisition{true}, m_IsCalibration{false}, m_RenderingDelegate{nullptr}
+    explicit VisualizationGraphWidgetPrivate(const QString &name)
+            : m_Name{name},
+              m_DoAcquisition{true},
+              m_IsCalibration{false},
+              m_RenderingDelegate{nullptr}
     {
     }
 
+    QString m_Name;
     // 1 variable -> n qcpplot
     std::map<std::shared_ptr<Variable>, PlottablesMap> m_VariableToPlotMultiMap;
     bool m_DoAcquisition;
@@ -45,25 +49,21 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
         : QWidget{parent},
           ui{new Ui::VisualizationGraphWidget},
-          impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>()}
+          impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>(name)}
 {
     ui->setupUi(this);
 
-    // The delegate must be initialized after the ui as it uses the plot
-    impl->m_RenderingDelegate = std::make_unique<VisualizationGraphRenderingDelegate>(*ui->widget);
-
-    ui->graphNameLabel->setText(name);
-
     // 'Close' options : widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
-    connect(ui->closeButton, &QToolButton::clicked, this, &VisualizationGraphWidget::close);
-    ui->closeButton->setIcon(sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
 
     // Set qcpplot properties :
     // - Drag (on x-axis) and zoom are enabled
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
     ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
+
+    // The delegate must be initialized after the ui as it uses the plot
+    impl->m_RenderingDelegate = std::make_unique<VisualizationGraphRenderingDelegate>(*this);
 
     connect(ui->widget, &QCustomPlot::mousePress, this, &VisualizationGraphWidget::onMousePress);
     connect(ui->widget, &QCustomPlot::mouseRelease, this,
@@ -201,7 +201,7 @@ bool VisualizationGraphWidget::contains(const Variable &variable) const
 
 QString VisualizationGraphWidget::name() const
 {
-    return ui->graphNameLabel->text();
+    return impl->m_Name;
 }
 
 void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
