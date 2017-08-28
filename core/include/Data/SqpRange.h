@@ -8,6 +8,8 @@
 #include <Common/DateUtils.h>
 #include <Common/MetaTypes.h>
 
+#include <cmath>
+
 /**
  * @brief The SqpRange struct holds the information of time parameters
  */
