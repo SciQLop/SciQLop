@@ -103,6 +103,20 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, S
     auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
     impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
 
+    // Set axes properties according to the units of the data series
+    /// @todo : for the moment, no control is performed on the axes: the units and the tickers
+    /// are fixed for the default x-axis and y-axis of the plot, and according to the new graph
+    auto xAxisUnit = Unit{};
+    auto valuesUnit = Unit{};
+
+    if (auto dataSeries = variable->dataSeries()) {
+        dataSeries->lockRead();
+        xAxisUnit = dataSeries->xAxisUnit();
+        valuesUnit = dataSeries->valuesUnit();
+        dataSeries->unlock();
+    }
+    impl->m_RenderingDelegate->setAxesProperties(xAxisUnit, valuesUnit);
+
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 
     auto varRange = variable->range();

@@ -5,6 +5,7 @@
 
 class QCustomPlot;
 class QMouseEvent;
+class Unit;
 class VisualizationGraphWidget;
 
 class VisualizationGraphRenderingDelegate {
@@ -15,6 +16,9 @@ public:
     explicit VisualizationGraphRenderingDelegate(VisualizationGraphWidget &graphWidget);
 
     void onMouseMove(QMouseEvent *event) noexcept;
+
+    /// Sets properties of the plot's axes
+    void setAxesProperties(const Unit &xAxisUnit, const Unit &valuesUnit) noexcept;
 
     /// Shows or hides graph overlay (name, close button, etc.)
     void showGraphOverlay(bool show) noexcept;
