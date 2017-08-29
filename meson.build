@@ -10,7 +10,8 @@ qt5network = dependency('qt5', modules : 'Network')
 qt5printsupport = dependency('qt5', modules : 'PrintSupport')
 qt5test = dependency('qt5', modules : 'Test')
 
-moc = find_program('moc','moc-qt5')
+moc = find_program('moc-qt5','moc')
+rcc = find_program('rcc-qt5','rcc')
 
 subdir('core')
 subdir('gui')

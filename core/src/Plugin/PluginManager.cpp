@@ -106,9 +106,15 @@ PluginManager::PluginManager() : impl{spimpl::make_unique_impl<PluginManagerPriv
 void PluginManager::loadPlugins(const QDir &pluginDir)
 {
     // Load plugins
-    auto pluginInfoList = pluginDir.entryInfoList(QDir::Files, QDir::Name);
-    for (auto pluginInfo : qAsConst(pluginInfoList)) {
-        impl->loadPlugin(pluginInfo.absoluteFilePath());
+    auto pluginInfoList
+        = pluginDir.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
+    for (auto entryInfo : qAsConst(pluginInfoList)) {
+        if (entryInfo.isDir())
+            this->loadPlugins(QDir{entryInfo.absoluteFilePath()});
+        else {
+            if (QLibrary::isLibrary(entryInfo.absoluteFilePath()))
+                impl->loadPlugin(entryInfo.absoluteFilePath());
+        }
     }
 }
 
