@@ -67,6 +67,7 @@ public:
     double value(int componentIndex) const override { return m_ValuesIt->at(componentIndex); }
     double minValue() const override { return m_ValuesIt->min(); }
     double maxValue() const override { return m_ValuesIt->max(); }
+    QVector<double> values() const override { return m_ValuesIt->values(); }
 
 private:
     ArrayDataIterator m_XIt;

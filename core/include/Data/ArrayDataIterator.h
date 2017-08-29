@@ -4,6 +4,7 @@
 #include "CoreGlobal.h"
 #include "Data/SqpIterator.h"
 
+#include <QVector>
 #include <memory>
 
 /**
@@ -25,6 +26,7 @@ public:
         virtual double first() const = 0;
         virtual double min() const = 0;
         virtual double max() const = 0;
+        virtual QVector<double> values() const = 0;
     };
 
     explicit ArrayDataIteratorValue(std::unique_ptr<Impl> impl);
@@ -46,6 +48,8 @@ public:
     double min() const;
     /// Gets max value among all components
     double max() const;
+    /// Gets all values
+    QVector<double> values() const;
 
 private:
     std::unique_ptr<Impl> m_Impl;

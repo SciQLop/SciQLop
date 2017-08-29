@@ -87,10 +87,9 @@ public:
         return it != end ? *it : std::numeric_limits<double>::quiet_NaN();
     }
 
-private:
-    std::vector<double> values() const
+    QVector<double> values() const override
     {
-        auto result = std::vector<double>{};
+        auto result = QVector<double>{};
         for (auto i = 0; i < m_NbComponents; ++i) {
             result.push_back(*(m_It + i));
         }
@@ -98,6 +97,7 @@ private:
         return result;
     }
 
+private:
     DataContainer::const_iterator m_It;
     int m_NbComponents;
 };

@@ -50,3 +50,8 @@ double ArrayDataIteratorValue::max() const
 {
     return m_Impl->max();
 }
+
+QVector<double> ArrayDataIteratorValue::values() const
+{
+    return m_Impl->values();
+}
