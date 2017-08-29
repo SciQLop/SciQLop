@@ -12,9 +12,7 @@ tests = [
 foreach unit_test : tests
   test_moc_files = qt5.preprocess(moc_sources : unit_test[0])
   test_exe = executable(unit_test[1],unit_test[0] , test_moc_files,
-                          link_with : sciqlop_core,
-                          include_directories : core_inc,
-                          dependencies : [qt5core, qt5widgets, qt5network,qt5test])
+                          dependencies : [sciqlop_core, qt5test])
   test(unit_test[2], test_exe, args: ['-teamcity', '-o', '@0@.teamcity.txt'.format(unit_test[1])])
 endforeach
 

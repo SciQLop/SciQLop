@@ -61,12 +61,15 @@ gui_sources = [
 
 gui_inc = include_directories(['include'])
 
-sciqlop_gui = library('sciqlopgui',
+sciqlop_gui_lib = library('sciqlopgui',
                        gui_sources,
                        gui_moc_files,
-                       link_with : sciqlop_core,
-                       include_directories : [gui_inc, core_inc],
-                       dependencies : [qt5core, qt5printsupport, qt5gui, qt5widgets, qt5network],
+                       include_directories : [gui_inc],
+                       dependencies : [ qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core],
                        install : true
                        )
+
+sciqlop_gui = declare_dependency(link_with : sciqlop_gui_lib,
+                                include_directories : gui_inc,
+                                dependencies : [qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core])
 

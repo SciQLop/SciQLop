@@ -42,6 +42,9 @@
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
 #define QCP_DEVICEPIXELRATIO_SUPPORTED
+#if QT_VERSION >= QT_VERSION_CHECK(5, 6, 0)
+#define QCP_DEVICEPIXELRATIO_FLOAT
+#endif
 #endif
 
 #include <QtCore/QCache>
@@ -109,8 +112,8 @@ class QCPColorMap;
 class QCPColorScale;
 class QCPBars;
 
-/* including file 'src/global.h', size 16131                                 */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/global.h', size 16225                                 */
+/* commit e7c6a5540d344a96d107dce53f9d4414a09a7320 2017-07-25 00:52:29 +0200 */
 
 // decl definitions for shared library compilation/usage:
 #if defined(QCUSTOMPLOT_COMPILE_LIBRARY)
@@ -1794,8 +1797,8 @@ protected:
 /* end of 'src/axis/axistickerdatetime.h' */
 
 
-/* including file 'src/axis/axistickertime.h', size 3288                     */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/axis/axistickertime.h', size 3542                     */
+/* commit c38adb94d83c6a752597a5d43d45c0561fbe1d4d 2017-08-13 17:37:53 +0200 */
 
 class QCP_LIB_DECL QCPAxisTickerTime : public QCPAxisTicker {
     Q_GADGET
@@ -1805,7 +1808,17 @@ public:
 
       \see setFieldWidth, setTimeFormat
     */
-    enum TimeUnit { tuMilliseconds, tuSeconds, tuMinutes, tuHours, tuDays };
+    enum TimeUnit {
+        tuMilliseconds ///< Milliseconds, one thousandth of a second (%%z in \ref setTimeFormat)
+        ,
+        tuSeconds ///< Seconds (%%s in \ref setTimeFormat)
+        ,
+        tuMinutes ///< Minutes (%%m in \ref setTimeFormat)
+        ,
+        tuHours ///< Hours (%%h in \ref setTimeFormat)
+        ,
+        tuDays ///< Days (%%d in \ref setTimeFormat)
+    };
     Q_ENUMS(TimeUnit)
 
     QCPAxisTickerTime();
@@ -2026,8 +2039,8 @@ protected:
 /* end of 'src/axis/axistickerlog.h' */
 
 
-/* including file 'src/axis/axis.h', size 20230                              */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/axis/axis.h', size 20634                              */
+/* commit 0cc4d9f61f7bf45321a88fec89d909b020ffa26f 2017-08-14 00:43:29 +0200 */
 
 class QCP_LIB_DECL QCPGrid : public QCPLayerable {
     Q_OBJECT
@@ -2364,6 +2377,9 @@ protected:
     QVector<double> mSubTickVector;
     bool mCachedMarginValid;
     int mCachedMargin;
+    bool mDragging;
+    QCPRange mDragStartRange;
+    QCP::AntialiasedElements mAADragBackup, mNotAADragBackup;
 
     // introduced virtual methods:
     virtual int calculateMargin();
@@ -2376,6 +2392,11 @@ protected:
     virtual void selectEvent(QMouseEvent *event, bool additive, const QVariant &details,
                              bool *selectionStateChanged) Q_DECL_OVERRIDE;
     virtual void deselectEvent(bool *selectionStateChanged) Q_DECL_OVERRIDE;
+    // mouse events:
+    virtual void mousePressEvent(QMouseEvent *event, const QVariant &details);
+    virtual void mouseMoveEvent(QMouseEvent *event, const QPointF &startPos);
+    virtual void mouseReleaseEvent(QMouseEvent *event, const QPointF &startPos);
+    virtual void wheelEvent(QWheelEvent *event);
 
     // non-virtual methods:
     void setupTickVectors();
@@ -2612,8 +2633,8 @@ Q_DECLARE_METATYPE(QCPScatterStyle::ScatterShape)
 /* end of 'src/scatterstyle.h' */
 
 
-/* including file 'src/datacontainer.h', size 4535                           */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/datacontainer.h', size 4596                           */
+/* commit bee82298bd87b91a50093fb0b81cd7c734724a6f 2017-08-13 16:10:24 +0200 */
 
 /*! \relates QCPDataContainer
   Returns whether the sort key of \a a is less than the sort key of \a b.
@@ -2627,7 +2648,8 @@ inline bool qcpLessThanSortKey(const DataType &a, const DataType &b)
 }
 
 template <class DataType>
-class QCP_LIB_DECL QCPDataContainer {
+class QCPDataContainer // no QCP_LIB_DECL, template class ends up in header (cpp included below)
+{
 public:
     typedef typename QVector<DataType>::const_iterator const_iterator;
     typedef typename QVector<DataType>::iterator iterator;
@@ -2686,8 +2708,8 @@ protected:
 
 // include implementation in header since it is a class template:
 
-/* including file 'src/datacontainer.cpp', size 31224                        */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/datacontainer.cpp', size 31349                        */
+/* commit 820d2282db70144c358c13433cd74b4175f9252b 2017-07-24 00:24:17 +0200 */
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////// QCPDataContainer
@@ -3403,7 +3425,8 @@ QCPRange QCPDataContainer<DataType>::valueRange(bool &foundRange, QCP::SignDomai
 
 /*!
   Makes sure \a begin and \a end mark a data range that is both within the bounds of this data
-  container's data, as well as within the specified \a dataRange.
+  container's data, as well as within the specified \a dataRange. The initial range described by
+  the passed iterators \a begin and \a end is never expanded, only contracted if necessary.
 
   This function doesn't require for \a dataRange to be within the bounds of this data container's
   valid range.
@@ -3660,8 +3683,8 @@ private:
 /* end of 'src/plottable.h' */
 
 
-/* including file 'src/item.h', size 9368                                    */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/item.h', size 9384                                    */
+/* commit 681a87c5e5365a5c7187d20b4077031003c48449 2017-07-23 23:46:48 +0200 */
 
 class QCP_LIB_DECL QCPItemAnchor {
     Q_GADGET
@@ -3750,7 +3773,7 @@ public:
     QCPAxis *keyAxis() const { return mKeyAxis.data(); }
     QCPAxis *valueAxis() const { return mValueAxis.data(); }
     QCPAxisRect *axisRect() const;
-    virtual QPointF pixelPosition() const;
+    virtual QPointF pixelPosition() const Q_DECL_OVERRIDE;
 
     // setters:
     void setType(PositionType type);
@@ -3857,8 +3880,8 @@ private:
 /* end of 'src/item.h' */
 
 
-/* including file 'src/core.h', size 14797                                   */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/core.h', size 14886                                   */
+/* commit 29aafbce469a36d175d4fb32cbfd1f50a6072890 2016-10-12 19:21:24 +0200 */
 
 class QCP_LIB_DECL QCustomPlot : public QWidget {
     Q_OBJECT
@@ -4091,7 +4114,9 @@ protected:
     QPoint mMousePressPos;
     bool mMouseHasMoved;
     QPointer<QCPLayerable> mMouseEventLayerable;
+    QPointer<QCPLayerable> mMouseSignalLayerable;
     QVariant mMouseEventLayerableDetails;
+    QVariant mMouseSignalLayerableDetails;
     bool mReplotting;
     bool mReplotQueued;
     int mOpenGlMultisamples;
@@ -4153,11 +4178,12 @@ Q_DECLARE_METATYPE(QCustomPlot::RefreshPriority)
 /* end of 'src/core.h' */
 
 
-/* including file 'src/plottable1d.h', size 4250                             */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/plottable1d.h', size 4544                             */
+/* commit bee82298bd87b91a50093fb0b81cd7c734724a6f 2017-08-13 16:10:24 +0200 */
 
-class QCP_LIB_DECL QCPPlottableInterface1D {
+class QCPPlottableInterface1D {
 public:
+    virtual ~QCPPlottableInterface1D() {}
     // introduced pure virtual methods:
     virtual int dataCount() const = 0;
     virtual double dataMainKey(int index) const = 0;
@@ -4172,8 +4198,11 @@ public:
 };
 
 template <class DataType>
-class QCP_LIB_DECL QCPAbstractPlottable1D : public QCPAbstractPlottable,
-                                            public QCPPlottableInterface1D {
+class QCPAbstractPlottable1D : public QCPAbstractPlottable,
+                               public QCPPlottableInterface1D // no QCP_LIB_DECL, template class
+                                                              // ends up in header (cpp included
+                                                              // below)
+{
     // No Q_OBJECT macro due to template class
 
 public:
@@ -4181,20 +4210,22 @@ public:
     virtual ~QCPAbstractPlottable1D();
 
     // virtual methods of 1d plottable interface:
-    virtual int dataCount() const;
-    virtual double dataMainKey(int index) const;
-    virtual double dataSortKey(int index) const;
-    virtual double dataMainValue(int index) const;
-    virtual QCPRange dataValueRange(int index) const;
-    virtual QPointF dataPixelPosition(int index) const;
-    virtual bool sortKeyIsMainKey() const;
-    virtual QCPDataSelection selectTestRect(const QRectF &rect, bool onlySelectable) const;
-    virtual int findBegin(double sortKey, bool expandedRange = true) const;
-    virtual int findEnd(double sortKey, bool expandedRange = true) const;
+    virtual int dataCount() const Q_DECL_OVERRIDE;
+    virtual double dataMainKey(int index) const Q_DECL_OVERRIDE;
+    virtual double dataSortKey(int index) const Q_DECL_OVERRIDE;
+    virtual double dataMainValue(int index) const Q_DECL_OVERRIDE;
+    virtual QCPRange dataValueRange(int index) const Q_DECL_OVERRIDE;
+    virtual QPointF dataPixelPosition(int index) const Q_DECL_OVERRIDE;
+    virtual bool sortKeyIsMainKey() const Q_DECL_OVERRIDE;
+    virtual QCPDataSelection selectTestRect(const QRectF &rect,
+                                            bool onlySelectable) const Q_DECL_OVERRIDE;
+    virtual int findBegin(double sortKey, bool expandedRange = true) const Q_DECL_OVERRIDE;
+    virtual int findEnd(double sortKey, bool expandedRange = true) const Q_DECL_OVERRIDE;
 
-    // virtual methods:
-    virtual double selectTest(const QPointF &pos, bool onlySelectable, QVariant *details = 0) const;
-    virtual QCPPlottableInterface1D *interface1D() { return this; }
+    // reimplemented virtual methods:
+    virtual double selectTest(const QPointF &pos, bool onlySelectable,
+                              QVariant *details = 0) const Q_DECL_OVERRIDE;
+    virtual QCPPlottableInterface1D *interface1D() Q_DECL_OVERRIDE { return this; }
 
 protected:
     // property members:
@@ -4863,8 +4894,8 @@ Q_DECLARE_METATYPE(QCPColorGradient::GradientPreset)
 /* end of 'src/colorgradient.h' */
 
 
-/* including file 'src/selectiondecorator-bracket.h', size 4426              */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/selectiondecorator-bracket.h', size 4442              */
+/* commit 681a87c5e5365a5c7187d20b4077031003c48449 2017-07-23 23:46:48 +0200 */
 
 class QCP_LIB_DECL QCPSelectionDecoratorBracket : public QCPSelectionDecorator {
     Q_GADGET
@@ -4916,7 +4947,7 @@ public:
     virtual void drawBracket(QCPPainter *painter, int direction) const;
 
     // virtual methods:
-    virtual void drawDecoration(QCPPainter *painter, QCPDataSelection selection);
+    virtual void drawDecoration(QCPPainter *painter, QCPDataSelection selection) Q_DECL_OVERRIDE;
 
 protected:
     // property members:
@@ -4938,8 +4969,8 @@ Q_DECLARE_METATYPE(QCPSelectionDecoratorBracket::BracketStyle)
 /* end of 'src/selectiondecorator-bracket.h' */
 
 
-/* including file 'src/layoutelements/layoutelement-axisrect.h', size 7528   */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/layoutelements/layoutelement-axisrect.h', size 7507   */
+/* commit 77ba168312f935543fc31d1ae9b4cdcf34aae4f9 2017-08-13 18:29:48 +0200 */
 
 class QCP_LIB_DECL QCPAxisRect : public QCPLayoutElement {
     Q_OBJECT
@@ -5037,7 +5068,6 @@ protected:
     // non-property members:
     QList<QCPRange> mDragStartHorzRange, mDragStartVertRange;
     QCP::AntialiasedElements mAADragBackup, mNotAADragBackup;
-    QPoint mDragStart;
     bool mDragging;
     QHash<QCPAxis::AxisType, QList<QCPAxis *> > mAxes;
 
@@ -5378,8 +5408,8 @@ private:
 /* end of 'src/layoutelements/layoutelement-textelement.h' */
 
 
-/* including file 'src/layoutelements/layoutelement-colorscale.h', size 5907 */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/layoutelements/layoutelement-colorscale.h', size 5923 */
+/* commit 681a87c5e5365a5c7187d20b4077031003c48449 2017-07-23 23:46:48 +0200 */
 
 
 class QCPColorScaleAxisRectPrivate : public QCPAxisRect {
@@ -5398,7 +5428,7 @@ protected:
     using QCPAxisRect::mouseReleaseEvent;
     using QCPAxisRect::wheelEvent;
     using QCPAxisRect::update;
-    virtual void draw(QCPPainter *painter);
+    virtual void draw(QCPPainter *painter) Q_DECL_OVERRIDE;
     void updateGradientImage();
     Q_SLOT void axisSelectionChanged(QCPAxis::SelectableParts selectedParts);
     Q_SLOT void axisSelectableChanged(QCPAxis::SelectableParts selectableParts);
@@ -5486,8 +5516,8 @@ private:
 /* end of 'src/layoutelements/layoutelement-colorscale.h' */
 
 
-/* including file 'src/plottables/plottable-graph.h', size 8826              */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/plottables/plottable-graph.h', size 9294              */
+/* commit f3881770eaf7366171012ad01cad2aaf5f61dd27 2017-06-23 02:48:21 +0200 */
 
 class QCP_LIB_DECL QCPGraphData {
 public:
@@ -5624,11 +5654,20 @@ protected:
     QVector<QPointF> dataToStepRightLines(const QVector<QCPGraphData> &data) const;
     QVector<QPointF> dataToStepCenterLines(const QVector<QCPGraphData> &data) const;
     QVector<QPointF> dataToImpulseLines(const QVector<QCPGraphData> &data) const;
-    void addFillBasePoints(QVector<QPointF> *lines) const;
-    void removeFillBasePoints(QVector<QPointF> *lines) const;
-    QPointF lowerFillBasePoint(double lowerKey) const;
-    QPointF upperFillBasePoint(double upperKey) const;
-    const QPolygonF getChannelFillPolygon(const QVector<QPointF> *lines) const;
+    QVector<QCPDataRange> getNonNanSegments(const QVector<QPointF> *lineData,
+                                            Qt::Orientation keyOrientation) const;
+    QVector<QPair<QCPDataRange, QCPDataRange> >
+    getOverlappingSegments(QVector<QCPDataRange> thisSegments, const QVector<QPointF> *thisData,
+                           QVector<QCPDataRange> otherSegments,
+                           const QVector<QPointF> *otherData) const;
+    bool segmentsIntersect(double aLower, double aUpper, double bLower, double bUpper,
+                           int &bPrecedence) const;
+    QPointF getFillBasePoint(QPointF matchingDataPoint) const;
+    const QPolygonF getFillPolygon(const QVector<QPointF> *lineData, QCPDataRange segment) const;
+    const QPolygonF getChannelFillPolygon(const QVector<QPointF> *lineData,
+                                          QCPDataRange thisSegment,
+                                          const QVector<QPointF> *otherData,
+                                          QCPDataRange otherSegment) const;
     int findIndexBelowX(const QVector<QPointF> *data, double x) const;
     int findIndexAboveX(const QVector<QPointF> *data, double x) const;
     int findIndexBelowY(const QVector<QPointF> *data, double y) const;
@@ -6425,8 +6464,8 @@ Q_DECLARE_METATYPE(QCPFinancial::ChartStyle)
 /* end of 'src/plottables/plottable-financial.h' */
 
 
-/* including file 'src/plottables/plottable-errorbar.h', size 7567           */
-/* commit 633339dadc92cb10c58ef3556b55570685fafb99 2016-09-13 23:54:56 +0200 */
+/* including file 'src/plottables/plottable-errorbar.h', size 7727           */
+/* commit 681a87c5e5365a5c7187d20b4077031003c48449 2017-07-23 23:46:48 +0200 */
 
 class QCP_LIB_DECL QCPErrorBarsData {
 public:
@@ -6505,16 +6544,17 @@ public:
     void addData(double errorMinus, double errorPlus);
 
     // virtual methods of 1d plottable interface:
-    virtual int dataCount() const;
-    virtual double dataMainKey(int index) const;
-    virtual double dataSortKey(int index) const;
-    virtual double dataMainValue(int index) const;
-    virtual QCPRange dataValueRange(int index) const;
-    virtual QPointF dataPixelPosition(int index) const;
-    virtual bool sortKeyIsMainKey() const;
-    virtual QCPDataSelection selectTestRect(const QRectF &rect, bool onlySelectable) const;
-    virtual int findBegin(double sortKey, bool expandedRange = true) const;
-    virtual int findEnd(double sortKey, bool expandedRange = true) const;
+    virtual int dataCount() const Q_DECL_OVERRIDE;
+    virtual double dataMainKey(int index) const Q_DECL_OVERRIDE;
+    virtual double dataSortKey(int index) const Q_DECL_OVERRIDE;
+    virtual double dataMainValue(int index) const Q_DECL_OVERRIDE;
+    virtual QCPRange dataValueRange(int index) const Q_DECL_OVERRIDE;
+    virtual QPointF dataPixelPosition(int index) const Q_DECL_OVERRIDE;
+    virtual bool sortKeyIsMainKey() const Q_DECL_OVERRIDE;
+    virtual QCPDataSelection selectTestRect(const QRectF &rect,
+                                            bool onlySelectable) const Q_DECL_OVERRIDE;
+    virtual int findBegin(double sortKey, bool expandedRange = true) const Q_DECL_OVERRIDE;
+    virtual int findEnd(double sortKey, bool expandedRange = true) const Q_DECL_OVERRIDE;
 
     // reimplemented virtual methods:
     virtual double selectTest(const QPointF &pos, bool onlySelectable,

@@ -31,9 +31,8 @@ sciqlop_app = executable('sciqlop',
                        app_sources,
                        app_moc_files,
                        rc,
-                       link_with : [sciqlop_core, sciqlop_gui],
-                       include_directories : [gui_inc, core_inc, app_inc],
-                       dependencies : [qt5core, qt5printsupport, qt5gui, qt5widgets, qt5network],
+                       include_directories : [ app_inc],
+                       dependencies : [sciqlop_gui, sciqlop_core],
                        install : true
                        )
 
