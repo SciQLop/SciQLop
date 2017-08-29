@@ -109,11 +109,11 @@ void PluginManager::loadPlugins(const QDir &pluginDir)
     auto pluginInfoList
         = pluginDir.entryInfoList(QDir::Files | QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name);
     for (auto entryInfo : qAsConst(pluginInfoList)) {
-        if (entryInfo.isDir())
+        if (entryInfo.isDir()) {
             this->loadPlugins(QDir{entryInfo.absoluteFilePath()});
-        else {
-            if (QLibrary::isLibrary(entryInfo.absoluteFilePath()))
-                impl->loadPlugin(entryInfo.absoluteFilePath());
+        }
+        else if (QLibrary::isLibrary(entryInfo.absoluteFilePath())) {
+            impl->loadPlugin(entryInfo.absoluteFilePath());
         }
     }
 }
