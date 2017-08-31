@@ -172,12 +172,23 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
 
     // Adds menu-specific actions
     if (!selectedVariables.isEmpty()) {
+        tableMenu.addSeparator();
+
+        // 'Rename' action (only if one variable selected)
+        if (selectedVariables.size() == 1) {
+            auto selectedVariable = selectedVariables.front();
+
+            auto renameFun = [&selectedVariable, &model, this]() {
+            };
+
+            tableMenu.addAction(tr("Rename..."), renameFun);
+        }
+
         // 'Delete' action
         auto deleteFun = [&selectedVariables]() {
             sqpApp->variableController().deleteVariables(selectedVariables);
         };
 
-        tableMenu.addSeparator();
         tableMenu.addAction(QIcon{":/icones/delete.png"}, tr("Delete"), deleteFun);
     }
 
