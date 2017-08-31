@@ -235,6 +235,17 @@ public:
                 m_Data, m_NbComponents, false)}};
     }
 
+    /// Inserts at the end of the array data the values passed as a parameter. This
+    /// method is intended to be used in the context of generating a back insert iterator, or only
+    /// if it's ensured that the total size of the vector is consistent with the number of
+    /// components of the array data
+    /// @param values the values to insert
+    /// @sa http://en.cppreference.com/w/cpp/iterator/back_inserter
+    void push_back(const QVector<double> &values)
+    {
+        Q_ASSERT(values.size() % m_NbComponents == 0);
+        m_Data.append(values);
+    }
 
     /**
      * @return the data at a specified index
