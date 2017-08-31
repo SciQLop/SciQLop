@@ -38,8 +38,10 @@ public:
         return *this;
     }
 
-    pointer operator->() const { return &m_CurrentValue; }
-    reference operator*() const { return m_CurrentValue; }
+    const T *operator->() const { return &m_CurrentValue; }
+    const T &operator*() const { return m_CurrentValue; }
+    T *operator->() { return &m_CurrentValue; }
+    T &operator*() { return m_CurrentValue; }
 
     bool operator==(const SqpIterator &other) const
     {

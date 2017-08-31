@@ -69,6 +69,8 @@ public:
 
     virtual DataSeriesIterator cbegin() const = 0;
     virtual DataSeriesIterator cend() const = 0;
+    virtual DataSeriesIterator begin() = 0;
+    virtual DataSeriesIterator end() = 0;
 
     /// @return the iterator to the first entry of the data series whose x-axis data is greater than
     /// or equal to the value passed in parameter, or the end iterator if there is no matching value

@@ -27,20 +27,31 @@ class DataSeries;
 
 namespace dataseries_detail {
 
-template <int Dim>
+template <int Dim, bool IsConst>
 class IteratorValue : public DataSeriesIteratorValue::Impl {
 public:
+    friend class DataSeries<Dim>;
+
+    template <bool IC = IsConst, typename = std::enable_if_t<IC == false> >
+    explicit IteratorValue(DataSeries<Dim> &dataSeries, bool begin)
+            : m_XIt(begin ? dataSeries.xAxisData()->begin() : dataSeries.xAxisData()->end()),
+              m_ValuesIt(begin ? dataSeries.valuesData()->begin() : dataSeries.valuesData()->end())
+    {
+    }
+
+    template <bool IC = IsConst, typename = std::enable_if_t<IC == true> >
     explicit IteratorValue(const DataSeries<Dim> &dataSeries, bool begin)
             : m_XIt(begin ? dataSeries.xAxisData()->cbegin() : dataSeries.xAxisData()->cend()),
               m_ValuesIt(begin ? dataSeries.valuesData()->cbegin()
                                : dataSeries.valuesData()->cend())
     {
     }
+
     IteratorValue(const IteratorValue &other) = default;
 
     std::unique_ptr<DataSeriesIteratorValue::Impl> clone() const override
     {
-        return std::make_unique<IteratorValue<Dim> >(*this);
+        return std::make_unique<IteratorValue<Dim, IsConst> >(*this);
     }
 
     bool equals(const DataSeriesIteratorValue::Impl &other) const override try {
@@ -149,16 +160,28 @@ public:
     // Iterators //
     // ///////// //
 
+    DataSeriesIterator begin() override
+    {
+        return DataSeriesIterator{DataSeriesIteratorValue{
+            std::make_unique<dataseries_detail::IteratorValue<Dim, false> >(*this, true)}};
+    }
+
+    DataSeriesIterator end() override
+    {
+        return DataSeriesIterator{DataSeriesIteratorValue{
+            std::make_unique<dataseries_detail::IteratorValue<Dim, false> >(*this, false)}};
+    }
+
     DataSeriesIterator cbegin() const override
     {
         return DataSeriesIterator{DataSeriesIteratorValue{
-            std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, true)}};
+            std::make_unique<dataseries_detail::IteratorValue<Dim, true> >(*this, true)}};
     }
 
     DataSeriesIterator cend() const override
     {
         return DataSeriesIterator{DataSeriesIteratorValue{
-            std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, false)}};
+            std::make_unique<dataseries_detail::IteratorValue<Dim, true> >(*this, false)}};
     }
 
     /// @sa IDataSeries::minXAxisData()

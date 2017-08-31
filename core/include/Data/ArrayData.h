@@ -39,11 +39,41 @@ struct Sort<1> {
     }
 };
 
+template <int Dim, bool IsConst>
+class IteratorValue;
+
+template <int Dim, bool IsConst>
+struct IteratorValueBuilder {
+};
+
 template <int Dim>
+struct IteratorValueBuilder<Dim, true> {
+    using DataContainerIterator = DataContainer::const_iterator;
+};
+
+template <int Dim>
+struct IteratorValueBuilder<Dim, false> {
+    using DataContainerIterator = DataContainer::iterator;
+};
+
+template <int Dim, bool IsConst>
 class IteratorValue : public ArrayDataIteratorValue::Impl {
 public:
+    friend class ArrayData<Dim>;
+    friend class IteratorValueBuilder<Dim, IsConst>;
+
+    using DataContainerIterator =
+        typename IteratorValueBuilder<Dim, IsConst>::DataContainerIterator;
+
+    template <bool IC = IsConst, typename = std::enable_if_t<IC == true> >
     explicit IteratorValue(const DataContainer &container, int nbComponents, bool begin)
             : m_It{begin ? container.cbegin() : container.cend()}, m_NbComponents{nbComponents}
+    {
+    }
+
+    template <bool IC = IsConst, typename = std::enable_if_t<IC == false> >
+    explicit IteratorValue(DataContainer &container, int nbComponents, bool begin)
+            : m_It{begin ? container.begin() : container.end()}, m_NbComponents{nbComponents}
     {
     }
 
@@ -51,7 +81,7 @@ public:
 
     std::unique_ptr<ArrayDataIteratorValue::Impl> clone() const override
     {
-        return std::make_unique<IteratorValue<Dim> >(*this);
+        return std::make_unique<IteratorValue<Dim, IsConst> >(*this);
     }
 
     bool equals(const ArrayDataIteratorValue::Impl &other) const override try {
@@ -98,7 +128,7 @@ public:
     }
 
 private:
-    DataContainer::const_iterator m_It;
+    DataContainerIterator m_It;
     int m_NbComponents;
 };
 
@@ -223,15 +253,31 @@ public:
     // Iterators //
     // ///////// //
 
+    ArrayDataIterator begin()
+    {
+        return ArrayDataIterator{
+            ArrayDataIteratorValue{std::make_unique<arraydata_detail::IteratorValue<Dim, false> >(
+                m_Data, m_NbComponents, true)}};
+    }
+
+    ArrayDataIterator end()
+    {
+        return ArrayDataIterator{
+            ArrayDataIteratorValue{std::make_unique<arraydata_detail::IteratorValue<Dim, false> >(
+                m_Data, m_NbComponents, false)}};
+    }
+
     ArrayDataIterator cbegin() const
     {
-        return ArrayDataIterator{ArrayDataIteratorValue{
-            std::make_unique<arraydata_detail::IteratorValue<Dim> >(m_Data, m_NbComponents, true)}};
+        return ArrayDataIterator{
+            ArrayDataIteratorValue{std::make_unique<arraydata_detail::IteratorValue<Dim, true> >(
+                m_Data, m_NbComponents, true)}};
     }
+
     ArrayDataIterator cend() const
     {
         return ArrayDataIterator{
-            ArrayDataIteratorValue{std::make_unique<arraydata_detail::IteratorValue<Dim> >(
+            ArrayDataIteratorValue{std::make_unique<arraydata_detail::IteratorValue<Dim, true> >(
                 m_Data, m_NbComponents, false)}};
     }
 
