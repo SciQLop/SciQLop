@@ -24,6 +24,14 @@ struct Variable::VariablePrivate {
     void lockWrite() { m_Lock.lockForWrite(); }
     void unlock() { m_Lock.unlock(); }
 
+    void purgeDataSeries()
+    {
+        if (m_DataSeries) {
+            m_DataSeries->purge(m_CacheRange.m_TStart, m_CacheRange.m_TEnd);
+        }
+        updateRealRange();
+    }
+
     /// Updates real range according to current variable range and data series
     void updateRealRange()
     {
@@ -94,27 +102,16 @@ SqpRange Variable::cacheRange() const noexcept
 void Variable::setCacheRange(const SqpRange &cacheRange) noexcept
 {
     impl->lockWrite();
-    impl->m_CacheRange = cacheRange;
+    if (cacheRange != impl->m_CacheRange) {
+        impl->m_CacheRange = cacheRange;
+        impl->purgeDataSeries();
+    }
     impl->unlock();
 }
 
 SqpRange Variable::realRange() const noexcept
 {
     return impl->m_RealRange;
-}
-
-void Variable::setDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
-{
-    qCDebug(LOG_Variable()) << "TORM Variable::setDataSeries"
-                            << QThread::currentThread()->objectName();
-    if (!dataSeries) {
-        /// @todo ALX : log
-        return;
-    }
-    impl->lockWrite();
-    impl->m_DataSeries = dataSeries->clone();
-    impl->updateRealRange();
-    impl->unlock();
 }
 
 void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
@@ -127,7 +124,6 @@ void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
     }
 
     // Add or merge the data
-    // Inits the data series of the variable
     impl->lockWrite();
     if (!impl->m_DataSeries) {
         impl->m_DataSeries = dataSeries->clone();
@@ -135,13 +131,8 @@ void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
     else {
         impl->m_DataSeries->merge(dataSeries.get());
     }
+    impl->purgeDataSeries();
     impl->unlock();
-
-    // sub the data
-    auto subData = this->dataSeries()->subDataSeries(this->cacheRange());
-    qCDebug(LOG_Variable()) << "TORM: Variable::mergeDataSeries sub" << subData->range();
-    this->setDataSeries(subData);
-    qCDebug(LOG_Variable()) << "TORM: Variable::mergeDataSeries set" << this->dataSeries()->range();
 }
 
 std::shared_ptr<IDataSeries> Variable::dataSeries() const noexcept
