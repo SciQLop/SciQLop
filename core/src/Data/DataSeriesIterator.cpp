@@ -56,3 +56,8 @@ double DataSeriesIteratorValue::maxValue() const
 {
     return m_Impl->maxValue();
 }
+
+QVector<double> DataSeriesIteratorValue::values() const
+{
+    return m_Impl->values();
+}
