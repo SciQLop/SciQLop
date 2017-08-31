@@ -11,10 +11,14 @@ DataSeriesMergeHelper\.h:\d+:.*IPSIS_S01.*
 
 # Ignore false positive relative to a template class
 ArrayData\.h:\d+:.*IPSIS_S04_METHOD.*found: push_back
+ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (const_iterator)
 ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (D)
+ArrayData\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (IC)
 ArrayData\.h:\d+:.*IPSIS_S04_NAMESPACE.*found: (arraydata_detail)
 ArrayData\.h:\d+:.*IPSIS_S06.*found: (D)
 ArrayData\.h:\d+:.*IPSIS_S06.*found: (Dim)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (IC)
+ArrayData\.h:\d+:.*IPSIS_S06.*found: (IsConst)
 DataSeries\.h:\d+:.*IPSIS_S04_METHOD.*found: LOG_DataSeries
 DataSeries\.h:\d+:.*IPSIS_S04_METHOD.*found: push_back
 DataSeries\.h:\d+:.*IPSIS_S04_VARIABLE.*
@@ -22,6 +26,9 @@ DataSeries\.h:\d+:.*IPSIS_S04_NAMESPACE.*found: (dataseries_detail)
 DataSeries\.h:\d+:.*IPSIS_S05.*
 DataSeries\.h:\d+:.*IPSIS_S06.*found: (value_type)
 DataSeries\.h:\d+:.*IPSIS_S06.*found: (DataSeriesIteratorValue)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (Dim)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (IC)
+DataSeries\.h:\d+:.*IPSIS_S06.*found: (IsConst)
 
 # Ignore false positive relative to iterators
 SqpIterator\.h:\d+:.*IPSIS_S04_VARIABLE.*found: (forward_iterator_tag)

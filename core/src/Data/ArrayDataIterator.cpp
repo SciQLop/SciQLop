@@ -12,7 +12,7 @@ ArrayDataIteratorValue::ArrayDataIteratorValue(const ArrayDataIteratorValue &oth
 
 ArrayDataIteratorValue &ArrayDataIteratorValue::operator=(ArrayDataIteratorValue other)
 {
-    std::swap(m_Impl, other.m_Impl);
+    m_Impl->swap(*other.m_Impl);
     return *this;
 }
 
@@ -54,4 +54,9 @@ double ArrayDataIteratorValue::max() const
 QVector<double> ArrayDataIteratorValue::values() const
 {
     return m_Impl->values();
+}
+
+ArrayDataIteratorValue::Impl *ArrayDataIteratorValue::impl()
+{
+    return m_Impl.get();
 }

@@ -22,9 +22,7 @@ public:
 
     virtual ~SqpIterator() noexcept = default;
     SqpIterator(const SqpIterator &) = default;
-    SqpIterator(SqpIterator &&) = default;
-    SqpIterator &operator=(const SqpIterator &) = default;
-    SqpIterator &operator=(SqpIterator &&) = default;
+    SqpIterator &operator=(SqpIterator other) { swap(m_CurrentValue, other.m_CurrentValue); }
 
     SqpIterator &operator++()
     {
@@ -38,8 +36,10 @@ public:
         return *this;
     }
 
-    pointer operator->() const { return &m_CurrentValue; }
-    reference operator*() const { return m_CurrentValue; }
+    const T *operator->() const { return &m_CurrentValue; }
+    const T &operator*() const { return m_CurrentValue; }
+    T *operator->() { return &m_CurrentValue; }
+    T &operator*() { return m_CurrentValue; }
 
     bool operator==(const SqpIterator &other) const
     {

@@ -27,20 +27,31 @@ class DataSeries;
 
 namespace dataseries_detail {
 
-template <int Dim>
+template <int Dim, bool IsConst>
 class IteratorValue : public DataSeriesIteratorValue::Impl {
 public:
+    friend class DataSeries<Dim>;
+
+    template <bool IC = IsConst, typename = std::enable_if_t<IC == false> >
+    explicit IteratorValue(DataSeries<Dim> &dataSeries, bool begin)
+            : m_XIt(begin ? dataSeries.xAxisData()->begin() : dataSeries.xAxisData()->end()),
+              m_ValuesIt(begin ? dataSeries.valuesData()->begin() : dataSeries.valuesData()->end())
+    {
+    }
+
+    template <bool IC = IsConst, typename = std::enable_if_t<IC == true> >
     explicit IteratorValue(const DataSeries<Dim> &dataSeries, bool begin)
             : m_XIt(begin ? dataSeries.xAxisData()->cbegin() : dataSeries.xAxisData()->cend()),
               m_ValuesIt(begin ? dataSeries.valuesData()->cbegin()
                                : dataSeries.valuesData()->cend())
     {
     }
+
     IteratorValue(const IteratorValue &other) = default;
 
     std::unique_ptr<DataSeriesIteratorValue::Impl> clone() const override
     {
-        return std::make_unique<IteratorValue<Dim> >(*this);
+        return std::make_unique<IteratorValue<Dim, IsConst> >(*this);
     }
 
     bool equals(const DataSeriesIteratorValue::Impl &other) const override try {
@@ -69,6 +80,13 @@ public:
     double minValue() const override { return m_ValuesIt->min(); }
     double maxValue() const override { return m_ValuesIt->max(); }
     QVector<double> values() const override { return m_ValuesIt->values(); }
+
+    void swap(DataSeriesIteratorValue::Impl &other) override
+    {
+        auto &otherImpl = dynamic_cast<IteratorValue &>(other);
+        m_XIt->impl()->swap(*otherImpl.m_XIt->impl());
+        m_ValuesIt->impl()->swap(*otherImpl.m_ValuesIt->impl());
+    }
 
 private:
     ArrayDataIterator m_XIt;
@@ -145,20 +163,59 @@ public:
         dataSeries->unlock();
     }
 
+    void purge(double min, double max) override
+    {
+        if (min > max) {
+            std::swap(min, max);
+        }
+
+        lockWrite();
+
+        auto it = std::remove_if(
+            begin(), end(), [min, max](const auto &it) { return it.x() < min || it.x() > max; });
+        erase(it, end());
+
+        unlock();
+    }
+
     // ///////// //
     // Iterators //
     // ///////// //
 
+    DataSeriesIterator begin() override
+    {
+        return DataSeriesIterator{DataSeriesIteratorValue{
+            std::make_unique<dataseries_detail::IteratorValue<Dim, false> >(*this, true)}};
+    }
+
+    DataSeriesIterator end() override
+    {
+        return DataSeriesIterator{DataSeriesIteratorValue{
+            std::make_unique<dataseries_detail::IteratorValue<Dim, false> >(*this, false)}};
+    }
+
     DataSeriesIterator cbegin() const override
     {
         return DataSeriesIterator{DataSeriesIteratorValue{
-            std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, true)}};
+            std::make_unique<dataseries_detail::IteratorValue<Dim, true> >(*this, true)}};
     }
 
     DataSeriesIterator cend() const override
     {
         return DataSeriesIterator{DataSeriesIteratorValue{
-            std::make_unique<dataseries_detail::IteratorValue<Dim> >(*this, false)}};
+            std::make_unique<dataseries_detail::IteratorValue<Dim, true> >(*this, false)}};
+    }
+
+    void erase(DataSeriesIterator first, DataSeriesIterator last)
+    {
+        auto firstImpl
+            = dynamic_cast<dataseries_detail::IteratorValue<Dim, false> *>(first->impl());
+        auto lastImpl = dynamic_cast<dataseries_detail::IteratorValue<Dim, false> *>(last->impl());
+
+        if (firstImpl && lastImpl) {
+            m_XAxisData->erase(firstImpl->m_XIt, lastImpl->m_XIt);
+            m_ValuesData->erase(firstImpl->m_ValuesIt, lastImpl->m_ValuesIt);
+        }
     }
 
     /// @sa IDataSeries::minXAxisData()
