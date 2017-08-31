@@ -163,6 +163,21 @@ public:
         dataSeries->unlock();
     }
 
+    void purge(double min, double max) override
+    {
+        if (min > max) {
+            std::swap(min, max);
+        }
+
+        lockWrite();
+
+        auto it = std::remove_if(
+            begin(), end(), [min, max](const auto &it) { return it.x() < min || it.x() > max; });
+        erase(it, end());
+
+        unlock();
+    }
+
     // ///////// //
     // Iterators //
     // ///////// //
