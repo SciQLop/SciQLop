@@ -296,6 +296,16 @@ public:
                 m_Data, m_NbComponents, false)}};
     }
 
+    void erase(ArrayDataIterator first, ArrayDataIterator last)
+    {
+        auto firstImpl = dynamic_cast<arraydata_detail::IteratorValue<Dim, false> *>(first->impl());
+        auto lastImpl = dynamic_cast<arraydata_detail::IteratorValue<Dim, false> *>(last->impl());
+
+        if (firstImpl && lastImpl) {
+            m_Data.erase(firstImpl->m_It, lastImpl->m_It);
+        }
+    }
+
     /// Inserts at the end of the array data the values passed as a parameter. This
     /// method is intended to be used in the context of generating a back insert iterator, or only
     /// if it's ensured that the total size of the vector is consistent with the number of

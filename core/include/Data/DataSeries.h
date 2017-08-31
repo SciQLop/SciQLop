@@ -191,6 +191,18 @@ public:
             std::make_unique<dataseries_detail::IteratorValue<Dim, true> >(*this, false)}};
     }
 
+    void erase(DataSeriesIterator first, DataSeriesIterator last)
+    {
+        auto firstImpl
+            = dynamic_cast<dataseries_detail::IteratorValue<Dim, false> *>(first->impl());
+        auto lastImpl = dynamic_cast<dataseries_detail::IteratorValue<Dim, false> *>(last->impl());
+
+        if (firstImpl && lastImpl) {
+            m_XAxisData->erase(firstImpl->m_XIt, lastImpl->m_XIt);
+            m_ValuesData->erase(firstImpl->m_ValuesIt, lastImpl->m_ValuesIt);
+        }
+    }
+
     /// @sa IDataSeries::minXAxisData()
     DataSeriesIterator minXAxisData(double minXAxisData) const override
     {
