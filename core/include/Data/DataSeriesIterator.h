@@ -29,11 +29,12 @@ public:
         virtual double minValue() const = 0;
         virtual double maxValue() const = 0;
         virtual QVector<double> values() const = 0;
+
+        virtual void swap(Impl &other) = 0;
     };
 
     explicit DataSeriesIteratorValue(std::unique_ptr<Impl> impl);
     DataSeriesIteratorValue(const DataSeriesIteratorValue &other);
-    DataSeriesIteratorValue(DataSeriesIteratorValue &&other) = default;
     DataSeriesIteratorValue &operator=(DataSeriesIteratorValue other);
 
     bool equals(const DataSeriesIteratorValue &other) const;
@@ -54,6 +55,13 @@ public:
     double maxValue() const;
     /// Gets all values data
     QVector<double> values() const;
+
+    Impl *impl();
+
+    friend void swap(DataSeriesIteratorValue &lhs, DataSeriesIteratorValue &rhs)
+    {
+        std::swap(lhs.m_Impl, rhs.m_Impl);
+    }
 
 private:
     std::unique_ptr<Impl> m_Impl;

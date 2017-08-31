@@ -49,11 +49,20 @@ struct IteratorValueBuilder {
 template <int Dim>
 struct IteratorValueBuilder<Dim, true> {
     using DataContainerIterator = DataContainer::const_iterator;
+
+    static void swap(IteratorValue<Dim, true> &o1, IteratorValue<Dim, true> &o2) {}
 };
 
 template <int Dim>
 struct IteratorValueBuilder<Dim, false> {
     using DataContainerIterator = DataContainer::iterator;
+
+    static void swap(IteratorValue<Dim, false> &o1, IteratorValue<Dim, false> &o2)
+    {
+        for (auto i = 0; i < o1.m_NbComponents; ++i) {
+            std::iter_swap(o1.m_It + i, o2.m_It + i);
+        }
+    }
 };
 
 template <int Dim, bool IsConst>
@@ -125,6 +134,12 @@ public:
         }
 
         return result;
+    }
+
+    void swap(ArrayDataIteratorValue::Impl &other) override
+    {
+        auto &otherImpl = dynamic_cast<IteratorValue &>(other);
+        IteratorValueBuilder<Dim, IsConst>::swap(*this, otherImpl);
     }
 
 private:

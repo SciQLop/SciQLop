@@ -81,6 +81,13 @@ public:
     double maxValue() const override { return m_ValuesIt->max(); }
     QVector<double> values() const override { return m_ValuesIt->values(); }
 
+    void swap(DataSeriesIteratorValue::Impl &other) override
+    {
+        auto &otherImpl = dynamic_cast<IteratorValue &>(other);
+        m_XIt->impl()->swap(*otherImpl.m_XIt->impl());
+        m_ValuesIt->impl()->swap(*otherImpl.m_ValuesIt->impl());
+    }
+
 private:
     ArrayDataIterator m_XIt;
     ArrayDataIterator m_ValuesIt;

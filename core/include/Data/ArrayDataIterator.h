@@ -27,11 +27,12 @@ public:
         virtual double min() const = 0;
         virtual double max() const = 0;
         virtual QVector<double> values() const = 0;
+
+        virtual void swap(Impl &other) = 0;
     };
 
     explicit ArrayDataIteratorValue(std::unique_ptr<Impl> impl);
     ArrayDataIteratorValue(const ArrayDataIteratorValue &other);
-    ArrayDataIteratorValue(ArrayDataIteratorValue &&other) = default;
     ArrayDataIteratorValue &operator=(ArrayDataIteratorValue other);
 
     bool equals(const ArrayDataIteratorValue &other) const;
@@ -50,6 +51,13 @@ public:
     double max() const;
     /// Gets all values
     QVector<double> values() const;
+
+    Impl *impl();
+
+    friend void swap(ArrayDataIteratorValue &lhs, ArrayDataIteratorValue &rhs)
+    {
+        std::swap(lhs.m_Impl, rhs.m_Impl);
+    }
 
 private:
     std::unique_ptr<Impl> m_Impl;
