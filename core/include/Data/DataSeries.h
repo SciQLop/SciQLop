@@ -6,6 +6,7 @@
 #include <Common/SortUtils.h>
 
 #include <Data/ArrayData.h>
+#include <Data/DataSeriesMergeHelper.h>
 #include <Data/IDataSeries.h>
 
 #include <QLoggingCategory>
@@ -67,6 +68,7 @@ public:
     double value(int componentIndex) const override { return m_ValuesIt->at(componentIndex); }
     double minValue() const override { return m_ValuesIt->min(); }
     double maxValue() const override { return m_ValuesIt->max(); }
+    QVector<double> values() const override { return m_ValuesIt->values(); }
 
 private:
     ArrayDataIterator m_XIt;
@@ -86,7 +88,13 @@ private:
  */
 template <int Dim>
 class SCIQLOP_CORE_EXPORT DataSeries : public IDataSeries {
+    friend class DataSeriesMergeHelper;
+
 public:
+    /// Tag needed to define the push_back() method
+    /// @sa push_back()
+    using value_type = DataSeriesIteratorValue;
+
     /// @sa IDataSeries::xAxisData()
     std::shared_ptr<ArrayData<1> > xAxisData() override { return m_XAxisData; }
     const std::shared_ptr<ArrayData<1> > xAxisData() const { return m_XAxisData; }
@@ -117,6 +125,8 @@ public:
         m_ValuesData->clear();
     }
 
+    bool isEmpty() const noexcept { return m_XAxisData->size() == 0; }
+
     /// Merges into the data series an other data series
     /// @remarks the data series to merge with is cleared after the operation
     void merge(IDataSeries *dataSeries) override
@@ -125,49 +135,7 @@ public:
         lockWrite();
 
         if (auto other = dynamic_cast<DataSeries<Dim> *>(dataSeries)) {
-            const auto &otherXAxisData = other->xAxisData()->cdata();
-            const auto &xAxisData = m_XAxisData->cdata();
-
-            // As data series are sorted, we can improve performances of merge, by call the sort
-            // method only if the two data series overlap.
-            if (!otherXAxisData.empty()) {
-                auto firstValue = otherXAxisData.front();
-                auto lastValue = otherXAxisData.back();
-
-                auto xAxisDataBegin = xAxisData.cbegin();
-                auto xAxisDataEnd = xAxisData.cend();
-
-                bool prepend;
-                bool sortNeeded;
-
-                if (std::lower_bound(xAxisDataBegin, xAxisDataEnd, firstValue) == xAxisDataEnd) {
-                    // Other data series if after data series
-                    prepend = false;
-                    sortNeeded = false;
-                }
-                else if (std::upper_bound(xAxisDataBegin, xAxisDataEnd, lastValue)
-                         == xAxisDataBegin) {
-                    // Other data series if before data series
-                    prepend = true;
-                    sortNeeded = false;
-                }
-                else {
-                    // The two data series overlap
-                    prepend = false;
-                    sortNeeded = true;
-                }
-
-                // Makes the merge
-                m_XAxisData->add(*other->xAxisData(), prepend);
-                m_ValuesData->add(*other->valuesData(), prepend);
-
-                if (sortNeeded) {
-                    sort();
-                }
-            }
-
-            // Clears the other data series
-            other->clear();
+            DataSeriesMergeHelper::merge(*other, *this);
         }
         else {
             qCWarning(LOG_DataSeries())
@@ -265,6 +233,22 @@ public:
     virtual void lockRead() { m_Lock.lockForRead(); }
     virtual void lockWrite() { m_Lock.lockForWrite(); }
     virtual void unlock() { m_Lock.unlock(); }
+
+    // ///// //
+    // Other //
+    // ///// //
+
+    /// Inserts at the end of the data series the value of the iterator passed as a parameter. This
+    /// method is intended to be used in the context of generating a back insert iterator
+    /// @param iteratorValue the iterator value containing the values to insert
+    /// @sa http://en.cppreference.com/w/cpp/iterator/back_inserter
+    /// @sa merge()
+    /// @sa value_type
+    void push_back(const value_type &iteratorValue)
+    {
+        m_XAxisData->push_back(QVector<double>{iteratorValue.x()});
+        m_ValuesData->push_back(iteratorValue.values());
+    }
 
 protected:
     /// Protected ctor (DataSeries is abstract). The vectors must have the same size, otherwise a
