@@ -6,6 +6,7 @@
 #include <Common/SortUtils.h>
 
 #include <Data/ArrayData.h>
+#include <Data/DataSeriesMergeHelper.h>
 #include <Data/IDataSeries.h>
 
 #include <QLoggingCategory>
@@ -87,6 +88,8 @@ private:
  */
 template <int Dim>
 class SCIQLOP_CORE_EXPORT DataSeries : public IDataSeries {
+    friend class DataSeriesMergeHelper;
+
 public:
     /// @sa IDataSeries::xAxisData()
     std::shared_ptr<ArrayData<1> > xAxisData() override { return m_XAxisData; }
@@ -118,6 +121,8 @@ public:
         m_ValuesData->clear();
     }
 
+    bool isEmpty() const noexcept { return m_XAxisData->size() == 0; }
+
     /// Merges into the data series an other data series
     /// @remarks the data series to merge with is cleared after the operation
     void merge(IDataSeries *dataSeries) override
@@ -126,49 +131,7 @@ public:
         lockWrite();
 
         if (auto other = dynamic_cast<DataSeries<Dim> *>(dataSeries)) {
-            const auto &otherXAxisData = other->xAxisData()->cdata();
-            const auto &xAxisData = m_XAxisData->cdata();
-
-            // As data series are sorted, we can improve performances of merge, by call the sort
-            // method only if the two data series overlap.
-            if (!otherXAxisData.empty()) {
-                auto firstValue = otherXAxisData.front();
-                auto lastValue = otherXAxisData.back();
-
-                auto xAxisDataBegin = xAxisData.cbegin();
-                auto xAxisDataEnd = xAxisData.cend();
-
-                bool prepend;
-                bool sortNeeded;
-
-                if (std::lower_bound(xAxisDataBegin, xAxisDataEnd, firstValue) == xAxisDataEnd) {
-                    // Other data series if after data series
-                    prepend = false;
-                    sortNeeded = false;
-                }
-                else if (std::upper_bound(xAxisDataBegin, xAxisDataEnd, lastValue)
-                         == xAxisDataBegin) {
-                    // Other data series if before data series
-                    prepend = true;
-                    sortNeeded = false;
-                }
-                else {
-                    // The two data series overlap
-                    prepend = false;
-                    sortNeeded = true;
-                }
-
-                // Makes the merge
-                m_XAxisData->add(*other->xAxisData(), prepend);
-                m_ValuesData->add(*other->valuesData(), prepend);
-
-                if (sortNeeded) {
-                    sort();
-                }
-            }
-
-            // Clears the other data series
-            other->clear();
+            DataSeriesMergeHelper::merge(*other, *this);
         }
         else {
             qCWarning(LOG_DataSeries())
