@@ -22,6 +22,20 @@ void validateRange(DataSeriesIterator first, DataSeriesIterator last, const QVec
         [](const auto &it, const auto &expectedVal) { return it.value() == expectedVal; }));
 }
 
+void validateRange(DataSeriesIterator first, DataSeriesIterator last, const QVector<double> &xData,
+                   const QVector<QVector<double> > &valuesData)
+{
+    QVERIFY(std::equal(first, last, xData.cbegin(), xData.cend(),
+                       [](const auto &it, const auto &expectedX) { return it.x() == expectedX; }));
+    for (auto i = 0; i < valuesData.size(); ++i) {
+        auto componentData = valuesData.at(i);
+
+        QVERIFY(std::equal(
+            first, last, componentData.cbegin(), componentData.cend(),
+            [i](const auto &it, const auto &expectedVal) { return it.value(i) == expectedVal; }));
+    }
+}
+
 } // namespace
 
 class TestDataSeries : public QObject {
@@ -75,7 +89,42 @@ private:
         }
     }
 
+    template <typename T>
+    void testPurgeStructure()
+    {
+        // ////////////// //
+        // Test structure //
+        // ////////////// //
+
+        // Data series to purge
+        QTest::addColumn<std::shared_ptr<T> >("dataSeries");
+        QTest::addColumn<double>("min");
+        QTest::addColumn<double>("max");
+
+        // Expected values after purge
+        QTest::addColumn<QVector<double> >("expectedXAxisData");
+        QTest::addColumn<QVector<QVector<double> > >("expectedValuesData");
+    }
+
+    template <typename T>
+    void testPurge()
+    {
+        QFETCH(std::shared_ptr<T>, dataSeries);
+        QFETCH(double, min);
+        QFETCH(double, max);
+
+        dataSeries->purge(min, max);
+
+        // Validates results
+        QFETCH(QVector<double>, expectedXAxisData);
+        QFETCH(QVector<QVector<double> >, expectedValuesData);
+
+        validateRange(dataSeries->cbegin(), dataSeries->cend(), expectedXAxisData,
+                      expectedValuesData);
+    }
+
 private slots:
+
     /// Input test data
     /// @sa testCtor()
     void testCtor_data();
@@ -89,6 +138,20 @@ private slots:
 
     /// Tests merge of two data series
     void testMerge();
+
+    /// Input test data
+    /// @sa testPurgeScalar()
+    void testPurgeScalar_data();
+
+    /// Tests purge of a scalar series
+    void testPurgeScalar();
+
+    /// Input test data
+    /// @sa testPurgeVector()
+    void testPurgeVector_data();
+
+    /// Tests purge of a vector series
+    void testPurgeVector();
 
     /// Input test data
     /// @sa testMinXAxisData()
@@ -259,6 +322,62 @@ void TestDataSeries::testMerge()
     QFETCH(QVector<double>, expectedValuesData);
 
     validateRange(dataSeries->cbegin(), dataSeries->cend(), expectedXAxisData, expectedValuesData);
+}
+
+void TestDataSeries::testPurgeScalar_data()
+{
+    testPurgeStructure<ScalarSeries>();
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    QTest::newRow("purgeScalar") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                       {100., 200., 300., 400., 500.})
+                                 << 2. << 4. << QVector<double>{2., 3., 4.}
+                                 << QVector<QVector<double> >{{200., 300., 400.}};
+    QTest::newRow("purgeScalar2") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                        {100., 200., 300., 400., 500.})
+                                  << 0. << 2.5 << QVector<double>{1., 2.}
+                                  << QVector<QVector<double> >{{100., 200.}};
+    QTest::newRow("purgeScalar3") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                        {100., 200., 300., 400., 500.})
+                                  << 3.5 << 7. << QVector<double>{4., 5.}
+                                  << QVector<QVector<double> >{{400., 500.}};
+    QTest::newRow("purgeScalar4") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                        {100., 200., 300., 400., 500.})
+                                  << 0. << 7. << QVector<double>{1., 2., 3., 4., 5.}
+                                  << QVector<QVector<double> >{{100., 200., 300., 400., 500.}};
+    QTest::newRow("purgeScalar5") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                        {100., 200., 300., 400., 500.})
+                                  << 5.5 << 7. << QVector<double>{}
+                                  << QVector<QVector<double> >{{}};
+}
+
+void TestDataSeries::testPurgeScalar()
+{
+    testPurge<ScalarSeries>();
+}
+
+void TestDataSeries::testPurgeVector_data()
+{
+    testPurgeStructure<VectorSeries>();
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    QTest::newRow("purgeVector") << createVectorSeries({1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.},
+                                                       {11., 12., 13., 14., 15.},
+                                                       {16., 17., 18., 19., 20.})
+                                 << 2. << 4. << QVector<double>{2., 3., 4.}
+                                 << QVector<QVector<double> >{
+                                        {7., 8., 9.}, {12., 13., 14.}, {17., 18., 19.}};
+}
+
+void TestDataSeries::testPurgeVector()
+{
+    testPurge<VectorSeries>();
 }
 
 void TestDataSeries::testMinXAxisData_data()

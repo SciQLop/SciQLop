@@ -57,6 +57,9 @@ public:
     virtual Unit valuesUnit() const = 0;
 
     virtual void merge(IDataSeries *dataSeries) = 0;
+    /// Removes from data series all entries whose value on the x-axis is not between min and max
+    virtual void purge(double min, double max) = 0;
+
     /// @todo Review the name and signature of this method
     virtual std::shared_ptr<IDataSeries> subDataSeries(const SqpRange &range) = 0;
 
@@ -69,6 +72,8 @@ public:
 
     virtual DataSeriesIterator cbegin() const = 0;
     virtual DataSeriesIterator cend() const = 0;
+    virtual DataSeriesIterator begin() = 0;
+    virtual DataSeriesIterator end() = 0;
 
     /// @return the iterator to the first entry of the data series whose x-axis data is greater than
     /// or equal to the value passed in parameter, or the end iterator if there is no matching value

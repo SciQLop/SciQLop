@@ -13,7 +13,7 @@ DataSeriesIteratorValue::DataSeriesIteratorValue(const DataSeriesIteratorValue &
 
 DataSeriesIteratorValue &DataSeriesIteratorValue::operator=(DataSeriesIteratorValue other)
 {
-    std::swap(m_Impl, other.m_Impl);
+    m_Impl->swap(*other.m_Impl);
     return *this;
 }
 
@@ -60,4 +60,9 @@ double DataSeriesIteratorValue::maxValue() const
 QVector<double> DataSeriesIteratorValue::values() const
 {
     return m_Impl->values();
+}
+
+DataSeriesIteratorValue::Impl *DataSeriesIteratorValue::impl()
+{
+    return m_Impl.get();
 }
