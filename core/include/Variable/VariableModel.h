@@ -45,6 +45,7 @@ public:
 
 
     std::shared_ptr<Variable> variable(int index) const;
+    std::vector<std::shared_ptr<Variable> > variables() const;
 
     void setDataProgress(std::shared_ptr<Variable> variable, double progress);
 
