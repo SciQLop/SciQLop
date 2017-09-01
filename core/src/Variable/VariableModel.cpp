@@ -114,6 +114,11 @@ std::shared_ptr<Variable> VariableModel::variable(int index) const
     return (index >= 0 && index < impl->m_Variables.size()) ? impl->m_Variables[index] : nullptr;
 }
 
+std::vector<std::shared_ptr<Variable> > VariableModel::variables() const
+{
+    return impl->m_Variables;
+}
+
 void VariableModel::setDataProgress(std::shared_ptr<Variable> variable, double progress)
 {
     if (progress > 0.0) {

@@ -75,6 +75,13 @@ QString Variable::name() const noexcept
     return name;
 }
 
+void Variable::setName(const QString &name) noexcept
+{
+    impl->lockWrite();
+    impl->m_Name = name;
+    impl->unlock();
+}
+
 SqpRange Variable::range() const noexcept
 {
     impl->lockRead();

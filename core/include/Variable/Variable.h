@@ -29,6 +29,7 @@ public:
                       const QVariantHash &metadata = {});
 
     QString name() const noexcept;
+    void setName(const QString &name) noexcept;
     SqpRange range() const noexcept;
     void setRange(const SqpRange &range) noexcept;
     SqpRange cacheRange() const noexcept;
