@@ -1,3 +1,5 @@
+#include <Variable/RenameVariableDialog.h>
+#include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 #include <Variable/VariableInspectorWidget.h>
 #include <Variable/VariableMenuHeaderWidget.h>
@@ -179,6 +181,16 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
             auto selectedVariable = selectedVariables.front();
 
             auto renameFun = [&selectedVariable, &model, this]() {
+                // Generates forbidden names (names associated to existing variables)
+                auto allVariables = model->variables();
+                auto forbiddenNames = QVector<QString>(allVariables.size());
+                std::transform(allVariables.cbegin(), allVariables.cend(), forbiddenNames.begin(),
+                               [](const auto &variable) { return variable->name(); });
+
+                RenameVariableDialog dialog{selectedVariable->name(), forbiddenNames, this};
+                if (dialog.exec() == QDialog::Accepted) {
+                    selectedVariable->setName(dialog.name());
+                }
             };
 
             tableMenu.addAction(tr("Rename..."), renameFun);
