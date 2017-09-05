@@ -155,8 +155,8 @@ public:
 
     SqpRange range() const override
     {
-        if (!m_XAxisData->cdata().isEmpty()) {
-            return SqpRange{m_XAxisData->cdata().first(), m_XAxisData->cdata().last()};
+        if (!m_XAxisData->cdata().empty()) {
+            return SqpRange{m_XAxisData->cdata().front(), m_XAxisData->cdata().back()};
         }
 
         return SqpRange{};

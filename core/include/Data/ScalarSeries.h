@@ -16,7 +16,7 @@ public:
      * @param xAxisData x-axis data
      * @param valuesData values data
      */
-    explicit ScalarSeries(QVector<double> xAxisData, QVector<double> valuesData,
+    explicit ScalarSeries(std::vector<double> xAxisData, std::vector<double> valuesData,
                           const Unit &xAxisUnit, const Unit &valuesUnit);
 
     std::unique_ptr<IDataSeries> clone() const override;

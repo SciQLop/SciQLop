@@ -18,12 +18,12 @@ public:
      * @param yvaluesData y-values data
      * @param zvaluesData z-values data
      */
-    explicit VectorSeries(QVector<double> xAxisData, QVector<double> xValuesData,
-                          QVector<double> yValuesData, QVector<double> zValuesData,
+    explicit VectorSeries(std::vector<double> xAxisData, std::vector<double> xValuesData,
+                          std::vector<double> yValuesData, std::vector<double> zValuesData,
                           const Unit &xAxisUnit, const Unit &valuesUnit);
 
     /// Default Ctor
-    explicit VectorSeries(QVector<double> xAxisData, QVector<double> valuesData,
+    explicit VectorSeries(std::vector<double> xAxisData, std::vector<double> valuesData,
                           const Unit &xAxisUnit, const Unit &valuesUnit);
 
     std::unique_ptr<IDataSeries> clone() const;

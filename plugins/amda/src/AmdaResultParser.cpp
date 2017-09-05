@@ -194,15 +194,16 @@ std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
         case ValueType::SCALAR:
             Q_ASSERT(results.second.size() == 1);
             return std::make_shared<ScalarSeries>(
-                std::move(results.first), std::move(results.second.takeFirst()), xAxisUnit, Unit{});
+                std::move(results.first.toStdVector()),
+                std::move(results.second.takeFirst().toStdVector()), xAxisUnit, Unit{});
         case ValueType::VECTOR: {
             Q_ASSERT(results.second.size() == 3);
-            auto xValues = results.second.takeFirst();
-            auto yValues = results.second.takeFirst();
-            auto zValues = results.second.takeFirst();
-            return std::make_shared<VectorSeries>(std::move(results.first), std::move(xValues),
-                                                  std::move(yValues), std::move(zValues), xAxisUnit,
-                                                  Unit{});
+            auto xValues = results.second.takeFirst().toStdVector();
+            auto yValues = results.second.takeFirst().toStdVector();
+            auto zValues = results.second.takeFirst().toStdVector();
+            return std::make_shared<VectorSeries>(std::move(results.first.toStdVector()),
+                                                  std::move(xValues), std::move(yValues),
+                                                  std::move(zValues), xAxisUnit, Unit{});
         }
         case ValueType::UNKNOWN:
             // Invalid case

@@ -13,7 +13,7 @@
 template <int Dim>
 class ArrayData;
 
-using DataContainer = QVector<double>;
+using DataContainer = std::vector<double>;
 
 namespace arraydata_detail {
 
@@ -363,9 +363,8 @@ public:
      * @remarks this method is only available for a unidimensional ArrayData
      */
     template <int D = Dim, typename = std::enable_if_t<D == 1> >
-    const QVector<double> &cdata() const noexcept
+    DataContainer cdata() const noexcept
     {
-        QReadLocker locker{&m_Lock};
         return m_Data;
     }
 

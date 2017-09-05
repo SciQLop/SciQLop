@@ -1,6 +1,6 @@
 #include <Data/ScalarSeries.h>
 
-ScalarSeries::ScalarSeries(QVector<double> xAxisData, QVector<double> valuesData,
+ScalarSeries::ScalarSeries(std::vector<double> xAxisData, std::vector<double> valuesData,
                            const Unit &xAxisUnit, const Unit &valuesUnit)
         : DataSeries{std::make_shared<ArrayData<1> >(std::move(xAxisData)), xAxisUnit,
                      std::make_shared<ArrayData<1> >(std::move(valuesData)), valuesUnit}
@@ -14,18 +14,18 @@ std::unique_ptr<IDataSeries> ScalarSeries::clone() const
 
 std::shared_ptr<IDataSeries> ScalarSeries::subDataSeries(const SqpRange &range)
 {
-    auto subXAxisData = QVector<double>();
-    auto subValuesData = QVector<double>();
+    auto subXAxisData = std::vector<double>();
+    auto subValuesData = std::vector<double>();
     this->lockRead();
     {
         auto bounds = xAxisRange(range.m_TStart, range.m_TEnd);
         for (auto it = bounds.first; it != bounds.second; ++it) {
-            subXAxisData.append(it->x());
-            subValuesData.append(it->value());
+            subXAxisData.push_back(it->x());
+            subValuesData.push_back(it->value());
         }
     }
     this->unlock();
 
-    return std::make_shared<ScalarSeries>(subXAxisData, subValuesData, this->xAxisUnit(),
-                                          this->valuesUnit());
+    return std::make_shared<ScalarSeries>(std::move(subXAxisData), std::move(subValuesData),
+                                          this->xAxisUnit(), this->valuesUnit());
 }
