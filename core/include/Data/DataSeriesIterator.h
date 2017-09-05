@@ -20,7 +20,10 @@ public:
     struct Impl {
         virtual ~Impl() noexcept = default;
         virtual std::unique_ptr<Impl> clone() const = 0;
+        virtual int distance(const Impl &other) const = 0;
         virtual bool equals(const Impl &other) const = 0;
+        virtual bool lowerThan(const Impl &other) const = 0;
+        virtual std::unique_ptr<Impl> advance(int offset) const = 0;
         virtual void next() = 0;
         virtual void prev() = 0;
         virtual double x() const = 0;
@@ -37,8 +40,11 @@ public:
     DataSeriesIteratorValue(const DataSeriesIteratorValue &other);
     DataSeriesIteratorValue &operator=(DataSeriesIteratorValue other);
 
+    int distance(const DataSeriesIteratorValue &other) const;
     bool equals(const DataSeriesIteratorValue &other) const;
+    bool lowerThan(const DataSeriesIteratorValue &other) const;
 
+    DataSeriesIteratorValue advance(int offset) const;
     /// Advances to the next value
     void next();
     /// Moves back to the previous value
