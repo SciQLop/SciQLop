@@ -4,7 +4,9 @@
 
 namespace {
 
-void verifyArrayData(const ArrayData<1> &arrayData, const QVector<double> &expectedData)
+using DataContainer = std::vector<double>;
+
+void verifyArrayData(const ArrayData<1> &arrayData, const DataContainer &expectedData)
 {
     QVERIFY(std::equal(
         arrayData.cbegin(), arrayData.cend(), expectedData.cbegin(), expectedData.cend(),
@@ -44,18 +46,18 @@ private slots:
 void TestOneDimArrayData::testData_data()
 {
     // Test structure
-    QTest::addColumn<QVector<double> >("inputData");    // array's data input
-    QTest::addColumn<QVector<double> >("expectedData"); // expected data
+    QTest::addColumn<DataContainer>("inputData");    // array's data input
+    QTest::addColumn<DataContainer>("expectedData"); // expected data
 
     // Test cases
-    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.}
-                           << QVector<double>{1., 2., 3., 4., 5.};
+    QTest::newRow("data1") << DataContainer{1., 2., 3., 4., 5.}
+                           << DataContainer{1., 2., 3., 4., 5.};
 }
 
 void TestOneDimArrayData::testData()
 {
-    QFETCH(QVector<double>, inputData);
-    QFETCH(QVector<double>, expectedData);
+    QFETCH(DataContainer, inputData);
+    QFETCH(DataContainer, expectedData);
 
     ArrayData<1> arrayData{inputData};
     verifyArrayData(arrayData, expectedData);
@@ -64,26 +66,24 @@ void TestOneDimArrayData::testData()
 void TestOneDimArrayData::testAdd_data()
 {
     // Test structure
-    QTest::addColumn<QVector<double> >("inputData");    // array's data input
-    QTest::addColumn<QVector<double> >("otherData");    // array data's input to merge with
-    QTest::addColumn<bool>("prepend");                  // prepend or append merge
-    QTest::addColumn<QVector<double> >("expectedData"); // expected data after merge
+    QTest::addColumn<DataContainer>("inputData");    // array's data input
+    QTest::addColumn<DataContainer>("otherData");    // array data's input to merge with
+    QTest::addColumn<bool>("prepend");               // prepend or append merge
+    QTest::addColumn<DataContainer>("expectedData"); // expected data after merge
 
     // Test cases
-    QTest::newRow("appendMerge") << QVector<double>{1., 2., 3., 4., 5.}
-                                 << QVector<double>{6., 7., 8.} << false
-                                 << QVector<double>{1., 2., 3., 4., 5., 6., 7., 8.};
-    QTest::newRow("prependMerge") << QVector<double>{1., 2., 3., 4., 5.}
-                                  << QVector<double>{6., 7., 8.} << true
-                                  << QVector<double>{6., 7., 8., 1., 2., 3., 4., 5.};
+    QTest::newRow("appendMerge") << DataContainer{1., 2., 3., 4., 5.} << DataContainer{6., 7., 8.}
+                                 << false << DataContainer{1., 2., 3., 4., 5., 6., 7., 8.};
+    QTest::newRow("prependMerge") << DataContainer{1., 2., 3., 4., 5.} << DataContainer{6., 7., 8.}
+                                  << true << DataContainer{6., 7., 8., 1., 2., 3., 4., 5.};
 }
 
 void TestOneDimArrayData::testAdd()
 {
-    QFETCH(QVector<double>, inputData);
-    QFETCH(QVector<double>, otherData);
+    QFETCH(DataContainer, inputData);
+    QFETCH(DataContainer, otherData);
     QFETCH(bool, prepend);
-    QFETCH(QVector<double>, expectedData);
+    QFETCH(DataContainer, expectedData);
 
     ArrayData<1> arrayData{inputData};
     ArrayData<1> other{otherData};
@@ -95,18 +95,18 @@ void TestOneDimArrayData::testAdd()
 void TestOneDimArrayData::testAt_data()
 {
     // Test structure
-    QTest::addColumn<QVector<double> >("inputData"); // array data's input
-    QTest::addColumn<int>("index");                  // index to retrieve data
-    QTest::addColumn<double>("expectedData");        // expected data at index
+    QTest::addColumn<DataContainer>("inputData"); // array data's input
+    QTest::addColumn<int>("index");               // index to retrieve data
+    QTest::addColumn<double>("expectedData");     // expected data at index
 
     // Test cases
-    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.} << 0 << 1.;
-    QTest::newRow("data2") << QVector<double>{1., 2., 3., 4., 5.} << 3 << 4.;
+    QTest::newRow("data1") << DataContainer{1., 2., 3., 4., 5.} << 0 << 1.;
+    QTest::newRow("data2") << DataContainer{1., 2., 3., 4., 5.} << 3 << 4.;
 }
 
 void TestOneDimArrayData::testAt()
 {
-    QFETCH(QVector<double>, inputData);
+    QFETCH(DataContainer, inputData);
     QFETCH(int, index);
     QFETCH(double, expectedData);
 
@@ -117,34 +117,34 @@ void TestOneDimArrayData::testAt()
 void TestOneDimArrayData::testClear_data()
 {
     // Test structure
-    QTest::addColumn<QVector<double> >("inputData"); // array data's input
+    QTest::addColumn<DataContainer>("inputData"); // array data's input
 
     // Test cases
-    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.};
+    QTest::newRow("data1") << DataContainer{1., 2., 3., 4., 5.};
 }
 
 void TestOneDimArrayData::testClear()
 {
-    QFETCH(QVector<double>, inputData);
+    QFETCH(DataContainer, inputData);
 
     ArrayData<1> arrayData{inputData};
     arrayData.clear();
-    verifyArrayData(arrayData, QVector<double>{});
+    verifyArrayData(arrayData, DataContainer{});
 }
 
 void TestOneDimArrayData::testSize_data()
 {
     // Test structure
-    QTest::addColumn<QVector<double> >("inputData"); // array data's input
-    QTest::addColumn<int>("expectedSize");           // expected array data size
+    QTest::addColumn<DataContainer>("inputData"); // array data's input
+    QTest::addColumn<int>("expectedSize");        // expected array data size
 
     // Test cases
-    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.} << 5;
+    QTest::newRow("data1") << DataContainer{1., 2., 3., 4., 5.} << 5;
 }
 
 void TestOneDimArrayData::testSize()
 {
-    QFETCH(QVector<double>, inputData);
+    QFETCH(DataContainer, inputData);
     QFETCH(int, expectedSize);
 
     ArrayData<1> arrayData{inputData};
@@ -154,22 +154,22 @@ void TestOneDimArrayData::testSize()
 void TestOneDimArrayData::testSort_data()
 {
     // Test structure
-    QTest::addColumn<QVector<double> >("inputData");        // array data's input
+    QTest::addColumn<DataContainer>("inputData");           // array data's input
     QTest::addColumn<std::vector<int> >("sortPermutation"); // permutation used to sort data
-    QTest::addColumn<QVector<double> >("expectedData");     // expected data after sorting
+    QTest::addColumn<DataContainer>("expectedData");        // expected data after sorting
 
     // Test cases
-    QTest::newRow("data1") << QVector<double>{1., 2., 3., 4., 5.} << std::vector<int>{0, 2, 3, 1, 4}
-                           << QVector<double>{1., 3., 4., 2., 5.};
-    QTest::newRow("data2") << QVector<double>{1., 2., 3., 4., 5.} << std::vector<int>{4, 1, 2, 3, 0}
-                           << QVector<double>{5., 2., 3., 4., 1.};
+    QTest::newRow("data1") << DataContainer{1., 2., 3., 4., 5.} << std::vector<int>{0, 2, 3, 1, 4}
+                           << DataContainer{1., 3., 4., 2., 5.};
+    QTest::newRow("data2") << DataContainer{1., 2., 3., 4., 5.} << std::vector<int>{4, 1, 2, 3, 0}
+                           << DataContainer{5., 2., 3., 4., 1.};
 }
 
 void TestOneDimArrayData::testSort()
 {
-    QFETCH(QVector<double>, inputData);
+    QFETCH(DataContainer, inputData);
     QFETCH(std::vector<int>, sortPermutation);
-    QFETCH(QVector<double>, expectedData);
+    QFETCH(DataContainer, expectedData);
 
     ArrayData<1> arrayData{inputData};
     auto sortedArrayData = arrayData.sort(sortPermutation);

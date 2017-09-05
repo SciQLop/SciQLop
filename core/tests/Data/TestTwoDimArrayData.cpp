@@ -2,31 +2,32 @@
 #include <QObject>
 #include <QtTest>
 
-using Container = QVector<QVector<double> >;
-using InputData = QPair<QVector<double>, int>;
+using DataContainer = std::vector<double>;
+using Container = std::vector<DataContainer>;
+using InputData = QPair<DataContainer, int>;
 
 namespace {
 
 InputData flatten(const Container &container)
 {
-    if (container.isEmpty()) {
+    if (container.empty()) {
         return {};
     }
 
     // We assume here that each component of the container have the same size
     auto containerSize = container.size();
-    auto componentSize = container.first().size();
+    auto componentSize = container.front().size();
 
-    auto result = QVector<double>{};
+    auto result = DataContainer{};
     result.reserve(componentSize * containerSize);
 
     for (auto i = 0; i < componentSize; ++i) {
         for (auto j = 0; j < containerSize; ++j) {
-            result.append(container.at(j).at(i));
+            result.push_back(container.at(j).at(i));
         }
     }
 
-    return {result, containerSize};
+    return {result, static_cast<int>(containerSize)};
 }
 
 void verifyArrayData(const ArrayData<2> &arrayData, const Container &expectedData)
@@ -175,7 +176,7 @@ void TestTwoDimArrayData::testClear()
     ArrayData<2> arrayData{inputData.first, inputData.second};
     arrayData.clear();
 
-    auto emptyData = Container(inputData.second, QVector<double>{});
+    auto emptyData = Container(inputData.second, DataContainer{});
     verifyArrayData(arrayData, emptyData);
 }
 
