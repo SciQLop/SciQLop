@@ -93,12 +93,38 @@ public:
         return std::make_unique<IteratorValue<Dim, IsConst> >(*this);
     }
 
+    int distance(const ArrayDataIteratorValue::Impl &other) const override try {
+        /// @todo ALX : validate
+        const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
+        return std::distance(otherImpl.m_It, m_It) / m_NbComponents;
+    }
+    catch (const std::bad_cast &) {
+        return 0;
+    }
+
     bool equals(const ArrayDataIteratorValue::Impl &other) const override try {
         const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
         return std::tie(m_It, m_NbComponents) == std::tie(otherImpl.m_It, otherImpl.m_NbComponents);
     }
     catch (const std::bad_cast &) {
         return false;
+    }
+
+    bool lowerThan(const ArrayDataIteratorValue::Impl &other) const override try {
+        const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
+        return m_It < otherImpl.m_It;
+    }
+    catch (const std::bad_cast &) {
+        return false;
+    }
+
+    std::unique_ptr<ArrayDataIteratorValue::Impl> advance(int offset) const override
+    {
+        auto result = clone();
+        while (offset--) {
+            result->next();
+        }
+        return result;
     }
 
     void next() override { std::advance(m_It, m_NbComponents); }
