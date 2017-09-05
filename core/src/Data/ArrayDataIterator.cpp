@@ -16,9 +16,24 @@ ArrayDataIteratorValue &ArrayDataIteratorValue::operator=(ArrayDataIteratorValue
     return *this;
 }
 
+int ArrayDataIteratorValue::distance(const ArrayDataIteratorValue &other) const
+{
+    return m_Impl->distance(*other.m_Impl);
+}
+
 bool ArrayDataIteratorValue::equals(const ArrayDataIteratorValue &other) const
 {
     return m_Impl->equals(*other.m_Impl);
+}
+
+bool ArrayDataIteratorValue::lowerThan(const ArrayDataIteratorValue &other) const
+{
+    return m_Impl->lowerThan(*other.m_Impl);
+}
+
+ArrayDataIteratorValue ArrayDataIteratorValue::advance(int offset) const
+{
+    return ArrayDataIteratorValue{m_Impl->advance(offset)};
 }
 
 void ArrayDataIteratorValue::next()

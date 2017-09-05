@@ -17,9 +17,25 @@ DataSeriesIteratorValue &DataSeriesIteratorValue::operator=(DataSeriesIteratorVa
     return *this;
 }
 
+int DataSeriesIteratorValue::distance(const DataSeriesIteratorValue &other) const
+{
+    auto dist = m_Impl->distance(*other.m_Impl);
+    return m_Impl->distance(*other.m_Impl);
+}
+
 bool DataSeriesIteratorValue::equals(const DataSeriesIteratorValue &other) const
 {
     return m_Impl->equals(*other.m_Impl);
+}
+
+bool DataSeriesIteratorValue::lowerThan(const DataSeriesIteratorValue &other) const
+{
+    return m_Impl->lowerThan(*other.m_Impl);
+}
+
+DataSeriesIteratorValue DataSeriesIteratorValue::advance(int offset) const
+{
+    return DataSeriesIteratorValue{m_Impl->advance(offset)};
 }
 
 void DataSeriesIteratorValue::next()

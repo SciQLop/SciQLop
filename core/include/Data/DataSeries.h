@@ -54,12 +54,37 @@ public:
         return std::make_unique<IteratorValue<Dim, IsConst> >(*this);
     }
 
+    int distance(const DataSeriesIteratorValue::Impl &other) const override try {
+        const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
+        return m_XIt->distance(*otherImpl.m_XIt);
+    }
+    catch (const std::bad_cast &) {
+        return 0;
+    }
+
     bool equals(const DataSeriesIteratorValue::Impl &other) const override try {
         const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
         return std::tie(m_XIt, m_ValuesIt) == std::tie(otherImpl.m_XIt, otherImpl.m_ValuesIt);
     }
     catch (const std::bad_cast &) {
         return false;
+    }
+
+    bool lowerThan(const DataSeriesIteratorValue::Impl &other) const override try {
+        const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
+        return m_XIt->lowerThan(*otherImpl.m_XIt);
+    }
+    catch (const std::bad_cast &) {
+        return false;
+    }
+
+    std::unique_ptr<DataSeriesIteratorValue::Impl> advance(int offset) const override
+    {
+        auto result = clone();
+        while (offset--) {
+            result->next();
+        }
+        return result;
     }
 
     void next() override
@@ -165,17 +190,28 @@ public:
 
     void purge(double min, double max) override
     {
+        // Nothing to purge if series is empty
+        if (isEmpty()) {
+            return;
+        }
+
         if (min > max) {
             std::swap(min, max);
         }
 
-        lockWrite();
+        // Nothing to purge if series min/max are inside purge range
+        auto xMin = cbegin()->x();
+        auto xMax = (--cend())->x();
+        if (xMin >= min && xMax <= max) {
+            return;
+        }
 
-        auto it = std::remove_if(
-            begin(), end(), [min, max](const auto &it) { return it.x() < min || it.x() > max; });
-        erase(it, end());
-
-        unlock();
+        auto lowerIt = std::lower_bound(
+            begin(), end(), min, [](const auto &it, const auto &val) { return it.x() < val; });
+        erase(begin(), lowerIt);
+        auto upperIt = std::upper_bound(
+            begin(), end(), max, [](const auto &val, const auto &it) { return val < it.x(); });
+        erase(upperIt, end());
     }
 
     // ///////// //

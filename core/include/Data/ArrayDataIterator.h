@@ -19,7 +19,10 @@ public:
     struct Impl {
         virtual ~Impl() noexcept = default;
         virtual std::unique_ptr<Impl> clone() const = 0;
+        virtual int distance(const Impl &other) const = 0;
         virtual bool equals(const Impl &other) const = 0;
+        virtual bool lowerThan(const Impl &other) const = 0;
+        virtual std::unique_ptr<Impl> advance(int offset) const = 0;
         virtual void next() = 0;
         virtual void prev() = 0;
         virtual double at(int componentIndex) const = 0;
@@ -35,8 +38,11 @@ public:
     ArrayDataIteratorValue(const ArrayDataIteratorValue &other);
     ArrayDataIteratorValue &operator=(ArrayDataIteratorValue other);
 
+    int distance(const ArrayDataIteratorValue &other) const;
     bool equals(const ArrayDataIteratorValue &other) const;
+    bool lowerThan(const ArrayDataIteratorValue &other) const;
 
+    ArrayDataIteratorValue advance(int offset) const;
     /// Advances to the next value
     void next();
     /// Moves back to the previous value
