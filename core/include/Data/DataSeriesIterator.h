@@ -24,7 +24,7 @@ public:
         virtual bool equals(const Impl &other) const = 0;
         virtual bool lowerThan(const Impl &other) const = 0;
         virtual std::unique_ptr<Impl> advance(int offset) const = 0;
-        virtual void next() = 0;
+        virtual void next(int offset) = 0;
         virtual void prev() = 0;
         virtual double x() const = 0;
         virtual double value() const = 0;
@@ -46,7 +46,7 @@ public:
 
     DataSeriesIteratorValue advance(int offset) const;
     /// Advances to the next value
-    void next();
+    void next(int offset = 1);
     /// Moves back to the previous value
     void prev();
     /// Gets x-axis data

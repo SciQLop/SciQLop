@@ -121,13 +121,11 @@ public:
     std::unique_ptr<ArrayDataIteratorValue::Impl> advance(int offset) const override
     {
         auto result = clone();
-        while (offset--) {
-            result->next();
-        }
+        result->next(offset);
         return result;
     }
 
-    void next() override { std::advance(m_It, m_NbComponents); }
+    void next(int offset) override { std::advance(m_It, offset * m_NbComponents); }
     void prev() override { std::advance(m_It, -m_NbComponents); }
 
     double at(int componentIndex) const override { return *(m_It + componentIndex); }

@@ -38,9 +38,9 @@ DataSeriesIteratorValue DataSeriesIteratorValue::advance(int offset) const
     return DataSeriesIteratorValue{m_Impl->advance(offset)};
 }
 
-void DataSeriesIteratorValue::next()
+void DataSeriesIteratorValue::next(int offset)
 {
-    m_Impl->next();
+    m_Impl->next(offset);
 }
 
 void DataSeriesIteratorValue::prev()

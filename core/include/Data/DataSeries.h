@@ -81,16 +81,14 @@ public:
     std::unique_ptr<DataSeriesIteratorValue::Impl> advance(int offset) const override
     {
         auto result = clone();
-        while (offset--) {
-            result->next();
-        }
+        result->next(offset);
         return result;
     }
 
-    void next() override
+    void next(int offset) override
     {
-        ++m_XIt;
-        ++m_ValuesIt;
+        m_XIt->next(offset);
+        m_ValuesIt->next(offset);
     }
 
     void prev() override
