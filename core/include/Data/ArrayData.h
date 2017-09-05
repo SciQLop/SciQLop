@@ -256,16 +256,7 @@ public:
             return;
         }
 
-        if (prepend) {
-            auto otherDataSize = other.m_Data.size();
-            m_Data.insert(m_Data.begin(), otherDataSize, 0.);
-            for (auto i = 0; i < otherDataSize; ++i) {
-                m_Data.replace(i, other.m_Data.at(i));
-            }
-        }
-        else {
-            m_Data.append(other.m_Data);
-        }
+        insert(other.cbegin(), other.cend(), prepend);
     }
 
     void clear()
@@ -332,16 +323,16 @@ public:
         }
     }
 
-    /// Inserts at the end of the array data the values passed as a parameter. This
-    /// method is intended to be used in the context of generating a back insert iterator, or only
-    /// if it's ensured that the total size of the vector is consistent with the number of
-    /// components of the array data
-    /// @param values the values to insert
-    /// @sa http://en.cppreference.com/w/cpp/iterator/back_inserter
-    void push_back(const QVector<double> &values)
+    void insert(ArrayDataIterator first, ArrayDataIterator last, bool prepend = false)
     {
-        Q_ASSERT(values.size() % m_NbComponents == 0);
-        m_Data.append(values);
+        auto firstImpl = dynamic_cast<arraydata_detail::IteratorValue<Dim, true> *>(first->impl());
+        auto lastImpl = dynamic_cast<arraydata_detail::IteratorValue<Dim, true> *>(last->impl());
+
+        if (firstImpl && lastImpl) {
+            auto insertIt = prepend ? m_Data.begin() : m_Data.end();
+
+            m_Data.insert(insertIt, firstImpl->m_It, lastImpl->m_It);
+        }
     }
 
     /**

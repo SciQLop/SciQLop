@@ -134,10 +134,6 @@ class SCIQLOP_CORE_EXPORT DataSeries : public IDataSeries {
     friend class DataSeriesMergeHelper;
 
 public:
-    /// Tag needed to define the push_back() method
-    /// @sa push_back()
-    using value_type = DataSeriesIteratorValue;
-
     /// @sa IDataSeries::xAxisData()
     std::shared_ptr<ArrayData<1> > xAxisData() override { return m_XAxisData; }
     const std::shared_ptr<ArrayData<1> > xAxisData() const { return m_XAxisData; }
@@ -254,6 +250,17 @@ public:
         }
     }
 
+    void insert(DataSeriesIterator first, DataSeriesIterator last, bool prepend = false)
+    {
+        auto firstImpl = dynamic_cast<dataseries_detail::IteratorValue<Dim, true> *>(first->impl());
+        auto lastImpl = dynamic_cast<dataseries_detail::IteratorValue<Dim, true> *>(last->impl());
+
+        if (firstImpl && lastImpl) {
+            m_XAxisData->insert(firstImpl->m_XIt, lastImpl->m_XIt, prepend);
+            m_ValuesData->insert(firstImpl->m_ValuesIt, lastImpl->m_ValuesIt, prepend);
+        }
+    }
+
     /// @sa IDataSeries::minXAxisData()
     DataSeriesIterator minXAxisData(double minXAxisData) const override
     {
@@ -287,7 +294,7 @@ public:
             begin, end, minXAxisData,
             [](const auto &itValue, const auto &value) { return itValue.x() < value; });
         auto upperIt = std::upper_bound(
-            begin, end, maxXAxisData,
+            lowerIt, end, maxXAxisData,
             [](const auto &value, const auto &itValue) { return value < itValue.x(); });
 
         return std::make_pair(lowerIt, upperIt);
@@ -326,22 +333,6 @@ public:
     virtual void lockRead() { m_Lock.lockForRead(); }
     virtual void lockWrite() { m_Lock.lockForWrite(); }
     virtual void unlock() { m_Lock.unlock(); }
-
-    // ///// //
-    // Other //
-    // ///// //
-
-    /// Inserts at the end of the data series the value of the iterator passed as a parameter. This
-    /// method is intended to be used in the context of generating a back insert iterator
-    /// @param iteratorValue the iterator value containing the values to insert
-    /// @sa http://en.cppreference.com/w/cpp/iterator/back_inserter
-    /// @sa merge()
-    /// @sa value_type
-    void push_back(const value_type &iteratorValue)
-    {
-        m_XAxisData->push_back(QVector<double>{iteratorValue.x()});
-        m_ValuesData->push_back(iteratorValue.values());
-    }
 
 protected:
     /// Protected ctor (DataSeries is abstract). The vectors must have the same size, otherwise a
