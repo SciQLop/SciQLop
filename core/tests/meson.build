@@ -6,6 +6,7 @@ tests = [
   [['Data/TestTwoDimArrayData.cpp'],'test_2d','Two Dim Array test'],
   [['DataSource/TestDataSourceController.cpp'],'test_data_source','DataSourceController test'],
   [['Variable/TestVariableCacheController.cpp'],'test_variable_cache','VariableCacheController test'],
+  [['Variable/TestVariableController.cpp'],'test_variable_controler','VariableController test'],
   [['Variable/TestVariable.cpp'],'test_variable','Variable test']
 ]
 

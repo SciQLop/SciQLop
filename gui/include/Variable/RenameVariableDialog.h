@@ -11,6 +11,7 @@ class RenameVariableDialog;
  * @brief The RenameVariableDialog class represents the dialog to rename a variable
  */
 class RenameVariableDialog : public QDialog {
+    Q_OBJECT
 public:
     explicit RenameVariableDialog(const QString &defaultName,
                                   const QVector<QString> &forbiddenNames,
