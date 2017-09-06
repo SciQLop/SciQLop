@@ -694,7 +694,12 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
                     qCDebug(LOG_VariableController()) << tr("3: onDataProvided")
                                                       << varRequest.m_DataSeries->range();
                     qCDebug(LOG_VariableController()) << tr("4: onDataProvided");
-                    emit var->updated();
+
+                    /// @todo MPL: confirm
+                    // Variable update is notified only if there is no pending request for it
+                    if (m_VarIdToVarRequestIdQueueMap.count(varIdToVarRequestMapIt->first) == 0) {
+                        emit var->updated();
+                    }
                 }
                 else {
                     qCCritical(LOG_VariableController())
