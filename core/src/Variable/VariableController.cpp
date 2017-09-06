@@ -188,6 +188,11 @@ void VariableController::setTimeController(TimeController *timeController) noexc
     impl->m_TimeController = timeController;
 }
 
+std::shared_ptr<Variable>
+VariableController::cloneVariable(std::shared_ptr<Variable> variable) noexcept
+{
+}
+
 void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noexcept
 {
     if (!variable) {
