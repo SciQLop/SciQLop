@@ -52,9 +52,7 @@ public:
     SqpIterator &operator+=(int offset)
     {
         if (offset >= 0) {
-            while (offset--) {
-                m_CurrentValue.next();
-            }
+            m_CurrentValue.next(offset);
         }
         else {
             while (offset++) {
