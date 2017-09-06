@@ -28,6 +28,11 @@ public:
     explicit Variable(const QString &name, const SqpRange &dateTime,
                       const QVariantHash &metadata = {});
 
+    /// Copy ctor
+    explicit Variable(const Variable &other);
+
+    std::shared_ptr<Variable> clone() const;
+
     QString name() const noexcept;
     void setName(const QString &name) noexcept;
     SqpRange range() const noexcept;

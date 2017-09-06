@@ -191,6 +191,10 @@ void VariableController::setTimeController(TimeController *timeController) noexc
 std::shared_ptr<Variable>
 VariableController::cloneVariable(std::shared_ptr<Variable> variable) noexcept
 {
+    // Clones variable
+    auto duplicate = variable->clone();
+
+    return duplicate;
 }
 
 void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noexcept
