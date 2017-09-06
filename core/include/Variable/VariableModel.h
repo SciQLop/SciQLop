@@ -28,6 +28,14 @@ public:
     explicit VariableModel(QObject *parent = nullptr);
 
     /**
+     * Adds an existing variable in the model.
+     * @param variable the variable to add.
+     * @remarks the variable's name is modified to avoid name duplicates
+     * @remarks this method does nothing if the variable already exists in the model
+     */
+    void addVariable(std::shared_ptr<Variable> variable) noexcept;
+
+    /**
      * Creates a new variable in the model
      * @param name the name of the new variable
      * @param dateTime the dateTime of the new variable

@@ -62,19 +62,23 @@ VariableModel::VariableModel(QObject *parent)
 {
 }
 
-std::shared_ptr<Variable> VariableModel::createVariable(const QString &name,
-                                                        const SqpRange &dateTime,
-                                                        const QVariantHash &metadata) noexcept
+void VariableModel::addVariable(std::shared_ptr<Variable> variable) noexcept
 {
     auto insertIndex = rowCount();
     beginInsertRows({}, insertIndex, insertIndex);
-
-    auto variable = std::make_shared<Variable>(name, dateTime, metadata);
 
     impl->m_Variables.push_back(variable);
     connect(variable.get(), &Variable::updated, this, &VariableModel::onVariableUpdated);
 
     endInsertRows();
+}
+
+std::shared_ptr<Variable> VariableModel::createVariable(const QString &name,
+                                                        const SqpRange &dateTime,
+                                                        const QVariantHash &metadata) noexcept
+{
+    auto variable = std::make_shared<Variable>(name, dateTime, metadata);
+    addVariable(variable);
 
     return variable;
 }

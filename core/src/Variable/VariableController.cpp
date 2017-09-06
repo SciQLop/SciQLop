@@ -194,6 +194,9 @@ VariableController::cloneVariable(std::shared_ptr<Variable> variable) noexcept
     // Clones variable
     auto duplicate = variable->clone();
 
+    // Adds clone to model
+    impl->m_VariableModel->addVariable(duplicate);
+
     return duplicate;
 }
 
