@@ -48,7 +48,7 @@ gui_sources = [
   'src/TimeWidget/TimeWidget.cpp',
   'src/Variable/VariableInspectorWidget.cpp',
   'src/Variable/VariableMenuHeaderWidget.cpp',
-  'src/Variable/RenamevariableDialog.cpp',
+  'src/Variable/RenameVariableDialog.cpp',
   'src/Visualization/VisualizationGraphHelper.cpp',
   'src/Visualization/VisualizationGraphRenderingDelegate.cpp',
   'src/Visualization/VisualizationGraphWidget.cpp',

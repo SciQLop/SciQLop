@@ -1,7 +1,6 @@
 
 core_moc_headers = [
   'include/Data/IDataProvider.h',
-  'include/Data/DataSeriesMergeHelper.h',
   'include/DataSource/DataSourceController.h',
   'include/DataSource/DataSourceItemAction.h',
   'include/Network/NetworkController.h',
