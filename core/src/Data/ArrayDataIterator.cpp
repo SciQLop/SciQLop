@@ -36,9 +36,9 @@ ArrayDataIteratorValue ArrayDataIteratorValue::advance(int offset) const
     return ArrayDataIteratorValue{m_Impl->advance(offset)};
 }
 
-void ArrayDataIteratorValue::next()
+void ArrayDataIteratorValue::next(int offset)
 {
-    m_Impl->next();
+    m_Impl->next(offset);
 }
 
 void ArrayDataIteratorValue::prev()

@@ -19,18 +19,22 @@ namespace {
  * @remarks the three components are consumed
  * @sa ArrayData
  */
-QVector<double> flatten(QVector<double> xValues, QVector<double> yValues, QVector<double> zValues)
+std::vector<double> flatten(std::vector<double> xValues, std::vector<double> yValues,
+                            std::vector<double> zValues)
 {
     if (xValues.size() != yValues.size() || xValues.size() != zValues.size()) {
         /// @todo ALX : log
         return {};
     }
 
-    auto result = QVector<double>{};
+    auto result = std::vector<double>();
     result.reserve(xValues.size() * 3);
 
-    while (!xValues.isEmpty()) {
-        result.append({xValues.takeFirst(), yValues.takeFirst(), zValues.takeFirst()});
+    while (!xValues.empty()) {
+        result.insert(result.cend(), {xValues.front(), yValues.front(), zValues.front()});
+        xValues.erase(xValues.begin());
+        yValues.erase(yValues.begin());
+        zValues.erase(zValues.begin());
     }
 
     return result;
@@ -38,8 +42,8 @@ QVector<double> flatten(QVector<double> xValues, QVector<double> yValues, QVecto
 
 } // namespace
 
-VectorSeries::VectorSeries(QVector<double> xAxisData, QVector<double> xValuesData,
-                           QVector<double> yValuesData, QVector<double> zValuesData,
+VectorSeries::VectorSeries(std::vector<double> xAxisData, std::vector<double> xValuesData,
+                           std::vector<double> yValuesData, std::vector<double> zValuesData,
                            const Unit &xAxisUnit, const Unit &valuesUnit)
         : VectorSeries{std::move(xAxisData), flatten(std::move(xValuesData), std::move(yValuesData),
                                                      std::move(zValuesData)),
@@ -47,7 +51,7 @@ VectorSeries::VectorSeries(QVector<double> xAxisData, QVector<double> xValuesDat
 {
 }
 
-VectorSeries::VectorSeries(QVector<double> xAxisData, QVector<double> valuesData,
+VectorSeries::VectorSeries(std::vector<double> xAxisData, std::vector<double> valuesData,
                            const Unit &xAxisUnit, const Unit &valuesUnit)
         : DataSeries{std::make_shared<ArrayData<1> >(std::move(xAxisData)), xAxisUnit,
                      std::make_shared<ArrayData<2> >(std::move(valuesData), 3), valuesUnit}
@@ -61,23 +65,24 @@ std::unique_ptr<IDataSeries> VectorSeries::clone() const
 
 std::shared_ptr<IDataSeries> VectorSeries::subDataSeries(const SqpRange &range)
 {
-    auto subXAxisData = QVector<double>();
-    auto subXValuesData = QVector<double>();
-    auto subYValuesData = QVector<double>();
-    auto subZValuesData = QVector<double>();
+    auto subXAxisData = std::vector<double>();
+    auto subXValuesData = std::vector<double>();
+    auto subYValuesData = std::vector<double>();
+    auto subZValuesData = std::vector<double>();
 
     this->lockRead();
     {
         auto bounds = xAxisRange(range.m_TStart, range.m_TEnd);
         for (auto it = bounds.first; it != bounds.second; ++it) {
-            subXAxisData.append(it->x());
-            subXValuesData.append(it->value(0));
-            subYValuesData.append(it->value(1));
-            subZValuesData.append(it->value(2));
+            subXAxisData.push_back(it->x());
+            subXValuesData.push_back(it->value(0));
+            subYValuesData.push_back(it->value(1));
+            subZValuesData.push_back(it->value(2));
         }
     }
     this->unlock();
 
-    return std::make_shared<VectorSeries>(subXAxisData, subXValuesData, subYValuesData,
-                                          subZValuesData, this->xAxisUnit(), this->valuesUnit());
+    return std::make_shared<VectorSeries>(std::move(subXAxisData), std::move(subXValuesData),
+                                          std::move(subYValuesData), std::move(subZValuesData),
+                                          this->xAxisUnit(), this->valuesUnit());
 }

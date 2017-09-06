@@ -12,8 +12,10 @@ Q_DECLARE_METATYPE(std::shared_ptr<VectorSeries>)
 
 namespace {
 
-void validateRange(DataSeriesIterator first, DataSeriesIterator last, const QVector<double> &xData,
-                   const QVector<double> &valuesData)
+using DataContainer = std::vector<double>;
+
+void validateRange(DataSeriesIterator first, DataSeriesIterator last, const DataContainer &xData,
+                   const DataContainer &valuesData)
 {
     QVERIFY(std::equal(first, last, xData.cbegin(), xData.cend(),
                        [](const auto &it, const auto &expectedX) { return it.x() == expectedX; }));
@@ -22,8 +24,8 @@ void validateRange(DataSeriesIterator first, DataSeriesIterator last, const QVec
         [](const auto &it, const auto &expectedVal) { return it.value() == expectedVal; }));
 }
 
-void validateRange(DataSeriesIterator first, DataSeriesIterator last, const QVector<double> &xData,
-                   const QVector<QVector<double> > &valuesData)
+void validateRange(DataSeriesIterator first, DataSeriesIterator last, const DataContainer &xData,
+                   const std::vector<DataContainer> &valuesData)
 {
     QVERIFY(std::equal(first, last, xData.cbegin(), xData.cend(),
                        [](const auto &it, const auto &expectedX) { return it.x() == expectedX; }));
@@ -102,8 +104,8 @@ private:
         QTest::addColumn<double>("max");
 
         // Expected values after purge
-        QTest::addColumn<QVector<double> >("expectedXAxisData");
-        QTest::addColumn<QVector<QVector<double> > >("expectedValuesData");
+        QTest::addColumn<DataContainer>("expectedXAxisData");
+        QTest::addColumn<std::vector<DataContainer> >("expectedValuesData");
     }
 
     template <typename T>
@@ -116,8 +118,8 @@ private:
         dataSeries->purge(min, max);
 
         // Validates results
-        QFETCH(QVector<double>, expectedXAxisData);
-        QFETCH(QVector<QVector<double> >, expectedValuesData);
+        QFETCH(DataContainer, expectedXAxisData);
+        QFETCH(std::vector<DataContainer>, expectedValuesData);
 
         validateRange(dataSeries->cbegin(), dataSeries->cend(), expectedXAxisData,
                       expectedValuesData);
@@ -196,67 +198,65 @@ void TestDataSeries::testCtor_data()
     // ////////////// //
 
     // x-axis data
-    QTest::addColumn<QVector<double> >("xAxisData");
+    QTest::addColumn<DataContainer>("xAxisData");
     // values data
-    QTest::addColumn<QVector<double> >("valuesData");
+    QTest::addColumn<DataContainer>("valuesData");
 
     // expected x-axis data
-    QTest::addColumn<QVector<double> >("expectedXAxisData");
+    QTest::addColumn<DataContainer>("expectedXAxisData");
     // expected values data
-    QTest::addColumn<QVector<double> >("expectedValuesData");
+    QTest::addColumn<DataContainer>("expectedValuesData");
 
     // ////////// //
     // Test cases //
     // ////////// //
 
     QTest::newRow("invalidData (different sizes of vectors)")
-        << QVector<double>{1., 2., 3., 4., 5.} << QVector<double>{100., 200., 300.}
-        << QVector<double>{} << QVector<double>{};
+        << DataContainer{1., 2., 3., 4., 5.} << DataContainer{100., 200., 300.} << DataContainer{}
+        << DataContainer{};
 
-    QTest::newRow("sortedData") << QVector<double>{1., 2., 3., 4., 5.}
-                                << QVector<double>{100., 200., 300., 400., 500.}
-                                << QVector<double>{1., 2., 3., 4., 5.}
-                                << QVector<double>{100., 200., 300., 400., 500.};
+    QTest::newRow("sortedData") << DataContainer{1., 2., 3., 4., 5.}
+                                << DataContainer{100., 200., 300., 400., 500.}
+                                << DataContainer{1., 2., 3., 4., 5.}
+                                << DataContainer{100., 200., 300., 400., 500.};
 
-    QTest::newRow("unsortedData") << QVector<double>{5., 4., 3., 2., 1.}
-                                  << QVector<double>{100., 200., 300., 400., 500.}
-                                  << QVector<double>{1., 2., 3., 4., 5.}
-                                  << QVector<double>{500., 400., 300., 200., 100.};
+    QTest::newRow("unsortedData") << DataContainer{5., 4., 3., 2., 1.}
+                                  << DataContainer{100., 200., 300., 400., 500.}
+                                  << DataContainer{1., 2., 3., 4., 5.}
+                                  << DataContainer{500., 400., 300., 200., 100.};
 
     QTest::newRow("unsortedData2")
-        << QVector<double>{1., 4., 3., 5., 2.} << QVector<double>{100., 200., 300., 400., 500.}
-        << QVector<double>{1., 2., 3., 4., 5.} << QVector<double>{100., 500., 300., 200., 400.};
+        << DataContainer{1., 4., 3., 5., 2.} << DataContainer{100., 200., 300., 400., 500.}
+        << DataContainer{1., 2., 3., 4., 5.} << DataContainer{100., 500., 300., 200., 400.};
 }
 
 void TestDataSeries::testCtor()
 {
     // Creates series
-    QFETCH(QVector<double>, xAxisData);
-    QFETCH(QVector<double>, valuesData);
+    QFETCH(DataContainer, xAxisData);
+    QFETCH(DataContainer, valuesData);
 
     auto series = std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
                                                  Unit{}, Unit{});
 
     // Validates results : we check that the data series is sorted on its x-axis data
-    QFETCH(QVector<double>, expectedXAxisData);
-    QFETCH(QVector<double>, expectedValuesData);
+    QFETCH(DataContainer, expectedXAxisData);
+    QFETCH(DataContainer, expectedValuesData);
 
     validateRange(series->cbegin(), series->cend(), expectedXAxisData, expectedValuesData);
 }
 
 namespace {
 
-std::shared_ptr<ScalarSeries> createScalarSeries(QVector<double> xAxisData,
-                                                 QVector<double> valuesData)
+std::shared_ptr<ScalarSeries> createScalarSeries(DataContainer xAxisData, DataContainer valuesData)
 {
     return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData), Unit{},
                                           Unit{});
 }
 
-std::shared_ptr<VectorSeries> createVectorSeries(QVector<double> xAxisData,
-                                                 QVector<double> xValuesData,
-                                                 QVector<double> yValuesData,
-                                                 QVector<double> zValuesData)
+std::shared_ptr<VectorSeries> createVectorSeries(DataContainer xAxisData, DataContainer xValuesData,
+                                                 DataContainer yValuesData,
+                                                 DataContainer zValuesData)
 {
     return std::make_shared<VectorSeries>(std::move(xAxisData), std::move(xValuesData),
                                           std::move(yValuesData), std::move(zValuesData), Unit{},
@@ -276,8 +276,8 @@ void TestDataSeries::testMerge_data()
     QTest::addColumn<std::shared_ptr<ScalarSeries> >("dataSeries2");
 
     // Expected values in the first data series after merge
-    QTest::addColumn<QVector<double> >("expectedXAxisData");
-    QTest::addColumn<QVector<double> >("expectedValuesData");
+    QTest::addColumn<DataContainer>("expectedXAxisData");
+    QTest::addColumn<DataContainer>("expectedValuesData");
 
     // ////////// //
     // Test cases //
@@ -286,26 +286,25 @@ void TestDataSeries::testMerge_data()
     QTest::newRow("sortedMerge")
         << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
         << createScalarSeries({6., 7., 8., 9., 10.}, {600., 700., 800., 900., 1000.})
-        << QVector<double>{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
-        << QVector<double>{100., 200., 300., 400., 500., 600., 700., 800., 900., 1000.};
+        << DataContainer{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
+        << DataContainer{100., 200., 300., 400., 500., 600., 700., 800., 900., 1000.};
 
     QTest::newRow("unsortedMerge")
         << createScalarSeries({6., 7., 8., 9., 10.}, {600., 700., 800., 900., 1000.})
         << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
-        << QVector<double>{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
-        << QVector<double>{100., 200., 300., 400., 500., 600., 700., 800., 900., 1000.};
+        << DataContainer{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
+        << DataContainer{100., 200., 300., 400., 500., 600., 700., 800., 900., 1000.};
 
-    QTest::newRow("unsortedMerge2")
-        << createScalarSeries({1., 2., 8., 9., 10}, {100., 200., 300., 400., 500.})
-        << createScalarSeries({3., 4., 5., 6., 7.}, {600., 700., 800., 900., 1000.})
-        << QVector<double>{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
-        << QVector<double>{100., 200., 600., 700., 800., 900., 1000., 300., 400., 500.};
+    QTest::newRow("unsortedMerge2 (merge not made because source is in the bounds of dest)")
+        << createScalarSeries({1., 2., 8., 9., 10}, {100., 200., 800., 900., 1000.})
+        << createScalarSeries({3., 4., 5., 6., 7.}, {300., 400., 500., 600., 700.})
+        << DataContainer{1., 2., 8., 9., 10.} << DataContainer{100., 200., 800., 900., 1000.};
 
     QTest::newRow("unsortedMerge3")
-        << createScalarSeries({3., 5., 8., 7., 2}, {100., 200., 300., 400., 500.})
-        << createScalarSeries({6., 4., 9., 10., 1.}, {600., 700., 800., 900., 1000.})
-        << QVector<double>{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.}
-        << QVector<double>{1000., 500., 100., 700., 200., 600., 400., 300., 800., 900.};
+        << createScalarSeries({3., 4., 5., 7., 8}, {300., 400., 500., 700., 800.})
+        << createScalarSeries({1., 2., 3., 7., 10.}, {100., 200., 333., 777., 1000.})
+        << DataContainer{1., 2., 3., 4., 5., 7., 8., 10.}
+        << DataContainer{100., 200., 300., 400., 500., 700., 800., 1000.};
 }
 
 void TestDataSeries::testMerge()
@@ -318,8 +317,8 @@ void TestDataSeries::testMerge()
 
     // Validates results : we check that the merge is valid and the data series is sorted on its
     // x-axis data
-    QFETCH(QVector<double>, expectedXAxisData);
-    QFETCH(QVector<double>, expectedValuesData);
+    QFETCH(DataContainer, expectedXAxisData);
+    QFETCH(DataContainer, expectedValuesData);
 
     validateRange(dataSeries->cbegin(), dataSeries->cend(), expectedXAxisData, expectedValuesData);
 }
@@ -334,24 +333,23 @@ void TestDataSeries::testPurgeScalar_data()
 
     QTest::newRow("purgeScalar") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
-                                 << 2. << 4. << QVector<double>{2., 3., 4.}
-                                 << QVector<QVector<double> >{{200., 300., 400.}};
+                                 << 2. << 4. << DataContainer{2., 3., 4.}
+                                 << std::vector<DataContainer>{{200., 300., 400.}};
     QTest::newRow("purgeScalar2") << createScalarSeries({1., 2., 3., 4., 5.},
                                                         {100., 200., 300., 400., 500.})
-                                  << 0. << 2.5 << QVector<double>{1., 2.}
-                                  << QVector<QVector<double> >{{100., 200.}};
+                                  << 0. << 2.5 << DataContainer{1., 2.}
+                                  << std::vector<DataContainer>{{100., 200.}};
     QTest::newRow("purgeScalar3") << createScalarSeries({1., 2., 3., 4., 5.},
                                                         {100., 200., 300., 400., 500.})
-                                  << 3.5 << 7. << QVector<double>{4., 5.}
-                                  << QVector<QVector<double> >{{400., 500.}};
+                                  << 3.5 << 7. << DataContainer{4., 5.}
+                                  << std::vector<DataContainer>{{400., 500.}};
     QTest::newRow("purgeScalar4") << createScalarSeries({1., 2., 3., 4., 5.},
                                                         {100., 200., 300., 400., 500.})
-                                  << 0. << 7. << QVector<double>{1., 2., 3., 4., 5.}
-                                  << QVector<QVector<double> >{{100., 200., 300., 400., 500.}};
+                                  << 0. << 7. << DataContainer{1., 2., 3., 4., 5.}
+                                  << std::vector<DataContainer>{{100., 200., 300., 400., 500.}};
     QTest::newRow("purgeScalar5") << createScalarSeries({1., 2., 3., 4., 5.},
                                                         {100., 200., 300., 400., 500.})
-                                  << 5.5 << 7. << QVector<double>{}
-                                  << QVector<QVector<double> >{{}};
+                                  << 5.5 << 7. << DataContainer{} << std::vector<DataContainer>{{}};
 }
 
 void TestDataSeries::testPurgeScalar()
@@ -370,8 +368,8 @@ void TestDataSeries::testPurgeVector_data()
     QTest::newRow("purgeVector") << createVectorSeries({1., 2., 3., 4., 5.}, {6., 7., 8., 9., 10.},
                                                        {11., 12., 13., 14., 15.},
                                                        {16., 17., 18., 19., 20.})
-                                 << 2. << 4. << QVector<double>{2., 3., 4.}
-                                 << QVector<QVector<double> >{
+                                 << 2. << 4. << DataContainer{2., 3., 4.}
+                                 << std::vector<DataContainer>{
                                         {7., 8., 9.}, {12., 13., 14.}, {17., 18., 19.}};
 }
 
@@ -512,8 +510,8 @@ void TestDataSeries::testXAxisRange_data()
     QTest::addColumn<double>("max");
 
     // Expected values
-    QTest::addColumn<QVector<double> >("expectedXAxisData");
-    QTest::addColumn<QVector<double> >("expectedValuesData");
+    QTest::addColumn<DataContainer>("expectedXAxisData");
+    QTest::addColumn<DataContainer>("expectedValuesData");
 
     // ////////// //
     // Test cases //
@@ -521,32 +519,32 @@ void TestDataSeries::testXAxisRange_data()
 
     QTest::newRow("xAxisRange1") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
-                                 << -1. << 3.2 << QVector<double>{1., 2., 3.}
-                                 << QVector<double>{100., 200., 300.};
+                                 << -1. << 3.2 << DataContainer{1., 2., 3.}
+                                 << DataContainer{100., 200., 300.};
     QTest::newRow("xAxisRange2") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
-                                 << 1. << 4. << QVector<double>{1., 2., 3., 4.}
-                                 << QVector<double>{100., 200., 300., 400.};
+                                 << 1. << 4. << DataContainer{1., 2., 3., 4.}
+                                 << DataContainer{100., 200., 300., 400.};
     QTest::newRow("xAxisRange3") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
-                                 << 1. << 3.9 << QVector<double>{1., 2., 3.}
-                                 << QVector<double>{100., 200., 300.};
+                                 << 1. << 3.9 << DataContainer{1., 2., 3.}
+                                 << DataContainer{100., 200., 300.};
     QTest::newRow("xAxisRange4") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
-                                 << 0. << 0.9 << QVector<double>{} << QVector<double>{};
+                                 << 0. << 0.9 << DataContainer{} << DataContainer{};
     QTest::newRow("xAxisRange5") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
-                                 << 0. << 1. << QVector<double>{1.} << QVector<double>{100.};
+                                 << 0. << 1. << DataContainer{1.} << DataContainer{100.};
     QTest::newRow("xAxisRange6") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
-                                 << 2.1 << 6. << QVector<double>{3., 4., 5.}
-                                 << QVector<double>{300., 400., 500.};
+                                 << 2.1 << 6. << DataContainer{3., 4., 5.}
+                                 << DataContainer{300., 400., 500.};
     QTest::newRow("xAxisRange7") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
-                                 << 6. << 9. << QVector<double>{} << QVector<double>{};
+                                 << 6. << 9. << DataContainer{} << DataContainer{};
     QTest::newRow("xAxisRange8") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
-                                 << 5. << 9. << QVector<double>{5.} << QVector<double>{500.};
+                                 << 5. << 9. << DataContainer{5.} << DataContainer{500.};
 }
 
 void TestDataSeries::testXAxisRange()
@@ -555,8 +553,8 @@ void TestDataSeries::testXAxisRange()
     QFETCH(double, min);
     QFETCH(double, max);
 
-    QFETCH(QVector<double>, expectedXAxisData);
-    QFETCH(QVector<double>, expectedValuesData);
+    QFETCH(DataContainer, expectedXAxisData);
+    QFETCH(DataContainer, expectedValuesData);
 
     auto bounds = dataSeries->xAxisRange(min, max);
     validateRange(bounds.first, bounds.second, expectedXAxisData, expectedValuesData);

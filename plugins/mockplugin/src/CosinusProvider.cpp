@@ -18,7 +18,7 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
     auto dataIndex = 0;
 
     // Gets the timerange from the parameters
-    double freq = 1.0;
+    double freq = 100.0;
     double start = std::ceil(dataRangeRequested.m_TStart * freq); // 100 htz
     double end = std::floor(dataRangeRequested.m_TEnd * freq);    // 100 htz
 
@@ -30,10 +30,10 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
     // Generates scalar series containing cosinus values (one value per second)
     auto dataCount = end - start;
 
-    auto xAxisData = QVector<double>{};
+    auto xAxisData = std::vector<double>{};
     xAxisData.resize(dataCount);
 
-    auto valuesData = QVector<double>{};
+    auto valuesData = std::vector<double>{};
     valuesData.resize(dataCount);
 
     int progress = 0;
@@ -43,8 +43,8 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
         if (it != m_VariableToEnableProvider.end() && it.value()) {
             const auto timeOnFreq = time / freq;
 
-            xAxisData.replace(dataIndex, timeOnFreq);
-            valuesData.replace(dataIndex, std::cos(timeOnFreq));
+            xAxisData[dataIndex] = timeOnFreq;
+            valuesData[dataIndex] = std::cos(timeOnFreq);
 
             // progression
             int currentProgress = (time - start) * 100.0 / progressEnd;

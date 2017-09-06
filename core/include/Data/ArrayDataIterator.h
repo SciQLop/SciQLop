@@ -23,7 +23,7 @@ public:
         virtual bool equals(const Impl &other) const = 0;
         virtual bool lowerThan(const Impl &other) const = 0;
         virtual std::unique_ptr<Impl> advance(int offset) const = 0;
-        virtual void next() = 0;
+        virtual void next(int offset) = 0;
         virtual void prev() = 0;
         virtual double at(int componentIndex) const = 0;
         virtual double first() const = 0;
@@ -44,7 +44,7 @@ public:
 
     ArrayDataIteratorValue advance(int offset) const;
     /// Advances to the next value
-    void next();
+    void next(int offset = 1);
     /// Moves back to the previous value
     void prev();
     /// Gets value of a specified component
