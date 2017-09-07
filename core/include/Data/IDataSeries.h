@@ -64,6 +64,10 @@ public:
     virtual std::shared_ptr<IDataSeries> subDataSeries(const SqpRange &range) = 0;
 
     virtual std::unique_ptr<IDataSeries> clone() const = 0;
+
+    /// @return the total number of points contained in the data series
+    virtual int nbPoints() const = 0;
+
     virtual SqpRange range() const = 0;
 
     // ///////// //
