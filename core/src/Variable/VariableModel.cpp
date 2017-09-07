@@ -17,10 +17,11 @@ namespace {
 const auto NAME_COLUMN = 0;
 const auto TSTART_COLUMN = 1;
 const auto TEND_COLUMN = 2;
-const auto UNIT_COLUMN = 3;
-const auto MISSION_COLUMN = 4;
-const auto PLUGIN_COLUMN = 5;
-const auto NB_COLUMNS = 6;
+const auto NBPOINTS_COLUMN = 3;
+const auto UNIT_COLUMN = 4;
+const auto MISSION_COLUMN = 5;
+const auto PLUGIN_COLUMN = 6;
+const auto NB_COLUMNS = 7;
 
 // Column properties
 const auto DEFAULT_HEIGHT = 25;
@@ -39,9 +40,10 @@ struct ColumnProperties {
 };
 
 const auto COLUMN_PROPERTIES = QHash<int, ColumnProperties>{
-    {NAME_COLUMN, {QObject::tr("Name")}},       {TSTART_COLUMN, {QObject::tr("tStart"), 180}},
-    {TEND_COLUMN, {QObject::tr("tEnd"), 180}},  {UNIT_COLUMN, {QObject::tr("Unit")}},
-    {MISSION_COLUMN, {QObject::tr("Mission")}}, {PLUGIN_COLUMN, {QObject::tr("Plugin")}}};
+    {NAME_COLUMN, {QObject::tr("Name")}},      {TSTART_COLUMN, {QObject::tr("tStart"), 180}},
+    {TEND_COLUMN, {QObject::tr("tEnd"), 180}}, {NBPOINTS_COLUMN, {QObject::tr("Nb points")}},
+    {UNIT_COLUMN, {QObject::tr("Unit")}},      {MISSION_COLUMN, {QObject::tr("Mission")}},
+    {PLUGIN_COLUMN, {QObject::tr("Plugin")}}};
 
 /// Format for datetimes
 const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
@@ -198,6 +200,8 @@ QVariant VariableModel::data(const QModelIndex &index, int role) const
                                ? DateUtils::dateTime(range.m_TEnd).toString(DATETIME_FORMAT)
                                : QVariant{};
                 }
+                case NBPOINTS_COLUMN:
+                    return variable->nbPoints();
                 case UNIT_COLUMN:
                     return variable->metadata().value(QStringLiteral("units"));
                 case MISSION_COLUMN:

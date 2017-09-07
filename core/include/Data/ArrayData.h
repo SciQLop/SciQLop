@@ -273,6 +273,13 @@ public:
         return m_Data.size() / m_NbComponents;
     }
 
+    /// @return the total size (i.e. number of values) of the array data
+    int totalSize() const
+    {
+        QReadLocker locker{&m_Lock};
+        return m_Data.size();
+    }
+
     std::shared_ptr<ArrayData<Dim> > sort(const std::vector<int> &sortPermutation)
     {
         QReadLocker locker{&m_Lock};
