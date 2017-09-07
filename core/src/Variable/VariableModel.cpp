@@ -2,6 +2,7 @@
 #include <Variable/VariableModel.h>
 
 #include <Common/DateUtils.h>
+#include <Common/StringUtils.h>
 
 #include <Data/IDataSeries.h>
 
@@ -45,6 +46,17 @@ const auto COLUMN_PROPERTIES = QHash<int, ColumnProperties>{
 /// Format for datetimes
 const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
 
+QString uniqueName(const QString &defaultName,
+                   const std::vector<std::shared_ptr<Variable> > &variables)
+{
+    auto forbiddenNames = std::vector<QString>(variables.size());
+    std::transform(variables.cbegin(), variables.cend(), forbiddenNames.begin(),
+                   [](const auto &variable) { return variable->name(); });
+    auto uniqueName = StringUtils::uniqueName(defaultName, forbiddenNames);
+    Q_ASSERT(!uniqueName.isEmpty());
+
+    return uniqueName;
+}
 
 } // namespace
 
@@ -66,6 +78,9 @@ void VariableModel::addVariable(std::shared_ptr<Variable> variable) noexcept
 {
     auto insertIndex = rowCount();
     beginInsertRows({}, insertIndex, insertIndex);
+
+    // Generates unique name for the variable
+    variable->setName(uniqueName(variable->name(), impl->m_Variables));
 
     impl->m_Variables.push_back(variable);
     connect(variable.get(), &Variable::updated, this, &VariableModel::onVariableUpdated);
