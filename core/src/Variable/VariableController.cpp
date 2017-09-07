@@ -198,6 +198,9 @@ VariableController::cloneVariable(std::shared_ptr<Variable> variable) noexcept
         // Adds clone to model
         impl->m_VariableModel->addVariable(duplicate);
 
+        // Generates clone identifier
+        impl->m_VariableToIdentifierMap[duplicate] = QUuid::createUuid();
+
         return duplicate;
     }
     else {
