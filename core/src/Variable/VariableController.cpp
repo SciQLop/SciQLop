@@ -188,6 +188,38 @@ void VariableController::setTimeController(TimeController *timeController) noexc
     impl->m_TimeController = timeController;
 }
 
+std::shared_ptr<Variable>
+VariableController::cloneVariable(std::shared_ptr<Variable> variable) noexcept
+{
+    if (impl->m_VariableModel->containsVariable(variable)) {
+        // Clones variable
+        auto duplicate = variable->clone();
+
+        // Adds clone to model
+        impl->m_VariableModel->addVariable(duplicate);
+
+        // Generates clone identifier
+        impl->m_VariableToIdentifierMap[duplicate] = QUuid::createUuid();
+
+        // Registers provider
+        auto variableProvider = impl->m_VariableToProviderMap.at(variable);
+        auto duplicateProvider = variableProvider != nullptr ? variableProvider->clone() : nullptr;
+
+        impl->m_VariableToProviderMap[duplicate] = duplicateProvider;
+        if (duplicateProvider) {
+            impl->registerProvider(duplicateProvider);
+        }
+
+        return duplicate;
+    }
+    else {
+        qCCritical(LOG_VariableController())
+            << tr("Can't create duplicate of variable %1: variable not registered in the model")
+                   .arg(variable->name());
+        return nullptr;
+    }
+}
+
 void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noexcept
 {
     if (!variable) {

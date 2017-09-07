@@ -176,9 +176,15 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
     if (!selectedVariables.isEmpty()) {
         tableMenu.addSeparator();
 
-        // 'Rename' action (only if one variable selected)
+        // 'Rename' and 'Duplicate' actions (only if one variable selected)
         if (selectedVariables.size() == 1) {
             auto selectedVariable = selectedVariables.front();
+
+            auto duplicateFun = [&selectedVariable]() {
+                sqpApp->variableController().cloneVariable(selectedVariable);
+            };
+
+            tableMenu.addAction(tr("Duplicate"), duplicateFun);
 
             auto renameFun = [&selectedVariable, &model, this]() {
                 // Generates forbidden names (names associated to existing variables)

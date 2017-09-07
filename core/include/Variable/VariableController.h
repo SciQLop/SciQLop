@@ -42,6 +42,13 @@ public:
     void setTimeController(TimeController *timeController) noexcept;
 
     /**
+     * Clones the variable passed in parameter and adds the duplicate to the controller
+     * @param variable the variable to duplicate
+     * @return the duplicate created, nullptr if the variable couldn't be created
+     */
+    std::shared_ptr<Variable> cloneVariable(std::shared_ptr<Variable> variable) noexcept;
+
+    /**
      * Deletes from the controller the variable passed in parameter.
      *
      * Delete a variable includes:

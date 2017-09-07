@@ -1,6 +1,7 @@
 
 
 tests = [
+  [['Common/TestStringUtils.cpp'],'test_string_utils','StringUtils test'],
   [['Data/TestDataSeries.cpp'],'test_data','DataSeries test'],
   [['Data/TestOneDimArrayData.cpp'],'test_1d','One Dim Array test'],
   [['Data/TestTwoDimArrayData.cpp'],'test_2d','Two Dim Array test'],

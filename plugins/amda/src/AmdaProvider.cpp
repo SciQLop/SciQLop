@@ -68,6 +68,12 @@ AmdaProvider::AmdaProvider()
     }
 }
 
+std::shared_ptr<IDataProvider> AmdaProvider::clone() const
+{
+    // No copy is made in the clone
+    return std::make_shared<AmdaProvider>();
+}
+
 void AmdaProvider::requestDataLoading(QUuid acqIdentifier, const DataProviderParameters &parameters)
 {
     // NOTE: Try to use multithread if possible
