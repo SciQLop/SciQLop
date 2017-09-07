@@ -25,7 +25,7 @@ RenameVariableDialog::~RenameVariableDialog() noexcept
 
 QString RenameVariableDialog::name() const noexcept
 {
-    return ui->nameLineEdit->text();
+    return ui->nameLineEdit->text().trimmed();
 }
 
 void RenameVariableDialog::accept()
@@ -38,7 +38,7 @@ void RenameVariableDialog::accept()
     };
 
     // Empty name
-    auto name = ui->nameLineEdit->text();
+    auto name = this->name();
     if (name.isEmpty()) {
         invalidateInput(tr("A variable name must be specified"));
         return;

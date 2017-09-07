@@ -18,6 +18,7 @@ class QNetworkReply;
 class SCIQLOP_AMDA_EXPORT AmdaProvider : public IDataProvider {
 public:
     explicit AmdaProvider();
+    std::shared_ptr<IDataProvider> clone() const override;
 
     void requestDataLoading(QUuid acqIdentifier, const DataProviderParameters &parameters) override;
 

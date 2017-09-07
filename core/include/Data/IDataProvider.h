@@ -32,6 +32,7 @@ class SCIQLOP_CORE_EXPORT IDataProvider : public QObject {
     Q_OBJECT
 public:
     virtual ~IDataProvider() noexcept = default;
+    virtual std::shared_ptr<IDataProvider> clone() const = 0;
 
     /**
      * @brief requestDataLoading provide datas for the data identified by acqIdentifier and

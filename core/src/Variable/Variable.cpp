@@ -20,6 +20,15 @@ struct Variable::VariablePrivate {
     {
     }
 
+    VariablePrivate(const VariablePrivate &other)
+            : m_Name{other.m_Name},
+              m_Range{other.m_Range},
+              m_Metadata{other.m_Metadata},
+              m_DataSeries{other.m_DataSeries != nullptr ? other.m_DataSeries->clone() : nullptr},
+              m_RealRange{other.m_RealRange}
+    {
+    }
+
     void lockRead() { m_Lock.lockForRead(); }
     void lockWrite() { m_Lock.lockForWrite(); }
     void unlock() { m_Lock.unlock(); }
@@ -65,6 +74,16 @@ struct Variable::VariablePrivate {
 Variable::Variable(const QString &name, const SqpRange &dateTime, const QVariantHash &metadata)
         : impl{spimpl::make_unique_impl<VariablePrivate>(name, dateTime, metadata)}
 {
+}
+
+Variable::Variable(const Variable &other)
+        : impl{spimpl::make_unique_impl<VariablePrivate>(*other.impl)}
+{
+}
+
+std::shared_ptr<Variable> Variable::clone() const
+{
+    return std::make_shared<Variable>(*this);
 }
 
 QString Variable::name() const noexcept

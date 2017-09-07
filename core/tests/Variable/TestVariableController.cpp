@@ -12,6 +12,8 @@ namespace {
 
 /// Provider used for the tests
 class TestProvider : public IDataProvider {
+    std::shared_ptr<IDataProvider> clone() const { return std::make_shared<TestProvider>(); }
+
     void requestDataLoading(QUuid acqIdentifier, const DataProviderParameters &parameters) override
     {
         // Does nothing
