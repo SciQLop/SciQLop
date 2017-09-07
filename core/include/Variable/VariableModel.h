@@ -36,6 +36,13 @@ public:
     void addVariable(std::shared_ptr<Variable> variable) noexcept;
 
     /**
+     * Checks that a variable is contained in the model
+     * @param variable the variable to check
+     * @return true if the variable is in the model, false otherwise
+     */
+    bool containsVariable(std::shared_ptr<Variable> variable) const noexcept;
+
+    /**
      * Creates a new variable in the model
      * @param name the name of the new variable
      * @param dateTime the dateTime of the new variable

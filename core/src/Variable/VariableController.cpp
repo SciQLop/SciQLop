@@ -191,13 +191,21 @@ void VariableController::setTimeController(TimeController *timeController) noexc
 std::shared_ptr<Variable>
 VariableController::cloneVariable(std::shared_ptr<Variable> variable) noexcept
 {
-    // Clones variable
-    auto duplicate = variable->clone();
+    if (impl->m_VariableModel->containsVariable(variable)) {
+        // Clones variable
+        auto duplicate = variable->clone();
 
-    // Adds clone to model
-    impl->m_VariableModel->addVariable(duplicate);
+        // Adds clone to model
+        impl->m_VariableModel->addVariable(duplicate);
 
-    return duplicate;
+        return duplicate;
+    }
+    else {
+        qCCritical(LOG_VariableController())
+            << tr("Can't create duplicate of variable %1: variable not registered in the model")
+                   .arg(variable->name());
+        return nullptr;
+    }
 }
 
 void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noexcept

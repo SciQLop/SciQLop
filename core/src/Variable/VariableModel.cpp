@@ -88,6 +88,12 @@ void VariableModel::addVariable(std::shared_ptr<Variable> variable) noexcept
     endInsertRows();
 }
 
+bool VariableModel::containsVariable(std::shared_ptr<Variable> variable) const noexcept
+{
+    auto end = impl->m_Variables.cend();
+    return std::find(impl->m_Variables.cbegin(), end, variable) != end;
+}
+
 std::shared_ptr<Variable> VariableModel::createVariable(const QString &name,
                                                         const SqpRange &dateTime,
                                                         const QVariantHash &metadata) noexcept
