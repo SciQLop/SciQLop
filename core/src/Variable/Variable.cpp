@@ -16,7 +16,8 @@ struct Variable::VariablePrivate {
               m_Range{dateTime},
               m_Metadata{metadata},
               m_DataSeries{nullptr},
-              m_RealRange{INVALID_RANGE}
+              m_RealRange{INVALID_RANGE},
+              m_NbPoints{0}
     {
     }
 
@@ -25,7 +26,8 @@ struct Variable::VariablePrivate {
               m_Range{other.m_Range},
               m_Metadata{other.m_Metadata},
               m_DataSeries{other.m_DataSeries != nullptr ? other.m_DataSeries->clone() : nullptr},
-              m_RealRange{other.m_RealRange}
+              m_RealRange{other.m_RealRange},
+              m_NbPoints{other.m_NbPoints}
     {
     }
 
@@ -67,6 +69,7 @@ struct Variable::VariablePrivate {
     QVariantHash m_Metadata;
     std::shared_ptr<IDataSeries> m_DataSeries;
     SqpRange m_RealRange;
+    int m_NbPoints;
 
     QReadWriteLock m_Lock;
 };
@@ -133,6 +136,11 @@ void Variable::setCacheRange(const SqpRange &cacheRange) noexcept
         impl->purgeDataSeries();
     }
     impl->unlock();
+}
+
+int Variable::nbPoints() const noexcept
+{
+    return impl->m_NbPoints;
 }
 
 SqpRange Variable::realRange() const noexcept
