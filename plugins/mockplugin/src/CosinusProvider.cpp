@@ -11,6 +11,12 @@
 
 Q_LOGGING_CATEGORY(LOG_CosinusProvider, "CosinusProvider")
 
+std::shared_ptr<IDataProvider> CosinusProvider::clone() const
+{
+    // No copy is made in clone
+    return std::make_shared<CosinusProvider>();
+}
+
 std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
                                                            const SqpRange &dataRangeRequested)
 {

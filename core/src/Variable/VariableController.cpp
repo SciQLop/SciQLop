@@ -201,6 +201,15 @@ VariableController::cloneVariable(std::shared_ptr<Variable> variable) noexcept
         // Generates clone identifier
         impl->m_VariableToIdentifierMap[duplicate] = QUuid::createUuid();
 
+        // Registers provider
+        auto variableProvider = impl->m_VariableToProviderMap.at(variable);
+        auto duplicateProvider = variableProvider != nullptr ? variableProvider->clone() : nullptr;
+
+        impl->m_VariableToProviderMap[duplicate] = duplicateProvider;
+        if (duplicateProvider) {
+            impl->registerProvider(duplicateProvider);
+        }
+
         return duplicate;
     }
     else {
