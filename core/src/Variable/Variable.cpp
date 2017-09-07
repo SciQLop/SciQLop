@@ -41,7 +41,10 @@ struct Variable::VariablePrivate {
             m_DataSeries->purge(m_CacheRange.m_TStart, m_CacheRange.m_TEnd);
         }
         updateRealRange();
+        updateNbPoints();
     }
+
+    void updateNbPoints() { m_NbPoints = m_DataSeries ? m_DataSeries->nbPoints() : 0; }
 
     /// Updates real range according to current variable range and data series
     void updateRealRange()
