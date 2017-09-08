@@ -29,13 +29,11 @@ std::vector<double> flatten(std::vector<double> xValues, std::vector<double> yVa
 
     auto result = std::vector<double>();
     result.reserve(xValues.size() * 3);
-
-    while (!xValues.empty()) {
-        result.insert(result.cend(), {xValues.front(), yValues.front(), zValues.front()});
-        xValues.erase(xValues.begin());
-        yValues.erase(yValues.begin());
-        zValues.erase(zValues.begin());
-    }
+    for (int i = 0; i < xValues.size(); i++) {
+        result.push_back(xValues[i]);
+        result.push_back(yValues[i]);
+        result.push_back(zValues[i]);
+     }
 
     return result;
 }
