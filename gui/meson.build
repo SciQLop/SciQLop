@@ -53,6 +53,7 @@ gui_sources = [
   'src/Visualization/VisualizationWidget.cpp',
   'src/Visualization/VisualizationZoneWidget.cpp',
   'src/Visualization/qcustomplot.cpp',
+  'src/Visualization/QCustomPlotSynchronizer.cpp',
   'src/Visualization/operations/GenerateVariableMenuOperation.cpp',
   'src/Visualization/operations/MenuBuilder.cpp',
   'src/Visualization/operations/RemoveVariableOperation.cpp',

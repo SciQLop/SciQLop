@@ -5,10 +5,12 @@
 		<file>icones/dataSourceProduct.png</file>
 		<file>icones/dataSourceRoot.png</file>
 		<file>icones/delete.png</file>
+        <file>icones/down.png</file>
         <file>icones/openInspector.png</file>
         <file>icones/next.png</file>
         <file>icones/plot.png</file>
         <file>icones/previous.png</file>
         <file>icones/unplot.png</file>
+        <file>icones/up.png</file>
     </qresource>
 </RCC>

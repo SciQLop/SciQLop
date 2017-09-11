@@ -13,6 +13,7 @@
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationGraphWidget)
 
 class QCPRange;
+class QCustomPlot;
 class SqpRange;
 class Variable;
 
@@ -22,6 +23,9 @@ class VisualizationGraphWidget;
 
 class VisualizationGraphWidget : public QWidget, public IVisualizationWidget {
     Q_OBJECT
+
+    friend class QCustomPlotSynchronizer;
+    friend class VisualizationGraphRenderingDelegate;
 
 public:
     explicit VisualizationGraphWidget(const QString &name = {}, QWidget *parent = 0);
@@ -52,9 +56,13 @@ signals:
     void requestDataLoading(QVector<std::shared_ptr<Variable> > variable, const SqpRange &range,
                             const SqpRange &oldRange, bool synchronise);
 
-
     void variableAdded(std::shared_ptr<Variable> var);
 
+protected:
+    void enterEvent(QEvent *event) override;
+    void leaveEvent(QEvent *event) override;
+
+    QCustomPlot &plot() noexcept;
 
 private:
     Ui::VisualizationGraphWidget *ui;
