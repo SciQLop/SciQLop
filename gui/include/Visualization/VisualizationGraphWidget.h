@@ -24,6 +24,7 @@ class VisualizationGraphWidget;
 class VisualizationGraphWidget : public QWidget, public IVisualizationWidget {
     Q_OBJECT
 
+    friend class QCustomPlotSynchronizer;
     friend class VisualizationGraphRenderingDelegate;
 
 public:
