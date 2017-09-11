@@ -94,13 +94,13 @@ Unit readXAxisUnit(QTextStream &stream)
  * @param stream the stream to read
  * @return the pair of vectors x-axis data/values data that has been read in the stream
  */
-QPair<QVector<double>, QVector<QVector<double> > >
+std::pair<std::vector<double>, std::vector<double> >
 readResults(QTextStream &stream, AmdaResultParser::ValueType valueType)
 {
     auto expectedNbValues = nbValues(valueType);
 
-    auto xData = QVector<double>{};
-    auto valuesData = QVector<QVector<double> >(expectedNbValues);
+    auto xData = std::vector<double>{};
+    auto valuesData = std::vector<double>{};
 
     QString line{};
 
@@ -131,7 +131,7 @@ readResults(QTextStream &stream, AmdaResultParser::ValueType valueType)
                                        .arg(line, column);
                             value = std::numeric_limits<double>::quiet_NaN();
                         }
-                        valuesData[valueIndex].append(value);
+                        valuesData.push_back(value);
                     }
                 }
                 else {
@@ -147,7 +147,7 @@ readResults(QTextStream &stream, AmdaResultParser::ValueType valueType)
         }
     }
 
-    return qMakePair(std::move(xData), std::move(valuesData));
+    return std::make_pair(std::move(xData), std::move(valuesData));
 }
 
 } // namespace
@@ -192,19 +192,11 @@ std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
     // Creates data series
     switch (valueType) {
         case ValueType::SCALAR:
-            Q_ASSERT(results.second.size() == 1);
-            return std::make_shared<ScalarSeries>(
-                std::move(results.first.toStdVector()),
-                std::move(results.second.takeFirst().toStdVector()), xAxisUnit, Unit{});
-        case ValueType::VECTOR: {
-            Q_ASSERT(results.second.size() == 3);
-            auto xValues = results.second.takeFirst().toStdVector();
-            auto yValues = results.second.takeFirst().toStdVector();
-            auto zValues = results.second.takeFirst().toStdVector();
-            return std::make_shared<VectorSeries>(std::move(results.first.toStdVector()),
-                                                  std::move(xValues), std::move(yValues),
-                                                  std::move(zValues), xAxisUnit, Unit{});
-        }
+            return std::make_shared<ScalarSeries>(std::move(results.first),
+                                                  std::move(results.second), xAxisUnit, Unit{});
+        case ValueType::VECTOR:
+            return std::make_shared<VectorSeries>(std::move(results.first),
+                                                  std::move(results.second), xAxisUnit, Unit{});
         case ValueType::UNKNOWN:
             // Invalid case
             break;
