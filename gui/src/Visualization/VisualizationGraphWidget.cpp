@@ -28,11 +28,15 @@ const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
 
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
-    explicit VisualizationGraphWidgetPrivate()
-            : m_DoAcquisition{true}, m_IsCalibration{false}, m_RenderingDelegate{nullptr}
+    explicit VisualizationGraphWidgetPrivate(const QString &name)
+            : m_Name{name},
+              m_DoAcquisition{true},
+              m_IsCalibration{false},
+              m_RenderingDelegate{nullptr}
     {
     }
 
+    QString m_Name;
     // 1 variable -> n qcpplot
     std::map<std::shared_ptr<Variable>, PlottablesMap> m_VariableToPlotMultiMap;
     bool m_DoAcquisition;
@@ -45,25 +49,21 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
         : QWidget{parent},
           ui{new Ui::VisualizationGraphWidget},
-          impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>()}
+          impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>(name)}
 {
     ui->setupUi(this);
 
-    // The delegate must be initialized after the ui as it uses the plot
-    impl->m_RenderingDelegate = std::make_unique<VisualizationGraphRenderingDelegate>(*ui->widget);
-
-    ui->graphNameLabel->setText(name);
-
     // 'Close' options : widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
-    connect(ui->closeButton, &QToolButton::clicked, this, &VisualizationGraphWidget::close);
-    ui->closeButton->setIcon(sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
 
     // Set qcpplot properties :
     // - Drag (on x-axis) and zoom are enabled
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
-    ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectItems);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
+
+    // The delegate must be initialized after the ui as it uses the plot
+    impl->m_RenderingDelegate = std::make_unique<VisualizationGraphRenderingDelegate>(*this);
 
     connect(ui->widget, &QCustomPlot::mousePress, this, &VisualizationGraphWidget::onMousePress);
     connect(ui->widget, &QCustomPlot::mouseRelease, this,
@@ -102,6 +102,20 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, S
     // Uses delegate to create the qcpplot components according to the variable
     auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
     impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
+
+    // Set axes properties according to the units of the data series
+    /// @todo : for the moment, no control is performed on the axes: the units and the tickers
+    /// are fixed for the default x-axis and y-axis of the plot, and according to the new graph
+    auto xAxisUnit = Unit{};
+    auto valuesUnit = Unit{};
+
+    if (auto dataSeries = variable->dataSeries()) {
+        dataSeries->lockRead();
+        xAxisUnit = dataSeries->xAxisUnit();
+        valuesUnit = dataSeries->valuesUnit();
+        dataSeries->unlock();
+    }
+    impl->m_RenderingDelegate->setAxesProperties(xAxisUnit, valuesUnit);
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 
@@ -201,7 +215,24 @@ bool VisualizationGraphWidget::contains(const Variable &variable) const
 
 QString VisualizationGraphWidget::name() const
 {
-    return ui->graphNameLabel->text();
+    return impl->m_Name;
+}
+
+void VisualizationGraphWidget::enterEvent(QEvent *event)
+{
+    Q_UNUSED(event);
+    impl->m_RenderingDelegate->showGraphOverlay(true);
+}
+
+void VisualizationGraphWidget::leaveEvent(QEvent *event)
+{
+    Q_UNUSED(event);
+    impl->m_RenderingDelegate->showGraphOverlay(false);
+}
+
+QCustomPlot &VisualizationGraphWidget::plot() noexcept
+{
+    return *ui->widget;
 }
 
 void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept

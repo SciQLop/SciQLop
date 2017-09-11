@@ -1,7 +1,7 @@
 #include "Visualization/VisualizationZoneWidget.h"
 
-
 #include "Visualization/IVisualizationWidgetVisitor.h"
+#include "Visualization/QCustomPlotSynchronizer.h"
 #include "Visualization/VisualizationGraphWidget.h"
 #include "ui_VisualizationZoneWidget.h"
 
@@ -38,8 +38,13 @@ QString defaultGraphName(const QLayout &layout)
 
 struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
 
-    explicit VisualizationZoneWidgetPrivate() : m_SynchronisationGroupId{QUuid::createUuid()} {}
+    explicit VisualizationZoneWidgetPrivate()
+            : m_SynchronisationGroupId{QUuid::createUuid()},
+              m_Synchronizer{std::make_unique<QCustomPlotSynchronizer>()}
+    {
+    }
     QUuid m_SynchronisationGroupId;
+    std::unique_ptr<IGraphSynchronizer> m_Synchronizer;
 };
 
 VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *parent)
@@ -68,6 +73,9 @@ VisualizationZoneWidget::~VisualizationZoneWidget()
 
 void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)
 {
+    // Synchronize new graph with others in the zone
+    impl->m_Synchronizer->addGraph(*graphWidget);
+
     ui->visualizationZoneFrame->layout()->addWidget(graphWidget);
 }
 

@@ -17,44 +17,6 @@ public:
     void appendGraphData(const QCPGraphData &data) { mData.append(data); }
 };
 
-
-/// Format for datetimes on a axis
-const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
-
-/// Generates the appropriate ticker for an axis, depending on whether the axis displays time or
-/// non-time data
-QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
-{
-    if (isTimeAxis) {
-        auto dateTicker = QSharedPointer<QCPAxisTickerDateTime>::create();
-        dateTicker->setDateTimeFormat(DATETIME_TICKER_FORMAT);
-        dateTicker->setDateTimeSpec(Qt::UTC);
-
-        return dateTicker;
-    }
-    else {
-        // default ticker
-        return QSharedPointer<QCPAxisTicker>::create();
-    }
-}
-
-/// Sets axes properties according to the properties of a data series. Not thread safe
-template <int Dim>
-void setAxesProperties(const DataSeries<Dim> &dataSeries, QCustomPlot &plot) noexcept
-{
-    /// @todo : for the moment, no control is performed on the axes: the units and the tickers
-    /// are fixed for the default x-axis and y-axis of the plot, and according to the new graph
-    auto setAxisProperties = [](auto axis, const auto &unit) {
-        // label (unit name)
-        axis->setLabel(unit.m_Name);
-
-        // ticker (depending on the type of unit)
-        axis->setTicker(axisTicker(unit.m_TimeUnit));
-    };
-    setAxisProperties(plot.xAxis, dataSeries.xAxisUnit());
-    setAxisProperties(plot.yAxis, dataSeries.valuesUnit());
-}
-
 /**
  * Struct used to create plottables, depending on the type of the data series from which to create
  * them
@@ -98,11 +60,6 @@ struct PlottablesCreator<T,
 
             result.insert({i, graph});
         }
-
-        // Axes properties
-        dataSeries.lockRead();
-        setAxesProperties(dataSeries, plot);
-        dataSeries.unlock();
 
         plot.replot();
 
