@@ -280,6 +280,10 @@ void VisualizationZoneWidget::closeEvent(QCloseEvent *event)
     processGraphs(*ui->visualizationZoneFrame->layout(),
                   [](VisualizationGraphWidget &graphWidget) { graphWidget.close(); });
 
+    // Delete synchronization group from variable controller
+    QMetaObject::invokeMethod(&sqpApp->variableController(), "onRemoveSynchronizationGroupId",
+                              Qt::QueuedConnection, Q_ARG(QUuid, impl->m_SynchronisationGroupId));
+
     QWidget::closeEvent(event);
 }
 
