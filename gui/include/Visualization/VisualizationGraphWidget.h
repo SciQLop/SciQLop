@@ -62,6 +62,7 @@ signals:
     void variableAdded(std::shared_ptr<Variable> var);
 
 protected:
+    void closeEvent(QCloseEvent *event) override;
     void enterEvent(QEvent *event) override;
     void leaveEvent(QEvent *event) override;
 

@@ -220,6 +220,16 @@ QString VisualizationGraphWidget::name() const
     return impl->m_Name;
 }
 
+void VisualizationGraphWidget::closeEvent(QCloseEvent *event)
+{
+    Q_UNUSED(event);
+
+    // Prevents that all variables will be removed from graph when it will be closed
+    for (auto &variableEntry : impl->m_VariableToPlotMultiMap) {
+        emit variableAboutToBeRemoved(variableEntry.first);
+    }
+}
+
 void VisualizationGraphWidget::enterEvent(QEvent *event)
 {
     Q_UNUSED(event);

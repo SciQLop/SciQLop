@@ -34,6 +34,24 @@ QString defaultGraphName(const QLayout &layout)
     return QObject::tr("Graph %1").arg(count + 1);
 }
 
+/**
+ * Applies a function to all graphs of the zone represented by its layout
+ * @param layout the layout that contains graphs
+ * @param fun the function to apply to each graph
+ */
+template <typename Fun>
+void processGraphs(QLayout &layout, Fun fun)
+{
+    for (auto i = 0; i < layout.count(); ++i) {
+        if (auto item = layout.itemAt(i)) {
+            if (auto visualizationGraphWidget
+                = dynamic_cast<VisualizationGraphWidget *>(item->widget())) {
+                fun(*visualizationGraphWidget);
+            }
+        }
+    }
+}
+
 } // namespace
 
 struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
@@ -225,17 +243,11 @@ void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
     if (visitor) {
         visitor->visitEnter(this);
 
-        // Apply visitor to graph children
-        auto layout = ui->visualizationZoneFrame->layout();
-        for (auto i = 0; i < layout->count(); ++i) {
-            if (auto item = layout->itemAt(i)) {
-                // Widgets different from graphs are not visited (no action)
-                if (auto visualizationGraphWidget
-                    = dynamic_cast<VisualizationGraphWidget *>(item->widget())) {
-                    visualizationGraphWidget->accept(visitor);
-                }
-            }
-        }
+        // Apply visitor to graph children: widgets different from graphs are not visited (no
+        // action)
+        processGraphs(
+            *ui->visualizationZoneFrame->layout(),
+            [visitor](VisualizationGraphWidget &graphWidget) { graphWidget.accept(visitor); });
 
         visitor->visitLeave(this);
     }
@@ -260,6 +272,15 @@ bool VisualizationZoneWidget::contains(const Variable &variable) const
 QString VisualizationZoneWidget::name() const
 {
     return ui->zoneNameLabel->text();
+}
+
+void VisualizationZoneWidget::closeEvent(QCloseEvent *event)
+{
+    // Closes graphs in the zone
+    processGraphs(*ui->visualizationZoneFrame->layout(),
+                  [](VisualizationGraphWidget &graphWidget) { graphWidget.close(); });
+
+    QWidget::closeEvent(event);
 }
 
 void VisualizationZoneWidget::onVariableAdded(std::shared_ptr<Variable> variable)

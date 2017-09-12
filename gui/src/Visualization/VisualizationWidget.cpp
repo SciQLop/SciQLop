@@ -157,3 +157,16 @@ void VisualizationWidget::onRangeChanged(std::shared_ptr<Variable> variable,
     auto rescaleVariableOperation = RescaleAxeOperation{variable, range};
     accept(&rescaleVariableOperation);
 }
+
+void VisualizationWidget::closeEvent(QCloseEvent *event)
+{
+    // Closes tabs in the widget
+    for (auto i = 0; i < ui->tabWidget->count(); ++i) {
+        if (auto visualizationTabWidget
+            = dynamic_cast<VisualizationTabWidget *>(ui->tabWidget->widget(i))) {
+            visualizationTabWidget->close();
+        }
+    }
+
+    QWidget::closeEvent(event);
+}
