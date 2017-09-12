@@ -13,8 +13,13 @@
 Q_LOGGING_CATEGORY(LOG_GenerateVariableMenuOperation, "GenerateVariableMenuOperation")
 
 struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
-    explicit GenerateVariableMenuOperationPrivate(QMenu *menu, std::shared_ptr<Variable> variable)
-            : m_Variable{variable}, m_PlotMenuBuilder{menu}, m_UnplotMenuBuilder{menu}
+    explicit GenerateVariableMenuOperationPrivate(
+        QMenu *menu, std::shared_ptr<Variable> variable,
+        std::set<IVisualizationWidget *> variableContainers)
+            : m_Variable{variable},
+              m_PlotMenuBuilder{menu},
+              m_UnplotMenuBuilder{menu},
+              m_VariableContainers{std::move(variableContainers)}
     {
     }
 
@@ -47,7 +52,7 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     void visitNodeLeavePlot(const IVisualizationWidget &container, const QString &actionName,
                             ActionFun actionFunction)
     {
-        if (m_Variable && container.canDrop(*m_Variable)) {
+        if (isValidContainer(container)) {
             m_PlotMenuBuilder.addSeparator();
             m_PlotMenuBuilder.addAction(actionName, actionFunction);
         }
@@ -66,28 +71,39 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
     void visitLeafPlot(const IVisualizationWidget &container, const QString &actionName,
                        ActionFun actionFunction)
     {
-        if (m_Variable && container.canDrop(*m_Variable)) {
+        if (isValidContainer(container)) {
             m_PlotMenuBuilder.addAction(actionName, actionFunction);
         }
     }
 
     template <typename ActionFun>
-    void visitLeafUnplot(const IVisualizationWidget &container, const QString &actionName,
+    void visitLeafUnplot(IVisualizationWidget *container, const QString &actionName,
                          ActionFun actionFunction)
     {
-        if (m_Variable && container.contains(*m_Variable)) {
+        // If the container contains the variable, we generate 'unplot' action
+        if (m_VariableContainers.count(container) == 1) {
             m_UnplotMenuBuilder.addAction(actionName, actionFunction);
         }
     }
 
+    bool isValidContainer(const IVisualizationWidget &container) const noexcept
+    {
+        // A container is valid if it can contain the variable and if the variable is not already
+        // contained in another container
+        return m_Variable && m_VariableContainers.size() == 0 && container.canDrop(*m_Variable);
+    }
+
     std::shared_ptr<Variable> m_Variable;
+    std::set<IVisualizationWidget *> m_VariableContainers;
     MenuBuilder m_PlotMenuBuilder;   ///< Builder for the 'Plot' menu
     MenuBuilder m_UnplotMenuBuilder; ///< Builder for the 'Unplot' menu
 };
 
-GenerateVariableMenuOperation::GenerateVariableMenuOperation(QMenu *menu,
-                                                             std::shared_ptr<Variable> variable)
-        : impl{spimpl::make_unique_impl<GenerateVariableMenuOperationPrivate>(menu, variable)}
+GenerateVariableMenuOperation::GenerateVariableMenuOperation(
+    QMenu *menu, std::shared_ptr<Variable> variable,
+    std::set<IVisualizationWidget *> variableContainers)
+        : impl{spimpl::make_unique_impl<GenerateVariableMenuOperationPrivate>(
+              menu, variable, std::move(variableContainers))}
 {
 }
 
@@ -155,7 +171,6 @@ void GenerateVariableMenuOperation::visitEnter(VisualizationZoneWidget *zoneWidg
 
 void GenerateVariableMenuOperation::visitLeave(VisualizationZoneWidget *zoneWidget)
 {
-    qCCritical(LOG_GenerateVariableMenuOperation(), "Open in a new graph DETECTED !!");
     if (zoneWidget) {
         // 'Plot' menu
         impl->visitNodeLeavePlot(
@@ -187,7 +202,7 @@ void GenerateVariableMenuOperation::visit(VisualizationGraphWidget *graphWidget)
                             });
 
         // 'Unplot' menu
-        impl->visitLeafUnplot(*graphWidget, QObject::tr("Remove from %1").arg(graphWidget->name()),
+        impl->visitLeafUnplot(graphWidget, QObject::tr("Remove from %1").arg(graphWidget->name()),
                               [ varW = std::weak_ptr<Variable>{impl->m_Variable}, graphWidget ]() {
                                   if (auto var = varW.lock()) {
                                       graphWidget->removeVariable(var);
