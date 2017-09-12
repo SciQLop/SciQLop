@@ -177,6 +177,8 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     connect(graphWidget, &VisualizationGraphWidget::synchronize, synchronizeZoneWidget);
     connect(graphWidget, &VisualizationGraphWidget::variableAdded, this,
             &VisualizationZoneWidget::onVariableAdded);
+    connect(graphWidget, &VisualizationGraphWidget::variableAboutToBeRemoved, this,
+            &VisualizationZoneWidget::onVariableAboutToBeRemoved);
 
     auto range = SqpRange{};
 
@@ -264,5 +266,12 @@ void VisualizationZoneWidget::onVariableAdded(std::shared_ptr<Variable> variable
 {
     QMetaObject::invokeMethod(&sqpApp->variableController(), "onAddSynchronized",
                               Qt::QueuedConnection, Q_ARG(std::shared_ptr<Variable>, variable),
+                              Q_ARG(QUuid, impl->m_SynchronisationGroupId));
+}
+
+void VisualizationZoneWidget::onVariableAboutToBeRemoved(std::shared_ptr<Variable> variable)
+{
+    QMetaObject::invokeMethod(&sqpApp->variableController(), "desynchronize", Qt::QueuedConnection,
+                              Q_ARG(std::shared_ptr<Variable>, variable),
                               Q_ARG(QUuid, impl->m_SynchronisationGroupId));
 }

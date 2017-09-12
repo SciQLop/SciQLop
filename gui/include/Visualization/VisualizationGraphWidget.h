@@ -56,6 +56,9 @@ signals:
     void requestDataLoading(QVector<std::shared_ptr<Variable> > variable, const SqpRange &range,
                             const SqpRange &oldRange, bool synchronise);
 
+    /// Signal emitted when the variable is about to be removed from the graph
+    void variableAboutToBeRemoved(std::shared_ptr<Variable> var);
+    /// Signal emitted when the variable has been added to the graph
     void variableAdded(std::shared_ptr<Variable> var);
 
 protected:

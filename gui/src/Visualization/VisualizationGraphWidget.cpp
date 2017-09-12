@@ -138,6 +138,8 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
     // - is no longer referenced in the map
     auto variableIt = impl->m_VariableToPlotMultiMap.find(variable);
     if (variableIt != impl->m_VariableToPlotMultiMap.cend()) {
+        emit variableAboutToBeRemoved(variable);
+
         auto &plottablesMap = variableIt->second;
 
         for (auto plottableIt = plottablesMap.cbegin(), plottableEnd = plottablesMap.cend();

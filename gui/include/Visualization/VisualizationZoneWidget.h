@@ -50,6 +50,8 @@ private:
 
 private slots:
     void onVariableAdded(std::shared_ptr<Variable> variable);
+    /// Slot called when a variable is about to be removed from a graph contained in the zone
+    void onVariableAboutToBeRemoved(std::shared_ptr<Variable> variable);
 };
 
 #endif // SCIQLOP_VISUALIZATIONZONEWIDGET_H
