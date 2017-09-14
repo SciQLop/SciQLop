@@ -7,7 +7,10 @@
 
 #include <QLoggingCategory>
 
+#include <set>
+
 class QMenu;
+class IVisualizationWidget;
 class Variable;
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_GenerateVariableMenuOperation)
@@ -23,8 +26,11 @@ public:
      * Ctor
      * @param menu the menu to which to attach the generated menu
      * @param variable the variable for which to generate the menu
+     * @param variableContainers the containers that already contain the variable for which to
+     * generate the menu
      */
-    explicit GenerateVariableMenuOperation(QMenu *menu, std::shared_ptr<Variable> variable);
+    explicit GenerateVariableMenuOperation(QMenu *menu, std::shared_ptr<Variable> variable,
+                                           std::set<IVisualizationWidget *> variableContainers);
 
     void visitEnter(VisualizationWidget *widget) override final;
     void visitLeave(VisualizationWidget *widget) override final;

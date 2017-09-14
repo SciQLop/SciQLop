@@ -44,6 +44,9 @@ public slots:
 
     void onRangeChanged(std::shared_ptr<Variable> variable, const SqpRange &range) noexcept;
 
+protected:
+    void closeEvent(QCloseEvent *event) override;
+
 private:
     Ui::VisualizationWidget *ui;
 };

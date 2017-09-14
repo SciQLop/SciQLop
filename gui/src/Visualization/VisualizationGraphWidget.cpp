@@ -138,6 +138,8 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
     // - is no longer referenced in the map
     auto variableIt = impl->m_VariableToPlotMultiMap.find(variable);
     if (variableIt != impl->m_VariableToPlotMultiMap.cend()) {
+        emit variableAboutToBeRemoved(variable);
+
         auto &plottablesMap = variableIt->second;
 
         for (auto plottableIt = plottablesMap.cbegin(), plottableEnd = plottablesMap.cend();
@@ -216,6 +218,16 @@ bool VisualizationGraphWidget::contains(const Variable &variable) const
 QString VisualizationGraphWidget::name() const
 {
     return impl->m_Name;
+}
+
+void VisualizationGraphWidget::closeEvent(QCloseEvent *event)
+{
+    Q_UNUSED(event);
+
+    // Prevents that all variables will be removed from graph when it will be closed
+    for (auto &variableEntry : impl->m_VariableToPlotMultiMap) {
+        emit variableAboutToBeRemoved(variableEntry.first);
+    }
 }
 
 void VisualizationGraphWidget::enterEvent(QEvent *event)

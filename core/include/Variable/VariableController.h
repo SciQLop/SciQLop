@@ -111,10 +111,14 @@ public slots:
     /// Cancel the current request for the variable
     void onAbortProgressRequested(std::shared_ptr<Variable> variable);
 
-    /// synchronization group methods
+    // synchronization group methods
     void onAddSynchronizationGroupId(QUuid synchronizationGroupId);
     void onRemoveSynchronizationGroupId(QUuid synchronizationGroupId);
     void onAddSynchronized(std::shared_ptr<Variable> variable, QUuid synchronizationGroupId);
+
+    /// Desynchronizes the variable of the group whose identifier is passed in parameter
+    /// @remarks the method does nothing if the variable is not part of the group
+    void desynchronize(std::shared_ptr<Variable> variable, QUuid synchronizationGroupId);
 
     void initialize();
     void finalize();
