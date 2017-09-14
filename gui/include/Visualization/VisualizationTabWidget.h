@@ -41,6 +41,9 @@ public:
     bool contains(const Variable &variable) const override;
     QString name() const override;
 
+protected:
+    void closeEvent(QCloseEvent *event) override;
+
 private:
     /// @return the layout of tab in which zones are added
     QLayout &tabLayout() const noexcept;

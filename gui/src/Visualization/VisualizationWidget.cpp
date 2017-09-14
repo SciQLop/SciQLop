@@ -3,6 +3,7 @@
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/VisualizationTabWidget.h"
 #include "Visualization/VisualizationZoneWidget.h"
+#include "Visualization/operations/FindVariableOperation.h"
 #include "Visualization/operations/GenerateVariableMenuOperation.h"
 #include "Visualization/operations/RemoveVariableOperation.h"
 #include "Visualization/operations/RescaleAxeOperation.h"
@@ -120,8 +121,14 @@ void VisualizationWidget::attachVariableMenu(
     // Menu is generated only if there is a single variable
     if (variables.size() == 1) {
         if (auto variable = variables.first()) {
+            // Gets the containers of the variable
+            FindVariableOperation findVariableOperation{variable};
+            accept(&findVariableOperation);
+            auto variableContainers = findVariableOperation.result();
+
             // Generates the actions that make it possible to visualize the variable
-            auto generateVariableMenuOperation = GenerateVariableMenuOperation{menu, variable};
+            GenerateVariableMenuOperation generateVariableMenuOperation{
+                menu, variable, std::move(variableContainers)};
             accept(&generateVariableMenuOperation);
         }
         else {
@@ -149,4 +156,17 @@ void VisualizationWidget::onRangeChanged(std::shared_ptr<Variable> variable,
     // Calls the operation of rescaling all graph that contrains variable in the visualization
     auto rescaleVariableOperation = RescaleAxeOperation{variable, range};
     accept(&rescaleVariableOperation);
+}
+
+void VisualizationWidget::closeEvent(QCloseEvent *event)
+{
+    // Closes tabs in the widget
+    for (auto i = 0; i < ui->tabWidget->count(); ++i) {
+        if (auto visualizationTabWidget
+            = dynamic_cast<VisualizationTabWidget *>(ui->tabWidget->widget(i))) {
+            visualizationTabWidget->close();
+        }
+    }
+
+    QWidget::closeEvent(event);
 }

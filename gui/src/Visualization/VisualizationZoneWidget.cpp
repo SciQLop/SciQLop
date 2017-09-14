@@ -34,6 +34,24 @@ QString defaultGraphName(const QLayout &layout)
     return QObject::tr("Graph %1").arg(count + 1);
 }
 
+/**
+ * Applies a function to all graphs of the zone represented by its layout
+ * @param layout the layout that contains graphs
+ * @param fun the function to apply to each graph
+ */
+template <typename Fun>
+void processGraphs(QLayout &layout, Fun fun)
+{
+    for (auto i = 0; i < layout.count(); ++i) {
+        if (auto item = layout.itemAt(i)) {
+            if (auto visualizationGraphWidget
+                = dynamic_cast<VisualizationGraphWidget *>(item->widget())) {
+                fun(*visualizationGraphWidget);
+            }
+        }
+    }
+}
+
 } // namespace
 
 struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
@@ -177,6 +195,8 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     connect(graphWidget, &VisualizationGraphWidget::synchronize, synchronizeZoneWidget);
     connect(graphWidget, &VisualizationGraphWidget::variableAdded, this,
             &VisualizationZoneWidget::onVariableAdded);
+    connect(graphWidget, &VisualizationGraphWidget::variableAboutToBeRemoved, this,
+            &VisualizationZoneWidget::onVariableAboutToBeRemoved);
 
     auto range = SqpRange{};
 
@@ -223,17 +243,11 @@ void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
     if (visitor) {
         visitor->visitEnter(this);
 
-        // Apply visitor to graph children
-        auto layout = ui->visualizationZoneFrame->layout();
-        for (auto i = 0; i < layout->count(); ++i) {
-            if (auto item = layout->itemAt(i)) {
-                // Widgets different from graphs are not visited (no action)
-                if (auto visualizationGraphWidget
-                    = dynamic_cast<VisualizationGraphWidget *>(item->widget())) {
-                    visualizationGraphWidget->accept(visitor);
-                }
-            }
-        }
+        // Apply visitor to graph children: widgets different from graphs are not visited (no
+        // action)
+        processGraphs(
+            *ui->visualizationZoneFrame->layout(),
+            [visitor](VisualizationGraphWidget &graphWidget) { graphWidget.accept(visitor); });
 
         visitor->visitLeave(this);
     }
@@ -260,9 +274,29 @@ QString VisualizationZoneWidget::name() const
     return ui->zoneNameLabel->text();
 }
 
+void VisualizationZoneWidget::closeEvent(QCloseEvent *event)
+{
+    // Closes graphs in the zone
+    processGraphs(*ui->visualizationZoneFrame->layout(),
+                  [](VisualizationGraphWidget &graphWidget) { graphWidget.close(); });
+
+    // Delete synchronization group from variable controller
+    QMetaObject::invokeMethod(&sqpApp->variableController(), "onRemoveSynchronizationGroupId",
+                              Qt::QueuedConnection, Q_ARG(QUuid, impl->m_SynchronisationGroupId));
+
+    QWidget::closeEvent(event);
+}
+
 void VisualizationZoneWidget::onVariableAdded(std::shared_ptr<Variable> variable)
 {
     QMetaObject::invokeMethod(&sqpApp->variableController(), "onAddSynchronized",
                               Qt::QueuedConnection, Q_ARG(std::shared_ptr<Variable>, variable),
+                              Q_ARG(QUuid, impl->m_SynchronisationGroupId));
+}
+
+void VisualizationZoneWidget::onVariableAboutToBeRemoved(std::shared_ptr<Variable> variable)
+{
+    QMetaObject::invokeMethod(&sqpApp->variableController(), "desynchronize", Qt::QueuedConnection,
+                              Q_ARG(std::shared_ptr<Variable>, variable),
                               Q_ARG(QUuid, impl->m_SynchronisationGroupId));
 }

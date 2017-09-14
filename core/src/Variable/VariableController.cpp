@@ -389,6 +389,36 @@ void VariableController::onAddSynchronized(std::shared_ptr<Variable> variable,
     }
 }
 
+void VariableController::desynchronize(std::shared_ptr<Variable> variable,
+                                       QUuid synchronizationGroupId)
+{
+    // Gets variable id
+    auto variableIt = impl->m_VariableToIdentifierMap.find(variable);
+    if (variableIt == impl->m_VariableToIdentifierMap.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Can't desynchronize variable %1: variable identifier not found")
+                   .arg(variable->name());
+        return;
+    }
+
+    // Gets synchronization group
+    auto groupIt = impl->m_GroupIdToVariableSynchronizationGroupMap.find(synchronizationGroupId);
+    if (groupIt == impl->m_GroupIdToVariableSynchronizationGroupMap.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Can't desynchronize variable %1: unknown synchronization group")
+                   .arg(variable->name());
+        return;
+    }
+
+    auto variableId = variableIt->second;
+
+    // Removes variable from synchronization group
+    auto synchronizationGroup = groupIt->second;
+    synchronizationGroup->removeVariableId(variableId);
+
+    // Removes link between variable and synchronization group
+    impl->m_VariableIdGroupIdMap.erase(variableId);
+}
 
 void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables,
                                               const SqpRange &range, const SqpRange &oldRange,
