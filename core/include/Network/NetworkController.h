@@ -7,6 +7,7 @@
 #include <QObject>
 #include <QUuid>
 
+#include <Common/MetaTypes.h>
 #include <Common/spimpl.h>
 #include <functional>
 
@@ -29,14 +30,14 @@ public:
 public slots:
     /// Execute request and call callback when the reply is finished. Identifier is attached to the
     /// callback
-    void onProcessRequested(const QNetworkRequest &request, QUuid identifier,
+    void onProcessRequested(std::shared_ptr<QNetworkRequest> request, QUuid identifier,
                             std::function<void(QNetworkReply *, QUuid)> callback);
     /// Cancel the request of identifier
     void onReplyCanceled(QUuid identifier);
 
 signals:
     void replyFinished(QNetworkReply *reply, QUuid identifier);
-    void replyDownloadProgress(QUuid identifier, const QNetworkRequest &networkRequest,
+    void replyDownloadProgress(QUuid identifier, std::shared_ptr<QNetworkRequest> networkRequest,
                                double progress);
 
 private:
@@ -45,5 +46,8 @@ private:
     class NetworkControllerPrivate;
     spimpl::unique_impl_ptr<NetworkControllerPrivate> impl;
 };
+
+SCIQLOP_REGISTER_META_TYPE(NETWORKREQUEST_REGISTRY, std::shared_ptr<QNetworkRequest>)
+
 
 #endif // SCIQLOP_NETWORKCONTROLLER_H

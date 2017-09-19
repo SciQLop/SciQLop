@@ -30,12 +30,13 @@ NetworkController::NetworkController(QObject *parent)
 {
 }
 
-void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid identifier,
+void NetworkController::onProcessRequested(std::shared_ptr<QNetworkRequest> request,
+                                           QUuid identifier,
                                            std::function<void(QNetworkReply *, QUuid)> callback)
 {
-    qCDebug(LOG_NetworkController()) << tr("NetworkController registered")
-                                     << QThread::currentThread()->objectName();
-    auto reply = impl->m_AccessManager->get(request);
+    qCDebug(LOG_NetworkController()) << tr("NetworkController onProcessRequested")
+                                     << QThread::currentThread()->objectName() << &request;
+    auto reply = impl->m_AccessManager->get(*request);
 
     // Store the couple reply id
     impl->lockWrite();
@@ -45,7 +46,7 @@ void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid
     auto onReplyFinished = [request, reply, this, identifier, callback]() {
 
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished")
-                                         << QThread::currentThread() << reply;
+                                         << QThread::currentThread() << request.get() << reply;
         impl->lockRead();
         auto it = impl->m_NetworkReplyToVariableId.find(reply);
         impl->unlock();
@@ -56,8 +57,6 @@ void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid
             // Deletes reply
             callback(reply, identifier);
             reply->deleteLater();
-
-            emit this->replyDownloadProgress(identifier, request, 0);
         }
 
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished END")
@@ -68,7 +67,7 @@ void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid
 
         double progress = (bytesRead * 100.0) / totalBytes;
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress") << progress
-                                         << QThread::currentThread() << reply;
+                                         << QThread::currentThread() << request.get() << reply;
         impl->lockRead();
         auto it = impl->m_NetworkReplyToVariableId.find(reply);
         impl->unlock();

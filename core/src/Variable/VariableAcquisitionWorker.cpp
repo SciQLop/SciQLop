@@ -117,20 +117,6 @@ void VariableAcquisitionWorker::onVariableRetrieveDataInProgress(QUuid acqIdenti
             = std::isnan(progress) ? 0.0 : (progress * currentPartSize) / 100.0;
         auto currentAlreadyProgress = aIdToARit->second.m_Progression * currentPartSize;
 
-        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: progress :") << progress;
-        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress A:")
-                                                << aIdToARit->second.m_Progression
-                                                << aIdToARit->second.m_Size;
-        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress B:")
-                                                << currentPartSize;
-        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress C:")
-                                                << currentPartProgress;
-        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress D:")
-                                                << currentAlreadyProgress;
-        qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress E:")
-                                                << currentAlreadyProgress + currentPartProgress
-                                                << "\n";
-
         auto finalProgression = currentAlreadyProgress + currentPartProgress;
         emit variableRequestInProgress(aIdToARit->second.m_vIdentifier, finalProgression);
 
@@ -145,8 +131,8 @@ void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
                                                        std::shared_ptr<IDataSeries> dataSeries,
                                                        SqpRange dataRangeAcquired)
 {
-    qCInfo(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableDataAcquired on range ")
-                                            << acqIdentifier << dataRangeAcquired;
+    qCDebug(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableDataAcquired on range ")
+                                             << acqIdentifier << dataRangeAcquired;
     impl->lockWrite();
     auto aIdToARit = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
     if (aIdToARit != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
@@ -269,19 +255,3 @@ void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::removeVariable
     m_VIdentifierToCurrrentAcqIdNextIdPairMap.erase(vIdentifier);
     unlock();
 }
-
-//void VariableAcquisitionWorker::onExecuteRequest(QUuid acqIdentifier)
-//{
-//    qCDebug(LOG_VariableAcquisitionWorker()) << tr("onExecuteRequest") << QThread::currentThread();
-//    impl->lockRead();
-//    auto it = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
-//    if (it != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
-//        auto request = it->second;
-//        impl->unlock();
-//        request.m_Provider->requestDataLoading(acqIdentifier, request.m_DataProviderParameters);
-//    }
-//    else {
-//        impl->unlock();
-//        // TODO log no acqIdentifier recognized
-//    }
-//}
