@@ -29,11 +29,6 @@ const auto AMDA_URL_FORMAT = QStringLiteral(
 /// Dates format passed in the URL (e.g 2013-09-23T09:00)
 const auto AMDA_TIME_FORMAT = QStringLiteral("yyyy-MM-ddThh:mm:ss");
 
-// struct AmdaProgression {
-//    QUuid acqIdentifier;
-//    std::map<QNetworkRequest, double> m_RequestId;
-//};
-
 /// Formats a time to a date that can be passed in URL
 QString dateFormat(double sqpRange) noexcept
 {
@@ -61,16 +56,17 @@ AmdaProvider::AmdaProvider()
     qCDebug(LOG_AmdaProvider()) << tr("AmdaProvider::AmdaProvider") << QThread::currentThread();
     if (auto app = sqpApp) {
         auto &networkController = app->networkController();
-        connect(this, SIGNAL(requestConstructed(QNetworkRequest, QUuid,
+        connect(this, SIGNAL(requestConstructed(std::shared_ptr<QNetworkRequest>, QUuid,
                                                 std::function<void(QNetworkReply *, QUuid)>)),
                 &networkController,
-                SLOT(onProcessRequested(QNetworkRequest, QUuid,
+                SLOT(onProcessRequested(std::shared_ptr<QNetworkRequest>, QUuid,
                                         std::function<void(QNetworkReply *, QUuid)>)));
 
 
         connect(&sqpApp->networkController(),
-                SIGNAL(replyDownloadProgress(QUuid, const QNetworkRequest &, double)), this,
-                SLOT(onReplyDownloadProgress(QUuid, const QNetworkRequest &, double)));
+                SIGNAL(replyDownloadProgress(QUuid, std::shared_ptr<QNetworkRequest>, double)),
+                this,
+                SLOT(onReplyDownloadProgress(QUuid, std::shared_ptr<QNetworkRequest>, double)));
     }
 }
 
@@ -103,16 +99,17 @@ void AmdaProvider::requestDataAborting(QUuid acqIdentifier)
 }
 
 void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
-                                           const QNetworkRequest &networkRequest, double progress)
+                                           std::shared_ptr<QNetworkRequest> networkRequest,
+                                           double progress)
 {
-    qCCritical(LOG_AmdaProvider()) << tr("onReplyDownloadProgress") << progress;
+    qCDebug(LOG_AmdaProvider()) << tr("onReplyDownloadProgress") << acqIdentifier
+                                << networkRequest.get() << progress;
     auto acqIdToRequestProgressMapIt = m_AcqIdToRequestProgressMap.find(acqIdentifier);
     if (acqIdToRequestProgressMapIt != m_AcqIdToRequestProgressMap.end()) {
 
-        qCCritical(LOG_AmdaProvider()) << tr("1 onReplyDownloadProgress") << progress;
-        auto requestPtr = &networkRequest;
-        auto findRequest
-            = [requestPtr](const auto &entry) { return requestPtr == entry.first.get(); };
+        qCDebug(LOG_AmdaProvider()) << tr("1 onReplyDownloadProgress found") << progress;
+        auto requestPtr = networkRequest;
+        auto findRequest = [requestPtr](const auto &entry) { return requestPtr == entry.first; };
 
         auto &requestProgressMap = acqIdToRequestProgressMapIt->second;
         auto requestProgressMapEnd = requestProgressMap.end();
@@ -123,13 +120,13 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
             requestProgressMapIt->second = progress;
         }
         else {
-            qCCritical(LOG_AmdaProvider()) << tr("Can't retrieve Request in progress");
+            qCCritical(LOG_AmdaProvider()) << tr("Can't retrieve Request in progress")
+                                           << acqIdentifier << networkRequest.get() << progress;
         }
     }
 
     acqIdToRequestProgressMapIt = m_AcqIdToRequestProgressMap.find(acqIdentifier);
     if (acqIdToRequestProgressMapIt != m_AcqIdToRequestProgressMap.end()) {
-        qCCritical(LOG_AmdaProvider()) << tr("2 onReplyDownloadProgress") << progress;
         double finalProgress = 0.0;
 
         auto &requestProgressMap = acqIdToRequestProgressMapIt->second;
@@ -137,13 +134,16 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
 
         for (auto requestProgress : requestProgressMap) {
             finalProgress += requestProgress.second;
+            qCDebug(LOG_AmdaProvider()) << tr("current final progress without freq:")
+                                        << finalProgress << requestProgress.second;
         }
 
         if (fraq > 0) {
             finalProgress = finalProgress / fraq;
         }
 
-        qCCritical(LOG_AmdaProvider()) << tr("2 onReplyDownloadProgress") << finalProgress;
+        qCDebug(LOG_AmdaProvider()) << tr("2 onReplyDownloadProgress final progress") << fraq
+                                    << finalProgress;
         emit dataProvidedProgress(acqIdentifier, finalProgress);
     }
     else {
@@ -173,7 +173,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     auto endDate = dateFormat(dateTime.m_TEnd);
 
     auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
-    qCInfo(LOG_AmdaProvider()) << tr("TORM AmdaProvider::retrieveData url:") << url;
+    qCDebug(LOG_AmdaProvider()) << tr("TORM AmdaProvider::retrieveData url:") << url;
     auto tempFile = std::make_shared<QTemporaryFile>();
 
     // LAMBDA
@@ -216,10 +216,10 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
 
                   // Creates destination file
                   if (tempFile->open()) {
-                      // Executes request
+                      // Executes request and store the request for progression
                       auto request = std::make_shared<QNetworkRequest>(downloadFileUrl);
                       updateRequestProgress(dataId, request, 0.0);
-                      emit requestConstructed(*request.get(), dataId, httpDownloadFinished);
+                      emit requestConstructed(request, dataId, httpDownloadFinished);
                   }
               }
               else {
@@ -232,9 +232,10 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     // //////////////// //
 
     auto request = std::make_shared<QNetworkRequest>(url);
+    qCDebug(LOG_AmdaProvider()) << tr("First Request creation") << request.get();
     updateRequestProgress(token, request, 0.0);
 
-    emit requestConstructed(*request.get(), token, httpFinishedLambda);
+    emit requestConstructed(request, token, httpFinishedLambda);
 }
 
 void AmdaProvider::updateRequestProgress(QUuid acqIdentifier,
@@ -246,12 +247,18 @@ void AmdaProvider::updateRequestProgress(QUuid acqIdentifier,
         auto requestProgressMapIt = requestProgressMap.find(request);
         if (requestProgressMapIt != requestProgressMap.end()) {
             requestProgressMapIt->second = progress;
+            qCDebug(LOG_AmdaProvider()) << tr("updateRequestProgress new progress for request")
+                                        << acqIdentifier << request.get() << progress;
         }
         else {
+            qCDebug(LOG_AmdaProvider()) << tr("updateRequestProgress new request") << acqIdentifier
+                                        << request.get() << progress;
             acqIdToRequestProgressMapIt->second.insert(std::make_pair(request, progress));
         }
     }
     else {
+        qCDebug(LOG_AmdaProvider()) << tr("updateRequestProgress new acqIdentifier")
+                                    << acqIdentifier << request.get() << progress;
         auto requestProgressMap = std::map<std::shared_ptr<QNetworkRequest>, double>{};
         requestProgressMap.insert(std::make_pair(request, progress));
         m_AcqIdToRequestProgressMap.insert(
