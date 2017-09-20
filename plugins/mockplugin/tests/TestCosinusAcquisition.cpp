@@ -1,9 +1,13 @@
 #include "CosinusProvider.h"
 
+#include <Data/ScalarSeries.h>
 #include <SqpApplication.h>
 
 #include <QObject>
 #include <QtTest>
+
+#include <cmath>
+#include <memory>
 
 namespace {
 
@@ -11,6 +15,32 @@ namespace {
 const auto TESTS_RESOURCES_PATH = QFileInfo{
     QString{MOCKPLUGIN_TESTS_RESOURCES_DIR},
     "TestCosinusAcquisition"}.absoluteFilePath();
+
+/// Format of dates in data files
+const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
+
+/// Generates the data series from the reading of a data stream
+std::shared_ptr<IDataSeries> readDataStream(QTextStream &stream)
+{
+    std::vector<double> xAxisData, valuesData;
+
+    QString line{};
+    while (stream.readLineInto(&line)) {
+        // Separates date (x-axis data) to value data
+        auto splitLine = line.split('\t');
+        if (splitLine.size() == 2) {
+            // Converts datetime to double
+            auto dateTime = QDateTime::fromString(splitLine[0], DATETIME_FORMAT);
+            dateTime.setTimeSpec(Qt::UTC);
+            xAxisData.push_back(DateUtils::secondsSinceEpoch(dateTime));
+
+            valuesData.push_back(splitLine[1].toDouble());
+        }
+    }
+
+    return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
+                                          Unit{{}, true}, Unit{});
+}
 
 } // namespace
 
@@ -30,12 +60,32 @@ private slots:
 
 void TestCosinusAcquisition::testAcquisition_data()
 {
-    /// @todo
+    // ////////////// //
+    // Test structure //
+    // ////////////// //
+
+    QTest::addColumn<QString>("dataFilename");  // File containing expected data of acquisitions
+    QTest::addColumn<SqpRange>("initialRange"); // First acquisition
+    QTest::addColumn<std::vector<SqpRange> >("operations"); // Acquisitions to make
 }
 
 void TestCosinusAcquisition::testAcquisition()
 {
-    /// @todo
+    // Retrieves data file
+    QFETCH(QString, dataFilename);
+
+    auto dataFilePath = QFileInfo{TESTS_RESOURCES_PATH, dataFilename}.absoluteFilePath();
+    QFile dataFile{dataFilePath};
+
+    if (dataFile.open(QFile::ReadOnly)) {
+        // Generates data series to compare with
+        QTextStream dataStream{&dataFile};
+        auto dataSeries = readDataStream(dataStream);
+
+    }
+    else {
+        QFAIL("Can't read input data file");
+    }
 }
 
 int main(int argc, char *argv[])
