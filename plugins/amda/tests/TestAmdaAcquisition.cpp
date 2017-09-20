@@ -100,8 +100,6 @@ void TestAmdaAcquisition::testAcquisition()
     auto var = vc.createVariable("bx_gse", metaData, provider);
 
     // 1 : Variable creation
-    QCOMPARE(var->range().m_TStart, sqpR.m_TStart);
-    QCOMPARE(var->range().m_TEnd, sqpR.m_TEnd);
 
     qDebug() << " 1: TIMECONTROLLER" << timeController->dateTime();
     qDebug() << " 1: RANGE     " << var->range();

@@ -265,7 +265,7 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
 
     auto range = impl->m_TimeController->dateTime();
 
-    if (auto newVariable = impl->m_VariableModel->createVariable(name, range, metadata)) {
+    if (auto newVariable = impl->m_VariableModel->createVariable(name, metadata)) {
         auto identifier = QUuid::createUuid();
 
         // store the provider
@@ -573,7 +573,7 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                 varProvider);
 
             if (!varRequestIdCanceled.isNull()) {
-                qCDebug(LOG_VariableAcquisitionWorker()) << tr("varRequestIdCanceled: ")
+                qCDebug(LOG_VariableAcquisitionWorker()) << tr("vsarRequestIdCanceled: ")
                                                          << varRequestIdCanceled;
                 cancelVariableRequest(varRequestIdCanceled);
             }
@@ -588,7 +588,6 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
         }
     }
     else {
-
         varRequest.m_RangeRequested = varStrategyRangesRequested.first;
         varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
         // store VarRequest

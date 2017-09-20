@@ -107,7 +107,6 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
     auto acqIdToRequestProgressMapIt = m_AcqIdToRequestProgressMap.find(acqIdentifier);
     if (acqIdToRequestProgressMapIt != m_AcqIdToRequestProgressMap.end()) {
 
-        qCDebug(LOG_AmdaProvider()) << tr("1 onReplyDownloadProgress found") << progress;
         auto requestPtr = networkRequest;
         auto findRequest = [requestPtr](const auto &entry) { return requestPtr == entry.first; };
 
@@ -159,7 +158,6 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
         qCCritical(LOG_AmdaProvider()) << tr("Can't retrieve data: unknown product id");
         return;
     }
-    qCDebug(LOG_AmdaProvider()) << tr("AmdaProvider::retrieveData") << dateTime;
 
     // Retrieves the data type that determines whether the expected format for the result file is
     // scalar, vector...
@@ -210,7 +208,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
               if (reply->error() != QNetworkReply::OperationCanceledError) {
                   auto downloadFileUrl = QUrl{QString{reply->readAll()}};
 
-                  qCInfo(LOG_AmdaProvider())
+                  qCDebug(LOG_AmdaProvider())
                       << tr("TORM AmdaProvider::retrieveData downloadFileUrl:") << downloadFileUrl;
                   // Executes request for downloading file //
 
