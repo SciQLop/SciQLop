@@ -54,7 +54,7 @@ void NetworkController::onProcessRequested(std::shared_ptr<QNetworkRequest> requ
         if (it != impl->m_NetworkReplyToId.cend()) {
             impl->lockWrite();
             qCDebug(LOG_NetworkController()) << tr("Remove for reply: ")
-                                            << impl->m_NetworkReplyToId[reply];
+                                             << impl->m_NetworkReplyToId[reply];
             impl->m_NetworkReplyToId.erase(reply);
             impl->unlock();
             // Deletes reply
@@ -72,8 +72,8 @@ void NetworkController::onProcessRequested(std::shared_ptr<QNetworkRequest> requ
         if (totalBytes > 0) {
             double progress = (bytesRead * 100.0) / totalBytes;
             qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress") << progress
-                                            << QThread::currentThread() << request.get() << reply
-                                            << bytesRead << totalBytes;
+                                             << QThread::currentThread() << request.get() << reply
+                                             << bytesRead << totalBytes;
             impl->lockRead();
             auto it = impl->m_NetworkReplyToId.find(reply);
             impl->unlock();
@@ -100,7 +100,6 @@ void NetworkController::initialize()
 
 
     auto onReplyErrors = [this](QNetworkReply *reply, const QList<QSslError> &errors) {
-
         qCCritical(LOG_NetworkController()) << tr("NetworkAcessManager errors: ") << errors;
 
     };
@@ -120,7 +119,7 @@ void NetworkController::onReplyCanceled(QUuid identifier)
 {
     auto findReply = [identifier](const auto &entry) { return identifier == entry.second; };
     qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyCanceled")
-                                    << QThread::currentThread() << identifier;
+                                     << QThread::currentThread() << identifier;
 
 
     impl->lockRead();
@@ -129,11 +128,11 @@ void NetworkController::onReplyCanceled(QUuid identifier)
     impl->unlock();
     if (it != end) {
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyCanceled ABORT DONE")
-                                        << QThread::currentThread() << identifier;
+                                         << QThread::currentThread() << identifier;
         it->first->abort();
     }
     qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyCanceled END")
-                                    << QThread::currentThread();
+                                     << QThread::currentThread();
 }
 
 void NetworkController::waitForFinish()
