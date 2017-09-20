@@ -101,6 +101,34 @@ void TestCosinusAcquisition::testAcquisition_data()
     QTest::addColumn<QString>("dataFilename");  // File containing expected data of acquisitions
     QTest::addColumn<SqpRange>("initialRange"); // First acquisition
     QTest::addColumn<std::vector<SqpRange> >("operations"); // Acquisitions to make
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    auto dateTime = [](int year, int month, int day, int hours, int minutes, int seconds) {
+        return DateUtils::secondsSinceEpoch(
+            QDateTime{{year, month, day}, {hours, minutes, seconds}, Qt::UTC});
+    };
+
+    QTest::newRow("cosinus")
+        << "Cosinus_100Hz_20170101_1200_20170101_1300.txt"
+        << SqpRange{dateTime(2017, 1, 1, 12, 30, 0), dateTime(2017, 1, 1, 12, 35, 1)}
+        << std::vector<SqpRange>{
+               // Pan (jump) left
+               SqpRange{dateTime(2017, 1, 1, 12, 45, 0), dateTime(2017, 1, 1, 12, 50, 0)},
+               // Pan (jump) right
+               SqpRange{dateTime(2017, 1, 1, 12, 15, 0), dateTime(2017, 1, 1, 12, 20, 0)},
+               // Pan (overlay) right
+               SqpRange{dateTime(2017, 1, 1, 12, 14, 0), dateTime(2017, 1, 1, 12, 19, 0)},
+               // Pan (overlay) left
+               SqpRange{dateTime(2017, 1, 1, 12, 15, 0), dateTime(2017, 1, 1, 12, 20, 0)},
+               // Pan (overlay) left
+               SqpRange{dateTime(2017, 1, 1, 12, 16, 0), dateTime(2017, 1, 1, 12, 21, 0)},
+               // Zoom in
+               SqpRange{dateTime(2017, 1, 1, 12, 17, 30), dateTime(2017, 1, 1, 12, 19, 30)},
+               // Zoom out
+               SqpRange{dateTime(2017, 1, 1, 12, 12, 30), dateTime(2017, 1, 1, 12, 24, 30)}};
 }
 
 void TestCosinusAcquisition::testAcquisition()
