@@ -33,8 +33,9 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
         std::swap(start, end);
     }
 
-    // Generates scalar series containing cosinus values (one value per second)
-    auto dataCount = end - start;
+    // Generates scalar series containing cosinus values (one value per second, end value is
+    // included)
+    auto dataCount = end - start + 1;
 
     auto xAxisData = std::vector<double>{};
     xAxisData.resize(dataCount);
@@ -44,7 +45,7 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
 
     int progress = 0;
     auto progressEnd = dataCount;
-    for (auto time = start; time < end; ++time, ++dataIndex) {
+    for (auto time = start; time <= end; ++time, ++dataIndex) {
         auto it = m_VariableToEnableProvider.find(acqIdentifier);
         if (it != m_VariableToEnableProvider.end() && it.value()) {
             const auto timeOnFreq = time / freq;
