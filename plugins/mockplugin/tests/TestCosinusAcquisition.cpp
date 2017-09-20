@@ -1,7 +1,11 @@
 #include "CosinusProvider.h"
 
+#include <Data/DataProviderParameters.h>
 #include <Data/ScalarSeries.h>
 #include <SqpApplication.h>
+#include <Time/TimeController.h>
+#include <Variable/Variable.h>
+#include <Variable/VariableController.h>
 
 #include <QObject>
 #include <QtTest>
@@ -18,6 +22,9 @@ const auto TESTS_RESOURCES_PATH = QFileInfo{
 
 /// Format of dates in data files
 const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
+
+/// Delay after each operation on the variable before validating it (in ms)
+const auto OPERATION_DELAY = 250;
 
 /// Generates the data series from the reading of a data stream
 std::shared_ptr<IDataSeries> readDataStream(QTextStream &stream)
@@ -82,6 +89,22 @@ void TestCosinusAcquisition::testAcquisition()
         QTextStream dataStream{&dataFile};
         auto dataSeries = readDataStream(dataStream);
 
+        // Creates variable
+        QFETCH(SqpRange, initialRange);
+        sqpApp->timeController().onTimeToUpdate(initialRange);
+        auto provider = std::make_shared<CosinusProvider>();
+        auto variable = sqpApp->variableController().createVariable("MMS", {}, provider);
+
+        QTest::qWait(OPERATION_DELAY);
+        // Makes operations on the variable
+        QFETCH(std::vector<SqpRange>, operations);
+        for (const auto &operation : operations) {
+            // Asks request on the variable and waits during its execution
+            sqpApp->variableController().onRequestDataLoading({variable}, operation,
+                                                              variable->range(), true);
+
+            QTest::qWait(OPERATION_DELAY);
+        }
     }
     else {
         QFAIL("Can't read input data file");
