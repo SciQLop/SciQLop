@@ -26,6 +26,33 @@ const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
 /// Delay after each operation on the variable before validating it (in ms)
 const auto OPERATION_DELAY = 250;
 
+/**
+ * Verifies that the data in the candidate series are identical to the data in the reference series
+ * in a specific range
+ * @param candidate the candidate data series
+ * @param range the range to check
+ * @param reference the reference data series
+ * @return true if the data of the candidate series and the reference series are identical in the
+ * range, false otherwise
+ */
+bool checkDataSeries(std::shared_ptr<IDataSeries> candidate, const SqpRange &range,
+                     std::shared_ptr<IDataSeries> reference)
+{
+    if (candidate == nullptr || reference == nullptr) {
+        return candidate == reference;
+    }
+
+    auto referenceIt = reference->xAxisRange(range.m_TStart, range.m_TEnd);
+
+    return std::equal(candidate->cbegin(), candidate->cend(), referenceIt.first, referenceIt.second,
+                      [](const auto &it1, const auto &it2) {
+                          // - milliseconds precision for time
+                          // - 1e-6 precision for value
+                          return std::abs(it1.x() - it2.x()) < 1e-3
+                                 && std::abs(it1.value() - it2.value()) < 1e-6;
+                      });
+}
+
 /// Generates the data series from the reading of a data stream
 std::shared_ptr<IDataSeries> readDataStream(QTextStream &stream)
 {
@@ -89,6 +116,16 @@ void TestCosinusAcquisition::testAcquisition()
         QTextStream dataStream{&dataFile};
         auto dataSeries = readDataStream(dataStream);
 
+        /// Lambda used to validate a variable at each step
+        auto validateVariable = [dataSeries](std::shared_ptr<Variable> variable,
+                                             const SqpRange &range) {
+            // Checks that the variable's range has changed
+            QCOMPARE(variable->range(), range);
+
+            // Checks the variable's data series
+            QVERIFY(checkDataSeries(variable->dataSeries(), variable->cacheRange(), dataSeries));
+        };
+
         // Creates variable
         QFETCH(SqpRange, initialRange);
         sqpApp->timeController().onTimeToUpdate(initialRange);
@@ -96,6 +133,8 @@ void TestCosinusAcquisition::testAcquisition()
         auto variable = sqpApp->variableController().createVariable("MMS", {}, provider);
 
         QTest::qWait(OPERATION_DELAY);
+        validateVariable(variable, initialRange);
+
         // Makes operations on the variable
         QFETCH(std::vector<SqpRange>, operations);
         for (const auto &operation : operations) {
@@ -104,6 +143,7 @@ void TestCosinusAcquisition::testAcquisition()
                                                               variable->range(), true);
 
             QTest::qWait(OPERATION_DELAY);
+            validateVariable(variable, operation);
         }
     }
     else {
