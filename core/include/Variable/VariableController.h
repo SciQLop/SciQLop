@@ -68,10 +68,6 @@ public:
      */
     void deleteVariables(const QVector<std::shared_ptr<Variable> > &variables) noexcept;
 
-    /**
-     * @brief abort the variable retrieve data progression
-     */
-    void abortProgress(std::shared_ptr<Variable> variable);
 
     static AcquisitionZoomType getZoomType(const SqpRange &range, const SqpRange &oldRange);
 signals:
