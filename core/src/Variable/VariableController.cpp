@@ -151,11 +151,16 @@ VariableController::VariableController(QObject *parent)
     connect(impl->m_VariableModel, &VariableModel::abortProgessRequested, this,
             &VariableController::onAbortProgressRequested);
 
+    connect(impl->m_VariableAcquisitionWorker.get(),
+            &VariableAcquisitionWorker::variableCanceledRequested, this,
+            &VariableController::onAbortAcquisitionRequested);
+
     connect(impl->m_VariableAcquisitionWorker.get(), &VariableAcquisitionWorker::dataProvided, this,
             &VariableController::onDataProvided);
     connect(impl->m_VariableAcquisitionWorker.get(),
             &VariableAcquisitionWorker::variableRequestInProgress, this,
             &VariableController::onVariableRetrieveDataInProgress);
+
 
     connect(&impl->m_VariableAcquisitionWorkerThread, &QThread::started,
             impl->m_VariableAcquisitionWorker.get(), &VariableAcquisitionWorker::initialize);
@@ -273,6 +278,7 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
 
         // Associate the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
+        qCInfo(LOG_VariableController()) << "createVariable: " << identifier;
         impl->m_VariableToIdentifierMap[newVariable] = identifier;
 
 
@@ -355,6 +361,20 @@ void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> vari
         qCWarning(LOG_VariableController())
             << tr("Aborting progression of inexistant variable detected !!!")
             << QThread::currentThread()->objectName();
+    }
+}
+
+void VariableController::onAbortAcquisitionRequested(QUuid vIdentifier)
+{
+    qCDebug(LOG_VariableController()) << "TORM: variableController::onAbortAcquisitionRequested"
+                                      << QThread::currentThread()->objectName() << vIdentifier;
+
+    if (auto var = impl->findVariable(vIdentifier)) {
+        this->onAbortProgressRequested(var);
+    }
+    else {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to abort Acquisition Requestof a null variable");
     }
 }
 
@@ -645,6 +665,9 @@ void VariableController::VariableControllerPrivate::registerProvider(
         connect(provider.get(), &IDataProvider::dataProvidedProgress,
                 m_VariableAcquisitionWorker.get(),
                 &VariableAcquisitionWorker::onVariableRetrieveDataInProgress);
+        connect(provider.get(), &IDataProvider::dataProvidedFailed,
+                m_VariableAcquisitionWorker.get(),
+                &VariableAcquisitionWorker::onVariableAcquisitionFailed);
     }
     else {
         qCDebug(LOG_VariableController()) << tr("Cannot register provider, it already exists ");
@@ -715,12 +738,10 @@ QUuid VariableController::VariableControllerPrivate::acceptVariableRequest(
                 << varRequestId;
         }
 
-        qCDebug(LOG_VariableController()) << tr("1: erase REQUEST in  QUEUE ?")
-                                          << varRequestIdQueue.size();
         varRequestIdQueue.pop_front();
-        qCDebug(LOG_VariableController()) << tr("2: erase REQUEST in  QUEUE ?")
-                                          << varRequestIdQueue.size();
         if (varRequestIdQueue.empty()) {
+            qCDebug(LOG_VariableController())
+                << tr("TORM Erase REQUEST because it has been accepted") << varId;
             m_VarIdToVarRequestIdQueueMap.erase(varId);
         }
     }

@@ -106,6 +106,7 @@ public slots:
 
     /// Cancel the current request for the variable
     void onAbortProgressRequested(std::shared_ptr<Variable> variable);
+    void onAbortAcquisitionRequested(QUuid vIdentifier);
 
     // synchronization group methods
     void onAddSynchronizationGroupId(QUuid synchronizationGroupId);

@@ -55,10 +55,14 @@ signals:
                       const SqpRange &dataRangeAcquired);
 
     /**
-        * @brief dataProvided send dataSeries under dateTime and that corresponds of the data
-        * identified by identifier
-        */
+     * @brief dataProvidedProgress notify the progression of the data identifier by acqIdentifier
+     */
     void dataProvidedProgress(QUuid acqIdentifier, double progress);
+
+    /**
+     * @brief dataProvidedFailed notify that data acquisition has failed
+     */
+    void dataProvidedFailed(QUuid acqIdentifier);
 
 
     /**

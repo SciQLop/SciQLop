@@ -67,6 +67,7 @@ QUuid VariableAcquisitionWorker::pushVariableRequest(QUuid varRequestId, QUuid v
 
     // Request creation
     auto acqRequest = AcquisitionRequest{};
+    qCInfo(LOG_VariableAcquisitionWorker()) << tr("TpushVariableRequest ") << vIdentifier;
     acqRequest.m_VarRequestId = varRequestId;
     acqRequest.m_vIdentifier = vIdentifier;
     acqRequest.m_DataProviderParameters = parameters;
@@ -157,13 +158,34 @@ void VariableAcquisitionWorker::onVariableRetrieveDataInProgress(QUuid acqIdenti
         auto finalProgression = currentAlreadyProgress + currentPartProgress;
         emit variableRequestInProgress(aIdToARit->second.m_vIdentifier, finalProgression);
         qCDebug(LOG_VariableAcquisitionWorker())
-            << tr("TORM: onVariableRetrieveDataInProgress ") << aIdToARit->second.m_vIdentifier
+            << tr("TORM: onVariableRetrieveDataInProgress ")
+            << QThread::currentThread()->objectName() << aIdToARit->second.m_vIdentifier
             << currentPartSize << currentAlreadyProgress << currentPartProgress << finalProgression;
         if (finalProgression == 100.0) {
             emit variableRequestInProgress(aIdToARit->second.m_vIdentifier, 0.0);
         }
     }
     impl->unlock();
+}
+
+void VariableAcquisitionWorker::onVariableAcquisitionFailed(QUuid acqIdentifier)
+{
+    qCDebug(LOG_VariableAcquisitionWorker()) << tr("onVariableAcquisitionFailed")
+                                             << QThread::currentThread();
+    impl->lockRead();
+    auto it = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
+    if (it != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
+        auto request = it->second;
+        impl->unlock();
+        qCInfo(LOG_VariableAcquisitionWorker()) << tr("onVariableAcquisitionFailed")
+                                                << acqIdentifier << request.m_vIdentifier
+                                                << QThread::currentThread();
+        emit variableCanceledRequested(request.m_vIdentifier);
+    }
+    else {
+        impl->unlock();
+        // TODO log no acqIdentifier recognized
+    }
 }
 
 void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,

@@ -82,8 +82,8 @@ void AmdaProvider::requestDataLoading(QUuid acqIdentifier, const DataProviderPar
     const auto times = parameters.m_Times;
     const auto data = parameters.m_Data;
     for (const auto &dateTime : qAsConst(times)) {
-        qCInfo(LOG_AmdaProvider()) << tr("TORM AmdaProvider::requestDataLoading ") << acqIdentifier
-                                   << dateTime;
+        qCDebug(LOG_AmdaProvider()) << tr("TORM AmdaProvider::requestDataLoading ") << acqIdentifier
+                                    << dateTime;
         this->retrieveData(acqIdentifier, dateTime, data);
 
 
@@ -125,8 +125,8 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
             // This case can happened when a progression is send after the request has been
             // finished.
             // Generaly the case when aborting a request
-            qCWarning(LOG_AmdaProvider()) << tr("Can't retrieve Request in progress")
-                                          << acqIdentifier << networkRequest.get() << progress;
+            qCDebug(LOG_AmdaProvider()) << tr("Can't retrieve Request in progress") << acqIdentifier
+                                        << networkRequest.get() << progress;
         }
 
         // Compute the current final progress and notify it
@@ -199,6 +199,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
                 }
                 else {
                     /// @todo ALX : debug
+                    emit dataProvidedFailed(dataId);
                 }
             }
             qCDebug(LOG_AmdaProvider()) << tr("acquisition requests erase because of finishing")
@@ -207,6 +208,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
         }
         else {
             qCCritical(LOG_AmdaProvider()) << tr("httpDownloadFinished ERROR");
+            emit dataProvidedFailed(dataId);
         }
 
     };
@@ -228,12 +230,16 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
                       updateRequestProgress(dataId, request, 0.0);
                       emit requestConstructed(request, dataId, httpDownloadFinished);
                   }
+                  else {
+                      emit dataProvidedFailed(dataId);
+                  }
               }
               else {
                   qCDebug(LOG_AmdaProvider())
                       << tr("acquisition requests erase because of aborting") << dataId;
                   qCCritical(LOG_AmdaProvider()) << tr("httpFinishedLambda ERROR");
                   m_AcqIdToRequestProgressMap.erase(dataId);
+                  emit dataProvidedFailed(dataId);
               }
           };
 
