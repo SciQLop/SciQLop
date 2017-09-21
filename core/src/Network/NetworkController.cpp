@@ -50,16 +50,18 @@ void NetworkController::onProcessRequested(std::shared_ptr<QNetworkRequest> requ
                                          << QThread::currentThread() << request.get() << reply;
         impl->lockRead();
         auto it = impl->m_NetworkReplyToId.find(reply);
-        impl->unlock();
         if (it != impl->m_NetworkReplyToId.cend()) {
+            qCDebug(LOG_NetworkController()) << tr("Remove for reply: ") << it->second;
+            impl->unlock();
             impl->lockWrite();
-            qCDebug(LOG_NetworkController()) << tr("Remove for reply: ")
-                                             << impl->m_NetworkReplyToId[reply];
             impl->m_NetworkReplyToId.erase(reply);
             impl->unlock();
             // Deletes reply
             callback(reply, identifier);
             reply->deleteLater();
+        }
+        else {
+            impl->unlock();
         }
 
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished END")
@@ -76,10 +78,15 @@ void NetworkController::onProcessRequested(std::shared_ptr<QNetworkRequest> requ
                                              << bytesRead << totalBytes;
             impl->lockRead();
             auto it = impl->m_NetworkReplyToId.find(reply);
-            impl->unlock();
             if (it != impl->m_NetworkReplyToId.cend()) {
-                emit this->replyDownloadProgress(it->second, request, progress);
+                auto id = it->second;
+                impl->unlock();
+                emit this->replyDownloadProgress(id, request, progress);
             }
+            else {
+                impl->unlock();
+            }
+
             qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress END")
                                              << QThread::currentThread() << reply;
         }

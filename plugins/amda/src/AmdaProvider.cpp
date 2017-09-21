@@ -82,6 +82,8 @@ void AmdaProvider::requestDataLoading(QUuid acqIdentifier, const DataProviderPar
     const auto times = parameters.m_Times;
     const auto data = parameters.m_Data;
     for (const auto &dateTime : qAsConst(times)) {
+        qCInfo(LOG_AmdaProvider()) << tr("TORM AmdaProvider::requestDataLoading ") << acqIdentifier
+                                   << dateTime;
         this->retrieveData(acqIdentifier, dateTime, data);
 
 
@@ -102,11 +104,12 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
                                            std::shared_ptr<QNetworkRequest> networkRequest,
                                            double progress)
 {
-    qCInfo(LOG_AmdaProvider()) << tr("onReplyDownloadProgress") << acqIdentifier
-                               << networkRequest.get() << progress;
+    qCDebug(LOG_AmdaProvider()) << tr("onReplyDownloadProgress") << acqIdentifier
+                                << networkRequest.get() << progress;
     auto acqIdToRequestProgressMapIt = m_AcqIdToRequestProgressMap.find(acqIdentifier);
     if (acqIdToRequestProgressMapIt != m_AcqIdToRequestProgressMap.end()) {
 
+        // Update the progression for the current request
         auto requestPtr = networkRequest;
         auto findRequest = [requestPtr](const auto &entry) { return requestPtr == entry.first; };
 
@@ -125,18 +128,15 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
             qCWarning(LOG_AmdaProvider()) << tr("Can't retrieve Request in progress")
                                           << acqIdentifier << networkRequest.get() << progress;
         }
-    }
 
-    acqIdToRequestProgressMapIt = m_AcqIdToRequestProgressMap.find(acqIdentifier);
-    if (acqIdToRequestProgressMapIt != m_AcqIdToRequestProgressMap.end()) {
+        // Compute the current final progress and notify it
         double finalProgress = 0.0;
 
-        auto &requestProgressMap = acqIdToRequestProgressMapIt->second;
         auto fraq = requestProgressMap.size();
 
         for (auto requestProgress : requestProgressMap) {
             finalProgress += requestProgress.second;
-            qCDebug(LOG_AmdaProvider()) << tr("current final progress without freq:")
+            qCDebug(LOG_AmdaProvider()) << tr("Current final progress without fraq:")
                                         << finalProgress << requestProgress.second;
         }
 
@@ -144,8 +144,7 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
             finalProgress = finalProgress / fraq;
         }
 
-        qCDebug(LOG_AmdaProvider()) << tr("2 onReplyDownloadProgress final progress") << fraq
-                                    << finalProgress;
+        qCDebug(LOG_AmdaProvider()) << tr("Current final progress: ") << fraq << finalProgress;
         emit dataProvidedProgress(acqIdentifier, finalProgress);
     }
     else {
@@ -176,7 +175,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     auto endDate = dateFormat(dateTime.m_TEnd);
 
     auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
-    qCDebug(LOG_AmdaProvider()) << tr("TORM AmdaProvider::retrieveData url:") << url;
+    qCInfo(LOG_AmdaProvider()) << tr("TORM AmdaProvider::retrieveData url:") << url;
     auto tempFile = std::make_shared<QTemporaryFile>();
 
     // LAMBDA
@@ -184,7 +183,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
                                  productValueType](QNetworkReply *reply, QUuid dataId) noexcept {
 
         // Don't do anything if the reply was abort
-        if (reply->error() != QNetworkReply::OperationCanceledError) {
+        if (reply->error() == QNetworkReply::NoError) {
 
             if (tempFile) {
                 auto replyReadAll = reply->readAll();
@@ -206,16 +205,19 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
                                         << dataId;
             m_AcqIdToRequestProgressMap.erase(dataId);
         }
+        else {
+            qCCritical(LOG_AmdaProvider()) << tr("httpDownloadFinished ERROR");
+        }
 
     };
     auto httpFinishedLambda
         = [this, httpDownloadFinished, tempFile](QNetworkReply *reply, QUuid dataId) noexcept {
 
               // Don't do anything if the reply was abort
-              if (reply->error() != QNetworkReply::OperationCanceledError) {
+              if (reply->error() == QNetworkReply::NoError) {
                   auto downloadFileUrl = QUrl{QString{reply->readAll()}};
 
-                  qCDebug(LOG_AmdaProvider())
+                  qCInfo(LOG_AmdaProvider())
                       << tr("TORM AmdaProvider::retrieveData downloadFileUrl:") << downloadFileUrl;
                   // Executes request for downloading file //
 
@@ -230,6 +232,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
               else {
                   qCDebug(LOG_AmdaProvider())
                       << tr("acquisition requests erase because of aborting") << dataId;
+                  qCCritical(LOG_AmdaProvider()) << tr("httpFinishedLambda ERROR");
                   m_AcqIdToRequestProgressMap.erase(dataId);
               }
           };
