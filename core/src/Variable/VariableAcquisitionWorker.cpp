@@ -109,7 +109,6 @@ QUuid VariableAcquisitionWorker::pushVariableRequest(QUuid varRequestId, QUuid v
 
 void VariableAcquisitionWorker::abortProgressRequested(QUuid vIdentifier)
 {
-    // TODO
     impl->lockRead();
 
     auto it = impl->m_VIdentifierToCurrrentAcqIdNextIdPairMap.find(vIdentifier);
@@ -144,6 +143,8 @@ void VariableAcquisitionWorker::abortProgressRequested(QUuid vIdentifier)
 void VariableAcquisitionWorker::onVariableRetrieveDataInProgress(QUuid acqIdentifier,
                                                                  double progress)
 {
+    qCDebug(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableRetrieveDataInProgress ")
+                                             << acqIdentifier << progress;
     impl->lockRead();
     auto aIdToARit = impl->m_AcqIdentifierToAcqRequestMap.find(acqIdentifier);
     if (aIdToARit != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
@@ -155,7 +156,9 @@ void VariableAcquisitionWorker::onVariableRetrieveDataInProgress(QUuid acqIdenti
 
         auto finalProgression = currentAlreadyProgress + currentPartProgress;
         emit variableRequestInProgress(aIdToARit->second.m_vIdentifier, finalProgression);
-
+        qCDebug(LOG_VariableAcquisitionWorker())
+            << tr("TORM: onVariableRetrieveDataInProgress ") << aIdToARit->second.m_vIdentifier
+            << currentPartSize << currentAlreadyProgress << currentPartProgress << finalProgression;
         if (finalProgression == 100.0) {
             emit variableRequestInProgress(aIdToARit->second.m_vIdentifier, 0.0);
         }
@@ -203,32 +206,8 @@ void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
                                   acqRequest.m_CacheRangeRequested, aIdToADPVit->second);
             }
 
-            // Execute the next one
-            auto it
-                = impl->m_VIdentifierToCurrrentAcqIdNextIdPairMap.find(acqRequest.m_vIdentifier);
-
-            if (it != impl->m_VIdentifierToCurrrentAcqIdNextIdPairMap.cend()) {
-                if (it->second.second.isNull()) {
-                    // There is no next request, we can remove the variable request
-                    impl->removeVariableRequest(acqRequest.m_vIdentifier);
-                }
-                else {
-                    auto acqIdentifierToRemove = it->second.first;
-                    // Move the next request to the current request
-                    it->second.first = it->second.second;
-                    it->second.second = QUuid();
-                    // Remove AcquisitionRequest and results;
-                    impl->m_AcqIdentifierToAcqRequestMap.erase(acqIdentifierToRemove);
-                    impl->m_AcqIdentifierToAcqDataPacketVectorMap.erase(acqIdentifierToRemove);
-                    // Execute the current request
-                    QMetaObject::invokeMethod(this, "onExecuteRequest", Qt::QueuedConnection,
-                                              Q_ARG(QUuid, it->second.first));
-                }
-            }
-            else {
-                qCCritical(LOG_VariableAcquisitionWorker())
-                    << tr("Impossible to execute the acquisition on an unfound variable ");
-            }
+            // Update to the next request
+            impl->updateToNextRequest(acqRequest.m_vIdentifier);
         }
     }
     else {

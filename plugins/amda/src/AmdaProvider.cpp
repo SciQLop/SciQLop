@@ -102,8 +102,8 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
                                            std::shared_ptr<QNetworkRequest> networkRequest,
                                            double progress)
 {
-    qCDebug(LOG_AmdaProvider()) << tr("onReplyDownloadProgress") << acqIdentifier
-                                << networkRequest.get() << progress;
+    qCInfo(LOG_AmdaProvider()) << tr("onReplyDownloadProgress") << acqIdentifier
+                               << networkRequest.get() << progress;
     auto acqIdToRequestProgressMapIt = m_AcqIdToRequestProgressMap.find(acqIdentifier);
     if (acqIdToRequestProgressMapIt != m_AcqIdToRequestProgressMap.end()) {
 
@@ -119,8 +119,11 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
             requestProgressMapIt->second = progress;
         }
         else {
-            qCCritical(LOG_AmdaProvider()) << tr("Can't retrieve Request in progress")
-                                           << acqIdentifier << networkRequest.get() << progress;
+            // This case can happened when a progression is send after the request has been
+            // finished.
+            // Generaly the case when aborting a request
+            qCWarning(LOG_AmdaProvider()) << tr("Can't retrieve Request in progress")
+                                          << acqIdentifier << networkRequest.get() << progress;
         }
     }
 
@@ -146,7 +149,9 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
         emit dataProvidedProgress(acqIdentifier, finalProgress);
     }
     else {
-        emit dataProvidedProgress(acqIdentifier, 0.0);
+        // This case can happened when a progression is send after the request has been finished.
+        // Generaly the case when aborting a request
+        emit dataProvidedProgress(acqIdentifier, 100.0);
     }
 }
 
@@ -197,6 +202,8 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
                     /// @todo ALX : debug
                 }
             }
+            qCDebug(LOG_AmdaProvider()) << tr("acquisition requests erase because of finishing")
+                                        << dataId;
             m_AcqIdToRequestProgressMap.erase(dataId);
         }
 
@@ -221,6 +228,8 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
                   }
               }
               else {
+                  qCDebug(LOG_AmdaProvider())
+                      << tr("acquisition requests erase because of aborting") << dataId;
                   m_AcqIdToRequestProgressMap.erase(dataId);
               }
           };
