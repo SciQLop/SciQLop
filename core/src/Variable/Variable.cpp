@@ -10,10 +10,10 @@
 Q_LOGGING_CATEGORY(LOG_Variable, "Variable")
 
 struct Variable::VariablePrivate {
-    explicit VariablePrivate(const QString &name, const SqpRange &dateTime,
-                             const QVariantHash &metadata)
+    explicit VariablePrivate(const QString &name, const QVariantHash &metadata)
             : m_Name{name},
-              m_Range{dateTime},
+              m_Range{INVALID_RANGE},
+              m_CacheRange{INVALID_RANGE},
               m_Metadata{metadata},
               m_DataSeries{nullptr},
               m_RealRange{INVALID_RANGE},
@@ -24,6 +24,7 @@ struct Variable::VariablePrivate {
     VariablePrivate(const VariablePrivate &other)
             : m_Name{other.m_Name},
               m_Range{other.m_Range},
+              m_CacheRange{other.m_CacheRange},
               m_Metadata{other.m_Metadata},
               m_DataSeries{other.m_DataSeries != nullptr ? other.m_DataSeries->clone() : nullptr},
               m_RealRange{other.m_RealRange},
@@ -55,9 +56,10 @@ struct Variable::VariablePrivate {
             auto minXAxisIt = m_DataSeries->minXAxisData(m_Range.m_TStart);
             auto maxXAxisIt = m_DataSeries->maxXAxisData(m_Range.m_TEnd);
 
-            m_RealRange = (minXAxisIt != end && maxXAxisIt != end)
-                              ? SqpRange{minXAxisIt->x(), maxXAxisIt->x()}
-                              : INVALID_RANGE;
+            m_RealRange
+                = (minXAxisIt != end && maxXAxisIt != end && minXAxisIt->x() <= maxXAxisIt->x())
+                      ? SqpRange{minXAxisIt->x(), maxXAxisIt->x()}
+                      : INVALID_RANGE;
             m_DataSeries->unlock();
         }
         else {
@@ -77,8 +79,8 @@ struct Variable::VariablePrivate {
     QReadWriteLock m_Lock;
 };
 
-Variable::Variable(const QString &name, const SqpRange &dateTime, const QVariantHash &metadata)
-        : impl{spimpl::make_unique_impl<VariablePrivate>(name, dateTime, metadata)}
+Variable::Variable(const QString &name, const QVariantHash &metadata)
+        : impl{spimpl::make_unique_impl<VariablePrivate>(name, metadata)}
 {
 }
 
@@ -242,30 +244,34 @@ bool Variable::cacheIsInside(const SqpRange &range) const noexcept
 QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &range) const noexcept
 {
     // This code assume that cach in contigue. Can return 0, 1 or 2 SqpRange
-
     auto notInCache = QVector<SqpRange>{};
+    if (impl->m_CacheRange != INVALID_RANGE) {
 
-    if (!this->cacheContains(range)) {
-        if (range.m_TEnd <= impl->m_CacheRange.m_TStart
-            || range.m_TStart >= impl->m_CacheRange.m_TEnd) {
-            notInCache << range;
+        if (!this->cacheContains(range)) {
+            if (range.m_TEnd <= impl->m_CacheRange.m_TStart
+                || range.m_TStart >= impl->m_CacheRange.m_TEnd) {
+                notInCache << range;
+            }
+            else if (range.m_TStart < impl->m_CacheRange.m_TStart
+                     && range.m_TEnd <= impl->m_CacheRange.m_TEnd) {
+                notInCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TStart};
+            }
+            else if (range.m_TStart < impl->m_CacheRange.m_TStart
+                     && range.m_TEnd > impl->m_CacheRange.m_TEnd) {
+                notInCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TStart}
+                           << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
+            }
+            else if (range.m_TStart < impl->m_CacheRange.m_TEnd) {
+                notInCache << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
+            }
+            else {
+                qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
+                                           << QThread::currentThread();
+            }
         }
-        else if (range.m_TStart < impl->m_CacheRange.m_TStart
-                 && range.m_TEnd <= impl->m_CacheRange.m_TEnd) {
-            notInCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TStart};
-        }
-        else if (range.m_TStart < impl->m_CacheRange.m_TStart
-                 && range.m_TEnd > impl->m_CacheRange.m_TEnd) {
-            notInCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TStart}
-                       << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
-        }
-        else if (range.m_TStart < impl->m_CacheRange.m_TEnd) {
-            notInCache << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
-        }
-        else {
-            qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
-                                       << QThread::currentThread();
-        }
+    }
+    else {
+        notInCache << range;
     }
 
     return notInCache;
@@ -277,29 +283,31 @@ QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &range) const
 
     auto inCache = QVector<SqpRange>{};
 
+    if (impl->m_CacheRange != INVALID_RANGE) {
 
-    if (this->intersect(range)) {
-        if (range.m_TStart <= impl->m_CacheRange.m_TStart
-            && range.m_TEnd >= impl->m_CacheRange.m_TStart
-            && range.m_TEnd < impl->m_CacheRange.m_TEnd) {
-            inCache << SqpRange{impl->m_CacheRange.m_TStart, range.m_TEnd};
-        }
+        if (this->intersect(range)) {
+            if (range.m_TStart <= impl->m_CacheRange.m_TStart
+                && range.m_TEnd >= impl->m_CacheRange.m_TStart
+                && range.m_TEnd < impl->m_CacheRange.m_TEnd) {
+                inCache << SqpRange{impl->m_CacheRange.m_TStart, range.m_TEnd};
+            }
 
-        else if (range.m_TStart >= impl->m_CacheRange.m_TStart
-                 && range.m_TEnd <= impl->m_CacheRange.m_TEnd) {
-            inCache << range;
-        }
-        else if (range.m_TStart > impl->m_CacheRange.m_TStart
-                 && range.m_TEnd > impl->m_CacheRange.m_TEnd) {
-            inCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TEnd};
-        }
-        else if (range.m_TStart <= impl->m_CacheRange.m_TStart
-                 && range.m_TEnd >= impl->m_CacheRange.m_TEnd) {
-            inCache << impl->m_CacheRange;
-        }
-        else {
-            qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
-                                       << QThread::currentThread();
+            else if (range.m_TStart >= impl->m_CacheRange.m_TStart
+                     && range.m_TEnd <= impl->m_CacheRange.m_TEnd) {
+                inCache << range;
+            }
+            else if (range.m_TStart > impl->m_CacheRange.m_TStart
+                     && range.m_TEnd > impl->m_CacheRange.m_TEnd) {
+                inCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TEnd};
+            }
+            else if (range.m_TStart <= impl->m_CacheRange.m_TStart
+                     && range.m_TEnd >= impl->m_CacheRange.m_TEnd) {
+                inCache << impl->m_CacheRange;
+            }
+            else {
+                qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
+                                           << QThread::currentThread();
+            }
         }
     }
 

@@ -32,7 +32,8 @@ void TestVariableCacheController::testProvideNotInCacheDateTimeList()
     auto te2 = QDateTime{QDate{2017, 01, 01}, QTime{2, 20, 0, 0}};
     auto sqp2 = SqpRange{DateUtils::secondsSinceEpoch(ts2), DateUtils::secondsSinceEpoch(te2)};
 
-    auto var0 = std::make_shared<Variable>("", sqp0);
+    auto var0 = std::make_shared<Variable>("");
+    var0->setRange(sqp0);
 
     variableCacheController.addDateTime(var0, sqp0);
     variableCacheController.addDateTime(var0, sqp1);
@@ -267,7 +268,8 @@ void TestVariableCacheController::testAddDateTime()
     auto sqp03 = SqpRange{DateUtils::secondsSinceEpoch(ts03), DateUtils::secondsSinceEpoch(te03)};
 
 
-    auto var0 = std::make_shared<Variable>("", sqp0);
+    auto var0 = std::make_shared<Variable>("");
+    var0->setRange(sqp0);
 
 
     // First case: add the first interval to the variable :sqp0

@@ -253,10 +253,6 @@ void VariableController::deleteVariables(
     }
 }
 
-void VariableController::abortProgress(std::shared_ptr<Variable> variable)
-{
-}
-
 std::shared_ptr<Variable>
 VariableController::createVariable(const QString &name, const QVariantHash &metadata,
                                    std::shared_ptr<IDataProvider> provider) noexcept
@@ -269,7 +265,7 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
 
     auto range = impl->m_TimeController->dateTime();
 
-    if (auto newVariable = impl->m_VariableModel->createVariable(name, range, metadata)) {
+    if (auto newVariable = impl->m_VariableModel->createVariable(name, metadata)) {
         auto identifier = QUuid::createUuid();
 
         // store the provider
@@ -281,7 +277,6 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
 
 
         auto varRequestId = QUuid::createUuid();
-        qCInfo(LOG_VariableController()) << "processRequest for" << name << varRequestId;
         impl->processRequest(newVariable, range, varRequestId);
         impl->updateVariableRequest(varRequestId);
 
@@ -322,6 +317,9 @@ void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &range
 
 void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, double progress)
 {
+    qCDebug(LOG_VariableController())
+        << "TORM: variableController::onVariableRetrieveDataInProgress"
+        << QThread::currentThread()->objectName() << progress;
     if (auto var = impl->findVariable(identifier)) {
         impl->m_VariableModel->setDataProgress(var, progress);
     }
@@ -333,12 +331,25 @@ void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, doub
 
 void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> variable)
 {
-    qCDebug(LOG_VariableController()) << "TORM: VariableController::onAbortProgressRequested"
-                                      << QThread::currentThread()->objectName();
-
     auto it = impl->m_VariableToIdentifierMap.find(variable);
     if (it != impl->m_VariableToIdentifierMap.cend()) {
-        impl->m_VariableToProviderMap.at(variable)->requestDataAborting(it->second);
+        impl->m_VariableAcquisitionWorker->abortProgressRequested(it->second);
+
+        QUuid varRequestId;
+        auto varIdToVarRequestIdQueueMapIt = impl->m_VarIdToVarRequestIdQueueMap.find(it->second);
+        if (varIdToVarRequestIdQueueMapIt != impl->m_VarIdToVarRequestIdQueueMap.cend()) {
+            auto &varRequestIdQueue = varIdToVarRequestIdQueueMapIt->second;
+            varRequestId = varRequestIdQueue.front();
+            impl->cancelVariableRequest(varRequestId);
+
+            // Finish the progression for the request
+            impl->m_VariableModel->setDataProgress(variable, 0.0);
+        }
+        else {
+            qCWarning(LOG_VariableController())
+                << tr("Aborting progression of inexistant variable request detected !!!")
+                << QThread::currentThread()->objectName();
+        }
     }
     else {
         qCWarning(LOG_VariableController())
@@ -431,8 +442,8 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
     // For the other, we ask the provider to give them.
 
     auto varRequestId = QUuid::createUuid();
-    qCInfo(LOG_VariableController()) << "VariableController::onRequestDataLoading"
-                                     << QThread::currentThread()->objectName() << varRequestId;
+    qCDebug(LOG_VariableController()) << "VariableController::onRequestDataLoading"
+                                      << QThread::currentThread()->objectName() << varRequestId;
 
     for (const auto &var : variables) {
         qCDebug(LOG_VariableController()) << "processRequest for" << var->name() << varRequestId;
@@ -549,11 +560,7 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
     if (!notInCacheRangeList.empty()) {
         varRequest.m_RangeRequested = varStrategyRangesRequested.first;
         varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
-        qCDebug(LOG_VariableAcquisitionWorker()) << tr("TORM processRequest RR ") << rangeRequested;
-        qCDebug(LOG_VariableAcquisitionWorker()) << tr("TORM processRequest R  ")
-                                                 << varStrategyRangesRequested.first;
-        qCDebug(LOG_VariableAcquisitionWorker()) << tr("TORM processRequest CR ")
-                                                 << varStrategyRangesRequested.second;
+
         // store VarRequest
         storeVariableRequest(varId, varRequestId, varRequest);
 
@@ -566,8 +573,8 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                 varProvider);
 
             if (!varRequestIdCanceled.isNull()) {
-                qCInfo(LOG_VariableAcquisitionWorker()) << tr("varRequestIdCanceled: ")
-                                                        << varRequestIdCanceled;
+                qCDebug(LOG_VariableAcquisitionWorker()) << tr("vsarRequestIdCanceled: ")
+                                                         << varRequestIdCanceled;
                 cancelVariableRequest(varRequestIdCanceled);
             }
         }
@@ -581,7 +588,6 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
         }
     }
     else {
-
         varRequest.m_RangeRequested = varStrategyRangesRequested.first;
         varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
         // store VarRequest
@@ -759,9 +765,11 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
 
                     /// @todo MPL: confirm
                     // Variable update is notified only if there is no pending request for it
-                    if (m_VarIdToVarRequestIdQueueMap.count(varIdToVarRequestMapIt->first) == 0) {
-                        emit var->updated();
-                    }
+                    //                    if
+                    //                    (m_VarIdToVarRequestIdQueueMap.count(varIdToVarRequestMapIt->first)
+                    //                    == 0) {
+                    emit var->updated();
+                    //                    }
                 }
                 else {
                     qCCritical(LOG_VariableController())
