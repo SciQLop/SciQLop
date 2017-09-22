@@ -19,7 +19,6 @@ DataSeriesIteratorValue &DataSeriesIteratorValue::operator=(DataSeriesIteratorVa
 
 int DataSeriesIteratorValue::distance(const DataSeriesIteratorValue &other) const
 {
-    auto dist = m_Impl->distance(*other.m_Impl);
     return m_Impl->distance(*other.m_Impl);
 }
 

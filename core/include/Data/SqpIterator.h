@@ -22,7 +22,11 @@ public:
 
     virtual ~SqpIterator() noexcept = default;
     SqpIterator(const SqpIterator &) = default;
-    SqpIterator &operator=(SqpIterator other) { swap(m_CurrentValue, other.m_CurrentValue); }
+    SqpIterator &operator=(SqpIterator other)
+    {
+        swap(m_CurrentValue, other.m_CurrentValue);
+        return *this;
+    }
 
     SqpIterator &operator++()
     {

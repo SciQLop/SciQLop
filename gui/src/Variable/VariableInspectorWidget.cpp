@@ -94,18 +94,22 @@ public:
                         auto variableModel = sqpApp->variableController().variableModel();
                         variableModel->abortProgress(index);
                     }
+                    return true;
                 }
                 else {
-                    QStyledItemDelegate::editorEvent(event, model, option, index);
+                    return QStyledItemDelegate::editorEvent(event, model, option, index);
                 }
             }
             else {
-                QStyledItemDelegate::editorEvent(event, model, option, index);
+                return QStyledItemDelegate::editorEvent(event, model, option, index);
             }
         }
         else {
-            QStyledItemDelegate::editorEvent(event, model, option, index);
+            return QStyledItemDelegate::editorEvent(event, model, option, index);
         }
+
+
+        return QStyledItemDelegate::editorEvent(event, model, option, index);
     }
 };
 

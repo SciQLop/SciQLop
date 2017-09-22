@@ -574,8 +574,13 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
 
     auto varStrategyRangesRequested
         = m_VariableCacheStrategy->computeStrategyRanges(var->range(), rangeRequested);
-    auto notInCacheRangeList = var->provideNotInCacheRangeList(varStrategyRangesRequested.second);
-    auto inCacheRangeList = var->provideInCacheRangeList(varStrategyRangesRequested.second);
+
+    auto notInCacheRangeList = QVector<SqpRange>{varStrategyRangesRequested.second};
+    auto inCacheRangeList = QVector<SqpRange>{};
+    if (m_VarIdToVarRequestIdQueueMap.find(varId) == m_VarIdToVarRequestIdQueueMap.cend()) {
+        notInCacheRangeList = var->provideNotInCacheRangeList(varStrategyRangesRequested.second);
+        inCacheRangeList = var->provideInCacheRangeList(varStrategyRangesRequested.second);
+    }
 
     if (!notInCacheRangeList.empty()) {
         varRequest.m_RangeRequested = varStrategyRangesRequested.first;
