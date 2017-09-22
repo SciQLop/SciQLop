@@ -25,8 +25,7 @@ class SCIQLOP_CORE_EXPORT Variable : public QObject {
     Q_OBJECT
 
 public:
-    explicit Variable(const QString &name, const SqpRange &dateTime,
-                      const QVariantHash &metadata = {});
+    explicit Variable(const QString &name, const QVariantHash &metadata = {});
 
     /// Copy ctor
     explicit Variable(const Variable &other);

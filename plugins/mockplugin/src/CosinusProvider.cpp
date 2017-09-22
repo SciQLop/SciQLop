@@ -59,6 +59,9 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
                 progress = currentProgress;
 
                 emit dataProvidedProgress(acqIdentifier, progress);
+                qCInfo(LOG_CosinusProvider()) << "TORM: CosinusProvider::retrieveData"
+                                              << QThread::currentThread()->objectName() << progress;
+                // NOTE: Try to use multithread if possible
             }
         }
         else {
@@ -69,8 +72,10 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
             }
         }
     }
-    emit dataProvidedProgress(acqIdentifier, 0.0);
-
+    if (progress != 100) {
+        // We can close progression beacause all data has been retrieved
+        emit dataProvidedProgress(acqIdentifier, 100);
+    }
     return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
                                           Unit{QStringLiteral("t"), true}, Unit{});
 }

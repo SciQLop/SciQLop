@@ -21,7 +21,7 @@ struct NetworkController::NetworkControllerPrivate {
     QMutex m_WorkingMutex;
 
     QReadWriteLock m_Lock;
-    std::unordered_map<QNetworkReply *, QUuid> m_NetworkReplyToVariableId;
+    std::unordered_map<QNetworkReply *, QUuid> m_NetworkReplyToId;
     std::unique_ptr<QNetworkAccessManager> m_AccessManager{nullptr};
 };
 
@@ -30,53 +30,66 @@ NetworkController::NetworkController(QObject *parent)
 {
 }
 
-void NetworkController::onProcessRequested(const QNetworkRequest &request, QUuid identifier,
+void NetworkController::onProcessRequested(std::shared_ptr<QNetworkRequest> request,
+                                           QUuid identifier,
                                            std::function<void(QNetworkReply *, QUuid)> callback)
 {
-    qCDebug(LOG_NetworkController()) << tr("NetworkController registered")
-                                     << QThread::currentThread()->objectName();
-    auto reply = impl->m_AccessManager->get(request);
+    qCDebug(LOG_NetworkController()) << tr("NetworkController onProcessRequested")
+                                     << QThread::currentThread()->objectName() << &request;
+    auto reply = impl->m_AccessManager->get(*request);
 
     // Store the couple reply id
     impl->lockWrite();
-    impl->m_NetworkReplyToVariableId[reply] = identifier;
+    impl->m_NetworkReplyToId[reply] = identifier;
+    qCDebug(LOG_NetworkController()) << tr("Store for reply: ") << identifier;
     impl->unlock();
 
-    auto onReplyFinished = [reply, this, identifier, callback]() {
+    auto onReplyFinished = [request, reply, this, identifier, callback]() {
 
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished")
-                                         << QThread::currentThread() << reply;
+                                         << QThread::currentThread() << request.get() << reply;
         impl->lockRead();
-        auto it = impl->m_NetworkReplyToVariableId.find(reply);
-        impl->unlock();
-        if (it != impl->m_NetworkReplyToVariableId.cend()) {
+        auto it = impl->m_NetworkReplyToId.find(reply);
+        if (it != impl->m_NetworkReplyToId.cend()) {
+            qCDebug(LOG_NetworkController()) << tr("Remove for reply: ") << it->second;
+            impl->unlock();
             impl->lockWrite();
-            impl->m_NetworkReplyToVariableId.erase(reply);
+            impl->m_NetworkReplyToId.erase(reply);
             impl->unlock();
             // Deletes reply
             callback(reply, identifier);
             reply->deleteLater();
-
-            emit this->replyDownloadProgress(identifier, 0);
+        }
+        else {
+            impl->unlock();
         }
 
         qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyFinished END")
                                          << QThread::currentThread() << reply;
     };
 
-    auto onReplyProgress = [reply, this](qint64 bytesRead, qint64 totalBytes) {
+    auto onReplyProgress = [reply, request, this](qint64 bytesRead, qint64 totalBytes) {
 
-        double progress = (bytesRead * 100.0) / totalBytes;
-        qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress") << progress
-                                         << QThread::currentThread() << reply;
-        impl->lockRead();
-        auto it = impl->m_NetworkReplyToVariableId.find(reply);
-        impl->unlock();
-        if (it != impl->m_NetworkReplyToVariableId.cend()) {
-            emit this->replyDownloadProgress(it->second, progress);
+        // NOTE: a totalbytes of 0 can happened when a request has been aborted
+        if (totalBytes > 0) {
+            double progress = (bytesRead * 100.0) / totalBytes;
+            qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress") << progress
+                                             << QThread::currentThread() << request.get() << reply
+                                             << bytesRead << totalBytes;
+            impl->lockRead();
+            auto it = impl->m_NetworkReplyToId.find(reply);
+            if (it != impl->m_NetworkReplyToId.cend()) {
+                auto id = it->second;
+                impl->unlock();
+                emit this->replyDownloadProgress(id, request, progress);
+            }
+            else {
+                impl->unlock();
+            }
+
+            qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress END")
+                                             << QThread::currentThread() << reply;
         }
-        qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyProgress END")
-                                         << QThread::currentThread() << reply;
     };
 
 
@@ -94,7 +107,6 @@ void NetworkController::initialize()
 
 
     auto onReplyErrors = [this](QNetworkReply *reply, const QList<QSslError> &errors) {
-
         qCCritical(LOG_NetworkController()) << tr("NetworkAcessManager errors: ") << errors;
 
     };
@@ -114,14 +126,16 @@ void NetworkController::onReplyCanceled(QUuid identifier)
 {
     auto findReply = [identifier](const auto &entry) { return identifier == entry.second; };
     qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyCanceled")
-                                     << QThread::currentThread();
+                                     << QThread::currentThread() << identifier;
 
 
     impl->lockRead();
-    auto end = impl->m_NetworkReplyToVariableId.cend();
-    auto it = std::find_if(impl->m_NetworkReplyToVariableId.cbegin(), end, findReply);
+    auto end = impl->m_NetworkReplyToId.cend();
+    auto it = std::find_if(impl->m_NetworkReplyToId.cbegin(), end, findReply);
     impl->unlock();
     if (it != end) {
+        qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyCanceled ABORT DONE")
+                                         << QThread::currentThread() << identifier;
         it->first->abort();
     }
     qCDebug(LOG_NetworkController()) << tr("NetworkController onReplyCanceled END")

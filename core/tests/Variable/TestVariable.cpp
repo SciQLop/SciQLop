@@ -24,10 +24,12 @@ void TestVariable::testNotInCacheRangeList()
 
     auto varCRS = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 0, 0}};
     auto varCRE = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 0, 0}};
+
     auto sqpCR
         = SqpRange{DateUtils::secondsSinceEpoch(varCRS), DateUtils::secondsSinceEpoch(varCRE)};
 
-    Variable var{"Var test", sqpR};
+    Variable var{"Var test"};
+    var.setRange(sqpR);
     var.setCacheRange(sqpCR);
 
     // 1: [ts,te] < varTS
@@ -109,7 +111,8 @@ void TestVariable::testInCacheRangeList()
     auto sqpCR
         = SqpRange{DateUtils::secondsSinceEpoch(varCRS), DateUtils::secondsSinceEpoch(varCRE)};
 
-    Variable var{"Var test", sqpR};
+    Variable var{"Var test"};
+    var.setRange(sqpR);
     var.setCacheRange(sqpCR);
 
     // 1: [ts,te] < varTS

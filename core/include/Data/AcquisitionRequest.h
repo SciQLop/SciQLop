@@ -21,6 +21,7 @@ struct AcquisitionRequest {
     {
         m_AcqIdentifier = QUuid::createUuid();
         m_Size = 0;
+        m_Progression = 0;
     }
 
     QUuid m_VarRequestId;
@@ -30,6 +31,7 @@ struct AcquisitionRequest {
     SqpRange m_RangeRequested;
     SqpRange m_CacheRangeRequested;
     int m_Size;
+    int m_Progression;
     std::shared_ptr<IDataProvider> m_Provider;
 };
 

@@ -43,10 +43,15 @@ signals:
 
     void variableRequestInProgress(QUuid vIdentifier, double progress);
 
+
+    void variableCanceledRequested(QUuid vIdentifier);
+
+
 public slots:
     void onVariableDataAcquired(QUuid acqIdentifier, std::shared_ptr<IDataSeries> dataSeries,
                                 SqpRange dataRangeAcquired);
     void onVariableRetrieveDataInProgress(QUuid acqIdentifier, double progress);
+    void onVariableAcquisitionFailed(QUuid acqIdentifier);
 
 private:
     void waitForFinish();

@@ -55,17 +55,21 @@ signals:
                       const SqpRange &dataRangeAcquired);
 
     /**
-        * @brief dataProvided send dataSeries under dateTime and that corresponds of the data
-        * identified by identifier
-        */
+     * @brief dataProvidedProgress notify the progression of the data identifier by acqIdentifier
+     */
     void dataProvidedProgress(QUuid acqIdentifier, double progress);
+
+    /**
+     * @brief dataProvidedFailed notify that data acquisition has failed
+     */
+    void dataProvidedFailed(QUuid acqIdentifier);
 
 
     /**
      * @brief requestConstructed send a request for the data identified by acqIdentifier
      * @callback is the methode call by the reply of the request when it is finished.
      */
-    void requestConstructed(const QNetworkRequest &request, QUuid acqIdentifier,
+    void requestConstructed(std::shared_ptr<QNetworkRequest> request, QUuid acqIdentifier,
                             std::function<void(QNetworkReply *, QUuid)> callback);
 };
 

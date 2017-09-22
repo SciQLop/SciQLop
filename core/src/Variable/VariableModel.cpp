@@ -97,10 +97,9 @@ bool VariableModel::containsVariable(std::shared_ptr<Variable> variable) const n
 }
 
 std::shared_ptr<Variable> VariableModel::createVariable(const QString &name,
-                                                        const SqpRange &dateTime,
                                                         const QVariantHash &metadata) noexcept
 {
-    auto variable = std::make_shared<Variable>(name, dateTime, metadata);
+    auto variable = std::make_shared<Variable>(name, metadata);
     addVariable(variable);
 
     return variable;

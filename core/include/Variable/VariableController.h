@@ -68,10 +68,6 @@ public:
      */
     void deleteVariables(const QVector<std::shared_ptr<Variable> > &variables) noexcept;
 
-    /**
-     * @brief abort the variable retrieve data progression
-     */
-    void abortProgress(std::shared_ptr<Variable> variable);
 
     static AcquisitionZoomType getZoomType(const SqpRange &range, const SqpRange &oldRange);
 signals:
@@ -110,6 +106,7 @@ public slots:
 
     /// Cancel the current request for the variable
     void onAbortProgressRequested(std::shared_ptr<Variable> variable);
+    void onAbortAcquisitionRequested(QUuid vIdentifier);
 
     // synchronization group methods
     void onAddSynchronizationGroupId(QUuid synchronizationGroupId);
