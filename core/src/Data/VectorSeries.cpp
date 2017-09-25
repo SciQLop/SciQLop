@@ -66,23 +66,20 @@ std::unique_ptr<IDataSeries> VectorSeries::clone() const
 std::shared_ptr<IDataSeries> VectorSeries::subDataSeries(const SqpRange &range)
 {
     auto subXAxisData = std::vector<double>();
-    auto subXValuesData = std::vector<double>();
-    auto subYValuesData = std::vector<double>();
-    auto subZValuesData = std::vector<double>();
+    auto subValuesData = std::vector<double>();
 
     this->lockRead();
     {
         auto bounds = xAxisRange(range.m_TStart, range.m_TEnd);
         for (auto it = bounds.first; it != bounds.second; ++it) {
             subXAxisData.push_back(it->x());
-            subXValuesData.push_back(it->value(0));
-            subYValuesData.push_back(it->value(1));
-            subZValuesData.push_back(it->value(2));
+            subValuesData.push_back(it->value(0));
+            subValuesData.push_back(it->value(1));
+            subValuesData.push_back(it->value(2));
         }
     }
     this->unlock();
 
-    return std::make_shared<VectorSeries>(std::move(subXAxisData), std::move(subXValuesData),
-                                          std::move(subYValuesData), std::move(subZValuesData),
+    return std::make_shared<VectorSeries>(std::move(subXAxisData), std::move(subValuesData),
                                           this->xAxisUnit(), this->valuesUnit());
 }
