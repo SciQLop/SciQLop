@@ -1,6 +1,7 @@
 
 amdaplugin_moc_headers = [
-  'include/AmdaPlugin.h'
+  'include/AmdaPlugin.h',
+  'include/AmdaProvider.h'
 ]
 
 amdaplugin_sources = [
