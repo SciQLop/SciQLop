@@ -184,22 +184,29 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
         if (selectedVariables.size() == 1) {
             auto selectedVariable = selectedVariables.front();
 
-            auto duplicateFun = [&selectedVariable]() {
-                sqpApp->variableController().cloneVariable(selectedVariable);
+            auto duplicateFun = [varW = std::weak_ptr<Variable>(selectedVariable)]()
+            {
+                if (auto var = varW.lock()) {
+                    sqpApp->variableController().cloneVariable(var);
+                }
             };
 
             tableMenu.addAction(tr("Duplicate"), duplicateFun);
 
-            auto renameFun = [&selectedVariable, &model, this]() {
-                // Generates forbidden names (names associated to existing variables)
-                auto allVariables = model->variables();
-                auto forbiddenNames = QVector<QString>(allVariables.size());
-                std::transform(allVariables.cbegin(), allVariables.cend(), forbiddenNames.begin(),
-                               [](const auto &variable) { return variable->name(); });
+            auto renameFun = [ varW = std::weak_ptr<Variable>(selectedVariable), &model, this ]()
+            {
+                if (auto var = varW.lock()) {
+                    // Generates forbidden names (names associated to existing variables)
+                    auto allVariables = model->variables();
+                    auto forbiddenNames = QVector<QString>(allVariables.size());
+                    std::transform(allVariables.cbegin(), allVariables.cend(),
+                                   forbiddenNames.begin(),
+                                   [](const auto &variable) { return variable->name(); });
 
-                RenameVariableDialog dialog{selectedVariable->name(), forbiddenNames, this};
-                if (dialog.exec() == QDialog::Accepted) {
-                    selectedVariable->setName(dialog.name());
+                    RenameVariableDialog dialog{var->name(), forbiddenNames, this};
+                    if (dialog.exec() == QDialog::Accepted) {
+                        var->setName(dialog.name());
+                    }
                 }
             };
 
