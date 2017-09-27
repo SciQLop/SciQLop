@@ -33,7 +33,7 @@ std::vector<double> flatten(std::vector<double> xValues, std::vector<double> yVa
         result.push_back(xValues[i]);
         result.push_back(yValues[i]);
         result.push_back(zValues[i]);
-     }
+    }
 
     return result;
 }
