@@ -17,24 +17,38 @@ namespace {
 /// Message in result file when the file was not found on server
 const auto FILE_NOT_FOUND_MESSAGE = QStringLiteral("Not Found");
 
-/// Format for dates in result files
-const auto DATE_FORMAT = QStringLiteral("yyyy-MM-ddThh:mm:ss.zzz");
-
 /// Separator between values in a result line
 const auto RESULT_LINE_SEPARATOR = QRegularExpression{QStringLiteral("\\s+")};
 
+/// Regex to find the header of the data in the file. This header indicates the end of comments in
+/// the file
+const auto DATA_HEADER_REGEX = QRegularExpression{QStringLiteral("#\\s*DATA\\s*:")};
+
+/// Format for dates in result files
+const auto DATE_FORMAT = QStringLiteral("yyyy-MM-ddThh:mm:ss.zzz");
+
 /// Regex to find unit in a line. Examples of valid lines:
-/// ... - Units : nT - ...
-/// ... -Units:nT- ...
-/// ... -Units:   m²- ...
-/// ... - Units : m/s - ...
-const auto UNIT_REGEX = QRegularExpression{QStringLiteral("-\\s*Units\\s*:\\s*(.+?)\\s*-")};
+/// ... PARAMETER_UNITS : nT ...
+/// ... PARAMETER_UNITS:nT ...
+/// ... PARAMETER_UNITS:   m² ...
+/// ... PARAMETER_UNITS : m/s ...
+const auto UNIT_REGEX = QRegularExpression{QStringLiteral("\\s*PARAMETER_UNITS\\s*:\\s*(.+)")};
+
+QDateTime dateTimeFromString(const QString &stringDate) noexcept
+{
+#if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
+    return QDateTime::fromString(stringDate, Qt::ISODateWithMs);
+#else
+    return QDateTime::fromString(stringDate, DATE_FORMAT);
+#endif
+}
 
 /// Converts a string date to a double date
 /// @return a double that represents the date in seconds, NaN if the string date can't be converted
 double doubleDate(const QString &stringDate) noexcept
 {
-    auto dateTime = QDateTime::fromString(stringDate, DATE_FORMAT);
+    // Format: yyyy-MM-ddThh:mm:ss.zzz
+    auto dateTime = dateTimeFromString(stringDate);
     dateTime.setTimeSpec(Qt::UTC);
     return dateTime.isValid() ? DateUtils::secondsSinceEpoch(dateTime)
                               : std::numeric_limits<double>::quiet_NaN();
@@ -75,8 +89,8 @@ Unit readXAxisUnit(QTextStream &stream)
 {
     QString line{};
 
-    // Searches unit in the comment lines
-    while (stream.readLineInto(&line) && isCommentLine(line)) {
+    // Searches unit in the comment lines (as long as the reading has not reached the data header)
+    while (stream.readLineInto(&line) && !line.contains(DATA_HEADER_REGEX)) {
         auto match = UNIT_REGEX.match(line);
         if (match.hasMatch()) {
             return Unit{match.captured(1), true};
@@ -97,18 +111,21 @@ Unit readXAxisUnit(QTextStream &stream)
 std::pair<std::vector<double>, std::vector<double> >
 readResults(QTextStream &stream, AmdaResultParser::ValueType valueType)
 {
-    auto expectedNbValues = nbValues(valueType);
+    auto expectedNbValues = nbValues(valueType) + 1;
 
     auto xData = std::vector<double>{};
     auto valuesData = std::vector<double>{};
 
     QString line{};
 
-    while (stream.readLineInto(&line)) {
-        // Ignore comment lines
-        if (!isCommentLine(line)) {
+    // Skip comment lines
+    while (stream.readLineInto(&line) && isCommentLine(line)) {
+    }
+
+    if (!stream.atEnd()) {
+        do {
             auto lineData = line.split(RESULT_LINE_SEPARATOR, QString::SkipEmptyParts);
-            if (lineData.size() == expectedNbValues + 1) {
+            if (lineData.size() == expectedNbValues) {
                 // X : the data is converted from date to double (in secs)
                 auto x = doubleDate(lineData.at(0));
 
@@ -117,8 +134,8 @@ readResults(QTextStream &stream, AmdaResultParser::ValueType valueType)
                     xData.push_back(x);
 
                     // Values
-                    for (auto valueIndex = 0; valueIndex < expectedNbValues; ++valueIndex) {
-                        auto column = valueIndex + 1;
+                    for (auto valueIndex = 1; valueIndex < expectedNbValues; ++valueIndex) {
+                        auto column = valueIndex;
 
                         bool valueOk;
                         auto value = lineData.at(column).toDouble(&valueOk);
@@ -144,7 +161,7 @@ readResults(QTextStream &stream, AmdaResultParser::ValueType valueType)
                 qCWarning(LOG_AmdaResultParser())
                     << QObject::tr("Can't retrieve results from line %1: invalid line").arg(line);
             }
-        }
+        } while (stream.readLineInto(&line));
     }
 
     return std::make_pair(std::move(xData), std::move(valuesData));
@@ -186,7 +203,6 @@ std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
     auto xAxisUnit = readXAxisUnit(stream);
 
     // Reads results
-    stream.seek(0); // returns to the beginning of the file
     auto results = readResults(stream, valueType);
 
     // Creates data series
