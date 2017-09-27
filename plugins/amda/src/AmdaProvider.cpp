@@ -21,8 +21,9 @@ namespace {
 /// - %1: start date
 /// - %2: end date
 /// - %3: parameter id
+/// Old url: http://amda.irap.omp.eu/php/rest/
 const auto AMDA_URL_FORMAT = QStringLiteral(
-    "http://amda.irap.omp.eu/php/rest/"
+    "http://amdatest.irap.omp.eu/php/rest/"
     "getParameter.php?startTime=%1&stopTime=%2&parameterID=%3&outputFormat=ASCII&"
     "timeFormat=ISO8601&gzip=0");
 
@@ -217,7 +218,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
 
               // Don't do anything if the reply was abort
               if (reply->error() == QNetworkReply::NoError) {
-                  auto downloadFileUrl = QUrl{QString{reply->readAll()}};
+                  auto downloadFileUrl = QUrl{QString{reply->readAll()}.trimmed()};
 
                   qCInfo(LOG_AmdaProvider())
                       << tr("TORM AmdaProvider::retrieveData downloadFileUrl:") << downloadFileUrl;
