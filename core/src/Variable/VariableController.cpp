@@ -1,6 +1,7 @@
 #include <Variable/Variable.h>
 #include <Variable/VariableAcquisitionWorker.h>
 #include <Variable/VariableCacheStrategy.h>
+#include <Variable/VariableCacheStrategyFactory.h>
 #include <Variable/VariableController.h>
 #include <Variable/VariableModel.h>
 #include <Variable/VariableSynchronizationGroup.h>
@@ -79,7 +80,9 @@ struct VariableController::VariableControllerPrivate {
             : m_WorkingMutex{},
               m_VariableModel{new VariableModel{parent}},
               m_VariableSelectionModel{new QItemSelectionModel{m_VariableModel, parent}},
-              m_VariableCacheStrategy{std::make_unique<VariableCacheStrategy>()},
+              // m_VariableCacheStrategy{std::make_unique<VariableCacheStrategy>()},
+              m_VariableCacheStrategy{VariableCacheStrategyFactory::createCacheStrategy(
+                  CacheStrategy::SingleThreshold)},
               m_VariableAcquisitionWorker{std::make_unique<VariableAcquisitionWorker>()},
               q{parent}
     {
@@ -573,7 +576,7 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
     auto varId = m_VariableToIdentifierMap.at(var);
 
     auto varStrategyRangesRequested
-        = m_VariableCacheStrategy->computeStrategyRanges(var->range(), rangeRequested);
+        = m_VariableCacheStrategy->computeRange(var->range(), rangeRequested);
 
     auto notInCacheRangeList = QVector<SqpRange>{varStrategyRangesRequested.second};
     auto inCacheRangeList = QVector<SqpRange>{};
