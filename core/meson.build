@@ -36,7 +36,6 @@ core_sources = [
   'src/Variable/VariableCacheController.cpp',
   'src/Variable/VariableController.cpp',
   'src/Variable/VariableAcquisitionWorker.cpp',
-  'src/Variable/VariableCacheStrategy.cpp',
   'src/Variable/VariableSynchronizationGroup.cpp',
   'src/Variable/VariableModel.cpp',
   'src/Visualization/VisualizationController.cpp'

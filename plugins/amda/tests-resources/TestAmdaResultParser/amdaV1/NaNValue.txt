@@ -1,0 +1,6 @@
+#Sampling Time : 60
+#Time Format : YYYY-MM-DDThh:mm:ss.mls
+#imf(0) - Type : Local Parameter @ CDPP/AMDA - Name : bx_gse - Units : nT - Size : 1 - Frame : GSE - Mission : ACE - Instrument : MFI - Dataset : mfi_final-prelim
+2013-09-23T09:00:30.000     NaN
+2013-09-23T09:01:30.000     -2.71850
+2013-09-23T09:02:30.000     -2.52150

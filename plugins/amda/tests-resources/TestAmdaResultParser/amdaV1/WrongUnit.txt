@@ -1,0 +1,6 @@
+#Sampling Time : 60
+#Time Format : YYYY-MM-DDThh:mm:ss.mls
+#Wrong unit comment
+2013-09-23T09:00:30.000     -2.83950
+2013-09-23T09:01:30.000     -2.71850
+2013-09-23T09:02:30.000     -2.52150
