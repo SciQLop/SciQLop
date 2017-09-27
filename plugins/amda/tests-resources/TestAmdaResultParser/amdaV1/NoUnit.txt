@@ -1,0 +1,2 @@
+#Sampling Time : 60
+#Time Format : YYYY-MM-DDThh:mm:ss.mls
