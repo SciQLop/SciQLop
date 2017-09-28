@@ -12,6 +12,22 @@
 
 Q_LOGGING_CATEGORY(LOG_CosinusProvider, "CosinusProvider")
 
+namespace {
+
+/// Abstract cosinus type
+struct ICosinusType {
+    virtual ~ICosinusType() = default;
+    /// @return the number of components generated for the type
+    virtual int componentCount() const = 0;
+    /// @return the data series created for the type
+    virtual std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+                                                          std::vector<double> valuesData,
+                                                          Unit xAxisUnit,
+                                                          Unit valuesUnit) const = 0;
+};
+
+} // namespace
+
 std::shared_ptr<IDataProvider> CosinusProvider::clone() const
 {
     // No copy is made in clone
