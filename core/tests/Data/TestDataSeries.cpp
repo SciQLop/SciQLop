@@ -125,6 +125,39 @@ private:
                       expectedValuesData);
     }
 
+    template <typename SourceType, typename DestType>
+    void testMergeDifferentTypesStructure()
+    {
+        // ////////////// //
+        // Test structure //
+        // ////////////// //
+
+        // Data series to merge
+        QTest::addColumn<std::shared_ptr<DestType> >("dest");
+        QTest::addColumn<std::shared_ptr<SourceType> >("source");
+
+        // Expected values in the dest data series after merge
+        QTest::addColumn<DataContainer>("expectedXAxisData");
+        QTest::addColumn<DataContainer>("expectedValuesData");
+    }
+
+    template <typename SourceType, typename DestType>
+    void testMergeDifferentTypes()
+    {
+        // Merges series
+        QFETCH(std::shared_ptr<SourceType>, source);
+        QFETCH(std::shared_ptr<DestType>, dest);
+
+        dest->merge(source.get());
+
+        // Validates results : we check that the merge is valid and the data series is sorted on its
+        // x-axis data
+        QFETCH(DataContainer, expectedXAxisData);
+        QFETCH(DataContainer, expectedValuesData);
+
+        validateRange(dest->cbegin(), dest->cend(), expectedXAxisData, expectedValuesData);
+    }
+
 private slots:
 
     /// Input test data
@@ -140,6 +173,13 @@ private slots:
 
     /// Tests merge of two data series
     void testMerge();
+
+    /// Input test data
+    /// @sa testMergeVectorInScalar()
+    void testMergeVectorInScalar_data();
+
+    /// Tests merge of vector series in scalar series
+    void testMergeVectorInScalar();
 
     /// Input test data
     /// @sa testPurgeScalar()
@@ -321,6 +361,26 @@ void TestDataSeries::testMerge()
     QFETCH(DataContainer, expectedValuesData);
 
     validateRange(dataSeries->cbegin(), dataSeries->cend(), expectedXAxisData, expectedValuesData);
+}
+
+void TestDataSeries::testMergeVectorInScalar_data()
+{
+    testMergeDifferentTypesStructure<VectorSeries, ScalarSeries>();
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    QTest::newRow("purgeVectorInScalar")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+        << createVectorSeries({6., 7., 8., 9., 10.}, {600., 700., 800., 900., 1000.},
+                              {610., 710., 810., 910., 1010.}, {620., 720., 820., 920., 1020.})
+        << DataContainer{1., 2., 3., 4., 5.} << DataContainer{100., 200., 300., 400., 500.};
+}
+
+void TestDataSeries::testMergeVectorInScalar()
+{
+    testMergeDifferentTypes<VectorSeries, ScalarSeries>();
 }
 
 void TestDataSeries::testPurgeScalar_data()
