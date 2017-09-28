@@ -114,11 +114,14 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
     // included)
     auto dataCount = end - start + 1;
 
+    // Number of components (depending on the cosinus type)
+    auto componentCount = type->componentCount();
+
     auto xAxisData = std::vector<double>{};
     xAxisData.resize(dataCount);
 
     auto valuesData = std::vector<double>{};
-    valuesData.resize(dataCount);
+    valuesData.resize(dataCount * componentCount);
 
     int progress = 0;
     auto progressEnd = dataCount;
@@ -128,7 +131,13 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
             const auto timeOnFreq = time / freq;
 
             xAxisData[dataIndex] = timeOnFreq;
-            valuesData[dataIndex] = std::cos(timeOnFreq);
+
+            // Generates all components' values
+            // Example: for a vector, values will be : cos(x), cos(x)/2, cos(x)/3
+            auto value = std::cos(timeOnFreq);
+            for (auto i = 0; i < componentCount; ++i) {
+                valuesData[componentCount * dataIndex + i] = value / (i + 1);
+            }
 
             // progression
             int currentProgress = (time - start) * 100.0 / progressEnd;
@@ -153,8 +162,8 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
         // We can close progression beacause all data has been retrieved
         emit dataProvidedProgress(acqIdentifier, 100);
     }
-    return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
-                                          Unit{QStringLiteral("t"), true}, Unit{});
+    return type->createDataSeries(std::move(xAxisData), std::move(valuesData),
+                                  Unit{QStringLiteral("t"), true}, Unit{});
 }
 
 void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
