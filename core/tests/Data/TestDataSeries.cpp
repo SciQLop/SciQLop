@@ -335,6 +335,9 @@ void TestDataSeries::testPurgeScalar_data()
                                                        {100., 200., 300., 400., 500.})
                                  << 2. << 4. << DataContainer{2., 3., 4.}
                                  << std::vector<DataContainer>{{200., 300., 400.}};
+    QTest::newRow("purgeScalar1 (min/max swap)")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 4. << 2.
+        << DataContainer{2., 3., 4.} << std::vector<DataContainer>{{200., 300., 400.}};
     QTest::newRow("purgeScalar2") << createScalarSeries({1., 2., 3., 4., 5.},
                                                         {100., 200., 300., 400., 500.})
                                   << 0. << 2.5 << DataContainer{1., 2.}
@@ -517,10 +520,13 @@ void TestDataSeries::testXAxisRange_data()
     // Test cases //
     // ////////// //
 
-    QTest::newRow("xAxisRange1") << createScalarSeries({1., 2., 3., 4., 5.},
-                                                       {100., 200., 300., 400., 500.})
-                                 << -1. << 3.2 << DataContainer{1., 2., 3.}
-                                 << DataContainer{100., 200., 300.};
+    QTest::newRow("xAxisRange") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                      {100., 200., 300., 400., 500.})
+                                << -1. << 3.2 << DataContainer{1., 2., 3.}
+                                << DataContainer{100., 200., 300.};
+    QTest::newRow("xAxisRange1 (min/max swap)")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 3.2 << -1.
+        << DataContainer{1., 2., 3.} << DataContainer{100., 200., 300.};
     QTest::newRow("xAxisRange2") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
                                  << 1. << 4. << DataContainer{1., 2., 3., 4.}
@@ -581,8 +587,8 @@ void TestDataSeries::testValuesBoundsScalar_data()
     QTest::newRow("scalarBounds4")
         << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 5.1 << 6.
         << false << nan << nan;
-    QTest::newRow("scalarBounds5") << createScalarSeries({1.}, {100.}) << 0. << 2. << true << 100.
-                                   << 100.;
+    QTest::newRow("scalarBounds5")
+        << createScalarSeries({1.}, {100.}) << 0. << 2. << true << 100. << 100.;
     QTest::newRow("scalarBounds6") << createScalarSeries({}, {}) << 0. << 2. << false << nan << nan;
 
     // Tests with NaN values: NaN values are not included in min/max search
