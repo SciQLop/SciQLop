@@ -3,6 +3,7 @@
 
 #include <Data/DataProviderParameters.h>
 #include <Data/ScalarSeries.h>
+#include <Data/VectorSeries.h>
 
 #include <cmath>
 
@@ -24,6 +25,29 @@ struct ICosinusType {
                                                           std::vector<double> valuesData,
                                                           Unit xAxisUnit,
                                                           Unit valuesUnit) const = 0;
+};
+
+struct ScalarCosinus : public ICosinusType {
+    int componentCount() const override { return 1; }
+
+    std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+                                                  std::vector<double> valuesData, Unit xAxisUnit,
+                                                  Unit valuesUnit) const override
+    {
+        return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
+                                              xAxisUnit, valuesUnit);
+    }
+};
+struct VectorCosinus : public ICosinusType {
+    int componentCount() const override { return 3; }
+
+    std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+                                                  std::vector<double> valuesData, Unit xAxisUnit,
+                                                  Unit valuesUnit) const override
+    {
+        return std::make_shared<VectorSeries>(std::move(xAxisData), std::move(valuesData),
+                                              xAxisUnit, valuesUnit);
+    }
 };
 
 } // namespace
