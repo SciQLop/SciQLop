@@ -345,6 +345,11 @@ void TestDataSeries::testMerge_data()
         << createScalarSeries({1., 2., 3., 7., 10.}, {100., 200., 333., 777., 1000.})
         << DataContainer{1., 2., 3., 4., 5., 7., 8., 10.}
         << DataContainer{100., 200., 300., 400., 500., 700., 800., 1000.};
+
+    QTest::newRow("emptySource") << createScalarSeries({3., 4., 5., 7., 8},
+                                                       {300., 400., 500., 700., 800.})
+                                 << createScalarSeries({}, {}) << DataContainer{3., 4., 5., 7., 8.}
+                                 << DataContainer{300., 400., 500., 700., 800.};
 }
 
 void TestDataSeries::testMerge()
