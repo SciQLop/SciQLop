@@ -1,5 +1,6 @@
 #include "MockPlugin.h"
 #include "CosinusProvider.h"
+#include "MockDefs.h"
 
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceItem.h>
@@ -20,10 +21,11 @@ std::unique_ptr<IDataProvider> createDataProvider() noexcept
     return std::make_unique<CosinusProvider>();
 }
 
-std::unique_ptr<DataSourceItem> createProductItem(const QString &productName,
+std::unique_ptr<DataSourceItem> createProductItem(const QVariantHash &data,
                                                   const QUuid &dataSourceUid)
 {
-    auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT, productName);
+    auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT, data);
+    auto productName = data.value(DataSourceItem::NAME_DATA_KEY).toString();
 
     // Add action to load product from DataSourceController
     result->addAction(std::make_unique<DataSourceItemAction>(

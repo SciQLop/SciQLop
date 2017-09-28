@@ -1,4 +1,5 @@
 #include "CosinusProvider.h"
+#include "MockDefs.h"
 
 #include <Data/DataProviderParameters.h>
 #include <Data/ScalarSeries.h>
@@ -24,10 +25,17 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
     // TODO: Add Mutex
     auto dataIndex = 0;
 
+    // Retrieves frequency
+    auto freqVariant = data.value(COSINUS_FREQUENCY_KEY, COSINUS_FREQUENCY_DEFAULT_VALUE);
+    if (!freqVariant.canConvert<double>()) {
+        qCCritical(LOG_CosinusProvider()) << tr("Can't retrieve data: invalid frequency");
+        return nullptr;
+    }
+
     // Gets the timerange from the parameters
-    double freq = 100.0;
-    double start = std::ceil(dataRangeRequested.m_TStart * freq); // 100 htz
-    double end = std::floor(dataRangeRequested.m_TEnd * freq);    // 100 htz
+    double freq = freqVariant.toDouble();
+    double start = std::ceil(dataRangeRequested.m_TStart * freq);
+    double end = std::floor(dataRangeRequested.m_TEnd * freq);
 
     // We assure that timerange is valid
     if (end < start) {
