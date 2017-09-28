@@ -1,5 +1,6 @@
 #include "MockPlugin.h"
 #include "CosinusProvider.h"
+#include "MockDefs.h"
 
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceItem.h>
@@ -20,10 +21,11 @@ std::unique_ptr<IDataProvider> createDataProvider() noexcept
     return std::make_unique<CosinusProvider>();
 }
 
-std::unique_ptr<DataSourceItem> createProductItem(const QString &productName,
+std::unique_ptr<DataSourceItem> createProductItem(const QVariantHash &data,
                                                   const QUuid &dataSourceUid)
 {
-    auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT, productName);
+    auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT, data);
+    auto productName = data.value(DataSourceItem::NAME_DATA_KEY).toString();
 
     // Add action to load product from DataSourceController
     result->addAction(std::make_unique<DataSourceItemAction>(
@@ -43,8 +45,36 @@ std::unique_ptr<DataSourceItem> createDataSourceItem(const QUuid &dataSourceUid)
     // Magnetic field products
     auto magneticFieldFolder = std::make_unique<DataSourceItem>(DataSourceItemType::NODE,
                                                                 QStringLiteral("Magnetic field"));
-    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("FGM"), dataSourceUid));
-    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("SC"), dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Scalar 10 Hz")},
+                           {COSINUS_TYPE_KEY, "scalar"},
+                           {COSINUS_FREQUENCY_KEY, 10.}},
+                          dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Scalar 60 Hz")},
+                           {COSINUS_TYPE_KEY, "scalar"},
+                           {COSINUS_FREQUENCY_KEY, 60.}},
+                          dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Scalar 100 Hz")},
+                           {COSINUS_TYPE_KEY, "scalar"},
+                           {COSINUS_FREQUENCY_KEY, 100.}},
+                          dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Vector 10 Hz")},
+                           {COSINUS_TYPE_KEY, "vector"},
+                           {COSINUS_FREQUENCY_KEY, 10.}},
+                          dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Vector 60 Hz")},
+                           {COSINUS_TYPE_KEY, "vector"},
+                           {COSINUS_FREQUENCY_KEY, 60.}},
+                          dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Vector 100 Hz")},
+                           {COSINUS_TYPE_KEY, "vector"},
+                           {COSINUS_FREQUENCY_KEY, 100.}},
+                          dataSourceUid));
 
     // Electric field products
     auto electricFieldFolder = std::make_unique<DataSourceItem>(DataSourceItemType::NODE,

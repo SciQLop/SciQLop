@@ -1,7 +1,9 @@
 #include "CosinusProvider.h"
+#include "MockDefs.h"
 
 #include <Data/DataProviderParameters.h>
 #include <Data/ScalarSeries.h>
+#include <Data/VectorSeries.h>
 
 #include <cmath>
 
@@ -11,6 +13,60 @@
 
 Q_LOGGING_CATEGORY(LOG_CosinusProvider, "CosinusProvider")
 
+namespace {
+
+/// Abstract cosinus type
+struct ICosinusType {
+    virtual ~ICosinusType() = default;
+    /// @return the number of components generated for the type
+    virtual int componentCount() const = 0;
+    /// @return the data series created for the type
+    virtual std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+                                                          std::vector<double> valuesData,
+                                                          Unit xAxisUnit,
+                                                          Unit valuesUnit) const = 0;
+};
+
+struct ScalarCosinus : public ICosinusType {
+    int componentCount() const override { return 1; }
+
+    std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+                                                  std::vector<double> valuesData, Unit xAxisUnit,
+                                                  Unit valuesUnit) const override
+    {
+        return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
+                                              xAxisUnit, valuesUnit);
+    }
+};
+struct VectorCosinus : public ICosinusType {
+    int componentCount() const override { return 3; }
+
+    std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+                                                  std::vector<double> valuesData, Unit xAxisUnit,
+                                                  Unit valuesUnit) const override
+    {
+        return std::make_shared<VectorSeries>(std::move(xAxisData), std::move(valuesData),
+                                              xAxisUnit, valuesUnit);
+    }
+};
+
+/// Converts string to cosinus type
+/// @return the cosinus type if the string could be converted, nullptr otherwise
+std::unique_ptr<ICosinusType> cosinusType(const QString &type) noexcept
+{
+    if (type.compare(QStringLiteral("scalar"), Qt::CaseInsensitive) == 0) {
+        return std::make_unique<ScalarCosinus>();
+    }
+    else if (type.compare(QStringLiteral("vector"), Qt::CaseInsensitive) == 0) {
+        return std::make_unique<VectorCosinus>();
+    }
+    else {
+        return nullptr;
+    }
+}
+
+} // namespace
+
 std::shared_ptr<IDataProvider> CosinusProvider::clone() const
 {
     // No copy is made in clone
@@ -18,15 +74,36 @@ std::shared_ptr<IDataProvider> CosinusProvider::clone() const
 }
 
 std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
-                                                           const SqpRange &dataRangeRequested)
+                                                           const SqpRange &dataRangeRequested,
+                                                           const QVariantHash &data)
 {
     // TODO: Add Mutex
     auto dataIndex = 0;
 
+    // Retrieves cosinus type
+    auto typeVariant = data.value(COSINUS_TYPE_KEY, COSINUS_TYPE_DEFAULT_VALUE);
+    if (!typeVariant.canConvert<QString>()) {
+        qCCritical(LOG_CosinusProvider()) << tr("Can't retrieve data: invalid type");
+        return nullptr;
+    }
+
+    auto type = cosinusType(typeVariant.toString());
+    if (!type) {
+        qCCritical(LOG_CosinusProvider()) << tr("Can't retrieve data: unknown type");
+        return nullptr;
+    }
+
+    // Retrieves frequency
+    auto freqVariant = data.value(COSINUS_FREQUENCY_KEY, COSINUS_FREQUENCY_DEFAULT_VALUE);
+    if (!freqVariant.canConvert<double>()) {
+        qCCritical(LOG_CosinusProvider()) << tr("Can't retrieve data: invalid frequency");
+        return nullptr;
+    }
+
     // Gets the timerange from the parameters
-    double freq = 100.0;
-    double start = std::ceil(dataRangeRequested.m_TStart * freq); // 100 htz
-    double end = std::floor(dataRangeRequested.m_TEnd * freq);    // 100 htz
+    double freq = freqVariant.toDouble();
+    double start = std::ceil(dataRangeRequested.m_TStart * freq);
+    double end = std::floor(dataRangeRequested.m_TEnd * freq);
 
     // We assure that timerange is valid
     if (end < start) {
@@ -37,11 +114,14 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
     // included)
     auto dataCount = end - start + 1;
 
+    // Number of components (depending on the cosinus type)
+    auto componentCount = type->componentCount();
+
     auto xAxisData = std::vector<double>{};
     xAxisData.resize(dataCount);
 
     auto valuesData = std::vector<double>{};
-    valuesData.resize(dataCount);
+    valuesData.resize(dataCount * componentCount);
 
     int progress = 0;
     auto progressEnd = dataCount;
@@ -51,7 +131,13 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
             const auto timeOnFreq = time / freq;
 
             xAxisData[dataIndex] = timeOnFreq;
-            valuesData[dataIndex] = std::cos(timeOnFreq);
+
+            // Generates all components' values
+            // Example: for a vector, values will be : cos(x), cos(x)/2, cos(x)/3
+            auto value = std::cos(timeOnFreq);
+            for (auto i = 0; i < componentCount; ++i) {
+                valuesData[componentCount * dataIndex + i] = value / (i + 1);
+            }
 
             // progression
             int currentProgress = (time - start) * 100.0 / progressEnd;
@@ -76,8 +162,8 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
         // We can close progression beacause all data has been retrieved
         emit dataProvidedProgress(acqIdentifier, 100);
     }
-    return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
-                                          Unit{QStringLiteral("t"), true}, Unit{});
+    return type->createDataSeries(std::move(xAxisData), std::move(valuesData),
+                                  Unit{QStringLiteral("t"), true}, Unit{});
 }
 
 void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
@@ -92,7 +178,7 @@ void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
 
     for (const auto &dateTime : qAsConst(times)) {
         if (m_VariableToEnableProvider[acqIdentifier]) {
-            auto scalarSeries = this->retrieveData(acqIdentifier, dateTime);
+            auto scalarSeries = this->retrieveData(acqIdentifier, dateTime, parameters.m_Data);
             qCDebug(LOG_CosinusProvider()) << "TORM: CosinusProvider::dataProvided";
             emit dataProvided(acqIdentifier, scalarSeries, dateTime);
         }
