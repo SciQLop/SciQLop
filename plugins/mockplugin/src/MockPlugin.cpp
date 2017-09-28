@@ -45,8 +45,18 @@ std::unique_ptr<DataSourceItem> createDataSourceItem(const QUuid &dataSourceUid)
     // Magnetic field products
     auto magneticFieldFolder = std::make_unique<DataSourceItem>(DataSourceItemType::NODE,
                                                                 QStringLiteral("Magnetic field"));
-    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("FGM"), dataSourceUid));
-    magneticFieldFolder->appendChild(createProductItem(QStringLiteral("SC"), dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Scalar 10 Hz")},
+                           {COSINUS_FREQUENCY_KEY, 10.}},
+                          dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Scalar 60 Hz")},
+                           {COSINUS_FREQUENCY_KEY, 60.}},
+                          dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Scalar 100 Hz")},
+                           {COSINUS_FREQUENCY_KEY, 100.}},
+                          dataSourceUid));
 
     // Electric field products
     auto electricFieldFolder = std::make_unique<DataSourceItem>(DataSourceItemType::NODE,

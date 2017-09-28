@@ -1,4 +1,5 @@
 #include "CosinusProvider.h"
+#include "MockDefs.h"
 
 #include <Data/DataProviderParameters.h>
 #include <Data/ScalarSeries.h>
@@ -158,7 +159,8 @@ void TestCosinusAcquisition::testAcquisition()
         QFETCH(SqpRange, initialRange);
         sqpApp->timeController().onTimeToUpdate(initialRange);
         auto provider = std::make_shared<CosinusProvider>();
-        auto variable = sqpApp->variableController().createVariable("MMS", {}, provider);
+        auto variable = sqpApp->variableController().createVariable(
+            "MMS", {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 100.}}, provider);
 
         QTest::qWait(OPERATION_DELAY);
         validateVariable(variable, initialRange);
