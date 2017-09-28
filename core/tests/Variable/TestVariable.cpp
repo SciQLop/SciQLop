@@ -1,19 +1,104 @@
 #include <Variable/Variable.h>
 
+#include <Data/ScalarSeries.h>
+
 #include <QObject>
 #include <QtTest>
 
 #include <memory>
 
+Q_DECLARE_METATYPE(std::shared_ptr<ScalarSeries>)
+
 class TestVariable : public QObject {
     Q_OBJECT
 
 private slots:
-    void testNotInCacheRangeList();
+    void testClone_data();
+    void testClone();
 
+    void testNotInCacheRangeList();
     void testInCacheRangeList();
 };
 
+void TestVariable::testClone_data()
+{
+    // ////////////// //
+    // Test structure //
+    // ////////////// //
+
+    QTest::addColumn<QString>("name");
+    QTest::addColumn<QVariantHash>("metadata");
+    QTest::addColumn<SqpRange>("range");
+    QTest::addColumn<SqpRange>("cacheRange");
+    QTest::addColumn<std::shared_ptr<ScalarSeries> >("dataSeries");
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    /// Generates a date in double
+    auto date = [](int year, int month, int day, int hours, int minutes, int seconds) {
+        return DateUtils::secondsSinceEpoch(
+            QDateTime{{year, month, day}, {hours, minutes, seconds}, Qt::UTC});
+    };
+
+    /// Generates a data series for a range
+    auto dataSeries = [](const SqpRange &range) {
+        auto xAxisData = std::vector<double>{};
+        auto valuesData = std::vector<double>{};
+
+        auto value = 0;
+        for (auto x = range.m_TStart; x < range.m_TEnd; ++x, ++value) {
+            xAxisData.push_back(x);
+            valuesData.push_back(value);
+        }
+
+        return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData), Unit{},
+                                              Unit{});
+    };
+
+    auto cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 13, 0, 0)};
+    QTest::newRow("clone1") << QStringLiteral("var1")
+                            << QVariantHash{{"data1", 1}, {"data2", "abc"}}
+                            << SqpRange{date(2017, 1, 1, 12, 30, 0), (date(2017, 1, 1, 12, 45, 0))}
+                            << cacheRange << dataSeries(cacheRange);
+}
+
+void TestVariable::testClone()
+{
+    // Creates variable
+    QFETCH(QString, name);
+    QFETCH(QVariantHash, metadata);
+    QFETCH(SqpRange, range);
+    QFETCH(SqpRange, cacheRange);
+    QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
+
+    Variable variable{name, metadata};
+    variable.setRange(range);
+    variable.setCacheRange(cacheRange);
+    variable.mergeDataSeries(dataSeries);
+
+    // Clones variable
+    auto clone = variable.clone();
+
+    // Checks cloned variable's state
+    QCOMPARE(clone->name(), name);
+    QCOMPARE(clone->metadata(), metadata);
+    QCOMPARE(clone->range(), range);
+    QCOMPARE(clone->cacheRange(), cacheRange);
+
+    // Compares data series
+    if (dataSeries != nullptr) {
+        QVERIFY(clone->dataSeries() != nullptr);
+        QVERIFY(std::equal(dataSeries->cbegin(), dataSeries->cend(), clone->dataSeries()->cbegin(),
+                           clone->dataSeries()->cend(), [](const auto &it1, const auto &it2) {
+                               return it1.x() == it2.x() && it1.value() == it2.value();
+                           }));
+    }
+    else {
+        QVERIFY(clone->dataSeries() == nullptr);
+    }
+}
 
 void TestVariable::testNotInCacheRangeList()
 {
