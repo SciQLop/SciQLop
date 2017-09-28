@@ -18,7 +18,8 @@ std::shared_ptr<IDataProvider> CosinusProvider::clone() const
 }
 
 std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
-                                                           const SqpRange &dataRangeRequested)
+                                                           const SqpRange &dataRangeRequested,
+                                                           const QVariantHash &data)
 {
     // TODO: Add Mutex
     auto dataIndex = 0;
@@ -92,7 +93,7 @@ void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
 
     for (const auto &dateTime : qAsConst(times)) {
         if (m_VariableToEnableProvider[acqIdentifier]) {
-            auto scalarSeries = this->retrieveData(acqIdentifier, dateTime);
+            auto scalarSeries = this->retrieveData(acqIdentifier, dateTime, parameters.m_Data);
             qCDebug(LOG_CosinusProvider()) << "TORM: CosinusProvider::dataProvided";
             emit dataProvided(acqIdentifier, scalarSeries, dateTime);
         }
