@@ -50,6 +50,21 @@ struct VectorCosinus : public ICosinusType {
     }
 };
 
+/// Converts string to cosinus type
+/// @return the cosinus type if the string could be converted, nullptr otherwise
+std::unique_ptr<ICosinusType> cosinusType(const QString &type) noexcept
+{
+    if (type.compare(QStringLiteral("scalar"), Qt::CaseInsensitive) == 0) {
+        return std::make_unique<ScalarCosinus>();
+    }
+    else if (type.compare(QStringLiteral("vector"), Qt::CaseInsensitive) == 0) {
+        return std::make_unique<VectorCosinus>();
+    }
+    else {
+        return nullptr;
+    }
+}
+
 } // namespace
 
 std::shared_ptr<IDataProvider> CosinusProvider::clone() const
@@ -64,6 +79,19 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
 {
     // TODO: Add Mutex
     auto dataIndex = 0;
+
+    // Retrieves cosinus type
+    auto typeVariant = data.value(COSINUS_TYPE_KEY, COSINUS_TYPE_DEFAULT_VALUE);
+    if (!typeVariant.canConvert<QString>()) {
+        qCCritical(LOG_CosinusProvider()) << tr("Can't retrieve data: invalid type");
+        return nullptr;
+    }
+
+    auto type = cosinusType(typeVariant.toString());
+    if (!type) {
+        qCCritical(LOG_CosinusProvider()) << tr("Can't retrieve data: unknown type");
+        return nullptr;
+    }
 
     // Retrieves frequency
     auto freqVariant = data.value(COSINUS_FREQUENCY_KEY, COSINUS_FREQUENCY_DEFAULT_VALUE);
