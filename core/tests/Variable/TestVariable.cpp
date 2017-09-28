@@ -45,6 +45,9 @@ private slots:
     void testNotInCacheRangeList();
     void testInCacheRangeList();
 
+    void testNbPoints_data();
+    void testNbPoints();
+
     void testRealRange_data();
     void testRealRange();
 };
@@ -263,6 +266,72 @@ void TestVariable::testInCacheRangeList()
     notInCachRange = notInCach.first();
     QCOMPARE(notInCachRange.m_TStart, DateUtils::secondsSinceEpoch(varCRS));
     QCOMPARE(notInCachRange.m_TEnd, DateUtils::secondsSinceEpoch(varCRE));
+}
+
+namespace {
+
+/// Struct used to represent an operation for @sa TestVariable::testNbPoints()
+struct NbPointsOperation {
+    SqpRange m_CacheRange;                      /// Range to set for the variable
+    std::shared_ptr<ScalarSeries> m_DataSeries; /// Series to merge in the variable
+    int m_ExpectedNbPoints; /// Number of points in the variable expected after operation
+};
+
+using NbPointsOperations = std::vector<NbPointsOperation>;
+
+} // namespace
+
+Q_DECLARE_METATYPE(NbPointsOperations)
+
+void TestVariable::testNbPoints_data()
+{
+    // ////////////// //
+    // Test structure //
+    // ////////////// //
+
+    QTest::addColumn<NbPointsOperations>("operations");
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+    NbPointsOperations operations{};
+
+    // Sets cache range (expected nb points = series xAxis data + series values data)
+    auto cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 9)};
+    operations.push_back({cacheRange, dataSeries(cacheRange), 20});
+
+    // Doubles cache but don't add data series (expected nb points don't change)
+    cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 19)};
+    operations.push_back({cacheRange, nullptr, 20});
+
+    // Doubles cache and data series (expected nb points change)
+    cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 19)};
+    operations.push_back({cacheRange, dataSeries(cacheRange), 40});
+
+    // Decreases cache (expected nb points decreases as the series is purged)
+    cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 5), date(2017, 1, 1, 12, 0, 9)};
+    operations.push_back({cacheRange, nullptr, 10});
+
+    QTest::newRow("nbPoints1") << operations;
+}
+
+void TestVariable::testNbPoints()
+{
+    // Creates variable
+    Variable variable{"var"};
+    QCOMPARE(variable.nbPoints(), 0);
+
+    QFETCH(NbPointsOperations, operations);
+    for (const auto &operation : operations) {
+        // Sets cache range and merge data series
+        variable.setCacheRange(operation.m_CacheRange);
+        if (operation.m_DataSeries != nullptr) {
+            variable.mergeDataSeries(operation.m_DataSeries);
+        }
+
+        // Checks nb points
+        QCOMPARE(variable.nbPoints(), operation.m_ExpectedNbPoints);
+    }
 }
 
 namespace {
