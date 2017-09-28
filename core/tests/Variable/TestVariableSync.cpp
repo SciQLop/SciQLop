@@ -105,8 +105,7 @@ struct Move : public IOperation {
     void exec(VariableController &variableController) const override
     {
         if (auto variable = variableController.variableModel()->variable(m_Index)) {
-            variableController.onRequestDataLoading({variable}, m_NewRange, variable->range(),
-                                                    !m_Shift);
+            variableController.onRequestDataLoading({variable}, m_NewRange, !m_Shift);
         }
     }
 

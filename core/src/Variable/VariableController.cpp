@@ -299,22 +299,24 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
 
 void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
 {
-    // TODO check synchronisation and Rescale
+    // NOTE: Even if acquisition request is aborting, the graphe range will be changed
     qCDebug(LOG_VariableController()) << "VariableController::onDateTimeOnSelection"
                                       << QThread::currentThread()->objectName();
     auto selectedRows = impl->m_VariableSelectionModel->selectedRows();
-    auto varRequestId = QUuid::createUuid();
+    auto variables = QVector<std::shared_ptr<Variable> >{};
 
     for (const auto &selectedRow : qAsConst(selectedRows)) {
         if (auto selectedVariable = impl->m_VariableModel->variable(selectedRow.row())) {
-            selectedVariable->setRange(dateTime);
-            impl->processRequest(selectedVariable, dateTime, varRequestId);
+            variables << selectedVariable;
 
             // notify that rescale operation has to be done
             emit rangeChanged(selectedVariable, dateTime);
         }
     }
-    impl->updateVariableRequest(varRequestId);
+
+    if (!variables.isEmpty()) {
+        this->onRequestDataLoading(variables, dateTime, true);
+    }
 }
 
 void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &rangeRequested,
@@ -459,8 +461,7 @@ void VariableController::desynchronize(std::shared_ptr<Variable> variable,
 }
 
 void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables,
-                                              const SqpRange &range, const SqpRange &oldRange,
-                                              bool synchronise)
+                                              const SqpRange &range, bool synchronise)
 {
     // NOTE: oldRange isn't really necessary since oldRange == variable->range().
 
