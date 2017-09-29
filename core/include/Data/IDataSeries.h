@@ -68,8 +68,6 @@ public:
     /// @return the total number of points contained in the data series
     virtual int nbPoints() const = 0;
 
-    virtual SqpRange range() const = 0;
-
     // ///////// //
     // Iterators //
     // ///////// //
