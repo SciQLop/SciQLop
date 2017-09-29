@@ -20,19 +20,28 @@ const auto FILE_NOT_FOUND_MESSAGE = QStringLiteral("Not Found");
 /// Separator between values in a result line
 const auto RESULT_LINE_SEPARATOR = QRegularExpression{QStringLiteral("\\s+")};
 
-/// Regex to find the header of the data in the file. This header indicates the end of comments in
-/// the file
-const auto DATA_HEADER_REGEX = QRegularExpression{QStringLiteral("#\\s*DATA\\s*:")};
+// AMDA V2
+// /// Regex to find the header of the data in the file. This header indicates the end of comments
+// in
+// /// the file
+// const auto DATA_HEADER_REGEX = QRegularExpression{QStringLiteral("#\\s*DATA\\s*:")};
 
 /// Format for dates in result files
 const auto DATE_FORMAT = QStringLiteral("yyyy-MM-ddThh:mm:ss.zzz");
 
-/// Regex to find unit in a line. Examples of valid lines:
-/// ... PARAMETER_UNITS : nT ...
-/// ... PARAMETER_UNITS:nT ...
-/// ... PARAMETER_UNITS:   m² ...
-/// ... PARAMETER_UNITS : m/s ...
-const auto UNIT_REGEX = QRegularExpression{QStringLiteral("\\s*PARAMETER_UNITS\\s*:\\s*(.+)")};
+// AMDA V2
+// /// Regex to find unit in a line. Examples of valid lines:
+// /// ... PARAMETER_UNITS : nT ...
+// /// ... PARAMETER_UNITS:nT ...
+// /// ... PARAMETER_UNITS:   m² ...
+// /// ... PARAMETER_UNITS : m/s ...
+// const auto UNIT_REGEX = QRegularExpression{QStringLiteral("\\s*PARAMETER_UNITS\\s*:\\s*(.+)")};
+
+/// ... - Units : nT - ...
+/// ... -Units:nT- ...
+/// ... -Units:   m²- ...
+/// ... - Units : m/s - ...
+const auto UNIT_REGEX = QRegularExpression{QStringLiteral("-\\s*Units\\s*:\\s*(.+?)\\s*-")};
 
 QDateTime dateTimeFromString(const QString &stringDate) noexcept
 {
@@ -90,7 +99,8 @@ Unit readXAxisUnit(QTextStream &stream)
     QString line{};
 
     // Searches unit in the comment lines (as long as the reading has not reached the data header)
-    while (stream.readLineInto(&line) && !line.contains(DATA_HEADER_REGEX)) {
+    // AMDA V2: while (stream.readLineInto(&line) && !line.contains(DATA_HEADER_REGEX)) {
+    while (stream.readLineInto(&line) && isCommentLine(line)) {
         auto match = UNIT_REGEX.match(line);
         if (match.hasMatch()) {
             return Unit{match.captured(1), true};
@@ -203,6 +213,8 @@ std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
     auto xAxisUnit = readXAxisUnit(stream);
 
     // Reads results
+    // AMDA V2: remove line
+    stream.seek(0); // returns to the beginning of the file
     auto results = readResults(stream, valueType);
 
     // Creates data series
