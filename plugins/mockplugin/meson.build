@@ -4,6 +4,7 @@ mockplugin_moc_headers = [
 ]
 
 mockplugin_sources = [
+  'src/MockDefs.cpp',
   'src/CosinusProvider.cpp',
   'src/MockPlugin.cpp'
 ]
