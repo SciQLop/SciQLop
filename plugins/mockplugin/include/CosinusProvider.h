@@ -27,8 +27,8 @@ public:
 
 
 private:
-    std::shared_ptr<IDataSeries> retrieveData(QUuid acqIdentifier,
-                                              const SqpRange &dataRangeRequested);
+    std::shared_ptr<IDataSeries>
+    retrieveData(QUuid acqIdentifier, const SqpRange &dataRangeRequested, const QVariantHash &data);
 
     QHash<QUuid, bool> m_VariableToEnableProvider;
 };
