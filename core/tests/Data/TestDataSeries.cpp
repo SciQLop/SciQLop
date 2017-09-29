@@ -652,8 +652,8 @@ void TestDataSeries::testValuesBoundsScalar_data()
     QTest::newRow("scalarBounds4")
         << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 5.1 << 6.
         << false << nan << nan;
-    QTest::newRow("scalarBounds5")
-        << createScalarSeries({1.}, {100.}) << 0. << 2. << true << 100. << 100.;
+    QTest::newRow("scalarBounds5") << createScalarSeries({1.}, {100.}) << 0. << 2. << true << 100.
+                                   << 100.;
     QTest::newRow("scalarBounds6") << createScalarSeries({}, {}) << 0. << 2. << false << nan << nan;
 
     // Tests with NaN values: NaN values are not included in min/max search
