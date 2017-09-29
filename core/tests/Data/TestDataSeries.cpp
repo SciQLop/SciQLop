@@ -125,6 +125,39 @@ private:
                       expectedValuesData);
     }
 
+    template <typename SourceType, typename DestType>
+    void testMergeDifferentTypesStructure()
+    {
+        // ////////////// //
+        // Test structure //
+        // ////////////// //
+
+        // Data series to merge
+        QTest::addColumn<std::shared_ptr<DestType> >("dest");
+        QTest::addColumn<std::shared_ptr<SourceType> >("source");
+
+        // Expected values in the dest data series after merge
+        QTest::addColumn<DataContainer>("expectedXAxisData");
+        QTest::addColumn<DataContainer>("expectedValuesData");
+    }
+
+    template <typename SourceType, typename DestType>
+    void testMergeDifferentTypes()
+    {
+        // Merges series
+        QFETCH(std::shared_ptr<SourceType>, source);
+        QFETCH(std::shared_ptr<DestType>, dest);
+
+        dest->merge(source.get());
+
+        // Validates results : we check that the merge is valid and the data series is sorted on its
+        // x-axis data
+        QFETCH(DataContainer, expectedXAxisData);
+        QFETCH(DataContainer, expectedValuesData);
+
+        validateRange(dest->cbegin(), dest->cend(), expectedXAxisData, expectedValuesData);
+    }
+
 private slots:
 
     /// Input test data
@@ -140,6 +173,13 @@ private slots:
 
     /// Tests merge of two data series
     void testMerge();
+
+    /// Input test data
+    /// @sa testMergeVectorInScalar()
+    void testMergeVectorInScalar_data();
+
+    /// Tests merge of vector series in scalar series
+    void testMergeVectorInScalar();
 
     /// Input test data
     /// @sa testPurgeScalar()
@@ -305,6 +345,11 @@ void TestDataSeries::testMerge_data()
         << createScalarSeries({1., 2., 3., 7., 10.}, {100., 200., 333., 777., 1000.})
         << DataContainer{1., 2., 3., 4., 5., 7., 8., 10.}
         << DataContainer{100., 200., 300., 400., 500., 700., 800., 1000.};
+
+    QTest::newRow("emptySource") << createScalarSeries({3., 4., 5., 7., 8},
+                                                       {300., 400., 500., 700., 800.})
+                                 << createScalarSeries({}, {}) << DataContainer{3., 4., 5., 7., 8.}
+                                 << DataContainer{300., 400., 500., 700., 800.};
 }
 
 void TestDataSeries::testMerge()
@@ -323,6 +368,26 @@ void TestDataSeries::testMerge()
     validateRange(dataSeries->cbegin(), dataSeries->cend(), expectedXAxisData, expectedValuesData);
 }
 
+void TestDataSeries::testMergeVectorInScalar_data()
+{
+    testMergeDifferentTypesStructure<VectorSeries, ScalarSeries>();
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    QTest::newRow("purgeVectorInScalar")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.})
+        << createVectorSeries({6., 7., 8., 9., 10.}, {600., 700., 800., 900., 1000.},
+                              {610., 710., 810., 910., 1010.}, {620., 720., 820., 920., 1020.})
+        << DataContainer{1., 2., 3., 4., 5.} << DataContainer{100., 200., 300., 400., 500.};
+}
+
+void TestDataSeries::testMergeVectorInScalar()
+{
+    testMergeDifferentTypes<VectorSeries, ScalarSeries>();
+}
+
 void TestDataSeries::testPurgeScalar_data()
 {
     testPurgeStructure<ScalarSeries>();
@@ -335,6 +400,9 @@ void TestDataSeries::testPurgeScalar_data()
                                                        {100., 200., 300., 400., 500.})
                                  << 2. << 4. << DataContainer{2., 3., 4.}
                                  << std::vector<DataContainer>{{200., 300., 400.}};
+    QTest::newRow("purgeScalar1 (min/max swap)")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 4. << 2.
+        << DataContainer{2., 3., 4.} << std::vector<DataContainer>{{200., 300., 400.}};
     QTest::newRow("purgeScalar2") << createScalarSeries({1., 2., 3., 4., 5.},
                                                         {100., 200., 300., 400., 500.})
                                   << 0. << 2.5 << DataContainer{1., 2.}
@@ -517,10 +585,13 @@ void TestDataSeries::testXAxisRange_data()
     // Test cases //
     // ////////// //
 
-    QTest::newRow("xAxisRange1") << createScalarSeries({1., 2., 3., 4., 5.},
-                                                       {100., 200., 300., 400., 500.})
-                                 << -1. << 3.2 << DataContainer{1., 2., 3.}
-                                 << DataContainer{100., 200., 300.};
+    QTest::newRow("xAxisRange") << createScalarSeries({1., 2., 3., 4., 5.},
+                                                      {100., 200., 300., 400., 500.})
+                                << -1. << 3.2 << DataContainer{1., 2., 3.}
+                                << DataContainer{100., 200., 300.};
+    QTest::newRow("xAxisRange1 (min/max swap)")
+        << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 3.2 << -1.
+        << DataContainer{1., 2., 3.} << DataContainer{100., 200., 300.};
     QTest::newRow("xAxisRange2") << createScalarSeries({1., 2., 3., 4., 5.},
                                                        {100., 200., 300., 400., 500.})
                                  << 1. << 4. << DataContainer{1., 2., 3., 4.}
@@ -581,8 +652,8 @@ void TestDataSeries::testValuesBoundsScalar_data()
     QTest::newRow("scalarBounds4")
         << createScalarSeries({1., 2., 3., 4., 5.}, {100., 200., 300., 400., 500.}) << 5.1 << 6.
         << false << nan << nan;
-    QTest::newRow("scalarBounds5") << createScalarSeries({1.}, {100.}) << 0. << 2. << true << 100.
-                                   << 100.;
+    QTest::newRow("scalarBounds5")
+        << createScalarSeries({1.}, {100.}) << 0. << 2. << true << 100. << 100.;
     QTest::newRow("scalarBounds6") << createScalarSeries({}, {}) << 0. << 2. << false << nan << nan;
 
     // Tests with NaN values: NaN values are not included in min/max search

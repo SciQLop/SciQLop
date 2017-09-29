@@ -148,15 +148,6 @@ public:
 
     int nbPoints() const override { return m_XAxisData->totalSize() + m_ValuesData->totalSize(); }
 
-    SqpRange range() const override
-    {
-        if (!m_XAxisData->cdata().empty()) {
-            return SqpRange{m_XAxisData->cdata().front(), m_XAxisData->cdata().back()};
-        }
-
-        return SqpRange{};
-    }
-
     void clear()
     {
         m_XAxisData->clear();
