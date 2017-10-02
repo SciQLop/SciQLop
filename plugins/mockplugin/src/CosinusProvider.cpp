@@ -145,8 +145,9 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
                 progress = currentProgress;
 
                 emit dataProvidedProgress(acqIdentifier, progress);
-                qCInfo(LOG_CosinusProvider()) << "TORM: CosinusProvider::retrieveData"
-                                              << QThread::currentThread()->objectName() << progress;
+                qCDebug(LOG_CosinusProvider()) << "TORM: CosinusProvider::retrieveData"
+                                               << QThread::currentThread()->objectName()
+                                               << progress;
                 // NOTE: Try to use multithread if possible
             }
         }
@@ -198,4 +199,15 @@ void CosinusProvider::requestDataAborting(QUuid acqIdentifier)
         qCWarning(LOG_CosinusProvider())
             << tr("Aborting progression of inexistant identifier detected !!!");
     }
+}
+
+std::shared_ptr<IDataSeries> CosinusProvider::provideDataSeries(const SqpRange &dataRangeRequested,
+                                                                const QVariantHash &data)
+{
+    auto uid = QUuid::createUuid();
+    m_VariableToEnableProvider[uid] = true;
+    auto dataSeries = this->retrieveData(uid, dataRangeRequested, data);
+
+    m_VariableToEnableProvider.remove(uid);
+    return dataSeries;
 }

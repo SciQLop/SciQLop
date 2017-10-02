@@ -26,6 +26,11 @@ public:
     void requestDataAborting(QUuid acqIdentifier) override;
 
 
+    /// Provide data
+    std::shared_ptr<IDataSeries> provideDataSeries(const SqpRange &dataRangeRequested,
+                                                   const QVariantHash &data);
+
+
 private:
     std::shared_ptr<IDataSeries>
     retrieveData(QUuid acqIdentifier, const SqpRange &dataRangeRequested, const QVariantHash &data);
