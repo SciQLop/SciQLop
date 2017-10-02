@@ -165,8 +165,7 @@ void TestCosinusAcquisition::testAcquisition()
     QFETCH(std::vector<SqpRange>, operations);
     for (const auto &operation : operations) {
         // Asks request on the variable and waits during its execution
-        sqpApp->variableController().onRequestDataLoading({variable}, operation, variable->range(),
-                                                          true);
+        sqpApp->variableController().onRequestDataLoading({variable}, operation, true);
 
         QTest::qWait(operationDelay);
         validateVariable(variable, operation);
@@ -175,8 +174,7 @@ void TestCosinusAcquisition::testAcquisition()
 
     for (const auto &operation : operations) {
         // Asks request on the variable and waits during its execution
-        sqpApp->variableController().onRequestDataLoading({variable}, operation, variable->range(),
-                                                          true);
+        sqpApp->variableController().onRequestDataLoading({variable}, operation, true);
     }
     QTest::qWait(operationDelay);
     validateVariable(variable, operations.back());
