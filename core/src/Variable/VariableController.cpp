@@ -48,15 +48,17 @@ SqpRange computeSynchroRangeRequested(const SqpRange &varRange, const SqpRange &
             break;
         }
         case AcquisitionZoomType::PanRight: {
+            auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
             auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
-            varRangeRequested.m_TStart += deltaRight;
+            varRangeRequested.m_TStart += deltaLeft;
             varRangeRequested.m_TEnd += deltaRight;
             break;
         }
         case AcquisitionZoomType::PanLeft: {
             auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+            auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
             varRangeRequested.m_TStart -= deltaLeft;
-            varRangeRequested.m_TEnd -= deltaLeft;
+            varRangeRequested.m_TEnd -= deltaRight;
             break;
         }
         case AcquisitionZoomType::Unknown: {
@@ -551,15 +553,19 @@ AcquisitionZoomType VariableController::getZoomType(const SqpRange &range, const
     // t1.m_TStart <= t2.m_TStart && t2.m_TEnd <= t1.m_TEnd
     auto zoomType = AcquisitionZoomType::Unknown;
     if (range.m_TStart <= oldRange.m_TStart && oldRange.m_TEnd <= range.m_TEnd) {
+        qCCritical(LOG_VariableController()) << "zoomtype: ZoomOut";
         zoomType = AcquisitionZoomType::ZoomOut;
     }
     else if (range.m_TStart > oldRange.m_TStart && range.m_TEnd > oldRange.m_TEnd) {
+        qCCritical(LOG_VariableController()) << "zoomtype: PanRight";
         zoomType = AcquisitionZoomType::PanRight;
     }
     else if (range.m_TStart < oldRange.m_TStart && range.m_TEnd < oldRange.m_TEnd) {
+        qCCritical(LOG_VariableController()) << "zoomtype: PanLeft";
         zoomType = AcquisitionZoomType::PanLeft;
     }
     else if (range.m_TStart > oldRange.m_TStart && oldRange.m_TEnd > range.m_TEnd) {
+        qCCritical(LOG_VariableController()) << "zoomtype: ZoomIn";
         zoomType = AcquisitionZoomType::ZoomIn;
     }
     else {

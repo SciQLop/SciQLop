@@ -153,8 +153,9 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                     }
                     case AcquisitionZoomType::PanRight: {
                         qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: PanRight");
+                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
                         auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
-                        graphChildRange.m_TStart += deltaRight;
+                        graphChildRange.m_TStart += deltaLeft;
                         graphChildRange.m_TEnd += deltaRight;
                         qCDebug(LOG_VisualizationZoneWidget())
                             << tr("TORM: dt") << graphRange.m_TEnd - graphRange.m_TStart;
@@ -163,8 +164,9 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                     case AcquisitionZoomType::PanLeft: {
                         qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: PanLeft");
                         auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
                         graphChildRange.m_TStart -= deltaLeft;
-                        graphChildRange.m_TEnd -= deltaLeft;
+                        graphChildRange.m_TEnd -= deltaRight;
                         break;
                     }
                     case AcquisitionZoomType::Unknown: {
