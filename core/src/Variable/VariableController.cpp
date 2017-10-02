@@ -620,8 +620,8 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                     varProvider);
 
                 if (!varRequestIdCanceled.isNull()) {
-                    qCDebug(LOG_VariableAcquisitionWorker()) << tr("vsarRequestIdCanceled: ")
-                                                             << varRequestIdCanceled;
+                    qCInfo(LOG_VariableAcquisitionWorker()) << tr("varRequestIdCanceled: ")
+                                                            << varRequestIdCanceled;
                     cancelVariableRequest(varRequestIdCanceled);
                 }
             }
@@ -768,7 +768,7 @@ QUuid VariableController::VariableControllerPrivate::acceptVariableRequest(
 
         varRequestIdQueue.pop_front();
         if (varRequestIdQueue.empty()) {
-            qCDebug(LOG_VariableController())
+            qCCritical(LOG_VariableController())
                 << tr("TORM Erase REQUEST because it has been accepted") << varId;
             m_VarIdToVarRequestIdQueueMap.erase(varId);
         }
@@ -850,6 +850,10 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
             std::remove(varRequestIdQueue.begin(), varRequestIdQueue.end(), varRequestId),
             varRequestIdQueue.end());
         if (varRequestIdQueue.empty()) {
+
+            qCCritical(LOG_VariableController())
+                << tr("VariableControllerPrivate::cancelVariableRequest")
+                << varIdToVarRequestIdQueueMapIt->first;
             varIdToVarRequestIdQueueMapIt
                 = m_VarIdToVarRequestIdQueueMap.erase(varIdToVarRequestIdQueueMapIt);
         }

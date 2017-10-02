@@ -180,7 +180,7 @@ void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
     for (const auto &dateTime : qAsConst(times)) {
         if (m_VariableToEnableProvider[acqIdentifier]) {
             auto scalarSeries = this->retrieveData(acqIdentifier, dateTime, parameters.m_Data);
-            qCDebug(LOG_CosinusProvider()) << "TORM: CosinusProvider::dataProvided";
+            qCCritical(LOG_CosinusProvider()) << "TORM: CosinusProvider::dataProvided";
             emit dataProvided(acqIdentifier, scalarSeries, dateTime);
         }
     }
