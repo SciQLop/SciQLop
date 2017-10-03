@@ -119,14 +119,11 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, S
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 
-    auto varRange = variable->range();
-
     this->enableAcquisition(false);
     this->setGraphRange(range);
     this->enableAcquisition(true);
 
-    emit requestDataLoading(QVector<std::shared_ptr<Variable> >() << variable, range, varRange,
-                            false);
+    emit requestDataLoading(QVector<std::shared_ptr<Variable> >() << variable, range, false);
 
     emit variableAdded(variable);
 }
@@ -152,17 +149,6 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
     }
 
     // Updates graph
-    ui->widget->replot();
-}
-
-void VisualizationGraphWidget::setRange(std::shared_ptr<Variable> variable, const SqpRange &range)
-{
-    // Note: in case of different axes that depends on variable, we could start with a code like
-    // that:
-    //    auto componentsIt = impl->m_VariableToPlotMultiMap.equal_range(variable);
-    //    for (auto it = componentsIt.first; it != componentsIt.second;) {
-    //    }
-    ui->widget->xAxis->setRange(range.m_TStart, range.m_TEnd);
     ui->widget->replot();
 }
 
@@ -282,7 +268,7 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
              it != end; it = impl->m_VariableToPlotMultiMap.upper_bound(it->first)) {
             variableUnderGraphVector.push_back(it->first);
         }
-        emit requestDataLoading(std::move(variableUnderGraphVector), graphRange, oldGraphRange,
+        emit requestDataLoading(std::move(variableUnderGraphVector), graphRange,
                                 !impl->m_IsCalibration);
 
         if (!impl->m_IsCalibration) {

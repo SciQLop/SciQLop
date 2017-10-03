@@ -138,7 +138,6 @@ void Variable::setCacheRange(const SqpRange &cacheRange) noexcept
     impl->lockWrite();
     if (cacheRange != impl->m_CacheRange) {
         impl->m_CacheRange = cacheRange;
-        impl->purgeDataSeries();
     }
     impl->unlock();
 }
@@ -173,6 +172,7 @@ void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
     impl->purgeDataSeries();
     impl->unlock();
 }
+
 
 std::shared_ptr<IDataSeries> Variable::dataSeries() const noexcept
 {
@@ -285,7 +285,7 @@ QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &range) const
 
     if (impl->m_CacheRange != INVALID_RANGE) {
 
-        if (this->intersect(range)) {
+        if (this->cacheIntersect(range)) {
             if (range.m_TStart <= impl->m_CacheRange.m_TStart
                 && range.m_TEnd >= impl->m_CacheRange.m_TStart
                 && range.m_TEnd < impl->m_CacheRange.m_TEnd) {
@@ -303,6 +303,79 @@ QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &range) const
             else if (range.m_TStart <= impl->m_CacheRange.m_TStart
                      && range.m_TEnd >= impl->m_CacheRange.m_TEnd) {
                 inCache << impl->m_CacheRange;
+            }
+            else {
+                qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
+                                           << QThread::currentThread();
+            }
+        }
+    }
+
+    return inCache;
+}
+
+
+QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &oldRange,
+                                                       const SqpRange &nextRange)
+{
+
+    // This code assume that cach in contigue. Can return 0, 1 or 2 SqpRange
+    auto notInCache = QVector<SqpRange>{};
+    if (oldRange != INVALID_RANGE) {
+
+        if (!oldRange.contains(nextRange)) {
+            if (nextRange.m_TEnd <= oldRange.m_TStart || nextRange.m_TStart >= oldRange.m_TEnd) {
+                notInCache << nextRange;
+            }
+            else if (nextRange.m_TStart < oldRange.m_TStart
+                     && nextRange.m_TEnd <= oldRange.m_TEnd) {
+                notInCache << SqpRange{nextRange.m_TStart, oldRange.m_TStart};
+            }
+            else if (nextRange.m_TStart < oldRange.m_TStart && nextRange.m_TEnd > oldRange.m_TEnd) {
+                notInCache << SqpRange{nextRange.m_TStart, oldRange.m_TStart}
+                           << SqpRange{oldRange.m_TEnd, nextRange.m_TEnd};
+            }
+            else if (nextRange.m_TStart < oldRange.m_TEnd) {
+                notInCache << SqpRange{oldRange.m_TEnd, nextRange.m_TEnd};
+            }
+            else {
+                qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
+                                           << QThread::currentThread();
+            }
+        }
+    }
+    else {
+        notInCache << nextRange;
+    }
+
+    return notInCache;
+}
+
+QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &oldRange,
+                                                    const SqpRange &nextRange)
+{
+    // This code assume that cach is contigue. Can return 0 or 1 SqpRange
+
+    auto inCache = QVector<SqpRange>{};
+
+    if (oldRange != INVALID_RANGE) {
+
+        if (oldRange.intersect(nextRange)) {
+            if (nextRange.m_TStart <= oldRange.m_TStart && nextRange.m_TEnd >= oldRange.m_TStart
+                && nextRange.m_TEnd < oldRange.m_TEnd) {
+                inCache << SqpRange{oldRange.m_TStart, nextRange.m_TEnd};
+            }
+
+            else if (nextRange.m_TStart >= oldRange.m_TStart
+                     && nextRange.m_TEnd <= oldRange.m_TEnd) {
+                inCache << nextRange;
+            }
+            else if (nextRange.m_TStart > oldRange.m_TStart && nextRange.m_TEnd > oldRange.m_TEnd) {
+                inCache << SqpRange{nextRange.m_TStart, oldRange.m_TEnd};
+            }
+            else if (nextRange.m_TStart <= oldRange.m_TStart
+                     && nextRange.m_TEnd >= oldRange.m_TEnd) {
+                inCache << oldRange;
             }
             else {
                 qCCritical(LOG_Variable()) << tr("Detection of unknown case.")

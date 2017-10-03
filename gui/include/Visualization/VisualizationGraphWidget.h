@@ -39,7 +39,6 @@ public:
     /// Removes a variable from the graph
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
 
-    void setRange(std::shared_ptr<Variable> variable, const SqpRange &range);
     void setYRange(const SqpRange &range);
     SqpRange graphRange() const noexcept;
     void setGraphRange(const SqpRange &range);
@@ -54,7 +53,7 @@ public:
 signals:
     void synchronize(const SqpRange &range, const SqpRange &oldRange);
     void requestDataLoading(QVector<std::shared_ptr<Variable> > variable, const SqpRange &range,
-                            const SqpRange &oldRange, bool synchronise);
+                            bool synchronise);
 
     /// Signal emitted when the variable is about to be removed from the graph
     void variableAboutToBeRemoved(std::shared_ptr<Variable> var);

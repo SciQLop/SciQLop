@@ -123,8 +123,7 @@ void TestAmdaAcquisition::testAcquisition()
 
         auto nextSqpR
             = SqpRange{DateUtils::secondsSinceEpoch(tStart), DateUtils::secondsSinceEpoch(tEnd)};
-        vc.onRequestDataLoading(QVector<std::shared_ptr<Variable> >{} << var, nextSqpR,
-                                var->range(), true);
+        vc.onRequestDataLoading(QVector<std::shared_ptr<Variable> >{} << var, nextSqpR, true);
 
         QEventLoop loop;
         QTimer::singleShot(timeToWaitMs, &loop, &QEventLoop::quit);

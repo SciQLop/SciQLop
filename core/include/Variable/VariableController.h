@@ -83,7 +83,7 @@ signals:
 public slots:
     /// Request the data loading of the variable whithin range
     void onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables, const SqpRange &range,
-                              const SqpRange &oldRange, bool synchronise);
+                              bool synchronise);
     /**
      * Creates a new variable and adds it to the model
      * @param name the name of the new variable

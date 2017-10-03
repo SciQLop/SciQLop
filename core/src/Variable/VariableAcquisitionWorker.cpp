@@ -32,6 +32,10 @@ struct VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate {
     /// Remove the current request and execute the next one if exist
     void updateToNextRequest(QUuid vIdentifier);
 
+    /// Remove and/or abort all AcqRequest in link with varRequestId
+    void cancelVarRequest(QUuid varRequestId);
+    void removeAcqRequest(QUuid acqRequestId);
+
     QMutex m_WorkingMutex;
     QReadWriteLock m_Lock;
 
@@ -67,7 +71,8 @@ QUuid VariableAcquisitionWorker::pushVariableRequest(QUuid varRequestId, QUuid v
 
     // Request creation
     auto acqRequest = AcquisitionRequest{};
-    qCInfo(LOG_VariableAcquisitionWorker()) << tr("TpushVariableRequest ") << vIdentifier;
+    qCDebug(LOG_VariableAcquisitionWorker()) << tr("PushVariableRequest ") << vIdentifier
+                                             << varRequestId;
     acqRequest.m_VarRequestId = varRequestId;
     acqRequest.m_vIdentifier = vIdentifier;
     acqRequest.m_DataProviderParameters = parameters;
@@ -85,15 +90,19 @@ QUuid VariableAcquisitionWorker::pushVariableRequest(QUuid varRequestId, QUuid v
     auto it = impl->m_VIdentifierToCurrrentAcqIdNextIdPairMap.find(vIdentifier);
     if (it != impl->m_VIdentifierToCurrrentAcqIdNextIdPairMap.cend()) {
         // A current request already exists, we can replace the next one
-        auto nextAcqId = it->second.second;
-        auto acqIdentifierToAcqRequestMapIt = impl->m_AcqIdentifierToAcqRequestMap.find(nextAcqId);
+        auto oldAcqId = it->second.second;
+        auto acqIdentifierToAcqRequestMapIt = impl->m_AcqIdentifierToAcqRequestMap.find(oldAcqId);
         if (acqIdentifierToAcqRequestMapIt != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
-            auto request = acqIdentifierToAcqRequestMapIt->second;
-            varRequestIdCanceled = request.m_VarRequestId;
+            auto oldAcqRequest = acqIdentifierToAcqRequestMapIt->second;
+            varRequestIdCanceled = oldAcqRequest.m_VarRequestId;
         }
 
         it->second.second = acqRequest.m_AcqIdentifier;
         impl->unlock();
+
+        // remove old acqIdentifier from the worker
+        impl->cancelVarRequest(varRequestIdCanceled);
+        //        impl->m_AcqIdentifierToAcqRequestMap.erase(oldAcqId);
     }
     else {
         // First request for the variable, it must be stored and executed
@@ -122,10 +131,7 @@ void VariableAcquisitionWorker::abortProgressRequested(QUuid vIdentifier)
             impl->unlock();
 
             // Remove the current request from the worker
-
-            impl->lockWrite();
             impl->updateToNextRequest(vIdentifier);
-            impl->unlock();
 
             // notify the request aborting to the provider
             request.m_Provider->requestDataAborting(currentAcqId);
@@ -221,22 +227,28 @@ void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
         // if the counter is 0, we can return data then run the next request if it exists and
         // removed the finished request
         if (acqRequest.m_Size == acqRequest.m_Progression) {
+            auto varId = acqRequest.m_vIdentifier;
+            auto rangeRequested = acqRequest.m_RangeRequested;
+            auto cacheRangeRequested = acqRequest.m_CacheRangeRequested;
             // Return the data
             aIdToADPVit = impl->m_AcqIdentifierToAcqDataPacketVectorMap.find(acqIdentifier);
             if (aIdToADPVit != impl->m_AcqIdentifierToAcqDataPacketVectorMap.cend()) {
-                emit dataProvided(acqRequest.m_vIdentifier, acqRequest.m_RangeRequested,
-                                  acqRequest.m_CacheRangeRequested, aIdToADPVit->second);
+                emit dataProvided(varId, rangeRequested, cacheRangeRequested, aIdToADPVit->second);
             }
+            impl->unlock();
 
             // Update to the next request
             impl->updateToNextRequest(acqRequest.m_vIdentifier);
         }
+        else {
+            impl->unlock();
+        }
     }
     else {
+        impl->unlock();
         qCWarning(LOG_VariableAcquisitionWorker())
             << tr("Impossible to retrieve AcquisitionRequest for the incoming data.");
     }
-    impl->unlock();
 }
 
 void VariableAcquisitionWorker::onExecuteRequest(QUuid acqIdentifier)
@@ -296,27 +308,109 @@ void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::removeVariable
 void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::updateToNextRequest(
     QUuid vIdentifier)
 {
+    lockRead();
     auto it = m_VIdentifierToCurrrentAcqIdNextIdPairMap.find(vIdentifier);
     if (it != m_VIdentifierToCurrrentAcqIdNextIdPairMap.cend()) {
         if (it->second.second.isNull()) {
+            unlock();
             // There is no next request, we can remove the variable request
             removeVariableRequest(vIdentifier);
         }
         else {
             auto acqIdentifierToRemove = it->second.first;
             // Move the next request to the current request
-            it->second.first = it->second.second;
+            auto nextRequestId = it->second.second;
+            it->second.first = nextRequestId;
             it->second.second = QUuid();
+            unlock();
             // Remove AcquisitionRequest and results;
+            lockWrite();
             m_AcqIdentifierToAcqRequestMap.erase(acqIdentifierToRemove);
             m_AcqIdentifierToAcqDataPacketVectorMap.erase(acqIdentifierToRemove);
+            unlock();
             // Execute the current request
             QMetaObject::invokeMethod(q, "onExecuteRequest", Qt::QueuedConnection,
-                                      Q_ARG(QUuid, it->second.first));
+                                      Q_ARG(QUuid, nextRequestId));
         }
     }
     else {
+        unlock();
         qCCritical(LOG_VariableAcquisitionWorker())
             << tr("Impossible to execute the acquisition on an unfound variable ");
     }
+}
+
+void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::cancelVarRequest(
+    QUuid varRequestId)
+{
+    qCDebug(LOG_VariableAcquisitionWorker())
+        << "VariableAcquisitionWorkerPrivate::cancelVarRequest 0";
+    lockRead();
+    // get all AcqIdentifier in link with varRequestId
+    QVector<QUuid> acqIdsToRm;
+    auto cend = m_AcqIdentifierToAcqRequestMap.cend();
+    for (auto it = m_AcqIdentifierToAcqRequestMap.cbegin(); it != cend; ++it) {
+        if (it->second.m_VarRequestId == varRequestId) {
+            acqIdsToRm << it->first;
+        }
+    }
+    unlock();
+    // run aborting or removing of acqIdsToRm
+
+    for (auto acqId : acqIdsToRm) {
+        removeAcqRequest(acqId);
+    }
+    qCDebug(LOG_VariableAcquisitionWorker())
+        << "VariableAcquisitionWorkerPrivate::cancelVarRequest end";
+}
+
+void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::removeAcqRequest(
+    QUuid acqRequestId)
+{
+    qCDebug(LOG_VariableAcquisitionWorker())
+        << "VariableAcquisitionWorkerPrivate::removeAcqRequest";
+    QUuid vIdentifier;
+    std::shared_ptr<IDataProvider> provider;
+    lockRead();
+    auto acqIt = m_AcqIdentifierToAcqRequestMap.find(acqRequestId);
+    if (acqIt != m_AcqIdentifierToAcqRequestMap.cend()) {
+        vIdentifier = acqIt->second.m_vIdentifier;
+        provider = acqIt->second.m_Provider;
+
+        auto it = m_VIdentifierToCurrrentAcqIdNextIdPairMap.find(vIdentifier);
+        if (it != m_VIdentifierToCurrrentAcqIdNextIdPairMap.cend()) {
+            if (it->second.first == acqRequestId) {
+                // acqRequest is currently running -> let's aborting it
+                unlock();
+
+                // Remove the current request from the worker
+                updateToNextRequest(vIdentifier);
+
+                // notify the request aborting to the provider
+                provider->requestDataAborting(acqRequestId);
+            }
+            else if (it->second.second == acqRequestId) {
+                it->second.second = QUuid();
+                unlock();
+            }
+            else {
+                unlock();
+            }
+        }
+        else {
+            unlock();
+        }
+    }
+    else {
+        unlock();
+    }
+
+    lockWrite();
+
+    m_AcqIdentifierToAcqDataPacketVectorMap.erase(acqRequestId);
+    m_AcqIdentifierToAcqRequestMap.erase(acqRequestId);
+
+    unlock();
+    qCDebug(LOG_VariableAcquisitionWorker())
+        << "VariableAcquisitionWorkerPrivate::removeAcqRequest END";
 }

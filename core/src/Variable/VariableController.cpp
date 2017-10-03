@@ -48,15 +48,17 @@ SqpRange computeSynchroRangeRequested(const SqpRange &varRange, const SqpRange &
             break;
         }
         case AcquisitionZoomType::PanRight: {
+            auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
             auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
-            varRangeRequested.m_TStart += deltaRight;
+            varRangeRequested.m_TStart += deltaLeft;
             varRangeRequested.m_TEnd += deltaRight;
             break;
         }
         case AcquisitionZoomType::PanLeft: {
             auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+            auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
             varRangeRequested.m_TStart -= deltaLeft;
-            varRangeRequested.m_TEnd -= deltaLeft;
+            varRangeRequested.m_TEnd -= deltaRight;
             break;
         }
         case AcquisitionZoomType::Unknown: {
@@ -103,9 +105,6 @@ struct VariableController::VariableControllerPrivate {
     void processRequest(std::shared_ptr<Variable> var, const SqpRange &rangeRequested,
                         QUuid varRequestId);
 
-    QVector<SqpRange> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
-                                                    const SqpRange &dateTime);
-
     std::shared_ptr<Variable> findVariable(QUuid vIdentifier);
     std::shared_ptr<IDataSeries>
     retrieveDataSeries(const QVector<AcquisitionDataPacket> acqDataPacketVector);
@@ -116,6 +115,8 @@ struct VariableController::VariableControllerPrivate {
     QUuid acceptVariableRequest(QUuid varId, std::shared_ptr<IDataSeries> dataSeries);
     void updateVariableRequest(QUuid varRequestId);
     void cancelVariableRequest(QUuid varRequestId);
+
+    SqpRange getLastRequestedRange(QUuid varId);
 
     QMutex m_WorkingMutex;
     /// Variable model. The VariableController has the ownership
@@ -295,22 +296,24 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
 
 void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
 {
-    // TODO check synchronisation and Rescale
+    // NOTE: Even if acquisition request is aborting, the graphe range will be changed
     qCDebug(LOG_VariableController()) << "VariableController::onDateTimeOnSelection"
                                       << QThread::currentThread()->objectName();
     auto selectedRows = impl->m_VariableSelectionModel->selectedRows();
-    auto varRequestId = QUuid::createUuid();
+    auto variables = QVector<std::shared_ptr<Variable> >{};
 
     for (const auto &selectedRow : qAsConst(selectedRows)) {
         if (auto selectedVariable = impl->m_VariableModel->variable(selectedRow.row())) {
-            selectedVariable->setRange(dateTime);
-            impl->processRequest(selectedVariable, dateTime, varRequestId);
+            variables << selectedVariable;
 
             // notify that rescale operation has to be done
             emit rangeChanged(selectedVariable, dateTime);
         }
     }
-    impl->updateVariableRequest(varRequestId);
+
+    if (!variables.isEmpty()) {
+        this->onRequestDataLoading(variables, dateTime, true);
+    }
 }
 
 void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &rangeRequested,
@@ -455,8 +458,7 @@ void VariableController::desynchronize(std::shared_ptr<Variable> variable,
 }
 
 void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables,
-                                              const SqpRange &range, const SqpRange &oldRange,
-                                              bool synchronise)
+                                              const SqpRange &range, bool synchronise)
 {
     // NOTE: oldRange isn't really necessary since oldRange == variable->range().
 
@@ -549,19 +551,23 @@ AcquisitionZoomType VariableController::getZoomType(const SqpRange &range, const
     // t1.m_TStart <= t2.m_TStart && t2.m_TEnd <= t1.m_TEnd
     auto zoomType = AcquisitionZoomType::Unknown;
     if (range.m_TStart <= oldRange.m_TStart && oldRange.m_TEnd <= range.m_TEnd) {
+        qCDebug(LOG_VariableController()) << "zoomtype: ZoomOut";
         zoomType = AcquisitionZoomType::ZoomOut;
     }
     else if (range.m_TStart > oldRange.m_TStart && range.m_TEnd > oldRange.m_TEnd) {
+        qCDebug(LOG_VariableController()) << "zoomtype: PanRight";
         zoomType = AcquisitionZoomType::PanRight;
     }
     else if (range.m_TStart < oldRange.m_TStart && range.m_TEnd < oldRange.m_TEnd) {
+        qCDebug(LOG_VariableController()) << "zoomtype: PanLeft";
         zoomType = AcquisitionZoomType::PanLeft;
     }
     else if (range.m_TStart > oldRange.m_TStart && oldRange.m_TEnd > range.m_TEnd) {
+        qCDebug(LOG_VariableController()) << "zoomtype: ZoomIn";
         zoomType = AcquisitionZoomType::ZoomIn;
     }
     else {
-        qCCritical(LOG_VariableController()) << "getZoomType: Unknown type detected";
+        qCDebug(LOG_VariableController()) << "getZoomType: Unknown type detected";
     }
     return zoomType;
 }
@@ -570,58 +576,66 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                                                                    const SqpRange &rangeRequested,
                                                                    QUuid varRequestId)
 {
-
-    // TODO: protect at
     auto varRequest = VariableRequest{};
-    auto varId = m_VariableToIdentifierMap.at(var);
 
-    auto varStrategyRangesRequested
-        = m_VariableCacheStrategy->computeRange(var->range(), rangeRequested);
+    auto it = m_VariableToIdentifierMap.find(var);
+    if (it != m_VariableToIdentifierMap.cend()) {
 
-    auto notInCacheRangeList = QVector<SqpRange>{varStrategyRangesRequested.second};
-    auto inCacheRangeList = QVector<SqpRange>{};
-    if (m_VarIdToVarRequestIdQueueMap.find(varId) == m_VarIdToVarRequestIdQueueMap.cend()) {
-        notInCacheRangeList = var->provideNotInCacheRangeList(varStrategyRangesRequested.second);
-        inCacheRangeList = var->provideInCacheRangeList(varStrategyRangesRequested.second);
-    }
+        auto varId = it->second;
 
-    if (!notInCacheRangeList.empty()) {
-        varRequest.m_RangeRequested = varStrategyRangesRequested.first;
-        varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
+        auto oldRange = getLastRequestedRange(varId);
 
-        // store VarRequest
-        storeVariableRequest(varId, varRequestId, varRequest);
+        // check for update oldRange to the last request range.
+        if (oldRange == INVALID_RANGE) {
+            oldRange = var->range();
+        }
 
-        auto varProvider = m_VariableToProviderMap.at(var);
-        if (varProvider != nullptr) {
-            auto varRequestIdCanceled = m_VariableAcquisitionWorker->pushVariableRequest(
-                varRequestId, varId, varStrategyRangesRequested.first,
-                varStrategyRangesRequested.second,
-                DataProviderParameters{std::move(notInCacheRangeList), var->metadata()},
-                varProvider);
+        auto varStrategyRangesRequested
+            = m_VariableCacheStrategy->computeRange(oldRange, rangeRequested);
 
-            if (!varRequestIdCanceled.isNull()) {
-                qCDebug(LOG_VariableAcquisitionWorker()) << tr("vsarRequestIdCanceled: ")
-                                                         << varRequestIdCanceled;
-                cancelVariableRequest(varRequestIdCanceled);
+        auto notInCacheRangeList
+            = Variable::provideNotInCacheRangeList(oldRange, varStrategyRangesRequested.second);
+        auto inCacheRangeList
+            = Variable::provideInCacheRangeList(oldRange, varStrategyRangesRequested.second);
+
+        if (!notInCacheRangeList.empty()) {
+            varRequest.m_RangeRequested = varStrategyRangesRequested.first;
+            varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
+
+            // store VarRequest
+            storeVariableRequest(varId, varRequestId, varRequest);
+
+            auto varProvider = m_VariableToProviderMap.at(var);
+            if (varProvider != nullptr) {
+                auto varRequestIdCanceled = m_VariableAcquisitionWorker->pushVariableRequest(
+                    varRequestId, varId, varStrategyRangesRequested.first,
+                    varStrategyRangesRequested.second,
+                    DataProviderParameters{std::move(notInCacheRangeList), var->metadata()},
+                    varProvider);
+
+                if (!varRequestIdCanceled.isNull()) {
+                    qCInfo(LOG_VariableAcquisitionWorker()) << tr("varRequestIdCanceled: ")
+                                                            << varRequestIdCanceled;
+                    cancelVariableRequest(varRequestIdCanceled);
+                }
+            }
+            else {
+                qCCritical(LOG_VariableController())
+                    << "Impossible to provide data with a null provider";
+            }
+
+            if (!inCacheRangeList.empty()) {
+                emit q->updateVarDisplaying(var, inCacheRangeList.first());
             }
         }
         else {
-            qCCritical(LOG_VariableController())
-                << "Impossible to provide data with a null provider";
+            varRequest.m_RangeRequested = varStrategyRangesRequested.first;
+            varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
+            // store VarRequest
+            storeVariableRequest(varId, varRequestId, varRequest);
+            acceptVariableRequest(
+                varId, var->dataSeries()->subDataSeries(varStrategyRangesRequested.second));
         }
-
-        if (!inCacheRangeList.empty()) {
-            emit q->updateVarDisplaying(var, inCacheRangeList.first());
-        }
-    }
-    else {
-        varRequest.m_RangeRequested = varStrategyRangesRequested.first;
-        varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
-        // store VarRequest
-        storeVariableRequest(varId, varRequestId, varRequest);
-        acceptVariableRequest(varId,
-                              var->dataSeries()->subDataSeries(varStrategyRangesRequested.second));
     }
 }
 
@@ -784,26 +798,22 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
                     var->setRange(varRequest.m_RangeRequested);
                     var->setCacheRange(varRequest.m_CacheRangeRequested);
                     qCDebug(LOG_VariableController()) << tr("1: onDataProvided")
-                                                      << varRequest.m_RangeRequested;
-                    qCDebug(LOG_VariableController()) << tr("2: onDataProvided")
+                                                      << varRequest.m_RangeRequested
                                                       << varRequest.m_CacheRangeRequested;
+                    qCDebug(LOG_VariableController()) << tr("2: onDataProvided var points before")
+                                                      << var->nbPoints()
+                                                      << varRequest.m_DataSeries->nbPoints();
                     var->mergeDataSeries(varRequest.m_DataSeries);
-                    qCDebug(LOG_VariableController()) << tr("3: onDataProvided");
+                    qCDebug(LOG_VariableController()) << tr("3: onDataProvided var points after")
+                                                      << var->nbPoints();
 
-                    /// @todo MPL: confirm
-                    // Variable update is notified only if there is no pending request for it
-                    //                    if
-                    //                    (m_VarIdToVarRequestIdQueueMap.count(varIdToVarRequestMapIt->first)
-                    //                    == 0) {
                     emit var->updated();
-                    //                    }
                 }
                 else {
                     qCCritical(LOG_VariableController())
                         << tr("Impossible to update data to a null variable");
                 }
             }
-
             // cleaning varRequestId
             qCDebug(LOG_VariableController()) << tr("0: erase REQUEST in  MAP ?")
                                               << m_VarRequestIdToVarIdVarRequestMap.size();
@@ -832,9 +842,48 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
         if (varRequestIdQueue.empty()) {
             varIdToVarRequestIdQueueMapIt
                 = m_VarIdToVarRequestIdQueueMap.erase(varIdToVarRequestIdQueueMapIt);
+
+            // Recompute if there is any next request based on the removed request.
         }
         else {
             ++varIdToVarRequestIdQueueMapIt;
         }
     }
+}
+
+SqpRange VariableController::VariableControllerPrivate::getLastRequestedRange(QUuid varId)
+{
+    auto lastRangeRequested = SqpRange{INVALID_RANGE};
+    auto varIdToVarRequestIdQueueMapIt = m_VarIdToVarRequestIdQueueMap.find(varId);
+    if (varIdToVarRequestIdQueueMapIt != m_VarIdToVarRequestIdQueueMap.cend()) {
+        auto &varRequestIdQueue = varIdToVarRequestIdQueueMapIt->second;
+        auto varRequestId = varRequestIdQueue.back();
+        auto varRequestIdToVarIdVarRequestMapIt
+            = m_VarRequestIdToVarIdVarRequestMap.find(varRequestId);
+        if (varRequestIdToVarIdVarRequestMapIt != m_VarRequestIdToVarIdVarRequestMap.cend()) {
+            auto &varIdToVarRequestMap = varRequestIdToVarIdVarRequestMapIt->second;
+            auto varIdToVarRequestMapIt = varIdToVarRequestMap.find(varId);
+            if (varIdToVarRequestMapIt != varIdToVarRequestMap.cend()) {
+                auto &varRequest = varIdToVarRequestMapIt->second;
+                lastRangeRequested = varRequest.m_RangeRequested;
+            }
+            else {
+                qCDebug(LOG_VariableController())
+                    << tr("Impossible to getLastRequestedRange of a unknown variable id attached "
+                          "to a variableRequestId")
+                    << varRequestId << varId;
+            }
+        }
+        else {
+            qCCritical(LOG_VariableController())
+                << tr("Impossible to getLastRequestedRange of a unknown variableRequestId")
+                << varRequestId;
+        }
+    }
+    else {
+        qDebug(LOG_VariableController())
+            << tr("Impossible to getLastRequestedRange of a unknown variable id") << varId;
+    }
+
+    return lastRangeRequested;
 }

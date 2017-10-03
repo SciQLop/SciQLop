@@ -24,9 +24,6 @@ const auto TESTS_RESOURCES_PATH = QFileInfo{
 /// Format of dates in data files
 const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
 
-/// Delay after each operation on the variable before validating it (in ms)
-const auto OPERATION_DELAY = 250;
-
 /**
  * Verifies that the data in the candidate series are identical to the data in the reference series
  * in a specific range
@@ -45,6 +42,9 @@ bool checkDataSeries(std::shared_ptr<IDataSeries> candidate, const SqpRange &ran
 
     auto referenceIt = reference->xAxisRange(range.m_TStart, range.m_TEnd);
 
+    qInfo() << "candidateSize" << std::distance(candidate->cbegin(), candidate->cend());
+    qInfo() << "refSize" << std::distance(referenceIt.first, referenceIt.second);
+
     return std::equal(candidate->cbegin(), candidate->cend(), referenceIt.first, referenceIt.second,
                       [](const auto &it1, const auto &it2) {
                           // - milliseconds precision for time
@@ -52,29 +52,6 @@ bool checkDataSeries(std::shared_ptr<IDataSeries> candidate, const SqpRange &ran
                           return std::abs(it1.x() - it2.x()) < 1e-3
                                  && std::abs(it1.value() - it2.value()) < 1e-6;
                       });
-}
-
-/// Generates the data series from the reading of a data stream
-std::shared_ptr<IDataSeries> readDataStream(QTextStream &stream)
-{
-    std::vector<double> xAxisData, valuesData;
-
-    QString line{};
-    while (stream.readLineInto(&line)) {
-        // Separates date (x-axis data) to value data
-        auto splitLine = line.split('\t');
-        if (splitLine.size() == 2) {
-            // Converts datetime to double
-            auto dateTime = QDateTime::fromString(splitLine[0], DATETIME_FORMAT);
-            dateTime.setTimeSpec(Qt::UTC);
-            xAxisData.push_back(DateUtils::secondsSinceEpoch(dateTime));
-
-            valuesData.push_back(splitLine[1].toDouble());
-        }
-    }
-
-    return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
-                                          Unit{{}, true}, Unit{});
 }
 
 } // namespace
@@ -99,8 +76,9 @@ void TestCosinusAcquisition::testAcquisition_data()
     // Test structure //
     // ////////////// //
 
-    QTest::addColumn<QString>("dataFilename");  // File containing expected data of acquisitions
-    QTest::addColumn<SqpRange>("initialRange"); // First acquisition
+    QTest::addColumn<SqpRange>("referenceRange");           // Range for generating reference series
+    QTest::addColumn<SqpRange>("initialRange");             // First acquisition
+    QTest::addColumn<int>("operationDelay");                // Acquisitions to make
     QTest::addColumn<std::vector<SqpRange> >("operations"); // Acquisitions to make
 
     // ////////// //
@@ -113,8 +91,8 @@ void TestCosinusAcquisition::testAcquisition_data()
     };
 
     QTest::newRow("cosinus")
-        << "Cosinus_100Hz_20170101_1200_20170101_1300.txt"
-        << SqpRange{dateTime(2017, 1, 1, 12, 30, 0), dateTime(2017, 1, 1, 12, 35, 1)}
+        << SqpRange{dateTime(2017, 1, 1, 12, 0, 0), dateTime(2017, 1, 1, 13, 0, 0)}
+        << SqpRange{dateTime(2017, 1, 1, 12, 30, 0), dateTime(2017, 1, 1, 12, 35, 1)} << 250
         << std::vector<SqpRange>{
                // Pan (jump) left
                SqpRange{dateTime(2017, 1, 1, 12, 45, 0), dateTime(2017, 1, 1, 12, 50, 0)},
@@ -130,55 +108,76 @@ void TestCosinusAcquisition::testAcquisition_data()
                SqpRange{dateTime(2017, 1, 1, 12, 17, 30), dateTime(2017, 1, 1, 12, 19, 30)},
                // Zoom out
                SqpRange{dateTime(2017, 1, 1, 12, 12, 30), dateTime(2017, 1, 1, 12, 24, 30)}};
+
+    QTest::newRow("cosinus_big")
+        << SqpRange{dateTime(2017, 1, 1, 1, 0, 0), dateTime(2017, 1, 5, 13, 0, 0)}
+        << SqpRange{dateTime(2017, 1, 2, 6, 30, 0), dateTime(2017, 1, 2, 18, 30, 0)} << 5000
+        << std::vector<SqpRange>{
+               // Pan (jump) left
+               SqpRange{dateTime(2017, 1, 1, 13, 30, 0), dateTime(2017, 1, 1, 18, 30, 0)},
+               // Pan (jump) right
+               SqpRange{dateTime(2017, 1, 3, 4, 30, 0), dateTime(2017, 1, 3, 10, 30, 0)},
+               // Pan (overlay) right
+               SqpRange{dateTime(2017, 1, 3, 8, 30, 0), dateTime(2017, 1, 3, 12, 30, 0)},
+               // Pan (overlay) left
+               SqpRange{dateTime(2017, 1, 2, 8, 30, 0), dateTime(2017, 1, 3, 10, 30, 0)},
+               // Pan (overlay) left
+               SqpRange{dateTime(2017, 1, 1, 12, 30, 0), dateTime(2017, 1, 3, 5, 30, 0)},
+               // Zoom in
+               SqpRange{dateTime(2017, 1, 2, 2, 30, 0), dateTime(2017, 1, 2, 8, 30, 0)},
+               // Zoom out
+               SqpRange{dateTime(2017, 1, 1, 14, 30, 0), dateTime(2017, 1, 3, 12, 30, 0)}};
 }
 
 void TestCosinusAcquisition::testAcquisition()
 {
-    // Retrieves data file
-    QFETCH(QString, dataFilename);
+    // Retrieves reference range
+    QFETCH(SqpRange, referenceRange);
+    CosinusProvider referenceProvider{};
+    auto dataSeries = referenceProvider.provideDataSeries(
+        referenceRange, {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 100.}});
 
-    auto dataFilePath = QFileInfo{TESTS_RESOURCES_PATH, dataFilename}.absoluteFilePath();
-    QFile dataFile{dataFilePath};
+    auto end = dataSeries->cend() - 1;
+    qInfo() << dataSeries->nbPoints() << dataSeries->cbegin()->x() << end->x();
 
-    if (dataFile.open(QFile::ReadOnly)) {
-        // Generates data series to compare with
-        QTextStream dataStream{&dataFile};
-        auto dataSeries = readDataStream(dataStream);
+    /// Lambda used to validate a variable at each step
+    auto validateVariable
+        = [dataSeries](std::shared_ptr<Variable> variable, const SqpRange &range) {
+              // Checks that the variable's range has changed
+              QCOMPARE(variable->range(), range);
 
-        /// Lambda used to validate a variable at each step
-        auto validateVariable = [dataSeries](std::shared_ptr<Variable> variable,
-                                             const SqpRange &range) {
-            // Checks that the variable's range has changed
-            QCOMPARE(variable->range(), range);
+              // Checks the variable's data series
+              QVERIFY(checkDataSeries(variable->dataSeries(), variable->cacheRange(), dataSeries));
+          };
 
-            // Checks the variable's data series
-            QVERIFY(checkDataSeries(variable->dataSeries(), variable->cacheRange(), dataSeries));
-        };
+    // Creates variable
+    QFETCH(SqpRange, initialRange);
+    sqpApp->timeController().onTimeToUpdate(initialRange);
+    auto provider = std::make_shared<CosinusProvider>();
+    auto variable = sqpApp->variableController().createVariable(
+        "MMS", {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 100.}}, provider);
 
-        // Creates variable
-        QFETCH(SqpRange, initialRange);
-        sqpApp->timeController().onTimeToUpdate(initialRange);
-        auto provider = std::make_shared<CosinusProvider>();
-        auto variable = sqpApp->variableController().createVariable(
-            "MMS", {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 100.}}, provider);
+    QFETCH(int, operationDelay);
+    QTest::qWait(operationDelay);
+    validateVariable(variable, initialRange);
 
-        QTest::qWait(OPERATION_DELAY);
-        validateVariable(variable, initialRange);
+    // Makes operations on the variable
+    QFETCH(std::vector<SqpRange>, operations);
+    for (const auto &operation : operations) {
+        // Asks request on the variable and waits during its execution
+        sqpApp->variableController().onRequestDataLoading({variable}, operation, true);
 
-        // Makes operations on the variable
-        QFETCH(std::vector<SqpRange>, operations);
-        for (const auto &operation : operations) {
-            // Asks request on the variable and waits during its execution
-            sqpApp->variableController().onRequestDataLoading({variable}, operation,
-                                                              variable->range(), true);
-
-            QTest::qWait(OPERATION_DELAY);
-            validateVariable(variable, operation);
-        }
+        QTest::qWait(operationDelay);
+        validateVariable(variable, operation);
     }
-    else {
-        QFAIL("Can't read input data file");
+
+
+    for (const auto &operation : operations) {
+        // Asks request on the variable and waits during its execution
+        sqpApp->variableController().onRequestDataLoading({variable}, operation, true);
     }
+    QTest::qWait(operationDelay);
+    validateVariable(variable, operations.back());
 }
 
 int main(int argc, char *argv[])
