@@ -554,23 +554,23 @@ AcquisitionZoomType VariableController::getZoomType(const SqpRange &range, const
     // t1.m_TStart <= t2.m_TStart && t2.m_TEnd <= t1.m_TEnd
     auto zoomType = AcquisitionZoomType::Unknown;
     if (range.m_TStart <= oldRange.m_TStart && oldRange.m_TEnd <= range.m_TEnd) {
-        qCCritical(LOG_VariableController()) << "zoomtype: ZoomOut";
+        qCDebug(LOG_VariableController()) << "zoomtype: ZoomOut";
         zoomType = AcquisitionZoomType::ZoomOut;
     }
     else if (range.m_TStart > oldRange.m_TStart && range.m_TEnd > oldRange.m_TEnd) {
-        qCCritical(LOG_VariableController()) << "zoomtype: PanRight";
+        qCDebug(LOG_VariableController()) << "zoomtype: PanRight";
         zoomType = AcquisitionZoomType::PanRight;
     }
     else if (range.m_TStart < oldRange.m_TStart && range.m_TEnd < oldRange.m_TEnd) {
-        qCCritical(LOG_VariableController()) << "zoomtype: PanLeft";
+        qCDebug(LOG_VariableController()) << "zoomtype: PanLeft";
         zoomType = AcquisitionZoomType::PanLeft;
     }
     else if (range.m_TStart > oldRange.m_TStart && oldRange.m_TEnd > range.m_TEnd) {
-        qCCritical(LOG_VariableController()) << "zoomtype: ZoomIn";
+        qCDebug(LOG_VariableController()) << "zoomtype: ZoomIn";
         zoomType = AcquisitionZoomType::ZoomIn;
     }
     else {
-        qCCritical(LOG_VariableController()) << "getZoomType: Unknown type detected";
+        qCDebug(LOG_VariableController()) << "getZoomType: Unknown type detected";
     }
     return zoomType;
 }
@@ -768,7 +768,7 @@ QUuid VariableController::VariableControllerPrivate::acceptVariableRequest(
 
         varRequestIdQueue.pop_front();
         if (varRequestIdQueue.empty()) {
-            qCCritical(LOG_VariableController())
+            qCDebug(LOG_VariableController())
                 << tr("TORM Erase REQUEST because it has been accepted") << varId;
             m_VarIdToVarRequestIdQueueMap.erase(varId);
         }
