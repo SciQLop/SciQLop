@@ -68,6 +68,12 @@ public:
     QVector<SqpRange> provideInCacheRangeList(const SqpRange &range) const noexcept;
     void mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
 
+    static QVector<SqpRange> provideNotInCacheRangeList(const SqpRange &oldRange,
+                                                        const SqpRange &nextRange);
+
+    static QVector<SqpRange> provideInCacheRangeList(const SqpRange &oldRange,
+                                                     const SqpRange &nextRange);
+
 signals:
     void updated();
 
