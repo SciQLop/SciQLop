@@ -180,7 +180,6 @@ void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
     for (const auto &dateTime : qAsConst(times)) {
         if (m_VariableToEnableProvider[acqIdentifier]) {
             auto scalarSeries = this->retrieveData(acqIdentifier, dateTime, parameters.m_Data);
-            qCDebug(LOG_CosinusProvider()) << "TORM: CosinusProvider::dataProvided";
             emit dataProvided(acqIdentifier, scalarSeries, dateTime);
         }
     }
@@ -188,7 +187,6 @@ void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
 
 void CosinusProvider::requestDataAborting(QUuid acqIdentifier)
 {
-    // TODO: Add Mutex
     qCDebug(LOG_CosinusProvider()) << "CosinusProvider::requestDataAborting" << acqIdentifier
                                    << QThread::currentThread()->objectName();
     auto it = m_VariableToEnableProvider.find(acqIdentifier);
@@ -196,7 +194,7 @@ void CosinusProvider::requestDataAborting(QUuid acqIdentifier)
         it.value() = false;
     }
     else {
-        qCWarning(LOG_CosinusProvider())
+        qCDebug(LOG_CosinusProvider())
             << tr("Aborting progression of inexistant identifier detected !!!");
     }
 }

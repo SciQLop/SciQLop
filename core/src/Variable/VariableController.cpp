@@ -105,9 +105,6 @@ struct VariableController::VariableControllerPrivate {
     void processRequest(std::shared_ptr<Variable> var, const SqpRange &rangeRequested,
                         QUuid varRequestId);
 
-    QVector<SqpRange> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
-                                                    const SqpRange &dateTime);
-
     std::shared_ptr<Variable> findVariable(QUuid vIdentifier);
     std::shared_ptr<IDataSeries>
     retrieveDataSeries(const QVector<AcquisitionDataPacket> acqDataPacketVector);
@@ -554,23 +551,23 @@ AcquisitionZoomType VariableController::getZoomType(const SqpRange &range, const
     // t1.m_TStart <= t2.m_TStart && t2.m_TEnd <= t1.m_TEnd
     auto zoomType = AcquisitionZoomType::Unknown;
     if (range.m_TStart <= oldRange.m_TStart && oldRange.m_TEnd <= range.m_TEnd) {
-        qCCritical(LOG_VariableController()) << "zoomtype: ZoomOut";
+        qCDebug(LOG_VariableController()) << "zoomtype: ZoomOut";
         zoomType = AcquisitionZoomType::ZoomOut;
     }
     else if (range.m_TStart > oldRange.m_TStart && range.m_TEnd > oldRange.m_TEnd) {
-        qCCritical(LOG_VariableController()) << "zoomtype: PanRight";
+        qCDebug(LOG_VariableController()) << "zoomtype: PanRight";
         zoomType = AcquisitionZoomType::PanRight;
     }
     else if (range.m_TStart < oldRange.m_TStart && range.m_TEnd < oldRange.m_TEnd) {
-        qCCritical(LOG_VariableController()) << "zoomtype: PanLeft";
+        qCDebug(LOG_VariableController()) << "zoomtype: PanLeft";
         zoomType = AcquisitionZoomType::PanLeft;
     }
     else if (range.m_TStart > oldRange.m_TStart && oldRange.m_TEnd > range.m_TEnd) {
-        qCCritical(LOG_VariableController()) << "zoomtype: ZoomIn";
+        qCDebug(LOG_VariableController()) << "zoomtype: ZoomIn";
         zoomType = AcquisitionZoomType::ZoomIn;
     }
     else {
-        qCCritical(LOG_VariableController()) << "getZoomType: Unknown type detected";
+        qCDebug(LOG_VariableController()) << "getZoomType: Unknown type detected";
     }
     return zoomType;
 }
@@ -596,13 +593,10 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
         auto varStrategyRangesRequested
             = m_VariableCacheStrategy->computeRange(oldRange, rangeRequested);
 
-        auto notInCacheRangeList = QVector<SqpRange>{varStrategyRangesRequested.second};
-        auto inCacheRangeList = QVector<SqpRange>{};
-        if (m_VarIdToVarRequestIdQueueMap.find(varId) == m_VarIdToVarRequestIdQueueMap.cend()) {
-            notInCacheRangeList
-                = var->provideNotInCacheRangeList(varStrategyRangesRequested.second);
-            inCacheRangeList = var->provideInCacheRangeList(varStrategyRangesRequested.second);
-        }
+        auto notInCacheRangeList
+            = Variable::provideNotInCacheRangeList(oldRange, varStrategyRangesRequested.second);
+        auto inCacheRangeList
+            = Variable::provideInCacheRangeList(oldRange, varStrategyRangesRequested.second);
 
         if (!notInCacheRangeList.empty()) {
             varRequest.m_RangeRequested = varStrategyRangesRequested.first;
@@ -620,8 +614,8 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                     varProvider);
 
                 if (!varRequestIdCanceled.isNull()) {
-                    qCDebug(LOG_VariableAcquisitionWorker()) << tr("vsarRequestIdCanceled: ")
-                                                             << varRequestIdCanceled;
+                    qCInfo(LOG_VariableAcquisitionWorker()) << tr("varRequestIdCanceled: ")
+                                                            << varRequestIdCanceled;
                     cancelVariableRequest(varRequestIdCanceled);
                 }
             }
@@ -804,26 +798,22 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
                     var->setRange(varRequest.m_RangeRequested);
                     var->setCacheRange(varRequest.m_CacheRangeRequested);
                     qCDebug(LOG_VariableController()) << tr("1: onDataProvided")
-                                                      << varRequest.m_RangeRequested;
-                    qCDebug(LOG_VariableController()) << tr("2: onDataProvided")
+                                                      << varRequest.m_RangeRequested
                                                       << varRequest.m_CacheRangeRequested;
+                    qCDebug(LOG_VariableController()) << tr("2: onDataProvided var points before")
+                                                      << var->nbPoints()
+                                                      << varRequest.m_DataSeries->nbPoints();
                     var->mergeDataSeries(varRequest.m_DataSeries);
-                    qCDebug(LOG_VariableController()) << tr("3: onDataProvided");
+                    qCDebug(LOG_VariableController()) << tr("3: onDataProvided var points after")
+                                                      << var->nbPoints();
 
-                    /// @todo MPL: confirm
-                    // Variable update is notified only if there is no pending request for it
-                    //                    if
-                    //                    (m_VarIdToVarRequestIdQueueMap.count(varIdToVarRequestMapIt->first)
-                    //                    == 0) {
                     emit var->updated();
-                    //                    }
                 }
                 else {
                     qCCritical(LOG_VariableController())
                         << tr("Impossible to update data to a null variable");
                 }
             }
-
             // cleaning varRequestId
             qCDebug(LOG_VariableController()) << tr("0: erase REQUEST in  MAP ?")
                                               << m_VarRequestIdToVarIdVarRequestMap.size();
@@ -852,6 +842,8 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
         if (varRequestIdQueue.empty()) {
             varIdToVarRequestIdQueueMapIt
                 = m_VarIdToVarRequestIdQueueMap.erase(varIdToVarRequestIdQueueMapIt);
+
+            // Recompute if there is any next request based on the removed request.
         }
         else {
             ++varIdToVarRequestIdQueueMapIt;
