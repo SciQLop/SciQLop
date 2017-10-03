@@ -343,7 +343,7 @@ void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::updateToNextRe
 void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::cancelVarRequest(
     QUuid varRequestId)
 {
-    qCCritical(LOG_VariableAcquisitionWorker())
+    qCDebug(LOG_VariableAcquisitionWorker())
         << "VariableAcquisitionWorkerPrivate::cancelVarRequest 0";
     lockRead();
     // get all AcqIdentifier in link with varRequestId
@@ -360,7 +360,7 @@ void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::cancelVarReque
     for (auto acqId : acqIdsToRm) {
         removeAcqRequest(acqId);
     }
-    qCCritical(LOG_VariableAcquisitionWorker())
+    qCDebug(LOG_VariableAcquisitionWorker())
         << "VariableAcquisitionWorkerPrivate::cancelVarRequest end";
 }
 
@@ -368,27 +368,19 @@ void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::removeAcqReque
     QUuid acqRequestId)
 {
     qCDebug(LOG_VariableAcquisitionWorker())
-        << "VariableAcquisitionWorkerPrivate::removeAcqRequest 0";
+        << "VariableAcquisitionWorkerPrivate::removeAcqRequest";
     QUuid vIdentifier;
     std::shared_ptr<IDataProvider> provider;
     lockRead();
     auto acqIt = m_AcqIdentifierToAcqRequestMap.find(acqRequestId);
-    qCDebug(LOG_VariableAcquisitionWorker())
-        << "VariableAcquisitionWorkerPrivate::removeAcqRequest 1";
     if (acqIt != m_AcqIdentifierToAcqRequestMap.cend()) {
         vIdentifier = acqIt->second.m_vIdentifier;
         provider = acqIt->second.m_Provider;
 
-        qCDebug(LOG_VariableAcquisitionWorker())
-            << "VariableAcquisitionWorkerPrivate::removeAcqRequest 2";
         auto it = m_VIdentifierToCurrrentAcqIdNextIdPairMap.find(vIdentifier);
         if (it != m_VIdentifierToCurrrentAcqIdNextIdPairMap.cend()) {
-            qCDebug(LOG_VariableAcquisitionWorker())
-                << "VariableAcquisitionWorkerPrivate::removeAcqRequest 3";
             if (it->second.first == acqRequestId) {
                 // acqRequest is currently running -> let's aborting it
-                qCDebug(LOG_VariableAcquisitionWorker())
-                    << "VariableAcquisitionWorkerPrivate::removeAcqRequest 4";
                 unlock();
 
                 // Remove the current request from the worker
@@ -396,35 +388,23 @@ void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::removeAcqReque
 
                 // notify the request aborting to the provider
                 provider->requestDataAborting(acqRequestId);
-                qCDebug(LOG_VariableAcquisitionWorker())
-                    << "VariableAcquisitionWorkerPrivate::removeAcqRequest 5";
             }
             else if (it->second.second == acqRequestId) {
                 it->second.second = QUuid();
-                qCDebug(LOG_VariableAcquisitionWorker())
-                    << "VariableAcquisitionWorkerPrivate::removeAcqRequest 6";
                 unlock();
             }
             else {
-                qCDebug(LOG_VariableAcquisitionWorker())
-                    << "VariableAcquisitionWorkerPrivate::removeAcqRequest 7";
                 unlock();
             }
         }
         else {
-            qCDebug(LOG_VariableAcquisitionWorker())
-                << "VariableAcquisitionWorkerPrivate::removeAcqRequest 8";
             unlock();
         }
     }
     else {
-        qCDebug(LOG_VariableAcquisitionWorker())
-            << "VariableAcquisitionWorkerPrivate::removeAcqRequest 9";
         unlock();
     }
 
-    qCDebug(LOG_VariableAcquisitionWorker())
-        << "VariableAcquisitionWorkerPrivate::removeAcqRequest 10";
     lockWrite();
 
     m_AcqIdentifierToAcqDataPacketVectorMap.erase(acqRequestId);
@@ -432,5 +412,5 @@ void VariableAcquisitionWorker::VariableAcquisitionWorkerPrivate::removeAcqReque
 
     unlock();
     qCDebug(LOG_VariableAcquisitionWorker())
-        << "VariableAcquisitionWorkerPrivate::removeAcqRequest 11";
+        << "VariableAcquisitionWorkerPrivate::removeAcqRequest END";
 }
