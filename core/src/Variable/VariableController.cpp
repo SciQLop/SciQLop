@@ -105,9 +105,6 @@ struct VariableController::VariableControllerPrivate {
     void processRequest(std::shared_ptr<Variable> var, const SqpRange &rangeRequested,
                         QUuid varRequestId);
 
-    QVector<SqpRange> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
-                                                    const SqpRange &dateTime);
-
     std::shared_ptr<Variable> findVariable(QUuid vIdentifier);
     std::shared_ptr<IDataSeries>
     retrieveDataSeries(const QVector<AcquisitionDataPacket> acqDataPacketVector);
@@ -596,13 +593,10 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
         auto varStrategyRangesRequested
             = m_VariableCacheStrategy->computeRange(oldRange, rangeRequested);
 
-        auto notInCacheRangeList = QVector<SqpRange>{varStrategyRangesRequested.second};
-        auto inCacheRangeList = QVector<SqpRange>{};
-        if (m_VarIdToVarRequestIdQueueMap.find(varId) == m_VarIdToVarRequestIdQueueMap.cend()) {
-            notInCacheRangeList
-                = var->provideNotInCacheRangeList(varStrategyRangesRequested.second);
-            inCacheRangeList = var->provideInCacheRangeList(varStrategyRangesRequested.second);
-        }
+        auto notInCacheRangeList
+            = Variable::provideNotInCacheRangeList(oldRange, varStrategyRangesRequested.second);
+        auto inCacheRangeList
+            = Variable::provideInCacheRangeList(oldRange, varStrategyRangesRequested.second);
 
         if (!notInCacheRangeList.empty()) {
             varRequest.m_RangeRequested = varStrategyRangesRequested.first;
@@ -804,26 +798,22 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
                     var->setRange(varRequest.m_RangeRequested);
                     var->setCacheRange(varRequest.m_CacheRangeRequested);
                     qCDebug(LOG_VariableController()) << tr("1: onDataProvided")
-                                                      << varRequest.m_RangeRequested;
-                    qCDebug(LOG_VariableController()) << tr("2: onDataProvided")
+                                                      << varRequest.m_RangeRequested
                                                       << varRequest.m_CacheRangeRequested;
+                    qCDebug(LOG_VariableController()) << tr("2: onDataProvided var points before")
+                                                      << var->nbPoints()
+                                                      << varRequest.m_DataSeries->nbPoints();
                     var->mergeDataSeries(varRequest.m_DataSeries);
-                    qCDebug(LOG_VariableController()) << tr("3: onDataProvided");
+                    qCDebug(LOG_VariableController()) << tr("3: onDataProvided var points after")
+                                                      << var->nbPoints();
 
-                    /// @todo MPL: confirm
-                    // Variable update is notified only if there is no pending request for it
-                    //                    if
-                    //                    (m_VarIdToVarRequestIdQueueMap.count(varIdToVarRequestMapIt->first)
-                    //                    == 0) {
                     emit var->updated();
-                    //                    }
                 }
                 else {
                     qCCritical(LOG_VariableController())
                         << tr("Impossible to update data to a null variable");
                 }
             }
-
             // cleaning varRequestId
             qCDebug(LOG_VariableController()) << tr("0: erase REQUEST in  MAP ?")
                                               << m_VarRequestIdToVarIdVarRequestMap.size();
@@ -850,12 +840,10 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
             std::remove(varRequestIdQueue.begin(), varRequestIdQueue.end(), varRequestId),
             varRequestIdQueue.end());
         if (varRequestIdQueue.empty()) {
-
-            qCCritical(LOG_VariableController())
-                << tr("VariableControllerPrivate::cancelVariableRequest")
-                << varIdToVarRequestIdQueueMapIt->first;
             varIdToVarRequestIdQueueMapIt
                 = m_VarIdToVarRequestIdQueueMap.erase(varIdToVarRequestIdQueueMapIt);
+
+            // Recompute if there is any next request based on the removed request.
         }
         else {
             ++varIdToVarRequestIdQueueMapIt;
