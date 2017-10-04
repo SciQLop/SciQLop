@@ -115,7 +115,7 @@ struct VariableController::VariableControllerPrivate {
     QUuid acceptVariableRequest(QUuid varId, std::shared_ptr<IDataSeries> dataSeries);
     void updateVariableRequest(QUuid varRequestId);
     void cancelVariableRequest(QUuid varRequestId);
-
+    void abortVariableRequest(QUuid varRequestId);
     SqpRange getLastRequestedRange(QUuid varId);
 
     QMutex m_WorkingMutex;
@@ -593,6 +593,9 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
         auto varStrategyRangesRequested
             = m_VariableCacheStrategy->computeRange(oldRange, rangeRequested);
 
+        // Use commented lines to remove the cache (run time)
+        //        auto notInCacheRangeList = QVector<SqpRange>{varStrategyRangesRequested.second};
+        //        auto inCacheRangeList = QVector<SqpRange>{};
         auto notInCacheRangeList
             = Variable::provideNotInCacheRangeList(oldRange, varStrategyRangesRequested.second);
         auto inCacheRangeList
@@ -616,7 +619,8 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                 if (!varRequestIdCanceled.isNull()) {
                     qCInfo(LOG_VariableAcquisitionWorker()) << tr("varRequestIdCanceled: ")
                                                             << varRequestIdCanceled;
-                    cancelVariableRequest(varRequestIdCanceled);
+                    // cancelVariableRequest(varRequestIdCanceled);
+                    abortVariableRequest(varRequestIdCanceled);
                 }
             }
             else {
@@ -848,6 +852,69 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
         else {
             ++varIdToVarRequestIdQueueMapIt;
         }
+    }
+}
+
+void VariableController::VariableControllerPrivate::abortVariableRequest(QUuid varRequestId)
+{
+    auto varRequestIdsMap = std::map<QUuid, VariableRequest>{};
+    auto varRequestIdToVarIdVarRequestMapIt = m_VarRequestIdToVarIdVarRequestMap.find(varRequestId);
+    if (varRequestIdToVarIdVarRequestMapIt != m_VarRequestIdToVarIdVarRequestMap.cend()) {
+        varRequestIdsMap = varRequestIdToVarIdVarRequestMapIt->second;
+    }
+
+    auto nextUuidToRemove = QSet<QUuid>{};
+    auto varIdEnd = varRequestIdsMap.end();
+    for (auto varIdIt = varRequestIdsMap.begin(); varIdIt != varIdEnd;) {
+        auto currentVarId = varIdIt->first;
+        auto varIdToVarRequestIdQueueMapIt = m_VarIdToVarRequestIdQueueMap.find(currentVarId);
+        if (varIdToVarRequestIdQueueMapIt != m_VarIdToVarRequestIdQueueMap.cend()) {
+
+            auto &varRequestIdQueue = varIdToVarRequestIdQueueMapIt->second;
+
+            auto varReqIdQueueEnd = varRequestIdQueue.end();
+            for (auto varReqIdQueueIt = varRequestIdQueue.begin();
+                 varReqIdQueueIt != varRequestIdQueue.end(); ++varReqIdQueueIt) {
+                if (*varReqIdQueueIt == varRequestId) {
+                    auto nextVarRequestIdToRm = varReqIdQueueIt;
+                    ++nextVarRequestIdToRm;
+
+                    if (nextVarRequestIdToRm == varReqIdQueueEnd) {
+                        // The varRequestId is in progress for the current var, let's aborting it.
+                        m_VariableAcquisitionWorker->abortProgressRequested(currentVarId);
+                    }
+                    else {
+                        // There is at least one Request after
+                        // let's add only new id to remove
+                        if (!nextUuidToRemove.contains(*nextVarRequestIdToRm)) {
+                            nextUuidToRemove << *nextVarRequestIdToRm;
+                        }
+                    }
+
+                    varReqIdQueueIt = varRequestIdQueue.erase(varReqIdQueueIt);
+                    // break is necessary here, we don"t need to iterate on the dequeue anymore and
+                    // the iteration is broken because of the erase
+                    break;
+                }
+            }
+
+            // beacause the process can modify the map under the iteration, we need to update the
+            // iterator only if no erase has been done
+            if (varRequestIdQueue.empty()) {
+                varIdIt = varRequestIdsMap.erase(varIdIt);
+            }
+            else {
+                ++varIdIt;
+            }
+        }
+    }
+
+    if (varRequestIdToVarIdVarRequestMapIt != m_VarRequestIdToVarIdVarRequestMap.cend()) {
+        m_VarRequestIdToVarIdVarRequestMap.erase(varRequestIdToVarIdVarRequestMapIt);
+    }
+
+    for (auto nextVarRequestIdToRm : nextUuidToRemove) {
+        abortVariableRequest(nextVarRequestIdToRm);
     }
 }
 

@@ -241,7 +241,7 @@ void testSyncCase1()
     // Zoom in
     moveVar0(range({16, 30}, {16, 45}), range({15, 30}, {15, 45}));
     // Zoom out
-    moveVar0(range({12, 0}, {18, 0}), range({11, 0}, {17, 0}));
+    moveVar0(range({16, 15}, {17, 0}), range({15, 15}, {16, 0}));
 
     QTest::newRow("sync1") << syncId << initialRange << std::move(iterations) << 200;
 }
@@ -322,7 +322,7 @@ void TestVariableSync::testSync_data()
     // ////////// //
 
     testSyncCase1();
-    testSyncCase2();
+    //    testSyncCase2();
 }
 
 void TestVariableSync::testSync()
