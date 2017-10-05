@@ -166,6 +166,12 @@ private slots:
     /// Input data for @sa testSync()
     void testSync_data();
 
+    /// Input data for @sa testSyncWithAborting()
+    void testSyncWithAborting_data();
+
+    /// Tests synchronization between variables through several operations with aborting
+    void testSyncWithAborting();
+
     /// Tests synchronization between variables through several operations
     void testSync();
 };
@@ -234,6 +240,7 @@ void testSyncCase1()
         iterations.push_back(
             {std::make_shared<Move>(0, var0NewRange), {{0, var0NewRange}, {1, var1ExpectedRange}}});
     };
+
     // Pan left
     moveVar0(range({14, 30}, {15, 30}), range({13, 30}, {14, 30}));
     // Pan right
@@ -244,6 +251,83 @@ void testSyncCase1()
     moveVar0(range({16, 15}, {17, 0}), range({15, 15}, {16, 0}));
 
     QTest::newRow("sync1") << syncId << initialRange << std::move(iterations) << 200;
+}
+
+void testSyncCase1WithAborting()
+{
+    // Id used to synchronize variables in the controller
+    auto syncId = QUuid::createUuid();
+
+    /// Generates a range according to a start time and a end time (the date is the same)
+    auto range = [](const QTime &startTime, const QTime &endTime) {
+        return SqpRange{DateUtils::secondsSinceEpoch(QDateTime{{2017, 1, 1}, startTime, Qt::UTC}),
+                        DateUtils::secondsSinceEpoch(QDateTime{{2017, 1, 1}, endTime, Qt::UTC})};
+    };
+
+    auto initialRange = range({12, 0}, {13, 0});
+
+    Iterations creations{};
+    // Creates variables var0, var1 and var2
+    creations.push_back({std::make_shared<Create>(0), {{0, initialRange}}});
+    creations.push_back({std::make_shared<Create>(1), {{0, initialRange}, {1, initialRange}}});
+
+    // Adds variables into the sync group (ranges don't need to be tested here)
+    Iterations iterations{};
+    iterations.push_back({std::make_shared<Synchronize>(0, syncId)});
+    iterations.push_back({std::make_shared<Synchronize>(1, syncId)});
+
+    // Moves var0: ranges of var0, var1 and var2 change
+    auto newRange = range({12, 30}, {13, 30});
+    iterations.push_back({std::make_shared<Move>(0, newRange), {{0, newRange}, {1, newRange}}});
+
+    // Moves var1: ranges of var0, var1 and var2 change
+    newRange = range({13, 0}, {14, 0});
+    iterations.push_back({std::make_shared<Move>(0, newRange), {{0, newRange}, {1, newRange}}});
+
+    // Moves var2: ranges of var0, var1 and var2 change
+    newRange = range({13, 30}, {14, 30});
+    iterations.push_back(
+        {std::make_shared<Move>(0, newRange), {{0, newRange}, {1, newRange}, {2, newRange}}});
+
+    // Desyncs var2 and moves var0:
+    // - ranges of var0 and var1 change
+    // - range of var2 doesn't change anymore
+    auto var2Range = newRange;
+    newRange = range({13, 45}, {14, 45});
+    iterations.push_back({std::make_shared<Synchronize>(2, syncId, false)});
+    iterations.push_back({std::make_shared<Move>(0, newRange), {{0, newRange}, {1, newRange}}});
+
+    // Shifts var0: although var1 is synchronized with var0, its range doesn't change
+    auto var1Range = newRange;
+    newRange = range({14, 45}, {15, 45});
+    iterations.push_back(
+        {std::make_shared<Move>(0, newRange, true), {{0, newRange}, {1, var1Range}}});
+
+    // Moves var0 through several operations:
+    // - range of var0 changes
+    // - range or var1 changes according to the previous shift (one hour)
+    auto moveVar0 = [&iterations](const auto &var0NewRange, const auto &var1ExpectedRange) {
+        iterations.push_back(
+            {std::make_shared<Move>(0, var0NewRange), {{0, var0NewRange}, {1, var1ExpectedRange}}});
+    };
+
+    //    auto oldRange = newRange;
+    //    newRange = range({14, 30}, {15, 30});
+    //    auto expectedRange = oldRange;
+    //    iterations.push_back(
+    //        {std::make_shared<Move>(0, newRange), {{0, oldRange}, {1, expectedRange}}});
+
+    // Pan left
+    moveVar0(range({14, 30}, {15, 30}), range({13, 30}, {14, 30}));
+    // Pan right
+    moveVar0(range({16, 0}, {17, 0}), range({15, 0}, {16, 0}));
+    // Zoom in
+    moveVar0(range({16, 30}, {16, 45}), range({15, 30}, {15, 45}));
+    // Zoom out
+    moveVar0(range({16, 15}, {17, 0}), range({15, 15}, {16, 0}));
+
+    QTest::newRow("syncWithAborting1") << syncId << initialRange << std::move(creations)
+                                       << std::move(iterations) << 200;
 }
 
 void testSyncCase2()
@@ -322,11 +406,32 @@ void TestVariableSync::testSync_data()
     // ////////// //
 
     testSyncCase1();
-    //    testSyncCase2();
+    testSyncCase2();
+}
+
+void TestVariableSync::testSyncWithAborting_data()
+{
+    // ////////////// //
+    // Test structure //
+    // ////////////// //
+
+    QTest::addColumn<QUuid>("syncId");
+    QTest::addColumn<SqpRange>("initialRange");
+    QTest::addColumn<Iterations>("creations");
+    QTest::addColumn<Iterations>("iterations");
+    QTest::addColumn<int>("operationDelay");
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    testSyncCase1WithAborting();
 }
 
 void TestVariableSync::testSync()
 {
+    return;
+
     // Inits controllers
     TimeController timeController{};
     VariableController variableController{};
@@ -377,13 +482,69 @@ void TestVariableSync::testSync()
 
         validateRanges(iteration.m_ExpectedRanges);
     }
+}
+
+void TestVariableSync::testSyncWithAborting()
+{
+    // Inits controllers
+    TimeController timeController{};
+    VariableController variableController{};
+    variableController.setTimeController(&timeController);
+
+    QFETCH(QUuid, syncId);
+    QFETCH(SqpRange, initialRange);
+    timeController.onTimeToUpdate(initialRange);
+
+    // Synchronization group used
+    variableController.onAddSynchronizationGroupId(syncId);
+
+    auto validateRanges = [&variableController](const auto &expectedRanges) {
+        for (const auto &expectedRangeEntry : expectedRanges) {
+            auto variableIndex = expectedRangeEntry.first;
+            auto expectedRange = expectedRangeEntry.second;
+
+            // Gets the variable in the controller
+            auto variable = variableController.variableModel()->variable(variableIndex);
+
+            // Compares variable's range to the expected range
+            QVERIFY(variable != nullptr);
+            auto range = variable->range();
+            QCOMPARE(range, expectedRange);
+
+            // Compares variable's data with values expected for its range
+            auto dataSeries = variable->dataSeries();
+            QVERIFY(dataSeries != nullptr);
+
+            auto it = dataSeries->xAxisRange(range.m_TStart, range.m_TEnd);
+            auto expectedValues = values(range);
+            qInfo() << std::distance(it.first, it.second) << expectedValues.size();
+            QVERIFY(std::equal(it.first, it.second, expectedValues.cbegin(), expectedValues.cend(),
+                               [](const auto &dataSeriesIt, const auto &expectedValue) {
+                                   return dataSeriesIt.value() == expectedValue;
+                               }));
+        }
+    };
+
+    // For each iteration:
+    // - execute operation
+    // - compare the variables' state to the expected states
+    QFETCH(Iterations, iterations);
+    QFETCH(Iterations, creations);
+    QFETCH(int, operationDelay);
+
+    for (const auto &creation : creations) {
+        creation.m_Operation->exec(variableController);
+        QTest::qWait(operationDelay);
+    }
 
     for (const auto &iteration : iterations) {
         iteration.m_Operation->exec(variableController);
     }
+
     QTest::qWait(operationDelay);
     validateRanges(iterations.back().m_ExpectedRanges);
 }
+
 
 QTEST_MAIN(TestVariableSync)
 
