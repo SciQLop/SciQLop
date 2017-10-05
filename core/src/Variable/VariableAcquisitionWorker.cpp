@@ -102,6 +102,7 @@ QUuid VariableAcquisitionWorker::pushVariableRequest(QUuid varRequestId, QUuid v
 
         // remove old acqIdentifier from the worker
         impl->cancelVarRequest(varRequestIdCanceled);
+        //        impl->m_AcqIdentifierToAcqRequestMap.erase(oldAcqId);
     }
     else {
         // First request for the variable, it must be stored and executed

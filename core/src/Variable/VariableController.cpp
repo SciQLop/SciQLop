@@ -141,7 +141,6 @@ struct VariableController::VariableControllerPrivate {
 
     std::map<QUuid, std::deque<QUuid> > m_VarIdToVarRequestIdQueueMap;
 
-
     VariableController *q;
 };
 
@@ -282,11 +281,11 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
 
         // Associate the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
-        qCInfo(LOG_VariableController()) << "createVariable: " << identifier;
         impl->m_VariableToIdentifierMap[newVariable] = identifier;
 
 
         auto varRequestId = QUuid::createUuid();
+        qCInfo(LOG_VariableController()) << "createVariable: " << identifier << varRequestId;
         impl->processRequest(newVariable, range, varRequestId);
         impl->updateVariableRequest(varRequestId);
 
@@ -471,7 +470,7 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
                                       << QThread::currentThread()->objectName() << varRequestId;
 
     for (const auto &var : variables) {
-        qCDebug(LOG_VariableController()) << "processRequest for" << var->name() << varRequestId;
+        qCInfo(LOG_VariableController()) << "processRequest for" << var->name() << varRequestId;
         impl->processRequest(var, range, varRequestId);
     }
 
@@ -508,8 +507,8 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
                 // Don't process already processed var
                 if (!variables.contains(var)) {
                     if (var != nullptr) {
-                        qCDebug(LOG_VariableController()) << "processRequest synchro for"
-                                                          << var->name();
+                        qCInfo(LOG_VariableController()) << "processRequest synchro for"
+                                                         << var->name() << varRequestId;
                         auto vSyncRangeRequested = computeSynchroRangeRequested(
                             var->range(), range, groupIdToOldRangeMap.at(gId));
                         qCDebug(LOG_VariableController()) << "synchro RR" << vSyncRangeRequested;
@@ -616,12 +615,6 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                     DataProviderParameters{std::move(notInCacheRangeList), var->metadata()},
                     varProvider);
 
-                if (!varRequestIdCanceled.isNull()) {
-                    qCInfo(LOG_VariableAcquisitionWorker()) << tr("varRequestIdCanceled: ")
-                                                            << varRequestIdCanceled;
-                    // cancelVariableRequest(varRequestIdCanceled);
-                    abortVariableRequest(varRequestIdCanceled);
-                }
             }
             else {
                 qCCritical(LOG_VariableController())
@@ -862,6 +855,9 @@ void VariableController::VariableControllerPrivate::abortVariableRequest(QUuid v
     if (varRequestIdToVarIdVarRequestMapIt != m_VarRequestIdToVarIdVarRequestMap.cend()) {
         varRequestIdsMap = varRequestIdToVarIdVarRequestMapIt->second;
     }
+    qCCritical(LOG_VariableController())
+        << tr("abortVariableRequest : varRequestId and count of aborting") << varRequestId
+        << varRequestIdsMap.size();
 
     auto nextUuidToRemove = QSet<QUuid>{};
     auto varIdEnd = varRequestIdsMap.end();
@@ -891,6 +887,9 @@ void VariableController::VariableControllerPrivate::abortVariableRequest(QUuid v
                         }
                     }
 
+                    qCCritical(LOG_VariableController()) << tr("remove the request : aborting")
+                                                         << currentVarId;
+
                     varReqIdQueueIt = varRequestIdQueue.erase(varReqIdQueueIt);
                     // break is necessary here, we don"t need to iterate on the dequeue anymore and
                     // the iteration is broken because of the erase
@@ -910,10 +909,13 @@ void VariableController::VariableControllerPrivate::abortVariableRequest(QUuid v
     }
 
     if (varRequestIdToVarIdVarRequestMapIt != m_VarRequestIdToVarIdVarRequestMap.cend()) {
+        qCCritical(LOG_VariableController()) << tr("remove the varRequestId");
         m_VarRequestIdToVarIdVarRequestMap.erase(varRequestIdToVarIdVarRequestMapIt);
     }
 
     for (auto nextVarRequestIdToRm : nextUuidToRemove) {
+        qCCritical(LOG_VariableController()) << tr("Cancel automaticaly the next request:")
+                                             << nextVarRequestIdToRm;
         abortVariableRequest(nextVarRequestIdToRm);
     }
 }
