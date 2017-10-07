@@ -276,32 +276,33 @@ void testSyncCase1WithAborting()
     iterations.push_back({std::make_shared<Synchronize>(0, syncId)});
     iterations.push_back({std::make_shared<Synchronize>(1, syncId)});
 
-    // Moves var0: ranges of var0, var1 and var2 change
-    auto newRange = range({12, 30}, {13, 30});
-    iterations.push_back({std::make_shared<Move>(0, newRange), {{0, newRange}, {1, newRange}}});
-
-    // Moves var1: ranges of var0, var1 and var2 change
-    newRange = range({13, 0}, {14, 0});
-    iterations.push_back({std::make_shared<Move>(0, newRange), {{0, newRange}, {1, newRange}}});
-
-    // Moves var2: ranges of var0, var1 and var2 change
-    newRange = range({13, 30}, {14, 30});
+    // Moves var0: ranges of var0, var1
+    auto currentRange = range({12, 30}, {13, 30});
     iterations.push_back(
-        {std::make_shared<Move>(0, newRange), {{0, newRange}, {1, newRange}, {2, newRange}}});
+        {std::make_shared<Move>(0, currentRange), {{0, currentRange}, {1, currentRange}}});
 
-    // Desyncs var2 and moves var0:
+    // Moves var0: ranges of var0, var1
+    auto pendingRange = range({13, 0}, {14, 0});
+    iterations.push_back(
+        {std::make_shared<Move>(0, pendingRange), {{0, pendingRange}, {1, pendingRange}}});
+
+    // Moves var0: ranges of var0, var1
+    pendingRange = range({13, 30}, {14, 30});
+    iterations.push_back(
+        {std::make_shared<Move>(0, pendingRange), {{0, pendingRange}, {1, pendingRange}}});
+
+    // moves var0:
     // - ranges of var0 and var1 change
-    // - range of var2 doesn't change anymore
-    auto var2Range = newRange;
-    newRange = range({13, 45}, {14, 45});
-    iterations.push_back({std::make_shared<Synchronize>(2, syncId, false)});
-    iterations.push_back({std::make_shared<Move>(0, newRange), {{0, newRange}, {1, newRange}}});
+    auto var2Range = pendingRange;
+    pendingRange = range({13, 45}, {14, 45});
+    iterations.push_back(
+        {std::make_shared<Move>(0, pendingRange), {{0, pendingRange}, {1, pendingRange}}});
 
     // Shifts var0: although var1 is synchronized with var0, its range doesn't change
-    auto var1Range = newRange;
-    newRange = range({14, 45}, {15, 45});
+    auto var1Range = pendingRange;
+    pendingRange = range({14, 45}, {15, 45});
     iterations.push_back(
-        {std::make_shared<Move>(0, newRange, true), {{0, newRange}, {1, var1Range}}});
+        {std::make_shared<Move>(0, pendingRange, false), {{0, pendingRange}, {1, pendingRange}}});
 
     // Moves var0 through several operations:
     // - range of var0 changes
@@ -318,15 +319,15 @@ void testSyncCase1WithAborting()
     //        {std::make_shared<Move>(0, newRange), {{0, oldRange}, {1, expectedRange}}});
 
     // Pan left
-    moveVar0(range({14, 30}, {15, 30}), range({13, 30}, {14, 30}));
+    moveVar0(range({14, 30}, {15, 30}), range({14, 30}, {15, 30}));
     // Pan right
-    moveVar0(range({16, 0}, {17, 0}), range({15, 0}, {16, 0}));
+    moveVar0(range({16, 0}, {17, 0}), range({16, 0}, {17, 0}));
     // Zoom in
-    moveVar0(range({16, 30}, {16, 45}), range({15, 30}, {15, 45}));
+    moveVar0(range({16, 30}, {16, 45}), range({16, 30}, {16, 45}));
     // Zoom out
-    moveVar0(range({16, 15}, {17, 0}), range({15, 15}, {16, 0}));
+    moveVar0(range({16, 15}, {17, 0}), range({16, 15}, {17, 0}));
 
-    QTest::newRow("syncWithAborting1") << syncId << initialRange << std::move(creations)
+    QTest::newRow("syncWithAborting1") << syncId << currentRange << std::move(creations)
                                        << std::move(iterations) << 200;
 }
 
@@ -509,6 +510,7 @@ void TestVariableSync::testSyncWithAborting()
             // Compares variable's range to the expected range
             QVERIFY(variable != nullptr);
             auto range = variable->range();
+            qInfo() << "range vs expected range" << range << variable->range();
             QCOMPARE(range, expectedRange);
 
             // Compares variable's data with values expected for its range
