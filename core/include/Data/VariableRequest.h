@@ -15,12 +15,10 @@
  * @brief The VariableRequest struct holds the information of an acquisition request
  */
 struct VariableRequest {
-    VariableRequest() { m_CanUpdate = false; }
-
+    QUuid m_VariableGroupId;
     SqpRange m_RangeRequested;
     SqpRange m_CacheRangeRequested;
     std::shared_ptr<IDataSeries> m_DataSeries;
-    bool m_CanUpdate;
 };
 
 SCIQLOP_REGISTER_META_TYPE(VARIABLEREQUEST_REGISTRY, VariableRequest)
