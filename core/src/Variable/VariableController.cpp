@@ -367,32 +367,29 @@ void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, doub
 
 void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> variable)
 {
-    //    auto it = impl->m_VariableToIdentifierMap.find(variable);
-    //    if (it != impl->m_VariableToIdentifierMap.cend()) {
-    //        impl->m_VariableAcquisitionWorker->abortProgressRequested(it->second);
 
-    //        QUuid varRequestId;
-    //        auto varIdToVarRequestIdQueueMapIt =
-    //        impl->m_VarIdToVarRequestIdQueueMap.find(it->second);
-    //        if (varIdToVarRequestIdQueueMapIt != impl->m_VarIdToVarRequestIdQueueMap.cend()) {
-    //            auto &varRequestIdQueue = varIdToVarRequestIdQueueMapIt->second;
-    //            varRequestId = varRequestIdQueue.front();
-    //            impl->cancelVariableRequest(varRequestId);
+    auto itVar = impl->m_VariableToIdentifierMap.find(variable);
+    if (itVar == impl->m_VariableToIdentifierMap.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to onAbortProgressRequested request for unknown variable");
+        return;
+    }
 
-    //            // Finish the progression for the request
-    //            impl->m_VariableModel->setDataProgress(variable, 0.0);
-    //        }
-    //        else {
-    //            qCWarning(LOG_VariableController())
-    //                << tr("Aborting progression of inexistant variable request detected !!!")
-    //                << QThread::currentThread()->objectName();
-    //        }
-    //    }
-    //    else {
-    //        qCWarning(LOG_VariableController())
-    //            << tr("Aborting progression of inexistant variable detected !!!")
-    //            << QThread::currentThread()->objectName();
-    //    }
+    auto varId = itVar->second;
+
+    auto itVarHandler = impl->m_VarIdToVarRequestHandler.find(varId);
+    if (itVarHandler == impl->m_VarIdToVarRequestHandler.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to onAbortProgressRequested for variable with unknown handler");
+        return;
+    }
+
+    auto varHandler = itVarHandler->second.get();
+
+    // case where a variable has a running request
+    if (varHandler->m_State != VariableRequestHandlerState::OFF) {
+        impl->cancelVariableRequest(varHandler->m_RunningVarRequest.m_VariableGroupId);
+    }
 }
 
 void VariableController::onAbortAcquisitionRequested(QUuid vIdentifier)
@@ -862,7 +859,8 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
 {
     auto varGroupIdToVarIdsIt = m_VarGroupIdToVarIds.find(varRequestId);
     if (varGroupIdToVarIdsIt == m_VarGroupIdToVarIds.end()) {
-        // TODO LOG cannot cancel variable request since varGroupdId isn't here anymore
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to cancelVariableRequest for unknown varGroupdId") << varRequestId;
         return;
     }
 
@@ -870,7 +868,7 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
     auto varIdsEnd = varIds.end();
     for (auto varIdsIt = varIds.begin(); (varIdsIt != varIdsEnd); ++varIdsIt) {
         auto itVarHandler = m_VarIdToVarRequestHandler.find(*varIdsIt);
-        if (itVarHandler == m_VarIdToVarRequestHandler.cend()) {
+        if (itVarHandler != m_VarIdToVarRequestHandler.cend()) {
 
             auto varHandler = itVarHandler->second.get();
             varHandler->m_CanUpdate = false;
@@ -890,6 +888,8 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
                             m_VariableAcquisitionWorker->abortProgressRequested(
                                 itVarHandler->first);
                         }
+                        m_VariableModel->setDataProgress(var, 0.0);
+                        varHandler->m_State = VariableRequestHandlerState::OFF;
                         varHandler->m_RunningVarRequest = VariableRequest{};
                     }
                     else {
@@ -906,10 +906,13 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
                             m_VariableAcquisitionWorker->abortProgressRequested(
                                 itVarHandler->first);
                         }
+                        m_VariableModel->setDataProgress(var, 0.0);
+                        varHandler->m_State = VariableRequestHandlerState::RUNNING;
                         varHandler->m_RunningVarRequest = varHandler->m_PendingVarRequest;
                         executeVarRequest(var, varHandler->m_RunningVarRequest);
                     }
                     else if (varHandler->m_PendingVarRequest.m_VariableGroupId == varRequestId) {
+                        varHandler->m_State = VariableRequestHandlerState::RUNNING;
                         varHandler->m_PendingVarRequest = VariableRequest{};
                     }
                     else {
@@ -924,6 +927,7 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
             }
         }
     }
+    m_VarGroupIdToVarIds.erase(varRequestId);
 }
 
 void VariableController::VariableControllerPrivate::executeVarRequest(std::shared_ptr<Variable> var,
