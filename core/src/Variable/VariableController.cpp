@@ -323,19 +323,51 @@ void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
     qCDebug(LOG_VariableController()) << "VariableController::onDateTimeOnSelection"
                                       << QThread::currentThread()->objectName();
     auto selectedRows = impl->m_VariableSelectionModel->selectedRows();
-    auto variables = QVector<std::shared_ptr<Variable> >{};
 
-    for (const auto &selectedRow : qAsConst(selectedRows)) {
-        if (auto selectedVariable = impl->m_VariableModel->variable(selectedRow.row())) {
-            variables << selectedVariable;
+    // NOTE we only permit the time modification for one varai
+    if (selectedRows.size() == 1) {
+        auto variables = QVector<std::shared_ptr<Variable> >{};
+
+        // DEPRECATED
+        //        for (const auto &selectedRow : qAsConst(selectedRows)) {
+        //            if (auto selectedVariable =
+        //            impl->m_VariableModel->variable(selectedRow.row())) {
+        //                variables << selectedVariable;
+
+        //                // notify that rescale operation has to be done
+        //                emit rangeChanged(selectedVariable, dateTime);
+        //            }
+        //        }
+        //        if (!variables.isEmpty()) {
+        //            this->onRequestDataLoading(variables, dateTime, synchro);
+        //        }
+        if (auto selectedVariable
+            = impl->m_VariableModel->variable(qAsConst(selectedRows).first().row())) {
+
+            auto itVar = impl->m_VariableToIdentifierMap.find(selectedVariable);
+            if (itVar == impl->m_VariableToIdentifierMap.cend()) {
+                qCCritical(LOG_VariableController())
+                    << tr("Impossible to onDateTimeOnSelection request for unknown variable");
+                return;
+            }
 
             // notify that rescale operation has to be done
             emit rangeChanged(selectedVariable, dateTime);
+
+            auto synchro = impl->m_VariableIdGroupIdMap.find(itVar->second)
+                           != impl->m_VariableIdGroupIdMap.cend();
+
+            this->onRequestDataLoading(QVector<std::shared_ptr<Variable> >{selectedVariable},
+                                       dateTime, synchro);
         }
     }
-
-    if (!variables.isEmpty()) {
-        this->onRequestDataLoading(variables, dateTime, true);
+    else if (selectedRows.size() > 1) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to set time for more than 1 variable in the same time");
+    }
+    else {
+        qCWarning(LOG_VariableController())
+            << tr("There is no variable selected to set the time one");
     }
 }
 
@@ -493,8 +525,8 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
 
     auto varRequestId = QUuid::createUuid();
     qCDebug(LOG_VariableController()) << "VariableController::onRequestDataLoading"
-                                      << QThread::currentThread()->objectName() << varRequestId
-                                      << range;
+                                     << QThread::currentThread()->objectName() << varRequestId
+                                     << range << synchronise;
 
     if (!synchronise) {
         auto varIds = std::list<QUuid>{};
