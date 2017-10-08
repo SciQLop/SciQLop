@@ -343,7 +343,7 @@ void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &range
                                         const SqpRange &cacheRangeRequested,
                                         QVector<AcquisitionDataPacket> dataAcquired)
 {
-    qCInfo(LOG_VariableController()) << tr("onDataProvided") << QThread::currentThread();
+    qCDebug(LOG_VariableController()) << tr("onDataProvided") << QThread::currentThread();
     auto retrievedDataSeries = impl->retrieveDataSeries(dataAcquired);
     auto varRequestId = impl->acceptVariableRequest(vIdentifier, retrievedDataSeries);
     if (!varRequestId.isNull()) {
@@ -367,6 +367,8 @@ void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, doub
 
 void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> variable)
 {
+    qCDebug(LOG_VariableController()) << "TORM: variableController::onAbortProgressRequested"
+                                      << QThread::currentThread()->objectName() << variable->name();
 
     auto itVar = impl->m_VariableToIdentifierMap.find(variable);
     if (itVar == impl->m_VariableToIdentifierMap.cend()) {
@@ -490,9 +492,9 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
     }
 
     auto varRequestId = QUuid::createUuid();
-    qCCritical(LOG_VariableController()) << "VariableController::onRequestDataLoading"
-                                         << QThread::currentThread()->objectName() << varRequestId
-                                         << range;
+    qCDebug(LOG_VariableController()) << "VariableController::onRequestDataLoading"
+                                      << QThread::currentThread()->objectName() << varRequestId
+                                      << range;
 
     if (!synchronise) {
         auto varIds = std::list<QUuid>{};
@@ -509,7 +511,6 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
     }
     else {
         auto vId = impl->m_VariableToIdentifierMap.at(variables.first());
-        qCInfo(LOG_VariableController()) << "Var in synchro group 0" << vId;
         auto varIdToGroupIdIt = impl->m_VariableIdGroupIdMap.find(vId);
         if (varIdToGroupIdIt != impl->m_VariableIdGroupIdMap.cend()) {
             auto groupId = varIdToGroupIdIt->second;
@@ -517,8 +518,6 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
             auto vSynchronizationGroup
                 = impl->m_GroupIdToVariableSynchronizationGroupMap.at(groupId);
             auto vSyncIds = vSynchronizationGroup->getIds();
-
-            qCInfo(LOG_VariableController()) << "Var in synchro group 1" << groupId;
 
             auto varIds = std::list<QUuid>{};
             for (auto vId : vSyncIds) {
@@ -531,8 +530,8 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
 
                 // Don't process already processed var
                 if (var != nullptr) {
-                    qCInfo(LOG_VariableController()) << "processRequest synchro for" << var->name()
-                                                     << varRequestId;
+                    qCDebug(LOG_VariableController()) << "processRequest synchro for" << var->name()
+                                                      << varRequestId;
                     auto vSyncRangeRequested
                         = variables.contains(var)
                               ? range
@@ -634,26 +633,26 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
 
     switch (varHandler->m_State) {
         case VariableRequestHandlerState::OFF: {
-            qCCritical(LOG_VariableController()) << tr("Process Request OFF")
-                                                 << varRequest.m_RangeRequested
-                                                 << varRequest.m_CacheRangeRequested;
+            qCDebug(LOG_VariableController()) << tr("Process Request OFF")
+                                              << varRequest.m_RangeRequested
+                                              << varRequest.m_CacheRangeRequested;
             varHandler->m_RunningVarRequest = varRequest;
             varHandler->m_State = VariableRequestHandlerState::RUNNING;
             executeVarRequest(var, varRequest);
             break;
         }
         case VariableRequestHandlerState::RUNNING: {
-            qCCritical(LOG_VariableController()) << tr("Process Request RUNNING")
-                                                 << varRequest.m_RangeRequested
-                                                 << varRequest.m_CacheRangeRequested;
+            qCDebug(LOG_VariableController()) << tr("Process Request RUNNING")
+                                              << varRequest.m_RangeRequested
+                                              << varRequest.m_CacheRangeRequested;
             varHandler->m_State = VariableRequestHandlerState::PENDING;
             varHandler->m_PendingVarRequest = varRequest;
             break;
         }
         case VariableRequestHandlerState::PENDING: {
-            qCCritical(LOG_VariableController()) << tr("Process Request PENDING")
-                                                 << varRequest.m_RangeRequested
-                                                 << varRequest.m_CacheRangeRequested;
+            qCDebug(LOG_VariableController()) << tr("Process Request PENDING")
+                                              << varRequest.m_RangeRequested
+                                              << varRequest.m_CacheRangeRequested;
             auto variableGroupIdToCancel = varHandler->m_PendingVarRequest.m_VariableGroupId;
             varHandler->m_PendingVarRequest = varRequest;
             cancelVariableRequest(variableGroupIdToCancel);
@@ -741,30 +740,27 @@ QUuid VariableController::VariableControllerPrivate::acceptVariableRequest(
 
     // Element traité, on a déjà toutes les données necessaires
     auto varGroupId = varHandler->m_RunningVarRequest.m_VariableGroupId;
-    qCInfo(LOG_VariableController()) << "Variable::acceptVariableRequest" << varGroupId
-                                     << m_VarGroupIdToVarIds.size();
+    qCDebug(LOG_VariableController()) << "Variable::acceptVariableRequest" << varGroupId
+                                      << m_VarGroupIdToVarIds.size();
 
     return varHandler->m_RunningVarRequest.m_VariableGroupId;
 }
 
 void VariableController::VariableControllerPrivate::updateVariables(QUuid varRequestId)
 {
-    qCInfo(LOG_VariableController()) << "VariableControllerPrivate::updateVariables"
-                                     << QThread::currentThread()->objectName() << varRequestId;
+    qCDebug(LOG_VariableController()) << "VariableControllerPrivate::updateVariables"
+                                      << QThread::currentThread()->objectName() << varRequestId;
 
     auto varGroupIdToVarIdsIt = m_VarGroupIdToVarIds.find(varRequestId);
     if (varGroupIdToVarIdsIt == m_VarGroupIdToVarIds.end()) {
-        // TODO LOG cannot update since varGroupdId isn't here anymore
-        qCInfo(LOG_VariableController()) << "Impossible to updateVariables of unknown variables"
-                                         << varRequestId;
+        qCWarning(LOG_VariableController())
+            << tr("Impossible to updateVariables of unknown variables") << varRequestId;
         return;
     }
 
     auto &varIds = varGroupIdToVarIdsIt->second;
     auto varIdsEnd = varIds.end();
     bool processVariableUpdate = true;
-    qCInfo(LOG_VariableController())
-        << "VariableControllerPrivate::compute procss for group of size" << varIds.size();
     for (auto varIdsIt = varIds.begin(); (varIdsIt != varIdsEnd) && processVariableUpdate;
          ++varIdsIt) {
         auto itVarHandler = m_VarIdToVarRequestHandler.find(*varIdsIt);
@@ -774,7 +770,7 @@ void VariableController::VariableControllerPrivate::updateVariables(QUuid varReq
     }
 
     if (processVariableUpdate) {
-        qCInfo(LOG_VariableController()) << "Final update OK for the var request" << varIds.size();
+        qCDebug(LOG_VariableController()) << "Final update OK for the var request" << varIds.size();
         for (auto varIdsIt = varIds.begin(); varIdsIt != varIdsEnd; ++varIdsIt) {
             auto itVarHandler = m_VarIdToVarRequestHandler.find(*varIdsIt);
             if (itVarHandler != m_VarIdToVarRequestHandler.cend()) {
@@ -782,18 +778,18 @@ void VariableController::VariableControllerPrivate::updateVariables(QUuid varReq
                     auto &varRequest = itVarHandler->second->m_RunningVarRequest;
                     var->setRange(varRequest.m_RangeRequested);
                     var->setCacheRange(varRequest.m_CacheRangeRequested);
-                    qCInfo(LOG_VariableController()) << tr("1: onDataProvided")
-                                                     << varRequest.m_RangeRequested
-                                                     << varRequest.m_CacheRangeRequested;
-                    qCInfo(LOG_VariableController()) << tr("2: onDataProvided var points before")
-                                                     << var->nbPoints()
-                                                     << varRequest.m_DataSeries->nbPoints();
+                    qCDebug(LOG_VariableController()) << tr("1: onDataProvided")
+                                                      << varRequest.m_RangeRequested
+                                                      << varRequest.m_CacheRangeRequested;
+                    qCDebug(LOG_VariableController()) << tr("2: onDataProvided var points before")
+                                                      << var->nbPoints()
+                                                      << varRequest.m_DataSeries->nbPoints();
                     var->mergeDataSeries(varRequest.m_DataSeries);
-                    qCInfo(LOG_VariableController()) << tr("3: onDataProvided var points after")
-                                                     << var->nbPoints();
+                    qCDebug(LOG_VariableController()) << tr("3: onDataProvided var points after")
+                                                      << var->nbPoints();
 
                     emit var->updated();
-                    qCCritical(LOG_VariableController()) << tr("Update OK");
+                    qCDebug(LOG_VariableController()) << tr("Update OK");
                 }
                 else {
                     qCCritical(LOG_VariableController())
@@ -804,7 +800,7 @@ void VariableController::VariableControllerPrivate::updateVariables(QUuid varReq
         updateVariableRequest(varRequestId);
 
         // cleaning varRequestId
-        qCInfo(LOG_VariableController()) << tr("m_VarGroupIdToVarIds erase") << varRequestId;
+        qCDebug(LOG_VariableController()) << tr("m_VarGroupIdToVarIds erase") << varRequestId;
         m_VarGroupIdToVarIds.erase(varRequestId);
     }
 }
@@ -857,6 +853,8 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
 
 void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid varRequestId)
 {
+    qCDebug(LOG_VariableController()) << tr("cancelVariableRequest") << varRequestId;
+
     auto varGroupIdToVarIdsIt = m_VarGroupIdToVarIds.find(varRequestId);
     if (varGroupIdToVarIdsIt == m_VarGroupIdToVarIds.end()) {
         qCCritical(LOG_VariableController())
@@ -927,13 +925,14 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
             }
         }
     }
+    qCDebug(LOG_VariableController()) << tr("cancelVariableRequest: erase") << varRequestId;
     m_VarGroupIdToVarIds.erase(varRequestId);
 }
 
 void VariableController::VariableControllerPrivate::executeVarRequest(std::shared_ptr<Variable> var,
                                                                       VariableRequest &varRequest)
 {
-    qCCritical(LOG_VariableController()) << tr("TORM: executeVarRequest");
+    qCDebug(LOG_VariableController()) << tr("TORM: executeVarRequest");
 
     auto varId = m_VariableToIdentifierMap.at(var);
 
@@ -948,9 +947,8 @@ void VariableController::VariableControllerPrivate::executeVarRequest(std::share
 
         auto varProvider = m_VariableToProviderMap.at(var);
         if (varProvider != nullptr) {
-            qCCritical(LOG_VariableController()) << "executeVarRequest "
-                                                 << varRequest.m_RangeRequested
-                                                 << varRequest.m_CacheRangeRequested;
+            qCDebug(LOG_VariableController()) << "executeVarRequest " << varRequest.m_RangeRequested
+                                              << varRequest.m_CacheRangeRequested;
             m_VariableAcquisitionWorker->pushVariableRequest(
                 varRequest.m_VariableGroupId, varId, varRequest.m_RangeRequested,
                 varRequest.m_CacheRangeRequested,
