@@ -536,8 +536,8 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
         }
         impl->m_VarGroupIdToVarIds.insert(std::make_pair(varRequestId, varIds));
         for (const auto &var : variables) {
-            qCInfo(LOG_VariableController()) << "processRequest for" << var->name() << varRequestId
-                                             << varIds.size();
+            qCDebug(LOG_VariableController()) << "processRequest for" << var->name() << varRequestId
+                                              << varIds.size();
             impl->processRequest(var, range, varRequestId);
         }
     }
