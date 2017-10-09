@@ -21,7 +21,7 @@
 // Frame : GSE - Mission : ACE -
 // Instrument : MFI - Dataset : mfi_final-prelim
 // REFERENCE DOWNLOAD FILE =
-// http://amda.irap.omp.eu/php/rest/getParameter.php?startTime=2012-01-01T12:00:00&stopTime=2012-01-03T12:00:00&parameterID=imf(0)&outputFormat=ASCII&timeFormat=ISO8601&gzip=0
+// http://amdatest.irap.omp.eu/php/rest/getParameter.php?startTime=2012-01-01T12:00:00&stopTime=2012-01-03T12:00:00&parameterID=imf(0)&outputFormat=ASCII&timeFormat=ISO8601&gzip=0
 
 namespace {
 
@@ -29,7 +29,8 @@ namespace {
 const auto TESTS_RESOURCES_PATH
     = QFileInfo{QString{AMDA_TESTS_RESOURCES_DIR}, "TestAmdaAcquisition"}.absoluteFilePath();
 
-const auto TESTS_AMDA_REF_FILE = QString{"AmdaData-2012-01-01-12-00-00_2012-01-03-12-00-00.txt"};
+/// Delay after each operation on the variable before validating it (in ms)
+const auto OPERATION_DELAY = 10000;
 
 template <typename T>
 bool compareDataSeries(std::shared_ptr<IDataSeries> candidate, SqpRange candidateCacheRange,
@@ -49,15 +50,6 @@ bool compareDataSeries(std::shared_ptr<IDataSeries> candidate, SqpRange candidat
         qDebug() << " DISTANCE" << std::distance(candidateDS->cbegin(), candidateDS->cend())
                  << std::distance(itRefs.first, itRefs.second);
 
-        //        auto xcValue = candidateDS->valuesData()->data();
-        //        auto dist = std::distance(itRefs.first, itRefs.second);
-        //        auto it = itRefs.first;
-        //        for (auto i = 0; i < dist - 1; ++i) {
-        //            ++it;
-        //            qInfo() << "END:" << it->value();
-        //        }
-        //        qDebug() << "END:" << it->value() << xcValue.last();
-
         return std::equal(candidateDS->cbegin(), candidateDS->cend(), itRefs.first, itRefs.second,
                           compareLambda);
     }
@@ -71,115 +63,91 @@ class TestAmdaAcquisition : public QObject {
     Q_OBJECT
 
 private slots:
+    /// Input data for @sa testAcquisition()
+    void testAcquisition_data();
     void testAcquisition();
 };
+
+void TestAmdaAcquisition::testAcquisition_data()
+{
+    // ////////////// //
+    // Test structure //
+    // ////////////// //
+
+    QTest::addColumn<QString>("dataFilename");  // File containing expected data of acquisitions
+    QTest::addColumn<SqpRange>("initialRange"); // First acquisition
+    QTest::addColumn<std::vector<SqpRange> >("operations"); // Acquisitions to make
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    auto dateTime = [](int year, int month, int day, int hours, int minutes, int seconds) {
+        return DateUtils::secondsSinceEpoch(
+            QDateTime{{year, month, day}, {hours, minutes, seconds}, Qt::UTC});
+    };
+
+
+    QTest::newRow("amda")
+        << "AmdaData-2012-01-01-12-00-00_2012-01-03-12-00-00.txt"
+        << SqpRange{dateTime(2012, 1, 2, 2, 3, 0), dateTime(2012, 1, 2, 2, 4, 0)}
+        << std::vector<SqpRange>{
+               // 2 : pan (jump) left for two min
+               SqpRange{dateTime(2012, 1, 2, 2, 1, 0), dateTime(2012, 1, 2, 2, 2, 0)},
+               // 3 : pan (jump) right for four min
+               SqpRange{dateTime(2012, 1, 2, 2, 5, 0), dateTime(2012, 1, 2, 2, 6, 0)},
+               // 4 : pan (overlay) right for 30 sec
+               /*SqpRange{dateTime(2012, 1, 2, 2, 5, 30), dateTime(2012, 1, 2, 2, 6, 30)},
+               // 5 : pan (overlay) left for 30 sec
+               SqpRange{dateTime(2012, 1, 2, 2, 5, 0), dateTime(2012, 1, 2, 2, 6, 0)},
+        // 6 : pan (overlay) left for 30 sec - BIS
+        SqpRange{dateTime(2012, 1, 2, 2, 4, 30), dateTime(2012, 1, 2, 2, 5, 30)},
+        // 7 : Zoom in Inside 20 sec range
+        SqpRange{dateTime(2012, 1, 2, 2, 4, 50), dateTime(2012, 1, 2, 2, 5, 10)},
+        // 8 : Zoom out Inside 20 sec range
+        SqpRange{dateTime(2012, 1, 2, 2, 4, 30), dateTime(2012, 1, 2, 2, 5, 30)}*/};
+}
 
 void TestAmdaAcquisition::testAcquisition()
 {
     /// @todo: update test to be compatible with AMDA v2
 
-    // READ the ref file:
-    auto filePath = QFileInfo{TESTS_RESOURCES_PATH, TESTS_AMDA_REF_FILE}.absoluteFilePath();
+    // Retrieves data file
+    QFETCH(QString, dataFilename);
+    auto filePath = QFileInfo{TESTS_RESOURCES_PATH, dataFilename}.absoluteFilePath();
     auto results = AmdaResultParser::readTxt(filePath, AmdaResultParser::ValueType::SCALAR);
 
-    auto provider = std::make_shared<AmdaProvider>();
-    auto timeController = std::make_unique<TimeController>();
+    /// Lambda used to validate a variable at each step
+    auto validateVariable = [results](std::shared_ptr<Variable> variable, const SqpRange &range) {
+        // Checks that the variable's range has changed
+        qInfo() << tr("Compare var range vs range") << variable->range() << range;
+        QCOMPARE(variable->range(), range);
 
-    auto varRS = QDateTime{QDate{2012, 01, 02}, QTime{2, 3, 0, 0}};
-    auto varRE = QDateTime{QDate{2012, 01, 02}, QTime{2, 4, 0, 0}};
-
-    auto sqpR = SqpRange{DateUtils::secondsSinceEpoch(varRS), DateUtils::secondsSinceEpoch(varRE)};
-
-    timeController->onTimeToUpdate(sqpR);
-
-    QVariantHash metaData;
-    metaData.insert("dataType", "scalar");
-    metaData.insert("xml:id", "imf(0)");
-
-    VariableController vc;
-    vc.setTimeController(timeController.get());
-
-    auto var = vc.createVariable("bx_gse", metaData, provider);
-
-    // 1 : Variable creation
-
-    qDebug() << " 1: TIMECONTROLLER" << timeController->dateTime();
-    qDebug() << " 1: RANGE     " << var->range();
-    qDebug() << " 1: CACHERANGE" << var->cacheRange();
-
-    // wait for 10 sec before asking next request toi permit asynchrone process to finish.
-    auto timeToWaitMs = 10000;
-
-    QEventLoop loop;
-    QTimer::singleShot(timeToWaitMs, &loop, &QEventLoop::quit);
-    loop.exec();
-
-    // Tests on acquisition operation
-
-    int count = 1;
-
-    auto requestDataLoading = [&vc, var, timeToWaitMs, results, &count](auto tStart, auto tEnd) {
-        ++count;
-
-        auto nextSqpR
-            = SqpRange{DateUtils::secondsSinceEpoch(tStart), DateUtils::secondsSinceEpoch(tEnd)};
-        vc.onRequestDataLoading(QVector<std::shared_ptr<Variable> >{} << var, nextSqpR, true);
-
-        QEventLoop loop;
-        QTimer::singleShot(timeToWaitMs, &loop, &QEventLoop::quit);
-        loop.exec();
-
-        qInfo() << count << "RANGE     " << var->range();
-        qInfo() << count << "CACHERANGE" << var->cacheRange();
-
-        QCOMPARE(var->range().m_TStart, nextSqpR.m_TStart);
-        QCOMPARE(var->range().m_TEnd, nextSqpR.m_TEnd);
-
-        // Verify dataserie
-        QVERIFY(compareDataSeries<ScalarSeries>(var->dataSeries(), var->cacheRange(), results));
-
+        // Checks the variable's data series
+        QVERIFY(compareDataSeries<ScalarSeries>(variable->dataSeries(), variable->cacheRange(),
+                                                results));
+        qInfo() << "\n";
     };
 
-    // 2 : pan (jump) left for one hour
-    auto nextVarRS = QDateTime{QDate{2012, 01, 02}, QTime{2, 1, 0, 0}};
-    auto nextVarRE = QDateTime{QDate{2012, 01, 02}, QTime{2, 2, 0, 0}};
-    // requestDataLoading(nextVarRS, nextVarRE);
+    // Creates variable
+    QFETCH(SqpRange, initialRange);
+    sqpApp->timeController().onTimeToUpdate(initialRange);
+    auto provider = std::make_shared<AmdaProvider>();
+    auto variable = sqpApp->variableController().createVariable(
+        "bx_gse", {{"dataType", "scalar"}, {"xml:id", "imf(0)"}}, provider);
 
+    QTest::qWait(OPERATION_DELAY);
+    validateVariable(variable, initialRange);
 
-    // 3 : pan (jump) right for one hour
-    nextVarRS = QDateTime{QDate{2012, 01, 02}, QTime{2, 5, 0, 0}};
-    nextVarRE = QDateTime{QDate{2012, 01, 02}, QTime{2, 6, 0, 0}};
-    // requestDataLoading(nextVarRS, nextVarRE);
+    // Makes operations on the variable
+    QFETCH(std::vector<SqpRange>, operations);
+    for (const auto &operation : operations) {
+        // Asks request on the variable and waits during its execution
+        sqpApp->variableController().onRequestDataLoading({variable}, operation, false);
 
-    // 4 : pan (overlay) right for 30 min
-    nextVarRS = QDateTime{QDate{2012, 01, 02}, QTime{2, 5, 30, 0}};
-    nextVarRE = QDateTime{QDate{2012, 01, 02}, QTime{2, 6, 30, 0}};
-    // requestDataLoading(nextVarRS, nextVarRE);
-
-    // 5 : pan (overlay) left for 30 min
-    nextVarRS = QDateTime{QDate{2012, 01, 02}, QTime{2, 5, 0, 0}};
-    nextVarRE = QDateTime{QDate{2012, 01, 02}, QTime{2, 6, 0, 0}};
-    // requestDataLoading(nextVarRS, nextVarRE);
-
-    // 6 : pan (overlay) left for 30 min - BIS
-    nextVarRS = QDateTime{QDate{2012, 01, 02}, QTime{2, 4, 30, 0}};
-    nextVarRE = QDateTime{QDate{2012, 01, 02}, QTime{2, 5, 30, 0}};
-    // requestDataLoading(nextVarRS, nextVarRE);
-
-    // 7 : Zoom in Inside 20 min range
-    nextVarRS = QDateTime{QDate{2012, 01, 02}, QTime{2, 4, 50, 0}};
-    nextVarRE = QDateTime{QDate{2012, 01, 02}, QTime{2, 5, 10, 0}};
-    // requestDataLoading(nextVarRS, nextVarRE);
-
-    // 8 : Zoom out Inside 2 hours range
-    nextVarRS = QDateTime{QDate{2012, 01, 02}, QTime{2, 4, 0, 0}};
-    nextVarRE = QDateTime{QDate{2012, 01, 02}, QTime{2, 6, 0, 0}};
-    // requestDataLoading(nextVarRS, nextVarRE);
-
-
-    // Close the app after 10 sec
-    QTimer::singleShot(timeToWaitMs, &loop, &QEventLoop::quit);
-    loop.exec();
+        QTest::qWait(OPERATION_DELAY);
+        validateVariable(variable, operation);
+    }
 }
 
 int main(int argc, char *argv[])

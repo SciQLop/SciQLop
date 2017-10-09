@@ -77,6 +77,23 @@ SqpRange computeSynchroRangeRequested(const SqpRange &varRange, const SqpRange &
 }
 }
 
+enum class VariableRequestHandlerState { OFF, RUNNING, PENDING };
+
+struct VariableRequestHandler {
+
+    VariableRequestHandler()
+    {
+        m_CanUpdate = false;
+        m_State = VariableRequestHandlerState::OFF;
+    }
+
+    QUuid m_VarId;
+    VariableRequest m_RunningVarRequest;
+    VariableRequest m_PendingVarRequest;
+    VariableRequestHandlerState m_State;
+    bool m_CanUpdate;
+};
+
 struct VariableController::VariableControllerPrivate {
     explicit VariableControllerPrivate(VariableController *parent)
             : m_WorkingMutex{},
@@ -113,10 +130,10 @@ struct VariableController::VariableControllerPrivate {
 
     void storeVariableRequest(QUuid varId, QUuid varRequestId, const VariableRequest &varRequest);
     QUuid acceptVariableRequest(QUuid varId, std::shared_ptr<IDataSeries> dataSeries);
+    void updateVariables(QUuid varRequestId);
     void updateVariableRequest(QUuid varRequestId);
     void cancelVariableRequest(QUuid varRequestId);
-
-    SqpRange getLastRequestedRange(QUuid varId);
+    void executeVarRequest(std::shared_ptr<Variable> var, VariableRequest &varRequest);
 
     QMutex m_WorkingMutex;
     /// Variable model. The VariableController has the ownership
@@ -137,10 +154,8 @@ struct VariableController::VariableControllerPrivate {
     std::map<QUuid, QUuid> m_VariableIdGroupIdMap;
     std::set<std::shared_ptr<IDataProvider> > m_ProviderSet;
 
-    std::map<QUuid, std::map<QUuid, VariableRequest> > m_VarRequestIdToVarIdVarRequestMap;
-
-    std::map<QUuid, std::deque<QUuid> > m_VarIdToVarRequestIdQueueMap;
-
+    std::map<QUuid, std::list<QUuid> > m_VarGroupIdToVarIds;
+    std::map<QUuid, std::unique_ptr<VariableRequestHandler> > m_VarIdToVarRequestHandler;
 
     VariableController *q;
 };
@@ -275,20 +290,28 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
     auto range = impl->m_TimeController->dateTime();
 
     if (auto newVariable = impl->m_VariableModel->createVariable(name, metadata)) {
-        auto identifier = QUuid::createUuid();
+        auto varId = QUuid::createUuid();
+
+        // Create the handler
+        auto varRequestHandler = std::make_unique<VariableRequestHandler>();
+        varRequestHandler->m_VarId = varId;
+
+        impl->m_VarIdToVarRequestHandler.insert(
+            std::make_pair(varId, std::move(varRequestHandler)));
 
         // store the provider
         impl->registerProvider(provider);
 
         // Associate the provider
         impl->m_VariableToProviderMap[newVariable] = provider;
-        qCInfo(LOG_VariableController()) << "createVariable: " << identifier;
-        impl->m_VariableToIdentifierMap[newVariable] = identifier;
+        impl->m_VariableToIdentifierMap[newVariable] = varId;
 
+        this->onRequestDataLoading(QVector<std::shared_ptr<Variable> >{newVariable}, range, false);
 
-        auto varRequestId = QUuid::createUuid();
-        impl->processRequest(newVariable, range, varRequestId);
-        impl->updateVariableRequest(varRequestId);
+        //        auto varRequestId = QUuid::createUuid();
+        //        qCInfo(LOG_VariableController()) << "createVariable: " << varId << varRequestId;
+        //        impl->processRequest(newVariable, range, varRequestId);
+        //        impl->updateVariableRequest(varRequestId);
 
         return newVariable;
     }
@@ -300,19 +323,51 @@ void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
     qCDebug(LOG_VariableController()) << "VariableController::onDateTimeOnSelection"
                                       << QThread::currentThread()->objectName();
     auto selectedRows = impl->m_VariableSelectionModel->selectedRows();
-    auto variables = QVector<std::shared_ptr<Variable> >{};
 
-    for (const auto &selectedRow : qAsConst(selectedRows)) {
-        if (auto selectedVariable = impl->m_VariableModel->variable(selectedRow.row())) {
-            variables << selectedVariable;
+    // NOTE we only permit the time modification for one variable
+    // DEPRECATED
+    // auto variables = QVector<std::shared_ptr<Variable> >{};
+    //        for (const auto &selectedRow : qAsConst(selectedRows)) {
+    //            if (auto selectedVariable =
+    //            impl->m_VariableModel->variable(selectedRow.row())) {
+    //                variables << selectedVariable;
+
+    //                // notify that rescale operation has to be done
+    //                emit rangeChanged(selectedVariable, dateTime);
+    //            }
+    //        }
+    //        if (!variables.isEmpty()) {
+    //            this->onRequestDataLoading(variables, dateTime, synchro);
+    //        }
+    if (selectedRows.size() == 1) {
+
+        if (auto selectedVariable
+            = impl->m_VariableModel->variable(qAsConst(selectedRows).first().row())) {
+
+            auto itVar = impl->m_VariableToIdentifierMap.find(selectedVariable);
+            if (itVar == impl->m_VariableToIdentifierMap.cend()) {
+                qCCritical(LOG_VariableController())
+                    << tr("Impossible to onDateTimeOnSelection request for unknown variable");
+                return;
+            }
 
             // notify that rescale operation has to be done
             emit rangeChanged(selectedVariable, dateTime);
+
+            auto synchro = impl->m_VariableIdGroupIdMap.find(itVar->second)
+                           != impl->m_VariableIdGroupIdMap.cend();
+
+            this->onRequestDataLoading(QVector<std::shared_ptr<Variable> >{selectedVariable},
+                                       dateTime, synchro);
         }
     }
-
-    if (!variables.isEmpty()) {
-        this->onRequestDataLoading(variables, dateTime, true);
+    else if (selectedRows.size() > 1) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to set time for more than 1 variable in the same time");
+    }
+    else {
+        qCWarning(LOG_VariableController())
+            << tr("There is no variable selected to set the time one");
     }
 }
 
@@ -320,10 +375,11 @@ void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &range
                                         const SqpRange &cacheRangeRequested,
                                         QVector<AcquisitionDataPacket> dataAcquired)
 {
+    qCDebug(LOG_VariableController()) << tr("onDataProvided") << QThread::currentThread();
     auto retrievedDataSeries = impl->retrieveDataSeries(dataAcquired);
     auto varRequestId = impl->acceptVariableRequest(vIdentifier, retrievedDataSeries);
     if (!varRequestId.isNull()) {
-        impl->updateVariableRequest(varRequestId);
+        impl->updateVariables(varRequestId);
     }
 }
 
@@ -343,30 +399,30 @@ void VariableController::onVariableRetrieveDataInProgress(QUuid identifier, doub
 
 void VariableController::onAbortProgressRequested(std::shared_ptr<Variable> variable)
 {
-    auto it = impl->m_VariableToIdentifierMap.find(variable);
-    if (it != impl->m_VariableToIdentifierMap.cend()) {
-        impl->m_VariableAcquisitionWorker->abortProgressRequested(it->second);
+    qCDebug(LOG_VariableController()) << "TORM: variableController::onAbortProgressRequested"
+                                      << QThread::currentThread()->objectName() << variable->name();
 
-        QUuid varRequestId;
-        auto varIdToVarRequestIdQueueMapIt = impl->m_VarIdToVarRequestIdQueueMap.find(it->second);
-        if (varIdToVarRequestIdQueueMapIt != impl->m_VarIdToVarRequestIdQueueMap.cend()) {
-            auto &varRequestIdQueue = varIdToVarRequestIdQueueMapIt->second;
-            varRequestId = varRequestIdQueue.front();
-            impl->cancelVariableRequest(varRequestId);
-
-            // Finish the progression for the request
-            impl->m_VariableModel->setDataProgress(variable, 0.0);
-        }
-        else {
-            qCWarning(LOG_VariableController())
-                << tr("Aborting progression of inexistant variable request detected !!!")
-                << QThread::currentThread()->objectName();
-        }
+    auto itVar = impl->m_VariableToIdentifierMap.find(variable);
+    if (itVar == impl->m_VariableToIdentifierMap.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to onAbortProgressRequested request for unknown variable");
+        return;
     }
-    else {
-        qCWarning(LOG_VariableController())
-            << tr("Aborting progression of inexistant variable detected !!!")
-            << QThread::currentThread()->objectName();
+
+    auto varId = itVar->second;
+
+    auto itVarHandler = impl->m_VarIdToVarRequestHandler.find(varId);
+    if (itVarHandler == impl->m_VarIdToVarRequestHandler.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to onAbortProgressRequested for variable with unknown handler");
+        return;
+    }
+
+    auto varHandler = itVarHandler->second.get();
+
+    // case where a variable has a running request
+    if (varHandler->m_State != VariableRequestHandlerState::OFF) {
+        impl->cancelVariableRequest(varHandler->m_RunningVarRequest.m_VariableGroupId);
     }
 }
 
@@ -460,72 +516,72 @@ void VariableController::desynchronize(std::shared_ptr<Variable> variable,
 void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables,
                                               const SqpRange &range, bool synchronise)
 {
-    // NOTE: oldRange isn't really necessary since oldRange == variable->range().
-
+    // variables is assumed synchronized
+    // TODO: Asser variables synchronization
     // we want to load data of the variable for the dateTime.
-    // First we check if the cache contains some of them.
-    // For the other, we ask the provider to give them.
+    if (variables.isEmpty()) {
+        return;
+    }
 
     auto varRequestId = QUuid::createUuid();
     qCDebug(LOG_VariableController()) << "VariableController::onRequestDataLoading"
-                                      << QThread::currentThread()->objectName() << varRequestId;
+                                      << QThread::currentThread()->objectName() << varRequestId
+                                      << range << synchronise;
 
-    for (const auto &var : variables) {
-        qCDebug(LOG_VariableController()) << "processRequest for" << var->name() << varRequestId;
-        impl->processRequest(var, range, varRequestId);
-    }
-
-    if (synchronise) {
-        // Get the group ids
-        qCDebug(LOG_VariableController())
-            << "TORM VariableController::onRequestDataLoading for synchro var ENABLE";
-        auto groupIds = std::set<QUuid>{};
-        auto groupIdToOldRangeMap = std::map<QUuid, SqpRange>{};
+    if (!synchronise) {
+        auto varIds = std::list<QUuid>{};
         for (const auto &var : variables) {
-            auto varToVarIdIt = impl->m_VariableToIdentifierMap.find(var);
-            if (varToVarIdIt != impl->m_VariableToIdentifierMap.cend()) {
-                auto vId = varToVarIdIt->second;
-                auto varIdToGroupIdIt = impl->m_VariableIdGroupIdMap.find(vId);
-                if (varIdToGroupIdIt != impl->m_VariableIdGroupIdMap.cend()) {
-                    auto gId = varIdToGroupIdIt->second;
-                    groupIdToOldRangeMap.insert(std::make_pair(gId, var->range()));
-                    if (groupIds.find(gId) == groupIds.cend()) {
-                        qCDebug(LOG_VariableController()) << "Synchro detect group " << gId;
-                        groupIds.insert(gId);
-                    }
-                }
-            }
+            auto vId = impl->m_VariableToIdentifierMap.at(var);
+            varIds.push_back(vId);
         }
+        impl->m_VarGroupIdToVarIds.insert(std::make_pair(varRequestId, varIds));
+        for (const auto &var : variables) {
+            qCInfo(LOG_VariableController()) << "processRequest for" << var->name() << varRequestId
+                                             << varIds.size();
+            impl->processRequest(var, range, varRequestId);
+        }
+    }
+    else {
+        auto vId = impl->m_VariableToIdentifierMap.at(variables.first());
+        auto varIdToGroupIdIt = impl->m_VariableIdGroupIdMap.find(vId);
+        if (varIdToGroupIdIt != impl->m_VariableIdGroupIdMap.cend()) {
+            auto groupId = varIdToGroupIdIt->second;
 
-        // We assume here all group ids exist
-        for (const auto &gId : groupIds) {
-            auto vSynchronizationGroup = impl->m_GroupIdToVariableSynchronizationGroupMap.at(gId);
+            auto vSynchronizationGroup
+                = impl->m_GroupIdToVariableSynchronizationGroupMap.at(groupId);
             auto vSyncIds = vSynchronizationGroup->getIds();
-            qCDebug(LOG_VariableController()) << "Var in synchro group ";
+
+            auto varIds = std::list<QUuid>{};
+            for (auto vId : vSyncIds) {
+                varIds.push_back(vId);
+            }
+            impl->m_VarGroupIdToVarIds.insert(std::make_pair(varRequestId, varIds));
+
             for (auto vId : vSyncIds) {
                 auto var = impl->findVariable(vId);
 
                 // Don't process already processed var
-                if (!variables.contains(var)) {
-                    if (var != nullptr) {
-                        qCDebug(LOG_VariableController()) << "processRequest synchro for"
-                                                          << var->name();
-                        auto vSyncRangeRequested = computeSynchroRangeRequested(
-                            var->range(), range, groupIdToOldRangeMap.at(gId));
-                        qCDebug(LOG_VariableController()) << "synchro RR" << vSyncRangeRequested;
-                        impl->processRequest(var, vSyncRangeRequested, varRequestId);
-                    }
-                    else {
-                        qCCritical(LOG_VariableController())
+                if (var != nullptr) {
+                    qCDebug(LOG_VariableController()) << "processRequest synchro for" << var->name()
+                                                      << varRequestId;
+                    auto vSyncRangeRequested
+                        = variables.contains(var)
+                              ? range
+                              : computeSynchroRangeRequested(var->range(), range,
+                                                             variables.first()->range());
+                    qCDebug(LOG_VariableController()) << "synchro RR" << vSyncRangeRequested;
+                    impl->processRequest(var, vSyncRangeRequested, varRequestId);
+                }
+                else {
+                    qCCritical(LOG_VariableController())
 
-                            << tr("Impossible to synchronize a null variable");
-                    }
+                        << tr("Impossible to synchronize a null variable");
                 }
             }
         }
     }
 
-    impl->updateVariableRequest(varRequestId);
+    impl->updateVariables(varRequestId);
 }
 
 
@@ -576,66 +632,70 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                                                                    const SqpRange &rangeRequested,
                                                                    QUuid varRequestId)
 {
+    auto itVar = m_VariableToIdentifierMap.find(var);
+    if (itVar == m_VariableToIdentifierMap.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to process request for unknown variable");
+        return;
+    }
+
+    auto varId = itVar->second;
+
+    auto itVarHandler = m_VarIdToVarRequestHandler.find(varId);
+    if (itVarHandler == m_VarIdToVarRequestHandler.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to process request for variable with unknown handler");
+        return;
+    }
+
+    auto oldRange = var->range();
+
+    auto varHandler = itVarHandler->second.get();
+
+    if (varHandler->m_State != VariableRequestHandlerState::OFF) {
+        oldRange = varHandler->m_RunningVarRequest.m_RangeRequested;
+    }
+
     auto varRequest = VariableRequest{};
+    varRequest.m_VariableGroupId = varRequestId;
+    auto varStrategyRangesRequested
+        = m_VariableCacheStrategy->computeRange(oldRange, rangeRequested);
+    varRequest.m_RangeRequested = varStrategyRangesRequested.first;
+    varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
 
-    auto it = m_VariableToIdentifierMap.find(var);
-    if (it != m_VariableToIdentifierMap.cend()) {
-
-        auto varId = it->second;
-
-        auto oldRange = getLastRequestedRange(varId);
-
-        // check for update oldRange to the last request range.
-        if (oldRange == INVALID_RANGE) {
-            oldRange = var->range();
+    switch (varHandler->m_State) {
+        case VariableRequestHandlerState::OFF: {
+            qCDebug(LOG_VariableController()) << tr("Process Request OFF")
+                                              << varRequest.m_RangeRequested
+                                              << varRequest.m_CacheRangeRequested;
+            varHandler->m_RunningVarRequest = varRequest;
+            varHandler->m_State = VariableRequestHandlerState::RUNNING;
+            executeVarRequest(var, varRequest);
+            break;
         }
-
-        auto varStrategyRangesRequested
-            = m_VariableCacheStrategy->computeRange(oldRange, rangeRequested);
-
-        auto notInCacheRangeList
-            = Variable::provideNotInCacheRangeList(oldRange, varStrategyRangesRequested.second);
-        auto inCacheRangeList
-            = Variable::provideInCacheRangeList(oldRange, varStrategyRangesRequested.second);
-
-        if (!notInCacheRangeList.empty()) {
-            varRequest.m_RangeRequested = varStrategyRangesRequested.first;
-            varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
-
-            // store VarRequest
-            storeVariableRequest(varId, varRequestId, varRequest);
-
-            auto varProvider = m_VariableToProviderMap.at(var);
-            if (varProvider != nullptr) {
-                auto varRequestIdCanceled = m_VariableAcquisitionWorker->pushVariableRequest(
-                    varRequestId, varId, varStrategyRangesRequested.first,
-                    varStrategyRangesRequested.second,
-                    DataProviderParameters{std::move(notInCacheRangeList), var->metadata()},
-                    varProvider);
-
-                if (!varRequestIdCanceled.isNull()) {
-                    qCInfo(LOG_VariableAcquisitionWorker()) << tr("varRequestIdCanceled: ")
-                                                            << varRequestIdCanceled;
-                    cancelVariableRequest(varRequestIdCanceled);
-                }
-            }
-            else {
-                qCCritical(LOG_VariableController())
-                    << "Impossible to provide data with a null provider";
-            }
-
-            if (!inCacheRangeList.empty()) {
-                emit q->updateVarDisplaying(var, inCacheRangeList.first());
-            }
+        case VariableRequestHandlerState::RUNNING: {
+            qCDebug(LOG_VariableController()) << tr("Process Request RUNNING")
+                                              << varRequest.m_RangeRequested
+                                              << varRequest.m_CacheRangeRequested;
+            varHandler->m_State = VariableRequestHandlerState::PENDING;
+            varHandler->m_PendingVarRequest = varRequest;
+            break;
         }
-        else {
-            varRequest.m_RangeRequested = varStrategyRangesRequested.first;
-            varRequest.m_CacheRangeRequested = varStrategyRangesRequested.second;
-            // store VarRequest
-            storeVariableRequest(varId, varRequestId, varRequest);
-            acceptVariableRequest(
-                varId, var->dataSeries()->subDataSeries(varStrategyRangesRequested.second));
+        case VariableRequestHandlerState::PENDING: {
+            qCDebug(LOG_VariableController()) << tr("Process Request PENDING")
+                                              << varRequest.m_RangeRequested
+                                              << varRequest.m_CacheRangeRequested;
+            auto variableGroupIdToCancel = varHandler->m_PendingVarRequest.m_VariableGroupId;
+            cancelVariableRequest(variableGroupIdToCancel);
+            // Cancel variable can make state downgrade
+            varHandler->m_State = VariableRequestHandlerState::PENDING;
+            varHandler->m_PendingVarRequest = varRequest;
+
+            break;
         }
+        default:
+            qCCritical(LOG_VariableController())
+                << QObject::tr("Unknown VariableRequestHandlerState");
     }
 }
 
@@ -696,105 +756,63 @@ void VariableController::VariableControllerPrivate::registerProvider(
     }
 }
 
-void VariableController::VariableControllerPrivate::storeVariableRequest(
-    QUuid varId, QUuid varRequestId, const VariableRequest &varRequest)
-{
-    // First request for the variable. we can create an entry for it
-    auto varIdToVarRequestIdQueueMapIt = m_VarIdToVarRequestIdQueueMap.find(varId);
-    if (varIdToVarRequestIdQueueMapIt == m_VarIdToVarRequestIdQueueMap.cend()) {
-        auto varRequestIdQueue = std::deque<QUuid>{};
-        qCDebug(LOG_VariableController()) << tr("Store REQUEST in  QUEUE");
-        varRequestIdQueue.push_back(varRequestId);
-        m_VarIdToVarRequestIdQueueMap.insert(std::make_pair(varId, std::move(varRequestIdQueue)));
-    }
-    else {
-        qCDebug(LOG_VariableController()) << tr("Store REQUEST in EXISTING QUEUE");
-        auto &varRequestIdQueue = varIdToVarRequestIdQueueMapIt->second;
-        varRequestIdQueue.push_back(varRequestId);
-    }
-
-    auto varRequestIdToVarIdVarRequestMapIt = m_VarRequestIdToVarIdVarRequestMap.find(varRequestId);
-    if (varRequestIdToVarIdVarRequestMapIt == m_VarRequestIdToVarIdVarRequestMap.cend()) {
-        auto varIdToVarRequestMap = std::map<QUuid, VariableRequest>{};
-        varIdToVarRequestMap.insert(std::make_pair(varId, varRequest));
-        qCDebug(LOG_VariableController()) << tr("Store REQUESTID in MAP");
-        m_VarRequestIdToVarIdVarRequestMap.insert(
-            std::make_pair(varRequestId, std::move(varIdToVarRequestMap)));
-    }
-    else {
-        auto &varIdToVarRequestMap = varRequestIdToVarIdVarRequestMapIt->second;
-        qCDebug(LOG_VariableController()) << tr("Store REQUESTID in EXISTING MAP");
-        varIdToVarRequestMap.insert(std::make_pair(varId, varRequest));
-    }
-}
-
 QUuid VariableController::VariableControllerPrivate::acceptVariableRequest(
     QUuid varId, std::shared_ptr<IDataSeries> dataSeries)
 {
-    QUuid varRequestId;
-    auto varIdToVarRequestIdQueueMapIt = m_VarIdToVarRequestIdQueueMap.find(varId);
-    if (varIdToVarRequestIdQueueMapIt != m_VarIdToVarRequestIdQueueMap.cend()) {
-        auto &varRequestIdQueue = varIdToVarRequestIdQueueMapIt->second;
-        varRequestId = varRequestIdQueue.front();
-        auto varRequestIdToVarIdVarRequestMapIt
-            = m_VarRequestIdToVarIdVarRequestMap.find(varRequestId);
-        if (varRequestIdToVarIdVarRequestMapIt != m_VarRequestIdToVarIdVarRequestMap.cend()) {
-            auto &varIdToVarRequestMap = varRequestIdToVarIdVarRequestMapIt->second;
-            auto varIdToVarRequestMapIt = varIdToVarRequestMap.find(varId);
-            if (varIdToVarRequestMapIt != varIdToVarRequestMap.cend()) {
-                qCDebug(LOG_VariableController()) << tr("acceptVariableRequest");
-                auto &varRequest = varIdToVarRequestMapIt->second;
-                varRequest.m_DataSeries = dataSeries;
-                varRequest.m_CanUpdate = true;
-            }
-            else {
-                qCDebug(LOG_VariableController())
-                    << tr("Impossible to acceptVariableRequest of a unknown variable id attached "
-                          "to a variableRequestId")
-                    << varRequestId << varId;
-            }
-        }
-        else {
-            qCCritical(LOG_VariableController())
-                << tr("Impossible to acceptVariableRequest of a unknown variableRequestId")
-                << varRequestId;
-        }
-
-        varRequestIdQueue.pop_front();
-        if (varRequestIdQueue.empty()) {
-            qCDebug(LOG_VariableController())
-                << tr("TORM Erase REQUEST because it has been accepted") << varId;
-            m_VarIdToVarRequestIdQueueMap.erase(varId);
-        }
+    auto itVarHandler = m_VarIdToVarRequestHandler.find(varId);
+    if (itVarHandler == m_VarIdToVarRequestHandler.cend()) {
+        return QUuid();
     }
-    else {
+
+    auto varHandler = itVarHandler->second.get();
+    if (varHandler->m_State == VariableRequestHandlerState::OFF) {
         qCCritical(LOG_VariableController())
-            << tr("Impossible to acceptVariableRequest of a unknown variable id") << varId;
+            << tr("acceptVariableRequest impossible on a variable with OFF state");
     }
 
-    return varRequestId;
+    varHandler->m_RunningVarRequest.m_DataSeries = dataSeries;
+    varHandler->m_CanUpdate = true;
+
+    // Element traité, on a déjà toutes les données necessaires
+    auto varGroupId = varHandler->m_RunningVarRequest.m_VariableGroupId;
+    qCDebug(LOG_VariableController()) << "Variable::acceptVariableRequest" << varGroupId
+                                      << m_VarGroupIdToVarIds.size();
+
+    return varHandler->m_RunningVarRequest.m_VariableGroupId;
 }
 
-void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid varRequestId)
+void VariableController::VariableControllerPrivate::updateVariables(QUuid varRequestId)
 {
+    qCDebug(LOG_VariableController()) << "VariableControllerPrivate::updateVariables"
+                                      << QThread::currentThread()->objectName() << varRequestId;
 
-    auto varRequestIdToVarIdVarRequestMapIt = m_VarRequestIdToVarIdVarRequestMap.find(varRequestId);
-    if (varRequestIdToVarIdVarRequestMapIt != m_VarRequestIdToVarIdVarRequestMap.cend()) {
-        bool processVariableUpdate = true;
-        auto &varIdToVarRequestMap = varRequestIdToVarIdVarRequestMapIt->second;
-        for (auto varIdToVarRequestMapIt = varIdToVarRequestMap.cbegin();
-             (varIdToVarRequestMapIt != varIdToVarRequestMap.cend()) && processVariableUpdate;
-             ++varIdToVarRequestMapIt) {
-            processVariableUpdate &= varIdToVarRequestMapIt->second.m_CanUpdate;
-            qCDebug(LOG_VariableController()) << tr("updateVariableRequest")
-                                              << processVariableUpdate;
+    auto varGroupIdToVarIdsIt = m_VarGroupIdToVarIds.find(varRequestId);
+    if (varGroupIdToVarIdsIt == m_VarGroupIdToVarIds.end()) {
+        qCWarning(LOG_VariableController())
+            << tr("Impossible to updateVariables of unknown variables") << varRequestId;
+        return;
+    }
+
+    auto &varIds = varGroupIdToVarIdsIt->second;
+    auto varIdsEnd = varIds.end();
+    bool processVariableUpdate = true;
+    qCDebug(LOG_VariableController()) << "VariableControllerPrivate::updateVariables"
+                                      << varRequestId << varIds.size();
+    for (auto varIdsIt = varIds.begin(); (varIdsIt != varIdsEnd) && processVariableUpdate;
+         ++varIdsIt) {
+        auto itVarHandler = m_VarIdToVarRequestHandler.find(*varIdsIt);
+        if (itVarHandler != m_VarIdToVarRequestHandler.cend()) {
+            processVariableUpdate &= itVarHandler->second->m_CanUpdate;
         }
+    }
 
-        if (processVariableUpdate) {
-            for (auto varIdToVarRequestMapIt = varIdToVarRequestMap.cbegin();
-                 varIdToVarRequestMapIt != varIdToVarRequestMap.cend(); ++varIdToVarRequestMapIt) {
-                if (auto var = findVariable(varIdToVarRequestMapIt->first)) {
-                    auto &varRequest = varIdToVarRequestMapIt->second;
+    if (processVariableUpdate) {
+        qCDebug(LOG_VariableController()) << "Final update OK for the var request" << varIds.size();
+        for (auto varIdsIt = varIds.begin(); varIdsIt != varIdsEnd; ++varIdsIt) {
+            auto itVarHandler = m_VarIdToVarRequestHandler.find(*varIdsIt);
+            if (itVarHandler != m_VarIdToVarRequestHandler.cend()) {
+                if (auto var = findVariable(*varIdsIt)) {
+                    auto &varRequest = itVarHandler->second->m_RunningVarRequest;
                     var->setRange(varRequest.m_RangeRequested);
                     var->setCacheRange(varRequest.m_CacheRangeRequested);
                     qCDebug(LOG_VariableController()) << tr("1: onDataProvided")
@@ -808,82 +826,187 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
                                                       << var->nbPoints();
 
                     emit var->updated();
+                    qCDebug(LOG_VariableController()) << tr("Update OK");
                 }
                 else {
                     qCCritical(LOG_VariableController())
                         << tr("Impossible to update data to a null variable");
                 }
             }
-            // cleaning varRequestId
-            qCDebug(LOG_VariableController()) << tr("0: erase REQUEST in  MAP ?")
-                                              << m_VarRequestIdToVarIdVarRequestMap.size();
-            m_VarRequestIdToVarIdVarRequestMap.erase(varRequestId);
-            qCDebug(LOG_VariableController()) << tr("1: erase REQUEST in  MAP ?")
-                                              << m_VarRequestIdToVarIdVarRequestMap.size();
         }
-    }
-    else {
-        qCCritical(LOG_VariableController())
-            << tr("Cannot updateVariableRequest for a unknow varRequestId") << varRequestId;
+        updateVariableRequest(varRequestId);
+
+        // cleaning varRequestId
+        qCDebug(LOG_VariableController()) << tr("m_VarGroupIdToVarIds erase") << varRequestId;
+        m_VarGroupIdToVarIds.erase(varRequestId);
     }
 }
+
+
+void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid varRequestId)
+{
+    auto varGroupIdToVarIdsIt = m_VarGroupIdToVarIds.find(varRequestId);
+    if (varGroupIdToVarIdsIt == m_VarGroupIdToVarIds.end()) {
+        qCCritical(LOG_VariableController()) << QObject::tr(
+            "Impossible to updateVariableRequest since varGroupdId isn't here anymore");
+
+        return;
+    }
+
+    auto &varIds = varGroupIdToVarIdsIt->second;
+    auto varIdsEnd = varIds.end();
+    for (auto varIdsIt = varIds.begin(); (varIdsIt != varIdsEnd); ++varIdsIt) {
+        auto itVarHandler = m_VarIdToVarRequestHandler.find(*varIdsIt);
+        if (itVarHandler != m_VarIdToVarRequestHandler.cend()) {
+
+            auto varHandler = itVarHandler->second.get();
+            varHandler->m_CanUpdate = false;
+
+
+            switch (varHandler->m_State) {
+                case VariableRequestHandlerState::OFF: {
+                    qCCritical(LOG_VariableController())
+                        << QObject::tr("Impossible to update a variable with handler in OFF state");
+                } break;
+                case VariableRequestHandlerState::RUNNING: {
+                    varHandler->m_State = VariableRequestHandlerState::OFF;
+                    varHandler->m_RunningVarRequest = VariableRequest{};
+                    break;
+                }
+                case VariableRequestHandlerState::PENDING: {
+                    varHandler->m_State = VariableRequestHandlerState::RUNNING;
+                    varHandler->m_RunningVarRequest = varHandler->m_PendingVarRequest;
+                    varHandler->m_PendingVarRequest = VariableRequest{};
+                    auto var = findVariable(itVarHandler->first);
+                    executeVarRequest(var, varHandler->m_RunningVarRequest);
+                    break;
+                }
+                default:
+                    qCCritical(LOG_VariableController())
+                        << QObject::tr("Unknown VariableRequestHandlerState");
+            }
+        }
+    }
+}
+
 
 void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid varRequestId)
 {
-    // cleaning varRequestId
-    m_VarRequestIdToVarIdVarRequestMap.erase(varRequestId);
+    qCDebug(LOG_VariableController()) << tr("cancelVariableRequest") << varRequestId;
 
-    for (auto varIdToVarRequestIdQueueMapIt = m_VarIdToVarRequestIdQueueMap.begin();
-         varIdToVarRequestIdQueueMapIt != m_VarIdToVarRequestIdQueueMap.end();) {
-        auto &varRequestIdQueue = varIdToVarRequestIdQueueMapIt->second;
-        varRequestIdQueue.erase(
-            std::remove(varRequestIdQueue.begin(), varRequestIdQueue.end(), varRequestId),
-            varRequestIdQueue.end());
-        if (varRequestIdQueue.empty()) {
-            varIdToVarRequestIdQueueMapIt
-                = m_VarIdToVarRequestIdQueueMap.erase(varIdToVarRequestIdQueueMapIt);
+    auto varGroupIdToVarIdsIt = m_VarGroupIdToVarIds.find(varRequestId);
+    if (varGroupIdToVarIdsIt == m_VarGroupIdToVarIds.end()) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to cancelVariableRequest for unknown varGroupdId") << varRequestId;
+        return;
+    }
 
-            // Recompute if there is any next request based on the removed request.
-        }
-        else {
-            ++varIdToVarRequestIdQueueMapIt;
+    auto &varIds = varGroupIdToVarIdsIt->second;
+    auto varIdsEnd = varIds.end();
+    for (auto varIdsIt = varIds.begin(); (varIdsIt != varIdsEnd); ++varIdsIt) {
+        auto itVarHandler = m_VarIdToVarRequestHandler.find(*varIdsIt);
+        if (itVarHandler != m_VarIdToVarRequestHandler.cend()) {
+
+            auto varHandler = itVarHandler->second.get();
+            varHandler->m_VarId = QUuid{};
+            switch (varHandler->m_State) {
+                case VariableRequestHandlerState::OFF: {
+                    qCWarning(LOG_VariableController())
+                        << QObject::tr("Impossible to cancel a variable with no running request");
+                    break;
+                }
+                case VariableRequestHandlerState::RUNNING: {
+
+                    if (varHandler->m_RunningVarRequest.m_VariableGroupId == varRequestId) {
+                        auto var = findVariable(itVarHandler->first);
+                        auto varProvider = m_VariableToProviderMap.at(var);
+                        if (varProvider != nullptr) {
+                            m_VariableAcquisitionWorker->abortProgressRequested(
+                                itVarHandler->first);
+                        }
+                        m_VariableModel->setDataProgress(var, 0.0);
+                        varHandler->m_CanUpdate = false;
+                        varHandler->m_State = VariableRequestHandlerState::OFF;
+                        varHandler->m_RunningVarRequest = VariableRequest{};
+                    }
+                    else {
+                        // TODO: log Impossible to cancel the running variable request beacause its
+                        // varRequestId isn't not the canceled one
+                    }
+                    break;
+                }
+                case VariableRequestHandlerState::PENDING: {
+                    if (varHandler->m_RunningVarRequest.m_VariableGroupId == varRequestId) {
+                        auto var = findVariable(itVarHandler->first);
+                        auto varProvider = m_VariableToProviderMap.at(var);
+                        if (varProvider != nullptr) {
+                            m_VariableAcquisitionWorker->abortProgressRequested(
+                                itVarHandler->first);
+                        }
+                        m_VariableModel->setDataProgress(var, 0.0);
+                        varHandler->m_CanUpdate = false;
+                        varHandler->m_State = VariableRequestHandlerState::RUNNING;
+                        varHandler->m_RunningVarRequest = varHandler->m_PendingVarRequest;
+                        varHandler->m_PendingVarRequest = VariableRequest{};
+                        executeVarRequest(var, varHandler->m_RunningVarRequest);
+                    }
+                    else if (varHandler->m_PendingVarRequest.m_VariableGroupId == varRequestId) {
+                        varHandler->m_State = VariableRequestHandlerState::RUNNING;
+                        varHandler->m_PendingVarRequest = VariableRequest{};
+                    }
+                    else {
+                        // TODO: log Impossible to cancel the variable request beacause its
+                        // varRequestId isn't not the canceled one
+                    }
+                    break;
+                }
+                default:
+                    qCCritical(LOG_VariableController())
+                        << QObject::tr("Unknown VariableRequestHandlerState");
+            }
         }
     }
+    qCDebug(LOG_VariableController()) << tr("cancelVariableRequest: erase") << varRequestId;
+    m_VarGroupIdToVarIds.erase(varRequestId);
 }
 
-SqpRange VariableController::VariableControllerPrivate::getLastRequestedRange(QUuid varId)
+void VariableController::VariableControllerPrivate::executeVarRequest(std::shared_ptr<Variable> var,
+                                                                      VariableRequest &varRequest)
 {
-    auto lastRangeRequested = SqpRange{INVALID_RANGE};
-    auto varIdToVarRequestIdQueueMapIt = m_VarIdToVarRequestIdQueueMap.find(varId);
-    if (varIdToVarRequestIdQueueMapIt != m_VarIdToVarRequestIdQueueMap.cend()) {
-        auto &varRequestIdQueue = varIdToVarRequestIdQueueMapIt->second;
-        auto varRequestId = varRequestIdQueue.back();
-        auto varRequestIdToVarIdVarRequestMapIt
-            = m_VarRequestIdToVarIdVarRequestMap.find(varRequestId);
-        if (varRequestIdToVarIdVarRequestMapIt != m_VarRequestIdToVarIdVarRequestMap.cend()) {
-            auto &varIdToVarRequestMap = varRequestIdToVarIdVarRequestMapIt->second;
-            auto varIdToVarRequestMapIt = varIdToVarRequestMap.find(varId);
-            if (varIdToVarRequestMapIt != varIdToVarRequestMap.cend()) {
-                auto &varRequest = varIdToVarRequestMapIt->second;
-                lastRangeRequested = varRequest.m_RangeRequested;
-            }
-            else {
-                qCDebug(LOG_VariableController())
-                    << tr("Impossible to getLastRequestedRange of a unknown variable id attached "
-                          "to a variableRequestId")
-                    << varRequestId << varId;
-            }
+    qCDebug(LOG_VariableController()) << tr("TORM: executeVarRequest");
+
+    auto varId = m_VariableToIdentifierMap.at(var);
+
+    auto varCacheRange = var->cacheRange();
+    auto varCacheRangeRequested = varRequest.m_CacheRangeRequested;
+    auto notInCacheRangeList
+        = Variable::provideNotInCacheRangeList(varCacheRange, varCacheRangeRequested);
+    auto inCacheRangeList
+        = Variable::provideInCacheRangeList(varCacheRange, varCacheRangeRequested);
+
+    if (!notInCacheRangeList.empty()) {
+
+        auto varProvider = m_VariableToProviderMap.at(var);
+        if (varProvider != nullptr) {
+            qCDebug(LOG_VariableController()) << "executeVarRequest " << varRequest.m_RangeRequested
+                                              << varRequest.m_CacheRangeRequested;
+            m_VariableAcquisitionWorker->pushVariableRequest(
+                varRequest.m_VariableGroupId, varId, varRequest.m_RangeRequested,
+                varRequest.m_CacheRangeRequested,
+                DataProviderParameters{std::move(notInCacheRangeList), var->metadata()},
+                varProvider);
         }
         else {
             qCCritical(LOG_VariableController())
-                << tr("Impossible to getLastRequestedRange of a unknown variableRequestId")
-                << varRequestId;
+                << "Impossible to provide data with a null provider";
+        }
+
+        if (!inCacheRangeList.empty()) {
+            emit q->updateVarDisplaying(var, inCacheRangeList.first());
         }
     }
     else {
-        qDebug(LOG_VariableController())
-            << tr("Impossible to getLastRequestedRange of a unknown variable id") << varId;
+        acceptVariableRequest(varId,
+                              var->dataSeries()->subDataSeries(varRequest.m_CacheRangeRequested));
     }
-
-    return lastRangeRequested;
 }

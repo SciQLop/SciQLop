@@ -183,9 +183,9 @@ void VariableAcquisitionWorker::onVariableAcquisitionFailed(QUuid acqIdentifier)
     if (it != impl->m_AcqIdentifierToAcqRequestMap.cend()) {
         auto request = it->second;
         impl->unlock();
-        qCInfo(LOG_VariableAcquisitionWorker()) << tr("onVariableAcquisitionFailed")
-                                                << acqIdentifier << request.m_vIdentifier
-                                                << QThread::currentThread();
+        qCDebug(LOG_VariableAcquisitionWorker()) << tr("onVariableAcquisitionFailed")
+                                                 << acqIdentifier << request.m_vIdentifier
+                                                 << QThread::currentThread();
         emit variableCanceledRequested(request.m_vIdentifier);
     }
     else {
