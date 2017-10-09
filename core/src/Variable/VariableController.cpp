@@ -686,8 +686,10 @@ void VariableController::VariableControllerPrivate::processRequest(std::shared_p
                                               << varRequest.m_RangeRequested
                                               << varRequest.m_CacheRangeRequested;
             auto variableGroupIdToCancel = varHandler->m_PendingVarRequest.m_VariableGroupId;
-            varHandler->m_PendingVarRequest = varRequest;
             cancelVariableRequest(variableGroupIdToCancel);
+            // Cancel variable can make state downgrade
+            varHandler->m_State = VariableRequestHandlerState::PENDING;
+            varHandler->m_PendingVarRequest = varRequest;
 
             break;
         }
@@ -764,7 +766,8 @@ QUuid VariableController::VariableControllerPrivate::acceptVariableRequest(
 
     auto varHandler = itVarHandler->second.get();
     if (varHandler->m_State == VariableRequestHandlerState::OFF) {
-        // TODO log impossible case !!!
+        qCCritical(LOG_VariableController())
+            << tr("acceptVariableRequest impossible on a variable with OFF state");
     }
 
     varHandler->m_RunningVarRequest.m_DataSeries = dataSeries;
@@ -793,6 +796,8 @@ void VariableController::VariableControllerPrivate::updateVariables(QUuid varReq
     auto &varIds = varGroupIdToVarIdsIt->second;
     auto varIdsEnd = varIds.end();
     bool processVariableUpdate = true;
+    qCDebug(LOG_VariableController()) << "VariableControllerPrivate::updateVariables"
+                                      << varRequestId << varIds.size();
     for (auto varIdsIt = varIds.begin(); (varIdsIt != varIdsEnd) && processVariableUpdate;
          ++varIdsIt) {
         auto itVarHandler = m_VarIdToVarRequestHandler.find(*varIdsIt);
@@ -842,7 +847,9 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
 {
     auto varGroupIdToVarIdsIt = m_VarGroupIdToVarIds.find(varRequestId);
     if (varGroupIdToVarIdsIt == m_VarGroupIdToVarIds.end()) {
-        // TODO LOG cannot update variable request since varGroupdId isn't here anymore
+        qCCritical(LOG_VariableController()) << QObject::tr(
+            "Impossible to updateVariableRequest since varGroupdId isn't here anymore");
+
         return;
     }
 
@@ -901,7 +908,6 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
         if (itVarHandler != m_VarIdToVarRequestHandler.cend()) {
 
             auto varHandler = itVarHandler->second.get();
-            varHandler->m_CanUpdate = false;
             varHandler->m_VarId = QUuid{};
             switch (varHandler->m_State) {
                 case VariableRequestHandlerState::OFF: {
@@ -919,6 +925,7 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
                                 itVarHandler->first);
                         }
                         m_VariableModel->setDataProgress(var, 0.0);
+                        varHandler->m_CanUpdate = false;
                         varHandler->m_State = VariableRequestHandlerState::OFF;
                         varHandler->m_RunningVarRequest = VariableRequest{};
                     }
@@ -937,8 +944,10 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
                                 itVarHandler->first);
                         }
                         m_VariableModel->setDataProgress(var, 0.0);
+                        varHandler->m_CanUpdate = false;
                         varHandler->m_State = VariableRequestHandlerState::RUNNING;
                         varHandler->m_RunningVarRequest = varHandler->m_PendingVarRequest;
+                        varHandler->m_PendingVarRequest = VariableRequest{};
                         executeVarRequest(var, varHandler->m_RunningVarRequest);
                     }
                     else if (varHandler->m_PendingVarRequest.m_VariableGroupId == varRequestId) {
