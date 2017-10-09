@@ -324,23 +324,23 @@ void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
                                       << QThread::currentThread()->objectName();
     auto selectedRows = impl->m_VariableSelectionModel->selectedRows();
 
-    // NOTE we only permit the time modification for one varai
+    // NOTE we only permit the time modification for one variable
+    // DEPRECATED
+    // auto variables = QVector<std::shared_ptr<Variable> >{};
+    //        for (const auto &selectedRow : qAsConst(selectedRows)) {
+    //            if (auto selectedVariable =
+    //            impl->m_VariableModel->variable(selectedRow.row())) {
+    //                variables << selectedVariable;
+
+    //                // notify that rescale operation has to be done
+    //                emit rangeChanged(selectedVariable, dateTime);
+    //            }
+    //        }
+    //        if (!variables.isEmpty()) {
+    //            this->onRequestDataLoading(variables, dateTime, synchro);
+    //        }
     if (selectedRows.size() == 1) {
-        auto variables = QVector<std::shared_ptr<Variable> >{};
 
-        // DEPRECATED
-        //        for (const auto &selectedRow : qAsConst(selectedRows)) {
-        //            if (auto selectedVariable =
-        //            impl->m_VariableModel->variable(selectedRow.row())) {
-        //                variables << selectedVariable;
-
-        //                // notify that rescale operation has to be done
-        //                emit rangeChanged(selectedVariable, dateTime);
-        //            }
-        //        }
-        //        if (!variables.isEmpty()) {
-        //            this->onRequestDataLoading(variables, dateTime, synchro);
-        //        }
         if (auto selectedVariable
             = impl->m_VariableModel->variable(qAsConst(selectedRows).first().row())) {
 
@@ -525,8 +525,8 @@ void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> 
 
     auto varRequestId = QUuid::createUuid();
     qCDebug(LOG_VariableController()) << "VariableController::onRequestDataLoading"
-                                     << QThread::currentThread()->objectName() << varRequestId
-                                     << range << synchronise;
+                                      << QThread::currentThread()->objectName() << varRequestId
+                                      << range << synchronise;
 
     if (!synchronise) {
         auto varIds = std::list<QUuid>{};
@@ -972,8 +972,8 @@ void VariableController::VariableControllerPrivate::executeVarRequest(std::share
     auto varCacheRangeRequested = varRequest.m_CacheRangeRequested;
     auto notInCacheRangeList
         = Variable::provideNotInCacheRangeList(varCacheRange, varCacheRangeRequested);
-    //    auto inCacheRangeList
-    //        = Variable::provideInCacheRangeList(varCacheRange, varCacheRangeRequested);
+    auto inCacheRangeList
+        = Variable::provideInCacheRangeList(varCacheRange, varCacheRangeRequested);
 
     if (!notInCacheRangeList.empty()) {
 
@@ -992,9 +992,9 @@ void VariableController::VariableControllerPrivate::executeVarRequest(std::share
                 << "Impossible to provide data with a null provider";
         }
 
-        //        if (!inCacheRangeList.empty()) {
-        //            emit q->updateVarDisplaying(var, inCacheRangeList.first());
-        //        }
+        if (!inCacheRangeList.empty()) {
+            emit q->updateVarDisplaying(var, inCacheRangeList.first());
+        }
     }
     else {
         acceptVariableRequest(varId,
