@@ -211,6 +211,9 @@ std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
     // Reads x-axis unit
     stream.seek(0); // returns to the beginning of the file
     auto xAxisUnit = readXAxisUnit(stream);
+    if (xAxisUnit.m_Name.isEmpty()) {
+        return nullptr;
+    }
 
     // Reads results
     // AMDA V2: remove line

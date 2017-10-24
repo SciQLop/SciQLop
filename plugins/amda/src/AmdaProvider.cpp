@@ -203,8 +203,6 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
                     emit dataProvidedFailed(dataId);
                 }
             }
-            qCDebug(LOG_AmdaProvider()) << tr("acquisition requests erase because of finishing")
-                                        << dataId;
             m_AcqIdToRequestProgressMap.erase(dataId);
         }
         else {
@@ -237,8 +235,6 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
                   }
               }
               else {
-                  qCDebug(LOG_AmdaProvider())
-                      << tr("acquisition requests erase because of aborting") << dataId;
                   qCCritical(LOG_AmdaProvider()) << tr("httpFinishedLambda ERROR");
                   m_AcqIdToRequestProgressMap.erase(dataId);
                   emit dataProvidedFailed(dataId);
@@ -259,6 +255,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
 void AmdaProvider::updateRequestProgress(QUuid acqIdentifier,
                                          std::shared_ptr<QNetworkRequest> request, double progress)
 {
+    qCDebug(LOG_AmdaProvider()) << tr("updateRequestProgress request") << request.get();
     auto acqIdToRequestProgressMapIt = m_AcqIdToRequestProgressMap.find(acqIdentifier);
     if (acqIdToRequestProgressMapIt != m_AcqIdToRequestProgressMap.end()) {
         auto &requestProgressMap = acqIdToRequestProgressMapIt->second;

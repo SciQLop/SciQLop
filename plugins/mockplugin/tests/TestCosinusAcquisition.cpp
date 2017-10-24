@@ -144,6 +144,7 @@ void TestCosinusAcquisition::testAcquisition()
     auto validateVariable
         = [dataSeries](std::shared_ptr<Variable> variable, const SqpRange &range) {
               // Checks that the variable's range has changed
+              qInfo() << "range vs expected range" << variable->range() << range;
               QCOMPARE(variable->range(), range);
 
               // Checks the variable's data series
@@ -157,15 +158,17 @@ void TestCosinusAcquisition::testAcquisition()
     auto variable = sqpApp->variableController().createVariable(
         "MMS", {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 100.}}, provider);
 
+
     QFETCH(int, operationDelay);
     QTest::qWait(operationDelay);
     validateVariable(variable, initialRange);
 
+    QTest::qWait(operationDelay);
     // Makes operations on the variable
     QFETCH(std::vector<SqpRange>, operations);
     for (const auto &operation : operations) {
         // Asks request on the variable and waits during its execution
-        sqpApp->variableController().onRequestDataLoading({variable}, operation, true);
+        sqpApp->variableController().onRequestDataLoading({variable}, operation, false);
 
         QTest::qWait(operationDelay);
         validateVariable(variable, operation);
@@ -174,7 +177,7 @@ void TestCosinusAcquisition::testAcquisition()
 
     for (const auto &operation : operations) {
         // Asks request on the variable and waits during its execution
-        sqpApp->variableController().onRequestDataLoading({variable}, operation, true);
+        sqpApp->variableController().onRequestDataLoading({variable}, operation, false);
     }
     QTest::qWait(operationDelay);
     validateVariable(variable, operations.back());
