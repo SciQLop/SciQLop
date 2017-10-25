@@ -2,13 +2,13 @@
 
 #include <Data/IDataProvider.h>
 #include <DataSource/DataSourceController.h>
+#include <DragDropHelper.h>
 #include <Network/NetworkController.h>
 #include <QThread>
 #include <Time/TimeController.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 #include <Visualization/VisualizationController.h>
-#include <DragDropHelper.h>
 
 Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")
 
@@ -120,13 +120,9 @@ SqpApplication::SqpApplication(int &argc, char **argv)
     impl->m_VisualizationControllerThread.start();
 }
 
-SqpApplication::~SqpApplication()
-{
-}
+SqpApplication::~SqpApplication() {}
 
-void SqpApplication::initialize()
-{
-}
+void SqpApplication::initialize() {}
 
 DataSourceController &SqpApplication::dataSourceController() noexcept
 {

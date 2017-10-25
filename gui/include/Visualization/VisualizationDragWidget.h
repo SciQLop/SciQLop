@@ -1,18 +1,17 @@
 #ifndef VISUALIZATIONDRAGWIDGET_H
 #define VISUALIZATIONDRAGWIDGET_H
 
-#include <QWidget>
-#include <QMimeData>
 #include <Common/spimpl.h>
+#include <QMimeData>
+#include <QWidget>
 
-class VisualizationDragWidget : public QWidget
-{
+class VisualizationDragWidget : public QWidget {
     Q_OBJECT
 
 public:
-    VisualizationDragWidget(QWidget* parent = nullptr);
+    VisualizationDragWidget(QWidget *parent = nullptr);
 
-    virtual QMimeData* mimeData() const = 0;
+    virtual QMimeData *mimeData() const = 0;
     virtual bool isDragAllowed() const = 0;
 
 protected:
@@ -24,7 +23,7 @@ private:
     spimpl::unique_impl_ptr<VisualizationDragWidgetPrivate> impl;
 
 signals:
-    void dragDetected(VisualizationDragWidget* dragWidget, const QPoint& dragPosition);
+    void dragDetected(VisualizationDragWidget *dragWidget, const QPoint &dragPosition);
 };
 
 #endif // VISUALIZATIONDRAGWIDGET_H

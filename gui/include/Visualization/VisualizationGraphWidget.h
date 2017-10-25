@@ -33,7 +33,7 @@ public:
     explicit VisualizationGraphWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationGraphWidget();
 
-    VisualizationZoneWidget* parentZoneWidget() const noexcept;
+    VisualizationZoneWidget *parentZoneWidget() const noexcept;
 
     /// If acquisition isn't enable, requestDataLoading signal cannot be emit
     void enableAcquisition(bool enable);
@@ -44,7 +44,7 @@ public:
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
 
     /// Returns the list of all variables used in the graph
-    QList<std::shared_ptr<Variable>> variables() const;
+    QList<std::shared_ptr<Variable> > variables() const;
 
     void setYRange(const SqpRange &range);
     SqpRange graphRange() const noexcept;
@@ -57,7 +57,7 @@ public:
     QString name() const override;
 
     // VisualisationDragWidget
-    QMimeData* mimeData() const override;
+    QMimeData *mimeData() const override;
     bool isDragAllowed() const override;
 
 signals:

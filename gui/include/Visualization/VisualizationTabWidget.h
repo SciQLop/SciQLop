@@ -6,8 +6,8 @@
 #include <Common/spimpl.h>
 
 #include <QLoggingCategory>
-#include <QWidget>
 #include <QMimeData>
+#include <QWidget>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationTabWidget)
 
@@ -39,13 +39,14 @@ public:
     VisualizationZoneWidget *createZone(std::shared_ptr<Variable> variable);
 
     /**
-     * Creates a zone using a list of variables. The variables will be displayed in a new graph of the new
-     * zone. The zone is inserted at the specified index.
+     * Creates a zone using a list of variables. The variables will be displayed in a new graph of
+     * the new zone. The zone is inserted at the specified index.
      * @param variables the variables for which to create the zone
      * @param index The index where the zone should be inserted in the layout
      * @return the pointer to the created zone
      */
-    VisualizationZoneWidget *createZone(const QList<std::shared_ptr<Variable>>& variables, int index);
+    VisualizationZoneWidget *createZone(const QList<std::shared_ptr<Variable> > &variables,
+                                        int index);
 
     /**
      * Creates a zone which is empty (no variables). The zone is inserted at the specified index.

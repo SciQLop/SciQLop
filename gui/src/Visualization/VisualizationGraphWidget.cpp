@@ -8,9 +8,9 @@
 
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
+#include <DragDropHelper.h>
 #include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
-#include <DragDropHelper.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 
@@ -72,9 +72,10 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
             &VisualizationGraphWidget::onMouseRelease);
     connect(ui->widget, &QCustomPlot::mouseMove, this, &VisualizationGraphWidget::onMouseMove);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
-    connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
-                                   &QCPAxis::rangeChanged),
-            this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
+    connect(
+        ui->widget->xAxis,
+        static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(&QCPAxis::rangeChanged),
+        this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
 
     // Activates menu when right clicking on the graph
     ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -97,12 +98,11 @@ VisualizationGraphWidget::~VisualizationGraphWidget()
 VisualizationZoneWidget *VisualizationGraphWidget::parentZoneWidget() const noexcept
 {
     auto parent = parentWidget();
-    do
-    {
+    do {
         parent = parent->parentWidget();
-    } while (parent != nullptr && !qobject_cast<VisualizationZoneWidget*>(parent));
+    } while (parent != nullptr && !qobject_cast<VisualizationZoneWidget *>(parent));
 
-    return qobject_cast<VisualizationZoneWidget*>(parent);
+    return qobject_cast<VisualizationZoneWidget *>(parent);
 }
 
 void VisualizationGraphWidget::enableAcquisition(bool enable)
@@ -165,11 +165,11 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
     ui->widget->replot();
 }
 
-QList<std::shared_ptr<Variable>> VisualizationGraphWidget::variables() const
+QList<std::shared_ptr<Variable> > VisualizationGraphWidget::variables() const
 {
-    auto variables = QList<std::shared_ptr<Variable>>{};
-    for (auto it = std::cbegin(impl->m_VariableToPlotMultiMap); it != std::cend(impl->m_VariableToPlotMultiMap); ++it)
-    {
+    auto variables = QList<std::shared_ptr<Variable> >{};
+    for (auto it = std::cbegin(impl->m_VariableToPlotMultiMap);
+         it != std::cend(impl->m_VariableToPlotMultiMap); ++it) {
         variables << it->first;
     }
 
@@ -232,10 +232,10 @@ QString VisualizationGraphWidget::name() const
 
 QMimeData *VisualizationGraphWidget::mimeData() const
 {
-     auto *mimeData = new QMimeData;
-     mimeData->setData(DragDropHelper::MIME_TYPE_GRAPH, QByteArray());
+    auto *mimeData = new QMimeData;
+    mimeData->setData(DragDropHelper::MIME_TYPE_GRAPH, QByteArray());
 
-     return mimeData;
+    return mimeData;
 }
 
 bool VisualizationGraphWidget::isDragAllowed() const
@@ -290,9 +290,9 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
 {
-    qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: VisualizationGraphWidget::onRangeChanged")
-                                            << QThread::currentThread()->objectName() << "DoAcqui"
-                                            << impl->m_DoAcquisition;
+    qCDebug(LOG_VisualizationGraphWidget())
+        << tr("TORM: VisualizationGraphWidget::onRangeChanged")
+        << QThread::currentThread()->objectName() << "DoAcqui" << impl->m_DoAcquisition;
 
     auto graphRange = SqpRange{t1.lower, t1.upper};
     auto oldGraphRange = SqpRange{t2.lower, t2.upper};

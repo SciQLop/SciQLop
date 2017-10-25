@@ -15,7 +15,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationZoneWidget)
 
 namespace Ui {
 class VisualizationZoneWidget;
-} // Ui
+} // namespace Ui
 
 class Variable;
 class VisualizationGraphWidget;
@@ -30,7 +30,7 @@ public:
     /// Adds a graph widget
     void addGraph(VisualizationGraphWidget *graphWidget);
 
-     /// Inserts a graph widget
+    /// Inserts a graph widget
     void insertGraph(int index, VisualizationGraphWidget *graphWidget);
 
     /**
@@ -57,7 +57,8 @@ public:
      * @param index The index where the graph should be inserted in the layout
      * @return the pointer to the created graph
      */
-    VisualizationGraphWidget *createGraph(const QList<std::shared_ptr<Variable>> variables, int index);
+    VisualizationGraphWidget *createGraph(const QList<std::shared_ptr<Variable> > variables,
+                                          int index);
 
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
@@ -66,7 +67,7 @@ public:
     QString name() const override;
 
     // VisualisationDragWidget
-    QMimeData* mimeData() const override;
+    QMimeData *mimeData() const override;
     bool isDragAllowed() const override;
 
 protected:
@@ -83,7 +84,7 @@ private slots:
     /// Slot called when a variable is about to be removed from a graph contained in the zone
     void onVariableAboutToBeRemoved(std::shared_ptr<Variable> variable);
 
-    void dropMimeData(int index, const QMimeData* mimeData);
+    void dropMimeData(int index, const QMimeData *mimeData);
 };
 
 #endif // SCIQLOP_VISUALIZATIONZONEWIDGET_H

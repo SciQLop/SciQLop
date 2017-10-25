@@ -9,9 +9,9 @@
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 
+#include <DragDropHelper.h>
 #include <QUuid>
 #include <SqpApplication.h>
-#include <DragDropHelper.h>
 #include <cmath>
 
 #include <QLayout>
@@ -78,7 +78,8 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
     ui->zoneNameLabel->setText(name);
 
     ui->dragDropContainer->setAcceptedMimeTypes({DragDropHelper::MIME_TYPE_GRAPH});
-    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this, &VisualizationZoneWidget::dropMimeData);
+    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this,
+            &VisualizationZoneWidget::dropMimeData);
 
     // 'Close' options : widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
@@ -116,10 +117,11 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     return createGraph(variable, -1);
 }
 
-VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<Variable> variable, int index)
+VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<Variable> variable,
+                                                               int index)
 {
-    auto graphWidget = new VisualizationGraphWidget{
-        defaultGraphName(*ui->dragDropContainer->layout()), this};
+    auto graphWidget
+        = new VisualizationGraphWidget{defaultGraphName(*ui->dragDropContainer->layout()), this};
 
 
     // Set graph properties
@@ -146,10 +148,10 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         graphChildRange.m_TStart += deltaLeft;
                         graphChildRange.m_TEnd -= deltaRight;
                         qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomIn");
-                        qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: deltaLeft")
-                                                               << deltaLeft;
-                        qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
-                                                               << deltaRight;
+                        qCDebug(LOG_VisualizationZoneWidget())
+                            << tr("TORM: deltaLeft") << deltaLeft;
+                        qCDebug(LOG_VisualizationZoneWidget())
+                            << tr("TORM: deltaRight") << deltaRight;
                         qCDebug(LOG_VisualizationZoneWidget())
                             << tr("TORM: dt") << graphRange.m_TEnd - graphRange.m_TStart;
 
@@ -160,10 +162,10 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomOut");
                         auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
                         auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
-                        qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: deltaLeft")
-                                                               << deltaLeft;
-                        qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
-                                                               << deltaRight;
+                        qCDebug(LOG_VisualizationZoneWidget())
+                            << tr("TORM: deltaLeft") << deltaLeft;
+                        qCDebug(LOG_VisualizationZoneWidget())
+                            << tr("TORM: deltaRight") << deltaRight;
                         qCDebug(LOG_VisualizationZoneWidget())
                             << tr("TORM: dt") << graphRange.m_TEnd - graphRange.m_TStart;
                         graphChildRange.m_TStart -= deltaLeft;
@@ -200,10 +202,10 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         break;
                 }
                 graphChild->enableAcquisition(false);
-                qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: Range before: ")
-                                                       << graphChild->graphRange();
-                qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: Range after : ")
-                                                       << graphChildRange;
+                qCDebug(LOG_VisualizationZoneWidget())
+                    << tr("TORM: Range before: ") << graphChild->graphRange();
+                qCDebug(LOG_VisualizationZoneWidget())
+                    << tr("TORM: Range after : ") << graphChildRange;
                 qCDebug(LOG_VisualizationZoneWidget())
                     << tr("TORM: child dt") << graphChildRange.m_TEnd - graphChildRange.m_TStart;
                 graphChild->setGraphRange(graphChildRange);
@@ -226,7 +228,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     if (layout->count() > 0) {
         // Case of a new graph in a existant zone
         if (auto visualizationGraphWidget
-                = dynamic_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
+            = dynamic_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
             range = visualizationGraphWidget->graphRange();
         }
     }
@@ -243,7 +245,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     if (auto dataSeries = variable->dataSeries()) {
         dataSeries->lockRead();
         auto valuesBounds
-                = dataSeries->valuesBounds(variable->range().m_TStart, variable->range().m_TEnd);
+            = dataSeries->valuesBounds(variable->range().m_TStart, variable->range().m_TEnd);
         auto end = dataSeries->cend();
         if (valuesBounds.first != end && valuesBounds.second != end) {
             auto rangeValue = [](const auto &value) { return std::isnan(value) ? 0. : value; };
@@ -259,14 +261,15 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     return graphWidget;
 }
 
-VisualizationGraphWidget *VisualizationZoneWidget::createGraph(const QList<std::shared_ptr<Variable> > variables, int index)
+VisualizationGraphWidget *
+VisualizationZoneWidget::createGraph(const QList<std::shared_ptr<Variable> > variables, int index)
 {
-    if (variables.isEmpty())
+    if (variables.isEmpty()) {
         return nullptr;
+    }
 
     auto graphWidget = createGraph(variables.first(), index);
-    for (auto variableIt = variables.cbegin() + 1; variableIt != variables.cend(); ++variableIt)
-    {
+    for (auto variableIt = variables.cbegin() + 1; variableIt != variables.cend(); ++variableIt) {
         graphWidget->addVariable(*variableIt, graphWidget->graphRange());
     }
 
@@ -351,57 +354,51 @@ void VisualizationZoneWidget::onVariableAboutToBeRemoved(std::shared_ptr<Variabl
 
 void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
 {
-    auto& helper = sqpApp->dragDropHelper();
-    if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_GRAPH))
-    {
-        auto graphWidget = static_cast<VisualizationGraphWidget*>(helper.getCurrentDragWidget());
-        auto parentDragDropContainer = qobject_cast<VisualizationDragDropContainer*>(graphWidget->parentWidget());
+    auto &helper = sqpApp->dragDropHelper();
+    if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_GRAPH)) {
+        auto graphWidget = static_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
+        auto parentDragDropContainer
+            = qobject_cast<VisualizationDragDropContainer *>(graphWidget->parentWidget());
         Q_ASSERT(parentDragDropContainer);
 
-        const auto& variables = graphWidget->variables();
+        const auto &variables = graphWidget->variables();
 
-        if (parentDragDropContainer != ui->dragDropContainer && !variables.isEmpty())
-        {
-            //The drop didn't occur in the same zone
+        if (parentDragDropContainer != ui->dragDropContainer && !variables.isEmpty()) {
+            // The drop didn't occur in the same zone
 
-            //Abort the requests for the variables (if any)
-            //Commented, because it's not sure if it's needed or not
-            //for (const auto& var : variables)
+            // Abort the requests for the variables (if any)
+            // Commented, because it's not sure if it's needed or not
+            // for (const auto& var : variables)
             //{
             //    sqpApp->variableController().onAbortProgressRequested(var);
             //}
 
             auto previousParentZoneWidget = graphWidget->parentZoneWidget();
             auto nbGraph = parentDragDropContainer->countDragWidget();
-            if (nbGraph == 1)
-            {
-                //This is the only graph in the previous zone, close the zone
+            if (nbGraph == 1) {
+                // This is the only graph in the previous zone, close the zone
                 previousParentZoneWidget->close();
             }
-            else
-            {
-                //Close the graph
+            else {
+                // Close the graph
                 graphWidget->close();
             }
 
-            //Creates the new graph in the zone
+            // Creates the new graph in the zone
             createGraph(variables, index);
         }
-        else
-        {
-            //The drop occurred in the same zone or the graph is empty
-            //Simple move of the graph, no variable operation associated
+        else {
+            // The drop occurred in the same zone or the graph is empty
+            // Simple move of the graph, no variable operation associated
             parentDragDropContainer->layout()->removeWidget(graphWidget);
 
-            if (variables.isEmpty() && parentDragDropContainer != ui->dragDropContainer)
-            {
+            if (variables.isEmpty() && parentDragDropContainer != ui->dragDropContainer) {
                 // The graph is empty and dropped in a different zone.
                 // Take the range of the first graph in the zone (if existing).
                 auto layout = ui->dragDropContainer->layout();
-                if (layout->count() > 0)
-                {
-                    if (auto visualizationGraphWidget = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget()))
-                    {
+                if (layout->count() > 0) {
+                    if (auto visualizationGraphWidget
+                        = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
                         graphWidget->setGraphRange(visualizationGraphWidget->graphRange());
                     }
                 }
