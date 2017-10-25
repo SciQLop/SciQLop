@@ -61,6 +61,7 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
 
     ui->dragDropContainer->setAcceptedMimeTypes({DragDropHelper::MIME_TYPE_GRAPH, DragDropHelper::MIME_TYPE_ZONE});
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this, &VisualizationTabWidget::dropMimeData);
+    sqpApp->dragDropHelper().addDragDropScrollArea(ui->scrollArea);
 
     // Widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
@@ -68,6 +69,7 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
 
 VisualizationTabWidget::~VisualizationTabWidget()
 {
+    sqpApp->dragDropHelper().removeDragDropScrollArea(ui->scrollArea);
     delete ui;
 }
 
