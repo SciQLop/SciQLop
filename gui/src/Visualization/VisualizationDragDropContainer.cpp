@@ -71,7 +71,6 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
         auto adustNum = 18; // to be safe, in case of scrollbar on the side
         auto containerRect = QRect(QPoint(), container->contentsRect().size())
                                  .adjusted(adustNum, adustNum, -adustNum, -adustNum);
-        qDebug() << containerRect << container->mapFromGlobal(QCursor::pos());
         return containerRect.contains(container->mapFromGlobal(QCursor::pos()));
     }
 };
@@ -114,8 +113,7 @@ int VisualizationDragDropContainer::countDragWidget() const
 {
     auto nbGraph = 0;
     for (auto child : children()) {
-        auto widget = qobject_cast<VisualizationDragWidget *>(child);
-        if (widget) {
+        if (qobject_cast<VisualizationDragWidget *>(child)) {
             nbGraph += 1;
         }
     }
@@ -129,7 +127,7 @@ void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidg
     auto &helper = sqpApp->dragDropHelper();
 
     // Note: The management of the drag object is done by Qt
-    auto *drag = new QDrag{dragWidget};
+    auto drag = new QDrag{dragWidget};
     drag->setHotSpot(dragPosition);
 
     auto mimeData = dragWidget->mimeData();
@@ -189,8 +187,9 @@ void VisualizationDragDropContainer::dragEnterEvent(QDragEnterEvent *event)
             }
         }
     }
-    else
+    else {
         event->ignore();
+    }
 
     QWidget::dragEnterEvent(event);
 }
@@ -206,7 +205,7 @@ void VisualizationDragDropContainer::dragLeaveEvent(QDragLeaveEvent *event)
 
         bool isInternal = true;
         if (isInternal) {
-            // Only if the drag is strated from the visualization
+            // Only if the drag is started from the visualization
             // Show the drag widget at its original place
             // So the drag widget doesn't stay hidden if the drop occurs outside the visualization
             // drop zone (It is not possible to catch a drop event outside of the application)
@@ -264,8 +263,9 @@ void VisualizationDragDropContainer::dragMoveEvent(QDragMoveEvent *event)
             }
         }
     }
-    else
+    else {
         event->ignore();
+    }
 
     QWidget::dragMoveEvent(event);
 }
@@ -286,7 +286,6 @@ void VisualizationDragDropContainer::dropEvent(QDropEvent *event)
             }
 
             dragWidget->setVisible(true);
-            dragWidget->setStyleSheet("");
 
             event->acceptProposedAction();
 
@@ -295,8 +294,9 @@ void VisualizationDragDropContainer::dropEvent(QDropEvent *event)
             emit dropOccured(droppedIndex, event->mimeData());
         }
     }
-    else
+    else {
         event->ignore();
+    }
 
     QWidget::dropEvent(event);
 }

@@ -97,9 +97,9 @@ VisualizationGraphWidget::~VisualizationGraphWidget()
 VisualizationZoneWidget *VisualizationGraphWidget::parentZoneWidget() const noexcept
 {
     auto parent = parentWidget();
-    do {
+    while (parent != nullptr && !qobject_cast<VisualizationZoneWidget *>(parent)) {
         parent = parent->parentWidget();
-    } while (parent != nullptr && !qobject_cast<VisualizationZoneWidget *>(parent));
+    }
 
     return qobject_cast<VisualizationZoneWidget *>(parent);
 }
@@ -231,7 +231,7 @@ QString VisualizationGraphWidget::name() const
 
 QMimeData *VisualizationGraphWidget::mimeData() const
 {
-    auto *mimeData = new QMimeData;
+    auto mimeData = new QMimeData;
     mimeData->setData(DragDropHelper::MIME_TYPE_GRAPH, QByteArray());
 
     return mimeData;

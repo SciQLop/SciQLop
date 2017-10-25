@@ -1,5 +1,5 @@
-#ifndef VISUALIZATIONDRAGDROPCONTAINER_H
-#define VISUALIZATIONDRAGDROPCONTAINER_H
+#ifndef SCIQLOP_VISUALIZATIONDRAGDROPCONTAINER_H
+#define SCIQLOP_VISUALIZATIONDRAGDROPCONTAINER_H
 
 #include <Common/spimpl.h>
 #include <QMimeData>
@@ -39,4 +39,4 @@ private slots:
     void startDrag(VisualizationDragWidget *dragWidget, const QPoint &dragPosition);
 };
 
-#endif // VISUALIZATIONDRAGDROPCONTAINER_H
+#endif // SCIQLOP_VISUALIZATIONDRAGDROPCONTAINER_H

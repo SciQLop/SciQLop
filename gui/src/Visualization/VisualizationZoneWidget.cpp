@@ -314,7 +314,7 @@ QString VisualizationZoneWidget::name() const
 
 QMimeData *VisualizationZoneWidget::mimeData() const
 {
-    auto *mimeData = new QMimeData;
+    auto mimeData = new QMimeData;
     mimeData->setData(DragDropHelper::MIME_TYPE_ZONE, QByteArray());
 
     return mimeData;

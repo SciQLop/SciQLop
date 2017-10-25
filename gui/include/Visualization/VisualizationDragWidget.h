@@ -1,5 +1,5 @@
-#ifndef VISUALIZATIONDRAGWIDGET_H
-#define VISUALIZATIONDRAGWIDGET_H
+#ifndef SCIQLOP_VISUALIZATIONDRAGWIDGET_H
+#define SCIQLOP_VISUALIZATIONDRAGWIDGET_H
 
 #include <Common/spimpl.h>
 #include <QMimeData>
@@ -26,4 +26,4 @@ signals:
     void dragDetected(VisualizationDragWidget *dragWidget, const QPoint &dragPosition);
 };
 
-#endif // VISUALIZATIONDRAGWIDGET_H
+#endif // SCIQLOP_VISUALIZATIONDRAGWIDGET_H
