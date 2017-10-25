@@ -11,7 +11,10 @@
 
 #include <QUuid>
 #include <SqpApplication.h>
+#include <DragDropHelper.h>
 #include <cmath>
+
+#include <QLayout>
 
 Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 
@@ -66,13 +69,16 @@ struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
 };
 
 VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *parent)
-        : QWidget{parent},
+        : VisualizationDragWidget{parent},
           ui{new Ui::VisualizationZoneWidget},
           impl{spimpl::make_unique_impl<VisualizationZoneWidgetPrivate>()}
 {
     ui->setupUi(this);
 
     ui->zoneNameLabel->setText(name);
+
+    ui->dragDropContainer->setAcceptedMimeTypes({DragDropHelper::MIME_TYPE_GRAPH});
+    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this, &VisualizationZoneWidget::dropMimeData);
 
     // 'Close' options : widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
@@ -94,13 +100,26 @@ void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)
     // Synchronize new graph with others in the zone
     impl->m_Synchronizer->addGraph(*graphWidget);
 
-    ui->visualizationZoneFrame->layout()->addWidget(graphWidget);
+    ui->dragDropContainer->addDragWidget(graphWidget);
+}
+
+void VisualizationZoneWidget::insertGraph(int index, VisualizationGraphWidget *graphWidget)
+{
+    // Synchronize new graph with others in the zone
+    impl->m_Synchronizer->addGraph(*graphWidget);
+
+    ui->dragDropContainer->insertDragWidget(index, graphWidget);
 }
 
 VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<Variable> variable)
 {
+    return createGraph(variable, -1);
+}
+
+VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<Variable> variable, int index)
+{
     auto graphWidget = new VisualizationGraphWidget{
-        defaultGraphName(*ui->visualizationZoneFrame->layout()), this};
+        defaultGraphName(*ui->dragDropContainer->layout()), this};
 
 
     // Set graph properties
@@ -113,7 +132,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                                                      const SqpRange &oldGraphRange) {
 
         auto zoomType = VariableController::getZoomType(graphRange, oldGraphRange);
-        auto frameLayout = ui->visualizationZoneFrame->layout();
+        auto frameLayout = ui->dragDropContainer->layout();
         for (auto i = 0; i < frameLayout->count(); ++i) {
             auto graphChild
                 = dynamic_cast<VisualizationGraphWidget *>(frameLayout->itemAt(i)->widget());
@@ -203,7 +222,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     auto range = SqpRange{};
 
     // Apply visitor to graph children
-    auto layout = ui->visualizationZoneFrame->layout();
+    auto layout = ui->dragDropContainer->layout();
     if (layout->count() > 0) {
         // Case of a new graph in a existant zone
         if (auto visualizationGraphWidget
@@ -216,7 +235,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
         range = variable->range();
     }
 
-    this->addGraph(graphWidget);
+    this->insertGraph(index, graphWidget);
 
     graphWidget->addVariable(variable, range);
 
@@ -240,6 +259,20 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     return graphWidget;
 }
 
+VisualizationGraphWidget *VisualizationZoneWidget::createGraph(const QList<std::shared_ptr<Variable> > variables, int index)
+{
+    if (variables.isEmpty())
+        return nullptr;
+
+    auto graphWidget = createGraph(variables.first(), index);
+    for (auto variableIt = variables.cbegin() + 1; variableIt != variables.cend(); ++variableIt)
+    {
+        graphWidget->addVariable(*variableIt, graphWidget->graphRange());
+    }
+
+    return graphWidget;
+}
+
 void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {
@@ -248,7 +281,7 @@ void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
         // Apply visitor to graph children: widgets different from graphs are not visited (no
         // action)
         processGraphs(
-            *ui->visualizationZoneFrame->layout(),
+            *ui->dragDropContainer->layout(),
             [visitor](VisualizationGraphWidget &graphWidget) { graphWidget.accept(visitor); });
 
         visitor->visitLeave(this);
@@ -276,10 +309,23 @@ QString VisualizationZoneWidget::name() const
     return ui->zoneNameLabel->text();
 }
 
+QMimeData *VisualizationZoneWidget::mimeData() const
+{
+    auto *mimeData = new QMimeData;
+    mimeData->setData(DragDropHelper::MIME_TYPE_ZONE, QByteArray());
+
+    return mimeData;
+}
+
+bool VisualizationZoneWidget::isDragAllowed() const
+{
+    return true;
+}
+
 void VisualizationZoneWidget::closeEvent(QCloseEvent *event)
 {
     // Closes graphs in the zone
-    processGraphs(*ui->visualizationZoneFrame->layout(),
+    processGraphs(*ui->dragDropContainer->layout(),
                   [](VisualizationGraphWidget &graphWidget) { graphWidget.close(); });
 
     // Delete synchronization group from variable controller
@@ -301,4 +347,48 @@ void VisualizationZoneWidget::onVariableAboutToBeRemoved(std::shared_ptr<Variabl
     QMetaObject::invokeMethod(&sqpApp->variableController(), "desynchronize", Qt::QueuedConnection,
                               Q_ARG(std::shared_ptr<Variable>, variable),
                               Q_ARG(QUuid, impl->m_SynchronisationGroupId));
+}
+
+void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
+{
+    auto& helper = sqpApp->dragDropHelper();
+    if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_GRAPH))
+    {
+        auto graphWidget = static_cast<VisualizationGraphWidget*>(helper.getCurrentDragWidget());
+        auto parentDragDropContainer = qobject_cast<VisualizationDragDropContainer*>(graphWidget->parentWidget());
+        Q_ASSERT(parentDragDropContainer);
+
+        const auto& variables = graphWidget->variables();
+
+        if (!variables.empty())
+        {
+            if (parentDragDropContainer != ui->dragDropContainer)
+            {
+                //The drop didn't occur in the same zone
+
+                auto previousParentZoneWidget = graphWidget->parentZoneWidget();
+                auto nbGraph = parentDragDropContainer->countDragWidget();
+                if (nbGraph == 1)
+                {
+                    //This is the only graph in the previous zone, close the zone
+                    previousParentZoneWidget->close();
+                }
+                else
+                {
+                    //Close the graph
+                    graphWidget->close();
+                }
+
+                //Creates the new graph in the zone
+                createGraph(variables, index);
+            }
+            else
+            {
+                //The drop occurred in the same zone
+                //Simple move of the graph, no variable operation associated
+                parentDragDropContainer->layout()->removeWidget(graphWidget);
+                ui->dragDropContainer->insertDragWidget(index, graphWidget);
+            }
+        }
+    }
 }

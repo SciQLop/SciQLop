@@ -107,11 +107,22 @@
       <property name="bottomMargin">
        <number>0</number>
       </property>
+      <item>
+       <widget class="VisualizationDragDropContainer" name="dragDropContainer" native="true"/>
+      </item>
      </layout>
     </widget>
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>VisualizationDragDropContainer</class>
+   <extends>QWidget</extends>
+   <header>Visualization/VisualizationDragDropContainer.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

@@ -2,6 +2,7 @@
 #define SCIQLOP_VISUALIZATIONGRAPHWIDGET_H
 
 #include "Visualization/IVisualizationWidget.h"
+#include "Visualization/VisualizationDragWidget.h"
 
 #include <QLoggingCategory>
 #include <QWidget>
@@ -16,12 +17,13 @@ class QCPRange;
 class QCustomPlot;
 class SqpRange;
 class Variable;
+class VisualizationZoneWidget;
 
 namespace Ui {
 class VisualizationGraphWidget;
 } // namespace Ui
 
-class VisualizationGraphWidget : public QWidget, public IVisualizationWidget {
+class VisualizationGraphWidget : public VisualizationDragWidget, public IVisualizationWidget {
     Q_OBJECT
 
     friend class QCustomPlotSynchronizer;
@@ -31,6 +33,8 @@ public:
     explicit VisualizationGraphWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationGraphWidget();
 
+    VisualizationZoneWidget* parentZoneWidget() const noexcept;
+
     /// If acquisition isn't enable, requestDataLoading signal cannot be emit
     void enableAcquisition(bool enable);
 
@@ -38,6 +42,9 @@ public:
 
     /// Removes a variable from the graph
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
+
+    /// Returns the list of all variables used in the graph
+    QList<std::shared_ptr<Variable>> variables() const;
 
     void setYRange(const SqpRange &range);
     SqpRange graphRange() const noexcept;
@@ -49,6 +56,9 @@ public:
     bool contains(const Variable &variable) const override;
     QString name() const override;
 
+    // VisualisationDragWidget
+    QMimeData* mimeData() const override;
+    bool isDragAllowed() const override;
 
 signals:
     void synchronize(const SqpRange &range, const SqpRange &oldRange);
