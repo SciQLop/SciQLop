@@ -7,6 +7,7 @@
 
 #include <QLoggingCategory>
 #include <QWidget>
+#include <QMimeData>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationTabWidget)
 
@@ -27,13 +28,31 @@ public:
     /// Add a zone widget
     void addZone(VisualizationZoneWidget *zoneWidget);
 
+    void insertZone(int index, VisualizationZoneWidget *zoneWidget);
+
     /**
      * Creates a zone using a variable. The variable will be displayed in a new graph of the new
-     * zone.
+     * zone. The zone is added at the end.
      * @param variable the variable for which to create the zone
      * @return the pointer to the created zone
      */
     VisualizationZoneWidget *createZone(std::shared_ptr<Variable> variable);
+
+    /**
+     * Creates a zone using a list of variables. The variables will be displayed in a new graph of the new
+     * zone. The zone is inserted at the specified index.
+     * @param variables the variables for which to create the zone
+     * @param index The index where the zone should be inserted in the layout
+     * @return the pointer to the created zone
+     */
+    VisualizationZoneWidget *createZone(const QList<std::shared_ptr<Variable>>& variables, int index);
+
+    /**
+     * Creates a zone which is empty (no variables). The zone is inserted at the specified index.
+     * @param index The index where the zone should be inserted in the layout
+     * @return the pointer to the created zone
+     */
+    VisualizationZoneWidget *createEmptyZone(int index);
 
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
@@ -52,6 +71,9 @@ private:
 
     class VisualizationTabWidgetPrivate;
     spimpl::unique_impl_ptr<VisualizationTabWidgetPrivate> impl;
+
+private slots:
+    void dropMimeData(int index, const QMimeData *mimeData);
 };
 
 #endif // SCIQLOP_VISUALIZATIONTABWIDGET_H
