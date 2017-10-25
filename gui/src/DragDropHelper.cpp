@@ -93,7 +93,6 @@ bool DragDropScroller::eventFilter(QObject *obj, QEvent *event)
         }
     }
     else if (event->type() == QEvent::DragLeave) {
-        auto w = static_cast<QWidget *>(obj);
         if (impl->m_CurrentScrollArea) {
             if (!QRect(QPoint(), impl->m_CurrentScrollArea->size())
                      .contains(impl->m_CurrentScrollArea->mapFromGlobal(QCursor::pos()))) {
@@ -104,7 +103,6 @@ bool DragDropScroller::eventFilter(QObject *obj, QEvent *event)
         }
     }
     else if (event->type() == QEvent::Drop) {
-        auto w = static_cast<QWidget *>(obj);
         if (impl->m_CurrentScrollArea) {
             impl->m_CurrentScrollArea = nullptr;
             impl->m_Direction = DragDropScrollerPrivate::ScrollDirection::unknown;
@@ -167,7 +165,9 @@ struct DragDropHelper::DragDropHelperPrivate {
 };
 
 
-DragDropHelper::DragDropHelper() : impl{spimpl::make_unique_impl<DragDropHelperPrivate>()} {}
+DragDropHelper::DragDropHelper() : impl{spimpl::make_unique_impl<DragDropHelperPrivate>()}
+{
+}
 
 DragDropHelper::~DragDropHelper()
 {

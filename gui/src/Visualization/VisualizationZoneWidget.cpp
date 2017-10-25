@@ -148,10 +148,10 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         graphChildRange.m_TStart += deltaLeft;
                         graphChildRange.m_TEnd -= deltaRight;
                         qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomIn");
-                        qCDebug(LOG_VisualizationZoneWidget())
-                            << tr("TORM: deltaLeft") << deltaLeft;
-                        qCDebug(LOG_VisualizationZoneWidget())
-                            << tr("TORM: deltaRight") << deltaRight;
+                        qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: deltaLeft")
+                                                               << deltaLeft;
+                        qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
+                                                               << deltaRight;
                         qCDebug(LOG_VisualizationZoneWidget())
                             << tr("TORM: dt") << graphRange.m_TEnd - graphRange.m_TStart;
 
@@ -162,10 +162,10 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: ZoomOut");
                         auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
                         auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
-                        qCDebug(LOG_VisualizationZoneWidget())
-                            << tr("TORM: deltaLeft") << deltaLeft;
-                        qCDebug(LOG_VisualizationZoneWidget())
-                            << tr("TORM: deltaRight") << deltaRight;
+                        qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: deltaLeft")
+                                                               << deltaLeft;
+                        qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: deltaRight")
+                                                               << deltaRight;
                         qCDebug(LOG_VisualizationZoneWidget())
                             << tr("TORM: dt") << graphRange.m_TEnd - graphRange.m_TStart;
                         graphChildRange.m_TStart -= deltaLeft;
@@ -202,10 +202,10 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         break;
                 }
                 graphChild->enableAcquisition(false);
-                qCDebug(LOG_VisualizationZoneWidget())
-                    << tr("TORM: Range before: ") << graphChild->graphRange();
-                qCDebug(LOG_VisualizationZoneWidget())
-                    << tr("TORM: Range after : ") << graphChildRange;
+                qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: Range before: ")
+                                                       << graphChild->graphRange();
+                qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: Range after : ")
+                                                       << graphChildRange;
                 qCDebug(LOG_VisualizationZoneWidget())
                     << tr("TORM: child dt") << graphChildRange.m_TEnd - graphChildRange.m_TStart;
                 graphChild->setGraphRange(graphChildRange);

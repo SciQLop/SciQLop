@@ -7,6 +7,7 @@
 #include <QDragEnterEvent>
 #include <QVBoxLayout>
 
+#include <cmath>
 #include <memory>
 
 struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {

@@ -120,9 +120,13 @@ SqpApplication::SqpApplication(int &argc, char **argv)
     impl->m_VisualizationControllerThread.start();
 }
 
-SqpApplication::~SqpApplication() {}
+SqpApplication::~SqpApplication()
+{
+}
 
-void SqpApplication::initialize() {}
+void SqpApplication::initialize()
+{
+}
 
 DataSourceController &SqpApplication::dataSourceController() noexcept
 {
