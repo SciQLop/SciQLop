@@ -171,6 +171,13 @@ void VisualizationTabWidget::dropMimeData(int index, const QMimeData *mimeData)
 
         if (!variables.isEmpty())
         {
+            //Abort the requests for the variables (if any)
+            //Commented, because it's not sure if it's needed or not
+            //for (const auto& var : variables)
+            //{
+            //    sqpApp->variableController().onAbortProgressRequested(var);
+            //}
+
             if (nbGraph == 1)
             {
                 //This is the only graph in the previous zone, close the zone

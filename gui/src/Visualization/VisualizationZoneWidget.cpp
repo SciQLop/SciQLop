@@ -364,6 +364,13 @@ void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
         {
             //The drop didn't occur in the same zone
 
+            //Abort the requests for the variables (if any)
+            //Commented, because it's not sure if it's needed or not
+            //for (const auto& var : variables)
+            //{
+            //    sqpApp->variableController().onAbortProgressRequested(var);
+            //}
+
             auto previousParentZoneWidget = graphWidget->parentZoneWidget();
             auto nbGraph = parentDragDropContainer->countDragWidget();
             if (nbGraph == 1)
