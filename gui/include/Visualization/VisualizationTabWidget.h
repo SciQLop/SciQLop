@@ -47,6 +47,13 @@ public:
      */
     VisualizationZoneWidget *createZone(const QList<std::shared_ptr<Variable>>& variables, int index);
 
+    /**
+     * Creates a zone which is empty (no variables). The zone is inserted at the specified index.
+     * @param index The index where the zone should be inserted in the layout
+     * @return the pointer to the created zone
+     */
+    VisualizationZoneWidget *createEmptyZone(int index);
+
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;

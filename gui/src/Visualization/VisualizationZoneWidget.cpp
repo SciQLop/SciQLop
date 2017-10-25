@@ -226,7 +226,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     if (layout->count() > 0) {
         // Case of a new graph in a existant zone
         if (auto visualizationGraphWidget
-            = dynamic_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
+                = dynamic_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
             range = visualizationGraphWidget->graphRange();
         }
     }
@@ -243,7 +243,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     if (auto dataSeries = variable->dataSeries()) {
         dataSeries->lockRead();
         auto valuesBounds
-            = dataSeries->valuesBounds(variable->range().m_TStart, variable->range().m_TEnd);
+                = dataSeries->valuesBounds(variable->range().m_TStart, variable->range().m_TEnd);
         auto end = dataSeries->cend();
         if (valuesBounds.first != end && valuesBounds.second != end) {
             auto rangeValue = [](const auto &value) { return std::isnan(value) ? 0. : value; };
@@ -360,35 +360,47 @@ void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
 
         const auto& variables = graphWidget->variables();
 
-        if (!variables.empty())
+        if (parentDragDropContainer != ui->dragDropContainer && !variables.isEmpty())
         {
-            if (parentDragDropContainer != ui->dragDropContainer)
+            //The drop didn't occur in the same zone
+
+            auto previousParentZoneWidget = graphWidget->parentZoneWidget();
+            auto nbGraph = parentDragDropContainer->countDragWidget();
+            if (nbGraph == 1)
             {
-                //The drop didn't occur in the same zone
-
-                auto previousParentZoneWidget = graphWidget->parentZoneWidget();
-                auto nbGraph = parentDragDropContainer->countDragWidget();
-                if (nbGraph == 1)
-                {
-                    //This is the only graph in the previous zone, close the zone
-                    previousParentZoneWidget->close();
-                }
-                else
-                {
-                    //Close the graph
-                    graphWidget->close();
-                }
-
-                //Creates the new graph in the zone
-                createGraph(variables, index);
+                //This is the only graph in the previous zone, close the zone
+                previousParentZoneWidget->close();
             }
             else
             {
-                //The drop occurred in the same zone
-                //Simple move of the graph, no variable operation associated
-                parentDragDropContainer->layout()->removeWidget(graphWidget);
-                ui->dragDropContainer->insertDragWidget(index, graphWidget);
+                //Close the graph
+                graphWidget->close();
             }
+
+            //Creates the new graph in the zone
+            createGraph(variables, index);
+        }
+        else
+        {
+            //The drop occurred in the same zone or the graph is empty
+            //Simple move of the graph, no variable operation associated
+            parentDragDropContainer->layout()->removeWidget(graphWidget);
+
+            if (variables.isEmpty() && parentDragDropContainer != ui->dragDropContainer)
+            {
+                // The graph is empty and dropped in a different zone.
+                // Take the range of the first graph in the zone (if existing).
+                auto layout = ui->dragDropContainer->layout();
+                if (layout->count() > 0)
+                {
+                    if (auto visualizationGraphWidget = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget()))
+                    {
+                        graphWidget->setGraphRange(visualizationGraphWidget->graphRange());
+                    }
+                }
+            }
+
+            ui->dragDropContainer->insertDragWidget(index, graphWidget);
         }
     }
 }

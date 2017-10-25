@@ -5,6 +5,8 @@
 #include "Visualization/VisualizationZoneWidget.h"
 #include "Visualization/VisualizationGraphWidget.h"
 
+#include "Variable/VariableController.h"
+
 #include "SqpApplication.h"
 #include "DragDropHelper.h"
 
@@ -90,11 +92,18 @@ VisualizationZoneWidget *VisualizationTabWidget::createZone(std::shared_ptr<Vari
 
 VisualizationZoneWidget *VisualizationTabWidget::createZone(const QList<std::shared_ptr<Variable> > &variables, int index)
 {
-    auto zoneWidget = new VisualizationZoneWidget{defaultZoneName(*ui->dragDropContainer->layout()), this};
-    this->insertZone(index, zoneWidget);
+    auto zoneWidget = createEmptyZone(index);
 
     // Creates a new graph into the zone
     zoneWidget->createGraph(variables, index);
+
+    return zoneWidget;
+}
+
+VisualizationZoneWidget *VisualizationTabWidget::createEmptyZone(int index)
+{
+    auto zoneWidget = new VisualizationZoneWidget{defaultZoneName(*ui->dragDropContainer->layout()), this};
+    this->insertZone(index, zoneWidget);
 
     return zoneWidget;
 }
@@ -157,19 +166,39 @@ void VisualizationTabWidget::dropMimeData(int index, const QMimeData *mimeData)
         Q_ASSERT(parentDragDropContainer);
 
         auto nbGraph = parentDragDropContainer->countDragWidget();
-        if (nbGraph == 1)
+
+        const auto& variables = graphWidget->variables();
+
+        if (!variables.isEmpty())
         {
-            //This is the only graph in the previous zone, close the zone
-            graphWidget->parentZoneWidget()->close();
+            if (nbGraph == 1)
+            {
+                //This is the only graph in the previous zone, close the zone
+                graphWidget->parentZoneWidget()->close();
+            }
+            else
+            {
+                //Close the graph
+                graphWidget->close();
+            }
+
+            createZone(variables, index);
         }
         else
         {
-             //Close the graph
-            graphWidget->close();
-        }
+            //The graph is empty, create an empty zone and move the graph inside
 
-        const auto& variables = graphWidget->variables();
-        createZone(variables, index);
+            auto parentZoneWidget = graphWidget->parentZoneWidget();
+
+            parentDragDropContainer->layout()->removeWidget(graphWidget);
+
+            auto zoneWidget = createEmptyZone(index);
+            zoneWidget->addGraph(graphWidget);
+
+            //Close the old zone if it was the only graph inside
+            if (nbGraph == 1)
+                parentZoneWidget->close();
+        }
     }
     else if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_ZONE))
     {
