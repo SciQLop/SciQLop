@@ -287,9 +287,11 @@ QMimeData *VariableModel::mimeData(const QModelIndexList &indexes) const
     QList<std::shared_ptr<Variable> > variableList;
 
     for (const auto &index : indexes) {
-        auto variable = impl->m_Variables.at(index.row());
-        if (variable.get() && index.isValid()) {
-            variableList << variable;
+        if (index.column() == 0) { // only the first column
+            auto variable = impl->m_Variables.at(index.row());
+            if (variable.get() && index.isValid()) {
+                variableList << variable;
+            }
         }
     }
 
