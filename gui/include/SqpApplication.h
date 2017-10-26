@@ -20,6 +20,7 @@ class NetworkController;
 class TimeController;
 class VariableController;
 class VisualizationController;
+class DragDropHelper;
 
 /**
  * @brief The SqpApplication class aims to make the link between SciQlop
@@ -43,6 +44,9 @@ public:
     TimeController &timeController() noexcept;
     VariableController &variableController() noexcept;
     VisualizationController &visualizationController() noexcept;
+
+    /// Accessors for the differents sciqlop helpers
+    DragDropHelper &dragDropHelper() noexcept;
 
 private:
     class SqpApplicationPrivate;

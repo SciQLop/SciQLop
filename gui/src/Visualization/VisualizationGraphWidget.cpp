@@ -3,10 +3,12 @@
 #include "Visualization/VisualizationDefs.h"
 #include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
+#include "Visualization/VisualizationZoneWidget.h"
 #include "ui_VisualizationGraphWidget.h"
 
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
+#include <DragDropHelper.h>
 #include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
 #include <Variable/Variable.h>
@@ -47,7 +49,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
-        : QWidget{parent},
+        : VisualizationDragWidget{parent},
           ui{new Ui::VisualizationGraphWidget},
           impl{spimpl::make_unique_impl<VisualizationGraphWidgetPrivate>(name)}
 {
@@ -90,6 +92,16 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
 VisualizationGraphWidget::~VisualizationGraphWidget()
 {
     delete ui;
+}
+
+VisualizationZoneWidget *VisualizationGraphWidget::parentZoneWidget() const noexcept
+{
+    auto parent = parentWidget();
+    while (parent != nullptr && !qobject_cast<VisualizationZoneWidget *>(parent)) {
+        parent = parent->parentWidget();
+    }
+
+    return qobject_cast<VisualizationZoneWidget *>(parent);
 }
 
 void VisualizationGraphWidget::enableAcquisition(bool enable)
@@ -152,6 +164,17 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
     ui->widget->replot();
 }
 
+QList<std::shared_ptr<Variable> > VisualizationGraphWidget::variables() const
+{
+    auto variables = QList<std::shared_ptr<Variable> >{};
+    for (auto it = std::cbegin(impl->m_VariableToPlotMultiMap);
+         it != std::cend(impl->m_VariableToPlotMultiMap); ++it) {
+        variables << it->first;
+    }
+
+    return variables;
+}
+
 void VisualizationGraphWidget::setYRange(const SqpRange &range)
 {
     ui->widget->yAxis->setRange(range.m_TStart, range.m_TEnd);
@@ -204,6 +227,19 @@ bool VisualizationGraphWidget::contains(const Variable &variable) const
 QString VisualizationGraphWidget::name() const
 {
     return impl->m_Name;
+}
+
+QMimeData *VisualizationGraphWidget::mimeData() const
+{
+    auto mimeData = new QMimeData;
+    mimeData->setData(DragDropHelper::MIME_TYPE_GRAPH, QByteArray());
+
+    return mimeData;
+}
+
+bool VisualizationGraphWidget::isDragAllowed() const
+{
+    return true;
 }
 
 void VisualizationGraphWidget::closeEvent(QCloseEvent *event)
@@ -284,6 +320,8 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
 {
     // Handles plot rendering when mouse is moving
     impl->m_RenderingDelegate->onMouseMove(event);
+
+    VisualizationDragWidget::mouseMoveEvent(event);
 }
 
 void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
@@ -307,6 +345,10 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
 {
     impl->m_IsCalibration = event->modifiers().testFlag(Qt::ControlModifier);
+
+    plot().setInteraction(QCP::iRangeDrag, !event->modifiers().testFlag(Qt::AltModifier));
+
+    VisualizationDragWidget::mousePressEvent(event);
 }
 
 void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept

@@ -2,6 +2,7 @@
 
 #include <Data/IDataProvider.h>
 #include <DataSource/DataSourceController.h>
+#include <DragDropHelper.h>
 #include <Network/NetworkController.h>
 #include <QThread>
 #include <Time/TimeController.h>
@@ -18,7 +19,8 @@ public:
               m_NetworkController{std::make_unique<NetworkController>()},
               m_TimeController{std::make_unique<TimeController>()},
               m_VariableController{std::make_unique<VariableController>()},
-              m_VisualizationController{std::make_unique<VisualizationController>()}
+              m_VisualizationController{std::make_unique<VisualizationController>()},
+              m_DragDropHelper{std::make_unique<DragDropHelper>()}
     {
         // /////////////////////////////// //
         // Connections between controllers //
@@ -82,6 +84,8 @@ public:
     QThread m_NetworkControllerThread;
     QThread m_VariableControllerThread;
     QThread m_VisualizationControllerThread;
+
+    std::unique_ptr<DragDropHelper> m_DragDropHelper;
 };
 
 
@@ -147,4 +151,9 @@ VariableController &SqpApplication::variableController() noexcept
 VisualizationController &SqpApplication::visualizationController() noexcept
 {
     return *impl->m_VisualizationController;
+}
+
+DragDropHelper &SqpApplication::dragDropHelper() noexcept
+{
+    return *impl->m_DragDropHelper;
 }

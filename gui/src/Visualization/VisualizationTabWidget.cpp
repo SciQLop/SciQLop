@@ -2,7 +2,13 @@
 #include "Visualization/IVisualizationWidgetVisitor.h"
 #include "ui_VisualizationTabWidget.h"
 
+#include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/VisualizationZoneWidget.h"
+
+#include "Variable/VariableController.h"
+
+#include "DragDropHelper.h"
+#include "SqpApplication.h"
 
 Q_LOGGING_CATEGORY(LOG_VisualizationTabWidget, "VisualizationTabWidget")
 
@@ -55,27 +61,53 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
 {
     ui->setupUi(this);
 
+    ui->dragDropContainer->setAcceptedMimeTypes(
+        {DragDropHelper::MIME_TYPE_GRAPH, DragDropHelper::MIME_TYPE_ZONE});
+    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this,
+            &VisualizationTabWidget::dropMimeData);
+    sqpApp->dragDropHelper().addDragDropScrollArea(ui->scrollArea);
+
     // Widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
 }
 
 VisualizationTabWidget::~VisualizationTabWidget()
 {
+    sqpApp->dragDropHelper().removeDragDropScrollArea(ui->scrollArea);
     delete ui;
 }
 
 void VisualizationTabWidget::addZone(VisualizationZoneWidget *zoneWidget)
 {
-    tabLayout().addWidget(zoneWidget);
+    ui->dragDropContainer->addDragWidget(zoneWidget);
+}
+
+void VisualizationTabWidget::insertZone(int index, VisualizationZoneWidget *zoneWidget)
+{
+    ui->dragDropContainer->insertDragWidget(index, zoneWidget);
 }
 
 VisualizationZoneWidget *VisualizationTabWidget::createZone(std::shared_ptr<Variable> variable)
 {
-    auto zoneWidget = new VisualizationZoneWidget{defaultZoneName(tabLayout()), this};
-    this->addZone(zoneWidget);
+    return createZone({variable}, -1);
+}
+
+VisualizationZoneWidget *
+VisualizationTabWidget::createZone(const QList<std::shared_ptr<Variable> > &variables, int index)
+{
+    auto zoneWidget = createEmptyZone(index);
 
     // Creates a new graph into the zone
-    zoneWidget->createGraph(variable);
+    zoneWidget->createGraph(variables, index);
+
+    return zoneWidget;
+}
+
+VisualizationZoneWidget *VisualizationTabWidget::createEmptyZone(int index)
+{
+    auto zoneWidget
+        = new VisualizationZoneWidget{defaultZoneName(*ui->dragDropContainer->layout()), this};
+    this->insertZone(index, zoneWidget);
 
     return zoneWidget;
 }
@@ -125,5 +157,63 @@ void VisualizationTabWidget::closeEvent(QCloseEvent *event)
 
 QLayout &VisualizationTabWidget::tabLayout() const noexcept
 {
-    return *ui->scrollAreaWidgetContents->layout();
+    return *ui->dragDropContainer->layout();
+}
+
+void VisualizationTabWidget::dropMimeData(int index, const QMimeData *mimeData)
+{
+    auto &helper = sqpApp->dragDropHelper();
+    if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_GRAPH)) {
+        auto graphWidget = static_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
+        auto parentDragDropContainer
+            = qobject_cast<VisualizationDragDropContainer *>(graphWidget->parentWidget());
+        Q_ASSERT(parentDragDropContainer);
+
+        auto nbGraph = parentDragDropContainer->countDragWidget();
+
+        const auto &variables = graphWidget->variables();
+
+        if (!variables.isEmpty()) {
+            // Abort the requests for the variables (if any)
+            // Commented, because it's not sure if it's needed or not
+            // for (const auto& var : variables)
+            //{
+            //    sqpApp->variableController().onAbortProgressRequested(var);
+            //}
+
+            if (nbGraph == 1) {
+                // This is the only graph in the previous zone, close the zone
+                graphWidget->parentZoneWidget()->close();
+            }
+            else {
+                // Close the graph
+                graphWidget->close();
+            }
+
+            createZone(variables, index);
+        }
+        else {
+            // The graph is empty, create an empty zone and move the graph inside
+
+            auto parentZoneWidget = graphWidget->parentZoneWidget();
+
+            parentDragDropContainer->layout()->removeWidget(graphWidget);
+
+            auto zoneWidget = createEmptyZone(index);
+            zoneWidget->addGraph(graphWidget);
+
+            // Close the old zone if it was the only graph inside
+            if (nbGraph == 1) {
+                parentZoneWidget->close();
+            }
+        }
+    }
+    else if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_ZONE)) {
+        // Simple move of the zone, no variable operation associated
+        auto zoneWidget = static_cast<VisualizationZoneWidget *>(helper.getCurrentDragWidget());
+        auto parentDragDropContainer = zoneWidget->parentWidget();
+        parentDragDropContainer->layout()->removeWidget(zoneWidget);
+
+        ui->dragDropContainer->insertDragWidget(index, zoneWidget);
+    }
 }
