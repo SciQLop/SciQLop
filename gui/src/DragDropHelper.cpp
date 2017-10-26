@@ -1,6 +1,14 @@
 #include "DragDropHelper.h"
 #include "SqpApplication.h"
+#include "Visualization/VisualizationDragDropContainer.h"
 #include "Visualization/VisualizationDragWidget.h"
+#include "Visualization/VisualizationWidget.h"
+#include "Visualization/operations/FindVariableOperation.h"
+
+#include "Variable/VariableController.h"
+
+#include "Common/MimeTypesDef.h"
+#include "Common/VisualizationDef.h"
 
 #include <QDir>
 #include <QDragEnterEvent>
@@ -10,11 +18,10 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
-const QString DragDropHelper::MIME_TYPE_GRAPH = "scqlop/graph";
-const QString DragDropHelper::MIME_TYPE_ZONE = "scqlop/zone";
-
 const int SCROLL_SPEED = 5;
 const int SCROLL_ZONE_SIZE = 50;
+
+Q_LOGGING_CATEGORY(LOG_DragDropHelper, "DragDrophelper")
 
 struct DragDropScroller::DragDropScrollerPrivate {
 
@@ -159,7 +166,11 @@ struct DragDropHelper::DragDropHelperPrivate {
             m_PlaceHolder->setSizePolicy(m_CurrentDragWidget->sizePolicy());
         }
         else {
-            m_PlaceHolder->setMinimumSize(200, 200);
+            // Configuration of the placeHolder when there is no dragWidget
+            // (for instance with a drag from a variable)
+
+            m_PlaceHolder->setMinimumSize(0, GRAPH_MINIMUM_HEIGHT);
+            m_PlaceHolder->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         }
     }
 };
@@ -172,6 +183,11 @@ DragDropHelper::DragDropHelper() : impl{spimpl::make_unique_impl<DragDropHelperP
 DragDropHelper::~DragDropHelper()
 {
     QFile::remove(impl->m_ImageTempUrl);
+}
+
+void DragDropHelper::resetDragAndDrop()
+{
+    setCurrentDragWidget(nullptr);
 }
 
 void DragDropHelper::setCurrentDragWidget(VisualizationDragWidget *dragWidget)
@@ -227,4 +243,47 @@ QUrl DragDropHelper::imageTemporaryUrl(const QImage &image) const
 {
     image.save(impl->m_ImageTempUrl);
     return QUrl::fromLocalFile(impl->m_ImageTempUrl);
+}
+
+bool DragDropHelper::checkMimeDataForVisualization(const QMimeData *mimeData,
+                                                   VisualizationDragDropContainer *dropContainer)
+{
+    auto result = true;
+
+    if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+        auto variables = sqpApp->variableController().variablesForMimeData(
+            mimeData->data(MIME_TYPE_VARIABLE_LIST));
+
+        if (variables.count() == 1) {
+            // Check that the viariable is not already in a graph
+
+            // Search for the top level VisualizationWidget
+            auto parent = dropContainer->parentWidget();
+            while (parent && qobject_cast<VisualizationWidget *>(parent) == nullptr) {
+                parent = parent->parentWidget();
+            }
+
+            if (parent) {
+                auto visualizationWidget = static_cast<VisualizationWidget *>(parent);
+
+                FindVariableOperation findVariableOperation{variables.first()};
+                visualizationWidget->accept(&findVariableOperation);
+                auto variableContainers = findVariableOperation.result();
+                if (!variableContainers.empty()) {
+                    result = false;
+                }
+            }
+            else {
+                qCWarning(LOG_DragDropHelper()) << QObject::tr(
+                    "DragDropHelper::checkMimeDataForVisualization, the parent "
+                    "VisualizationWidget cannot be found.");
+                result = false;
+            }
+        }
+        else {
+            result = false;
+        }
+    }
+
+    return result;
 }

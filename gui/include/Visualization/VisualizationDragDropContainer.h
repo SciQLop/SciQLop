@@ -2,9 +2,14 @@
 #define SCIQLOP_VISUALIZATIONDRAGDROPCONTAINER_H
 
 #include <Common/spimpl.h>
+#include <QLoggingCategory>
 #include <QMimeData>
 #include <QVBoxLayout>
 #include <QWidget>
+
+#include <functional>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationDragDropContainer)
 
 class VisualizationDragWidget;
 
@@ -15,6 +20,8 @@ signals:
     void dropOccured(int dropIndex, const QMimeData *mimeData);
 
 public:
+    using AcceptMimeDataFunction = std::function<bool(const QMimeData *mimeData)>;
+
     VisualizationDragDropContainer(QWidget *parent = nullptr);
 
     void addDragWidget(VisualizationDragWidget *dragWidget);
@@ -24,6 +31,8 @@ public:
     void setMergeAllowedMimeTypes(const QStringList &mimeTypes);
 
     int countDragWidget() const;
+
+    void setAcceptMimeDataFunction(AcceptMimeDataFunction fun);
 
 protected:
     void dragEnterEvent(QDragEnterEvent *event);
