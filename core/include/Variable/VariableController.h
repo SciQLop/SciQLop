@@ -68,6 +68,8 @@ public:
      */
     void deleteVariables(const QVector<std::shared_ptr<Variable> > &variables) noexcept;
 
+    QByteArray mimeDataForVariables(const QList<std::shared_ptr<Variable> > &variables) const;
+    QList<std::shared_ptr<Variable> > variablesForMimeData(const QByteArray &mimeData) const;
 
     static AcquisitionZoomType getZoomType(const SqpRange &range, const SqpRange &oldRange);
 signals:

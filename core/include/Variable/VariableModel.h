@@ -18,6 +18,7 @@ enum VariableRoles { ProgressRole = Qt::UserRole };
 
 class IDataSeries;
 class Variable;
+class VariableController;
 
 /**
  * @brief The VariableModel class aims to hold the variables that have been created in SciQlop
@@ -25,7 +26,7 @@ class Variable;
 class SCIQLOP_CORE_EXPORT VariableModel : public QAbstractTableModel {
     Q_OBJECT
 public:
-    explicit VariableModel(QObject *parent = nullptr);
+    explicit VariableModel(VariableController *parent = nullptr);
 
     /**
      * Adds an existing variable in the model.
@@ -73,7 +74,20 @@ public:
     virtual QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     virtual QVariant headerData(int section, Qt::Orientation orientation,
                                 int role = Qt::DisplayRole) const override;
+    virtual Qt::ItemFlags flags(const QModelIndex &index) const override;
 
+    // ///////////////// //
+    // Drag&Drop methods //
+    // ///////////////// //
+
+    virtual Qt::DropActions supportedDropActions() const override;
+    virtual Qt::DropActions supportedDragActions() const override;
+    virtual QStringList mimeTypes() const override;
+    virtual QMimeData *mimeData(const QModelIndexList &indexes) const override;
+    virtual bool canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                                 const QModelIndex &parent) const override;
+    virtual bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                              const QModelIndex &parent) override;
 
     void abortProgress(const QModelIndex &index);
 
