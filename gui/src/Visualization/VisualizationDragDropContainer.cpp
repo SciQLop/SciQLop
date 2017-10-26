@@ -3,6 +3,8 @@
 #include "SqpApplication.h"
 #include "Visualization/VisualizationDragWidget.h"
 
+#include "Common/VisualizationDef.h"
+
 #include <QDrag>
 #include <QDragEnterEvent>
 #include <QVBoxLayout>
@@ -262,7 +264,8 @@ void VisualizationDragDropContainer::dragMoveEvent(QDragMoveEvent *event)
 
             auto nbDragWidget = countDragWidget();
             if (nbDragWidget > 0) {
-                auto graphHeight = size().height() / nbDragWidget;
+                auto graphHeight = qMax(size().height() / nbDragWidget, GRAPH_MINIMUM_HEIGHT);
+
                 auto dropIndex = floor(event->pos().y() / graphHeight);
                 auto zoneSize = qMin(graphHeight / 3.0, 150.0);
 

@@ -169,7 +169,7 @@ struct DragDropHelper::DragDropHelperPrivate {
             // Configuration of the placeHolder when there is no dragWidget
             // (for instance with a drag from a variable)
 
-            m_PlaceHolder->setMinimumSize(400, 300);
+            m_PlaceHolder->setMinimumSize(0, GRAPH_MINIMUM_HEIGHT);
             m_PlaceHolder->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
         }
     }

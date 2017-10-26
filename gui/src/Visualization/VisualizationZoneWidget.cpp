@@ -7,6 +7,8 @@
 #include "ui_VisualizationZoneWidget.h"
 
 #include "Common/MimeTypesDef.h"
+#include "Common/VisualizationDef.h"
+
 #include <Data/SqpRange.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
@@ -24,8 +26,6 @@ Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 
 namespace {
 
-/// Minimum height for graph added in zones (in pixels)
-const auto GRAPH_MINIMUM_HEIGHT = 300;
 
 /// Generates a default name for a new graph, according to the number of graphs already displayed in
 /// the zone
