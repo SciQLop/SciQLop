@@ -5,6 +5,7 @@
 #include "Visualization/VisualizationGraphWidget.h"
 #include "ui_VisualizationZoneWidget.h"
 
+#include "Common/MimeTypesDef.h"
 #include <Data/SqpRange.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
@@ -77,7 +78,7 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
 
     ui->zoneNameLabel->setText(name);
 
-    ui->dragDropContainer->setAcceptedMimeTypes({DragDropHelper::MIME_TYPE_GRAPH});
+    ui->dragDropContainer->setAcceptedMimeTypes({MIME_TYPE_GRAPH});
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this,
             &VisualizationZoneWidget::dropMimeData);
 
@@ -315,7 +316,7 @@ QString VisualizationZoneWidget::name() const
 QMimeData *VisualizationZoneWidget::mimeData() const
 {
     auto mimeData = new QMimeData;
-    mimeData->setData(DragDropHelper::MIME_TYPE_ZONE, QByteArray());
+    mimeData->setData(MIME_TYPE_ZONE, QByteArray());
 
     return mimeData;
 }
@@ -355,7 +356,7 @@ void VisualizationZoneWidget::onVariableAboutToBeRemoved(std::shared_ptr<Variabl
 void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
 {
     auto &helper = sqpApp->dragDropHelper();
-    if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_GRAPH)) {
+    if (mimeData->hasFormat(MIME_TYPE_GRAPH)) {
         auto graphWidget = static_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
         auto parentDragDropContainer
             = qobject_cast<VisualizationDragDropContainer *>(graphWidget->parentWidget());

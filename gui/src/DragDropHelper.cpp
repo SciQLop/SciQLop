@@ -10,9 +10,6 @@
 #include <QTimer>
 #include <QVBoxLayout>
 
-const QString DragDropHelper::MIME_TYPE_GRAPH = "scqlop/graph";
-const QString DragDropHelper::MIME_TYPE_ZONE = "scqlop/zone";
-
 const int SCROLL_SPEED = 5;
 const int SCROLL_ZONE_SIZE = 50;
 
