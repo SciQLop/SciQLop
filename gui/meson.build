@@ -5,6 +5,7 @@ gui_moc_headers = [
   'include/Settings/SqpSettingsGeneralWidget.h',
   'include/SidePane/SqpSidePane.h',
   'include/SqpApplication.h',
+  'include/DragDropHelper.h',
   'include/TimeWidget/TimeWidget.h',
   'include/Variable/VariableInspectorWidget.h',
   'include/Variable/RenameVariableDialog.h',
@@ -12,7 +13,9 @@ gui_moc_headers = [
   'include/Visualization/VisualizationGraphWidget.h',
   'include/Visualization/VisualizationTabWidget.h',
   'include/Visualization/VisualizationWidget.h',
-  'include/Visualization/VisualizationZoneWidget.h'
+  'include/Visualization/VisualizationZoneWidget.h',
+  'include/Visualization/VisualizationDragDropContainer.h',
+  'include/Visualization/VisualizationDragWidget.h'
 ]
 
 gui_ui_files = [
@@ -38,7 +41,9 @@ gui_moc_files = qt5.preprocess(moc_headers : gui_moc_headers,
 
 gui_sources = [
   'src/SqpApplication.cpp',
+  'src/DragDropHelper.h',
   'src/Common/ColorUtils.cpp',
+  'src/Common/VisualizationDef.cpp',
   'src/DataSource/DataSourceTreeWidgetItem.cpp',
   'src/DataSource/DataSourceTreeWidgetHelper.cpp',
   'src/DataSource/DataSourceWidget.cpp',
@@ -61,7 +66,9 @@ gui_sources = [
   'src/Visualization/operations/GenerateVariableMenuOperation.cpp',
   'src/Visualization/operations/MenuBuilder.cpp',
   'src/Visualization/operations/RemoveVariableOperation.cpp',
-  'src/Visualization/operations/RescaleAxeOperation.cpp'
+  'src/Visualization/operations/RescaleAxeOperation.cpp',
+  'src/Visualization/VisualizationDragDropContainer.cpp',
+  'src/Visualization/VisualizationDragWidget.cpp'
 ]
 
 gui_inc = include_directories(['include'])

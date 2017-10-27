@@ -21,6 +21,7 @@ core_moc_files = qt5.preprocess(moc_headers : core_moc_headers)
 core_sources = [
   'src/Common/DateUtils.cpp',
   'src/Common/StringUtils.cpp',
+  'src/Common/MimeTypesDef.cpp',
   'src/Data/ScalarSeries.cpp',
   'src/Data/DataSeriesIterator.cpp',
   'src/Data/ArrayDataIterator.cpp',
