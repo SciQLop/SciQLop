@@ -41,7 +41,7 @@ gui_moc_files = qt5.preprocess(moc_headers : gui_moc_headers,
 
 gui_sources = [
   'src/SqpApplication.cpp',
-  'src/DragDropHelper.h',
+  'src/DragDropHelper.cpp',
   'src/Common/ColorUtils.cpp',
   'src/Common/VisualizationDef.cpp',
   'src/DataSource/DataSourceTreeWidgetItem.cpp',
