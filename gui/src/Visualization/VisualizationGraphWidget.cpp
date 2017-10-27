@@ -6,6 +6,7 @@
 #include "Visualization/VisualizationZoneWidget.h"
 #include "ui_VisualizationGraphWidget.h"
 
+#include <Common/MimeTypesDef.h>
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
 #include <DragDropHelper.h>
@@ -232,7 +233,7 @@ QString VisualizationGraphWidget::name() const
 QMimeData *VisualizationGraphWidget::mimeData() const
 {
     auto mimeData = new QMimeData;
-    mimeData->setData(DragDropHelper::MIME_TYPE_GRAPH, QByteArray());
+    mimeData->setData(MIME_TYPE_GRAPH, QByteArray());
 
     return mimeData;
 }

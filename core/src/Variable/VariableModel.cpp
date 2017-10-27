@@ -1,11 +1,14 @@
 #include <Variable/Variable.h>
+#include <Variable/VariableController.h>
 #include <Variable/VariableModel.h>
 
 #include <Common/DateUtils.h>
+#include <Common/MimeTypesDef.h>
 #include <Common/StringUtils.h>
 
 #include <Data/IDataSeries.h>
 
+#include <QMimeData>
 #include <QSize>
 #include <unordered_map>
 
@@ -66,14 +69,16 @@ struct VariableModel::VariableModelPrivate {
     /// Variables created in SciQlop
     std::vector<std::shared_ptr<Variable> > m_Variables;
     std::unordered_map<std::shared_ptr<Variable>, double> m_VariableToProgress;
+    VariableController *m_VariableController;
 
     /// Return the row index of the variable. -1 if it's not found
     int indexOfVariable(Variable *variable) const noexcept;
 };
 
-VariableModel::VariableModel(QObject *parent)
+VariableModel::VariableModel(VariableController *parent)
         : QAbstractTableModel{parent}, impl{spimpl::make_unique_impl<VariableModelPrivate>()}
 {
+    impl->m_VariableController = parent;
 }
 
 void VariableModel::addVariable(std::shared_ptr<Variable> variable) noexcept
@@ -253,6 +258,59 @@ QVariant VariableModel::headerData(int section, Qt::Orientation orientation, int
     }
 
     return QVariant{};
+}
+
+Qt::ItemFlags VariableModel::flags(const QModelIndex &index) const
+{
+    return QAbstractTableModel::flags(index) | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled;
+}
+
+Qt::DropActions VariableModel::supportedDropActions() const
+{
+    return Qt::MoveAction;
+}
+
+Qt::DropActions VariableModel::supportedDragActions() const
+{
+    return Qt::CopyAction | Qt::MoveAction;
+}
+
+QStringList VariableModel::mimeTypes() const
+{
+    return {MIME_TYPE_VARIABLE_LIST};
+}
+
+QMimeData *VariableModel::mimeData(const QModelIndexList &indexes) const
+{
+    auto mimeData = new QMimeData;
+
+    QList<std::shared_ptr<Variable> > variableList;
+
+    for (const auto &index : indexes) {
+        if (index.column() == 0) { // only the first column
+            auto variable = impl->m_Variables.at(index.row());
+            if (variable.get() && index.isValid()) {
+                variableList << variable;
+            }
+        }
+    }
+
+    auto encodedData = impl->m_VariableController->mimeDataForVariables(variableList);
+    mimeData->setData(MIME_TYPE_VARIABLE_LIST, encodedData);
+
+    return mimeData;
+}
+
+bool VariableModel::canDropMimeData(const QMimeData *data, Qt::DropAction action, int row,
+                                    int column, const QModelIndex &parent) const
+{
+    return false;
+}
+
+bool VariableModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                                 const QModelIndex &parent)
+{
+    return false;
 }
 
 void VariableModel::abortProgress(const QModelIndex &index)

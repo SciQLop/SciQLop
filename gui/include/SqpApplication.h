@@ -45,7 +45,8 @@ public:
     VariableController &variableController() noexcept;
     VisualizationController &visualizationController() noexcept;
 
-    /// Accessors for the differents sciqlop helpers
+    /// Accessors for the differents sciqlop helpers, these helpers classes are like controllers but
+    /// doesn't live in a thread and access gui
     DragDropHelper &dragDropHelper() noexcept;
 
 private:

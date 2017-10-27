@@ -7,6 +7,8 @@
 
 #include "Variable/VariableController.h"
 
+#include "Common/MimeTypesDef.h"
+
 #include "DragDropHelper.h"
 #include "SqpApplication.h"
 
@@ -52,6 +54,11 @@ struct VisualizationTabWidget::VisualizationTabWidgetPrivate {
     explicit VisualizationTabWidgetPrivate(const QString &name) : m_Name{name} {}
 
     QString m_Name;
+
+    void dropGraph(int index, VisualizationTabWidget *tabWidget);
+    void dropZone(int index, VisualizationTabWidget *tabWidget);
+    void dropVariables(const QList<std::shared_ptr<Variable> > &variables, int index,
+                       VisualizationTabWidget *tabWidget);
 };
 
 VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *parent)
@@ -62,9 +69,13 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
     ui->setupUi(this);
 
     ui->dragDropContainer->setAcceptedMimeTypes(
-        {DragDropHelper::MIME_TYPE_GRAPH, DragDropHelper::MIME_TYPE_ZONE});
+        {MIME_TYPE_GRAPH, MIME_TYPE_ZONE, MIME_TYPE_VARIABLE_LIST});
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this,
             &VisualizationTabWidget::dropMimeData);
+    ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
+        return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
+                                                                      ui->dragDropContainer);
+    });
     sqpApp->dragDropHelper().addDragDropScrollArea(ui->scrollArea);
 
     // Widget is deleted when closed
@@ -162,58 +173,122 @@ QLayout &VisualizationTabWidget::tabLayout() const noexcept
 
 void VisualizationTabWidget::dropMimeData(int index, const QMimeData *mimeData)
 {
+    if (mimeData->hasFormat(MIME_TYPE_GRAPH)) {
+        impl->dropGraph(index, this);
+    }
+    else if (mimeData->hasFormat(MIME_TYPE_ZONE)) {
+        impl->dropZone(index, this);
+    }
+    else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+        auto variables = sqpApp->variableController().variablesForMimeData(
+            mimeData->data(MIME_TYPE_VARIABLE_LIST));
+        impl->dropVariables(variables, index, this);
+    }
+    else {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationTabWidget::dropMimeData, unknown MIME data received.");
+    }
+}
+
+void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
+    int index, VisualizationTabWidget *tabWidget)
+{
     auto &helper = sqpApp->dragDropHelper();
-    if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_GRAPH)) {
-        auto graphWidget = static_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
-        auto parentDragDropContainer
-            = qobject_cast<VisualizationDragDropContainer *>(graphWidget->parentWidget());
-        Q_ASSERT(parentDragDropContainer);
 
-        auto nbGraph = parentDragDropContainer->countDragWidget();
+    auto graphWidget = qobject_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
+    if (!graphWidget) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationTabWidget::dropGraph, drop aborted, the dropped graph is not "
+                  "found or invalid.");
+        Q_ASSERT(false);
+        return;
+    }
 
-        const auto &variables = graphWidget->variables();
+    auto parentDragDropContainer
+        = qobject_cast<VisualizationDragDropContainer *>(graphWidget->parentWidget());
+    if (!parentDragDropContainer) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationTabWidget::dropGraph, drop aborted, the parent container of "
+                  "the dropped graph is not found.");
+        Q_ASSERT(false);
+        return;
+    }
 
-        if (!variables.isEmpty()) {
-            // Abort the requests for the variables (if any)
-            // Commented, because it's not sure if it's needed or not
-            // for (const auto& var : variables)
-            //{
-            //    sqpApp->variableController().onAbortProgressRequested(var);
-            //}
+    auto nbGraph = parentDragDropContainer->countDragWidget();
 
-            if (nbGraph == 1) {
-                // This is the only graph in the previous zone, close the zone
-                graphWidget->parentZoneWidget()->close();
-            }
-            else {
-                // Close the graph
-                graphWidget->close();
-            }
+    const auto &variables = graphWidget->variables();
 
-            createZone(variables, index);
+    if (!variables.isEmpty()) {
+        // Abort the requests for the variables (if any)
+        // Commented, because it's not sure if it's needed or not
+        // for (const auto& var : variables)
+        //{
+        //    sqpApp->variableController().onAbortProgressRequested(var);
+        //}
+
+        if (nbGraph == 1) {
+            // This is the only graph in the previous zone, close the zone
+            graphWidget->parentZoneWidget()->close();
         }
         else {
-            // The graph is empty, create an empty zone and move the graph inside
+            // Close the graph
+            graphWidget->close();
+        }
 
-            auto parentZoneWidget = graphWidget->parentZoneWidget();
+        tabWidget->createZone(variables, index);
+    }
+    else {
+        // The graph is empty, create an empty zone and move the graph inside
 
-            parentDragDropContainer->layout()->removeWidget(graphWidget);
+        auto parentZoneWidget = graphWidget->parentZoneWidget();
 
-            auto zoneWidget = createEmptyZone(index);
-            zoneWidget->addGraph(graphWidget);
+        parentDragDropContainer->layout()->removeWidget(graphWidget);
 
-            // Close the old zone if it was the only graph inside
-            if (nbGraph == 1) {
-                parentZoneWidget->close();
-            }
+        auto zoneWidget = tabWidget->createEmptyZone(index);
+        zoneWidget->addGraph(graphWidget);
+
+        // Close the old zone if it was the only graph inside
+        if (nbGraph == 1) {
+            parentZoneWidget->close();
         }
     }
-    else if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_ZONE)) {
-        // Simple move of the zone, no variable operation associated
-        auto zoneWidget = static_cast<VisualizationZoneWidget *>(helper.getCurrentDragWidget());
-        auto parentDragDropContainer = zoneWidget->parentWidget();
-        parentDragDropContainer->layout()->removeWidget(zoneWidget);
+}
 
-        ui->dragDropContainer->insertDragWidget(index, zoneWidget);
+void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropZone(
+    int index, VisualizationTabWidget *tabWidget)
+{
+    auto &helper = sqpApp->dragDropHelper();
+
+    auto zoneWidget = qobject_cast<VisualizationZoneWidget *>(helper.getCurrentDragWidget());
+    if (!zoneWidget) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationTabWidget::dropZone, drop aborted, the dropped zone is not "
+                  "found or invalid.");
+        Q_ASSERT(false);
+        return;
     }
+
+    auto parentDragDropContainer
+        = qobject_cast<VisualizationDragDropContainer *>(zoneWidget->parentWidget());
+    if (!parentDragDropContainer) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationTabWidget::dropZone, drop aborted, the parent container of "
+                  "the dropped zone is not found.");
+        Q_ASSERT(false);
+        return;
+    }
+
+    // Simple move of the zone, no variable operation associated
+    parentDragDropContainer->layout()->removeWidget(zoneWidget);
+    tabWidget->ui->dragDropContainer->insertDragWidget(index, zoneWidget);
+}
+
+void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropVariables(
+    const QList<std::shared_ptr<Variable> > &variables, int index,
+    VisualizationTabWidget *tabWidget)
+{
+    // Note: we are sure that there is a single and compatible variable here
+    // because the AcceptMimeDataFunction, set on the drop container, makes the check before the
+    // drop can occur.
+    tabWidget->createZone(variables, index);
 }

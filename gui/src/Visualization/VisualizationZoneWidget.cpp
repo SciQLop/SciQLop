@@ -3,11 +3,17 @@
 #include "Visualization/IVisualizationWidgetVisitor.h"
 #include "Visualization/QCustomPlotSynchronizer.h"
 #include "Visualization/VisualizationGraphWidget.h"
+#include "Visualization/VisualizationWidget.h"
 #include "ui_VisualizationZoneWidget.h"
+
+#include "Common/MimeTypesDef.h"
+#include "Common/VisualizationDef.h"
 
 #include <Data/SqpRange.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
+
+#include <Visualization/operations/FindVariableOperation.h>
 
 #include <DragDropHelper.h>
 #include <QUuid>
@@ -20,8 +26,6 @@ Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 
 namespace {
 
-/// Minimum height for graph added in zones (in pixels)
-const auto GRAPH_MINIMUM_HEIGHT = 300;
 
 /// Generates a default name for a new graph, according to the number of graphs already displayed in
 /// the zone
@@ -66,6 +70,10 @@ struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
     }
     QUuid m_SynchronisationGroupId;
     std::unique_ptr<IGraphSynchronizer> m_Synchronizer;
+
+    void dropGraph(int index, VisualizationZoneWidget *zoneWidget);
+    void dropVariables(const QList<std::shared_ptr<Variable> > &variables, int index,
+                       VisualizationZoneWidget *zoneWidget);
 };
 
 VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *parent)
@@ -77,7 +85,11 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
 
     ui->zoneNameLabel->setText(name);
 
-    ui->dragDropContainer->setAcceptedMimeTypes({DragDropHelper::MIME_TYPE_GRAPH});
+    ui->dragDropContainer->setAcceptedMimeTypes({MIME_TYPE_GRAPH, MIME_TYPE_VARIABLE_LIST});
+    ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
+        return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
+                                                                      ui->dragDropContainer);
+    });
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this,
             &VisualizationZoneWidget::dropMimeData);
 
@@ -315,7 +327,7 @@ QString VisualizationZoneWidget::name() const
 QMimeData *VisualizationZoneWidget::mimeData() const
 {
     auto mimeData = new QMimeData;
-    mimeData->setData(DragDropHelper::MIME_TYPE_ZONE, QByteArray());
+    mimeData->setData(MIME_TYPE_ZONE, QByteArray());
 
     return mimeData;
 }
@@ -354,57 +366,119 @@ void VisualizationZoneWidget::onVariableAboutToBeRemoved(std::shared_ptr<Variabl
 
 void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
 {
+    if (mimeData->hasFormat(MIME_TYPE_GRAPH)) {
+        impl->dropGraph(index, this);
+    }
+    else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+        auto variables = sqpApp->variableController().variablesForMimeData(
+            mimeData->data(MIME_TYPE_VARIABLE_LIST));
+        impl->dropVariables(variables, index, this);
+    }
+    else {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationZoneWidget::dropMimeData, unknown MIME data received.");
+    }
+}
+
+void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
+    int index, VisualizationZoneWidget *zoneWidget)
+{
     auto &helper = sqpApp->dragDropHelper();
-    if (mimeData->hasFormat(DragDropHelper::MIME_TYPE_GRAPH)) {
-        auto graphWidget = static_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
-        auto parentDragDropContainer
-            = qobject_cast<VisualizationDragDropContainer *>(graphWidget->parentWidget());
-        Q_ASSERT(parentDragDropContainer);
 
-        const auto &variables = graphWidget->variables();
+    auto graphWidget = qobject_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
+    if (!graphWidget) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationZoneWidget::dropGraph, drop aborted, the dropped graph is not "
+                  "found or invalid.");
+        Q_ASSERT(false);
+        return;
+    }
 
-        if (parentDragDropContainer != ui->dragDropContainer && !variables.isEmpty()) {
-            // The drop didn't occur in the same zone
+    auto parentDragDropContainer
+        = qobject_cast<VisualizationDragDropContainer *>(graphWidget->parentWidget());
+    if (!parentDragDropContainer) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationZoneWidget::dropGraph, drop aborted, the parent container of "
+                  "the dropped graph is not found.");
+        Q_ASSERT(false);
+        return;
+    }
 
-            // Abort the requests for the variables (if any)
-            // Commented, because it's not sure if it's needed or not
-            // for (const auto& var : variables)
-            //{
-            //    sqpApp->variableController().onAbortProgressRequested(var);
-            //}
+    const auto &variables = graphWidget->variables();
 
-            auto previousParentZoneWidget = graphWidget->parentZoneWidget();
-            auto nbGraph = parentDragDropContainer->countDragWidget();
-            if (nbGraph == 1) {
-                // This is the only graph in the previous zone, close the zone
-                previousParentZoneWidget->close();
-            }
-            else {
-                // Close the graph
-                graphWidget->close();
-            }
+    if (parentDragDropContainer != zoneWidget->ui->dragDropContainer && !variables.isEmpty()) {
+        // The drop didn't occur in the same zone
 
-            // Creates the new graph in the zone
-            createGraph(variables, index);
+        // Abort the requests for the variables (if any)
+        // Commented, because it's not sure if it's needed or not
+        // for (const auto& var : variables)
+        //{
+        //    sqpApp->variableController().onAbortProgressRequested(var);
+        //}
+
+        auto previousParentZoneWidget = graphWidget->parentZoneWidget();
+        auto nbGraph = parentDragDropContainer->countDragWidget();
+        if (nbGraph == 1) {
+            // This is the only graph in the previous zone, close the zone
+            previousParentZoneWidget->close();
         }
         else {
-            // The drop occurred in the same zone or the graph is empty
-            // Simple move of the graph, no variable operation associated
-            parentDragDropContainer->layout()->removeWidget(graphWidget);
+            // Close the graph
+            graphWidget->close();
+        }
 
-            if (variables.isEmpty() && parentDragDropContainer != ui->dragDropContainer) {
-                // The graph is empty and dropped in a different zone.
-                // Take the range of the first graph in the zone (if existing).
-                auto layout = ui->dragDropContainer->layout();
-                if (layout->count() > 0) {
-                    if (auto visualizationGraphWidget
-                        = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
-                        graphWidget->setGraphRange(visualizationGraphWidget->graphRange());
-                    }
+        // Creates the new graph in the zone
+        zoneWidget->createGraph(variables, index);
+    }
+    else {
+        // The drop occurred in the same zone or the graph is empty
+        // Simple move of the graph, no variable operation associated
+        parentDragDropContainer->layout()->removeWidget(graphWidget);
+
+        if (variables.isEmpty() && parentDragDropContainer != zoneWidget->ui->dragDropContainer) {
+            // The graph is empty and dropped in a different zone.
+            // Take the range of the first graph in the zone (if existing).
+            auto layout = zoneWidget->ui->dragDropContainer->layout();
+            if (layout->count() > 0) {
+                if (auto visualizationGraphWidget
+                    = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
+                    graphWidget->setGraphRange(visualizationGraphWidget->graphRange());
                 }
             }
+        }
 
-            ui->dragDropContainer->insertDragWidget(index, graphWidget);
+        zoneWidget->ui->dragDropContainer->insertDragWidget(index, graphWidget);
+    }
+}
+
+void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropVariables(
+    const QList<std::shared_ptr<Variable> > &variables, int index,
+    VisualizationZoneWidget *zoneWidget)
+{
+    // Search for the top level VisualizationWidget
+    auto parent = zoneWidget->parentWidget();
+    while (parent && qobject_cast<VisualizationWidget *>(parent) == nullptr) {
+        parent = parent->parentWidget();
+    }
+
+    if (!parent) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationZoneWidget::dropVariables, drop aborted, the parent "
+                  "VisualizationWidget cannot be found.");
+        Q_ASSERT(false);
+        return;
+    }
+
+    auto visualizationWidget = static_cast<VisualizationWidget *>(parent);
+
+    // Search for the first variable which can be dropped
+    for (auto variable : variables) {
+        FindVariableOperation findVariableOperation{variable};
+        visualizationWidget->accept(&findVariableOperation);
+        auto variableContainers = findVariableOperation.result();
+        if (variableContainers.empty()) {
+            zoneWidget->createGraph(variable, index);
+            break;
         }
     }
 }

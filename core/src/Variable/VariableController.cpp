@@ -12,6 +12,7 @@
 #include <Data/VariableRequest.h>
 #include <Time/TimeController.h>
 
+#include <QDataStream>
 #include <QMutex>
 #include <QThread>
 #include <QUuid>
@@ -275,6 +276,46 @@ void VariableController::deleteVariables(
     for (auto variable : qAsConst(variables)) {
         deleteVariable(variable);
     }
+}
+
+QByteArray
+VariableController::mimeDataForVariables(const QList<std::shared_ptr<Variable> > &variables) const
+{
+    auto encodedData = QByteArray{};
+
+    QVariantList ids;
+    for (auto &var : variables) {
+        auto itVar = impl->m_VariableToIdentifierMap.find(var);
+        if (itVar == impl->m_VariableToIdentifierMap.cend()) {
+            qCCritical(LOG_VariableController())
+                << tr("Impossible to find the data for an unknown variable.");
+        }
+
+        ids << itVar->second.toByteArray();
+    }
+
+    QDataStream stream{&encodedData, QIODevice::WriteOnly};
+    stream << ids;
+
+    return encodedData;
+}
+
+QList<std::shared_ptr<Variable> >
+VariableController::variablesForMimeData(const QByteArray &mimeData) const
+{
+    auto variables = QList<std::shared_ptr<Variable> >{};
+    QDataStream stream{mimeData};
+
+    QVariantList ids;
+    stream >> ids;
+
+    for (auto id : ids) {
+        auto uuid = QUuid(id.toByteArray());
+        auto var = impl->findVariable(uuid);
+        variables << var;
+    }
+
+    return variables;
 }
 
 std::shared_ptr<Variable>
