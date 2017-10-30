@@ -23,6 +23,7 @@ core_sources = [
   'src/Common/StringUtils.cpp',
   'src/Common/MimeTypesDef.cpp',
   'src/Data/ScalarSeries.cpp',
+  'src/Data/SpectrogramSeries.cpp',
   'src/Data/DataSeriesIterator.cpp',
   'src/Data/ArrayDataIterator.cpp',
   'src/Data/VectorSeries.cpp',
