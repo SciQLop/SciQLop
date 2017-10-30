@@ -2,7 +2,8 @@
 
 tests = [
   [['Common/TestStringUtils.cpp'],'test_string_utils','StringUtils test'],
-  [['Data/TestDataSeries.cpp'],'test_data','DataSeries test'],
+  [['Data/TestScalarSeries.cpp'],'test_scalar','ScalarSeries test'],
+  [['Data/TestVectorSeries.cpp'],'test_vector','VectorSeries test'],
   [['Data/TestOneDimArrayData.cpp'],'test_1d','One Dim Array test'],
   [['Data/TestOptionalAxis.cpp'],'test_optional_axis','OptionalAxis test'],
   [['Data/TestTwoDimArrayData.cpp'],'test_2d','Two Dim Array test'],
