@@ -121,9 +121,62 @@ private:
 /**
  * @brief The DataSeries class is the base (abstract) implementation of IDataSeries.
  *
- * It proposes to set a dimension for the values ​​data.
+ * The DataSeries represents values on one or two axes, according to these rules:
+ * - the x-axis is always defined
+ * - an y-axis can be defined or not. If set, additional consistency checks apply to the values (see
+ * below)
+ * - the values are defined on one or two dimensions. In the case of 2-dim values, the data is
+ * distributed into components (for example, a vector defines three components)
+ * - New values can be added to the series, on the x-axis.
+ * - Once initialized to the series creation, the y-axis (if defined) is no longer modifiable
+ * - Data representing values and axes are associated with a unit
+ * - The data series is always sorted in ascending order on the x-axis.
  *
- * A DataSeries is always sorted on its x-axis data.
+ * Consistency checks are carried out between the axes and the values. These controls are provided
+ * throughout the DataSeries lifecycle:
+ * - the number of data on the x-axis must be equal to the number of values (in the case of
+ * 2-dim ArrayData for values, the test is performed on the number of values per component)
+ * - if the y-axis is defined, the number of components of the ArrayData for values must equal the
+ * number of data on the y-axis.
+ *
+ * Examples:
+ * 1)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: not defined
+ * - values: [10 ; 20 ; 30] (1-dim ArrayData)
+ * => the DataSeries is valid, as x-axis and values have the same number of data
+ *
+ * 2)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: not defined
+ * - values: [10 ; 20 ; 30 ; 40] (1-dim ArrayData)
+ * => the DataSeries is invalid, as x-axis and values haven't the same number of data
+ *
+ * 3)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: not defined
+ * - values: [10 ; 20 ; 30
+ *            40 ; 50 ; 60] (2-dim ArrayData)
+ * => the DataSeries is valid, as x-axis has 3 data and values contains 2 components with 3
+ * data each
+ *
+ * 4)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: [1 ; 2]
+ * - values: [10 ; 20 ; 30
+ *            40 ; 50 ; 60] (2-dim ArrayData)
+ * => the DataSeries is valid, as:
+ * - x-axis has 3 data and values contains 2 components with 3 data each AND
+ * - y-axis has 2 data and values contains 2 components
+ *
+ * 5)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: [1 ; 2 ; 3]
+ * - values: [10 ; 20 ; 30
+ *            40 ; 50 ; 60] (2-dim ArrayData)
+ * => the DataSeries is invalid, as:
+ * - x-axis has 3 data and values contains 2 components with 3 data each BUT
+ * - y-axis has 3 data and values contains only 2 components
  *
  * @tparam Dim The dimension of the values data
  *
