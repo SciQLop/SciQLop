@@ -94,7 +94,6 @@ public:
     }
 
     int distance(const ArrayDataIteratorValue::Impl &other) const override try {
-        /// @todo ALX : validate
         const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
         return std::distance(otherImpl.m_It, m_It) / m_NbComponents;
     }

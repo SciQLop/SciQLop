@@ -146,7 +146,7 @@ public:
     /// @sa IDataSeries::valuesUnit()
     Unit valuesUnit() const override { return m_ValuesUnit; }
 
-    int nbPoints() const override { return m_XAxisData->totalSize() + m_ValuesData->totalSize(); }
+    int nbPoints() const override { return m_ValuesData->totalSize(); }
 
     void clear()
     {

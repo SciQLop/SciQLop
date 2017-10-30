@@ -296,21 +296,21 @@ void TestVariable::testNbPoints_data()
     // ////////// //
     NbPointsOperations operations{};
 
-    // Sets cache range (expected nb points = series xAxis data + series values data)
+    // Sets cache range (expected nb points = values data)
     auto cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 9)};
-    operations.push_back({cacheRange, dataSeries(cacheRange), 20});
+    operations.push_back({cacheRange, dataSeries(cacheRange), 10});
 
     // Doubles cache but don't add data series (expected nb points don't change)
     cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 19)};
-    operations.push_back({cacheRange, dataSeries(INVALID_RANGE), 20});
+    operations.push_back({cacheRange, dataSeries(INVALID_RANGE), 10});
 
     // Doubles cache and data series (expected nb points change)
     cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 19)};
-    operations.push_back({cacheRange, dataSeries(cacheRange), 40});
+    operations.push_back({cacheRange, dataSeries(cacheRange), 20});
 
     // Decreases cache (expected nb points decreases as the series is purged)
     cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 5), date(2017, 1, 1, 12, 0, 9)};
-    operations.push_back({cacheRange, dataSeries(INVALID_RANGE), 10});
+    operations.push_back({cacheRange, dataSeries(INVALID_RANGE), 5});
 
     QTest::newRow("nbPoints1") << operations;
 }
