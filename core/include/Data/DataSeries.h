@@ -8,6 +8,7 @@
 #include <Data/ArrayData.h>
 #include <Data/DataSeriesMergeHelper.h>
 #include <Data/IDataSeries.h>
+#include <Data/OptionalAxis.h>
 
 #include <QLoggingCategory>
 #include <QReadLocker>
@@ -120,9 +121,62 @@ private:
 /**
  * @brief The DataSeries class is the base (abstract) implementation of IDataSeries.
  *
- * It proposes to set a dimension for the values ​​data.
+ * The DataSeries represents values on one or two axes, according to these rules:
+ * - the x-axis is always defined
+ * - an y-axis can be defined or not. If set, additional consistency checks apply to the values (see
+ * below)
+ * - the values are defined on one or two dimensions. In the case of 2-dim values, the data is
+ * distributed into components (for example, a vector defines three components)
+ * - New values can be added to the series, on the x-axis.
+ * - Once initialized to the series creation, the y-axis (if defined) is no longer modifiable
+ * - Data representing values and axes are associated with a unit
+ * - The data series is always sorted in ascending order on the x-axis.
  *
- * A DataSeries is always sorted on its x-axis data.
+ * Consistency checks are carried out between the axes and the values. These controls are provided
+ * throughout the DataSeries lifecycle:
+ * - the number of data on the x-axis must be equal to the number of values (in the case of
+ * 2-dim ArrayData for values, the test is performed on the number of values per component)
+ * - if the y-axis is defined, the number of components of the ArrayData for values must equal the
+ * number of data on the y-axis.
+ *
+ * Examples:
+ * 1)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: not defined
+ * - values: [10 ; 20 ; 30] (1-dim ArrayData)
+ * => the DataSeries is valid, as x-axis and values have the same number of data
+ *
+ * 2)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: not defined
+ * - values: [10 ; 20 ; 30 ; 40] (1-dim ArrayData)
+ * => the DataSeries is invalid, as x-axis and values haven't the same number of data
+ *
+ * 3)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: not defined
+ * - values: [10 ; 20 ; 30
+ *            40 ; 50 ; 60] (2-dim ArrayData)
+ * => the DataSeries is valid, as x-axis has 3 data and values contains 2 components with 3
+ * data each
+ *
+ * 4)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: [1 ; 2]
+ * - values: [10 ; 20 ; 30
+ *            40 ; 50 ; 60] (2-dim ArrayData)
+ * => the DataSeries is valid, as:
+ * - x-axis has 3 data and values contains 2 components with 3 data each AND
+ * - y-axis has 2 data and values contains 2 components
+ *
+ * 5)
+ * - x-axis: [1 ; 2 ; 3]
+ * - y-axis: [1 ; 2 ; 3]
+ * - values: [10 ; 20 ; 30
+ *            40 ; 50 ; 60] (2-dim ArrayData)
+ * => the DataSeries is invalid, as:
+ * - x-axis has 3 data and values contains 2 components with 3 data each BUT
+ * - y-axis has 3 data and values contains only 2 components
  *
  * @tparam Dim The dimension of the values data
  *
@@ -146,7 +200,7 @@ public:
     /// @sa IDataSeries::valuesUnit()
     Unit valuesUnit() const override { return m_ValuesUnit; }
 
-    int nbPoints() const override { return m_XAxisData->totalSize() + m_ValuesData->totalSize(); }
+    int nbPoints() const override { return m_ValuesData->totalSize(); }
 
     void clear()
     {
@@ -156,7 +210,14 @@ public:
 
     bool isEmpty() const noexcept { return m_XAxisData->size() == 0; }
 
-    /// Merges into the data series an other data series
+    /// Merges into the data series an other data series.
+    ///
+    /// The two dataseries:
+    /// - must be of the same dimension
+    /// - must have the same y-axis (if defined)
+    ///
+    /// If the prerequisites are not valid, the method does nothing
+    ///
     /// @remarks the data series to merge with is cleared after the operation
     void merge(IDataSeries *dataSeries) override
     {
@@ -164,7 +225,13 @@ public:
         lockWrite();
 
         if (auto other = dynamic_cast<DataSeries<Dim> *>(dataSeries)) {
-            DataSeriesMergeHelper::merge(*other, *this);
+            if (m_YAxis == other->m_YAxis) {
+                DataSeriesMergeHelper::merge(*other, *this);
+            }
+            else {
+                qCWarning(LOG_DataSeries())
+                    << QObject::tr("Can't merge data series that have not the same y-axis");
+            }
         }
         else {
             qCWarning(LOG_DataSeries())
@@ -325,18 +392,31 @@ public:
     virtual void unlock() { m_Lock.unlock(); }
 
 protected:
-    /// Protected ctor (DataSeries is abstract). The vectors must have the same size, otherwise a
-    /// DataSeries with no values will be created.
+    /// Protected ctor (DataSeries is abstract).
+    ///
+    /// Data vectors must be consistent with each other, otherwise an exception will be thrown (@sa
+    /// class description for consistent rules)
     /// @remarks data series is automatically sorted on its x-axis data
+    /// @throws std::invalid_argument if the data are inconsistent with each other
     explicit DataSeries(std::shared_ptr<ArrayData<1> > xAxisData, const Unit &xAxisUnit,
-                        std::shared_ptr<ArrayData<Dim> > valuesData, const Unit &valuesUnit)
+                        std::shared_ptr<ArrayData<Dim> > valuesData, const Unit &valuesUnit,
+                        OptionalAxis yAxis = OptionalAxis{})
             : m_XAxisData{xAxisData},
               m_XAxisUnit{xAxisUnit},
               m_ValuesData{valuesData},
-              m_ValuesUnit{valuesUnit}
+              m_ValuesUnit{valuesUnit},
+              m_YAxis{std::move(yAxis)}
     {
         if (m_XAxisData->size() != m_ValuesData->size()) {
-            clear();
+            throw std::invalid_argument{
+                "The number of values by component must be equal to the number of x-axis data"};
+        }
+
+        // Validates y-axis (if defined)
+        if (yAxis.isDefined() && (yAxis.size() != m_ValuesData->componentCount())) {
+            throw std::invalid_argument{
+                "As the y-axis is defined, the number of value components must be equal to the "
+                "number of y-axis data"};
         }
 
         // Sorts data if it's not the case
@@ -351,11 +431,15 @@ protected:
             : m_XAxisData{std::make_shared<ArrayData<1> >(*other.m_XAxisData)},
               m_XAxisUnit{other.m_XAxisUnit},
               m_ValuesData{std::make_shared<ArrayData<Dim> >(*other.m_ValuesData)},
-              m_ValuesUnit{other.m_ValuesUnit}
+              m_ValuesUnit{other.m_ValuesUnit},
+              m_YAxis{other.m_YAxis}
     {
         // Since a series is ordered from its construction and is always ordered, it is not
         // necessary to call the sort method here ('other' is sorted)
     }
+
+    /// @return the y-axis associated to the data series
+    OptionalAxis yAxis() const { return m_YAxis; }
 
     /// Assignment operator
     template <int D>
@@ -365,6 +449,7 @@ protected:
         std::swap(m_XAxisUnit, other.m_XAxisUnit);
         std::swap(m_ValuesData, other.m_ValuesData);
         std::swap(m_ValuesUnit, other.m_ValuesUnit);
+        std::swap(m_YAxis, other.m_YAxis);
 
         return *this;
     }
@@ -380,10 +465,16 @@ private:
         m_ValuesData = m_ValuesData->sort(permutation);
     }
 
+    // x-axis
     std::shared_ptr<ArrayData<1> > m_XAxisData;
     Unit m_XAxisUnit;
+
+    // values
     std::shared_ptr<ArrayData<Dim> > m_ValuesData;
     Unit m_ValuesUnit;
+
+    // y-axis (optional)
+    OptionalAxis m_YAxis;
 
     QReadWriteLock m_Lock;
 };
