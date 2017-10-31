@@ -233,7 +233,7 @@ QString VisualizationGraphWidget::name() const
 QMimeData *VisualizationGraphWidget::mimeData() const
 {
     auto mimeData = new QMimeData;
-    mimeData->setData(MIME_TYPE_GRAPH, QByteArray());
+    mimeData->setData(MIME_TYPE_GRAPH, QByteArray{});
 
     return mimeData;
 }

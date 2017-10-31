@@ -327,7 +327,7 @@ QString VisualizationZoneWidget::name() const
 QMimeData *VisualizationZoneWidget::mimeData() const
 {
     auto mimeData = new QMimeData;
-    mimeData->setData(MIME_TYPE_ZONE, QByteArray());
+    mimeData->setData(MIME_TYPE_ZONE, QByteArray{});
 
     return mimeData;
 }
@@ -455,30 +455,14 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropVariables(
     const QList<std::shared_ptr<Variable> > &variables, int index,
     VisualizationZoneWidget *zoneWidget)
 {
-    // Search for the top level VisualizationWidget
-    auto parent = zoneWidget->parentWidget();
-    while (parent && qobject_cast<VisualizationWidget *>(parent) == nullptr) {
-        parent = parent->parentWidget();
-    }
-
-    if (!parent) {
+    // Note: the AcceptMimeDataFunction (set on the drop container) ensure there is a single and
+    // compatible variable here
+    if (variables.count() > 1) {
         qCWarning(LOG_VisualizationZoneWidget())
-            << tr("VisualizationZoneWidget::dropVariables, drop aborted, the parent "
-                  "VisualizationWidget cannot be found.");
-        Q_ASSERT(false);
+            << tr("VisualizationZoneWidget::dropVariables, dropping multiple variables, operation "
+                  "aborted.");
         return;
     }
 
-    auto visualizationWidget = static_cast<VisualizationWidget *>(parent);
-
-    // Search for the first variable which can be dropped
-    for (auto variable : variables) {
-        FindVariableOperation findVariableOperation{variable};
-        visualizationWidget->accept(&findVariableOperation);
-        auto variableContainers = findVariableOperation.result();
-        if (variableContainers.empty()) {
-            zoneWidget->createGraph(variable, index);
-            break;
-        }
-    }
+    zoneWidget->createGraph({variable}, index);
 }

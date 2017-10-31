@@ -287,8 +287,13 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropVariables(
     const QList<std::shared_ptr<Variable> > &variables, int index,
     VisualizationTabWidget *tabWidget)
 {
-    // Note: we are sure that there is a single and compatible variable here
-    // because the AcceptMimeDataFunction, set on the drop container, makes the check before the
-    // drop can occur.
+    // Note: the AcceptMimeDataFunction (set on the drop container) ensure there is a single and
+    // compatible variable here
+    if (variables.count() > 1) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationTabWidget::dropVariables, dropping multiple variables, operation "
+                  "aborted.");
+        return;
+
     tabWidget->createZone(variables, index);
 }

@@ -124,6 +124,26 @@ void DataSourceController::loadProductItem(const QUuid &dataSourceUid,
     }
 }
 
+QByteArray DataSourceController::mimeDataForProductsData(const QVariantList &productsData) const
+{
+    QByteArray encodedData;
+    QDataStream stream{&encodedData, QIODevice::WriteOnly};
+
+    stream << productsData;
+
+    return encodedData;
+}
+
+QVariantList DataSourceController::productsDataForMimeData(const QByteArray &mimeData) const
+{
+    QDataStream stream{mimeData};
+
+    QVariantList productList;
+    stream >> productList;
+
+    return productList;
+}
+
 void DataSourceController::initialize()
 {
     qCDebug(LOG_DataSourceController()) << tr("DataSourceController init")

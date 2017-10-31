@@ -248,6 +248,12 @@ QUrl DragDropHelper::imageTemporaryUrl(const QImage &image) const
 bool DragDropHelper::checkMimeDataForVisualization(const QMimeData *mimeData,
                                                    VisualizationDragDropContainer *dropContainer)
 {
+    if (!mimeData || !dropContainer) {
+        qCWarning(LOG_DragDropHelper()) << QObject::tr(
+            "DragDropHelper::checkMimeDataForVisualization, invalid input parameters.");
+        Q_ASSERT(false);
+    }
+
     auto result = true;
 
     if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {

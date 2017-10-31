@@ -64,6 +64,9 @@ public:
      */
     void loadProductItem(const QUuid &dataSourceUid, const DataSourceItem &productItem) noexcept;
 
+    QByteArray mimeDataForProductsData(const QVariantList &productsData) const;
+    QVariantList productsDataForMimeData(const QByteArray &mimeData) const;
+
 public slots:
     /// Manage init/end of the controller
     void initialize();
