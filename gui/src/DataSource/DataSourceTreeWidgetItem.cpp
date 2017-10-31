@@ -129,6 +129,15 @@ DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(QTreeWidget *parent, const Da
     auto itemActions = impl->m_Data->actions();
     std::transform(std::cbegin(itemActions), std::cend(itemActions),
                    std::back_inserter(impl->m_Actions), createTreeAction);
+
+    // Sets the flags of the items
+    auto flags = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+    if (data->type() == DataSourceItemType::COMPONENT
+        || data->type() == DataSourceItemType::PRODUCT) {
+        flags |= Qt::ItemIsDragEnabled;
+    }
+
+    setFlags(flags);
 }
 
 const DataSourceItem *DataSourceTreeWidgetItem::data() const

@@ -18,7 +18,16 @@
     <widget class="QLineEdit" name="filterLineEdit"/>
    </item>
    <item row="1" column="0">
-    <widget class="QTreeWidget" name="treeWidget">
+    <widget class="DataSourceTreeWidget" name="treeWidget">
+     <property name="dragEnabled">
+      <bool>true</bool>
+     </property>
+     <property name="dragDropMode">
+      <enum>QAbstractItemView::DragOnly</enum>
+     </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::ExtendedSelection</enum>
+     </property>
      <column>
       <property name="text">
        <string notr="true">1</string>
@@ -28,6 +37,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>DataSourceTreeWidget</class>
+   <extends>QTreeWidget</extends>
+   <header>DataSource/DataSourceTreeWidget.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

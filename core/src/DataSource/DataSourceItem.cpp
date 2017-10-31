@@ -123,6 +123,24 @@ DataSourceItemType DataSourceItem::type() const noexcept
     return impl->m_Type;
 }
 
+DataSourceItem *DataSourceItem::findItem(const QVariantHash &data, bool recursive)
+{
+    for (const auto &child : impl->m_Children) {
+        if (child->impl->m_Data == data) {
+            return child.get();
+        }
+
+        if (recursive) {
+            auto foundItem = child->findItem(data, true);
+            if (foundItem) {
+                return foundItem;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
 bool DataSourceItem::operator==(const DataSourceItem &other)
 {
     // Compares items' attributes
