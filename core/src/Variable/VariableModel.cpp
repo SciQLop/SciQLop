@@ -312,7 +312,7 @@ bool VariableModel::canDropMimeData(const QMimeData *data, Qt::DropAction action
 bool VariableModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
                                  const QModelIndex &parent)
 {
-    bool dropDone = false;
+    auto dropDone = false;
 
     if (data->hasFormat(MIME_TYPE_PRODUCT_LIST)) {
         QDataStream stream(data->data(MIME_TYPE_PRODUCT_LIST));

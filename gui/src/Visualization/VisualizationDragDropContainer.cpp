@@ -75,10 +75,7 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     bool cursorIsInContainer(QWidget *container) const
     {
-        auto adustNum = 18; // to be safe, in case of scrollbar on the side
-        auto containerRect = QRect(QPoint(), container->contentsRect().size())
-                                 .adjusted(adustNum, adustNum, -adustNum, -adustNum);
-        return containerRect.contains(container->mapFromGlobal(QCursor::pos()));
+        return container->isAncestorOf(sqpApp->widgetAt(QCursor::pos()));
     }
 
     int countDragWidget(const QWidget *parent) const
@@ -170,6 +167,10 @@ void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidg
             auto dragWidgetIndex = impl->m_Layout->indexOf(dragWidget);
             helper.insertPlaceHolder(impl->m_Layout, dragWidgetIndex);
             dragWidget->setVisible(false);
+        }
+        else {
+            // The drag starts directly outside the drop zone
+            // do not add the placeHolder
         }
 
         // Note: The exec() is blocking on windows but not on linux and macOS

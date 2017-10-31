@@ -174,7 +174,7 @@ void DataSourceController::finalize()
 
 void DataSourceController::requestVariable(const QVariantHash &productData)
 {
-    DataSourceItem *sourceItem = impl->findDataSourceItem(productData);
+    auto sourceItem = impl->findDataSourceItem(productData);
 
     if (sourceItem) {
         auto sourceName = sourceItem->rootItem().name();

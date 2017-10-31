@@ -149,6 +149,9 @@ struct DragDropHelper::DragDropHelperPrivate {
 
     VisualizationDragWidget *m_HighlightedDragWidget = nullptr;
 
+    QMetaObject::Connection m_DragWidgetDestroyedConnection;
+    QMetaObject::Connection m_HighlightedWidgetDestroyedConnection;
+
     explicit DragDropHelperPrivate()
             : m_PlaceHolder{std::make_unique<QWidget>()},
               m_DragDropScroller{std::make_unique<DragDropScroller>()}
@@ -194,6 +197,18 @@ void DragDropHelper::resetDragAndDrop()
 
 void DragDropHelper::setCurrentDragWidget(VisualizationDragWidget *dragWidget)
 {
+    if (impl->m_CurrentDragWidget) {
+
+        QObject::disconnect(impl->m_DragWidgetDestroyedConnection);
+    }
+
+    if (dragWidget) {
+        // ensures the impl->m_CurrentDragWidget is reset when the widget is destroyed
+        impl->m_DragWidgetDestroyedConnection
+            = QObject::connect(dragWidget, &VisualizationDragWidget::destroyed,
+                               [this]() { impl->m_CurrentDragWidget = nullptr; });
+    }
+
     impl->m_CurrentDragWidget = dragWidget;
 }
 
@@ -251,12 +266,19 @@ void DragDropHelper::setHightlightedDragWidget(VisualizationDragWidget *dragWidg
 {
     if (impl->m_HighlightedDragWidget) {
         impl->m_HighlightedDragWidget->highlightForMerge(false);
+        QObject::disconnect(impl->m_HighlightedWidgetDestroyedConnection);
     }
 
     if (dragWidget) {
-        impl->m_HighlightedDragWidget = dragWidget;
-        impl->m_HighlightedDragWidget->highlightForMerge(true);
+        dragWidget->highlightForMerge(true);
+
+        // ensures the impl->m_HighlightedDragWidget is reset when the widget is destroyed
+        impl->m_DragWidgetDestroyedConnection
+            = QObject::connect(dragWidget, &VisualizationDragWidget::destroyed,
+                               [this]() { impl->m_HighlightedDragWidget = nullptr; });
     }
+
+    impl->m_HighlightedDragWidget = dragWidget;
 }
 
 bool DragDropHelper::checkMimeDataForVisualization(const QMimeData *mimeData,
