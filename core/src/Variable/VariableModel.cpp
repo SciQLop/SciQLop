@@ -8,6 +8,7 @@
 
 #include <Data/IDataSeries.h>
 
+#include <QDataStream>
 #include <QMimeData>
 #include <QSize>
 #include <unordered_map>
@@ -267,7 +268,7 @@ Qt::ItemFlags VariableModel::flags(const QModelIndex &index) const
 
 Qt::DropActions VariableModel::supportedDropActions() const
 {
-    return Qt::MoveAction;
+    return Qt::CopyAction | Qt::MoveAction;
 }
 
 Qt::DropActions VariableModel::supportedDragActions() const
@@ -304,13 +305,29 @@ QMimeData *VariableModel::mimeData(const QModelIndexList &indexes) const
 bool VariableModel::canDropMimeData(const QMimeData *data, Qt::DropAction action, int row,
                                     int column, const QModelIndex &parent) const
 {
-    return false;
+    // drop of a product
+    return data->hasFormat(MIME_TYPE_PRODUCT_LIST);
 }
 
 bool VariableModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
                                  const QModelIndex &parent)
 {
-    return false;
+    bool dropDone = false;
+
+    if (data->hasFormat(MIME_TYPE_PRODUCT_LIST)) {
+        QDataStream stream(data->data(MIME_TYPE_PRODUCT_LIST));
+
+        QVariantList productList;
+        stream >> productList;
+
+        for (auto metaData : productList) {
+            emit requestVariable(metaData.toHash());
+        }
+
+        dropDone = true;
+    }
+
+    return dropDone;
 }
 
 void VariableModel::abortProgress(const QModelIndex &index)

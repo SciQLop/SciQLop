@@ -294,6 +294,7 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropVariables(
             << tr("VisualizationTabWidget::dropVariables, dropping multiple variables, operation "
                   "aborted.");
         return;
+    }
 
     tabWidget->createZone(variables, index);
 }

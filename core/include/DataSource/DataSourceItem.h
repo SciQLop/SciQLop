@@ -91,6 +91,14 @@ public:
 
     DataSourceItemType type() const noexcept;
 
+    /**
+     * @brief Searches the first child matching the specified data.
+     * @param data The data to search.
+     * @param recursive So the search recursively.
+     * @return the item matching the data or nullptr if it was not found.
+     */
+    DataSourceItem *findItem(const QVariantHash &data, bool recursive);
+
     bool operator==(const DataSourceItem &other);
     bool operator!=(const DataSourceItem &other);
 

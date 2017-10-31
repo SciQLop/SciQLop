@@ -93,6 +93,7 @@ public:
 
 signals:
     void abortProgessRequested(std::shared_ptr<Variable> variable);
+    void requestVariable(const QVariantHash &productData);
 
 private:
     class VariableModelPrivate;

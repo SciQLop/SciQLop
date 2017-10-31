@@ -6,6 +6,7 @@
 #include <QMutex>
 #include <QThread>
 
+#include <QDataStream>
 #include <QDir>
 #include <QStandardPaths>
 
@@ -44,6 +45,20 @@ public:
     /// @remarks Data providers are stored as shared_ptr as they can be sent to a variable and
     /// continue to live without necessarily the data source controller
     std::map<QUuid, std::shared_ptr<IDataProvider> > m_DataProviders;
+
+    // Search for the first datasource item matching the specified data
+    DataSourceItem *findDataSourceItem(const QVariantHash &data)
+    {
+        DataSourceItem *sourceItem = nullptr;
+        for (const auto &item : m_DataSourceItems) {
+            sourceItem = item.second->findItem(data, true);
+            if (sourceItem) {
+                break;
+            }
+        }
+
+        return sourceItem;
+    }
 };
 
 DataSourceController::DataSourceController(QObject *parent)
@@ -155,6 +170,20 @@ void DataSourceController::initialize()
 void DataSourceController::finalize()
 {
     impl->m_WorkingMutex.unlock();
+}
+
+void DataSourceController::requestVariable(const QVariantHash &productData)
+{
+    DataSourceItem *sourceItem = impl->findDataSourceItem(productData);
+
+    if (sourceItem) {
+        auto sourceName = sourceItem->rootItem().name();
+        auto sourceId = impl->m_DataSources.key(sourceName);
+        loadProductItem(sourceId, *sourceItem);
+    }
+    else {
+        qCWarning(LOG_DataSourceController()) << tr("requestVariable, product data not found");
+    }
 }
 
 void DataSourceController::waitForFinish()

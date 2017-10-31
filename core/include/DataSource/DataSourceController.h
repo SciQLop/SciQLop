@@ -72,6 +72,8 @@ public slots:
     void initialize();
     void finalize();
 
+    void requestVariable(const QVariantHash &productData);
+
 signals:
     /// Signal emitted when a structure has been set for a data source
     void dataSourceItemSet(DataSourceItem *dataSourceItem);

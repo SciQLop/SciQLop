@@ -464,5 +464,5 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropVariables(
         return;
     }
 
-    zoneWidget->createGraph({variable}, index);
+    zoneWidget->createGraph(variables, index);
 }
