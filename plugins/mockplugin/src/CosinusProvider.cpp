@@ -67,10 +67,21 @@ struct SpectrogramCosinus : public ICosinusType {
                                                   std::vector<double> valuesData, Unit xAxisUnit,
                                                   Unit valuesUnit) const override
     {
+        return std::make_shared<SpectrogramSeries>(std::move(xAxisData), m_YAxisData,
+                                                   std::move(valuesData), xAxisUnit, m_YAxisUnit,
+                                                   valuesUnit);
     }
 
     void generateValues(double x, std::vector<double> &values, int dataIndex) const override
     {
+        auto componentCount = this->componentCount();
+        for (int i = 0; i < componentCount; ++i) {
+            auto y = m_YAxisData[i];
+            auto r = 3 * std::sqrt(x * x + y * y) + 1e-2;
+            auto value = 2 * x * (std::cos(r + 2) / r - std::sin(r + 2) / r);
+
+            values[componentCount * dataIndex + i] = value;
+        }
     }
 
     std::vector<double> m_YAxisData;
