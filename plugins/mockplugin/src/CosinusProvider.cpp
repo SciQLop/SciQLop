@@ -3,6 +3,7 @@
 
 #include <Data/DataProviderParameters.h>
 #include <Data/ScalarSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
 #include <cmath>
@@ -14,6 +15,9 @@
 Q_LOGGING_CATEGORY(LOG_CosinusProvider, "CosinusProvider")
 
 namespace {
+
+/// Number of bands generated for a spectrogram
+const auto SPECTROGRAM_NUMBER_BANDS = 30;
 
 /// Abstract cosinus type
 struct ICosinusType {
@@ -49,6 +53,30 @@ struct ScalarCosinus : public ICosinusType {
         values[dataIndex] = std::cos(x);
     }
 };
+
+struct SpectrogramCosinus : public ICosinusType {
+    /// Ctor with y-axis
+    explicit SpectrogramCosinus(std::vector<double> yAxisData, Unit yAxisUnit)
+            : m_YAxisData{std::move(yAxisData)}, m_YAxisUnit{std::move(yAxisUnit)}
+    {
+    }
+
+    int componentCount() const override { return m_YAxisData.size(); }
+
+    std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+                                                  std::vector<double> valuesData, Unit xAxisUnit,
+                                                  Unit valuesUnit) const override
+    {
+    }
+
+    void generateValues(double x, std::vector<double> &values, int dataIndex) const override
+    {
+    }
+
+    std::vector<double> m_YAxisData;
+    Unit m_YAxisUnit;
+};
+
 struct VectorCosinus : public ICosinusType {
     int componentCount() const override { return 3; }
 
@@ -77,6 +105,13 @@ std::unique_ptr<ICosinusType> cosinusType(const QString &type) noexcept
 {
     if (type.compare(QStringLiteral("scalar"), Qt::CaseInsensitive) == 0) {
         return std::make_unique<ScalarCosinus>();
+    }
+    else if (type.compare(QStringLiteral("spectrogram"), Qt::CaseInsensitive) == 0) {
+        // Generates default y-axis data for spectrogram [0., 1., 2., ...]
+        std::vector<double> yAxisData(SPECTROGRAM_NUMBER_BANDS);
+        std::iota(yAxisData.begin(), yAxisData.end(), 0.);
+
+        return std::make_unique<SpectrogramCosinus>(std::move(yAxisData), Unit{"eV"});
     }
     else if (type.compare(QStringLiteral("vector"), Qt::CaseInsensitive) == 0) {
         return std::make_unique<VectorCosinus>();
