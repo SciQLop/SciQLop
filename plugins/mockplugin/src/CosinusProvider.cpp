@@ -25,6 +25,12 @@ struct ICosinusType {
                                                           std::vector<double> valuesData,
                                                           Unit xAxisUnit,
                                                           Unit valuesUnit) const = 0;
+    /// Generates values (one value per component)
+    /// @param x the x-axis data used to generate values
+    /// @param values the vector in which to insert the generated values
+    /// @param dataIndex the index of insertion of the generated values
+    ///
+    virtual void generateValues(double x, std::vector<double> &values, int dataIndex) const = 0;
 };
 
 struct ScalarCosinus : public ICosinusType {
@@ -37,6 +43,11 @@ struct ScalarCosinus : public ICosinusType {
         return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
                                               xAxisUnit, valuesUnit);
     }
+
+    void generateValues(double x, std::vector<double> &values, int dataIndex) const override
+    {
+        values[dataIndex] = std::cos(x);
+    }
 };
 struct VectorCosinus : public ICosinusType {
     int componentCount() const override { return 3; }
@@ -47,6 +58,16 @@ struct VectorCosinus : public ICosinusType {
     {
         return std::make_shared<VectorSeries>(std::move(xAxisData), std::move(valuesData),
                                               xAxisUnit, valuesUnit);
+    }
+
+    void generateValues(double x, std::vector<double> &values, int dataIndex) const override
+    {
+        // Generates value for each component: cos(x), cos(x)/2, cos(x)/3
+        auto xValue = std::cos(x);
+        auto componentCount = this->componentCount();
+        for (auto i = 0; i < componentCount; ++i) {
+            values[componentCount * dataIndex + i] = xValue / (i + 1);
+        }
     }
 };
 
@@ -128,16 +149,12 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
     for (auto time = start; time <= end; ++time, ++dataIndex) {
         auto it = m_VariableToEnableProvider.find(acqIdentifier);
         if (it != m_VariableToEnableProvider.end() && it.value()) {
-            const auto timeOnFreq = time / freq;
+            const auto x = time / freq;
 
-            xAxisData[dataIndex] = timeOnFreq;
+            xAxisData[dataIndex] = x;
 
-            // Generates all components' values
-            // Example: for a vector, values will be : cos(x), cos(x)/2, cos(x)/3
-            auto value = std::cos(timeOnFreq);
-            for (auto i = 0; i < componentCount; ++i) {
-                valuesData[componentCount * dataIndex + i] = value / (i + 1);
-            }
+            // Generates values (depending on the type)
+            type->generateValues(x, valuesData, dataIndex);
 
             // progression
             int currentProgress = (time - start) * 100.0 / progressEnd;
