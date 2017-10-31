@@ -243,6 +243,18 @@ bool VisualizationGraphWidget::isDragAllowed() const
     return true;
 }
 
+void VisualizationGraphWidget::highlightForMerge(bool highlighted)
+{
+    if (highlighted) {
+        plot().setBackground(QBrush(QColor("#BBD5EE")));
+    }
+    else {
+        plot().setBackground(QBrush(Qt::white));
+    }
+
+    plot().update();
+}
+
 void VisualizationGraphWidget::closeEvent(QCloseEvent *event)
 {
     Q_UNUSED(event);

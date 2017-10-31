@@ -86,6 +86,7 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
     ui->zoneNameLabel->setText(name);
 
     ui->dragDropContainer->setAcceptedMimeTypes({MIME_TYPE_GRAPH, MIME_TYPE_VARIABLE_LIST});
+    ui->dragDropContainer->setMergeAllowedMimeTypes({MIME_TYPE_VARIABLE_LIST});
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
         return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
                                                                       ui->dragDropContainer);
