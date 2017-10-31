@@ -70,7 +70,7 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
 
     ui->dragDropContainer->setAcceptedMimeTypes(
         {MIME_TYPE_GRAPH, MIME_TYPE_ZONE, MIME_TYPE_VARIABLE_LIST});
-    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this,
+    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredInContainer, this,
             &VisualizationTabWidget::dropMimeData);
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
         return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,

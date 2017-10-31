@@ -91,8 +91,11 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
         return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
                                                                       ui->dragDropContainer);
     });
-    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this,
+
+    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredInContainer, this,
             &VisualizationZoneWidget::dropMimeData);
+    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredOnWidget, this,
+            &VisualizationZoneWidget::dropMimeDataOnGraph);
 
     // 'Close' options : widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
@@ -378,6 +381,31 @@ void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
     else {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationZoneWidget::dropMimeData, unknown MIME data received.");
+    }
+}
+
+void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragWidget,
+                                                  const QMimeData *mimeData)
+{
+    auto graphWidget = qobject_cast<VisualizationGraphWidget *>(dragWidget);
+    if (!graphWidget) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationZoneWidget::dropMimeDataOnGraph, dropping in an unknown widget, "
+                  "drop aborted");
+        Q_ASSERT(false);
+        return;
+    }
+
+    if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+        auto variables = sqpApp->variableController().variablesForMimeData(
+            mimeData->data(MIME_TYPE_VARIABLE_LIST));
+        for (const auto &var : variables) {
+            graphWidget->addVariable(var, graphWidget->graphRange());
+        }
+    }
+    else {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationZoneWidget::dropMimeDataOnGraph, unknown MIME data received.");
     }
 }
 

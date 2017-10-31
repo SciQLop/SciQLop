@@ -264,10 +264,12 @@ void VisualizationDragDropContainer::dragMoveEvent(QDragMoveEvent *event)
 
 void VisualizationDragDropContainer::dropEvent(QDropEvent *event)
 {
+    auto &helper = sqpApp->dragDropHelper();
+
     if (impl->acceptMimeData(event->mimeData())) {
-        auto dragWidget = sqpApp->dragDropHelper().getCurrentDragWidget();
+        auto dragWidget = helper.getCurrentDragWidget();
         if (impl->hasPlaceHolder()) {
-            auto &helper = sqpApp->dragDropHelper();
+            // drop where the placeHolder is located
 
             auto droppedIndex = impl->m_Layout->indexOf(&helper.placeHolder());
 
@@ -287,13 +289,22 @@ void VisualizationDragDropContainer::dropEvent(QDropEvent *event)
 
             helper.removePlaceHolder();
 
-            emit dropOccured(droppedIndex, event->mimeData());
+            emit dropOccuredInContainer(droppedIndex, event->mimeData());
         }
-        else {
-            qCWarning(LOG_VisualizationDragDropContainer())
-                << tr("VisualizationDragDropContainer::dropEvent, couldn't drop because the "
-                      "placeHolder is not found.");
-            // Q_ASSERT(false);
+        else if (helper.getHightlightedDragWidget()) {
+            // drop on the highlighted widget
+
+            auto canMerge = impl->allowMergeMimeData(event->mimeData());
+            if (canMerge) {
+                event->acceptProposedAction();
+                emit dropOccuredOnWidget(helper.getHightlightedDragWidget(), event->mimeData());
+            }
+            else {
+                qCWarning(LOG_VisualizationDragDropContainer())
+                    << tr("VisualizationDragDropContainer::dropEvent, dropping on a widget, but "
+                          "the merge is forbidden.");
+                Q_ASSERT(false);
+            }
         }
     }
     else {

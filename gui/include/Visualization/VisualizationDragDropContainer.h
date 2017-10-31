@@ -17,7 +17,8 @@ class VisualizationDragDropContainer : public QWidget {
     Q_OBJECT
 
 signals:
-    void dropOccured(int dropIndex, const QMimeData *mimeData);
+    void dropOccuredInContainer(int dropIndex, const QMimeData *mimeData);
+    void dropOccuredOnWidget(VisualizationDragWidget *dragWidget, const QMimeData *mimeData);
 
 public:
     using AcceptMimeDataFunction = std::function<bool(const QMimeData *mimeData)>;

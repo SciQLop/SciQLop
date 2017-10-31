@@ -54,6 +54,7 @@ public:
     QUrl imageTemporaryUrl(const QImage &image) const;
 
     void setHightlightedDragWidget(VisualizationDragWidget *dragWidget);
+    VisualizationDragWidget *getHightlightedDragWidget() const;
 
 private:
     class DragDropHelperPrivate;

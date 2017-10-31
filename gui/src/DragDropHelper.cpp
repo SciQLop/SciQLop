@@ -281,6 +281,11 @@ void DragDropHelper::setHightlightedDragWidget(VisualizationDragWidget *dragWidg
     impl->m_HighlightedDragWidget = dragWidget;
 }
 
+VisualizationDragWidget *DragDropHelper::getHightlightedDragWidget() const
+{
+    return impl->m_HighlightedDragWidget;
+}
+
 bool DragDropHelper::checkMimeDataForVisualization(const QMimeData *mimeData,
                                                    VisualizationDragDropContainer *dropContainer)
 {
