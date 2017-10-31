@@ -5,6 +5,7 @@
 #include "Visualization/VisualizationWidget.h"
 #include "Visualization/operations/FindVariableOperation.h"
 
+#include "Variable/Variable.h"
 #include "Variable/VariableController.h"
 
 #include "Common/MimeTypesDef.h"
@@ -160,7 +161,7 @@ struct DragDropHelper::DragDropHelperPrivate {
         sqpApp->installEventFilter(m_DragDropScroller.get());
 
 
-        m_ImageTempUrl = QDir::temp().absoluteFilePath("Scqlop_graph.png");
+        m_ImageTempUrl = QDir::temp().absoluteFilePath("Sciqlop_graph.png");
     }
 
     void preparePlaceHolder() const
@@ -293,43 +294,59 @@ bool DragDropHelper::checkMimeDataForVisualization(const QMimeData *mimeData,
         qCWarning(LOG_DragDropHelper()) << QObject::tr(
             "DragDropHelper::checkMimeDataForVisualization, invalid input parameters.");
         Q_ASSERT(false);
+        return false;
     }
 
-    auto result = true;
+    auto result = false;
 
     if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
         auto variables = sqpApp->variableController().variablesForMimeData(
             mimeData->data(MIME_TYPE_VARIABLE_LIST));
 
         if (variables.count() == 1) {
-            // Check that the viariable is not already in a graph
 
-            // Search for the top level VisualizationWidget
-            auto parent = dropContainer->parentWidget();
-            while (parent && qobject_cast<VisualizationWidget *>(parent) == nullptr) {
-                parent = parent->parentWidget();
-            }
+            auto variable = variables.first();
+            if (variable->dataSeries() != nullptr) {
 
-            if (parent) {
-                auto visualizationWidget = static_cast<VisualizationWidget *>(parent);
+                // Check that the variable is not already in a graph
 
-                FindVariableOperation findVariableOperation{variables.first()};
-                visualizationWidget->accept(&findVariableOperation);
-                auto variableContainers = findVariableOperation.result();
-                if (!variableContainers.empty()) {
-                    result = false;
+                auto parent = dropContainer->parentWidget();
+                while (parent && qobject_cast<VisualizationWidget *>(parent) == nullptr) {
+                    parent = parent->parentWidget(); // Search for the top level VisualizationWidget
+                }
+
+                if (parent) {
+                    auto visualizationWidget = static_cast<VisualizationWidget *>(parent);
+
+                    FindVariableOperation findVariableOperation{variable};
+                    visualizationWidget->accept(&findVariableOperation);
+                    auto variableContainers = findVariableOperation.result();
+                    if (variableContainers.empty()) {
+                        result = true;
+                    }
+                    else {
+                        // result = false: the variable already exist in the visualisation
+                    }
+                }
+                else {
+                    qCWarning(LOG_DragDropHelper()) << QObject::tr(
+                        "DragDropHelper::checkMimeDataForVisualization, the parent "
+                        "VisualizationWidget cannot be found. Cannot check if the variable is "
+                        "already used or not.");
                 }
             }
             else {
-                qCWarning(LOG_DragDropHelper()) << QObject::tr(
-                    "DragDropHelper::checkMimeDataForVisualization, the parent "
-                    "VisualizationWidget cannot be found.");
-                result = false;
+                // result = false: the variable is not fully loaded
             }
         }
         else {
-            result = false;
+            // result = false: cannot drop multiple variables in the visualisation
         }
+    }
+    else {
+        // Other MIME data
+        // no special rules, accepted by default
+        result = true;
     }
 
     return result;
