@@ -64,10 +64,15 @@ public:
      */
     void loadProductItem(const QUuid &dataSourceUid, const DataSourceItem &productItem) noexcept;
 
+    QByteArray mimeDataForProductsData(const QVariantList &productsData) const;
+    QVariantList productsDataForMimeData(const QByteArray &mimeData) const;
+
 public slots:
     /// Manage init/end of the controller
     void initialize();
     void finalize();
+
+    void requestVariable(const QVariantHash &productData);
 
 signals:
     /// Signal emitted when a structure has been set for a data source

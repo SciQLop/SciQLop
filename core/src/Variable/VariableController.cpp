@@ -310,7 +310,7 @@ VariableController::variablesForMimeData(const QByteArray &mimeData) const
     stream >> ids;
 
     for (auto id : ids) {
-        auto uuid = QUuid(id.toByteArray());
+        auto uuid = QUuid{id.toByteArray()};
         auto var = impl->findVariable(uuid);
         variables << var;
     }

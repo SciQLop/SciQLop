@@ -8,6 +8,7 @@
 #include <Time/TimeController.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
+#include <Variable/VariableModel.h>
 #include <Visualization/VisualizationController.h>
 
 Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")
@@ -33,6 +34,9 @@ public:
                 m_VariableController.get(),
                 SLOT(createVariable(const QString &, const QVariantHash &,
                                     std::shared_ptr<IDataProvider>)));
+
+        connect(m_VariableController->variableModel(), &VariableModel::requestVariable,
+                m_DataSourceController.get(), &DataSourceController::requestVariable);
 
         // VariableController <-> VisualizationController
         connect(m_VariableController.get(),
