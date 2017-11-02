@@ -8,7 +8,9 @@
 
 #include <Data/IDataSeries.h>
 
-#include <QDataStream>
+#include <DataSource/DataSourceController.h>
+#include <Time/TimeController.h>
+
 #include <QMimeData>
 #include <QSize>
 #include <unordered_map>
@@ -278,7 +280,7 @@ Qt::DropActions VariableModel::supportedDragActions() const
 
 QStringList VariableModel::mimeTypes() const
 {
-    return {MIME_TYPE_VARIABLE_LIST};
+    return {MIME_TYPE_VARIABLE_LIST, MIME_TYPE_TIME_RANGE};
 }
 
 QMimeData *VariableModel::mimeData(const QModelIndexList &indexes) const
@@ -287,17 +289,31 @@ QMimeData *VariableModel::mimeData(const QModelIndexList &indexes) const
 
     QList<std::shared_ptr<Variable> > variableList;
 
+
+    SqpRange firstTimeRange;
     for (const auto &index : indexes) {
         if (index.column() == 0) { // only the first column
             auto variable = impl->m_Variables.at(index.row());
             if (variable.get() && index.isValid()) {
+
+                if (variableList.isEmpty()) {
+                    // Gets the range of the first variable
+                    firstTimeRange = std::move(variable->range());
+                }
+
                 variableList << variable;
             }
         }
     }
 
-    auto encodedData = impl->m_VariableController->mimeDataForVariables(variableList);
-    mimeData->setData(MIME_TYPE_VARIABLE_LIST, encodedData);
+    auto variablesEncodedData = impl->m_VariableController->mimeDataForVariables(variableList);
+    mimeData->setData(MIME_TYPE_VARIABLE_LIST, variablesEncodedData);
+
+    if (variableList.count() == 1) {
+        // No time range MIME data if multiple variables are dragged
+        auto timeEncodedData = TimeController::mimeDataForTimeRange(firstTimeRange);
+        mimeData->setData(MIME_TYPE_TIME_RANGE, timeEncodedData);
+    }
 
     return mimeData;
 }
@@ -315,10 +331,9 @@ bool VariableModel::dropMimeData(const QMimeData *data, Qt::DropAction action, i
     auto dropDone = false;
 
     if (data->hasFormat(MIME_TYPE_PRODUCT_LIST)) {
-        QDataStream stream(data->data(MIME_TYPE_PRODUCT_LIST));
 
-        QVariantList productList;
-        stream >> productList;
+        auto productList
+            = DataSourceController::productsDataForMimeData(data->data(MIME_TYPE_PRODUCT_LIST));
 
         for (auto metaData : productList) {
             emit requestVariable(metaData.toHash());

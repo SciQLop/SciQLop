@@ -23,6 +23,12 @@ public:
 
     SqpRange dateTime() const noexcept;
 
+    /// Returns the MIME data associated to a time range
+    static QByteArray mimeDataForTimeRange(const SqpRange &timeRange);
+
+    /// Returns the time range contained in a MIME data
+    static SqpRange timeRangeForMimeData(const QByteArray &mimeData);
+
 signals:
     /// Signal emitted to notify that time parameters has beed updated
     void timeUpdated(SqpRange time);

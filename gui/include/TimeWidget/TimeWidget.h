@@ -16,6 +16,8 @@ public:
     explicit TimeWidget(QWidget *parent = 0);
     virtual ~TimeWidget();
 
+    void setTimeRange(SqpRange time);
+
 signals:
     /// Signal emitted when the time parameters has beed updated
     void timeUpdated(SqpRange time);
@@ -23,6 +25,11 @@ signals:
 public slots:
     /// slot called when time parameters update has ben requested
     void onTimeUpdateRequested();
+
+protected:
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dragLeaveEvent(QDragLeaveEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
 
 
 private:

@@ -10,6 +10,7 @@
 #include "Common/VisualizationDef.h"
 
 #include <Data/SqpRange.h>
+#include <Time/TimeController.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 
@@ -70,6 +71,21 @@ struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
     }
     QUuid m_SynchronisationGroupId;
     std::unique_ptr<IGraphSynchronizer> m_Synchronizer;
+
+    // Returns the first graph in the zone or nullptr if there is no graph inside
+    VisualizationGraphWidget *firstGraph(const VisualizationZoneWidget *zoneWidget) const
+    {
+        VisualizationGraphWidget *firstGraph = nullptr;
+        auto layout = zoneWidget->ui->dragDropContainer->layout();
+        if (layout->count() > 0) {
+            if (auto visualizationGraphWidget
+                = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
+                firstGraph = visualizationGraphWidget;
+            }
+        }
+
+        return firstGraph;
+    }
 
     void dropGraph(int index, VisualizationZoneWidget *zoneWidget);
     void dropVariables(const QList<std::shared_ptr<Variable> > &variables, int index,
@@ -238,15 +254,9 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
             &VisualizationZoneWidget::onVariableAboutToBeRemoved);
 
     auto range = SqpRange{};
-
-    // Apply visitor to graph children
-    auto layout = ui->dragDropContainer->layout();
-    if (layout->count() > 0) {
+    if (auto firstGraph = impl->firstGraph(this)) {
         // Case of a new graph in a existant zone
-        if (auto visualizationGraphWidget
-            = dynamic_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
-            range = visualizationGraphWidget->graphRange();
-        }
+        range = firstGraph->graphRange();
     }
     else {
         // Case of a new graph as the first of the zone
@@ -332,6 +342,11 @@ QMimeData *VisualizationZoneWidget::mimeData() const
 {
     auto mimeData = new QMimeData;
     mimeData->setData(MIME_TYPE_ZONE, QByteArray{});
+
+    if (const auto firstGraph = impl->firstGraph(this)) {
+        auto timeRangeData = TimeController::mimeDataForTimeRange(firstGraph->graphRange());
+        mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
+    }
 
     return mimeData;
 }

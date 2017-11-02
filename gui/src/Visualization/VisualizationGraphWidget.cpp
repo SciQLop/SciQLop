@@ -12,6 +12,7 @@
 #include <DragDropHelper.h>
 #include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
+#include <Time/TimeController.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 
@@ -234,6 +235,9 @@ QMimeData *VisualizationGraphWidget::mimeData() const
 {
     auto mimeData = new QMimeData;
     mimeData->setData(MIME_TYPE_GRAPH, QByteArray{});
+
+    auto timeRangeData = TimeController::mimeDataForTimeRange(graphRange());
+    mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
 
     return mimeData;
 }
