@@ -9,6 +9,7 @@ public:
 
 protected:
     QMimeData *mimeData(const QList<QTreeWidgetItem *> items) const override;
+    void startDrag(Qt::DropActions supportedActions) override;
 };
 
 #endif // SCIQLOP_DATASOURCETREEWIDGET_H
