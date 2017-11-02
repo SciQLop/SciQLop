@@ -4,14 +4,27 @@
 #include <Common/DateUtils.h>
 #include <Common/MimeTypesDef.h>
 
+#include <DragDropHelper.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
 
+#include <QDrag>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
 
-TimeWidget::TimeWidget(QWidget *parent) : QWidget{parent}, ui{new Ui::TimeWidget}
+
+struct TimeWidget::TimeWidgetPrivate {
+
+    explicit TimeWidgetPrivate() {}
+
+    QPoint m_DragStartPosition;
+};
+
+TimeWidget::TimeWidget(QWidget *parent)
+        : QWidget{parent},
+          ui{new Ui::TimeWidget},
+          impl{spimpl::make_unique_impl<TimeWidgetPrivate>()}
 {
     ui->setupUi(this);
 
@@ -56,11 +69,15 @@ void TimeWidget::setTimeRange(SqpRange time)
     ui->endDateTimeEdit->setDateTime(endDateTime);
 }
 
+SqpRange TimeWidget::timeRange() const
+{
+    return SqpRange{DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
+                    DateUtils::secondsSinceEpoch(ui->endDateTimeEdit->dateTime())};
+}
+
 void TimeWidget::onTimeUpdateRequested()
 {
-    auto dateTime = SqpRange{DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
-                             DateUtils::secondsSinceEpoch(ui->endDateTimeEdit->dateTime())};
-
+    auto dateTime = timeRange();
     emit timeUpdated(std::move(dateTime));
 }
 
@@ -93,4 +110,47 @@ void TimeWidget::dropEvent(QDropEvent *event)
     }
 
     setStyleSheet(QString());
+}
+
+
+void TimeWidget::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+        impl->m_DragStartPosition = event->pos();
+    }
+
+    QWidget::mousePressEvent(event);
+}
+
+void TimeWidget::mouseMoveEvent(QMouseEvent *event)
+{
+    if (!(event->buttons() & Qt::LeftButton)) {
+        return;
+    }
+
+    if ((event->pos() - impl->m_DragStartPosition).manhattanLength()
+        < QApplication::startDragDistance()) {
+        return;
+    }
+
+    // Note: The management of the drag object is done by Qt
+    auto drag = new QDrag{this};
+
+    auto mimeData = new QMimeData;
+    auto timeData = TimeController::mimeDataForTimeRange(timeRange());
+    mimeData->setData(MIME_TYPE_TIME_RANGE, timeData);
+
+    drag->setMimeData(mimeData);
+
+    auto pixmap = QPixmap(size());
+    render(&pixmap);
+    drag->setPixmap(pixmap);
+    drag->setHotSpot(impl->m_DragStartPosition);
+
+    sqpApp->dragDropHelper().resetDragAndDrop();
+
+    // Note: The exec() is blocking on windows but not on linux and macOS
+    drag->exec(Qt::MoveAction | Qt::CopyAction);
+
+    QWidget::mouseMoveEvent(event);
 }

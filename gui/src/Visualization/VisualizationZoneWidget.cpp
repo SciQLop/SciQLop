@@ -101,8 +101,12 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
 
     ui->zoneNameLabel->setText(name);
 
-    ui->dragDropContainer->setAcceptedMimeTypes({MIME_TYPE_GRAPH, MIME_TYPE_VARIABLE_LIST});
-    ui->dragDropContainer->setMergeAllowedMimeTypes({MIME_TYPE_VARIABLE_LIST});
+    ui->dragDropContainer->addAcceptedMimeType(
+        MIME_TYPE_GRAPH, VisualizationDragDropContainer::DropBehavior::Inserted);
+    ui->dragDropContainer->addAcceptedMimeType(
+        MIME_TYPE_VARIABLE_LIST, VisualizationDragDropContainer::DropBehavior::InsertedAndMerged);
+    ui->dragDropContainer->addAcceptedMimeType(
+        MIME_TYPE_TIME_RANGE, VisualizationDragDropContainer::DropBehavior::Merged);
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
         return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
                                                                       ui->dragDropContainer);
@@ -343,11 +347,6 @@ QMimeData *VisualizationZoneWidget::mimeData() const
     auto mimeData = new QMimeData;
     mimeData->setData(MIME_TYPE_ZONE, QByteArray{});
 
-    if (const auto firstGraph = impl->firstGraph(this)) {
-        auto timeRangeData = TimeController::mimeDataForTimeRange(firstGraph->graphRange());
-        mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
-    }
-
     return mimeData;
 }
 
@@ -417,6 +416,10 @@ void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragW
         for (const auto &var : variables) {
             graphWidget->addVariable(var, graphWidget->graphRange());
         }
+    }
+    else if (mimeData->hasFormat(MIME_TYPE_TIME_RANGE)) {
+        auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME_TYPE_TIME_RANGE));
+        graphWidget->setGraphRange(range);
     }
     else {
         qCWarning(LOG_VisualizationZoneWidget())

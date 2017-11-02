@@ -5,6 +5,8 @@
 
 #include <Data/SqpRange.h>
 
+#include <Common/spimpl.h>
+
 namespace Ui {
 class TimeWidget;
 } // Ui
@@ -17,6 +19,7 @@ public:
     virtual ~TimeWidget();
 
     void setTimeRange(SqpRange time);
+    SqpRange timeRange() const;
 
 signals:
     /// Signal emitted when the time parameters has beed updated
@@ -31,9 +34,14 @@ protected:
     void dragLeaveEvent(QDragLeaveEvent *event) override;
     void dropEvent(QDropEvent *event) override;
 
+    void mousePressEvent(QMouseEvent *event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
 
 private:
     Ui::TimeWidget *ui;
+
+    class TimeWidgetPrivate;
+    spimpl::unique_impl_ptr<TimeWidgetPrivate> impl;
 };
 
 #endif // SCIQLOP_ SQPSIDEPANE_H

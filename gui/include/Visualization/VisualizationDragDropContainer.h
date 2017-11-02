@@ -21,6 +21,7 @@ signals:
     void dropOccuredOnWidget(VisualizationDragWidget *dragWidget, const QMimeData *mimeData);
 
 public:
+    enum class DropBehavior { Inserted, Merged, InsertedAndMerged };
     using AcceptMimeDataFunction = std::function<bool(const QMimeData *mimeData)>;
 
     VisualizationDragDropContainer(QWidget *parent = nullptr);
@@ -28,8 +29,7 @@ public:
     void addDragWidget(VisualizationDragWidget *dragWidget);
     void insertDragWidget(int index, VisualizationDragWidget *dragWidget);
 
-    void setAcceptedMimeTypes(const QStringList &mimeTypes);
-    void setMergeAllowedMimeTypes(const QStringList &mimeTypes);
+    void addAcceptedMimeType(const QString &mimeType, DropBehavior behavior);
 
     int countDragWidget() const;
 
