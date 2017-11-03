@@ -101,7 +101,8 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
               m_TitleText{new QCPItemText{&m_Plot}},
               m_XAxisPixmap{new QCPItemPixmap{&m_Plot}},
               m_ShowXAxis{true},
-              m_XAxisLabel{}
+              m_XAxisLabel{},
+              m_ColorScale{new QCPColorScale{&m_Plot}}
     {
         initPointTracerStyle(*m_PointTracer);
 
@@ -162,6 +163,7 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
     QCPItemPixmap *m_XAxisPixmap;
     bool m_ShowXAxis; /// X-axis properties are shown or hidden
     QString m_XAxisLabel;
+    QCPColorScale *m_ColorScale; /// Color scale used for some types of graphs (as spectrograms)
 };
 
 VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegate(

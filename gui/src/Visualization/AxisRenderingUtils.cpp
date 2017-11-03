@@ -1,6 +1,7 @@
 #include "Visualization/AxisRenderingUtils.h"
 
 #include <Data/ScalarSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
 #include <Visualization/qcustomplot.h>
@@ -80,6 +81,42 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>:
 };
 
 /**
+ * Specialization of AxisSetter for spectrograms
+ * @sa SpectrogramSeries
+ */
+template <typename T>
+struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
+    static void setProperties(T &dataSeries, QCustomPlot &plot, QCPColorScale &colorScale)
+    {
+        dataSeries.lockRead();
+        auto xAxisUnit = dataSeries.xAxisUnit();
+        /// @todo ALX: use iterators here
+        auto yAxisUnit = dataSeries.yAxis().unit();
+        auto valuesUnit = dataSeries.valuesUnit();
+        dataSeries.unlock();
+
+        setAxisProperties(*plot.xAxis, xAxisUnit);
+        setAxisProperties(*plot.yAxis, yAxisUnit);
+
+        // Displays color scale in plot
+        plot.plotLayout()->insertRow(0);
+        plot.plotLayout()->addElement(0, 0, &colorScale);
+        colorScale.setType(QCPAxis::atTop);
+        colorScale.setMinimumMargins(QMargins{0, 0, 0, 0});
+
+        // Aligns color scale with axes
+        auto marginGroups = plot.axisRect()->marginGroups();
+        for (auto it = marginGroups.begin(), end = marginGroups.end(); it != end; ++it) {
+            colorScale.setMarginGroup(it.key(), it.value());
+        }
+
+        // Set color scale properties
+        colorScale.setLabel(valuesUnit.m_Name);
+        colorScale.setDataScaleType(QCPAxis::stLogarithmic); // Logarithmic scale
+    }
+};
+
+/**
  * Default implementation of IAxisHelper, which takes data series to set axes properties
  * @tparam T the data series' type
  */
@@ -113,6 +150,9 @@ IAxisHelperFactory::create(std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
     if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(dataSeries)) {
         return std::make_unique<AxisHelper<ScalarSeries> >(*scalarSeries);
+    }
+    else if (auto spectrogramSeries = std::dynamic_pointer_cast<SpectrogramSeries>(dataSeries)) {
+        return std::make_unique<AxisHelper<SpectrogramSeries> >(*spectrogramSeries);
     }
     else if (auto vectorSeries = std::dynamic_pointer_cast<VectorSeries>(dataSeries)) {
         return std::make_unique<AxisHelper<VectorSeries> >(*vectorSeries);
