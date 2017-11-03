@@ -26,9 +26,7 @@ struct ICosinusType {
     virtual int componentCount() const = 0;
     /// @return the data series created for the type
     virtual std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
-                                                          std::vector<double> valuesData,
-                                                          Unit xAxisUnit,
-                                                          Unit valuesUnit) const = 0;
+                                                          std::vector<double> valuesData) const = 0;
     /// Generates values (one value per component)
     /// @param x the x-axis data used to generate values
     /// @param values the vector in which to insert the generated values
@@ -41,11 +39,10 @@ struct ScalarCosinus : public ICosinusType {
     int componentCount() const override { return 1; }
 
     std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
-                                                  std::vector<double> valuesData, Unit xAxisUnit,
-                                                  Unit valuesUnit) const override
+                                                  std::vector<double> valuesData) const override
     {
         return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
-                                              xAxisUnit, valuesUnit);
+                                              Unit{QStringLiteral("t"), true}, Unit{});
     }
 
     void generateValues(double x, std::vector<double> &values, int dataIndex) const override
@@ -56,20 +53,21 @@ struct ScalarCosinus : public ICosinusType {
 
 struct SpectrogramCosinus : public ICosinusType {
     /// Ctor with y-axis
-    explicit SpectrogramCosinus(std::vector<double> yAxisData, Unit yAxisUnit)
-            : m_YAxisData{std::move(yAxisData)}, m_YAxisUnit{std::move(yAxisUnit)}
+    explicit SpectrogramCosinus(std::vector<double> yAxisData, Unit yAxisUnit, Unit valuesUnit)
+            : m_YAxisData{std::move(yAxisData)},
+              m_YAxisUnit{std::move(yAxisUnit)},
+              m_ValuesUnit{std::move(valuesUnit)}
     {
     }
 
     int componentCount() const override { return m_YAxisData.size(); }
 
     std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
-                                                  std::vector<double> valuesData, Unit xAxisUnit,
-                                                  Unit valuesUnit) const override
+                                                  std::vector<double> valuesData) const override
     {
-        return std::make_shared<SpectrogramSeries>(std::move(xAxisData), m_YAxisData,
-                                                   std::move(valuesData), xAxisUnit, m_YAxisUnit,
-                                                   valuesUnit);
+        return std::make_shared<SpectrogramSeries>(
+            std::move(xAxisData), m_YAxisData, std::move(valuesData),
+            Unit{QStringLiteral("t"), true}, m_YAxisUnit, m_ValuesUnit);
     }
 
     void generateValues(double x, std::vector<double> &values, int dataIndex) const override
@@ -86,17 +84,17 @@ struct SpectrogramCosinus : public ICosinusType {
 
     std::vector<double> m_YAxisData;
     Unit m_YAxisUnit;
+    Unit m_ValuesUnit;
 };
 
 struct VectorCosinus : public ICosinusType {
     int componentCount() const override { return 3; }
 
     std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
-                                                  std::vector<double> valuesData, Unit xAxisUnit,
-                                                  Unit valuesUnit) const override
+                                                  std::vector<double> valuesData) const override
     {
         return std::make_shared<VectorSeries>(std::move(xAxisData), std::move(valuesData),
-                                              xAxisUnit, valuesUnit);
+                                              Unit{QStringLiteral("t"), true}, Unit{});
     }
 
     void generateValues(double x, std::vector<double> &values, int dataIndex) const override
@@ -122,7 +120,8 @@ std::unique_ptr<ICosinusType> cosinusType(const QString &type) noexcept
         std::vector<double> yAxisData(SPECTROGRAM_NUMBER_BANDS);
         std::iota(yAxisData.begin(), yAxisData.end(), 0.);
 
-        return std::make_unique<SpectrogramCosinus>(std::move(yAxisData), Unit{"eV"});
+        return std::make_unique<SpectrogramCosinus>(std::move(yAxisData), Unit{"eV"},
+                                                    Unit{"eV/(cm^2-s-sr-eV)"});
     }
     else if (type.compare(QStringLiteral("vector"), Qt::CaseInsensitive) == 0) {
         return std::make_unique<VectorCosinus>();
@@ -226,8 +225,7 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
         // We can close progression beacause all data has been retrieved
         emit dataProvidedProgress(acqIdentifier, 100);
     }
-    return type->createDataSeries(std::move(xAxisData), std::move(valuesData),
-                                  Unit{QStringLiteral("t"), true}, Unit{});
+    return type->createDataSeries(std::move(xAxisData), std::move(valuesData));
 }
 
 void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
