@@ -77,6 +77,7 @@ gui_sources = [
   'src/Visualization/operations/RescaleAxeOperation.cpp',
   'src/Visualization/VisualizationDragDropContainer.cpp',
   'src/Visualization/VisualizationDragWidget.cpp'
+  'src/Visualization/AxisRenderingUtils.cpp',
 ]
 
 gui_inc = include_directories(['include'])
