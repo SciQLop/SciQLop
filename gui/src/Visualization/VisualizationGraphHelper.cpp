@@ -183,6 +183,17 @@ struct PlottablesUpdater<T,
 template <typename T>
 struct PlottablesUpdater<T,
                          typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
+    static void setPlotYAxisRange(T &dataSeries, const SqpRange &xAxisRange, QCustomPlot &plot)
+    {
+        double min, max;
+        /// @todo ALX: use iterators here
+        std::tie(min, max) = dataSeries.yAxis().bounds();
+
+        if (!std::isnan(min) && !std::isnan(max)) {
+            plot.yAxis->setRange(QCPRange{min, max});
+        }
+    }
+
     static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const SqpRange &range,
                                  bool rescaleAxes)
     {
