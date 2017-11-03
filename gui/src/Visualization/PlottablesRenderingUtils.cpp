@@ -1,5 +1,7 @@
 #include "Visualization/PlottablesRenderingUtils.h"
 
+#include <Common/ColorUtils.h>
+
 #include <Data/ScalarSeries.h>
 #include <Data/VectorSeries.h>
 
@@ -28,7 +30,19 @@ struct PlottablesSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSerie
                                                      or std::is_base_of<VectorSeries, T>::value> > {
     static void setProperties(T &dataSeries, PlottablesMap &plottables)
     {
-        /// @todo ALX
+        // Gets the number of components of the data series
+        dataSeries.lockRead();
+        auto componentCount = dataSeries.valuesData()->componentCount();
+        dataSeries.unlock();
+
+        // Generates colors for each component
+        auto colors = ColorUtils::colors(Qt::blue, Qt::red, componentCount);
+
+        // For each component of the data series, creates a QCPGraph to add to the plot
+        for (auto i = 0; i < componentCount; ++i) {
+            auto graph = plottables.at(i);
+            graph->setPen(QPen{colors.at(i)});
+        }
     }
 };
 
