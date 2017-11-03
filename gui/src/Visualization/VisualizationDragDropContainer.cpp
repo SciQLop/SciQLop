@@ -18,6 +18,8 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     QVBoxLayout *m_Layout;
     QHash<QString, VisualizationDragDropContainer::DropBehavior> m_AcceptedMimeTypes;
+    QString m_PlaceHolderText;
+    DragDropHelper::PlaceHolderType m_PlaceHolderType = DragDropHelper::PlaceHolderType::Graph;
 
     VisualizationDragDropContainer::AcceptMimeDataFunction m_AcceptMimeDataFun
         = [](auto mimeData) { return true; };
@@ -166,6 +168,13 @@ void VisualizationDragDropContainer::setAcceptMimeDataFunction(
     impl->m_AcceptMimeDataFun = fun;
 }
 
+void VisualizationDragDropContainer::setPlaceHolderType(DragDropHelper::PlaceHolderType type,
+                                                        const QString &placeHolderText)
+{
+    impl->m_PlaceHolderType = type;
+    impl->m_PlaceHolderText = placeHolderText;
+}
+
 void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidget,
                                                const QPoint &dragPosition)
 {
@@ -192,7 +201,8 @@ void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidg
 
         if (impl->cursorIsInContainer(this)) {
             auto dragWidgetIndex = impl->m_Layout->indexOf(dragWidget);
-            helper.insertPlaceHolder(impl->m_Layout, dragWidgetIndex);
+            helper.insertPlaceHolder(impl->m_Layout, dragWidgetIndex, impl->m_PlaceHolderType,
+                                     impl->m_PlaceHolderText);
             dragWidget->setVisible(false);
         }
         else {
@@ -367,7 +377,7 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
 
     if (countDragWidget(container, true) == 0) {
         // Drop on an empty container, just add the placeHolder at the top
-        helper.insertPlaceHolder(m_Layout, 0);
+        helper.insertPlaceHolder(m_Layout, 0, m_PlaceHolderType, m_PlaceHolderText);
     }
     else if (!isOnPlaceHolder) {
         auto nbDragWidget = countDragWidget(container);
@@ -408,7 +418,8 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
                 }
 
                 if (dropIndex != placeHolderIndex) {
-                    helper.insertPlaceHolder(m_Layout, dropIndex);
+                    helper.insertPlaceHolder(m_Layout, dropIndex, m_PlaceHolderType,
+                                             m_PlaceHolderText);
                 }
 
                 helper.setHightlightedDragWidget(nullptr);
@@ -422,17 +433,17 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
                 helper.setHightlightedDragWidget(dragWidgetHovered);
             }
             else {
-                qCWarning(LOG_VisualizationDragDropContainer()) << tr(
-                                                                       "VisualizationDragDropContainer::findPlaceHolderPosition, no valid drop "
-                                                                       "action.");
+                qCWarning(LOG_VisualizationDragDropContainer())
+                    << tr("VisualizationDragDropContainer::findPlaceHolderPosition, no valid drop "
+                          "action.");
                 Q_ASSERT(false);
             }
         }
         else {
             qCWarning(LOG_VisualizationDragDropContainer())
-                    << tr("VisualizationDragDropContainer::findPlaceHolderPosition, no widget "
-                          "found in the "
-                          "container");
+                << tr("VisualizationDragDropContainer::findPlaceHolderPosition, no widget "
+                      "found in the "
+                      "container");
         }
     }
     else {

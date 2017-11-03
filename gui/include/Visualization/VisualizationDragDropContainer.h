@@ -9,6 +9,8 @@
 
 #include <functional>
 
+#include <DragDropHelper.h>
+
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationDragDropContainer)
 
 class VisualizationDragWidget;
@@ -34,6 +36,9 @@ public:
     int countDragWidget() const;
 
     void setAcceptMimeDataFunction(AcceptMimeDataFunction fun);
+
+    void setPlaceHolderType(DragDropHelper::PlaceHolderType type,
+                            const QString &placeHolderText = QString());
 
 protected:
     void dragEnterEvent(QDragEnterEvent *event);

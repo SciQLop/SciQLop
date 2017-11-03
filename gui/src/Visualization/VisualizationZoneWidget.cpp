@@ -101,6 +101,7 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
 
     ui->zoneNameLabel->setText(name);
 
+    ui->dragDropContainer->setPlaceHolderType(DragDropHelper::PlaceHolderType::Graph);
     ui->dragDropContainer->addAcceptedMimeType(
         MIME_TYPE_GRAPH, VisualizationDragDropContainer::DropBehavior::Inserted);
     ui->dragDropContainer->addAcceptedMimeType(
