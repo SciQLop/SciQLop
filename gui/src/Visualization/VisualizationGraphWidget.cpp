@@ -118,6 +118,11 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, S
     if (auto dataSeries = variable->dataSeries()) {
         // Set axes properties according to the units of the data series
         impl->m_RenderingDelegate->setAxesProperties(dataSeries);
+
+        // Sets rendering properties for the new plottables
+        // Warning: this method must be called after setAxesProperties(), as it can access to some
+        // axes properties that have to be initialized
+        impl->m_RenderingDelegate->setPlottablesProperties(dataSeries, createdPlottables);
     }
 
     impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});

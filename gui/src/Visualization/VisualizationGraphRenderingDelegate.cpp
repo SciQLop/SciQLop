@@ -1,5 +1,6 @@
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
 #include "Visualization/AxisRenderingUtils.h"
+#include "Visualization/PlottablesRenderingUtils.h"
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/qcustomplot.h"
 
@@ -225,6 +226,13 @@ void VisualizationGraphRenderingDelegate::setAxesProperties(
     impl->updateXAxisState();
 
     impl->m_Plot.layer(AXES_LAYER)->replot();
+}
+
+void VisualizationGraphRenderingDelegate::setPlottablesProperties(
+    std::shared_ptr<IDataSeries> dataSeries, PlottablesMap &plottables) noexcept
+{
+    auto plottablesHelper = IPlottablesHelperFactory::create(dataSeries);
+    plottablesHelper->setProperties(plottables);
 }
 
 void VisualizationGraphRenderingDelegate::showGraphOverlay(bool show) noexcept

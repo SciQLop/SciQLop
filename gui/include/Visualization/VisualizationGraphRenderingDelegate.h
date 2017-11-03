@@ -23,6 +23,10 @@ public:
     /// Sets properties of the plot's axes from the data series passed as parameter
     void setAxesProperties(std::shared_ptr<IDataSeries> dataSeries) noexcept;
 
+    /// Sets rendering properties of the plottables passed as parameter, from the data series that
+    /// generated these
+    void setPlottablesProperties(std::shared_ptr<IDataSeries> dataSeries,
+                                 PlottablesMap &plottables) noexcept;
 
     /// Shows or hides graph overlay (name, close button, etc.)
     void showGraphOverlay(bool show) noexcept;
