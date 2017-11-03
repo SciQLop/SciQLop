@@ -177,6 +177,68 @@ struct PlottablesUpdater<T,
 };
 
 /**
+ * Specialization of PlottablesUpdater for spectrograms
+ * @sa SpectrogramSeries
+ */
+template <typename T>
+struct PlottablesUpdater<T,
+                         typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
+    static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const SqpRange &range,
+                                 bool rescaleAxes)
+    {
+        if (plottables.empty()) {
+            qCDebug(LOG_VisualizationGraphHelper())
+                << QObject::tr("Can't update spectrogram: no colormap has been associated");
+            return;
+        }
+
+        // Gets the colormap to update (normally there is only one colormap)
+        Q_ASSERT(plottables.size() == 1);
+        auto colormap = dynamic_cast<QCPColorMap *>(plottables.at(0));
+        Q_ASSERT(colormap != nullptr);
+
+        dataSeries.lockRead();
+
+        auto its = dataSeries.xAxisRange(range.m_TStart, range.m_TEnd);
+        /// @todo ALX: use iterators here
+        auto yAxis = dataSeries.yAxis();
+
+        // Gets properties of x-axis and y-axis to set size and range of the colormap
+        auto nbX = std::distance(its.first, its.second);
+        auto xMin = nbX != 0 ? its.first->x() : 0.;
+        auto xMax = nbX != 0 ? (its.second - 1)->x() : 0.;
+
+        auto nbY = yAxis.size();
+        auto yMin = 0., yMax = 0.;
+        if (nbY != 0) {
+            std::tie(yMin, yMax) = yAxis.bounds();
+        }
+
+        colormap->data()->setSize(nbX, nbY);
+        colormap->data()->setRange(QCPRange{xMin, xMax}, QCPRange{yMin, yMax});
+
+        // Sets values
+        auto xIndex = 0;
+        for (auto it = its.first; it != its.second; ++it, ++xIndex) {
+            for (auto yIndex = 0; yIndex < nbY; ++yIndex) {
+                colormap->data()->setCell(xIndex, yIndex, it->value(yIndex));
+            }
+        }
+
+        dataSeries.unlock();
+
+        // Rescales axes
+        auto plot = colormap->parentPlot();
+
+        if (rescaleAxes) {
+            plot->rescaleAxes();
+        }
+
+        plot->replot();
+    }
+};
+
+/**
  * Helper used to create/update plottables
  */
 struct IPlottablesHelper {
