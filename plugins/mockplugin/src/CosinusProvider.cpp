@@ -7,6 +7,7 @@
 #include <Data/VectorSeries.h>
 
 #include <cmath>
+#include <set>
 
 #include <QFuture>
 #include <QThread>
@@ -18,6 +19,12 @@ namespace {
 
 /// Number of bands generated for a spectrogram
 const auto SPECTROGRAM_NUMBER_BANDS = 30;
+
+/// Bands for which to generate NaN values for a spectrogram
+const auto SPECTROGRAM_NAN_BANDS = std::set<int>{1, 3, 10, 20};
+
+/// Bands for which to generate zeros for a spectrogram
+const auto SPECTROGRAM_ZERO_BANDS = std::set<int>{2, 15, 19, 29};
 
 /// Abstract cosinus type
 struct ICosinusType {
@@ -75,8 +82,20 @@ struct SpectrogramCosinus : public ICosinusType {
         auto componentCount = this->componentCount();
         for (int i = 0; i < componentCount; ++i) {
             auto y = m_YAxisData[i];
-            auto r = 3 * std::sqrt(x * x + y * y) + 1e-2;
-            auto value = 2 * x * (std::cos(r + 2) / r - std::sin(r + 2) / r);
+
+            double value;
+
+            if (SPECTROGRAM_ZERO_BANDS.find(y) != SPECTROGRAM_ZERO_BANDS.end()) {
+                value = 0.;
+            }
+            else if (SPECTROGRAM_NAN_BANDS.find(y) != SPECTROGRAM_NAN_BANDS.end()) {
+                value = std::numeric_limits<double>::quiet_NaN();
+            }
+            else {
+                // Generates value for non NaN/zero bands
+                auto r = 3 * std::sqrt(x * x + y * y) + 1e-2;
+                value = 2 * x * (std::cos(r + 2) / r - std::sin(r + 2) / r);
+            }
 
             values[componentCount * dataIndex + i] = value;
         }

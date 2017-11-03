@@ -226,7 +226,16 @@ struct PlottablesUpdater<T,
         auto xIndex = 0;
         for (auto it = its.first; it != its.second; ++it, ++xIndex) {
             for (auto yIndex = 0; yIndex < nbY; ++yIndex) {
-                colormap->data()->setCell(xIndex, yIndex, it->value(yIndex));
+                auto value = it->value(yIndex);
+
+                colormap->data()->setCell(xIndex, yIndex, value);
+
+                // Processing spectrogram data for display in QCustomPlot
+                /// For the moment, we just make the NaN values to be transparent in the colormap
+                /// @todo ALX: complete treatments (mesh generation, etc.)
+                if (std::isnan(value)) {
+                    colormap->data()->setAlpha(xIndex, yIndex, 0);
+                }
             }
         }
 
