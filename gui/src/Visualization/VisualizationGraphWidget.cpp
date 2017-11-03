@@ -177,9 +177,14 @@ QList<std::shared_ptr<Variable> > VisualizationGraphWidget::variables() const
     return variables;
 }
 
-void VisualizationGraphWidget::setYRange(const SqpRange &range)
+void VisualizationGraphWidget::setYRange(std::shared_ptr<Variable> variable)
 {
-    ui->widget->yAxis->setRange(range.m_TStart, range.m_TEnd);
+    if (!variable) {
+        qCCritical(LOG_VisualizationGraphWidget()) << "Can't set y-axis range: variable is null";
+        return;
+    }
+
+    VisualizationGraphHelper::setYAxisRange(variable, *ui->widget);
 }
 
 SqpRange VisualizationGraphWidget::graphRange() const noexcept

@@ -34,6 +34,8 @@ struct VisualizationGraphHelper {
 
     static void updateData(PlottablesMap &plottables, std::shared_ptr<IDataSeries> dataSeries,
                            const SqpRange &dateTime);
+
+    static void setYAxisRange(std::shared_ptr<Variable> variable, QCustomPlot &plot) noexcept;
 };
 
 #endif // SCIQLOP_VISUALIZATIONGRAPHHELPER_H

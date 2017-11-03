@@ -75,6 +75,12 @@ struct PlottablesCreator<T,
  */
 template <typename T, typename Enabled = void>
 struct PlottablesUpdater {
+    static void setPlotYAxisRange(T &, const SqpRange &, QCustomPlot &)
+    {
+        qCCritical(LOG_DataSeries())
+            << QObject::tr("Can't set plot y-axis range: unmanaged data series type");
+    }
+
     static void updatePlottables(T &, PlottablesMap &, const SqpRange &, bool)
     {
         qCCritical(LOG_DataSeries())
@@ -91,6 +97,24 @@ template <typename T>
 struct PlottablesUpdater<T,
                          typename std::enable_if_t<std::is_base_of<ScalarSeries, T>::value
                                                    or std::is_base_of<VectorSeries, T>::value> > {
+    static void setPlotYAxisRange(T &dataSeries, const SqpRange &xAxisRange, QCustomPlot &plot)
+    {
+        auto minValue = 0., maxValue = 0.;
+
+        dataSeries.lockRead();
+        auto valuesBounds = dataSeries.valuesBounds(xAxisRange.m_TStart, xAxisRange.m_TEnd);
+        auto end = dataSeries.cend();
+        if (valuesBounds.first != end && valuesBounds.second != end) {
+            auto rangeValue = [](const auto &value) { return std::isnan(value) ? 0. : value; };
+
+            minValue = rangeValue(valuesBounds.first->minValue());
+            maxValue = rangeValue(valuesBounds.second->maxValue());
+        }
+        dataSeries.unlock();
+
+        plot.yAxis->setRange(QCPRange{minValue, maxValue});
+    }
+
     static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const SqpRange &range,
                                  bool rescaleAxes)
     {
@@ -139,6 +163,7 @@ struct PlottablesUpdater<T,
 struct IPlottablesHelper {
     virtual ~IPlottablesHelper() noexcept = default;
     virtual PlottablesMap create(QCustomPlot &plot) const = 0;
+    virtual void setYAxisRange(const SqpRange &xAxisRange, QCustomPlot &plot) const = 0;
     virtual void update(PlottablesMap &plottables, const SqpRange &range,
                         bool rescaleAxes = false) const = 0;
 };
@@ -159,6 +184,11 @@ struct PlottablesHelper : public IPlottablesHelper {
     void update(PlottablesMap &plottables, const SqpRange &range, bool rescaleAxes) const override
     {
         PlottablesUpdater<T>::updatePlottables(m_DataSeries, plottables, range, rescaleAxes);
+    }
+
+    void setYAxisRange(const SqpRange &xAxisRange, QCustomPlot &plot) const override
+    {
+        return PlottablesUpdater<T>::setPlotYAxisRange(m_DataSeries, xAxisRange, plot);
     }
 
     T &m_DataSeries;
@@ -192,6 +222,19 @@ PlottablesMap VisualizationGraphHelper::create(std::shared_ptr<Variable> variabl
         qCDebug(LOG_VisualizationGraphHelper())
             << QObject::tr("Can't create graph plottables : the variable is null");
         return PlottablesMap{};
+    }
+}
+
+void VisualizationGraphHelper::setYAxisRange(std::shared_ptr<Variable> variable,
+                                             QCustomPlot &plot) noexcept
+{
+    if (variable) {
+        auto helper = createHelper(variable->dataSeries());
+        helper->setYAxisRange(variable->range(), plot);
+    }
+    else {
+        qCDebug(LOG_VisualizationGraphHelper())
+            << QObject::tr("Can't set y-axis range of plot: the variable is null");
     }
 }
 

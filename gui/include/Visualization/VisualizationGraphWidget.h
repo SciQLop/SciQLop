@@ -46,7 +46,8 @@ public:
     /// Returns the list of all variables used in the graph
     QList<std::shared_ptr<Variable> > variables() const;
 
-    void setYRange(const SqpRange &range);
+    /// Sets the y-axis range based on the data of a variable
+    void setYRange(std::shared_ptr<Variable> variable);
     SqpRange graphRange() const noexcept;
     void setGraphRange(const SqpRange &range);
 
