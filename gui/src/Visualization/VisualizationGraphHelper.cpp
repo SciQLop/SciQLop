@@ -4,6 +4,7 @@
 #include <Common/ColorUtils.h>
 
 #include <Data/ScalarSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
 #include <Variable/Variable.h>
@@ -60,6 +61,24 @@ struct PlottablesCreator<T,
 
             result.insert({i, graph});
         }
+
+        plot.replot();
+
+        return result;
+    }
+};
+
+/**
+ * Specialization of PlottablesCreator for spectrograms
+ * @sa SpectrogramSeries
+ */
+template <typename T>
+struct PlottablesCreator<T,
+                         typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
+    static PlottablesMap createPlottables(T &dataSeries, QCustomPlot &plot)
+    {
+        PlottablesMap result{};
+        result.insert({0, new QCPColorMap{plot.xAxis, plot.yAxis}});
 
         plot.replot();
 
@@ -199,6 +218,9 @@ std::unique_ptr<IPlottablesHelper> createHelper(std::shared_ptr<IDataSeries> dat
 {
     if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(dataSeries)) {
         return std::make_unique<PlottablesHelper<ScalarSeries> >(*scalarSeries);
+    }
+    else if (auto spectrogramSeries = std::dynamic_pointer_cast<SpectrogramSeries>(dataSeries)) {
+        return std::make_unique<PlottablesHelper<SpectrogramSeries> >(*spectrogramSeries);
     }
     else if (auto vectorSeries = std::dynamic_pointer_cast<VectorSeries>(dataSeries)) {
         return std::make_unique<PlottablesHelper<VectorSeries> >(*vectorSeries);
