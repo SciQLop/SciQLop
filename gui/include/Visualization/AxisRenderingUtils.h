@@ -10,6 +10,9 @@ class QCPAxis;
 class QCPColorScale;
 class QCustomPlot;
 
+/// Formats a data value according to the axis on which it is present
+QString formatValue(double value, const QCPAxis &axis);
+
 /**
  * Helper used to handle axes rendering
  */

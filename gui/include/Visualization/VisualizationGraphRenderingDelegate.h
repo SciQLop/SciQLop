@@ -3,6 +3,9 @@
 
 #include <Common/spimpl.h>
 
+#include <Visualization/VisualizationDefs.h>
+
+class IDataSeries;
 class QCustomPlot;
 class QMouseEvent;
 class Unit;
@@ -17,8 +20,9 @@ public:
 
     void onMouseMove(QMouseEvent *event) noexcept;
 
-    /// Sets properties of the plot's axes
-    void setAxesProperties(const Unit &xAxisUnit, const Unit &valuesUnit) noexcept;
+    /// Sets properties of the plot's axes from the data series passed as parameter
+    void setAxesProperties(std::shared_ptr<IDataSeries> dataSeries) noexcept;
+
 
     /// Shows or hides graph overlay (name, close button, etc.)
     void showGraphOverlay(bool show) noexcept;

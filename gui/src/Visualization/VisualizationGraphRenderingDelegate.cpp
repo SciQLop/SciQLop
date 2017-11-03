@@ -1,4 +1,5 @@
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
+#include "Visualization/AxisRenderingUtils.h"
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/qcustomplot.h"
 
@@ -12,11 +13,6 @@ namespace {
 
 /// Name of the axes layer in QCustomPlot
 const auto AXES_LAYER = QStringLiteral("axes");
-
-const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
-
-/// Format for datetimes on a axis
-const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
 
 /// Icon used to show x-axis properties
 const auto HIDE_AXIS_ICON_PATH = QStringLiteral(":/icones/down.png");
@@ -37,35 +33,6 @@ const auto TOOLTIP_RECT = QRect{10, 10, 10, 10};
 
 /// Timeout after which the tooltip is displayed
 const auto TOOLTIP_TIMEOUT = 500;
-
-/// Generates the appropriate ticker for an axis, depending on whether the axis displays time or
-/// non-time data
-QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
-{
-    if (isTimeAxis) {
-        auto dateTicker = QSharedPointer<QCPAxisTickerDateTime>::create();
-        dateTicker->setDateTimeFormat(DATETIME_TICKER_FORMAT);
-        dateTicker->setDateTimeSpec(Qt::UTC);
-
-        return dateTicker;
-    }
-    else {
-        // default ticker
-        return QSharedPointer<QCPAxisTicker>::create();
-    }
-}
-
-/// Formats a data value according to the axis on which it is present
-QString formatValue(double value, const QCPAxis &axis)
-{
-    // If the axis is a time axis, formats the value as a date
-    if (auto axisTicker = qSharedPointerDynamicCast<QCPAxisTickerDateTime>(axis.ticker())) {
-        return DateUtils::dateTime(value, axisTicker->dateTimeSpec()).toString(DATETIME_FORMAT);
-    }
-    else {
-        return QString::number(value);
-    }
-}
 
 void initPointTracerStyle(QCPItemTracer &tracer) noexcept
 {
@@ -245,21 +212,14 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
     }
 }
 
-void VisualizationGraphRenderingDelegate::setAxesProperties(const Unit &xAxisUnit,
-                                                            const Unit &valuesUnit) noexcept
+void VisualizationGraphRenderingDelegate::setAxesProperties(
+    std::shared_ptr<IDataSeries> dataSeries) noexcept
 {
     // Stores x-axis label to be able to retrieve it when x-axis pixmap is unselected
-    impl->m_XAxisLabel = xAxisUnit.m_Name;
+    impl->m_XAxisLabel = dataSeries->xAxisUnit().m_Name;
 
-    auto setAxisProperties = [](auto axis, const auto &unit) {
-        // label (unit name)
-        axis->setLabel(unit.m_Name);
-
-        // ticker (depending on the type of unit)
-        axis->setTicker(axisTicker(unit.m_TimeUnit));
-    };
-    setAxisProperties(impl->m_Plot.xAxis, xAxisUnit);
-    setAxisProperties(impl->m_Plot.yAxis, valuesUnit);
+    auto axisHelper = IAxisHelperFactory::create(dataSeries);
+    axisHelper->setProperties(impl->m_Plot, *impl->m_ColorScale);
 
     // Updates x-axis state
     impl->updateXAxisState();

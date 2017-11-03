@@ -7,6 +7,47 @@
 
 namespace {
 
+const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
+
+/// Format for datetimes on a axis
+const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
+
+/// Generates the appropriate ticker for an axis, depending on whether the axis displays time or
+/// non-time data
+QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
+{
+    if (isTimeAxis) {
+        auto dateTicker = QSharedPointer<QCPAxisTickerDateTime>::create();
+        dateTicker->setDateTimeFormat(DATETIME_TICKER_FORMAT);
+        dateTicker->setDateTimeSpec(Qt::UTC);
+
+        return dateTicker;
+    }
+    else {
+        // default ticker
+        return QSharedPointer<QCPAxisTicker>::create();
+    }
+}
+
+/**
+ * Sets properties of the axis passed as parameter
+ * @param axis the axis to set
+ * @param unit the unit to set for the axis
+ * @param scaleType the scale type to set for the axis
+ */
+void setAxisProperties(QCPAxis &axis, const Unit &unit,
+                       QCPAxis::ScaleType scaleType = QCPAxis::stLinear)
+{
+    // label (unit name)
+    axis.setLabel(unit.m_Name);
+
+    // scale type
+    axis.setScaleType(scaleType);
+
+    // ticker (depending on the type of unit)
+    axis.setTicker(axisTicker(unit.m_TimeUnit));
+}
+
 /**
  * Delegate used to set axes properties
  */
@@ -28,7 +69,13 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>:
                                                or std::is_base_of<VectorSeries, T>::value> > {
     static void setProperties(T &dataSeries, QCustomPlot &plot, QCPColorScale &)
     {
-        /// @todo ALX
+        dataSeries.lockRead();
+        auto xAxisUnit = dataSeries.xAxisUnit();
+        auto valuesUnit = dataSeries.valuesUnit();
+        dataSeries.unlock();
+
+        setAxisProperties(*plot.xAxis, xAxisUnit);
+        setAxisProperties(*plot.yAxis, valuesUnit);
     }
 };
 
@@ -49,6 +96,17 @@ struct AxisHelper : public IAxisHelper {
 };
 
 } // namespace
+
+QString formatValue(double value, const QCPAxis &axis)
+{
+    // If the axis is a time axis, formats the value as a date
+    if (auto axisTicker = qSharedPointerDynamicCast<QCPAxisTickerDateTime>(axis.ticker())) {
+        return DateUtils::dateTime(value, axisTicker->dateTimeSpec()).toString(DATETIME_FORMAT);
+    }
+    else {
+        return QString::number(value);
+    }
+}
 
 std::unique_ptr<IAxisHelper>
 IAxisHelperFactory::create(std::shared_ptr<IDataSeries> dataSeries) noexcept
