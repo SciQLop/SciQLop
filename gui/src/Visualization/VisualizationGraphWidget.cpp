@@ -45,7 +45,6 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     std::map<std::shared_ptr<Variable>, PlottablesMap> m_VariableToPlotMultiMap;
     bool m_DoAcquisition;
     bool m_IsCalibration;
-    QCPItemTracer *m_TextTracer;
     /// Delegate used to attach rendering features to the plot
     std::unique_ptr<VisualizationGraphRenderingDelegate> m_RenderingDelegate;
 };

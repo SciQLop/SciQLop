@@ -96,13 +96,13 @@ template <typename T, typename Enabled = void>
 struct PlottablesUpdater {
     static void setPlotYAxisRange(T &, const SqpRange &, QCustomPlot &)
     {
-        qCCritical(LOG_DataSeries())
+        qCCritical(LOG_VisualizationGraphHelper())
             << QObject::tr("Can't set plot y-axis range: unmanaged data series type");
     }
 
     static void updatePlottables(T &, PlottablesMap &, const SqpRange &, bool)
     {
-        qCCritical(LOG_DataSeries())
+        qCCritical(LOG_VisualizationGraphHelper())
             << QObject::tr("Can't update plottables: unmanaged data series type");
     }
 };
