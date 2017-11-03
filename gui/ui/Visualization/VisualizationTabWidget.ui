@@ -63,7 +63,11 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="VisualizationDragDropContainer" name="dragDropContainer" native="true"/>
+        <widget class="VisualizationDragDropContainer" name="dragDropContainer">
+         <property name="lineWidth">
+          <number>0</number>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -74,7 +78,7 @@
  <customwidgets>
   <customwidget>
    <class>VisualizationDragDropContainer</class>
-   <extends>QWidget</extends>
+   <extends>QFrame</extends>
    <header>Visualization/VisualizationDragDropContainer.h</header>
    <container>1</container>
   </customwidget>

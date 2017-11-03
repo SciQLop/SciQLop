@@ -2,10 +2,10 @@
 #define SCIQLOP_VISUALIZATIONDRAGDROPCONTAINER_H
 
 #include <Common/spimpl.h>
+#include <QFrame>
 #include <QLoggingCategory>
 #include <QMimeData>
 #include <QVBoxLayout>
-#include <QWidget>
 
 #include <functional>
 
@@ -13,7 +13,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationDragDropContainer)
 
 class VisualizationDragWidget;
 
-class VisualizationDragDropContainer : public QWidget {
+class VisualizationDragDropContainer : public QFrame {
     Q_OBJECT
 
 signals:

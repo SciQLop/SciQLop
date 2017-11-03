@@ -107,12 +107,14 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
         return container->isAncestorOf(sqpApp->widgetAt(QCursor::pos()));
     }
 
-    int countDragWidget(const QWidget *parent) const
+    int countDragWidget(const QWidget *parent, bool onlyVisible = false) const
     {
         auto nbGraph = 0;
         for (auto child : parent->children()) {
             if (qobject_cast<VisualizationDragWidget *>(child)) {
-                nbGraph += 1;
+                if (!onlyVisible || qobject_cast<VisualizationDragWidget *>(child)->isVisible()) {
+                    nbGraph += 1;
+                }
             }
         }
 
@@ -124,7 +126,7 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 };
 
 VisualizationDragDropContainer::VisualizationDragDropContainer(QWidget *parent)
-        : QWidget{parent},
+        : QFrame{parent},
           impl{spimpl::make_unique_impl<VisualizationDragDropContainerPrivate>(this)}
 {
     setAcceptDrops(true);
@@ -360,8 +362,14 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
 {
     auto &helper = sqpApp->dragDropHelper();
 
-    auto dragWidgetHovered = getChildDragWidgetAt(container, pos);
-    if (dragWidgetHovered) {
+    auto absPos = container->mapToGlobal(pos);
+    auto isOnPlaceHolder = sqpApp->widgetAt(absPos) == &(helper.placeHolder());
+
+    if (countDragWidget(container, true) == 0) {
+        // Drop on an empty container, just add the placeHolder at the top
+        helper.insertPlaceHolder(m_Layout, 0);
+    }
+    else if (!isOnPlaceHolder) {
         auto nbDragWidget = countDragWidget(container);
         if (nbDragWidget > 0) {
 
@@ -381,6 +389,8 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
             auto isOnBottom = posY > (dropIndex + 1) * graphHeight - zoneSize;
 
             auto placeHolderIndex = m_Layout->indexOf(&(helper.placeHolder()));
+
+            auto dragWidgetHovered = getChildDragWidgetAt(container, pos);
 
             if (canInsert && (isOnTop || isOnBottom || !canMerge)) {
                 if (isOnBottom) {
@@ -403,7 +413,7 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
 
                 helper.setHightlightedDragWidget(nullptr);
             }
-            else if (canMerge) {
+            else if (canMerge && dragWidgetHovered) {
                 // drop on the middle -> merge
                 if (hasPlaceHolder()) {
                     helper.removePlaceHolder();
@@ -412,24 +422,21 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
                 helper.setHightlightedDragWidget(dragWidgetHovered);
             }
             else {
-                qCWarning(LOG_VisualizationDragDropContainer())
-                    << tr("VisualizationDragDropContainer::findPlaceHolderPosition, no valid drop "
-                          "action.");
+                qCWarning(LOG_VisualizationDragDropContainer()) << tr(
+                                                                       "VisualizationDragDropContainer::findPlaceHolderPosition, no valid drop "
+                                                                       "action.");
                 Q_ASSERT(false);
             }
         }
         else {
-            qCWarning(LOG_VisualizationDragDropContainer()) << tr(
-                "VisualizationDragDropContainer::findPlaceHolderPosition, no widget found in the "
-                "container");
+            qCWarning(LOG_VisualizationDragDropContainer())
+                    << tr("VisualizationDragDropContainer::findPlaceHolderPosition, no widget "
+                          "found in the "
+                          "container");
         }
     }
-    else if (!hasPlaceHolder() && canInsert) {
-        // Drop on an empty container, just add the placeHolder at the top
-        helper.insertPlaceHolder(m_Layout, 0);
-    }
     else {
-        // No hovered drag widget, the mouse is probably hover the placeHolder
+        // the mouse is hover the placeHolder
         // Do nothing
     }
 }
