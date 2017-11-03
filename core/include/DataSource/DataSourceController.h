@@ -64,8 +64,11 @@ public:
      */
     void loadProductItem(const QUuid &dataSourceUid, const DataSourceItem &productItem) noexcept;
 
-    QByteArray mimeDataForProductsData(const QVariantList &productsData) const;
-    QVariantList productsDataForMimeData(const QByteArray &mimeData) const;
+    /// Returns the MIME data associated to a list of product meta data
+    static QByteArray mimeDataForProductsData(const QVariantList &productsData);
+
+    /// Returns the list of meta data contained in a MIME data
+    static QVariantList productsDataForMimeData(const QByteArray &mimeData);
 
 public slots:
     /// Manage init/end of the controller

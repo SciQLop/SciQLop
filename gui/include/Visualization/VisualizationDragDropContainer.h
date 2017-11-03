@@ -2,24 +2,28 @@
 #define SCIQLOP_VISUALIZATIONDRAGDROPCONTAINER_H
 
 #include <Common/spimpl.h>
+#include <QFrame>
 #include <QLoggingCategory>
 #include <QMimeData>
 #include <QVBoxLayout>
-#include <QWidget>
 
 #include <functional>
+
+#include <DragDropHelper.h>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationDragDropContainer)
 
 class VisualizationDragWidget;
 
-class VisualizationDragDropContainer : public QWidget {
+class VisualizationDragDropContainer : public QFrame {
     Q_OBJECT
 
 signals:
-    void dropOccured(int dropIndex, const QMimeData *mimeData);
+    void dropOccuredInContainer(int dropIndex, const QMimeData *mimeData);
+    void dropOccuredOnWidget(VisualizationDragWidget *dragWidget, const QMimeData *mimeData);
 
 public:
+    enum class DropBehavior { Inserted, Merged, InsertedAndMerged };
     using AcceptMimeDataFunction = std::function<bool(const QMimeData *mimeData)>;
 
     VisualizationDragDropContainer(QWidget *parent = nullptr);
@@ -27,12 +31,14 @@ public:
     void addDragWidget(VisualizationDragWidget *dragWidget);
     void insertDragWidget(int index, VisualizationDragWidget *dragWidget);
 
-    void setAcceptedMimeTypes(const QStringList &mimeTypes);
-    void setMergeAllowedMimeTypes(const QStringList &mimeTypes);
+    void addAcceptedMimeType(const QString &mimeType, DropBehavior behavior);
 
     int countDragWidget() const;
 
     void setAcceptMimeDataFunction(AcceptMimeDataFunction fun);
+
+    void setPlaceHolderType(DragDropHelper::PlaceHolderType type,
+                            const QString &placeHolderText = QString());
 
 protected:
     void dragEnterEvent(QDragEnterEvent *event);

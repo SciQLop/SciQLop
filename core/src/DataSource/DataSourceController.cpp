@@ -139,7 +139,7 @@ void DataSourceController::loadProductItem(const QUuid &dataSourceUid,
     }
 }
 
-QByteArray DataSourceController::mimeDataForProductsData(const QVariantList &productsData) const
+QByteArray DataSourceController::mimeDataForProductsData(const QVariantList &productsData)
 {
     QByteArray encodedData;
     QDataStream stream{&encodedData, QIODevice::WriteOnly};
@@ -149,7 +149,7 @@ QByteArray DataSourceController::mimeDataForProductsData(const QVariantList &pro
     return encodedData;
 }
 
-QVariantList DataSourceController::productsDataForMimeData(const QByteArray &mimeData) const
+QVariantList DataSourceController::productsDataForMimeData(const QByteArray &mimeData)
 {
     QDataStream stream{mimeData};
 
@@ -174,7 +174,7 @@ void DataSourceController::finalize()
 
 void DataSourceController::requestVariable(const QVariantHash &productData)
 {
-    DataSourceItem *sourceItem = impl->findDataSourceItem(productData);
+    auto sourceItem = impl->findDataSourceItem(productData);
 
     if (sourceItem) {
         auto sourceName = sourceItem->rootItem().name();

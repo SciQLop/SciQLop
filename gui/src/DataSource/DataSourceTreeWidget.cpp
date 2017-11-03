@@ -4,6 +4,7 @@
 #include "DataSource/DataSourceItem.h"
 #include "DataSource/DataSourceTreeWidgetItem.h"
 
+#include "DragDropHelper.h"
 #include "SqpApplication.h"
 
 #include <QMimeData>
@@ -34,4 +35,11 @@ QMimeData *DataSourceTreeWidget::mimeData(const QList<QTreeWidgetItem *> items) 
     mimeData->setData(MIME_TYPE_PRODUCT_LIST, encodedData);
 
     return mimeData;
+}
+
+void DataSourceTreeWidget::startDrag(Qt::DropActions supportedActions)
+{
+    // Resets the drag&drop operations before it's starting
+    sqpApp->dragDropHelper().resetDragAndDrop();
+    QTreeWidget::startDrag(supportedActions);
 }

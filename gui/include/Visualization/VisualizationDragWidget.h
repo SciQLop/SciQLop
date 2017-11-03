@@ -13,6 +13,7 @@ public:
 
     virtual QMimeData *mimeData() const = 0;
     virtual bool isDragAllowed() const = 0;
+    virtual void highlightForMerge(bool highlighted) { Q_UNUSED(highlighted); };
 
 protected:
     virtual void mousePressEvent(QMouseEvent *event) override;

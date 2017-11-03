@@ -25,6 +25,8 @@ public:
     static const QString MIME_TYPE_GRAPH;
     static const QString MIME_TYPE_ZONE;
 
+    enum class PlaceHolderType { Default, Graph, Zone };
+
     DragDropHelper();
     virtual ~DragDropHelper();
 
@@ -40,7 +42,8 @@ public:
     VisualizationDragWidget *getCurrentDragWidget() const;
 
     QWidget &placeHolder() const;
-    void insertPlaceHolder(QVBoxLayout *layout, int index);
+    void insertPlaceHolder(QVBoxLayout *layout, int index, PlaceHolderType type,
+                           const QString &topLabelText);
     void removePlaceHolder();
     bool isPlaceHolderSet() const;
 
@@ -52,6 +55,9 @@ public:
     void removeDragDropScrollArea(QScrollArea *scrollArea);
 
     QUrl imageTemporaryUrl(const QImage &image) const;
+
+    void setHightlightedDragWidget(VisualizationDragWidget *dragWidget);
+    VisualizationDragWidget *getHightlightedDragWidget() const;
 
 private:
     class DragDropHelperPrivate;

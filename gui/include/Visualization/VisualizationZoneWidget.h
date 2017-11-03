@@ -85,6 +85,7 @@ private slots:
     void onVariableAboutToBeRemoved(std::shared_ptr<Variable> variable);
 
     void dropMimeData(int index, const QMimeData *mimeData);
+    void dropMimeDataOnGraph(VisualizationDragWidget *dragWidget, const QMimeData *mimeData);
 };
 
 #endif // SCIQLOP_VISUALIZATIONZONEWIDGET_H

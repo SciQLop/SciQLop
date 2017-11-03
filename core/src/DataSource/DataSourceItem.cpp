@@ -131,8 +131,7 @@ DataSourceItem *DataSourceItem::findItem(const QVariantHash &data, bool recursiv
         }
 
         if (recursive) {
-            auto foundItem = child->findItem(data, true);
-            if (foundItem) {
+            if (auto foundItem = child->findItem(data, true)) {
                 return foundItem;
             }
         }
