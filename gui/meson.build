@@ -1,6 +1,7 @@
 
 gui_moc_headers = [
   'include/DataSource/DataSourceWidget.h',
+  'include/DataSource/DataSourceTreeWidget.h',
   'include/Settings/SqpSettingsDialog.h',
   'include/Settings/SqpSettingsGeneralWidget.h',
   'include/SidePane/SqpSidePane.h',
@@ -48,6 +49,7 @@ gui_sources = [
   'src/DataSource/DataSourceTreeWidgetItem.cpp',
   'src/DataSource/DataSourceTreeWidgetHelper.cpp',
   'src/DataSource/DataSourceWidget.cpp',
+  'src/DataSource/DataSourceTreeWidget.cpp',
   'src/Settings/SqpSettingsDialog.cpp',
   'src/Settings/SqpSettingsGeneralWidget.cpp',
   'src/SidePane/SqpSidePane.cpp',
