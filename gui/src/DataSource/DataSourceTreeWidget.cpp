@@ -4,7 +4,7 @@
 #include "DataSource/DataSourceItem.h"
 #include "DataSource/DataSourceTreeWidgetItem.h"
 
-#include "DragDropHelper.h"
+#include "DragAndDrop/DragDropHelper.h"
 #include "SqpApplication.h"
 
 #include <QMimeData>

@@ -9,7 +9,7 @@
 #include <Common/MimeTypesDef.h>
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
-#include <DragDropHelper.h>
+#include <DragAndDrop/DragDropHelper.h>
 #include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>

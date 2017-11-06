@@ -4,7 +4,7 @@
 #include <Common/DateUtils.h>
 #include <Common/MimeTypesDef.h>
 
-#include <DragDropHelper.h>
+#include <DragAndDrop/DragDropHelper.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
 

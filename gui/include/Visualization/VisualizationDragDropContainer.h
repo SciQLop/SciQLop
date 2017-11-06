@@ -9,7 +9,7 @@
 
 #include <functional>
 
-#include <DragDropHelper.h>
+#include <DragAndDrop/DragDropHelper.h>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationDragDropContainer)
 

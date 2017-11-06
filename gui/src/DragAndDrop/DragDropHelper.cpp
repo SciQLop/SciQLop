@@ -1,4 +1,4 @@
-#include "DragDropHelper.h"
+#include "DragAndDrop/DragDropHelper.h"
 #include "SqpApplication.h"
 #include "Visualization/VisualizationDragDropContainer.h"
 #include "Visualization/VisualizationDragWidget.h"
@@ -211,9 +211,7 @@ struct DragDropHelper::DragDropHelperPrivate {
 };
 
 
-DragDropHelper::DragDropHelper() : impl{spimpl::make_unique_impl<DragDropHelperPrivate>()}
-{
-}
+DragDropHelper::DragDropHelper() : impl{spimpl::make_unique_impl<DragDropHelperPrivate>()} {}
 
 DragDropHelper::~DragDropHelper()
 {

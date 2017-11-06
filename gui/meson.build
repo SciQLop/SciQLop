@@ -6,7 +6,7 @@ gui_moc_headers = [
   'include/Settings/SqpSettingsGeneralWidget.h',
   'include/SidePane/SqpSidePane.h',
   'include/SqpApplication.h',
-  'include/DragDropHelper.h',
+  'include/DragAndDrop/DragDropHelper.h',
   'include/TimeWidget/TimeWidget.h',
   'include/Variable/VariableInspectorWidget.h',
   'include/Variable/VariableInspectorTableView.h',
@@ -43,7 +43,7 @@ gui_moc_files = qt5.preprocess(moc_headers : gui_moc_headers,
 
 gui_sources = [
   'src/SqpApplication.cpp',
-  'src/DragDropHelper.cpp',
+  'src/DragAndDrop/DragDropHelper.cpp',
   'src/Common/ColorUtils.cpp',
   'src/Common/VisualizationDef.cpp',
   'src/DataSource/DataSourceTreeWidgetItem.cpp',

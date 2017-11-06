@@ -16,7 +16,7 @@
 
 #include <Visualization/operations/FindVariableOperation.h>
 
-#include <DragDropHelper.h>
+#include <DragAndDrop/DragDropHelper.h>
 #include <QUuid>
 #include <SqpApplication.h>
 #include <cmath>
