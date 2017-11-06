@@ -11,6 +11,9 @@
 
 #include "ui_VisualizationWidget.h"
 
+#include "DragAndDrop/DragDropHelper.h"
+#include "SqpApplication.h"
+
 #include <QToolButton>
 
 Q_LOGGING_CATEGORY(LOG_VisualizationWidget, "VisualizationWidget")
@@ -67,12 +70,15 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     connect(addTabViewButton, &QToolButton::clicked, addTabView);
     connect(ui->tabWidget, &QTabWidget::tabCloseRequested, removeTabView);
 
+    sqpApp->dragDropHelper().addDragDropTabBar(ui->tabWidget->tabBar());
+
     // Adds default tab
     addTabView();
 }
 
 VisualizationWidget::~VisualizationWidget()
 {
+    sqpApp->dragDropHelper().removeDragDropTabBar(ui->tabWidget->tabBar());
     delete ui;
 }
 

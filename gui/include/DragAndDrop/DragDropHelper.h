@@ -7,6 +7,7 @@
 
 class QVBoxLayout;
 class QScrollArea;
+class QTabBar;
 class VisualizationDragWidget;
 class VisualizationDragDropContainer;
 class QMimeData;
@@ -53,6 +54,9 @@ public:
 
     void addDragDropScrollArea(QScrollArea *scrollArea);
     void removeDragDropScrollArea(QScrollArea *scrollArea);
+
+    void addDragDropTabBar(QTabBar *tabBar);
+    void removeDragDropTabBar(QTabBar *tabBar);
 
     QUrl imageTemporaryUrl(const QImage &image) const;
 
