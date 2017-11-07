@@ -2,7 +2,7 @@
 
 #include <Data/IDataProvider.h>
 #include <DataSource/DataSourceController.h>
-#include <DragDropHelper.h>
+#include <DragAndDrop/DragDropHelper.h>
 #include <Network/NetworkController.h>
 #include <QThread>
 #include <Time/TimeController.h>

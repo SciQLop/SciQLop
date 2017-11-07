@@ -10,12 +10,13 @@
 #include "Common/VisualizationDef.h"
 
 #include <Data/SqpRange.h>
+#include <Time/TimeController.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 
 #include <Visualization/operations/FindVariableOperation.h>
 
-#include <DragDropHelper.h>
+#include <DragAndDrop/DragDropHelper.h>
 #include <QUuid>
 #include <SqpApplication.h>
 #include <cmath>
@@ -71,6 +72,21 @@ struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
     QUuid m_SynchronisationGroupId;
     std::unique_ptr<IGraphSynchronizer> m_Synchronizer;
 
+    // Returns the first graph in the zone or nullptr if there is no graph inside
+    VisualizationGraphWidget *firstGraph(const VisualizationZoneWidget *zoneWidget) const
+    {
+        VisualizationGraphWidget *firstGraph = nullptr;
+        auto layout = zoneWidget->ui->dragDropContainer->layout();
+        if (layout->count() > 0) {
+            if (auto visualizationGraphWidget
+                = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
+                firstGraph = visualizationGraphWidget;
+            }
+        }
+
+        return firstGraph;
+    }
+
     void dropGraph(int index, VisualizationZoneWidget *zoneWidget);
     void dropVariables(const QList<std::shared_ptr<Variable> > &variables, int index,
                        VisualizationZoneWidget *zoneWidget);
@@ -85,13 +101,22 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
 
     ui->zoneNameLabel->setText(name);
 
-    ui->dragDropContainer->setAcceptedMimeTypes({MIME_TYPE_GRAPH, MIME_TYPE_VARIABLE_LIST});
+    ui->dragDropContainer->setPlaceHolderType(DragDropHelper::PlaceHolderType::Graph);
+    ui->dragDropContainer->addAcceptedMimeType(
+        MIME_TYPE_GRAPH, VisualizationDragDropContainer::DropBehavior::Inserted);
+    ui->dragDropContainer->addAcceptedMimeType(
+        MIME_TYPE_VARIABLE_LIST, VisualizationDragDropContainer::DropBehavior::InsertedAndMerged);
+    ui->dragDropContainer->addAcceptedMimeType(
+        MIME_TYPE_TIME_RANGE, VisualizationDragDropContainer::DropBehavior::Merged);
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
         return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
                                                                       ui->dragDropContainer);
     });
-    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccured, this,
+
+    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredInContainer, this,
             &VisualizationZoneWidget::dropMimeData);
+    connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredOnWidget, this,
+            &VisualizationZoneWidget::dropMimeDataOnGraph);
 
     // 'Close' options : widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
@@ -234,15 +259,9 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
             &VisualizationZoneWidget::onVariableAboutToBeRemoved);
 
     auto range = SqpRange{};
-
-    // Apply visitor to graph children
-    auto layout = ui->dragDropContainer->layout();
-    if (layout->count() > 0) {
+    if (auto firstGraph = impl->firstGraph(this)) {
         // Case of a new graph in a existant zone
-        if (auto visualizationGraphWidget
-            = dynamic_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
-            range = visualizationGraphWidget->graphRange();
-        }
+        range = firstGraph->graphRange();
     }
     else {
         // Case of a new graph as the first of the zone
@@ -377,6 +396,35 @@ void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
     else {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationZoneWidget::dropMimeData, unknown MIME data received.");
+    }
+}
+
+void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragWidget,
+                                                  const QMimeData *mimeData)
+{
+    auto graphWidget = qobject_cast<VisualizationGraphWidget *>(dragWidget);
+    if (!graphWidget) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationZoneWidget::dropMimeDataOnGraph, dropping in an unknown widget, "
+                  "drop aborted");
+        Q_ASSERT(false);
+        return;
+    }
+
+    if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+        auto variables = sqpApp->variableController().variablesForMimeData(
+            mimeData->data(MIME_TYPE_VARIABLE_LIST));
+        for (const auto &var : variables) {
+            graphWidget->addVariable(var, graphWidget->graphRange());
+        }
+    }
+    else if (mimeData->hasFormat(MIME_TYPE_TIME_RANGE)) {
+        auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME_TYPE_TIME_RANGE));
+        graphWidget->setGraphRange(range);
+    }
+    else {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationZoneWidget::dropMimeDataOnGraph, unknown MIME data received.");
     }
 }
 

@@ -12,7 +12,7 @@
 #include <QStyledItemDelegate>
 #include <QWidgetAction>
 
-#include <DragDropHelper.h>
+#include <DragAndDrop/DragDropHelper.h>
 #include <SqpApplication.h>
 
 Q_LOGGING_CATEGORY(LOG_VariableInspectorWidget, "VariableInspectorWidget")
@@ -152,11 +152,6 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->tableView, &QTableView::customContextMenuRequested, this,
             &VariableInspectorWidget::onTableMenuRequested);
-
-    // Resets the drag&drop operation on a left-click (the drag&drop is also started by a left
-    // click).
-    connect(ui->tableView, &QTableView::clicked,
-            [](const auto &modelIndex) { sqpApp->dragDropHelper().resetDragAndDrop(); });
 }
 
 VariableInspectorWidget::~VariableInspectorWidget()

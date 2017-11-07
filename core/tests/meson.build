@@ -14,10 +14,18 @@ tests = [
   [['Variable/TestVariableSync.cpp'],'test_variable_sync','Variable synchronization test']
 ]
 
+amdatest_sources = [
+  'Data/DataSeriesBuilders.h',
+  'Data/DataSeriesBuilders.cpp',
+  'Data/DataSeriesUtils.h',
+  'Data/DataSeriesUtils.cpp'
+]
+
 foreach unit_test : tests
   test_moc_files = qt5.preprocess(moc_sources : unit_test[0])
   test_exe = executable(unit_test[1],unit_test[0] , test_moc_files,
-                          dependencies : [sciqlop_core, qt5test])
+                          dependencies : [sciqlop_core, qt5test],
+						  sources : [amdatest_sources])
   test(unit_test[2], test_exe, args: ['-teamcity', '-o', '@0@.teamcity.txt'.format(unit_test[1])])
 endforeach
 

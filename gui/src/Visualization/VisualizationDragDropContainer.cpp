@@ -1,5 +1,5 @@
 #include "Visualization/VisualizationDragDropContainer.h"
-#include "DragDropHelper.h"
+#include "DragAndDrop/DragDropHelper.h"
 #include "SqpApplication.h"
 #include "Visualization/VisualizationDragWidget.h"
 
@@ -17,10 +17,14 @@ Q_LOGGING_CATEGORY(LOG_VisualizationDragDropContainer, "VisualizationDragDropCon
 struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     QVBoxLayout *m_Layout;
-    QStringList m_AcceptedMimeTypes;
-    QStringList m_MergeAllowedMimeTypes;
+    QHash<QString, VisualizationDragDropContainer::DropBehavior> m_AcceptedMimeTypes;
+    QString m_PlaceHolderText;
+    DragDropHelper::PlaceHolderType m_PlaceHolderType = DragDropHelper::PlaceHolderType::Graph;
+
     VisualizationDragDropContainer::AcceptMimeDataFunction m_AcceptMimeDataFun
         = [](auto mimeData) { return true; };
+
+    int m_MinContainerHeight = 0;
 
     explicit VisualizationDragDropContainerPrivate(QWidget *widget)
     {
@@ -30,7 +34,7 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     bool acceptMimeData(const QMimeData *data) const
     {
-        for (const auto &type : m_AcceptedMimeTypes) {
+        for (const auto &type : m_AcceptedMimeTypes.keys()) {
             if (data->hasFormat(type) && m_AcceptMimeDataFun(data)) {
                 return true;
             }
@@ -39,10 +43,38 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
         return false;
     }
 
-    bool allowMergeMimeData(const QMimeData *data) const
+    bool allowMergeForMimeData(const QMimeData *data) const
     {
-        for (const auto &type : m_MergeAllowedMimeTypes) {
-            if (data->hasFormat(type)) {
+        bool result = false;
+        for (auto it = m_AcceptedMimeTypes.constBegin(); it != m_AcceptedMimeTypes.constEnd();
+             ++it) {
+
+            if (data->hasFormat(it.key())
+                && (it.value() == VisualizationDragDropContainer::DropBehavior::Merged
+                    || it.value()
+                           == VisualizationDragDropContainer::DropBehavior::InsertedAndMerged)) {
+                result = true;
+            }
+            else if (data->hasFormat(it.key())
+                     && it.value() == VisualizationDragDropContainer::DropBehavior::Inserted) {
+                // Merge is forbidden if the mime data contain an acceptable type which cannot be
+                // merged
+                result = false;
+                break;
+            }
+        }
+
+        return result;
+    }
+
+    bool allowInsertForMimeData(const QMimeData *data) const
+    {
+        for (auto it = m_AcceptedMimeTypes.constBegin(); it != m_AcceptedMimeTypes.constEnd();
+             ++it) {
+            if (data->hasFormat(it.key())
+                && (it.value() == VisualizationDragDropContainer::DropBehavior::Inserted
+                    || it.value()
+                           == VisualizationDragDropContainer::DropBehavior::InsertedAndMerged)) {
                 return true;
             }
         }
@@ -55,7 +87,7 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
         return sqpApp->dragDropHelper().placeHolder().parentWidget() == m_Layout->parentWidget();
     }
 
-    VisualizationDragWidget *getChildDragWidgetAt(QWidget *parent, const QPoint &pos) const
+    VisualizationDragWidget *getChildDragWidgetAt(const QWidget *parent, const QPoint &pos) const
     {
         VisualizationDragWidget *dragWidget = nullptr;
 
@@ -74,15 +106,29 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     bool cursorIsInContainer(QWidget *container) const
     {
-        auto adustNum = 18; // to be safe, in case of scrollbar on the side
-        auto containerRect = QRect(QPoint(), container->contentsRect().size())
-                                 .adjusted(adustNum, adustNum, -adustNum, -adustNum);
-        return containerRect.contains(container->mapFromGlobal(QCursor::pos()));
+        return container->isAncestorOf(sqpApp->widgetAt(QCursor::pos()));
     }
+
+    int countDragWidget(const QWidget *parent, bool onlyVisible = false) const
+    {
+        auto nbGraph = 0;
+        for (auto child : parent->children()) {
+            if (qobject_cast<VisualizationDragWidget *>(child)) {
+                if (!onlyVisible || qobject_cast<VisualizationDragWidget *>(child)->isVisible()) {
+                    nbGraph += 1;
+                }
+            }
+        }
+
+        return nbGraph;
+    }
+
+    void findPlaceHolderPosition(const QPoint &pos, bool canInsert, bool canMerge,
+                                 const VisualizationDragDropContainer *container);
 };
 
 VisualizationDragDropContainer::VisualizationDragDropContainer(QWidget *parent)
-        : QWidget{parent},
+        : QFrame{parent},
           impl{spimpl::make_unique_impl<VisualizationDragDropContainerPrivate>(this)}
 {
     setAcceptDrops(true);
@@ -105,32 +151,28 @@ void VisualizationDragDropContainer::insertDragWidget(int index,
             &VisualizationDragDropContainer::startDrag);
 }
 
-void VisualizationDragDropContainer::setAcceptedMimeTypes(const QStringList &mimeTypes)
+void VisualizationDragDropContainer::addAcceptedMimeType(
+    const QString &mimeType, VisualizationDragDropContainer::DropBehavior behavior)
 {
-    impl->m_AcceptedMimeTypes = mimeTypes;
-}
-
-void VisualizationDragDropContainer::setMergeAllowedMimeTypes(const QStringList &mimeTypes)
-{
-    impl->m_MergeAllowedMimeTypes = mimeTypes;
+    impl->m_AcceptedMimeTypes[mimeType] = behavior;
 }
 
 int VisualizationDragDropContainer::countDragWidget() const
 {
-    auto nbGraph = 0;
-    for (auto child : children()) {
-        if (qobject_cast<VisualizationDragWidget *>(child)) {
-            nbGraph += 1;
-        }
-    }
-
-    return nbGraph;
+    return impl->countDragWidget(this);
 }
 
 void VisualizationDragDropContainer::setAcceptMimeDataFunction(
     VisualizationDragDropContainer::AcceptMimeDataFunction fun)
 {
     impl->m_AcceptMimeDataFun = fun;
+}
+
+void VisualizationDragDropContainer::setPlaceHolderType(DragDropHelper::PlaceHolderType type,
+                                                        const QString &placeHolderText)
+{
+    impl->m_PlaceHolderType = type;
+    impl->m_PlaceHolderText = placeHolderText;
 }
 
 void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidget,
@@ -159,8 +201,13 @@ void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidg
 
         if (impl->cursorIsInContainer(this)) {
             auto dragWidgetIndex = impl->m_Layout->indexOf(dragWidget);
-            helper.insertPlaceHolder(impl->m_Layout, dragWidgetIndex);
+            helper.insertPlaceHolder(impl->m_Layout, dragWidgetIndex, impl->m_PlaceHolderType,
+                                     impl->m_PlaceHolderText);
             dragWidget->setVisible(false);
+        }
+        else {
+            // The drag starts directly outside the drop zone
+            // do not add the placeHolder
         }
 
         // Note: The exec() is blocking on windows but not on linux and macOS
@@ -185,7 +232,7 @@ void VisualizationDragDropContainer::dragEnterEvent(QDragEnterEvent *event)
 
             if (dragWidget) {
                 // If the drag&drop is internal to the visualization, entering the container hide
-                // the dragWidget which was hidden by the dragLeaveEvent
+                // the dragWidget which was made visible by the dragLeaveEvent
                 auto parentWidget
                     = qobject_cast<VisualizationDragDropContainer *>(dragWidget->parentWidget());
                 if (parentWidget) {
@@ -193,26 +240,9 @@ void VisualizationDragDropContainer::dragEnterEvent(QDragEnterEvent *event)
                 }
             }
 
-            auto dragWidgetHovered = impl->getChildDragWidgetAt(this, event->pos());
-
-            if (dragWidgetHovered) {
-                auto hoveredWidgetIndex = impl->m_Layout->indexOf(dragWidgetHovered);
-
-                if (dragWidget) {
-                    auto dragWidgetIndex = impl->m_Layout->indexOf(helper.getCurrentDragWidget());
-                    if (dragWidgetIndex >= 0 && dragWidgetIndex <= hoveredWidgetIndex) {
-                        // Correction of the index if the drop occurs in the same container
-                        // and if the drag is started from the visualization (in that case, the
-                        // dragWidget is hidden)
-                        hoveredWidgetIndex += 1;
-                    }
-                }
-
-                helper.insertPlaceHolder(impl->m_Layout, hoveredWidgetIndex);
-            }
-            else {
-                helper.insertPlaceHolder(impl->m_Layout, 0);
-            }
+            auto canMerge = impl->allowMergeForMimeData(event->mimeData());
+            auto canInsert = impl->allowInsertForMimeData(event->mimeData());
+            impl->findPlaceHolderPosition(event->pos(), canInsert, canMerge, this);
         }
         else {
             // do nothing
@@ -233,6 +263,8 @@ void VisualizationDragDropContainer::dragLeaveEvent(QDragLeaveEvent *event)
 
     if (!impl->cursorIsInContainer(this)) {
         helper.removePlaceHolder();
+        helper.setHightlightedDragWidget(nullptr);
+        impl->m_MinContainerHeight = 0;
 
         auto dragWidget = helper.getCurrentDragWidget();
         if (dragWidget) {
@@ -258,60 +290,9 @@ void VisualizationDragDropContainer::dragLeaveEvent(QDragLeaveEvent *event)
 void VisualizationDragDropContainer::dragMoveEvent(QDragMoveEvent *event)
 {
     if (impl->acceptMimeData(event->mimeData())) {
-        auto dragWidgetHovered = impl->getChildDragWidgetAt(this, event->pos());
-        if (dragWidgetHovered) {
-            auto canMerge = impl->allowMergeMimeData(event->mimeData());
-
-            auto nbDragWidget = countDragWidget();
-            if (nbDragWidget > 0) {
-                auto graphHeight = qMax(size().height() / nbDragWidget, GRAPH_MINIMUM_HEIGHT);
-
-                auto dropIndex = floor(event->pos().y() / graphHeight);
-                auto zoneSize = qMin(graphHeight / 3.0, 150.0);
-
-                auto isOnTop = event->pos().y() < dropIndex * graphHeight + zoneSize;
-                auto isOnBottom = event->pos().y() > (dropIndex + 1) * graphHeight - zoneSize;
-
-                auto &helper = sqpApp->dragDropHelper();
-                auto placeHolderIndex = impl->m_Layout->indexOf(&(helper.placeHolder()));
-
-                if (isOnTop || isOnBottom) {
-                    if (isOnBottom) {
-                        dropIndex += 1;
-                    }
-
-                    if (helper.getCurrentDragWidget()) {
-                        auto dragWidgetIndex
-                            = impl->m_Layout->indexOf(helper.getCurrentDragWidget());
-                        if (dragWidgetIndex >= 0 && dragWidgetIndex <= dropIndex) {
-                            // Correction of the index if the drop occurs in the same container
-                            // and if the drag is started from the visualization (in that case, the
-                            // dragWidget is hidden)
-                            dropIndex += 1;
-                        }
-                    }
-
-                    if (dropIndex != placeHolderIndex) {
-                        helper.insertPlaceHolder(impl->m_Layout, dropIndex);
-                    }
-                }
-                else if (canMerge) {
-                    // drop on the middle -> merge
-                    if (impl->hasPlaceHolder()) {
-                        helper.removePlaceHolder();
-                    }
-                }
-            }
-            else {
-                qCWarning(LOG_VisualizationDragDropContainer())
-                    << tr("VisualizationDragDropContainer::dragMoveEvent, no widget found in the "
-                          "container");
-            }
-        }
-        else {
-            // No hovered drag widget, the mouse is probably hover the placeHolder
-            // Do nothing
-        }
+        auto canMerge = impl->allowMergeForMimeData(event->mimeData());
+        auto canInsert = impl->allowInsertForMimeData(event->mimeData());
+        impl->findPlaceHolderPosition(event->pos(), canInsert, canMerge, this);
     }
     else {
         event->ignore();
@@ -322,41 +303,151 @@ void VisualizationDragDropContainer::dragMoveEvent(QDragMoveEvent *event)
 
 void VisualizationDragDropContainer::dropEvent(QDropEvent *event)
 {
+    auto &helper = sqpApp->dragDropHelper();
+
     if (impl->acceptMimeData(event->mimeData())) {
-        auto dragWidget = sqpApp->dragDropHelper().getCurrentDragWidget();
+        auto dragWidget = helper.getCurrentDragWidget();
         if (impl->hasPlaceHolder()) {
-            auto &helper = sqpApp->dragDropHelper();
+            // drop where the placeHolder is located
 
-            auto droppedIndex = impl->m_Layout->indexOf(&helper.placeHolder());
+            auto canInsert = impl->allowInsertForMimeData(event->mimeData());
+            if (canInsert) {
+                auto droppedIndex = impl->m_Layout->indexOf(&helper.placeHolder());
 
-            if (dragWidget) {
-                auto dragWidgetIndex = impl->m_Layout->indexOf(dragWidget);
-                if (dragWidgetIndex >= 0 && dragWidgetIndex < droppedIndex) {
-                    // Correction of the index if the drop occurs in the same container
-                    // and if the drag is started from the visualization (in that case, the
-                    // dragWidget is hidden)
-                    droppedIndex -= 1;
+                if (dragWidget) {
+                    auto dragWidgetIndex = impl->m_Layout->indexOf(dragWidget);
+                    if (dragWidgetIndex >= 0 && dragWidgetIndex < droppedIndex) {
+                        // Correction of the index if the drop occurs in the same container
+                        // and if the drag is started from the visualization (in that case, the
+                        // dragWidget is hidden)
+                        droppedIndex -= 1;
+                    }
+
+                    dragWidget->setVisible(true);
                 }
 
-                dragWidget->setVisible(true);
+                event->acceptProposedAction();
+
+                helper.removePlaceHolder();
+
+                emit dropOccuredInContainer(droppedIndex, event->mimeData());
             }
-
-            event->acceptProposedAction();
-
-            helper.removePlaceHolder();
-
-            emit dropOccured(droppedIndex, event->mimeData());
+            else {
+                qCWarning(LOG_VisualizationDragDropContainer()) << tr(
+                    "VisualizationDragDropContainer::dropEvent, dropping on the placeHolder, but "
+                    "the insertion is forbidden.");
+                Q_ASSERT(false);
+            }
         }
-        else {
-            qCWarning(LOG_VisualizationDragDropContainer())
-                << tr("VisualizationDragDropContainer::dropEvent, couldn't drop because the "
-                      "placeHolder is not found.");
-            Q_ASSERT(false);
+        else if (helper.getHightlightedDragWidget()) {
+            // drop on the highlighted widget
+
+            auto canMerge = impl->allowMergeForMimeData(event->mimeData());
+            if (canMerge) {
+                event->acceptProposedAction();
+                emit dropOccuredOnWidget(helper.getHightlightedDragWidget(), event->mimeData());
+            }
+            else {
+                qCWarning(LOG_VisualizationDragDropContainer())
+                    << tr("VisualizationDragDropContainer::dropEvent, dropping on a widget, but "
+                          "the merge is forbidden.");
+                Q_ASSERT(false);
+            }
         }
     }
     else {
         event->ignore();
     }
 
+    sqpApp->dragDropHelper().setHightlightedDragWidget(nullptr);
+    impl->m_MinContainerHeight = 0;
+
     QWidget::dropEvent(event);
+}
+
+
+void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::findPlaceHolderPosition(
+    const QPoint &pos, bool canInsert, bool canMerge,
+    const VisualizationDragDropContainer *container)
+{
+    auto &helper = sqpApp->dragDropHelper();
+
+    auto absPos = container->mapToGlobal(pos);
+    auto isOnPlaceHolder = sqpApp->widgetAt(absPos) == &(helper.placeHolder());
+
+    if (countDragWidget(container, true) == 0) {
+        // Drop on an empty container, just add the placeHolder at the top
+        helper.insertPlaceHolder(m_Layout, 0, m_PlaceHolderType, m_PlaceHolderText);
+    }
+    else if (!isOnPlaceHolder) {
+        auto nbDragWidget = countDragWidget(container);
+        if (nbDragWidget > 0) {
+
+            if (m_MinContainerHeight == 0) {
+                m_MinContainerHeight = container->size().height();
+            }
+
+            m_MinContainerHeight = qMin(m_MinContainerHeight, container->size().height());
+            auto graphHeight = qMax(m_MinContainerHeight / nbDragWidget, GRAPH_MINIMUM_HEIGHT);
+
+            auto posY = pos.y();
+            auto dropIndex = floor(posY / graphHeight);
+            auto zoneSize = qMin(graphHeight / 4.0, 75.0);
+
+
+            auto isOnTop = posY < dropIndex * graphHeight + zoneSize;
+            auto isOnBottom = posY > (dropIndex + 1) * graphHeight - zoneSize;
+
+            auto placeHolderIndex = m_Layout->indexOf(&(helper.placeHolder()));
+
+            auto dragWidgetHovered = getChildDragWidgetAt(container, pos);
+
+            if (canInsert && (isOnTop || isOnBottom || !canMerge)) {
+                if (isOnBottom) {
+                    dropIndex += 1;
+                }
+
+                if (helper.getCurrentDragWidget()) {
+                    auto dragWidgetIndex = m_Layout->indexOf(helper.getCurrentDragWidget());
+                    if (dragWidgetIndex >= 0 && dragWidgetIndex <= dropIndex) {
+                        // Correction of the index if the drop occurs in the same container
+                        // and if the drag is started from the visualization (in that case, the
+                        // dragWidget is hidden)
+                        dropIndex += 1;
+                    }
+                }
+
+                if (dropIndex != placeHolderIndex) {
+                    helper.insertPlaceHolder(m_Layout, dropIndex, m_PlaceHolderType,
+                                             m_PlaceHolderText);
+                }
+
+                helper.setHightlightedDragWidget(nullptr);
+            }
+            else if (canMerge && dragWidgetHovered) {
+                // drop on the middle -> merge
+                if (hasPlaceHolder()) {
+                    helper.removePlaceHolder();
+                }
+
+                helper.setHightlightedDragWidget(dragWidgetHovered);
+            }
+            else {
+                qCWarning(LOG_VisualizationDragDropContainer())
+                    << tr("VisualizationDragDropContainer::findPlaceHolderPosition, no valid drop "
+                          "action.");
+                Q_ASSERT(false);
+            }
+        }
+        else {
+            qCWarning(LOG_VisualizationDragDropContainer())
+                << tr("VisualizationDragDropContainer::findPlaceHolderPosition, no widget "
+                      "found in the "
+                      "container");
+        }
+    }
+    else {
+        // the mouse is hover the placeHolder
+        // Do nothing
+    }
 }

@@ -59,6 +59,7 @@ public:
     // VisualisationDragWidget
     QMimeData *mimeData() const override;
     bool isDragAllowed() const override;
+    void highlightForMerge(bool highlighted) override;
 
 signals:
     void synchronize(const SqpRange &range, const SqpRange &oldRange);

@@ -7,6 +7,7 @@
 
 class QVBoxLayout;
 class QScrollArea;
+class QTabBar;
 class VisualizationDragWidget;
 class VisualizationDragDropContainer;
 class QMimeData;
@@ -25,6 +26,8 @@ public:
     static const QString MIME_TYPE_GRAPH;
     static const QString MIME_TYPE_ZONE;
 
+    enum class PlaceHolderType { Default, Graph, Zone };
+
     DragDropHelper();
     virtual ~DragDropHelper();
 
@@ -40,7 +43,8 @@ public:
     VisualizationDragWidget *getCurrentDragWidget() const;
 
     QWidget &placeHolder() const;
-    void insertPlaceHolder(QVBoxLayout *layout, int index);
+    void insertPlaceHolder(QVBoxLayout *layout, int index, PlaceHolderType type,
+                           const QString &topLabelText);
     void removePlaceHolder();
     bool isPlaceHolderSet() const;
 
@@ -51,35 +55,17 @@ public:
     void addDragDropScrollArea(QScrollArea *scrollArea);
     void removeDragDropScrollArea(QScrollArea *scrollArea);
 
+    void addDragDropTabBar(QTabBar *tabBar);
+    void removeDragDropTabBar(QTabBar *tabBar);
+
     QUrl imageTemporaryUrl(const QImage &image) const;
+
+    void setHightlightedDragWidget(VisualizationDragWidget *dragWidget);
+    VisualizationDragWidget *getHightlightedDragWidget() const;
 
 private:
     class DragDropHelperPrivate;
     spimpl::unique_impl_ptr<DragDropHelperPrivate> impl;
-};
-
-/**
- * @brief Event filter class which manage the scroll of QScrollArea during a drag&drop operation.
- * @note A QScrollArea inside an other QScrollArea is not fully supported.
- */
-class DragDropScroller : public QObject {
-    Q_OBJECT
-
-public:
-    DragDropScroller(QObject *parent = nullptr);
-
-    void addScrollArea(QScrollArea *scrollArea);
-    void removeScrollArea(QScrollArea *scrollArea);
-
-protected:
-    bool eventFilter(QObject *obj, QEvent *event);
-
-private:
-    class DragDropScrollerPrivate;
-    spimpl::unique_impl_ptr<DragDropScrollerPrivate> impl;
-
-private slots:
-    void onTimer();
 };
 
 #endif // SCIQLOP_DRAGDROPHELPER_H
