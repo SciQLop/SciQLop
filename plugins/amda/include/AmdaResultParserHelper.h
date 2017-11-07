@@ -56,7 +56,12 @@ public:
     void readResultLine(const QString &line) override;
 
 private:
+    /// @return the reading order of the "value" columns for a result line of the AMDA file
+    std::vector<int> valuesIndexes() const;
+
     Properties m_Properties{};
+    std::vector<double> m_XAxisData{};
+    std::vector<double> m_ValuesData{};
 };
 
 /**
@@ -70,7 +75,12 @@ public:
     void readResultLine(const QString &line) override;
 
 private:
+    /// @return the reading order of the "value" columns for a result line of the AMDA file
+    std::vector<int> valuesIndexes() const;
+
     Properties m_Properties{};
+    std::vector<double> m_XAxisData{};
+    std::vector<double> m_ValuesData{};
 };
 
 #endif // SCIQLOP_AMDARESULTPARSERHELPER_H
