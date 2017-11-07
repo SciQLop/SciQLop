@@ -201,6 +201,30 @@ std::vector<int> ScalarParserHelper::valuesIndexes() const
     return result;
 }
 
+// /////////////////////// //
+// SpectrogramParserHelper //
+// /////////////////////// //
+
+bool SpectrogramParserHelper::checkProperties()
+{
+    /// @todo ALX
+}
+
+std::shared_ptr<IDataSeries> SpectrogramParserHelper::createSeries()
+{
+    /// @todo ALX
+}
+
+void SpectrogramParserHelper::readPropertyLine(const QString &line)
+{
+    /// @todo ALX
+}
+
+void SpectrogramParserHelper::readResultLine(const QString &line)
+{
+    /// @todo ALX
+}
+
 // ////////////////// //
 // VectorParserHelper //
 // ////////////////// //

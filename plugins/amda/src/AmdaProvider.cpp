@@ -61,6 +61,9 @@ AmdaResultParser::ValueType valueType(const QString &valueType)
     if (valueType == QStringLiteral("scalar")) {
         return AmdaResultParser::ValueType::SCALAR;
     }
+    else if (valueType == QStringLiteral("spectrogram")) {
+        return AmdaResultParser::ValueType::SPECTROGRAM;
+    }
     else if (valueType == QStringLiteral("vector")) {
         return AmdaResultParser::ValueType::VECTOR;
     }

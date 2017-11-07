@@ -65,6 +65,17 @@ private:
 };
 
 /**
+ * Implementation of @sa IAmdaResultParserHelper for spectrograms
+ */
+class SpectrogramParserHelper : public IAmdaResultParserHelper {
+public:
+    bool checkProperties() override;
+    std::shared_ptr<IDataSeries> createSeries() override;
+    void readPropertyLine(const QString &line) override;
+    void readResultLine(const QString &line) override;
+};
+
+/**
  * Implementation of @sa IAmdaResultParserHelper for vectors
  */
 class VectorParserHelper : public IAmdaResultParserHelper {

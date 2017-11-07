@@ -29,6 +29,8 @@ std::unique_ptr<IAmdaResultParserHelper> createHelper(AmdaResultParser::ValueTyp
     switch (valueType) {
         case AmdaResultParser::ValueType::SCALAR:
             return std::make_unique<ScalarParserHelper>();
+        case AmdaResultParser::ValueType::SPECTROGRAM:
+            return std::make_unique<SpectrogramParserHelper>();
         case AmdaResultParser::ValueType::VECTOR:
             return std::make_unique<VectorParserHelper>();
         case AmdaResultParser::ValueType::UNKNOWN:
