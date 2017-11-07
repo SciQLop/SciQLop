@@ -154,6 +154,54 @@ bool tryReadProperty(Properties &properties, const QString &key, const QString &
 }
 
 /**
+ * Reads a line from the AMDA file and tries to extract a double from it
+ * @sa tryReadProperty()
+ */
+bool tryReadDouble(Properties &properties, const QString &key, const QString &line,
+                   const QRegularExpression &regex)
+{
+    return tryReadProperty(properties, key, line, regex, [](const auto &match) {
+        bool ok;
+
+        // If the value can't be converted to double, it is set to NaN
+        auto doubleValue = match.captured(1).toDouble(&ok);
+        if (!ok) {
+            doubleValue = std::numeric_limits<double>::quiet_NaN();
+        }
+
+        return QVariant::fromValue(doubleValue);
+    });
+}
+
+/**
+ * Reads a line from the AMDA file and tries to extract a vector of doubles from it
+ * @param sep the separator of double values in the line
+ * @sa tryReadProperty()
+ */
+bool tryReadDoubles(Properties &properties, const QString &key, const QString &line,
+                    const QRegularExpression &regex, const QString &sep = QStringLiteral(","))
+{
+    return tryReadProperty(properties, key, line, regex, [sep](const auto &match) {
+        std::vector<double> doubleValues{};
+
+        // If the value can't be converted to double, it is set to NaN
+        auto values = match.captured(1).split(sep);
+        for (auto value : values) {
+            bool ok;
+
+            auto doubleValue = value.toDouble(&ok);
+            if (!ok) {
+                doubleValue = std::numeric_limits<double>::quiet_NaN();
+            }
+
+            doubleValues.push_back(doubleValue);
+        }
+
+        return QVariant::fromValue(doubleValues);
+    });
+}
+
+/**
  * Reads a line from the AMDA file and tries to extract a unit from it
  * @sa tryReadProperty()
  */
@@ -207,7 +255,17 @@ std::vector<int> ScalarParserHelper::valuesIndexes() const
 
 bool SpectrogramParserHelper::checkProperties()
 {
-    /// @todo ALX
+    // Generates y-axis data from bands extracted (take the middle of the intervals)
+    auto minBands = m_Properties.value(MIN_BANDS_PROPERTY).value<std::vector<double> >();
+    auto maxBands = m_Properties.value(MAX_BANDS_PROPERTY).value<std::vector<double> >();
+
+    if (minBands.size() != maxBands.size()) {
+        qCWarning(LOG_AmdaResultParserHelper()) << QObject::tr(
+            "Can't generate y-axis data from bands extracted: bands intervals are invalid");
+        return false;
+    }
+
+    return true;
 }
 
 std::shared_ptr<IDataSeries> SpectrogramParserHelper::createSeries()
@@ -217,7 +275,52 @@ std::shared_ptr<IDataSeries> SpectrogramParserHelper::createSeries()
 
 void SpectrogramParserHelper::readPropertyLine(const QString &line)
 {
-    /// @todo ALX
+    // Set of functions to test on the line to generate a property. If a function is valid (i.e. a
+    // property has been generated for the line), the line is treated as processed and the other
+    // functions are not called
+    std::vector<std::function<bool()> > functions{
+        // values unit
+        [&] {
+            return tryReadUnit(m_Properties, VALUES_UNIT_PROPERTY, line,
+                               SPECTROGRAM_VALUES_UNIT_REGEX);
+        },
+        // y-axis unit
+        [&] {
+            return tryReadUnit(m_Properties, Y_AXIS_UNIT_PROPERTY, line,
+                               SPECTROGRAM_Y_AXIS_UNIT_REGEX);
+        },
+        // min sampling
+        [&] {
+            return tryReadDouble(m_Properties, MIN_SAMPLING_PROPERTY, line,
+                                 SPECTROGRAM_MIN_SAMPLING_REGEX);
+        },
+        // max sampling
+        [&] {
+            return tryReadDouble(m_Properties, MAX_SAMPLING_PROPERTY, line,
+                                 SPECTROGRAM_MAX_SAMPLING_REGEX);
+        },
+        // fill value
+        [&] {
+            return tryReadDouble(m_Properties, FILL_VALUE_PROPERTY, line,
+                                 SPECTROGRAM_FILL_VALUE_REGEX);
+        },
+        // min bounds of each band
+        [&] {
+            return tryReadDoubles(m_Properties, MIN_BANDS_PROPERTY, line,
+                                  SPECTROGRAM_MIN_BANDS_REGEX);
+        },
+        // max bounds of each band
+        [&] {
+            return tryReadDoubles(m_Properties, MAX_BANDS_PROPERTY, line,
+                                  SPECTROGRAM_MAX_BANDS_REGEX);
+        }};
+
+    for (auto function : functions) {
+        // Stops at the first function that is valid
+        if (function()) {
+            return;
+        }
+    }
 }
 
 void SpectrogramParserHelper::readResultLine(const QString &line)

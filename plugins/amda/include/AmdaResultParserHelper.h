@@ -73,6 +73,9 @@ public:
     std::shared_ptr<IDataSeries> createSeries() override;
     void readPropertyLine(const QString &line) override;
     void readResultLine(const QString &line) override;
+
+private:
+    Properties m_Properties{};
 };
 
 /**
