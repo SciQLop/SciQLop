@@ -19,6 +19,11 @@ extern const QString X_AXIS_UNIT_PROPERTY;
 // /////////////////// //
 
 // AMDA V2
+// /// Regex to find the header of the data in the file. This header indicates the end of comments
+// in the file
+// const auto DATA_HEADER_REGEX = QRegularExpression{QStringLiteral("#\\s*DATA\\s*:")};
+
+// AMDA V2
 // /// ... PARAMETER_UNITS : nT ...
 // /// ... PARAMETER_UNITS:nT ...
 // /// ... PARAMETER_UNITS:   m² ...
