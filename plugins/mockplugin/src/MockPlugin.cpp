@@ -75,6 +75,11 @@ std::unique_ptr<DataSourceItem> createDataSourceItem(const QUuid &dataSourceUid)
                            {COSINUS_TYPE_KEY, "vector"},
                            {COSINUS_FREQUENCY_KEY, 100.}},
                           dataSourceUid));
+    magneticFieldFolder->appendChild(
+        createProductItem({{DataSourceItem::NAME_DATA_KEY, QStringLiteral("Spectrogram 1 Hz")},
+                           {COSINUS_TYPE_KEY, "spectrogram"},
+                           {COSINUS_FREQUENCY_KEY, 1.}},
+                          dataSourceUid));
 
     // Electric field products
     auto electricFieldFolder = std::make_unique<DataSourceItem>(DataSourceItemType::NODE,
