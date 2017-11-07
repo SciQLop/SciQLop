@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_AMDARESULTPARSERHELPER_H
 #define SCIQLOP_AMDARESULTPARSERHELPER_H
 
+#include "AmdaResultParserDefs.h"
+
 #include <QtCore/QLoggingCategory>
 #include <QtCore/QString>
 
@@ -52,6 +54,9 @@ public:
     std::shared_ptr<IDataSeries> createSeries() override;
     void readPropertyLine(const QString &line) override;
     void readResultLine(const QString &line) override;
+
+private:
+    Properties m_Properties{};
 };
 
 /**
@@ -63,6 +68,9 @@ public:
     std::shared_ptr<IDataSeries> createSeries() override;
     void readPropertyLine(const QString &line) override;
     void readResultLine(const QString &line) override;
+
+private:
+    Properties m_Properties{};
 };
 
 #endif // SCIQLOP_AMDARESULTPARSERHELPER_H

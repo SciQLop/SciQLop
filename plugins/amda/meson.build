@@ -10,6 +10,7 @@ amdaplugin_sources = [
   'src/AmdaPlugin.cpp',
   'src/AmdaProvider.cpp',
   'src/AmdaResultParser.cpp'
+  'src/AmdaResultParserDefs.cpp'
   'src/AmdaResultParserHelper.cpp'
 ]
 
