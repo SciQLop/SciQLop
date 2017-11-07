@@ -43,4 +43,26 @@ struct IAmdaResultParserHelper {
     virtual void readResultLine(const QString &line) = 0;
 };
 
+/**
+ * Implementation of @sa IAmdaResultParserHelper for scalars
+ */
+class ScalarParserHelper : public IAmdaResultParserHelper {
+public:
+    bool checkProperties() override;
+    std::shared_ptr<IDataSeries> createSeries() override;
+    void readPropertyLine(const QString &line) override;
+    void readResultLine(const QString &line) override;
+};
+
+/**
+ * Implementation of @sa IAmdaResultParserHelper for vectors
+ */
+class VectorParserHelper : public IAmdaResultParserHelper {
+public:
+    bool checkProperties() override;
+    std::shared_ptr<IDataSeries> createSeries() override;
+    void readPropertyLine(const QString &line) override;
+    void readResultLine(const QString &line) override;
+};
+
 #endif // SCIQLOP_AMDARESULTPARSERHELPER_H
