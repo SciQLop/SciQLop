@@ -1,6 +1,6 @@
 #include "Variable/VariableInspectorTableView.h"
 
-#include "DragDropHelper.h"
+#include "DragAndDrop/DragDropHelper.h"
 #include "SqpApplication.h"
 
 VariableInspectorTableView::VariableInspectorTableView(QWidget *parent) : QTableView(parent) {}

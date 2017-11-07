@@ -1,5 +1,5 @@
 #include "Visualization/VisualizationDragDropContainer.h"
-#include "DragDropHelper.h"
+#include "DragAndDrop/DragDropHelper.h"
 #include "SqpApplication.h"
 #include "Visualization/VisualizationDragWidget.h"
 

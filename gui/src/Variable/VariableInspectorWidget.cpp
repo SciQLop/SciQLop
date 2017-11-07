@@ -12,7 +12,7 @@
 #include <QStyledItemDelegate>
 #include <QWidgetAction>
 
-#include <DragDropHelper.h>
+#include <DragAndDrop/DragDropHelper.h>
 #include <SqpApplication.h>
 
 Q_LOGGING_CATEGORY(LOG_VariableInspectorWidget, "VariableInspectorWidget")

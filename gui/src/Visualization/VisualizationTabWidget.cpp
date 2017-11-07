@@ -9,7 +9,7 @@
 
 #include "Common/MimeTypesDef.h"
 
-#include "DragDropHelper.h"
+#include "DragAndDrop/DragDropHelper.h"
 #include "SqpApplication.h"
 
 Q_LOGGING_CATEGORY(LOG_VisualizationTabWidget, "VisualizationTabWidget")
