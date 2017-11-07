@@ -10,8 +10,8 @@ tests = [
   [['Data/TestTwoDimArrayData.cpp'],'test_2d','Two Dim Array test'],
   [['DataSource/TestDataSourceController.cpp'],'test_data_source','DataSourceController test'],
   [['Variable/TestVariableCacheController.cpp'],'test_variable_cache','VariableCacheController test'],
-  [['Variable/TestVariable.cpp'],'test_variable','Variable test']
-  # [['Variable/TestVariableSync.cpp'],'test_variable_sync','Variable synchronization test']
+  [['Variable/TestVariable.cpp'],'test_variable','Variable test'],
+  [['Variable/TestVariableSync.cpp'],'test_variable_sync','Variable synchronization test']
 ]
 
 amdatest_sources = [
