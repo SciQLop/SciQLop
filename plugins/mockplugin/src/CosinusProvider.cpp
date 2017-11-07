@@ -3,6 +3,7 @@
 
 #include <Data/DataProviderParameters.h>
 #include <Data/ScalarSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
 #include <cmath>
@@ -15,6 +16,9 @@ Q_LOGGING_CATEGORY(LOG_CosinusProvider, "CosinusProvider")
 
 namespace {
 
+/// Number of bands generated for a spectrogram
+const auto SPECTROGRAM_NUMBER_BANDS = 30;
+
 /// Abstract cosinus type
 struct ICosinusType {
     virtual ~ICosinusType() = default;
@@ -25,6 +29,12 @@ struct ICosinusType {
                                                           std::vector<double> valuesData,
                                                           Unit xAxisUnit,
                                                           Unit valuesUnit) const = 0;
+    /// Generates values (one value per component)
+    /// @param x the x-axis data used to generate values
+    /// @param values the vector in which to insert the generated values
+    /// @param dataIndex the index of insertion of the generated values
+    ///
+    virtual void generateValues(double x, std::vector<double> &values, int dataIndex) const = 0;
 };
 
 struct ScalarCosinus : public ICosinusType {
@@ -37,7 +47,47 @@ struct ScalarCosinus : public ICosinusType {
         return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
                                               xAxisUnit, valuesUnit);
     }
+
+    void generateValues(double x, std::vector<double> &values, int dataIndex) const override
+    {
+        values[dataIndex] = std::cos(x);
+    }
 };
+
+struct SpectrogramCosinus : public ICosinusType {
+    /// Ctor with y-axis
+    explicit SpectrogramCosinus(std::vector<double> yAxisData, Unit yAxisUnit)
+            : m_YAxisData{std::move(yAxisData)}, m_YAxisUnit{std::move(yAxisUnit)}
+    {
+    }
+
+    int componentCount() const override { return m_YAxisData.size(); }
+
+    std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+                                                  std::vector<double> valuesData, Unit xAxisUnit,
+                                                  Unit valuesUnit) const override
+    {
+        return std::make_shared<SpectrogramSeries>(std::move(xAxisData), m_YAxisData,
+                                                   std::move(valuesData), xAxisUnit, m_YAxisUnit,
+                                                   valuesUnit);
+    }
+
+    void generateValues(double x, std::vector<double> &values, int dataIndex) const override
+    {
+        auto componentCount = this->componentCount();
+        for (int i = 0; i < componentCount; ++i) {
+            auto y = m_YAxisData[i];
+            auto r = 3 * std::sqrt(x * x + y * y) + 1e-2;
+            auto value = 2 * x * (std::cos(r + 2) / r - std::sin(r + 2) / r);
+
+            values[componentCount * dataIndex + i] = value;
+        }
+    }
+
+    std::vector<double> m_YAxisData;
+    Unit m_YAxisUnit;
+};
+
 struct VectorCosinus : public ICosinusType {
     int componentCount() const override { return 3; }
 
@@ -48,6 +98,16 @@ struct VectorCosinus : public ICosinusType {
         return std::make_shared<VectorSeries>(std::move(xAxisData), std::move(valuesData),
                                               xAxisUnit, valuesUnit);
     }
+
+    void generateValues(double x, std::vector<double> &values, int dataIndex) const override
+    {
+        // Generates value for each component: cos(x), cos(x)/2, cos(x)/3
+        auto xValue = std::cos(x);
+        auto componentCount = this->componentCount();
+        for (auto i = 0; i < componentCount; ++i) {
+            values[componentCount * dataIndex + i] = xValue / (i + 1);
+        }
+    }
 };
 
 /// Converts string to cosinus type
@@ -56,6 +116,13 @@ std::unique_ptr<ICosinusType> cosinusType(const QString &type) noexcept
 {
     if (type.compare(QStringLiteral("scalar"), Qt::CaseInsensitive) == 0) {
         return std::make_unique<ScalarCosinus>();
+    }
+    else if (type.compare(QStringLiteral("spectrogram"), Qt::CaseInsensitive) == 0) {
+        // Generates default y-axis data for spectrogram [0., 1., 2., ...]
+        std::vector<double> yAxisData(SPECTROGRAM_NUMBER_BANDS);
+        std::iota(yAxisData.begin(), yAxisData.end(), 0.);
+
+        return std::make_unique<SpectrogramCosinus>(std::move(yAxisData), Unit{"eV"});
     }
     else if (type.compare(QStringLiteral("vector"), Qt::CaseInsensitive) == 0) {
         return std::make_unique<VectorCosinus>();
@@ -128,16 +195,12 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
     for (auto time = start; time <= end; ++time, ++dataIndex) {
         auto it = m_VariableToEnableProvider.find(acqIdentifier);
         if (it != m_VariableToEnableProvider.end() && it.value()) {
-            const auto timeOnFreq = time / freq;
+            const auto x = time / freq;
 
-            xAxisData[dataIndex] = timeOnFreq;
+            xAxisData[dataIndex] = x;
 
-            // Generates all components' values
-            // Example: for a vector, values will be : cos(x), cos(x)/2, cos(x)/3
-            auto value = std::cos(timeOnFreq);
-            for (auto i = 0; i < componentCount; ++i) {
-                valuesData[componentCount * dataIndex + i] = value / (i + 1);
-            }
+            // Generates values (depending on the type)
+            type->generateValues(x, valuesData, dataIndex);
 
             // progression
             int currentProgress = (time - start) * 100.0 / progressEnd;
