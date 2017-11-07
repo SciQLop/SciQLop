@@ -13,6 +13,7 @@
 
 #include <QMimeData>
 #include <QSize>
+#include <QTimer>
 #include <unordered_map>
 
 Q_LOGGING_CATEGORY(LOG_VariableModel, "VariableModel")
@@ -322,7 +323,9 @@ bool VariableModel::canDropMimeData(const QMimeData *data, Qt::DropAction action
                                     int column, const QModelIndex &parent) const
 {
     // drop of a product
-    return data->hasFormat(MIME_TYPE_PRODUCT_LIST);
+    return data->hasFormat(MIME_TYPE_PRODUCT_LIST)
+           || (data->hasFormat(MIME_TYPE_TIME_RANGE) && parent.isValid()
+               && !data->hasFormat(MIME_TYPE_VARIABLE_LIST));
 }
 
 bool VariableModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
@@ -338,6 +341,14 @@ bool VariableModel::dropMimeData(const QMimeData *data, Qt::DropAction action, i
         for (auto metaData : productList) {
             emit requestVariable(metaData.toHash());
         }
+
+        dropDone = true;
+    }
+    else if (data->hasFormat(MIME_TYPE_TIME_RANGE) && parent.isValid()) {
+        auto variable = this->variable(parent.row());
+        auto range = TimeController::timeRangeForMimeData(data->data(MIME_TYPE_TIME_RANGE));
+
+        emit requestVariableRangeUpdate(variable, range);
 
         dropDone = true;
     }
