@@ -195,6 +195,8 @@ class TestVariableSync : public QObject {
     Q_OBJECT
 
 private slots:
+    void initTestCase() { QSKIP("Temporarily disables TestVariableSync"); }
+
     /// Input data for @sa testSync()
     void testSync_data();
 
