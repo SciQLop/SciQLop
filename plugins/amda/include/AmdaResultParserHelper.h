@@ -76,6 +76,7 @@ public:
 
 private:
     Properties m_Properties{};
+    std::vector<double> m_YAxisData{};
 };
 
 /**

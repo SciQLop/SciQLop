@@ -265,6 +265,10 @@ bool SpectrogramParserHelper::checkProperties()
         return false;
     }
 
+    std::transform(
+        minBands.begin(), minBands.end(), maxBands.begin(), std::back_inserter(m_YAxisData),
+        [](const auto &minValue, const auto &maxValue) { return (minValue + maxValue) / 2.; });
+
     return true;
 }
 
