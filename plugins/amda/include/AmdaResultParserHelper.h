@@ -76,7 +76,11 @@ public:
 
 private:
     Properties m_Properties{};
+    std::vector<double> m_XAxisData{};
     std::vector<double> m_YAxisData{};
+    std::vector<double> m_ValuesData{};
+    std::vector<int> m_ValuesIndexes{};
+    double m_FillValue{std::numeric_limits<double>::quiet_NaN()};
 };
 
 /**

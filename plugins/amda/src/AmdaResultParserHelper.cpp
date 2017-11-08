@@ -1,8 +1,10 @@
 #include "AmdaResultParserHelper.h"
 
 #include <Common/DateUtils.h>
+#include <Common/SortUtils.h>
 
 #include <Data/ScalarSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <Data/Unit.h>
 #include <Data/VectorSeries.h>
 
@@ -269,12 +271,28 @@ bool SpectrogramParserHelper::checkProperties()
         minBands.begin(), minBands.end(), maxBands.begin(), std::back_inserter(m_YAxisData),
         [](const auto &minValue, const auto &maxValue) { return (minValue + maxValue) / 2.; });
 
+    // Generates values indexes, i.e. the order in which each value will be retrieved (in ascending
+    // order of the associated bands)
+    m_ValuesIndexes = SortUtils::sortPermutation(m_YAxisData, std::less<double>());
+
+    // Sorts y-axis data accoding to the ascending order
+    m_YAxisData = SortUtils::sort(m_YAxisData, 1, m_ValuesIndexes);
+
+    // Sets fill value
+    m_FillValue = m_Properties.value(FILL_VALUE_PROPERTY).value<double>();
+
+    /// @todo: handle min/max samplings?
+
     return true;
 }
 
 std::shared_ptr<IDataSeries> SpectrogramParserHelper::createSeries()
 {
-    /// @todo ALX
+    return std::make_shared<SpectrogramSeries>(
+        std::move(m_XAxisData), std::move(m_YAxisData), std::move(m_ValuesData),
+        Unit{"t", true}, // x-axis unit is always a time unit
+        m_Properties.value(Y_AXIS_UNIT_PROPERTY).value<Unit>(),
+        m_Properties.value(VALUES_UNIT_PROPERTY).value<Unit>());
 }
 
 void SpectrogramParserHelper::readPropertyLine(const QString &line)
@@ -329,7 +347,7 @@ void SpectrogramParserHelper::readPropertyLine(const QString &line)
 
 void SpectrogramParserHelper::readResultLine(const QString &line)
 {
-    /// @todo ALX
+    tryReadResult(m_XAxisData, m_ValuesData, line, m_ValuesIndexes, m_FillValue);
 }
 
 // ////////////////// //
