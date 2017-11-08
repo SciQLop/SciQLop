@@ -67,6 +67,24 @@ struct ExpectedResults {
         return *this;
     }
 
+    ExpectedResults &setYAxisEnabled(bool yAxisEnabled)
+    {
+        m_YAxisEnabled = yAxisEnabled;
+        return *this;
+    }
+
+    ExpectedResults &setYAxisUnit(Unit yAxisUnit)
+    {
+        m_YAxisUnit = std::move(yAxisUnit);
+        return *this;
+    }
+
+    ExpectedResults &setYAxisData(QVector<double> yAxisData)
+    {
+        m_YAxisData = std::move(yAxisData);
+        return *this;
+    }
+
     /**
      * Validates a DataSeries compared to the expected results
      * @param results the DataSeries to validate
@@ -106,6 +124,22 @@ struct ExpectedResults {
                     return (std::isnan(itValue) && std::isnan(value)) || seriesIt.value(i) == value;
                 });
             }
+
+            // Checks y-axis (if defined)
+            auto yAxis = dataSeries->yAxis();
+            QCOMPARE(yAxis.isDefined(), m_YAxisEnabled);
+
+            if (m_YAxisEnabled) {
+                // Unit
+                QCOMPARE(yAxis.unit(), m_YAxisUnit);
+
+                // Data
+                auto yAxisSize = yAxis.size();
+                QCOMPARE(yAxisSize, m_YAxisData.size());
+                for (auto i = 0; i < yAxisSize; ++i) {
+                    QCOMPARE(yAxis.at(i), m_YAxisData.at(i));
+                }
+            }
         }
         else {
             QVERIFY(results == nullptr);
@@ -122,6 +156,12 @@ struct ExpectedResults {
     Unit m_ValuesUnit{};
     // Expected values data
     QVector<QVector<double> > m_ValuesData{};
+    // Expected data series has y-axis
+    bool m_YAxisEnabled{false};
+    // Expected y-axis unit (if axis defined)
+    Unit m_YAxisUnit{};
+    // Expected y-axis data (if axis defined)
+    QVector<double> m_YAxisData{};
 };
 
 } // namespace
