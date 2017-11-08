@@ -1,6 +1,7 @@
 #include "AmdaResultParser.h"
 
 #include <Data/ScalarSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
 #include <QObject>
@@ -167,6 +168,7 @@ struct ExpectedResults {
 } // namespace
 
 Q_DECLARE_METATYPE(ExpectedResults<ScalarSeries>)
+Q_DECLARE_METATYPE(ExpectedResults<SpectrogramSeries>)
 Q_DECLARE_METATYPE(ExpectedResults<VectorSeries>)
 
 class TestAmdaResultParser : public QObject {
@@ -208,6 +210,13 @@ private slots:
 
     /// Tests parsing scalar series of a TXT file
     void testReadScalarTxt();
+
+    /// Input test data
+    /// @sa testReadSpectrogramTxt()
+    void testReadSpectrogramTxt_data();
+
+    /// Tests parsing spectrogram series of a TXT file
+    void testReadSpectrogramTxt();
 
     /// Input test data
     /// @sa testReadVectorTxt()
@@ -312,6 +321,21 @@ void TestAmdaResultParser::testReadScalarTxt_data()
 void TestAmdaResultParser::testReadScalarTxt()
 {
     testRead<ScalarSeries>(AmdaResultParser::ValueType::SCALAR);
+}
+
+void TestAmdaResultParser::testReadSpectrogramTxt_data()
+{
+    testReadDataStructure<SpectrogramSeries>();
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+}
+
+void TestAmdaResultParser::testReadSpectrogramTxt()
+{
+    testRead<SpectrogramSeries>(AmdaResultParser::ValueType::SPECTROGRAM);
 }
 
 void TestAmdaResultParser::testReadVectorTxt_data()
