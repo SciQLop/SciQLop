@@ -372,6 +372,31 @@ void TestAmdaResultParser::testReadSpectrogramTxt_data()
         << QStringLiteral("spectro/ValidSpectrogram3.txt")
         << fourBandsResult; // Bands and values are sorted
 
+    auto nan = std::numeric_limits<double>::quiet_NaN();
+
+    auto nanValuesResult
+        = ExpectedResults<SpectrogramSeries>{}
+              .setParsingOK(true)
+              .setXAxisUnit(Unit{"t", true})
+              .setXAxisData({dateTime(2012, 11, 6, 9, 14, 35), dateTime(2012, 11, 6, 9, 16, 10),
+                             dateTime(2012, 11, 6, 9, 17, 45), dateTime(2012, 11, 6, 9, 19, 20),
+                             dateTime(2012, 11, 6, 9, 20, 55)})
+              .setYAxisEnabled(true)
+              .setYAxisUnit(Unit{"eV"})
+              .setYAxisData({5.75, 7.6, 10.05, 13.}) // middle of the intervals of each band
+              .setValuesUnit(Unit{"eV/(cm^2-s-sr-eV)"})
+              .setValuesData(
+                  QVector<QVector<double> >{{nan, 12631.465, 8223.368, 27595.301, 12820.613},
+                                            {15405.838, nan, nan, 25617.533, 11179.109},
+                                            {8946.475, 18133.158, 10875.621, 24051.619, 19283.221},
+                                            {nan, nan, nan, nan, nan}});
+
+    QTest::newRow("Valid file (containing NaN values)")
+        << QStringLiteral("spectro/ValidSpectrogramNaNValues.txt") << nanValuesResult;
+    QTest::newRow("Valid file (containing fill values)")
+        << QStringLiteral("spectro/ValidSpectrogramFillValues.txt")
+        << nanValuesResult; // Fill values are replaced by NaN values in the data series
+
 }
 
 void TestAmdaResultParser::testReadSpectrogramTxt()
