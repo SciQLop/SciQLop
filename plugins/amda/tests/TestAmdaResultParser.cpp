@@ -397,6 +397,10 @@ void TestAmdaResultParser::testReadSpectrogramTxt_data()
         << QStringLiteral("spectro/ValidSpectrogramFillValues.txt")
         << nanValuesResult; // Fill values are replaced by NaN values in the data series
 
+    // Invalid files
+    QTest::newRow("Invalid file (inconsistent bands)")
+        << QStringLiteral("spectro/InvalidSpectrogramWrongBands.txt")
+        << ExpectedResults<SpectrogramSeries>{}.setParsingOK(false);
 }
 
 void TestAmdaResultParser::testReadSpectrogramTxt()
