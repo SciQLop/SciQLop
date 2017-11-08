@@ -41,6 +41,10 @@ public:
     /// @return gets the data at the index passed in parameter, NaN if the index is outside the
     /// bounds of the axis, or if the axis is undefined
     double at(int index) const;
+
+    ///@return the min and max values of the data on the axis, NaN values if there is no data
+    std::pair<double, double> bounds() const;
+
     /// @return the number of data on the axis, 0 if the axis is not defined
     int size() const;
     /// @return the unit of the axis, an empty unit if the axis is not defined
