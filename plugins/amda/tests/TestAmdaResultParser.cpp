@@ -331,6 +331,47 @@ void TestAmdaResultParser::testReadSpectrogramTxt_data()
     // Test cases //
     // ////////// //
 
+    // Valid files
+    QTest::newRow("Valid file (three bands)")
+        << QStringLiteral("spectro/ValidSpectrogram1.txt")
+        << ExpectedResults<SpectrogramSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"t", true})
+               .setXAxisData({dateTime(2012, 11, 6, 9, 14, 35), dateTime(2012, 11, 6, 9, 16, 10),
+                              dateTime(2012, 11, 6, 9, 17, 45), dateTime(2012, 11, 6, 9, 19, 20),
+                              dateTime(2012, 11, 6, 9, 20, 55)})
+               .setYAxisEnabled(true)
+               .setYAxisUnit(Unit{"eV"})
+               .setYAxisData({5.75, 7.6, 10.05}) // middle of the intervals of each band
+               .setValuesUnit(Unit{"eV/(cm^2-s-sr-eV)"})
+               .setValuesData(QVector<QVector<double> >{
+                   {16313.780, 12631.465, 8223.368, 27595.301, 12820.613},
+                   {15405.838, 11957.925, 15026.249, 25617.533, 11179.109},
+                   {8946.475, 18133.158, 10875.621, 24051.619, 19283.221}});
+
+    auto fourBandsResult
+        = ExpectedResults<SpectrogramSeries>{}
+              .setParsingOK(true)
+              .setXAxisUnit(Unit{"t", true})
+              .setXAxisData({dateTime(2012, 11, 6, 9, 14, 35), dateTime(2012, 11, 6, 9, 16, 10),
+                             dateTime(2012, 11, 6, 9, 17, 45), dateTime(2012, 11, 6, 9, 19, 20),
+                             dateTime(2012, 11, 6, 9, 20, 55)})
+              .setYAxisEnabled(true)
+              .setYAxisUnit(Unit{"eV"})
+              .setYAxisData({5.75, 7.6, 10.05, 13.}) // middle of the intervals of each band
+              .setValuesUnit(Unit{"eV/(cm^2-s-sr-eV)"})
+              .setValuesData(QVector<QVector<double> >{
+                  {16313.780, 12631.465, 8223.368, 27595.301, 12820.613},
+                  {15405.838, 11957.925, 15026.249, 25617.533, 11179.109},
+                  {8946.475, 18133.158, 10875.621, 24051.619, 19283.221},
+                  {20907.664, 32076.725, 13008.381, 13142.759, 23226.998}});
+
+    QTest::newRow("Valid file (four bands)")
+        << QStringLiteral("spectro/ValidSpectrogram2.txt") << fourBandsResult;
+    QTest::newRow("Valid file (four unsorted bands)")
+        << QStringLiteral("spectro/ValidSpectrogram3.txt")
+        << fourBandsResult; // Bands and values are sorted
+
 }
 
 void TestAmdaResultParser::testReadSpectrogramTxt()
