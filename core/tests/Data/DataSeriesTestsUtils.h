@@ -1,12 +1,12 @@
 /**
- * The DataSeriesUtils file contains a set of utility methods that can be used to test the operations on a DataSeries.
+ * The DataSeriesTestsUtils file contains a set of utility methods that can be used to test the operations on a DataSeries.
  *
  * Most of these methods are template methods to adapt to any series (scalars, vectors, spectrograms...)
  *
  * @sa DataSeries
  */
-#ifndef SCIQLOP_DATASERIESUTILS_H
-#define SCIQLOP_DATASERIESUTILS_H
+#ifndef SCIQLOP_DATASERIESTESTSUTILS_H
+#define SCIQLOP_DATASERIESTESTSUTILS_H
 
 #include <Data/DataSeriesIterator.h>
 #include <Data/ScalarSeries.h>
@@ -370,4 +370,4 @@ void testValuesBounds_t()
     }
 }
 
-#endif // SCIQLOP_DATASERIESUTILS_H
+#endif // SCIQLOP_DATASERIESTESTSUTILS_H

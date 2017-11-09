@@ -1,7 +1,7 @@
 #include "Data/VectorSeries.h"
 
 #include "DataSeriesBuilders.h"
-#include "DataSeriesUtils.h"
+#include "DataSeriesTestsUtils.h"
 
 #include <QObject>
 #include <QtTest>
@@ -9,7 +9,7 @@
 /**
  * @brief The TestVectorSeries class defines unit tests on vector series.
  *
- * Most of these unit tests use generic tests defined for DataSeries (@sa DataSeriesUtils)
+ * Most of these unit tests use generic tests defined for DataSeries (@sa DataSeriesTestsUtils)
  */
 class TestVectorSeries : public QObject {
     Q_OBJECT
