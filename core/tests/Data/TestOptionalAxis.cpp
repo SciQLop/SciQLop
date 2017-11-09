@@ -111,8 +111,8 @@ void TestOptionalAxis::testSize_data()
     QTest::newRow("data1") << axis({}) << 0;
     QTest::newRow("data2") << axis({1, 2, 3}) << 3;
     QTest::newRow("data3") << axis({1, 2, 3, 4}) << 4;
-    QTest::newRow("data4 (axis not defined)")
-        << OptionalAxis{} << 0; // Expects 0 for undefined axis
+    QTest::newRow("data4 (axis not defined)") << OptionalAxis{}
+                                              << 0; // Expects 0 for undefined axis
 }
 
 void TestOptionalAxis::testSize()
@@ -135,8 +135,8 @@ void TestOptionalAxis::testUnit_data()
 
     QTest::newRow("data1") << axis(Unit{"Hz"}) << Unit{"Hz"};
     QTest::newRow("data2") << axis(Unit{"t", true}) << Unit{"t", true};
-    QTest::newRow("data3 (axis not defined)")
-        << OptionalAxis{} << Unit{}; // Expects default unit for undefined axis
+    QTest::newRow("data3 (axis not defined)") << OptionalAxis{}
+                                              << Unit{}; // Expects default unit for undefined axis
 }
 
 void TestOptionalAxis::testUnit()

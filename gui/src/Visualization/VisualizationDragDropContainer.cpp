@@ -210,8 +210,9 @@ void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidg
             // do not add the placeHolder
         }
 
-        // Note: The exec() is blocking on windows but not on linux and macOS
-        drag->exec(Qt::MoveAction | Qt::CopyAction);
+        drag->exec(Qt::MoveAction | Qt::CopyAction, Qt::MoveAction);
+
+        helper.doCloseWidgets();
     }
     else {
         qCWarning(LOG_VisualizationDragDropContainer())

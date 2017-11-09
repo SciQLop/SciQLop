@@ -237,11 +237,11 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
 
         if (nbGraph == 1) {
             // This is the only graph in the previous zone, close the zone
-            graphWidget->parentZoneWidget()->close();
+            helper.delayedCloseWidget(graphWidget->parentZoneWidget());
         }
         else {
             // Close the graph
-            graphWidget->close();
+            helper.delayedCloseWidget(graphWidget);
         }
 
         tabWidget->createZone(variables, index);
@@ -258,7 +258,7 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
 
         // Close the old zone if it was the only graph inside
         if (nbGraph == 1) {
-            parentZoneWidget->close();
+            helper.delayedCloseWidget(parentZoneWidget);
         }
     }
 }
