@@ -38,6 +38,8 @@ struct DragDropHelper::DragDropHelperPrivate {
     QMetaObject::Connection m_DragWidgetDestroyedConnection;
     QMetaObject::Connection m_HighlightedWidgetDestroyedConnection;
 
+    QList<QWidget *> m_WidgetToClose;
+
     explicit DragDropHelperPrivate()
             : m_PlaceHolder{std::make_unique<QWidget>()},
               m_DragDropScroller{std::make_unique<DragDropScroller>()},
@@ -207,6 +209,21 @@ void DragDropHelper::setHightlightedDragWidget(VisualizationDragWidget *dragWidg
 VisualizationDragWidget *DragDropHelper::getHightlightedDragWidget() const
 {
     return impl->m_HighlightedDragWidget;
+}
+
+void DragDropHelper::delayedCloseWidget(QWidget *widget)
+{
+    widget->hide();
+    impl->m_WidgetToClose << widget;
+}
+
+void DragDropHelper::doCloseWidgets()
+{
+    for (auto widget : impl->m_WidgetToClose) {
+        widget->close();
+    }
+
+    impl->m_WidgetToClose.clear();
 }
 
 bool DragDropHelper::checkMimeDataForVisualization(const QMimeData *mimeData,

@@ -63,6 +63,10 @@ public:
     void setHightlightedDragWidget(VisualizationDragWidget *dragWidget);
     VisualizationDragWidget *getHightlightedDragWidget() const;
 
+    /// Delays the closing of a widget during a drag&drop operation
+    void delayedCloseWidget(QWidget *widget);
+    void doCloseWidgets();
+
 private:
     class DragDropHelperPrivate;
     spimpl::unique_impl_ptr<DragDropHelperPrivate> impl;

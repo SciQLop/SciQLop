@@ -452,11 +452,11 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
         auto nbGraph = parentDragDropContainer->countDragWidget();
         if (nbGraph == 1) {
             // This is the only graph in the previous zone, close the zone
-            previousParentZoneWidget->close();
+            helper.delayedCloseWidget(previousParentZoneWidget);
         }
         else {
             // Close the graph
-            graphWidget->close();
+            helper.delayedCloseWidget(graphWidget);
         }
 
         // Creates the new graph in the zone
