@@ -15,7 +15,11 @@ set (OS_LIB_EXTENSION "so")
 if(WIN32)
     set (OS_LIB_EXTENSION "dll")
 endif(WIN32)
-# TODO: Add Mac Support
+
+if (APPLE)
+    set (OS_LIB_EXTENSION "dylib")
+endif(APPLE)
+
 set(SCIQLOP-GUI_LIBRARIES ${LIBRARY_OUTPUT_PATH}/libsciqlop_gui${DEBUG_SUFFIX}.${OS_LIB_EXTENSION})
 
 set(SCIQLOP-GUI_FOUND TRUE)
