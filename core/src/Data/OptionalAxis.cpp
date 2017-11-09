@@ -44,6 +44,31 @@ double OptionalAxis::at(int index) const
     }
 }
 
+std::pair<double, double> OptionalAxis::bounds() const
+{
+    if (!m_Defined || m_Data->size() == 0) {
+        return std::make_pair(std::numeric_limits<double>::quiet_NaN(),
+                              std::numeric_limits<double>::quiet_NaN());
+    }
+    else {
+
+        auto minIt = std::min_element(
+            m_Data->cbegin(), m_Data->cend(), [](const auto &it1, const auto &it2) {
+                return SortUtils::minCompareWithNaN(it1.first(), it2.first());
+            });
+
+        // Gets the iterator on the max of all values data
+        auto maxIt = std::max_element(
+            m_Data->cbegin(), m_Data->cend(), [](const auto &it1, const auto &it2) {
+                return SortUtils::maxCompareWithNaN(it1.first(), it2.first());
+            });
+
+        auto pair = std::make_pair(minIt->first(), maxIt->first());
+
+        return std::make_pair(minIt->first(), maxIt->first());
+    }
+}
+
 int OptionalAxis::size() const
 {
     return m_Defined ? m_Data->size() : 0;

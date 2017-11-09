@@ -4,6 +4,7 @@
 #include <Common/ColorUtils.h>
 
 #include <Data/ScalarSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
 #include <Variable/Variable.h>
@@ -68,6 +69,24 @@ struct PlottablesCreator<T,
 };
 
 /**
+ * Specialization of PlottablesCreator for spectrograms
+ * @sa SpectrogramSeries
+ */
+template <typename T>
+struct PlottablesCreator<T,
+                         typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
+    static PlottablesMap createPlottables(T &dataSeries, QCustomPlot &plot)
+    {
+        PlottablesMap result{};
+        result.insert({0, new QCPColorMap{plot.xAxis, plot.yAxis}});
+
+        plot.replot();
+
+        return result;
+    }
+};
+
+/**
  * Struct used to update plottables, depending on the type of the data series from which to update
  * them
  * @tparam T the data series' type
@@ -75,9 +94,15 @@ struct PlottablesCreator<T,
  */
 template <typename T, typename Enabled = void>
 struct PlottablesUpdater {
+    static void setPlotYAxisRange(T &, const SqpRange &, QCustomPlot &)
+    {
+        qCCritical(LOG_VisualizationGraphHelper())
+            << QObject::tr("Can't set plot y-axis range: unmanaged data series type");
+    }
+
     static void updatePlottables(T &, PlottablesMap &, const SqpRange &, bool)
     {
-        qCCritical(LOG_DataSeries())
+        qCCritical(LOG_VisualizationGraphHelper())
             << QObject::tr("Can't update plottables: unmanaged data series type");
     }
 };
@@ -91,6 +116,24 @@ template <typename T>
 struct PlottablesUpdater<T,
                          typename std::enable_if_t<std::is_base_of<ScalarSeries, T>::value
                                                    or std::is_base_of<VectorSeries, T>::value> > {
+    static void setPlotYAxisRange(T &dataSeries, const SqpRange &xAxisRange, QCustomPlot &plot)
+    {
+        auto minValue = 0., maxValue = 0.;
+
+        dataSeries.lockRead();
+        auto valuesBounds = dataSeries.valuesBounds(xAxisRange.m_TStart, xAxisRange.m_TEnd);
+        auto end = dataSeries.cend();
+        if (valuesBounds.first != end && valuesBounds.second != end) {
+            auto rangeValue = [](const auto &value) { return std::isnan(value) ? 0. : value; };
+
+            minValue = rangeValue(valuesBounds.first->minValue());
+            maxValue = rangeValue(valuesBounds.second->maxValue());
+        }
+        dataSeries.unlock();
+
+        plot.yAxis->setRange(QCPRange{minValue, maxValue});
+    }
+
     static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const SqpRange &range,
                                  bool rescaleAxes)
     {
@@ -134,11 +177,85 @@ struct PlottablesUpdater<T,
 };
 
 /**
+ * Specialization of PlottablesUpdater for spectrograms
+ * @sa SpectrogramSeries
+ */
+template <typename T>
+struct PlottablesUpdater<T,
+                         typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
+    static void setPlotYAxisRange(T &dataSeries, const SqpRange &xAxisRange, QCustomPlot &plot)
+    {
+        double min, max;
+        /// @todo ALX: use iterators here
+        std::tie(min, max) = dataSeries.yAxis().bounds();
+
+        if (!std::isnan(min) && !std::isnan(max)) {
+            plot.yAxis->setRange(QCPRange{min, max});
+        }
+    }
+
+    static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const SqpRange &range,
+                                 bool rescaleAxes)
+    {
+        if (plottables.empty()) {
+            qCDebug(LOG_VisualizationGraphHelper())
+                << QObject::tr("Can't update spectrogram: no colormap has been associated");
+            return;
+        }
+
+        // Gets the colormap to update (normally there is only one colormap)
+        Q_ASSERT(plottables.size() == 1);
+        auto colormap = dynamic_cast<QCPColorMap *>(plottables.at(0));
+        Q_ASSERT(colormap != nullptr);
+
+        dataSeries.lockRead();
+
+        auto its = dataSeries.xAxisRange(range.m_TStart, range.m_TEnd);
+        /// @todo ALX: use iterators here
+        auto yAxis = dataSeries.yAxis();
+
+        // Gets properties of x-axis and y-axis to set size and range of the colormap
+        auto nbX = std::distance(its.first, its.second);
+        auto xMin = nbX != 0 ? its.first->x() : 0.;
+        auto xMax = nbX != 0 ? (its.second - 1)->x() : 0.;
+
+        auto nbY = yAxis.size();
+        auto yMin = 0., yMax = 0.;
+        if (nbY != 0) {
+            std::tie(yMin, yMax) = yAxis.bounds();
+        }
+
+        colormap->data()->setSize(nbX, nbY);
+        colormap->data()->setRange(QCPRange{xMin, xMax}, QCPRange{yMin, yMax});
+
+        // Sets values
+        auto xIndex = 0;
+        for (auto it = its.first; it != its.second; ++it, ++xIndex) {
+            for (auto yIndex = 0; yIndex < nbY; ++yIndex) {
+                colormap->data()->setCell(xIndex, yIndex, it->value(yIndex));
+            }
+        }
+
+        dataSeries.unlock();
+
+        // Rescales axes
+        auto plot = colormap->parentPlot();
+
+        if (rescaleAxes) {
+            plot->rescaleAxes();
+        }
+
+        plot->replot();
+    }
+};
+
+/**
  * Helper used to create/update plottables
  */
 struct IPlottablesHelper {
     virtual ~IPlottablesHelper() noexcept = default;
     virtual PlottablesMap create(QCustomPlot &plot) const = 0;
+    virtual void setYAxisRange(const SqpRange &xAxisRange, QCustomPlot &plot) const = 0;
     virtual void update(PlottablesMap &plottables, const SqpRange &range,
                         bool rescaleAxes = false) const = 0;
 };
@@ -161,6 +278,11 @@ struct PlottablesHelper : public IPlottablesHelper {
         PlottablesUpdater<T>::updatePlottables(m_DataSeries, plottables, range, rescaleAxes);
     }
 
+    void setYAxisRange(const SqpRange &xAxisRange, QCustomPlot &plot) const override
+    {
+        return PlottablesUpdater<T>::setPlotYAxisRange(m_DataSeries, xAxisRange, plot);
+    }
+
     T &m_DataSeries;
 };
 
@@ -169,6 +291,9 @@ std::unique_ptr<IPlottablesHelper> createHelper(std::shared_ptr<IDataSeries> dat
 {
     if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(dataSeries)) {
         return std::make_unique<PlottablesHelper<ScalarSeries> >(*scalarSeries);
+    }
+    else if (auto spectrogramSeries = std::dynamic_pointer_cast<SpectrogramSeries>(dataSeries)) {
+        return std::make_unique<PlottablesHelper<SpectrogramSeries> >(*spectrogramSeries);
     }
     else if (auto vectorSeries = std::dynamic_pointer_cast<VectorSeries>(dataSeries)) {
         return std::make_unique<PlottablesHelper<VectorSeries> >(*vectorSeries);
@@ -192,6 +317,19 @@ PlottablesMap VisualizationGraphHelper::create(std::shared_ptr<Variable> variabl
         qCDebug(LOG_VisualizationGraphHelper())
             << QObject::tr("Can't create graph plottables : the variable is null");
         return PlottablesMap{};
+    }
+}
+
+void VisualizationGraphHelper::setYAxisRange(std::shared_ptr<Variable> variable,
+                                             QCustomPlot &plot) noexcept
+{
+    if (variable) {
+        auto helper = createHelper(variable->dataSeries());
+        helper->setYAxisRange(variable->range(), plot);
+    }
+    else {
+        qCDebug(LOG_VisualizationGraphHelper())
+            << QObject::tr("Can't set y-axis range of plot: the variable is null");
     }
 }
 

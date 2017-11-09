@@ -271,23 +271,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     this->insertGraph(index, graphWidget);
 
     graphWidget->addVariable(variable, range);
-
-    // get y using variable range
-    if (auto dataSeries = variable->dataSeries()) {
-        dataSeries->lockRead();
-        auto valuesBounds
-            = dataSeries->valuesBounds(variable->range().m_TStart, variable->range().m_TEnd);
-        auto end = dataSeries->cend();
-        if (valuesBounds.first != end && valuesBounds.second != end) {
-            auto rangeValue = [](const auto &value) { return std::isnan(value) ? 0. : value; };
-
-            auto minValue = rangeValue(valuesBounds.first->minValue());
-            auto maxValue = rangeValue(valuesBounds.second->maxValue());
-
-            graphWidget->setYRange(SqpRange{minValue, maxValue});
-        }
-        dataSeries->unlock();
-    }
+    graphWidget->setYRange(variable);
 
     return graphWidget;
 }

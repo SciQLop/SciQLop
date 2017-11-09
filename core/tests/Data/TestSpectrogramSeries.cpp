@@ -33,7 +33,6 @@ private slots:
     void testMerge_data();
     void testMerge();
 
-    /// @todo ALX: test subdataseries
     /// Tests get subdata of a spectrogram series
     void testSubDataSeries_data();
     void testSubDataSeries();

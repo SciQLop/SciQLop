@@ -436,7 +436,6 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
                 qCWarning(LOG_VisualizationDragDropContainer())
                     << tr("VisualizationDragDropContainer::findPlaceHolderPosition, no valid drop "
                           "action.");
-                Q_ASSERT(false);
             }
         }
         else {

@@ -383,6 +383,10 @@ public:
         return std::make_pair(minIt, maxIt);
     }
 
+    /// @return the y-axis associated to the data series
+    /// @todo pass getter as protected and use iterators to access the y-axis data
+    OptionalAxis yAxis() const { return m_YAxis; }
+
     // /////// //
     // Mutexes //
     // /////// //
@@ -437,9 +441,6 @@ protected:
         // Since a series is ordered from its construction and is always ordered, it is not
         // necessary to call the sort method here ('other' is sorted)
     }
-
-    /// @return the y-axis associated to the data series
-    OptionalAxis yAxis() const { return m_YAxis; }
 
     /// Assignment operator
     template <int D>
