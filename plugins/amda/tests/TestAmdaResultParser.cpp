@@ -452,6 +452,80 @@ void TestAmdaResultParser::testReadSpectrogramTxt_data()
                                                          1733603.250, //
                                                          1708356.500}});
 
+    QTest::newRow(
+        "Valid file (containing data holes at the beginning and the end, resolution = 4 minutes)")
+        << QStringLiteral("spectro/ValidSpectrogramDataHoles2.txt")
+        << ExpectedResults<SpectrogramSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"t", true})
+               .setXAxisData({
+                   dateTime(2011, 12, 10, 12, 2, 54),  // Data hole
+                   dateTime(2011, 12, 10, 12, 6, 54),  // Data hole
+                   dateTime(2011, 12, 10, 12, 10, 54), //
+                   dateTime(2011, 12, 10, 12, 14, 54), // Data hole
+                   dateTime(2011, 12, 10, 12, 17, 23), //
+                   dateTime(2011, 12, 10, 12, 21, 23), // Data hole
+                   dateTime(2011, 12, 10, 12, 23, 51), //
+                   dateTime(2011, 12, 10, 12, 27, 51), // Data hole
+                   dateTime(2011, 12, 10, 12, 30, 19), //
+                   dateTime(2011, 12, 10, 12, 34, 19), // Data hole
+                   dateTime(2011, 12, 10, 12, 35, 04), //
+                   dateTime(2011, 12, 10, 12, 36, 41), //
+                   dateTime(2011, 12, 10, 12, 38, 18), //
+                   dateTime(2011, 12, 10, 12, 39, 55),
+                   dateTime(2011, 12, 10, 12, 43, 55), // Data hole
+                   dateTime(2011, 12, 10, 12, 47, 55), // Data hole
+                   dateTime(2011, 12, 10, 12, 51, 55), // Data hole
+                   dateTime(2011, 12, 10, 12, 55, 55), // Data hole
+                   dateTime(2011, 12, 10, 12, 59, 55)  // Data hole
+               })
+               .setYAxisEnabled(true)
+               .setYAxisUnit(Unit{"eV"})
+               .setYAxisData({16485.85, 20996.1}) // middle of the intervals of each band
+               .setValuesUnit(Unit{"eV/(cm^2-s-sr-eV)"})
+               .setValuesData(QVector<QVector<double> >{{
+                                                            nan,         // Data hole
+                                                            nan,         // Data hole
+                                                            2577578.000, //
+                                                            nan,         // Data hole
+                                                            2314121.500, //
+                                                            nan,         // Data hole
+                                                            2063608.750, //
+                                                            nan,         // Data hole
+                                                            2234525.500, //
+                                                            nan,         // Data hole
+                                                            1670215.250, //
+                                                            1689243.250, //
+                                                            1654617.125, //
+                                                            1504983.750, //
+                                                            nan,         // Data hole
+                                                            nan,         // Data hole
+                                                            nan,         // Data hole
+                                                            nan,         // Data hole
+                                                            nan          // Data hole
+                                                        },
+                                                        {
+                                                            nan,         // Data hole
+                                                            nan,         // Data hole
+                                                            2336016.000, //
+                                                            nan,         // Data hole
+                                                            1712093.125, //
+                                                            nan,         // Data hole
+                                                            1614491.625, //
+                                                            nan,         // Data hole
+                                                            1764516.500, //
+                                                            nan,         // Data hole
+                                                            1688078.500, //
+                                                            1743183.500, //
+                                                            1733603.250, //
+                                                            1708356.500, //
+                                                            nan,         // Data hole
+                                                            nan,         // Data hole
+                                                            nan,         // Data hole
+                                                            nan,         // Data hole
+                                                            nan          // Data hole
+                                                        }});
+
     // Invalid files
     QTest::newRow("Invalid file (inconsistent bands)")
         << QStringLiteral("spectro/InvalidSpectrogramWrongBands.txt")
