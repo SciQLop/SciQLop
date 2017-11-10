@@ -26,6 +26,8 @@ OptionalAxis &OptionalAxis::operator=(OptionalAxis other)
     std::swap(m_Defined, other.m_Defined);
     std::swap(m_Data, other.m_Data);
     std::swap(m_Unit, other.m_Unit);
+
+    return *this;
 }
 
 bool OptionalAxis::isDefined() const
