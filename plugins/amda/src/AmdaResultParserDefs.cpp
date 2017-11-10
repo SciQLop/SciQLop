@@ -14,6 +14,9 @@ const QString VALUES_UNIT_PROPERTY = QStringLiteral("valuesUnit");
 const QRegularExpression DEFAULT_X_AXIS_UNIT_REGEX
     = QRegularExpression{QStringLiteral("-\\s*Units\\s*:\\s*(.+?)\\s*-")};
 
+const QRegularExpression SPECTROGRAM_END_TIME_REGEX
+    = QRegularExpression{QStringLiteral("\\s*INTERVAL_STOP\\s*:\\s*(.*)")};
+
 const QRegularExpression SPECTROGRAM_FILL_VALUE_REGEX
     = QRegularExpression{QStringLiteral("\\s*PARAMETER_FILL_VALUE\\s*:\\s*(.*)")};
 
@@ -28,6 +31,9 @@ const QRegularExpression SPECTROGRAM_MAX_SAMPLING_REGEX
 
 const QRegularExpression SPECTROGRAM_MIN_SAMPLING_REGEX
     = QRegularExpression{QStringLiteral("\\s*DATASET_MIN_SAMPLING\\s*:\\s*(.*)")};
+
+const QRegularExpression SPECTROGRAM_START_TIME_REGEX
+    = QRegularExpression{QStringLiteral("\\s*INTERVAL_START\\s*:\\s*(.*)")};
 
 const QRegularExpression SPECTROGRAM_Y_AXIS_UNIT_REGEX
     = QRegularExpression{QStringLiteral("\\s*PARAMETER_TABLE_UNITS\\[0\\]\\s*:\\s*(.*)")};

@@ -159,6 +159,18 @@ bool tryReadProperty(Properties &properties, const QString &key, const QString &
 }
 
 /**
+ * Reads a line from the AMDA file and tries to extract a data from it. Date is converted to double
+ * @sa tryReadProperty()
+ */
+bool tryReadDate(Properties &properties, const QString &key, const QString &line,
+                 const QRegularExpression &regex, bool timeUnit = false)
+{
+    return tryReadProperty(properties, key, line, regex, [timeUnit](const auto &match) {
+        return QVariant::fromValue(doubleDate(match.captured(1)));
+    });
+}
+
+/**
  * Reads a line from the AMDA file and tries to extract a double from it
  * @sa tryReadProperty()
  */
@@ -339,6 +351,15 @@ void SpectrogramParserHelper::readPropertyLine(const QString &line)
         [&] {
             return tryReadDoubles(m_Properties, MAX_BANDS_PROPERTY, line,
                                   SPECTROGRAM_MAX_BANDS_REGEX);
+        },
+        // start time of data
+        [&] {
+            return tryReadDate(m_Properties, START_TIME_PROPERTY, line,
+                               SPECTROGRAM_START_TIME_REGEX);
+        },
+        // end time of data
+        [&] {
+            return tryReadDate(m_Properties, END_TIME_PROPERTY, line, SPECTROGRAM_END_TIME_REGEX);
         }};
 
     for (auto function : functions) {

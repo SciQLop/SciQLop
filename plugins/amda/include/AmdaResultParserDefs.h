@@ -46,6 +46,9 @@ extern const QString VALUES_UNIT_PROPERTY;
 /// ... - Units : m/s - ...
 extern const QRegularExpression DEFAULT_X_AXIS_UNIT_REGEX;
 
+/// Regex to find end time of data in a line for a spectrogram
+extern const QRegularExpression SPECTROGRAM_END_TIME_REGEX;
+
 /// Regex to find fill value used in a line for a spectrogram
 extern const QRegularExpression SPECTROGRAM_FILL_VALUE_REGEX;
 
@@ -60,6 +63,9 @@ extern const QRegularExpression SPECTROGRAM_MAX_SAMPLING_REGEX;
 
 /// Regex to find min x-axis sampling in a line for a spectrogram
 extern const QRegularExpression SPECTROGRAM_MIN_SAMPLING_REGEX;
+
+/// Regex to find start time of data in a line for a spectrogram
+extern const QRegularExpression SPECTROGRAM_START_TIME_REGEX;
 
 /// Regex to find y-axis unit in a line for a spectrogram
 extern const QRegularExpression SPECTROGRAM_Y_AXIS_UNIT_REGEX;
