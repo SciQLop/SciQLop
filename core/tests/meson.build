@@ -8,6 +8,7 @@ tests = [
   [['Data/TestOneDimArrayData.cpp'],'test_1d','One Dim Array test'],
   [['Data/TestOptionalAxis.cpp'],'test_optional_axis','OptionalAxis test'],
   [['Data/TestTwoDimArrayData.cpp'],'test_2d','Two Dim Array test'],
+  [['Data/TestDataSeriesUtils.cpp'],'test_dataseries_util','Data series utils test'],
   [['DataSource/TestDataSourceController.cpp'],'test_data_source','DataSourceController test'],
   [['Variable/TestVariableCacheController.cpp'],'test_variable_cache','VariableCacheController test'],
   [['Variable/TestVariable.cpp'],'test_variable','Variable test'],
