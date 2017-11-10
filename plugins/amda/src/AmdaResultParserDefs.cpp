@@ -1,10 +1,12 @@
 #include "AmdaResultParserDefs.h"
 
+const QString END_TIME_PROPERTY = QStringLiteral("endTime");
 const QString FILL_VALUE_PROPERTY = QStringLiteral("fillValue");
 const QString MAX_BANDS_PROPERTY = QStringLiteral("maxBands");
 const QString MIN_BANDS_PROPERTY = QStringLiteral("minBands");
 const QString MAX_SAMPLING_PROPERTY = QStringLiteral("maxSampling");
 const QString MIN_SAMPLING_PROPERTY = QStringLiteral("minSampling");
+const QString START_TIME_PROPERTY = QStringLiteral("startTime");
 const QString X_AXIS_UNIT_PROPERTY = QStringLiteral("xAxisUnit");
 const QString Y_AXIS_UNIT_PROPERTY = QStringLiteral("yAxisUnit");
 const QString VALUES_UNIT_PROPERTY = QStringLiteral("valuesUnit");

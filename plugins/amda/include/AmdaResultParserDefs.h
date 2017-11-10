@@ -12,11 +12,13 @@
 /// Alias to represent properties read in the header of AMDA file
 using Properties = QVariantHash;
 
+extern const QString END_TIME_PROPERTY;
 extern const QString FILL_VALUE_PROPERTY;
 extern const QString MAX_BANDS_PROPERTY;
 extern const QString MIN_BANDS_PROPERTY;
 extern const QString MAX_SAMPLING_PROPERTY;
 extern const QString MIN_SAMPLING_PROPERTY;
+extern const QString START_TIME_PROPERTY;
 extern const QString X_AXIS_UNIT_PROPERTY;
 extern const QString Y_AXIS_UNIT_PROPERTY;
 extern const QString VALUES_UNIT_PROPERTY;

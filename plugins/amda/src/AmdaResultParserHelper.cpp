@@ -359,8 +359,11 @@ void SpectrogramParserHelper::handleDataHoles()
     // Fills data holes according to the max resolution found in the AMDA file
     auto resolution = m_Properties.value(MAX_SAMPLING_PROPERTY).value<double>();
     auto fillValue = m_Properties.value(FILL_VALUE_PROPERTY).value<double>();
+    auto minBound = m_Properties.value(START_TIME_PROPERTY).value<double>();
+    auto maxBound = m_Properties.value(END_TIME_PROPERTY).value<double>();
 
-    DataSeriesUtils::fillDataHoles(m_XAxisData, m_ValuesData, resolution, fillValue);
+    DataSeriesUtils::fillDataHoles(m_XAxisData, m_ValuesData, resolution, fillValue, minBound,
+                                   maxBound);
 }
 
 // ////////////////// //
