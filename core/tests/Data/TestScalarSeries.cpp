@@ -173,18 +173,18 @@ void TestScalarSeries::testMergeWithVector_data()
 {
     testMergeDifferentTypes_struct<VectorSeries, ScalarSeries>();
 
-    QTest::newRow("mergeVectorInScalar")
-        << ScalarBuilder{}
-               .setX({1., 2., 3., 4., 5.})
-               .setValues({100., 200., 300., 400., 500.})
-               .build()
-        << VectorBuilder{}
-               .setX({6., 7., 8., 9., 10.})
-               .setXValues({600., 700., 800., 900., 1000.})
-               .setYValues({610., 710., 810., 910., 1010.})
-               .setZValues({620., 720., 820., 920., 1020.})
-               .build()
-        << DataContainer{1., 2., 3., 4., 5.} << DataContainer{100., 200., 300., 400., 500.};
+    QTest::newRow("mergeVectorInScalar") << ScalarBuilder{}
+                                                .setX({1., 2., 3., 4., 5.})
+                                                .setValues({100., 200., 300., 400., 500.})
+                                                .build()
+                                         << VectorBuilder{}
+                                                .setX({6., 7., 8., 9., 10.})
+                                                .setXValues({600., 700., 800., 900., 1000.})
+                                                .setYValues({610., 710., 810., 910., 1010.})
+                                                .setZValues({620., 720., 820., 920., 1020.})
+                                                .build()
+                                         << DataContainer{1., 2., 3., 4., 5.}
+                                         << DataContainer{100., 200., 300., 400., 500.};
 }
 
 void TestScalarSeries::testMergeWithVector()
@@ -278,12 +278,12 @@ void TestScalarSeries::testPurge_data()
                                         .build()
                                  << 2. << 4. << DataContainer{2., 3., 4.}
                                  << std::vector<DataContainer>{{200., 300., 400.}};
-    QTest::newRow("purgeScalar1 (min/max swap)")
-        << ScalarBuilder{}
-               .setX({1., 2., 3., 4., 5.})
-               .setValues({100., 200., 300., 400., 500.})
-               .build()
-        << 4. << 2. << DataContainer{2., 3., 4.} << std::vector<DataContainer>{{200., 300., 400.}};
+    QTest::newRow("purgeScalar1 (min/max swap)") << ScalarBuilder{}
+                                                        .setX({1., 2., 3., 4., 5.})
+                                                        .setValues({100., 200., 300., 400., 500.})
+                                                        .build()
+                                                 << 4. << 2. << DataContainer{2., 3., 4.}
+                                                 << std::vector<DataContainer>{{200., 300., 400.}};
     QTest::newRow("purgeScalar2") << ScalarBuilder{}
                                          .setX({1., 2., 3., 4., 5.})
                                          .setValues({100., 200., 300., 400., 500.})
@@ -324,12 +324,12 @@ void TestScalarSeries::testXAxisRange_data()
                                        .build()
                                 << -1. << 3.2 << DataContainer{1., 2., 3.}
                                 << DataContainer{100., 200., 300.};
-    QTest::newRow("xAxisRange1 (min/max swap)")
-        << ScalarBuilder{}
-               .setX({1., 2., 3., 4., 5.})
-               .setValues({100., 200., 300., 400., 500.})
-               .build()
-        << 3.2 << -1. << DataContainer{1., 2., 3.} << DataContainer{100., 200., 300.};
+    QTest::newRow("xAxisRange1 (min/max swap)") << ScalarBuilder{}
+                                                       .setX({1., 2., 3., 4., 5.})
+                                                       .setValues({100., 200., 300., 400., 500.})
+                                                       .build()
+                                                << 3.2 << -1. << DataContainer{1., 2., 3.}
+                                                << DataContainer{100., 200., 300.};
     QTest::newRow("xAxisRange2") << ScalarBuilder{}
                                         .setX({1., 2., 3., 4., 5.})
                                         .setValues({100., 200., 300., 400., 500.})
@@ -401,10 +401,10 @@ void TestScalarSeries::testValuesBounds_data()
                                           .setValues({100., 200., 300., 400., 500.})
                                           .build()
                                    << 5.1 << 6. << false << nan << nan;
-    QTest::newRow("scalarBounds5")
-        << ScalarBuilder{}.setX({1.}).setValues({100.}).build() << 0. << 2. << true << 100. << 100.;
-    QTest::newRow("scalarBounds6")
-        << ScalarBuilder{}.setX({}).setValues({}).build() << 0. << 2. << false << nan << nan;
+    QTest::newRow("scalarBounds5") << ScalarBuilder{}.setX({1.}).setValues({100.}).build() << 0.
+                                   << 2. << true << 100. << 100.;
+    QTest::newRow("scalarBounds6") << ScalarBuilder{}.setX({}).setValues({}).build() << 0. << 2.
+                                   << false << nan << nan;
 
     // Tests with NaN values: NaN values are not included in min/max search
     QTest::newRow("scalarBounds7") << ScalarBuilder{}

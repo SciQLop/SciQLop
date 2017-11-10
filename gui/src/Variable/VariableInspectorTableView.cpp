@@ -3,7 +3,9 @@
 #include "DragAndDrop/DragDropHelper.h"
 #include "SqpApplication.h"
 
-VariableInspectorTableView::VariableInspectorTableView(QWidget *parent) : QTableView(parent) {}
+VariableInspectorTableView::VariableInspectorTableView(QWidget *parent) : QTableView(parent)
+{
+}
 
 void VariableInspectorTableView::startDrag(Qt::DropActions supportedActions)
 {

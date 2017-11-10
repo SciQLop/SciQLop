@@ -9,7 +9,9 @@
 
 #include <QMimeData>
 
-DataSourceTreeWidget::DataSourceTreeWidget(QWidget *parent) : QTreeWidget(parent) {}
+DataSourceTreeWidget::DataSourceTreeWidget(QWidget *parent) : QTreeWidget(parent)
+{
+}
 
 QMimeData *DataSourceTreeWidget::mimeData(const QList<QTreeWidgetItem *> items) const
 {
