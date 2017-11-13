@@ -2,20 +2,25 @@
 
 SpectrogramSeries::SpectrogramSeries(std::vector<double> xAxisData, std::vector<double> yAxisData,
                                      std::vector<double> valuesData, const Unit &xAxisUnit,
-                                     const Unit &yAxisUnit, const Unit &valuesUnit)
+                                     const Unit &yAxisUnit, const Unit &valuesUnit,
+                                     double resolution)
         : SpectrogramSeries{
-              std::make_shared<ArrayData<1> >(std::move(xAxisData)), xAxisUnit,
-              std::make_shared<ArrayData<2> >(std::move(valuesData), yAxisData.size()), valuesUnit,
-              OptionalAxis{std::make_shared<ArrayData<1> >(std::move(yAxisData)), yAxisUnit}}
+              std::make_shared<ArrayData<1> >(std::move(xAxisData)),
+              xAxisUnit,
+              std::make_shared<ArrayData<2> >(std::move(valuesData), yAxisData.size()),
+              valuesUnit,
+              OptionalAxis{std::make_shared<ArrayData<1> >(std::move(yAxisData)), yAxisUnit},
+              resolution}
 {
 }
 
 SpectrogramSeries::SpectrogramSeries(std::shared_ptr<ArrayData<1> > xAxisData,
                                      const Unit &xAxisUnit,
                                      std::shared_ptr<ArrayData<2> > valuesData,
-                                     const Unit &valuesUnit, OptionalAxis yAxis)
+                                     const Unit &valuesUnit, OptionalAxis yAxis, double resolution)
         : DataSeries{std::move(xAxisData), xAxisUnit, std::move(valuesData), valuesUnit,
-                     std::move(yAxis)}
+                     std::move(yAxis)},
+          m_XResolution{resolution}
 {
 }
 

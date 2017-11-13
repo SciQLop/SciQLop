@@ -308,7 +308,8 @@ std::shared_ptr<IDataSeries> SpectrogramParserHelper::createSeries()
         std::move(m_XAxisData), std::move(m_YAxisData), std::move(m_ValuesData),
         Unit{"t", true}, // x-axis unit is always a time unit
         m_Properties.value(Y_AXIS_UNIT_PROPERTY).value<Unit>(),
-        m_Properties.value(VALUES_UNIT_PROPERTY).value<Unit>());
+        m_Properties.value(VALUES_UNIT_PROPERTY).value<Unit>(),
+        m_Properties.value(MIN_SAMPLING_PROPERTY).value<double>());
 }
 
 void SpectrogramParserHelper::readPropertyLine(const QString &line)
