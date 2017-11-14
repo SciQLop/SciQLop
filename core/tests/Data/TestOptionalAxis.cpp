@@ -17,10 +17,6 @@ private slots:
     void testDefinedAxisCtor_data();
     void testDefinedAxisCtor();
 
-    /// Tests @sa OptionalAxis::at() method
-    void testAt_data();
-    void testAt();
-
     /// Tests @sa OptionalAxis::size() method
     void testSize_data();
     void testSize();
@@ -62,39 +58,6 @@ void TestOptionalAxis::testDefinedAxisCtor()
         OptionalAxis axis{std::make_shared<ArrayData<1> >(data), unit};
         QVERIFY(axis.isDefined());
     }
-}
-
-void TestOptionalAxis::testAt_data()
-{
-    QTest::addColumn<OptionalAxis>("axis");    // Axis used for test case (defined or not)
-    QTest::addColumn<int>("index");            // Index to test in the axis
-    QTest::addColumn<double>("expectedValue"); // Expected axis value for the index
-
-    OptionalAxis definedAxis{std::make_shared<ArrayData<1> >(std::vector<double>{1, 2, 3}),
-                             Unit{"Hz"}};
-
-    QTest::newRow("data1") << definedAxis << 0 << 1.;
-    QTest::newRow("data2") << definedAxis << 1 << 2.;
-    QTest::newRow("data3") << definedAxis << 2 << 3.;
-    QTest::newRow("data4 (index out of bounds)")
-        << definedAxis << 3
-        << std::numeric_limits<double>::quiet_NaN(); // Expects NaN for out of bounds index
-    QTest::newRow("data5 (index out of bounds)")
-        << definedAxis << -1
-        << std::numeric_limits<double>::quiet_NaN(); // Expects NaN for out of bounds index
-    QTest::newRow("data6 (axis not defined)")
-        << OptionalAxis{} << 0
-        << std::numeric_limits<double>::quiet_NaN(); // Expects NaN for undefined axis
-}
-
-void TestOptionalAxis::testAt()
-{
-    QFETCH(OptionalAxis, axis);
-    QFETCH(int, index);
-    QFETCH(double, expectedValue);
-
-    auto value = axis.at(index);
-    QVERIFY((std::isnan(value) && std::isnan(expectedValue)) || value == expectedValue);
 }
 
 void TestOptionalAxis::testSize_data()

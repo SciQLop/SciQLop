@@ -135,11 +135,10 @@ struct ExpectedResults {
                 QCOMPARE(yAxis.unit(), m_YAxisUnit);
 
                 // Data
-                auto yAxisSize = yAxis.size();
-                QCOMPARE(yAxisSize, m_YAxisData.size());
-                for (auto i = 0; i < yAxisSize; ++i) {
-                    QCOMPARE(yAxis.at(i), m_YAxisData.at(i));
-                }
+                QVERIFY(std::equal(yAxis.cbegin(), yAxis.cend(), m_YAxisData.cbegin(),
+                                   m_YAxisData.cend(), [](const auto &it, const auto &expectedVal) {
+                                       return it.first() == expectedVal;
+                                   }));
             }
         }
         else {

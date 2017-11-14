@@ -36,7 +36,9 @@ public:
     template <bool IC = IsConst, typename = std::enable_if_t<IC == false> >
     explicit IteratorValue(DataSeries<Dim> &dataSeries, bool begin)
             : m_XIt(begin ? dataSeries.xAxisData()->begin() : dataSeries.xAxisData()->end()),
-              m_ValuesIt(begin ? dataSeries.valuesData()->begin() : dataSeries.valuesData()->end())
+              m_ValuesIt(begin ? dataSeries.valuesData()->begin() : dataSeries.valuesData()->end()),
+              m_YItBegin{dataSeries.yAxis().begin()},
+              m_YItEnd{dataSeries.yAxis().end()}
     {
     }
 
@@ -44,7 +46,9 @@ public:
     explicit IteratorValue(const DataSeries<Dim> &dataSeries, bool begin)
             : m_XIt(begin ? dataSeries.xAxisData()->cbegin() : dataSeries.xAxisData()->cend()),
               m_ValuesIt(begin ? dataSeries.valuesData()->cbegin()
-                               : dataSeries.valuesData()->cend())
+                               : dataSeries.valuesData()->cend()),
+              m_YItBegin{dataSeries.yAxis().cbegin()},
+              m_YItEnd{dataSeries.yAxis().cend()}
     {
     }
 
@@ -65,7 +69,9 @@ public:
 
     bool equals(const DataSeriesIteratorValue::Impl &other) const override try {
         const auto &otherImpl = dynamic_cast<const IteratorValue &>(other);
-        return std::tie(m_XIt, m_ValuesIt) == std::tie(otherImpl.m_XIt, otherImpl.m_ValuesIt);
+        return std::tie(m_XIt, m_ValuesIt, m_YItBegin, m_YItEnd)
+               == std::tie(otherImpl.m_XIt, otherImpl.m_ValuesIt, otherImpl.m_YItBegin,
+                           otherImpl.m_YItEnd);
     }
     catch (const std::bad_cast &) {
         return false;
@@ -99,6 +105,15 @@ public:
     }
 
     double x() const override { return m_XIt->at(0); }
+    std::vector<double> y() const override
+    {
+        std::vector<double> result{};
+        std::transform(m_YItBegin, m_YItEnd, std::back_inserter(result),
+                       [](const auto &it) { return it.first(); });
+
+        return result;
+    }
+
     double value() const override { return m_ValuesIt->at(0); }
     double value(int componentIndex) const override { return m_ValuesIt->at(componentIndex); }
     double minValue() const override { return m_ValuesIt->min(); }
@@ -110,11 +125,15 @@ public:
         auto &otherImpl = dynamic_cast<IteratorValue &>(other);
         m_XIt->impl()->swap(*otherImpl.m_XIt->impl());
         m_ValuesIt->impl()->swap(*otherImpl.m_ValuesIt->impl());
+        m_YItBegin->impl()->swap(*otherImpl.m_YItBegin->impl());
+        m_YItEnd->impl()->swap(*otherImpl.m_YItEnd->impl());
     }
 
 private:
     ArrayDataIterator m_XIt;
     ArrayDataIterator m_ValuesIt;
+    ArrayDataIterator m_YItBegin;
+    ArrayDataIterator m_YItEnd;
 };
 } // namespace dataseries_detail
 
