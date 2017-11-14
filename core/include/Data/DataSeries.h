@@ -193,6 +193,9 @@ public:
     /// @sa IDataSeries::xAxisUnit()
     Unit xAxisUnit() const override { return m_XAxisUnit; }
 
+    /// @sa IDataSeries::yAxisUnit()
+    Unit yAxisUnit() const override { return m_YAxis.unit(); }
+
     /// @return the values dataset
     std::shared_ptr<ArrayData<Dim> > valuesData() { return m_ValuesData; }
     const std::shared_ptr<ArrayData<Dim> > valuesData() const { return m_ValuesData; }
@@ -201,6 +204,8 @@ public:
     Unit valuesUnit() const override { return m_ValuesUnit; }
 
     int nbPoints() const override { return m_ValuesData->totalSize(); }
+
+    std::pair<double, double> yBounds() const override { return m_YAxis.bounds(); }
 
     void clear()
     {
@@ -384,8 +389,8 @@ public:
     }
 
     /// @return the y-axis associated to the data series
-    /// @todo pass getter as protected and use iterators to access the y-axis data
-    OptionalAxis yAxis() const { return m_YAxis; }
+    const OptionalAxis &yAxis() const { return m_YAxis; }
+    OptionalAxis &yAxis() { return m_YAxis; }
 
     // /////// //
     // Mutexes //

@@ -39,6 +39,9 @@ public:
 
     virtual Unit xAxisUnit() const = 0;
 
+    /// @return the y-axis unit, if axis is defined, default unit otherwise
+    virtual Unit yAxisUnit() const = 0;
+
     virtual Unit valuesUnit() const = 0;
 
     virtual void merge(IDataSeries *dataSeries) = 0;
@@ -52,6 +55,9 @@ public:
 
     /// @return the total number of points contained in the data series
     virtual int nbPoints() const = 0;
+
+    /// @return the bounds of the y-axis axis (if defined)
+    virtual std::pair<double, double> yBounds() const = 0;
 
     // ///////// //
     // Iterators //

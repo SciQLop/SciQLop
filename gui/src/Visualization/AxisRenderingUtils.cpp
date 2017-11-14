@@ -101,8 +101,7 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
     {
         dataSeries.lockRead();
         auto xAxisUnit = dataSeries.xAxisUnit();
-        /// @todo ALX: use iterators here
-        auto yAxisUnit = dataSeries.yAxis().unit();
+        auto yAxisUnit = dataSeries.yAxisUnit();
         auto valuesUnit = dataSeries.valuesUnit();
         dataSeries.unlock();
 
