@@ -6,6 +6,8 @@
 
 #include <Visualization/qcustomplot.h>
 
+Q_LOGGING_CATEGORY(LOG_AxisRenderingUtils, "AxisRenderingUtils")
+
 namespace {
 
 const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
@@ -57,6 +59,7 @@ struct AxisSetter {
     static void setProperties(T &, QCustomPlot &, QCPColorScale &)
     {
         // Default implementation does nothing
+        qCCritical(LOG_AxisRenderingUtils()) << "Can't set axis properties: unmanaged type of data";
     }
 };
 

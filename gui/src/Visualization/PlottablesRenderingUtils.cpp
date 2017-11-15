@@ -8,6 +8,8 @@
 
 #include <Visualization/qcustomplot.h>
 
+Q_LOGGING_CATEGORY(LOG_PlottablesRenderingUtils, "PlottablesRenderingUtils")
+
 namespace {
 
 /// Default gradient used for colormap
@@ -21,6 +23,8 @@ struct PlottablesSetter {
     static void setProperties(T &, PlottablesMap &)
     {
         // Default implementation does nothing
+        qCCritical(LOG_PlottablesRenderingUtils())
+            << "Can't set plottables properties: unmanaged type of data";
     }
 };
 
@@ -80,6 +84,9 @@ struct PlottablesSetter<T,
             // Sets gradient used for color scale
             colormap->setGradient(DEFAULT_COLORMAP_GRADIENT);
             colormap->rescaleDataRange();
+        }
+        else {
+            qCCritical(LOG_PlottablesRenderingUtils()) << "Can't get colormap of the spectrogram";
         }
     }
 };
