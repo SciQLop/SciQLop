@@ -14,6 +14,8 @@
 
 Q_LOGGING_CATEGORY(LOG_VisualizationDragDropContainer, "VisualizationDragDropContainer")
 
+auto DRAGGED_MINIATURE_WIDTH = 200; // in pixels
+
 struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     QVBoxLayout *m_Layout;
@@ -183,14 +185,14 @@ void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidg
 
     // Note: The management of the drag object is done by Qt
     auto drag = new QDrag{dragWidget};
-    drag->setHotSpot(dragPosition);
 
     auto mimeData = dragWidget->mimeData();
     drag->setMimeData(mimeData);
 
     auto pixmap = QPixmap(dragWidget->size());
     dragWidget->render(&pixmap);
-    drag->setPixmap(pixmap);
+    drag->setPixmap(pixmap.scaled(DRAGGED_MINIATURE_WIDTH, DRAGGED_MINIATURE_WIDTH,
+                                  Qt::KeepAspectRatio, Qt::SmoothTransformation));
 
     auto image = pixmap.toImage();
     mimeData->setImageData(image);
