@@ -114,21 +114,18 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, S
 {
     // Uses delegate to create the qcpplot components according to the variable
     auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
-    impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
-
-    // Set axes properties according to the units of the data series
-    /// @todo : for the moment, no control is performed on the axes: the units and the tickers
-    /// are fixed for the default x-axis and y-axis of the plot, and according to the new graph
-    auto xAxisUnit = Unit{};
-    auto valuesUnit = Unit{};
 
     if (auto dataSeries = variable->dataSeries()) {
-        dataSeries->lockRead();
-        xAxisUnit = dataSeries->xAxisUnit();
-        valuesUnit = dataSeries->valuesUnit();
-        dataSeries->unlock();
+        // Set axes properties according to the units of the data series
+        impl->m_RenderingDelegate->setAxesProperties(dataSeries);
+
+        // Sets rendering properties for the new plottables
+        // Warning: this method must be called after setAxesProperties(), as it can access to some
+        // axes properties that have to be initialized
+        impl->m_RenderingDelegate->setPlottablesProperties(dataSeries, createdPlottables);
     }
-    impl->m_RenderingDelegate->setAxesProperties(xAxisUnit, valuesUnit);
+
+    impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 

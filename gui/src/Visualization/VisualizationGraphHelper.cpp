@@ -1,8 +1,6 @@
 #include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/qcustomplot.h"
 
-#include <Common/ColorUtils.h>
-
 #include <Data/ScalarSeries.h>
 #include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
@@ -52,13 +50,9 @@ struct PlottablesCreator<T,
         auto componentCount = dataSeries.valuesData()->componentCount();
         dataSeries.unlock();
 
-        auto colors = ColorUtils::colors(Qt::blue, Qt::red, componentCount);
-
         // For each component of the data series, creates a QCPGraph to add to the plot
         for (auto i = 0; i < componentCount; ++i) {
             auto graph = plot.addGraph();
-            graph->setPen(QPen{colors.at(i)});
-
             result.insert({i, graph});
         }
 
@@ -232,7 +226,16 @@ struct PlottablesUpdater<T,
         auto xIndex = 0;
         for (auto it = its.first; it != its.second; ++it, ++xIndex) {
             for (auto yIndex = 0; yIndex < nbY; ++yIndex) {
-                colormap->data()->setCell(xIndex, yIndex, it->value(yIndex));
+                auto value = it->value(yIndex);
+
+                colormap->data()->setCell(xIndex, yIndex, value);
+
+                // Processing spectrogram data for display in QCustomPlot
+                /// For the moment, we just make the NaN values to be transparent in the colormap
+                /// @todo ALX: complete treatments (mesh generation, etc.)
+                if (std::isnan(value)) {
+                    colormap->data()->setAlpha(xIndex, yIndex, 0);
+                }
             }
         }
 
