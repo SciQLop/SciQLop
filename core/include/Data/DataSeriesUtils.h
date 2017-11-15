@@ -12,6 +12,17 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_DataSeriesUtils)
  */
 struct SCIQLOP_CORE_EXPORT DataSeriesUtils {
     /**
+     * Represents a resolution used to generate the data of a mesh on the x-axis or in Y.
+     *
+     * A resolution is represented by a value and flag indicating if it's in the logarithmic scale
+     * @sa Mesh
+     */
+    struct Resolution {
+        double m_Val{std::numeric_limits<double>::quiet_NaN()};
+        bool m_Logarithmic{false};
+    };
+
+    /**
      * Processes data from a data series to complete the data holes with a fill value.
      *
      * A data hole is determined by the resolution passed in parameter: if, between two continuous
@@ -75,6 +86,54 @@ struct SCIQLOP_CORE_EXPORT DataSeriesUtils {
                               double fillValue = std::numeric_limits<double>::quiet_NaN(),
                               double minBound = std::numeric_limits<double>::quiet_NaN(),
                               double maxBound = std::numeric_limits<double>::quiet_NaN());
+    /**
+     * Computes the resolution of a dataset passed as a parameter.
+     *
+     * The resolution of a dataset is the minimum difference between two values that follow in the
+     * set.
+     * For example:
+     * - for the set [0, 2, 4, 8, 10, 11, 13] => the resolution is 1 (difference between 10 and 11).
+     *
+     * A resolution can be calculated on the logarithmic scale (base of 10). In this case, the
+     * dataset is first converted to logarithmic values.
+     * For example:
+     * - for the set [10, 100, 10000, 1000000], the values are converted to [1, 2, 4, 6] => the
+     * logarithmic resolution is 1 (difference between 1 and 2).
+     *
+     * @param begin the iterator pointing to the beginning of the dataset
+     * @param end the iterator pointing to the end of the dataset
+     * @param logarithmic computes a logarithmic resolution or not
+     * @return the resolution computed
+     * @warning the method considers the dataset as sorted and doesn't control it.
+     */
+    template <typename Iterator>
+    static Resolution resolution(Iterator begin, Iterator end, bool logarithmic = false);
 };
+
+template <typename Iterator>
+DataSeriesUtils::Resolution DataSeriesUtils::resolution(Iterator begin, Iterator end,
+                                                        bool logarithmic)
+{
+    // Retrieves data into a work dataset
+    using ValueType = typename Iterator::value_type;
+    std::vector<ValueType> values{};
+    std::copy(begin, end, std::back_inserter(values));
+
+    // Converts data if logarithmic flag is activated
+    if (logarithmic) {
+        std::for_each(values.begin(), values.end(),
+                      [logarithmic](auto &val) { val = std::log10(val); });
+    }
+
+    // Computes the differences between the values in the dataset
+    std::adjacent_difference(values.begin(), values.end(), values.begin());
+
+    // Retrieves the smallest difference
+    auto resolutionIt = std::min_element(values.begin(), values.end());
+    auto resolution
+        = resolutionIt != values.end() ? *resolutionIt : std::numeric_limits<double>::quiet_NaN();
+
+    return Resolution{resolution, logarithmic};
+}
 
 #endif // SCIQLOP_DATASERIESUTILS_H
