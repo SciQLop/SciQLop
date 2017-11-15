@@ -5,6 +5,8 @@
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/VisualizationZoneWidget.h"
 
+#include "Visualization/MacScrollBarStyle.h"
+
 #include "Variable/VariableController.h"
 
 #include "Common/MimeTypesDef.h"
@@ -55,6 +57,10 @@ struct VisualizationTabWidget::VisualizationTabWidgetPrivate {
 
     QString m_Name;
 
+#ifdef Q_OS_MAC
+    std::unique_ptr<MacScrollBarStyle> m_MacScrollBarStyle = std::make_unique<MacScrollBarStyle>();
+#endif
+
     void dropGraph(int index, VisualizationTabWidget *tabWidget);
     void dropZone(int index, VisualizationTabWidget *tabWidget);
     void dropVariables(const QList<std::shared_ptr<Variable> > &variables, int index,
@@ -67,6 +73,10 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
           impl{spimpl::make_unique_impl<VisualizationTabWidgetPrivate>(name)}
 {
     ui->setupUi(this);
+
+#ifdef Q_OS_MAC
+    impl->m_MacScrollBarStyle->selfInstallOn(ui->scrollArea, true);
+#endif
 
     ui->dragDropContainer->setPlaceHolderType(DragDropHelper::PlaceHolderType::Zone, "Zone");
     ui->dragDropContainer->layout()->setContentsMargins(0, 0, 0, 5);

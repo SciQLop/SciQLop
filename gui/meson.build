@@ -78,7 +78,8 @@ gui_sources = [
   'src/Visualization/VisualizationDragDropContainer.cpp',
   'src/Visualization/VisualizationDragWidget.cpp',
   'src/Visualization/AxisRenderingUtils.cpp',
-  'src/Visualization/PlottablesRenderingUtils.cpp'
+  'src/Visualization/PlottablesRenderingUtils.cpp',
+  'src/Visualization/MacScrollBarStyle.cpp'
 ]
 
 gui_inc = include_directories(['include'])
