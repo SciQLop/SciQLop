@@ -12,6 +12,52 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_DataSeriesUtils)
  */
 struct SCIQLOP_CORE_EXPORT DataSeriesUtils {
     /**
+     * Define a meshs.
+     *
+     * A mesh is a regular grid representing cells of the same width (in x) and of the same height
+     * (in y). At each mesh point is associated a value.
+     *
+     * Each axis of the mesh is defined by a minimum value, a number of values is a mesh step.
+     * For example: if min = 1, nbValues = 5 and step = 2 => the axis of the mesh will be [1, 3, 5,
+     * 7, 9].
+     *
+     * The values are defined in an array of size {nbX * nbY}. The data is stored along the X axis.
+     *
+     * For example, the mesh:
+     * Y = 2 [  7   ;   8   ;   9
+     * Y = 1    4   ;   5   ;   6
+     * Y = 0    1   ;   2   ;   3   ]
+     *        X = 0   X = 1   X = 2
+     *
+     * will be represented by data [1, 2, 3, 4, 5, 6, 7, 8, 9]
+     */
+    struct Mesh {
+        explicit Mesh() = default;
+        explicit Mesh(int nbX, double xMin, double xStep, int nbY, double yMin, double yStep)
+                : m_NbX{nbX},
+                  m_XMin{xMin},
+                  m_XStep{xStep},
+                  m_NbY{nbY},
+                  m_YMin{yMin},
+                  m_YStep{yStep},
+                  m_Data(nbX * nbY)
+        {
+        }
+
+        inline bool isEmpty() const { return m_Data.size() == 0; }
+        inline double xMax() const { return m_XMin + (m_NbX - 1) * m_XStep; }
+        inline double yMax() const { return m_YMin + (m_NbY - 1) * m_YStep; }
+
+        int m_NbX{0};
+        double m_XMin{};
+        double m_XStep{};
+        int m_NbY{0};
+        double m_YMin{};
+        double m_YStep{};
+        std::vector<double> m_Data{};
+    };
+
+    /**
      * Represents a resolution used to generate the data of a mesh on the x-axis or in Y.
      *
      * A resolution is represented by a value and flag indicating if it's in the logarithmic scale
