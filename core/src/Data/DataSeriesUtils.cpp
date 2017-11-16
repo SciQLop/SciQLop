@@ -1,5 +1,7 @@
 #include "Data/DataSeriesUtils.h"
 
+#include <cmath>
+
 Q_LOGGING_CATEGORY(LOG_DataSeriesUtils, "DataSeriesUtils")
 
 void DataSeriesUtils::fillDataHoles(std::vector<double> &xAxisData, std::vector<double> &valuesData,
@@ -78,4 +80,37 @@ void DataSeriesUtils::fillDataHoles(std::vector<double> &xAxisData, std::vector<
             xAxisIt = nextXAxisIt;
         }
     }
+}
+DataSeriesUtils::Mesh DataSeriesUtils::regularMesh(DataSeriesIterator begin, DataSeriesIterator end,
+                                                   Resolution xResolution, Resolution yResolution)
+{
+    // Checks preconditions
+    if (xResolution.m_Val == 0. || std::isnan(xResolution.m_Val) || yResolution.m_Val == 0.
+        || std::isnan(yResolution.m_Val)) {
+        qCWarning(LOG_DataSeriesUtils()) << "Can't generate mesh with a null resolution";
+        return Mesh{};
+    }
+
+    if (xResolution.m_Logarithmic) {
+        qCWarning(LOG_DataSeriesUtils())
+            << "Can't generate mesh with a logarithmic x-axis resolution";
+        return Mesh{};
+    }
+
+    if (std::distance(begin, end) == 0) {
+        qCWarning(LOG_DataSeriesUtils()) << "Can't generate mesh for empty data";
+        return Mesh{};
+    }
+
+    auto yData = begin->y();
+    if (yData.empty()) {
+        qCWarning(LOG_DataSeriesUtils()) << "Can't generate mesh for data with no y-axis";
+        return Mesh{};
+    }
+
+    // Converts y-axis and its resolution to logarithmic values
+    if (yResolution.m_Logarithmic) {
+        std::for_each(yData.begin(), yData.end(), [](auto &val) { val = std::log10(val); });
+    }
+
 }

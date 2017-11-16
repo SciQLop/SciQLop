@@ -3,6 +3,8 @@
 
 #include "CoreGlobal.h"
 
+#include <Data/DataSeriesIterator.h>
+
 #include <QLoggingCategory>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_DataSeriesUtils)
@@ -154,6 +156,46 @@ struct SCIQLOP_CORE_EXPORT DataSeriesUtils {
      */
     template <typename Iterator>
     static Resolution resolution(Iterator begin, Iterator end, bool logarithmic = false);
+
+    /**
+     * Computes a regular mesh for a data series, according to resolutions for x-axis and y-axis
+     * passed as parameters.
+     *
+     * The mesh is created from the resolutions in x and y and the boundaries delimiting the data
+     * series. If the resolutions do not allow to obtain a regular mesh, they are recalculated.
+     *
+     * For example :
+     * Let x-axis data = [0, 1, 3, 5, 9], its associated values ​​= [0, 10, 30, 50, 90] and
+     * xResolution = 2.
+     * Based on the resolution, the mesh would be [0, 2, 4, 6, 8, 10] and would be invalid because
+     * it exceeds the maximum bound of the data. The resolution is thus recalculated so that the
+     * mesh holds between the data terminals.
+     * So => resolution is 1.8 and the mesh is [0, 1.8, 3.6, 5.4, 7.2, 9].
+     *
+     * Once the mesh is generated in x and y, the values ​​are associated with each mesh point,
+     * based on the data in the series, finding the existing data at which the mesh point would be
+     * or would be closest to, without exceeding it.
+     *
+     * In the example, we determine the value of each mesh point:
+     * - x = 0 => value = 0 (existing x in the data series)
+     * - x = 1.8 => value = 10 (the closest existing x: 1)
+     * - x = 3.6 => value = 30 (the closest existing x: 3)
+     * - x = 5.4 => value = 50 (the closest existing x: 5)
+     * - x = 7.2 => value = 50 (the closest existing x: 5)
+     * - x = 9 => value = 90 (existing x in the data series)
+     *
+     * Same algorithm is applied for y-axis.
+     *
+     * @param begin the iterator pointing to the beginning of the data series
+     * @param end the iterator pointing to the end of the data series
+     * @param xResolution the resolution expected for the mesh's x-axis
+     * @param yResolution the resolution expected for the mesh's y-axis
+     * @return the mesh created, an empty mesh if the input data do not allow to generate a regular
+     * mesh (empty data, null resolutions, logarithmic x-axis)
+     * @warning the method considers the dataset as sorted and doesn't control it.
+     */
+    static Mesh regularMesh(DataSeriesIterator begin, DataSeriesIterator end,
+                            Resolution xResolution, Resolution yResolution);
 };
 
 template <typename Iterator>
