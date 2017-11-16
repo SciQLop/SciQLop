@@ -11,6 +11,8 @@
 #include <QtCore/QDateTime>
 #include <QtCore/QRegularExpression>
 
+#include <functional>
+
 Q_LOGGING_CATEGORY(LOG_AmdaResultParserHelper, "AmdaResultParserHelper")
 
 namespace {
