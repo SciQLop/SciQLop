@@ -12,5 +12,6 @@
         <file>icones/previous.png</file>
         <file>icones/unplot.png</file>
         <file>icones/up.png</file>
+		<file>icones/time.png</file>
     </qresource>
 </RCC>
