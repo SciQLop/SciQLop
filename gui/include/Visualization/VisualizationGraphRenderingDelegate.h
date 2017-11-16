@@ -18,6 +18,7 @@ public:
     /// @remarks the graph widget must exist throughout the life cycle of the delegate
     explicit VisualizationGraphRenderingDelegate(VisualizationGraphWidget &graphWidget);
 
+    void onMouseDoubleClick(QMouseEvent *event) noexcept;
     void onMouseMove(QMouseEvent *event) noexcept;
 
     /// Sets properties of the plot's axes from the data series passed as parameter

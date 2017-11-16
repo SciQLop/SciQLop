@@ -141,6 +141,8 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
             &VisualizationGraphWidget::onMouseRelease);
     connect(ui->widget, &QCustomPlot::mouseMove, this, &VisualizationGraphWidget::onMouseMove);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
+    connect(ui->widget, &QCustomPlot::mouseDoubleClick, this,
+            &VisualizationGraphWidget::onMouseDoubleClick);
     connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
                                    &QCPAxis::rangeChanged),
             this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
@@ -474,6 +476,11 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
     else {
         qCWarning(LOG_VisualizationGraphWidget()) << "onMouseMove: No parent zone widget";
     }
+}
+
+void VisualizationGraphWidget::onMouseDoubleClick(QMouseEvent *event) noexcept
+{
+    impl->m_RenderingDelegate->onMouseDoubleClick(event);
 }
 
 void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept

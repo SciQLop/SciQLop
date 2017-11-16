@@ -1,5 +1,6 @@
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
 #include "Visualization/AxisRenderingUtils.h"
+#include "Visualization/ColorScaleEditor.h"
 #include "Visualization/PlottablesRenderingUtils.h"
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/qcustomplot.h"
@@ -170,6 +171,15 @@ VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegate(
     VisualizationGraphWidget &graphWidget)
         : impl{spimpl::make_unique_impl<VisualizationGraphRenderingDelegatePrivate>(graphWidget)}
 {
+}
+
+void VisualizationGraphRenderingDelegate::onMouseDoubleClick(QMouseEvent *event) noexcept
+{
+    // Opens color scale editor if color scale is double clicked
+    if (auto colorScale
+        = dynamic_cast<QCPColorScale *>(impl->m_Plot.layoutElementAt(event->pos()))) {
+        ColorScaleEditor{}.exec();
+    }
 }
 
 void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexcept
