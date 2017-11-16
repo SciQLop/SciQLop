@@ -1,4 +1,5 @@
 #include "Visualization/ColorScaleEditor.h"
+#include "Visualization/qcustomplot.h"
 
 #include "ui_ColorScaleEditor.h"
 
@@ -41,6 +42,20 @@ ColorScaleEditor::ColorScaleEditor(QWidget *parent)
     };
     setSpinBoxProperties(*ui->minSpinBox);
     setSpinBoxProperties(*ui->maxSpinBox);
+
+    // Creates color scale preview
+    m_PreviewScale = new QCPColorScale{ui->plot};
+    m_PreviewScale->setType(QCPAxis::atTop);
+    m_PreviewScale->setMinimumMargins(QMargins{5, 5, 5, 5});
+    m_PreviewScale->axis()->setScaleType(QCPAxis::stLogarithmic);
+    m_PreviewScale->axis()->setNumberPrecision(0);
+    m_PreviewScale->axis()->setNumberFormat("eb");
+    m_PreviewScale->axis()->setTicker(QSharedPointer<QCPAxisTickerLog>::create());
+    m_PreviewScale->setGradient(QCPColorGradient{QCPColorGradient::gpJet});
+
+    ui->plot->plotLayout()->clear();
+    ui->plot->plotLayout()->insertRow(0);
+    ui->plot->plotLayout()->addElement(0, 0, m_PreviewScale);
 
     // Inits connections
     connect(ui->thresholdAutoButton, SIGNAL(toggled(bool)), this, SLOT(onThresholdChanged(bool)));

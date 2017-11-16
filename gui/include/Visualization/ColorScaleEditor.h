@@ -8,6 +8,8 @@ namespace Ui {
 class ColorScaleEditor;
 } // Ui
 
+class QCPColorScale;
+
 /**
  * @brief The ColorScaleEditor class represents the widget to set properties of color scale's graphs
  */
@@ -21,6 +23,7 @@ public:
 private:
     Ui::ColorScaleEditor *ui;
     QButtonGroup *m_ThresholdGroup;
+    QCPColorScale *m_PreviewScale; ///< Scale shown as preview
 
 private slots:
     /// Slot called when max threshold value changes
