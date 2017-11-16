@@ -1,6 +1,7 @@
 #include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/qcustomplot.h"
 
+#include <Data/DataSeriesUtils.h>
 #include <Data/ScalarSeries.h>
 #include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
@@ -203,42 +204,41 @@ struct PlottablesUpdater<T,
 
         dataSeries.lockRead();
 
+        // Processing spectrogram data for display in QCustomPlot
         auto its = dataSeries.xAxisRange(range.m_TStart, range.m_TEnd);
-        /// @todo ALX: use iterators here
-        auto yAxis = dataSeries.yAxis();
 
-        // Gets properties of x-axis and y-axis to set size and range of the colormap
-        auto nbX = std::distance(its.first, its.second);
-        auto xMin = nbX != 0 ? its.first->x() : 0.;
-        auto xMax = nbX != 0 ? (its.second - 1)->x() : 0.;
+        // Computes logarithmic y-axis resolution for the spectrogram
+        auto yData = its.first->y();
+        auto yResolution = DataSeriesUtils::resolution(yData.begin(), yData.end(), true);
 
-        auto nbY = yAxis.size();
-        auto yMin = 0., yMax = 0.;
-        if (nbY != 0) {
-            std::tie(yMin, yMax) = yAxis.bounds();
-        }
+        // Generates mesh for colormap
+        auto mesh = DataSeriesUtils::regularMesh(
+            its.first, its.second, DataSeriesUtils::Resolution{dataSeries.xResolution()},
+            yResolution);
 
-        colormap->data()->setSize(nbX, nbY);
-        colormap->data()->setRange(QCPRange{xMin, xMax}, QCPRange{yMin, yMax});
+        dataSeries.unlock();
 
-        // Sets values
-        auto xIndex = 0;
-        for (auto it = its.first; it != its.second; ++it, ++xIndex) {
-            for (auto yIndex = 0; yIndex < nbY; ++yIndex) {
-                auto value = it->value(yIndex);
+        colormap->data()->setSize(mesh.m_NbX, mesh.m_NbY);
+        if (!mesh.isEmpty()) {
+            colormap->data()->setRange(
+                QCPRange{mesh.m_XMin, mesh.xMax()},
+                // y-axis range is converted to linear values
+                QCPRange{std::pow(10, mesh.m_YMin), std::pow(10, mesh.yMax())});
 
-                colormap->data()->setCell(xIndex, yIndex, value);
+            // Sets values
+            auto index = 0;
+            for (auto it = mesh.m_Data.begin(), end = mesh.m_Data.end(); it != end; ++it, ++index) {
+                auto xIndex = index % mesh.m_NbX;
+                auto yIndex = index / mesh.m_NbX;
 
-                // Processing spectrogram data for display in QCustomPlot
-                /// For the moment, we just make the NaN values to be transparent in the colormap
-                /// @todo ALX: complete treatments (mesh generation, etc.)
-                if (std::isnan(value)) {
+                colormap->data()->setCell(xIndex, yIndex, *it);
+
+                // Makes the NaN values to be transparent in the colormap
+                if (std::isnan(*it)) {
                     colormap->data()->setAlpha(xIndex, yIndex, 0);
                 }
             }
         }
-
-        dataSeries.unlock();
 
         // Rescales axes
         auto plot = colormap->parentPlot();
