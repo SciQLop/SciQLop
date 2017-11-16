@@ -2,10 +2,33 @@
 
 #include "ui_ColorScaleEditor.h"
 
+namespace {
+
+const auto GRADIENTS = QVariantMap{{"Candy", QCPColorGradient::gpCandy},
+                                   {"Cold", QCPColorGradient::gpCold},
+                                   {"Geography", QCPColorGradient::gpGeography},
+                                   {"Grayscale", QCPColorGradient::gpGrayscale},
+                                   {"Hot", QCPColorGradient::gpHot},
+                                   {"Hues", QCPColorGradient::gpHues},
+                                   {"Ion", QCPColorGradient::gpIon},
+                                   {"Jet", QCPColorGradient::gpJet},
+                                   {"Night", QCPColorGradient::gpNight},
+                                   {"Polar", QCPColorGradient::gpPolar},
+                                   {"Spectrum", QCPColorGradient::gpSpectrum},
+                                   {"Thermal", QCPColorGradient::gpThermal}};
+
+} // namespace
+
 ColorScaleEditor::ColorScaleEditor(QWidget *parent)
         : QDialog{parent}, ui{new Ui::ColorScaleEditor}, m_ThresholdGroup{new QButtonGroup{this}}
 {
     ui->setupUi(this);
+
+    // Inits gradient combobox content
+    for (auto it = GRADIENTS.begin(), end = GRADIENTS.end(); it != end; ++it) {
+        ui->gradientComboBox->addItem(it.key(), it.value());
+    }
+
     // Creates threshold group
     m_ThresholdGroup->addButton(ui->thresholdAutoButton);
     m_ThresholdGroup->addButton(ui->thresholdManualButton);
