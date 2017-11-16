@@ -1,7 +1,5 @@
 #include "Data/DataSeriesUtils.h"
 
-#include <cmath>
-
 Q_LOGGING_CATEGORY(LOG_DataSeriesUtils, "DataSeriesUtils")
 
 void DataSeriesUtils::fillDataHoles(std::vector<double> &xAxisData, std::vector<double> &valuesData,
