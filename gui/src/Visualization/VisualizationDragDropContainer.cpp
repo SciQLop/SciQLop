@@ -36,13 +36,28 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     bool acceptMimeData(const QMimeData *data) const
     {
-        for (const auto &type : m_AcceptedMimeTypes.keys()) {
-            if (data->hasFormat(type) && m_AcceptMimeDataFun(data)) {
-                return true;
+        auto accepted = false;
+        for (auto it = m_AcceptedMimeTypes.constBegin(); it != m_AcceptedMimeTypes.constEnd();
+             ++it) {
+            const auto &type = it.key();
+            const auto &behavior = it.value();
+
+            if (data->hasFormat(type)) {
+                if (behavior != DropBehavior::Forbidden) {
+                    accepted = true;
+                }
+                else {
+                    accepted = false;
+                    break;
+                }
             }
         }
 
-        return false;
+        if (accepted) {
+            accepted = m_AcceptMimeDataFun(data);
+        }
+
+        return accepted;
     }
 
     bool allowMergeForMimeData(const QMimeData *data) const
@@ -153,7 +168,7 @@ void VisualizationDragDropContainer::insertDragWidget(int index,
             &VisualizationDragDropContainer::startDrag);
 }
 
-void VisualizationDragDropContainer::addAcceptedMimeType(
+void VisualizationDragDropContainer::setMimeType(
     const QString &mimeType, VisualizationDragDropContainer::DropBehavior behavior)
 {
     impl->m_AcceptedMimeTypes[mimeType] = behavior;
