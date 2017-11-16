@@ -3,7 +3,10 @@
 
 #include <memory>
 
+#include <QtCore/QLoggingCategory>
 #include <QtCore/QString>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_AxisRenderingUtils)
 
 class IDataSeries;
 class QCPAxis;

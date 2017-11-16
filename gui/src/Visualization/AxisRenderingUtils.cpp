@@ -6,6 +6,8 @@
 
 #include <Visualization/qcustomplot.h>
 
+Q_LOGGING_CATEGORY(LOG_AxisRenderingUtils, "AxisRenderingUtils")
+
 namespace {
 
 const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
@@ -15,7 +17,7 @@ const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
 
 /// Generates the appropriate ticker for an axis, depending on whether the axis displays time or
 /// non-time data
-QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
+QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis, QCPAxis::ScaleType scaleType)
 {
     if (isTimeAxis) {
         auto dateTicker = QSharedPointer<QCPAxisTickerDateTime>::create();
@@ -23,6 +25,9 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis)
         dateTicker->setDateTimeSpec(Qt::UTC);
 
         return dateTicker;
+    }
+    else if (scaleType == QCPAxis::stLogarithmic) {
+        return QSharedPointer<QCPAxisTickerLog>::create();
     }
     else {
         // default ticker
@@ -44,9 +49,14 @@ void setAxisProperties(QCPAxis &axis, const Unit &unit,
 
     // scale type
     axis.setScaleType(scaleType);
+    if (scaleType == QCPAxis::stLogarithmic) {
+        // Scientific notation
+        axis.setNumberPrecision(0);
+        axis.setNumberFormat("eb");
+    }
 
     // ticker (depending on the type of unit)
-    axis.setTicker(axisTicker(unit.m_TimeUnit));
+    axis.setTicker(axisTicker(unit.m_TimeUnit, scaleType));
 }
 
 /**
@@ -57,6 +67,7 @@ struct AxisSetter {
     static void setProperties(T &, QCustomPlot &, QCPColorScale &)
     {
         // Default implementation does nothing
+        qCCritical(LOG_AxisRenderingUtils()) << "Can't set axis properties: unmanaged type of data";
     }
 };
 
@@ -96,7 +107,7 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
         dataSeries.unlock();
 
         setAxisProperties(*plot.xAxis, xAxisUnit);
-        setAxisProperties(*plot.yAxis, yAxisUnit);
+        setAxisProperties(*plot.yAxis, yAxisUnit, QCPAxis::stLogarithmic);
 
         // Displays color scale in plot
         plot.plotLayout()->insertRow(0);
@@ -111,8 +122,7 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
         }
 
         // Set color scale properties
-        colorScale.setLabel(valuesUnit.m_Name);
-        colorScale.setDataScaleType(QCPAxis::stLogarithmic); // Logarithmic scale
+        setAxisProperties(*colorScale.axis(), valuesUnit, QCPAxis::stLogarithmic);
     }
 };
 

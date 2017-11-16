@@ -5,6 +5,10 @@
 
 #include <memory>
 
+#include <QtCore/QLoggingCategory>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_PlottablesRenderingUtils)
+
 class IDataSeries;
 class QCPColorScale;
 class QCustomPlot;
