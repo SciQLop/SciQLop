@@ -79,7 +79,8 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
 #endif
 
     ui->dragDropContainer->setPlaceHolderType(DragDropHelper::PlaceHolderType::Zone, "Zone");
-    ui->dragDropContainer->layout()->setContentsMargins(0, 0, 0, 5);
+    ui->dragDropContainer->layout()->setContentsMargins(0, 0, 0, 12);
+    ui->dragDropContainer->layout()->setSpacing(0);
     ui->dragDropContainer->setMimeType(MIME_TYPE_GRAPH,
                                        VisualizationDragDropContainer::DropBehavior::Inserted);
     ui->dragDropContainer->setMimeType(MIME_TYPE_ZONE,
