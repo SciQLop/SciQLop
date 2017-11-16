@@ -14,6 +14,8 @@
 
 Q_LOGGING_CATEGORY(LOG_VisualizationDragDropContainer, "VisualizationDragDropContainer")
 
+auto DRAGGED_MINIATURE_WIDTH = 200; // in pixels
+
 struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     QVBoxLayout *m_Layout;
@@ -34,18 +36,33 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     bool acceptMimeData(const QMimeData *data) const
     {
-        for (const auto &type : m_AcceptedMimeTypes.keys()) {
-            if (data->hasFormat(type) && m_AcceptMimeDataFun(data)) {
-                return true;
+        auto accepted = false;
+        for (auto it = m_AcceptedMimeTypes.constBegin(); it != m_AcceptedMimeTypes.constEnd();
+             ++it) {
+            const auto &type = it.key();
+            const auto &behavior = it.value();
+
+            if (data->hasFormat(type)) {
+                if (behavior != DropBehavior::Forbidden) {
+                    accepted = true;
+                }
+                else {
+                    accepted = false;
+                    break;
+                }
             }
         }
 
-        return false;
+        if (accepted) {
+            accepted = m_AcceptMimeDataFun(data);
+        }
+
+        return accepted;
     }
 
     bool allowMergeForMimeData(const QMimeData *data) const
     {
-        bool result = false;
+        auto result = false;
         for (auto it = m_AcceptedMimeTypes.constBegin(); it != m_AcceptedMimeTypes.constEnd();
              ++it) {
 
@@ -106,7 +123,9 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     bool cursorIsInContainer(QWidget *container) const
     {
-        return container->isAncestorOf(sqpApp->widgetAt(QCursor::pos()));
+        auto widgetUnderMouse = sqpApp->widgetAt(QCursor::pos());
+        return container->isAncestorOf(widgetUnderMouse) && widgetUnderMouse != container
+               && sqpApp->dragDropHelper().placeHolder().isAncestorOf(widgetUnderMouse);
     }
 
     int countDragWidget(const QWidget *parent, bool onlyVisible = false) const
@@ -151,7 +170,7 @@ void VisualizationDragDropContainer::insertDragWidget(int index,
             &VisualizationDragDropContainer::startDrag);
 }
 
-void VisualizationDragDropContainer::addAcceptedMimeType(
+void VisualizationDragDropContainer::setMimeType(
     const QString &mimeType, VisualizationDragDropContainer::DropBehavior behavior)
 {
     impl->m_AcceptedMimeTypes[mimeType] = behavior;
@@ -183,14 +202,14 @@ void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidg
 
     // Note: The management of the drag object is done by Qt
     auto drag = new QDrag{dragWidget};
-    drag->setHotSpot(dragPosition);
 
     auto mimeData = dragWidget->mimeData();
     drag->setMimeData(mimeData);
 
     auto pixmap = QPixmap(dragWidget->size());
     dragWidget->render(&pixmap);
-    drag->setPixmap(pixmap);
+    drag->setPixmap(pixmap.scaled(DRAGGED_MINIATURE_WIDTH, DRAGGED_MINIATURE_WIDTH,
+                                  Qt::KeepAspectRatio, Qt::SmoothTransformation));
 
     auto image = pixmap.toImage();
     mimeData->setImageData(image);
@@ -374,7 +393,7 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
     auto &helper = sqpApp->dragDropHelper();
 
     auto absPos = container->mapToGlobal(pos);
-    auto isOnPlaceHolder = sqpApp->widgetAt(absPos) == &(helper.placeHolder());
+    auto isOnPlaceHolder = helper.placeHolder().isAncestorOf(sqpApp->widgetAt(absPos));
 
     if (countDragWidget(container, true) == 0) {
         // Drop on an empty container, just add the placeHolder at the top

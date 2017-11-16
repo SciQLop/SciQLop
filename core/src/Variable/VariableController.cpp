@@ -187,6 +187,8 @@ VariableController::VariableController(QObject *parent)
     connect(&impl->m_VariableAcquisitionWorkerThread, &QThread::finished,
             impl->m_VariableAcquisitionWorker.get(), &VariableAcquisitionWorker::finalize);
 
+    connect(impl->m_VariableModel, &VariableModel::requestVariableRangeUpdate, this,
+            &VariableController::onUpdateDateTime);
 
     impl->m_VariableAcquisitionWorkerThread.start();
 }
@@ -385,21 +387,7 @@ void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
         if (auto selectedVariable
             = impl->m_VariableModel->variable(qAsConst(selectedRows).first().row())) {
 
-            auto itVar = impl->m_VariableToIdentifierMap.find(selectedVariable);
-            if (itVar == impl->m_VariableToIdentifierMap.cend()) {
-                qCCritical(LOG_VariableController())
-                    << tr("Impossible to onDateTimeOnSelection request for unknown variable");
-                return;
-            }
-
-            // notify that rescale operation has to be done
-            emit rangeChanged(selectedVariable, dateTime);
-
-            auto synchro = impl->m_VariableIdGroupIdMap.find(itVar->second)
-                           != impl->m_VariableIdGroupIdMap.cend();
-
-            this->onRequestDataLoading(QVector<std::shared_ptr<Variable> >{selectedVariable},
-                                       dateTime, synchro);
+            onUpdateDateTime(selectedVariable, dateTime);
         }
     }
     else if (selectedRows.size() > 1) {
@@ -410,6 +398,25 @@ void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
         qCWarning(LOG_VariableController())
             << tr("There is no variable selected to set the time one");
     }
+}
+
+void VariableController::onUpdateDateTime(std::shared_ptr<Variable> variable,
+                                          const SqpRange &dateTime)
+{
+    auto itVar = impl->m_VariableToIdentifierMap.find(variable);
+    if (itVar == impl->m_VariableToIdentifierMap.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Impossible to onDateTimeOnSelection request for unknown variable");
+        return;
+    }
+
+    // notify that rescale operation has to be done
+    emit rangeChanged(variable, dateTime);
+
+    auto synchro
+        = impl->m_VariableIdGroupIdMap.find(itVar->second) != impl->m_VariableIdGroupIdMap.cend();
+
+    this->onRequestDataLoading(QVector<std::shared_ptr<Variable> >{variable}, dateTime, synchro);
 }
 
 void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &rangeRequested,
