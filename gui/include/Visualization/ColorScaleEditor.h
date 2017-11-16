@@ -23,6 +23,10 @@ private:
     QButtonGroup *m_ThresholdGroup;
 
 private slots:
+    /// Slot called when max threshold value changes
+    void onMaxChanged();
+    /// Slot called when min threshold value changes
+    void onMinChanged();
     /// Slot called when the threshold mode (auto or manual) changes
     void onThresholdChanged(bool checked);
 };
