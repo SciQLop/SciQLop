@@ -62,7 +62,7 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     bool allowMergeForMimeData(const QMimeData *data) const
     {
-        bool result = false;
+        auto result = false;
         for (auto it = m_AcceptedMimeTypes.constBegin(); it != m_AcceptedMimeTypes.constEnd();
              ++it) {
 
