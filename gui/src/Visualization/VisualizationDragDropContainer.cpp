@@ -123,7 +123,9 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     bool cursorIsInContainer(QWidget *container) const
     {
-        return container->isAncestorOf(sqpApp->widgetAt(QCursor::pos()));
+        auto widgetUnderMouse = sqpApp->widgetAt(QCursor::pos());
+        return container->isAncestorOf(widgetUnderMouse) && widgetUnderMouse != container
+               && sqpApp->dragDropHelper().placeHolder().isAncestorOf(widgetUnderMouse);
     }
 
     int countDragWidget(const QWidget *parent, bool onlyVisible = false) const
@@ -391,7 +393,7 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
     auto &helper = sqpApp->dragDropHelper();
 
     auto absPos = container->mapToGlobal(pos);
-    auto isOnPlaceHolder = sqpApp->widgetAt(absPos) == &(helper.placeHolder());
+    auto isOnPlaceHolder = helper.placeHolder().isAncestorOf(sqpApp->widgetAt(absPos));
 
     if (countDragWidget(container, true) == 0) {
         // Drop on an empty container, just add the placeHolder at the top
