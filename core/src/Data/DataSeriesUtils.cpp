@@ -81,6 +81,43 @@ void DataSeriesUtils::fillDataHoles(std::vector<double> &xAxisData, std::vector<
         }
     }
 }
+
+namespace {
+
+/**
+ * Generates axis's mesh properties according to data and resolution
+ * @param begin the iterator pointing to the beginning of the data
+ * @param end the iterator pointing to the end of the data
+ * @param fun the function to retrieve data from the data iterators
+ * @param resolution the resolution to use for the axis' mesh
+ * @return a tuple representing the mesh properties : <nb values, min value, value step>
+ */
+template <typename Iterator, typename IteratorFun>
+std::tuple<int, double, double> meshProperties(Iterator begin, Iterator end, IteratorFun fun,
+                                               double resolution)
+{
+    // Computes the gap between min and max data. This will be used to determinate the step between
+    // each data of the mesh
+    auto min = fun(begin);
+    auto max = fun(end - 1);
+    auto gap = max - min;
+
+    // Computes the step trying to use the fixed resolution. If the resolution doesn't separate the
+    // values evenly , it is recalculated.
+    // For example, for a resolution of 2.0:
+    // - for interval [0; 8] => resolution is valid, the generated mesh will be [0, 2, 4, 6, 8]
+    // - for interval [0; 9] => it's impossible to create a regular mesh with this resolution
+    // The resolution is recalculated and is worth 1.8. The generated mesh will be [0, 1.8, 3.6,
+    // 5.4, 7.2, 9]
+    auto nbVal = static_cast<int>(std::ceil(gap / resolution));
+    auto step = gap / nbVal;
+
+    // last data is included in the total number of values
+    return std::make_tuple(nbVal + 1, min, step);
+}
+
+} // namespace
+
 DataSeriesUtils::Mesh DataSeriesUtils::regularMesh(DataSeriesIterator begin, DataSeriesIterator end,
                                                    Resolution xResolution, Resolution yResolution)
 {
@@ -112,5 +149,13 @@ DataSeriesUtils::Mesh DataSeriesUtils::regularMesh(DataSeriesIterator begin, Dat
     if (yResolution.m_Logarithmic) {
         std::for_each(yData.begin(), yData.end(), [](auto &val) { val = std::log10(val); });
     }
+
+    // Computes mesh properties
+    int nbX, nbY;
+    double xMin, xStep, yMin, yStep;
+    std::tie(nbX, xMin, xStep)
+        = meshProperties(begin, end, [](const auto &it) { return it->x(); }, xResolution.m_Val);
+    std::tie(nbY, yMin, yStep) = meshProperties(
+        yData.begin(), yData.end(), [](const auto &it) { return *it; }, yResolution.m_Val);
 
 }
