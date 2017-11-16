@@ -276,7 +276,7 @@ bool SpectrogramParserHelper::checkProperties()
     auto minBands = m_Properties.value(MIN_BANDS_PROPERTY).value<std::vector<double> >();
     auto maxBands = m_Properties.value(MAX_BANDS_PROPERTY).value<std::vector<double> >();
 
-    if (minBands.size() != maxBands.size()) {
+    if (minBands.size() < 2 || minBands.size() != maxBands.size()) {
         qCWarning(LOG_AmdaResultParserHelper()) << QObject::tr(
             "Can't generate y-axis data from bands extracted: bands intervals are invalid");
         return false;
