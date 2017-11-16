@@ -158,4 +158,39 @@ DataSeriesUtils::Mesh DataSeriesUtils::regularMesh(DataSeriesIterator begin, Dat
     std::tie(nbY, yMin, yStep) = meshProperties(
         yData.begin(), yData.end(), [](const auto &it) { return *it; }, yResolution.m_Val);
 
+    // Generates mesh according to the x-axis and y-axis steps
+    Mesh result{nbX, xMin, xStep, nbY, yMin, yStep};
+
+    for (auto meshXIndex = 0; meshXIndex < nbX; ++meshXIndex) {
+        auto meshX = xMin + meshXIndex * xStep;
+        // According to current x-axis of the mesh, finds in the data series the interval in which
+        // the data is or gets closer (without exceeding it).
+        // An interval is defined by a value and extends to +/- 50% of the resolution. For example,
+        // for a value of 3 and a resolution of 1, the associated interval is [2.5, 3.5].
+        auto xIt = std::lower_bound(begin, end, meshX,
+                                    [xResolution](const auto &it, const auto &val) {
+                                        return it.x() - xResolution.m_Val / 2. < val;
+                                    })
+                   - 1;
+
+        // When the corresponding entry of the data series is found, generates the values of the
+        // mesh by retrieving the values of the entry, for each y-axis value of the mesh
+        auto values = xIt->values();
+
+        for (auto meshYIndex = 0; meshYIndex < nbY; ++meshYIndex) {
+            auto meshY = yMin + meshYIndex * yStep;
+
+            auto yBegin = yData.begin();
+            auto yIt = std::lower_bound(yBegin, yData.end(), meshY,
+                                        [yResolution](const auto &it, const auto &val) {
+                                            return it - yResolution.m_Val / 2. < val;
+                                        })
+                       - 1;
+
+            auto valueIndex = std::distance(yBegin, yIt);
+            result.m_Data[result.m_NbX * meshYIndex + meshXIndex] = values.at(valueIndex);
+        }
+    }
+
+    return result;
 }
