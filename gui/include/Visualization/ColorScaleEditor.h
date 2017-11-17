@@ -24,6 +24,9 @@ public:
 private:
     /// Fills the editor fields from color scale data
     void loadScale();
+    /// Updates the color scale from editor fields
+    void saveScale();
+
     Ui::ColorScaleEditor *ui;
     QButtonGroup *m_ThresholdGroup;
     /// Scale in editing
@@ -34,6 +37,9 @@ private:
     QCPColorScale *m_PreviewScale;
 
 private slots:
+    /// @sa QDialog::accept()
+    void accept() override;
+
     /// Slot called when max threshold value changes
     void onMaxChanged();
     /// Slot called when min threshold value changes

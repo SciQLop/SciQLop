@@ -67,6 +67,10 @@ ColorScaleEditor::ColorScaleEditor(SqpColorScale &scale, QWidget *parent)
     connect(ui->minSpinBox, SIGNAL(editingFinished()), this, SLOT(onMinChanged()));
     connect(ui->maxSpinBox, SIGNAL(editingFinished()), this, SLOT(onMaxChanged()));
 
+    // OK/cancel buttons
+    connect(ui->okButton, SIGNAL(clicked(bool)), this, SLOT(accept()));
+    connect(ui->cancelButton, SIGNAL(clicked(bool)), this, SLOT(reject()));
+
     // Loads color scale
     loadScale();
 }
@@ -93,6 +97,29 @@ void ColorScaleEditor::loadScale()
     ui->maxSpinBox->setValue(range.upper);
 
     updatePreview();
+}
+
+void ColorScaleEditor::saveScale()
+{
+    auto qcpColorScale = m_Scale.m_Scale;
+
+    // Gradient
+    auto gradientPreset
+        = ui->gradientComboBox->currentData().value<QCPColorGradient::GradientPreset>();
+    qcpColorScale->setGradient(gradientPreset);
+    m_Scale.m_GradientPreset = gradientPreset;
+
+    // Threshold mode
+    m_Scale.m_AutomaticThreshold = ui->thresholdAutoButton->isChecked();
+
+    // Min/max
+    qcpColorScale->setDataRange(QCPRange{ui->minSpinBox->value(), ui->maxSpinBox->value()});
+}
+
+void ColorScaleEditor::accept()
+{
+    saveScale();
+    QDialog::accept();
 }
 
 void ColorScaleEditor::onMaxChanged()
