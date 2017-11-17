@@ -17,14 +17,21 @@ Q_LOGGING_CATEGORY(LOG_AmdaProvider, "AmdaProvider")
 
 namespace {
 
+/// URL of the default AMDA server
+const auto AMDA_SERVER_URL = QStringLiteral("amda.irap.omp.eu");
+
+/// URL of the AMDA test server
+const auto AMDA_TEST_SERVER_URL = QStringLiteral("amdatest.irap.omp.eu");
+
 /// URL format for a request on AMDA server. The parameters are as follows:
-/// - %1: start date
-/// - %2: end date
-/// - %3: parameter id
+/// - %1: server URL
+/// - %2: start date
+/// - %3: end date
+/// - %4: parameter id
 /// AMDA V2: http://amdatest.irap.omp.eu/php/rest/
 const auto AMDA_URL_FORMAT = QStringLiteral(
-    "http://amda.irap.omp.eu/php/rest/"
-    "getParameter.php?startTime=%1&stopTime=%2&parameterID=%3&outputFormat=ASCII&"
+    "http://%1/php/rest/"
+    "getParameter.php?startTime=%2&stopTime=%3&parameterID=%4&outputFormat=ASCII&"
     "timeFormat=ISO8601&gzip=0");
 
 /// Dates format passed in the URL (e.g 2013-09-23T09:00)
@@ -37,10 +44,25 @@ QString dateFormat(double sqpRange) noexcept
     return dateTime.toString(AMDA_TIME_FORMAT);
 }
 
+/// Returns the URL of the AMDA server queried for requests, depending on the type of server passed
+/// as a parameter
+QString serverURL(const QString &server)
+{
+    if (server == QString{"amdatest"}) {
+        return AMDA_TEST_SERVER_URL;
+    }
+    else {
+        return AMDA_SERVER_URL;
+    }
+}
+
 AmdaResultParser::ValueType valueType(const QString &valueType)
 {
     if (valueType == QStringLiteral("scalar")) {
         return AmdaResultParser::ValueType::SCALAR;
+    }
+    else if (valueType == QStringLiteral("spectrogram")) {
+        return AmdaResultParser::ValueType::SPECTROGRAM;
     }
     else if (valueType == QStringLiteral("vector")) {
         return AmdaResultParser::ValueType::VECTOR;
@@ -168,6 +190,9 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     // scalar, vector...
     auto productValueType = valueType(data.value(AMDA_DATA_TYPE_KEY).toString());
 
+    // Gets the server being queried to retrieve the product. It's then used to set the server URL
+    auto productServer = data.value(AMDA_SERVER_KEY).toString();
+
     // /////////// //
     // Creates URL //
     // /////////// //
@@ -175,7 +200,8 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     auto startDate = dateFormat(dateTime.m_TStart);
     auto endDate = dateFormat(dateTime.m_TEnd);
 
-    auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(startDate, endDate, productId)};
+    auto url = QUrl{
+        QString{AMDA_URL_FORMAT}.arg(serverURL(productServer), startDate, endDate, productId)};
     qCInfo(LOG_AmdaProvider()) << tr("TORM AmdaProvider::retrieveData url:") << url;
     auto tempFile = std::make_shared<QTemporaryFile>();
 
@@ -216,8 +242,7 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
 
               // Don't do anything if the reply was abort
               if (reply->error() == QNetworkReply::NoError) {
-                  // AMDA v2: auto downloadFileUrl = QUrl{QString{reply->readAll()}.trimmed()};
-                  auto downloadFileUrl = QUrl{QString{reply->readAll()}};
+                  auto downloadFileUrl = QUrl{QString{reply->readAll()}.trimmed()};
 
                   qCInfo(LOG_AmdaProvider())
                       << tr("TORM AmdaProvider::retrieveData downloadFileUrl:") << downloadFileUrl;
