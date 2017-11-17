@@ -49,6 +49,16 @@ public:
     /// doesn't live in a thread and access gui
     DragDropHelper &dragDropHelper() noexcept;
 
+    enum class PlotsInteractionMode { None, ZoomBox, DragAndDrop, SelectionZones };
+
+    enum class PlotsCursorMode { NoCursor, Vertical, Temporal, Horizontal, Cross };
+
+    PlotsInteractionMode plotsInteractionMode() const;
+    void setPlotsInteractionMode(PlotsInteractionMode mode);
+
+    PlotsCursorMode plotsCursorMode() const;
+    void setPlotsCursorMode(PlotsCursorMode mode);
+
 private:
     class SqpApplicationPrivate;
     spimpl::unique_impl_ptr<SqpApplicationPrivate> impl;
