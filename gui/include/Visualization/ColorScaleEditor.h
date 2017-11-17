@@ -22,6 +22,8 @@ public:
     virtual ~ColorScaleEditor() noexcept;
 
 private:
+    /// Fills the editor fields from color scale data
+    void loadScale();
     Ui::ColorScaleEditor *ui;
     QButtonGroup *m_ThresholdGroup;
     /// Scale in editing

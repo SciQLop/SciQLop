@@ -67,14 +67,32 @@ ColorScaleEditor::ColorScaleEditor(SqpColorScale &scale, QWidget *parent)
     connect(ui->minSpinBox, SIGNAL(editingFinished()), this, SLOT(onMinChanged()));
     connect(ui->maxSpinBox, SIGNAL(editingFinished()), this, SLOT(onMaxChanged()));
 
-    // First update
-    onThresholdChanged(true);
-    updatePreview();
+    // Loads color scale
+    loadScale();
 }
 
 ColorScaleEditor::~ColorScaleEditor() noexcept
 {
     delete ui;
+}
+
+void ColorScaleEditor::loadScale()
+{
+    // Gradient
+    auto gradientPresetIndex = ui->gradientComboBox->findData(m_Scale.m_GradientPreset);
+    ui->gradientComboBox->setCurrentIndex(gradientPresetIndex);
+
+    // Threshold mode
+    (m_Scale.m_AutomaticThreshold ? ui->thresholdAutoButton : ui->thresholdManualButton)
+        ->setChecked(true);
+
+    // Min/max
+    auto qcpColorScale = m_Scale.m_Scale;
+    auto range = qcpColorScale->dataRange();
+    ui->minSpinBox->setValue(range.lower);
+    ui->maxSpinBox->setValue(range.upper);
+
+    updatePreview();
 }
 
 void ColorScaleEditor::onMaxChanged()
