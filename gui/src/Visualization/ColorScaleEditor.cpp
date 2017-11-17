@@ -1,5 +1,5 @@
 #include "Visualization/ColorScaleEditor.h"
-#include "Visualization/qcustomplot.h"
+#include "Visualization/SqpColorScale.h"
 
 #include "ui_ColorScaleEditor.h"
 
@@ -20,8 +20,11 @@ const auto GRADIENTS = QVariantMap{{"Candy", QCPColorGradient::gpCandy},
 
 } // namespace
 
-ColorScaleEditor::ColorScaleEditor(QWidget *parent)
-        : QDialog{parent}, ui{new Ui::ColorScaleEditor}, m_ThresholdGroup{new QButtonGroup{this}}
+ColorScaleEditor::ColorScaleEditor(SqpColorScale &scale, QWidget *parent)
+        : QDialog{parent},
+          ui{new Ui::ColorScaleEditor},
+          m_Scale{scale},
+          m_ThresholdGroup{new QButtonGroup{this}}
 {
     ui->setupUi(this);
 

@@ -8,6 +8,7 @@ namespace Ui {
 class ColorScaleEditor;
 } // Ui
 
+class SqpColorScale;
 class QCPColorScale;
 
 /**
@@ -17,13 +18,18 @@ class ColorScaleEditor : public QDialog {
     Q_OBJECT
 
 public:
-    explicit ColorScaleEditor(QWidget *parent = 0);
+    explicit ColorScaleEditor(SqpColorScale &scale, QWidget *parent = 0);
     virtual ~ColorScaleEditor() noexcept;
 
 private:
     Ui::ColorScaleEditor *ui;
     QButtonGroup *m_ThresholdGroup;
-    QCPColorScale *m_PreviewScale; ///< Scale shown as preview
+    /// Scale in editing
+    /// @remarks reference must remain valid throughout the existence of the ColorScaleEditor
+    /// instance
+    SqpColorScale &m_Scale;
+    /// Scale shown as preview
+    QCPColorScale *m_PreviewScale;
 
 private slots:
     /// Slot called when max threshold value changes
