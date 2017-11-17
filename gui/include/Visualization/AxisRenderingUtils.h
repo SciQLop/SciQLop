@@ -10,8 +10,8 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_AxisRenderingUtils)
 
 class IDataSeries;
 class QCPAxis;
-class QCPColorScale;
 class QCustomPlot;
+class SqpColorScale;
 
 /// Formats a data value according to the axis on which it is present
 QString formatValue(double value, const QCPAxis &axis);
@@ -26,7 +26,7 @@ struct IAxisHelper {
     /// parameters
     /// @param plot the plot for which to set axe properties
     /// @param colorScale the color scale for which to set properties
-    virtual void setProperties(QCustomPlot &plot, QCPColorScale &colorScale) = 0;
+    virtual void setProperties(QCustomPlot &plot, SqpColorScale &colorScale) = 0;
 };
 
 struct IAxisHelperFactory {

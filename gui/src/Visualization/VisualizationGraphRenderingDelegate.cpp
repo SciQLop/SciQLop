@@ -2,6 +2,7 @@
 #include "Visualization/AxisRenderingUtils.h"
 #include "Visualization/ColorScaleEditor.h"
 #include "Visualization/PlottablesRenderingUtils.h"
+#include "Visualization/SqpColorScale.h"
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/qcustomplot.h"
 
@@ -103,7 +104,7 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
               m_XAxisPixmap{new QCPItemPixmap{&m_Plot}},
               m_ShowXAxis{true},
               m_XAxisLabel{},
-              m_ColorScale{new QCPColorScale{&m_Plot}}
+              m_ColorScale{SqpColorScale{m_Plot}}
     {
         initPointTracerStyle(*m_PointTracer);
 
@@ -164,7 +165,7 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
     QCPItemPixmap *m_XAxisPixmap;
     bool m_ShowXAxis; /// X-axis properties are shown or hidden
     QString m_XAxisLabel;
-    QCPColorScale *m_ColorScale; /// Color scale used for some types of graphs (as spectrograms)
+    SqpColorScale m_ColorScale; /// Color scale used for some types of graphs (as spectrograms)
 };
 
 VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegate(
@@ -232,7 +233,7 @@ void VisualizationGraphRenderingDelegate::setAxesProperties(
     impl->m_XAxisLabel = dataSeries->xAxisUnit().m_Name;
 
     auto axisHelper = IAxisHelperFactory::create(dataSeries);
-    axisHelper->setProperties(impl->m_Plot, *impl->m_ColorScale);
+    axisHelper->setProperties(impl->m_Plot, impl->m_ColorScale);
 
     // Updates x-axis state
     impl->updateXAxisState();
