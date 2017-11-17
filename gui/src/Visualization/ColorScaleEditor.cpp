@@ -58,6 +58,7 @@ ColorScaleEditor::ColorScaleEditor(QWidget *parent)
     ui->plot->plotLayout()->addElement(0, 0, m_PreviewScale);
 
     // Inits connections
+    connect(ui->gradientComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(updatePreview()));
     connect(ui->thresholdAutoButton, SIGNAL(toggled(bool)), this, SLOT(onThresholdChanged(bool)));
     connect(ui->thresholdManualButton, SIGNAL(toggled(bool)), this, SLOT(onThresholdChanged(bool)));
     connect(ui->minSpinBox, SIGNAL(editingFinished()), this, SLOT(onMinChanged()));
@@ -65,6 +66,7 @@ ColorScaleEditor::ColorScaleEditor(QWidget *parent)
 
     // First update
     onThresholdChanged(true);
+    updatePreview();
 }
 
 ColorScaleEditor::~ColorScaleEditor() noexcept
@@ -80,6 +82,7 @@ void ColorScaleEditor::onMaxChanged()
         ui->minSpinBox->setValue(maxValue);
     }
 
+    updatePreview();
 }
 
 void ColorScaleEditor::onMinChanged()
@@ -90,6 +93,7 @@ void ColorScaleEditor::onMinChanged()
         ui->maxSpinBox->setValue(minValue);
     }
 
+    updatePreview();
 }
 
 void ColorScaleEditor::onThresholdChanged(bool checked)
@@ -102,3 +106,11 @@ void ColorScaleEditor::onThresholdChanged(bool checked)
     }
 }
 
+void ColorScaleEditor::updatePreview()
+{
+    m_PreviewScale->setDataRange(QCPRange{ui->minSpinBox->value(), ui->maxSpinBox->value()});
+    m_PreviewScale->setGradient(
+        ui->gradientComboBox->currentData().value<QCPColorGradient::GradientPreset>());
+
+    ui->plot->replot();
+}

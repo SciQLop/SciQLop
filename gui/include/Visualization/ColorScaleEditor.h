@@ -32,6 +32,9 @@ private slots:
     void onMinChanged();
     /// Slot called when the threshold mode (auto or manual) changes
     void onThresholdChanged(bool checked);
+
+    /// Slot called when a property of the color scale changed
+    void updatePreview();
 };
 
 #endif // SCIQLOP_COLORSCALEEDITOR_H
