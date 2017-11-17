@@ -94,7 +94,7 @@ void TimeWidget::dragEnterEvent(QDragEnterEvent *event)
 
 void TimeWidget::dragLeaveEvent(QDragLeaveEvent *event)
 {
-    setStyleSheet(QString());
+    setStyleSheet(QString{});
 }
 
 void TimeWidget::dropEvent(QDropEvent *event)
@@ -109,7 +109,7 @@ void TimeWidget::dropEvent(QDropEvent *event)
         event->ignore();
     }
 
-    setStyleSheet(QString());
+    setStyleSheet(QString{});
 }
 
 
@@ -142,10 +142,8 @@ void TimeWidget::mouseMoveEvent(QMouseEvent *event)
 
     drag->setMimeData(mimeData);
 
-    auto pixmap = QPixmap(size());
-    render(&pixmap);
-    drag->setPixmap(pixmap);
-    drag->setHotSpot(impl->m_DragStartPosition);
+    auto pixmap = QPixmap{":/icones/time.png"};
+    drag->setPixmap(pixmap.scaledToWidth(22));
 
     sqpApp->dragDropHelper().resetDragAndDrop();
 

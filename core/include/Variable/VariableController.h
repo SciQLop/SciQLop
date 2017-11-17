@@ -102,6 +102,9 @@ public slots:
     /// Update the temporal parameters of every selected variable to dateTime
     void onDateTimeOnSelection(const SqpRange &dateTime);
 
+    /// Update the temporal parameters of the specified variable
+    void onUpdateDateTime(std::shared_ptr<Variable> variable, const SqpRange &dateTime);
+
 
     void onDataProvided(QUuid vIdentifier, const SqpRange &rangeRequested,
                         const SqpRange &cacheRangeRequested,

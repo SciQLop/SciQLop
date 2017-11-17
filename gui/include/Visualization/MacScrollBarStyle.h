@@ -10,7 +10,7 @@ class MacScrollBarStyle : public QProxyStyle {
 
 public:
     int styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget,
-                  QStyleHintReturn *returnData) const;
+                  QStyleHintReturn *returnData) const override;
 
     void selfInstallOn(QWidget *widget, bool installOnSubWidgets);
 };
