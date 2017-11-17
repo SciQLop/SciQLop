@@ -23,10 +23,16 @@ Q_LOGGING_CATEGORY(LOG_VisualizationGraphWidget, "VisualizationGraphWidget")
 namespace {
 
 /// Key pressed to enable zoom on horizontal axis
-const auto HORIZONTAL_ZOOM_MODIFIER = Qt::NoModifier;
+const auto HORIZONTAL_ZOOM_MODIFIER = Qt::ControlModifier;
 
 /// Key pressed to enable zoom on vertical axis
-const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
+const auto VERTICAL_ZOOM_MODIFIER = Qt::ShiftModifier;
+
+/// Speed of a step of a wheel event for a pan, in percentage of the axis range
+const auto PAN_SPEED = 5;
+
+/// Key pressed to enable a calibration pan
+const auto VERTICAL_PAN_MODIFIER = Qt::AltModifier;
 
 } // namespace
 
@@ -62,8 +68,7 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     // Set qcpplot properties :
     // - Drag (on x-axis) and zoom are enabled
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
-    ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectItems);
-    ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
+    ui->widget->setInteractions(QCP::iRangeZoom | QCP::iSelectItems);
 
     // The delegate must be initialized after the ui as it uses the plot
     impl->m_RenderingDelegate = std::make_unique<VisualizationGraphRenderingDelegate>(*this);
@@ -344,28 +349,37 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
 
 void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 {
-    auto zoomOrientations = QFlags<Qt::Orientation>{};
+    auto value = event->angleDelta().x() + event->angleDelta().y();
+    if (value != 0) {
 
-    // Lambda that enables a zoom orientation if the key modifier related to this orientation
-    // has
-    // been pressed
-    auto enableOrientation
-        = [&zoomOrientations, event](const auto &orientation, const auto &modifier) {
-              auto orientationEnabled = event->modifiers().testFlag(modifier);
-              zoomOrientations.setFlag(orientation, orientationEnabled);
-          };
-    enableOrientation(Qt::Vertical, VERTICAL_ZOOM_MODIFIER);
-    enableOrientation(Qt::Horizontal, HORIZONTAL_ZOOM_MODIFIER);
+        auto direction = value > 0 ? 1.0 : -1.0;
+        auto isZoomX = event->modifiers().testFlag(HORIZONTAL_ZOOM_MODIFIER);
+        auto isZoomY = event->modifiers().testFlag(VERTICAL_ZOOM_MODIFIER);
+        impl->m_IsCalibration = event->modifiers().testFlag(VERTICAL_PAN_MODIFIER);
 
-    ui->widget->axisRect()->setRangeZoom(zoomOrientations);
+        auto zoomOrientations = QFlags<Qt::Orientation>{};
+        zoomOrientations.setFlag(Qt::Horizontal, isZoomX);
+        zoomOrientations.setFlag(Qt::Vertical, isZoomY);
+
+        ui->widget->axisRect()->setRangeZoom(zoomOrientations);
+
+        if (!isZoomX && !isZoomY) {
+            auto axis = plot().axisRect()->axis(QCPAxis::atBottom);
+            auto diff = direction * (axis->range().size() * (PAN_SPEED / 100.0));
+
+            axis->setRange(axis->range() + diff);
+
+            if (plot().noAntialiasingOnDrag()) {
+                plot().setNotAntialiasedElements(QCP::aeAll);
+            }
+
+            plot().replot(QCustomPlot::rpQueuedReplot);
+        }
+    }
 }
 
 void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
 {
-    impl->m_IsCalibration = event->modifiers().testFlag(Qt::ControlModifier);
-
-    plot().setInteraction(QCP::iRangeDrag, !event->modifiers().testFlag(Qt::AltModifier));
-
     VisualizationDragWidget::mousePressEvent(event);
 }
 
