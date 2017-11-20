@@ -34,6 +34,9 @@ const auto PAN_SPEED = 5;
 /// Key pressed to enable a calibration pan
 const auto VERTICAL_PAN_MODIFIER = Qt::AltModifier;
 
+/// Minimum size for the zoom box, in percentage of the axis range
+const auto ZOOM_BOX_MIN_SIZE = 0.8;
+
 } // namespace
 
 struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
@@ -53,6 +56,46 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     bool m_IsCalibration;
     /// Delegate used to attach rendering features to the plot
     std::unique_ptr<VisualizationGraphRenderingDelegate> m_RenderingDelegate;
+
+    QCPItemRect *m_DrawingRect = nullptr;
+
+    void configureDrawingRect()
+    {
+        if (m_DrawingRect) {
+            QPen p;
+            p.setWidth(2);
+            m_DrawingRect->setPen(p);
+        }
+    }
+
+    void startDrawingRect(const QPoint &pos, QCustomPlot &plot)
+    {
+        removeDrawingRect(plot);
+
+        auto axisPos = posToAxisPos(pos, plot);
+
+        m_DrawingRect = new QCPItemRect{&plot};
+        configureDrawingRect();
+
+        m_DrawingRect->topLeft->setCoords(axisPos);
+        m_DrawingRect->bottomRight->setCoords(axisPos);
+    }
+
+    void removeDrawingRect(QCustomPlot &plot)
+    {
+        if (m_DrawingRect) {
+            plot.removeItem(m_DrawingRect); // the item is deleted by QCustomPlot
+            m_DrawingRect = nullptr;
+            plot.replot(QCustomPlot::rpQueuedReplot);
+        }
+    }
+
+    QPointF posToAxisPos(const QPoint &pos, QCustomPlot &plot) const
+    {
+        auto axisX = plot.axisRect()->axis(QCPAxis::atBottom);
+        auto axisY = plot.axisRect()->axis(QCPAxis::atLeft);
+        return QPointF{axisX->pixelToCoord(pos.x()), axisY->pixelToCoord(pos.y())};
+    }
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
@@ -344,6 +387,11 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
     // Handles plot rendering when mouse is moving
     impl->m_RenderingDelegate->onMouseMove(event);
 
+    if (impl->m_DrawingRect) {
+        auto axisPos = impl->posToAxisPos(event->pos(), plot());
+        impl->m_DrawingRect->bottomRight->setCoords(axisPos);
+    }
+
     VisualizationDragWidget::mouseMoveEvent(event);
 }
 
@@ -380,11 +428,37 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 
 void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
 {
+    if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::ZoomBox) {
+        impl->startDrawingRect(event->pos(), plot());
+    }
+
     VisualizationDragWidget::mousePressEvent(event);
 }
 
 void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
 {
+    if (impl->m_DrawingRect) {
+
+        auto axisX = plot().axisRect()->axis(QCPAxis::atBottom);
+        auto axisY = plot().axisRect()->axis(QCPAxis::atLeft);
+
+        auto newAxisXRange = QCPRange{impl->m_DrawingRect->topLeft->coords().x(),
+                                      impl->m_DrawingRect->bottomRight->coords().x()};
+
+        auto newAxisYRange = QCPRange{impl->m_DrawingRect->topLeft->coords().y(),
+                                      impl->m_DrawingRect->bottomRight->coords().y()};
+
+        impl->removeDrawingRect(plot());
+
+        if (newAxisXRange.size() > axisX->range().size() * (ZOOM_BOX_MIN_SIZE / 100.0)
+            && newAxisYRange.size() > axisY->range().size() * (ZOOM_BOX_MIN_SIZE / 100.0)) {
+            axisX->setRange(newAxisXRange);
+            axisY->setRange(newAxisYRange);
+
+            plot().replot(QCustomPlot::rpQueuedReplot);
+        }
+    }
+
     impl->m_IsCalibration = false;
 }
 
