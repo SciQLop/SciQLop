@@ -358,6 +358,9 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
 
         return newVariable;
     }
+
+    qCCritical(LOG_VariableController()) << tr("Impossible to create variable");
+    return nullptr;
 }
 
 void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)

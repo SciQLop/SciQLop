@@ -74,7 +74,7 @@ struct SortUtils {
         auto sortedData = Container{};
         sortedData.reserve(containerSize);
 
-        for (auto i = 0, componentIndex = 0, permutationIndex = 0; i < containerSize;
+        for (auto i = 0u, componentIndex = 0u, permutationIndex = 0u; i < containerSize;
              ++i, componentIndex = i % nbValues, permutationIndex = i / nbValues) {
             auto insertIndex = sortPermutation.at(permutationIndex) * nbValues + componentIndex;
             sortedData.push_back(container.at(insertIndex));

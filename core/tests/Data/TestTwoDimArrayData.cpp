@@ -21,8 +21,8 @@ InputData flatten(const Container &container)
     auto result = DataContainer{};
     result.reserve(componentSize * containerSize);
 
-    for (auto i = 0; i < componentSize; ++i) {
-        for (auto j = 0; j < containerSize; ++j) {
+    for (auto i = 0u; i < componentSize; ++i) {
+        for (auto j = 0u; j < containerSize; ++j) {
             result.push_back(container.at(j).at(i));
         }
     }
@@ -40,7 +40,7 @@ void verifyArrayData(const ArrayData<2> &arrayData, const Container &expectedDat
                            }));
     };
 
-    for (auto i = 0; i < expectedData.size(); ++i) {
+    for (auto i = 0u; i < expectedData.size(); ++i) {
         verifyComponent(expectedData.at(i), [i](const auto &seriesIt, const auto &value) {
             return seriesIt.at(i) == value;
         });

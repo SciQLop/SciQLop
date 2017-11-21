@@ -37,6 +37,8 @@ public:
                 qCCritical(LOG_VariableCacheStrategyFactory())
                     << QObject::tr("Unknown cache strategy");
         }
+
+        return nullptr;
     }
 };
 

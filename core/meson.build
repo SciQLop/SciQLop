@@ -9,7 +9,6 @@ core_moc_headers = [
   'include/Variable/VariableCacheController.h',
   'include/Variable/VariableController.h',
   'include/Variable/VariableAcquisitionWorker.h',
-  'include/Variable/VariableCacheStrategy.h',
   'include/Variable/VariableSynchronizationGroup.h',
   'include/Variable/VariableModel.h',
   'include/Visualization/VisualizationController.h'

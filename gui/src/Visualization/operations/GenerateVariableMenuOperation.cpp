@@ -17,9 +17,9 @@ struct GenerateVariableMenuOperation::GenerateVariableMenuOperationPrivate {
         QMenu *menu, std::shared_ptr<Variable> variable,
         std::set<IVisualizationWidget *> variableContainers)
             : m_Variable{variable},
+              m_VariableContainers{std::move(variableContainers)},
               m_PlotMenuBuilder{menu},
-              m_UnplotMenuBuilder{menu},
-              m_VariableContainers{std::move(variableContainers)}
+              m_UnplotMenuBuilder{menu}
     {
     }
 

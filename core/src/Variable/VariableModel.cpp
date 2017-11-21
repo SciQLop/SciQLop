@@ -146,7 +146,9 @@ void VariableModel::deleteVariable(std::shared_ptr<Variable> variable) noexcept
 
 std::shared_ptr<Variable> VariableModel::variable(int index) const
 {
-    return (index >= 0 && index < impl->m_Variables.size()) ? impl->m_Variables[index] : nullptr;
+    return (index >= 0u && static_cast<size_t>(index) < impl->m_Variables.size())
+               ? impl->m_Variables[index]
+               : nullptr;
 }
 
 std::vector<std::shared_ptr<Variable> > VariableModel::variables() const

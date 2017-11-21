@@ -88,7 +88,7 @@ void tryReadResult(std::vector<double> &xAxisData, std::vector<double> &valuesDa
     auto lineData = line.split(RESULT_LINE_SEPARATOR, QString::SkipEmptyParts);
 
     // Checks that the line contains expected number of values + x-axis value
-    if (lineData.size() == valuesIndexes.size() + 1) {
+    if (static_cast<size_t>(lineData.size()) == valuesIndexes.size() + 1) {
         // X : the data is converted from date to double (in secs)
         auto x = doubleDate(lineData.at(0));
 
