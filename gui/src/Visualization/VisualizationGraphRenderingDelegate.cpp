@@ -228,6 +228,13 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
     }
 }
 
+void VisualizationGraphRenderingDelegate::onPlotUpdated() noexcept
+{
+    // Updates color scale bounds
+    impl->m_ColorScale.updateDataRange();
+    impl->m_Plot.replot();
+}
+
 void VisualizationGraphRenderingDelegate::setAxesProperties(
     std::shared_ptr<IDataSeries> dataSeries) noexcept
 {

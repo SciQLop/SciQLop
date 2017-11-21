@@ -20,6 +20,8 @@ public:
 
     void onMouseDoubleClick(QMouseEvent *event) noexcept;
     void onMouseMove(QMouseEvent *event) noexcept;
+    /// Updates rendering when data of plot changed
+    void onPlotUpdated() noexcept;
 
     /// Sets properties of the plot's axes from the data series passed as parameter
     void setAxesProperties(std::shared_ptr<IDataSeries> dataSeries) noexcept;

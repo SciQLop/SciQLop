@@ -53,6 +53,15 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     {
     }
 
+    void updateData(PlottablesMap &plottables, std::shared_ptr<IDataSeries> dataSeries,
+                    const SqpRange &range)
+    {
+        VisualizationGraphHelper::updateData(plottables, dataSeries, range);
+
+        // Prevents that data has changed to update rendering
+        m_RenderingDelegate->onPlotUpdated();
+    }
+
     QString m_Name;
     // 1 variable -> n qcpplot
     std::map<std::shared_ptr<Variable>, PlottablesMap> m_VariableToPlotMultiMap;
@@ -588,8 +597,7 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
         qCDebug(LOG_VisualizationGraphWidget())
             << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated E" << dateTime;
         if (dateTime.contains(variable->range()) || dateTime.intersect(variable->range())) {
-            VisualizationGraphHelper::updateData(variableEntry.second, variable->dataSeries(),
-                                                 variable->range());
+            impl->updateData(variableEntry.second, variable->dataSeries(), variable->range());
         }
     }
 }
@@ -599,6 +607,6 @@ void VisualizationGraphWidget::onUpdateVarDisplaying(std::shared_ptr<Variable> v
 {
     auto it = impl->m_VariableToPlotMultiMap.find(variable);
     if (it != impl->m_VariableToPlotMultiMap.end()) {
-        VisualizationGraphHelper::updateData(it->second, variable->dataSeries(), range);
+        impl->updateData(it->second, variable->dataSeries(), range);
     }
 }
