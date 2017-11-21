@@ -13,6 +13,13 @@ FIND_PACKAGE(Qt5Test REQUIRED)
 FIND_PACKAGE(Qt5Gui REQUIRED)
 
 #
+# CatalogueAPI
+#
+LIST( APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+FIND_PACKAGE(CatalogueAPI)
+
+
+#
 # doxygen tools
 #
 FIND_PACKAGE(Doxygen)
