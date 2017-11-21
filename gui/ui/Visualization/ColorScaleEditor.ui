@@ -34,9 +34,6 @@
        <property name="text">
         <string>OK</string>
        </property>
-       <property name="default">
-        <bool>true</bool>
-       </property>
       </widget>
      </item>
      <item>
@@ -71,9 +68,6 @@
      </item>
      <item row="1" column="1">
       <widget class="QRadioButton" name="thresholdAutoButton">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
        <property name="text">
         <string>Automatic</string>
        </property>
@@ -158,10 +152,10 @@
  <tabstops>
   <tabstop>gradientComboBox</tabstop>
   <tabstop>thresholdAutoButton</tabstop>
-  <tabstop>okButton</tabstop>
   <tabstop>thresholdManualButton</tabstop>
-  <tabstop>maxSpinBox</tabstop>
   <tabstop>minSpinBox</tabstop>
+  <tabstop>maxSpinBox</tabstop>
+  <tabstop>okButton</tabstop>
   <tabstop>cancelButton</tabstop>
  </tabstops>
  <resources/>

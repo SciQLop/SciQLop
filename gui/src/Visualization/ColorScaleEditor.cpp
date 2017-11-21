@@ -151,6 +151,16 @@ void ColorScaleEditor::onThresholdChanged(bool checked)
 
         ui->minSpinBox->setEnabled(!isAutomatic);
         ui->maxSpinBox->setEnabled(!isAutomatic);
+
+        // Computes automatic thresholds
+        if (isAutomatic) {
+            double minThreshold, maxThreshold;
+            std::tie(minThreshold, maxThreshold) = SqpColorScale::computeThresholds(m_Scale);
+            ui->minSpinBox->setValue(minThreshold);
+            ui->maxSpinBox->setValue(maxThreshold);
+
+            updatePreview();
+        }
     }
 }
 
