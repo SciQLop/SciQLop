@@ -3,6 +3,10 @@
 
 #include <Visualization/qcustomplot.h>
 
+#include <QLoggingCategory>
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_SqpColorScale)
+
 /**
  * @brief The SqpColorScale struct represents the color scale for some graphs (such as
  * spectrograms).
@@ -11,6 +15,8 @@
  * other useful properties for viewing in SciQlop
  */
 struct SqpColorScale {
+    static std::pair<double, double> computeThresholds(const SqpColorScale &scale);
+
     explicit SqpColorScale(QCustomPlot &plot);
 
     /// QCustomPlot object representing the color scale.
