@@ -1,5 +1,5 @@
 STRING(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_TO_LOWER)
-SET(WINDEPLOYQT_ARGS --${CMAKE_BUILD_TYPE_TO_LOWER} --list mapping --no-system-d3d-compiler --compiler-runtime --dry-run)
+SET(WINDEPLOYQT_ARGS --${CMAKE_BUILD_TYPE_TO_LOWER} --list mapping -network -sql --no-system-d3d-compiler --compiler-runtime --dry-run)
 
 #FOREACH(qtModule @_qt5_modules@)
 # STRING(TOLOWER ${qtModule} qtLowerModule)
