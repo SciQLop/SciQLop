@@ -81,7 +81,8 @@ gui_sources = [
   'src/Visualization/MacScrollBarStyle.cpp',
   'src/Visualization/VisualizationCursorItem.cpp',
   'src/Visualization/ColorScaleEditor.cpp',
-  'src/Visualization/SqpColorScale.cpp'
+  'src/Visualization/SqpColorScale.cpp',
+  'src/Visualization/QCPColorMapIterator.cpp'
 ]
 
 gui_inc = include_directories(['include'])
