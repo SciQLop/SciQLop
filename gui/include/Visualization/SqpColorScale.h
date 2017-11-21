@@ -19,6 +19,8 @@ struct SqpColorScale {
 
     explicit SqpColorScale(QCustomPlot &plot);
 
+    void updateDataRange() noexcept;
+
     /// QCustomPlot object representing the color scale.
     /// @remarks The SqpColorScale instance has not the property on this pointer. The pointer must
     /// remain valid throughout the existence of the SqpColorScale instance

@@ -33,9 +33,28 @@ std::pair<double, double> SqpColorScale::computeThresholds(const SqpColorScale &
 
 SqpColorScale::SqpColorScale(QCustomPlot &plot)
         : m_Scale{new QCPColorScale{&plot}},
-          m_AutomaticThreshold{false},
+          m_AutomaticThreshold{true},
           m_GradientPreset{DEFAULT_GRADIENT_PRESET}
 {
     m_Scale->setGradient(m_GradientPreset);
     m_Scale->setDataRange(DEFAULT_RANGE);
+}
+
+void SqpColorScale::updateDataRange() noexcept
+{
+    // Updates data range only if mode is automatic
+    if (!m_AutomaticThreshold) {
+        return;
+    }
+
+    double minThreshold, maxThreshold;
+    std::tie(minThreshold, maxThreshold) = computeThresholds(*this);
+    if (std::isnan(minThreshold) || std::isnan(maxThreshold)) {
+        qCCritical(LOG_SqpColorScale())
+            << "Can't update data range of color scale: thresholds computed are invalid";
+        return;
+    }
+
+    // Updates thresholds
+    m_Scale->setDataRange({minThreshold, maxThreshold});
 }
