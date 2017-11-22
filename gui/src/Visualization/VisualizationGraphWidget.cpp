@@ -10,6 +10,7 @@
 #include <Common/MimeTypesDef.h>
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <DragAndDrop/DragDropHelper.h>
 #include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
@@ -293,9 +294,17 @@ void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 
 bool VisualizationGraphWidget::canDrop(const Variable &variable) const
 {
-    /// @todo : for the moment, a graph can always accomodate a variable
-    Q_UNUSED(variable);
-    return true;
+    auto isSpectrogram = [](const auto &variable) {
+        return std::dynamic_pointer_cast<SpectrogramSeries>(variable.dataSeries()) != nullptr;
+    };
+
+    // - A spectrogram series can't be dropped on graph with existing plottables
+    // - No data series can be dropped on graph with existing spectrogram series
+    return isSpectrogram(variable)
+               ? impl->m_VariableToPlotMultiMap.empty()
+               : std::none_of(
+                     impl->m_VariableToPlotMultiMap.cbegin(), impl->m_VariableToPlotMultiMap.cend(),
+                     [isSpectrogram](const auto &entry) { return isSpectrogram(*entry.first); });
 }
 
 bool VisualizationGraphWidget::contains(const Variable &variable) const
