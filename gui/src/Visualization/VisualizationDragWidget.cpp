@@ -4,6 +4,8 @@
 #include <QApplication>
 #include <QMouseEvent>
 
+#include <SqpApplication.h>
+
 struct VisualizationDragWidget::VisualizationDragWidgetPrivate {
 
     QPoint m_DragStartPosition;
@@ -38,16 +40,16 @@ void VisualizationDragWidget::mouseMoveEvent(QMouseEvent *event)
         return;
     }
 
-    if (!event->modifiers().testFlag(Qt::AltModifier)) {
-        return;
-    }
+    if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::DragAndDrop
+        || event->modifiers().testFlag(Qt::AltModifier)) {
 
-    if ((event->pos() - impl->m_DragStartPosition).manhattanLength()
-        < QApplication::startDragDistance()) {
-        return;
-    }
+        if ((event->pos() - impl->m_DragStartPosition).manhattanLength()
+            < QApplication::startDragDistance()) {
+            return;
+        }
 
-    emit dragDetected(this, impl->m_DragStartPosition);
+        emit dragDetected(this, impl->m_DragStartPosition);
+    }
 
     QWidget::mouseMoveEvent(event);
 }

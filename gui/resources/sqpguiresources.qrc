@@ -13,5 +13,10 @@
         <file>icones/unplot.png</file>
         <file>icones/up.png</file>
 		<file>icones/time.png</file>
+		<file>icones/zoom.png</file>
+		<file>icones/rectangle.png</file>
+		<file>icones/drag.png</file>
+		<file>icones/cursor.png</file>
+		<file>icones/pointer.png</file>
     </qresource>
 </RCC>

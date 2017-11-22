@@ -53,7 +53,7 @@ void processGraphs(QLayout &layout, Fun fun)
     for (auto i = 0; i < layout.count(); ++i) {
         if (auto item = layout.itemAt(i)) {
             if (auto visualizationGraphWidget
-                = dynamic_cast<VisualizationGraphWidget *>(item->widget())) {
+                = qobject_cast<VisualizationGraphWidget *>(item->widget())) {
                 fun(*visualizationGraphWidget);
             }
         }
@@ -345,6 +345,59 @@ QMimeData *VisualizationZoneWidget::mimeData() const
 bool VisualizationZoneWidget::isDragAllowed() const
 {
     return true;
+}
+
+void VisualizationZoneWidget::notifyMouseMoveInGraph(const QPointF &graphPosition,
+                                                     const QPointF &plotPosition,
+                                                     VisualizationGraphWidget *graphWidget)
+{
+    processGraphs(*ui->dragDropContainer->layout(), [&graphPosition, &plotPosition, &graphWidget](
+                                                        VisualizationGraphWidget &processedGraph) {
+
+        switch (sqpApp->plotsCursorMode()) {
+            case SqpApplication::PlotsCursorMode::Vertical:
+                processedGraph.removeHorizontalCursor();
+                processedGraph.addVerticalCursorAtViewportPosition(graphPosition.x());
+                break;
+            case SqpApplication::PlotsCursorMode::Temporal:
+                processedGraph.addVerticalCursor(plotPosition.x());
+                processedGraph.removeHorizontalCursor();
+                break;
+            case SqpApplication::PlotsCursorMode::Horizontal:
+                processedGraph.removeVerticalCursor();
+                if (&processedGraph == graphWidget) {
+                    processedGraph.addHorizontalCursorAtViewportPosition(graphPosition.y());
+                }
+                else {
+                    processedGraph.removeHorizontalCursor();
+                }
+                break;
+            case SqpApplication::PlotsCursorMode::Cross:
+                if (&processedGraph == graphWidget) {
+                    processedGraph.addVerticalCursorAtViewportPosition(graphPosition.x());
+                    processedGraph.addHorizontalCursorAtViewportPosition(graphPosition.y());
+                }
+                else {
+                    processedGraph.removeHorizontalCursor();
+                    processedGraph.removeVerticalCursor();
+                }
+                break;
+            case SqpApplication::PlotsCursorMode::NoCursor:
+                processedGraph.removeHorizontalCursor();
+                processedGraph.removeVerticalCursor();
+                break;
+        }
+
+
+    });
+}
+
+void VisualizationZoneWidget::notifyMouseLeaveGraph(VisualizationGraphWidget *graphWidget)
+{
+    processGraphs(*ui->dragDropContainer->layout(), [](VisualizationGraphWidget &processedGraph) {
+        processedGraph.removeHorizontalCursor();
+        processedGraph.removeVerticalCursor();
+    });
 }
 
 void VisualizationZoneWidget::closeEvent(QCloseEvent *event)

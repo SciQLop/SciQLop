@@ -70,6 +70,10 @@ public:
     QMimeData *mimeData() const override;
     bool isDragAllowed() const override;
 
+    void notifyMouseMoveInGraph(const QPointF &graphPosition, const QPointF &plotPosition,
+                                VisualizationGraphWidget *graphWidget);
+    void notifyMouseLeaveGraph(VisualizationGraphWidget *graphWidget);
+
 protected:
     void closeEvent(QCloseEvent *event) override;
 

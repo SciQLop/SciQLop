@@ -62,6 +62,18 @@ public:
     bool isDragAllowed() const override;
     void highlightForMerge(bool highlighted) override;
 
+    // Cursors
+    /// Adds or moves the vertical cursor at the specified value on the x-axis
+    void addVerticalCursor(double time);
+    /// Adds or moves the vertical cursor at the specified value on the x-axis
+    void addVerticalCursorAtViewportPosition(double position);
+    void removeVerticalCursor();
+    /// Adds or moves the vertical cursor at the specified value on the y-axis
+    void addHorizontalCursor(double value);
+    /// Adds or moves the vertical cursor at the specified value on the y-axis
+    void addHorizontalCursorAtViewportPosition(double position);
+    void removeHorizontalCursor();
+
 signals:
     void synchronize(const SqpRange &range, const SqpRange &oldRange);
     void requestDataLoading(QVector<std::shared_ptr<Variable> > variable, const SqpRange &range,
