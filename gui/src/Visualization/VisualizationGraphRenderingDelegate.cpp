@@ -29,6 +29,8 @@ const auto SHOW_AXIS_ICON_PATH = QStringLiteral(":/icones/up.png");
 /// Tooltip format for graphs
 const auto GRAPH_TOOLTIP_FORMAT = QStringLiteral("key: %1\nvalue: %2");
 
+/// Tooltip format for colormaps
+const auto COLORMAP_TOOLTIP_FORMAT = QStringLiteral("x: %1\ny: %2\nvalue: %3");
 
 /// Offset used to shift the tooltip of the mouse
 const auto TOOLTIP_OFFSET = QPoint{20, 20};
@@ -274,6 +276,10 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
         auto yCellIndex = colorMapCellIndex(*colorMap, y, false);
         auto value = colorMap->data()->cell(xCellIndex, yCellIndex);
 
+        // Sets tooltips
+        tooltip = COLORMAP_TOOLTIP_FORMAT.arg(formatValue(x, *colorMap->keyAxis()),
+                                              formatValue(y, *colorMap->valueAxis()),
+                                              formatValue(value, *colorMap->colorScale()->axis()));
     }
 
     if (!tooltip.isEmpty()) {

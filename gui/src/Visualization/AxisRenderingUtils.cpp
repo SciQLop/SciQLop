@@ -16,6 +16,9 @@ const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
 /// Format for datetimes on a axis
 const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
 
+const auto NUMBER_FORMAT = 'g';
+const auto NUMBER_PRECISION = 9;
+
 /// Generates the appropriate ticker for an axis, depending on whether the axis displays time or
 /// non-time data
 QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis, QCPAxis::ScaleType scaleType)
@@ -151,7 +154,7 @@ QString formatValue(double value, const QCPAxis &axis)
         return DateUtils::dateTime(value, axisTicker->dateTimeSpec()).toString(DATETIME_FORMAT);
     }
     else {
-        return QString::number(value);
+        return QString::number(value, NUMBER_FORMAT, NUMBER_PRECISION);
     }
 }
 
