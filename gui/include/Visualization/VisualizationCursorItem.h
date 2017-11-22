@@ -1,5 +1,5 @@
-#ifndef VISUALIZATIONCURSORITEM_H
-#define VISUALIZATIONCURSORITEM_H
+#ifndef SCIQLOP_VISUALIZATIONCURSORITEM_H
+#define SCIQLOP_VISUALIZATIONCURSORITEM_H
 
 #include <Common/spimpl.h>
 #include <SqpApplication.h>
@@ -23,4 +23,4 @@ private:
     spimpl::unique_impl_ptr<VisualizationCursorItemPrivate> impl;
 };
 
-#endif // VISUALIZATIONCURSORITEM_H
+#endif // SCIQLOP_VISUALIZATIONCURSORITEM_H
