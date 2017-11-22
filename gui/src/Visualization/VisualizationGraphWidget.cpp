@@ -87,6 +87,10 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
 
     connect(&sqpApp->variableController(), &VariableController::updateVarDisplaying, this,
             &VisualizationGraphWidget::onUpdateVarDisplaying);
+
+#ifdef Q_OS_MAC
+    plot().setPlottingHint(QCP::phFastPolylines, true);
+#endif
 }
 
 

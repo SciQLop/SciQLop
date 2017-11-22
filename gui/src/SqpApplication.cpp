@@ -17,9 +17,9 @@ class SqpApplication::SqpApplicationPrivate {
 public:
     SqpApplicationPrivate()
             : m_DataSourceController{std::make_unique<DataSourceController>()},
-              m_NetworkController{std::make_unique<NetworkController>()},
-              m_TimeController{std::make_unique<TimeController>()},
               m_VariableController{std::make_unique<VariableController>()},
+              m_TimeController{std::make_unique<TimeController>()},
+              m_NetworkController{std::make_unique<NetworkController>()},
               m_VisualizationController{std::make_unique<VisualizationController>()},
               m_DragDropHelper{std::make_unique<DragDropHelper>()}
     {

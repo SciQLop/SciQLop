@@ -5,7 +5,6 @@
 #include <QtTest>
 
 Q_DECLARE_METATYPE(OptionalAxis)
-Q_DECLARE_METATYPE(Unit)
 
 class TestOptionalAxis : public QObject {
     Q_OBJECT

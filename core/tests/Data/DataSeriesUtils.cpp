@@ -14,7 +14,7 @@ void validateRange(DataSeriesIterator first, DataSeriesIterator last, const Data
 {
     QVERIFY(std::equal(first, last, xData.cbegin(), xData.cend(),
                        [](const auto &it, const auto &expectedX) { return it.x() == expectedX; }));
-    for (auto i = 0; i < valuesData.size(); ++i) {
+    for (auto i = 0u; i < valuesData.size(); ++i) {
         auto componentData = valuesData.at(i);
 
         QVERIFY(std::equal(

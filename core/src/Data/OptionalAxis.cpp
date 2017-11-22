@@ -65,8 +65,6 @@ std::pair<double, double> OptionalAxis::bounds() const
                 return SortUtils::maxCompareWithNaN(it1.first(), it2.first());
             });
 
-        auto pair = std::make_pair(minIt->first(), maxIt->first());
-
         return std::make_pair(minIt->first(), maxIt->first());
     }
 }

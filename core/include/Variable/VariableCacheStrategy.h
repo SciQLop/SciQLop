@@ -22,6 +22,7 @@ class Variable;
 class SCIQLOP_CORE_EXPORT VariableCacheStrategy {
 
 public:
+    virtual ~VariableCacheStrategy() noexcept = default;
     virtual std::pair<SqpRange, SqpRange> computeRange(const SqpRange &vRange,
                                                        const SqpRange &rangeRequested)
         = 0;

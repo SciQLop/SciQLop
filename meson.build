@@ -13,18 +13,19 @@ qt5test = dependency('qt5', modules : 'Test')
 moc = find_program('moc-qt5','moc')
 rcc = find_program('rcc-qt5','rcc')
 
-subdir('core')
-subdir('gui')
-subdir('app')
-subdir('plugins')
-
 if build_machine.system()=='darwin'
+  add_global_link_arguments('-headerpad_max_install_names', language : 'cpp')
   install_data('build_cfg/mac/sciqlopLOGO.icns', install_dir : 'Contents/Resources')
   install_data('build_cfg/mac/Info.plist', install_dir : 'Contents')
   meson.add_install_script('build_cfg/mac/install_script.sh')
 elif host_machine.system()=='windows'
   meson.add_install_script('build_cfg/windows/install_script.sh')
 endif
+
+subdir('core')
+subdir('gui')
+subdir('app')
+subdir('plugins')
 
 cppcheck = find_program('cppcheck', required : false)
 

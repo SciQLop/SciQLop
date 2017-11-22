@@ -1,17 +1,14 @@
 
 gui_moc_headers = [
   'include/DataSource/DataSourceWidget.h',
-  'include/DataSource/DataSourceTreeWidget.h',
   'include/Settings/SqpSettingsDialog.h',
   'include/Settings/SqpSettingsGeneralWidget.h',
   'include/SidePane/SqpSidePane.h',
   'include/SqpApplication.h',
-  'include/DragAndDrop/DragDropHelper.h',
   'include/DragAndDrop/DragDropScroller.h',
   'include/DragAndDrop/DragDropTabSwitcher.h',
   'include/TimeWidget/TimeWidget.h',
   'include/Variable/VariableInspectorWidget.h',
-  'include/Variable/VariableInspectorTableView.h',
   'include/Variable/RenameVariableDialog.h',
   'include/Visualization/qcustomplot.h',
   'include/Visualization/VisualizationGraphWidget.h',
