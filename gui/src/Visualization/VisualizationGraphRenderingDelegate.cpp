@@ -223,8 +223,9 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
         }
     }
     else if (auto colorMap = qobject_cast<QCPColorMap *>(impl->m_Plot.plottableAt(eventPos))) {
-        /// @todo
-        tooltip = "TODO";
+        // Gets x and y coords
+        auto x = colorMap->keyAxis()->pixelToCoord(eventPos.x());
+        auto y = colorMap->valueAxis()->pixelToCoord(eventPos.y());
     }
 
     if (!tooltip.isEmpty()) {
