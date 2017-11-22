@@ -94,6 +94,48 @@ void initTitleTextStyle(QCPItemText &text) noexcept
     text.position->setCoords(0.5, 0);
 }
 
+/**
+ * Returns the cell index (x or y) of a colormap according to the coordinate passed in parameter.
+ * This method handles the fact that a colormap axis can be logarithmic or linear.
+ * @param colormap the colormap for which to calculate the index
+ * @param coord the coord to convert to cell index
+ * @param xCoord calculates the x index if true, calculates y index if false
+ * @return the cell index
+ */
+int colorMapCellIndex(const QCPColorMap &colormap, double coord, bool xCoord)
+{
+    // Determines the axis of the colormap according to xCoord, and whether it is logarithmic or not
+    auto isLogarithmic = (xCoord ? colormap.keyAxis() : colormap.valueAxis())->scaleType()
+                         == QCPAxis::stLogarithmic;
+
+    if (isLogarithmic) {
+        // For a logarithmic axis we can't use the conversion method of colormap, so we calculate
+        // the index manually based on the position of the coordinate on the axis
+
+        // Gets the axis range and the number of values between range bounds to calculate the step
+        // between each value of the range
+        auto range = xCoord ? colormap.data()->keyRange() : colormap.data()->valueRange();
+        auto nbValues = (xCoord ? colormap.data()->keySize() : colormap.data()->valueSize()) - 1;
+        auto valueStep
+            = (std::log10(range.upper) - std::log10(range.lower)) / static_cast<double>(nbValues);
+
+        // According to the coord position, calculates the closest index in the range
+        return std::round((std::log10(coord) - std::log10(range.lower)) / valueStep);
+    }
+    else {
+        // For a linear axis, we use the conversion method of colormap
+        int index;
+        if (xCoord) {
+            colormap.data()->coordToCell(coord, 0., &index, nullptr);
+        }
+        else {
+            colormap.data()->coordToCell(0., coord, nullptr, &index);
+        }
+
+        return index;
+    }
+}
+
 } // namespace
 
 struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegatePrivate {
@@ -226,6 +268,12 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
         // Gets x and y coords
         auto x = colorMap->keyAxis()->pixelToCoord(eventPos.x());
         auto y = colorMap->valueAxis()->pixelToCoord(eventPos.y());
+
+        // Calculates x and y cell indexes, and retrieves the underlying value
+        auto xCellIndex = colorMapCellIndex(*colorMap, x, true);
+        auto yCellIndex = colorMapCellIndex(*colorMap, y, false);
+        auto value = colorMap->data()->cell(xCellIndex, yCellIndex);
+
     }
 
     if (!tooltip.isEmpty()) {
