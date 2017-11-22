@@ -23,8 +23,8 @@ const auto GRADIENTS = QVariantMap{{"Candy", QCPColorGradient::gpCandy},
 ColorScaleEditor::ColorScaleEditor(SqpColorScale &scale, QWidget *parent)
         : QDialog{parent},
           ui{new Ui::ColorScaleEditor},
-          m_Scale{scale},
-          m_ThresholdGroup{new QButtonGroup{this}}
+          m_ThresholdGroup{new QButtonGroup{this}},
+          m_Scale{scale}
 {
     ui->setupUi(this);
 

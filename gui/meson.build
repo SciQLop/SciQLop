@@ -17,7 +17,7 @@ gui_moc_headers = [
   'include/Visualization/VisualizationZoneWidget.h',
   'include/Visualization/VisualizationDragDropContainer.h',
   'include/Visualization/VisualizationDragWidget.h',
-  'include/Visualization/ColorScaleWidget.h'
+  'include/Visualization/ColorScaleEditor.h'
 ]
 
 gui_ui_files = [
@@ -33,7 +33,7 @@ gui_ui_files = [
   'ui/Visualization/VisualizationTabWidget.ui',
   'ui/Visualization/VisualizationWidget.ui',
   'ui/Visualization/VisualizationZoneWidget.ui',
-  'ui/Visualization/ColorScaleWidget.ui'
+  'ui/Visualization/ColorScaleEditor.ui'
 ]
 
 gui_qresources = ['resources/sqpguiresources.qrc']
@@ -80,7 +80,7 @@ gui_sources = [
   'src/Visualization/PlottablesRenderingUtils.cpp',
   'src/Visualization/MacScrollBarStyle.cpp',
   'src/Visualization/VisualizationCursorItem.cpp',
-  'src/Visualization/ColorScaleWidget.cpp',
+  'src/Visualization/ColorScaleEditor.cpp',
   'src/Visualization/SqpColorScale.cpp'
 ]
 

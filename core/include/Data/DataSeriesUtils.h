@@ -5,8 +5,8 @@
 
 #include <Data/DataSeriesIterator.h>
 
-#include <cmath>
 #include <QLoggingCategory>
+#include <cmath>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_DataSeriesUtils)
 
