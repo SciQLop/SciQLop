@@ -115,6 +115,29 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
                                                                       ui->dragDropContainer);
     });
 
+    auto acceptDragWidgetFun = [](auto dragWidget, auto mimeData) {
+        if (!mimeData) {
+            return false;
+        }
+
+        if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+            auto variables = sqpApp->variableController().variablesForMimeData(
+                mimeData->data(MIME_TYPE_VARIABLE_LIST));
+
+            if (variables.count() != 1) {
+                return false;
+            }
+            auto variable = variables.first();
+
+            if (auto graphWidget = dynamic_cast<const VisualizationGraphWidget *>(dragWidget)) {
+                return graphWidget->canDrop(*variable);
+            }
+        }
+
+        return true;
+    };
+    ui->dragDropContainer->setAcceptDragWidgetFunction(acceptDragWidgetFun);
+
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredInContainer, this,
             &VisualizationZoneWidget::dropMimeData);
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredOnWidget, this,
