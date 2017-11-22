@@ -21,7 +21,9 @@ public:
               m_TimeController{std::make_unique<TimeController>()},
               m_NetworkController{std::make_unique<NetworkController>()},
               m_VisualizationController{std::make_unique<VisualizationController>()},
-              m_DragDropHelper{std::make_unique<DragDropHelper>()}
+              m_DragDropHelper{std::make_unique<DragDropHelper>()},
+              m_PlotInterractionMode(SqpApplication::PlotsInteractionMode::None),
+              m_PlotCursorMode(SqpApplication::PlotsCursorMode::NoCursor)
     {
         // /////////////////////////////// //
         // Connections between controllers //
@@ -90,6 +92,9 @@ public:
     QThread m_VisualizationControllerThread;
 
     std::unique_ptr<DragDropHelper> m_DragDropHelper;
+
+    SqpApplication::PlotsInteractionMode m_PlotInterractionMode;
+    SqpApplication::PlotsCursorMode m_PlotCursorMode;
 };
 
 
@@ -160,4 +165,24 @@ VisualizationController &SqpApplication::visualizationController() noexcept
 DragDropHelper &SqpApplication::dragDropHelper() noexcept
 {
     return *impl->m_DragDropHelper;
+}
+
+SqpApplication::PlotsInteractionMode SqpApplication::plotsInteractionMode() const
+{
+    return impl->m_PlotInterractionMode;
+}
+
+void SqpApplication::setPlotsInteractionMode(SqpApplication::PlotsInteractionMode mode)
+{
+    impl->m_PlotInterractionMode = mode;
+}
+
+SqpApplication::PlotsCursorMode SqpApplication::plotsCursorMode() const
+{
+    return impl->m_PlotCursorMode;
+}
+
+void SqpApplication::setPlotsCursorMode(SqpApplication::PlotsCursorMode mode)
+{
+    impl->m_PlotCursorMode = mode;
 }

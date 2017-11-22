@@ -21,7 +21,7 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
     QVBoxLayout *m_Layout;
     QHash<QString, VisualizationDragDropContainer::DropBehavior> m_AcceptedMimeTypes;
     QString m_PlaceHolderText;
-    DragDropHelper::PlaceHolderType m_PlaceHolderType = DragDropHelper::PlaceHolderType::Graph;
+    DragDropHelper::PlaceHolderType m_PlaceHolderType;
 
     VisualizationDragDropContainer::AcceptMimeDataFunction m_AcceptMimeDataFun
         = [](auto mimeData) { return true; };
@@ -29,6 +29,7 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
     int m_MinContainerHeight = 0;
 
     explicit VisualizationDragDropContainerPrivate(QWidget *widget)
+            : m_PlaceHolderType(DragDropHelper::PlaceHolderType::Graph)
     {
         m_Layout = new QVBoxLayout(widget);
         m_Layout->setContentsMargins(0, 0, 0, 0);

@@ -1,5 +1,6 @@
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/IVisualizationWidgetVisitor.h"
+#include "Visualization/VisualizationCursorItem.h"
 #include "Visualization/VisualizationDefs.h"
 #include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
@@ -23,10 +24,22 @@ Q_LOGGING_CATEGORY(LOG_VisualizationGraphWidget, "VisualizationGraphWidget")
 namespace {
 
 /// Key pressed to enable zoom on horizontal axis
-const auto HORIZONTAL_ZOOM_MODIFIER = Qt::NoModifier;
+const auto HORIZONTAL_ZOOM_MODIFIER = Qt::ControlModifier;
 
 /// Key pressed to enable zoom on vertical axis
-const auto VERTICAL_ZOOM_MODIFIER = Qt::ControlModifier;
+const auto VERTICAL_ZOOM_MODIFIER = Qt::ShiftModifier;
+
+/// Speed of a step of a wheel event for a pan, in percentage of the axis range
+const auto PAN_SPEED = 5;
+
+/// Key pressed to enable a calibration pan
+const auto VERTICAL_PAN_MODIFIER = Qt::AltModifier;
+
+/// Minimum size for the zoom box, in percentage of the axis range
+const auto ZOOM_BOX_MIN_SIZE = 0.8;
+
+/// Format of the dates appearing in the label of a cursor
+const auto CURSOR_LABELS_DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd\nhh:mm:ss:zzz");
 
 } // namespace
 
@@ -47,6 +60,56 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     bool m_IsCalibration;
     /// Delegate used to attach rendering features to the plot
     std::unique_ptr<VisualizationGraphRenderingDelegate> m_RenderingDelegate;
+
+    QCPItemRect *m_DrawingRect = nullptr;
+    std::unique_ptr<VisualizationCursorItem> m_HorizontalCursor = nullptr;
+    std::unique_ptr<VisualizationCursorItem> m_VerticalCursor = nullptr;
+
+    void configureDrawingRect()
+    {
+        if (m_DrawingRect) {
+            QPen p;
+            p.setWidth(2);
+            m_DrawingRect->setPen(p);
+        }
+    }
+
+    void startDrawingRect(const QPoint &pos, QCustomPlot &plot)
+    {
+        removeDrawingRect(plot);
+
+        auto axisPos = posToAxisPos(pos, plot);
+
+        m_DrawingRect = new QCPItemRect{&plot};
+        configureDrawingRect();
+
+        m_DrawingRect->topLeft->setCoords(axisPos);
+        m_DrawingRect->bottomRight->setCoords(axisPos);
+    }
+
+    void removeDrawingRect(QCustomPlot &plot)
+    {
+        if (m_DrawingRect) {
+            plot.removeItem(m_DrawingRect); // the item is deleted by QCustomPlot
+            m_DrawingRect = nullptr;
+            plot.replot(QCustomPlot::rpQueuedReplot);
+        }
+    }
+
+    QPointF posToAxisPos(const QPoint &pos, QCustomPlot &plot) const
+    {
+        auto axisX = plot.axisRect()->axis(QCPAxis::atBottom);
+        auto axisY = plot.axisRect()->axis(QCPAxis::atLeft);
+        return QPointF{axisX->pixelToCoord(pos.x()), axisY->pixelToCoord(pos.y())};
+    }
+
+    bool pointIsInAxisRect(const QPointF &axisPoint, QCustomPlot &plot) const
+    {
+        auto axisX = plot.axisRect()->axis(QCPAxis::atBottom);
+        auto axisY = plot.axisRect()->axis(QCPAxis::atLeft);
+
+        return axisX->range().contains(axisPoint.x()) && axisY->range().contains(axisPoint.y());
+    }
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
@@ -62,11 +125,16 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     // Set qcpplot properties :
     // - Drag (on x-axis) and zoom are enabled
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
-    ui->widget->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectItems);
-    ui->widget->axisRect()->setRangeDrag(Qt::Horizontal);
+    ui->widget->setInteractions(QCP::iRangeZoom | QCP::iSelectItems);
 
     // The delegate must be initialized after the ui as it uses the plot
     impl->m_RenderingDelegate = std::make_unique<VisualizationGraphRenderingDelegate>(*this);
+
+    // Init the cursors
+    impl->m_HorizontalCursor = std::make_unique<VisualizationCursorItem>(&plot());
+    impl->m_HorizontalCursor->setOrientation(Qt::Horizontal);
+    impl->m_VerticalCursor = std::make_unique<VisualizationCursorItem>(&plot());
+    impl->m_VerticalCursor->setOrientation(Qt::Vertical);
 
     connect(ui->widget, &QCustomPlot::mousePress, this, &VisualizationGraphWidget::onMousePress);
     connect(ui->widget, &QCustomPlot::mouseRelease, this,
@@ -264,6 +332,55 @@ void VisualizationGraphWidget::highlightForMerge(bool highlighted)
     plot().update();
 }
 
+void VisualizationGraphWidget::addVerticalCursor(double time)
+{
+    impl->m_VerticalCursor->setPosition(time);
+    impl->m_VerticalCursor->setVisible(true);
+
+    auto text
+        = DateUtils::dateTime(time).toString(CURSOR_LABELS_DATETIME_FORMAT).replace(' ', '\n');
+    impl->m_VerticalCursor->setLabelText(text);
+}
+
+void VisualizationGraphWidget::addVerticalCursorAtViewportPosition(double position)
+{
+    impl->m_VerticalCursor->setAbsolutePosition(position);
+    impl->m_VerticalCursor->setVisible(true);
+
+    auto axis = plot().axisRect()->axis(QCPAxis::atBottom);
+    auto text
+        = DateUtils::dateTime(axis->pixelToCoord(position)).toString(CURSOR_LABELS_DATETIME_FORMAT);
+    impl->m_VerticalCursor->setLabelText(text);
+}
+
+void VisualizationGraphWidget::removeVerticalCursor()
+{
+    impl->m_VerticalCursor->setVisible(false);
+    plot().replot(QCustomPlot::rpQueuedReplot);
+}
+
+void VisualizationGraphWidget::addHorizontalCursor(double value)
+{
+    impl->m_HorizontalCursor->setPosition(value);
+    impl->m_HorizontalCursor->setVisible(true);
+    impl->m_HorizontalCursor->setLabelText(QString::number(value));
+}
+
+void VisualizationGraphWidget::addHorizontalCursorAtViewportPosition(double position)
+{
+    impl->m_HorizontalCursor->setAbsolutePosition(position);
+    impl->m_HorizontalCursor->setVisible(true);
+
+    auto axis = plot().axisRect()->axis(QCPAxis::atLeft);
+    impl->m_HorizontalCursor->setLabelText(QString::number(axis->pixelToCoord(position)));
+}
+
+void VisualizationGraphWidget::removeHorizontalCursor()
+{
+    impl->m_HorizontalCursor->setVisible(false);
+    plot().replot(QCustomPlot::rpQueuedReplot);
+}
+
 void VisualizationGraphWidget::closeEvent(QCloseEvent *event)
 {
     Q_UNUSED(event);
@@ -284,6 +401,13 @@ void VisualizationGraphWidget::leaveEvent(QEvent *event)
 {
     Q_UNUSED(event);
     impl->m_RenderingDelegate->showGraphOverlay(false);
+
+    if (auto parentZone = parentZoneWidget()) {
+        parentZone->notifyMouseLeaveGraph(this);
+    }
+    else {
+        qCWarning(LOG_VisualizationGraphWidget()) << "leaveEvent: No parent zone widget";
+    }
 }
 
 QCustomPlot &VisualizationGraphWidget::plot() noexcept
@@ -336,6 +460,20 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
             emit synchronize(graphRange, oldGraphRange);
         }
     }
+
+    auto pos = mapFromGlobal(QCursor::pos());
+    auto axisPos = impl->posToAxisPos(pos, plot());
+    if (auto parentZone = parentZoneWidget()) {
+        if (impl->pointIsInAxisRect(axisPos, plot())) {
+            parentZone->notifyMouseMoveInGraph(pos, axisPos, this);
+        }
+        else {
+            parentZone->notifyMouseLeaveGraph(this);
+        }
+    }
+    else {
+        qCWarning(LOG_VisualizationGraphWidget()) << "onMouseMove: No parent zone widget";
+    }
 }
 
 void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
@@ -343,38 +481,91 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
     // Handles plot rendering when mouse is moving
     impl->m_RenderingDelegate->onMouseMove(event);
 
+    auto axisPos = impl->posToAxisPos(event->pos(), plot());
+
+    if (impl->m_DrawingRect) {
+        impl->m_DrawingRect->bottomRight->setCoords(axisPos);
+    }
+
+    if (auto parentZone = parentZoneWidget()) {
+        if (impl->pointIsInAxisRect(axisPos, plot())) {
+            parentZone->notifyMouseMoveInGraph(event->pos(), axisPos, this);
+        }
+        else {
+            parentZone->notifyMouseLeaveGraph(this);
+        }
+    }
+    else {
+        qCWarning(LOG_VisualizationGraphWidget()) << "onMouseMove: No parent zone widget";
+    }
+
     VisualizationDragWidget::mouseMoveEvent(event);
 }
 
 void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 {
-    auto zoomOrientations = QFlags<Qt::Orientation>{};
+    auto value = event->angleDelta().x() + event->angleDelta().y();
+    if (value != 0) {
 
-    // Lambda that enables a zoom orientation if the key modifier related to this orientation
-    // has
-    // been pressed
-    auto enableOrientation
-        = [&zoomOrientations, event](const auto &orientation, const auto &modifier) {
-              auto orientationEnabled = event->modifiers().testFlag(modifier);
-              zoomOrientations.setFlag(orientation, orientationEnabled);
-          };
-    enableOrientation(Qt::Vertical, VERTICAL_ZOOM_MODIFIER);
-    enableOrientation(Qt::Horizontal, HORIZONTAL_ZOOM_MODIFIER);
+        auto direction = value > 0 ? 1.0 : -1.0;
+        auto isZoomX = event->modifiers().testFlag(HORIZONTAL_ZOOM_MODIFIER);
+        auto isZoomY = event->modifiers().testFlag(VERTICAL_ZOOM_MODIFIER);
+        impl->m_IsCalibration = event->modifiers().testFlag(VERTICAL_PAN_MODIFIER);
 
-    ui->widget->axisRect()->setRangeZoom(zoomOrientations);
+        auto zoomOrientations = QFlags<Qt::Orientation>{};
+        zoomOrientations.setFlag(Qt::Horizontal, isZoomX);
+        zoomOrientations.setFlag(Qt::Vertical, isZoomY);
+
+        ui->widget->axisRect()->setRangeZoom(zoomOrientations);
+
+        if (!isZoomX && !isZoomY) {
+            auto axis = plot().axisRect()->axis(QCPAxis::atBottom);
+            auto diff = direction * (axis->range().size() * (PAN_SPEED / 100.0));
+
+            axis->setRange(axis->range() + diff);
+
+            if (plot().noAntialiasingOnDrag()) {
+                plot().setNotAntialiasedElements(QCP::aeAll);
+            }
+
+            plot().replot(QCustomPlot::rpQueuedReplot);
+        }
+    }
 }
 
 void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
 {
-    impl->m_IsCalibration = event->modifiers().testFlag(Qt::ControlModifier);
-
-    plot().setInteraction(QCP::iRangeDrag, !event->modifiers().testFlag(Qt::AltModifier));
+    if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::ZoomBox) {
+        impl->startDrawingRect(event->pos(), plot());
+    }
 
     VisualizationDragWidget::mousePressEvent(event);
 }
 
 void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
 {
+    if (impl->m_DrawingRect) {
+
+        auto axisX = plot().axisRect()->axis(QCPAxis::atBottom);
+        auto axisY = plot().axisRect()->axis(QCPAxis::atLeft);
+
+        auto newAxisXRange = QCPRange{impl->m_DrawingRect->topLeft->coords().x(),
+                                      impl->m_DrawingRect->bottomRight->coords().x()};
+
+        auto newAxisYRange = QCPRange{impl->m_DrawingRect->topLeft->coords().y(),
+                                      impl->m_DrawingRect->bottomRight->coords().y()};
+
+        impl->removeDrawingRect(plot());
+
+        if (newAxisXRange.size() > axisX->range().size() * (ZOOM_BOX_MIN_SIZE / 100.0)
+            && newAxisYRange.size() > axisY->range().size() * (ZOOM_BOX_MIN_SIZE / 100.0)) {
+            axisX->setRange(newAxisXRange);
+            axisY->setRange(newAxisYRange);
+
+            plot().replot(QCustomPlot::rpQueuedReplot);
+        }
+    }
+
     impl->m_IsCalibration = false;
 }
 
