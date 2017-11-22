@@ -26,7 +26,9 @@ const auto OVERLAY_LAYER = QStringLiteral("overlay");
 /// Pixmap used to show x-axis properties
 const auto SHOW_AXIS_ICON_PATH = QStringLiteral(":/icones/up.png");
 
-const auto TOOLTIP_FORMAT = QStringLiteral("key: %1\nvalue: %2");
+/// Tooltip format for graphs
+const auto GRAPH_TOOLTIP_FORMAT = QStringLiteral("key: %1\nvalue: %2");
+
 
 /// Offset used to shift the tooltip of the mouse
 const auto TOOLTIP_OFFSET = QPoint{20, 20};
@@ -195,6 +197,8 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
     impl->m_PointTracer->setVisible(false);
     impl->m_Plot.replot();
 
+    QString tooltip{};
+
     // Gets the graph under the mouse position
     auto eventPos = event->pos();
     if (auto graph = qobject_cast<QCPGraph *>(impl->m_Plot.plottableAt(eventPos))) {
@@ -204,8 +208,10 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
         // Gets the closest data point to the mouse
         auto graphDataIt = graphData->findBegin(mouseKey);
         if (graphDataIt != graphData->constEnd()) {
+            // Sets tooltip
             auto key = formatValue(graphDataIt->key, *graph->keyAxis());
             auto value = formatValue(graphDataIt->value, *graph->valueAxis());
+            tooltip = GRAPH_TOOLTIP_FORMAT.arg(key, value);
 
             // Displays point tracer
             impl->m_PointTracer->setGraph(graph);
@@ -214,17 +220,22 @@ void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexce
                 impl->m_Plot.layer("main")); // Tracer is set on top of the plot's main layer
             impl->m_PointTracer->setVisible(true);
             impl->m_Plot.replot();
-
-            // Starts timer to show tooltip after timeout
-            auto showTooltip = [ tooltip = TOOLTIP_FORMAT.arg(key, value), eventPos, this ]()
-            {
-                QToolTip::showText(impl->m_Plot.mapToGlobal(eventPos) + TOOLTIP_OFFSET, tooltip,
-                                   &impl->m_Plot, TOOLTIP_RECT);
-            };
-
-            QObject::connect(&impl->m_TracerTimer, &QTimer::timeout, showTooltip);
-            impl->m_TracerTimer.start();
         }
+    }
+    else if (auto colorMap = qobject_cast<QCPColorMap *>(impl->m_Plot.plottableAt(eventPos))) {
+        /// @todo
+        tooltip = "TODO";
+    }
+
+    if (!tooltip.isEmpty()) {
+        // Starts timer to show tooltip after timeout
+        auto showTooltip = [tooltip, eventPos, this]() {
+            QToolTip::showText(impl->m_Plot.mapToGlobal(eventPos) + TOOLTIP_OFFSET, tooltip,
+                               &impl->m_Plot, TOOLTIP_RECT);
+        };
+
+        QObject::connect(&impl->m_TracerTimer, &QTimer::timeout, showTooltip);
+        impl->m_TracerTimer.start();
     }
 }
 
