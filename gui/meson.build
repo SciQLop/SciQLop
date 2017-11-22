@@ -80,7 +80,8 @@ gui_sources = [
   'src/Visualization/PlottablesRenderingUtils.cpp',
   'src/Visualization/MacScrollBarStyle.cpp',
   'src/Visualization/VisualizationCursorItem.cpp',
-  'src/Visualization/ColorScaleWidget.cpp'
+  'src/Visualization/ColorScaleWidget.cpp',
+  'src/Visualization/SqpColorScale.cpp'
 ]
 
 gui_inc = include_directories(['include'])
