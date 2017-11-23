@@ -125,7 +125,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
                 m_SelectionZones.append(m_DrawingZone);
             }
             else {
-                plot.removeItem(m_DrawingZone); // the item is deleted by QCustomPlot               
+                plot.removeItem(m_DrawingZone); // the item is deleted by QCustomPlot
             }
 
             plot.replot(QCustomPlot::rpQueuedReplot);
@@ -169,6 +169,7 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     // - zoom is enabled
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
     ui->widget->setInteractions(QCP::iRangeZoom | QCP::iSelectItems);
+    ui->widget->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
 
     // The delegate must be initialized after the ui as it uses the plot
     impl->m_RenderingDelegate = std::make_unique<VisualizationGraphRenderingDelegate>(*this);
@@ -652,6 +653,9 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
         if (!itemAtPos) {
             impl->startDrawingZone(event->pos(), plot());
         }
+    }
+    else if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::None) {
+        plot().setInteraction(QCP::iRangeDrag, true);
     }
 
     // Allows mouse panning only in default mode
