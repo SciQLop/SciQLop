@@ -92,7 +92,7 @@ void VisualizationCursorItem::setVisible(bool value)
     if (value != isVisible()) {
 
         if (value) {
-            Q_ASSERT(!impl->m_LineItem && !impl->m_Plot);
+            Q_ASSERT(!impl->m_LineItem && !impl->m_LabelItem);
 
             impl->m_LineItem = new QCPItemStraightLine{impl->m_Plot};
             auto pen = QPen{CURSOR_PEN_STYLE};
@@ -118,7 +118,7 @@ void VisualizationCursorItem::setVisible(bool value)
             impl->updateCursorPosition();
         }
         else {
-            Q_ASSERT(impl->m_LineItem && impl->m_Plot);
+            Q_ASSERT(impl->m_LineItem && impl->m_LabelItem);
 
             // Note: the items are destroyed by QCustomPlot in removeItem
             impl->m_Plot->removeItem(impl->m_LineItem);
