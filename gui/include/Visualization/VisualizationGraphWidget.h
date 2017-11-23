@@ -51,6 +51,9 @@ public:
     SqpRange graphRange() const noexcept;
     void setGraphRange(const SqpRange &range);
 
+    /// Undo the last zoom  done with a zoom box
+    void undoZoom();
+
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;

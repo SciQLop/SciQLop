@@ -73,6 +73,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     std::unique_ptr<VisualizationGraphRenderingDelegate> m_RenderingDelegate;
 
     QCPItemRect *m_DrawingZoomRect = nullptr;
+    QStack<QPair<QCPRange, QCPRange> > m_ZoomStack;
 
     std::unique_ptr<VisualizationCursorItem> m_HorizontalCursor = nullptr;
     std::unique_ptr<VisualizationCursorItem> m_VerticalCursor = nullptr;
@@ -315,6 +316,18 @@ void VisualizationGraphWidget::setGraphRange(const SqpRange &range)
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange END");
 }
 
+void VisualizationGraphWidget::undoZoom()
+{
+    auto zoom = impl->m_ZoomStack.pop();
+    auto axisX = plot().axisRect()->axis(QCPAxis::atBottom);
+    auto axisY = plot().axisRect()->axis(QCPAxis::atLeft);
+
+    axisX->setRange(zoom.first);
+    axisY->setRange(zoom.second);
+
+    plot().replot(QCustomPlot::rpQueuedReplot);
+}
+
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {
@@ -485,6 +498,14 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
         // 'Remove variable' action
         graphMenu.addAction(tr("Remove variable %1").arg(it->first->name()),
                             [ this, var = it->first ]() { removeVariable(var); });
+    }
+
+    if (!impl->m_ZoomStack.isEmpty()) {
+        if (!graphMenu.isEmpty()) {
+            graphMenu.addSeparator();
+        }
+
+        graphMenu.addAction(tr("Undo Zoom"), [this]() { undoZoom(); });
     }
 
     if (!graphMenu.isEmpty()) {
@@ -686,6 +707,7 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
 
         if (newAxisXRange.size() > axisX->range().size() * (ZOOM_BOX_MIN_SIZE / 100.0)
             && newAxisYRange.size() > axisY->range().size() * (ZOOM_BOX_MIN_SIZE / 100.0)) {
+            impl->m_ZoomStack.push(qMakePair(axisX->range(), axisY->range()));
             axisX->setRange(newAxisXRange);
             axisY->setRange(newAxisYRange);
 
