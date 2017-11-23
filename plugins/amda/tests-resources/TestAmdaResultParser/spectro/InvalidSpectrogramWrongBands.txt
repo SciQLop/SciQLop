@@ -1,0 +1,59 @@
+# -----------
+# AMDA INFO :
+# -----------
+# AMDA_ABOUT : Created by CDPP/AMDA(c)
+# AMDA_VERSION : 3.5.0
+# AMDA_ACKNOWLEDGEMENT : CDPP/AMDA Team
+#
+# --------------
+# REQUEST INFO :
+# --------------
+# REQUEST_STRUCTURE : one-file-per-parameter-per-interval
+# REQUEST_TIME_FORMAT : ISO 8601
+# REQUEST_OUTPUT_PARAMS : tha_ion_sp
+#
+# -----------------
+# BASE PARAMETERS :
+# -----------------
+#
+# MISSION_ID : NONE
+#
+#   INSTRUMENT_ID : NONE
+#
+#     DATASET_ID : tha-esa-l2i
+#     DATASET_NAME : ion full mode
+#     DATASET_SOURCE : CDPP/DDServer
+#     DATASET_GLOBAL_START : 2007-03-07T18:53:59.134
+#     DATASET_GLOBAL_STOP : 2017-11-04T18:35:25.907
+#     DATASET_MIN_SAMPLING : 96
+#     DATASET_MAX_SAMPLING : 385
+#
+#       PARAMETER_ID : tha_ion_sp
+#       PARAMETER_NAME : tha_ion_sp
+#       PARAMETER_SHORT_NAME : spectra
+#       PARAMETER_UNITS : eV/(cm^2-s-sr-eV)
+#       PARAMETER_TENSOR_ORDER : 0
+#       PARAMETER_TABLE[0] : energy
+#       PARAMETER_TABLE_UNITS[0] : eV
+#       PARAMETER_TABLE_MIN_VALUES[0] : 5.00000,6.50000,8.70000,11.4000
+#       PARAMETER_TABLE_MAX_VALUES[0] : 6.50000,8.70000,11.4000
+#       PARAMETER_FILL_VALUE : nan
+#       PARAMETER_UCD : phys.flux.density;phys.energy;phys.atmol.ionStage
+#
+#
+# ---------------
+# INTERVAL INFO :
+# ---------------
+# INTERVAL_START : 2012-11-06T09:13:31.000
+# INTERVAL_STOP : 2012-11-06T10:35:07.000
+#
+# ------
+# DATA :
+# ------
+# DATA_COLUMNS : AMDA_TIME, tha_ion_sp[0], tha_ion_sp[1], tha_ion_sp[2]
+#
+2012-11-06T09:14:35.000     16313.780     15405.838      8946.475    
+2012-11-06T09:16:10.000     12631.465     11957.925     18133.158    
+2012-11-06T09:17:45.000      8223.368     15026.249     10875.621    
+2012-11-06T09:19:20.000     27595.301     25617.533     24051.619    
+2012-11-06T09:20:55.000     12820.613     11179.109     19283.221    

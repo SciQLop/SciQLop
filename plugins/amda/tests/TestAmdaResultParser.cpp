@@ -1,6 +1,7 @@
 #include "AmdaResultParser.h"
 
 #include <Data/ScalarSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
 #include <QObject>
@@ -24,27 +25,65 @@ QString inputFilePath(const QString &inputFileName)
 
 template <typename T>
 struct ExpectedResults {
-    explicit ExpectedResults() = default;
 
-    explicit ExpectedResults(Unit xAxisUnit, Unit valuesUnit, const QVector<QDateTime> &xAxisData,
-                             QVector<double> valuesData)
-            : ExpectedResults(xAxisUnit, valuesUnit, xAxisData,
-                              QVector<QVector<double> >{std::move(valuesData)})
+    ExpectedResults &setParsingOK(bool parsingOK)
     {
+        m_ParsingOK = parsingOK;
+        return *this;
     }
 
-    /// Ctor with QVector<QDateTime> as x-axis data. Datetimes are converted to doubles
-    explicit ExpectedResults(Unit xAxisUnit, Unit valuesUnit, const QVector<QDateTime> &xAxisData,
-                             QVector<QVector<double> > valuesData)
-            : m_ParsingOK{true},
-              m_XAxisUnit{xAxisUnit},
-              m_ValuesUnit{valuesUnit},
-              m_XAxisData{},
-              m_ValuesData{std::move(valuesData)}
+    ExpectedResults &setXAxisUnit(Unit xAxisUnit)
     {
+        m_XAxisUnit = std::move(xAxisUnit);
+        return *this;
+    }
+
+    ExpectedResults &setXAxisData(const QVector<QDateTime> &xAxisData)
+    {
+        m_XAxisData.clear();
+
         // Converts QVector<QDateTime> to QVector<double>
         std::transform(xAxisData.cbegin(), xAxisData.cend(), std::back_inserter(m_XAxisData),
                        [](const auto &dateTime) { return dateTime.toMSecsSinceEpoch() / 1000.; });
+
+        return *this;
+    }
+
+    ExpectedResults &setValuesUnit(Unit valuesUnit)
+    {
+        m_ValuesUnit = std::move(valuesUnit);
+        return *this;
+    }
+
+    ExpectedResults &setValuesData(QVector<double> valuesData)
+    {
+        m_ValuesData.clear();
+        m_ValuesData.push_back(std::move(valuesData));
+        return *this;
+    }
+
+    ExpectedResults &setValuesData(QVector<QVector<double> > valuesData)
+    {
+        m_ValuesData = std::move(valuesData);
+        return *this;
+    }
+
+    ExpectedResults &setYAxisEnabled(bool yAxisEnabled)
+    {
+        m_YAxisEnabled = yAxisEnabled;
+        return *this;
+    }
+
+    ExpectedResults &setYAxisUnit(Unit yAxisUnit)
+    {
+        m_YAxisUnit = std::move(yAxisUnit);
+        return *this;
+    }
+
+    ExpectedResults &setYAxisData(QVector<double> yAxisData)
+    {
+        m_YAxisData = std::move(yAxisData);
+        return *this;
     }
 
     /**
@@ -86,6 +125,22 @@ struct ExpectedResults {
                     return (std::isnan(itValue) && std::isnan(value)) || seriesIt.value(i) == value;
                 });
             }
+
+            // Checks y-axis (if defined)
+            auto yAxis = dataSeries->yAxis();
+            QCOMPARE(yAxis.isDefined(), m_YAxisEnabled);
+
+            if (m_YAxisEnabled) {
+                // Unit
+                QCOMPARE(yAxis.unit(), m_YAxisUnit);
+
+                // Data
+                auto yAxisSize = yAxis.size();
+                QCOMPARE(yAxisSize, m_YAxisData.size());
+                for (auto i = 0; i < yAxisSize; ++i) {
+                    QCOMPARE(yAxis.at(i), m_YAxisData.at(i));
+                }
+            }
         }
         else {
             QVERIFY(results == nullptr);
@@ -96,17 +151,24 @@ struct ExpectedResults {
     bool m_ParsingOK{false};
     // Expected x-axis unit
     Unit m_XAxisUnit{};
-    // Expected values unit
-    Unit m_ValuesUnit{};
     // Expected x-axis data
     QVector<double> m_XAxisData{};
+    // Expected values unit
+    Unit m_ValuesUnit{};
     // Expected values data
     QVector<QVector<double> > m_ValuesData{};
+    // Expected data series has y-axis
+    bool m_YAxisEnabled{false};
+    // Expected y-axis unit (if axis defined)
+    Unit m_YAxisUnit{};
+    // Expected y-axis data (if axis defined)
+    QVector<double> m_YAxisData{};
 };
 
 } // namespace
 
 Q_DECLARE_METATYPE(ExpectedResults<ScalarSeries>)
+Q_DECLARE_METATYPE(ExpectedResults<SpectrogramSeries>)
 Q_DECLARE_METATYPE(ExpectedResults<VectorSeries>)
 
 class TestAmdaResultParser : public QObject {
@@ -150,6 +212,13 @@ private slots:
     void testReadScalarTxt();
 
     /// Input test data
+    /// @sa testReadSpectrogramTxt()
+    void testReadSpectrogramTxt_data();
+
+    /// Tests parsing spectrogram series of a TXT file
+    void testReadSpectrogramTxt();
+
+    /// Input test data
     /// @sa testReadVectorTxt()
     void testReadVectorTxt_data();
 
@@ -168,82 +237,175 @@ void TestAmdaResultParser::testReadScalarTxt_data()
     // Valid files
     QTest::newRow("Valid file")
         << QStringLiteral("ValidScalar1.txt")
-        << ExpectedResults<ScalarSeries>{
-               Unit{QStringLiteral("nT"), true}, Unit{},
-               QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
-                                  dateTime(2013, 9, 23, 9, 2, 30), dateTime(2013, 9, 23, 9, 3, 30),
-                                  dateTime(2013, 9, 23, 9, 4, 30), dateTime(2013, 9, 23, 9, 5, 30),
-                                  dateTime(2013, 9, 23, 9, 6, 30), dateTime(2013, 9, 23, 9, 7, 30),
-                                  dateTime(2013, 9, 23, 9, 8, 30), dateTime(2013, 9, 23, 9, 9, 30)},
-               QVector<double>{-2.83950, -2.71850, -2.52150, -2.57633, -2.58050, -2.48325, -2.63025,
-                               -2.55800, -2.43250, -2.42200}};
+        << ExpectedResults<ScalarSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"nT", true})
+               .setXAxisData({dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
+                              dateTime(2013, 9, 23, 9, 2, 30), dateTime(2013, 9, 23, 9, 3, 30),
+                              dateTime(2013, 9, 23, 9, 4, 30), dateTime(2013, 9, 23, 9, 5, 30),
+                              dateTime(2013, 9, 23, 9, 6, 30), dateTime(2013, 9, 23, 9, 7, 30),
+                              dateTime(2013, 9, 23, 9, 8, 30), dateTime(2013, 9, 23, 9, 9, 30)})
+               .setValuesData({-2.83950, -2.71850, -2.52150, -2.57633, -2.58050, -2.48325, -2.63025,
+                               -2.55800, -2.43250, -2.42200});
 
     QTest::newRow("Valid file (value of first line is invalid but it is converted to NaN")
         << QStringLiteral("WrongValue.txt")
-        << ExpectedResults<ScalarSeries>{
-               Unit{QStringLiteral("nT"), true}, Unit{},
-               QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
-                                  dateTime(2013, 9, 23, 9, 2, 30)},
-               QVector<double>{std::numeric_limits<double>::quiet_NaN(), -2.71850, -2.52150}};
+        << ExpectedResults<ScalarSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"nT", true})
+               .setXAxisData({dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
+                              dateTime(2013, 9, 23, 9, 2, 30)})
+               .setValuesData({std::numeric_limits<double>::quiet_NaN(), -2.71850, -2.52150});
 
     QTest::newRow("Valid file that contains NaN values")
         << QStringLiteral("NaNValue.txt")
-        << ExpectedResults<ScalarSeries>{
-               Unit{QStringLiteral("nT"), true}, Unit{},
-               QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
-                                  dateTime(2013, 9, 23, 9, 2, 30)},
-               QVector<double>{std::numeric_limits<double>::quiet_NaN(), -2.71850, -2.52150}};
+        << ExpectedResults<ScalarSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{("nT"), true})
+               .setXAxisData({dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
+                              dateTime(2013, 9, 23, 9, 2, 30)})
+               .setValuesData({std::numeric_limits<double>::quiet_NaN(), -2.71850, -2.52150});
 
     // Valid files but with some invalid lines (wrong unit, wrong values, etc.)
-    QTest::newRow("No unit file") << QStringLiteral("NoUnit.txt")
-                                  << ExpectedResults<ScalarSeries>{Unit{QStringLiteral(""), true},
-                                                                   Unit{}, QVector<QDateTime>{},
-                                                                   QVector<double>{}};
+    QTest::newRow("No unit file")
+        << QStringLiteral("NoUnit.txt")
+        << ExpectedResults<ScalarSeries>{}.setParsingOK(true).setXAxisUnit(Unit{"", true});
+
     QTest::newRow("Wrong unit file")
         << QStringLiteral("WrongUnit.txt")
-        << ExpectedResults<ScalarSeries>{Unit{QStringLiteral(""), true}, Unit{},
-                                         QVector<QDateTime>{dateTime(2013, 9, 23, 9, 0, 30),
-                                                            dateTime(2013, 9, 23, 9, 1, 30),
-                                                            dateTime(2013, 9, 23, 9, 2, 30)},
-                                         QVector<double>{-2.83950, -2.71850, -2.52150}};
+        << ExpectedResults<ScalarSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"", true})
+               .setXAxisData({dateTime(2013, 9, 23, 9, 0, 30), dateTime(2013, 9, 23, 9, 1, 30),
+                              dateTime(2013, 9, 23, 9, 2, 30)})
+               .setValuesData({-2.83950, -2.71850, -2.52150});
 
     QTest::newRow("Wrong results file (date of first line is invalid")
         << QStringLiteral("WrongDate.txt")
-        << ExpectedResults<ScalarSeries>{
-               Unit{QStringLiteral("nT"), true}, Unit{},
-               QVector<QDateTime>{dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)},
-               QVector<double>{-2.71850, -2.52150}};
+        << ExpectedResults<ScalarSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"nT", true})
+               .setXAxisData({dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)})
+               .setValuesData({-2.71850, -2.52150});
 
     QTest::newRow("Wrong results file (too many values for first line")
         << QStringLiteral("TooManyValues.txt")
-        << ExpectedResults<ScalarSeries>{
-               Unit{QStringLiteral("nT"), true}, Unit{},
-               QVector<QDateTime>{dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)},
-               QVector<double>{-2.71850, -2.52150}};
+        << ExpectedResults<ScalarSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"nT", true})
+               .setXAxisData({dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)})
+               .setValuesData({-2.71850, -2.52150});
 
     QTest::newRow("Wrong results file (x of first line is NaN")
         << QStringLiteral("NaNX.txt")
-        << ExpectedResults<ScalarSeries>{
-               Unit{QStringLiteral("nT"), true}, Unit{},
-               QVector<QDateTime>{dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)},
-               QVector<double>{-2.71850, -2.52150}};
+        << ExpectedResults<ScalarSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"nT", true})
+               .setXAxisData({dateTime(2013, 9, 23, 9, 1, 30), dateTime(2013, 9, 23, 9, 2, 30)})
+               .setValuesData({-2.71850, -2.52150});
 
     QTest::newRow("Invalid file type (vector)")
         << QStringLiteral("ValidVector1.txt")
-        << ExpectedResults<ScalarSeries>{Unit{QStringLiteral("nT"), true}, Unit{},
-                                         QVector<QDateTime>{}, QVector<double>{}};
+        << ExpectedResults<ScalarSeries>{}.setParsingOK(true).setXAxisUnit(Unit{"nT", true});
 
     // Invalid files
-    QTest::newRow("Invalid file (unexisting file)") << QStringLiteral("UnexistingFile.txt")
-                                                    << ExpectedResults<ScalarSeries>{};
+    QTest::newRow("Invalid file (unexisting file)")
+        << QStringLiteral("UnexistingFile.txt")
+        << ExpectedResults<ScalarSeries>{}.setParsingOK(false);
 
-    QTest::newRow("Invalid file (file not found on server)") << QStringLiteral("FileNotFound.txt")
-                                                             << ExpectedResults<ScalarSeries>{};
+    QTest::newRow("Invalid file (file not found on server)")
+        << QStringLiteral("FileNotFound.txt")
+        << ExpectedResults<ScalarSeries>{}.setParsingOK(false);
 }
 
 void TestAmdaResultParser::testReadScalarTxt()
 {
     testRead<ScalarSeries>(AmdaResultParser::ValueType::SCALAR);
+}
+
+void TestAmdaResultParser::testReadSpectrogramTxt_data()
+{
+    testReadDataStructure<SpectrogramSeries>();
+
+    // ////////// //
+    // Test cases //
+    // ////////// //
+
+    // Valid files
+    QTest::newRow("Valid file (three bands)")
+        << QStringLiteral("spectro/ValidSpectrogram1.txt")
+        << ExpectedResults<SpectrogramSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"t", true})
+               .setXAxisData({dateTime(2012, 11, 6, 9, 14, 35), dateTime(2012, 11, 6, 9, 16, 10),
+                              dateTime(2012, 11, 6, 9, 17, 45), dateTime(2012, 11, 6, 9, 19, 20),
+                              dateTime(2012, 11, 6, 9, 20, 55)})
+               .setYAxisEnabled(true)
+               .setYAxisUnit(Unit{"eV"})
+               .setYAxisData({5.75, 7.6, 10.05}) // middle of the intervals of each band
+               .setValuesUnit(Unit{"eV/(cm^2-s-sr-eV)"})
+               .setValuesData(QVector<QVector<double> >{
+                   {16313.780, 12631.465, 8223.368, 27595.301, 12820.613},
+                   {15405.838, 11957.925, 15026.249, 25617.533, 11179.109},
+                   {8946.475, 18133.158, 10875.621, 24051.619, 19283.221}});
+
+    auto fourBandsResult
+        = ExpectedResults<SpectrogramSeries>{}
+              .setParsingOK(true)
+              .setXAxisUnit(Unit{"t", true})
+              .setXAxisData({dateTime(2012, 11, 6, 9, 14, 35), dateTime(2012, 11, 6, 9, 16, 10),
+                             dateTime(2012, 11, 6, 9, 17, 45), dateTime(2012, 11, 6, 9, 19, 20),
+                             dateTime(2012, 11, 6, 9, 20, 55)})
+              .setYAxisEnabled(true)
+              .setYAxisUnit(Unit{"eV"})
+              .setYAxisData({5.75, 7.6, 10.05, 13.}) // middle of the intervals of each band
+              .setValuesUnit(Unit{"eV/(cm^2-s-sr-eV)"})
+              .setValuesData(QVector<QVector<double> >{
+                  {16313.780, 12631.465, 8223.368, 27595.301, 12820.613},
+                  {15405.838, 11957.925, 15026.249, 25617.533, 11179.109},
+                  {8946.475, 18133.158, 10875.621, 24051.619, 19283.221},
+                  {20907.664, 32076.725, 13008.381, 13142.759, 23226.998}});
+
+    QTest::newRow("Valid file (four bands)")
+        << QStringLiteral("spectro/ValidSpectrogram2.txt") << fourBandsResult;
+    QTest::newRow("Valid file (four unsorted bands)")
+        << QStringLiteral("spectro/ValidSpectrogram3.txt")
+        << fourBandsResult; // Bands and values are sorted
+
+    auto nan = std::numeric_limits<double>::quiet_NaN();
+
+    auto nanValuesResult
+        = ExpectedResults<SpectrogramSeries>{}
+              .setParsingOK(true)
+              .setXAxisUnit(Unit{"t", true})
+              .setXAxisData({dateTime(2012, 11, 6, 9, 14, 35), dateTime(2012, 11, 6, 9, 16, 10),
+                             dateTime(2012, 11, 6, 9, 17, 45), dateTime(2012, 11, 6, 9, 19, 20),
+                             dateTime(2012, 11, 6, 9, 20, 55)})
+              .setYAxisEnabled(true)
+              .setYAxisUnit(Unit{"eV"})
+              .setYAxisData({5.75, 7.6, 10.05, 13.}) // middle of the intervals of each band
+              .setValuesUnit(Unit{"eV/(cm^2-s-sr-eV)"})
+              .setValuesData(
+                  QVector<QVector<double> >{{nan, 12631.465, 8223.368, 27595.301, 12820.613},
+                                            {15405.838, nan, nan, 25617.533, 11179.109},
+                                            {8946.475, 18133.158, 10875.621, 24051.619, 19283.221},
+                                            {nan, nan, nan, nan, nan}});
+
+    QTest::newRow("Valid file (containing NaN values)")
+        << QStringLiteral("spectro/ValidSpectrogramNaNValues.txt") << nanValuesResult;
+    QTest::newRow("Valid file (containing fill values)")
+        << QStringLiteral("spectro/ValidSpectrogramFillValues.txt")
+        << nanValuesResult; // Fill values are replaced by NaN values in the data series
+
+    // Invalid files
+    QTest::newRow("Invalid file (inconsistent bands)")
+        << QStringLiteral("spectro/InvalidSpectrogramWrongBands.txt")
+        << ExpectedResults<SpectrogramSeries>{}.setParsingOK(false);
+}
+
+void TestAmdaResultParser::testReadSpectrogramTxt()
+{
+    testRead<SpectrogramSeries>(AmdaResultParser::ValueType::SPECTROGRAM);
 }
 
 void TestAmdaResultParser::testReadVectorTxt_data()
@@ -257,24 +419,27 @@ void TestAmdaResultParser::testReadVectorTxt_data()
     // Valid files
     QTest::newRow("Valid file")
         << QStringLiteral("ValidVector1.txt")
-        << ExpectedResults<VectorSeries>{
-               Unit{QStringLiteral("nT"), true}, Unit{},
-               QVector<QDateTime>{dateTime(2013, 7, 2, 9, 13, 50), dateTime(2013, 7, 2, 9, 14, 6),
-                                  dateTime(2013, 7, 2, 9, 14, 22), dateTime(2013, 7, 2, 9, 14, 38),
-                                  dateTime(2013, 7, 2, 9, 14, 54), dateTime(2013, 7, 2, 9, 15, 10),
-                                  dateTime(2013, 7, 2, 9, 15, 26), dateTime(2013, 7, 2, 9, 15, 42),
-                                  dateTime(2013, 7, 2, 9, 15, 58), dateTime(2013, 7, 2, 9, 16, 14)},
-               QVector<QVector<double> >{
-                   {-0.332, -1.011, -1.457, -1.293, -1.217, -1.443, -1.278, -1.202, -1.22, -1.259},
-                   {3.206, 2.999, 2.785, 2.736, 2.612, 2.564, 2.892, 2.862, 2.859, 2.764},
-                   {0.058, 0.496, 1.018, 1.485, 1.662, 1.505, 1.168, 1.244, 1.15, 1.358}}};
+        << ExpectedResults<VectorSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"nT", true})
+               .setXAxisData({dateTime(2013, 7, 2, 9, 13, 50), dateTime(2013, 7, 2, 9, 14, 6),
+                              dateTime(2013, 7, 2, 9, 14, 22), dateTime(2013, 7, 2, 9, 14, 38),
+                              dateTime(2013, 7, 2, 9, 14, 54), dateTime(2013, 7, 2, 9, 15, 10),
+                              dateTime(2013, 7, 2, 9, 15, 26), dateTime(2013, 7, 2, 9, 15, 42),
+                              dateTime(2013, 7, 2, 9, 15, 58), dateTime(2013, 7, 2, 9, 16, 14)})
+               .setValuesData(
+                   {{-0.332, -1.011, -1.457, -1.293, -1.217, -1.443, -1.278, -1.202, -1.22, -1.259},
+                    {3.206, 2.999, 2.785, 2.736, 2.612, 2.564, 2.892, 2.862, 2.859, 2.764},
+                    {0.058, 0.496, 1.018, 1.485, 1.662, 1.505, 1.168, 1.244, 1.15, 1.358}});
 
     // Valid files but with some invalid lines (wrong unit, wrong values, etc.)
     QTest::newRow("Invalid file type (scalar)")
         << QStringLiteral("ValidScalar1.txt")
-        << ExpectedResults<VectorSeries>{Unit{QStringLiteral("nT"), true}, Unit{},
-                                         QVector<QDateTime>{},
-                                         QVector<QVector<double> >{{}, {}, {}}};
+        << ExpectedResults<VectorSeries>{}
+               .setParsingOK(true)
+               .setXAxisUnit(Unit{"nT", true})
+               .setXAxisData({})
+               .setValuesData(QVector<QVector<double> >{{}, {}, {}});
 }
 
 void TestAmdaResultParser::testReadVectorTxt()
