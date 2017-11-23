@@ -75,6 +75,8 @@ public:
     void readResultLine(const QString &line) override;
 
 private:
+    void handleDataHoles();
+
     Properties m_Properties{};
     std::vector<double> m_XAxisData{};
     std::vector<double> m_YAxisData{};

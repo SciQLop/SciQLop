@@ -2,7 +2,8 @@
 
 #include "Data/ArrayData.h"
 
-OptionalAxis::OptionalAxis() : m_Defined{false}, m_Data{nullptr}, m_Unit{}
+OptionalAxis::OptionalAxis()
+        : m_Defined{false}, m_Data{std::make_shared<ArrayData<1> >(std::vector<double>{})}, m_Unit{}
 {
 }
 
@@ -15,9 +16,7 @@ OptionalAxis::OptionalAxis(std::shared_ptr<ArrayData<1> > data, Unit unit)
 }
 
 OptionalAxis::OptionalAxis(const OptionalAxis &other)
-        : m_Defined{other.m_Defined},
-          m_Data{other.m_Data ? std::make_shared<ArrayData<1> >(*other.m_Data) : nullptr},
-          m_Unit{other.m_Unit}
+        : m_Defined{other.m_Defined}, m_Data{other.m_Data}, m_Unit{other.m_Unit}
 {
 }
 
@@ -33,17 +32,6 @@ OptionalAxis &OptionalAxis::operator=(OptionalAxis other)
 bool OptionalAxis::isDefined() const
 {
     return m_Defined;
-}
-
-double OptionalAxis::at(int index) const
-{
-    if (m_Defined) {
-        return (index >= 0 && index < m_Data->size()) ? m_Data->at(index)
-                                                      : std::numeric_limits<double>::quiet_NaN();
-    }
-    else {
-        return std::numeric_limits<double>::quiet_NaN();
-    }
 }
 
 std::pair<double, double> OptionalAxis::bounds() const
@@ -96,4 +84,24 @@ bool OptionalAxis::operator==(const OptionalAxis &other)
 bool OptionalAxis::operator!=(const OptionalAxis &other)
 {
     return !(*this == other);
+}
+
+ArrayDataIterator OptionalAxis::begin()
+{
+    return m_Data->begin();
+}
+
+ArrayDataIterator OptionalAxis::end()
+{
+    return m_Data->end();
+}
+
+ArrayDataIterator OptionalAxis::cbegin() const
+{
+    return m_Data->cbegin();
+}
+
+ArrayDataIterator OptionalAxis::cend() const
+{
+    return m_Data->cend();
 }

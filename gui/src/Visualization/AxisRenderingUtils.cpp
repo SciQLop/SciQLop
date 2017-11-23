@@ -101,8 +101,7 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
     {
         dataSeries.lockRead();
         auto xAxisUnit = dataSeries.xAxisUnit();
-        /// @todo ALX: use iterators here
-        auto yAxisUnit = dataSeries.yAxis().unit();
+        auto yAxisUnit = dataSeries.yAxisUnit();
         auto valuesUnit = dataSeries.valuesUnit();
         dataSeries.unlock();
 
@@ -123,6 +122,8 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
 
         // Set color scale properties
         setAxisProperties(*colorScale.axis(), valuesUnit, QCPAxis::stLogarithmic);
+        /// @todo ALX: temp data range, remove it when widget to set data range is implemented
+        colorScale.setDataRange(QCPRange{8.32e2, 1.77e7});
     }
 };
 
