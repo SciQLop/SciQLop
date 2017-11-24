@@ -112,7 +112,13 @@
          <widget class="QWidget" name="commonPropertyInspectorWidget" native="true"/>
         </item>
         <item>
-         <widget class="DataSourceWidget" name="catalogWidget" native="true"/>
+         <widget class="QTreeWidget" name="catalogWidget">
+          <column>
+           <property name="text">
+            <string notr="true">Name</string>
+           </property>
+          </column>
+         </widget>
         </item>
        </layout>
       </widget>
