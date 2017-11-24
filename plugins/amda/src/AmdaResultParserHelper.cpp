@@ -3,6 +3,7 @@
 #include <Common/DateUtils.h>
 #include <Common/SortUtils.h>
 
+#include <Data/DataSeriesUtils.h>
 #include <Data/ScalarSeries.h>
 #include <Data/SpectrogramSeries.h>
 #include <Data/Unit.h>
@@ -158,6 +159,18 @@ bool tryReadProperty(Properties &properties, const QString &key, const QString &
 }
 
 /**
+ * Reads a line from the AMDA file and tries to extract a data from it. Date is converted to double
+ * @sa tryReadProperty()
+ */
+bool tryReadDate(Properties &properties, const QString &key, const QString &line,
+                 const QRegularExpression &regex, bool timeUnit = false)
+{
+    return tryReadProperty(properties, key, line, regex, [timeUnit](const auto &match) {
+        return QVariant::fromValue(doubleDate(match.captured(1)));
+    });
+}
+
+/**
  * Reads a line from the AMDA file and tries to extract a double from it
  * @sa tryReadProperty()
  */
@@ -263,7 +276,7 @@ bool SpectrogramParserHelper::checkProperties()
     auto minBands = m_Properties.value(MIN_BANDS_PROPERTY).value<std::vector<double> >();
     auto maxBands = m_Properties.value(MAX_BANDS_PROPERTY).value<std::vector<double> >();
 
-    if (minBands.size() != maxBands.size()) {
+    if (minBands.size() < 2 || minBands.size() != maxBands.size()) {
         qCWarning(LOG_AmdaResultParserHelper()) << QObject::tr(
             "Can't generate y-axis data from bands extracted: bands intervals are invalid");
         return false;
@@ -283,18 +296,20 @@ bool SpectrogramParserHelper::checkProperties()
     // Sets fill value
     m_FillValue = m_Properties.value(FILL_VALUE_PROPERTY).value<double>();
 
-    /// @todo: handle min/max samplings?
-
     return true;
 }
 
 std::shared_ptr<IDataSeries> SpectrogramParserHelper::createSeries()
 {
+    // Before creating the series, we handle its data holes
+    handleDataHoles();
+
     return std::make_shared<SpectrogramSeries>(
         std::move(m_XAxisData), std::move(m_YAxisData), std::move(m_ValuesData),
         Unit{"t", true}, // x-axis unit is always a time unit
         m_Properties.value(Y_AXIS_UNIT_PROPERTY).value<Unit>(),
-        m_Properties.value(VALUES_UNIT_PROPERTY).value<Unit>());
+        m_Properties.value(VALUES_UNIT_PROPERTY).value<Unit>(),
+        m_Properties.value(MIN_SAMPLING_PROPERTY).value<double>());
 }
 
 void SpectrogramParserHelper::readPropertyLine(const QString &line)
@@ -337,6 +352,15 @@ void SpectrogramParserHelper::readPropertyLine(const QString &line)
         [&] {
             return tryReadDoubles(m_Properties, MAX_BANDS_PROPERTY, line,
                                   SPECTROGRAM_MAX_BANDS_REGEX);
+        },
+        // start time of data
+        [&] {
+            return tryReadDate(m_Properties, START_TIME_PROPERTY, line,
+                               SPECTROGRAM_START_TIME_REGEX);
+        },
+        // end time of data
+        [&] {
+            return tryReadDate(m_Properties, END_TIME_PROPERTY, line, SPECTROGRAM_END_TIME_REGEX);
         }};
 
     for (auto function : functions) {
@@ -350,6 +374,18 @@ void SpectrogramParserHelper::readPropertyLine(const QString &line)
 void SpectrogramParserHelper::readResultLine(const QString &line)
 {
     tryReadResult(m_XAxisData, m_ValuesData, line, m_ValuesIndexes, m_FillValue);
+}
+
+void SpectrogramParserHelper::handleDataHoles()
+{
+    // Fills data holes according to the max resolution found in the AMDA file
+    auto resolution = m_Properties.value(MAX_SAMPLING_PROPERTY).value<double>();
+    auto fillValue = m_Properties.value(FILL_VALUE_PROPERTY).value<double>();
+    auto minBound = m_Properties.value(START_TIME_PROPERTY).value<double>();
+    auto maxBound = m_Properties.value(END_TIME_PROPERTY).value<double>();
+
+    DataSeriesUtils::fillDataHoles(m_XAxisData, m_ValuesData, resolution, fillValue, minBound,
+                                   maxBound);
 }
 
 // ////////////////// //

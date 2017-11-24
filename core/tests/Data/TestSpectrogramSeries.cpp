@@ -1,7 +1,7 @@
 #include "Data/SpectrogramSeries.h"
 
 #include "DataSeriesBuilders.h"
-#include "DataSeriesUtils.h"
+#include "DataSeriesTestsUtils.h"
 
 #include <QObject>
 #include <QtTest>
@@ -19,7 +19,7 @@ using Components = std::vector<DataContainer>;
 /**
  * @brief The TestSpectrogramSeries class defines unit tests on spectrogram series.
  *
- * Most of these unit tests use generic tests defined for DataSeries (@sa DataSeriesUtils)
+ * Most of these unit tests use generic tests defined for DataSeries (@sa DataSeriesTestsUtils)
  */
 class TestSpectrogramSeries : public QObject {
     Q_OBJECT

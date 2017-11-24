@@ -52,6 +52,11 @@ double DataSeriesIteratorValue::x() const
     return m_Impl->x();
 }
 
+std::vector<double> DataSeriesIteratorValue::y() const
+{
+    return m_Impl->y();
+}
+
 double DataSeriesIteratorValue::value() const
 {
     return m_Impl->value();

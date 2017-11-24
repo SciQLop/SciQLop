@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_OPTIONALAXIS_H
 #define SCIQLOP_OPTIONALAXIS_H
 
+#include <Data/ArrayDataIterator.h>
+
 #include "CoreGlobal.h"
 #include "Unit.h"
 
@@ -38,10 +40,6 @@ public:
     /// @return the flag that indicates if the axis is defined or not
     bool isDefined() const;
 
-    /// @return gets the data at the index passed in parameter, NaN if the index is outside the
-    /// bounds of the axis, or if the axis is undefined
-    double at(int index) const;
-
     ///@return the min and max values of the data on the axis, NaN values if there is no data
     std::pair<double, double> bounds() const;
 
@@ -52,6 +50,12 @@ public:
 
     bool operator==(const OptionalAxis &other);
     bool operator!=(const OptionalAxis &other);
+
+    // Iterators on data
+    ArrayDataIterator begin();
+    ArrayDataIterator end();
+    ArrayDataIterator cbegin() const;
+    ArrayDataIterator cend() const;
 
 private:
     bool m_Defined;                        ///< Axis is defined or not

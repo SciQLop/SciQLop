@@ -27,6 +27,7 @@ public:
         virtual void next(int offset) = 0;
         virtual void prev() = 0;
         virtual double x() const = 0;
+        virtual std::vector<double> y() const = 0;
         virtual double value() const = 0;
         virtual double value(int componentIndex) const = 0;
         virtual double minValue() const = 0;
@@ -51,6 +52,8 @@ public:
     void prev();
     /// Gets x-axis data
     double x() const;
+    /// Gets y-axis data
+    std::vector<double> y() const;
     /// Gets value data
     double value() const;
     /// Gets value data depending on an index

@@ -1,7 +1,7 @@
 #include "Data/ScalarSeries.h"
 
 #include "DataSeriesBuilders.h"
-#include "DataSeriesUtils.h"
+#include "DataSeriesTestsUtils.h"
 
 #include <QObject>
 #include <QtTest>
@@ -9,7 +9,7 @@
 /**
  * @brief The TestScalarSeries class defines unit tests on scalar series.
  *
- * Most of these unit tests use generic tests defined for DataSeries (@sa DataSeriesUtils)
+ * Most of these unit tests use generic tests defined for DataSeries (@sa DataSeriesTestsUtils)
  */
 class TestScalarSeries : public QObject {
     Q_OBJECT
