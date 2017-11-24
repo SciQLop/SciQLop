@@ -64,6 +64,46 @@ public:
     /// Gets all data
     QVariantHash data() const noexcept;
 
+    /**
+     * Merge in the item the source item passed as parameter.
+     *
+     * The merge is done by adding as child of the item the complete tree represented by the source
+     * item. If a part of the tree already exists in the item (based on the name of the nodes), it
+     * is merged by completing the existing tree by items "leaves" (products, components or nodes
+     * with no child).
+     *
+     * For example, with item representing the tree:
+     * R (root node)
+     *   - N1 (node)
+     *     -- N11 (node)
+     *        --- P1 (product)
+     *        --- P2 (product)
+     *   - N2 (node)
+     *
+     * and the source item representing the tree:
+     * N1 (root node)
+     *   - N11 (node)
+     *     -- P3 (product)
+     *   - N12 (node)
+     *
+     * The leaves of the source item to merge into the item are N1/N11/P3 and N1/N12 => we therefore
+     * have the following merge result:
+     * R
+     *   - N1
+     *     -- N11
+     *        --- P1
+     *        --- P2
+     *        --- P3 (added leaf)
+     *     -- N12 (added leaf)
+     *
+     * @param item the source item
+     * @remarks No control is performed on products or components that are merged into the same tree
+     * part (two products or components may have the same name)
+     * @remarks the merge is made by copy (source item is not changed and still exists after the
+     * operation)
+     */
+    void merge(const DataSourceItem &item);
+
     bool isRoot() const noexcept;
 
     QString name() const noexcept;

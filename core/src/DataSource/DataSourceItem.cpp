@@ -1,5 +1,6 @@
 #include <DataSource/DataSourceItem.h>
 #include <DataSource/DataSourceItemAction.h>
+#include <DataSource/DataSourceItemMergeHelper.h>
 
 #include <QVector>
 
@@ -73,6 +74,11 @@ QVariant DataSourceItem::data(const QString &key) const noexcept
 QVariantHash DataSourceItem::data() const noexcept
 {
     return impl->m_Data;
+}
+
+void DataSourceItem::merge(const DataSourceItem &item)
+{
+    DataSourceItemMergeHelper::merge(item, *this);
 }
 
 bool DataSourceItem::isRoot() const noexcept
