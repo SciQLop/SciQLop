@@ -29,6 +29,8 @@ public:
     explicit DataSourceItem(DataSourceItemType type, const QString &name);
     explicit DataSourceItem(DataSourceItemType type, QVariantHash data = {});
 
+    std::unique_ptr<DataSourceItem> clone() const;
+
     /// @return the actions of the item as a vector
     QVector<DataSourceItemAction *> actions() const noexcept;
 

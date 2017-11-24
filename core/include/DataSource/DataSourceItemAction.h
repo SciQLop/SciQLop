@@ -35,6 +35,8 @@ public:
      */
     explicit DataSourceItemAction(const QString &name, ExecuteFunction fun);
 
+    std::unique_ptr<DataSourceItemAction> clone() const;
+
     QString name() const noexcept;
 
     /// Sets the data source item concerned by the action

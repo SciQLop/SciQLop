@@ -29,6 +29,23 @@ DataSourceItem::DataSourceItem(DataSourceItemType type, QVariantHash data)
 {
 }
 
+std::unique_ptr<DataSourceItem> DataSourceItem::clone() const
+{
+    auto result = std::make_unique<DataSourceItem>(impl->m_Type, impl->m_Data);
+
+    // Clones children
+    for (const auto &child : impl->m_Children) {
+        result->appendChild(std::move(child->clone()));
+    }
+
+    // Clones actions
+    for (const auto &action : impl->m_Actions) {
+        result->addAction(std::move(action->clone()));
+    }
+
+    return result;
+}
+
 QVector<DataSourceItemAction *> DataSourceItem::actions() const noexcept
 {
     auto result = QVector<DataSourceItemAction *>{};
