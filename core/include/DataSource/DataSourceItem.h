@@ -25,6 +25,8 @@ class SCIQLOP_CORE_EXPORT DataSourceItem {
 public:
     /// Key associated with the name of the item
     static const QString NAME_DATA_KEY;
+    /// Key associated with the plugin of the item
+    static const QString PLUGIN_DATA_KEY;
 
     explicit DataSourceItem(DataSourceItemType type, const QString &name);
     explicit DataSourceItem(DataSourceItemType type, QVariantHash data = {});

@@ -5,6 +5,7 @@
 #include <QVector>
 
 const QString DataSourceItem::NAME_DATA_KEY = QStringLiteral("name");
+const QString DataSourceItem::PLUGIN_DATA_KEY = QStringLiteral("plugin");
 
 struct DataSourceItem::DataSourceItemPrivate {
     explicit DataSourceItemPrivate(DataSourceItemType type, QVariantHash data)
