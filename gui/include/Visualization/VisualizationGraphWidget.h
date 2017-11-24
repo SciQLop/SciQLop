@@ -61,7 +61,8 @@ public:
     QString name() const override;
 
     // VisualisationDragWidget
-    QMimeData *mimeData() const override;
+    QMimeData *mimeData(const QPoint &position) const override;
+    QPixmap customDragPixmap(const QPoint &dragPosition) override;
     bool isDragAllowed() const override;
     void highlightForMerge(bool highlighted) override;
 
@@ -92,7 +93,7 @@ protected:
     void enterEvent(QEvent *event) override;
     void leaveEvent(QEvent *event) override;
 
-    QCustomPlot &plot() noexcept;
+    QCustomPlot &plot() const noexcept;
 
 private:
     Ui::VisualizationGraphWidget *ui;

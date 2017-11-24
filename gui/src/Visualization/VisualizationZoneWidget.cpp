@@ -110,6 +110,8 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
                                        VisualizationDragDropContainer::DropBehavior::Merged);
     ui->dragDropContainer->setMimeType(MIME_TYPE_ZONE,
                                        VisualizationDragDropContainer::DropBehavior::Forbidden);
+    ui->dragDropContainer->setMimeType(MIME_TYPE_SELECTION_ZONE,
+                                       VisualizationDragDropContainer::DropBehavior::Forbidden);
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
         return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
                                                                       ui->dragDropContainer);
@@ -352,8 +354,10 @@ QString VisualizationZoneWidget::name() const
     return ui->zoneNameLabel->text();
 }
 
-QMimeData *VisualizationZoneWidget::mimeData() const
+QMimeData *VisualizationZoneWidget::mimeData(const QPoint &position) const
 {
+    Q_UNUSED(position);
+
     auto mimeData = new QMimeData;
     mimeData->setData(MIME_TYPE_ZONE, QByteArray{});
 

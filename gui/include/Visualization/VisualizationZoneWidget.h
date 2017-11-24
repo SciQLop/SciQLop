@@ -67,7 +67,7 @@ public:
     QString name() const override;
 
     // VisualisationDragWidget
-    QMimeData *mimeData() const override;
+    QMimeData *mimeData(const QPoint &position) const override;
     bool isDragAllowed() const override;
 
     void notifyMouseMoveInGraph(const QPointF &graphPosition, const QPointF &plotPosition,

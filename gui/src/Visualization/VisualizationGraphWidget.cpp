@@ -25,6 +25,9 @@ Q_LOGGING_CATEGORY(LOG_VisualizationGraphWidget, "VisualizationGraphWidget")
 
 namespace {
 
+/// Key pressed to enable drag&drop in all modes
+const auto DRAG_DROP_MODIFIER = Qt::AltModifier;
+
 /// Key pressed to enable zoom on horizontal axis
 const auto HORIZONTAL_ZOOM_MODIFIER = Qt::ControlModifier;
 
@@ -139,6 +142,22 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
         for (auto s : m_SelectionZones) {
             s->setEditionEnabled(value);
         }
+    }
+
+    VisualizationSelectionZoneItem *selectionZoneAt(const QPoint &pos,
+                                                    const QCustomPlot &plot) const
+    {
+        VisualizationSelectionZoneItem *selectionZoneItemUnderCursor = nullptr;
+        auto minDistanceToZone = -1;
+        for (auto zone : m_SelectionZones) {
+            auto distanceToZone = zone->selectTest(pos, false);
+            if ((minDistanceToZone < 0 || distanceToZone <= minDistanceToZone)
+                && distanceToZone >= 0 && distanceToZone < plot.selectionTolerance()) {
+                selectionZoneItemUnderCursor = zone;
+            }
+        }
+
+        return selectionZoneItemUnderCursor;
     }
 
     QPointF posToAxisPos(const QPoint &pos, QCustomPlot &plot) const
@@ -371,15 +390,48 @@ QString VisualizationGraphWidget::name() const
     return impl->m_Name;
 }
 
-QMimeData *VisualizationGraphWidget::mimeData() const
+QMimeData *VisualizationGraphWidget::mimeData(const QPoint &position) const
 {
     auto mimeData = new QMimeData;
-    mimeData->setData(MIME_TYPE_GRAPH, QByteArray{});
 
-    auto timeRangeData = TimeController::mimeDataForTimeRange(graphRange());
-    mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
+    auto selectionZoneItemUnderCursor = impl->selectionZoneAt(position, plot());
+    if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones
+        && selectionZoneItemUnderCursor) {
+        mimeData->setData(MIME_TYPE_TIME_RANGE, TimeController::mimeDataForTimeRange(
+                                                    selectionZoneItemUnderCursor->range()));
+        mimeData->setData(MIME_TYPE_SELECTION_ZONE, TimeController::mimeDataForTimeRange(
+                                                        selectionZoneItemUnderCursor->range()));
+    }
+    else {
+        mimeData->setData(MIME_TYPE_GRAPH, QByteArray{});
+
+        auto timeRangeData = TimeController::mimeDataForTimeRange(graphRange());
+        mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
+    }
 
     return mimeData;
+}
+
+QPixmap VisualizationGraphWidget::customDragPixmap(const QPoint &dragPosition)
+{
+    auto selectionZoneItemUnderCursor = impl->selectionZoneAt(dragPosition, plot());
+    if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones
+        && selectionZoneItemUnderCursor) {
+
+        auto zoneTopLeft = selectionZoneItemUnderCursor->topLeft->pixelPosition();
+        auto zoneBottomRight = selectionZoneItemUnderCursor->bottomRight->pixelPosition();
+
+        auto zoneSize = QSizeF{qAbs(zoneBottomRight.x() - zoneTopLeft.x()),
+                               qAbs(zoneBottomRight.y() - zoneTopLeft.y())}
+                            .toSize();
+
+        auto pixmap = QPixmap(zoneSize);
+        render(&pixmap, QPoint(), QRegion{QRect{zoneTopLeft.toPoint(), zoneSize}});
+
+        return pixmap;
+    }
+
+    return QPixmap();
 }
 
 bool VisualizationGraphWidget::isDragAllowed() const
@@ -482,7 +534,7 @@ void VisualizationGraphWidget::leaveEvent(QEvent *event)
     }
 }
 
-QCustomPlot &VisualizationGraphWidget::plot() noexcept
+QCustomPlot &VisualizationGraphWidget::plot() const noexcept
 {
     return *ui->widget;
 }
@@ -590,16 +642,7 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
     }
 
     // Search for the selection zone under the mouse
-    VisualizationSelectionZoneItem *selectionZoneItemUnderCursor = nullptr;
-    auto minDistanceToZone = -1;
-    for (auto zone : impl->m_SelectionZones) {
-        auto distanceToZone = zone->selectTest(event->pos(), true);
-        if ((minDistanceToZone < 0 || distanceToZone <= minDistanceToZone) && distanceToZone >= 0
-            && distanceToZone < plot().selectionTolerance()) {
-            selectionZoneItemUnderCursor = zone;
-        }
-    }
-
+    auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
     if (selectionZoneItemUnderCursor && !impl->m_DrawingZone
         && sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones) {
 
@@ -663,16 +706,21 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 
 void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
 {
-    if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::ZoomBox) {
-        // Starts a zoom box
-        impl->startDrawingRect(event->pos(), plot());
-    }
-    else if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones
-             && impl->m_DrawingZone == nullptr) {
-        // Starts a new selection zone
-        auto itemAtPos = plot().itemAt(event->pos(), true);
-        if (!itemAtPos) {
-            impl->startDrawingZone(event->pos(), plot());
+    bool isDragDropClick = event->modifiers().testFlag(DRAG_DROP_MODIFIER);
+
+    if (!isDragDropClick) {
+        if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::ZoomBox) {
+            // Starts a zoom box
+            impl->startDrawingRect(event->pos(), plot());
+        }
+        else if (sqpApp->plotsInteractionMode()
+                     == SqpApplication::PlotsInteractionMode::SelectionZones
+                 && impl->m_DrawingZone == nullptr) {
+            // Starts a new selection zone
+            auto zoneAtPos = impl->selectionZoneAt(event->pos(), plot());
+            if (!zoneAtPos) {
+                impl->startDrawingZone(event->pos(), plot());
+            }
         }
     }
     else if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::None) {
@@ -681,11 +729,13 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
 
     // Allows mouse panning only in default mode
     plot().setInteraction(QCP::iRangeDrag, sqpApp->plotsInteractionMode()
-                                               == SqpApplication::PlotsInteractionMode::None);
+                                                   == SqpApplication::PlotsInteractionMode::None
+                                               && !isDragDropClick);
 
-    // Allows zone edition only in selection zone mode
-    impl->setSelectionZonesEditionEnabled(sqpApp->plotsInteractionMode()
-                                          == SqpApplication::PlotsInteractionMode::SelectionZones);
+    // Allows zone edition only in selection zone mode without ALT pressed (ALT is for drag&drop)
+    impl->setSelectionZonesEditionEnabled(
+        sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones
+        && !isDragDropClick);
 
     VisualizationDragWidget::mousePressEvent(event);
 }

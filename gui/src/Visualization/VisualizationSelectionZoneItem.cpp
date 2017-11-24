@@ -33,7 +33,7 @@ struct VisualizationSelectionZoneItem::VisualizationSelectionZoneItemPrivate {
     {
         auto distanceLeft = m_LeftLine->selectTest(pos, false);
         auto distanceRight = m_RightLine->selectTest(pos, false);
-        auto distance = zoneItem->selectTest(pos, true);
+        auto distance = zoneItem->selectTest(pos, false);
 
         if (distanceRight <= distance) {
             return VisualizationSelectionZoneItemPrivate::EditionMode::ResizeRight;
@@ -173,6 +173,7 @@ void VisualizationSelectionZoneItem::setEditionEnabled(bool value)
     setSelectable(value);
     if (!value) {
         setSelected(false);
+        impl->m_CurrentEditionMode = VisualizationSelectionZoneItemPrivate::EditionMode::NoEdition;
     }
 }
 

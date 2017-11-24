@@ -11,9 +11,13 @@ class VisualizationDragWidget : public QWidget {
 public:
     VisualizationDragWidget(QWidget *parent = nullptr);
 
-    virtual QMimeData *mimeData() const = 0;
+    virtual QMimeData *mimeData(const QPoint &position) const = 0;
     virtual bool isDragAllowed() const = 0;
-    virtual void highlightForMerge(bool highlighted) { Q_UNUSED(highlighted); };
+    virtual void highlightForMerge(bool highlighted) { Q_UNUSED(highlighted); }
+
+    /// Custom pixmap to display during a drag operation.
+    /// If the provided pixmap is null, a pixmap of the entire widget is used.
+    virtual QPixmap customDragPixmap(const QPoint &dragPosition);
 
 protected:
     virtual void mousePressEvent(QMouseEvent *event) override;
