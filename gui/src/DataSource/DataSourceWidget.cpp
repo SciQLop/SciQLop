@@ -67,10 +67,13 @@ DataSourceWidget::~DataSourceWidget() noexcept
 
 void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
 {
-    // Creates the item associated to the source and adds it to the tree widget. The tree widget
-    // takes the ownership of the item
+    // Merges the data source (without taking its root)
     if (dataSource) {
-        ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
+        for (auto i = 0, count = dataSource->childCount(); i < count; ++i) {
+            m_Root->merge(*dataSource->child(i));
+        }
+
+        updateTreeWidget();
     }
 }
 
