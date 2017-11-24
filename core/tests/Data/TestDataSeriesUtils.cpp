@@ -3,10 +3,27 @@
 #include <QObject>
 #include <QtTest>
 
+namespace {
+
+/// Path for resources
+const auto TESTS_RESOURCES_PATH
+    = QFileInfo{QString{CORE_TESTS_RESOURCES_DIR}, "TestDataSeriesUtils"}.absoluteFilePath();
+
+QString inputFilePath(const QString &inputFileName)
+{
+    return QFileInfo{TESTS_RESOURCES_PATH, inputFileName}.absoluteFilePath();
+}
+
+} // namespace
+
 class TestDataSeriesUtils : public QObject {
     Q_OBJECT
 
 private slots:
+    /// Tests @sa DataSeriesUtils::thresholds() method
+    void testThresholds_data();
+    void testThresholds();
+
     /// Tests @sa DataSeriesUtils::fillDataHoles() method
     void testFillDataHoles_data();
     void testFillDataHoles();
@@ -102,6 +119,87 @@ void TestDataSeriesUtils::testFillDataHoles()
     };
     QVERIFY(equal(xAxisData, expectedXAxisData));
     QVERIFY(equal(valuesData, expectedValuesData));
+}
+
+namespace {
+
+const auto LINE_SEP = QRegularExpression{QStringLiteral("\\s+")};
+
+std::vector<double> fromFile(const QString &filePath)
+{
+    QFile file{filePath};
+
+    if (!file.open(QFile::ReadOnly | QIODevice::Text)) {
+        return {};
+    }
+
+    std::vector<double> result{};
+
+    QTextStream stream{&file};
+    QString line{};
+
+    while (stream.readLineInto(&line)) {
+        auto lineData = line.split(LINE_SEP, QString::SkipEmptyParts);
+
+        for (auto data : lineData) {
+            bool valueOk;
+            auto value = data.toDouble(&valueOk);
+
+            result.push_back(valueOk ? value : std::numeric_limits<double>::quiet_NaN());
+        }
+    }
+
+    return result;
+}
+
+} // namespace
+
+void TestDataSeriesUtils::testThresholds_data()
+{
+    QTest::addColumn<std::vector<double> >("input");
+    QTest::addColumn<bool>("logarithmic");
+    QTest::addColumn<double>("expectedMinThreshold");
+    QTest::addColumn<double>("expectedMaxThreshold");
+
+    auto nan = std::numeric_limits<double>::quiet_NaN();
+
+    QTest::newRow("thresholds (basic case)")
+        << std::vector<double>{1., 2., 3., 4., 5., 6., 7., 8., 9., 10.} << false << 1. << 10.;
+
+    QTest::newRow("thresholds (with nan values)")
+        << std::vector<double>{nan, 2., 3., 4., 5., 6., 7., 8., 9., nan} << false << 2. << 9.;
+
+    QTest::newRow("thresholds (case with low values and aberrant value)")
+        << std::vector<double>{1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1., 1.,  1., 2.,
+                               2., 2., 2., 2., 2., 2., 2., 2., 2., 2., 2., 2., 2., 2.,  3., 3.,
+                               3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 3., 100.}
+        << false << 1. << 47.073;
+
+    QTest::newRow("thresholds (empty data)") << std::vector<double>{} << false << nan << nan;
+    QTest::newRow("thresholds (only nan values)")
+        << std::vector<double>{nan, nan, nan, nan, nan} << false << nan << nan;
+
+    QTest::newRow("thresholds (from file with logarithmic scale)")
+        << fromFile(inputFilePath("TestThresholds.txt")) << true << 832.005 << 17655064.730;
+}
+
+void TestDataSeriesUtils::testThresholds()
+{
+    QFETCH(std::vector<double>, input);
+    QFETCH(bool, logarithmic);
+    QFETCH(double, expectedMinThreshold);
+    QFETCH(double, expectedMaxThreshold);
+
+    double minThreshold, maxThreshold;
+    std::tie(minThreshold, maxThreshold)
+        = DataSeriesUtils::thresholds(input.begin(), input.end(), logarithmic);
+
+    auto compareWithNaN = [](const auto &v1, const auto &v2) {
+        return (std::isnan(v1) && std::isnan(v2)) || std::abs(v1 - v2) < 1e-3;
+    };
+
+    QVERIFY(compareWithNaN(minThreshold, expectedMinThreshold));
+    QVERIFY(compareWithNaN(maxThreshold, expectedMaxThreshold));
 }
 
 QTEST_MAIN(TestDataSeriesUtils)

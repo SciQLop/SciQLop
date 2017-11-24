@@ -16,7 +16,8 @@ gui_moc_headers = [
   'include/Visualization/VisualizationWidget.h',
   'include/Visualization/VisualizationZoneWidget.h',
   'include/Visualization/VisualizationDragDropContainer.h',
-  'include/Visualization/VisualizationDragWidget.h'
+  'include/Visualization/VisualizationDragWidget.h',
+  'include/Visualization/ColorScaleEditor.h'
 ]
 
 gui_ui_files = [
@@ -31,7 +32,8 @@ gui_ui_files = [
   'ui/Visualization/VisualizationGraphWidget.ui',
   'ui/Visualization/VisualizationTabWidget.ui',
   'ui/Visualization/VisualizationWidget.ui',
-  'ui/Visualization/VisualizationZoneWidget.ui'
+  'ui/Visualization/VisualizationZoneWidget.ui',
+  'ui/Visualization/ColorScaleEditor.ui'
 ]
 
 gui_qresources = ['resources/sqpguiresources.qrc']
@@ -77,7 +79,10 @@ gui_sources = [
   'src/Visualization/AxisRenderingUtils.cpp',
   'src/Visualization/PlottablesRenderingUtils.cpp',
   'src/Visualization/MacScrollBarStyle.cpp',
-  'src/Visualization/VisualizationCursorItem.cpp'
+  'src/Visualization/VisualizationCursorItem.cpp',
+  'src/Visualization/ColorScaleEditor.cpp',
+  'src/Visualization/SqpColorScale.cpp',
+  'src/Visualization/QCPColorMapIterator.cpp'
 ]
 
 gui_inc = include_directories(['include'])

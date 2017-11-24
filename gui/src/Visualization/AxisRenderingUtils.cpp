@@ -4,6 +4,7 @@
 #include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
+#include <Visualization/SqpColorScale.h>
 #include <Visualization/qcustomplot.h>
 
 Q_LOGGING_CATEGORY(LOG_AxisRenderingUtils, "AxisRenderingUtils")
@@ -14,6 +15,9 @@ const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
 
 /// Format for datetimes on a axis
 const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
+
+const auto NUMBER_FORMAT = 'g';
+const auto NUMBER_PRECISION = 9;
 
 /// Generates the appropriate ticker for an axis, depending on whether the axis displays time or
 /// non-time data
@@ -64,7 +68,7 @@ void setAxisProperties(QCPAxis &axis, const Unit &unit,
  */
 template <typename T, typename Enabled = void>
 struct AxisSetter {
-    static void setProperties(T &, QCustomPlot &, QCPColorScale &)
+    static void setProperties(T &, QCustomPlot &, SqpColorScale &)
     {
         // Default implementation does nothing
         qCCritical(LOG_AxisRenderingUtils()) << "Can't set axis properties: unmanaged type of data";
@@ -79,7 +83,7 @@ struct AxisSetter {
 template <typename T>
 struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>::value
                                                or std::is_base_of<VectorSeries, T>::value> > {
-    static void setProperties(T &dataSeries, QCustomPlot &plot, QCPColorScale &)
+    static void setProperties(T &dataSeries, QCustomPlot &plot, SqpColorScale &)
     {
         dataSeries.lockRead();
         auto xAxisUnit = dataSeries.xAxisUnit();
@@ -97,7 +101,7 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>:
  */
 template <typename T>
 struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
-    static void setProperties(T &dataSeries, QCustomPlot &plot, QCPColorScale &colorScale)
+    static void setProperties(T &dataSeries, QCustomPlot &plot, SqpColorScale &colorScale)
     {
         dataSeries.lockRead();
         auto xAxisUnit = dataSeries.xAxisUnit();
@@ -110,20 +114,18 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
 
         // Displays color scale in plot
         plot.plotLayout()->insertRow(0);
-        plot.plotLayout()->addElement(0, 0, &colorScale);
-        colorScale.setType(QCPAxis::atTop);
-        colorScale.setMinimumMargins(QMargins{0, 0, 0, 0});
+        plot.plotLayout()->addElement(0, 0, colorScale.m_Scale);
+        colorScale.m_Scale->setType(QCPAxis::atTop);
+        colorScale.m_Scale->setMinimumMargins(QMargins{0, 0, 0, 0});
 
         // Aligns color scale with axes
         auto marginGroups = plot.axisRect()->marginGroups();
         for (auto it = marginGroups.begin(), end = marginGroups.end(); it != end; ++it) {
-            colorScale.setMarginGroup(it.key(), it.value());
+            colorScale.m_Scale->setMarginGroup(it.key(), it.value());
         }
 
         // Set color scale properties
-        setAxisProperties(*colorScale.axis(), valuesUnit, QCPAxis::stLogarithmic);
-        /// @todo ALX: temp data range, remove it when widget to set data range is implemented
-        colorScale.setDataRange(QCPRange{8.32e2, 1.77e7});
+        setAxisProperties(*colorScale.m_Scale->axis(), valuesUnit, QCPAxis::stLogarithmic);
     }
 };
 
@@ -135,7 +137,7 @@ template <typename T>
 struct AxisHelper : public IAxisHelper {
     explicit AxisHelper(T &dataSeries) : m_DataSeries{dataSeries} {}
 
-    void setProperties(QCustomPlot &plot, QCPColorScale &colorScale) override
+    void setProperties(QCustomPlot &plot, SqpColorScale &colorScale) override
     {
         AxisSetter<T>::setProperties(m_DataSeries, plot, colorScale);
     }
@@ -152,7 +154,7 @@ QString formatValue(double value, const QCPAxis &axis)
         return DateUtils::dateTime(value, axisTicker->dateTimeSpec()).toString(DATETIME_FORMAT);
     }
     else {
-        return QString::number(value);
+        return QString::number(value, NUMBER_FORMAT, NUMBER_PRECISION);
     }
 }
 

@@ -25,6 +25,8 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
 
     VisualizationDragDropContainer::AcceptMimeDataFunction m_AcceptMimeDataFun
         = [](auto mimeData) { return true; };
+    VisualizationDragDropContainer::AcceptDragWidgetFunction m_AcceptDragWidgetFun
+        = [](auto dragWidget, auto mimeData) { return true; };
 
     int m_MinContainerHeight = 0;
 
@@ -143,8 +145,8 @@ struct VisualizationDragDropContainer::VisualizationDragDropContainerPrivate {
         return nbGraph;
     }
 
-    void findPlaceHolderPosition(const QPoint &pos, bool canInsert, bool canMerge,
-                                 const VisualizationDragDropContainer *container);
+    bool findPlaceHolderPosition(const QPoint &pos, const QMimeData *mimeData, bool canInsert,
+                                 bool canMerge, const VisualizationDragDropContainer *container);
 };
 
 VisualizationDragDropContainer::VisualizationDragDropContainer(QWidget *parent)
@@ -186,6 +188,12 @@ void VisualizationDragDropContainer::setAcceptMimeDataFunction(
     VisualizationDragDropContainer::AcceptMimeDataFunction fun)
 {
     impl->m_AcceptMimeDataFun = fun;
+}
+
+void VisualizationDragDropContainer::setAcceptDragWidgetFunction(
+    VisualizationDragDropContainer::AcceptDragWidgetFunction fun)
+{
+    impl->m_AcceptDragWidgetFun = fun;
 }
 
 void VisualizationDragDropContainer::setPlaceHolderType(DragDropHelper::PlaceHolderType type,
@@ -263,7 +271,10 @@ void VisualizationDragDropContainer::dragEnterEvent(QDragEnterEvent *event)
 
             auto canMerge = impl->allowMergeForMimeData(event->mimeData());
             auto canInsert = impl->allowInsertForMimeData(event->mimeData());
-            impl->findPlaceHolderPosition(event->pos(), canInsert, canMerge, this);
+            if (!impl->findPlaceHolderPosition(event->pos(), event->mimeData(), canInsert, canMerge,
+                                               this)) {
+                event->ignore();
+            }
         }
         else {
             // do nothing
@@ -313,7 +324,7 @@ void VisualizationDragDropContainer::dragMoveEvent(QDragMoveEvent *event)
     if (impl->acceptMimeData(event->mimeData())) {
         auto canMerge = impl->allowMergeForMimeData(event->mimeData());
         auto canInsert = impl->allowInsertForMimeData(event->mimeData());
-        impl->findPlaceHolderPosition(event->pos(), canInsert, canMerge, this);
+        impl->findPlaceHolderPosition(event->pos(), event->mimeData(), canInsert, canMerge, this);
     }
     else {
         event->ignore();
@@ -387,8 +398,8 @@ void VisualizationDragDropContainer::dropEvent(QDropEvent *event)
 }
 
 
-void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::findPlaceHolderPosition(
-    const QPoint &pos, bool canInsert, bool canMerge,
+bool VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::findPlaceHolderPosition(
+    const QPoint &pos, const QMimeData *mimeData, bool canInsert, bool canMerge,
     const VisualizationDragDropContainer *container)
 {
     auto &helper = sqpApp->dragDropHelper();
@@ -451,7 +462,13 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
                     helper.removePlaceHolder();
                 }
 
-                helper.setHightlightedDragWidget(dragWidgetHovered);
+                if (m_AcceptDragWidgetFun(dragWidgetHovered, mimeData)) {
+                    helper.setHightlightedDragWidget(dragWidgetHovered);
+                    return true;
+                }
+                else {
+                    return false;
+                }
             }
             else {
                 qCWarning(LOG_VisualizationDragDropContainer())
@@ -470,4 +487,6 @@ void VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
         // the mouse is hover the placeHolder
         // Do nothing
     }
+
+    return true;
 }
