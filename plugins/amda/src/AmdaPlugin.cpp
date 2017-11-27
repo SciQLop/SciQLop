@@ -2,6 +2,7 @@
 #include "AmdaDefs.h"
 #include "AmdaParser.h"
 #include "AmdaProvider.h"
+#include "AmdaServer.h"
 
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceItem.h>
@@ -12,9 +13,6 @@
 Q_LOGGING_CATEGORY(LOG_AmdaPlugin, "AmdaPlugin")
 
 namespace {
-
-/// Name of the data source
-const auto DATA_SOURCE_NAME = QStringLiteral("AMDA");
 
 /// Path of the file used to generate the data source item for AMDA
 const auto JSON_FILE_PATH = QStringLiteral(":/samples/AmdaSampleV3.json");
@@ -33,7 +31,7 @@ void associateActions(DataSourceItem &item, const QUuid &dataSourceUid)
     const auto itemType = item.type();
     if (itemType == DataSourceItemType::PRODUCT || itemType == DataSourceItemType::COMPONENT) {
         // Adds plugin name to item metadata
-        item.setData(DataSourceItem::PLUGIN_DATA_KEY, DATA_SOURCE_NAME);
+        item.setData(DataSourceItem::PLUGIN_DATA_KEY, AmdaServer::instance().name());
 
         // Adds load action
         auto actionLabel = QObject::tr(
@@ -54,14 +52,17 @@ void associateActions(DataSourceItem &item, const QUuid &dataSourceUid)
 void AmdaPlugin::initialize()
 {
     if (auto app = sqpApp) {
+        auto dataSourceName = AmdaServer::instance().name();
+
         // Registers to the data source controller
         auto &dataSourceController = app->dataSourceController();
-        auto dataSourceUid = dataSourceController.registerDataSource(DATA_SOURCE_NAME);
+        auto dataSourceUid = dataSourceController.registerDataSource(dataSourceName);
 
         // Sets data source tree
         if (auto dataSourceItem = AmdaParser::readJson(JSON_FILE_PATH)) {
-            associateActions(*dataSourceItem, dataSourceUid);
+            dataSourceItem->setData(DataSourceItem::NAME_DATA_KEY, dataSourceName);
 
+            associateActions(*dataSourceItem, dataSourceUid);
             dataSourceController.setDataSourceItem(dataSourceUid, std::move(dataSourceItem));
         }
         else {
