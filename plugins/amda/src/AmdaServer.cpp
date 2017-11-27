@@ -18,9 +18,28 @@ public:
     QString url() const override { return QStringLiteral("amdatest.irap.omp.eu"); }
 };
 
+/// @return an AMDA server instance created from the name of the server passed in parameter. If the
+/// name does not match any known server, a default server instance is created
+std::unique_ptr<AmdaServer> createInstance(const QString &server)
+{
+    if (server == QString{"amdatest"}) {
+        return std::make_unique<AmdaTestServer>();
+    }
+    else {
+        if (server != QString{"default"}) {
+            qCWarning(LOG_AmdaServer())
+                << QObject::tr("Unknown server '%1': default AMDA server will be used").arg(server);
+        }
+
+        return std::make_unique<AmdaDefaultServer>();
+    }
+}
+
 } // namespace
 
 AmdaServer &AmdaServer::instance()
 {
-    /// @todo ALX
+    // Creates instance depending on the SCIQLOP_AMDA_SERVER value at compile time
+    static auto instance = createInstance(SCIQLOP_AMDA_SERVER);
+    return *instance;
 }

@@ -7,6 +7,11 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_AmdaServer)
 
+// Directive used to determine the active AMDA server
+#ifndef SCIQLOP_AMDA_SERVER
+#define SCIQLOP_AMDA_SERVER "default"
+#endif
+
 /**
  * @brief The AmdaServer class represents the server used to retrieve AMDA data (singleton).
  *
