@@ -19,7 +19,7 @@ VisualizationDragWidget::VisualizationDragWidget(QWidget *parent)
 {
 }
 
-virtual QPixmap VisualizationDragWidget::customDragPixmap(const QPoint &dragPosition)
+QPixmap VisualizationDragWidget::customDragPixmap(const QPoint &dragPosition)
 {
     Q_UNUSED(dragPosition);
     return QPixmap();

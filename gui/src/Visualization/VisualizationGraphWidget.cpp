@@ -335,6 +335,27 @@ void VisualizationGraphWidget::setGraphRange(const SqpRange &range)
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange END");
 }
 
+QVector<SqpRange> VisualizationGraphWidget::selectionZoneRanges() const
+{
+    QVector<SqpRange> ranges;
+    for (auto zone : impl->m_SelectionZones) {
+        ranges << zone->range();
+    }
+
+    return ranges;
+}
+
+void VisualizationGraphWidget::addSelectionZones(const QVector<SqpRange> &ranges)
+{
+    for (const auto &range : ranges) {
+        auto zone = new VisualizationSelectionZoneItem(&plot());
+        zone->setRange(range.m_TStart, range.m_TEnd);
+        impl->m_SelectionZones << zone;
+    }
+
+    plot().replot(QCustomPlot::rpQueuedReplot);
+}
+
 void VisualizationGraphWidget::undoZoom()
 {
     auto zoom = impl->m_ZoomStack.pop();

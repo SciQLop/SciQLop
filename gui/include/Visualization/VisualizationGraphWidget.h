@@ -51,6 +51,12 @@ public:
     SqpRange graphRange() const noexcept;
     void setGraphRange(const SqpRange &range);
 
+    /// Returns the ranges of all the selection zones on the graph
+    QVector<SqpRange> selectionZoneRanges() const;
+
+    /// Adds new selection zones in the graph
+    void addSelectionZones(const QVector<SqpRange> &ranges);
+
     /// Undo the last zoom  done with a zoom box
     void undoZoom();
 
