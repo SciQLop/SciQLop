@@ -11,7 +11,8 @@ amdaplugin_sources = [
   'src/AmdaProvider.cpp',
   'src/AmdaResultParser.cpp',
   'src/AmdaResultParserDefs.cpp',
-  'src/AmdaResultParserHelper.cpp'
+  'src/AmdaResultParserHelper.cpp',
+  'src/AmdaServer.cpp'
 ]
 
 amdaplugin_ui_files = []
