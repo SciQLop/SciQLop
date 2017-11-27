@@ -27,6 +27,13 @@ IF(BUILD_PLUGINS)
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-mockplugin_DIR}")
     ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/plugins/mockplugin")
 
+    # Sets AMDA server that will be used during execution.
+    # Available values are:
+    # - "default": default AMDA server
+    # - "amdatest": AMDA test server
+    # Any other value will lead to the use of the default server
+    ADD_DEFINITIONS(-DSCIQLOP_AMDA_SERVER="default")
+
     set(sciqlop-amda_DIR "${CMAKE_SOURCE_DIR}/plugins/amda/cmake")
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-amda_DIR}")
     ADD_SUBDIRECTORY("${CMAKE_SOURCE_DIR}/plugins/amda")
