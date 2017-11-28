@@ -27,10 +27,6 @@ public:
 
     void requestDataAborting(QUuid acqIdentifier) override;
 
-private slots:
-    void onReplyDownloadProgress(QUuid acqIdentifier,
-                                 std::shared_ptr<QNetworkRequest> networkRequest, double progress);
-
 private:
     void retrieveData(QUuid token, const SqpRange &dateTime, const QVariantHash &data);
 
@@ -39,6 +35,10 @@ private:
 
     std::map<QUuid, std::map<std::shared_ptr<QNetworkRequest>, double> >
         m_AcqIdToRequestProgressMap;
+
+private slots:
+    void onReplyDownloadProgress(QUuid acqIdentifier,
+                                 std::shared_ptr<QNetworkRequest> networkRequest, double progress);
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H
