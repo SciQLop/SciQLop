@@ -1,5 +1,7 @@
 #include <DataSource/DataSourceItem.h>
 
+#include "DataSourceItemBuilder.h"
+
 #include <QObject>
 #include <QtTest>
 
@@ -43,7 +45,140 @@ void TestDataSourceItem::testMerge_data()
     QTest::addColumn<std::shared_ptr<DataSourceItem> >("dest");
     QTest::addColumn<std::shared_ptr<DataSourceItem> >("expectedResult");
 
-    /// @todo ALX: adds test cases
+    QTest::newRow("merge (basic case)") << DataSourceItemBuilder{}
+                                               .root("A2")
+                                               .node("- B2")
+                                               .product("-- P2")
+                                               .end() // P2
+                                               .end() // B2
+                                               .end() // A2
+                                               .build()
+                                        << DataSourceItemBuilder{}
+                                               .root("A1")
+                                               .node("- B1")
+                                               .product("-- P1")
+                                               .end() // P1
+                                               .end() // B1
+                                               .end() // A1
+                                               .build()
+                                        << DataSourceItemBuilder{}
+                                               .root("A1")
+                                               .node("- B1")
+                                               .product("-- P1")
+                                               .end() // P1
+                                               .end() // B1
+                                               .node("- B2")
+                                               .product("-- P2")
+                                               .end() // P2
+                                               .end() // B2
+                                               .end() // A1
+                                               .build();
+
+    QTest::newRow("merge (some of the source and destination trees are identical)")
+        << DataSourceItemBuilder{}
+               .root("A2")
+               .node("- B1")
+               .node("-- C1")
+               .product("--- P2")
+               .end() // P2
+               .end() // C1
+               .node("-- C2")
+               .end() // C2
+               .end() // B1
+               .end() // A2
+               .build()
+        << DataSourceItemBuilder{}
+               .root("A1")
+               .node("- B1")
+               .node("-- C1")
+               .product("--- P1")
+               .end() // P1
+               .end() // C1
+               .end() // B1
+               .end() // A1
+               .build()
+        << DataSourceItemBuilder{}
+               .root("A1")
+               .node("- B1")
+               .node("-- C1")
+               .product("--- P1")
+               .end() // P1
+               .product("--- P2")
+               .end() // P2
+               .end() // C1
+               .node("-- C2")
+               .end() // C2
+               .end() // B1
+               .end() // A1
+               .build();
+
+    QTest::newRow("merge (products with the same name and tree are kept)")
+        << DataSourceItemBuilder{}
+               .root("A2")
+               .node("- B1")
+               .node("-- C1")
+               .product({{"name", "--- P1"}, {"from", "source"}})
+               .end() // P1
+               .end() // C1
+               .end() // B1
+               .end() // A2
+               .build()
+        << DataSourceItemBuilder{}
+               .root("A1")
+               .node("- B1")
+               .node("-- C1")
+               .product({{"name", "--- P1"}, {"from", "dest"}})
+               .end() // P1
+               .end() // C1
+               .end() // B1
+               .end() // A1
+               .build()
+        << DataSourceItemBuilder{}
+               .root("A1")
+               .node("- B1")
+               .node("-- C1")
+               .product({{"name", "--- P1"}, {"from", "dest"}})
+               .end() // P1 (dest)
+               .product({{"name", "--- P1"}, {"from", "source"}})
+               .end() // P1 (source)
+               .end() // C1
+               .end() // B1
+               .end() // A1
+               .build();
+
+    QTest::newRow("merge (for same nodes, metadata of dest node are kept)")
+        << DataSourceItemBuilder{}
+               .root("A2")
+               .node("- B1")
+               .node({{"name", "-- C1"}, {"from", "source"}})
+               .product("--- P2")
+               .end() // P1
+               .end() // C1
+               .end() // B1
+               .end() // A2
+               .build()
+        << DataSourceItemBuilder{}
+               .root("A1")
+               .node("- B1")
+               .node({{"name", "-- C1"}, {"from", "dest"}})
+               .product("--- P1")
+               .end() // P1
+               .end() // C1
+               .end() // B1
+               .end() // A1
+               .build()
+        << DataSourceItemBuilder{}
+               .root("A1")
+               .node("- B1")
+               .node({{"name", "-- C1"}, {"from", "dest"}})
+               .product("--- P1")
+               .end() // P1
+               .product("--- P2")
+               .end() // P2
+               .end() // C1 (dest)
+               .end() // B1
+               .end() // A1
+               .build();
 }
 
 void TestDataSourceItem::testMerge()
