@@ -84,6 +84,11 @@ VisualizationSelectionZoneItem::VisualizationSelectionZoneItem(QCustomPlot *plot
     impl->m_LeftLine->point2->setTypeY(QCPItemPosition::ptAbsolute);
     impl->m_LeftLine->setSelectable(false);
 
+    connect(this, &VisualizationSelectionZoneItem::selectionChanged, impl->m_RightLine,
+            &QCPItemStraightLine::setSelected);
+    connect(this, &VisualizationSelectionZoneItem::selectionChanged, impl->m_LeftLine,
+            &QCPItemStraightLine::setSelected);
+
     setColor(QColor(DEFAULT_COLOR));
 }
 
@@ -149,21 +154,22 @@ void VisualizationSelectionZoneItem::setColor(const QColor &color)
     impl->m_Color = color;
 
     auto brushColor = color;
-    brushColor.setAlpha(40);
+    brushColor.setAlpha(80);
     setBrush(QBrush(brushColor));
     setPen(QPen(Qt::NoPen));
 
     auto selectedBrushColor = brushColor;
-    selectedBrushColor.setAlpha(65);
+    selectedBrushColor.setAlpha(150);
     setSelectedBrush(QBrush(selectedBrushColor));
     setSelectedPen(QPen(Qt::NoPen));
 
     auto linePen = QPen(color);
     linePen.setStyle(Qt::SolidLine);
-    linePen.setWidth(2);
+    linePen.setWidth(4);
 
     auto selectedLinePen = linePen;
-    selectedLinePen.setColor(color.darker(30));
+    selectedLinePen.setColor(color.darker(120));
+    selectedLinePen.setWidth(4);
 
     impl->m_LeftLine->setPen(linePen);
     impl->m_RightLine->setPen(linePen);

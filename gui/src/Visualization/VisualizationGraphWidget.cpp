@@ -90,7 +90,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     VisualizationSelectionZoneItem *m_HoveredZone = nullptr;
     QVector<VisualizationSelectionZoneItem *> m_SelectionZones;
 
-    bool m_HasMovedMouse = false; //Indicates if the mouse moved in a releaseMouse even
+    bool m_HasMovedMouse = false; // Indicates if the mouse moved in a releaseMouse even
 
     void startDrawingRect(const QPoint &pos, QCustomPlot &plot)
     {
@@ -778,7 +778,7 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
     // Allows zone edition only in selection zone mode without drag&drop
     impl->setSelectionZonesEditionEnabled(isSelectionZoneMode && !isDragDropClick);
 
-   // Selection / Deselection
+    // Selection / Deselection
     if (isSelectionZoneMode) {
         auto isMultiSelectionClick = event->modifiers().testFlag(MULTI_ZONE_SELECTION_MODIFIER);
         auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
