@@ -6,6 +6,7 @@
 #include <Visualization/qcustomplot.h>
 
 class VisualizationSelectionZoneItem : public QCPItemRect {
+
 public:
     VisualizationSelectionZoneItem(QCustomPlot *plot);
     virtual ~VisualizationSelectionZoneItem();

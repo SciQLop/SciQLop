@@ -1,5 +1,7 @@
 #include "Visualization/VisualizationSelectionZoneItem.h"
 
+const QString &DEFAULT_COLOR = QStringLiteral("#E79D41");
+
 struct VisualizationSelectionZoneItem::VisualizationSelectionZoneItemPrivate {
 
     QCustomPlot *m_Plot;
@@ -54,6 +56,7 @@ VisualizationSelectionZoneItem::VisualizationSelectionZoneItem(QCustomPlot *plot
     topLeft->setTypeY(QCPItemPosition::ptAxisRectRatio);
     bottomRight->setTypeX(QCPItemPosition::ptPlotCoords);
     bottomRight->setTypeY(QCPItemPosition::ptAxisRectRatio);
+    setSelectable(false);
 
     impl->m_RightLine = new QCPItemStraightLine(plot);
     impl->m_RightLine->point1->setParentAnchor(topRight);
@@ -62,6 +65,7 @@ VisualizationSelectionZoneItem::VisualizationSelectionZoneItem(QCustomPlot *plot
     impl->m_RightLine->point1->setTypeY(QCPItemPosition::ptAbsolute);
     impl->m_RightLine->point2->setTypeX(QCPItemPosition::ptAbsolute);
     impl->m_RightLine->point2->setTypeY(QCPItemPosition::ptAbsolute);
+    impl->m_RightLine->setSelectable(false);
 
     impl->m_LeftLine = new QCPItemStraightLine(plot);
     impl->m_LeftLine->point1->setParentAnchor(topLeft);
@@ -70,16 +74,9 @@ VisualizationSelectionZoneItem::VisualizationSelectionZoneItem(QCustomPlot *plot
     impl->m_LeftLine->point1->setTypeY(QCPItemPosition::ptAbsolute);
     impl->m_LeftLine->point2->setTypeX(QCPItemPosition::ptAbsolute);
     impl->m_LeftLine->point2->setTypeY(QCPItemPosition::ptAbsolute);
-
-    impl->m_RightLine->setSelectable(false);
     impl->m_LeftLine->setSelectable(false);
 
-    //    connect(this, &VisualizationSelectionZoneItem::selectionChanged, impl->m_RightLine,
-    //            &QCPItemStraightLine::setSelected);
-    //    connect(this, &VisualizationSelectionZoneItem::selectionChanged, impl->m_LeftLine,
-    //            &QCPItemStraightLine::setSelected);
-
-    setColor(QColor("#E79D41"));
+    setColor(QColor(DEFAULT_COLOR));
 }
 
 VisualizationSelectionZoneItem::~VisualizationSelectionZoneItem()
@@ -225,13 +222,14 @@ void VisualizationSelectionZoneItem::setHovered(bool value)
 
 void VisualizationSelectionZoneItem::mousePressEvent(QMouseEvent *event, const QVariant &details)
 {
-    if (isEditionEnabled()) {
+    if (isEditionEnabled() && event->button() == Qt::LeftButton) {
         impl->m_CurrentEditionMode = impl->getEditionMode(event->pos(), this);
 
         impl->m_MovedOrinalT1 = impl->m_T1;
         impl->m_MovedOrinalT2 = impl->m_T2;
     }
     else {
+        impl->m_CurrentEditionMode = VisualizationSelectionZoneItemPrivate::EditionMode::NoEdition;
         event->ignore();
     }
 }
@@ -252,8 +250,8 @@ void VisualizationSelectionZoneItem::mouseMoveEvent(QMouseEvent *event, const QP
             case VisualizationSelectionZoneItemPrivate::EditionMode::ResizeRight:
                 setEnd(impl->m_MovedOrinalT2 + diff);
                 break;
-                // default:
-                // unknown edition mode
+            default:
+                break;
         }
     }
     else {

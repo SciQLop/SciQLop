@@ -83,7 +83,8 @@ gui_sources = [
   'src/Visualization/ColorScaleEditor.cpp',
   'src/Visualization/SqpColorScale.cpp',
   'src/Visualization/QCPColorMapIterator.cpp',
-  'src/Visualization/VisualizationSelectionZoneItem.cpp'
+  'src/Visualization/VisualizationSelectionZoneItem.cpp',
+  'src/Visualization/VisualizationSelectionZoneManager.cpp'
 ]
 
 gui_inc = include_directories(['include'])

@@ -17,6 +17,7 @@ class QCPRange;
 class QCustomPlot;
 class SqpRange;
 class Variable;
+class VisualizationWidget;
 class VisualizationZoneWidget;
 
 namespace Ui {
@@ -33,7 +34,11 @@ public:
     explicit VisualizationGraphWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationGraphWidget();
 
+    /// Returns the VisualizationZoneWidget which contains the graph or nullptr
     VisualizationZoneWidget *parentZoneWidget() const noexcept;
+
+    /// Returns the main VisualizationWidget which contains the graph or nullptr
+    VisualizationWidget *parentVisualizationWidget() const;
 
     /// If acquisition isn't enable, requestDataLoading signal cannot be emit
     void enableAcquisition(bool enable);
