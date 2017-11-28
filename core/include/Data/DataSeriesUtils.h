@@ -3,10 +3,11 @@
 
 #include "CoreGlobal.h"
 
+#include <Common/SortUtils.h>
 #include <Data/DataSeriesIterator.h>
 
-#include <cmath>
 #include <QLoggingCategory>
+#include <cmath>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_DataSeriesUtils)
 
@@ -197,6 +198,27 @@ struct SCIQLOP_CORE_EXPORT DataSeriesUtils {
      */
     static Mesh regularMesh(DataSeriesIterator begin, DataSeriesIterator end,
                             Resolution xResolution, Resolution yResolution);
+
+    /**
+     * Calculates the min and max thresholds of a dataset.
+     *
+     * The thresholds of a dataset correspond to the min and max limits of the set to which the
+     * outliers are exluded (values distant from the others) For example, for the set [1, 2, 3, 4,
+     * 5, 10000], 10000 is an outlier and will be excluded from the thresholds.
+     *
+     * Bounds determining the thresholds is calculated according to the mean and the standard
+     * deviation of the defined data. The thresholds are limited to the min / max values of the
+     * dataset: if for example the calculated min threshold is 2 but the min value of the datasetset
+     * is 4, 4 is returned as the min threshold.
+     *
+     * @param begin the beginning of the dataset
+     * @param end the end of the dataset
+     * @param logarithmic computes threshold with a logarithmic scale or not
+     * @return the thresholds computed, a couple of nan values if it couldn't be computed
+     */
+    template <typename Iterator>
+    static std::pair<double, double> thresholds(Iterator begin, Iterator end,
+                                                bool logarithmic = false);
 };
 
 template <typename Iterator>
@@ -223,6 +245,73 @@ DataSeriesUtils::Resolution DataSeriesUtils::resolution(Iterator begin, Iterator
         = resolutionIt != values.end() ? *resolutionIt : std::numeric_limits<double>::quiet_NaN();
 
     return Resolution{resolution, logarithmic};
+}
+
+template <typename Iterator>
+std::pair<double, double> DataSeriesUtils::thresholds(Iterator begin, Iterator end,
+                                                      bool logarithmic)
+{
+    /// Lambda that converts values in case of logaritmic scale
+    auto toLog = [logarithmic](const auto &value) {
+        if (logarithmic) {
+            // Logaritmic scale doesn't include zero value
+            return !(std::isnan(value) || value < std::numeric_limits<double>::epsilon())
+                       ? std::log10(value)
+                       : std::numeric_limits<double>::quiet_NaN();
+        }
+        else {
+            return value;
+        }
+    };
+
+    /// Lambda that converts values to linear scale
+    auto fromLog
+        = [logarithmic](const auto &value) { return logarithmic ? std::pow(10, value) : value; };
+
+    /// Lambda used to sum data and divide the sum by the number of data. It is used to calculate
+    /// the mean and standard deviation
+    /// @param fun the data addition function
+    auto accumulate = [begin, end](auto fun) {
+        double sum;
+        int nbValues;
+        std::tie(sum, nbValues) = std::accumulate(
+            begin, end, std::make_pair(0., 0), [fun](const auto &input, const auto &value) {
+                auto computedValue = fun(value);
+
+                // NaN values are excluded from the sum
+                return !std::isnan(computedValue)
+                           ? std::make_pair(input.first + computedValue, input.second + 1)
+                           : input;
+            });
+
+        return nbValues != 0 ? sum / nbValues : std::numeric_limits<double>::quiet_NaN();
+    };
+
+    // Computes mean
+    auto mean = accumulate([toLog](const auto &val) { return toLog(val); });
+    if (std::isnan(mean)) {
+        return {std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
+    }
+
+    // Computes standard deviation
+    auto variance
+        = accumulate([mean, toLog](const auto &val) { return std::pow(toLog(val) - mean, 2); });
+    auto sigma = std::sqrt(variance);
+
+    // Computes thresholds
+    auto minThreshold = fromLog(mean - 3 * sigma);
+    auto maxThreshold = fromLog(mean + 3 * sigma);
+
+    // Finds min/max values
+    auto minIt = std::min_element(begin, end, [toLog](const auto &it1, const auto &it2) {
+        return SortUtils::minCompareWithNaN(toLog(it1), toLog(it2));
+    });
+    auto maxIt = std::max_element(begin, end, [toLog](const auto &it1, const auto &it2) {
+        return SortUtils::maxCompareWithNaN(toLog(it1), toLog(it2));
+    });
+
+    // Returns thresholds (bounded to min/max values)
+    return {std::max(*minIt, minThreshold), std::min(*maxIt, maxThreshold)};
 }
 
 #endif // SCIQLOP_DATASERIESUTILS_H

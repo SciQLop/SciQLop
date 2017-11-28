@@ -165,8 +165,6 @@ struct PlottablesUpdater<T,
             if (rescaleAxes) {
                 plot->rescaleAxes();
             }
-
-            plot->replot();
         }
     }
 };
@@ -246,8 +244,6 @@ struct PlottablesUpdater<T,
         if (rescaleAxes) {
             plot->rescaleAxes();
         }
-
-        plot->replot();
     }
 };
 

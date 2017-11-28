@@ -26,6 +26,7 @@ foreach unit_test : tests
   test_moc_files = qt5.preprocess(moc_sources : unit_test[0])
   test_exe = executable(unit_test[1],unit_test[0] , test_moc_files,
                           dependencies : [sciqlop_core, qt5test],
+						  cpp_args : ['-DCORE_TESTS_RESOURCES_DIR="'+meson.current_source_dir()+'/../tests-resources"'],
 						  sources : [amdatest_sources])
   test(unit_test[2], test_exe, args: ['-teamcity', '-o', '@0@.teamcity.txt'.format(unit_test[1])])
 endforeach

@@ -12,9 +12,6 @@ Q_LOGGING_CATEGORY(LOG_PlottablesRenderingUtils, "PlottablesRenderingUtils")
 
 namespace {
 
-/// Default gradient used for colormap
-const auto DEFAULT_COLORMAP_GRADIENT = QCPColorGradient::gpJet;
-
 /**
  * Delegate used to set plottables properties
  */
@@ -81,8 +78,6 @@ struct PlottablesSetter<T,
                 }
             }
 
-            // Sets gradient used for color scale
-            colormap->setGradient(DEFAULT_COLORMAP_GRADIENT);
             colormap->rescaleDataRange();
         }
         else {

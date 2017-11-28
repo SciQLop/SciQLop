@@ -10,6 +10,7 @@
 #include <Common/MimeTypesDef.h>
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
+#include <Data/SpectrogramSeries.h>
 #include <DragAndDrop/DragDropHelper.h>
 #include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
@@ -51,6 +52,15 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
               m_IsCalibration{false},
               m_RenderingDelegate{nullptr}
     {
+    }
+
+    void updateData(PlottablesMap &plottables, std::shared_ptr<IDataSeries> dataSeries,
+                    const SqpRange &range)
+    {
+        VisualizationGraphHelper::updateData(plottables, dataSeries, range);
+
+        // Prevents that data has changed to update rendering
+        m_RenderingDelegate->onPlotUpdated();
     }
 
     QString m_Name;
@@ -141,6 +151,8 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
             &VisualizationGraphWidget::onMouseRelease);
     connect(ui->widget, &QCustomPlot::mouseMove, this, &VisualizationGraphWidget::onMouseMove);
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
+    connect(ui->widget, &QCustomPlot::mouseDoubleClick, this,
+            &VisualizationGraphWidget::onMouseDoubleClick);
     connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
                                    &QCPAxis::rangeChanged),
             this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
@@ -282,9 +294,17 @@ void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 
 bool VisualizationGraphWidget::canDrop(const Variable &variable) const
 {
-    /// @todo : for the moment, a graph can always accomodate a variable
-    Q_UNUSED(variable);
-    return true;
+    auto isSpectrogram = [](const auto &variable) {
+        return std::dynamic_pointer_cast<SpectrogramSeries>(variable.dataSeries()) != nullptr;
+    };
+
+    // - A spectrogram series can't be dropped on graph with existing plottables
+    // - No data series can be dropped on graph with existing spectrogram series
+    return isSpectrogram(variable)
+               ? impl->m_VariableToPlotMultiMap.empty()
+               : std::none_of(
+                     impl->m_VariableToPlotMultiMap.cbegin(), impl->m_VariableToPlotMultiMap.cend(),
+                     [isSpectrogram](const auto &entry) { return isSpectrogram(*entry.first); });
 }
 
 bool VisualizationGraphWidget::contains(const Variable &variable) const
@@ -476,6 +496,11 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
     }
 }
 
+void VisualizationGraphWidget::onMouseDoubleClick(QMouseEvent *event) noexcept
+{
+    impl->m_RenderingDelegate->onMouseDoubleClick(event);
+}
+
 void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
 {
     // Handles plot rendering when mouse is moving
@@ -581,8 +606,7 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
         qCDebug(LOG_VisualizationGraphWidget())
             << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated E" << dateTime;
         if (dateTime.contains(variable->range()) || dateTime.intersect(variable->range())) {
-            VisualizationGraphHelper::updateData(variableEntry.second, variable->dataSeries(),
-                                                 variable->range());
+            impl->updateData(variableEntry.second, variable->dataSeries(), variable->range());
         }
     }
 }
@@ -592,6 +616,6 @@ void VisualizationGraphWidget::onUpdateVarDisplaying(std::shared_ptr<Variable> v
 {
     auto it = impl->m_VariableToPlotMultiMap.find(variable);
     if (it != impl->m_VariableToPlotMultiMap.end()) {
-        VisualizationGraphHelper::updateData(it->second, variable->dataSeries(), range);
+        impl->updateData(it->second, variable->dataSeries(), range);
     }
 }
