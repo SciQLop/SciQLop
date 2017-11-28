@@ -1,21 +1,51 @@
 #include "AmdaServer.h"
 
+#include "AmdaDefs.h"
+
 Q_LOGGING_CATEGORY(LOG_AmdaServer, "AmdaServer")
 
 namespace {
+
+/// URL of the default AMDA server
+const auto AMDA_DEFAULT_SERVER_URL = QStringLiteral("amda.irap.omp.eu");
+
+/// URL of the AMDA test server
+const auto AMDA_TEST_SERVER_URL = QStringLiteral("amdatest.irap.omp.eu");
 
 /// Default AMDA server
 struct AmdaDefaultServer : public AmdaServer {
 public:
     QString name() const override { return QStringLiteral("AMDA (default)"); }
-    QString url() const override { return QStringLiteral("amda.irap.omp.eu"); }
+    QString url(const QVariantHash &properties) const override
+    {
+        Q_UNUSED(properties);
+        return AMDA_DEFAULT_SERVER_URL;
+    }
 };
 
 /// Alternative AMDA server (tests)
 struct AmdaTestServer : public AmdaServer {
 public:
     QString name() const override { return QStringLiteral("AMDA (test)"); }
-    QString url() const override { return QStringLiteral("amdatest.irap.omp.eu"); }
+    QString url(const QVariantHash &properties) const override
+    {
+        Q_UNUSED(properties);
+        return AMDA_TEST_SERVER_URL;
+    }
+};
+
+/// Hybrid AMDA server: use both of default and test server.
+/// The server used is relative to each product for which to retrieve url, according to its "server"
+/// property
+struct AmdaHybridServer : public AmdaServer {
+public:
+    QString name() const override { return QStringLiteral("AMDA (hybrid)"); }
+    QString url(const QVariantHash &properties) const override
+    {
+        // Reads "server" property to determine which server url to use
+        auto server = properties.value(AMDA_SERVER_KEY).toString();
+        return server == QString{"amdatest"} ? AMDA_TEST_SERVER_URL : AMDA_DEFAULT_SERVER_URL;
+    }
 };
 
 /// @return an AMDA server instance created from the name of the server passed in parameter. If the
@@ -24,6 +54,9 @@ std::unique_ptr<AmdaServer> createInstance(const QString &server)
 {
     if (server == QString{"amdatest"}) {
         return std::make_unique<AmdaTestServer>();
+    }
+    else if (server == QString{"hybrid"}) {
+        return std::make_unique<AmdaHybridServer>();
     }
     else {
         if (server != QString{"default"}) {

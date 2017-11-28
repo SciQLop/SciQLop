@@ -180,8 +180,9 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     auto startDate = dateFormat(dateTime.m_TStart);
     auto endDate = dateFormat(dateTime.m_TEnd);
 
-    auto url = QUrl{
-        QString{AMDA_URL_FORMAT}.arg(AmdaServer::instance().url(), startDate, endDate, productId)};
+    QVariantHash urlProperties{{AMDA_SERVER_KEY, data.value(AMDA_SERVER_KEY)}};
+    auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(AmdaServer::instance().url(urlProperties),
+                                                 startDate, endDate, productId)};
     qCInfo(LOG_AmdaProvider()) << tr("TORM AmdaProvider::retrieveData url:") << url;
     auto tempFile = std::make_shared<QTemporaryFile>();
 

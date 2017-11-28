@@ -31,8 +31,9 @@ IF(BUILD_PLUGINS)
     # Available values are:
     # - "default": default AMDA server
     # - "amdatest": AMDA test server
+    # - "hybrid": use both the default server and the test server (the server used is relative to each product, according to its "server" property in the JSON file)
     # Any other value will lead to the use of the default server
-    ADD_DEFINITIONS(-DSCIQLOP_AMDA_SERVER="default")
+    ADD_DEFINITIONS(-DSCIQLOP_AMDA_SERVER="hybrid")
 
     set(sciqlop-amda_DIR "${CMAKE_SOURCE_DIR}/plugins/amda/cmake")
     set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${sciqlop-amda_DIR}")

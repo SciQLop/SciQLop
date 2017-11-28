@@ -26,8 +26,10 @@ public:
 
     /// @return the name of the server
     virtual QString name() const = 0;
+
+    /// @param properties used to generate url
     /// @return the url of the server (used to retrieve data)
-    virtual QString url() const = 0;
+    virtual QString url(const QVariantHash &properties = {}) const = 0;
 };
 
 #endif // SCIQLOP_AMDASERVER_H
