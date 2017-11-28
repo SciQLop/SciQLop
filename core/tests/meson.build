@@ -20,7 +20,9 @@ amdatest_sources = [
   'Data/DataSeriesBuilders.h',
   'Data/DataSeriesBuilders.cpp',
   'Data/DataSeriesTestsUtils.h',
-  'Data/DataSeriesTestsUtils.cpp'
+  'Data/DataSeriesTestsUtils.cpp',
+  'DataSource/DataSourceItemBuilder.h',
+  'DataSource/DataSourceItemBuilder.cpp'
 ]
 
 foreach unit_test : tests
