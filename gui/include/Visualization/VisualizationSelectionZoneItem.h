@@ -27,10 +27,17 @@ public:
     Qt::CursorShape curshorShapeForPosition(const QPoint &position) const;
     void setHovered(bool value);
 
+    void setAssociatedEditedZones(const QVector<VisualizationSelectionZoneItem *> &associatedZones);
+
 protected:
     void mousePressEvent(QMouseEvent *event, const QVariant &details) override;
     void mouseMoveEvent(QMouseEvent *event, const QPointF &startPos) override;
     void mouseReleaseEvent(QMouseEvent *event, const QPointF &startPos) override;
+
+    void resizeLeft(double pixelDiff);
+    void resizeRight(double pixelDiff);
+    void move(double pixelDiff);
+
 
 private:
     class VisualizationSelectionZoneItemPrivate;

@@ -90,6 +90,8 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     VisualizationSelectionZoneItem *m_HoveredZone = nullptr;
     QVector<VisualizationSelectionZoneItem *> m_SelectionZones;
 
+    bool m_HasMovedMouse = false; //Indicates if the mouse moved in a releaseMouse even
+
     void startDrawingRect(const QPoint &pos, QCustomPlot &plot)
     {
         removeDrawingRect(plot);
@@ -710,6 +712,7 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
         setCursor(Qt::ArrowCursor);
     }
 
+    impl->m_HasMovedMouse = true;
     VisualizationDragWidget::mouseMoveEvent(event);
 }
 
@@ -775,20 +778,13 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
     // Allows zone edition only in selection zone mode without drag&drop
     impl->setSelectionZonesEditionEnabled(isSelectionZoneMode && !isDragDropClick);
 
-    // Selection
+   // Selection / Deselection
     if (isSelectionZoneMode) {
         auto isMultiSelectionClick = event->modifiers().testFlag(MULTI_ZONE_SELECTION_MODIFIER);
         auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
         if (selectionZoneItemUnderCursor && event->button() == Qt::LeftButton) {
-            if (!isMultiSelectionClick) {
-                parentVisualizationWidget()->selectionZoneManager().select(
-                    {selectionZoneItemUnderCursor});
-            }
-            else {
-                parentVisualizationWidget()->selectionZoneManager().setSelected(
-                    selectionZoneItemUnderCursor, !selectionZoneItemUnderCursor->selected()
-                                                      || event->button() == Qt::RightButton);
-            }
+            selectionZoneItemUnderCursor->setAssociatedEditedZones(
+                parentVisualizationWidget()->selectionZoneManager().selectedItems());
         }
         else if (!isMultiSelectionClick && event->button() == Qt::LeftButton) {
             parentVisualizationWidget()->selectionZoneManager().clearSelection();
@@ -798,6 +794,8 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
         }
     }
 
+
+    impl->m_HasMovedMouse = false;
     VisualizationDragWidget::mousePressEvent(event);
 }
 
@@ -829,6 +827,28 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
     impl->endDrawingZone(this);
 
     impl->m_IsCalibration = false;
+
+    // Selection / Deselection
+    auto isSelectionZoneMode
+        = sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones;
+    if (isSelectionZoneMode) {
+        auto isMultiSelectionClick = event->modifiers().testFlag(MULTI_ZONE_SELECTION_MODIFIER);
+        auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
+        if (selectionZoneItemUnderCursor && event->button() == Qt::LeftButton) {
+            if (!isMultiSelectionClick && !impl->m_HasMovedMouse) {
+                parentVisualizationWidget()->selectionZoneManager().select(
+                    {selectionZoneItemUnderCursor});
+            }
+            else if (!impl->m_HasMovedMouse) {
+                parentVisualizationWidget()->selectionZoneManager().setSelected(
+                    selectionZoneItemUnderCursor, !selectionZoneItemUnderCursor->selected()
+                                                      || event->button() == Qt::RightButton);
+            }
+        }
+        else {
+            // No selection change
+        }
+    }
 }
 
 void VisualizationGraphWidget::onDataCacheVariableUpdated()

@@ -20,6 +20,8 @@ struct VisualizationSelectionZoneItem::VisualizationSelectionZoneItemPrivate {
     enum class EditionMode { NoEdition, ResizeLeft, ResizeRight, Move };
     EditionMode m_CurrentEditionMode;
 
+    QVector<VisualizationSelectionZoneItem *> m_AssociatedEditedZones;
+
     VisualizationSelectionZoneItemPrivate(QCustomPlot *plot)
             : m_Plot(plot), m_Color(Qt::blue), m_CurrentEditionMode(EditionMode::NoEdition)
     {
@@ -45,6 +47,12 @@ struct VisualizationSelectionZoneItem::VisualizationSelectionZoneItemPrivate {
         }
 
         return VisualizationSelectionZoneItemPrivate::EditionMode::Move;
+    }
+
+    double pixelSizeToAxisXSize(double pixels)
+    {
+        auto axis = m_Plot->axisRect()->axis(QCPAxis::atBottom);
+        return axis->pixelToCoord(pixels) - axis->pixelToCoord(0);
     }
 };
 
@@ -220,6 +228,13 @@ void VisualizationSelectionZoneItem::setHovered(bool value)
     }
 }
 
+void VisualizationSelectionZoneItem::setAssociatedEditedZones(
+    const QVector<VisualizationSelectionZoneItem *> &associatedZones)
+{
+    impl->m_AssociatedEditedZones = associatedZones;
+    impl->m_AssociatedEditedZones.removeAll(this);
+}
+
 void VisualizationSelectionZoneItem::mousePressEvent(QMouseEvent *event, const QVariant &details)
 {
     if (isEditionEnabled() && event->button() == Qt::LeftButton) {
@@ -227,6 +242,10 @@ void VisualizationSelectionZoneItem::mousePressEvent(QMouseEvent *event, const Q
 
         impl->m_MovedOrinalT1 = impl->m_T1;
         impl->m_MovedOrinalT2 = impl->m_T2;
+        for (auto associatedZone : impl->m_AssociatedEditedZones) {
+            associatedZone->impl->m_MovedOrinalT1 = associatedZone->impl->m_T1;
+            associatedZone->impl->m_MovedOrinalT2 = associatedZone->impl->m_T2;
+        }
     }
     else {
         impl->m_CurrentEditionMode = VisualizationSelectionZoneItemPrivate::EditionMode::NoEdition;
@@ -238,20 +257,38 @@ void VisualizationSelectionZoneItem::mouseMoveEvent(QMouseEvent *event, const QP
 {
     if (isEditionEnabled()) {
         auto axis = impl->m_Plot->axisRect()->axis(QCPAxis::atBottom);
-        auto diff = axis->pixelToCoord(event->pos().x()) - axis->pixelToCoord(startPos.x());
+        auto pixelDiff = event->pos().x() - startPos.x();
+        auto diff = impl->pixelSizeToAxisXSize(pixelDiff);
 
         switch (impl->m_CurrentEditionMode) {
             case VisualizationSelectionZoneItemPrivate::EditionMode::Move:
                 setRange(impl->m_MovedOrinalT1 + diff, impl->m_MovedOrinalT2 + diff);
+                for (auto associatedZone : impl->m_AssociatedEditedZones) {
+                    associatedZone->move(pixelDiff);
+                }
                 break;
             case VisualizationSelectionZoneItemPrivate::EditionMode::ResizeLeft:
                 setStart(impl->m_MovedOrinalT1 + diff);
+                for (auto associatedZone : impl->m_AssociatedEditedZones) {
+                    impl->m_MovedOrinalT1 < impl->m_MovedOrinalT2
+                        ? associatedZone->resizeLeft(pixelDiff)
+                        : associatedZone->resizeRight(pixelDiff);
+                }
                 break;
             case VisualizationSelectionZoneItemPrivate::EditionMode::ResizeRight:
                 setEnd(impl->m_MovedOrinalT2 + diff);
+                for (auto associatedZone : impl->m_AssociatedEditedZones) {
+                    impl->m_MovedOrinalT1 < impl->m_MovedOrinalT2
+                        ? associatedZone->resizeRight(pixelDiff)
+                        : associatedZone->resizeLeft(pixelDiff);
+                }
                 break;
             default:
                 break;
+        }
+
+        for (auto associatedZone : impl->m_AssociatedEditedZones) {
+            associatedZone->parentPlot()->replot();
         }
     }
     else {
@@ -267,4 +304,34 @@ void VisualizationSelectionZoneItem::mouseReleaseEvent(QMouseEvent *event, const
     else {
         event->ignore();
     }
+
+    impl->m_AssociatedEditedZones.clear();
+}
+
+void VisualizationSelectionZoneItem::resizeLeft(double pixelDiff)
+{
+    auto diff = impl->pixelSizeToAxisXSize(pixelDiff);
+    if (impl->m_MovedOrinalT1 <= impl->m_MovedOrinalT2) {
+        setStart(impl->m_MovedOrinalT1 + diff);
+    }
+    else {
+        setEnd(impl->m_MovedOrinalT2 + diff);
+    }
+}
+
+void VisualizationSelectionZoneItem::resizeRight(double pixelDiff)
+{
+    auto diff = impl->pixelSizeToAxisXSize(pixelDiff);
+    if (impl->m_MovedOrinalT1 > impl->m_MovedOrinalT2) {
+        setStart(impl->m_MovedOrinalT1 + diff);
+    }
+    else {
+        setEnd(impl->m_MovedOrinalT2 + diff);
+    }
+}
+
+void VisualizationSelectionZoneItem::move(double pixelDiff)
+{
+    auto diff = impl->pixelSizeToAxisXSize(pixelDiff);
+    setRange(impl->m_MovedOrinalT1 + diff, impl->m_MovedOrinalT2 + diff);
 }
