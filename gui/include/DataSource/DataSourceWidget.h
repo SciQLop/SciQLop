@@ -3,6 +3,8 @@
 
 #include <QWidget>
 
+#include <memory>
+
 namespace Ui {
 class DataSourceWidget;
 } // Ui
@@ -29,7 +31,10 @@ public slots:
     void addDataSource(DataSourceItem *dataSource) noexcept;
 
 private:
+    void updateTreeWidget() noexcept;
+
     Ui::DataSourceWidget *ui;
+    std::unique_ptr<DataSourceItem> m_Root;
 
 private slots:
     /// Slot called when the filtering text has changed

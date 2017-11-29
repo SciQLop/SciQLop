@@ -11,6 +11,41 @@ namespace {
 // Column indexes
 const auto NAME_COLUMN = 0;
 
+/**
+ * Generates the full name of an item.
+ *
+ * The full name of an item is its name possibly suffixed by the name of its plugin, in case there
+ * are items of the same name in its relatives
+ * @param item the item for which to generate the complete name
+ * @return the complete name of the item
+ */
+QString completeName(const DataSourceItem &item)
+{
+    auto name = item.name();
+
+    if (item.type() == DataSourceItemType::NODE) {
+        return name;
+    }
+
+    auto parentItem = item.parentItem();
+    if (!parentItem) {
+        return name;
+    }
+
+    // Finds in item's relatives items that have the same name
+    bool foundSameName = false;
+    for (auto i = 0, count = parentItem->childCount(); i < count && !foundSameName; ++i) {
+        auto child = parentItem->child(i);
+        foundSameName = child != &item
+                        && QString::compare(child->name(), item.name(), Qt::CaseInsensitive) == 0;
+    }
+
+    // If the name of the item is not unique, it is completed by the plugin suffix
+    return foundSameName
+               ? QString{"%1 (%2)"}.arg(name, item.data(DataSourceItem::PLUGIN_DATA_KEY).toString())
+               : name;
+}
+
 QIcon itemIcon(const DataSourceItem *dataSource)
 {
     if (dataSource) {
@@ -92,10 +127,15 @@ QString itemTooltip(const DataSourceItem *dataSource) noexcept
 } // namespace
 
 struct DataSourceTreeWidgetItem::DataSourceTreeWidgetItemPrivate {
-    explicit DataSourceTreeWidgetItemPrivate(const DataSourceItem *data) : m_Data{data} {}
+    explicit DataSourceTreeWidgetItemPrivate(const DataSourceItem *data)
+            : m_Data{data}, m_Name{completeName(*m_Data)}
+    {
+    }
 
     /// Model used to retrieve data source information
     const DataSourceItem *m_Data;
+    /// Name displayed
+    QString m_Name;
     /// Actions associated to the item. The parent of the item (QTreeWidget) takes the ownership of
     /// the actions
     QList<QAction *> m_Actions;
@@ -151,7 +191,7 @@ QVariant DataSourceTreeWidgetItem::data(int column, int role) const
         if (impl->m_Data) {
             switch (column) {
                 case NAME_COLUMN:
-                    return impl->m_Data->name();
+                    return impl->m_Name;
                 default:
                     // No action
                     break;

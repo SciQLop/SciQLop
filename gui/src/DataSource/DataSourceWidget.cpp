@@ -36,7 +36,11 @@ DataSourceTreeWidgetItem *createTreeWidgetItem(DataSourceItem *dataSource)
 
 } // namespace
 
-DataSourceWidget::DataSourceWidget(QWidget *parent) : QWidget{parent}, ui{new Ui::DataSourceWidget}
+DataSourceWidget::DataSourceWidget(QWidget *parent)
+        : QWidget{parent},
+          ui{new Ui::DataSourceWidget},
+          m_Root{
+              std::make_unique<DataSourceItem>(DataSourceItemType::NODE, QStringLiteral("Sources"))}
 {
     ui->setupUi(this);
 
@@ -51,6 +55,9 @@ DataSourceWidget::DataSourceWidget(QWidget *parent) : QWidget{parent}, ui{new Ui
 
     // Connection to filter tree
     connect(ui->filterLineEdit, &QLineEdit::textChanged, this, &DataSourceWidget::filterChanged);
+
+    // First init
+    updateTreeWidget();
 }
 
 DataSourceWidget::~DataSourceWidget() noexcept
@@ -60,11 +67,27 @@ DataSourceWidget::~DataSourceWidget() noexcept
 
 void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
 {
-    // Creates the item associated to the source and adds it to the tree widget. The tree widget
-    // takes the ownership of the item
+    // Merges the data source (without taking its root)
     if (dataSource) {
-        ui->treeWidget->addTopLevelItem(createTreeWidgetItem(dataSource));
+        for (auto i = 0, count = dataSource->childCount(); i < count; ++i) {
+            m_Root->merge(*dataSource->child(i));
+        }
+
+        updateTreeWidget();
     }
+}
+
+void DataSourceWidget::updateTreeWidget() noexcept
+{
+    ui->treeWidget->clear();
+
+    auto rootItem = createTreeWidgetItem(m_Root.get());
+    ui->treeWidget->addTopLevelItem(rootItem);
+    rootItem->setExpanded(true);
+
+    // Sorts tree
+    ui->treeWidget->setSortingEnabled(true);
+    ui->treeWidget->sortByColumn(0, Qt::AscendingOrder);
 }
 
 void DataSourceWidget::filterChanged(const QString &text) noexcept

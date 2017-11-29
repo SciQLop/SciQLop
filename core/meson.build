@@ -31,6 +31,7 @@ core_sources = [
   'src/DataSource/DataSourceController.cpp',
   'src/DataSource/DataSourceItem.cpp',
   'src/DataSource/DataSourceItemAction.cpp',
+  'src/DataSource/DataSourceItemMergeHelper.cpp',
   'src/Network/NetworkController.cpp',
   'src/Plugin/PluginManager.cpp',
   'src/Settings/SqpSettingsDefs.cpp',

@@ -1,9 +1,11 @@
 #include <DataSource/DataSourceItem.h>
 #include <DataSource/DataSourceItemAction.h>
+#include <DataSource/DataSourceItemMergeHelper.h>
 
 #include <QVector>
 
 const QString DataSourceItem::NAME_DATA_KEY = QStringLiteral("name");
+const QString DataSourceItem::PLUGIN_DATA_KEY = QStringLiteral("plugin");
 
 struct DataSourceItem::DataSourceItemPrivate {
     explicit DataSourceItemPrivate(DataSourceItemType type, QVariantHash data)
@@ -26,6 +28,23 @@ DataSourceItem::DataSourceItem(DataSourceItemType type, const QString &name)
 DataSourceItem::DataSourceItem(DataSourceItemType type, QVariantHash data)
         : impl{spimpl::make_unique_impl<DataSourceItemPrivate>(type, std::move(data))}
 {
+}
+
+std::unique_ptr<DataSourceItem> DataSourceItem::clone() const
+{
+    auto result = std::make_unique<DataSourceItem>(impl->m_Type, impl->m_Data);
+
+    // Clones children
+    for (const auto &child : impl->m_Children) {
+        result->appendChild(std::move(child->clone()));
+    }
+
+    // Clones actions
+    for (const auto &action : impl->m_Actions) {
+        result->addAction(std::move(action->clone()));
+    }
+
+    return result;
 }
 
 QVector<DataSourceItemAction *> DataSourceItem::actions() const noexcept
@@ -73,6 +92,11 @@ QVariant DataSourceItem::data(const QString &key) const noexcept
 QVariantHash DataSourceItem::data() const noexcept
 {
     return impl->m_Data;
+}
+
+void DataSourceItem::merge(const DataSourceItem &item)
+{
+    DataSourceItemMergeHelper::merge(item, *this);
 }
 
 bool DataSourceItem::isRoot() const noexcept
@@ -146,7 +170,7 @@ bool DataSourceItem::operator==(const DataSourceItem &other)
     if (std::tie(impl->m_Type, impl->m_Data) == std::tie(other.impl->m_Type, other.impl->m_Data)) {
         // Compares contents of items' children
         return std::equal(std::cbegin(impl->m_Children), std::cend(impl->m_Children),
-                          std::cbegin(other.impl->m_Children),
+                          std::cbegin(other.impl->m_Children), std::cend(other.impl->m_Children),
                           [](const auto &itemChild, const auto &otherChild) {
                               return *itemChild == *otherChild;
                           });
