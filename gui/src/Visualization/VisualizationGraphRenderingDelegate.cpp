@@ -48,6 +48,7 @@ void initPointTracerStyle(QCPItemTracer &tracer) noexcept
     tracer.setSize(3);
     tracer.setPen(QPen(Qt::black));
     tracer.setBrush(Qt::black);
+    tracer.setSelectable(false);
 }
 
 QPixmap pixmap(const QString &iconPath) noexcept
@@ -94,6 +95,7 @@ void initTitleTextStyle(QCPItemText &text) noexcept
     text.setPositionAlignment(Qt::AlignTop | Qt::AlignLeft);
     text.position->setType(QCPItemPosition::ptAxisRectRatio);
     text.position->setCoords(0.5, 0);
+    text.setSelectable(false);
 }
 
 /**
