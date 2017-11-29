@@ -749,11 +749,12 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 
 void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
 {
-    bool isDragDropClick = event->modifiers().testFlag(DRAG_DROP_MODIFIER);
+    auto isDragDropClick = event->modifiers().testFlag(DRAG_DROP_MODIFIER);
     auto isSelectionZoneMode
         = sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones;
+    auto isLeftClick = event->buttons().testFlag(Qt::LeftButton);
 
-    if (!isDragDropClick) {
+    if (!isDragDropClick && isLeftClick) {
         if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::ZoomBox) {
             // Starts a zoom box
             impl->startDrawingRect(event->pos(), plot());
@@ -765,9 +766,6 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
                 impl->startDrawingZone(event->pos(), this);
             }
         }
-    }
-    else if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::None) {
-        plot().setInteraction(QCP::iRangeDrag, true);
     }
 
     // Allows mouse panning only in default mode
@@ -782,11 +780,11 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
     if (isSelectionZoneMode) {
         auto isMultiSelectionClick = event->modifiers().testFlag(MULTI_ZONE_SELECTION_MODIFIER);
         auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
-        if (selectionZoneItemUnderCursor && event->button() == Qt::LeftButton) {
+        if (selectionZoneItemUnderCursor && isLeftClick) {
             selectionZoneItemUnderCursor->setAssociatedEditedZones(
                 parentVisualizationWidget()->selectionZoneManager().selectedItems());
         }
-        else if (!isMultiSelectionClick && event->button() == Qt::LeftButton) {
+        else if (!isMultiSelectionClick && isLeftClick) {
             parentVisualizationWidget()->selectionZoneManager().clearSelection();
         }
         else {
