@@ -17,6 +17,7 @@ class QCPRange;
 class QCustomPlot;
 class SqpRange;
 class Variable;
+class VisualizationWidget;
 class VisualizationZoneWidget;
 
 namespace Ui {
@@ -33,7 +34,11 @@ public:
     explicit VisualizationGraphWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationGraphWidget();
 
+    /// Returns the VisualizationZoneWidget which contains the graph or nullptr
     VisualizationZoneWidget *parentZoneWidget() const noexcept;
+
+    /// Returns the main VisualizationWidget which contains the graph or nullptr
+    VisualizationWidget *parentVisualizationWidget() const;
 
     /// If acquisition isn't enable, requestDataLoading signal cannot be emit
     void enableAcquisition(bool enable);
@@ -51,6 +56,15 @@ public:
     SqpRange graphRange() const noexcept;
     void setGraphRange(const SqpRange &range);
 
+    /// Returns the ranges of all the selection zones on the graph
+    QVector<SqpRange> selectionZoneRanges() const;
+
+    /// Adds new selection zones in the graph
+    void addSelectionZones(const QVector<SqpRange> &ranges);
+
+    /// Undo the last zoom  done with a zoom box
+    void undoZoom();
+
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
@@ -58,7 +72,8 @@ public:
     QString name() const override;
 
     // VisualisationDragWidget
-    QMimeData *mimeData() const override;
+    QMimeData *mimeData(const QPoint &position) const override;
+    QPixmap customDragPixmap(const QPoint &dragPosition) override;
     bool isDragAllowed() const override;
     void highlightForMerge(bool highlighted) override;
 
@@ -89,7 +104,7 @@ protected:
     void enterEvent(QEvent *event) override;
     void leaveEvent(QEvent *event) override;
 
-    QCustomPlot &plot() noexcept;
+    QCustomPlot &plot() const noexcept;
 
 private:
     Ui::VisualizationGraphWidget *ui;

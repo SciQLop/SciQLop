@@ -72,21 +72,6 @@ struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
     QUuid m_SynchronisationGroupId;
     std::unique_ptr<IGraphSynchronizer> m_Synchronizer;
 
-    // Returns the first graph in the zone or nullptr if there is no graph inside
-    VisualizationGraphWidget *firstGraph(const VisualizationZoneWidget *zoneWidget) const
-    {
-        VisualizationGraphWidget *firstGraph = nullptr;
-        auto layout = zoneWidget->ui->dragDropContainer->layout();
-        if (layout->count() > 0) {
-            if (auto visualizationGraphWidget
-                = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
-                firstGraph = visualizationGraphWidget;
-            }
-        }
-
-        return firstGraph;
-    }
-
     void dropGraph(int index, VisualizationZoneWidget *zoneWidget);
     void dropVariables(const QList<std::shared_ptr<Variable> > &variables, int index,
                        VisualizationZoneWidget *zoneWidget);
@@ -109,6 +94,8 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
     ui->dragDropContainer->setMimeType(MIME_TYPE_TIME_RANGE,
                                        VisualizationDragDropContainer::DropBehavior::Merged);
     ui->dragDropContainer->setMimeType(MIME_TYPE_ZONE,
+                                       VisualizationDragDropContainer::DropBehavior::Forbidden);
+    ui->dragDropContainer->setMimeType(MIME_TYPE_SELECTION_ZONE,
                                        VisualizationDragDropContainer::DropBehavior::Forbidden);
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
         return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
@@ -284,7 +271,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
             &VisualizationZoneWidget::onVariableAboutToBeRemoved);
 
     auto range = SqpRange{};
-    if (auto firstGraph = impl->firstGraph(this)) {
+    if (auto firstGraph = this->firstGraph()) {
         // Case of a new graph in a existant zone
         range = firstGraph->graphRange();
     }
@@ -314,6 +301,20 @@ VisualizationZoneWidget::createGraph(const QList<std::shared_ptr<Variable> > var
     }
 
     return graphWidget;
+}
+
+VisualizationGraphWidget *VisualizationZoneWidget::firstGraph() const
+{
+    VisualizationGraphWidget *firstGraph = nullptr;
+    auto layout = ui->dragDropContainer->layout();
+    if (layout->count() > 0) {
+        if (auto visualizationGraphWidget
+            = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
+            firstGraph = visualizationGraphWidget;
+        }
+    }
+
+    return firstGraph;
 }
 
 void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
@@ -352,12 +353,14 @@ QString VisualizationZoneWidget::name() const
     return ui->zoneNameLabel->text();
 }
 
-QMimeData *VisualizationZoneWidget::mimeData() const
+QMimeData *VisualizationZoneWidget::mimeData(const QPoint &position) const
 {
+    Q_UNUSED(position);
+
     auto mimeData = new QMimeData;
     mimeData->setData(MIME_TYPE_ZONE, QByteArray{});
 
-    if (auto firstGraph = impl->firstGraph(this)) {
+    if (auto firstGraph = this->firstGraph()) {
         auto timeRangeData = TimeController::mimeDataForTimeRange(firstGraph->graphRange());
         mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
     }
@@ -543,7 +546,8 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
         }
 
         // Creates the new graph in the zone
-        zoneWidget->createGraph(variables, index);
+        auto newGraphWidget = zoneWidget->createGraph(variables, index);
+        newGraphWidget->addSelectionZones(graphWidget->selectionZoneRanges());
     }
     else {
         // The drop occurred in the same zone or the graph is empty

@@ -7,11 +7,14 @@
 #include <QLoggingCategory>
 #include <QWidget>
 
+#include <Common/spimpl.h>
+
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationWidget)
 
 class QMenu;
 class Variable;
 class VisualizationTabWidget;
+class VisualizationSelectionZoneManager;
 
 namespace Ui {
 class VisualizationWidget;
@@ -23,6 +26,9 @@ class VisualizationWidget : public QWidget, public IVisualizationWidget {
 public:
     explicit VisualizationWidget(QWidget *parent = 0);
     virtual ~VisualizationWidget();
+
+    /// Returns the class which manage the selection of selection zone across the visualization
+    VisualizationSelectionZoneManager &selectionZoneManager() const;
 
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
@@ -49,6 +55,9 @@ protected:
 
 private:
     Ui::VisualizationWidget *ui;
+
+    class VisualizationWidgetPrivate;
+    spimpl::unique_impl_ptr<VisualizationWidgetPrivate> impl;
 };
 
 #endif // VISUALIZATIONWIDGET_H

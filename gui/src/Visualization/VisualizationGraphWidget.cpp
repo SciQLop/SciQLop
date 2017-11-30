@@ -4,6 +4,9 @@
 #include "Visualization/VisualizationDefs.h"
 #include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
+#include "Visualization/VisualizationSelectionZoneItem.h"
+#include "Visualization/VisualizationSelectionZoneManager.h"
+#include "Visualization/VisualizationWidget.h"
 #include "Visualization/VisualizationZoneWidget.h"
 #include "ui_VisualizationGraphWidget.h"
 
@@ -24,6 +27,9 @@ Q_LOGGING_CATEGORY(LOG_VisualizationGraphWidget, "VisualizationGraphWidget")
 
 namespace {
 
+/// Key pressed to enable drag&drop in all modes
+const auto DRAG_DROP_MODIFIER = Qt::AltModifier;
+
 /// Key pressed to enable zoom on horizontal axis
 const auto HORIZONTAL_ZOOM_MODIFIER = Qt::ControlModifier;
 
@@ -35,6 +41,9 @@ const auto PAN_SPEED = 5;
 
 /// Key pressed to enable a calibration pan
 const auto VERTICAL_PAN_MODIFIER = Qt::AltModifier;
+
+/// Key pressed to enable multi selection of selection zones
+const auto MULTI_ZONE_SELECTION_MODIFIER = Qt::ControlModifier;
 
 /// Minimum size for the zoom box, in percentage of the axis range
 const auto ZOOM_BOX_MIN_SIZE = 0.8;
@@ -71,18 +80,17 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     /// Delegate used to attach rendering features to the plot
     std::unique_ptr<VisualizationGraphRenderingDelegate> m_RenderingDelegate;
 
-    QCPItemRect *m_DrawingRect = nullptr;
+    QCPItemRect *m_DrawingZoomRect = nullptr;
+    QStack<QPair<QCPRange, QCPRange> > m_ZoomStack;
+
     std::unique_ptr<VisualizationCursorItem> m_HorizontalCursor = nullptr;
     std::unique_ptr<VisualizationCursorItem> m_VerticalCursor = nullptr;
 
-    void configureDrawingRect()
-    {
-        if (m_DrawingRect) {
-            QPen p;
-            p.setWidth(2);
-            m_DrawingRect->setPen(p);
-        }
-    }
+    VisualizationSelectionZoneItem *m_DrawingZone = nullptr;
+    VisualizationSelectionZoneItem *m_HoveredZone = nullptr;
+    QVector<VisualizationSelectionZoneItem *> m_SelectionZones;
+
+    bool m_HasMovedMouse = false; // Indicates if the mouse moved in a releaseMouse even
 
     void startDrawingRect(const QPoint &pos, QCustomPlot &plot)
     {
@@ -90,20 +98,75 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
         auto axisPos = posToAxisPos(pos, plot);
 
-        m_DrawingRect = new QCPItemRect{&plot};
-        configureDrawingRect();
+        m_DrawingZoomRect = new QCPItemRect{&plot};
+        QPen p;
+        p.setWidth(2);
+        m_DrawingZoomRect->setPen(p);
 
-        m_DrawingRect->topLeft->setCoords(axisPos);
-        m_DrawingRect->bottomRight->setCoords(axisPos);
+        m_DrawingZoomRect->topLeft->setCoords(axisPos);
+        m_DrawingZoomRect->bottomRight->setCoords(axisPos);
     }
 
     void removeDrawingRect(QCustomPlot &plot)
     {
-        if (m_DrawingRect) {
-            plot.removeItem(m_DrawingRect); // the item is deleted by QCustomPlot
-            m_DrawingRect = nullptr;
+        if (m_DrawingZoomRect) {
+            plot.removeItem(m_DrawingZoomRect); // the item is deleted by QCustomPlot
+            m_DrawingZoomRect = nullptr;
             plot.replot(QCustomPlot::rpQueuedReplot);
         }
+    }
+
+    void startDrawingZone(const QPoint &pos, VisualizationGraphWidget *graph)
+    {
+        endDrawingZone(graph);
+
+        auto axisPos = posToAxisPos(pos, graph->plot());
+
+        m_DrawingZone = new VisualizationSelectionZoneItem{&graph->plot()};
+        m_DrawingZone->setRange(axisPos.x(), axisPos.x());
+        m_DrawingZone->setEditionEnabled(false);
+    }
+
+    void endDrawingZone(VisualizationGraphWidget *graph)
+    {
+        if (m_DrawingZone) {
+            auto drawingZoneRange = m_DrawingZone->range();
+            if (qAbs(drawingZoneRange.m_TEnd - drawingZoneRange.m_TStart) > 0) {
+                m_DrawingZone->setEditionEnabled(true);
+                addSelectionZone(m_DrawingZone);
+            }
+            else {
+                graph->plot().removeItem(m_DrawingZone); // the item is deleted by QCustomPlot
+            }
+
+            graph->plot().replot(QCustomPlot::rpQueuedReplot);
+            m_DrawingZone = nullptr;
+        }
+    }
+
+    void setSelectionZonesEditionEnabled(bool value)
+    {
+        for (auto s : m_SelectionZones) {
+            s->setEditionEnabled(value);
+        }
+    }
+
+    void addSelectionZone(VisualizationSelectionZoneItem *zone) { m_SelectionZones << zone; }
+
+    VisualizationSelectionZoneItem *selectionZoneAt(const QPoint &pos,
+                                                    const QCustomPlot &plot) const
+    {
+        VisualizationSelectionZoneItem *selectionZoneItemUnderCursor = nullptr;
+        auto minDistanceToZone = -1;
+        for (auto zone : m_SelectionZones) {
+            auto distanceToZone = zone->selectTest(pos, false);
+            if ((minDistanceToZone < 0 || distanceToZone <= minDistanceToZone)
+                && distanceToZone >= 0 && distanceToZone < plot.selectionTolerance()) {
+                selectionZoneItemUnderCursor = zone;
+            }
+        }
+
+        return selectionZoneItemUnderCursor;
     }
 
     QPointF posToAxisPos(const QPoint &pos, QCustomPlot &plot) const
@@ -117,7 +180,6 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     {
         auto axisX = plot.axisRect()->axis(QCPAxis::atBottom);
         auto axisY = plot.axisRect()->axis(QCPAxis::atLeft);
-
         return axisX->range().contains(axisPoint.x()) && axisY->range().contains(axisPoint.y());
     }
 };
@@ -133,9 +195,10 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     setAttribute(Qt::WA_DeleteOnClose);
 
     // Set qcpplot properties :
-    // - Drag (on x-axis) and zoom are enabled
+    // - zoom is enabled
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
-    ui->widget->setInteractions(QCP::iRangeZoom | QCP::iSelectItems);
+    ui->widget->setInteractions(QCP::iRangeZoom);
+    ui->widget->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
 
     // The delegate must be initialized after the ui as it uses the plot
     impl->m_RenderingDelegate = std::make_unique<VisualizationGraphRenderingDelegate>(*this);
@@ -153,9 +216,10 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     connect(ui->widget, &QCustomPlot::mouseWheel, this, &VisualizationGraphWidget::onMouseWheel);
     connect(ui->widget, &QCustomPlot::mouseDoubleClick, this,
             &VisualizationGraphWidget::onMouseDoubleClick);
-    connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
-                                   &QCPAxis::rangeChanged),
-            this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
+    connect(
+        ui->widget->xAxis,
+        static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(&QCPAxis::rangeChanged),
+        this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
 
     // Activates menu when right clicking on the graph
     ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -187,6 +251,16 @@ VisualizationZoneWidget *VisualizationGraphWidget::parentZoneWidget() const noex
     }
 
     return qobject_cast<VisualizationZoneWidget *>(parent);
+}
+
+VisualizationWidget *VisualizationGraphWidget::parentVisualizationWidget() const
+{
+    auto parent = parentWidget();
+    while (parent != nullptr && !qobject_cast<VisualizationWidget *>(parent)) {
+        parent = parent->parentWidget();
+    }
+
+    return qobject_cast<VisualizationWidget *>(parent);
 }
 
 void VisualizationGraphWidget::enableAcquisition(bool enable)
@@ -281,6 +355,40 @@ void VisualizationGraphWidget::setGraphRange(const SqpRange &range)
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange END");
 }
 
+QVector<SqpRange> VisualizationGraphWidget::selectionZoneRanges() const
+{
+    QVector<SqpRange> ranges;
+    for (auto zone : impl->m_SelectionZones) {
+        ranges << zone->range();
+    }
+
+    return ranges;
+}
+
+void VisualizationGraphWidget::addSelectionZones(const QVector<SqpRange> &ranges)
+{
+    for (const auto &range : ranges) {
+        // note: ownership is transfered to QCustomPlot
+        auto zone = new VisualizationSelectionZoneItem(&plot());
+        zone->setRange(range.m_TStart, range.m_TEnd);
+        impl->addSelectionZone(zone);
+    }
+
+    plot().replot(QCustomPlot::rpQueuedReplot);
+}
+
+void VisualizationGraphWidget::undoZoom()
+{
+    auto zoom = impl->m_ZoomStack.pop();
+    auto axisX = plot().axisRect()->axis(QCPAxis::atBottom);
+    auto axisY = plot().axisRect()->axis(QCPAxis::atLeft);
+
+    axisX->setRange(zoom.first);
+    axisY->setRange(zoom.second);
+
+    plot().replot(QCustomPlot::rpQueuedReplot);
+}
+
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {
@@ -324,15 +432,48 @@ QString VisualizationGraphWidget::name() const
     return impl->m_Name;
 }
 
-QMimeData *VisualizationGraphWidget::mimeData() const
+QMimeData *VisualizationGraphWidget::mimeData(const QPoint &position) const
 {
     auto mimeData = new QMimeData;
-    mimeData->setData(MIME_TYPE_GRAPH, QByteArray{});
 
-    auto timeRangeData = TimeController::mimeDataForTimeRange(graphRange());
-    mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
+    auto selectionZoneItemUnderCursor = impl->selectionZoneAt(position, plot());
+    if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones
+        && selectionZoneItemUnderCursor) {
+        mimeData->setData(MIME_TYPE_TIME_RANGE, TimeController::mimeDataForTimeRange(
+                                                    selectionZoneItemUnderCursor->range()));
+        mimeData->setData(MIME_TYPE_SELECTION_ZONE, TimeController::mimeDataForTimeRange(
+                                                        selectionZoneItemUnderCursor->range()));
+    }
+    else {
+        mimeData->setData(MIME_TYPE_GRAPH, QByteArray{});
+
+        auto timeRangeData = TimeController::mimeDataForTimeRange(graphRange());
+        mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
+    }
 
     return mimeData;
+}
+
+QPixmap VisualizationGraphWidget::customDragPixmap(const QPoint &dragPosition)
+{
+    auto selectionZoneItemUnderCursor = impl->selectionZoneAt(dragPosition, plot());
+    if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones
+        && selectionZoneItemUnderCursor) {
+
+        auto zoneTopLeft = selectionZoneItemUnderCursor->topLeft->pixelPosition();
+        auto zoneBottomRight = selectionZoneItemUnderCursor->bottomRight->pixelPosition();
+
+        auto zoneSize = QSizeF{qAbs(zoneBottomRight.x() - zoneTopLeft.x()),
+                               qAbs(zoneBottomRight.y() - zoneTopLeft.y())}
+                            .toSize();
+
+        auto pixmap = QPixmap(zoneSize);
+        render(&pixmap, QPoint(), QRegion{QRect{zoneTopLeft.toPoint(), zoneSize}});
+
+        return pixmap;
+    }
+
+    return QPixmap();
 }
 
 bool VisualizationGraphWidget::isDragAllowed() const
@@ -428,9 +569,14 @@ void VisualizationGraphWidget::leaveEvent(QEvent *event)
     else {
         qCWarning(LOG_VisualizationGraphWidget()) << "leaveEvent: No parent zone widget";
     }
+
+    if (impl->m_HoveredZone) {
+        impl->m_HoveredZone->setHovered(false);
+        impl->m_HoveredZone = nullptr;
+    }
 }
 
-QCustomPlot &VisualizationGraphWidget::plot() noexcept
+QCustomPlot &VisualizationGraphWidget::plot() const noexcept
 {
     return *ui->widget;
 }
@@ -448,6 +594,14 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
                             [ this, var = it->first ]() { removeVariable(var); });
     }
 
+    if (!impl->m_ZoomStack.isEmpty()) {
+        if (!graphMenu.isEmpty()) {
+            graphMenu.addSeparator();
+        }
+
+        graphMenu.addAction(tr("Undo Zoom"), [this]() { undoZoom(); });
+    }
+
     if (!graphMenu.isEmpty()) {
         graphMenu.exec(QCursor::pos());
     }
@@ -455,9 +609,9 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
 {
-    qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: VisualizationGraphWidget::onRangeChanged")
-                                            << QThread::currentThread()->objectName() << "DoAcqui"
-                                            << impl->m_DoAcquisition;
+    qCDebug(LOG_VisualizationGraphWidget())
+        << tr("TORM: VisualizationGraphWidget::onRangeChanged")
+        << QThread::currentThread()->objectName() << "DoAcqui" << impl->m_DoAcquisition;
 
     auto graphRange = SqpRange{t1.lower, t1.upper};
     auto oldGraphRange = SqpRange{t2.lower, t2.upper};
@@ -508,10 +662,15 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
 
     auto axisPos = impl->posToAxisPos(event->pos(), plot());
 
-    if (impl->m_DrawingRect) {
-        impl->m_DrawingRect->bottomRight->setCoords(axisPos);
+    // Zoom box and zone drawing
+    if (impl->m_DrawingZoomRect) {
+        impl->m_DrawingZoomRect->bottomRight->setCoords(axisPos);
+    }
+    else if (impl->m_DrawingZone) {
+        impl->m_DrawingZone->setEnd(axisPos.x());
     }
 
+    // Cursor
     if (auto parentZone = parentZoneWidget()) {
         if (impl->pointIsInAxisRect(axisPos, plot())) {
             parentZone->notifyMouseMoveInGraph(event->pos(), axisPos, this);
@@ -524,6 +683,36 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
         qCWarning(LOG_VisualizationGraphWidget()) << "onMouseMove: No parent zone widget";
     }
 
+    // Search for the selection zone under the mouse
+    auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
+    if (selectionZoneItemUnderCursor && !impl->m_DrawingZone
+        && sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones) {
+
+        // Sets the appropriate cursor shape
+        auto cursorShape = selectionZoneItemUnderCursor->curshorShapeForPosition(event->pos());
+        setCursor(cursorShape);
+
+        // Manages the hovered zone
+        if (selectionZoneItemUnderCursor != impl->m_HoveredZone) {
+            if (impl->m_HoveredZone) {
+                impl->m_HoveredZone->setHovered(false);
+            }
+            selectionZoneItemUnderCursor->setHovered(true);
+            impl->m_HoveredZone = selectionZoneItemUnderCursor;
+            plot().replot(QCustomPlot::rpQueuedReplot);
+        }
+    }
+    else {
+        // There is no zone under the mouse or the interaction mode is not "selection zones"
+        if (impl->m_HoveredZone) {
+            impl->m_HoveredZone->setHovered(false);
+            impl->m_HoveredZone = nullptr;
+        }
+
+        setCursor(Qt::ArrowCursor);
+    }
+
+    impl->m_HasMovedMouse = true;
     VisualizationDragWidget::mouseMoveEvent(event);
 }
 
@@ -560,30 +749,72 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 
 void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
 {
-    if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::ZoomBox) {
-        impl->startDrawingRect(event->pos(), plot());
+    auto isDragDropClick = event->modifiers().testFlag(DRAG_DROP_MODIFIER);
+    auto isSelectionZoneMode
+        = sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones;
+    auto isLeftClick = event->buttons().testFlag(Qt::LeftButton);
+
+    if (!isDragDropClick && isLeftClick) {
+        if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::ZoomBox) {
+            // Starts a zoom box
+            impl->startDrawingRect(event->pos(), plot());
+        }
+        else if (isSelectionZoneMode && impl->m_DrawingZone == nullptr) {
+            // Starts a new selection zone
+            auto zoneAtPos = impl->selectionZoneAt(event->pos(), plot());
+            if (!zoneAtPos) {
+                impl->startDrawingZone(event->pos(), this);
+            }
+        }
     }
 
+    // Allows mouse panning only in default mode
+    plot().setInteraction(QCP::iRangeDrag, sqpApp->plotsInteractionMode()
+                                                   == SqpApplication::PlotsInteractionMode::None
+                                               && !isDragDropClick);
+
+    // Allows zone edition only in selection zone mode without drag&drop
+    impl->setSelectionZonesEditionEnabled(isSelectionZoneMode && !isDragDropClick);
+
+    // Selection / Deselection
+    if (isSelectionZoneMode) {
+        auto isMultiSelectionClick = event->modifiers().testFlag(MULTI_ZONE_SELECTION_MODIFIER);
+        auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
+        if (selectionZoneItemUnderCursor && isLeftClick) {
+            selectionZoneItemUnderCursor->setAssociatedEditedZones(
+                parentVisualizationWidget()->selectionZoneManager().selectedItems());
+        }
+        else if (!isMultiSelectionClick && isLeftClick) {
+            parentVisualizationWidget()->selectionZoneManager().clearSelection();
+        }
+        else {
+            // No selection change
+        }
+    }
+
+
+    impl->m_HasMovedMouse = false;
     VisualizationDragWidget::mousePressEvent(event);
 }
 
 void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
 {
-    if (impl->m_DrawingRect) {
+    if (impl->m_DrawingZoomRect) {
 
         auto axisX = plot().axisRect()->axis(QCPAxis::atBottom);
         auto axisY = plot().axisRect()->axis(QCPAxis::atLeft);
 
-        auto newAxisXRange = QCPRange{impl->m_DrawingRect->topLeft->coords().x(),
-                                      impl->m_DrawingRect->bottomRight->coords().x()};
+        auto newAxisXRange = QCPRange{impl->m_DrawingZoomRect->topLeft->coords().x(),
+                                      impl->m_DrawingZoomRect->bottomRight->coords().x()};
 
-        auto newAxisYRange = QCPRange{impl->m_DrawingRect->topLeft->coords().y(),
-                                      impl->m_DrawingRect->bottomRight->coords().y()};
+        auto newAxisYRange = QCPRange{impl->m_DrawingZoomRect->topLeft->coords().y(),
+                                      impl->m_DrawingZoomRect->bottomRight->coords().y()};
 
         impl->removeDrawingRect(plot());
 
         if (newAxisXRange.size() > axisX->range().size() * (ZOOM_BOX_MIN_SIZE / 100.0)
             && newAxisYRange.size() > axisY->range().size() * (ZOOM_BOX_MIN_SIZE / 100.0)) {
+            impl->m_ZoomStack.push(qMakePair(axisX->range(), axisY->range()));
             axisX->setRange(newAxisXRange);
             axisY->setRange(newAxisYRange);
 
@@ -591,7 +822,31 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
         }
     }
 
+    impl->endDrawingZone(this);
+
     impl->m_IsCalibration = false;
+
+    // Selection / Deselection
+    auto isSelectionZoneMode
+        = sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones;
+    if (isSelectionZoneMode) {
+        auto isMultiSelectionClick = event->modifiers().testFlag(MULTI_ZONE_SELECTION_MODIFIER);
+        auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
+        if (selectionZoneItemUnderCursor && event->button() == Qt::LeftButton) {
+            if (!isMultiSelectionClick && !impl->m_HasMovedMouse) {
+                parentVisualizationWidget()->selectionZoneManager().select(
+                    {selectionZoneItemUnderCursor});
+            }
+            else if (!impl->m_HasMovedMouse) {
+                parentVisualizationWidget()->selectionZoneManager().setSelected(
+                    selectionZoneItemUnderCursor, !selectionZoneItemUnderCursor->selected()
+                                                      || event->button() == Qt::RightButton);
+            }
+        }
+        else {
+            // No selection change
+        }
+    }
 }
 
 void VisualizationGraphWidget::onDataCacheVariableUpdated()

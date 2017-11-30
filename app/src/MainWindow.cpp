@@ -189,7 +189,7 @@ MainWindow::MainWindow(QWidget *parent)
     auto timeWidget = new TimeWidget{};
     mainToolBar->addWidget(timeWidget);
 
-    auto actionPointerMode = new QAction{QIcon(":/icones/pointer.png"), "Pointer", this};
+    auto actionPointerMode = new QAction{QIcon(":/icones/pointer.png"), "Move", this};
     actionPointerMode->setCheckable(true);
     actionPointerMode->setChecked(sqpApp->plotsInteractionMode()
                                   == SqpApplication::PlotsInteractionMode::None);

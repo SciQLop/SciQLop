@@ -255,7 +255,16 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
             helper.delayedCloseWidget(graphWidget);
         }
 
-        tabWidget->createZone(variables, index);
+        auto zoneWidget = tabWidget->createZone(variables, index);
+        auto firstGraph = zoneWidget->firstGraph();
+        if (firstGraph) {
+            firstGraph->addSelectionZones(graphWidget->selectionZoneRanges());
+        }
+        else {
+            qCWarning(LOG_VisualizationZoneWidget())
+                << tr("VisualizationTabWidget::dropGraph, no graph added in the widget.");
+            Q_ASSERT(false);
+        }
     }
     else {
         // The graph is empty, create an empty zone and move the graph inside

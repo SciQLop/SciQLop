@@ -1,6 +1,7 @@
 #include "Visualization/VisualizationWidget.h"
 #include "Visualization/IVisualizationWidgetVisitor.h"
 #include "Visualization/VisualizationGraphWidget.h"
+#include "Visualization/VisualizationSelectionZoneManager.h"
 #include "Visualization/VisualizationTabWidget.h"
 #include "Visualization/VisualizationZoneWidget.h"
 #include "Visualization/operations/FindVariableOperation.h"
@@ -16,10 +17,23 @@
 
 #include <QToolButton>
 
+#include <memory>
+
 Q_LOGGING_CATEGORY(LOG_VisualizationWidget, "VisualizationWidget")
 
+struct VisualizationWidget::VisualizationWidgetPrivate {
+    std::unique_ptr<VisualizationSelectionZoneManager> m_ZoneSelectionManager = nullptr;
+
+    VisualizationWidgetPrivate()
+            : m_ZoneSelectionManager(std::make_unique<VisualizationSelectionZoneManager>())
+    {
+    }
+};
+
 VisualizationWidget::VisualizationWidget(QWidget *parent)
-        : QWidget{parent}, ui{new Ui::VisualizationWidget}
+        : QWidget{parent},
+          ui{new Ui::VisualizationWidget},
+          impl{spimpl::make_unique_impl<VisualizationWidgetPrivate>()}
 {
     ui->setupUi(this);
 
@@ -80,6 +94,11 @@ VisualizationWidget::~VisualizationWidget()
 {
     sqpApp->dragDropHelper().removeDragDropTabBar(ui->tabWidget->tabBar());
     delete ui;
+}
+
+VisualizationSelectionZoneManager &VisualizationWidget::selectionZoneManager() const
+{
+    return *impl->m_ZoneSelectionManager.get();
 }
 
 void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
