@@ -197,7 +197,7 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     // Set qcpplot properties :
     // - zoom is enabled
     // - Mouse wheel on qcpplot is intercepted to determine the zoom orientation
-    ui->widget->setInteractions(QCP::iRangeZoom | QCP::iSelectItems);
+    ui->widget->setInteractions(QCP::iRangeZoom);
     ui->widget->axisRect()->setRangeDrag(Qt::Horizontal | Qt::Vertical);
 
     // The delegate must be initialized after the ui as it uses the plot

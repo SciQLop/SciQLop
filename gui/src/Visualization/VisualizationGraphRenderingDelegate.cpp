@@ -164,9 +164,9 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
         initClosePixmapStyle(*m_ClosePixmap);
 
         // Connects pixmap selection to graph widget closing
-        QObject::connect(m_ClosePixmap, &QCPItemPixmap::selectionChanged,
-                         [&graphWidget](bool selected) {
-                             if (selected) {
+        QObject::connect(&m_Plot, &QCustomPlot::itemClick,
+                         [&graphWidget, this](auto item, auto mouseEvent) {
+                             if (item == m_ClosePixmap) {
                                  graphWidget.close();
                              }
                          });
@@ -181,15 +181,14 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
         initXAxisPixmapStyle(*m_XAxisPixmap);
 
         // Connects pixmap selection to graph x-axis showing/hiding
-        QObject::connect(m_XAxisPixmap, &QCPItemPixmap::selectionChanged, [this]() {
-            if (m_XAxisPixmap->selected()) {
+        QObject::connect(&m_Plot, &QCustomPlot::itemClick, [this](auto item, auto mouseEvent) {
+            if (m_XAxisPixmap == item) {
                 // Changes the selection state and refreshes the x-axis
                 m_ShowXAxis = !m_ShowXAxis;
-                updateXAxisState();
+                this->updateXAxisState();
                 m_Plot.layer(AXES_LAYER)->replot();
 
                 // Deselects the x-axis pixmap and updates icon
-                m_XAxisPixmap->setSelected(false);
                 m_XAxisPixmap->setPixmap(
                     pixmap(m_ShowXAxis ? HIDE_AXIS_ICON_PATH : SHOW_AXIS_ICON_PATH));
                 m_Plot.layer(OVERLAY_LAYER)->replot();
