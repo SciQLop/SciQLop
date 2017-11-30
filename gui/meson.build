@@ -17,7 +17,8 @@ gui_moc_headers = [
   'include/Visualization/VisualizationZoneWidget.h',
   'include/Visualization/VisualizationDragDropContainer.h',
   'include/Visualization/VisualizationDragWidget.h',
-  'include/Visualization/ColorScaleEditor.h'
+  'include/Visualization/ColorScaleEditor.h',
+  'include/Visualization/SelectionZoneAction.h'
 ]
 
 gui_ui_files = [
@@ -84,7 +85,9 @@ gui_sources = [
   'src/Visualization/SqpColorScale.cpp',
   'src/Visualization/QCPColorMapIterator.cpp',
   'src/Visualization/VisualizationSelectionZoneItem.cpp',
-  'src/Visualization/VisualizationSelectionZoneManager.cpp'
+  'src/Visualization/VisualizationSelectionZoneManager.cpp',
+  'src/Visualization/SelectionZoneAction.cpp',
+  'src/Visualization/ActionsGuiController.cpp'
 ]
 
 gui_inc = include_directories(['include'])

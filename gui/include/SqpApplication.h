@@ -21,6 +21,7 @@ class TimeController;
 class VariableController;
 class VisualizationController;
 class DragDropGuiController;
+class ActionsGuiController;
 
 /**
  * @brief The SqpApplication class aims to make the link between SciQlop
@@ -48,6 +49,7 @@ public:
     /// Accessors for the differents sciqlop helpers, these helpers classes are like controllers but
     /// doesn't live in a thread and access gui
     DragDropGuiController &dragDropGuiController() noexcept;
+    ActionsGuiController &actionsGuiController() noexcept;
 
     enum class PlotsInteractionMode { None, ZoomBox, DragAndDrop, SelectionZones };
 
