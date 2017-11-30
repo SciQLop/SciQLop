@@ -22,6 +22,11 @@ DataSourceItemAction::DataSourceItemAction(const QString &name, ExecuteFunction 
 {
 }
 
+std::unique_ptr<DataSourceItemAction> DataSourceItemAction::clone() const
+{
+    return std::make_unique<DataSourceItemAction>(impl->m_Name, impl->m_Fun);
+}
+
 QString DataSourceItemAction::name() const noexcept
 {
     return impl->m_Name;

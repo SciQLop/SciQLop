@@ -12,28 +12,6 @@
 
 Q_LOGGING_CATEGORY(LOG_DataSourceController, "DataSourceController")
 
-namespace {
-
-/**
- * Builds the metadata of the variable that will be generated from the loading of an item
- * @param dataSourceItem the data source item from which to generate the metadata
- * @return the metadata of the variable
- */
-QVariantHash variableMetadata(const DataSourceItem &dataSourceItem)
-{
-    // Variable metadata contains...
-
-    // ... all metadata of the item
-    auto result = dataSourceItem.data();
-
-    // ... and the name of the plugin, recovered from root item
-    result.insert(QStringLiteral("plugin"), dataSourceItem.rootItem().name());
-
-    return result;
-}
-
-} // namespace
-
 class DataSourceController::DataSourceControllerPrivate {
 public:
     QMutex m_WorkingMutex;
@@ -131,8 +109,7 @@ void DataSourceController::loadProductItem(const QUuid &dataSourceUid,
         auto it = impl->m_DataProviders.find(dataSourceUid);
         auto dataProvider = (it != impl->m_DataProviders.end()) ? it->second : nullptr;
 
-        emit variableCreationRequested(productItem.name(), variableMetadata(productItem),
-                                       dataProvider);
+        emit variableCreationRequested(productItem.name(), productItem.data(), dataProvider);
     }
     else {
         qCWarning(LOG_DataSourceController()) << tr("Can't load an item that is not a product");

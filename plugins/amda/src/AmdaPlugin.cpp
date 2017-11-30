@@ -31,11 +31,14 @@ void associateActions(DataSourceItem &item, const QUuid &dataSourceUid)
     };
 
     const auto itemType = item.type();
-    if (itemType == DataSourceItemType::PRODUCT) {
-        addLoadAction(QObject::tr("Load %1 product").arg(item.name()));
-    }
-    else if (itemType == DataSourceItemType::COMPONENT) {
-        addLoadAction(QObject::tr("Load %1 component").arg(item.name()));
+    if (itemType == DataSourceItemType::PRODUCT || itemType == DataSourceItemType::COMPONENT) {
+        // Adds plugin name to item metadata
+        item.setData(DataSourceItem::PLUGIN_DATA_KEY, DATA_SOURCE_NAME);
+
+        // Adds load action
+        auto actionLabel = QObject::tr(
+            itemType == DataSourceItemType::PRODUCT ? "Load %1 product" : "Load %1 component");
+        addLoadAction(actionLabel.arg(item.name()));
     }
 
     auto count = item.childCount();

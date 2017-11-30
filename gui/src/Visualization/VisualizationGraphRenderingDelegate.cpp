@@ -223,7 +223,7 @@ VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegate(
 void VisualizationGraphRenderingDelegate::onMouseDoubleClick(QMouseEvent *event) noexcept
 {
     // Opens color scale editor if color scale is double clicked
-    auto colorScale = dynamic_cast<QCPColorScale *>(impl->m_Plot.layoutElementAt(event->pos()));
+    auto colorScale = static_cast<QCPColorScale *>(impl->m_Plot.layoutElementAt(event->pos()));
     if (impl->m_ColorScale.m_Scale == colorScale) {
         if (ColorScaleEditor{impl->m_ColorScale}.exec() == QDialog::Accepted) {
             impl->m_Plot.replot();

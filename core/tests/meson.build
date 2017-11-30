@@ -10,6 +10,7 @@ tests = [
   [['Data/TestTwoDimArrayData.cpp'],'test_2d','Two Dim Array test'],
   [['Data/TestDataSeriesUtils.cpp'],'test_dataseries_util','Data series utils test'],
   [['DataSource/TestDataSourceController.cpp'],'test_data_source','DataSourceController test'],
+  [['DataSource/TestDataSourceItem.cpp'],'test_data_source_item','DataSourceItem test'],
   [['Variable/TestVariableCacheController.cpp'],'test_variable_cache','VariableCacheController test'],
   [['Variable/TestVariable.cpp'],'test_variable','Variable test'],
   [['Variable/TestVariableSync.cpp'],'test_variable_sync','Variable synchronization test']
@@ -19,7 +20,9 @@ amdatest_sources = [
   'Data/DataSeriesBuilders.h',
   'Data/DataSeriesBuilders.cpp',
   'Data/DataSeriesTestsUtils.h',
-  'Data/DataSeriesTestsUtils.cpp'
+  'Data/DataSeriesTestsUtils.cpp',
+  'DataSource/DataSourceItemBuilder.h',
+  'DataSource/DataSourceItemBuilder.cpp'
 ]
 
 foreach unit_test : tests
