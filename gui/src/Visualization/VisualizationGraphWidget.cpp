@@ -10,6 +10,7 @@
 #include "Visualization/VisualizationZoneWidget.h"
 #include "ui_VisualizationGraphWidget.h"
 
+#include <Actions/ActionsGuiController.h>
 #include <Common/MimeTypesDef.h>
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
@@ -600,6 +601,22 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
         }
 
         graphMenu.addAction(tr("Undo Zoom"), [this]() { undoZoom(); });
+    }
+
+    auto selectionZoneItem = impl->selectionZoneAt(pos, plot());
+    if (selectionZoneItem) {
+        auto selectedItems = parentVisualizationWidget()->selectionZoneManager().selectedItems();
+        auto zoneActions = sqpApp->actionsGuiController().selectionZoneActions();
+        if (!zoneActions.isEmpty() && !graphMenu.isEmpty()) {
+            graphMenu.addSeparator();
+        }
+
+        for (auto zoneAction : zoneActions) {
+            auto action = graphMenu.addAction(zoneAction->name());
+            QObject::connect(action, &QAction::triggered, [zoneAction, &selectedItems]() {
+                zoneAction->execute(selectedItems);
+            });
+        }
     }
 
     if (!graphMenu.isEmpty()) {
