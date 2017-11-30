@@ -4,7 +4,7 @@
 #include <Common/DateUtils.h>
 #include <Common/MimeTypesDef.h>
 
-#include <DragAndDrop/DragDropHelper.h>
+#include <DragAndDrop/DragDropGuiController.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
 
@@ -145,7 +145,7 @@ void TimeWidget::mouseMoveEvent(QMouseEvent *event)
     auto pixmap = QPixmap{":/icones/time.png"};
     drag->setPixmap(pixmap.scaledToWidth(22));
 
-    sqpApp->dragDropHelper().resetDragAndDrop();
+    sqpApp->dragDropGuiController().resetDragAndDrop();
 
     // Note: The exec() is blocking on windows but not on linux and macOS
     drag->exec(Qt::MoveAction | Qt::CopyAction);

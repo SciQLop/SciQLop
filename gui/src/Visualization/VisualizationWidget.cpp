@@ -12,7 +12,7 @@
 
 #include "ui_VisualizationWidget.h"
 
-#include "DragAndDrop/DragDropHelper.h"
+#include "DragAndDrop/DragDropGuiController.h"
 #include "SqpApplication.h"
 
 #include <QToolButton>
@@ -84,7 +84,7 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     connect(addTabViewButton, &QToolButton::clicked, addTabView);
     connect(ui->tabWidget, &QTabWidget::tabCloseRequested, removeTabView);
 
-    sqpApp->dragDropHelper().addDragDropTabBar(ui->tabWidget->tabBar());
+    sqpApp->dragDropGuiController().addDragDropTabBar(ui->tabWidget->tabBar());
 
     // Adds default tab
     addTabView();
@@ -92,7 +92,7 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
 
 VisualizationWidget::~VisualizationWidget()
 {
-    sqpApp->dragDropHelper().removeDragDropTabBar(ui->tabWidget->tabBar());
+    sqpApp->dragDropGuiController().removeDragDropTabBar(ui->tabWidget->tabBar());
     delete ui;
 }
 

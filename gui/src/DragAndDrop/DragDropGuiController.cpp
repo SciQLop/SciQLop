@@ -1,4 +1,4 @@
-#include "DragAndDrop/DragDropHelper.h"
+#include "DragAndDrop/DragDropGuiController.h"
 #include "DragAndDrop/DragDropScroller.h"
 #include "DragAndDrop/DragDropTabSwitcher.h"
 #include "SqpApplication.h"
@@ -19,10 +19,10 @@
 #include <QVBoxLayout>
 
 
-Q_LOGGING_CATEGORY(LOG_DragDropHelper, "DragDropHelper")
+Q_LOGGING_CATEGORY(LOG_DragDropGuiController, "DragDropGuiController")
 
 
-struct DragDropHelper::DragDropHelperPrivate {
+struct DragDropGuiController::DragDropGuiControllerPrivate {
 
     VisualizationDragWidget *m_CurrentDragWidget = nullptr;
     std::unique_ptr<QWidget> m_PlaceHolder = nullptr;
@@ -40,7 +40,7 @@ struct DragDropHelper::DragDropHelperPrivate {
 
     QList<QWidget *> m_WidgetToClose;
 
-    explicit DragDropHelperPrivate()
+    explicit DragDropGuiControllerPrivate()
             : m_PlaceHolder{std::make_unique<QWidget>()},
               m_DragDropScroller{std::make_unique<DragDropScroller>()},
               m_DragDropTabSwitcher{std::make_unique<DragDropTabSwitcher>()}
@@ -64,7 +64,8 @@ struct DragDropHelper::DragDropHelperPrivate {
         m_ImageTempUrl = QDir::temp().absoluteFilePath("Sciqlop_graph.png");
     }
 
-    void preparePlaceHolder(DragDropHelper::PlaceHolderType type, const QString &topLabelText) const
+    void preparePlaceHolder(DragDropGuiController::PlaceHolderType type,
+                            const QString &topLabelText) const
     {
         if (m_CurrentDragWidget) {
             m_PlaceHolder->setMinimumSize(m_CurrentDragWidget->size());
@@ -79,12 +80,12 @@ struct DragDropHelper::DragDropHelperPrivate {
         }
 
         switch (type) {
-            case DragDropHelper::PlaceHolderType::Graph:
+            case DragDropGuiController::PlaceHolderType::Graph:
                 m_PlaceBackground->setStyleSheet(
                     "background-color: #BBD5EE; border: 1px solid #2A7FD4");
                 break;
-            case DragDropHelper::PlaceHolderType::Zone:
-            case DragDropHelper::PlaceHolderType::Default:
+            case DragDropGuiController::PlaceHolderType::Zone:
+            case DragDropGuiController::PlaceHolderType::Default:
                 m_PlaceBackground->setStyleSheet(
                     "background-color: #BBD5EE; border: 2px solid #2A7FD4");
                 m_PlaceHolderLabel->setStyleSheet("color: #2A7FD4");
@@ -97,22 +98,23 @@ struct DragDropHelper::DragDropHelperPrivate {
 };
 
 
-DragDropHelper::DragDropHelper() : impl{spimpl::make_unique_impl<DragDropHelperPrivate>()}
+DragDropGuiController::DragDropGuiController()
+        : impl{spimpl::make_unique_impl<DragDropGuiControllerPrivate>()}
 {
 }
 
-DragDropHelper::~DragDropHelper()
+DragDropGuiController::~DragDropGuiController()
 {
     QFile::remove(impl->m_ImageTempUrl);
 }
 
-void DragDropHelper::resetDragAndDrop()
+void DragDropGuiController::resetDragAndDrop()
 {
     setCurrentDragWidget(nullptr);
     impl->m_HighlightedDragWidget = nullptr;
 }
 
-void DragDropHelper::setCurrentDragWidget(VisualizationDragWidget *dragWidget)
+void DragDropGuiController::setCurrentDragWidget(VisualizationDragWidget *dragWidget)
 {
     if (impl->m_CurrentDragWidget) {
 
@@ -129,18 +131,18 @@ void DragDropHelper::setCurrentDragWidget(VisualizationDragWidget *dragWidget)
     impl->m_CurrentDragWidget = dragWidget;
 }
 
-VisualizationDragWidget *DragDropHelper::getCurrentDragWidget() const
+VisualizationDragWidget *DragDropGuiController::getCurrentDragWidget() const
 {
     return impl->m_CurrentDragWidget;
 }
 
-QWidget &DragDropHelper::placeHolder() const
+QWidget &DragDropGuiController::placeHolder() const
 {
     return *impl->m_PlaceHolder;
 }
 
-void DragDropHelper::insertPlaceHolder(QVBoxLayout *layout, int index, PlaceHolderType type,
-                                       const QString &topLabelText)
+void DragDropGuiController::insertPlaceHolder(QVBoxLayout *layout, int index, PlaceHolderType type,
+                                              const QString &topLabelText)
 {
     removePlaceHolder();
     impl->preparePlaceHolder(type, topLabelText);
@@ -148,7 +150,7 @@ void DragDropHelper::insertPlaceHolder(QVBoxLayout *layout, int index, PlaceHold
     impl->m_PlaceHolder->show();
 }
 
-void DragDropHelper::removePlaceHolder()
+void DragDropGuiController::removePlaceHolder()
 {
     auto parentWidget = impl->m_PlaceHolder->parentWidget();
     if (parentWidget) {
@@ -158,38 +160,38 @@ void DragDropHelper::removePlaceHolder()
     }
 }
 
-bool DragDropHelper::isPlaceHolderSet() const
+bool DragDropGuiController::isPlaceHolderSet() const
 {
     return impl->m_PlaceHolder->parentWidget();
 }
 
-void DragDropHelper::addDragDropScrollArea(QScrollArea *scrollArea)
+void DragDropGuiController::addDragDropScrollArea(QScrollArea *scrollArea)
 {
     impl->m_DragDropScroller->addScrollArea(scrollArea);
 }
 
-void DragDropHelper::removeDragDropScrollArea(QScrollArea *scrollArea)
+void DragDropGuiController::removeDragDropScrollArea(QScrollArea *scrollArea)
 {
     impl->m_DragDropScroller->removeScrollArea(scrollArea);
 }
 
-void DragDropHelper::addDragDropTabBar(QTabBar *tabBar)
+void DragDropGuiController::addDragDropTabBar(QTabBar *tabBar)
 {
     impl->m_DragDropTabSwitcher->addTabBar(tabBar);
 }
 
-void DragDropHelper::removeDragDropTabBar(QTabBar *tabBar)
+void DragDropGuiController::removeDragDropTabBar(QTabBar *tabBar)
 {
     impl->m_DragDropTabSwitcher->removeTabBar(tabBar);
 }
 
-QUrl DragDropHelper::imageTemporaryUrl(const QImage &image) const
+QUrl DragDropGuiController::imageTemporaryUrl(const QImage &image) const
 {
     image.save(impl->m_ImageTempUrl);
     return QUrl::fromLocalFile(impl->m_ImageTempUrl);
 }
 
-void DragDropHelper::setHightlightedDragWidget(VisualizationDragWidget *dragWidget)
+void DragDropGuiController::setHightlightedDragWidget(VisualizationDragWidget *dragWidget)
 {
     if (impl->m_HighlightedDragWidget) {
         impl->m_HighlightedDragWidget->highlightForMerge(false);
@@ -208,18 +210,18 @@ void DragDropHelper::setHightlightedDragWidget(VisualizationDragWidget *dragWidg
     impl->m_HighlightedDragWidget = dragWidget;
 }
 
-VisualizationDragWidget *DragDropHelper::getHightlightedDragWidget() const
+VisualizationDragWidget *DragDropGuiController::getHightlightedDragWidget() const
 {
     return impl->m_HighlightedDragWidget;
 }
 
-void DragDropHelper::delayedCloseWidget(QWidget *widget)
+void DragDropGuiController::delayedCloseWidget(QWidget *widget)
 {
     widget->hide();
     impl->m_WidgetToClose << widget;
 }
 
-void DragDropHelper::doCloseWidgets()
+void DragDropGuiController::doCloseWidgets()
 {
     for (auto widget : impl->m_WidgetToClose) {
         widget->close();
@@ -228,12 +230,12 @@ void DragDropHelper::doCloseWidgets()
     impl->m_WidgetToClose.clear();
 }
 
-bool DragDropHelper::checkMimeDataForVisualization(const QMimeData *mimeData,
-                                                   VisualizationDragDropContainer *dropContainer)
+bool DragDropGuiController::checkMimeDataForVisualization(
+    const QMimeData *mimeData, VisualizationDragDropContainer *dropContainer)
 {
     if (!mimeData || !dropContainer) {
-        qCWarning(LOG_DragDropHelper()) << QObject::tr(
-            "DragDropHelper::checkMimeDataForVisualization, invalid input parameters.");
+        qCWarning(LOG_DragDropGuiController()) << QObject::tr(
+            "DragDropGuiController::checkMimeDataForVisualization, invalid input parameters.");
         Q_ASSERT(false);
         return false;
     }
@@ -270,8 +272,8 @@ bool DragDropHelper::checkMimeDataForVisualization(const QMimeData *mimeData,
                     }
                 }
                 else {
-                    qCWarning(LOG_DragDropHelper()) << QObject::tr(
-                        "DragDropHelper::checkMimeDataForVisualization, the parent "
+                    qCWarning(LOG_DragDropGuiController()) << QObject::tr(
+                        "DragDropGuiController::checkMimeDataForVisualization, the parent "
                         "VisualizationWidget cannot be found. Cannot check if the variable is "
                         "already used or not.");
                 }

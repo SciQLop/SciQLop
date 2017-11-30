@@ -1,6 +1,6 @@
 #include "Variable/VariableInspectorTableView.h"
 
-#include "DragAndDrop/DragDropHelper.h"
+#include "DragAndDrop/DragDropGuiController.h"
 #include "SqpApplication.h"
 
 VariableInspectorTableView::VariableInspectorTableView(QWidget *parent) : QTableView(parent)
@@ -10,6 +10,6 @@ VariableInspectorTableView::VariableInspectorTableView(QWidget *parent) : QTable
 void VariableInspectorTableView::startDrag(Qt::DropActions supportedActions)
 {
     // Resets the drag&drop operations before it's starting
-    sqpApp->dragDropHelper().resetDragAndDrop();
+    sqpApp->dragDropGuiController().resetDragAndDrop();
     QTableView::startDrag(supportedActions);
 }

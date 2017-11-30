@@ -1,5 +1,5 @@
-#ifndef SCIQLOP_DRAGDROPHELPER_H
-#define SCIQLOP_DRAGDROPHELPER_H
+#ifndef SCIQLOP_DRAGDROPGUICONTROLLER_H
+#define SCIQLOP_DRAGDROPGUICONTROLLER_H
 
 #include <Common/spimpl.h>
 #include <QLoggingCategory>
@@ -12,7 +12,7 @@ class VisualizationDragWidget;
 class VisualizationDragDropContainer;
 class QMimeData;
 
-Q_DECLARE_LOGGING_CATEGORY(LOG_DragDropHelper)
+Q_DECLARE_LOGGING_CATEGORY(LOG_DragDropGuiController)
 
 /**
  * @brief Helper class for drag&drop operations.
@@ -21,15 +21,15 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_DragDropHelper)
  * can interect with the gui.
  * @see SqpApplication
  */
-class DragDropHelper {
+class DragDropGuiController {
 public:
     static const QString MIME_TYPE_GRAPH;
     static const QString MIME_TYPE_ZONE;
 
     enum class PlaceHolderType { Default, Graph, Zone };
 
-    DragDropHelper();
-    virtual ~DragDropHelper();
+    DragDropGuiController();
+    virtual ~DragDropGuiController();
 
     /// Resets some internal variables. Must be called before any new drag&drop operation.
     void resetDragAndDrop();
@@ -68,8 +68,8 @@ public:
     void doCloseWidgets();
 
 private:
-    class DragDropHelperPrivate;
-    spimpl::unique_impl_ptr<DragDropHelperPrivate> impl;
+    class DragDropGuiControllerPrivate;
+    spimpl::unique_impl_ptr<DragDropGuiControllerPrivate> impl;
 };
 
-#endif // SCIQLOP_DRAGDROPHELPER_H
+#endif // SCIQLOP_DRAGDROPGUICONTROLLER_H

@@ -14,7 +14,7 @@
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
 #include <Data/SpectrogramSeries.h>
-#include <DragAndDrop/DragDropHelper.h>
+#include <DragAndDrop/DragDropGuiController.h>
 #include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
