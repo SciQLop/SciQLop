@@ -1,4 +1,5 @@
 #include "Visualization/VisualizationSelectionZoneItem.h"
+#include "Visualization/VisualizationGraphWidget.h"
 
 const QString &DEFAULT_COLOR = QStringLiteral("#E79D41");
 
@@ -96,6 +97,16 @@ VisualizationSelectionZoneItem::~VisualizationSelectionZoneItem()
 {
     impl->m_Plot->removeItem(impl->m_RightLine);
     impl->m_Plot->removeItem(impl->m_LeftLine);
+}
+
+VisualizationGraphWidget *VisualizationSelectionZoneItem::parentGraphWidget() const noexcept
+{
+    auto parent = impl->m_Plot->parentWidget();
+    while (parent != nullptr && !qobject_cast<VisualizationGraphWidget *>(parent)) {
+        parent = parent->parentWidget();
+    }
+
+    return qobject_cast<VisualizationGraphWidget *>(parent);
 }
 
 void VisualizationSelectionZoneItem::setName(const QString &name)

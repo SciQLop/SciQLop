@@ -5,11 +5,15 @@
 #include <Data/SqpRange.h>
 #include <Visualization/qcustomplot.h>
 
+class VisualizationGraphWidget;
+
 class VisualizationSelectionZoneItem : public QCPItemRect {
 
 public:
     VisualizationSelectionZoneItem(QCustomPlot *plot);
     virtual ~VisualizationSelectionZoneItem();
+
+    VisualizationGraphWidget *parentGraphWidget() const noexcept;
 
     void setName(const QString &name);
     QString name() const;

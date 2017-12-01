@@ -378,6 +378,14 @@ void VisualizationGraphWidget::addSelectionZones(const QVector<SqpRange> &ranges
     plot().replot(QCustomPlot::rpQueuedReplot);
 }
 
+void VisualizationGraphWidget::removeSelectionZone(VisualizationSelectionZoneItem *selectionZone)
+{
+    impl->m_SelectionZones.removeAll(selectionZone);
+    plot().removeItem(selectionZone);
+    plot().replot(QCustomPlot::rpQueuedReplot);
+    parentVisualizationWidget()->selectionZoneManager().setSelected(selectionZone, false);
+}
+
 void VisualizationGraphWidget::undoZoom()
 {
     auto zoom = impl->m_ZoomStack.pop();

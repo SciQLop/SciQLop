@@ -19,6 +19,7 @@ class SqpRange;
 class Variable;
 class VisualizationWidget;
 class VisualizationZoneWidget;
+class VisualizationSelectionZoneItem;
 
 namespace Ui {
 class VisualizationGraphWidget;
@@ -56,11 +57,13 @@ public:
     SqpRange graphRange() const noexcept;
     void setGraphRange(const SqpRange &range);
 
+    // Zones
     /// Returns the ranges of all the selection zones on the graph
     QVector<SqpRange> selectionZoneRanges() const;
-
     /// Adds new selection zones in the graph
     void addSelectionZones(const QVector<SqpRange> &ranges);
+    /// Removes the specified selection zone
+    void removeSelectionZone(VisualizationSelectionZoneItem *selectionZone);
 
     /// Undo the last zoom  done with a zoom box
     void undoZoom();
