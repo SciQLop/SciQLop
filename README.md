@@ -1,4 +1,10 @@
-![](gui/resources/icones/sciqlop2PNG_1024.png){:.some-css-class style="width: 20%"}
+
+<div style="text-align:center">
+<img src="gui/resources/icones/sciqlop2PNG_1024.png" alt="sciqlop_logo" style="width: 200px;"/>
+<br /><br />
+<img src="pictures/sciqlop_screenshot.png" alt="sciqlop_logo" style="width: 80%;"/>
+</div>
+
 
 
 # Overview
