@@ -1,4 +1,3 @@
-
 ## core - CMakeLists.txt
 STRING(TOLOWER ${CMAKE_PROJECT_NAME} LIBRARY_PREFFIX)
 SET(SQPCORE_LIBRARY_NAME "${LIBRARY_PREFFIX}_core${DEBUG_SUFFIX}")
@@ -45,11 +44,16 @@ set_property(TARGET ${SQPCORE_LIBRARY_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 TARGET_LINK_LIBRARIES(${SQPCORE_LIBRARY_NAME})
 qt5_use_modules(${SQPCORE_LIBRARY_NAME} Core Network)
 
+# Find CATALOGUE_API
+include_directories("${CATALOGUEAPI_INCLUDE}")
+TARGET_LINK_LIBRARIES(${SQPCORE_LIBRARY_NAME} ${CATALOGUEAPI_LIBRARIES})
 INSTALL(TARGETS ${SQPCORE_LIBRARY_NAME}
   RUNTIME DESTINATION ${INSTALL_BINARY_DIR}
   LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
   ARCHIVE DESTINATION ${INSTALL_LIBRARY_DIR}
 )
+
+add_dependencies(${SQPCORE_LIBRARY_NAME} CatalogueAPI)
 
 # From cmake documentation: http://www.cmake.org/cmake/help/v3.0/manual/cmake-buildsystem.7.html
 # Entries in the COMPILE_DEFINITIONS are prefixed with -D or /D and added to the compile line in an unspecified order.
@@ -64,9 +68,19 @@ ENDIF()
 # dependent shared libraries
 SCIQLOP_SET_TO_PARENT_SCOPE(SQPCORE_LIBRARY_NAME)
 
-# Copy extern shared libraries to the lib folder
-SCIQLOP_COPY_TO_TARGET(LIBRARY ${SQPCORE_LIBRARY_NAME} ${EXTERN_SHARED_LIBRARIES})
-	
+## Copy extern shared libraries to the lib folder
+LIST (APPEND ${EXTERN_SHARED_LIBRARIES} ${CATALOGUEAPI_LIBRARIES})
+
+
+SET (COPY_LIBS_DESTINATION LIBRARY)
+if(APPLE)
+    SET (COPY_LIBS_DESTINATION RUNTIME)
+endif()
+
+add_custom_command(TARGET ${SQPCORE_LIBRARY_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy ${CATALOGUEAPI_LIBRARIES} ${EXECUTABLE_OUTPUT_PATH}
+)
+
 # Add the files to the list of files to be analyzed
 LIST(APPEND CHECKSTYLE_INPUT_FILES ${MODULE_SOURCES})
 SCIQLOP_SET_TO_PARENT_SCOPE(CHECKSTYLE_INPUT_FILES)
@@ -82,6 +96,7 @@ IF(BUILD_TESTS)
 	FILE (GLOB_RECURSE TESTS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/Test*.cpp)
 	FILE (GLOB_RECURSE TESTS_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/Test*.h)
         SET( TEST_LIBRARIES ${SQPCORE_LIBRARY_NAME})
+        list(APPEND TEST_LIBRARIES ${CATALOGUEAPI_LIBRARIES})
 
         SET(TARGETS_COV)
 	FOREACH( testFile ${TESTS_SOURCES} )
@@ -100,12 +115,12 @@ IF(BUILD_TESTS)
                 ADD_EXECUTABLE(${testName} ${testFile} ${currentTestSources})
                 set_property(TARGET ${testName} PROPERTY CXX_STANDARD 14)
                 set_property(TARGET ${testName} PROPERTY CXX_STANDARD_REQUIRED ON)
-                TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES} )
+                TARGET_LINK_LIBRARIES( ${testName} ${TEST_LIBRARIES})
                 qt5_use_modules(${testName} Test)
 
                 ADD_TEST( NAME ${testName} COMMAND ${testName} )
 
-                SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName} ${EXTERN_SHARED_LIBRARIES})
+                SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName} ${CATALOGUEAPI_LIBRARIES})
                 set(Coverage_NAME ${testName})
                 if(UNIX)
                     SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage OUTPUT ${testFile}-path NAME ${testFile} EXECUTABLE ${testName})

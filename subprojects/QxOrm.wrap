@@ -1,0 +1,5 @@
+[wrap-git]
+directory=QxOrm
+url=https://github.com/jeandet/qxorm.git
+revision=head
+
