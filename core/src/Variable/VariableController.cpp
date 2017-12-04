@@ -933,6 +933,7 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
                     varHandler->m_PendingVarRequest = VariableRequest{};
                     auto var = findVariable(itVarHandler->first);
                     executeVarRequest(var, varHandler->m_RunningVarRequest);
+                    updateVariables(varHandler->m_RunningVarRequest.m_VariableGroupId);
                     break;
                 }
                 default:
