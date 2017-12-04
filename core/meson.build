@@ -1,8 +1,10 @@
 
+qxorm_dep = dependency('QxOrm', required : true, fallback:['QxOrm','qxorm_dep'])
+catalogueapi_dep = dependency('CatalogueAPI', required : true, fallback:['CatalogueAPI','CatalogueAPI_dep'])
 
-catalogueapi_dep = dependency('CatalogueAPI', required : true, fallback:['CatalogueAPI','catalogueapi_dep'])
 
 core_moc_headers = [
+  'include/Catalogue/CatalogueController.h',
   'include/Data/IDataProvider.h',
   'include/DataSource/DataSourceController.h',
   'include/DataSource/DataSourceItemAction.h',
@@ -24,6 +26,7 @@ core_sources = [
   'src/Common/DateUtils.cpp',
   'src/Common/StringUtils.cpp',
   'src/Common/MimeTypesDef.cpp',
+  'src/Catalogue/CatalogueController.cpp',
   'src/Data/ScalarSeries.cpp',
   'src/Data/SpectrogramSeries.cpp',
   'src/Data/DataSeriesIterator.cpp',
@@ -63,6 +66,7 @@ sciqlop_core_lib = library('sciqlopcore',
 sciqlop_core = declare_dependency(link_with : sciqlop_core_lib,
                                 include_directories : core_inc,
                                 dependencies : [qt5core, qt5network, catalogueapi_dep])
+
 
 
 subdir('tests')
