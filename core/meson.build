@@ -1,4 +1,7 @@
 
+
+catalogueapi_dep = dependency('CatalogueAPI', required : true, fallback:['CatalogueAPI','catalogueapi_dep'])
+
 core_moc_headers = [
   'include/Data/IDataProvider.h',
   'include/DataSource/DataSourceController.h',
@@ -52,14 +55,14 @@ sciqlop_core_lib = library('sciqlopcore',
                        core_moc_files,
                        cpp_args : '-DCORE_LIB',
                        include_directories : core_inc,
-                       dependencies : [qt5core, qt5network],
+                       dependencies : [qt5core, qt5network, catalogueapi_dep],
                        install : true
                        )
 
 
 sciqlop_core = declare_dependency(link_with : sciqlop_core_lib,
                                 include_directories : core_inc,
-                                dependencies : [qt5core, qt5network])
+                                dependencies : [qt5core, qt5network, catalogueapi_dep])
 
 
 subdir('tests')
