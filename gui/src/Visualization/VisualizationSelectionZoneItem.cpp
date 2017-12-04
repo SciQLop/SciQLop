@@ -1,5 +1,7 @@
 #include "Visualization/VisualizationSelectionZoneItem.h"
 #include "Visualization/VisualizationGraphWidget.h"
+#include "Visualization/VisualizationSelectionZoneManager.h"
+#include "Visualization/VisualizationWidget.h"
 
 const QString &DEFAULT_COLOR = QStringLiteral("#E79D41");
 
@@ -344,6 +346,12 @@ void VisualizationSelectionZoneItem::mousePressEvent(QMouseEvent *event, const Q
 void VisualizationSelectionZoneItem::mouseMoveEvent(QMouseEvent *event, const QPointF &startPos)
 {
     if (isEditionEnabled()) {
+        if (!selected()) {
+            // Force the item to be selected during the edition
+            parentGraphWidget()->parentVisualizationWidget()->selectionZoneManager().setSelected(
+                this, true);
+        }
+
         auto axis = impl->m_Plot->axisRect()->axis(QCPAxis::atBottom);
         auto pixelDiff = event->pos().x() - startPos.x();
         auto diff = impl->pixelSizeToAxisXSize(pixelDiff);

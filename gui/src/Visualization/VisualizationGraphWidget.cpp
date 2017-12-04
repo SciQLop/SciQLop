@@ -842,15 +842,23 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
     if (isSelectionZoneMode) {
         auto isMultiSelectionClick = event->modifiers().testFlag(MULTI_ZONE_SELECTION_MODIFIER);
         auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
-        if (selectionZoneItemUnderCursor && isLeftClick) {
-            selectionZoneItemUnderCursor->setAssociatedEditedZones(
-                parentVisualizationWidget()->selectionZoneManager().selectedItems());
+
+
+        if (selectionZoneItemUnderCursor && !selectionZoneItemUnderCursor->selected()
+            && !isMultiSelectionClick) {
+            parentVisualizationWidget()->selectionZoneManager().select(
+                {selectionZoneItemUnderCursor});
         }
-        else if (!isMultiSelectionClick && isLeftClick) {
+        else if (!selectionZoneItemUnderCursor && !isMultiSelectionClick && isLeftClick) {
             parentVisualizationWidget()->selectionZoneManager().clearSelection();
         }
         else {
             // No selection change
+        }
+
+        if (selectionZoneItemUnderCursor && isLeftClick) {
+            selectionZoneItemUnderCursor->setAssociatedEditedZones(
+                parentVisualizationWidget()->selectionZoneManager().selectedItems());
         }
     }
 
