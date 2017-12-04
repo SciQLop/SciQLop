@@ -12,6 +12,11 @@ public:
 
     std::shared_ptr<SelectionZoneAction>
     addSectionZoneAction(const QString &name, SelectionZoneAction::ExecuteFunction function);
+
+    std::shared_ptr<SelectionZoneAction>
+    addSectionZoneAction(const QStringList &subMenuList, const QString &name,
+                         SelectionZoneAction::ExecuteFunction function);
+
     QVector<std::shared_ptr<SelectionZoneAction> > selectionZoneActions() const;
 
 private:

@@ -37,6 +37,15 @@ public:
      */
     explicit SelectionZoneAction(const QString &name, ExecuteFunction fun);
 
+    /**
+     * @param name the name of the action, displayed to the user
+     * @param subMenusList the list of sub menus where the action should be inserted
+     * @param fun the function that will be called when the action is executed
+     * @sa execute()
+     */
+    explicit SelectionZoneAction(const QStringList &subMenuList, const QString &name,
+                                 ExecuteFunction fun);
+
     /// Sets the function which determine if the action should be enabled or disabled
     void setEnableFunction(EnableFunction fun);
 
@@ -47,6 +56,9 @@ public:
 
     /// The name of the action
     QString name() const noexcept;
+
+    /// The path in the sub menus, if any
+    QStringList subMenuList() const noexcept;
 
 public slots:
     /// Executes the action

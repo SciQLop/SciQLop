@@ -24,40 +24,40 @@ void VisualizationActionManager::installSelectionZoneActions()
     auto alignEnableFuntion = [](auto items) { return items.count() > 1; };
 
     // Vertical alignment actions
-    auto alignLeftAction
-        = actionController.addSectionZoneAction("Align Vertically / Left", [](auto zones) {
-              Q_ASSERT(zones.count() > 1);
-              auto ref = zones.takeFirst();
-              ref->alignZonesVerticallyOnLeft(zones, false);
-          });
+    auto alignLeftAction = actionController.addSectionZoneAction(
+        QStringList{"Align Vertically"}, "Left", [](auto zones) {
+            Q_ASSERT(zones.count() > 1);
+            auto ref = zones.takeFirst();
+            ref->alignZonesVerticallyOnLeft(zones, false);
+        });
     alignLeftAction->setEnableFunction(alignEnableFuntion);
 
-    auto alignLeftBorderAction
-        = actionController.addSectionZoneAction("Align Vertically / Left Borders", [](auto zones) {
-              Q_ASSERT(zones.count() > 1);
-              auto ref = zones.takeFirst();
-              ref->alignZonesVerticallyOnLeft(zones, true);
-          });
+    auto alignLeftBorderAction = actionController.addSectionZoneAction(
+        QStringList{"Align Vertically"}, "Left Borders", [](auto zones) {
+            Q_ASSERT(zones.count() > 1);
+            auto ref = zones.takeFirst();
+            ref->alignZonesVerticallyOnLeft(zones, true);
+        });
     alignLeftBorderAction->setEnableFunction(alignEnableFuntion);
 
-    auto alignRightAction
-        = actionController.addSectionZoneAction("Align Vertically / Right", [](auto zones) {
-              Q_ASSERT(zones.count() > 1);
-              auto ref = zones.takeFirst();
-              ref->alignZonesVerticallyOnRight(zones, false);
-          });
+    auto alignRightAction = actionController.addSectionZoneAction(
+        QStringList{"Align Vertically"}, "Right", [](auto zones) {
+            Q_ASSERT(zones.count() > 1);
+            auto ref = zones.takeFirst();
+            ref->alignZonesVerticallyOnRight(zones, false);
+        });
     alignRightAction->setEnableFunction(alignEnableFuntion);
 
-    auto alignRightBorderAction
-        = actionController.addSectionZoneAction("Align Vertically / Right Borders", [](auto zones) {
-              Q_ASSERT(zones.count() > 1);
-              auto ref = zones.takeFirst();
-              ref->alignZonesVerticallyOnRight(zones, true);
-          });
+    auto alignRightBorderAction = actionController.addSectionZoneAction(
+        QStringList{"Align Vertically"}, "Right Borders", [](auto zones) {
+            Q_ASSERT(zones.count() > 1);
+            auto ref = zones.takeFirst();
+            ref->alignZonesVerticallyOnRight(zones, true);
+        });
     alignRightBorderAction->setEnableFunction(alignEnableFuntion);
 
     auto alignLeftAndRightAction = actionController.addSectionZoneAction(
-        "Align Vertically / Left and Right", [](auto zones) {
+        QStringList{"Align Vertically"}, "Left and Right", [](auto zones) {
             Q_ASSERT(zones.count() > 1);
             auto ref = zones.takeFirst();
             ref->alignZonesVerticallyOnLeft(zones, false);
@@ -66,40 +66,40 @@ void VisualizationActionManager::installSelectionZoneActions()
     alignLeftAndRightAction->setEnableFunction(alignEnableFuntion);
 
     // Temporal alignment actions
-    auto alignLeftTemporallyAction
-        = actionController.addSectionZoneAction("Align Temporally / Left", [](auto zones) {
-              Q_ASSERT(zones.count() > 1);
-              auto ref = zones.takeFirst();
-              ref->alignZonesTemporallyOnLeft(zones, false);
-          });
+    auto alignLeftTemporallyAction = actionController.addSectionZoneAction(
+        QStringList{"Align Temporally"}, "Left", [](auto zones) {
+            Q_ASSERT(zones.count() > 1);
+            auto ref = zones.takeFirst();
+            ref->alignZonesTemporallyOnLeft(zones, false);
+        });
     alignLeftTemporallyAction->setEnableFunction(alignEnableFuntion);
 
-    auto alignLeftBorderTemporallyAction
-        = actionController.addSectionZoneAction("Align Temporally / Left Borders", [](auto zones) {
-              Q_ASSERT(zones.count() > 1);
-              auto ref = zones.takeFirst();
-              ref->alignZonesTemporallyOnLeft(zones, true);
-          });
+    auto alignLeftBorderTemporallyAction = actionController.addSectionZoneAction(
+        QStringList{"Align Temporally"}, "Left Borders", [](auto zones) {
+            Q_ASSERT(zones.count() > 1);
+            auto ref = zones.takeFirst();
+            ref->alignZonesTemporallyOnLeft(zones, true);
+        });
     alignLeftBorderTemporallyAction->setEnableFunction(alignEnableFuntion);
 
-    auto alignRightTemporallyAction
-        = actionController.addSectionZoneAction("Align Temporally / Right", [](auto zones) {
-              Q_ASSERT(zones.count() > 1);
-              auto ref = zones.takeFirst();
-              ref->alignZonesTemporallyOnRight(zones, false);
-          });
+    auto alignRightTemporallyAction = actionController.addSectionZoneAction(
+        QStringList{"Align Temporally"}, "Right", [](auto zones) {
+            Q_ASSERT(zones.count() > 1);
+            auto ref = zones.takeFirst();
+            ref->alignZonesTemporallyOnRight(zones, false);
+        });
     alignRightTemporallyAction->setEnableFunction(alignEnableFuntion);
 
-    auto alignRightBorderTemporallyAction
-        = actionController.addSectionZoneAction("Align Temporally / Right Borders", [](auto zones) {
-              Q_ASSERT(zones.count() > 1);
-              auto ref = zones.takeFirst();
-              ref->alignZonesTemporallyOnRight(zones, true);
-          });
+    auto alignRightBorderTemporallyAction = actionController.addSectionZoneAction(
+        QStringList{"Align Temporally"}, "Right Borders", [](auto zones) {
+            Q_ASSERT(zones.count() > 1);
+            auto ref = zones.takeFirst();
+            ref->alignZonesTemporallyOnRight(zones, true);
+        });
     alignRightBorderTemporallyAction->setEnableFunction(alignEnableFuntion);
 
     auto alignLeftAndRightTemporallyAction = actionController.addSectionZoneAction(
-        "Align Temporally / Left and Right", [](auto zones) {
+        QStringList{"Align Temporally"}, "Left and Right", [](auto zones) {
             Q_ASSERT(zones.count() > 1);
             auto ref = zones.takeFirst();
             ref->alignZonesTemporallyOnLeft(zones, false);

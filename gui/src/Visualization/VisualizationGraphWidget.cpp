@@ -617,6 +617,7 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
         graphMenu.addAction(tr("Undo Zoom"), [this]() { undoZoom(); });
     }
 
+    // Selection Zone Actions
     auto selectionZoneItem = impl->selectionZoneAt(pos, plot());
     if (selectionZoneItem) {
         auto selectedItems = parentVisualizationWidget()->selectionZoneManager().selectedItems();
@@ -628,12 +629,38 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
             graphMenu.addSeparator();
         }
 
+        QHash<QString, QMenu *> subMenus;
+        QHash<QString, bool> subMenusEnabled;
+
         for (auto zoneAction : zoneActions) {
-            auto action = graphMenu.addAction(zoneAction->name());
-            action->setEnabled(zoneAction->isEnabled(selectedItems));
+
+            auto isEnabled = zoneAction->isEnabled(selectedItems);
+
+            auto menu = &graphMenu;
+            for (auto subMenuName : zoneAction->subMenuList()) {
+                if (!subMenus.contains(subMenuName)) {
+                    menu = menu->addMenu(subMenuName);
+                    subMenus[subMenuName] = menu;
+                    subMenusEnabled[subMenuName] = isEnabled;
+                }
+                else {
+                    menu = subMenus.value(subMenuName);
+                    if (isEnabled) {
+                        // The sub menu is enabled if at least one of its actions is enabled
+                        subMenusEnabled[subMenuName] = true;
+                    }
+                }
+            }
+
+            auto action = menu->addAction(zoneAction->name());
+            action->setEnabled(isEnabled);
             action->setShortcut(zoneAction->displayedShortcut());
             QObject::connect(action, &QAction::triggered,
                              [zoneAction, selectedItems]() { zoneAction->execute(selectedItems); });
+        }
+
+        for (auto it = subMenus.cbegin(); it != subMenus.cend(); ++it) {
+            it.value()->setEnabled(subMenusEnabled[it.key()]);
         }
     }
 
