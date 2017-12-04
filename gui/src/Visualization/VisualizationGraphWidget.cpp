@@ -621,6 +621,7 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
         for (auto zoneAction : zoneActions) {
             auto action = graphMenu.addAction(zoneAction->name());
+            action->setEnabled(zoneAction->isEnabled(selectedItems));
             QObject::connect(action, &QAction::triggered, [zoneAction, &selectedItems]() {
                 zoneAction->execute(selectedItems);
             });

@@ -12,11 +12,17 @@ struct SelectionZoneAction::SelectionZoneActionPrivate {
 
     QString m_Name;
     SelectionZoneAction::ExecuteFunction m_Fun;
+    SelectionZoneAction::EnableFunction m_EnableFun = [](auto zones) { return true; };
 };
 
 SelectionZoneAction::SelectionZoneAction(const QString &name, ExecuteFunction fun)
         : impl{spimpl::make_unique_impl<SelectionZoneActionPrivate>(name, std::move(fun))}
 {
+}
+
+void SelectionZoneAction::setEnableFunction(EnableFunction fun)
+{
+    impl->m_EnableFun = std::move(fun);
 }
 
 QString SelectionZoneAction::name() const noexcept
@@ -27,4 +33,9 @@ QString SelectionZoneAction::name() const noexcept
 void SelectionZoneAction::execute(const QVector<VisualizationSelectionZoneItem *> &item)
 {
     impl->m_Fun(item);
+}
+
+bool SelectionZoneAction::isEnabled(const QVector<VisualizationSelectionZoneItem *> &item)
+{
+    return impl->m_EnableFun(item);
 }
