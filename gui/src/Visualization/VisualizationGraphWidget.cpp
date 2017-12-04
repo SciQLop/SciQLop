@@ -614,6 +614,9 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
     auto selectionZoneItem = impl->selectionZoneAt(pos, plot());
     if (selectionZoneItem) {
         auto selectedItems = parentVisualizationWidget()->selectionZoneManager().selectedItems();
+        selectedItems.removeAll(selectionZoneItem);
+        selectedItems.prepend(selectionZoneItem); // Put the current selection zone first
+
         auto zoneActions = sqpApp->actionsGuiController().selectionZoneActions();
         if (!zoneActions.isEmpty() && !graphMenu.isEmpty()) {
             graphMenu.addSeparator();
@@ -622,9 +625,8 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
         for (auto zoneAction : zoneActions) {
             auto action = graphMenu.addAction(zoneAction->name());
             action->setEnabled(zoneAction->isEnabled(selectedItems));
-            QObject::connect(action, &QAction::triggered, [zoneAction, &selectedItems]() {
-                zoneAction->execute(selectedItems);
-            });
+            QObject::connect(action, &QAction::triggered,
+                             [zoneAction, selectedItems]() { zoneAction->execute(selectedItems); });
         }
     }
 

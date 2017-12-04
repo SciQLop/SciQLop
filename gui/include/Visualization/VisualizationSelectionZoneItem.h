@@ -31,7 +31,21 @@ public:
     Qt::CursorShape curshorShapeForPosition(const QPoint &position) const;
     void setHovered(bool value);
 
+    /// Sets the zones which should be moved or reisized together with this zone
     void setAssociatedEditedZones(const QVector<VisualizationSelectionZoneItem *> &associatedZones);
+
+    /// Align the specified zones with this one, vertically with the left border
+    bool alignZonesVerticallyOnLeft(const QVector<VisualizationSelectionZoneItem *> &zonesToAlign,
+                                    bool allowResize);
+    /// Align the specified zones with this one, vertically with the right border
+    bool alignZonesVerticallyOnRight(const QVector<VisualizationSelectionZoneItem *> &zonesToAlign,
+                                     bool allowResize);
+    /// Align the specified zones with this one, temporally with the left border
+    bool alignZonesTemporallyOnLeft(const QVector<VisualizationSelectionZoneItem *> &zonesToAlign,
+                                    bool allowResize);
+    /// Align the specified zones with this one, temporally with the right border
+    bool alignZonesTemporallyOnRight(const QVector<VisualizationSelectionZoneItem *> &zonesToAlign,
+                                     bool allowResize);
 
 protected:
     void mousePressEvent(QMouseEvent *event, const QVariant &details) override;
@@ -41,7 +55,6 @@ protected:
     void resizeLeft(double pixelDiff);
     void resizeRight(double pixelDiff);
     void move(double pixelDiff);
-
 
 private:
     class VisualizationSelectionZoneItemPrivate;
