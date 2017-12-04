@@ -2,6 +2,7 @@
 #include "Visualization/IVisualizationWidgetVisitor.h"
 #include "Visualization/VisualizationActionManager.h"
 #include "Visualization/VisualizationGraphWidget.h"
+#include "Visualization/VisualizationSelectionZoneItem.h"
 #include "Visualization/VisualizationSelectionZoneManager.h"
 #include "Visualization/VisualizationTabWidget.h"
 #include "Visualization/VisualizationZoneWidget.h"
@@ -88,7 +89,20 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
 
     sqpApp->dragDropGuiController().addDragDropTabBar(ui->tabWidget->tabBar());
 
+    // Actions
     impl->m_ActionManager.installSelectionZoneActions();
+
+    auto removeZoneAction = new QAction("Remove selected zone(s)");
+    removeZoneAction->setShortcut(QKeySequence::Delete);
+    connect(removeZoneAction, &QAction::triggered, [this]() {
+        auto selection = impl->m_ZoneSelectionManager->selectedItems();
+        for (auto selectionZone : selection) {
+            if (auto graph = selectionZone->parentGraphWidget()) {
+                graph->removeSelectionZone(selectionZone);
+            }
+        }
+    });
+    addAction(removeZoneAction);
 
     // Adds default tab
     addTabView();

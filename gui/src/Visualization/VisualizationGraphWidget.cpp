@@ -380,10 +380,16 @@ void VisualizationGraphWidget::addSelectionZones(const QVector<SqpRange> &ranges
 
 void VisualizationGraphWidget::removeSelectionZone(VisualizationSelectionZoneItem *selectionZone)
 {
+    parentVisualizationWidget()->selectionZoneManager().setSelected(selectionZone, false);
+
+    if (impl->m_HoveredZone == selectionZone) {
+        impl->m_HoveredZone = nullptr;
+        setCursor(Qt::ArrowCursor);
+    }
+
     impl->m_SelectionZones.removeAll(selectionZone);
     plot().removeItem(selectionZone);
     plot().replot(QCustomPlot::rpQueuedReplot);
-    parentVisualizationWidget()->selectionZoneManager().setSelected(selectionZone, false);
 }
 
 void VisualizationGraphWidget::undoZoom()
@@ -625,6 +631,7 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
         for (auto zoneAction : zoneActions) {
             auto action = graphMenu.addAction(zoneAction->name());
             action->setEnabled(zoneAction->isEnabled(selectedItems));
+            action->setShortcut(zoneAction->displayedShortcut());
             QObject::connect(action, &QAction::triggered,
                              [zoneAction, selectedItems]() { zoneAction->execute(selectedItems); });
         }

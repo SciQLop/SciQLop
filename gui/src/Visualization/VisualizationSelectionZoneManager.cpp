@@ -24,7 +24,7 @@ void VisualizationSelectionZoneManager::setSelected(VisualizationSelectionZoneIt
 {
     if (value != item->selected()) {
         item->setSelected(value);
-        item->parentPlot()->replot();
+        item->parentPlot()->replot(QCustomPlot::rpQueuedReplot);
     }
 
     if (!value && impl->m_SelectedItems.contains(item)) {

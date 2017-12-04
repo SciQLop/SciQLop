@@ -11,6 +11,7 @@ struct SelectionZoneAction::SelectionZoneActionPrivate {
     }
 
     QString m_Name;
+    QKeySequence m_DisplayedShortcut;
     SelectionZoneAction::ExecuteFunction m_Fun;
     SelectionZoneAction::EnableFunction m_EnableFun = [](auto zones) { return true; };
 };
@@ -23,6 +24,16 @@ SelectionZoneAction::SelectionZoneAction(const QString &name, ExecuteFunction fu
 void SelectionZoneAction::setEnableFunction(EnableFunction fun)
 {
     impl->m_EnableFun = std::move(fun);
+}
+
+void SelectionZoneAction::setDisplayedShortcut(const QKeySequence &shortcut)
+{
+    impl->m_DisplayedShortcut = shortcut;
+}
+
+QKeySequence SelectionZoneAction::displayedShortcut() const
+{
+    return impl->m_DisplayedShortcut;
 }
 
 QString SelectionZoneAction::name() const noexcept

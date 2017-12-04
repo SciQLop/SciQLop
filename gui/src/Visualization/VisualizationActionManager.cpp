@@ -11,13 +11,15 @@ void VisualizationActionManager::installSelectionZoneActions()
 {
     auto &actionController = sqpApp->actionsGuiController();
 
-    actionController.addSectionZoneAction("Remove Selected Zone(s)", [](auto zones) {
-        for (auto selectionZone : zones) {
-            if (auto graph = selectionZone->parentGraphWidget()) {
-                graph->removeSelectionZone(selectionZone);
-            }
-        }
-    });
+    auto removeZonesAction
+        = actionController.addSectionZoneAction("Remove Selected Zone(s)", [](auto zones) {
+              for (auto selectionZone : zones) {
+                  if (auto graph = selectionZone->parentGraphWidget()) {
+                      graph->removeSelectionZone(selectionZone);
+                  }
+              }
+          });
+    removeZonesAction->setDisplayedShortcut(QKeySequence::Delete);
 
     auto alignEnableFuntion = [](auto items) { return items.count() > 1; };
 

@@ -40,6 +40,11 @@ public:
     /// Sets the function which determine if the action should be enabled or disabled
     void setEnableFunction(EnableFunction fun);
 
+    /// Sets the shortcut displayed by the action.
+    /// Note: The shortcut is only displayed and not active because it is not permanently stored
+    void setDisplayedShortcut(const QKeySequence &shortcut);
+    QKeySequence displayedShortcut() const;
+
     /// The name of the action
     QString name() const noexcept;
 
