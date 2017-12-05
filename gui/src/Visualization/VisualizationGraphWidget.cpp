@@ -711,13 +711,13 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
         }
         emit requestDataLoading(std::move(variableUnderGraphVector), graphRange,
                                 !impl->m_IsCalibration);
+    }
 
-        if (!impl->m_IsCalibration) {
-            qCDebug(LOG_VisualizationGraphWidget())
-                << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
-                << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
-            emit synchronize(graphRange, oldGraphRange);
-        }
+    if (impl->m_Flags.testFlag(GraphFlag::EnableSynchronization) && !impl->m_IsCalibration) {
+        qCDebug(LOG_VisualizationGraphWidget())
+            << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
+            << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
+        emit synchronize(graphRange, oldGraphRange);
     }
 
     auto pos = mapFromGlobal(QCursor::pos());
@@ -733,6 +733,9 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
     else {
         qCWarning(LOG_VisualizationGraphWidget()) << "onMouseMove: No parent zone widget";
     }
+
+    // Quits calibration
+    impl->m_IsCalibration = false;
 }
 
 void VisualizationGraphWidget::onMouseDoubleClick(QMouseEvent *event) noexcept
@@ -916,8 +919,6 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
     }
 
     impl->endDrawingZone(this);
-
-    impl->m_IsCalibration = false;
 
     // Selection / Deselection
     auto isSelectionZoneMode
