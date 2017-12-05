@@ -60,6 +60,9 @@ public:
     VisualizationGraphWidget *createGraph(const QList<std::shared_ptr<Variable> > variables,
                                           int index);
 
+    /// Returns the first graph in the zone or nullptr if there is no graph inside
+    VisualizationGraphWidget *firstGraph() const;
+
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
@@ -67,7 +70,7 @@ public:
     QString name() const override;
 
     // VisualisationDragWidget
-    QMimeData *mimeData() const override;
+    QMimeData *mimeData(const QPoint &position) const override;
     bool isDragAllowed() const override;
 
     void notifyMouseMoveInGraph(const QPointF &graphPosition, const QPointF &plotPosition,

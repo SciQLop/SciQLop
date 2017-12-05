@@ -212,11 +212,15 @@ void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidg
     // Note: The management of the drag object is done by Qt
     auto drag = new QDrag{dragWidget};
 
-    auto mimeData = dragWidget->mimeData();
+    auto mimeData = dragWidget->mimeData(dragPosition);
     drag->setMimeData(mimeData);
 
-    auto pixmap = QPixmap(dragWidget->size());
-    dragWidget->render(&pixmap);
+    auto pixmap = dragWidget->customDragPixmap(dragPosition);
+    if (pixmap.isNull()) {
+        pixmap = QPixmap{dragWidget->size()};
+        dragWidget->render(&pixmap);
+    }
+
     drag->setPixmap(pixmap.scaled(DRAGGED_MINIATURE_WIDTH, DRAGGED_MINIATURE_WIDTH,
                                   Qt::KeepAspectRatio, Qt::SmoothTransformation));
 
@@ -225,17 +229,20 @@ void VisualizationDragDropContainer::startDrag(VisualizationDragWidget *dragWidg
     mimeData->setUrls({helper.imageTemporaryUrl(image)});
 
     if (impl->m_Layout->indexOf(dragWidget) >= 0) {
-        helper.setCurrentDragWidget(dragWidget);
 
-        if (impl->cursorIsInContainer(this)) {
-            auto dragWidgetIndex = impl->m_Layout->indexOf(dragWidget);
-            helper.insertPlaceHolder(impl->m_Layout, dragWidgetIndex, impl->m_PlaceHolderType,
-                                     impl->m_PlaceHolderText);
-            dragWidget->setVisible(false);
-        }
-        else {
-            // The drag starts directly outside the drop zone
-            // do not add the placeHolder
+        if (impl->acceptMimeData(mimeData) && impl->allowInsertForMimeData(mimeData)) {
+            helper.setCurrentDragWidget(dragWidget);
+
+            if (impl->cursorIsInContainer(this)) {
+                auto dragWidgetIndex = impl->m_Layout->indexOf(dragWidget);
+                helper.insertPlaceHolder(impl->m_Layout, dragWidgetIndex, impl->m_PlaceHolderType,
+                                         impl->m_PlaceHolderText);
+                dragWidget->setVisible(false);
+            }
+            else {
+                // The drag starts directly outside the drop zone
+                // do not add the placeHolder
+            }
         }
 
         drag->exec(Qt::MoveAction | Qt::CopyAction, Qt::MoveAction);

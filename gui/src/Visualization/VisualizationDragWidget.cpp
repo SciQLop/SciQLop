@@ -19,6 +19,12 @@ VisualizationDragWidget::VisualizationDragWidget(QWidget *parent)
 {
 }
 
+QPixmap VisualizationDragWidget::customDragPixmap(const QPoint &dragPosition)
+{
+    Q_UNUSED(dragPosition);
+    return QPixmap();
+}
+
 void VisualizationDragWidget::mousePressEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
