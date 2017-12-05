@@ -144,8 +144,6 @@ VisualizationSelectionZoneItem::VisualizationSelectionZoneItem(QCustomPlot *plot
 
 VisualizationSelectionZoneItem::~VisualizationSelectionZoneItem()
 {
-    impl->m_Plot->removeItem(impl->m_RightLine);
-    impl->m_Plot->removeItem(impl->m_LeftLine);
 }
 
 VisualizationGraphWidget *VisualizationSelectionZoneItem::parentGraphWidget() const noexcept
