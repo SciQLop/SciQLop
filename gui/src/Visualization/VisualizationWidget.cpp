@@ -1,5 +1,6 @@
 #include "Visualization/VisualizationWidget.h"
 #include "Visualization/IVisualizationWidgetVisitor.h"
+#include "Visualization/VisualizationActionManager.h"
 #include "Visualization/VisualizationGraphWidget.h"
 #include "Visualization/VisualizationSelectionZoneManager.h"
 #include "Visualization/VisualizationTabWidget.h"
@@ -23,6 +24,7 @@ Q_LOGGING_CATEGORY(LOG_VisualizationWidget, "VisualizationWidget")
 
 struct VisualizationWidget::VisualizationWidgetPrivate {
     std::unique_ptr<VisualizationSelectionZoneManager> m_ZoneSelectionManager = nullptr;
+    VisualizationActionManager m_ActionManager;
 
     VisualizationWidgetPrivate()
             : m_ZoneSelectionManager(std::make_unique<VisualizationSelectionZoneManager>())
@@ -85,6 +87,8 @@ VisualizationWidget::VisualizationWidget(QWidget *parent)
     connect(ui->tabWidget, &QTabWidget::tabCloseRequested, removeTabView);
 
     sqpApp->dragDropGuiController().addDragDropTabBar(ui->tabWidget->tabBar());
+
+    impl->m_ActionManager.installSelectionZoneActions();
 
     // Adds default tab
     addTabView();

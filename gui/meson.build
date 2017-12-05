@@ -87,7 +87,8 @@ gui_sources = [
   'src/Visualization/VisualizationSelectionZoneItem.cpp',
   'src/Visualization/VisualizationSelectionZoneManager.cpp',
   'src/Visualization/SelectionZoneAction.cpp',
-  'src/Visualization/ActionsGuiController.cpp'
+  'src/Visualization/ActionsGuiController.cpp',
+  'src/Visualization/VisualizationActionManager.cpp'
 ]
 
 gui_inc = include_directories(['include'])
