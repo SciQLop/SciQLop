@@ -120,7 +120,6 @@ IF(BUILD_TESTS)
 
                 ADD_TEST( NAME ${testName} COMMAND ${testName} )
 
-                SCIQLOP_COPY_TO_TARGET(RUNTIME ${testName} ${CATALOGUEAPI_LIBRARIES})
                 set(Coverage_NAME ${testName})
                 if(UNIX)
                     SETUP_TARGET_FOR_COVERAGE(TARGET ${testName}_coverage OUTPUT ${testFile}-path NAME ${testFile} EXECUTABLE ${testName})
