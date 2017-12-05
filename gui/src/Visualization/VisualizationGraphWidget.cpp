@@ -4,6 +4,7 @@
 #include "Visualization/VisualizationDefs.h"
 #include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/VisualizationGraphRenderingDelegate.h"
+#include "Visualization/VisualizationMultiZoneSelectionDialog.h"
 #include "Visualization/VisualizationSelectionZoneItem.h"
 #include "Visualization/VisualizationSelectionZoneManager.h"
 #include "Visualization/VisualizationWidget.h"
@@ -168,6 +169,29 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
         }
 
         return selectionZoneItemUnderCursor;
+    }
+
+    QVector<VisualizationSelectionZoneItem *> selectionZonesAt(const QPoint &pos,
+                                                               const QCustomPlot &plot) const
+    {
+        QVector<VisualizationSelectionZoneItem *> zones;
+        for (auto zone : m_SelectionZones) {
+            auto distanceToZone = zone->selectTest(pos, false);
+            if (distanceToZone >= 0 && distanceToZone < plot.selectionTolerance()) {
+                zones << zone;
+            }
+        }
+
+        return zones;
+    }
+
+    void moveSelectionZoneOnTop(VisualizationSelectionZoneItem *zone, QCustomPlot &plot)
+    {
+        if (!m_SelectionZones.isEmpty() && m_SelectionZones.last() != zone) {
+            zone->moveToTop();
+            m_SelectionZones.removeAll(zone);
+            m_SelectionZones.append(zone);
+        }
     }
 
     QPointF posToAxisPos(const QPoint &pos, QCustomPlot &plot) const
@@ -902,15 +926,49 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
     if (isSelectionZoneMode) {
         auto isMultiSelectionClick = event->modifiers().testFlag(MULTI_ZONE_SELECTION_MODIFIER);
         auto selectionZoneItemUnderCursor = impl->selectionZoneAt(event->pos(), plot());
-        if (selectionZoneItemUnderCursor && event->button() == Qt::LeftButton) {
-            if (!isMultiSelectionClick && !impl->m_HasMovedMouse) {
-                parentVisualizationWidget()->selectionZoneManager().select(
-                    {selectionZoneItemUnderCursor});
+        if (selectionZoneItemUnderCursor && event->button() == Qt::LeftButton
+            && !impl->m_HasMovedMouse) {
+
+            auto zonesUnderCursor = impl->selectionZonesAt(event->pos(), plot());
+            if (zonesUnderCursor.count() > 1) {
+                // There are multiple zones under the mouse.
+                // Performs the selection with a selection dialog.
+                VisualizationMultiZoneSelectionDialog dialog{this};
+                dialog.setZones(zonesUnderCursor);
+                dialog.move(mapToGlobal(event->pos() - QPoint(dialog.width() / 2, 20)));
+                dialog.activateWindow();
+                dialog.raise();
+                if (dialog.exec() == QDialog::Accepted) {
+                    auto selection = dialog.selectedZones();
+
+                    if (!isMultiSelectionClick) {
+                        parentVisualizationWidget()->selectionZoneManager().clearSelection();
+                    }
+
+                    for (auto it = selection.cbegin(); it != selection.cend(); ++it) {
+                        auto zone = it.key();
+                        auto isSelected = it.value();
+                        parentVisualizationWidget()->selectionZoneManager().setSelected(zone,
+                                                                                        isSelected);
+
+                        if (isSelected) {
+                            // Puts the zone on top of the stack so it can be moved or resized
+                            impl->moveSelectionZoneOnTop(zone, plot());
+                        }
+                    }
+                }
             }
-            else if (!impl->m_HasMovedMouse) {
-                parentVisualizationWidget()->selectionZoneManager().setSelected(
-                    selectionZoneItemUnderCursor, !selectionZoneItemUnderCursor->selected()
-                                                      || event->button() == Qt::RightButton);
+            else {
+                if (!isMultiSelectionClick) {
+                    parentVisualizationWidget()->selectionZoneManager().select(
+                        {selectionZoneItemUnderCursor});
+                    impl->moveSelectionZoneOnTop(selectionZoneItemUnderCursor, plot());
+                }
+                else {
+                    parentVisualizationWidget()->selectionZoneManager().setSelected(
+                        selectionZoneItemUnderCursor, !selectionZoneItemUnderCursor->selected()
+                                                          || event->button() == Qt::RightButton);
+                }
             }
         }
         else {

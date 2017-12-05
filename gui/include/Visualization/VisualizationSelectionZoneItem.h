@@ -28,6 +28,10 @@ public:
     void setEditionEnabled(bool value);
     bool isEditionEnabled() const;
 
+    /// Moves the item at the top of its QCPLayer. It will then receive the mouse events if multiple
+    /// items are stacked on top of each others.
+    void moveToTop();
+
     Qt::CursorShape curshorShapeForPosition(const QPoint &position) const;
     void setHovered(bool value);
 

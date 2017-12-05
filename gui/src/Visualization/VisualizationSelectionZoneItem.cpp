@@ -253,6 +253,11 @@ bool VisualizationSelectionZoneItem::isEditionEnabled() const
     return impl->m_IsEditionEnabled;
 }
 
+void VisualizationSelectionZoneItem::moveToTop()
+{
+    moveToLayer(layer(), false);
+}
+
 Qt::CursorShape
 VisualizationSelectionZoneItem::curshorShapeForPosition(const QPoint &position) const
 {
@@ -327,6 +332,8 @@ bool VisualizationSelectionZoneItem::alignZonesTemporallyOnRight(
 
 void VisualizationSelectionZoneItem::mousePressEvent(QMouseEvent *event, const QVariant &details)
 {
+    Q_UNUSED(details);
+
     if (isEditionEnabled() && event->button() == Qt::LeftButton) {
         impl->m_CurrentEditionMode = impl->getEditionMode(event->pos(), this);
 
@@ -394,6 +401,8 @@ void VisualizationSelectionZoneItem::mouseMoveEvent(QMouseEvent *event, const QP
 
 void VisualizationSelectionZoneItem::mouseReleaseEvent(QMouseEvent *event, const QPointF &startPos)
 {
+    Q_UNUSED(startPos);
+
     if (isEditionEnabled()) {
         impl->m_CurrentEditionMode = VisualizationSelectionZoneItemPrivate::EditionMode::NoEdition;
     }
