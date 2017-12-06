@@ -22,6 +22,7 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 
+#include <Catalogue/CatalogueExplorer.h>
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceWidget.h>
 #include <Settings/SqpSettingsDialog.h>
@@ -60,7 +61,8 @@ public:
             : m_LastOpenLeftInspectorSize{},
               m_LastOpenRightInspectorSize{},
               m_GeneralSettingsWidget{new SqpSettingsGeneralWidget{mainWindow}},
-              m_SettingsDialog{new SqpSettingsDialog{mainWindow}}
+              m_SettingsDialog{new SqpSettingsDialog{mainWindow}},
+              m_CatalogExplorer{new CatalogueExplorer{mainWindow}}
     {
     }
 
@@ -70,6 +72,8 @@ public:
     SqpSettingsGeneralWidget *m_GeneralSettingsWidget;
     /// Settings dialog. MainWindow has the ownership
     SqpSettingsDialog *m_SettingsDialog;
+    /// Catalogue dialog. MainWindow has the ownership
+    CatalogueExplorer *m_CatalogExplorer;
 };
 
 MainWindow::MainWindow(QWidget *parent)
@@ -189,6 +193,7 @@ MainWindow::MainWindow(QWidget *parent)
     auto timeWidget = new TimeWidget{};
     mainToolBar->addWidget(timeWidget);
 
+    // Interaction modes
     auto actionPointerMode = new QAction{QIcon(":/icones/pointer.png"), "Move", this};
     actionPointerMode->setCheckable(true);
     actionPointerMode->setChecked(sqpApp->plotsInteractionMode()
@@ -234,6 +239,7 @@ MainWindow::MainWindow(QWidget *parent)
     mainToolBar->addAction(actionZonesMode);
     mainToolBar->addSeparator();
 
+    // Cursors
     auto btnCursor = new QToolButton{this};
     btnCursor->setIcon(QIcon(":/icones/cursor.png"));
     btnCursor->setText("Cursor");
@@ -287,6 +293,11 @@ MainWindow::MainWindow(QWidget *parent)
     cursorModeActionGroup->addAction(temporalCursorAction);
     cursorModeActionGroup->addAction(horizontalCursorAction);
     cursorModeActionGroup->addAction(crossCursorAction);
+
+    // Catalog
+    mainToolBar->addSeparator();
+    mainToolBar->addAction(QIcon(":/icones/catalogue.png"), "Catalogues",
+                           [this]() { impl->m_CatalogExplorer->show(); });
 
     // //////// //
     // Settings //

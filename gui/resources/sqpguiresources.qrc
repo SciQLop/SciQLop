@@ -18,5 +18,6 @@
 		<file>icones/drag.png</file>
 		<file>icones/cursor.png</file>
 		<file>icones/pointer.png</file>
+		<file>icones/catalogue.png</file>
     </qresource>
 </RCC>
