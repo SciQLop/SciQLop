@@ -442,8 +442,10 @@ bool VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
 
             auto dragWidgetHovered = getChildDragWidgetAt(container, pos);
 
-            if (canInsert && (isOnTop || isOnBottom || !canMerge)) {
-                if (isOnBottom) {
+            auto acceptMerge = m_AcceptDragWidgetFun(dragWidgetHovered, mimeData);
+
+            if (canInsert && (isOnTop || isOnBottom || !canMerge || !acceptMerge)) {
+                if (posY > (dropIndex + 1) * graphHeight - graphHeight / 2.0) {
                     dropIndex += 1;
                 }
 
@@ -470,13 +472,7 @@ bool VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
                     helper.removePlaceHolder();
                 }
 
-                if (m_AcceptDragWidgetFun(dragWidgetHovered, mimeData)) {
-                    helper.setHightlightedDragWidget(dragWidgetHovered);
-                    return true;
-                }
-                else {
-                    return false;
-                }
+                helper.setHightlightedDragWidget(dragWidgetHovered);
             }
             else {
                 qCWarning(LOG_VisualizationDragDropContainer())
