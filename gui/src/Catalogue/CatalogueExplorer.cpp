@@ -2,7 +2,8 @@
 #include "ui_CatalogueExplorer.h"
 
 CatalogueExplorer::CatalogueExplorer(QWidget *parent)
-        : QDialog(parent), ui(new Ui::CatalogueExplorer)
+        : QDialog(parent, Qt::Dialog | Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint),
+          ui(new Ui::CatalogueExplorer)
 {
     ui->setupUi(this);
 }
