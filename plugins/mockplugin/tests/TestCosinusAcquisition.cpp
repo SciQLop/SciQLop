@@ -135,7 +135,7 @@ void TestCosinusAcquisition::testAcquisition()
     QFETCH(SqpRange, referenceRange);
     CosinusProvider referenceProvider{};
     auto dataSeries = referenceProvider.provideDataSeries(
-        referenceRange, {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 100.}});
+        referenceRange, {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 10.}});
 
     auto end = dataSeries->cend() - 1;
     qInfo() << dataSeries->nbPoints() << dataSeries->cbegin()->x() << end->x();
@@ -156,7 +156,7 @@ void TestCosinusAcquisition::testAcquisition()
     sqpApp->timeController().onTimeToUpdate(initialRange);
     auto provider = std::make_shared<CosinusProvider>();
     auto variable = sqpApp->variableController().createVariable(
-        "MMS", {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 100.}}, provider);
+        "MMS", {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 10.}}, provider);
 
 
     QFETCH(int, operationDelay);
