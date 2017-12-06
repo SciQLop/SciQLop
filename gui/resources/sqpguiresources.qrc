@@ -22,5 +22,7 @@
 		<file>icones/add.png</file>
 		<file>icones/remove.png</file>
 		<file>icones/chart.png</file>
+		<file>icones/allEvents.png</file>
+		<file>icones/trash.png</file>
     </qresource>
 </RCC>

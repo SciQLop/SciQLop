@@ -1,6 +1,7 @@
-#ifndef CATALOGUESIDEBARWIDGET_H
-#define CATALOGUESIDEBARWIDGET_H
+#ifndef SCIQLOP_CATALOGUESIDEBARWIDGET_H
+#define SCIQLOP_CATALOGUESIDEBARWIDGET_H
 
+#include <Common/spimpl.h>
 #include <QWidget>
 
 namespace Ui {
@@ -12,10 +13,13 @@ class CatalogueSideBarWidget : public QWidget {
 
 public:
     explicit CatalogueSideBarWidget(QWidget *parent = 0);
-    ~CatalogueSideBarWidget();
+    virtual ~CatalogueSideBarWidget();
 
 private:
     Ui::CatalogueSideBarWidget *ui;
+
+    class CatalogueSideBarWidgetPrivate;
+    spimpl::unique_impl_ptr<CatalogueSideBarWidgetPrivate> impl;
 };
 
-#endif // CATALOGUESIDEBARWIDGET_H
+#endif // SCIQLOP_CATALOGUESIDEBARWIDGET_H

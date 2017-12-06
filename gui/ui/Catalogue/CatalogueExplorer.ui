@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>775</width>
-    <height>512</height>
+    <width>755</width>
+    <height>481</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,13 +19,40 @@
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
      </property>
-     <widget class="CatalogueSideBarWidget" name="catalogues" native="true"/>
+     <widget class="CatalogueSideBarWidget" name="catalogues" native="true">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+        <horstretch>1</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+     </widget>
      <widget class="QSplitter" name="verticalSplitter">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+        <horstretch>3</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
       <property name="orientation">
        <enum>Qt::Vertical</enum>
       </property>
-      <widget class="CatalogueEventsWidget" name="events" native="true"/>
-      <widget class="CatalogueInspectorWidget" name="inspector" native="true"/>
+      <widget class="CatalogueEventsWidget" name="events" native="true">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>5</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
+      <widget class="CatalogueInspectorWidget" name="inspector" native="true">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>2</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
      </widget>
     </widget>
    </item>

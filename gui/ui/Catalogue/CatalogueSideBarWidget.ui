@@ -14,6 +14,18 @@
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
@@ -22,7 +34,7 @@
         <string>+</string>
        </property>
        <property name="icon">
-        <iconset resource="../../resources/sqpguiresources.qrc">
+        <iconset>
          <normaloff>:/icones/add.png</normaloff>:/icones/add.png</iconset>
        </property>
        <property name="autoRaise">
@@ -36,7 +48,7 @@
         <string> - </string>
        </property>
        <property name="icon">
-        <iconset resource="../../resources/sqpguiresources.qrc">
+        <iconset>
          <normaloff>:/icones/remove.png</normaloff>:/icones/remove.png</iconset>
        </property>
        <property name="autoRaise">
@@ -73,9 +85,6 @@
    </item>
   </layout>
  </widget>
- <resources>
-  <include location="../../resources/sqpguiresources.qrc"/>
-  <include location="../../resources/sqpguiresources.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>
