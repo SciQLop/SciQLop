@@ -19,5 +19,8 @@
 		<file>icones/cursor.png</file>
 		<file>icones/pointer.png</file>
 		<file>icones/catalogue.png</file>
+		<file>icones/add.png</file>
+		<file>icones/remove.png</file>
+		<file>icones/chart.png</file>
     </qresource>
 </RCC>

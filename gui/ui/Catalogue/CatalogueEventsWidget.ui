@@ -17,16 +17,30 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <widget class="QToolButton" name="toolButton">
+      <widget class="QToolButton" name="btnAdd">
        <property name="text">
         <string>+</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../resources/sqpguiresources.qrc">
+         <normaloff>:/icones/add.png</normaloff>:/icones/add.png</iconset>
+       </property>
+       <property name="autoRaise">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="toolButton_2">
+      <widget class="QToolButton" name="btnRemove">
        <property name="text">
         <string> - </string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../resources/sqpguiresources.qrc">
+         <normaloff>:/icones/remove.png</normaloff>:/icones/remove.png</iconset>
+       </property>
+       <property name="autoRaise">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -38,16 +52,36 @@
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="toolButton_3">
+      <widget class="QToolButton" name="btnTime">
        <property name="text">
         <string>T</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../resources/sqpguiresources.qrc">
+         <normaloff>:/icones/time.png</normaloff>:/icones/time.png</iconset>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="autoRaise">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="toolButton_4">
+      <widget class="QToolButton" name="btnChart">
        <property name="text">
         <string>G</string>
+       </property>
+       <property name="icon">
+        <iconset resource="../../resources/sqpguiresources.qrc">
+         <normaloff>:/icones/chart.png</normaloff>:/icones/chart.png</iconset>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+       <property name="autoRaise">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
@@ -72,6 +106,9 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../resources/sqpguiresources.qrc"/>
+  <include location="../../resources/sqpguiresources.qrc"/>
+ </resources>
  <connections/>
 </ui>
