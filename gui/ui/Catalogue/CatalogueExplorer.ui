@@ -6,14 +6,51 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>403</width>
-    <height>300</height>
+    <width>775</width>
+    <height>512</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>Catalogue Explorer</string>
   </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QSplitter" name="horizontalSplitter">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <widget class="CatalogueSideBarWidget" name="catalogues" native="true"/>
+     <widget class="QSplitter" name="verticalSplitter">
+      <property name="orientation">
+       <enum>Qt::Vertical</enum>
+      </property>
+      <widget class="CatalogueEventsWidget" name="events" native="true"/>
+      <widget class="CatalogueInspectorWidget" name="inspector" native="true"/>
+     </widget>
+    </widget>
+   </item>
+  </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CatalogueSideBarWidget</class>
+   <extends>QWidget</extends>
+   <header>Catalogue/CatalogueSideBarWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CatalogueEventsWidget</class>
+   <extends>QWidget</extends>
+   <header>Catalogue/CatalogueEventsWidget.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>CatalogueInspectorWidget</class>
+   <extends>QWidget</extends>
+   <header>Catalogue/CatalogueInspectorWidget.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

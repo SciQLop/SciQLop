@@ -20,7 +20,10 @@ gui_moc_headers = [
   'include/Visualization/ColorScaleEditor.h',
   'include/Actions/SelectionZoneAction.h',
   'include/Visualization/VisualizationMultiZoneSelectionDialog.h',
-  'include/Catalogue/CatalogueExplorer.h'
+  'include/Catalogue/CatalogueExplorer.h',
+  'include/Catalogue/CatalogueEventsWidget.h',
+  'include/Catalogue/CatalogueSideBarWidget.h',
+  'include/Catalogue/CatalogueInspectorWidget.h'
 ]
 
 gui_ui_files = [
@@ -38,7 +41,10 @@ gui_ui_files = [
   'ui/Visualization/VisualizationZoneWidget.ui',
   'ui/Visualization/ColorScaleEditor.ui',
   'ui/Visualization/VisualizationMultiZoneSelectionDialog.ui',
-  'ui/Catalogue/CatalogueExplorer.ui'
+  'ui/Catalogue/CatalogueExplorer.ui',
+  'ui/Catalogue/CatalogueEventsWidget.ui',
+  'ui/Catalogue/CatalogueSideBarWidget.ui',
+  'ui/Catalogue/CatalogueInspectorWidget.ui'
 ]
 
 gui_qresources = ['resources/sqpguiresources.qrc']
@@ -94,7 +100,10 @@ gui_sources = [
   'src/Actions/ActionsGuiController.cpp',
   'src/Visualization/VisualizationActionManager.cpp',
   'src/Visualization/VisualizationMultiZoneSelectionDialog.cpp',
-  'src/Catalogue/CatalogueExplorer.cpp'
+  'src/Catalogue/CatalogueExplorer.cpp',
+  'src/Catalogue/CatalogueEventsWidget.cpp',
+  'src/Catalogue/CatalogueSideBarWidget.cpp',
+  'src/Catalogue/CatalogueInspectorWidget.cpp'
 ]
 
 gui_inc = include_directories(['include'])
