@@ -1,5 +1,5 @@
-#ifndef CATALOGUEINSPECTORWIDGET_H
-#define CATALOGUEINSPECTORWIDGET_H
+#ifndef SCIQLOP_CATALOGUEINSPECTORWIDGET_H
+#define SCIQLOP_CATALOGUEINSPECTORWIDGET_H
 
 #include <QWidget>
 
@@ -12,10 +12,18 @@ class CatalogueInspectorWidget : public QWidget {
 
 public:
     explicit CatalogueInspectorWidget(QWidget *parent = 0);
-    ~CatalogueInspectorWidget();
+    virtual ~CatalogueInspectorWidget();
+
+    /// Enum matching the pages inside the stacked widget
+    enum class Page { Empty, CatalogueProperties, EventProperties };
+
+    Page currentPage() const;
+
+public slots:
+    void showPage(Page page);
 
 private:
     Ui::CatalogueInspectorWidget *ui;
 };
 
-#endif // CATALOGUEINSPECTORWIDGET_H
+#endif // SCIQLOP_CATALOGUEINSPECTORWIDGET_H
