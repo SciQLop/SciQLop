@@ -27,6 +27,7 @@ endif
 # - "default": default AMDA server
 # - "amdatest": AMDA test server
 # - "hybrid": use both the default server and the test server (the server used is relative to each product, according to its "server" property in the JSON file)
+# - "localhost": use local AMDA server
 # Any other value will lead to the use of the default server
 add_project_arguments('-DSCIQLOP_AMDA_SERVER="hybrid"', language : 'cpp')
 

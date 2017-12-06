@@ -12,6 +12,13 @@ const auto AMDA_DEFAULT_SERVER_URL = QStringLiteral("amda.irap.omp.eu");
 /// URL of the AMDA test server
 const auto AMDA_TEST_SERVER_URL = QStringLiteral("amdatest.irap.omp.eu");
 
+/// Port used for local server
+const auto AMDA_LOCAL_SERVER_PORT = 6543;
+
+/// URL of the local server
+const auto AMDA_LOCAL_SERVER_URL
+    = QString{"localhost:%1"}.arg(QString::number(AMDA_LOCAL_SERVER_PORT));
+
 /// Default AMDA server
 struct AmdaDefaultServer : public AmdaServer {
 public:
@@ -48,6 +55,17 @@ public:
     }
 };
 
+/// Local AMDA server: use local python server to simulate AMDA requests
+struct AmdaLocalServer : public AmdaServer {
+public:
+    QString name() const override { return AMDA_LOCAL_SERVER_URL; }
+    QString url(const QVariantHash &properties) const override
+    {
+        Q_UNUSED(properties);
+        return AMDA_LOCAL_SERVER_URL;
+    }
+};
+
 /// @return an AMDA server instance created from the name of the server passed in parameter. If the
 /// name does not match any known server, a default server instance is created
 std::unique_ptr<AmdaServer> createInstance(const QString &server)
@@ -57,6 +75,9 @@ std::unique_ptr<AmdaServer> createInstance(const QString &server)
     }
     else if (server == QString{"hybrid"}) {
         return std::make_unique<AmdaHybridServer>();
+    }
+    else if (server == QString{"localhost"}) {
+        return std::make_unique<AmdaLocalServer>();
     }
     else {
         if (server != QString{"default"}) {
