@@ -432,7 +432,7 @@ bool VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
 
             auto posY = pos.y();
             auto dropIndex = floor(posY / graphHeight);
-            auto zoneSize = qMin(graphHeight / 4.0, 75.0);
+            auto zoneSize = graphHeight / 4.0;
 
 
             auto isOnTop = posY < dropIndex * graphHeight + zoneSize;
@@ -481,7 +481,7 @@ bool VisualizationDragDropContainer::VisualizationDragDropContainerPrivate::find
             }
         }
         else {
-            qCWarning(LOG_VisualizationDragDropContainer())
+            qCInfo(LOG_VisualizationDragDropContainer())
                 << tr("VisualizationDragDropContainer::findPlaceHolderPosition, no widget "
                       "found in the "
                       "container");
