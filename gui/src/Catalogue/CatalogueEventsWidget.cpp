@@ -51,22 +51,23 @@ void CatalogueEventsWidget::populateWithCatalogue(const QString &catalogue)
 
     // TODO
     impl->addEventItem(
-        {catalogue + " - Event 1", "12/12/2012 12:12", "12/12/2042 12:42", "cloud", "mfi/b_gse"},
+        {catalogue + " - Event 1", "12/12/2012 12:12", "12/12/2042 12:52", "cloud", "mfi/b_gse42"},
         ui->tableWidget);
     impl->addEventItem(
-        {catalogue + " - Event 2", "12/12/2012 12:12", "12/12/2042 12:42", "cloud", "mfi/b_gse"},
+        {catalogue + " - Event 2", "12/12/2012 12:10", "12/12/2042 12:42", "Acloud", "mfi/b_gse1"},
         ui->tableWidget);
     impl->addEventItem(
-        {catalogue + " - Event 3", "12/12/2012 12:12", "12/12/2042 12:42", "cloud", "mfi/b_gse"},
+        {catalogue + " - Event 3", "12/12/2012 12:22", "12/12/2042 12:12", "Gcloud", "mfi/b_gse2"},
         ui->tableWidget);
     impl->addEventItem(
-        {catalogue + " - Event 4", "12/12/2012 12:12", "12/12/2042 12:42", "cloud", "mfi/b_gse"},
+        {catalogue + " - Event 4", "12/12/2012 12:00", "12/12/2042 12:62", "Bcloud", "mfi/b_gse3"},
         ui->tableWidget);
 }
 
 void CatalogueEventsWidget::CatalogueEventsWidgetPrivate::addEventItem(const QStringList &data,
                                                                        QTableWidget *tableWidget)
 {
+    tableWidget->setSortingEnabled(false);
     auto row = tableWidget->rowCount();
     tableWidget->setRowCount(row + 1);
 
@@ -75,4 +76,5 @@ void CatalogueEventsWidget::CatalogueEventsWidgetPrivate::addEventItem(const QSt
         item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
         tableWidget->setItem(row, i, item);
     }
+    tableWidget->setSortingEnabled(true);
 }
