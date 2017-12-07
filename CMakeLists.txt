@@ -6,6 +6,12 @@ cmake_policy(VERSION 3.6)
 
 PROJECT(SCIQLOP)
 
+
+#
+# build the CatalogueAPI dependencu
+#
+INCLUDE("extern/CatalogueAPI.cmake")
+
 #
 # build the project
 #

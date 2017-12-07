@@ -3,3 +3,4 @@ CMakeLists.txt.user
 /.project
 core/src/Version.cpp
 core/include/Version.h
+3rdparty/
