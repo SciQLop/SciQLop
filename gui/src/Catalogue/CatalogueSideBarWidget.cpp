@@ -21,7 +21,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     ui->setupUi(this);
     impl->configureTreeWidget(ui->treeWidget);
 
-    connect(ui->treeWidget, &QTreeWidget::itemClicked, [this](auto item) {
+    auto emitSelection = [this](auto item) {
         switch (item->type()) {
             case CATALOGUE_ITEM_TYPE:
                 emit this->catalogueSelected(item->text(0));
@@ -36,7 +36,10 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
             default:
                 break;
         }
-    });
+    };
+
+    connect(ui->treeWidget, &QTreeWidget::itemClicked, emitSelection);
+    connect(ui->treeWidget, &QTreeWidget::currentItemChanged, emitSelection);
 }
 
 CatalogueSideBarWidget::~CatalogueSideBarWidget()

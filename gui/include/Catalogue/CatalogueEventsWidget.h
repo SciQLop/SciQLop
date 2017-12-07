@@ -12,7 +12,7 @@ class CatalogueEventsWidget : public QWidget {
     Q_OBJECT
 
 signals:
-    void eventSelected();
+    void eventSelected(const QString &event);
 
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);

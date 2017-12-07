@@ -19,6 +19,9 @@ public:
 
     Page currentPage() const;
 
+    void setEvent(const QString &event);
+    void setCatalogue(const QString &catalogue);
+
 public slots:
     void showPage(Page page);
 

@@ -22,3 +22,15 @@ CatalogueInspectorWidget::Page CatalogueInspectorWidget::currentPage() const
 {
     return static_cast<Page>(ui->stackedWidget->currentIndex());
 }
+
+void CatalogueInspectorWidget::setEvent(const QString &event)
+{
+    showPage(Page::EventProperties);
+    ui->leEventName->setText(event);
+}
+
+void CatalogueInspectorWidget::setCatalogue(const QString &catalogue)
+{
+    showPage(Page::CatalogueProperties);
+    ui->leCatalogueName->setText(catalogue);
+}

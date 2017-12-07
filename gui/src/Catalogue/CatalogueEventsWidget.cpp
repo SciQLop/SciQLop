@@ -1,6 +1,8 @@
 #include "Catalogue/CatalogueEventsWidget.h"
 #include "ui_CatalogueEventsWidget.h"
 
+#include <QtDebug>
+
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     void addEventItem(const QStringList &data, QTableWidget *tableWidget);
 
@@ -28,8 +30,25 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         }
     });
 
-    connect(ui->tableWidget, &QTableWidget::cellClicked,
-            [this](auto row, auto column) { emit this->eventSelected(); });
+    connect(ui->tableWidget, &QTableWidget::cellClicked, [this](auto row, auto column) {
+        auto event = ui->tableWidget->item(row, 0)->text();
+        emit this->eventSelected(event);
+    });
+
+    connect(ui->tableWidget, &QTableWidget::currentItemChanged,
+            [this](auto current, auto previous) {
+                if (current && current->row() >= 0) {
+                    auto event = ui->tableWidget->item(current->row(), 0)->text();
+                    emit this->eventSelected(event);
+                }
+            });
+
+    connect(ui->tableWidget, &QTableWidget::itemSelectionChanged, [this]() {
+        auto selection = ui->tableWidget->selectedRanges();
+        auto isSingleSelection = selection.count() == 1 && selection.first().rowCount() == 1;
+        ui->btnChart->setEnabled(isSingleSelection);
+        ui->btnTime->setEnabled(isSingleSelection);
+    });
 
     Q_ASSERT(impl->columnNames().count() == (int)CatalogueEventsWidgetPrivate::Column::NbColumn);
     ui->tableWidget->setColumnCount((int)CatalogueEventsWidgetPrivate::Column::NbColumn);
