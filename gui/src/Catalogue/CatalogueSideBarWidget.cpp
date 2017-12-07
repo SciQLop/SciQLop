@@ -1,10 +1,10 @@
 #include "Catalogue/CatalogueSideBarWidget.h"
 #include "ui_CatalogueSideBarWidget.h"
 
-auto ALL_EVENT_ITEM_TYPE = QTreeWidgetItem::UserType;
-auto TRASH_ITEM_TYPE = QTreeWidgetItem::UserType + 1;
-auto CATALOGUE_ITEM_TYPE = QTreeWidgetItem::UserType + 2;
-auto DATABASE_ITEM_TYPE = QTreeWidgetItem::UserType + 3;
+constexpr auto ALL_EVENT_ITEM_TYPE = QTreeWidgetItem::UserType;
+constexpr auto TRASH_ITEM_TYPE = QTreeWidgetItem::UserType + 1;
+constexpr auto CATALOGUE_ITEM_TYPE = QTreeWidgetItem::UserType + 2;
+constexpr auto DATABASE_ITEM_TYPE = QTreeWidgetItem::UserType + 3;
 
 
 struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
@@ -20,6 +20,23 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
 {
     ui->setupUi(this);
     impl->configureTreeWidget(ui->treeWidget);
+
+    connect(ui->treeWidget, &QTreeWidget::itemClicked, [this](auto item) {
+        switch (item->type()) {
+            case CATALOGUE_ITEM_TYPE:
+                emit this->catalogueSelected(item->text(0));
+                break;
+            case ALL_EVENT_ITEM_TYPE:
+                emit this->allEventsSelected();
+                break;
+            case TRASH_ITEM_TYPE:
+                emit this->trashSelected();
+                break;
+            case DATABASE_ITEM_TYPE:
+            default:
+                break;
+        }
+    });
 }
 
 CatalogueSideBarWidget::~CatalogueSideBarWidget()

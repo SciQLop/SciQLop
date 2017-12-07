@@ -11,9 +11,15 @@ class CatalogueEventsWidget;
 class CatalogueEventsWidget : public QWidget {
     Q_OBJECT
 
+signals:
+    void eventSelected();
+
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
     virtual ~CatalogueEventsWidget();
+
+public slots:
+    void populateWithCatalogue(const QString &catalogue);
 
 private:
     Ui::CatalogueEventsWidget *ui;
