@@ -45,9 +45,10 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
 
     connect(ui->tableWidget, &QTableWidget::itemSelectionChanged, [this]() {
         auto selection = ui->tableWidget->selectedRanges();
-        auto isSingleSelection = selection.count() == 1 && selection.first().rowCount() == 1;
-        ui->btnChart->setEnabled(isSingleSelection);
-        ui->btnTime->setEnabled(isSingleSelection);
+        auto isNotMultiSelection
+            = selection.isEmpty() || (selection.count() == 1 && selection.first().rowCount() == 1);
+        ui->btnChart->setEnabled(isNotMultiSelection);
+        ui->btnTime->setEnabled(isNotMultiSelection);
     });
 
     Q_ASSERT(impl->columnNames().count() == (int)CatalogueEventsWidgetPrivate::Column::NbColumn);

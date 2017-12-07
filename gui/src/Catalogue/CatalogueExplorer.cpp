@@ -8,12 +8,12 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
     ui->setupUi(this);
 
     connect(ui->catalogues, &CatalogueSideBarWidget::catalogueSelected, [this](auto name) {
-        ui->inspector->setEvent(name);
+        ui->inspector->setCatalogue(name);
         ui->events->populateWithCatalogue(name);
     });
 
     connect(ui->events, &CatalogueEventsWidget::eventSelected,
-            [this](auto name) { ui->inspector->setCatalogue(name); });
+            [this](auto name) { ui->inspector->setEvent(name); });
 }
 
 CatalogueExplorer::~CatalogueExplorer()
