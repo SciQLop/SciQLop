@@ -16,7 +16,7 @@
 
 #include <Visualization/operations/FindVariableOperation.h>
 
-#include <DragAndDrop/DragDropHelper.h>
+#include <DragAndDrop/DragDropGuiController.h>
 #include <QUuid>
 #include <SqpApplication.h>
 #include <cmath>
@@ -86,7 +86,7 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
 
     ui->zoneNameLabel->setText(name);
 
-    ui->dragDropContainer->setPlaceHolderType(DragDropHelper::PlaceHolderType::Graph);
+    ui->dragDropContainer->setPlaceHolderType(DragDropGuiController::PlaceHolderType::Graph);
     ui->dragDropContainer->setMimeType(MIME_TYPE_GRAPH,
                                        VisualizationDragDropContainer::DropBehavior::Inserted);
     ui->dragDropContainer->setMimeType(
@@ -98,8 +98,8 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
     ui->dragDropContainer->setMimeType(MIME_TYPE_SELECTION_ZONE,
                                        VisualizationDragDropContainer::DropBehavior::Forbidden);
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
-        return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
-                                                                      ui->dragDropContainer);
+        return sqpApp->dragDropGuiController().checkMimeDataForVisualization(mimeData,
+                                                                             ui->dragDropContainer);
     });
 
     auto acceptDragWidgetFun = [](auto dragWidget, auto mimeData) {
@@ -501,7 +501,7 @@ void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragW
 void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
     int index, VisualizationZoneWidget *zoneWidget)
 {
-    auto &helper = sqpApp->dragDropHelper();
+    auto &helper = sqpApp->dragDropGuiController();
 
     auto graphWidget = qobject_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
     if (!graphWidget) {

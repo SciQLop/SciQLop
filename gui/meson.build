@@ -17,7 +17,9 @@ gui_moc_headers = [
   'include/Visualization/VisualizationZoneWidget.h',
   'include/Visualization/VisualizationDragDropContainer.h',
   'include/Visualization/VisualizationDragWidget.h',
-  'include/Visualization/ColorScaleEditor.h'
+  'include/Visualization/ColorScaleEditor.h',
+  'include/Actions/SelectionZoneAction.h',
+  'include/Visualization/VisualizationMultiZoneSelectionDialog.h'
 ]
 
 gui_ui_files = [
@@ -33,7 +35,8 @@ gui_ui_files = [
   'ui/Visualization/VisualizationTabWidget.ui',
   'ui/Visualization/VisualizationWidget.ui',
   'ui/Visualization/VisualizationZoneWidget.ui',
-  'ui/Visualization/ColorScaleEditor.ui'
+  'ui/Visualization/ColorScaleEditor.ui',
+  'ui/Visualization/VisualizationMultiZoneSelectionDialog.ui'
 ]
 
 gui_qresources = ['resources/sqpguiresources.qrc']
@@ -44,7 +47,7 @@ gui_moc_files = qt5.preprocess(moc_headers : gui_moc_headers,
 
 gui_sources = [
   'src/SqpApplication.cpp',
-  'src/DragAndDrop/DragDropHelper.cpp',
+  'src/DragAndDrop/DragDropGuiController.cpp',
   'src/DragAndDrop/DragDropScroller.cpp',
   'src/DragAndDrop/DragDropTabSwitcher.cpp',
   'src/Common/ColorUtils.cpp',
@@ -84,7 +87,11 @@ gui_sources = [
   'src/Visualization/SqpColorScale.cpp',
   'src/Visualization/QCPColorMapIterator.cpp',
   'src/Visualization/VisualizationSelectionZoneItem.cpp',
-  'src/Visualization/VisualizationSelectionZoneManager.cpp'
+  'src/Visualization/VisualizationSelectionZoneManager.cpp',
+  'src/Actions/SelectionZoneAction.cpp',
+  'src/Actions/ActionsGuiController.cpp',
+  'src/Visualization/VisualizationActionManager.cpp',
+  'src/Visualization/VisualizationMultiZoneSelectionDialog.cpp'
 ]
 
 gui_inc = include_directories(['include'])

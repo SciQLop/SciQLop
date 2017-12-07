@@ -1,4 +1,7 @@
 #include "Visualization/VisualizationSelectionZoneItem.h"
+#include "Visualization/VisualizationGraphWidget.h"
+#include "Visualization/VisualizationSelectionZoneManager.h"
+#include "Visualization/VisualizationWidget.h"
 
 const QString &DEFAULT_COLOR = QStringLiteral("#E79D41");
 
@@ -54,6 +57,53 @@ struct VisualizationSelectionZoneItem::VisualizationSelectionZoneItemPrivate {
         auto axis = m_Plot->axisRect()->axis(QCPAxis::atBottom);
         return axis->pixelToCoord(pixels) - axis->pixelToCoord(0);
     }
+
+    bool alignZones(VisualizationSelectionZoneItem *referenceZone,
+                    const QVector<VisualizationSelectionZoneItem *> &zonesToAlign, bool alignOnLeft,
+                    bool allowResize, bool vertically)
+    {
+        auto result = false;
+
+        auto referenceTime
+            = alignOnLeft ? referenceZone->range().m_TStart : referenceZone->range().m_TEnd;
+
+        auto referenceBottomAxis = m_Plot->axisRect()->axis(QCPAxis::atBottom);
+        auto referenceVerticalPosition = referenceBottomAxis->coordToPixel(referenceTime);
+
+        for (auto otherZone : zonesToAlign) {
+
+            auto otherZoneRange = otherZone->range();
+            auto newZoneStart = otherZoneRange.m_TStart;
+            auto newZoneEnd = otherZoneRange.m_TEnd;
+
+            auto alignedTime = referenceTime;
+            if (vertically) {
+                auto otherZoneAxis = otherZone->parentPlot()->axisRect()->axis(QCPAxis::atBottom);
+                alignedTime = otherZoneAxis->pixelToCoord(referenceVerticalPosition);
+            }
+
+            if (alignOnLeft) {
+                newZoneStart = alignedTime;
+                if (!allowResize) {
+                    newZoneEnd = alignedTime + (otherZoneRange.m_TEnd - otherZoneRange.m_TStart);
+                }
+            }
+            else { // align on right
+                newZoneEnd = alignedTime;
+                if (!allowResize) {
+                    newZoneStart = alignedTime - (otherZoneRange.m_TEnd - otherZoneRange.m_TStart);
+                }
+            }
+
+            if (newZoneStart < newZoneEnd) {
+                result = true;
+                otherZone->setRange(newZoneStart, newZoneEnd);
+                otherZone->parentPlot()->replot();
+            }
+        }
+
+        return result;
+    }
 };
 
 VisualizationSelectionZoneItem::VisualizationSelectionZoneItem(QCustomPlot *plot)
@@ -94,8 +144,16 @@ VisualizationSelectionZoneItem::VisualizationSelectionZoneItem(QCustomPlot *plot
 
 VisualizationSelectionZoneItem::~VisualizationSelectionZoneItem()
 {
-    impl->m_Plot->removeItem(impl->m_RightLine);
-    impl->m_Plot->removeItem(impl->m_LeftLine);
+}
+
+VisualizationGraphWidget *VisualizationSelectionZoneItem::parentGraphWidget() const noexcept
+{
+    auto parent = impl->m_Plot->parentWidget();
+    while (parent != nullptr && !qobject_cast<VisualizationGraphWidget *>(parent)) {
+        parent = parent->parentWidget();
+    }
+
+    return qobject_cast<VisualizationGraphWidget *>(parent);
 }
 
 void VisualizationSelectionZoneItem::setName(const QString &name)
@@ -193,6 +251,11 @@ bool VisualizationSelectionZoneItem::isEditionEnabled() const
     return impl->m_IsEditionEnabled;
 }
 
+void VisualizationSelectionZoneItem::moveToTop()
+{
+    moveToLayer(layer(), false);
+}
+
 Qt::CursorShape
 VisualizationSelectionZoneItem::curshorShapeForPosition(const QPoint &position) const
 {
@@ -241,8 +304,34 @@ void VisualizationSelectionZoneItem::setAssociatedEditedZones(
     impl->m_AssociatedEditedZones.removeAll(this);
 }
 
+bool VisualizationSelectionZoneItem::alignZonesVerticallyOnLeft(
+    const QVector<VisualizationSelectionZoneItem *> &zonesToAlign, bool allowResize)
+{
+    return impl->alignZones(this, zonesToAlign, true, allowResize, true);
+}
+
+bool VisualizationSelectionZoneItem::alignZonesVerticallyOnRight(
+    const QVector<VisualizationSelectionZoneItem *> &zonesToAlign, bool allowResize)
+{
+    return impl->alignZones(this, zonesToAlign, false, allowResize, true);
+}
+
+bool VisualizationSelectionZoneItem::alignZonesTemporallyOnLeft(
+    const QVector<VisualizationSelectionZoneItem *> &zonesToAlign, bool allowResize)
+{
+    return impl->alignZones(this, zonesToAlign, true, allowResize, false);
+}
+
+bool VisualizationSelectionZoneItem::alignZonesTemporallyOnRight(
+    const QVector<VisualizationSelectionZoneItem *> &zonesToAlign, bool allowResize)
+{
+    return impl->alignZones(this, zonesToAlign, false, allowResize, false);
+}
+
 void VisualizationSelectionZoneItem::mousePressEvent(QMouseEvent *event, const QVariant &details)
 {
+    Q_UNUSED(details);
+
     if (isEditionEnabled() && event->button() == Qt::LeftButton) {
         impl->m_CurrentEditionMode = impl->getEditionMode(event->pos(), this);
 
@@ -262,6 +351,12 @@ void VisualizationSelectionZoneItem::mousePressEvent(QMouseEvent *event, const Q
 void VisualizationSelectionZoneItem::mouseMoveEvent(QMouseEvent *event, const QPointF &startPos)
 {
     if (isEditionEnabled()) {
+        if (!selected()) {
+            // Force the item to be selected during the edition
+            parentGraphWidget()->parentVisualizationWidget()->selectionZoneManager().setSelected(
+                this, true);
+        }
+
         auto axis = impl->m_Plot->axisRect()->axis(QCPAxis::atBottom);
         auto pixelDiff = event->pos().x() - startPos.x();
         auto diff = impl->pixelSizeToAxisXSize(pixelDiff);
@@ -304,6 +399,8 @@ void VisualizationSelectionZoneItem::mouseMoveEvent(QMouseEvent *event, const QP
 
 void VisualizationSelectionZoneItem::mouseReleaseEvent(QMouseEvent *event, const QPointF &startPos)
 {
+    Q_UNUSED(startPos);
+
     if (isEditionEnabled()) {
         impl->m_CurrentEditionMode = VisualizationSelectionZoneItemPrivate::EditionMode::NoEdition;
     }

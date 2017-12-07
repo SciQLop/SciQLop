@@ -9,7 +9,7 @@
 
 #include <functional>
 
-#include <DragAndDrop/DragDropHelper.h>
+#include <DragAndDrop/DragDropGuiController.h>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationDragDropContainer)
 
@@ -41,7 +41,7 @@ public:
 
     void setAcceptDragWidgetFunction(AcceptDragWidgetFunction fun);
 
-    void setPlaceHolderType(DragDropHelper::PlaceHolderType type,
+    void setPlaceHolderType(DragDropGuiController::PlaceHolderType type,
                             const QString &placeHolderText = QString());
 
 protected:

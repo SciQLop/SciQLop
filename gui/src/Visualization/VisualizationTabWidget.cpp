@@ -11,7 +11,7 @@
 
 #include "Common/MimeTypesDef.h"
 
-#include "DragAndDrop/DragDropHelper.h"
+#include "DragAndDrop/DragDropGuiController.h"
 #include "SqpApplication.h"
 
 Q_LOGGING_CATEGORY(LOG_VisualizationTabWidget, "VisualizationTabWidget")
@@ -78,7 +78,7 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
     impl->m_MacScrollBarStyle->selfInstallOn(ui->scrollArea, true);
 #endif
 
-    ui->dragDropContainer->setPlaceHolderType(DragDropHelper::PlaceHolderType::Zone, "Zone");
+    ui->dragDropContainer->setPlaceHolderType(DragDropGuiController::PlaceHolderType::Zone, "Zone");
     ui->dragDropContainer->layout()->setContentsMargins(0, 0, 0, 12);
     ui->dragDropContainer->layout()->setSpacing(0);
     ui->dragDropContainer->setMimeType(MIME_TYPE_GRAPH,
@@ -89,14 +89,14 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
                                        VisualizationDragDropContainer::DropBehavior::Inserted);
 
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
-        return sqpApp->dragDropHelper().checkMimeDataForVisualization(mimeData,
-                                                                      ui->dragDropContainer);
+        return sqpApp->dragDropGuiController().checkMimeDataForVisualization(mimeData,
+                                                                             ui->dragDropContainer);
     });
 
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredInContainer, this,
             &VisualizationTabWidget::dropMimeData);
 
-    sqpApp->dragDropHelper().addDragDropScrollArea(ui->scrollArea);
+    sqpApp->dragDropGuiController().addDragDropScrollArea(ui->scrollArea);
 
     // Widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
@@ -104,7 +104,7 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
 
 VisualizationTabWidget::~VisualizationTabWidget()
 {
-    sqpApp->dragDropHelper().removeDragDropScrollArea(ui->scrollArea);
+    sqpApp->dragDropGuiController().removeDragDropScrollArea(ui->scrollArea);
     delete ui;
 }
 
@@ -213,7 +213,7 @@ void VisualizationTabWidget::dropMimeData(int index, const QMimeData *mimeData)
 void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
     int index, VisualizationTabWidget *tabWidget)
 {
-    auto &helper = sqpApp->dragDropHelper();
+    auto &helper = sqpApp->dragDropGuiController();
 
     auto graphWidget = qobject_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
     if (!graphWidget) {
@@ -286,7 +286,7 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
 void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropZone(
     int index, VisualizationTabWidget *tabWidget)
 {
-    auto &helper = sqpApp->dragDropHelper();
+    auto &helper = sqpApp->dragDropGuiController();
 
     auto zoneWidget = qobject_cast<VisualizationZoneWidget *>(helper.getCurrentDragWidget());
     if (!zoneWidget) {

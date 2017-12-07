@@ -1,9 +1,10 @@
 #include "SqpApplication.h"
 
+#include <Actions/ActionsGuiController.h>
 #include <Catalogue/CatalogueController.h>
 #include <Data/IDataProvider.h>
 #include <DataSource/DataSourceController.h>
-#include <DragAndDrop/DragDropHelper.h>
+#include <DragAndDrop/DragDropGuiController.h>
 #include <Network/NetworkController.h>
 #include <QThread>
 #include <Time/TimeController.h>
@@ -22,8 +23,9 @@ public:
               m_TimeController{std::make_unique<TimeController>()},
               m_NetworkController{std::make_unique<NetworkController>()},
               m_VisualizationController{std::make_unique<VisualizationController>()},
-              m_DragDropHelper{std::make_unique<DragDropHelper>()},
+              m_DragDropGuiController{std::make_unique<DragDropGuiController>()},
               m_CatalogueController{std::make_unique<CatalogueController>()},
+              m_ActionsGuiController{std::make_unique<ActionsGuiController>()},
               m_PlotInterractionMode(SqpApplication::PlotsInteractionMode::None),
               m_PlotCursorMode(SqpApplication::PlotsCursorMode::NoCursor)
     {
@@ -94,13 +96,15 @@ public:
     std::unique_ptr<NetworkController> m_NetworkController;
     std::unique_ptr<VisualizationController> m_VisualizationController;
     std::unique_ptr<CatalogueController> m_CatalogueController;
+
     QThread m_DataSourceControllerThread;
     QThread m_NetworkControllerThread;
     QThread m_VariableControllerThread;
     QThread m_VisualizationControllerThread;
     QThread m_CatalogueControllerThread;
 
-    std::unique_ptr<DragDropHelper> m_DragDropHelper;
+    std::unique_ptr<DragDropGuiController> m_DragDropGuiController;
+    std::unique_ptr<ActionsGuiController> m_ActionsGuiController;
 
     SqpApplication::PlotsInteractionMode m_PlotInterractionMode;
     SqpApplication::PlotsCursorMode m_PlotCursorMode;
@@ -177,9 +181,14 @@ VisualizationController &SqpApplication::visualizationController() noexcept
     return *impl->m_VisualizationController;
 }
 
-DragDropHelper &SqpApplication::dragDropHelper() noexcept
+DragDropGuiController &SqpApplication::dragDropGuiController() noexcept
 {
-    return *impl->m_DragDropHelper;
+    return *impl->m_DragDropGuiController;
+}
+
+ActionsGuiController &SqpApplication::actionsGuiController() noexcept
+{
+    return *impl->m_ActionsGuiController;
 }
 
 SqpApplication::PlotsInteractionMode SqpApplication::plotsInteractionMode() const
