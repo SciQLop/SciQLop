@@ -1,6 +1,7 @@
-#ifndef CATALOGUEEVENTSWIDGET_H
-#define CATALOGUEEVENTSWIDGET_H
+#ifndef SCIQLOP_CATALOGUEEVENTSWIDGET_H
+#define SCIQLOP_CATALOGUEEVENTSWIDGET_H
 
+#include <Common/spimpl.h>
 #include <QWidget>
 
 namespace Ui {
@@ -12,10 +13,13 @@ class CatalogueEventsWidget : public QWidget {
 
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
-    ~CatalogueEventsWidget();
+    virtual ~CatalogueEventsWidget();
 
 private:
     Ui::CatalogueEventsWidget *ui;
+
+    class CatalogueEventsWidgetPrivate;
+    spimpl::unique_impl_ptr<CatalogueEventsWidgetPrivate> impl;
 };
 
-#endif // CATALOGUEEVENTSWIDGET_H
+#endif // SCIQLOP_CATALOGUEEVENTSWIDGET_H

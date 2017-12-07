@@ -14,6 +14,18 @@
    <string>Form</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
@@ -22,7 +34,7 @@
         <string>+</string>
        </property>
        <property name="icon">
-        <iconset resource="../../resources/sqpguiresources.qrc">
+        <iconset>
          <normaloff>:/icones/add.png</normaloff>:/icones/add.png</iconset>
        </property>
        <property name="autoRaise">
@@ -36,7 +48,7 @@
         <string> - </string>
        </property>
        <property name="icon">
-        <iconset resource="../../resources/sqpguiresources.qrc">
+        <iconset>
          <normaloff>:/icones/remove.png</normaloff>:/icones/remove.png</iconset>
        </property>
        <property name="autoRaise">
@@ -57,7 +69,7 @@
         <string>T</string>
        </property>
        <property name="icon">
-        <iconset resource="../../resources/sqpguiresources.qrc">
+        <iconset>
          <normaloff>:/icones/time.png</normaloff>:/icones/time.png</iconset>
        </property>
        <property name="checkable">
@@ -74,7 +86,7 @@
         <string>G</string>
        </property>
        <property name="icon">
-        <iconset resource="../../resources/sqpguiresources.qrc">
+        <iconset>
          <normaloff>:/icones/chart.png</normaloff>:/icones/chart.png</iconset>
        </property>
        <property name="checkable">
@@ -102,13 +114,26 @@
     </layout>
    </item>
    <item>
-    <widget class="QTableWidget" name="tableWidget"/>
+    <widget class="QTableWidget" name="tableWidget">
+     <property name="alternatingRowColors">
+      <bool>true</bool>
+     </property>
+     <property name="selectionBehavior">
+      <enum>QAbstractItemView::SelectRows</enum>
+     </property>
+     <attribute name="horizontalHeaderHighlightSections">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="verticalHeaderVisible">
+      <bool>false</bool>
+     </attribute>
+     <attribute name="verticalHeaderDefaultSectionSize">
+      <number>25</number>
+     </attribute>
+    </widget>
    </item>
   </layout>
  </widget>
- <resources>
-  <include location="../../resources/sqpguiresources.qrc"/>
-  <include location="../../resources/sqpguiresources.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>
