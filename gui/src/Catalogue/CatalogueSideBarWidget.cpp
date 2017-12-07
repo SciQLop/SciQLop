@@ -9,6 +9,8 @@ auto DATABASE_ITEM_TYPE = QTreeWidgetItem::UserType + 3;
 
 struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
     void configureTreeWidget(QTreeWidget *treeWidget);
+    QTreeWidgetItem *addDatabaseItem(const QString &name, QTreeWidget *treeWidget);
+    void addCatalogueItem(const QString &name, QTreeWidgetItem *parentDatabaseItem);
 };
 
 CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
@@ -43,4 +45,37 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
     separatorItem->setFlags(Qt::NoItemFlags);
     treeWidget->addTopLevelItem(separatorItem);
     treeWidget->setItemWidget(separatorItem, 0, separator);
+
+    // Test
+    auto db = addDatabaseItem("Database 1", treeWidget);
+    addCatalogueItem("Catalogue 1", db);
+    addCatalogueItem("Catalogue 2", db);
+    addCatalogueItem("Catalogue 3", db);
+    addCatalogueItem("Catalogue 4", db);
+
+    auto db2 = addDatabaseItem("Database 2", treeWidget);
+    addCatalogueItem("Catalogue A", db2);
+    addCatalogueItem("Catalogue B", db2);
+    addCatalogueItem("Catalogue C", db2);
+
+    treeWidget->expandAll();
+}
+
+QTreeWidgetItem *
+CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addDatabaseItem(const QString &name,
+                                                                       QTreeWidget *treeWidget)
+{
+    auto databaseItem = new QTreeWidgetItem({name}, DATABASE_ITEM_TYPE);
+    databaseItem->setIcon(0, QIcon(":/icones/database.png"));
+    treeWidget->addTopLevelItem(databaseItem);
+
+    return databaseItem;
+}
+
+void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addCatalogueItem(
+    const QString &name, QTreeWidgetItem *parentDatabaseItem)
+{
+    auto catalogueItem = new QTreeWidgetItem({name}, CATALOGUE_ITEM_TYPE);
+    catalogueItem->setIcon(0, QIcon(":/icones/catalogue.png"));
+    parentDatabaseItem->addChild(catalogueItem);
 }

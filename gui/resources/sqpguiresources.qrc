@@ -24,5 +24,6 @@
 		<file>icones/chart.png</file>
 		<file>icones/allEvents.png</file>
 		<file>icones/trash.png</file>
+		<file>icones/database.png</file>
     </qresource>
 </RCC>
