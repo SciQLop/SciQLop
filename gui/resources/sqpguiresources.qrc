@@ -18,5 +18,12 @@
 		<file>icones/drag.png</file>
 		<file>icones/cursor.png</file>
 		<file>icones/pointer.png</file>
+		<file>icones/catalogue.png</file>
+		<file>icones/add.png</file>
+		<file>icones/remove.png</file>
+		<file>icones/chart.png</file>
+		<file>icones/allEvents.png</file>
+		<file>icones/trash.png</file>
+		<file>icones/database.png</file>
     </qresource>
 </RCC>
