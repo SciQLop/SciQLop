@@ -2,9 +2,14 @@
 #define SCIQLOP_FUZZINGDEFS_H
 
 #include <QString>
+#include <QVariantHash>
+
 // /////// //
 // Aliases //
 // /////// //
+
+using MetadataPool = std::vector<QVariantHash>;
+Q_DECLARE_METATYPE(MetadataPool)
 
 using Properties = QVariantHash;
 
@@ -20,5 +25,11 @@ extern const QString NB_MAX_VARIABLES_PROPERTY;
 
 /// Set of operations available for the test
 extern const QString AVAILABLE_OPERATIONS_PROPERTY;
+
+/// Set of metadata that can be associated to a variable
+extern const QString METADATA_POOL_PROPERTY;
+
+/// Provider used to retrieve data
+extern const QString PROVIDER_PROPERTY;
 
 #endif // SCIQLOP_FUZZINGDEFS_H
