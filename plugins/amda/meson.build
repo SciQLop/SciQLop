@@ -62,7 +62,8 @@ sciqlop_amdaplugin = library('amdaplugin',
 tests = [
   [['tests/TestAmdaParser.cpp'],'test_amda_parser','AMDA parser test'],
   [['tests/TestAmdaResultParser.cpp'],'test_amda_result_parser','AMDA result parser test'],
-  [['tests/TestAmdaAcquisition.cpp'],'test_amda_acquisition','AMDA Acquisition test']
+  [['tests/TestAmdaAcquisition.cpp'],'test_amda_acquisition','AMDA Acquisition test'],
+  [['tests/TestAmdaFuzzing.cpp'],'test_amda_fuzzing','AMDA fuzzing test']
 ]
 
 foreach unit_test : tests
