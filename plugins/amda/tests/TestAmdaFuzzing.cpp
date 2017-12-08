@@ -19,7 +19,11 @@ namespace {
 // Aliases //
 // /////// //
 
+using VariableId = int;
+
 using OperationsPool = std::set<std::shared_ptr<IFuzzingOperation> >;
+using VariablesPool = std::map<VariableId, std::shared_ptr<Variable> >;
+
 // ///////// //
 // Constants //
 // ///////// //
@@ -35,7 +39,12 @@ public:
     explicit FuzzingTest(VariableController &variableController, Properties properties)
             : m_VariableController{variableController},
               m_Properties{std::move(properties)},
+              m_VariablesPool{}
     {
+        // Inits variables pool: at init, all variables are null
+        for (auto variableId = 0; variableId < nbMaxVariables(); ++variableId) {
+            m_VariablesPool[variableId] = nullptr;
+        }
     }
 
     void execute()
@@ -65,6 +74,7 @@ private:
 
     VariableController &m_VariableController;
     Properties m_Properties;
+    VariablesPool m_VariablesPool;
 };
 
 } // namespace
