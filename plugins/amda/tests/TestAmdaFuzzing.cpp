@@ -18,11 +18,21 @@ namespace {
  */
 class FuzzingTest {
 public:
+    explicit FuzzingTest(VariableController &variableController, Properties properties)
+            : m_VariableController{variableController},
+              m_Properties{std::move(properties)},
+    {
+    }
+
     void execute()
     {
         /// @todo: complete
         qCInfo(LOG_TestAmdaFuzzing()) << "Execution of the test completed.";
     }
+
+private:
+    VariableController &m_VariableController;
+    Properties m_Properties;
 };
 
 } // namespace
@@ -42,7 +52,7 @@ void TestAmdaFuzzing::testFuzzing_data()
     // Test structure //
     // ////////////// //
 
-    /// @todo: complete
+    QTest::addColumn<Properties>("properties"); // Properties for random test
 
     // ////////// //
     // Test cases //
@@ -53,10 +63,12 @@ void TestAmdaFuzzing::testFuzzing_data()
 
 void TestAmdaFuzzing::testFuzzing()
 {
+    QFETCH(Properties, properties);
+
     auto &variableController = sqpApp->variableController();
     auto &timeController = sqpApp->timeController();
 
-    FuzzingTest test{};
+    FuzzingTest test{variableController, properties};
     test.execute();
 }
 
