@@ -7,6 +7,9 @@ namespace Ui {
 class CatalogueInspectorWidget;
 }
 
+class DBCatalogue;
+class DBEvent;
+
 class CatalogueInspectorWidget : public QWidget {
     Q_OBJECT
 
@@ -19,8 +22,8 @@ public:
 
     Page currentPage() const;
 
-    void setEvent(const QString &event);
-    void setCatalogue(const QString &catalogue);
+    void setEvent(const DBEvent &event);
+    void setCatalogue(const DBCatalogue &catalogue);
 
 public slots:
     void showPage(Page page);

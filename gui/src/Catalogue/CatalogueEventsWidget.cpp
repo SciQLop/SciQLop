@@ -1,13 +1,22 @@
 #include "Catalogue/CatalogueEventsWidget.h"
 #include "ui_CatalogueEventsWidget.h"
 
-#include <QtDebug>
+#include <Catalogue/CatalogueController.h>
+#include <CatalogueDao.h>
+#include <DBCatalogue.h>
+#include <SqpApplication.h>
+
+
+/// Format of the dates appearing in the label of a cursor
+const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
 
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     void addEventItem(const QStringList &data, QTableWidget *tableWidget);
 
     enum class Column { Event, TStart, TEnd, Tags, Product, NbColumn };
     QStringList columnNames() { return QStringList{"Event", "TStart", "TEnd", "Tags", "Product"}; }
+
+    QVector<DBEvent> m_Events;
 };
 
 
@@ -31,14 +40,14 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     });
 
     connect(ui->tableWidget, &QTableWidget::cellClicked, [this](auto row, auto column) {
-        auto event = ui->tableWidget->item(row, 0)->text();
+        auto event = impl->m_Events.value(row);
         emit this->eventSelected(event);
     });
 
     connect(ui->tableWidget, &QTableWidget::currentItemChanged,
             [this](auto current, auto previous) {
                 if (current && current->row() >= 0) {
-                    auto event = ui->tableWidget->item(current->row(), 0)->text();
+                    auto event = impl->m_Events.value(current->row());
                     emit this->eventSelected(event);
                 }
             });
@@ -64,24 +73,30 @@ CatalogueEventsWidget::~CatalogueEventsWidget()
     delete ui;
 }
 
-void CatalogueEventsWidget::populateWithCatalogue(const QString &catalogue)
+void CatalogueEventsWidget::populateWithCatalogue(const DBCatalogue &catalogue)
 {
     ui->tableWidget->clearContents();
     ui->tableWidget->setRowCount(0);
 
-    // TODO
-    impl->addEventItem(
-        {catalogue + " - Event 1", "12/12/2012 12:12", "12/12/2042 12:52", "cloud", "mfi/b_gse42"},
-        ui->tableWidget);
-    impl->addEventItem(
-        {catalogue + " - Event 2", "12/12/2012 12:10", "12/12/2042 12:42", "Acloud", "mfi/b_gse1"},
-        ui->tableWidget);
-    impl->addEventItem(
-        {catalogue + " - Event 3", "12/12/2012 12:22", "12/12/2042 12:12", "Gcloud", "mfi/b_gse2"},
-        ui->tableWidget);
-    impl->addEventItem(
-        {catalogue + " - Event 4", "12/12/2012 12:00", "12/12/2042 12:62", "Bcloud", "mfi/b_gse3"},
-        ui->tableWidget);
+    auto &dao = sqpApp->catalogueController().getDao();
+    auto events = dao.getCatalogueEvents(catalogue);
+
+    for (auto event : events) {
+        impl->m_Events << event;
+
+        auto tags = event.getTags();
+        QString tagList;
+        for (auto tag : tags) {
+            tagList += tag.getName();
+            tagList += ' ';
+        }
+
+        impl->addEventItem({event.getName(),
+                            DateUtils::dateTime(event.getTStart()).toString(DATETIME_FORMAT),
+                            DateUtils::dateTime(event.getTEnd()).toString(DATETIME_FORMAT), tagList,
+                            event.getProduct()},
+                           ui->tableWidget);
+    }
 }
 
 void CatalogueEventsWidget::CatalogueEventsWidgetPrivate::addEventItem(const QStringList &data,

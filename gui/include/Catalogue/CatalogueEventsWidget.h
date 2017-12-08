@@ -4,6 +4,9 @@
 #include <Common/spimpl.h>
 #include <QWidget>
 
+class DBCatalogue;
+class DBEvent;
+
 namespace Ui {
 class CatalogueEventsWidget;
 }
@@ -12,14 +15,14 @@ class CatalogueEventsWidget : public QWidget {
     Q_OBJECT
 
 signals:
-    void eventSelected(const QString &event);
+    void eventSelected(const DBEvent &event);
 
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
     virtual ~CatalogueEventsWidget();
 
 public slots:
-    void populateWithCatalogue(const QString &catalogue);
+    void populateWithCatalogue(const DBCatalogue &catalogue);
 
 private:
     Ui::CatalogueEventsWidget *ui;

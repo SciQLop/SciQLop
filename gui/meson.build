@@ -1,4 +1,7 @@
 
+qxorm_dep = dependency('QxOrm', required : true, fallback:['QxOrm','qxorm_dep'])
+catalogueapi_dep = dependency('CatalogueAPI', required : true, fallback:['CatalogueAPI','CatalogueAPI_dep'])
+
 gui_moc_headers = [
   'include/DataSource/DataSourceWidget.h',
   'include/Settings/SqpSettingsDialog.h',
@@ -103,7 +106,8 @@ gui_sources = [
   'src/Catalogue/CatalogueExplorer.cpp',
   'src/Catalogue/CatalogueEventsWidget.cpp',
   'src/Catalogue/CatalogueSideBarWidget.cpp',
-  'src/Catalogue/CatalogueInspectorWidget.cpp'
+  'src/Catalogue/CatalogueInspectorWidget.cpp',
+  'src/Catalogue/CatalogueTreeWidgetItem.cpp'
 ]
 
 gui_inc = include_directories(['include'])
@@ -112,11 +116,11 @@ sciqlop_gui_lib = library('sciqlopgui',
                        gui_sources,
                        gui_moc_files,
                        include_directories : [gui_inc],
-                       dependencies : [ qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core],
+                       dependencies : [ qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core, catalogueapi_dep],
                        install : true
                        )
 
 sciqlop_gui = declare_dependency(link_with : sciqlop_gui_lib,
                                 include_directories : gui_inc,
-                                dependencies : [qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core])
+                                dependencies : [qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core, catalogueapi_dep])
 

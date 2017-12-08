@@ -1,5 +1,13 @@
 #include "Catalogue/CatalogueSideBarWidget.h"
 #include "ui_CatalogueSideBarWidget.h"
+#include <SqpApplication.h>
+
+#include <Catalogue/CatalogueController.h>
+#include <Catalogue/CatalogueTreeWidgetItem.h>
+#include <CatalogueDao.h>
+#include <ComparaisonPredicate.h>
+#include <DBCatalogue.h>
+
 
 constexpr auto ALL_EVENT_ITEM_TYPE = QTreeWidgetItem::UserType;
 constexpr auto TRASH_ITEM_TYPE = QTreeWidgetItem::UserType + 1;
@@ -8,9 +16,12 @@ constexpr auto DATABASE_ITEM_TYPE = QTreeWidgetItem::UserType + 3;
 
 
 struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
+
+    QHash<QTreeWidgetItem *, DBCatalogue> m_CatalogueMap;
+
     void configureTreeWidget(QTreeWidget *treeWidget);
     QTreeWidgetItem *addDatabaseItem(const QString &name, QTreeWidget *treeWidget);
-    void addCatalogueItem(const QString &name, QTreeWidgetItem *parentDatabaseItem);
+    void addCatalogueItem(const DBCatalogue &catalogue, QTreeWidgetItem *parentDatabaseItem);
 };
 
 CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
@@ -24,7 +35,8 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     auto emitSelection = [this](auto item) {
         switch (item->type()) {
             case CATALOGUE_ITEM_TYPE:
-                emit this->catalogueSelected(item->text(0));
+                emit this->catalogueSelected(
+                    static_cast<CatalogueTreeWidgetItem *>(item)->catalogue());
                 break;
             case ALL_EVENT_ITEM_TYPE:
                 emit this->allEventsSelected();
@@ -67,16 +79,16 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
     treeWidget->setItemWidget(separatorItem, 0, separator);
 
     // Test
-    auto db = addDatabaseItem("Database 1", treeWidget);
-    addCatalogueItem("Catalogue 1", db);
-    addCatalogueItem("Catalogue 2", db);
-    addCatalogueItem("Catalogue 3", db);
-    addCatalogueItem("Catalogue 4", db);
+    auto &dao = sqpApp->catalogueController().getDao();
+    auto allPredicate = std::make_shared<ComparaisonPredicate>(QString{"uniqId"}, "-1",
+                                                               ComparaisonOperation::DIFFERENT);
 
-    auto db2 = addDatabaseItem("Database 2", treeWidget);
-    addCatalogueItem("Catalogue A", db2);
-    addCatalogueItem("Catalogue B", db2);
-    addCatalogueItem("Catalogue C", db2);
+    auto db = addDatabaseItem("Default", treeWidget);
+
+    auto catalogues = dao.getCatalogues(allPredicate);
+    for (auto catalogue : catalogues) {
+        addCatalogueItem(catalogue, db);
+    }
 
     treeWidget->expandAll();
 }
@@ -93,9 +105,9 @@ CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addDatabaseItem(const QSt
 }
 
 void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addCatalogueItem(
-    const QString &name, QTreeWidgetItem *parentDatabaseItem)
+    const DBCatalogue &catalogue, QTreeWidgetItem *parentDatabaseItem)
 {
-    auto catalogueItem = new QTreeWidgetItem({name}, CATALOGUE_ITEM_TYPE);
+    auto catalogueItem = new CatalogueTreeWidgetItem(catalogue, CATALOGUE_ITEM_TYPE);
     catalogueItem->setIcon(0, QIcon(":/icones/catalogue.png"));
     parentDatabaseItem->addChild(catalogueItem);
 }
