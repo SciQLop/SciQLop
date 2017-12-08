@@ -1,3 +1,4 @@
+#include "FuzzingDefs.h"
 #include <Network/NetworkController.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
@@ -13,6 +14,13 @@ Q_LOGGING_CATEGORY(LOG_TestAmdaFuzzing, "TestAmdaFuzzing")
 
 namespace {
 
+// ///////// //
+// Constants //
+// ///////// //
+
+// Defaults values used when the associated properties have not been set for the test
+const auto NB_MAX_OPERATIONS_DEFAULT_VALUE = 100;
+const auto NB_MAX_VARIABLES_DEFAULT_VALUE = 1;
 /**
  * Class to run random tests
  */
@@ -27,10 +35,28 @@ public:
     void execute()
     {
         /// @todo: complete
+        qCInfo(LOG_TestAmdaFuzzing()) << "Running" << nbMaxOperations() << "operations on"
+                                      << nbMaxVariables() << "variables...";
+
         qCInfo(LOG_TestAmdaFuzzing()) << "Execution of the test completed.";
     }
 
 private:
+    int nbMaxOperations() const
+    {
+        static auto result
+            = m_Properties.value(NB_MAX_OPERATIONS_PROPERTY, NB_MAX_OPERATIONS_DEFAULT_VALUE)
+                  .toInt();
+        return result;
+    }
+
+    int nbMaxVariables() const
+    {
+        static auto result
+            = m_Properties.value(NB_MAX_VARIABLES_PROPERTY, NB_MAX_VARIABLES_DEFAULT_VALUE).toInt();
+        return result;
+    }
+
     VariableController &m_VariableController;
     Properties m_Properties;
 };
