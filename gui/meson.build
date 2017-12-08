@@ -107,7 +107,8 @@ gui_sources = [
   'src/Catalogue/CatalogueEventsWidget.cpp',
   'src/Catalogue/CatalogueSideBarWidget.cpp',
   'src/Catalogue/CatalogueInspectorWidget.cpp',
-  'src/Catalogue/CatalogueTreeWidgetItem.cpp'
+  'src/Catalogue/CatalogueTreeWidgetItem.cpp',
+  'src/Catalogue/CatalogueEventsTableModel.cpp'
 ]
 
 gui_inc = include_directories(['include'])

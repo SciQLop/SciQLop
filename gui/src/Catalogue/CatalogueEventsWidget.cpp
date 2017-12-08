@@ -2,6 +2,7 @@
 #include "ui_CatalogueEventsWidget.h"
 
 #include <Catalogue/CatalogueController.h>
+#include <Catalogue/CatalogueEventsTableModel.h>
 #include <CatalogueDao.h>
 #include <DBCatalogue.h>
 #include <SqpApplication.h>
@@ -11,12 +12,8 @@
 const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
 
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
-    void addEventItem(const QStringList &data, QTableWidget *tableWidget);
 
-    enum class Column { Event, TStart, TEnd, Tags, Product, NbColumn };
-    QStringList columnNames() { return QStringList{"Event", "TStart", "TEnd", "Tags", "Product"}; }
-
-    QVector<DBEvent> m_Events;
+    CatalogueEventsTableModel *m_Model = nullptr;
 };
 
 
@@ -26,6 +23,11 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
           impl{spimpl::make_unique_impl<CatalogueEventsWidgetPrivate>()}
 {
     ui->setupUi(this);
+
+    impl->m_Model = new CatalogueEventsTableModel(this);
+    ui->tableView->setModel(impl->m_Model);
+
+    ui->tableView->setSortingEnabled(true);
 
     connect(ui->btnTime, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
@@ -39,33 +41,28 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         }
     });
 
-    connect(ui->tableWidget, &QTableWidget::cellClicked, [this](auto row, auto column) {
-        auto event = impl->m_Events.value(row);
+    connect(ui->tableView, &QTableView::clicked, [this](auto index) {
+        auto event = impl->m_Model->getEvent(index.row());
         emit this->eventSelected(event);
     });
 
-    connect(ui->tableWidget, &QTableWidget::currentItemChanged,
+    connect(ui->tableView->selectionModel(), &QItemSelectionModel::currentChanged,
             [this](auto current, auto previous) {
-                if (current && current->row() >= 0) {
-                    auto event = impl->m_Events.value(current->row());
+                if (current.isValid() && current.row() >= 0) {
+                    auto event = impl->m_Model->getEvent(current.row());
                     emit this->eventSelected(event);
                 }
             });
 
-    connect(ui->tableWidget, &QTableWidget::itemSelectionChanged, [this]() {
-        auto selection = ui->tableWidget->selectedRanges();
-        auto isNotMultiSelection
-            = selection.isEmpty() || (selection.count() == 1 && selection.first().rowCount() == 1);
+    connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
+        auto isNotMultiSelection = ui->tableView->selectionModel()->selectedRows().count() <= 1;
         ui->btnChart->setEnabled(isNotMultiSelection);
         ui->btnTime->setEnabled(isNotMultiSelection);
     });
 
-    Q_ASSERT(impl->columnNames().count() == (int)CatalogueEventsWidgetPrivate::Column::NbColumn);
-    ui->tableWidget->setColumnCount((int)CatalogueEventsWidgetPrivate::Column::NbColumn);
-    ui->tableWidget->setHorizontalHeaderLabels(impl->columnNames());
-    ui->tableWidget->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    ui->tableWidget->horizontalHeader()->setSortIndicatorShown(true);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->tableView->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->tableView->horizontalHeader()->setSortIndicatorShown(true);
 }
 
 CatalogueEventsWidget::~CatalogueEventsWidget()
@@ -75,41 +72,15 @@ CatalogueEventsWidget::~CatalogueEventsWidget()
 
 void CatalogueEventsWidget::populateWithCatalogue(const DBCatalogue &catalogue)
 {
-    ui->tableWidget->clearContents();
-    ui->tableWidget->setRowCount(0);
-
     auto &dao = sqpApp->catalogueController().getDao();
     auto events = dao.getCatalogueEvents(catalogue);
 
+    QVector<DBEvent> eventVector;
     for (auto event : events) {
-        impl->m_Events << event;
-
-        auto tags = event.getTags();
-        QString tagList;
-        for (auto tag : tags) {
-            tagList += tag.getName();
-            tagList += ' ';
-        }
-
-        impl->addEventItem({event.getName(),
-                            DateUtils::dateTime(event.getTStart()).toString(DATETIME_FORMAT),
-                            DateUtils::dateTime(event.getTEnd()).toString(DATETIME_FORMAT), tagList,
-                            event.getProduct()},
-                           ui->tableWidget);
+        eventVector << event;
     }
-}
 
-void CatalogueEventsWidget::CatalogueEventsWidgetPrivate::addEventItem(const QStringList &data,
-                                                                       QTableWidget *tableWidget)
-{
-    tableWidget->setSortingEnabled(false);
-    auto row = tableWidget->rowCount();
-    tableWidget->setRowCount(row + 1);
-
-    for (auto i = 0; i < (int)Column::NbColumn; ++i) {
-        auto item = new QTableWidgetItem(data.value(i));
-        item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable);
-        tableWidget->setItem(row, i, item);
-    }
-    tableWidget->setSortingEnabled(true);
+    ui->tableView->setSortingEnabled(false);
+    impl->m_Model->setEvents(eventVector);
+    ui->tableView->setSortingEnabled(true);
 }
