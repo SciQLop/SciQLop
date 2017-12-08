@@ -1,4 +1,5 @@
 #include "FuzzingDefs.h"
+#include "FuzzingOperations.h"
 #include <Network/NetworkController.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
@@ -14,6 +15,11 @@ Q_LOGGING_CATEGORY(LOG_TestAmdaFuzzing, "TestAmdaFuzzing")
 
 namespace {
 
+// /////// //
+// Aliases //
+// /////// //
+
+using OperationsPool = std::set<std::shared_ptr<IFuzzingOperation> >;
 // ///////// //
 // Constants //
 // ///////// //

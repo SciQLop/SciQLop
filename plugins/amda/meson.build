@@ -69,6 +69,8 @@ tests = [
 tests_sources = [
   'tests/FuzzingDefs.h',
   'tests/FuzzingDefs.cpp',
+  'tests/FuzzingOperations.h',
+  'tests/FuzzingOperations.cpp',
 ]
 
 foreach unit_test : tests
