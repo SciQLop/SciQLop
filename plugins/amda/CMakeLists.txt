@@ -115,6 +115,7 @@ IF(BUILD_TESTS)
                         ${testDirectory}/*.cpp
                         ${testDirectory}/*.h)
                 LIST (REMOVE_ITEM currentTestSources ${TESTS_SOURCES})
+                LIST(APPEND testFilesToFormat ${currentTestSources})
                 # LIST (REMOVE_ITEM currentTestSources ${TESTS_HEADERS})
 
                 ADD_EXECUTABLE(${testName} ${testFile} ${currentTestSources})
