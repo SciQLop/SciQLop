@@ -1,5 +1,7 @@
 #include "FuzzingDefs.h"
 #include "FuzzingOperations.h"
+#include "FuzzingUtils.h"
+
 #include <Network/NetworkController.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
@@ -102,7 +104,7 @@ public:
             if (canExecute) {
                 // Of the operations available, chooses a random operation and executes it
                 auto variableOperation
-                    = /* TODO: gets a random operation */;
+                    = RandomGenerator::instance().randomChoice(variableOperations);
 
                 auto variableId = variableOperation.first;
                 auto variable = m_VariablesPool.at(variableId);
