@@ -26,6 +26,9 @@ extern const QString NB_MAX_VARIABLES_PROPERTY;
 /// Set of operations available for the test
 extern const QString AVAILABLE_OPERATIONS_PROPERTY;
 
+/// Max range that an operation can reach
+extern const QString MAX_RANGE_PROPERTY;
+
 /// Set of metadata that can be associated to a variable
 extern const QString METADATA_POOL_PROPERTY;
 

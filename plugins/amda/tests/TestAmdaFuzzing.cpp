@@ -38,6 +38,7 @@ const auto NB_MAX_OPERATIONS_DEFAULT_VALUE = 100;
 const auto NB_MAX_VARIABLES_DEFAULT_VALUE = 1;
 const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE
     = QVariant::fromValue(OperationsTypes{FuzzingOperationType::CREATE});
+
 // /////// //
 // Methods //
 // /////// //
@@ -185,6 +186,25 @@ void TestAmdaFuzzing::testFuzzing()
 
     auto &variableController = sqpApp->variableController();
     auto &timeController = sqpApp->timeController();
+
+    // Generates random initial range (bounded to max range)
+    auto maxRange = properties.value(MAX_RANGE_PROPERTY, QVariant::fromValue(INVALID_RANGE))
+                        .value<SqpRange>();
+
+    QVERIFY(maxRange != INVALID_RANGE);
+
+    auto initialRangeStart
+        = RandomGenerator::instance().generateDouble(maxRange.m_TStart, maxRange.m_TEnd);
+    auto initialRangeEnd
+        = RandomGenerator::instance().generateDouble(maxRange.m_TStart, maxRange.m_TEnd);
+    if (initialRangeStart > initialRangeEnd) {
+        std::swap(initialRangeStart, initialRangeEnd);
+    }
+
+    // Sets initial range on time controller
+    SqpRange initialRange{initialRangeStart, initialRangeEnd};
+    qCInfo(LOG_TestAmdaFuzzing()) << "Setting initial range to" << initialRange << "...";
+    timeController.onTimeToUpdate(initialRange);
 
     FuzzingTest test{variableController, properties};
     test.execute();
