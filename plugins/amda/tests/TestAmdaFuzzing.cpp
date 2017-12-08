@@ -21,6 +21,9 @@ namespace {
 
 using VariableId = int;
 
+using VariableOperation = std::pair<VariableId, std::shared_ptr<IFuzzingOperation> >;
+using VariablesOperations = std::vector<VariableOperation>;
+
 using OperationsPool = std::set<std::shared_ptr<IFuzzingOperation> >;
 using VariablesPool = std::map<VariableId, std::shared_ptr<Variable> >;
 
@@ -33,6 +36,32 @@ const auto NB_MAX_OPERATIONS_DEFAULT_VALUE = 100;
 const auto NB_MAX_VARIABLES_DEFAULT_VALUE = 1;
 const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE
     = QVariant::fromValue(OperationsTypes{FuzzingOperationType::CREATE});
+// /////// //
+// Methods //
+// /////// //
+
+/// Goes through the variables pool and operations pool to determine the set of {variable/operation}
+/// pairs that are valid (i.e. operation that can be executed on variable)
+VariablesOperations availableOperations(const VariablesPool &variablesPool,
+                                        const OperationsPool &operationsPool)
+{
+    VariablesOperations result{};
+
+    for (const auto &variablesPoolEntry : variablesPool) {
+        auto variableId = variablesPoolEntry.first;
+        auto variable = variablesPoolEntry.second;
+
+        for (const auto &operation : operationsPool) {
+            // A pair is valid if the current operation can be executed on the current variable
+            if (operation->canExecute(variable)) {
+                result.push_back({variableId, operation});
+            }
+        }
+    }
+
+    return result;
+}
+
 OperationsPool createOperationsPool(const OperationsTypes &types)
 {
     OperationsPool result{};
@@ -61,9 +90,34 @@ public:
 
     void execute()
     {
-        /// @todo: complete
         qCInfo(LOG_TestAmdaFuzzing()) << "Running" << nbMaxOperations() << "operations on"
                                       << nbMaxVariables() << "variables...";
+
+        auto canExecute = true;
+        for (auto i = 0; i < nbMaxOperations() && canExecute; ++i) {
+            // Retrieves all operations that can be executed in the current context
+            auto variableOperations = availableOperations(m_VariablesPool, operationsPool());
+
+            canExecute = !variableOperations.empty();
+            if (canExecute) {
+                // Of the operations available, chooses a random operation and executes it
+                auto variableOperation
+                    = /* TODO: gets a random operation */;
+
+                auto variableId = variableOperation.first;
+                auto variable = m_VariablesPool.at(variableId);
+                auto fuzzingOperation = variableOperation.second;
+
+                fuzzingOperation->execute(variable, m_VariableController, m_Properties);
+
+                // Updates variable pool with the new state of the variable after operation
+                m_VariablesPool[variableId] = variable;
+            }
+            else {
+                qCInfo(LOG_TestAmdaFuzzing())
+                    << "No more operations are available, the execution of the test will stop...";
+            }
+        }
 
         qCInfo(LOG_TestAmdaFuzzing()) << "Execution of the test completed.";
     }
