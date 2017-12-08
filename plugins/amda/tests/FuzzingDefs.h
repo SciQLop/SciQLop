@@ -18,4 +18,7 @@ extern const QString NB_MAX_OPERATIONS_PROPERTY;
 /// Max number of variables to manipulate through operations
 extern const QString NB_MAX_VARIABLES_PROPERTY;
 
+/// Set of operations available for the test
+extern const QString AVAILABLE_OPERATIONS_PROPERTY;
+
 #endif // SCIQLOP_FUZZINGDEFS_H

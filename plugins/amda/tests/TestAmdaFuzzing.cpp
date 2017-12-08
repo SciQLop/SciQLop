@@ -31,6 +31,18 @@ using VariablesPool = std::map<VariableId, std::shared_ptr<Variable> >;
 // Defaults values used when the associated properties have not been set for the test
 const auto NB_MAX_OPERATIONS_DEFAULT_VALUE = 100;
 const auto NB_MAX_VARIABLES_DEFAULT_VALUE = 1;
+const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE
+    = QVariant::fromValue(OperationsTypes{FuzzingOperationType::CREATE});
+OperationsPool createOperationsPool(const OperationsTypes &types)
+{
+    OperationsPool result{};
+
+    std::transform(types.cbegin(), types.cend(), std::inserter(result, result.end()),
+                   [](const auto &type) { return FuzzingOperationFactory::create(type); });
+
+    return result;
+}
+
 /**
  * Class to run random tests
  */
@@ -69,6 +81,14 @@ private:
     {
         static auto result
             = m_Properties.value(NB_MAX_VARIABLES_PROPERTY, NB_MAX_VARIABLES_DEFAULT_VALUE).toInt();
+        return result;
+    }
+
+    OperationsPool operationsPool() const
+    {
+        static auto result = createOperationsPool(
+            m_Properties.value(AVAILABLE_OPERATIONS_PROPERTY, AVAILABLE_OPERATIONS_DEFAULT_VALUE)
+                .value<OperationsTypes>());
         return result;
     }
 
