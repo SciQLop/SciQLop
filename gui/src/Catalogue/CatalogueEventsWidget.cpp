@@ -24,7 +24,10 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
 {
     ui->setupUi(this);
 
-    impl->m_Model = new CatalogueEventsTableModel(this);
+    ui->tableView->setDragDropMode(QAbstractItemView::DragDrop);
+    ui->tableView->setDragEnabled(true);
+
+    impl->m_Model = new CatalogueEventsTableModel{this};
     ui->tableView->setModel(impl->m_Model);
 
     ui->tableView->setSortingEnabled(true);

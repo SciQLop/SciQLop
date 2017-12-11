@@ -1,8 +1,13 @@
 #include "Catalogue/CatalogueEventsTableModel.h"
 
 #include <Common/DateUtils.h>
+#include <Common/MimeTypesDef.h>
 #include <DBEvent.h>
 #include <DBTag.h>
+#include <Data/SqpRange.h>
+#include <QMimeData>
+#include <SqpApplication.h>
+#include <Time/TimeController.h>
 
 struct CatalogueEventsTableModel::CatalogueEventsTableModelPrivate {
     QVector<DBEvent> m_Events;
@@ -75,13 +80,13 @@ int CatalogueEventsTableModel::columnCount(const QModelIndex &parent) const
 
 Qt::ItemFlags CatalogueEventsTableModel::flags(const QModelIndex &index) const
 {
-    return Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled;
 }
 
 QVariant CatalogueEventsTableModel::data(const QModelIndex &index, int role) const
 {
     if (index.isValid()) {
-        auto event = impl->m_Events.value(index.row());
+        auto event = getEvent(index.row());
 
         switch (role) {
             case Qt::DisplayRole:
@@ -116,4 +121,47 @@ void CatalogueEventsTableModel::sort(int column, Qt::SortOrder order)
               });
 
     emit dataChanged(QModelIndex(), QModelIndex());
+}
+
+Qt::DropActions CatalogueEventsTableModel::supportedDragActions() const
+{
+    return Qt::CopyAction | Qt::MoveAction;
+}
+
+QStringList CatalogueEventsTableModel::mimeTypes() const
+{
+    return {MIME_TYPE_EVENT_LIST, MIME_TYPE_TIME_RANGE};
+}
+
+QMimeData *CatalogueEventsTableModel::mimeData(const QModelIndexList &indexes) const
+{
+    auto mimeData = new QMimeData;
+
+    QVector<DBEvent> eventList;
+
+    SqpRange firstTimeRange;
+    for (const auto &index : indexes) {
+        if (index.column() == 0) { // only the first column
+            auto event = getEvent(index.row());
+            if (eventList.isEmpty()) {
+                // Gets the range of the first variable
+                firstTimeRange.m_TStart = event.getTStart();
+                firstTimeRange.m_TEnd = event.getTEnd();
+            }
+
+            eventList << event;
+        }
+    }
+
+    auto eventsEncodedData
+        = QByteArray{}; // sqpApp->catalogueController().->mimeDataForEvents(eventList); //TODO
+    mimeData->setData(MIME_TYPE_EVENT_LIST, eventsEncodedData);
+
+    if (eventList.count() == 1) {
+        // No time range MIME data if multiple events are dragged
+        auto timeEncodedData = TimeController::mimeDataForTimeRange(firstTimeRange);
+        mimeData->setData(MIME_TYPE_TIME_RANGE, timeEncodedData);
+    }
+
+    return mimeData;
 }

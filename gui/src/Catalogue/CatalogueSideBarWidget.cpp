@@ -100,18 +100,18 @@ CatalogueSideBarWidget::~CatalogueSideBarWidget()
 void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
     QTreeWidget *treeWidget)
 {
-    auto allEventsItem = new QTreeWidgetItem({"All Events"}, ALL_EVENT_ITEM_TYPE);
+    auto allEventsItem = new QTreeWidgetItem{{"All Events"}, ALL_EVENT_ITEM_TYPE};
     allEventsItem->setIcon(0, QIcon(":/icones/allEvents.png"));
     treeWidget->addTopLevelItem(allEventsItem);
 
-    auto trashItem = new QTreeWidgetItem({"Trash"}, TRASH_ITEM_TYPE);
+    auto trashItem = new QTreeWidgetItem{{"Trash"}, TRASH_ITEM_TYPE};
     trashItem->setIcon(0, QIcon(":/icones/trash.png"));
     treeWidget->addTopLevelItem(trashItem);
 
-    auto separator = new QFrame(treeWidget);
+    auto separator = new QFrame{treeWidget};
     separator->setFrameShape(QFrame::HLine);
 
-    auto separatorItem = new QTreeWidgetItem();
+    auto separatorItem = new QTreeWidgetItem{};
     separatorItem->setFlags(Qt::NoItemFlags);
     treeWidget->addTopLevelItem(separatorItem);
     treeWidget->setItemWidget(separatorItem, 0, separator);
@@ -135,8 +135,8 @@ QTreeWidgetItem *
 CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addDatabaseItem(const QString &name,
                                                                        QTreeWidget *treeWidget)
 {
-    auto databaseItem = new QTreeWidgetItem({name}, DATABASE_ITEM_TYPE);
-    databaseItem->setIcon(0, QIcon(":/icones/database.png"));
+    auto databaseItem = new QTreeWidgetItem{{name}, DATABASE_ITEM_TYPE};
+    databaseItem->setIcon(0, QIcon{":/icones/database.png"});
     treeWidget->addTopLevelItem(databaseItem);
 
     return databaseItem;
@@ -145,7 +145,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addDatabaseItem(const QSt
 void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addCatalogueItem(
     const DBCatalogue &catalogue, QTreeWidgetItem *parentDatabaseItem)
 {
-    auto catalogueItem = new CatalogueTreeWidgetItem(catalogue, CATALOGUE_ITEM_TYPE);
-    catalogueItem->setIcon(0, QIcon(":/icones/catalogue.png"));
+    auto catalogueItem = new CatalogueTreeWidgetItem{catalogue, CATALOGUE_ITEM_TYPE};
+    catalogueItem->setIcon(0, QIcon{":/icones/catalogue.png"});
     parentDatabaseItem->addChild(catalogueItem);
 }
