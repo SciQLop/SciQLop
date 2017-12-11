@@ -95,6 +95,15 @@ struct PluginManager::PluginManagerPrivate {
         loadState.log();
     }
 
+    void loadStaticPlugins()
+    {
+        for (QObject *plugin : QPluginLoader::staticInstances())
+        {
+            qobject_cast<IPlugin *>(plugin)->initialize();
+            m_RegisteredPlugins.insert(plugin->metaObject()->className(), "StaticPlugin");
+        }
+    }
+
     /// Registered plugins (key: plugin name, value: plugin path)
     QHash<QString, QString> m_RegisteredPlugins;
 };
@@ -116,6 +125,11 @@ void PluginManager::loadPlugins(const QDir &pluginDir)
             impl->loadPlugin(entryInfo.absoluteFilePath());
         }
     }
+}
+
+void PluginManager::loadStaticPlugins()
+{
+    impl->loadStaticPlugins();
 }
 
 int PluginManager::nbPluginsLoaded() const noexcept
