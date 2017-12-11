@@ -2,6 +2,8 @@
 #include "FuzzingOperations.h"
 #include "FuzzingUtils.h"
 
+#include "AmdaProvider.h"
+
 #include <Network/NetworkController.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
@@ -94,7 +96,7 @@ public:
     void execute()
     {
         qCInfo(LOG_TestAmdaFuzzing()) << "Running" << nbMaxOperations() << "operations on"
-                                      << nbMaxVariables() << "variables...";
+                                      << nbMaxVariables() << "variable(s)...";
 
         auto canExecute = true;
         for (auto i = 0; i < nbMaxOperations() && canExecute; ++i) {
@@ -177,7 +179,17 @@ void TestAmdaFuzzing::testFuzzing_data()
     // Test cases //
     // ////////// //
 
-    ///@todo: complete
+    auto maxRange = SqpRange::fromDateTime({2017, 1, 1}, {0, 0}, {2017, 1, 5}, {0, 0});
+    MetadataPool metadataPool{{{"dataType", "vector"}, {"xml:id", "imf"}}};
+
+    // Note: we don't use auto here as we want to pass std::shared_ptr<IDataProvider> as is in the
+    // QVariant
+    std::shared_ptr<IDataProvider> provider = std::make_shared<AmdaProvider>();
+
+    QTest::newRow("fuzzingTest") << Properties{
+        {MAX_RANGE_PROPERTY, QVariant::fromValue(maxRange)},
+        {METADATA_POOL_PROPERTY, QVariant::fromValue(metadataPool)},
+        {PROVIDER_PROPERTY, QVariant::fromValue(provider)}};
 }
 
 void TestAmdaFuzzing::testFuzzing()
