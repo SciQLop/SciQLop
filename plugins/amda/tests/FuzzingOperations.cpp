@@ -83,6 +83,30 @@ struct MoveOperation : public IFuzzingOperation {
     void execute(std::shared_ptr<Variable> &variable, VariableController &variableController,
                  const Properties &properties) const override
     {
+        // Gets the max range defined
+        auto maxRange = properties.value(MAX_RANGE_PROPERTY, QVariant::fromValue(INVALID_RANGE))
+                            .value<SqpRange>();
+        auto variableRange = variable->range();
+
+        if (maxRange == INVALID_RANGE || variableRange.m_TStart < maxRange.m_TStart
+            || variableRange.m_TEnd > maxRange.m_TEnd) {
+            qCWarning(LOG_FuzzingOperations()) << "Can't execute operation: invalid max range";
+            return;
+        }
+
+        // Computes the max delta at which the variable can move, up to the limits of the max range
+        auto deltaMax = m_MaxMoveFun(variable->range(), maxRange);
+
+        // Generates random delta that will be used to move variable
+        auto delta = RandomGenerator::instance().generateDouble(0, deltaMax);
+
+        // Moves variable to its new range
+        auto newVariableRange = SqpRange{m_RangeStartMoveFun(variableRange.m_TStart, delta),
+                                         m_RangeEndMoveFun(variableRange.m_TEnd, delta)};
+        qCInfo(LOG_FuzzingOperations())
+            << "Performing" << m_Label << "on" << variable->name() << "(from" << variableRange
+            << "to" << newVariableRange << ")...";
+        variableController.onRequestDataLoading({variable}, newVariableRange, false);
     }
 
     MoveFunction m_RangeStartMoveFun;
