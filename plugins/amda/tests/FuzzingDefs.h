@@ -35,4 +35,7 @@ extern const QString METADATA_POOL_PROPERTY;
 /// Provider used to retrieve data
 extern const QString PROVIDER_PROPERTY;
 
+/// Time left for an operation to execute
+extern const QString OPERATION_DELAY_PROPERTY;
+
 #endif // SCIQLOP_FUZZINGDEFS_H

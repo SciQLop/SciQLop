@@ -41,7 +41,14 @@ using VariablesPool = std::map<VariableId, std::shared_ptr<Variable> >;
 const auto NB_MAX_OPERATIONS_DEFAULT_VALUE = 100;
 const auto NB_MAX_VARIABLES_DEFAULT_VALUE = 1;
 const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE
-    = QVariant::fromValue(WeightedOperationsTypes{{FuzzingOperationType::CREATE, 1.}});
+    = QVariant::fromValue(WeightedOperationsTypes{{FuzzingOperationType::CREATE, 1.},
+                                                  {FuzzingOperationType::PAN_LEFT, 1.},
+                                                  {FuzzingOperationType::PAN_RIGHT, 1.},
+                                                  {FuzzingOperationType::ZOOM_IN, 1.},
+                                                  {FuzzingOperationType::ZOOM_OUT, 1.}});
+
+/// Delay between each operation (in ms)
+const auto OPERATION_DELAY_DEFAULT_VALUE = 3000;
 
 // /////// //
 // Methods //
@@ -127,6 +134,7 @@ public:
                 auto fuzzingOperation = variableOperation.second;
 
                 fuzzingOperation->execute(variable, m_VariableController, m_Properties);
+                QTest::qWait(operationDelay());
 
                 // Updates variable pool with the new state of the variable after operation
                 m_VariablesPool[variableId] = variable;
@@ -153,6 +161,13 @@ private:
     {
         static auto result
             = m_Properties.value(NB_MAX_VARIABLES_PROPERTY, NB_MAX_VARIABLES_DEFAULT_VALUE).toInt();
+        return result;
+    }
+
+    int operationDelay() const
+    {
+        static auto result
+            = m_Properties.value(OPERATION_DELAY_PROPERTY, OPERATION_DELAY_DEFAULT_VALUE).toInt();
         return result;
     }
 
