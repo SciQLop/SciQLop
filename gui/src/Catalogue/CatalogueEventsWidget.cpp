@@ -42,17 +42,22 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     });
 
     connect(ui->tableView, &QTableView::clicked, [this](auto index) {
-        auto event = impl->m_Model->getEvent(index.row());
-        emit this->eventSelected(event);
+        QVector<DBEvent> events;
+        for (auto rowIndex : ui->tableView->selectionModel()->selectedRows()) {
+            events << impl->m_Model->getEvent(rowIndex.row());
+        }
+
+        emit this->eventsSelected(events);
     });
 
-    connect(ui->tableView->selectionModel(), &QItemSelectionModel::currentChanged,
-            [this](auto current, auto previous) {
-                if (current.isValid() && current.row() >= 0) {
-                    auto event = impl->m_Model->getEvent(current.row());
-                    emit this->eventSelected(event);
-                }
-            });
+    connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
+        QVector<DBEvent> events;
+        for (auto rowIndex : ui->tableView->selectionModel()->selectedRows()) {
+            events << impl->m_Model->getEvent(rowIndex.row());
+        }
+
+        emit this->eventsSelected(events);
+    });
 
     connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
         auto isNotMultiSelection = ui->tableView->selectionModel()->selectedRows().count() <= 1;

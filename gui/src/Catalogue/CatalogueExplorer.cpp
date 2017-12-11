@@ -15,8 +15,14 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
         ui->events->populateWithCatalogue(catalogue);
     });
 
-    connect(ui->events, &CatalogueEventsWidget::eventSelected,
-            [this](auto event) { ui->inspector->setEvent(event); });
+    connect(ui->events, &CatalogueEventsWidget::eventsSelected, [this](auto events) {
+        if (events.count() == 1) {
+            ui->inspector->setEvent(events.first());
+        }
+        else {
+            ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
+        }
+    });
 }
 
 CatalogueExplorer::~CatalogueExplorer()

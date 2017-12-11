@@ -15,7 +15,7 @@ class CatalogueEventsWidget : public QWidget {
     Q_OBJECT
 
 signals:
-    void eventSelected(const DBEvent &event);
+    void eventsSelected(const QVector<DBEvent> &event);
 
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
