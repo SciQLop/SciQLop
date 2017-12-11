@@ -43,7 +43,7 @@ struct FuzzingOperationFactory {
     static std::unique_ptr<IFuzzingOperation> create(FuzzingOperationType type);
 };
 
-using OperationsTypes = std::set<FuzzingOperationType>;
-Q_DECLARE_METATYPE(OperationsTypes)
+using WeightedOperationsTypes = std::map<FuzzingOperationType, double>;
+Q_DECLARE_METATYPE(WeightedOperationsTypes)
 
 #endif // SCIQLOP_FUZZINGOPERATIONS_H

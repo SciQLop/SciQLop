@@ -24,11 +24,13 @@ namespace {
 // /////// //
 
 using VariableId = int;
+using Weight = double;
+using Weights = std::vector<Weight>;
 
 using VariableOperation = std::pair<VariableId, std::shared_ptr<IFuzzingOperation> >;
 using VariablesOperations = std::vector<VariableOperation>;
 
-using OperationsPool = std::set<std::shared_ptr<IFuzzingOperation> >;
+using WeightedOperationsPool = std::map<std::shared_ptr<IFuzzingOperation>, Weight>;
 using VariablesPool = std::map<VariableId, std::shared_ptr<Variable> >;
 
 // ///////// //
@@ -39,7 +41,7 @@ using VariablesPool = std::map<VariableId, std::shared_ptr<Variable> >;
 const auto NB_MAX_OPERATIONS_DEFAULT_VALUE = 100;
 const auto NB_MAX_VARIABLES_DEFAULT_VALUE = 1;
 const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE
-    = QVariant::fromValue(OperationsTypes{FuzzingOperationType::CREATE});
+    = QVariant::fromValue(WeightedOperationsTypes{{FuzzingOperationType::CREATE, 1.}});
 
 // /////// //
 // Methods //
@@ -47,32 +49,40 @@ const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE
 
 /// Goes through the variables pool and operations pool to determine the set of {variable/operation}
 /// pairs that are valid (i.e. operation that can be executed on variable)
-VariablesOperations availableOperations(const VariablesPool &variablesPool,
-                                        const OperationsPool &operationsPool)
+std::pair<VariablesOperations, Weights>
+availableOperations(const VariablesPool &variablesPool,
+                    const WeightedOperationsPool &operationsPool)
 {
     VariablesOperations result{};
+    Weights weights{};
 
     for (const auto &variablesPoolEntry : variablesPool) {
         auto variableId = variablesPoolEntry.first;
         auto variable = variablesPoolEntry.second;
 
-        for (const auto &operation : operationsPool) {
+        for (const auto &operationsPoolEntry : operationsPool) {
+            auto operation = operationsPoolEntry.first;
+            auto weight = operationsPoolEntry.second;
+
             // A pair is valid if the current operation can be executed on the current variable
             if (operation->canExecute(variable)) {
                 result.push_back({variableId, operation});
+                weights.push_back(weight);
             }
         }
     }
 
-    return result;
+    return {result, weights};
 }
 
-OperationsPool createOperationsPool(const OperationsTypes &types)
+WeightedOperationsPool createOperationsPool(const WeightedOperationsTypes &types)
 {
-    OperationsPool result{};
+    WeightedOperationsPool result{};
 
-    std::transform(types.cbegin(), types.cend(), std::inserter(result, result.end()),
-                   [](const auto &type) { return FuzzingOperationFactory::create(type); });
+    std::transform(
+        types.cbegin(), types.cend(), std::inserter(result, result.end()), [](const auto &type) {
+            return std::make_pair(FuzzingOperationFactory::create(type.first), type.second);
+        });
 
     return result;
 }
@@ -101,13 +111,16 @@ public:
         auto canExecute = true;
         for (auto i = 0; i < nbMaxOperations() && canExecute; ++i) {
             // Retrieves all operations that can be executed in the current context
-            auto variableOperations = availableOperations(m_VariablesPool, operationsPool());
+            VariablesOperations variableOperations{};
+            Weights weights{};
+            std::tie(variableOperations, weights)
+                = availableOperations(m_VariablesPool, operationsPool());
 
             canExecute = !variableOperations.empty();
             if (canExecute) {
                 // Of the operations available, chooses a random operation and executes it
                 auto variableOperation
-                    = RandomGenerator::instance().randomChoice(variableOperations);
+                    = RandomGenerator::instance().randomChoice(variableOperations, weights);
 
                 auto variableId = variableOperation.first;
                 auto variable = m_VariablesPool.at(variableId);
@@ -143,11 +156,11 @@ private:
         return result;
     }
 
-    OperationsPool operationsPool() const
+    WeightedOperationsPool operationsPool() const
     {
         static auto result = createOperationsPool(
             m_Properties.value(AVAILABLE_OPERATIONS_PROPERTY, AVAILABLE_OPERATIONS_DEFAULT_VALUE)
-                .value<OperationsTypes>());
+                .value<WeightedOperationsTypes>());
         return result;
     }
 
