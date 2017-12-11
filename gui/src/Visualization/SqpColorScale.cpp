@@ -33,7 +33,7 @@ std::pair<double, double> SqpColorScale::computeThresholds(const SqpColorScale &
 
 SqpColorScale::SqpColorScale(QCustomPlot &plot)
         : m_Scale{new QCPColorScale{&plot}},
-          m_AutomaticThreshold{true},
+          m_AutomaticThreshold{false},
           m_GradientPreset{DEFAULT_GRADIENT_PRESET}
 {
     m_Scale->setGradient(m_GradientPreset);

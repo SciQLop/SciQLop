@@ -126,6 +126,7 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
 
         // Set color scale properties
         setAxisProperties(*colorScale.m_Scale->axis(), valuesUnit, QCPAxis::stLogarithmic);
+        colorScale.m_AutomaticThreshold = true;
     }
 };
 
