@@ -14,6 +14,27 @@ const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
     CatalogueEventsTableModel *m_Model = nullptr;
+
+    void setEvents(const QVector<DBEvent> &events, QTableView *tableView)
+    {
+        tableView->setSortingEnabled(false);
+        m_Model->setEvents(events);
+        tableView->setSortingEnabled(true);
+    }
+
+    void addEvent(const DBEvent &event, QTableView *tableView)
+    {
+        tableView->setSortingEnabled(false);
+        m_Model->addEvent(event);
+        tableView->setSortingEnabled(true);
+    }
+
+    void removeEvent(const DBEvent &event, QTableView *tableView)
+    {
+        tableView->setSortingEnabled(false);
+        m_Model->removeEvent(event);
+        tableView->setSortingEnabled(true);
+    }
 };
 
 
@@ -24,13 +45,12 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
 {
     ui->setupUi(this);
 
-    ui->tableView->setDragDropMode(QAbstractItemView::DragDrop);
-    ui->tableView->setDragEnabled(true);
-
     impl->m_Model = new CatalogueEventsTableModel{this};
     ui->tableView->setModel(impl->m_Model);
 
     ui->tableView->setSortingEnabled(true);
+    ui->tableView->setDragDropMode(QAbstractItemView::DragDrop);
+    ui->tableView->setDragEnabled(true);
 
     connect(ui->btnTime, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
@@ -89,7 +109,5 @@ void CatalogueEventsWidget::populateWithCatalogues(const QVector<DBCatalogue> &c
         }
     }
 
-    ui->tableView->setSortingEnabled(false);
-    impl->m_Model->setEvents(events);
-    ui->tableView->setSortingEnabled(true);
+    impl->setEvents(events, ui->tableView);
 }

@@ -21,6 +21,7 @@ struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
 
     void configureTreeWidget(QTreeWidget *treeWidget);
     QTreeWidgetItem *addDatabaseItem(const QString &name, QTreeWidget *treeWidget);
+    QTreeWidgetItem *getDatabaseItem(const QString &name, QTreeWidget *treeWidget);
     void addCatalogueItem(const DBCatalogue &catalogue, QTreeWidgetItem *parentDatabaseItem);
 };
 
@@ -140,6 +141,20 @@ CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addDatabaseItem(const QSt
     treeWidget->addTopLevelItem(databaseItem);
 
     return databaseItem;
+}
+
+QTreeWidgetItem *
+CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getDatabaseItem(const QString &name,
+                                                                       QTreeWidget *treeWidget)
+{
+    for (auto i = 0; i < treeWidget->topLevelItemCount(); ++i) {
+        auto item = treeWidget->topLevelItem(i);
+        if (item->type() == DATABASE_ITEM_TYPE && item->text(0) == name) {
+            return item;
+        }
+    }
+
+    return nullptr;
 }
 
 void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addCatalogueItem(

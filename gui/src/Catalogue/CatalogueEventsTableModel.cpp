@@ -66,6 +66,24 @@ DBEvent CatalogueEventsTableModel::getEvent(int row) const
     return impl->m_Events.value(row);
 }
 
+void CatalogueEventsTableModel::addEvent(const DBEvent &events)
+{
+    beginInsertRows(QModelIndex(), impl->m_Events.count() - 1, impl->m_Events.count() - 1);
+    // impl->m_Events.append(event); TODO
+    endInsertRows();
+}
+
+void CatalogueEventsTableModel::removeEvent(const DBEvent &events)
+{
+    // TODO
+    auto index = -1; // impl->m_Events.indexOf(event);
+    if (index >= 0) {
+        beginRemoveRows(QModelIndex(), index, index);
+        impl->m_Events.removeAt(index);
+        endRemoveRows();
+    }
+}
+
 int CatalogueEventsTableModel::rowCount(const QModelIndex &parent) const
 {
     int r = impl->m_Events.count();

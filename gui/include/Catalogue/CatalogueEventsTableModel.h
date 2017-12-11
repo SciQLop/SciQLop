@@ -13,6 +13,8 @@ public:
     void setEvents(const QVector<DBEvent> &events);
     DBEvent getEvent(int row) const;
 
+    void addEvent(const DBEvent &events);
+    void removeEvent(const DBEvent &events);
 
     // Model
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
