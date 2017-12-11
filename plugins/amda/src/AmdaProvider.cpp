@@ -1,6 +1,7 @@
 #include "AmdaProvider.h"
 #include "AmdaDefs.h"
 #include "AmdaResultParser.h"
+#include "AmdaServer.h"
 
 #include <Common/DateUtils.h>
 #include <Data/DataProviderParameters.h>
@@ -16,12 +17,6 @@
 Q_LOGGING_CATEGORY(LOG_AmdaProvider, "AmdaProvider")
 
 namespace {
-
-/// URL of the default AMDA server
-const auto AMDA_SERVER_URL = QStringLiteral("amda.irap.omp.eu");
-
-/// URL of the AMDA test server
-const auto AMDA_TEST_SERVER_URL = QStringLiteral("amdatest.irap.omp.eu");
 
 /// URL format for a request on AMDA server. The parameters are as follows:
 /// - %1: server URL
@@ -42,18 +37,6 @@ QString dateFormat(double sqpRange) noexcept
 {
     auto dateTime = DateUtils::dateTime(sqpRange);
     return dateTime.toString(AMDA_TIME_FORMAT);
-}
-
-/// Returns the URL of the AMDA server queried for requests, depending on the type of server passed
-/// as a parameter
-QString serverURL(const QString &server)
-{
-    if (server == QString{"amdatest"}) {
-        return AMDA_TEST_SERVER_URL;
-    }
-    else {
-        return AMDA_SERVER_URL;
-    }
 }
 
 AmdaResultParser::ValueType valueType(const QString &valueType)
@@ -190,9 +173,6 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     // scalar, vector...
     auto productValueType = valueType(data.value(AMDA_DATA_TYPE_KEY).toString());
 
-    // Gets the server being queried to retrieve the product. It's then used to set the server URL
-    auto productServer = data.value(AMDA_SERVER_KEY).toString();
-
     // /////////// //
     // Creates URL //
     // /////////// //
@@ -200,8 +180,9 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
     auto startDate = dateFormat(dateTime.m_TStart);
     auto endDate = dateFormat(dateTime.m_TEnd);
 
-    auto url = QUrl{
-        QString{AMDA_URL_FORMAT}.arg(serverURL(productServer), startDate, endDate, productId)};
+    QVariantHash urlProperties{{AMDA_SERVER_KEY, data.value(AMDA_SERVER_KEY)}};
+    auto url = QUrl{QString{AMDA_URL_FORMAT}.arg(AmdaServer::instance().url(urlProperties),
+                                                 startDate, endDate, productId)};
     qCInfo(LOG_AmdaProvider()) << tr("TORM AmdaProvider::retrieveData url:") << url;
     auto tempFile = std::make_shared<QTemporaryFile>();
 

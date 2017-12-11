@@ -46,6 +46,9 @@ extern const QString VALUES_UNIT_PROPERTY;
 /// ... - Units : m/s - ...
 extern const QRegularExpression DEFAULT_X_AXIS_UNIT_REGEX;
 
+/// Alternative regex to find x-axis unit in a line
+extern const QRegularExpression ALTERNATIVE_X_AXIS_UNIT_REGEX;
+
 /// Regex to find end time of data in a line for a spectrogram
 extern const QRegularExpression SPECTROGRAM_END_TIME_REGEX;
 
