@@ -15,9 +15,11 @@ class CatalogueSideBarWidget : public QWidget {
     Q_OBJECT
 
 signals:
-    void catalogueSelected(const DBCatalogue &catalogue);
+    void catalogueSelected(const QVector<DBCatalogue> &catalogues);
+    void databaseSelected(const QStringList &databases);
     void allEventsSelected();
     void trashSelected();
+    void selectionCleared();
 
 public:
     explicit CatalogueSideBarWidget(QWidget *parent = 0);

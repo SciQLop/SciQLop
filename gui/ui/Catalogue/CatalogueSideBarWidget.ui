@@ -34,7 +34,7 @@
         <string>+</string>
        </property>
        <property name="icon">
-        <iconset>
+        <iconset resource="../../resources/sqpguiresources.qrc">
          <normaloff>:/icones/add.png</normaloff>:/icones/add.png</iconset>
        </property>
        <property name="autoRaise">
@@ -48,7 +48,7 @@
         <string> - </string>
        </property>
        <property name="icon">
-        <iconset>
+        <iconset resource="../../resources/sqpguiresources.qrc">
          <normaloff>:/icones/remove.png</normaloff>:/icones/remove.png</iconset>
        </property>
        <property name="autoRaise">
@@ -73,6 +73,9 @@
    </item>
    <item>
     <widget class="QTreeWidget" name="treeWidget">
+     <property name="selectionMode">
+      <enum>QAbstractItemView::ExtendedSelection</enum>
+     </property>
      <attribute name="headerVisible">
       <bool>false</bool>
      </attribute>
@@ -85,6 +88,9 @@
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../resources/sqpguiresources.qrc"/>
+  <include location="../../resources/sqpguiresources.qrc"/>
+ </resources>
  <connections/>
 </ui>

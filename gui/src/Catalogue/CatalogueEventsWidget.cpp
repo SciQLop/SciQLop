@@ -41,23 +41,17 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         }
     });
 
-    connect(ui->tableView, &QTableView::clicked, [this](auto index) {
+    auto emitSelection = [this]() {
         QVector<DBEvent> events;
         for (auto rowIndex : ui->tableView->selectionModel()->selectedRows()) {
             events << impl->m_Model->getEvent(rowIndex.row());
         }
 
         emit this->eventsSelected(events);
-    });
+    };
 
-    connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
-        QVector<DBEvent> events;
-        for (auto rowIndex : ui->tableView->selectionModel()->selectedRows()) {
-            events << impl->m_Model->getEvent(rowIndex.row());
-        }
-
-        emit this->eventsSelected(events);
-    });
+    connect(ui->tableView, &QTableView::clicked, emitSelection);
+    connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, emitSelection);
 
     connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
         auto isNotMultiSelection = ui->tableView->selectionModel()->selectedRows().count() <= 1;
@@ -75,17 +69,24 @@ CatalogueEventsWidget::~CatalogueEventsWidget()
     delete ui;
 }
 
-void CatalogueEventsWidget::populateWithCatalogue(const DBCatalogue &catalogue)
+void CatalogueEventsWidget::populateWithCatalogues(const QVector<DBCatalogue> &catalogues)
 {
     auto &dao = sqpApp->catalogueController().getDao();
-    auto events = dao.getCatalogueEvents(catalogue);
 
-    QVector<DBEvent> eventVector;
-    for (auto event : events) {
-        eventVector << event;
+    QSet<QUuid> eventIds;
+    QVector<DBEvent> events;
+
+    for (auto catalogue : catalogues) {
+        auto catalogueEvents = dao.getCatalogueEvents(catalogue);
+        for (auto event : catalogueEvents) {
+            if (!eventIds.contains(event.getUniqId())) {
+                events << event;
+                eventIds.insert(event.getUniqId());
+            }
+        }
     }
 
     ui->tableView->setSortingEnabled(false);
-    impl->m_Model->setEvents(eventVector);
+    impl->m_Model->setEvents(events);
     ui->tableView->setSortingEnabled(true);
 }

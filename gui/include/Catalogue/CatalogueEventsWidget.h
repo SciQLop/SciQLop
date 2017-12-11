@@ -22,7 +22,7 @@ public:
     virtual ~CatalogueEventsWidget();
 
 public slots:
-    void populateWithCatalogue(const DBCatalogue &catalogue);
+    void populateWithCatalogues(const QVector<DBCatalogue> &catalogues);
 
 private:
     Ui::CatalogueEventsWidget *ui;

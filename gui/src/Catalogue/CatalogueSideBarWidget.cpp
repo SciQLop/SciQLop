@@ -32,22 +32,60 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     ui->setupUi(this);
     impl->configureTreeWidget(ui->treeWidget);
 
-    auto emitSelection = [this](auto item) {
-        switch (item->type()) {
-            case CATALOGUE_ITEM_TYPE:
-                emit this->catalogueSelected(
-                    static_cast<CatalogueTreeWidgetItem *>(item)->catalogue());
-                break;
-            case ALL_EVENT_ITEM_TYPE:
-                emit this->allEventsSelected();
-                break;
-            case TRASH_ITEM_TYPE:
-                emit this->trashSelected();
-                break;
-            case DATABASE_ITEM_TYPE:
-            default:
-                break;
+    auto emitSelection = [this]() {
+
+        auto selectedItems = ui->treeWidget->selectedItems();
+        if (selectedItems.isEmpty()) {
+            emit this->selectionCleared();
         }
+        else {
+            QVector<DBCatalogue> catalogues;
+            QStringList databases;
+            int selectionType = selectedItems.first()->type();
+
+            for (auto item : ui->treeWidget->selectedItems()) {
+                if (item->type() == selectionType) {
+                    switch (selectionType) {
+                        case CATALOGUE_ITEM_TYPE:
+                            catalogues.append(
+                                static_cast<CatalogueTreeWidgetItem *>(item)->catalogue());
+                            break;
+                        case DATABASE_ITEM_TYPE:
+                            selectionType = DATABASE_ITEM_TYPE;
+                            databases.append(item->text(0));
+                        case ALL_EVENT_ITEM_TYPE: // fallthrough
+                        case TRASH_ITEM_TYPE:     // fallthrough
+                        default:
+                            break;
+                    }
+                }
+                else {
+                    // Incoherent multi selection
+                    selectionType = -1;
+                    break;
+                }
+            }
+
+            switch (selectionType) {
+                case CATALOGUE_ITEM_TYPE:
+                    emit this->catalogueSelected(catalogues);
+                    break;
+                case DATABASE_ITEM_TYPE:
+                    emit this->databaseSelected(databases);
+                    break;
+                case ALL_EVENT_ITEM_TYPE:
+                    emit this->allEventsSelected();
+                    break;
+                case TRASH_ITEM_TYPE:
+                    emit this->trashSelected();
+                    break;
+                default:
+                    emit this->selectionCleared();
+                    break;
+            }
+        }
+
+
     };
 
     connect(ui->treeWidget, &QTreeWidget::itemClicked, emitSelection);
