@@ -86,6 +86,8 @@ MainWindow::MainWindow(QWidget *parent)
     m_Ui->splitter->setCollapsible(LEFTINSPECTORSIDEPANESPLITTERINDEX, false);
     m_Ui->splitter->setCollapsible(RIGHTINSPECTORSIDEPANESPLITTERINDEX, false);
 
+    impl->m_CatalogExplorer->setVisualizationWidget(m_Ui->view);
+
 
     auto leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
     auto openLeftInspectorAction = new QAction{QIcon{

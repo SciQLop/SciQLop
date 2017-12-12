@@ -118,6 +118,15 @@ void VisualizationTabWidget::insertZone(int index, VisualizationZoneWidget *zone
     ui->dragDropContainer->insertDragWidget(index, zoneWidget);
 }
 
+QStringList VisualizationTabWidget::availableZoneWidgets() const
+{
+    QStringList zones;
+    processZones(tabLayout(),
+                 [&zones](VisualizationZoneWidget &zoneWidget) { zones << zoneWidget.name(); });
+
+    return zones;
+}
+
 VisualizationZoneWidget *VisualizationTabWidget::createZone(std::shared_ptr<Variable> variable)
 {
     return createZone({variable}, -1);

@@ -25,10 +25,14 @@ public:
     explicit VisualizationTabWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationTabWidget();
 
-    /// Add a zone widget
+    /// Adds a zone widget
     void addZone(VisualizationZoneWidget *zoneWidget);
 
+    /// Inserts a zone widget at the specified position
     void insertZone(int index, VisualizationZoneWidget *zoneWidget);
+
+    /// Returns the list of zone widget names in the order they are displayed
+    QStringList availableZoneWidgets() const;
 
     /**
      * Creates a zone using a variable. The variable will be displayed in a new graph of the new

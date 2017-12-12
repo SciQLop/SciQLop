@@ -6,6 +6,8 @@
 #include <CatalogueDao.h>
 #include <DBCatalogue.h>
 #include <SqpApplication.h>
+#include <Visualization/VisualizationTabWidget.h>
+#include <Visualization/VisualizationWidget.h>
 
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -20,6 +22,8 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     CatalogueEventsTableModel *m_Model = nullptr;
     QString m_ZoneForTimeMode;
     QString m_ZoneForGraphMode;
+
+    VisualizationWidget *m_VisualizationWidget = nullptr;
 
     void setEvents(const QVector<DBEvent> &events, QTableView *tableView)
     {
@@ -42,10 +46,25 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         tableView->setSortingEnabled(true);
     }
 
-    QStringList selectZone(QWidget *parent, const QStringList &availableZones,
-                           const QStringList &selectedZones, bool allowMultiSelection,
-                           const QPoint &location)
+    QStringList getAvailableVisualizationZoneList() const
     {
+        if (m_VisualizationWidget) {
+            if (auto tab = m_VisualizationWidget->currentTabWidget()) {
+                return tab->availableZoneWidgets();
+            }
+        }
+
+        return QStringList{};
+    }
+
+    QStringList selectZone(QWidget *parent, const QStringList &selectedZones,
+                           bool allowMultiSelection, const QPoint &location)
+    {
+        auto availableZones = getAvailableVisualizationZoneList();
+        if (availableZones.isEmpty()) {
+            return QStringList{};
+        }
+
         QDialog d(parent, Qt::Tool);
         d.setWindowTitle("Choose a zone");
         auto layout = new QVBoxLayout{&d};
@@ -103,6 +122,9 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
                 result += item->text();
             }
         }
+        else {
+            result = selectedZones;
+        }
 
         return result;
     }
@@ -126,8 +148,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         if (checked) {
             ui->btnChart->setChecked(false);
             impl->m_ZoneForTimeMode
-                = impl->selectZone(this, {"Zone 1", "Zone 2", "Zone 3", "Zone 4"},
-                                   {impl->m_ZoneForTimeMode}, false,
+                = impl->selectZone(this, {impl->m_ZoneForTimeMode}, false,
                                    this->mapToGlobal(ui->btnTime->frameGeometry().center()))
                       .value(0);
         }
@@ -137,8 +158,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         if (checked) {
             ui->btnTime->setChecked(false);
             impl->m_ZoneForGraphMode
-                = impl->selectZone(this, {"Zone 1", "Zone 2", "Zone 3", "Zone 4"},
-                                   {impl->m_ZoneForGraphMode}, false,
+                = impl->selectZone(this, {impl->m_ZoneForGraphMode}, false,
                                    this->mapToGlobal(ui->btnChart->frameGeometry().center()))
                       .value(0);
         }
@@ -170,6 +190,11 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
 CatalogueEventsWidget::~CatalogueEventsWidget()
 {
     delete ui;
+}
+
+void CatalogueEventsWidget::setVisualizationWidget(VisualizationWidget *visualization)
+{
+    impl->m_VisualizationWidget = visualization;
 }
 
 void CatalogueEventsWidget::populateWithCatalogues(const QVector<DBCatalogue> &catalogues)

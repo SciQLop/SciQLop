@@ -6,6 +6,7 @@
 
 class DBCatalogue;
 class DBEvent;
+class VisualizationWidget;
 
 namespace Ui {
 class CatalogueEventsWidget;
@@ -20,6 +21,8 @@ signals:
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
     virtual ~CatalogueEventsWidget();
+
+    void setVisualizationWidget(VisualizationWidget *visualization);
 
 public slots:
     void populateWithCatalogues(const QVector<DBCatalogue> &catalogues);

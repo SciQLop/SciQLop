@@ -1,12 +1,18 @@
 #include "Catalogue/CatalogueExplorer.h"
 #include "ui_CatalogueExplorer.h"
 
+#include <Visualization/VisualizationWidget.h>
+
 #include <DBCatalogue.h>
 #include <DBEvent.h>
 
+struct CatalogueExplorer::CatalogueExplorerPrivate {
+};
+
 CatalogueExplorer::CatalogueExplorer(QWidget *parent)
         : QDialog(parent, Qt::Dialog | Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint),
-          ui(new Ui::CatalogueExplorer)
+          ui(new Ui::CatalogueExplorer),
+          impl{spimpl::make_unique_impl<CatalogueExplorerPrivate>()}
 {
     ui->setupUi(this);
 
@@ -47,4 +53,9 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
 CatalogueExplorer::~CatalogueExplorer()
 {
     delete ui;
+}
+
+void CatalogueExplorer::setVisualizationWidget(VisualizationWidget *visualization)
+{
+    ui->events->setVisualizationWidget(visualization);
 }
