@@ -4,6 +4,13 @@
 
 #include <CatalogueDao.h>
 
+#include <ComparaisonPredicate.h>
+#include <CompoundPredicate.h>
+#include <DBCatalogue.h>
+#include <DBEvent.h>
+#include <DBTag.h>
+#include <IRequestPredicate.h>
+
 #include <QMutex>
 #include <QThread>
 
@@ -12,10 +19,18 @@
 
 Q_LOGGING_CATEGORY(LOG_CatalogueController, "CatalogueController")
 
+namespace  {
+
+static QString REPOSITORY_WORK_SUFFIX = QString{"Work"};
+
+}
+
 class CatalogueController::CatalogueControllerPrivate {
 public:
     QMutex m_WorkingMutex;
     CatalogueDao m_CatalogueDao;
+
+    std::list<QString> m_RepositoryList;
 };
 
 CatalogueController::CatalogueController(QObject *parent)
@@ -32,13 +47,77 @@ CatalogueController::~CatalogueController()
     this->waitForFinish();
 }
 
+void CatalogueController::addDB(const QString &dbPath)
+{
+    QDir dbDir(dbPath);
+    if (dbDir.exists()) {
+        auto dirName = dbDir.dirName();
+
+        if (std::find(impl->m_RepositoryList.cbegin(), impl->m_RepositoryList.cend(), dirName)
+            != impl->m_RepositoryList.cend()) {
+            qCCritical(LOG_CatalogueController())
+                << tr("Impossible to addDB that is already loaded");
+        }
+
+        if (!impl->m_CatalogueDao.addDB(dbPath, dirName)) {
+            qCCritical(LOG_CatalogueController())
+                << tr("Impossible to addDB %1 from %2 ").arg(dirName, dbPath);
+        }
+        else
+        {
+            impl->m_RepositoryList << dirName;
+        }
+    }
+    else {
+        qCCritical(LOG_CatalogueController()) << tr("Impossible to addDB that not exists: ")
+                                              << dbPath;
+    }
+}
+
+void CatalogueController::saveDB(const QString &destinationPath, const QString &repository)
+{
+    if (!impl->m_CatalogueDao.saveDB(destinationPath, repository)) {
+        qCCritical(LOG_CatalogueController())
+            << tr("Impossible to saveDB %1 from %2 ").arg(repository, destinationPath);
+    }
+}
+
+std::list<std::shared_ptr<DBEvent> >
+CatalogueController::retrieveEvents(const QString &repository) const
+{
+    auto eventsShared = std::list<std::shared_ptr<DBEvent> >{};
+    auto events = impl->m_CatalogueDao.getEvents(repository);
+    for (auto event : events) {
+        eventsShared.push_back(std::make_shared<DBEvent>(event));
+    }
+    return eventsShared;
+}
+
+std::list<std::shared_ptr<DBEvent> > CatalogueController::retrieveAllEvents() const
+{
+    auto eventsShared = std::list<std::shared_ptr<DBEvent> >{};
+    for (auto repository : impl->m_RepositoryList) {
+        eventsShared.splice(eventsShared.end(), retrieveEvents(repository));
+    }
+
+    return eventsShared;
+}
+
 void CatalogueController::initialize()
 {
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController init")
                                        << QThread::currentThread();
     impl->m_WorkingMutex.lock();
     impl->m_CatalogueDao.initialize();
-    qCDebug(LOG_CatalogueController()) << tr("CatalogueController init END");
+    auto defaultRepository = QString("%1/%2").arg(
+        QStandardPaths::displayName(QStandardPaths::AppDataLocation), REPOSITORY_DEFAULT);
+    QDir defaultRepositoryDir(defaultRepository);
+    if (defaultRepositoryDir.exists()) {
+        qCInfo(LOG_CatalogueController()) << tr("Persistant data loading from: ")
+                                          << defaultRepository;
+        this->addDB(defaultRepository);
+        qCDebug(LOG_CatalogueController()) << tr("CatalogueController init END");
+    }
 }
 
 void CatalogueController::finalize()
