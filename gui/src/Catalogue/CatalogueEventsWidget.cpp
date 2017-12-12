@@ -7,6 +7,10 @@
 #include <DBCatalogue.h>
 #include <SqpApplication.h>
 
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QListWidget>
+
 
 /// Format of the dates appearing in the label of a cursor
 const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
@@ -14,6 +18,8 @@ const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
     CatalogueEventsTableModel *m_Model = nullptr;
+    QString m_ZoneForTimeMode;
+    QString m_ZoneForGraphMode;
 
     void setEvents(const QVector<DBEvent> &events, QTableView *tableView)
     {
@@ -35,8 +41,72 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         m_Model->removeEvent(event);
         tableView->setSortingEnabled(true);
     }
-};
 
+    QStringList selectZone(QWidget *parent, const QStringList &availableZones,
+                           const QStringList &selectedZones, bool allowMultiSelection,
+                           const QPoint &location)
+    {
+        QDialog d(parent, Qt::Tool);
+        d.setWindowTitle("Choose a zone");
+        auto layout = new QVBoxLayout{&d};
+        layout->setContentsMargins(0, 0, 0, 0);
+        auto listWidget = new QListWidget{&d};
+        layout->addWidget(listWidget);
+
+        QSet<QListWidgetItem *> checkedItems;
+        for (auto zone : availableZones) {
+            auto item = new QListWidgetItem{zone};
+            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
+            if (selectedZones.contains(zone)) {
+                item->setCheckState(Qt::Checked);
+                checkedItems << item;
+            }
+            else {
+                item->setCheckState(Qt::Unchecked);
+            }
+
+            listWidget->addItem(item);
+        }
+
+        auto buttonBox = new QDialogButtonBox{QDialogButtonBox::Ok, &d};
+        layout->addWidget(buttonBox);
+
+        QObject::connect(buttonBox, &QDialogButtonBox::accepted, &d, &QDialog::accept);
+        QObject::connect(buttonBox, &QDialogButtonBox::rejected, &d, &QDialog::reject);
+
+        QObject::connect(listWidget, &QListWidget::itemChanged,
+                         [&checkedItems, allowMultiSelection, listWidget](auto item) {
+                             if (item->checkState() == Qt::Checked) {
+                                 if (!allowMultiSelection) {
+                                     for (auto checkedItem : checkedItems) {
+                                         listWidget->blockSignals(true);
+                                         checkedItem->setCheckState(Qt::Unchecked);
+                                         listWidget->blockSignals(false);
+                                     }
+
+                                     checkedItems.clear();
+                                 }
+                                 checkedItems << item;
+                             }
+                             else {
+                                 checkedItems.remove(item);
+                             }
+                         });
+
+        QStringList result;
+
+        d.setMinimumWidth(120);
+        d.resize(d.minimumSizeHint());
+        d.move(location);
+        if (d.exec() == QDialog::Accepted) {
+            for (auto item : checkedItems) {
+                result += item->text();
+            }
+        }
+
+        return result;
+    }
+};
 
 CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         : QWidget(parent),
@@ -55,12 +125,22 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     connect(ui->btnTime, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
             ui->btnChart->setChecked(false);
+            impl->m_ZoneForTimeMode
+                = impl->selectZone(this, {"Zone 1", "Zone 2", "Zone 3", "Zone 4"},
+                                   {impl->m_ZoneForTimeMode}, false,
+                                   this->mapToGlobal(ui->btnTime->frameGeometry().center()))
+                      .value(0);
         }
     });
 
     connect(ui->btnChart, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
             ui->btnTime->setChecked(false);
+            impl->m_ZoneForGraphMode
+                = impl->selectZone(this, {"Zone 1", "Zone 2", "Zone 3", "Zone 4"},
+                                   {impl->m_ZoneForGraphMode}, false,
+                                   this->mapToGlobal(ui->btnChart->frameGeometry().center()))
+                      .value(0);
         }
     });
 
