@@ -30,6 +30,9 @@ private:
 
     class CatalogueSideBarWidgetPrivate;
     spimpl::unique_impl_ptr<CatalogueSideBarWidgetPrivate> impl;
+
+private slots:
+    void onContextMenuRequested(const QPoint &pos);
 };
 
 #endif // SCIQLOP_CATALOGUESIDEBARWIDGET_H

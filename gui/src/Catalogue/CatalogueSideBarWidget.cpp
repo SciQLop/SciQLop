@@ -8,6 +8,8 @@
 #include <ComparaisonPredicate.h>
 #include <DBCatalogue.h>
 
+#include <QMenu>
+
 
 constexpr auto ALL_EVENT_ITEM_TYPE = QTreeWidgetItem::UserType;
 constexpr auto TRASH_ITEM_TYPE = QTreeWidgetItem::UserType + 1;
@@ -91,11 +93,43 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
 
     connect(ui->treeWidget, &QTreeWidget::itemClicked, emitSelection);
     connect(ui->treeWidget, &QTreeWidget::currentItemChanged, emitSelection);
+
+    ui->treeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested, this,
+            &CatalogueSideBarWidget::onContextMenuRequested);
 }
 
 CatalogueSideBarWidget::~CatalogueSideBarWidget()
 {
     delete ui;
+}
+
+void CatalogueSideBarWidget::onContextMenuRequested(const QPoint &pos)
+{
+    QMenu menu{this};
+
+    auto currentItem = ui->treeWidget->currentItem();
+    switch (currentItem->type()) {
+        case CATALOGUE_ITEM_TYPE:
+            menu.addAction("Rename",
+                           [this, currentItem]() { ui->treeWidget->editItem(currentItem); });
+            break;
+        case DATABASE_ITEM_TYPE:
+            break;
+        case ALL_EVENT_ITEM_TYPE:
+            break;
+        case TRASH_ITEM_TYPE:
+            menu.addAction("Empty Trash", []() {
+                // TODO
+            });
+            break;
+        default:
+            break;
+    }
+
+    if (!menu.isEmpty()) {
+        menu.exec(ui->treeWidget->mapToGlobal(pos));
+    }
 }
 
 void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
@@ -117,7 +151,6 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
     treeWidget->addTopLevelItem(separatorItem);
     treeWidget->setItemWidget(separatorItem, 0, separator);
 
-    // Test
     auto &dao = sqpApp->catalogueController().getDao();
     auto allPredicate = std::make_shared<ComparaisonPredicate>(QString{"uniqId"}, "-1",
                                                                ComparaisonOperation::DIFFERENT);
