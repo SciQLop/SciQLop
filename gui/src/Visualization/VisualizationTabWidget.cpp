@@ -131,6 +131,18 @@ QStringList VisualizationTabWidget::availableZoneWidgets() const
     return zones;
 }
 
+VisualizationZoneWidget *VisualizationTabWidget::getZoneWithName(const QString &zoneName)
+{
+    VisualizationZoneWidget *result = nullptr;
+    processZones(tabLayout(), [&zoneName, &result](VisualizationZoneWidget &zoneWidget) {
+        if (!result && zoneWidget.name() == zoneName) {
+            result = &zoneWidget;
+        }
+    });
+
+    return result;
+}
+
 VisualizationZoneWidget *VisualizationTabWidget::createZone(std::shared_ptr<Variable> variable)
 {
     return createZone({variable}, -1);

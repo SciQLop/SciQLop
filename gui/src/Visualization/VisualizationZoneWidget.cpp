@@ -148,6 +148,17 @@ VisualizationZoneWidget::~VisualizationZoneWidget()
     delete ui;
 }
 
+void VisualizationZoneWidget::setZoneRange(const SqpRange &range)
+{
+    if (auto graph = firstGraph()) {
+        graph->setGraphRange(range);
+    }
+    else {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("setZoneRange:Cannot set the range of an empty zone.");
+    }
+}
+
 void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)
 {
     // Synchronize new graph with others in the zone

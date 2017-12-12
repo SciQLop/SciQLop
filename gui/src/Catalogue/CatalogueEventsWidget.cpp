@@ -8,11 +8,13 @@
 #include <SqpApplication.h>
 #include <Visualization/VisualizationTabWidget.h>
 #include <Visualization/VisualizationWidget.h>
+#include <Visualization/VisualizationZoneWidget.h>
 
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QListWidget>
 
+Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
 
 /// Format of the dates appearing in the label of a cursor
 const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
@@ -20,7 +22,7 @@ const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
     CatalogueEventsTableModel *m_Model = nullptr;
-    QString m_ZoneForTimeMode;
+    QStringList m_ZonesForTimeMode;
     QString m_ZoneForGraphMode;
 
     VisualizationWidget *m_VisualizationWidget = nullptr;
@@ -128,6 +130,68 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
         return result;
     }
+
+    void updateForTimeMode(QTableView *tableView)
+    {
+        auto selectedRows = tableView->selectionModel()->selectedRows();
+
+        if (selectedRows.count() == 1) {
+            auto event = m_Model->getEvent(selectedRows.first().row());
+            if (m_VisualizationWidget) {
+                if (auto tab = m_VisualizationWidget->currentTabWidget()) {
+
+                    for (auto zoneName : m_ZonesForTimeMode) {
+                        if (auto zone = tab->getZoneWithName(zoneName)) {
+                            SqpRange eventRange;
+                            eventRange.m_TStart = event.getTStart();
+                            eventRange.m_TEnd = event.getTEnd();
+                            zone->setZoneRange(eventRange);
+                        }
+                    }
+                }
+                else {
+                    qCWarning(LOG_CatalogueEventsWidget())
+                        << "updateTimeZone: no tab found in the visualization";
+                }
+            }
+            else {
+                qCWarning(LOG_CatalogueEventsWidget())
+                    << "updateTimeZone: visualization widget not found";
+            }
+        }
+        else {
+            qCWarning(LOG_CatalogueEventsWidget())
+                << "updateTimeZone: not compatible with multiple events selected";
+        }
+    }
+
+    void updateForGraphMode(QTableView *tableView)
+    {
+        auto selectedRows = tableView->selectionModel()->selectedRows();
+
+        if (selectedRows.count() == 1) {
+            auto event = m_Model->getEvent(selectedRows.first().row());
+            if (m_VisualizationWidget) {
+                if (auto tab = m_VisualizationWidget->currentTabWidget()) {
+                    if (auto zone = tab->getZoneWithName(m_ZoneForGraphMode)) {
+                        // TODO
+                    }
+                }
+                else {
+                    qCWarning(LOG_CatalogueEventsWidget())
+                        << "updateGraphMode: no tab found in the visualization";
+                }
+            }
+            else {
+                qCWarning(LOG_CatalogueEventsWidget())
+                    << "updateGraphMode: visualization widget not found";
+            }
+        }
+        else {
+            qCWarning(LOG_CatalogueEventsWidget())
+                << "updateGraphMode: not compatible with multiple events selected";
+        }
+    }
 };
 
 CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
@@ -147,10 +211,11 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     connect(ui->btnTime, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
             ui->btnChart->setChecked(false);
-            impl->m_ZoneForTimeMode
-                = impl->selectZone(this, {impl->m_ZoneForTimeMode}, false,
-                                   this->mapToGlobal(ui->btnTime->frameGeometry().center()))
-                      .value(0);
+            impl->m_ZonesForTimeMode
+                = impl->selectZone(this, impl->m_ZonesForTimeMode, true,
+                                   this->mapToGlobal(ui->btnTime->frameGeometry().center()));
+
+            impl->updateForTimeMode(ui->tableView);
         }
     });
 
@@ -161,6 +226,8 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
                 = impl->selectZone(this, {impl->m_ZoneForGraphMode}, false,
                                    this->mapToGlobal(ui->btnChart->frameGeometry().center()))
                       .value(0);
+
+            impl->updateForGraphMode(ui->tableView);
         }
     });
 
@@ -180,6 +247,13 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         auto isNotMultiSelection = ui->tableView->selectionModel()->selectedRows().count() <= 1;
         ui->btnChart->setEnabled(isNotMultiSelection);
         ui->btnTime->setEnabled(isNotMultiSelection);
+
+        if (isNotMultiSelection && ui->btnTime->isChecked()) {
+            impl->updateForTimeMode(ui->tableView);
+        }
+        else if (isNotMultiSelection && ui->btnChart->isChecked()) {
+            impl->updateForGraphMode(ui->tableView);
+        }
     });
 
     ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);

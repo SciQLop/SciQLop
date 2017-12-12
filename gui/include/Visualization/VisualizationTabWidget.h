@@ -34,6 +34,10 @@ public:
     /// Returns the list of zone widget names in the order they are displayed
     QStringList availableZoneWidgets() const;
 
+    /// Returns the zone with the specified name.
+    /// If multiple zone with the same name exist, the first one is returned.
+    VisualizationZoneWidget *getZoneWithName(const QString &zoneName);
+
     /**
      * Creates a zone using a variable. The variable will be displayed in a new graph of the new
      * zone. The zone is added at the end.

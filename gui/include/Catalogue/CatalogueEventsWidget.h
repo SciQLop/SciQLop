@@ -2,6 +2,7 @@
 #define SCIQLOP_CATALOGUEEVENTSWIDGET_H
 
 #include <Common/spimpl.h>
+#include <QLoggingCategory>
 #include <QWidget>
 
 class DBCatalogue;
@@ -11,6 +12,8 @@ class VisualizationWidget;
 namespace Ui {
 class CatalogueEventsWidget;
 }
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_CatalogueEventsWidget)
 
 class CatalogueEventsWidget : public QWidget {
     Q_OBJECT
