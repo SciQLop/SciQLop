@@ -18,20 +18,6 @@ Q_LOGGING_CATEGORY(LOG_VisualizationTabWidget, "VisualizationTabWidget")
 
 namespace {
 
-/// Generates a default name for a new zone, according to the number of zones already displayed in
-/// the tab
-QString defaultZoneName(const QLayout &layout)
-{
-    auto count = 0;
-    for (auto i = 0; i < layout.count(); ++i) {
-        if (dynamic_cast<VisualizationZoneWidget *>(layout.itemAt(i)->widget())) {
-            count++;
-        }
-    }
-
-    return QObject::tr("Zone %1").arg(count + 1);
-}
-
 /**
  * Applies a function to all zones of the tab represented by its layout
  * @param layout the layout that contains zones
@@ -43,11 +29,29 @@ void processZones(QLayout &layout, Fun fun)
     for (auto i = 0; i < layout.count(); ++i) {
         if (auto item = layout.itemAt(i)) {
             if (auto visualizationZoneWidget
-                = dynamic_cast<VisualizationZoneWidget *>(item->widget())) {
+                = qobject_cast<VisualizationZoneWidget *>(item->widget())) {
                 fun(*visualizationZoneWidget);
             }
         }
     }
+}
+
+/// Generates a default name for a new zone, according to the number of zones already displayed in
+/// the tab
+QString defaultZoneName(QLayout &layout)
+{
+    QSet<QString> existingNames;
+    processZones(layout,
+                 [&existingNames](auto &zoneWidget) { existingNames.insert(zoneWidget.name()); });
+
+    int zoneNum = 1;
+    QString name;
+    do {
+        name = QObject::tr("Zone ").append(QString::number(zoneNum));
+        ++zoneNum;
+    } while (existingNames.contains(name));
+
+    return name;
 }
 
 } // namespace
