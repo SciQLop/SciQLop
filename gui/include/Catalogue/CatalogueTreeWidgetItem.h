@@ -12,6 +12,8 @@ public:
     CatalogueTreeWidgetItem(DBCatalogue catalogue, int type = QTreeWidgetItem::Type);
 
     QVariant data(int column, int role) const override;
+    void setData(int column, int role, const QVariant &value) override;
+
     DBCatalogue catalogue() const;
 
 private:
