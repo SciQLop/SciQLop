@@ -34,11 +34,14 @@ struct CreateOperation : public IFuzzingOperation {
             = properties.value(PROVIDER_PROPERTY).value<std::shared_ptr<IDataProvider> >();
 
         auto variableName = QString{"Var_%1"}.arg(QUuid::createUuid().toString());
-        qCInfo(LOG_FuzzingOperations())
+        qCInfo(LOG_FuzzingOperations()).noquote()
             << "Creating variable" << variableName << "(metadata:" << variableMetadata << ")";
 
         auto newVariable
             = variableController.createVariable(variableName, variableMetadata, variableProvider);
+
+        // Updates variable's state
+        variableState.m_Range = properties.value(INITIAL_RANGE_PROPERTY).value<SqpRange>();
         std::swap(variableState.m_Variable, newVariable);
     }
 };
@@ -105,7 +108,7 @@ struct MoveOperation : public IFuzzingOperation {
         // Moves variable to its new range
         auto newVariableRange = SqpRange{m_RangeStartMoveFun(variableRange.m_TStart, delta),
                                          m_RangeEndMoveFun(variableRange.m_TEnd, delta)};
-        qCInfo(LOG_FuzzingOperations())
+        qCInfo(LOG_FuzzingOperations()).noquote()
             << "Performing" << m_Label << "on" << variable->name() << "(from" << variableRange
             << "to" << newVariableRange << ")...";
         variableController.onRequestDataLoading({variable}, newVariableRange, false);

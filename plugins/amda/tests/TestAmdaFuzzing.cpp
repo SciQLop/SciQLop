@@ -113,8 +113,8 @@ public:
 
     void execute()
     {
-        qCInfo(LOG_TestAmdaFuzzing()) << "Running" << nbMaxOperations() << "operations on"
-                                      << nbMaxVariables() << "variable(s)...";
+        qCInfo(LOG_TestAmdaFuzzing()).noquote() << "Running" << nbMaxOperations() << "operations on"
+                                                << nbMaxVariables() << "variable(s)...";
 
         auto canExecute = true;
         for (auto i = 0; i < nbMaxOperations() && canExecute; ++i) {
@@ -139,12 +139,12 @@ public:
 
             }
             else {
-                qCInfo(LOG_TestAmdaFuzzing())
+                qCInfo(LOG_TestAmdaFuzzing()).noquote()
                     << "No more operations are available, the execution of the test will stop...";
             }
         }
 
-        qCInfo(LOG_TestAmdaFuzzing()) << "Execution of the test completed.";
+        qCInfo(LOG_TestAmdaFuzzing()).noquote() << "Execution of the test completed.";
     }
 
 private:
@@ -242,8 +242,9 @@ void TestAmdaFuzzing::testFuzzing()
 
     // Sets initial range on time controller
     SqpRange initialRange{initialRangeStart, initialRangeEnd};
-    qCInfo(LOG_TestAmdaFuzzing()) << "Setting initial range to" << initialRange << "...";
+    qCInfo(LOG_TestAmdaFuzzing()).noquote() << "Setting initial range to" << initialRange << "...";
     timeController.onTimeToUpdate(initialRange);
+    properties.insert(INITIAL_RANGE_PROPERTY, QVariant::fromValue(initialRange));
 
     FuzzingTest test{variableController, properties};
     test.execute();

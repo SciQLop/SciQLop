@@ -30,6 +30,10 @@ extern const QString NB_MAX_VARIABLES_PROPERTY;
 /// Set of operations available for the test
 extern const QString AVAILABLE_OPERATIONS_PROPERTY;
 
+
+/// Range with which the timecontroller is initialized
+extern const QString INITIAL_RANGE_PROPERTY;
+
 /// Max range that an operation can reach
 extern const QString MAX_RANGE_PROPERTY;
 
