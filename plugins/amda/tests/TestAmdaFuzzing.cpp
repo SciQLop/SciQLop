@@ -42,12 +42,13 @@ using VariablesPool = std::map<VariableId, VariableState>;
 // Defaults values used when the associated properties have not been set for the test
 const auto NB_MAX_OPERATIONS_DEFAULT_VALUE = 100;
 const auto NB_MAX_VARIABLES_DEFAULT_VALUE = 1;
-const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE
-    = QVariant::fromValue(WeightedOperationsTypes{{FuzzingOperationType::CREATE, 1.},
-                                                  {FuzzingOperationType::PAN_LEFT, 1.},
-                                                  {FuzzingOperationType::PAN_RIGHT, 1.},
-                                                  {FuzzingOperationType::ZOOM_IN, 1.},
-                                                  {FuzzingOperationType::ZOOM_OUT, 1.}});
+const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE = QVariant::fromValue(WeightedOperationsTypes{
+    {FuzzingOperationType::CREATE, 1.},
+    {FuzzingOperationType::DELETE, 0.1}, // Delete operation is less frequent
+    {FuzzingOperationType::PAN_LEFT, 1.},
+    {FuzzingOperationType::PAN_RIGHT, 1.},
+    {FuzzingOperationType::ZOOM_IN, 1.},
+    {FuzzingOperationType::ZOOM_OUT, 1.}});
 const auto CACHE_TOLERANCE_DEFAULT_VALUE = 0.2;
 
 /// Delay between each operation (in ms)
@@ -138,7 +139,6 @@ public:
 
                 fuzzingOperation->execute(variableState, m_VariableController, m_Properties);
                 QTest::qWait(operationDelay());
-
             }
             else {
                 qCInfo(LOG_TestAmdaFuzzing()).noquote()

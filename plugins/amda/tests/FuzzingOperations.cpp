@@ -35,7 +35,7 @@ struct CreateOperation : public IFuzzingOperation {
 
         auto variableName = QString{"Var_%1"}.arg(QUuid::createUuid().toString());
         qCInfo(LOG_FuzzingOperations()).noquote()
-            << "Creating variable" << variableName << "(metadata:" << variableMetadata << ")";
+            << "Creating variable" << variableName << "(metadata:" << variableMetadata << ")...";
 
         auto newVariable
             = variableController.createVariable(variableName, variableMetadata, variableProvider);
@@ -43,6 +43,28 @@ struct CreateOperation : public IFuzzingOperation {
         // Updates variable's state
         variableState.m_Range = properties.value(INITIAL_RANGE_PROPERTY).value<SqpRange>();
         std::swap(variableState.m_Variable, newVariable);
+    }
+};
+
+struct DeleteOperation : public IFuzzingOperation {
+    bool canExecute(const VariableState &variableState) const override
+    {
+        // A variable can be delete only if it exists
+        return variableState.m_Variable != nullptr;
+    }
+
+    void execute(VariableState &variableState, VariableController &variableController,
+                 const Properties &properties) const override
+    {
+        Q_UNUSED(properties);
+
+        qCInfo(LOG_FuzzingOperations()).noquote()
+            << "Deleting variable" << variableState.m_Variable->name() << "...";
+        variableController.deleteVariable(variableState.m_Variable);
+
+        // Updates variable's state
+        variableState.m_Range = INVALID_RANGE;
+        variableState.m_Variable = nullptr;
     }
 };
 
@@ -147,6 +169,8 @@ std::unique_ptr<IFuzzingOperation> FuzzingOperationFactory::create(FuzzingOperat
     switch (type) {
         case FuzzingOperationType::CREATE:
             return std::make_unique<CreateOperation>();
+        case FuzzingOperationType::DELETE:
+            return std::make_unique<DeleteOperation>();
         case FuzzingOperationType::PAN_LEFT:
             return std::make_unique<MoveOperation>(
                 std::minus<double>(), std::minus<double>(),
