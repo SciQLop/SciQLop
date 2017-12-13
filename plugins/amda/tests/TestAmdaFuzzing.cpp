@@ -7,6 +7,7 @@
 #include <Network/NetworkController.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
+#include <Variable/Variable.h>
 #include <Variable/VariableController.h>
 
 #include <QLoggingCategory>
@@ -31,7 +32,7 @@ using VariableOperation = std::pair<VariableId, std::shared_ptr<IFuzzingOperatio
 using VariablesOperations = std::vector<VariableOperation>;
 
 using WeightedOperationsPool = std::map<std::shared_ptr<IFuzzingOperation>, Weight>;
-using VariablesPool = std::map<VariableId, std::shared_ptr<Variable> >;
+using VariablesPool = std::map<VariableId, VariableState>;
 
 // ///////// //
 // Constants //
@@ -65,14 +66,14 @@ availableOperations(const VariablesPool &variablesPool,
 
     for (const auto &variablesPoolEntry : variablesPool) {
         auto variableId = variablesPoolEntry.first;
-        auto variable = variablesPoolEntry.second;
+        const auto &variableState = variablesPoolEntry.second;
 
         for (const auto &operationsPoolEntry : operationsPool) {
             auto operation = operationsPoolEntry.first;
             auto weight = operationsPoolEntry.second;
 
             // A pair is valid if the current operation can be executed on the current variable
-            if (operation->canExecute(variable)) {
+            if (operation->canExecute(variableState)) {
                 result.push_back({variableId, operation});
                 weights.push_back(weight);
             }
@@ -106,7 +107,7 @@ public:
     {
         // Inits variables pool: at init, all variables are null
         for (auto variableId = 0; variableId < nbMaxVariables(); ++variableId) {
-            m_VariablesPool[variableId] = nullptr;
+            m_VariablesPool[variableId] = VariableState{};
         }
     }
 
@@ -130,14 +131,12 @@ public:
                     = RandomGenerator::instance().randomChoice(variableOperations, weights);
 
                 auto variableId = variableOperation.first;
-                auto variable = m_VariablesPool.at(variableId);
+                auto &variableState = m_VariablesPool.at(variableId);
                 auto fuzzingOperation = variableOperation.second;
 
-                fuzzingOperation->execute(variable, m_VariableController, m_Properties);
+                fuzzingOperation->execute(variableState, m_VariableController, m_Properties);
                 QTest::qWait(operationDelay());
 
-                // Updates variable pool with the new state of the variable after operation
-                m_VariablesPool[variableId] = variable;
             }
             else {
                 qCInfo(LOG_TestAmdaFuzzing())
