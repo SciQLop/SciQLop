@@ -1,8 +1,12 @@
 #ifndef SCIQLOP_FUZZINGDEFS_H
 #define SCIQLOP_FUZZINGDEFS_H
 
+#include <Data/SqpRange.h>
+
 #include <QString>
 #include <QVariantHash>
+
+#include <memory>
 
 // /////// //
 // Aliases //
@@ -37,5 +41,17 @@ extern const QString PROVIDER_PROPERTY;
 
 /// Time left for an operation to execute
 extern const QString OPERATION_DELAY_PROPERTY;
+
+
+// /////// //
+// Structs //
+// /////// //
+
+class Variable;
+
+struct VariableState {
+    std::shared_ptr<Variable> m_Variable{nullptr};
+    SqpRange m_Range{INVALID_RANGE};
+};
 
 #endif // SCIQLOP_FUZZINGDEFS_H
