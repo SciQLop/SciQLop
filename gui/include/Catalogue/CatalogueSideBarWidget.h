@@ -2,6 +2,7 @@
 #define SCIQLOP_CATALOGUESIDEBARWIDGET_H
 
 #include <Common/spimpl.h>
+#include <QLoggingCategory>
 #include <QTreeWidgetItem>
 #include <QWidget>
 
@@ -10,6 +11,8 @@ class DBCatalogue;
 namespace Ui {
 class CatalogueSideBarWidget;
 }
+
+Q_DECLARE_LOGGING_CATEGORY(LOG_CatalogueSideBarWidget)
 
 class CatalogueSideBarWidget : public QWidget {
     Q_OBJECT
@@ -24,6 +27,8 @@ signals:
 public:
     explicit CatalogueSideBarWidget(QWidget *parent = 0);
     virtual ~CatalogueSideBarWidget();
+
+    void setCatalogueChanges(const std::shared_ptr<DBCatalogue> &catalogue, bool hasChanges);
 
 private:
     Ui::CatalogueSideBarWidget *ui;

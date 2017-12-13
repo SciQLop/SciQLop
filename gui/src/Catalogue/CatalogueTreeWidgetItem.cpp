@@ -8,6 +8,9 @@
 
 const auto VALIDATION_BUTTON_ICON_SIZE = 12;
 
+/// Column in the tree widget where the apply and cancel buttons must appear
+const auto APPLY_CANCEL_BUTTONS_COLUMN = 1;
+
 struct CatalogueTreeWidgetItem::CatalogueTreeWidgetItemPrivate {
 
     std::shared_ptr<DBCatalogue> m_Catalogue;
@@ -63,31 +66,38 @@ std::shared_ptr<DBCatalogue> CatalogueTreeWidgetItem::catalogue() const
 void CatalogueTreeWidgetItem::setHasChanges(bool value)
 {
     if (value) {
-        auto widet = new QWidget{treeWidget()};
+        if (treeWidget()->itemWidget(this, APPLY_CANCEL_BUTTONS_COLUMN) == nullptr) {
+            auto widet = new QWidget{treeWidget()};
 
-        auto layout = new QHBoxLayout{widet};
-        layout->setContentsMargins(0, 0, 0, 0);
-        layout->setSpacing(0);
+            auto layout = new QHBoxLayout{widet};
+            layout->setContentsMargins(0, 0, 0, 0);
+            layout->setSpacing(0);
 
-        auto btnValid = new QToolButton{widet};
-        btnValid->setIcon(QIcon{":/icones/save"});
-        btnValid->setIconSize(QSize{VALIDATION_BUTTON_ICON_SIZE, VALIDATION_BUTTON_ICON_SIZE});
-        btnValid->setAutoRaise(true);
-        QObject::connect(btnValid, &QToolButton::clicked, [this]() { setHasChanges(false); });
-        layout->addWidget(btnValid);
+            auto btnValid = new QToolButton{widet};
+            btnValid->setIcon(QIcon{":/icones/save"});
+            btnValid->setIconSize(QSize{VALIDATION_BUTTON_ICON_SIZE, VALIDATION_BUTTON_ICON_SIZE});
+            btnValid->setAutoRaise(true);
+            QObject::connect(btnValid, &QToolButton::clicked, [this]() { setHasChanges(false); });
+            layout->addWidget(btnValid);
 
-        auto btnDiscard = new QToolButton{widet};
-        btnDiscard->setIcon(QIcon{":/icones/discard"});
-        btnDiscard->setIconSize(QSize{VALIDATION_BUTTON_ICON_SIZE, VALIDATION_BUTTON_ICON_SIZE});
-        btnDiscard->setAutoRaise(true);
-        QObject::connect(btnDiscard, &QToolButton::clicked, [this]() { setHasChanges(false); });
-        layout->addWidget(btnDiscard);
+            auto btnDiscard = new QToolButton{widet};
+            btnDiscard->setIcon(QIcon{":/icones/discard"});
+            btnDiscard->setIconSize(
+                QSize{VALIDATION_BUTTON_ICON_SIZE, VALIDATION_BUTTON_ICON_SIZE});
+            btnDiscard->setAutoRaise(true);
+            QObject::connect(btnDiscard, &QToolButton::clicked, [this]() { setHasChanges(false); });
+            layout->addWidget(btnDiscard);
 
-        treeWidget()->setItemWidget(this, 1, {widet});
-        treeWidget()->resizeColumnToContents(1);
+            treeWidget()->setItemWidget(this, APPLY_CANCEL_BUTTONS_COLUMN, {widet});
+        }
     }
     else {
         // Note: the widget is destroyed
-        treeWidget()->setItemWidget(this, 1, nullptr);
+        treeWidget()->setItemWidget(this, APPLY_CANCEL_BUTTONS_COLUMN, nullptr);
     }
+}
+
+void CatalogueTreeWidgetItem::refresh()
+{
+    emitDataChanged();
 }

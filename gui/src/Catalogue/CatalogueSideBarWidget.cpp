@@ -10,6 +10,8 @@
 
 #include <QMenu>
 
+Q_LOGGING_CATEGORY(LOG_CatalogueSideBarWidget, "CatalogueSideBarWidget")
+
 
 constexpr auto ALL_EVENT_ITEM_TYPE = QTreeWidgetItem::UserType;
 constexpr auto TRASH_ITEM_TYPE = QTreeWidgetItem::UserType + 1;
@@ -24,6 +26,9 @@ struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
     QTreeWidgetItem *getDatabaseItem(const QString &name, QTreeWidget *treeWidget);
     void addCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue,
                           QTreeWidgetItem *parentDatabaseItem);
+
+    CatalogueTreeWidgetItem *getCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue,
+                                              QTreeWidget *treeWidget) const;
 };
 
 CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
@@ -97,6 +102,14 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
 
     connect(ui->treeWidget, &QTreeWidget::itemClicked, emitSelection);
     connect(ui->treeWidget, &QTreeWidget::currentItemChanged, emitSelection);
+    connect(ui->treeWidget, &QTreeWidget::itemChanged,
+            [emitSelection, this](auto item, auto column) {
+                auto selectedItems = ui->treeWidget->selectedItems();
+                qDebug() << "ITEM CHANGED" << column;
+                if (selectedItems.contains(item) && column == 0) {
+                    emitSelection();
+                }
+            });
 
     ui->treeWidget->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested, this,
@@ -106,6 +119,15 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
 CatalogueSideBarWidget::~CatalogueSideBarWidget()
 {
     delete ui;
+}
+
+void CatalogueSideBarWidget::setCatalogueChanges(const std::shared_ptr<DBCatalogue> &catalogue,
+                                                 bool hasChanges)
+{
+    if (auto catalogueItem = impl->getCatalogueItem(catalogue, ui->treeWidget)) {
+        catalogueItem->setHasChanges(hasChanges);
+        catalogueItem->refresh();
+    }
 }
 
 void CatalogueSideBarWidget::onContextMenuRequested(const QPoint &pos)
@@ -195,4 +217,31 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addCatalogueItem(
     auto catalogueItem = new CatalogueTreeWidgetItem{catalogue, CATALOGUE_ITEM_TYPE};
     catalogueItem->setIcon(0, QIcon{":/icones/catalogue.png"});
     parentDatabaseItem->addChild(catalogueItem);
+}
+
+CatalogueTreeWidgetItem *CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getCatalogueItem(
+    const std::shared_ptr<DBCatalogue> &catalogue, QTreeWidget *treeWidget) const
+{
+    for (auto i = 0; i < treeWidget->topLevelItemCount(); ++i) {
+        auto item = treeWidget->topLevelItem(i);
+        if (item->type() == DATABASE_ITEM_TYPE) {
+            for (auto j = 0; j < item->childCount(); ++j) {
+                auto childItem = item->child(j);
+                if (childItem->type() == CATALOGUE_ITEM_TYPE) {
+                    auto catalogueItem = static_cast<CatalogueTreeWidgetItem *>(childItem);
+                    if (catalogueItem->catalogue() == catalogue) {
+                        return catalogueItem;
+                    }
+                }
+                else {
+                    qCWarning(LOG_CatalogueSideBarWidget()) << "getCatalogueItem: Invalid tree "
+                                                               "structure. A database item should "
+                                                               "only contain catalogues.";
+                    Q_ASSERT(false);
+                }
+            }
+        }
+    }
+
+    return nullptr;
 }

@@ -48,6 +48,9 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
             ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
         }
     });
+
+    connect(ui->inspector, &CatalogueInspectorWidget::catalogueUpdated,
+            [this](auto catalogue) { ui->catalogues->setCatalogueChanges(catalogue, true); });
 }
 
 CatalogueExplorer::~CatalogueExplorer()
