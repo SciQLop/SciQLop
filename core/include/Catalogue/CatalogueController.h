@@ -32,25 +32,28 @@ public:
     virtual ~CatalogueController();
 
     // DB
-    QStringList getRepositories() const;
+    //    QStringList getRepositories() const;
     void addDB(const QString &dbPath);
     void saveDB(const QString &destinationPath, const QString &repository);
 
     // Event
-    bool createEvent(const QString &name);
+    //    bool createEvent(const QString &name);
     std::list<std::shared_ptr<DBEvent> > retrieveEvents(const QString &repository) const;
     std::list<std::shared_ptr<DBEvent> > retrieveAllEvents() const;
-    void updateEvent(std::shared_ptr<DBEvent> event);
-    void trashEvent(std::shared_ptr<DBEvent> event);
-    void removeEvent(std::shared_ptr<DBEvent> event);
-    void restore(QUuid eventId);
-    void saveEvent(std::shared_ptr<DBEvent> event);
+    std::list<std::shared_ptr<DBEvent> >
+    retrieveEventsFromCatalogue(const QString &repository,
+                                std::shared_ptr<DBCatalogue> catalogue) const;
+    //    void updateEvent(std::shared_ptr<DBEvent> event);
+    //    void trashEvent(std::shared_ptr<DBEvent> event);
+    //    void removeEvent(std::shared_ptr<DBEvent> event);
+    //    void restore(QUuid eventId);
+    //    void saveEvent(std::shared_ptr<DBEvent> event);
 
     // Catalogue
-    bool createCatalogue(const QString &name, QVector<QUuid> eventList);
-    void getCatalogues(const QString &repository) const;
-    void removeEvent(QUuid catalogueId, const QString &repository);
-    void saveCatalogue(std::shared_ptr<DBEvent> event);
+    //    bool createCatalogue(const QString &name, QVector<QUuid> eventList);
+    std::list<std::shared_ptr<DBCatalogue> > getCatalogues(const QString &repository) const;
+    //    void removeEvent(QUuid catalogueId, const QString &repository);
+    //    void saveCatalogue(std::shared_ptr<DBEvent> event);
 
 public slots:
     /// Manage init/end of the controller

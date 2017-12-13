@@ -102,6 +102,29 @@ std::list<std::shared_ptr<DBEvent> > CatalogueController::retrieveAllEvents() co
     return eventsShared;
 }
 
+std::list<std::shared_ptr<DBEvent> >
+CatalogueController::retrieveEventsFromCatalogue(const QString &repository,
+                                                 std::shared_ptr<DBCatalogue> catalogue) const
+{
+    auto eventsShared = std::list<std::shared_ptr<DBEvent> >{};
+    auto events = impl->m_CatalogueDao.getCatalogueEvents(*catalogue);
+    for (auto event : events) {
+        eventsShared.push_back(std::make_shared<DBEvent>(event));
+    }
+    return eventsShared;
+}
+
+std::list<std::shared_ptr<DBCatalogue> >
+CatalogueController::getCatalogues(const QString &repository) const
+{
+    auto cataloguesShared = std::list<std::shared_ptr<DBCatalogue> >{};
+    auto catalogues = impl->m_CatalogueDao.getCatalogues(repository);
+    for (auto catalogue : catalogues) {
+        cataloguesShared.push_back(std::make_shared<DBCatalogue>(catalogue));
+    }
+    return cataloguesShared;
+}
+
 void CatalogueController::initialize()
 {
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController init")
