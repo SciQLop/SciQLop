@@ -1,6 +1,7 @@
 #include "FuzzingDefs.h"
 #include "FuzzingOperations.h"
 #include "FuzzingUtils.h"
+#include "FuzzingValidators.h"
 
 #include "AmdaProvider.h"
 
@@ -34,6 +35,7 @@ using VariablesOperations = std::vector<VariableOperation>;
 
 using WeightedOperationsPool = std::map<std::shared_ptr<IFuzzingOperation>, Weight>;
 using VariablesPool = std::map<VariableId, VariableState>;
+using Validators = std::vector<std::shared_ptr<IFuzzingValidator> >;
 
 // ///////// //
 // Constants //
@@ -53,6 +55,10 @@ const auto CACHE_TOLERANCE_DEFAULT_VALUE = 0.2;
 
 /// Delay between each operation (in ms)
 const auto OPERATION_DELAY_DEFAULT_VALUE = 3000;
+
+/// Validators for the tests (executed in the order in which they're defined)
+const auto VALIDATORS_DEFAULT_VALUE = QVariant::fromValue(
+    ValidatorsTypes{{FuzzingValidatorType::RANGE, FuzzingValidatorType::DATA}});
 
 // /////// //
 // Methods //
@@ -94,6 +100,16 @@ WeightedOperationsPool createOperationsPool(const WeightedOperationsTypes &types
         types.cbegin(), types.cend(), std::inserter(result, result.end()), [](const auto &type) {
             return std::make_pair(FuzzingOperationFactory::create(type.first), type.second);
         });
+
+    return result;
+}
+
+Validators createValidators(const ValidatorsTypes &types)
+{
+    Validators result{};
+
+    std::transform(types.cbegin(), types.cend(), std::inserter(result, result.end()),
+                   [](const auto &type) { return FuzzingValidatorFactory::create(type); });
 
     return result;
 }
@@ -177,6 +193,14 @@ private:
         static auto result = createOperationsPool(
             m_Properties.value(AVAILABLE_OPERATIONS_PROPERTY, AVAILABLE_OPERATIONS_DEFAULT_VALUE)
                 .value<WeightedOperationsTypes>());
+        return result;
+    }
+
+    Validators validators() const
+    {
+        static auto result
+            = createValidators(m_Properties.value(VALIDATORS_PROPERTY, VALIDATORS_DEFAULT_VALUE)
+                                   .value<ValidatorsTypes>());
         return result;
     }
 
@@ -265,6 +289,7 @@ int main(int argc, char *argv[])
         "*.info=false\n"
         "*.debug=false\n"
         "FuzzingOperations.info=true\n"
+        "FuzzingValidators.info=true\n"
         "TestAmdaFuzzing.info=true\n");
 
     SqpApplication app{argc, argv};

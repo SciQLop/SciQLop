@@ -1,7 +1,11 @@
 #ifndef SCIQLOP_FUZZINGVALIDATORS_H
 #define SCIQLOP_FUZZINGVALIDATORS_H
 
+#include <memory>
+#include <set>
+
 #include <QLoggingCategory>
+#include <QMetaType>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_FuzzingValidators)
 
@@ -29,5 +33,8 @@ struct FuzzingValidatorFactory {
     /// Creates a validator according to the type passed in parameter
     static std::unique_ptr<IFuzzingValidator> create(FuzzingValidatorType type);
 };
+
+using ValidatorsTypes = std::vector<FuzzingValidatorType>;
+Q_DECLARE_METATYPE(ValidatorsTypes)
 
 #endif // SCIQLOP_FUZZINGVALIDATORS_H
