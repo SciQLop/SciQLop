@@ -15,13 +15,13 @@ Q_LOGGING_CATEGORY(LOG_FuzzingOperations, "FuzzingOperations")
 namespace {
 
 struct CreateOperation : public IFuzzingOperation {
-    bool canExecute(std::shared_ptr<Variable> variable) const override
+    bool canExecute(const VariableState &variableState) const override
     {
         // A variable can be created only if it doesn't exist yet
-        return variable == nullptr;
+        return variableState.m_Variable == nullptr;
     }
 
-    void execute(std::shared_ptr<Variable> &variable, VariableController &variableController,
+    void execute(VariableState &variableState, VariableController &variableController,
                  const Properties &properties) const override
     {
         // Retrieves metadata pool from properties, and choose one of the metadata entries to
@@ -39,7 +39,7 @@ struct CreateOperation : public IFuzzingOperation {
 
         auto newVariable
             = variableController.createVariable(variableName, variableMetadata, variableProvider);
-        std::swap(variable, newVariable);
+        std::swap(variableState.m_Variable, newVariable);
     }
 };
 
@@ -75,14 +75,16 @@ struct MoveOperation : public IFuzzingOperation {
     {
     }
 
-    bool canExecute(std::shared_ptr<Variable> variable) const override
+    bool canExecute(const VariableState &variableState) const override
     {
-        return variable != nullptr;
+        return variableState.m_Variable != nullptr;
     }
 
-    void execute(std::shared_ptr<Variable> &variable, VariableController &variableController,
+    void execute(VariableState &variableState, VariableController &variableController,
                  const Properties &properties) const override
     {
+        auto variable = variableState.m_Variable;
+
         // Gets the max range defined
         auto maxRange = properties.value(MAX_RANGE_PROPERTY, QVariant::fromValue(INVALID_RANGE))
                             .value<SqpRange>();
@@ -107,6 +109,9 @@ struct MoveOperation : public IFuzzingOperation {
             << "Performing" << m_Label << "on" << variable->name() << "(from" << variableRange
             << "to" << newVariableRange << ")...";
         variableController.onRequestDataLoading({variable}, newVariableRange, false);
+
+        // Updates variable's state
+        variableState.m_Range = newVariableRange;
     }
 
     MoveFunction m_RangeStartMoveFun;
@@ -116,16 +121,16 @@ struct MoveOperation : public IFuzzingOperation {
 };
 
 struct UnknownOperation : public IFuzzingOperation {
-    bool canExecute(std::shared_ptr<Variable> variable) const override
+    bool canExecute(const VariableState &variableState) const override
     {
-        Q_UNUSED(variable);
+        Q_UNUSED(variableState);
         return false;
     }
 
-    void execute(std::shared_ptr<Variable> &variable, VariableController &variableController,
+    void execute(VariableState &variableState, VariableController &variableController,
                  const Properties &properties) const override
     {
-        Q_UNUSED(variable);
+        Q_UNUSED(variableState);
         Q_UNUSED(variableController);
         Q_UNUSED(properties);
         // Does nothing

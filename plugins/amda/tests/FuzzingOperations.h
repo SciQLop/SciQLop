@@ -11,7 +11,6 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_FuzzingOperations)
 
-class Variable;
 class VariableController;
 
 /**
@@ -23,17 +22,17 @@ enum class FuzzingOperationType { CREATE, PAN_LEFT, PAN_RIGHT, ZOOM_IN, ZOOM_OUT
 struct IFuzzingOperation {
     virtual ~IFuzzingOperation() noexcept = default;
 
-    /// Checks if the operation can be executed according to the current state of the variable
-    /// passed in parameter
-    virtual bool canExecute(std::shared_ptr<Variable> variable) const = 0;
-    /// Executes the operation on the variable passed in parameter
-    /// @param variable the variable on which to execute the operation
+    /// Checks if the operation can be executed according to the current variable state passed in
+    /// parameter
+    virtual bool canExecute(const VariableState &variableState) const = 0;
+    /// Executes the operation on the variable state passed in parameter
+    /// @param variableState the variable state on which to execute the operation
     /// @param variableController the controller associated to the operation
     /// @param properties properties that can be used to configure the operation
-    /// @remarks variable is passed as a reference because, according to the operation, it can be
+    /// @remarks variableState is passed as a reference because, according to the operation, it can
+    /// be
     /// modified (in/out parameter)
-    virtual void execute(std::shared_ptr<Variable> &variable,
-                         VariableController &variableController,
+    virtual void execute(VariableState &variableState, VariableController &variableController,
                          const Properties &properties = {}) const = 0;
 };
 
