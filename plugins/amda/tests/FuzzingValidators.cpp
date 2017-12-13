@@ -1,4 +1,5 @@
 #include "FuzzingValidators.h"
+#include <Variable/Variable.h>
 
 #include <QTest>
 
@@ -7,6 +8,62 @@
 Q_LOGGING_CATEGORY(LOG_FuzzingValidators, "FuzzingValidators")
 
 namespace {
+
+// ////////////// //
+// DATA VALIDATOR //
+// ////////////// //
+
+/// Singleton used to validate data of a variable
+class DataValidatorHelper {
+public:
+    /// @return the single instance of the helper
+    static DataValidatorHelper &instance();
+    virtual ~DataValidatorHelper() noexcept = default;
+
+    virtual void validate(const VariableState &variableState) const = 0;
+};
+
+/**
+ * Default implementation of @sa DataValidatorHelper
+ */
+class DefaultDataValidatorHelper : public DataValidatorHelper {
+public:
+    void validate(const VariableState &variableState) const override
+    {
+        Q_UNUSED(variableState);
+        qCWarning(LOG_FuzzingValidators()).noquote() << "Checking variable's data... WARN: no data "
+                                                        "verification is available for this server";
+    }
+};
+
+/**
+ * Implementation of @sa DataValidatorHelper for the local AMDA server
+ */
+class LocalhostServerDataValidatorHelper : public DataValidatorHelper {
+public:
+    void validate(const VariableState &variableState) const override
+    {
+        /// @todo: complete
+    }
+};
+
+/// Creates the @sa DataValidatorHelper according to the server passed in parameter
+std::unique_ptr<DataValidatorHelper> createDataValidatorInstance(const QString &server)
+{
+    if (server == QString{"localhost"}) {
+        return std::make_unique<LocalhostServerDataValidatorHelper>();
+    }
+    else {
+        return std::make_unique<DefaultDataValidatorHelper>();
+    }
+}
+
+DataValidatorHelper &DataValidatorHelper::instance()
+{
+    // Creates instance depending on the SCIQLOP_AMDA_SERVER value at compile time
+    static auto instance = createDataValidatorInstance(SCIQLOP_AMDA_SERVER);
+    return *instance;
+}
 
 // /////////////// //
 // RANGE VALIDATOR //
@@ -66,7 +123,7 @@ std::unique_ptr<IFuzzingValidator> FuzzingValidatorFactory::create(FuzzingValida
     switch (type) {
         case FuzzingValidatorType::DATA:
             return std::make_unique<FuzzingValidator>([](const VariableState &variableState) {
-                /// @todo: complete
+                DataValidatorHelper::instance().validate(variableState);
             });
         case FuzzingValidatorType::RANGE:
             return std::make_unique<FuzzingValidator>([](const VariableState &variableState) {
