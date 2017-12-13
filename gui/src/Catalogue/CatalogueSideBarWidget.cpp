@@ -35,6 +35,11 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     ui->setupUi(this);
     impl->configureTreeWidget(ui->treeWidget);
 
+    ui->treeWidget->setColumnCount(2);
+    ui->treeWidget->header()->setStretchLastSection(false);
+    ui->treeWidget->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->treeWidget->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+
     auto emitSelection = [this]() {
 
         auto selectedItems = ui->treeWidget->selectedItems();
@@ -145,7 +150,6 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
 
     auto separator = new QFrame{treeWidget};
     separator->setFrameShape(QFrame::HLine);
-
     auto separatorItem = new QTreeWidgetItem{};
     separatorItem->setFlags(Qt::NoItemFlags);
     treeWidget->addTopLevelItem(separatorItem);

@@ -14,7 +14,10 @@ public:
     QVariant data(int column, int role) const override;
     void setData(int column, int role, const QVariant &value) override;
 
+    /// Returns the catalogue represented by the item
     DBCatalogue catalogue() const;
+
+    void setHasChanges(bool value);
 
 private:
     class CatalogueTreeWidgetItemPrivate;
