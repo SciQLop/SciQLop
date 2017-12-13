@@ -115,6 +115,30 @@ Validators createValidators(const ValidatorsTypes &types)
 }
 
 /**
+ * Validates all the variables' states passed in parameter, according to a set of validators
+ * @param variablesPool the variables' states
+ * @param validators the validators used for validation
+ */
+void validate(const VariablesPool &variablesPool, const Validators &validators)
+{
+    for (const auto &variablesPoolEntry : variablesPool) {
+        auto variableId = variablesPoolEntry.first;
+        const auto &variableState = variablesPoolEntry.second;
+
+        auto variableMessage = variableState.m_Variable ? variableState.m_Variable->name()
+                                                        : QStringLiteral("null variable");
+        qCInfo(LOG_TestAmdaFuzzing()).noquote() << "Validating state of variable at index"
+                                                << variableId << "(" << variableMessage << ")...";
+
+        for (const auto &validator : validators) {
+            validator->validate(VariableState{variableState});
+        }
+
+        qCInfo(LOG_TestAmdaFuzzing()).noquote() << "Validation completed.";
+    }
+}
+
+/**
  * Class to run random tests
  */
 class FuzzingTest {
@@ -155,6 +179,9 @@ public:
 
                 fuzzingOperation->execute(variableState, m_VariableController, m_Properties);
                 QTest::qWait(operationDelay());
+
+                // Validates variables
+                validate(m_VariablesPool, validators());
             }
             else {
                 qCInfo(LOG_TestAmdaFuzzing()).noquote()
