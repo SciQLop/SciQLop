@@ -19,7 +19,7 @@
 
 Q_LOGGING_CATEGORY(LOG_CatalogueController, "CatalogueController")
 
-namespace  {
+namespace {
 
 static QString REPOSITORY_WORK_SUFFIX = QString{"Work"};
 
@@ -63,9 +63,8 @@ void CatalogueController::addDB(const QString &dbPath)
             qCCritical(LOG_CatalogueController())
                 << tr("Impossible to addDB %1 from %2 ").arg(dirName, dbPath);
         }
-        else
-        {
-            impl->m_RepositoryList << dirName;
+        else {
+            impl->m_RepositoryList.push_back(dirName);
         }
     }
     else {
@@ -109,15 +108,24 @@ void CatalogueController::initialize()
                                        << QThread::currentThread();
     impl->m_WorkingMutex.lock();
     impl->m_CatalogueDao.initialize();
-    auto defaultRepository = QString("%1/%2").arg(
-        QStandardPaths::displayName(QStandardPaths::AppDataLocation), REPOSITORY_DEFAULT);
-    QDir defaultRepositoryDir(defaultRepository);
-    if (defaultRepositoryDir.exists()) {
-        qCInfo(LOG_CatalogueController()) << tr("Persistant data loading from: ")
-                                          << defaultRepository;
+    auto defaultRepositoryLocation
+        = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+
+    QDir defaultRepositoryLocationDir;
+    if (defaultRepositoryLocationDir.mkpath(defaultRepositoryLocation)) {
+        defaultRepositoryLocationDir.cd(defaultRepositoryLocation);
+        auto defaultRepository = defaultRepositoryLocationDir.absoluteFilePath(REPOSITORY_DEFAULT);
+        qCInfo(LOG_CatalogueController())
+            << tr("Persistant data loading from: ") << defaultRepository;
         this->addDB(defaultRepository);
-        qCDebug(LOG_CatalogueController()) << tr("CatalogueController init END");
     }
+    else {
+        qCWarning(LOG_CatalogueController())
+            << tr("Cannot load the persistent default repository from ")
+            << defaultRepositoryLocation;
+    }
+
+    qCDebug(LOG_CatalogueController()) << tr("CatalogueController init END");
 }
 
 void CatalogueController::finalize()
