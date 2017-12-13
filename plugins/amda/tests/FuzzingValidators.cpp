@@ -39,6 +39,8 @@ public:
     }
 };
 
+/// Data resolution in local server's files
+const auto LOCALHOST_SERVER_RESOLUTION = 4;
 /**
  * Implementation of @sa DataValidatorHelper for the local AMDA server
  */
@@ -59,6 +61,45 @@ public:
         if (variableDataSeries == nullptr && variableState.m_Range != INVALID_RANGE) {
             qCInfo(LOG_FuzzingValidators()).noquote()
                 << message << "FAIL: the variable has no data while a range is defined";
+            QFAIL("");
+        }
+
+        auto dataIts = variableDataSeries->xAxisRange(variableState.m_Range.m_TStart,
+                                                      variableState.m_Range.m_TEnd);
+
+        // Checks that the data are well defined in the range:
+        // - there is at least one data
+        // - the data are consistent (no data holes)
+        if (std::distance(dataIts.first, dataIts.second) == 0) {
+            qCInfo(LOG_FuzzingValidators()).noquote()
+                << message << "FAIL: the variable has no data";
+            QFAIL("");
+        }
+
+        auto firstXAxisData = dataIts.first->x();
+        auto lastXAxisData = (dataIts.second - 1)->x();
+
+        if (std::abs(firstXAxisData - variableState.m_Range.m_TStart) > LOCALHOST_SERVER_RESOLUTION
+            || std::abs(lastXAxisData - variableState.m_Range.m_TEnd)
+                   > LOCALHOST_SERVER_RESOLUTION) {
+            qCInfo(LOG_FuzzingValidators()).noquote()
+                << message << "FAIL: the data in the defined range are inconsistent (data hole "
+                              "found at the beginning or the end)";
+            QFAIL("");
+        }
+
+        auto dataHoleIt = std::adjacent_find(
+            dataIts.first, dataIts.second, [](const auto &it1, const auto &it2) {
+                /// @todo: validate resolution
+                return std::abs(it1.x() - it2.x()) > 2 * (LOCALHOST_SERVER_RESOLUTION - 1);
+            });
+
+        if (dataHoleIt != dataIts.second) {
+            qCInfo(LOG_FuzzingValidators()).noquote()
+                << message << "FAIL: the data in the defined range are inconsistent (data hole "
+                              "found between times "
+                << toDateString(dataHoleIt->x()) << "and " << toDateString((dataHoleIt + 1)->x())
+                << ")";
             QFAIL("");
         }
 
