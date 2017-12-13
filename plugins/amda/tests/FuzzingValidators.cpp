@@ -1,5 +1,7 @@
 #include "FuzzingValidators.h"
 
+#include <QTest>
+
 #include <functional>
 
 Q_LOGGING_CATEGORY(LOG_FuzzingValidators, "FuzzingValidators")
@@ -24,3 +26,24 @@ private:
 };
 
 } // namespace
+
+std::unique_ptr<IFuzzingValidator> FuzzingValidatorFactory::create(FuzzingValidatorType type)
+{
+    switch (type) {
+        case FuzzingValidatorType::DATA:
+            return std::make_unique<FuzzingValidator>([](const VariableState &variableState) {
+                /// @todo: complete
+            });
+        case FuzzingValidatorType::RANGE:
+            return std::make_unique<FuzzingValidator>([](const VariableState &variableState) {
+                /// @todo: complete
+            });
+        default:
+            // Default case returns invalid validator
+            break;
+    }
+
+    // Invalid validator
+    return std::make_unique<FuzzingValidator>(
+        [](const VariableState &) { QFAIL("Invalid validator"); });
+}
