@@ -1,4 +1,7 @@
 #include "FuzzingValidators.h"
+#include "FuzzingDefs.h"
+
+#include <Data/DataSeries.h>
 #include <Variable/Variable.h>
 
 #include <QTest>
@@ -43,7 +46,22 @@ class LocalhostServerDataValidatorHelper : public DataValidatorHelper {
 public:
     void validate(const VariableState &variableState) const override
     {
-        /// @todo: complete
+        // Don't check data for null variable
+        if (!variableState.m_Variable || variableState.m_Range == INVALID_RANGE) {
+            return;
+        }
+
+        auto message = "Checking variable's data...";
+        auto toDateString = [](double value) { return DateUtils::dateTime(value).toString(); };
+
+        // Checks that data are defined
+        auto variableDataSeries = variableState.m_Variable->dataSeries();
+        if (variableDataSeries == nullptr && variableState.m_Range != INVALID_RANGE) {
+            qCInfo(LOG_FuzzingValidators()).noquote()
+                << message << "FAIL: the variable has no data while a range is defined";
+            QFAIL("");
+        }
+
     }
 };
 
