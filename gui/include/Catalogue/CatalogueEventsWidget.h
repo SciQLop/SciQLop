@@ -19,7 +19,7 @@ class CatalogueEventsWidget : public QWidget {
     Q_OBJECT
 
 signals:
-    void eventsSelected(const QVector<DBEvent> &event);
+    void eventsSelected(const QVector<std::shared_ptr<DBEvent> > &event);
 
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
@@ -28,7 +28,7 @@ public:
     void setVisualizationWidget(VisualizationWidget *visualization);
 
 public slots:
-    void populateWithCatalogues(const QVector<DBCatalogue> &catalogues);
+    void populateWithCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
 
 private:
     Ui::CatalogueEventsWidget *ui;

@@ -103,8 +103,7 @@ std::list<std::shared_ptr<DBEvent> > CatalogueController::retrieveAllEvents() co
 }
 
 std::list<std::shared_ptr<DBEvent> >
-CatalogueController::retrieveEventsFromCatalogue(const QString &repository,
-                                                 std::shared_ptr<DBCatalogue> catalogue) const
+CatalogueController::retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> catalogue) const
 {
     auto eventsShared = std::list<std::shared_ptr<DBEvent> >{};
     auto events = impl->m_CatalogueDao.getCatalogueEvents(*catalogue);

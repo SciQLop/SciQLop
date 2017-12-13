@@ -28,15 +28,15 @@ CatalogueInspectorWidget::Page CatalogueInspectorWidget::currentPage() const
     return static_cast<Page>(ui->stackedWidget->currentIndex());
 }
 
-void CatalogueInspectorWidget::setEvent(const DBEvent &event)
+void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
 {
     showPage(Page::EventProperties);
-    ui->leEventName->setText(event.getName());
-    ui->leEventMission->setText(event.getMission());
-    ui->leEventProduct->setText(event.getProduct());
+    ui->leEventName->setText(event->getName());
+    ui->leEventMission->setText(event->getMission());
+    ui->leEventProduct->setText(event->getProduct());
 
     QString tagList;
-    auto tags = const_cast<DBEvent *>(&event)->getTags();
+    auto tags = event->getTags();
     for (auto tag : tags) {
         tagList += tag.getName();
         tagList += ' ';
@@ -44,13 +44,13 @@ void CatalogueInspectorWidget::setEvent(const DBEvent &event)
 
     ui->leEventTags->setText(tagList);
 
-    ui->dateTimeEventTStart->setDateTime(DateUtils::dateTime(event.getTStart()));
-    ui->dateTimeEventTEnd->setDateTime(DateUtils::dateTime(event.getTEnd()));
+    ui->dateTimeEventTStart->setDateTime(DateUtils::dateTime(event->getTStart()));
+    ui->dateTimeEventTEnd->setDateTime(DateUtils::dateTime(event->getTEnd()));
 }
 
-void CatalogueInspectorWidget::setCatalogue(const DBCatalogue &catalogue)
+void CatalogueInspectorWidget::setCatalogue(const std::shared_ptr<DBCatalogue> &catalogue)
 {
     showPage(Page::CatalogueProperties);
-    ui->leCatalogueName->setText(catalogue.getName());
-    ui->leCatalogueAuthor->setText(catalogue.getAuthor());
+    ui->leCatalogueName->setText(catalogue->getName());
+    ui->leCatalogueAuthor->setText(catalogue->getAuthor());
 }

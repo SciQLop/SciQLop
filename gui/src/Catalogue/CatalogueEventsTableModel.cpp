@@ -10,7 +10,7 @@
 #include <Time/TimeController.h>
 
 struct CatalogueEventsTableModel::CatalogueEventsTableModelPrivate {
-    QVector<DBEvent> m_Events;
+    QVector<std::shared_ptr<DBEvent> > m_Events;
 
     enum class Column { Event, TStart, TEnd, Tags, Product, NbColumn };
     QStringList columnNames()
@@ -18,20 +18,20 @@ struct CatalogueEventsTableModel::CatalogueEventsTableModelPrivate {
         return QStringList{tr("Event"), tr("TStart"), tr("TEnd"), tr("Tags"), tr("Product")};
     }
 
-    QVariant eventData(int col, const DBEvent &event) const
+    QVariant eventData(int col, const std::shared_ptr<DBEvent> &event) const
     {
         switch (static_cast<Column>(col)) {
             case Column::Event:
-                return event.getName();
+                return event->getName();
             case Column::TStart:
-                return DateUtils::dateTime(event.getTStart());
+                return DateUtils::dateTime(event->getTStart());
             case Column::TEnd:
-                return DateUtils::dateTime(event.getTEnd());
+                return DateUtils::dateTime(event->getTEnd());
             case Column::Product:
-                return event.getProduct();
+                return event->getProduct();
             case Column::Tags: {
                 QString tagList;
-                auto tags = const_cast<DBEvent *>(&event)->getTags();
+                auto tags = event->getTags();
                 for (auto tag : tags) {
                     tagList += tag.getName();
                     tagList += ' ';
@@ -54,26 +54,26 @@ CatalogueEventsTableModel::CatalogueEventsTableModel(QObject *parent)
 {
 }
 
-void CatalogueEventsTableModel::setEvents(const QVector<DBEvent> &events)
+void CatalogueEventsTableModel::setEvents(const QVector<std::shared_ptr<DBEvent> > &events)
 {
     beginResetModel();
     impl->m_Events = events;
     endResetModel();
 }
 
-DBEvent CatalogueEventsTableModel::getEvent(int row) const
+std::shared_ptr<DBEvent> CatalogueEventsTableModel::getEvent(int row) const
 {
     return impl->m_Events.value(row);
 }
 
-void CatalogueEventsTableModel::addEvent(const DBEvent &events)
+void CatalogueEventsTableModel::addEvent(const std::shared_ptr<DBEvent> &events)
 {
     beginInsertRows(QModelIndex(), impl->m_Events.count() - 1, impl->m_Events.count() - 1);
     // impl->m_Events.append(event); TODO
     endInsertRows();
 }
 
-void CatalogueEventsTableModel::removeEvent(const DBEvent &events)
+void CatalogueEventsTableModel::removeEvent(const std::shared_ptr<DBEvent> &events)
 {
     // TODO
     auto index = -1; // impl->m_Events.indexOf(event);
@@ -155,7 +155,7 @@ QMimeData *CatalogueEventsTableModel::mimeData(const QModelIndexList &indexes) c
 {
     auto mimeData = new QMimeData;
 
-    QVector<DBEvent> eventList;
+    QVector<std::shared_ptr<DBEvent> > eventList;
 
     SqpRange firstTimeRange;
     for (const auto &index : indexes) {
@@ -163,8 +163,8 @@ QMimeData *CatalogueEventsTableModel::mimeData(const QModelIndexList &indexes) c
             auto event = getEvent(index.row());
             if (eventList.isEmpty()) {
                 // Gets the range of the first variable
-                firstTimeRange.m_TStart = event.getTStart();
-                firstTimeRange.m_TEnd = event.getTEnd();
+                firstTimeRange.m_TStart = event->getTStart();
+                firstTimeRange.m_TEnd = event->getTEnd();
             }
 
             eventList << event;

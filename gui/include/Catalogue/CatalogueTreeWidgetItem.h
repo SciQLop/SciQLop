@@ -4,18 +4,19 @@
 #include <Common/spimpl.h>
 #include <QTreeWidgetItem>
 
-#include <DBCatalogue.h>
+class DBCatalogue;
 
 
 class CatalogueTreeWidgetItem : public QTreeWidgetItem {
 public:
-    CatalogueTreeWidgetItem(DBCatalogue catalogue, int type = QTreeWidgetItem::Type);
+    CatalogueTreeWidgetItem(std::shared_ptr<DBCatalogue> catalogue,
+                            int type = QTreeWidgetItem::Type);
 
     QVariant data(int column, int role) const override;
     void setData(int column, int role, const QVariant &value) override;
 
     /// Returns the catalogue represented by the item
-    DBCatalogue catalogue() const;
+    std::shared_ptr<DBCatalogue> catalogue() const;
 
     void setHasChanges(bool value);
 

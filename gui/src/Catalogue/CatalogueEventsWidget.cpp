@@ -27,21 +27,21 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
     VisualizationWidget *m_VisualizationWidget = nullptr;
 
-    void setEvents(const QVector<DBEvent> &events, QTableView *tableView)
+    void setEvents(const QVector<std::shared_ptr<DBEvent> > &events, QTableView *tableView)
     {
         tableView->setSortingEnabled(false);
         m_Model->setEvents(events);
         tableView->setSortingEnabled(true);
     }
 
-    void addEvent(const DBEvent &event, QTableView *tableView)
+    void addEvent(const std::shared_ptr<DBEvent> &event, QTableView *tableView)
     {
         tableView->setSortingEnabled(false);
         m_Model->addEvent(event);
         tableView->setSortingEnabled(true);
     }
 
-    void removeEvent(const DBEvent &event, QTableView *tableView)
+    void removeEvent(const std::shared_ptr<DBEvent> &event, QTableView *tableView)
     {
         tableView->setSortingEnabled(false);
         m_Model->removeEvent(event);
@@ -143,8 +143,8 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
                     for (auto zoneName : m_ZonesForTimeMode) {
                         if (auto zone = tab->getZoneWithName(zoneName)) {
                             SqpRange eventRange;
-                            eventRange.m_TStart = event.getTStart();
-                            eventRange.m_TEnd = event.getTEnd();
+                            eventRange.m_TStart = event->getTStart();
+                            eventRange.m_TEnd = event->getTEnd();
                             zone->setZoneRange(eventRange);
                         }
                     }
@@ -232,7 +232,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     });
 
     auto emitSelection = [this]() {
-        QVector<DBEvent> events;
+        QVector<std::shared_ptr<DBEvent> > events;
         for (auto rowIndex : ui->tableView->selectionModel()->selectedRows()) {
             events << impl->m_Model->getEvent(rowIndex.row());
         }
@@ -271,19 +271,18 @@ void CatalogueEventsWidget::setVisualizationWidget(VisualizationWidget *visualiz
     impl->m_VisualizationWidget = visualization;
 }
 
-void CatalogueEventsWidget::populateWithCatalogues(const QVector<DBCatalogue> &catalogues)
+void CatalogueEventsWidget::populateWithCatalogues(
+    const QVector<std::shared_ptr<DBCatalogue> > &catalogues)
 {
-    auto &dao = sqpApp->catalogueController().getDao();
-
     QSet<QUuid> eventIds;
-    QVector<DBEvent> events;
+    QVector<std::shared_ptr<DBEvent> > events;
 
     for (auto catalogue : catalogues) {
-        auto catalogueEvents = dao.getCatalogueEvents(catalogue);
+        auto catalogueEvents = sqpApp->catalogueController().retrieveEventsFromCatalogue(catalogue);
         for (auto event : catalogueEvents) {
-            if (!eventIds.contains(event.getUniqId())) {
+            if (!eventIds.contains(event->getUniqId())) {
                 events << event;
-                eventIds.insert(event.getUniqId());
+                eventIds.insert(event->getUniqId());
             }
         }
     }

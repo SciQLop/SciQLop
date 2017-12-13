@@ -5,7 +5,7 @@
 #include <QTreeWidgetItem>
 #include <QWidget>
 
-#include <DBCatalogue.h>
+class DBCatalogue;
 
 namespace Ui {
 class CatalogueSideBarWidget;
@@ -15,7 +15,7 @@ class CatalogueSideBarWidget : public QWidget {
     Q_OBJECT
 
 signals:
-    void catalogueSelected(const QVector<DBCatalogue> &catalogues);
+    void catalogueSelected(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
     void databaseSelected(const QStringList &databases);
     void allEventsSelected();
     void trashSelected();

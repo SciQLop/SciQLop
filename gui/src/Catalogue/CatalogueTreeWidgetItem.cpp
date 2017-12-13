@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <DBCatalogue.h>
 #include <QBoxLayout>
 #include <QToolButton>
 
@@ -9,13 +10,15 @@ const auto VALIDATION_BUTTON_ICON_SIZE = 12;
 
 struct CatalogueTreeWidgetItem::CatalogueTreeWidgetItemPrivate {
 
-    DBCatalogue m_Catalogue;
+    std::shared_ptr<DBCatalogue> m_Catalogue;
 
-    CatalogueTreeWidgetItemPrivate(DBCatalogue catalogue) : m_Catalogue(catalogue) {}
+    CatalogueTreeWidgetItemPrivate(std::shared_ptr<DBCatalogue> catalogue) : m_Catalogue(catalogue)
+    {
+    }
 };
 
 
-CatalogueTreeWidgetItem::CatalogueTreeWidgetItem(DBCatalogue catalogue, int type)
+CatalogueTreeWidgetItem::CatalogueTreeWidgetItem(std::shared_ptr<DBCatalogue> catalogue, int type)
         : QTreeWidgetItem(type),
           impl{spimpl::make_unique_impl<CatalogueTreeWidgetItemPrivate>(catalogue)}
 {
@@ -28,7 +31,7 @@ QVariant CatalogueTreeWidgetItem::data(int column, int role) const
         switch (role) {
             case Qt::EditRole: // fallthrough
             case Qt::DisplayRole:
-                return impl->m_Catalogue.getName();
+                return impl->m_Catalogue->getName();
             default:
                 break;
         }
@@ -41,9 +44,9 @@ void CatalogueTreeWidgetItem::setData(int column, int role, const QVariant &valu
 {
     if (role == Qt::EditRole && column == 0) {
         auto newName = value.toString();
-        if (newName != impl->m_Catalogue.getName()) {
+        if (newName != impl->m_Catalogue->getName()) {
             setText(0, newName);
-            impl->m_Catalogue.setName(newName);
+            impl->m_Catalogue->setName(newName);
             setHasChanges(true);
         }
     }
@@ -52,7 +55,7 @@ void CatalogueTreeWidgetItem::setData(int column, int role, const QVariant &valu
     }
 }
 
-DBCatalogue CatalogueTreeWidgetItem::catalogue() const
+std::shared_ptr<DBCatalogue> CatalogueTreeWidgetItem::catalogue() const
 {
     return impl->m_Catalogue;
 }

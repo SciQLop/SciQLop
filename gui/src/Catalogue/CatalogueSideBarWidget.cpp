@@ -19,12 +19,11 @@ constexpr auto DATABASE_ITEM_TYPE = QTreeWidgetItem::UserType + 3;
 
 struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
 
-    QHash<QTreeWidgetItem *, DBCatalogue> m_CatalogueMap;
-
     void configureTreeWidget(QTreeWidget *treeWidget);
     QTreeWidgetItem *addDatabaseItem(const QString &name, QTreeWidget *treeWidget);
     QTreeWidgetItem *getDatabaseItem(const QString &name, QTreeWidget *treeWidget);
-    void addCatalogueItem(const DBCatalogue &catalogue, QTreeWidgetItem *parentDatabaseItem);
+    void addCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue,
+                          QTreeWidgetItem *parentDatabaseItem);
 };
 
 CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
@@ -47,7 +46,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
             emit this->selectionCleared();
         }
         else {
-            QVector<DBCatalogue> catalogues;
+            QVector<std::shared_ptr<DBCatalogue> > catalogues;
             QStringList databases;
             int selectionType = selectedItems.first()->type();
 
@@ -155,13 +154,9 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
     treeWidget->addTopLevelItem(separatorItem);
     treeWidget->setItemWidget(separatorItem, 0, separator);
 
-    auto &dao = sqpApp->catalogueController().getDao();
-    auto allPredicate = std::make_shared<ComparaisonPredicate>(QString{"uniqId"}, "-1",
-                                                               ComparaisonOperation::DIFFERENT);
-
     auto db = addDatabaseItem("Default", treeWidget);
 
-    auto catalogues = dao.getCatalogues(allPredicate);
+    auto catalogues = sqpApp->catalogueController().getCatalogues("Default");
     for (auto catalogue : catalogues) {
         addCatalogueItem(catalogue, db);
     }
@@ -195,7 +190,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getDatabaseItem(const QSt
 }
 
 void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addCatalogueItem(
-    const DBCatalogue &catalogue, QTreeWidgetItem *parentDatabaseItem)
+    const std::shared_ptr<DBCatalogue> &catalogue, QTreeWidgetItem *parentDatabaseItem)
 {
     auto catalogueItem = new CatalogueTreeWidgetItem{catalogue, CATALOGUE_ITEM_TYPE};
     catalogueItem->setIcon(0, QIcon{":/icones/catalogue.png"});
