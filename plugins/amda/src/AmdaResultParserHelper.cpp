@@ -136,7 +136,7 @@ void tryReadResult(std::vector<double> &xAxisData, std::vector<double> &valuesDa
  * @param properties the properties map in which to put the property extracted from the line
  * @param key the key to which the property is added in the properties map
  * @param line the line to read to extract the property
- * @param regex the expected regex to extract the property. If the line matches this regex, the
+ * @param regexes the expected regexes to extract the property. If the line matches one regex, the
  * property is generated
  * @param fun the function used to generate the property
  * @return true if the property could be generated, false if the line does not match the regex, or
@@ -144,18 +144,24 @@ void tryReadResult(std::vector<double> &xAxisData, std::vector<double> &valuesDa
  */
 template <typename GeneratePropertyFun>
 bool tryReadProperty(Properties &properties, const QString &key, const QString &line,
-                     const QRegularExpression &regex, GeneratePropertyFun fun)
+                     const std::vector<QRegularExpression> &regexes, GeneratePropertyFun fun)
 {
     if (properties.contains(key)) {
         return false;
     }
 
-    auto match = regex.match(line);
-    if (match.hasMatch()) {
-        properties.insert(key, fun(match));
+    // Searches for a match among all possible regexes
+    auto hasMatch = false;
+    for (auto regexIt = regexes.cbegin(), end = regexes.cend(); regexIt != end && !hasMatch;
+         ++regexIt) {
+        auto match = regexIt->match(line);
+        auto hasMatch = match.hasMatch();
+        if (hasMatch) {
+            properties.insert(key, fun(match));
+        }
     }
 
-    return match.hasMatch();
+    return hasMatch;
 }
 
 /**
@@ -163,9 +169,9 @@ bool tryReadProperty(Properties &properties, const QString &key, const QString &
  * @sa tryReadProperty()
  */
 bool tryReadDate(Properties &properties, const QString &key, const QString &line,
-                 const QRegularExpression &regex, bool timeUnit = false)
+                 const std::vector<QRegularExpression> &regexes, bool timeUnit = false)
 {
-    return tryReadProperty(properties, key, line, regex, [timeUnit](const auto &match) {
+    return tryReadProperty(properties, key, line, regexes, [timeUnit](const auto &match) {
         return QVariant::fromValue(doubleDate(match.captured(1)));
     });
 }
@@ -175,9 +181,9 @@ bool tryReadDate(Properties &properties, const QString &key, const QString &line
  * @sa tryReadProperty()
  */
 bool tryReadDouble(Properties &properties, const QString &key, const QString &line,
-                   const QRegularExpression &regex)
+                   const std::vector<QRegularExpression> &regexes)
 {
-    return tryReadProperty(properties, key, line, regex, [](const auto &match) {
+    return tryReadProperty(properties, key, line, regexes, [](const auto &match) {
         bool ok;
 
         // If the value can't be converted to double, it is set to NaN
@@ -196,9 +202,10 @@ bool tryReadDouble(Properties &properties, const QString &key, const QString &li
  * @sa tryReadProperty()
  */
 bool tryReadDoubles(Properties &properties, const QString &key, const QString &line,
-                    const QRegularExpression &regex, const QString &sep = QStringLiteral(","))
+                    const std::vector<QRegularExpression> &regexes,
+                    const QString &sep = QStringLiteral(","))
 {
-    return tryReadProperty(properties, key, line, regex, [sep](const auto &match) {
+    return tryReadProperty(properties, key, line, regexes, [sep](const auto &match) {
         std::vector<double> doubleValues{};
 
         // If the value can't be converted to double, it is set to NaN
@@ -223,9 +230,9 @@ bool tryReadDoubles(Properties &properties, const QString &key, const QString &l
  * @sa tryReadProperty()
  */
 bool tryReadUnit(Properties &properties, const QString &key, const QString &line,
-                 const QRegularExpression &regex, bool timeUnit = false)
+                 const std::vector<QRegularExpression> &regexes, bool timeUnit = false)
 {
-    return tryReadProperty(properties, key, line, regex, [timeUnit](const auto &match) {
+    return tryReadProperty(properties, key, line, regexes, [timeUnit](const auto &match) {
         return QVariant::fromValue(Unit{match.captured(1), timeUnit});
     });
 }
@@ -251,7 +258,8 @@ std::shared_ptr<IDataSeries> ScalarParserHelper::createSeries()
 
 void ScalarParserHelper::readPropertyLine(const QString &line)
 {
-    tryReadUnit(m_Properties, X_AXIS_UNIT_PROPERTY, line, DEFAULT_X_AXIS_UNIT_REGEX, true);
+    tryReadUnit(m_Properties, X_AXIS_UNIT_PROPERTY, line,
+                {DEFAULT_X_AXIS_UNIT_REGEX, ALTERNATIVE_X_AXIS_UNIT_REGEX}, true);
 }
 
 void ScalarParserHelper::readResultLine(const QString &line)
@@ -321,46 +329,46 @@ void SpectrogramParserHelper::readPropertyLine(const QString &line)
         // values unit
         [&] {
             return tryReadUnit(m_Properties, VALUES_UNIT_PROPERTY, line,
-                               SPECTROGRAM_VALUES_UNIT_REGEX);
+                               {SPECTROGRAM_VALUES_UNIT_REGEX});
         },
         // y-axis unit
         [&] {
             return tryReadUnit(m_Properties, Y_AXIS_UNIT_PROPERTY, line,
-                               SPECTROGRAM_Y_AXIS_UNIT_REGEX);
+                               {SPECTROGRAM_Y_AXIS_UNIT_REGEX});
         },
         // min sampling
         [&] {
             return tryReadDouble(m_Properties, MIN_SAMPLING_PROPERTY, line,
-                                 SPECTROGRAM_MIN_SAMPLING_REGEX);
+                                 {SPECTROGRAM_MIN_SAMPLING_REGEX});
         },
         // max sampling
         [&] {
             return tryReadDouble(m_Properties, MAX_SAMPLING_PROPERTY, line,
-                                 SPECTROGRAM_MAX_SAMPLING_REGEX);
+                                 {SPECTROGRAM_MAX_SAMPLING_REGEX});
         },
         // fill value
         [&] {
             return tryReadDouble(m_Properties, FILL_VALUE_PROPERTY, line,
-                                 SPECTROGRAM_FILL_VALUE_REGEX);
+                                 {SPECTROGRAM_FILL_VALUE_REGEX});
         },
         // min bounds of each band
         [&] {
             return tryReadDoubles(m_Properties, MIN_BANDS_PROPERTY, line,
-                                  SPECTROGRAM_MIN_BANDS_REGEX);
+                                  {SPECTROGRAM_MIN_BANDS_REGEX});
         },
         // max bounds of each band
         [&] {
             return tryReadDoubles(m_Properties, MAX_BANDS_PROPERTY, line,
-                                  SPECTROGRAM_MAX_BANDS_REGEX);
+                                  {SPECTROGRAM_MAX_BANDS_REGEX});
         },
         // start time of data
         [&] {
             return tryReadDate(m_Properties, START_TIME_PROPERTY, line,
-                               SPECTROGRAM_START_TIME_REGEX);
+                               {SPECTROGRAM_START_TIME_REGEX});
         },
         // end time of data
         [&] {
-            return tryReadDate(m_Properties, END_TIME_PROPERTY, line, SPECTROGRAM_END_TIME_REGEX);
+            return tryReadDate(m_Properties, END_TIME_PROPERTY, line, {SPECTROGRAM_END_TIME_REGEX});
         }};
 
     for (auto function : functions) {
@@ -407,7 +415,8 @@ std::shared_ptr<IDataSeries> VectorParserHelper::createSeries()
 
 void VectorParserHelper::readPropertyLine(const QString &line)
 {
-    tryReadUnit(m_Properties, X_AXIS_UNIT_PROPERTY, line, DEFAULT_X_AXIS_UNIT_REGEX, true);
+    tryReadUnit(m_Properties, X_AXIS_UNIT_PROPERTY, line,
+                {DEFAULT_X_AXIS_UNIT_REGEX, ALTERNATIVE_X_AXIS_UNIT_REGEX}, true);
 }
 
 void VectorParserHelper::readResultLine(const QString &line)

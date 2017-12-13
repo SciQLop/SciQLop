@@ -11,7 +11,8 @@ amdaplugin_sources = [
   'src/AmdaProvider.cpp',
   'src/AmdaResultParser.cpp',
   'src/AmdaResultParserDefs.cpp',
-  'src/AmdaResultParserHelper.cpp'
+  'src/AmdaResultParserHelper.cpp',
+  'src/AmdaServer.cpp'
 ]
 
 amdaplugin_ui_files = []
@@ -24,7 +25,7 @@ amdaplugin_inc = include_directories(['include', '../../plugin/include'])
 moc_gen = generator(moc,
                 output  : 'moc_@BASENAME@.cpp',
                 arguments : ['@INPUT@',
-                 '-DPLUGIN_JSON_FILE_PATH="'+meson.source_root()+'/plugins/amda/resources/amda.json"',
+                 '-DSCIQLOP_PLUGIN_JSON_FILE_PATH="'+meson.source_root()+'/plugins/amda/resources/amda.json"',
                  '-I', meson.current_source_dir()+'/include',
                  '-I', meson.current_source_dir()+'/../../plugin/include',
                  '-o', '@OUTPUT@'])
