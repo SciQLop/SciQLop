@@ -41,6 +41,11 @@ public:
 
 /// Data resolution in local server's files
 const auto LOCALHOST_SERVER_RESOLUTION = 4;
+/// Reference value used to generate the data on the local server (a value is the number of seconds
+/// between the data date and this reference date)
+const auto LOCALHOST_REFERENCE_VALUE
+    = DateUtils::secondsSinceEpoch(QDateTime{QDate{2000, 1, 1}, QTime{}, Qt::UTC});
+
 /**
  * Implementation of @sa DataValidatorHelper for the local AMDA server
  */
@@ -103,6 +108,29 @@ public:
             QFAIL("");
         }
 
+        // Checks values
+        auto dataIndex = 0;
+        for (auto dataIt = dataIts.first; dataIt != dataIts.second; ++dataIt, ++dataIndex) {
+            auto xAxisData = dataIt->x();
+            auto valuesData = dataIt->values();
+            for (auto valueIndex = 0, valueEnd = valuesData.size(); valueIndex < valueEnd;
+                 ++valueIndex) {
+                auto value = valuesData.at(valueIndex);
+                auto expectedValue = xAxisData + valueIndex * LOCALHOST_SERVER_RESOLUTION
+                                     - LOCALHOST_REFERENCE_VALUE;
+
+                if (value != expectedValue) {
+                    qCInfo(LOG_FuzzingValidators()).noquote()
+                        << message << "FAIL: incorrect value data at time"
+                        << toDateString(xAxisData) << ", index" << valueIndex << "(found:" << value
+                        << ", expected:" << expectedValue << ")";
+                    QFAIL("");
+                }
+            }
+        }
+
+        // At this step validation is OK
+        qCInfo(LOG_FuzzingValidators()).noquote() << message << "OK";
     }
 };
 
