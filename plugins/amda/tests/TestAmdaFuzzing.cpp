@@ -5,6 +5,7 @@
 #include "AmdaProvider.h"
 
 #include <Network/NetworkController.h>
+#include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
 #include <Variable/Variable.h>
@@ -47,6 +48,7 @@ const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE
                                                   {FuzzingOperationType::PAN_RIGHT, 1.},
                                                   {FuzzingOperationType::ZOOM_IN, 1.},
                                                   {FuzzingOperationType::ZOOM_OUT, 1.}});
+const auto CACHE_TOLERANCE_DEFAULT_VALUE = 0.2;
 
 /// Delay between each operation (in ms)
 const auto OPERATION_DELAY_DEFAULT_VALUE = 3000;
@@ -223,6 +225,12 @@ void TestAmdaFuzzing::testFuzzing()
 {
     QFETCH(Properties, properties);
 
+    // Sets cache property
+    QSettings settings{};
+    auto cacheTolerance = properties.value(CACHE_TOLERANCE_PROPERTY, CACHE_TOLERANCE_DEFAULT_VALUE);
+    settings.setValue(GENERAL_TOLERANCE_AT_INIT_KEY, cacheTolerance);
+    settings.setValue(GENERAL_TOLERANCE_AT_UPDATE_KEY, cacheTolerance);
+
     auto &variableController = sqpApp->variableController();
     auto &timeController = sqpApp->timeController();
 
@@ -260,6 +268,9 @@ int main(int argc, char *argv[])
         "TestAmdaFuzzing.info=true\n");
 
     SqpApplication app{argc, argv};
+    SqpApplication::setOrganizationName("LPP");
+    SqpApplication::setOrganizationDomain("lpp.fr");
+    SqpApplication::setApplicationName("SciQLop-TestFuzzing");
     app.setAttribute(Qt::AA_Use96Dpi, true);
     TestAmdaFuzzing testObject{};
     QTEST_SET_MAIN_SOURCE_PATH

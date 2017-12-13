@@ -30,6 +30,8 @@ extern const QString NB_MAX_VARIABLES_PROPERTY;
 /// Set of operations available for the test
 extern const QString AVAILABLE_OPERATIONS_PROPERTY;
 
+/// Tolerance used for variable's cache (in ratio)
+extern const QString CACHE_TOLERANCE_PROPERTY;
 
 /// Range with which the timecontroller is initialized
 extern const QString INITIAL_RANGE_PROPERTY;
