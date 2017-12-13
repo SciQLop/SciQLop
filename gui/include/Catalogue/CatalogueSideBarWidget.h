@@ -5,6 +5,8 @@
 #include <QTreeWidgetItem>
 #include <QWidget>
 
+class DBCatalogue;
+
 namespace Ui {
 class CatalogueSideBarWidget;
 }
@@ -13,9 +15,11 @@ class CatalogueSideBarWidget : public QWidget {
     Q_OBJECT
 
 signals:
-    void catalogueSelected(const QString &catalogue);
+    void catalogueSelected(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
+    void databaseSelected(const QStringList &databases);
     void allEventsSelected();
     void trashSelected();
+    void selectionCleared();
 
 public:
     explicit CatalogueSideBarWidget(QWidget *parent = 0);
@@ -26,6 +30,9 @@ private:
 
     class CatalogueSideBarWidgetPrivate;
     spimpl::unique_impl_ptr<CatalogueSideBarWidgetPrivate> impl;
+
+private slots:
+    void onContextMenuRequested(const QPoint &pos);
 };
 
 #endif // SCIQLOP_CATALOGUESIDEBARWIDGET_H

@@ -669,7 +669,7 @@ AcquisitionZoomType VariableController::getZoomType(const SqpRange &range, const
         qCDebug(LOG_VariableController()) << "zoomtype: PanLeft";
         zoomType = AcquisitionZoomType::PanLeft;
     }
-    else if (range.m_TStart > oldRange.m_TStart && oldRange.m_TEnd > range.m_TEnd) {
+    else if (range.m_TStart >= oldRange.m_TStart && oldRange.m_TEnd >= range.m_TEnd) {
         qCDebug(LOG_VariableController()) << "zoomtype: ZoomIn";
         zoomType = AcquisitionZoomType::ZoomIn;
     }

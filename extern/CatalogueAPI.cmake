@@ -40,7 +40,7 @@ ExternalProject_Add(
     GIT_REPOSITORY https://perrinel@hephaistos.lpp.polytechnique.fr/rhodecode/GIT_REPOSITORIES/LPP/Users/mperrinel/CatalogueAPI
     GIT_TAG develop
 
-    UPDATE_COMMAND ${GIT_EXECUTABLE} pull
+    UPDATE_COMMAND ${GIT_EXECUTABLE} pull origin develop
     PATCH_COMMAND ""
 
     SOURCE_DIR "${CATALOGUEAPI_SOURCES_PATH}"

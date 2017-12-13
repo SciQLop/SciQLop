@@ -75,6 +75,16 @@ INSTALL(TARGETS ${SQPGUI_LIBRARY_NAME}
 )
 add_dependencies(${SQPGUI_LIBRARY_NAME} ${SQPCORE_LIBRARY_NAME})
 
+# Find CATALOGUE_API
+include_directories("${CATALOGUEAPI_INCLUDE}")
+TARGET_LINK_LIBRARIES(${SQPGUI_LIBRARY_NAME} ${CATALOGUEAPI_LIBRARIES})
+INSTALL(TARGETS ${SQPGUI_LIBRARY_NAME}
+  RUNTIME DESTINATION ${INSTALL_BINARY_DIR}
+  LIBRARY DESTINATION ${INSTALL_LIBRARY_DIR}
+  ARCHIVE DESTINATION ${INSTALL_LIBRARY_DIR}
+)
+
+add_dependencies(${SQPGUI_LIBRARY_NAME} CatalogueAPI)
 
 # From cmake documentation: http://www.cmake.org/cmake/help/v3.0/manual/cmake-buildsystem.7.html
 # Entries in the COMPILE_DEFINITIONS are prefixed with -D or /D and added to the compile line in an unspecified order.

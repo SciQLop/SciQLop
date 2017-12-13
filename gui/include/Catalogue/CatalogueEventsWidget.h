@@ -2,24 +2,33 @@
 #define SCIQLOP_CATALOGUEEVENTSWIDGET_H
 
 #include <Common/spimpl.h>
+#include <QLoggingCategory>
 #include <QWidget>
+
+class DBCatalogue;
+class DBEvent;
+class VisualizationWidget;
 
 namespace Ui {
 class CatalogueEventsWidget;
 }
 
+Q_DECLARE_LOGGING_CATEGORY(LOG_CatalogueEventsWidget)
+
 class CatalogueEventsWidget : public QWidget {
     Q_OBJECT
 
 signals:
-    void eventSelected(const QString &event);
+    void eventsSelected(const QVector<std::shared_ptr<DBEvent> > &event);
 
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
     virtual ~CatalogueEventsWidget();
 
+    void setVisualizationWidget(VisualizationWidget *visualization);
+
 public slots:
-    void populateWithCatalogue(const QString &catalogue);
+    void populateWithCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
 
 private:
     Ui::CatalogueEventsWidget *ui;

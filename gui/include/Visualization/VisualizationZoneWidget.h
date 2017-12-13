@@ -1,6 +1,7 @@
 #ifndef SCIQLOP_VISUALIZATIONZONEWIDGET_H
 #define SCIQLOP_VISUALIZATIONZONEWIDGET_H
 
+#include "Data/SqpRange.h"
 #include "Visualization/IVisualizationWidget.h"
 #include "Visualization/VisualizationDragWidget.h"
 
@@ -26,6 +27,10 @@ class VisualizationZoneWidget : public VisualizationDragWidget, public IVisualiz
 public:
     explicit VisualizationZoneWidget(const QString &name = {}, QWidget *parent = 0);
     virtual ~VisualizationZoneWidget();
+
+    /// Sets the range of the zone, only works if there is at least one graph in the zone
+    /// Note: calibrations between graphs are lost.
+    void setZoneRange(const SqpRange &range);
 
     /// Adds a graph widget
     void addGraph(VisualizationGraphWidget *graphWidget);

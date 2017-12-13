@@ -41,8 +41,7 @@ public:
     std::list<std::shared_ptr<DBEvent> > retrieveEvents(const QString &repository) const;
     std::list<std::shared_ptr<DBEvent> > retrieveAllEvents() const;
     std::list<std::shared_ptr<DBEvent> >
-    retrieveEventsFromCatalogue(const QString &repository,
-                                std::shared_ptr<DBCatalogue> catalogue) const;
+    retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> catalogue) const;
     //    void updateEvent(std::shared_ptr<DBEvent> event);
     //    void trashEvent(std::shared_ptr<DBEvent> event);
     //    void removeEvent(std::shared_ptr<DBEvent> event);

@@ -34,7 +34,7 @@
         <string>+</string>
        </property>
        <property name="icon">
-        <iconset>
+        <iconset resource="../../resources/sqpguiresources.qrc">
          <normaloff>:/icones/add.png</normaloff>:/icones/add.png</iconset>
        </property>
        <property name="autoRaise">
@@ -48,7 +48,7 @@
         <string> - </string>
        </property>
        <property name="icon">
-        <iconset>
+        <iconset resource="../../resources/sqpguiresources.qrc">
          <normaloff>:/icones/remove.png</normaloff>:/icones/remove.png</iconset>
        </property>
        <property name="autoRaise">
@@ -69,7 +69,7 @@
         <string>T</string>
        </property>
        <property name="icon">
-        <iconset>
+        <iconset resource="../../resources/sqpguiresources.qrc">
          <normaloff>:/icones/time.png</normaloff>:/icones/time.png</iconset>
        </property>
        <property name="checkable">
@@ -86,7 +86,7 @@
         <string>G</string>
        </property>
        <property name="icon">
-        <iconset>
+        <iconset resource="../../resources/sqpguiresources.qrc">
          <normaloff>:/icones/chart.png</normaloff>:/icones/chart.png</iconset>
        </property>
        <property name="checkable">
@@ -114,15 +114,24 @@
     </layout>
    </item>
    <item>
-    <widget class="QTableWidget" name="tableWidget">
-     <property name="alternatingRowColors">
+    <widget class="QTableView" name="tableView">
+     <property name="dragEnabled">
       <bool>true</bool>
+     </property>
+     <property name="dragDropMode">
+      <enum>QAbstractItemView::DragDrop</enum>
      </property>
      <property name="selectionBehavior">
       <enum>QAbstractItemView::SelectRows</enum>
      </property>
+     <attribute name="horizontalHeaderVisible">
+      <bool>true</bool>
+     </attribute>
      <attribute name="horizontalHeaderHighlightSections">
       <bool>false</bool>
+     </attribute>
+     <attribute name="horizontalHeaderShowSortIndicator" stdset="0">
+      <bool>true</bool>
      </attribute>
      <attribute name="verticalHeaderVisible">
       <bool>false</bool>
@@ -130,10 +139,16 @@
      <attribute name="verticalHeaderDefaultSectionSize">
       <number>25</number>
      </attribute>
+     <attribute name="verticalHeaderHighlightSections">
+      <bool>false</bool>
+     </attribute>
     </widget>
    </item>
   </layout>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../resources/sqpguiresources.qrc"/>
+  <include location="../../resources/sqpguiresources.qrc"/>
+ </resources>
  <connections/>
 </ui>

@@ -30,6 +30,8 @@ public:
     /// Returns the class which manage the selection of selection zone across the visualization
     VisualizationSelectionZoneManager &selectionZoneManager() const;
 
+    VisualizationTabWidget *currentTabWidget() const;
+
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
