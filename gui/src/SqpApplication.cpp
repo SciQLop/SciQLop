@@ -181,6 +181,11 @@ VisualizationController &SqpApplication::visualizationController() noexcept
     return *impl->m_VisualizationController;
 }
 
+CatalogueController &SqpApplication::catalogueController() noexcept
+{
+    return *impl->m_CatalogueController;
+}
+
 DragDropGuiController &SqpApplication::dragDropGuiController() noexcept
 {
     return *impl->m_DragDropGuiController;
