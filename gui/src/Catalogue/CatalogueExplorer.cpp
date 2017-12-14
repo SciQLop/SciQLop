@@ -48,6 +48,28 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
             ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
         }
     });
+
+    connect(ui->events, &CatalogueEventsWidget::eventProductsSelected, [this](auto eventProducts) {
+        if (eventProducts.count() == 1) {
+            ui->inspector->setEventProduct(eventProducts.first().first,
+                                           eventProducts.first().second);
+        }
+        else {
+            ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
+        }
+    });
+
+    connect(ui->events, &CatalogueEventsWidget::selectionCleared,
+            [this]() { ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty); });
+
+    connect(ui->inspector, &CatalogueInspectorWidget::catalogueUpdated,
+            [this](auto catalogue) { ui->catalogues->setCatalogueChanges(catalogue, true); });
+
+    connect(ui->inspector, &CatalogueInspectorWidget::eventUpdated,
+            [this](auto event) { ui->events->setEventChanges(event, true); });
+
+    connect(ui->inspector, &CatalogueInspectorWidget::eventProductUpdated,
+            [this](auto event, auto eventProduct) { ui->events->setEventChanges(event, true); });
 }
 
 CatalogueExplorer::~CatalogueExplorer()

@@ -1,6 +1,7 @@
 #ifndef SCIQLOP_CATALOGUEINSPECTORWIDGET_H
 #define SCIQLOP_CATALOGUEINSPECTORWIDGET_H
 
+#include <Common/spimpl.h>
 #include <QWidget>
 #include <memory>
 
@@ -10,9 +11,16 @@ class CatalogueInspectorWidget;
 
 class DBCatalogue;
 class DBEvent;
+class DBEventProduct;
 
 class CatalogueInspectorWidget : public QWidget {
     Q_OBJECT
+
+signals:
+    void catalogueUpdated(const std::shared_ptr<DBCatalogue> &catalogue);
+    void eventUpdated(const std::shared_ptr<DBEvent> &event);
+    void eventProductUpdated(const std::shared_ptr<DBEvent> &event,
+                             const std::shared_ptr<DBEventProduct> &eventProduct);
 
 public:
     explicit CatalogueInspectorWidget(QWidget *parent = 0);
@@ -24,6 +32,8 @@ public:
     Page currentPage() const;
 
     void setEvent(const std::shared_ptr<DBEvent> &event);
+    void setEventProduct(const std::shared_ptr<DBEvent> &event,
+                         const std::shared_ptr<DBEventProduct> &eventProduct);
     void setCatalogue(const std::shared_ptr<DBCatalogue> &catalogue);
 
 public slots:
@@ -31,6 +41,9 @@ public slots:
 
 private:
     Ui::CatalogueInspectorWidget *ui;
+
+    class CatalogueInspectorWidgetPrivate;
+    spimpl::unique_impl_ptr<CatalogueInspectorWidgetPrivate> impl;
 };
 
 #endif // SCIQLOP_CATALOGUEINSPECTORWIDGET_H
