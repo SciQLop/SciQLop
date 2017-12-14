@@ -62,17 +62,17 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
     });
 
     connect(ui->leEventMission, &QLineEdit::editingFinished, [ui, inspector, this]() {
-        if (ui->leEventMission->text() != m_DisplayedEvent->getMission()) {
-            m_DisplayedEvent->setMission(ui->leEventMission->text());
-            emit inspector->eventUpdated(m_DisplayedEvent);
-        }
+        //        if (ui->leEventMission->text() != m_DisplayedEvent->getMission()) {
+        //            m_DisplayedEvent->setMission(ui->leEventMission->text());
+        //            emit inspector->eventUpdated(m_DisplayedEvent);
+        //        }
     });
 
     connect(ui->leEventProduct, &QLineEdit::editingFinished, [ui, inspector, this]() {
-        if (ui->leEventProduct->text() != m_DisplayedEvent->getProduct()) {
-            m_DisplayedEvent->setProduct(ui->leEventProduct->text());
-            emit inspector->eventUpdated(m_DisplayedEvent);
-        }
+        //        if (ui->leEventProduct->text() != m_DisplayedEvent->getProduct()) {
+        //            m_DisplayedEvent->setProduct(ui->leEventProduct->text());
+        //            emit inspector->eventUpdated(m_DisplayedEvent);
+        //        }
     });
 
     connect(ui->leEventTags, &QLineEdit::editingFinished, [ui, inspector, this]() {
@@ -80,19 +80,19 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
     });
 
     connect(ui->dateTimeEventTStart, &QDateTimeEdit::editingFinished, [ui, inspector, this]() {
-        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTStart->dateTime());
-        if (time != m_DisplayedEvent->getTStart()) {
-            m_DisplayedEvent->setTStart(time);
-            emit inspector->eventUpdated(m_DisplayedEvent);
-        }
+        //        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTStart->dateTime());
+        //        if (time != m_DisplayedEvent->getTStart()) {
+        //            m_DisplayedEvent->setTStart(time);
+        //            emit inspector->eventUpdated(m_DisplayedEvent);
+        //        }
     });
 
     connect(ui->dateTimeEventTEnd, &QDateTimeEdit::editingFinished, [ui, inspector, this]() {
-        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTEnd->dateTime());
-        if (time != m_DisplayedEvent->getTEnd()) {
-            m_DisplayedEvent->setTEnd(time);
-            emit inspector->eventUpdated(m_DisplayedEvent);
-        }
+        //        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTEnd->dateTime());
+        //        if (time != m_DisplayedEvent->getTEnd()) {
+        //            m_DisplayedEvent->setTEnd(time);
+        //            emit inspector->eventUpdated(m_DisplayedEvent);
+        //        }
     });
 }
 
@@ -114,8 +114,8 @@ void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
 
     showPage(Page::EventProperties);
     ui->leEventName->setText(event->getName());
-    ui->leEventMission->setText(event->getMission());
-    ui->leEventProduct->setText(event->getProduct());
+    //    ui->leEventMission->setText(event->getMission());
+    //    ui->leEventProduct->setText(event->getProduct());
 
     QString tagList;
     auto tags = event->getTags();
@@ -126,8 +126,8 @@ void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
 
     ui->leEventTags->setText(tagList);
 
-    ui->dateTimeEventTStart->setDateTime(DateUtils::dateTime(event->getTStart()));
-    ui->dateTimeEventTEnd->setDateTime(DateUtils::dateTime(event->getTEnd()));
+    //    ui->dateTimeEventTStart->setDateTime(DateUtils::dateTime(event->getTStart()));
+    //    ui->dateTimeEventTEnd->setDateTime(DateUtils::dateTime(event->getTEnd()));
 
     blockSignals(false);
 }

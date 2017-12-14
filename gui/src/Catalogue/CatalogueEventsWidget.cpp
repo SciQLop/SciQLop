@@ -2,7 +2,7 @@
 #include "ui_CatalogueEventsWidget.h"
 
 #include <Catalogue/CatalogueController.h>
-#include <Catalogue/CatalogueEventsTableModel.h>
+#include <Catalogue/CatalogueEventsModel.h>
 #include <CatalogueDao.h>
 #include <DBCatalogue.h>
 #include <SqpApplication.h>
@@ -21,31 +21,31 @@ const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
 
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
-    CatalogueEventsTableModel *m_Model = nullptr;
+    CatalogueEventsModel *m_Model = nullptr;
     QStringList m_ZonesForTimeMode;
     QString m_ZoneForGraphMode;
 
     VisualizationWidget *m_VisualizationWidget = nullptr;
 
-    void setEvents(const QVector<std::shared_ptr<DBEvent> > &events, QTableView *tableView)
+    void setEvents(const QVector<std::shared_ptr<DBEvent> > &events, QTreeView *treeView)
     {
-        tableView->setSortingEnabled(false);
+        treeView->setSortingEnabled(false);
         m_Model->setEvents(events);
-        tableView->setSortingEnabled(true);
+        treeView->setSortingEnabled(true);
     }
 
-    void addEvent(const std::shared_ptr<DBEvent> &event, QTableView *tableView)
+    void addEvent(const std::shared_ptr<DBEvent> &event, QTreeView *treeView)
     {
-        tableView->setSortingEnabled(false);
+        treeView->setSortingEnabled(false);
         m_Model->addEvent(event);
-        tableView->setSortingEnabled(true);
+        treeView->setSortingEnabled(true);
     }
 
-    void removeEvent(const std::shared_ptr<DBEvent> &event, QTableView *tableView)
+    void removeEvent(const std::shared_ptr<DBEvent> &event, QTreeView *treeView)
     {
-        tableView->setSortingEnabled(false);
+        treeView->setSortingEnabled(false);
         m_Model->removeEvent(event);
-        tableView->setSortingEnabled(true);
+        treeView->setSortingEnabled(true);
     }
 
     QStringList getAvailableVisualizationZoneList() const
@@ -131,9 +131,9 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         return result;
     }
 
-    void updateForTimeMode(QTableView *tableView)
+    void updateForTimeMode(QTreeView *treeView)
     {
-        auto selectedRows = tableView->selectionModel()->selectedRows();
+        auto selectedRows = treeView->selectionModel()->selectedRows();
 
         if (selectedRows.count() == 1) {
             auto event = m_Model->getEvent(selectedRows.first().row());
@@ -143,8 +143,8 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
                     for (auto zoneName : m_ZonesForTimeMode) {
                         if (auto zone = tab->getZoneWithName(zoneName)) {
                             SqpRange eventRange;
-                            eventRange.m_TStart = event->getTStart();
-                            eventRange.m_TEnd = event->getTEnd();
+                            // eventRange.m_TStart = event->getTStart();
+                            // eventRange.m_TEnd = event->getTEnd();
                             zone->setZoneRange(eventRange);
                         }
                     }
@@ -165,9 +165,9 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         }
     }
 
-    void updateForGraphMode(QTableView *tableView)
+    void updateForGraphMode(QTreeView *treeView)
     {
-        auto selectedRows = tableView->selectionModel()->selectedRows();
+        auto selectedRows = treeView->selectionModel()->selectedRows();
 
         if (selectedRows.count() == 1) {
             auto event = m_Model->getEvent(selectedRows.first().row());
@@ -201,12 +201,12 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
 {
     ui->setupUi(this);
 
-    impl->m_Model = new CatalogueEventsTableModel{this};
-    ui->tableView->setModel(impl->m_Model);
+    impl->m_Model = new CatalogueEventsModel{this};
+    ui->treeView->setModel(impl->m_Model);
 
-    ui->tableView->setSortingEnabled(true);
-    ui->tableView->setDragDropMode(QAbstractItemView::DragDrop);
-    ui->tableView->setDragEnabled(true);
+    ui->treeView->setSortingEnabled(true);
+    ui->treeView->setDragDropMode(QAbstractItemView::DragDrop);
+    ui->treeView->setDragEnabled(true);
 
     connect(ui->btnTime, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
@@ -215,7 +215,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
                 = impl->selectZone(this, impl->m_ZonesForTimeMode, true,
                                    this->mapToGlobal(ui->btnTime->frameGeometry().center()));
 
-            impl->updateForTimeMode(ui->tableView);
+            impl->updateForTimeMode(ui->treeView);
         }
     });
 
@@ -227,38 +227,38 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
                                    this->mapToGlobal(ui->btnChart->frameGeometry().center()))
                       .value(0);
 
-            impl->updateForGraphMode(ui->tableView);
+            impl->updateForGraphMode(ui->treeView);
         }
     });
 
     auto emitSelection = [this]() {
         QVector<std::shared_ptr<DBEvent> > events;
-        for (auto rowIndex : ui->tableView->selectionModel()->selectedRows()) {
+        for (auto rowIndex : ui->treeView->selectionModel()->selectedRows()) {
             events << impl->m_Model->getEvent(rowIndex.row());
         }
 
         emit this->eventsSelected(events);
     };
 
-    connect(ui->tableView, &QTableView::clicked, emitSelection);
-    connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, emitSelection);
+    connect(ui->treeView, &QTreeView::clicked, emitSelection);
+    connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, emitSelection);
 
-    connect(ui->tableView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
-        auto isNotMultiSelection = ui->tableView->selectionModel()->selectedRows().count() <= 1;
+    connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
+        auto isNotMultiSelection = ui->treeView->selectionModel()->selectedRows().count() <= 1;
         ui->btnChart->setEnabled(isNotMultiSelection);
         ui->btnTime->setEnabled(isNotMultiSelection);
 
         if (isNotMultiSelection && ui->btnTime->isChecked()) {
-            impl->updateForTimeMode(ui->tableView);
+            impl->updateForTimeMode(ui->treeView);
         }
         else if (isNotMultiSelection && ui->btnChart->isChecked()) {
-            impl->updateForGraphMode(ui->tableView);
+            impl->updateForGraphMode(ui->treeView);
         }
     });
 
-    ui->tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->tableView->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-    ui->tableView->horizontalHeader()->setSortIndicatorShown(true);
+    ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->treeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->treeView->header()->setSortIndicatorShown(true);
 }
 
 CatalogueEventsWidget::~CatalogueEventsWidget()
@@ -292,5 +292,5 @@ void CatalogueEventsWidget::populateWithCatalogues(
         }
     }
 
-    impl->setEvents(events, ui->tableView);
+    impl->setEvents(events, ui->treeView);
 }

@@ -1,17 +1,18 @@
-#ifndef SCIQLOP_CATALOGUEEVENTSTABLEMODEL_H
-#define SCIQLOP_CATALOGUEEVENTSTABLEMODEL_H
+#ifndef SCIQLOP_CATALOGUEEVENTSMODEL_H
+#define SCIQLOP_CATALOGUEEVENTSMODEL_H
 
 #include <Common/spimpl.h>
-#include <QAbstractTableModel>
+#include <QAbstractItemModel>
 
 class DBEvent;
 
-class CatalogueEventsTableModel : public QAbstractTableModel {
+class CatalogueEventsModel : public QAbstractItemModel {
 public:
-    CatalogueEventsTableModel(QObject *parent = nullptr);
+    CatalogueEventsModel(QObject *parent = nullptr);
 
     void setEvents(const QVector<std::shared_ptr<DBEvent> > &events);
     std::shared_ptr<DBEvent> getEvent(int row) const;
+
 
     void addEvent(const std::shared_ptr<DBEvent> &event);
     void removeEvent(const std::shared_ptr<DBEvent> &event);
@@ -19,6 +20,8 @@ public:
     void refreshEvent(const std::shared_ptr<DBEvent> &event);
 
     // Model
+    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const;
+    QModelIndex parent(const QModelIndex &index) const;
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     int columnCount(const QModelIndex &parent = QModelIndex()) const override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
@@ -31,10 +34,9 @@ public:
     QStringList mimeTypes() const override;
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
 
-
 private:
     class CatalogueEventsTableModelPrivate;
     spimpl::unique_impl_ptr<CatalogueEventsTableModelPrivate> impl;
 };
 
-#endif // SCIQLOP_CATALOGUEEVENTSTABLEMODEL_H
+#endif // SCIQLOP_CATALOGUEEVENTSMODEL_H
