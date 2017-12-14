@@ -110,6 +110,10 @@ struct FuzzingState {
     /// @param syncGroupId the synchronization group from which to remove the variable
     void desynchronizeVariable(VariableId variableId, SyncGroupId syncGroupId);
 
+    /// Updates the range of a variable and all variables to which it is synchronized
+    /// @param the variable for which to affect the range
+    /// @param the range to affect
+    void updateRanges(VariableId variableId, const SqpRange &newRange);
 
     VariablesPool m_VariablesPool;
     SyncGroupsPool m_SyncGroupsPool;

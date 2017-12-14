@@ -136,15 +136,16 @@ struct MoveOperation : public IFuzzingOperation {
         auto delta = RandomGenerator::instance().generateDouble(0, deltaMax);
 
         // Moves variable to its new range
+        auto isSynchronized = !fuzzingState.syncGroupId(variableId).isNull();
         auto newVariableRange = SqpRange{m_RangeStartMoveFun(variableRange.m_TStart, delta),
                                          m_RangeEndMoveFun(variableRange.m_TEnd, delta)};
         qCInfo(LOG_FuzzingOperations()).noquote()
             << "Performing" << m_Label << "on" << variable->name() << "(from" << variableRange
             << "to" << newVariableRange << ")...";
-        variableController.onRequestDataLoading({variable}, newVariableRange, false);
+        variableController.onRequestDataLoading({variable}, newVariableRange, isSynchronized);
 
-        // Updates variable's state
-        variableState.m_Range = newVariableRange;
+        // Updates state
+        fuzzingState.updateRanges(variableId, newVariableRange);
     }
 
     MoveFunction m_RangeStartMoveFun;

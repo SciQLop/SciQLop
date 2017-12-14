@@ -81,7 +81,8 @@ void FuzzingState::desynchronizeVariable(VariableId variableId, SyncGroupId sync
         return;
     }
 
-    // Unregisters variable from sync group: if there is no more variable in the group, resets the range
+    // Unregisters variable from sync group: if there is no more variable in the group, resets the
+    // range
     auto &syncGroup = m_SyncGroupsPool.at(syncGroupId);
     syncGroup.m_Variables.erase(variableId);
     if (syncGroup.m_Variables.empty()) {
@@ -89,3 +90,18 @@ void FuzzingState::desynchronizeVariable(VariableId variableId, SyncGroupId sync
     }
 }
 
+void FuzzingState::updateRanges(VariableId variableId, const SqpRange &newRange)
+{
+    auto syncGroupId = this->syncGroupId(variableId);
+
+    // Retrieves the variables to update:
+    // - if the variable is synchronized to others, updates all synchronized variables
+    // - otherwise, updates only the variable
+    auto variablesToUpdate = syncGroupId.isNull() ? std::set<VariableId>{variableId}
+                                                  : m_SyncGroupsPool.at(syncGroupId).m_Variables;
+
+    // Sets new range
+    for (const auto &variableId : variablesToUpdate) {
+        m_VariablesPool.at(variableId).m_Range = newRange;
+    }
+}
