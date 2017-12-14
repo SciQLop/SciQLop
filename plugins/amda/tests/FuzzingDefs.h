@@ -97,6 +97,14 @@ struct FuzzingState {
     /// parameter is located. If the variable is not in any group, returns an invalid identifier
     SyncGroupId syncGroupId(VariableId variableId) const;
 
+    /// @return the set of synchronization group identifiers
+    std::vector<SyncGroupId> syncGroupsIds() const;
+
+    /// Updates fuzzing state according to a variable synchronization
+    /// @param variableId the variable that is synchronized
+    /// @param syncGroupId the synchronization group
+    void synchronizeVariable(VariableId variableId, SyncGroupId syncGroupId);
+
 
     VariablesPool m_VariablesPool;
     SyncGroupsPool m_SyncGroupsPool;

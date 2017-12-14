@@ -48,3 +48,30 @@ SyncGroupId FuzzingState::syncGroupId(VariableId variableId) const
     return it != end ? it->first : SyncGroupId{};
 }
 
+std::vector<SyncGroupId> FuzzingState::syncGroupsIds() const
+{
+    std::vector<SyncGroupId> result{};
+
+    for (const auto &entry : m_SyncGroupsPool) {
+        result.push_back(entry.first);
+    }
+
+    return result;
+}
+
+void FuzzingState::synchronizeVariable(VariableId variableId, SyncGroupId syncGroupId)
+{
+    if (syncGroupId.isNull()) {
+        return;
+    }
+
+    // Registers variable into sync group: if it's the first variable, sets the variable range as
+    // the sync group range
+    auto &syncGroup = m_SyncGroupsPool.at(syncGroupId);
+    syncGroup.m_Variables.insert(variableId);
+    if (syncGroup.m_Variables.size() == 1) {
+        auto &variableState = m_VariablesPool.at(variableId);
+        syncGroup.m_Range = variableState.m_Range;
+    }
+}
+

@@ -160,6 +160,17 @@ struct SynchronizeOperation : public IFuzzingOperation {
     void execute(VariableId variableId, FuzzingState &fuzzingState,
                  VariableController &variableController, const Properties &) const override
     {
+        auto &variableState = fuzzingState.variableState(variableId);
+
+        // Chooses a random synchronization group and adds the variable into sync group
+        auto syncGroupId = RandomGenerator::instance().randomChoice(fuzzingState.syncGroupsIds());
+        qCInfo(LOG_FuzzingOperations()).noquote()
+            << "Adding" << variableState.m_Variable->name() << "into synchronization group"
+            << syncGroupId << "...";
+        variableController.onAddSynchronized(variableState.m_Variable, syncGroupId);
+
+        // Updates state
+        fuzzingState.synchronizeVariable(variableId, syncGroupId);
     }
 };
 
