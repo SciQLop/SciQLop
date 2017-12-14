@@ -26,6 +26,9 @@ using Properties = QVariantHash;
 /// Max number of operations to generate
 extern const QString NB_MAX_OPERATIONS_PROPERTY;
 
+/// Max number of sync groups to create through operations
+extern const QString NB_MAX_SYNC_GROUPS_PROPERTY;
+
 /// Max number of variables to manipulate through operations
 extern const QString NB_MAX_VARIABLES_PROPERTY;
 

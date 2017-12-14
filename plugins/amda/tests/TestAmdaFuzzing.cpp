@@ -41,6 +41,7 @@ using Validators = std::vector<std::shared_ptr<IFuzzingValidator> >;
 
 // Defaults values used when the associated properties have not been set for the test
 const auto NB_MAX_OPERATIONS_DEFAULT_VALUE = 100;
+const auto NB_MAX_SYNC_GROUPS_DEFAULT_VALUE = 1;
 const auto NB_MAX_VARIABLES_DEFAULT_VALUE = 1;
 const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE = QVariant::fromValue(WeightedOperationsTypes{
     {FuzzingOperationType::CREATE, 1.},
@@ -148,6 +149,13 @@ public:
         for (auto variableId = 0; variableId < nbMaxVariables(); ++variableId) {
             m_FuzzingState.m_VariablesPool[variableId] = VariableState{};
         }
+
+        // Inits sync groups and registers them into the variable controller
+        for (auto i = 0; i < nbMaxSyncGroups(); ++i) {
+            auto syncGroupId = SyncGroupId::createUuid();
+            variableController.onAddSynchronizationGroupId(syncGroupId);
+            m_FuzzingState.m_SyncGroupsPool[syncGroupId] = SyncGroup{};
+        }
     }
 
     void execute()
@@ -193,6 +201,14 @@ private:
     {
         static auto result
             = m_Properties.value(NB_MAX_OPERATIONS_PROPERTY, NB_MAX_OPERATIONS_DEFAULT_VALUE)
+                  .toInt();
+        return result;
+    }
+
+    int nbMaxSyncGroups() const
+    {
+        static auto result
+            = m_Properties.value(NB_MAX_SYNC_GROUPS_PROPERTY, NB_MAX_SYNC_GROUPS_DEFAULT_VALUE)
                   .toInt();
         return result;
     }
