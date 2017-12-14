@@ -11,6 +11,7 @@ const QString METADATA_POOL_PROPERTY = QStringLiteral("metadataPool");
 const QString PROVIDER_PROPERTY = QStringLiteral("provider");
 const QString OPERATION_DELAY_BOUNDS_PROPERTY = QStringLiteral("operationDelays");
 const QString VALIDATORS_PROPERTY = QStringLiteral("validators");
+const QString VALIDATION_FREQUENCY_BOUNDS_PROPERTY = QStringLiteral("validationFrequencyBounds");
 
 // //////////// //
 // FuzzingState //

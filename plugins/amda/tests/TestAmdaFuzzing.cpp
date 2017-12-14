@@ -61,6 +61,9 @@ const auto OPERATION_DELAY_BOUNDS_DEFAULT_VALUE = QVariant::fromValue(std::make_
 const auto VALIDATORS_DEFAULT_VALUE = QVariant::fromValue(
     ValidatorsTypes{{FuzzingValidatorType::RANGE, FuzzingValidatorType::DATA}});
 
+/// Min/max number of operations to execute before calling validation
+const auto VALIDATION_FREQUENCY_BOUNDS_DEFAULT_VALUE = QVariant::fromValue(std::make_pair(1, 10));
+
 // /////// //
 // Methods //
 // /////// //
@@ -165,6 +168,17 @@ public:
         qCInfo(LOG_TestAmdaFuzzing()).noquote() << "Running" << nbMaxOperations() << "operations on"
                                                 << nbMaxVariables() << "variable(s)...";
 
+
+        // Inits the count of the number of operations before the next validation
+        int nextValidationCounter = 0;
+        auto updateValidationCounter = [this, &nextValidationCounter]() {
+            nextValidationCounter = RandomGenerator::instance().generateInt(
+                validationFrequencies().first, validationFrequencies().second);
+            qCInfo(LOG_TestAmdaFuzzing()).noquote()
+                << "Next validation in " << nextValidationCounter << "operations...";
+        };
+        updateValidationCounter();
+
         auto canExecute = true;
         for (auto i = 0; i < nbMaxOperations() && canExecute; ++i) {
             // Retrieves all operations that can be executed in the current context
@@ -175,6 +189,8 @@ public:
 
             canExecute = !variableOperations.empty();
             if (canExecute) {
+                --nextValidationCounter;
+
                 // Of the operations available, chooses a random operation and executes it
                 auto variableOperation
                     = RandomGenerator::instance().randomChoice(variableOperations, weights);
@@ -193,7 +209,10 @@ public:
                 QTest::qWait(delay);
 
                 // Validates variables
-                validate(m_FuzzingState.m_VariablesPool, validators());
+                if (nextValidationCounter == 0) {
+                    validate(m_FuzzingState.m_VariablesPool, validators());
+                    updateValidationCounter();
+                }
             }
             else {
                 qCInfo(LOG_TestAmdaFuzzing()).noquote()
@@ -250,6 +269,15 @@ private:
         static auto result
             = createValidators(m_Properties.value(VALIDATORS_PROPERTY, VALIDATORS_DEFAULT_VALUE)
                                    .value<ValidatorsTypes>());
+        return result;
+    }
+
+    std::pair<int, int> validationFrequencies() const
+    {
+        static auto result = m_Properties
+                                 .value(VALIDATION_FREQUENCY_BOUNDS_PROPERTY,
+                                        VALIDATION_FREQUENCY_BOUNDS_DEFAULT_VALUE)
+                                 .value<std::pair<int, int> >();
         return result;
     }
 

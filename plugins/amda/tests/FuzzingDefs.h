@@ -56,6 +56,9 @@ extern const QString OPERATION_DELAY_BOUNDS_PROPERTY;
 /// Validators used to validate an operation
 extern const QString VALIDATORS_PROPERTY;
 
+/// Min/max number of operations to execute before calling validation of the current test's state
+extern const QString VALIDATION_FREQUENCY_BOUNDS_PROPERTY;
+
 // /////// //
 // Structs //
 // /////// //
