@@ -4,9 +4,11 @@
 #include <Data/SqpRange.h>
 
 #include <QString>
+#include <QUuid>
 #include <QVariantHash>
 
 #include <memory>
+#include <set>
 
 // /////// //
 // Aliases //
@@ -56,10 +58,41 @@ extern const QString VALIDATORS_PROPERTY;
 // /////// //
 
 class Variable;
-
 struct VariableState {
     std::shared_ptr<Variable> m_Variable{nullptr};
     SqpRange m_Range{INVALID_RANGE};
+};
+
+using VariableId = int;
+using VariablesPool = std::map<VariableId, VariableState>;
+
+/**
+ * Defines a synchronization group for a fuzzing state. A group reports the variables synchronized
+ * with each other, and the current range of the group (i.e. range of the last synchronized variable
+ * that has been moved)
+ */
+struct SyncGroup {
+    std::set<VariableId> m_Variables{};
+    SqpRange m_Range{INVALID_RANGE};
+};
+
+using SyncGroupId = QUuid;
+using SyncGroupsPool = std::map<SyncGroupId, SyncGroup>;
+
+/**
+ * Defines a current state during a fuzzing state. It contains all the variables manipulated during
+ * the test, as well as the synchronization status of these variables.
+ */
+struct FuzzingState {
+    const SyncGroup &syncGroup(SyncGroupId id) const;
+    SyncGroup &syncGroup(SyncGroupId id);
+
+    const VariableState &variableState(VariableId id) const;
+    VariableState &variableState(VariableId id);
+
+
+    VariablesPool m_VariablesPool;
+    SyncGroupsPool m_SyncGroupsPool;
 };
 
 #endif // SCIQLOP_FUZZINGDEFS_H

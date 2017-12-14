@@ -10,3 +10,28 @@ const QString METADATA_POOL_PROPERTY = QStringLiteral("metadataPool");
 const QString PROVIDER_PROPERTY = QStringLiteral("provider");
 const QString OPERATION_DELAY_PROPERTY = QStringLiteral("operationDelay");
 const QString VALIDATORS_PROPERTY = QStringLiteral("validators");
+
+// //////////// //
+// FuzzingState //
+// //////////// //
+
+const SyncGroup &FuzzingState::syncGroup(SyncGroupId id) const
+{
+    return m_SyncGroupsPool.at(id);
+}
+
+SyncGroup &FuzzingState::syncGroup(SyncGroupId id)
+{
+    return m_SyncGroupsPool.at(id);
+}
+
+const VariableState &FuzzingState::variableState(VariableId id) const
+{
+    return m_VariablesPool.at(id);
+}
+
+VariableState &FuzzingState::variableState(VariableId id)
+{
+    return m_VariablesPool.at(id);
+}
+
