@@ -105,6 +105,11 @@ struct FuzzingState {
     /// @param syncGroupId the synchronization group
     void synchronizeVariable(VariableId variableId, SyncGroupId syncGroupId);
 
+    /// Updates fuzzing state according to a variable desynchronization
+    /// @param variableId the variable that is desynchronized
+    /// @param syncGroupId the synchronization group from which to remove the variable
+    void desynchronizeVariable(VariableId variableId, SyncGroupId syncGroupId);
+
 
     VariablesPool m_VariablesPool;
     SyncGroupsPool m_SyncGroupsPool;

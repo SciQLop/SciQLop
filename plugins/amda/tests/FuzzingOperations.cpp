@@ -67,6 +67,10 @@ struct DeleteOperation : public IFuzzingOperation {
         // Updates variable's state
         variableState.m_Range = INVALID_RANGE;
         variableState.m_Variable = nullptr;
+
+        // Desynchronizes the variable if it was in a sync group
+        auto syncGroupId = fuzzingState.syncGroupId(variableId);
+        fuzzingState.desynchronizeVariable(variableId, syncGroupId);
     }
 };
 
@@ -184,6 +188,21 @@ struct DesynchronizeOperation : public IFuzzingOperation {
     void execute(VariableId variableId, FuzzingState &fuzzingState,
                  VariableController &variableController, const Properties &) const override
     {
+        auto &variableState = fuzzingState.variableState(variableId);
+
+        // Gets the sync group of the variable
+        auto syncGroupId = fuzzingState.syncGroupId(variableId);
+
+        qCInfo(LOG_FuzzingOperations()).noquote()
+            << "Removing" << variableState.m_Variable->name() << "from synchronization group"
+            << syncGroupId << "...";
+        variableController.onAddSynchronized(variableState.m_Variable, syncGroupId);
+
+        // Updates state
+        fuzzingState.desynchronizeVariable(variableId, syncGroupId);
+    }
+};
+
 struct UnknownOperation : public IFuzzingOperation {
     bool canExecute(VariableId, const FuzzingState &) const override { return false; }
 

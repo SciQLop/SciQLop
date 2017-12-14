@@ -75,3 +75,17 @@ void FuzzingState::synchronizeVariable(VariableId variableId, SyncGroupId syncGr
     }
 }
 
+void FuzzingState::desynchronizeVariable(VariableId variableId, SyncGroupId syncGroupId)
+{
+    if (syncGroupId.isNull()) {
+        return;
+    }
+
+    // Unregisters variable from sync group: if there is no more variable in the group, resets the range
+    auto &syncGroup = m_SyncGroupsPool.at(syncGroupId);
+    syncGroup.m_Variables.erase(variableId);
+    if (syncGroup.m_Variables.empty()) {
+        syncGroup.m_Range = INVALID_RANGE;
+    }
+}
+
