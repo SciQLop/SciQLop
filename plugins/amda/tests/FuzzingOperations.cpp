@@ -15,13 +15,14 @@ Q_LOGGING_CATEGORY(LOG_FuzzingOperations, "FuzzingOperations")
 namespace {
 
 struct CreateOperation : public IFuzzingOperation {
-    bool canExecute(const VariableState &variableState) const override
+    bool canExecute(VariableId variableId, const FuzzingState &fuzzingState) const override
     {
         // A variable can be created only if it doesn't exist yet
-        return variableState.m_Variable == nullptr;
+        return fuzzingState.variableState(variableId).m_Variable == nullptr;
     }
 
-    void execute(VariableState &variableState, VariableController &variableController,
+    void execute(VariableId variableId, FuzzingState &fuzzingState,
+                 VariableController &variableController,
                  const Properties &properties) const override
     {
         // Retrieves metadata pool from properties, and choose one of the metadata entries to
@@ -41,22 +42,23 @@ struct CreateOperation : public IFuzzingOperation {
             = variableController.createVariable(variableName, variableMetadata, variableProvider);
 
         // Updates variable's state
+        auto &variableState = fuzzingState.variableState(variableId);
         variableState.m_Range = properties.value(INITIAL_RANGE_PROPERTY).value<SqpRange>();
         std::swap(variableState.m_Variable, newVariable);
     }
 };
 
 struct DeleteOperation : public IFuzzingOperation {
-    bool canExecute(const VariableState &variableState) const override
+    bool canExecute(VariableId variableId, const FuzzingState &fuzzingState) const override
     {
         // A variable can be delete only if it exists
-        return variableState.m_Variable != nullptr;
+        return fuzzingState.variableState(variableId).m_Variable != nullptr;
     }
 
-    void execute(VariableState &variableState, VariableController &variableController,
-                 const Properties &properties) const override
+    void execute(VariableId variableId, FuzzingState &fuzzingState,
+                 VariableController &variableController, const Properties &) const override
     {
-        Q_UNUSED(properties);
+        auto &variableState = fuzzingState.variableState(variableId);
 
         qCInfo(LOG_FuzzingOperations()).noquote()
             << "Deleting variable" << variableState.m_Variable->name() << "...";
@@ -100,14 +102,16 @@ struct MoveOperation : public IFuzzingOperation {
     {
     }
 
-    bool canExecute(const VariableState &variableState) const override
+    bool canExecute(VariableId variableId, const FuzzingState &fuzzingState) const override
     {
-        return variableState.m_Variable != nullptr;
+        return fuzzingState.variableState(variableId).m_Variable != nullptr;
     }
 
-    void execute(VariableState &variableState, VariableController &variableController,
+    void execute(VariableId variableId, FuzzingState &fuzzingState,
+                 VariableController &variableController,
                  const Properties &properties) const override
     {
+        auto &variableState = fuzzingState.variableState(variableId);
         auto variable = variableState.m_Variable;
 
         // Gets the max range defined
@@ -146,19 +150,11 @@ struct MoveOperation : public IFuzzingOperation {
 };
 
 struct UnknownOperation : public IFuzzingOperation {
-    bool canExecute(const VariableState &variableState) const override
-    {
-        Q_UNUSED(variableState);
-        return false;
-    }
+    bool canExecute(VariableId, const FuzzingState &) const override { return false; }
 
-    void execute(VariableState &variableState, VariableController &variableController,
-                 const Properties &properties) const override
+    void execute(VariableId, FuzzingState &, VariableController &,
+                 const Properties &) const override
     {
-        Q_UNUSED(variableState);
-        Q_UNUSED(variableController);
-        Q_UNUSED(properties);
-        // Does nothing
     }
 };
 

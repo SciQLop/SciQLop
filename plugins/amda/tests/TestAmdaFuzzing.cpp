@@ -26,7 +26,6 @@ namespace {
 // Aliases //
 // /////// //
 
-using VariableId = int;
 using Weight = double;
 using Weights = std::vector<Weight>;
 
@@ -34,7 +33,6 @@ using VariableOperation = std::pair<VariableId, std::shared_ptr<IFuzzingOperatio
 using VariablesOperations = std::vector<VariableOperation>;
 
 using WeightedOperationsPool = std::map<std::shared_ptr<IFuzzingOperation>, Weight>;
-using VariablesPool = std::map<VariableId, VariableState>;
 using Validators = std::vector<std::shared_ptr<IFuzzingValidator> >;
 
 // ///////// //
@@ -67,22 +65,20 @@ const auto VALIDATORS_DEFAULT_VALUE = QVariant::fromValue(
 /// Goes through the variables pool and operations pool to determine the set of {variable/operation}
 /// pairs that are valid (i.e. operation that can be executed on variable)
 std::pair<VariablesOperations, Weights>
-availableOperations(const VariablesPool &variablesPool,
-                    const WeightedOperationsPool &operationsPool)
+availableOperations(const FuzzingState &fuzzingState, const WeightedOperationsPool &operationsPool)
 {
     VariablesOperations result{};
     Weights weights{};
 
-    for (const auto &variablesPoolEntry : variablesPool) {
+    for (const auto &variablesPoolEntry : fuzzingState.m_VariablesPool) {
         auto variableId = variablesPoolEntry.first;
-        const auto &variableState = variablesPoolEntry.second;
 
         for (const auto &operationsPoolEntry : operationsPool) {
             auto operation = operationsPoolEntry.first;
             auto weight = operationsPoolEntry.second;
 
             // A pair is valid if the current operation can be executed on the current variable
-            if (operation->canExecute(variableState)) {
+            if (operation->canExecute(variableId, fuzzingState)) {
                 result.push_back({variableId, operation});
                 weights.push_back(weight);
             }
@@ -146,11 +142,11 @@ public:
     explicit FuzzingTest(VariableController &variableController, Properties properties)
             : m_VariableController{variableController},
               m_Properties{std::move(properties)},
-              m_VariablesPool{}
+              m_FuzzingState{}
     {
         // Inits variables pool: at init, all variables are null
         for (auto variableId = 0; variableId < nbMaxVariables(); ++variableId) {
-            m_VariablesPool[variableId] = VariableState{};
+            m_FuzzingState.m_VariablesPool[variableId] = VariableState{};
         }
     }
 
@@ -165,7 +161,7 @@ public:
             VariablesOperations variableOperations{};
             Weights weights{};
             std::tie(variableOperations, weights)
-                = availableOperations(m_VariablesPool, operationsPool());
+                = availableOperations(m_FuzzingState, operationsPool());
 
             canExecute = !variableOperations.empty();
             if (canExecute) {
@@ -174,14 +170,14 @@ public:
                     = RandomGenerator::instance().randomChoice(variableOperations, weights);
 
                 auto variableId = variableOperation.first;
-                auto &variableState = m_VariablesPool.at(variableId);
                 auto fuzzingOperation = variableOperation.second;
 
-                fuzzingOperation->execute(variableState, m_VariableController, m_Properties);
+                fuzzingOperation->execute(variableId, m_FuzzingState, m_VariableController,
+                                          m_Properties);
                 QTest::qWait(operationDelay());
 
                 // Validates variables
-                validate(m_VariablesPool, validators());
+                validate(m_FuzzingState.m_VariablesPool, validators());
             }
             else {
                 qCInfo(LOG_TestAmdaFuzzing()).noquote()
@@ -233,7 +229,7 @@ private:
 
     VariableController &m_VariableController;
     Properties m_Properties;
-    VariablesPool m_VariablesPool;
+    FuzzingState m_FuzzingState;
 };
 
 } // namespace
