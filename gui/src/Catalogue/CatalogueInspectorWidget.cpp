@@ -63,15 +63,24 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
         }
     });
 
+    connect(ui->leEventTags, &QLineEdit::editingFinished, [ui, inspector, this]() {
+        auto tags = ui->leEventTags->text().split(QRegExp("\\s+"));
+        std::list<QString> tagNames;
+        for (auto tag : tags) {
+            tagNames.push_back(tag);
+        }
+
+        if (m_DisplayedEvent->getTagsNames() != tagNames) {
+            m_DisplayedEvent->setTagsNames(tagNames);
+            emit inspector->eventUpdated(m_DisplayedEvent);
+        }
+    });
+
     connect(ui->leEventProduct, &QLineEdit::editingFinished, [ui, inspector, this]() {
         if (ui->leEventProduct->text() != m_DisplayedEventProduct->getProductId()) {
             m_DisplayedEventProduct->setProductId(ui->leEventProduct->text());
             emit inspector->eventProductUpdated(m_DisplayedEvent, m_DisplayedEventProduct);
         }
-    });
-
-    connect(ui->leEventTags, &QLineEdit::editingFinished, [ui, inspector, this]() {
-        // TODO
     });
 
     connect(ui->dateTimeEventTStart, &QDateTimeEdit::editingFinished, [ui, inspector, this]() {
@@ -115,9 +124,9 @@ void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
         QString::number(event->getEventProducts().size()).append(" product(s)"));
 
     QString tagList;
-    auto tags = event->getTags();
+    auto tags = event->getTagsNames();
     for (auto tag : tags) {
-        tagList += tag.getName();
+        tagList += tag;
         tagList += ' ';
     }
 
