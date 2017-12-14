@@ -149,6 +149,25 @@ struct MoveOperation : public IFuzzingOperation {
     QString m_Label;
 };
 
+struct SynchronizeOperation : public IFuzzingOperation {
+    bool canExecute(VariableId variableId, const FuzzingState &fuzzingState) const override
+    {
+    }
+
+    void execute(VariableId variableId, FuzzingState &fuzzingState,
+                 VariableController &variableController, const Properties &) const override
+    {
+    }
+};
+
+struct DesynchronizeOperation : public IFuzzingOperation {
+    bool canExecute(VariableId variableId, const FuzzingState &fuzzingState) const override
+    {
+    }
+
+    void execute(VariableId variableId, FuzzingState &fuzzingState,
+                 VariableController &variableController, const Properties &) const override
+    {
 struct UnknownOperation : public IFuzzingOperation {
     bool canExecute(VariableId, const FuzzingState &) const override { return false; }
 
@@ -197,6 +216,10 @@ std::unique_ptr<IFuzzingOperation> FuzzingOperationFactory::create(FuzzingOperat
                                     maxRange.m_TEnd - range.m_TEnd);
                 },
                 QStringLiteral("Zoom out operation"));
+        case FuzzingOperationType::SYNCHRONIZE:
+            return std::make_unique<SynchronizeOperation>();
+        case FuzzingOperationType::DESYNCHRONIZE:
+            return std::make_unique<DesynchronizeOperation>();
         default:
             // Default case returns unknown operation
             break;

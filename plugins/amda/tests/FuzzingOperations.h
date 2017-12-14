@@ -16,7 +16,16 @@ class VariableController;
 /**
  * Enumeration of types of existing fuzzing operations
  */
-enum class FuzzingOperationType { CREATE, DELETE, PAN_LEFT, PAN_RIGHT, ZOOM_IN, ZOOM_OUT };
+enum class FuzzingOperationType {
+    CREATE,
+    DELETE,
+    PAN_LEFT,
+    PAN_RIGHT,
+    ZOOM_IN,
+    ZOOM_OUT,
+    SYNCHRONIZE,
+    DESYNCHRONIZE
+};
 
 /// Interface that represents an operation that can be executed during a fuzzing test
 struct IFuzzingOperation {

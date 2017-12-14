@@ -49,7 +49,9 @@ const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE = QVariant::fromValue(WeightedOper
     {FuzzingOperationType::PAN_LEFT, 1.},
     {FuzzingOperationType::PAN_RIGHT, 1.},
     {FuzzingOperationType::ZOOM_IN, 1.},
-    {FuzzingOperationType::ZOOM_OUT, 1.}});
+    {FuzzingOperationType::ZOOM_OUT, 1.},
+    {FuzzingOperationType::SYNCHRONIZE, 0.8},
+    {FuzzingOperationType::DESYNCHRONIZE, 0.4}});
 const auto CACHE_TOLERANCE_DEFAULT_VALUE = 0.2;
 
 /// Delay between each operation (in ms)
