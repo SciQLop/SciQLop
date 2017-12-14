@@ -34,9 +34,9 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
             case Column::Name:
                 return event->getName();
             case Column::TStart:
-                return "Oo"; // DateUtils::dateTime(event->getTStart());
+                return DateUtils::dateTime(event->getTStart());
             case Column::TEnd:
-                return "oO"; // DateUtils::dateTime(event->getTEnd());
+                return DateUtils::dateTime(event->getTEnd());
             case Column::Product: {
                 auto eventProductsIt = m_EventProducts.find(event.get());
                 if (eventProductsIt != m_EventProducts.cend()) {
@@ -337,8 +337,8 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
 
                 if (isFirst) {
                     isFirst = false;
-                    //                    firstTimeRange.m_TStart = event->getTStart();
-                    //                    firstTimeRange.m_TEnd = event->getTEnd();
+                    firstTimeRange.m_TStart = event->getTStart();
+                    firstTimeRange.m_TEnd = event->getTEnd();
                 }
             }
             else if (type == ItemType::EventProduct) {

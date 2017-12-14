@@ -137,26 +137,28 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
         if (selectedRows.count() == 1) {
             auto event = m_Model->getEvent(selectedRows.first());
-            if (m_VisualizationWidget) {
-                if (auto tab = m_VisualizationWidget->currentTabWidget()) {
+            if (event) {
+                if (m_VisualizationWidget) {
+                    if (auto tab = m_VisualizationWidget->currentTabWidget()) {
 
-                    for (auto zoneName : m_ZonesForTimeMode) {
-                        if (auto zone = tab->getZoneWithName(zoneName)) {
-                            SqpRange eventRange;
-                            // eventRange.m_TStart = event->getTStart();
-                            // eventRange.m_TEnd = event->getTEnd();
-                            zone->setZoneRange(eventRange);
+                        for (auto zoneName : m_ZonesForTimeMode) {
+                            if (auto zone = tab->getZoneWithName(zoneName)) {
+                                SqpRange eventRange;
+                                eventRange.m_TStart = event->getTStart();
+                                eventRange.m_TEnd = event->getTEnd();
+                                zone->setZoneRange(eventRange);
+                            }
                         }
+                    }
+                    else {
+                        qCWarning(LOG_CatalogueEventsWidget())
+                            << "updateTimeZone: no tab found in the visualization";
                     }
                 }
                 else {
                     qCWarning(LOG_CatalogueEventsWidget())
-                        << "updateTimeZone: no tab found in the visualization";
+                        << "updateTimeZone: visualization widget not found";
                 }
-            }
-            else {
-                qCWarning(LOG_CatalogueEventsWidget())
-                    << "updateTimeZone: visualization widget not found";
             }
         }
         else {

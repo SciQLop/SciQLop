@@ -127,8 +127,8 @@ void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
     ui->dateTimeEventTStart->setEnabled(false);
     ui->dateTimeEventTEnd->setEnabled(false);
 
-    //    ui->dateTimeEventTStart->setDateTime(DateUtils::dateTime(event->getTStart()));
-    //    ui->dateTimeEventTEnd->setDateTime(DateUtils::dateTime(event->getTEnd()));
+    ui->dateTimeEventTStart->setDateTime(DateUtils::dateTime(event->getTStart()));
+    ui->dateTimeEventTEnd->setDateTime(DateUtils::dateTime(event->getTEnd()));
 
     blockSignals(false);
 }
