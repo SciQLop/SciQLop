@@ -15,7 +15,7 @@ class VisualizationMultiZoneSelectionDialog : public QDialog {
 
 public:
     explicit VisualizationMultiZoneSelectionDialog(QWidget *parent = 0);
-    ~VisualizationMultiZoneSelectionDialog();
+    virtual ~VisualizationMultiZoneSelectionDialog();
 
     void setZones(const QVector<VisualizationSelectionZoneItem *> &zones);
     QMap<VisualizationSelectionZoneItem *, bool> selectedZones() const;
