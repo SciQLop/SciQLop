@@ -93,6 +93,10 @@ struct FuzzingState {
     const VariableState &variableState(VariableId id) const;
     VariableState &variableState(VariableId id);
 
+    /// @return the identifier of the synchronization group in which the variable passed in
+    /// parameter is located. If the variable is not in any group, returns an invalid identifier
+    SyncGroupId syncGroupId(VariableId variableId) const;
+
 
     VariablesPool m_VariablesPool;
     SyncGroupsPool m_SyncGroupsPool;

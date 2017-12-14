@@ -36,3 +36,15 @@ VariableState &FuzzingState::variableState(VariableId id)
     return m_VariablesPool.at(id);
 }
 
+SyncGroupId FuzzingState::syncGroupId(VariableId variableId) const
+{
+    auto end = m_SyncGroupsPool.cend();
+    auto it
+        = std::find_if(m_SyncGroupsPool.cbegin(), end, [&variableId](const auto &syncGroupEntry) {
+              const auto &syncGroup = syncGroupEntry.second;
+              return syncGroup.m_Variables.find(variableId) != syncGroup.m_Variables.end();
+          });
+
+    return it != end ? it->first : SyncGroupId{};
+}
+

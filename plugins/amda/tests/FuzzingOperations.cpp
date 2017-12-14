@@ -152,6 +152,9 @@ struct MoveOperation : public IFuzzingOperation {
 struct SynchronizeOperation : public IFuzzingOperation {
     bool canExecute(VariableId variableId, const FuzzingState &fuzzingState) const override
     {
+        auto variable = fuzzingState.variableState(variableId).m_Variable;
+        return variable != nullptr && !fuzzingState.m_SyncGroupsPool.empty()
+               && fuzzingState.syncGroupId(variableId).isNull();
     }
 
     void execute(VariableId variableId, FuzzingState &fuzzingState,
@@ -163,6 +166,8 @@ struct SynchronizeOperation : public IFuzzingOperation {
 struct DesynchronizeOperation : public IFuzzingOperation {
     bool canExecute(VariableId variableId, const FuzzingState &fuzzingState) const override
     {
+        auto variable = fuzzingState.variableState(variableId).m_Variable;
+        return variable != nullptr && !fuzzingState.syncGroupId(variableId).isNull();
     }
 
     void execute(VariableId variableId, FuzzingState &fuzzingState,
