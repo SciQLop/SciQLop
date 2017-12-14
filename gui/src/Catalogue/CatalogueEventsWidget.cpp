@@ -271,6 +271,11 @@ void CatalogueEventsWidget::setVisualizationWidget(VisualizationWidget *visualiz
     impl->m_VisualizationWidget = visualization;
 }
 
+void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges)
+{
+    impl->m_Model->refreshEvent(event);
+}
+
 void CatalogueEventsWidget::populateWithCatalogues(
     const QVector<std::shared_ptr<DBCatalogue> > &catalogues)
 {

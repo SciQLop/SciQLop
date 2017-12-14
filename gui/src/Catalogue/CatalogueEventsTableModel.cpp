@@ -66,21 +66,28 @@ std::shared_ptr<DBEvent> CatalogueEventsTableModel::getEvent(int row) const
     return impl->m_Events.value(row);
 }
 
-void CatalogueEventsTableModel::addEvent(const std::shared_ptr<DBEvent> &events)
+void CatalogueEventsTableModel::addEvent(const std::shared_ptr<DBEvent> &event)
 {
     beginInsertRows(QModelIndex(), impl->m_Events.count() - 1, impl->m_Events.count() - 1);
-    // impl->m_Events.append(event); TODO
+    impl->m_Events.append(event);
     endInsertRows();
 }
 
-void CatalogueEventsTableModel::removeEvent(const std::shared_ptr<DBEvent> &events)
+void CatalogueEventsTableModel::removeEvent(const std::shared_ptr<DBEvent> &event)
 {
-    // TODO
-    auto index = -1; // impl->m_Events.indexOf(event);
+    auto index = impl->m_Events.indexOf(event);
     if (index >= 0) {
         beginRemoveRows(QModelIndex(), index, index);
         impl->m_Events.removeAt(index);
         endRemoveRows();
+    }
+}
+
+void CatalogueEventsTableModel::refreshEvent(const std::shared_ptr<DBEvent> &event)
+{
+    auto eventIndex = impl->m_Events.indexOf(event);
+    if (eventIndex >= 0) {
+        emit dataChanged(index(eventIndex, 0), index(eventIndex, columnCount()));
     }
 }
 
@@ -92,8 +99,7 @@ int CatalogueEventsTableModel::rowCount(const QModelIndex &parent) const
 
 int CatalogueEventsTableModel::columnCount(const QModelIndex &parent) const
 {
-    int c = static_cast<int>(CatalogueEventsTableModelPrivate::Column::NbColumn);
-    return c;
+    return static_cast<int>(CatalogueEventsTableModelPrivate::Column::NbColumn);
 }
 
 Qt::ItemFlags CatalogueEventsTableModel::flags(const QModelIndex &index) const

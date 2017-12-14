@@ -51,6 +51,9 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
 
     connect(ui->inspector, &CatalogueInspectorWidget::catalogueUpdated,
             [this](auto catalogue) { ui->catalogues->setCatalogueChanges(catalogue, true); });
+
+    connect(ui->inspector, &CatalogueInspectorWidget::eventUpdated,
+            [this](auto event) { ui->events->setEventChanges(event, true); });
 }
 
 CatalogueExplorer::~CatalogueExplorer()

@@ -114,7 +114,11 @@
         <widget class="QWidget" name="eventInspectorPage">
          <layout class="QGridLayout" name="gridLayout">
           <item row="5" column="1">
-           <widget class="QDateTimeEdit" name="dateTimeEventTEnd"/>
+           <widget class="QDateTimeEdit" name="dateTimeEventTEnd">
+            <property name="timeSpec">
+             <enum>Qt::UTC</enum>
+            </property>
+           </widget>
           </item>
           <item row="4" column="0">
            <widget class="QLabel" name="label_4">
@@ -148,7 +152,11 @@
            </widget>
           </item>
           <item row="4" column="1">
-           <widget class="QDateTimeEdit" name="dateTimeEventTStart"/>
+           <widget class="QDateTimeEdit" name="dateTimeEventTStart">
+            <property name="timeSpec">
+             <enum>Qt::UTC</enum>
+            </property>
+           </widget>
           </item>
           <item row="2" column="0">
            <widget class="QLabel" name="label_2">

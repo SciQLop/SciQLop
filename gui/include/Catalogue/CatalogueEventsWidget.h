@@ -27,6 +27,8 @@ public:
 
     void setVisualizationWidget(VisualizationWidget *visualization);
 
+    void setEventChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges);
+
 public slots:
     void populateWithCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
 

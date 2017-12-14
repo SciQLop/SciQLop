@@ -13,8 +13,10 @@ public:
     void setEvents(const QVector<std::shared_ptr<DBEvent> > &events);
     std::shared_ptr<DBEvent> getEvent(int row) const;
 
-    void addEvent(const std::shared_ptr<DBEvent> &events);
-    void removeEvent(const std::shared_ptr<DBEvent> &events);
+    void addEvent(const std::shared_ptr<DBEvent> &event);
+    void removeEvent(const std::shared_ptr<DBEvent> &event);
+
+    void refreshEvent(const std::shared_ptr<DBEvent> &event);
 
     // Model
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;

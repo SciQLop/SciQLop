@@ -9,6 +9,11 @@
 struct CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate {
     std::shared_ptr<DBCatalogue> m_DisplayedCatalogue = nullptr;
     std::shared_ptr<DBEvent> m_DisplayedEvent = nullptr;
+
+    void connectCatalogueUpdateSignals(CatalogueInspectorWidget *inspector,
+                                       Ui::CatalogueInspectorWidget *ui);
+    void connectEventUpdateSignals(CatalogueInspectorWidget *inspector,
+                                   Ui::CatalogueInspectorWidget *ui);
 };
 
 CatalogueInspectorWidget::CatalogueInspectorWidget(QWidget *parent)
@@ -19,24 +24,76 @@ CatalogueInspectorWidget::CatalogueInspectorWidget(QWidget *parent)
     ui->setupUi(this);
     showPage(Page::Empty);
 
-    connect(ui->leCatalogueName, &QLineEdit::editingFinished, [this]() {
-        if (ui->leCatalogueName->text() != impl->m_DisplayedCatalogue->getName()) {
-            impl->m_DisplayedCatalogue->setName(ui->leCatalogueName->text());
-            emit this->catalogueUpdated(impl->m_DisplayedCatalogue);
-        }
-    });
-
-    connect(ui->leCatalogueAuthor, &QLineEdit::editingFinished, [this]() {
-        if (ui->leCatalogueAuthor->text() != impl->m_DisplayedCatalogue->getAuthor()) {
-            impl->m_DisplayedCatalogue->setAuthor(ui->leCatalogueAuthor->text());
-            emit this->catalogueUpdated(impl->m_DisplayedCatalogue);
-        }
-    });
+    impl->connectCatalogueUpdateSignals(this, ui);
+    impl->connectEventUpdateSignals(this, ui);
 }
 
 CatalogueInspectorWidget::~CatalogueInspectorWidget()
 {
     delete ui;
+}
+
+void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectCatalogueUpdateSignals(
+    CatalogueInspectorWidget *inspector, Ui::CatalogueInspectorWidget *ui)
+{
+    connect(ui->leCatalogueName, &QLineEdit::editingFinished, [ui, inspector, this]() {
+        if (ui->leCatalogueName->text() != m_DisplayedCatalogue->getName()) {
+            m_DisplayedCatalogue->setName(ui->leCatalogueName->text());
+            emit inspector->catalogueUpdated(m_DisplayedCatalogue);
+        }
+    });
+
+    connect(ui->leCatalogueAuthor, &QLineEdit::editingFinished, [ui, inspector, this]() {
+        if (ui->leCatalogueAuthor->text() != m_DisplayedCatalogue->getAuthor()) {
+            m_DisplayedCatalogue->setAuthor(ui->leCatalogueAuthor->text());
+            emit inspector->catalogueUpdated(m_DisplayedCatalogue);
+        }
+    });
+}
+
+void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpdateSignals(
+    CatalogueInspectorWidget *inspector, Ui::CatalogueInspectorWidget *ui)
+{
+    connect(ui->leEventName, &QLineEdit::editingFinished, [ui, inspector, this]() {
+        if (ui->leEventName->text() != m_DisplayedEvent->getName()) {
+            m_DisplayedEvent->setName(ui->leEventName->text());
+            emit inspector->eventUpdated(m_DisplayedEvent);
+        }
+    });
+
+    connect(ui->leEventMission, &QLineEdit::editingFinished, [ui, inspector, this]() {
+        if (ui->leEventMission->text() != m_DisplayedEvent->getMission()) {
+            m_DisplayedEvent->setMission(ui->leEventMission->text());
+            emit inspector->eventUpdated(m_DisplayedEvent);
+        }
+    });
+
+    connect(ui->leEventProduct, &QLineEdit::editingFinished, [ui, inspector, this]() {
+        if (ui->leEventProduct->text() != m_DisplayedEvent->getProduct()) {
+            m_DisplayedEvent->setProduct(ui->leEventProduct->text());
+            emit inspector->eventUpdated(m_DisplayedEvent);
+        }
+    });
+
+    connect(ui->leEventTags, &QLineEdit::editingFinished, [ui, inspector, this]() {
+        // TODO
+    });
+
+    connect(ui->dateTimeEventTStart, &QDateTimeEdit::editingFinished, [ui, inspector, this]() {
+        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTStart->dateTime());
+        if (time != m_DisplayedEvent->getTStart()) {
+            m_DisplayedEvent->setTStart(time);
+            emit inspector->eventUpdated(m_DisplayedEvent);
+        }
+    });
+
+    connect(ui->dateTimeEventTEnd, &QDateTimeEdit::editingFinished, [ui, inspector, this]() {
+        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTEnd->dateTime());
+        if (time != m_DisplayedEvent->getTEnd()) {
+            m_DisplayedEvent->setTEnd(time);
+            emit inspector->eventUpdated(m_DisplayedEvent);
+        }
+    });
 }
 
 void CatalogueInspectorWidget::showPage(CatalogueInspectorWidget::Page page)
