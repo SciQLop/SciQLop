@@ -54,8 +54,8 @@ const auto AVAILABLE_OPERATIONS_DEFAULT_VALUE = QVariant::fromValue(WeightedOper
     {FuzzingOperationType::DESYNCHRONIZE, 0.4}});
 const auto CACHE_TOLERANCE_DEFAULT_VALUE = 0.2;
 
-/// Delay between each operation (in ms)
-const auto OPERATION_DELAY_DEFAULT_VALUE = 3000;
+/// Min/max delays between each operation (in ms)
+const auto OPERATION_DELAY_BOUNDS_DEFAULT_VALUE = QVariant::fromValue(std::make_pair(100, 3000));
 
 /// Validators for the tests (executed in the order in which they're defined)
 const auto VALIDATORS_DEFAULT_VALUE = QVariant::fromValue(
@@ -184,7 +184,13 @@ public:
 
                 fuzzingOperation->execute(variableId, m_FuzzingState, m_VariableController,
                                           m_Properties);
-                QTest::qWait(operationDelay());
+
+                // Delays the next operation with a randomly generated time
+                auto delay = RandomGenerator::instance().generateInt(operationDelays().first,
+                                                                     operationDelays().second);
+                qCDebug(LOG_TestAmdaFuzzing())
+                    << "Waiting " << delay << "ms before the next operation...";
+                QTest::qWait(delay);
 
                 // Validates variables
                 validate(m_FuzzingState.m_VariablesPool, validators());
@@ -222,10 +228,12 @@ private:
         return result;
     }
 
-    int operationDelay() const
+    std::pair<int, int> operationDelays() const
     {
         static auto result
-            = m_Properties.value(OPERATION_DELAY_PROPERTY, OPERATION_DELAY_DEFAULT_VALUE).toInt();
+            = m_Properties
+                  .value(OPERATION_DELAY_BOUNDS_PROPERTY, OPERATION_DELAY_BOUNDS_DEFAULT_VALUE)
+                  .value<std::pair<int, int> >();
         return result;
     }
 
