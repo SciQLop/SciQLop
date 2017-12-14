@@ -321,19 +321,36 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
 {
     auto mimeData = new QMimeData;
 
+    bool isFirst = true;
+
     QVector<std::shared_ptr<DBEvent> > eventList;
+    QVector<std::shared_ptr<DBEventProduct> > eventProductList;
 
     SqpRange firstTimeRange;
     for (const auto &index : indexes) {
         if (index.column() == 0) { // only the first column
-            auto event = getEvent(index);
-            if (eventList.isEmpty()) {
-                // Gets the range of the first variable
-                // firstTimeRange.m_TStart = event->getTStart();
-                // firstTimeRange.m_TEnd = event->getTEnd();
-            }
 
-            eventList << event;
+            auto type = itemTypeOf(index);
+            if (type == ItemType::Event) {
+                auto event = getEvent(index);
+                eventList << event;
+
+                if (isFirst) {
+                    isFirst = false;
+                    //                    firstTimeRange.m_TStart = event->getTStart();
+                    //                    firstTimeRange.m_TEnd = event->getTEnd();
+                }
+            }
+            else if (type == ItemType::EventProduct) {
+                auto product = getEventProduct(index);
+                eventProductList << product;
+
+                if (isFirst) {
+                    isFirst = false;
+                    firstTimeRange.m_TStart = product->getTStart();
+                    firstTimeRange.m_TEnd = product->getTEnd();
+                }
+            }
         }
     }
 
@@ -341,7 +358,7 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
         = QByteArray{}; // sqpApp->catalogueController().->mimeDataForEvents(eventList); //TODO
     mimeData->setData(MIME_TYPE_EVENT_LIST, eventsEncodedData);
 
-    if (eventList.count() == 1) {
+    if (eventList.count() + eventProductList.count() == 1) {
         // No time range MIME data if multiple events are dragged
         auto timeEncodedData = TimeController::mimeDataForTimeRange(firstTimeRange);
         mimeData->setData(MIME_TYPE_TIME_RANGE, timeEncodedData);
