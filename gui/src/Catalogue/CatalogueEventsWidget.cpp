@@ -136,7 +136,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         auto selectedRows = treeView->selectionModel()->selectedRows();
 
         if (selectedRows.count() == 1) {
-            auto event = m_Model->getEvent(selectedRows.first().row());
+            auto event = m_Model->getEvent(selectedRows.first());
             if (m_VisualizationWidget) {
                 if (auto tab = m_VisualizationWidget->currentTabWidget()) {
 
@@ -170,7 +170,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         auto selectedRows = treeView->selectionModel()->selectedRows();
 
         if (selectedRows.count() == 1) {
-            auto event = m_Model->getEvent(selectedRows.first().row());
+            auto event = m_Model->getEvent(selectedRows.first());
             if (m_VisualizationWidget) {
                 if (auto tab = m_VisualizationWidget->currentTabWidget()) {
                     if (auto zone = tab->getZoneWithName(m_ZoneForGraphMode)) {
@@ -233,11 +233,29 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
 
     auto emitSelection = [this]() {
         QVector<std::shared_ptr<DBEvent> > events;
+        QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > eventProducts;
+
         for (auto rowIndex : ui->treeView->selectionModel()->selectedRows()) {
-            events << impl->m_Model->getEvent(rowIndex.row());
+
+            auto itemType = impl->m_Model->itemTypeOf(rowIndex);
+            if (itemType == CatalogueEventsModel::ItemType::Event) {
+                events << impl->m_Model->getEvent(rowIndex);
+            }
+            else if (itemType == CatalogueEventsModel::ItemType::EventProduct) {
+                eventProducts << qMakePair(impl->m_Model->getParentEvent(rowIndex),
+                                           impl->m_Model->getEventProduct(rowIndex));
+            }
         }
 
-        emit this->eventsSelected(events);
+        if (!events.isEmpty() && eventProducts.isEmpty()) {
+            emit this->eventsSelected(events);
+        }
+        else if (events.isEmpty() && !eventProducts.isEmpty()) {
+            emit this->eventProductsSelected(eventProducts);
+        }
+        else {
+            emit this->selectionCleared();
+        }
     };
 
     connect(ui->treeView, &QTreeView::clicked, emitSelection);

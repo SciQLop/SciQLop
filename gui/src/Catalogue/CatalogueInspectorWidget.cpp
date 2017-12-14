@@ -4,11 +4,13 @@
 #include <Common/DateUtils.h>
 #include <DBCatalogue.h>
 #include <DBEvent.h>
+#include <DBEventProduct.h>
 #include <DBTag.h>
 
 struct CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate {
     std::shared_ptr<DBCatalogue> m_DisplayedCatalogue = nullptr;
     std::shared_ptr<DBEvent> m_DisplayedEvent = nullptr;
+    std::shared_ptr<DBEventProduct> m_DisplayedEventProduct = nullptr;
 
     void connectCatalogueUpdateSignals(CatalogueInspectorWidget *inspector,
                                        Ui::CatalogueInspectorWidget *ui);
@@ -61,18 +63,11 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
         }
     });
 
-    connect(ui->leEventMission, &QLineEdit::editingFinished, [ui, inspector, this]() {
-        //        if (ui->leEventMission->text() != m_DisplayedEvent->getMission()) {
-        //            m_DisplayedEvent->setMission(ui->leEventMission->text());
-        //            emit inspector->eventUpdated(m_DisplayedEvent);
-        //        }
-    });
-
     connect(ui->leEventProduct, &QLineEdit::editingFinished, [ui, inspector, this]() {
-        //        if (ui->leEventProduct->text() != m_DisplayedEvent->getProduct()) {
-        //            m_DisplayedEvent->setProduct(ui->leEventProduct->text());
-        //            emit inspector->eventUpdated(m_DisplayedEvent);
-        //        }
+        if (ui->leEventProduct->text() != m_DisplayedEventProduct->getProductId()) {
+            m_DisplayedEventProduct->setProductId(ui->leEventProduct->text());
+            emit inspector->eventProductUpdated(m_DisplayedEvent, m_DisplayedEventProduct);
+        }
     });
 
     connect(ui->leEventTags, &QLineEdit::editingFinished, [ui, inspector, this]() {
@@ -80,19 +75,19 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
     });
 
     connect(ui->dateTimeEventTStart, &QDateTimeEdit::editingFinished, [ui, inspector, this]() {
-        //        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTStart->dateTime());
-        //        if (time != m_DisplayedEvent->getTStart()) {
-        //            m_DisplayedEvent->setTStart(time);
-        //            emit inspector->eventUpdated(m_DisplayedEvent);
-        //        }
+        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTStart->dateTime());
+        if (time != m_DisplayedEventProduct->getTStart()) {
+            m_DisplayedEventProduct->setTStart(time);
+            emit inspector->eventProductUpdated(m_DisplayedEvent, m_DisplayedEventProduct);
+        }
     });
 
     connect(ui->dateTimeEventTEnd, &QDateTimeEdit::editingFinished, [ui, inspector, this]() {
-        //        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTEnd->dateTime());
-        //        if (time != m_DisplayedEvent->getTEnd()) {
-        //            m_DisplayedEvent->setTEnd(time);
-        //            emit inspector->eventUpdated(m_DisplayedEvent);
-        //        }
+        auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTEnd->dateTime());
+        if (time != m_DisplayedEventProduct->getTEnd()) {
+            m_DisplayedEventProduct->setTEnd(time);
+            emit inspector->eventProductUpdated(m_DisplayedEvent, m_DisplayedEventProduct);
+        }
     });
 }
 
@@ -113,9 +108,11 @@ void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
     blockSignals(true);
 
     showPage(Page::EventProperties);
+    ui->leEventName->setEnabled(true);
     ui->leEventName->setText(event->getName());
-    //    ui->leEventMission->setText(event->getMission());
-    //    ui->leEventProduct->setText(event->getProduct());
+    ui->leEventProduct->setEnabled(false);
+    ui->leEventProduct->setText(
+        QString::number(event->getEventProducts().size()).append(" product(s)"));
 
     QString tagList;
     auto tags = event->getTags();
@@ -124,10 +121,39 @@ void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
         tagList += ' ';
     }
 
+    ui->leEventTags->setEnabled(true);
     ui->leEventTags->setText(tagList);
+
+    ui->dateTimeEventTStart->setEnabled(false);
+    ui->dateTimeEventTEnd->setEnabled(false);
 
     //    ui->dateTimeEventTStart->setDateTime(DateUtils::dateTime(event->getTStart()));
     //    ui->dateTimeEventTEnd->setDateTime(DateUtils::dateTime(event->getTEnd()));
+
+    blockSignals(false);
+}
+
+void CatalogueInspectorWidget::setEventProduct(const std::shared_ptr<DBEvent> &event,
+                                               const std::shared_ptr<DBEventProduct> &eventProduct)
+{
+    impl->m_DisplayedEventProduct = eventProduct;
+
+    blockSignals(true);
+
+    showPage(Page::EventProperties);
+    ui->leEventName->setEnabled(false);
+    ui->leEventName->setText(event->getName());
+    ui->leEventProduct->setEnabled(true);
+    ui->leEventProduct->setText(eventProduct->getProductId());
+
+    ui->leEventTags->setEnabled(false);
+    ui->leEventTags->clear();
+
+    ui->dateTimeEventTStart->setEnabled(true);
+    ui->dateTimeEventTEnd->setEnabled(true);
+
+    ui->dateTimeEventTStart->setDateTime(DateUtils::dateTime(eventProduct->getTStart()));
+    ui->dateTimeEventTEnd->setDateTime(DateUtils::dateTime(eventProduct->getTEnd()));
 
     blockSignals(false);
 }

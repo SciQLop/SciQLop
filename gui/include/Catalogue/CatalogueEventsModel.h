@@ -5,17 +5,21 @@
 #include <QAbstractItemModel>
 
 class DBEvent;
+class DBEventProduct;
 
 class CatalogueEventsModel : public QAbstractItemModel {
 public:
     CatalogueEventsModel(QObject *parent = nullptr);
 
     void setEvents(const QVector<std::shared_ptr<DBEvent> > &events);
-    std::shared_ptr<DBEvent> getEvent(int row) const;
-
-
     void addEvent(const std::shared_ptr<DBEvent> &event);
     void removeEvent(const std::shared_ptr<DBEvent> &event);
+
+    enum class ItemType { Root, Event, EventProduct };
+    ItemType itemTypeOf(const QModelIndex &index) const;
+    std::shared_ptr<DBEvent> getEvent(const QModelIndex &index) const;
+    std::shared_ptr<DBEvent> getParentEvent(const QModelIndex &index) const;
+    std::shared_ptr<DBEventProduct> getEventProduct(const QModelIndex &index) const;
 
     void refreshEvent(const std::shared_ptr<DBEvent> &event);
 
@@ -35,8 +39,8 @@ public:
     QMimeData *mimeData(const QModelIndexList &indexes) const override;
 
 private:
-    class CatalogueEventsTableModelPrivate;
-    spimpl::unique_impl_ptr<CatalogueEventsTableModelPrivate> impl;
+    class CatalogueEventsModelPrivate;
+    spimpl::unique_impl_ptr<CatalogueEventsModelPrivate> impl;
 };
 
 #endif // SCIQLOP_CATALOGUEEVENTSMODEL_H

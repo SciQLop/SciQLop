@@ -18,7 +18,7 @@
 const auto EVENT_ITEM_TYPE = 1;
 const auto EVENT_PRODUCT_ITEM_TYPE = 2;
 
-struct CatalogueEventsModel::CatalogueEventsTableModelPrivate {
+struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     QVector<std::shared_ptr<DBEvent> > m_Events;
     std::unordered_map<DBEvent *, QVector<std::shared_ptr<DBEventProduct> > > m_EventProducts;
 
@@ -92,32 +92,10 @@ struct CatalogueEventsModel::CatalogueEventsTableModelPrivate {
         Q_ASSERT(false);
         return QStringLiteral("Unknown Data");
     }
-
-    enum class ItemType { Root, Event, EventProduct };
-    ItemType indexItemType(const QModelIndex &index) const
-    {
-
-        if (!index.isValid()) {
-            return ItemType::Root;
-        }
-        else if (index.internalPointer() == nullptr) {
-            return ItemType::Event;
-        }
-        else {
-            return ItemType::EventProduct;
-        }
-    }
-
-    std::shared_ptr<DBEventProduct> getEventProduct(const QModelIndex &index)
-    {
-        auto event = static_cast<DBEvent *>(index.internalPointer());
-        return m_EventProducts.at(event).value(index.row());
-    }
 };
 
 CatalogueEventsModel::CatalogueEventsModel(QObject *parent)
-        : QAbstractItemModel(parent),
-          impl{spimpl::make_unique_impl<CatalogueEventsTableModelPrivate>()}
+        : QAbstractItemModel(parent), impl{spimpl::make_unique_impl<CatalogueEventsModelPrivate>()}
 {
 }
 
@@ -126,6 +104,7 @@ void CatalogueEventsModel::setEvents(const QVector<std::shared_ptr<DBEvent> > &e
     beginResetModel();
 
     impl->m_Events = events;
+    impl->m_EventProducts.clear();
     for (auto event : events) {
         impl->parseEventProduct(event);
     }
@@ -133,9 +112,36 @@ void CatalogueEventsModel::setEvents(const QVector<std::shared_ptr<DBEvent> > &e
     endResetModel();
 }
 
-std::shared_ptr<DBEvent> CatalogueEventsModel::getEvent(int row) const
+std::shared_ptr<DBEvent> CatalogueEventsModel::getEvent(const QModelIndex &index) const
 {
-    return impl->m_Events.value(row);
+    if (itemTypeOf(index) == CatalogueEventsModel::ItemType::Event) {
+        return impl->m_Events.value(index.row());
+    }
+    else {
+        return nullptr;
+    }
+}
+
+std::shared_ptr<DBEvent> CatalogueEventsModel::getParentEvent(const QModelIndex &index) const
+{
+    if (itemTypeOf(index) == CatalogueEventsModel::ItemType::EventProduct) {
+        return getEvent(index.parent());
+    }
+    else {
+        return nullptr;
+    }
+}
+
+std::shared_ptr<DBEventProduct>
+CatalogueEventsModel::getEventProduct(const QModelIndex &index) const
+{
+    if (itemTypeOf(index) == CatalogueEventsModel::ItemType::EventProduct) {
+        auto event = static_cast<DBEvent *>(index.internalPointer());
+        return impl->m_EventProducts.at(event).value(index.row());
+    }
+    else {
+        return nullptr;
+    }
 }
 
 void CatalogueEventsModel::addEvent(const std::shared_ptr<DBEvent> &event)
@@ -159,9 +165,14 @@ void CatalogueEventsModel::removeEvent(const std::shared_ptr<DBEvent> &event)
 
 void CatalogueEventsModel::refreshEvent(const std::shared_ptr<DBEvent> &event)
 {
-    auto eventIndex = impl->m_Events.indexOf(event);
-    if (eventIndex >= 0) {
-        emit dataChanged(index(eventIndex, 0), index(eventIndex, columnCount()));
+    auto i = impl->m_Events.indexOf(event);
+    if (i >= 0) {
+        auto eventIndex = index(i, 0);
+        auto colCount = columnCount();
+        emit dataChanged(eventIndex, index(i, colCount));
+
+        auto childCount = rowCount(eventIndex);
+        emit dataChanged(index(0, 0, eventIndex), index(childCount, colCount, eventIndex));
     }
 }
 
@@ -171,14 +182,14 @@ QModelIndex CatalogueEventsModel::index(int row, int column, const QModelIndex &
         return QModelIndex();
     }
 
-    switch (impl->indexItemType(parent)) {
-        case CatalogueEventsTableModelPrivate::ItemType::Root:
+    switch (itemTypeOf(parent)) {
+        case CatalogueEventsModel::ItemType::Root:
             return createIndex(row, column);
-        case CatalogueEventsTableModelPrivate::ItemType::Event: {
-            auto event = getEvent(parent.row());
+        case CatalogueEventsModel::ItemType::Event: {
+            auto event = getEvent(parent);
             return createIndex(row, column, event.get());
         }
-        case CatalogueEventsTableModelPrivate::ItemType::EventProduct:
+        case CatalogueEventsModel::ItemType::EventProduct:
             break;
         default:
             break;
@@ -189,8 +200,8 @@ QModelIndex CatalogueEventsModel::index(int row, int column, const QModelIndex &
 
 QModelIndex CatalogueEventsModel::parent(const QModelIndex &index) const
 {
-    switch (impl->indexItemType(index)) {
-        case CatalogueEventsTableModelPrivate::ItemType::EventProduct: {
+    switch (itemTypeOf(index)) {
+        case CatalogueEventsModel::ItemType::EventProduct: {
             auto parentEvent = static_cast<DBEvent *>(index.internalPointer());
             auto it
                 = std::find_if(impl->m_Events.cbegin(), impl->m_Events.cend(),
@@ -203,9 +214,9 @@ QModelIndex CatalogueEventsModel::parent(const QModelIndex &index) const
                 return QModelIndex();
             }
         }
-        case CatalogueEventsTableModelPrivate::ItemType::Root:
+        case CatalogueEventsModel::ItemType::Root:
             break;
-        case CatalogueEventsTableModelPrivate::ItemType::Event:
+        case CatalogueEventsModel::ItemType::Event:
             break;
         default:
             break;
@@ -220,14 +231,14 @@ int CatalogueEventsModel::rowCount(const QModelIndex &parent) const
         return 0;
     }
 
-    switch (impl->indexItemType(parent)) {
-        case CatalogueEventsTableModelPrivate::ItemType::Root:
+    switch (itemTypeOf(parent)) {
+        case CatalogueEventsModel::ItemType::Root:
             return impl->m_Events.count();
-        case CatalogueEventsTableModelPrivate::ItemType::Event: {
-            auto event = getEvent(parent.row());
+        case CatalogueEventsModel::ItemType::Event: {
+            auto event = getEvent(parent);
             return impl->m_EventProducts[event.get()].count();
         }
-        case CatalogueEventsTableModelPrivate::ItemType::EventProduct:
+        case CatalogueEventsModel::ItemType::EventProduct:
             break;
         default:
             break;
@@ -238,7 +249,7 @@ int CatalogueEventsModel::rowCount(const QModelIndex &parent) const
 
 int CatalogueEventsModel::columnCount(const QModelIndex &parent) const
 {
-    return static_cast<int>(CatalogueEventsTableModelPrivate::Column::NbColumn);
+    return static_cast<int>(CatalogueEventsModelPrivate::Column::NbColumn);
 }
 
 Qt::ItemFlags CatalogueEventsModel::flags(const QModelIndex &index) const
@@ -250,17 +261,17 @@ QVariant CatalogueEventsModel::data(const QModelIndex &index, int role) const
 {
     if (index.isValid()) {
 
-        auto type = impl->indexItemType(index);
-        if (type == CatalogueEventsTableModelPrivate::ItemType::Event) {
-            auto event = getEvent(index.row());
+        auto type = itemTypeOf(index);
+        if (type == CatalogueEventsModel::ItemType::Event) {
+            auto event = getEvent(index);
             switch (role) {
                 case Qt::DisplayRole:
                     return impl->eventData(index.column(), event);
                     break;
             }
         }
-        else if (type == CatalogueEventsTableModelPrivate::ItemType::EventProduct) {
-            auto product = impl->getEventProduct(index);
+        else if (type == CatalogueEventsModel::ItemType::EventProduct) {
+            auto product = getEventProduct(index);
             switch (role) {
                 case Qt::DisplayRole:
                     return impl->eventProductData(index.column(), product);
@@ -315,7 +326,7 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
     SqpRange firstTimeRange;
     for (const auto &index : indexes) {
         if (index.column() == 0) { // only the first column
-            auto event = getEvent(index.row());
+            auto event = getEvent(index);
             if (eventList.isEmpty()) {
                 // Gets the range of the first variable
                 // firstTimeRange.m_TStart = event->getTStart();
@@ -337,4 +348,17 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
     }
 
     return mimeData;
+}
+
+CatalogueEventsModel::ItemType CatalogueEventsModel::itemTypeOf(const QModelIndex &index) const
+{
+    if (!index.isValid()) {
+        return ItemType::Root;
+    }
+    else if (index.internalPointer() == nullptr) {
+        return ItemType::Event;
+    }
+    else {
+        return ItemType::EventProduct;
+    }
 }

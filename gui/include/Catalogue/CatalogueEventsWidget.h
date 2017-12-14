@@ -7,6 +7,7 @@
 
 class DBCatalogue;
 class DBEvent;
+class DBEventProduct;
 class VisualizationWidget;
 
 namespace Ui {
@@ -20,6 +21,10 @@ class CatalogueEventsWidget : public QWidget {
 
 signals:
     void eventsSelected(const QVector<std::shared_ptr<DBEvent> > &event);
+    void eventProductsSelected(
+        const QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > >
+            &eventproducts);
+    void selectionCleared();
 
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
