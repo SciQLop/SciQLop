@@ -26,7 +26,8 @@ gui_moc_headers = [
   'include/Catalogue/CatalogueEventsWidget.h',
   'include/Catalogue/CatalogueSideBarWidget.h',
   'include/Catalogue/CatalogueInspectorWidget.h',
-  'include/Catalogue/CatalogueEventsModel.h'
+  'include/Catalogue/CatalogueEventsModel.h',
+  'include/Catalogue/CreateEventDialog.ui'
 ]
 
 gui_ui_files = [
@@ -47,7 +48,8 @@ gui_ui_files = [
   'ui/Catalogue/CatalogueExplorer.ui',
   'ui/Catalogue/CatalogueEventsWidget.ui',
   'ui/Catalogue/CatalogueSideBarWidget.ui',
-  'ui/Catalogue/CatalogueInspectorWidget.ui'
+  'ui/Catalogue/CatalogueInspectorWidget.ui',
+  'ui/Catalogue/CreateEventDialog.ui'
 ]
 
 gui_qresources = ['resources/sqpguiresources.qrc']
@@ -118,7 +120,9 @@ gui_sources = [
   'src/Catalogue/CatalogueInspectorWidget.cpp',
   'src/Catalogue/CatalogueTreeWidgetItem.cpp',
   'src/Catalogue/CatalogueEventsModel.cpp',
-  'src/Catalogue/CatalogueExplorerHelper.cpp'
+  'src/Catalogue/CatalogueExplorerHelper.cpp',
+  'src/Catalogue/CatalogueActionManager.cpp',
+  'src/Catalogue/CreateEventDialog.cpp'
 ]
 
 gui_inc = include_directories(['include'])

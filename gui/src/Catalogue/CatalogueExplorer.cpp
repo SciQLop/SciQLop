@@ -1,12 +1,14 @@
 #include "Catalogue/CatalogueExplorer.h"
 #include "ui_CatalogueExplorer.h"
 
+#include <Catalogue/CatalogueActionManager.h>
 #include <Visualization/VisualizationWidget.h>
 
 #include <DBCatalogue.h>
 #include <DBEvent.h>
 
 struct CatalogueExplorer::CatalogueExplorerPrivate {
+    CatalogueActionManager m_ActionManager;
 };
 
 CatalogueExplorer::CatalogueExplorer(QWidget *parent)
@@ -15,6 +17,8 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
           impl{spimpl::make_unique_impl<CatalogueExplorerPrivate>()}
 {
     ui->setupUi(this);
+
+    impl->m_ActionManager.installSelectionZoneActions();
 
     connect(ui->catalogues, &CatalogueSideBarWidget::catalogueSelected, [this](auto catalogues) {
         if (catalogues.count() == 1) {
