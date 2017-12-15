@@ -22,6 +22,9 @@ public:
     /// changes
     void setHasChanges(bool value);
 
+    /// Returns true if the widget indicating the event has unsaved changes is displayed
+    bool hasChanges();
+
     /// Refreshes the data displayed by the item from the catalogue
     void refresh();
 

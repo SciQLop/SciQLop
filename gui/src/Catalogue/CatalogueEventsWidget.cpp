@@ -3,6 +3,7 @@
 
 #include <Catalogue/CatalogueController.h>
 #include <Catalogue/CatalogueEventsModel.h>
+#include <Catalogue/CatalogueExplorerHelper.h>
 #include <CatalogueDao.h>
 #include <DBCatalogue.h>
 #include <SqpApplication.h>
@@ -16,8 +17,8 @@
 
 Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
 
-/// Format of the dates appearing in the label of a cursor
-const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
+/// Fixed size of the validation column
+const auto VALIDATION_COLUMN_SIZE = 35;
 
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
@@ -277,8 +278,20 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     });
 
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->treeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Name,
+                                                 QHeaderView::Stretch);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Validation,
+                                                 QHeaderView::Fixed);
+    ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
+                                          VALIDATION_COLUMN_SIZE);
     ui->treeView->header()->setSortIndicatorShown(true);
+
+    connect(impl->m_Model, &CatalogueEventsModel::modelSorted, [this]() {
+        auto allEvents = impl->m_Model->events();
+        for (auto event : allEvents) {
+            setEventChanges(event, impl->m_Model->eventsHasChanges(event));
+        }
+    });
 }
 
 CatalogueEventsWidget::~CatalogueEventsWidget()
@@ -294,6 +307,25 @@ void CatalogueEventsWidget::setVisualizationWidget(VisualizationWidget *visualiz
 void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges)
 {
     impl->m_Model->refreshEvent(event);
+
+    auto eventIndex = impl->m_Model->indexOf(event);
+    auto validationIndex
+        = eventIndex.sibling(eventIndex.row(), (int)CatalogueEventsModel::Column::Validation);
+
+    if (hasChanges) {
+        if (ui->treeView->indexWidget(validationIndex) == nullptr) {
+            auto widget = CatalogueExplorerHelper::buildValidationWidget(
+                ui->treeView, [this, event]() { setEventChanges(event, false); },
+                [this, event]() { setEventChanges(event, false); });
+            ui->treeView->setIndexWidget(validationIndex, widget);
+        }
+    }
+    else {
+        // Note: the widget is destroyed
+        ui->treeView->setIndexWidget(validationIndex, nullptr);
+    }
+
+    impl->m_Model->setEventHasChanges(event, hasChanges);
 }
 
 void CatalogueEventsWidget::populateWithCatalogues(

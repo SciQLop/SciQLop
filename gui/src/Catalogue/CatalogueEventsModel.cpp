@@ -15,33 +15,46 @@
 #include <QHash>
 #include <QMimeData>
 
+Q_LOGGING_CATEGORY(LOG_CatalogueEventsModel, "CatalogueEventsModel")
+
 const auto EVENT_ITEM_TYPE = 1;
 const auto EVENT_PRODUCT_ITEM_TYPE = 2;
 
 struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     QVector<std::shared_ptr<DBEvent> > m_Events;
     std::unordered_map<DBEvent *, QVector<std::shared_ptr<DBEventProduct> > > m_EventProducts;
+    std::unordered_set<std::shared_ptr<DBEvent> > m_EventsWithChanges;
 
-    enum class Column { Name, TStart, TEnd, Tags, Product, NbColumn };
     QStringList columnNames()
     {
-        return QStringList{tr("Event"), tr("TStart"), tr("TEnd"), tr("Tags"), tr("Product")};
+        return QStringList{tr("Event"), tr("TStart"),  tr("TEnd"),
+                           tr("Tags"),  tr("Product"), tr("")};
+    }
+
+    QVariant sortData(int col, const std::shared_ptr<DBEvent> &event) const
+    {
+        if (col == (int)CatalogueEventsModel::Column::Validation) {
+            return m_EventsWithChanges.find(event) != m_EventsWithChanges.cend() ? true
+                                                                                 : QVariant();
+        }
+
+        return eventData(col, event);
     }
 
     QVariant eventData(int col, const std::shared_ptr<DBEvent> &event) const
     {
         switch (static_cast<Column>(col)) {
-            case Column::Name:
+            case CatalogueEventsModel::Column::Name:
                 return event->getName();
-            case Column::TStart:
+            case CatalogueEventsModel::Column::TStart:
                 return nbEventProducts(event) > 0 ? DateUtils::dateTime(event->getTStart())
                                                   : QVariant{};
-            case Column::TEnd:
+            case CatalogueEventsModel::Column::TEnd:
                 return nbEventProducts(event) > 0 ? DateUtils::dateTime(event->getTEnd())
                                                   : QVariant{};
-            case Column::Product:
+            case CatalogueEventsModel::Column::Product:
                 return QString::number(nbEventProducts(event)) + " product(s)";
-            case Column::Tags: {
+            case CatalogueEventsModel::Column::Tags: {
                 QString tagList;
                 auto tags = event->getTags();
                 for (auto tag : tags) {
@@ -51,6 +64,8 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
 
                 return tagList;
             }
+            case CatalogueEventsModel::Column::Validation:
+                return QVariant();
             default:
                 break;
         }
@@ -80,17 +95,18 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     QVariant eventProductData(int col, const std::shared_ptr<DBEventProduct> &eventProduct) const
     {
         switch (static_cast<Column>(col)) {
-            case Column::Name:
+            case CatalogueEventsModel::Column::Name:
                 return eventProduct->getProductId();
-            case Column::TStart:
+            case CatalogueEventsModel::Column::TStart:
                 return DateUtils::dateTime(eventProduct->getTStart());
-            case Column::TEnd:
+            case CatalogueEventsModel::Column::TEnd:
                 return DateUtils::dateTime(eventProduct->getTEnd());
-            case Column::Product:
+            case CatalogueEventsModel::Column::Product:
                 return eventProduct->getProductId();
-            case Column::Tags: {
+            case CatalogueEventsModel::Column::Tags:
                 return QString();
-            }
+            case CatalogueEventsModel::Column::Validation:
+                return QVariant();
             default:
                 break;
         }
@@ -111,6 +127,7 @@ void CatalogueEventsModel::setEvents(const QVector<std::shared_ptr<DBEvent> > &e
 
     impl->m_Events = events;
     impl->m_EventProducts.clear();
+    impl->m_EventsWithChanges.clear();
     for (auto event : events) {
         impl->parseEventProduct(event);
     }
@@ -165,21 +182,58 @@ void CatalogueEventsModel::removeEvent(const std::shared_ptr<DBEvent> &event)
         beginRemoveRows(QModelIndex(), index, index);
         impl->m_Events.removeAt(index);
         impl->m_EventProducts.erase(event.get());
+        impl->m_EventsWithChanges.erase(event);
         endRemoveRows();
     }
 }
 
+QVector<std::shared_ptr<DBEvent> > CatalogueEventsModel::events() const
+{
+    return impl->m_Events;
+}
+
 void CatalogueEventsModel::refreshEvent(const std::shared_ptr<DBEvent> &event)
 {
-    auto i = impl->m_Events.indexOf(event);
-    if (i >= 0) {
-        auto eventIndex = index(i, 0);
-        auto colCount = columnCount();
-        emit dataChanged(eventIndex, index(i, colCount));
+    auto eventIndex = indexOf(event);
+    if (eventIndex.isValid()) {
 
+        // Refreshes the event line
+        auto colCount = columnCount();
+        emit dataChanged(eventIndex, index(eventIndex.row(), colCount));
+
+        // Also refreshes its children event products
         auto childCount = rowCount(eventIndex);
         emit dataChanged(index(0, 0, eventIndex), index(childCount, colCount, eventIndex));
     }
+    else {
+        qCWarning(LOG_CatalogueEventsModel()) << "refreshEvent: event not found.";
+    }
+}
+
+QModelIndex CatalogueEventsModel::indexOf(const std::shared_ptr<DBEvent> &event) const
+{
+    auto row = impl->m_Events.indexOf(event);
+    if (row >= 0) {
+        return index(row, 0);
+    }
+
+    return QModelIndex();
+}
+
+void CatalogueEventsModel::setEventHasChanges(const std::shared_ptr<DBEvent> &event,
+                                              bool hasChanges)
+{
+    if (hasChanges) {
+        impl->m_EventsWithChanges.insert(event);
+    }
+    else {
+        impl->m_EventsWithChanges.erase(event);
+    }
+}
+
+bool CatalogueEventsModel::eventsHasChanges(const std::shared_ptr<DBEvent> &event) const
+{
+    return impl->m_EventsWithChanges.find(event) != impl->m_EventsWithChanges.cend();
 }
 
 QModelIndex CatalogueEventsModel::index(int row, int column, const QModelIndex &parent) const
@@ -255,7 +309,7 @@ int CatalogueEventsModel::rowCount(const QModelIndex &parent) const
 
 int CatalogueEventsModel::columnCount(const QModelIndex &parent) const
 {
-    return static_cast<int>(CatalogueEventsModelPrivate::Column::NbColumn);
+    return static_cast<int>(CatalogueEventsModel::Column::NbColumn);
 }
 
 Qt::ItemFlags CatalogueEventsModel::flags(const QModelIndex &index) const
@@ -302,8 +356,8 @@ void CatalogueEventsModel::sort(int column, Qt::SortOrder order)
 {
     std::sort(impl->m_Events.begin(), impl->m_Events.end(),
               [this, column, order](auto e1, auto e2) {
-                  auto data1 = impl->eventData(column, e1);
-                  auto data2 = impl->eventData(column, e2);
+                  auto data1 = impl->sortData(column, e1);
+                  auto data2 = impl->sortData(column, e2);
 
                   auto result = data1.toString() < data2.toString();
 
@@ -311,6 +365,7 @@ void CatalogueEventsModel::sort(int column, Qt::SortOrder order)
               });
 
     emit dataChanged(QModelIndex(), QModelIndex());
+    emit modelSorted();
 }
 
 Qt::DropActions CatalogueEventsModel::supportedDragActions() const
