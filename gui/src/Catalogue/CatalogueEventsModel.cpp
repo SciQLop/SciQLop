@@ -34,18 +34,13 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
             case Column::Name:
                 return event->getName();
             case Column::TStart:
-                return DateUtils::dateTime(event->getTStart());
+                return nbEventProducts(event) > 0 ? DateUtils::dateTime(event->getTStart())
+                                                  : QVariant{};
             case Column::TEnd:
-                return DateUtils::dateTime(event->getTEnd());
-            case Column::Product: {
-                auto eventProductsIt = m_EventProducts.find(event.get());
-                if (eventProductsIt != m_EventProducts.cend()) {
-                    return QString::number(m_EventProducts.at(event.get()).count()) + " product(s)";
-                }
-                else {
-                    return "0 product";
-                }
-            }
+                return nbEventProducts(event) > 0 ? DateUtils::dateTime(event->getTEnd())
+                                                  : QVariant{};
+            case Column::Product:
+                return QString::number(nbEventProducts(event)) + " product(s)";
             case Column::Tags: {
                 QString tagList;
                 auto tags = event->getTags();
@@ -68,6 +63,17 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     {
         for (auto product : event->getEventProducts()) {
             m_EventProducts[event.get()].append(std::make_shared<DBEventProduct>(product));
+        }
+    }
+
+    int nbEventProducts(const std::shared_ptr<DBEvent> &event) const
+    {
+        auto eventProductsIt = m_EventProducts.find(event.get());
+        if (eventProductsIt != m_EventProducts.cend()) {
+            return m_EventProducts.at(event.get()).count();
+        }
+        else {
+            return 0;
         }
     }
 
