@@ -119,6 +119,15 @@ VisualizationSelectionZoneManager &VisualizationWidget::selectionZoneManager() c
     return *impl->m_ZoneSelectionManager.get();
 }
 
+VisualizationTabWidget *VisualizationWidget::currentTabWidget() const
+{
+    if (auto tab = qobject_cast<VisualizationTabWidget *>(ui->tabWidget->currentWidget())) {
+        return tab;
+    }
+
+    return nullptr;
+}
+
 void VisualizationWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {

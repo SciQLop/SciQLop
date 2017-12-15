@@ -27,21 +27,6 @@ Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 
 namespace {
 
-
-/// Generates a default name for a new graph, according to the number of graphs already displayed in
-/// the zone
-QString defaultGraphName(const QLayout &layout)
-{
-    auto count = 0;
-    for (auto i = 0; i < layout.count(); ++i) {
-        if (dynamic_cast<VisualizationGraphWidget *>(layout.itemAt(i)->widget())) {
-            count++;
-        }
-    }
-
-    return QObject::tr("Graph %1").arg(count + 1);
-}
-
 /**
  * Applies a function to all graphs of the zone represented by its layout
  * @param layout the layout that contains graphs
@@ -58,6 +43,24 @@ void processGraphs(QLayout &layout, Fun fun)
             }
         }
     }
+}
+
+/// Generates a default name for a new graph, according to the number of graphs already displayed in
+/// the zone
+QString defaultGraphName(QLayout &layout)
+{
+    QSet<QString> existingNames;
+    processGraphs(
+        layout, [&existingNames](auto &graphWidget) { existingNames.insert(graphWidget.name()); });
+
+    int zoneNum = 1;
+    QString name;
+    do {
+        name = QObject::tr("Graph ").append(QString::number(zoneNum));
+        ++zoneNum;
+    } while (existingNames.contains(name));
+
+    return name;
 }
 
 } // namespace
@@ -143,6 +146,17 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
 VisualizationZoneWidget::~VisualizationZoneWidget()
 {
     delete ui;
+}
+
+void VisualizationZoneWidget::setZoneRange(const SqpRange &range)
+{
+    if (auto graph = firstGraph()) {
+        graph->setGraphRange(range);
+    }
+    else {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("setZoneRange:Cannot set the range of an empty zone.");
+    }
 }
 
 void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)

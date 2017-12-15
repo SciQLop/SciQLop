@@ -25,11 +25,16 @@ public:
      */
     void loadPlugins(const QDir &pluginDir);
 
+    /**
+     * Loads static plugins into SciQlop. SciQLOP supports statically linked plugins.
+     */
+    void loadStaticPlugins();
+
     /// @returns the number of plugins loaded
     int nbPluginsLoaded() const noexcept;
 
 private:
-    class PluginManagerPrivate;
+    struct PluginManagerPrivate;
     spimpl::unique_impl_ptr<PluginManagerPrivate> impl;
 };
 

@@ -25,6 +25,7 @@
 #include <SqpApplication.h>
 #include <qglobal.h>
 
+#include <QtPlugin>
 #include <Plugin/PluginManager.h>
 #include <QDir>
 
@@ -41,6 +42,13 @@ const auto PLUGIN_DIRECTORY_NAME = QStringLiteral("plugins");
 
 int main(int argc, char *argv[])
 {
+#ifdef QT_STATICPLUGIN
+    Q_IMPORT_PLUGIN(MockPlugin)
+    Q_IMPORT_PLUGIN(AmdaPlugin)
+    Q_INIT_RESOURCE(amdaresources);
+#endif
+    Q_INIT_RESOURCE(sqpguiresources);
+
     SqpApplication a{argc, argv};
     SqpApplication::setOrganizationName("LPP");
     SqpApplication::setOrganizationDomain("lpp.fr");
@@ -75,6 +83,7 @@ int main(int argc, char *argv[])
             pluginManager.loadPlugins(directory);
         }
     }
+    pluginManager.loadStaticPlugins();
 
     return a.exec();
 }

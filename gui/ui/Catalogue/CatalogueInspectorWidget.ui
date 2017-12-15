@@ -53,7 +53,7 @@
       <item>
        <widget class="QStackedWidget" name="stackedWidget">
         <property name="currentIndex">
-         <number>1</number>
+         <number>2</number>
         </property>
         <widget class="QWidget" name="emptyPage"/>
         <widget class="QWidget" name="catalogueInspectorPage">
@@ -113,52 +113,19 @@
         </widget>
         <widget class="QWidget" name="eventInspectorPage">
          <layout class="QGridLayout" name="gridLayout">
-          <item row="5" column="1">
-           <widget class="QDateTimeEdit" name="dateTimeEventTEnd"/>
-          </item>
           <item row="4" column="0">
-           <widget class="QLabel" name="label_4">
-            <property name="text">
-             <string>TStart</string>
-            </property>
-           </widget>
-          </item>
-          <item row="6" column="0">
-           <widget class="QLabel" name="label_6">
-            <property name="text">
-             <string>Tags</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
            <widget class="QLabel" name="label_3">
             <property name="text">
              <string>Product</string>
             </property>
            </widget>
           </item>
-          <item row="3" column="1">
-           <widget class="QLineEdit" name="leEventProduct"/>
-          </item>
           <item row="5" column="0">
-           <widget class="QLabel" name="label_5">
+           <widget class="QLabel" name="label_4">
             <property name="text">
-             <string>Tend</string>
+             <string>TStart</string>
             </property>
            </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QDateTimeEdit" name="dateTimeEventTStart"/>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="label_2">
-            <property name="text">
-             <string>Mission</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="1">
-           <widget class="QLineEdit" name="leEventName"/>
           </item>
           <item row="1" column="0">
            <widget class="QLabel" name="label">
@@ -166,25 +133,6 @@
              <string>Name</string>
             </property>
            </widget>
-          </item>
-          <item row="2" column="1">
-           <widget class="QLineEdit" name="leEventMission"/>
-          </item>
-          <item row="6" column="1">
-           <widget class="QLineEdit" name="leEventTags"/>
-          </item>
-          <item row="7" column="1">
-           <spacer name="verticalSpacer">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>40</height>
-             </size>
-            </property>
-           </spacer>
           </item>
           <item row="0" column="0" colspan="2">
            <widget class="QLabel" name="label_10">
@@ -197,6 +145,63 @@
             </property>
             <property name="text">
              <string>Event Properties</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="1">
+           <spacer name="verticalSpacer">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="leEventName"/>
+          </item>
+          <item row="5" column="1">
+           <widget class="QDateTimeEdit" name="dateTimeEventTStart">
+            <property name="timeSpec">
+             <enum>Qt::UTC</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="leEventProduct"/>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_5">
+            <property name="text">
+             <string>Tend</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QDateTimeEdit" name="dateTimeEventTEnd">
+            <property name="timeSpec">
+             <enum>Qt::UTC</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="leEventTags"/>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_6">
+            <property name="text">
+             <string>Tags</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="Line" name="line">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
             </property>
            </widget>
           </item>

@@ -22,6 +22,7 @@ class VariableController;
 class VisualizationController;
 class DragDropGuiController;
 class ActionsGuiController;
+class CatalogueController;
 
 /**
  * @brief The SqpApplication class aims to make the link between SciQlop
@@ -45,6 +46,7 @@ public:
     TimeController &timeController() noexcept;
     VariableController &variableController() noexcept;
     VisualizationController &visualizationController() noexcept;
+    CatalogueController &catalogueController() noexcept;
 
     /// Accessors for the differents sciqlop helpers, these helpers classes are like controllers but
     /// doesn't live in a thread and access gui
