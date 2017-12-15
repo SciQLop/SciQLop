@@ -121,7 +121,7 @@ struct MoveOperation : public IFuzzingOperation {
         // Gets the max range defined
         auto maxRange = properties.value(MAX_RANGE_PROPERTY, QVariant::fromValue(INVALID_RANGE))
                             .value<SqpRange>();
-        auto variableRange = variable->range();
+        auto variableRange = variableState.m_Range;
 
         if (maxRange == INVALID_RANGE || variableRange.m_TStart < maxRange.m_TStart
             || variableRange.m_TEnd > maxRange.m_TEnd) {
@@ -130,7 +130,7 @@ struct MoveOperation : public IFuzzingOperation {
         }
 
         // Computes the max delta at which the variable can move, up to the limits of the max range
-        auto deltaMax = m_MaxMoveFun(variable->range(), maxRange);
+        auto deltaMax = m_MaxMoveFun(variableRange, maxRange);
 
         // Generates random delta that will be used to move variable
         auto delta = RandomGenerator::instance().generateDouble(0, deltaMax);
