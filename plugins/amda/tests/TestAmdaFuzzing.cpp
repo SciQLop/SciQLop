@@ -5,6 +5,7 @@
 
 #include "AmdaProvider.h"
 
+#include <Common/SignalWaiter.h>
 #include <Network/NetworkController.h>
 #include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>
