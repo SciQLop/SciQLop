@@ -226,7 +226,8 @@ public:
                 auto variableId = variableOperation.first;
                 auto fuzzingOperation = variableOperation.second;
 
-                auto waitAcquisition = nextValidationCounter == 0;
+                auto waitAcquisition = nextValidationCounter == 0
+                                       || operationsPool().at(fuzzingOperation).m_WaitAcquisition;
 
                 fuzzingOperation->execute(variableId, m_FuzzingState, m_VariableController,
                                           m_Properties);
@@ -237,8 +238,10 @@ public:
                         acquisitionTimeout());
 
                     // Validates variables
-                    validate(m_FuzzingState.m_VariablesPool, validators());
-                    updateValidationCounter();
+                    if (nextValidationCounter == 0) {
+                        validate(m_FuzzingState.m_VariablesPool, validators());
+                        updateValidationCounter();
+                    }
                 }
                 else {
                     // Delays the next operation with a randomly generated time
