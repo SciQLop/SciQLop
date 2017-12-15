@@ -20,12 +20,31 @@
 
 Q_LOGGING_CATEGORY(LOG_TestAmdaFuzzing, "TestAmdaFuzzing")
 
+/**
+ * Macro used to generate a getter for a property in @sa FuzzingTest. The macro generates a static
+ * attribute that is initialized by searching in properties the property and use a default value if
+ * it's not present. Macro arguments are:
+ * - GETTER_NAME : name of the getter
+ * - PROPERTY_NAME: used to generate constants for property's name ({PROPERTY_NAME}_PROPERTY) and
+ * default value ({PROPERTY_NAME}_DEFAULT_VALUE)
+ * - TYPE : return type of the getter
+ */
+// clang-format off
+#define DECLARE_PROPERTY_GETTER(GETTER_NAME, PROPERTY_NAME, TYPE)  \
+TYPE GETTER_NAME() const \
+{ \
+    static auto result = m_Properties.value(PROPERTY_NAME##_PROPERTY, PROPERTY_NAME##_DEFAULT_VALUE).value<TYPE>(); \
+    return result; \
+} \
+// clang-format on
+
 namespace {
 
 // /////// //
 // Aliases //
 // /////// //
 
+using IntPair = std::pair<int, int>;
 using Weight = double;
 using Weights = std::vector<Weight>;
 
@@ -224,37 +243,6 @@ public:
     }
 
 private:
-    int nbMaxOperations() const
-    {
-        static auto result
-            = m_Properties.value(NB_MAX_OPERATIONS_PROPERTY, NB_MAX_OPERATIONS_DEFAULT_VALUE)
-                  .toInt();
-        return result;
-    }
-
-    int nbMaxSyncGroups() const
-    {
-        static auto result
-            = m_Properties.value(NB_MAX_SYNC_GROUPS_PROPERTY, NB_MAX_SYNC_GROUPS_DEFAULT_VALUE)
-                  .toInt();
-        return result;
-    }
-
-    int nbMaxVariables() const
-    {
-        static auto result
-            = m_Properties.value(NB_MAX_VARIABLES_PROPERTY, NB_MAX_VARIABLES_DEFAULT_VALUE).toInt();
-        return result;
-    }
-
-    std::pair<int, int> operationDelays() const
-    {
-        static auto result
-            = m_Properties
-                  .value(OPERATION_DELAY_BOUNDS_PROPERTY, OPERATION_DELAY_BOUNDS_DEFAULT_VALUE)
-                  .value<std::pair<int, int> >();
-        return result;
-    }
 
     WeightedOperationsPool operationsPool() const
     {
@@ -272,14 +260,12 @@ private:
         return result;
     }
 
-    std::pair<int, int> validationFrequencies() const
-    {
-        static auto result = m_Properties
-                                 .value(VALIDATION_FREQUENCY_BOUNDS_PROPERTY,
-                                        VALIDATION_FREQUENCY_BOUNDS_DEFAULT_VALUE)
-                                 .value<std::pair<int, int> >();
-        return result;
-    }
+    DECLARE_PROPERTY_GETTER(nbMaxOperations, NB_MAX_OPERATIONS, int)
+    DECLARE_PROPERTY_GETTER(nbMaxSyncGroups, NB_MAX_SYNC_GROUPS, int)
+    DECLARE_PROPERTY_GETTER(nbMaxVariables, NB_MAX_VARIABLES, int)
+    DECLARE_PROPERTY_GETTER(operationDelays, OPERATION_DELAY_BOUNDS, IntPair)
+    DECLARE_PROPERTY_GETTER(validationFrequencies, VALIDATION_FREQUENCY_BOUNDS, IntPair)
+    DECLARE_PROPERTY_GETTER(acquisitionTimeout, ACQUISITION_TIMEOUT, int)
 
     VariableController &m_VariableController;
     Properties m_Properties;
