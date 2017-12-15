@@ -24,16 +24,16 @@ bool isCommentLine(const QString &line)
  * @param valueType the type of values expected in the AMDA file (scalars, vectors, spectrograms...)
  * @return the helper created
  */
-std::unique_ptr<IAmdaResultParserHelper> createHelper(AmdaResultParser::ValueType valueType)
+std::unique_ptr<IAmdaResultParserHelper> createHelper(DataSeriesType valueType)
 {
     switch (valueType) {
-        case AmdaResultParser::ValueType::SCALAR:
+        case DataSeriesType::SCALAR:
             return std::make_unique<ScalarParserHelper>();
-        case AmdaResultParser::ValueType::SPECTROGRAM:
+        case DataSeriesType::SPECTROGRAM:
             return std::make_unique<SpectrogramParserHelper>();
-        case AmdaResultParser::ValueType::VECTOR:
+        case DataSeriesType::VECTOR:
             return std::make_unique<VectorParserHelper>();
-        case AmdaResultParser::ValueType::UNKNOWN:
+        case DataSeriesType::UNKNOWN:
             // Invalid case
             break;
     }
@@ -82,9 +82,9 @@ void readResults(IAmdaResultParserHelper &helper, QTextStream &stream)
 } // namespace
 
 std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
-                                                       ValueType valueType) noexcept
+                                                       DataSeriesType type) noexcept
 {
-    if (valueType == ValueType::UNKNOWN) {
+    if (type == DataSeriesType::UNKNOWN) {
         qCCritical(LOG_AmdaResultParser())
             << QObject::tr("Can't retrieve AMDA data: the type of values to be read is unknown");
         return nullptr;
@@ -110,7 +110,7 @@ std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
         return nullptr;
     }
 
-    auto helper = createHelper(valueType);
+    auto helper = createHelper(type);
     Q_ASSERT(helper != nullptr);
 
     // Reads header file to retrieve properties

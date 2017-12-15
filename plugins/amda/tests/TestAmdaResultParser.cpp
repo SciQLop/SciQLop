@@ -187,7 +187,7 @@ private:
     }
 
     template <typename T>
-    void testRead(AmdaResultParser::ValueType valueType)
+    void testRead(DataSeriesType valueType)
     {
         QFETCH(QString, inputFileName);
         QFETCH(ExpectedResults<T>, expectedResults);
@@ -319,7 +319,7 @@ void TestAmdaResultParser::testReadScalarTxt_data()
 
 void TestAmdaResultParser::testReadScalarTxt()
 {
-    testRead<ScalarSeries>(AmdaResultParser::ValueType::SCALAR);
+    testRead<ScalarSeries>(DataSeriesType::SCALAR);
 }
 
 void TestAmdaResultParser::testReadSpectrogramTxt_data()
@@ -533,7 +533,7 @@ void TestAmdaResultParser::testReadSpectrogramTxt_data()
 
 void TestAmdaResultParser::testReadSpectrogramTxt()
 {
-    testRead<SpectrogramSeries>(AmdaResultParser::ValueType::SPECTROGRAM);
+    testRead<SpectrogramSeries>(DataSeriesType::SPECTROGRAM);
 }
 
 void TestAmdaResultParser::testReadVectorTxt_data()
@@ -572,7 +572,7 @@ void TestAmdaResultParser::testReadVectorTxt_data()
 
 void TestAmdaResultParser::testReadVectorTxt()
 {
-    testRead<VectorSeries>(AmdaResultParser::ValueType::VECTOR);
+    testRead<VectorSeries>(DataSeriesType::VECTOR);
 }
 
 QTEST_MAIN(TestAmdaResultParser)
