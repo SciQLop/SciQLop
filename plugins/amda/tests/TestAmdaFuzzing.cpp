@@ -49,10 +49,17 @@ using IntPair = std::pair<int, int>;
 using Weight = double;
 using Weights = std::vector<Weight>;
 
+struct OperationProperty {
+    Weight m_Weight{1.};
+    bool m_WaitAcquisition{false};
+};
+
 using VariableOperation = std::pair<VariableId, std::shared_ptr<IFuzzingOperation> >;
 using VariablesOperations = std::vector<VariableOperation>;
 
-using WeightedOperationsPool = std::map<std::shared_ptr<IFuzzingOperation>, Weight>;
+using OperationsTypes = std::map<FuzzingOperationType, OperationProperty>;
+using OperationsPool = std::map<std::shared_ptr<IFuzzingOperation>, OperationProperty>;
+
 using Validators = std::vector<std::shared_ptr<IFuzzingValidator> >;
 
 // ///////// //
@@ -91,8 +98,8 @@ const auto VALIDATION_FREQUENCY_BOUNDS_DEFAULT_VALUE = QVariant::fromValue(std::
 
 /// Goes through the variables pool and operations pool to determine the set of {variable/operation}
 /// pairs that are valid (i.e. operation that can be executed on variable)
-std::pair<VariablesOperations, Weights>
-availableOperations(const FuzzingState &fuzzingState, const WeightedOperationsPool &operationsPool)
+std::pair<VariablesOperations, Weights> availableOperations(const FuzzingState &fuzzingState,
+                                                            const OperationsPool &operationsPool)
 {
     VariablesOperations result{};
     Weights weights{};
@@ -102,12 +109,12 @@ availableOperations(const FuzzingState &fuzzingState, const WeightedOperationsPo
 
         for (const auto &operationsPoolEntry : operationsPool) {
             auto operation = operationsPoolEntry.first;
-            auto weight = operationsPoolEntry.second;
+            auto operationProperty = operationsPoolEntry.second;
 
             // A pair is valid if the current operation can be executed on the current variable
             if (operation->canExecute(variableId, fuzzingState)) {
                 result.push_back({variableId, operation});
-                weights.push_back(weight);
+                weights.push_back(operationProperty.m_Weight);
             }
         }
     }
@@ -115,9 +122,9 @@ availableOperations(const FuzzingState &fuzzingState, const WeightedOperationsPo
     return {result, weights};
 }
 
-WeightedOperationsPool createOperationsPool(const WeightedOperationsTypes &types)
+OperationsPool createOperationsPool(const OperationsTypes &types)
 {
-    WeightedOperationsPool result{};
+    OperationsPool result{};
 
     std::transform(
         types.cbegin(), types.cend(), std::inserter(result, result.end()), [](const auto &type) {
@@ -252,12 +259,11 @@ public:
     }
 
 private:
-
-    WeightedOperationsPool operationsPool() const
+    OperationsPool operationsPool() const
     {
         static auto result = createOperationsPool(
             m_Properties.value(AVAILABLE_OPERATIONS_PROPERTY, AVAILABLE_OPERATIONS_DEFAULT_VALUE)
-                .value<WeightedOperationsTypes>());
+                .value<OperationsTypes>());
         return result;
     }
 
@@ -282,6 +288,8 @@ private:
 };
 
 } // namespace
+
+Q_DECLARE_METATYPE(OperationsTypes)
 
 class TestAmdaFuzzing : public QObject {
     Q_OBJECT
