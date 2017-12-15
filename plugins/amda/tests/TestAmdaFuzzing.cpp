@@ -60,6 +60,7 @@ using Validators = std::vector<std::shared_ptr<IFuzzingValidator> >;
 // ///////// //
 
 // Defaults values used when the associated properties have not been set for the test
+const auto ACQUISITION_TIMEOUT_DEFAULT_VALUE = 30000;
 const auto NB_MAX_OPERATIONS_DEFAULT_VALUE = 100;
 const auto NB_MAX_SYNC_GROUPS_DEFAULT_VALUE = 1;
 const auto NB_MAX_VARIABLES_DEFAULT_VALUE = 1;
@@ -195,7 +196,7 @@ public:
             nextValidationCounter = RandomGenerator::instance().generateInt(
                 validationFrequencies().first, validationFrequencies().second);
             qCInfo(LOG_TestAmdaFuzzing()).noquote()
-                << "Next validation in " << nextValidationCounter << "operations...";
+                << "Next validation in " << nextValidationCounter << "operation(s)...";
         };
         updateValidationCounter();
 
@@ -218,20 +219,27 @@ public:
                 auto variableId = variableOperation.first;
                 auto fuzzingOperation = variableOperation.second;
 
+                auto waitAcquisition = nextValidationCounter == 0;
+
                 fuzzingOperation->execute(variableId, m_FuzzingState, m_VariableController,
                                           m_Properties);
 
-                // Delays the next operation with a randomly generated time
-                auto delay = RandomGenerator::instance().generateInt(operationDelays().first,
-                                                                     operationDelays().second);
-                qCDebug(LOG_TestAmdaFuzzing())
-                    << "Waiting " << delay << "ms before the next operation...";
-                QTest::qWait(delay);
+                if (waitAcquisition) {
+                    qCDebug(LOG_TestAmdaFuzzing()) << "Waiting for acquisition to finish...";
+                    SignalWaiter{m_VariableController, SIGNAL(acquisitionFinished())}.wait(
+                        acquisitionTimeout());
 
-                // Validates variables
-                if (nextValidationCounter == 0) {
+                    // Validates variables
                     validate(m_FuzzingState.m_VariablesPool, validators());
                     updateValidationCounter();
+                }
+                else {
+                    // Delays the next operation with a randomly generated time
+                    auto delay = RandomGenerator::instance().generateInt(operationDelays().first,
+                                                                         operationDelays().second);
+                    qCDebug(LOG_TestAmdaFuzzing())
+                        << "Waiting " << delay << "ms before the next operation...";
+                    QTest::qWait(delay);
                 }
             }
             else {

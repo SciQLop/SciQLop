@@ -1,5 +1,6 @@
 #include "FuzzingDefs.h"
 
+const QString ACQUISITION_TIMEOUT_PROPERTY = QStringLiteral("acquisitionTimeout");
 const QString NB_MAX_OPERATIONS_PROPERTY = QStringLiteral("component");
 const QString NB_MAX_SYNC_GROUPS_PROPERTY = QStringLiteral("nbSyncGroups");
 const QString NB_MAX_VARIABLES_PROPERTY = QStringLiteral("nbMaxVariables");

@@ -23,6 +23,9 @@ using Properties = QVariantHash;
 // Constants //
 // ///////// //
 
+/// Timeout set for data acquisition for an operation (in ms)
+extern const QString ACQUISITION_TIMEOUT_PROPERTY;
+
 /// Max number of operations to generate
 extern const QString NB_MAX_OPERATIONS_PROPERTY;
 
