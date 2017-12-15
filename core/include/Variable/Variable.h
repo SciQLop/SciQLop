@@ -4,6 +4,7 @@
 #include "CoreGlobal.h"
 
 #include <Data/DataSeriesIterator.h>
+#include <Data/DataSeriesType.h>
 #include <Data/SqpRange.h>
 
 #include <QLoggingCategory>
@@ -53,6 +54,9 @@ public:
 
     /// @return the data of the variable, nullptr if there is no data
     std::shared_ptr<IDataSeries> dataSeries() const noexcept;
+
+    /// @return the type of data that the variable holds
+    DataSeriesType type() const noexcept;
 
     QVariantHash metadata() const noexcept;
 
