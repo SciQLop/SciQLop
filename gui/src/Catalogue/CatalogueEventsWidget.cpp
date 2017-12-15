@@ -314,3 +314,15 @@ void CatalogueEventsWidget::populateWithCatalogues(
 
     impl->setEvents(events, ui->treeView);
 }
+
+void CatalogueEventsWidget::populateWithAllEvents()
+{
+    auto allEvents = sqpApp->catalogueController().retrieveAllEvents();
+
+    QVector<std::shared_ptr<DBEvent> > events;
+    for (auto event : allEvents) {
+        events << event;
+    }
+
+    impl->setEvents(events, ui->treeView);
+}

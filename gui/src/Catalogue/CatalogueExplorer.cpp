@@ -34,8 +34,10 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
     connect(ui->catalogues, &CatalogueSideBarWidget::trashSelected,
             [this]() { ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty); });
 
-    connect(ui->catalogues, &CatalogueSideBarWidget::allEventsSelected,
-            [this]() { ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty); });
+    connect(ui->catalogues, &CatalogueSideBarWidget::allEventsSelected, [this]() {
+        ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
+        ui->events->populateWithAllEvents();
+    });
 
     connect(ui->catalogues, &CatalogueSideBarWidget::selectionCleared,
             [this]() { ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty); });
