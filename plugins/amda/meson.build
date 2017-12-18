@@ -62,7 +62,17 @@ sciqlop_amdaplugin = library('amdaplugin',
 tests = [
   [['tests/TestAmdaParser.cpp'],'test_amda_parser','AMDA parser test'],
   [['tests/TestAmdaResultParser.cpp'],'test_amda_result_parser','AMDA result parser test'],
-  [['tests/TestAmdaAcquisition.cpp'],'test_amda_acquisition','AMDA Acquisition test']
+  [['tests/TestAmdaAcquisition.cpp'],'test_amda_acquisition','AMDA Acquisition test'],
+  [['tests/TestAmdaFuzzing.cpp'],'test_amda_fuzzing','AMDA fuzzing test']
+]
+
+tests_sources = [
+  'tests/FuzzingDefs.h',
+  'tests/FuzzingDefs.cpp',
+  'tests/FuzzingOperations.h',
+  'tests/FuzzingOperations.cpp',
+  'tests/FuzzingUtils.h',
+  'tests/FuzzingUtils.cpp'
 ]
 
 foreach unit_test : tests
@@ -71,6 +81,7 @@ foreach unit_test : tests
                           link_with : [sciqlop_amdaplugin],
                           include_directories : [amdaplugin_inc],
                           cpp_args : ['-DAMDA_TESTS_RESOURCES_DIR="'+meson.current_source_dir()+'/tests-resources"'],
+						  sources : [tests_sources],
                           dependencies : [sciqlop_core, sciqlop_gui, qt5test])
   test(unit_test[2], test_exe, args: ['-teamcity', '-o', '@0@.teamcity.txt'.format(unit_test[1])], timeout: 3 * 60)
 endforeach
