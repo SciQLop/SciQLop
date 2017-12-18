@@ -148,7 +148,7 @@ void CatalogueController::removeEvent(std::shared_ptr<DBEvent> event)
 
 void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
 {
-    event->setRepository(impl->toSyncRepository(event->getRepository()));
+    event->setRepository(impl->toWorkRepository(event->getRepository()));
 
     impl->m_CatalogueDao.addEvent(*event);
 
@@ -255,14 +255,23 @@ void CatalogueController::waitForFinish()
 void CatalogueController::CatalogueControllerPrivate::copyDBtoDB(const QString &dbFrom,
                                                                  const QString &dbTo)
 {
-    auto catalogues = m_Q->retrieveCatalogues(dbFrom);
-    auto events = m_Q->retrieveEvents(dbFrom);
-
+    auto cataloguesShared = std::list<std::shared_ptr<DBCatalogue> >{};
+    auto catalogues = m_CatalogueDao.getCatalogues(dbFrom);
     for (auto catalogue : catalogues) {
+        cataloguesShared.push_back(std::make_shared<DBCatalogue>(catalogue));
+    }
+
+    auto eventsShared = std::list<std::shared_ptr<DBEvent> >{};
+    auto events = m_CatalogueDao.getEvents(dbFrom);
+    for (auto event : events) {
+        eventsShared.push_back(std::make_shared<DBEvent>(event));
+    }
+
+    for (auto catalogue : cataloguesShared) {
         m_CatalogueDao.copyCatalogue(*catalogue, dbTo, true);
     }
 
-    for (auto event : events) {
+    for (auto event : eventsShared) {
         m_CatalogueDao.copyEvent(*event, dbTo, true);
     }
 }

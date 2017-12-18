@@ -36,6 +36,7 @@ public:
 
 public slots:
     void populateWithCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
+    void populateWithAllEvents();
 
 private:
     Ui::CatalogueEventsWidget *ui;
