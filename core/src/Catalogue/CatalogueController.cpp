@@ -22,8 +22,8 @@ Q_LOGGING_CATEGORY(LOG_CatalogueController, "CatalogueController")
 
 namespace {
 
-static QString REPOSITORY_WORK_SUFFIX = QString{"work"};
-static QString REPOSITORY_TRASH_SUFFIX = QString{"trash"};
+static QString REPOSITORY_WORK_SUFFIX = QString{"_work"};
+static QString REPOSITORY_TRASH_SUFFIX = QString{"_trash"};
 }
 
 class CatalogueController::CatalogueControllerPrivate {
@@ -40,6 +40,10 @@ public:
     void copyDBtoDB(const QString &dbFrom, const QString &dbTo);
     QString toWorkRepository(QString repository);
     QString toSyncRepository(QString repository);
+    void savAllDB();
+
+    void saveEvent(std::shared_ptr<DBEvent> event, bool persist = true);
+    void saveCatalogue(std::shared_ptr<DBCatalogue> catalogue, bool persist = true);
 };
 
 CatalogueController::CatalogueController(QObject *parent)
@@ -132,7 +136,7 @@ CatalogueController::retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> ca
 
 void CatalogueController::updateEvent(std::shared_ptr<DBEvent> event)
 {
-    event->setRepository(impl->toSyncRepository(event->getRepository()));
+    event->setRepository(impl->toWorkRepository(event->getRepository()));
 
     impl->m_CatalogueDao.updateEvent(*event);
 }
@@ -171,7 +175,7 @@ void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
 
 void CatalogueController::saveEvent(std::shared_ptr<DBEvent> event)
 {
-    impl->m_CatalogueDao.moveEvent(*event, impl->toSyncRepository(event->getRepository()), true);
+    impl->saveEvent(event, true);
 }
 
 std::list<std::shared_ptr<DBCatalogue> >
@@ -189,7 +193,7 @@ CatalogueController::retrieveCatalogues(const QString &repository) const
 
 void CatalogueController::updateCatalogue(std::shared_ptr<DBCatalogue> catalogue)
 {
-    catalogue->setRepository(impl->toSyncRepository(catalogue->getRepository()));
+    catalogue->setRepository(impl->toWorkRepository(catalogue->getRepository()));
 
     impl->m_CatalogueDao.updateCatalogue(*catalogue);
 }
@@ -205,8 +209,7 @@ void CatalogueController::removeCatalogue(std::shared_ptr<DBCatalogue> catalogue
 
 void CatalogueController::saveCatalogue(std::shared_ptr<DBCatalogue> catalogue)
 {
-    impl->m_CatalogueDao.moveCatalogue(*catalogue,
-                                       impl->toSyncRepository(catalogue->getRepository()), true);
+    impl->saveCatalogue(catalogue, true);
 }
 
 void CatalogueController::saveAll()
@@ -215,15 +218,17 @@ void CatalogueController::saveAll()
         // Save Event
         auto events = this->retrieveEvents(repository);
         for (auto event : events) {
-            this->saveEvent(event);
+            impl->saveEvent(event, false);
         }
 
         // Save Catalogue
         auto catalogues = this->retrieveCatalogues(repository);
         for (auto catalogue : catalogues) {
-            this->saveCatalogue(catalogue);
+            impl->saveCatalogue(catalogue, false);
         }
     }
+
+    impl->savAllDB();
 }
 
 void CatalogueController::initialize()
@@ -290,7 +295,7 @@ QString CatalogueController::CatalogueControllerPrivate::toWorkRepository(QStrin
 {
     auto syncRepository = toSyncRepository(repository);
 
-    return QString("%1_%2").arg(syncRepository, REPOSITORY_WORK_SUFFIX);
+    return QString("%1%2").arg(syncRepository, REPOSITORY_WORK_SUFFIX);
 }
 
 QString CatalogueController::CatalogueControllerPrivate::toSyncRepository(QString repository)
@@ -303,4 +308,31 @@ QString CatalogueController::CatalogueControllerPrivate::toSyncRepository(QStrin
         syncRepository.remove(REPOSITORY_TRASH_SUFFIX);
     }
     return syncRepository;
+}
+
+void CatalogueController::CatalogueControllerPrivate::savAllDB()
+{
+    for (auto repository : m_RepositoryList) {
+        auto defaultRepositoryLocation
+            = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+        m_CatalogueDao.saveDB(defaultRepositoryLocation, repository);
+    }
+}
+
+void CatalogueController::CatalogueControllerPrivate::saveEvent(std::shared_ptr<DBEvent> event,
+                                                                bool persist)
+{
+    m_CatalogueDao.moveEvent(*event, toSyncRepository(event->getRepository()), true);
+    if (persist) {
+        savAllDB();
+    }
+}
+
+void CatalogueController::CatalogueControllerPrivate::saveCatalogue(
+    std::shared_ptr<DBCatalogue> catalogue, bool persist)
+{
+    m_CatalogueDao.moveCatalogue(*catalogue, toSyncRepository(catalogue->getRepository()), true);
+    if (persist) {
+        savAllDB();
+    }
 }
