@@ -1,4 +1,3 @@
-
 qxorm_dep = dependency('QxOrm', required : true, fallback:['QxOrm','qxorm_dep'])
 catalogueapi_dep = dependency('CatalogueAPI', required : true, fallback:['CatalogueAPI','CatalogueAPI_dep'])
 
@@ -26,7 +25,9 @@ gui_moc_headers = [
   'include/Catalogue/CatalogueExplorer.h',
   'include/Catalogue/CatalogueEventsWidget.h',
   'include/Catalogue/CatalogueSideBarWidget.h',
-  'include/Catalogue/CatalogueInspectorWidget.h'
+  'include/Catalogue/CatalogueInspectorWidget.h',
+  'include/Catalogue/CatalogueEventsModel.h',
+  'include/Catalogue/CreateEventDialog.h'
 ]
 
 gui_ui_files = [
@@ -47,14 +48,24 @@ gui_ui_files = [
   'ui/Catalogue/CatalogueExplorer.ui',
   'ui/Catalogue/CatalogueEventsWidget.ui',
   'ui/Catalogue/CatalogueSideBarWidget.ui',
-  'ui/Catalogue/CatalogueInspectorWidget.ui'
+  'ui/Catalogue/CatalogueInspectorWidget.ui',
+  'ui/Catalogue/CreateEventDialog.ui'
 ]
 
 gui_qresources = ['resources/sqpguiresources.qrc']
 
+rcc_gen = generator(rcc,
+                output  : 'qrc_@BASENAME@.cpp',
+                arguments : [
+                 '--output',
+                 '@OUTPUT@',
+                 '@INPUT@',
+                 '@EXTRA_ARGS@'])
+
+rcc_files = rcc_gen.process(gui_qresources, extra_args : ['-name', 'sqpguiresources'])
+
 gui_moc_files = qt5.preprocess(moc_headers : gui_moc_headers,
-                               ui_files : gui_ui_files,
-                               qresources : gui_qresources)
+                               ui_files : gui_ui_files)
 
 gui_sources = [
   'src/SqpApplication.cpp',
@@ -108,7 +119,10 @@ gui_sources = [
   'src/Catalogue/CatalogueSideBarWidget.cpp',
   'src/Catalogue/CatalogueInspectorWidget.cpp',
   'src/Catalogue/CatalogueTreeWidgetItem.cpp',
-  'src/Catalogue/CatalogueEventsModel.cpp'
+  'src/Catalogue/CatalogueEventsModel.cpp',
+  'src/Catalogue/CatalogueExplorerHelper.cpp',
+  'src/Catalogue/CatalogueActionManager.cpp',
+  'src/Catalogue/CreateEventDialog.cpp'
 ]
 
 gui_inc = include_directories(['include'])
@@ -116,6 +130,7 @@ gui_inc = include_directories(['include'])
 sciqlop_gui_lib = library('sciqlopgui',
                        gui_sources,
                        gui_moc_files,
+                       rcc_files,
                        include_directories : [gui_inc],
                        dependencies : [ qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core, catalogueapi_dep],
                        install : true
@@ -124,4 +139,5 @@ sciqlop_gui_lib = library('sciqlopgui',
 sciqlop_gui = declare_dependency(link_with : sciqlop_gui_lib,
                                 include_directories : gui_inc,
                                 dependencies : [qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core, catalogueapi_dep])
+
 

@@ -5,7 +5,9 @@
 #include <Actions/ActionsGuiController.h>
 #include <SqpApplication.h>
 
-VisualizationActionManager::VisualizationActionManager() {}
+VisualizationActionManager::VisualizationActionManager()
+{
+}
 
 void VisualizationActionManager::installSelectionZoneActions()
 {

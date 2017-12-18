@@ -25,9 +25,9 @@
 #include <SqpApplication.h>
 #include <qglobal.h>
 
-#include <QtPlugin>
 #include <Plugin/PluginManager.h>
 #include <QDir>
+#include <QtPlugin>
 
 #include <QLoggingCategory>
 

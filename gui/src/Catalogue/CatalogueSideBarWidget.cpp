@@ -176,11 +176,14 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
     treeWidget->addTopLevelItem(separatorItem);
     treeWidget->setItemWidget(separatorItem, 0, separator);
 
-    auto db = addDatabaseItem("Default", treeWidget);
+    auto repositories = sqpApp->catalogueController().getRepositories();
+    for (auto dbname : repositories) {
+        auto db = addDatabaseItem(dbname, treeWidget);
 
-    auto catalogues = sqpApp->catalogueController().getCatalogues("Default");
-    for (auto catalogue : catalogues) {
-        addCatalogueItem(catalogue, db);
+        auto catalogues = sqpApp->catalogueController().retrieveCatalogues(dbname);
+        for (auto catalogue : catalogues) {
+            addCatalogueItem(catalogue, db);
+        }
     }
 
     treeWidget->expandAll();

@@ -8,6 +8,7 @@
 #include <CompoundPredicate.h>
 #include <DBCatalogue.h>
 #include <DBEvent.h>
+#include <DBEventProduct.h>
 #include <DBTag.h>
 #include <IRequestPredicate.h>
 
@@ -21,20 +22,28 @@ Q_LOGGING_CATEGORY(LOG_CatalogueController, "CatalogueController")
 
 namespace {
 
-static QString REPOSITORY_WORK_SUFFIX = QString{"Work"};
-
+static QString REPOSITORY_WORK_SUFFIX = QString{"work"};
+static QString REPOSITORY_TRASH_SUFFIX = QString{"trash"};
 }
 
 class CatalogueController::CatalogueControllerPrivate {
+
 public:
+    explicit CatalogueControllerPrivate(CatalogueController *parent) : m_Q{parent} {}
+
     QMutex m_WorkingMutex;
     CatalogueDao m_CatalogueDao;
 
-    std::list<QString> m_RepositoryList;
+    QStringList m_RepositoryList;
+    CatalogueController *m_Q;
+
+    void copyDBtoDB(const QString &dbFrom, const QString &dbTo);
+    QString toWorkRepository(QString repository);
+    QString toSyncRepository(QString repository);
 };
 
 CatalogueController::CatalogueController(QObject *parent)
-        : impl{spimpl::make_unique_impl<CatalogueControllerPrivate>()}
+        : impl{spimpl::make_unique_impl<CatalogueControllerPrivate>(this)}
 {
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController construction")
                                        << QThread::currentThread();
@@ -45,6 +54,11 @@ CatalogueController::~CatalogueController()
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController destruction")
                                        << QThread::currentThread();
     this->waitForFinish();
+}
+
+QStringList CatalogueController::getRepositories() const
+{
+    return impl->m_RepositoryList;
 }
 
 void CatalogueController::addDB(const QString &dbPath)
@@ -64,7 +78,8 @@ void CatalogueController::addDB(const QString &dbPath)
                 << tr("Impossible to addDB %1 from %2 ").arg(dirName, dbPath);
         }
         else {
-            impl->m_RepositoryList.push_back(dirName);
+            impl->m_RepositoryList << dirName;
+            impl->copyDBtoDB(dirName, impl->toWorkRepository(dirName));
         }
     }
     else {
@@ -84,8 +99,10 @@ void CatalogueController::saveDB(const QString &destinationPath, const QString &
 std::list<std::shared_ptr<DBEvent> >
 CatalogueController::retrieveEvents(const QString &repository) const
 {
+    QString dbDireName = repository.isEmpty() ? REPOSITORY_DEFAULT : repository;
+
     auto eventsShared = std::list<std::shared_ptr<DBEvent> >{};
-    auto events = impl->m_CatalogueDao.getEvents(repository);
+    auto events = impl->m_CatalogueDao.getEvents(impl->toWorkRepository(dbDireName));
     for (auto event : events) {
         eventsShared.push_back(std::make_shared<DBEvent>(event));
     }
@@ -113,15 +130,90 @@ CatalogueController::retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> ca
     return eventsShared;
 }
 
-std::list<std::shared_ptr<DBCatalogue> >
-CatalogueController::getCatalogues(const QString &repository) const
+void CatalogueController::updateEvent(std::shared_ptr<DBEvent> event)
 {
+    event->setRepository(impl->toSyncRepository(event->getRepository()));
+
+    impl->m_CatalogueDao.updateEvent(*event);
+}
+
+void CatalogueController::removeEvent(std::shared_ptr<DBEvent> event)
+{
+    // Remove it from both repository and repository_work
+    event->setRepository(impl->toWorkRepository(event->getRepository()));
+    impl->m_CatalogueDao.removeEvent(*event);
+    event->setRepository(impl->toSyncRepository(event->getRepository()));
+    impl->m_CatalogueDao.removeEvent(*event);
+}
+
+void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
+{
+    event->setRepository(impl->toWorkRepository(event->getRepository()));
+
+    impl->m_CatalogueDao.addEvent(*event);
+
+    // Call update is necessary at the creation of add Event if it has some tags or some event
+    // products
+    if (!event->getEventProducts().empty() || !event->getTags().empty()) {
+        impl->m_CatalogueDao.updateEvent(*event);
+    }
+}
+
+void CatalogueController::saveEvent(std::shared_ptr<DBEvent> event)
+{
+    impl->m_CatalogueDao.moveEvent(*event, impl->toSyncRepository(event->getRepository()), true);
+}
+
+std::list<std::shared_ptr<DBCatalogue> >
+CatalogueController::retrieveCatalogues(const QString &repository) const
+{
+    QString dbDireName = repository.isEmpty() ? REPOSITORY_DEFAULT : repository;
+
     auto cataloguesShared = std::list<std::shared_ptr<DBCatalogue> >{};
-    auto catalogues = impl->m_CatalogueDao.getCatalogues(repository);
+    auto catalogues = impl->m_CatalogueDao.getCatalogues(impl->toWorkRepository(dbDireName));
     for (auto catalogue : catalogues) {
         cataloguesShared.push_back(std::make_shared<DBCatalogue>(catalogue));
     }
     return cataloguesShared;
+}
+
+void CatalogueController::updateCatalogue(std::shared_ptr<DBCatalogue> catalogue)
+{
+    catalogue->setRepository(impl->toSyncRepository(catalogue->getRepository()));
+
+    impl->m_CatalogueDao.updateCatalogue(*catalogue);
+}
+
+void CatalogueController::removeCatalogue(std::shared_ptr<DBCatalogue> catalogue)
+{
+    // Remove it from both repository and repository_work
+    catalogue->setRepository(impl->toWorkRepository(catalogue->getRepository()));
+    impl->m_CatalogueDao.removeCatalogue(*catalogue);
+    catalogue->setRepository(impl->toSyncRepository(catalogue->getRepository()));
+    impl->m_CatalogueDao.removeCatalogue(*catalogue);
+}
+
+void CatalogueController::saveCatalogue(std::shared_ptr<DBCatalogue> catalogue)
+{
+    impl->m_CatalogueDao.moveCatalogue(*catalogue,
+                                       impl->toSyncRepository(catalogue->getRepository()), true);
+}
+
+void CatalogueController::saveAll()
+{
+    for (auto repository : impl->m_RepositoryList) {
+        // Save Event
+        auto events = this->retrieveEvents(repository);
+        for (auto event : events) {
+            this->saveEvent(event);
+        }
+
+        // Save Catalogue
+        auto catalogues = this->retrieveCatalogues(repository);
+        for (auto catalogue : catalogues) {
+            this->saveCatalogue(catalogue);
+        }
+    }
 }
 
 void CatalogueController::initialize()
@@ -137,8 +229,8 @@ void CatalogueController::initialize()
     if (defaultRepositoryLocationDir.mkpath(defaultRepositoryLocation)) {
         defaultRepositoryLocationDir.cd(defaultRepositoryLocation);
         auto defaultRepository = defaultRepositoryLocationDir.absoluteFilePath(REPOSITORY_DEFAULT);
-        qCInfo(LOG_CatalogueController())
-            << tr("Persistant data loading from: ") << defaultRepository;
+        qCInfo(LOG_CatalogueController()) << tr("Persistant data loading from: ")
+                                          << defaultRepository;
         this->addDB(defaultRepository);
     }
     else {
@@ -158,4 +250,47 @@ void CatalogueController::finalize()
 void CatalogueController::waitForFinish()
 {
     QMutexLocker locker{&impl->m_WorkingMutex};
+}
+
+void CatalogueController::CatalogueControllerPrivate::copyDBtoDB(const QString &dbFrom,
+                                                                 const QString &dbTo)
+{
+    auto cataloguesShared = std::list<std::shared_ptr<DBCatalogue> >{};
+    auto catalogues = m_CatalogueDao.getCatalogues(dbFrom);
+    for (auto catalogue : catalogues) {
+        cataloguesShared.push_back(std::make_shared<DBCatalogue>(catalogue));
+    }
+
+    auto eventsShared = std::list<std::shared_ptr<DBEvent> >{};
+    auto events = m_CatalogueDao.getEvents(dbFrom);
+    for (auto event : events) {
+        eventsShared.push_back(std::make_shared<DBEvent>(event));
+    }
+
+    for (auto catalogue : cataloguesShared) {
+        m_CatalogueDao.copyCatalogue(*catalogue, dbTo, true);
+    }
+
+    for (auto event : eventsShared) {
+        m_CatalogueDao.copyEvent(*event, dbTo, true);
+    }
+}
+
+QString CatalogueController::CatalogueControllerPrivate::toWorkRepository(QString repository)
+{
+    auto syncRepository = toSyncRepository(repository);
+
+    return QString("%1_%2").arg(syncRepository, REPOSITORY_WORK_SUFFIX);
+}
+
+QString CatalogueController::CatalogueControllerPrivate::toSyncRepository(QString repository)
+{
+    auto syncRepository = repository;
+    if (repository.endsWith(REPOSITORY_WORK_SUFFIX)) {
+        syncRepository.remove(REPOSITORY_WORK_SUFFIX);
+    }
+    else if (repository.endsWith(REPOSITORY_TRASH_SUFFIX)) {
+        syncRepository.remove(REPOSITORY_TRASH_SUFFIX);
+    }
+    return syncRepository;
 }
