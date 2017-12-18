@@ -150,12 +150,22 @@ void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
 {
     event->setRepository(impl->toWorkRepository(event->getRepository()));
 
-    impl->m_CatalogueDao.addEvent(*event);
+    auto eventTemp = *event;
+    impl->m_CatalogueDao.addEvent(eventTemp);
 
     // Call update is necessary at the creation of add Event if it has some tags or some event
     // products
     if (!event->getEventProducts().empty() || !event->getTags().empty()) {
-        impl->m_CatalogueDao.updateEvent(*event);
+
+        auto eventProductsTemp = eventTemp.getEventProducts();
+        auto eventProductTempUpdated = std::list<DBEventProduct>{};
+        for (auto eventProductTemp : eventProductsTemp) {
+            eventProductTemp.setEvent(eventTemp);
+            eventProductTempUpdated.push_back(eventProductTemp);
+        }
+        eventTemp.setEventProducts(eventProductTempUpdated);
+
+        impl->m_CatalogueDao.updateEvent(eventTemp);
     }
 }
 
