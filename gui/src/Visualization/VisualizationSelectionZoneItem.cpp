@@ -142,7 +142,9 @@ VisualizationSelectionZoneItem::VisualizationSelectionZoneItem(QCustomPlot *plot
     setColor(QColor(DEFAULT_COLOR));
 }
 
-VisualizationSelectionZoneItem::~VisualizationSelectionZoneItem() {}
+VisualizationSelectionZoneItem::~VisualizationSelectionZoneItem()
+{
+}
 
 VisualizationGraphWidget *VisualizationSelectionZoneItem::parentGraphWidget() const noexcept
 {

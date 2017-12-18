@@ -365,8 +365,8 @@ void TestAmdaResultParser::testReadSpectrogramTxt_data()
                   {8946.475, 18133.158, 10875.621, 24051.619, 19283.221},
                   {20907.664, 32076.725, 13008.381, 13142.759, 23226.998}});
 
-    QTest::newRow("Valid file (four bands)")
-        << QStringLiteral("spectro/ValidSpectrogram2.txt") << fourBandsResult;
+    QTest::newRow("Valid file (four bands)") << QStringLiteral("spectro/ValidSpectrogram2.txt")
+                                             << fourBandsResult;
     QTest::newRow("Valid file (four unsorted bands)")
         << QStringLiteral("spectro/ValidSpectrogram3.txt")
         << fourBandsResult; // Bands and values are sorted

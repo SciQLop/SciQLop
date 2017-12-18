@@ -97,8 +97,7 @@ struct PluginManager::PluginManagerPrivate {
 
     void loadStaticPlugins()
     {
-        for (QObject *plugin : QPluginLoader::staticInstances())
-        {
+        for (QObject *plugin : QPluginLoader::staticInstances()) {
             qobject_cast<IPlugin *>(plugin)->initialize();
             m_RegisteredPlugins.insert(plugin->metaObject()->className(), "StaticPlugin");
         }

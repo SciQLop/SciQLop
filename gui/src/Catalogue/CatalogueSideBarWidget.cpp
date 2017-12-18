@@ -178,7 +178,7 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
 
     auto db = addDatabaseItem("Default", treeWidget);
 
-    auto catalogues = sqpApp->catalogueController().getCatalogues("Default");
+    auto catalogues = sqpApp->catalogueController().retrieveCatalogues("Default");
     for (auto catalogue : catalogues) {
         addCatalogueItem(catalogue, db);
     }

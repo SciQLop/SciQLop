@@ -176,8 +176,8 @@ void TestDataSeriesUtils::testThresholds_data()
         << false << 1. << 47.073;
 
     QTest::newRow("thresholds (empty data)") << std::vector<double>{} << false << nan << nan;
-    QTest::newRow("thresholds (only nan values)")
-        << std::vector<double>{nan, nan, nan, nan, nan} << false << nan << nan;
+    QTest::newRow("thresholds (only nan values)") << std::vector<double>{nan, nan, nan, nan, nan}
+                                                  << false << nan << nan;
 
     QTest::newRow("thresholds (from file with logarithmic scale)")
         << fromFile(inputFilePath("TestThresholds.txt")) << true << 832.005 << 17655064.730;
