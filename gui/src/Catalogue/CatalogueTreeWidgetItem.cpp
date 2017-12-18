@@ -25,7 +25,7 @@ CatalogueTreeWidgetItem::CatalogueTreeWidgetItem(std::shared_ptr<DBCatalogue> ca
         : QTreeWidgetItem(type),
           impl{spimpl::make_unique_impl<CatalogueTreeWidgetItemPrivate>(catalogue)}
 {
-    setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable);
+    setFlags(Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable | Qt::ItemIsDropEnabled);
 }
 
 QVariant CatalogueTreeWidgetItem::data(int column, int role) const
@@ -51,7 +51,6 @@ void CatalogueTreeWidgetItem::setData(int column, int role, const QVariant &valu
             setText(0, newName);
             impl->m_Catalogue->setName(newName);
             sqpApp->catalogueController().updateCatalogue(impl->m_Catalogue);
-            setHasChanges(true);
         }
     }
     else {
@@ -62,27 +61,6 @@ void CatalogueTreeWidgetItem::setData(int column, int role, const QVariant &valu
 std::shared_ptr<DBCatalogue> CatalogueTreeWidgetItem::catalogue() const
 {
     return impl->m_Catalogue;
-}
-
-void CatalogueTreeWidgetItem::setHasChanges(bool value)
-{
-    if (value) {
-        if (!hasChanges()) {
-            auto widget = CatalogueExplorerHelper::buildValidationWidget(
-                treeWidget(), [this]() { setHasChanges(false); },
-                [this]() { setHasChanges(false); });
-            treeWidget()->setItemWidget(this, APPLY_CANCEL_BUTTONS_COLUMN, widget);
-        }
-    }
-    else {
-        // Note: the widget is destroyed
-        treeWidget()->setItemWidget(this, APPLY_CANCEL_BUTTONS_COLUMN, nullptr);
-    }
-}
-
-bool CatalogueTreeWidgetItem::hasChanges()
-{
-    return treeWidget()->itemWidget(this, APPLY_CANCEL_BUTTONS_COLUMN) != nullptr;
 }
 
 void CatalogueTreeWidgetItem::refresh()

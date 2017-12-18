@@ -18,8 +18,6 @@ public:
     /// Returns the catalogue represented by the item
     std::shared_ptr<DBCatalogue> catalogue() const;
 
-    /// Displays or hides the save and cancel buttons indicating that the catalogue has unsaved
-    /// changes
     void setHasChanges(bool value);
 
     /// Returns true if the widget indicating the event has unsaved changes is displayed

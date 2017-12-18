@@ -72,18 +72,25 @@
     </layout>
    </item>
    <item>
-    <widget class="QTreeWidget" name="treeWidget">
+    <widget class="QTreeView" name="treeView">
+     <property name="acceptDrops">
+      <bool>true</bool>
+     </property>
+     <property name="dragDropMode">
+      <enum>QAbstractItemView::DropOnly</enum>
+     </property>
+     <property name="defaultDropAction">
+      <enum>Qt::CopyAction</enum>
+     </property>
      <property name="selectionMode">
       <enum>QAbstractItemView::ExtendedSelection</enum>
      </property>
-     <attribute name="headerVisible">
-      <bool>false</bool>
+     <property name="headerHidden">
+      <bool>true</bool>
+     </property>
+     <attribute name="headerDefaultSectionSize">
+      <number>0</number>
      </attribute>
-     <column>
-      <property name="text">
-       <string notr="true">1</string>
-      </property>
-     </column>
     </widget>
    </item>
   </layout>
