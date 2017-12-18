@@ -27,7 +27,7 @@ gui_moc_headers = [
   'include/Catalogue/CatalogueSideBarWidget.h',
   'include/Catalogue/CatalogueInspectorWidget.h',
   'include/Catalogue/CatalogueEventsModel.h',
-  'include/Catalogue/CreateEventDialog.ui'
+  'include/Catalogue/CreateEventDialog.h'
 ]
 
 gui_ui_files = [
