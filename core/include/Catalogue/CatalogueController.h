@@ -52,7 +52,8 @@ public:
     // Catalogue
     //    bool createCatalogue(const QString &name, QVector<QUuid> eventList);
     /// retrieveEvents with empty repository retrieve them from the default repository
-    std::list<std::shared_ptr<DBCatalogue> > retrieveCatalogues(const QString &repository) const;
+    std::list<std::shared_ptr<DBCatalogue> > retrieveCatalogues(const QString &repository
+                                                                = QString()) const;
     void updateCatalogue(std::shared_ptr<DBCatalogue> catalogue);
     void removeCatalogue(std::shared_ptr<DBCatalogue> catalogue);
     void saveCatalogue(std::shared_ptr<DBCatalogue> catalogue);

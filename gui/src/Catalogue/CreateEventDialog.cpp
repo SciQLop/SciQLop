@@ -20,7 +20,7 @@ CreateEventDialog::CreateEventDialog(QWidget *parent)
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-    auto catalogues = sqpApp->catalogueController().getCatalogues("Default");
+    auto catalogues = sqpApp->catalogueController().retrieveCatalogues();
     for (auto cat : catalogues) {
         ui->cbCatalogue->addItem(cat->getName());
         impl->m_DisplayedCatalogues << cat;

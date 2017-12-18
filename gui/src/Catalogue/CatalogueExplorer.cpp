@@ -2,6 +2,8 @@
 #include "ui_CatalogueExplorer.h"
 
 #include <Catalogue/CatalogueActionManager.h>
+#include <Catalogue/CatalogueController.h>
+#include <SqpApplication.h>
 #include <Visualization/VisualizationWidget.h>
 
 #include <DBCatalogue.h>
@@ -68,11 +70,15 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
     connect(ui->events, &CatalogueEventsWidget::selectionCleared,
             [this]() { ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty); });
 
-    connect(ui->inspector, &CatalogueInspectorWidget::catalogueUpdated,
-            [this](auto catalogue) { ui->catalogues->setCatalogueChanges(catalogue, true); });
+    connect(ui->inspector, &CatalogueInspectorWidget::catalogueUpdated, [this](auto catalogue) {
+        sqpApp->catalogueController().updateCatalogue(catalogue);
+        ui->catalogues->setCatalogueChanges(catalogue, true);
+    });
 
-    connect(ui->inspector, &CatalogueInspectorWidget::eventUpdated,
-            [this](auto event) { ui->events->setEventChanges(event, true); });
+    connect(ui->inspector, &CatalogueInspectorWidget::eventUpdated, [this](auto event) {
+        sqpApp->catalogueController().updateEvent(event);
+        ui->events->setEventChanges(event, true);
+    });
 
     connect(ui->inspector, &CatalogueInspectorWidget::eventProductUpdated,
             [this](auto event, auto eventProduct) { ui->events->setEventChanges(event, true); });

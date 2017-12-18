@@ -1,6 +1,9 @@
 #include "Catalogue/CatalogueTreeWidgetItem.h"
 #include <Catalogue/CatalogueExplorerHelper.h>
 
+#include <Catalogue/CatalogueController.h>
+#include <SqpApplication.h>
+
 #include <memory>
 
 #include <DBCatalogue.h>
@@ -47,6 +50,7 @@ void CatalogueTreeWidgetItem::setData(int column, int role, const QVariant &valu
         if (newName != impl->m_Catalogue->getName()) {
             setText(0, newName);
             impl->m_Catalogue->setName(newName);
+            sqpApp->catalogueController().updateCatalogue(impl->m_Catalogue);
             setHasChanges(true);
         }
     }

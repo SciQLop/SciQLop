@@ -47,11 +47,11 @@ struct CatalogueActionManager::CatalogueActionManagerPrivate {
 
         event->setEventProducts(productList);
 
-        // TODO
+        sqpApp->catalogueController().addEvent(event);
+
         if (catalogue) {
+            // TODO
             // catalogue->addEvent(event);
-        }
-        else {
         }
     }
 };
