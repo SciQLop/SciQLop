@@ -115,6 +115,14 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
         Q_ASSERT(false);
         return QStringLiteral("Unknown Data");
     }
+
+    void refreshChildrenOfIndex(CatalogueEventsModel *model, const QModelIndex &index) const
+    {
+        auto childCount = model->rowCount(index);
+        auto colCount = model->columnCount();
+        emit model->dataChanged(model->index(0, 0, index),
+                                model->index(childCount, colCount, index));
+    }
 };
 
 CatalogueEventsModel::CatalogueEventsModel(QObject *parent)
@@ -170,10 +178,14 @@ CatalogueEventsModel::getEventProduct(const QModelIndex &index) const
 
 void CatalogueEventsModel::addEvent(const std::shared_ptr<DBEvent> &event)
 {
-    beginInsertRows(QModelIndex(), impl->m_Events.count() - 1, impl->m_Events.count() - 1);
+    beginInsertRows(QModelIndex(), impl->m_Events.count(), impl->m_Events.count());
     impl->m_Events.append(event);
     impl->parseEventProduct(event);
     endInsertRows();
+
+    // Also refreshes its children event products
+    auto eventIndex = index(impl->m_Events.count(), 0);
+    impl->refreshChildrenOfIndex(this, eventIndex);
 }
 
 void CatalogueEventsModel::removeEvent(const std::shared_ptr<DBEvent> &event)
@@ -203,8 +215,7 @@ void CatalogueEventsModel::refreshEvent(const std::shared_ptr<DBEvent> &event)
         emit dataChanged(eventIndex, index(eventIndex.row(), colCount));
 
         // Also refreshes its children event products
-        auto childCount = rowCount(eventIndex);
-        emit dataChanged(index(0, 0, eventIndex), index(childCount, colCount, eventIndex));
+        impl->refreshChildrenOfIndex(this, eventIndex);
     }
     else {
         qCWarning(LOG_CatalogueEventsModel()) << "refreshEvent: event not found.";
@@ -355,6 +366,7 @@ QVariant CatalogueEventsModel::headerData(int section, Qt::Orientation orientati
 
 void CatalogueEventsModel::sort(int column, Qt::SortOrder order)
 {
+    beginResetModel();
     std::sort(impl->m_Events.begin(), impl->m_Events.end(),
               [this, column, order](auto e1, auto e2) {
                   auto data1 = impl->sortData(column, e1);
@@ -365,7 +377,7 @@ void CatalogueEventsModel::sort(int column, Qt::SortOrder order)
                   return order == Qt::AscendingOrder ? result : !result;
               });
 
-    emit dataChanged(QModelIndex(), QModelIndex());
+    endResetModel();
     emit modelSorted();
 }
 
