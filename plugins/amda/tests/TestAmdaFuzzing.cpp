@@ -305,6 +305,9 @@ private slots:
 
 void TestAmdaFuzzing::testFuzzing_data()
 {
+    // Note: Comment this line to run fuzzing tests
+    QSKIP("Fuzzing tests are disabled by default");
+
     // ////////////// //
     // Test structure //
     // ////////////// //
