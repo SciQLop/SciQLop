@@ -32,7 +32,7 @@ struct VisualizationGraphHelper {
      */
     static PlottablesMap create(std::shared_ptr<Variable> variable, QCustomPlot &plot) noexcept;
 
-    static void updateData(PlottablesMap &plottables, std::shared_ptr<IDataSeries> dataSeries,
+    static void updateData(PlottablesMap &plottables, std::shared_ptr<Variable> variable,
                            const SqpRange &dateTime);
 
     static void setYAxisRange(std::shared_ptr<Variable> variable, QCustomPlot &plot) noexcept;

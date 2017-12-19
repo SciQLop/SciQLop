@@ -25,7 +25,7 @@ public:
  */
 template <typename T, typename Enabled = void>
 struct PlottablesCreator {
-    static PlottablesMap createPlottables(T &, QCustomPlot &)
+    static PlottablesMap createPlottables(QCustomPlot &)
     {
         qCCritical(LOG_DataSeries())
             << QObject::tr("Can't create plottables: unmanaged data series type");
@@ -33,34 +33,37 @@ struct PlottablesCreator {
     }
 };
 
+PlottablesMap createGraphs(QCustomPlot &plot, int nbGraphs)
+{
+    PlottablesMap result{};
+
+    // Creates {nbGraphs} QCPGraph to add to the plot
+    for (auto i = 0; i < nbGraphs; ++i) {
+        auto graph = plot.addGraph();
+        result.insert({i, graph});
+    }
+
+    plot.replot();
+
+    return result;
+}
+
 /**
- * Specialization of PlottablesCreator for scalars and vectors
+ * Specialization of PlottablesCreator for scalars
  * @sa ScalarSeries
+ */
+template <typename T>
+struct PlottablesCreator<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>::value> > {
+    static PlottablesMap createPlottables(QCustomPlot &plot) { return createGraphs(plot, 1); }
+};
+
+/**
+ * Specialization of PlottablesCreator for vectors
  * @sa VectorSeries
  */
 template <typename T>
-struct PlottablesCreator<T,
-                         typename std::enable_if_t<std::is_base_of<ScalarSeries, T>::value
-                                                   or std::is_base_of<VectorSeries, T>::value> > {
-    static PlottablesMap createPlottables(T &dataSeries, QCustomPlot &plot)
-    {
-        PlottablesMap result{};
-
-        // Gets the number of components of the data series
-        dataSeries.lockRead();
-        auto componentCount = dataSeries.valuesData()->componentCount();
-        dataSeries.unlock();
-
-        // For each component of the data series, creates a QCPGraph to add to the plot
-        for (auto i = 0; i < componentCount; ++i) {
-            auto graph = plot.addGraph();
-            result.insert({i, graph});
-        }
-
-        plot.replot();
-
-        return result;
-    }
+struct PlottablesCreator<T, typename std::enable_if_t<std::is_base_of<VectorSeries, T>::value> > {
+    static PlottablesMap createPlottables(QCustomPlot &plot) { return createGraphs(plot, 3); }
 };
 
 /**
@@ -70,7 +73,7 @@ struct PlottablesCreator<T,
 template <typename T>
 struct PlottablesCreator<T,
                          typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
-    static PlottablesMap createPlottables(T &dataSeries, QCustomPlot &plot)
+    static PlottablesMap createPlottables(QCustomPlot &plot)
     {
         PlottablesMap result{};
         result.insert({0, new QCPColorMap{plot.xAxis, plot.yAxis}});
@@ -264,41 +267,59 @@ struct IPlottablesHelper {
  */
 template <typename T>
 struct PlottablesHelper : public IPlottablesHelper {
-    explicit PlottablesHelper(T &dataSeries) : m_DataSeries{dataSeries} {}
+    explicit PlottablesHelper(std::shared_ptr<T> dataSeries) : m_DataSeries{dataSeries} {}
 
     PlottablesMap create(QCustomPlot &plot) const override
     {
-        return PlottablesCreator<T>::createPlottables(m_DataSeries, plot);
+        return PlottablesCreator<T>::createPlottables(plot);
     }
 
     void update(PlottablesMap &plottables, const SqpRange &range, bool rescaleAxes) const override
     {
-        PlottablesUpdater<T>::updatePlottables(m_DataSeries, plottables, range, rescaleAxes);
+        if (m_DataSeries) {
+            PlottablesUpdater<T>::updatePlottables(*m_DataSeries, plottables, range, rescaleAxes);
+        }
+        else {
+            qCCritical(LOG_VisualizationGraphHelper()) << "Can't update plottables: inconsistency "
+                                                          "between the type of data series and the "
+                                                          "type supposed";
+        }
     }
 
     void setYAxisRange(const SqpRange &xAxisRange, QCustomPlot &plot) const override
     {
-        return PlottablesUpdater<T>::setPlotYAxisRange(m_DataSeries, xAxisRange, plot);
+        if (m_DataSeries) {
+            PlottablesUpdater<T>::setPlotYAxisRange(*m_DataSeries, xAxisRange, plot);
+        }
+        else {
+            qCCritical(LOG_VisualizationGraphHelper()) << "Can't update plottables: inconsistency "
+                                                          "between the type of data series and the "
+                                                          "type supposed";
+        }
     }
 
-    T &m_DataSeries;
+    std::shared_ptr<T> m_DataSeries;
 };
 
-/// Creates IPlottablesHelper according to a data series
-std::unique_ptr<IPlottablesHelper> createHelper(std::shared_ptr<IDataSeries> dataSeries) noexcept
+/// Creates IPlottablesHelper according to the type of data series a variable holds
+std::unique_ptr<IPlottablesHelper> createHelper(std::shared_ptr<Variable> variable) noexcept
 {
-    if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(dataSeries)) {
-        return std::make_unique<PlottablesHelper<ScalarSeries> >(*scalarSeries);
+    switch (variable->type()) {
+        case DataSeriesType::SCALAR:
+            return std::make_unique<PlottablesHelper<ScalarSeries> >(
+                std::dynamic_pointer_cast<ScalarSeries>(variable->dataSeries()));
+        case DataSeriesType::SPECTROGRAM:
+            return std::make_unique<PlottablesHelper<SpectrogramSeries> >(
+                std::dynamic_pointer_cast<SpectrogramSeries>(variable->dataSeries()));
+        case DataSeriesType::VECTOR:
+            return std::make_unique<PlottablesHelper<VectorSeries> >(
+                std::dynamic_pointer_cast<VectorSeries>(variable->dataSeries()));
+        default:
+            // Creates default helper
+            break;
     }
-    else if (auto spectrogramSeries = std::dynamic_pointer_cast<SpectrogramSeries>(dataSeries)) {
-        return std::make_unique<PlottablesHelper<SpectrogramSeries> >(*spectrogramSeries);
-    }
-    else if (auto vectorSeries = std::dynamic_pointer_cast<VectorSeries>(dataSeries)) {
-        return std::make_unique<PlottablesHelper<VectorSeries> >(*vectorSeries);
-    }
-    else {
-        return std::make_unique<PlottablesHelper<IDataSeries> >(*dataSeries);
-    }
+
+    return std::make_unique<PlottablesHelper<IDataSeries> >(nullptr);
 }
 
 } // namespace
@@ -307,7 +328,7 @@ PlottablesMap VisualizationGraphHelper::create(std::shared_ptr<Variable> variabl
                                                QCustomPlot &plot) noexcept
 {
     if (variable) {
-        auto helper = createHelper(variable->dataSeries());
+        auto helper = createHelper(variable);
         auto plottables = helper->create(plot);
         return plottables;
     }
@@ -322,7 +343,7 @@ void VisualizationGraphHelper::setYAxisRange(std::shared_ptr<Variable> variable,
                                              QCustomPlot &plot) noexcept
 {
     if (variable) {
-        auto helper = createHelper(variable->dataSeries());
+        auto helper = createHelper(variable);
         helper->setYAxisRange(variable->range(), plot);
     }
     else {
@@ -332,9 +353,9 @@ void VisualizationGraphHelper::setYAxisRange(std::shared_ptr<Variable> variable,
 }
 
 void VisualizationGraphHelper::updateData(PlottablesMap &plottables,
-                                          std::shared_ptr<IDataSeries> dataSeries,
+                                          std::shared_ptr<Variable> variable,
                                           const SqpRange &dateTime)
 {
-    auto helper = createHelper(dataSeries);
+    auto helper = createHelper(variable);
     helper->update(plottables, dateTime);
 }
