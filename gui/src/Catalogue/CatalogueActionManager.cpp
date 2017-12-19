@@ -2,6 +2,7 @@
 
 #include <Actions/ActionsGuiController.h>
 #include <Catalogue/CatalogueController.h>
+#include <DataSource/DataSourceItem.h>
 #include <SqpApplication.h>
 #include <Variable/Variable.h>
 #include <Visualization/VisualizationGraphWidget.h>
@@ -50,7 +51,8 @@ struct CatalogueActionManager::CatalogueActionManagerPrivate {
                 eventProduct->setTStart(zoneRange.m_TStart);
                 eventProduct->setTEnd(zoneRange.m_TEnd);
 
-                eventProduct->setProductId(var->metadata().value("id", "TODO").toString()); // todo
+                eventProduct->setProductId(
+                    var->metadata().value(DataSourceItem::ID_DATA_KEY, "UnknownID").toString());
 
                 productList.push_back(*eventProduct);
             }

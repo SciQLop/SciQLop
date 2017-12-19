@@ -28,6 +28,7 @@ std::unique_ptr<DataSourceItem> createProductItem(const QVariantHash &data,
 
     // Adds plugin name to product metadata
     result->setData(DataSourceItem::PLUGIN_DATA_KEY, DATA_SOURCE_NAME);
+    result->setData(DataSourceItem::ID_DATA_KEY, data.value(DataSourceItem::NAME_DATA_KEY));
 
     auto productName = data.value(DataSourceItem::NAME_DATA_KEY).toString();
 
