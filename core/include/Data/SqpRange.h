@@ -18,8 +18,8 @@ struct SqpRange {
     static SqpRange fromDateTime(const QDate &startDate, const QTime &startTime,
                                  const QDate &endDate, const QTime &endTime)
     {
-        return {DateUtils::secondsSinceEpoch(QDateTime{startDate, startTime}),
-                DateUtils::secondsSinceEpoch(QDateTime{endDate, endTime})};
+        return {DateUtils::secondsSinceEpoch(QDateTime{startDate, startTime, Qt::UTC}),
+                DateUtils::secondsSinceEpoch(QDateTime{endDate, endTime, Qt::UTC})};
     }
 
     /// Start time (UTC)

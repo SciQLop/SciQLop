@@ -72,7 +72,9 @@ tests_sources = [
   'tests/FuzzingOperations.h',
   'tests/FuzzingOperations.cpp',
   'tests/FuzzingUtils.h',
-  'tests/FuzzingUtils.cpp'
+  'tests/FuzzingUtils.cpp',
+  'tests/FuzzingValidators.h',
+  'tests/FuzzingValidators.cpp'
 ]
 
 foreach unit_test : tests
