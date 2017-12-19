@@ -59,9 +59,9 @@ void RescaleAxeOperation::visit(VisualizationGraphWidget *graphWidget)
     if (graphWidget) {
         // If the widget contains the variable, rescale it
         if (impl->m_Variable && graphWidget->contains(*impl->m_Variable)) {
-            graphWidget->enableAcquisition(false);
+            graphWidget->setFlags(GraphFlag::DisableAll);
             graphWidget->setGraphRange(impl->m_Range);
-            graphWidget->enableAcquisition(true);
+            graphWidget->setFlags(GraphFlag::EnableAll);
         }
     }
     else {

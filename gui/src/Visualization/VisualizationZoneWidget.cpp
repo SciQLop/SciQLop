@@ -264,15 +264,15 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         // No action
                         break;
                 }
-                graphChild->enableAcquisition(false);
-                qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: Range before: ")
-                                                       << graphChild->graphRange();
-                qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: Range after : ")
-                                                       << graphChildRange;
+                graphChild->setFlags(GraphFlag::DisableAll);
+                qCDebug(LOG_VisualizationZoneWidget())
+                    << tr("TORM: Range before: ") << graphChild->graphRange();
+                qCDebug(LOG_VisualizationZoneWidget())
+                    << tr("TORM: Range after : ") << graphChildRange;
                 qCDebug(LOG_VisualizationZoneWidget())
                     << tr("TORM: child dt") << graphChildRange.m_TEnd - graphChildRange.m_TStart;
                 graphChild->setGraphRange(graphChildRange);
-                graphChild->enableAcquisition(true);
+                graphChild->setFlags(GraphFlag::EnableAll);
             }
         }
     };
