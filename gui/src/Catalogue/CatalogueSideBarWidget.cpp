@@ -35,6 +35,62 @@ struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
     CatalogueTreeItem *getCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue) const;
     void setHasChanges(bool value, const QModelIndex &index, QTreeView *treeView);
     bool hasChanges(const QModelIndex &index, QTreeView *treeView);
+
+    int selectionType(QTreeView *treeView) const
+    {
+        auto selectedItems = treeView->selectionModel()->selectedRows();
+        if (selectedItems.isEmpty()) {
+            return CatalogueAbstractTreeItem::DEFAULT_TYPE;
+        }
+        else {
+            auto firstIndex = selectedItems.first();
+            auto firstItem = m_TreeModel->item(firstIndex);
+            if (!firstItem) {
+                Q_ASSERT(false);
+                return CatalogueAbstractTreeItem::DEFAULT_TYPE;
+            }
+            auto selectionType = firstItem->type();
+
+            for (auto itemIndex : selectedItems) {
+                auto item = m_TreeModel->item(itemIndex);
+                if (!item || item->type() != selectionType) {
+                    // Incoherent multi selection
+                    selectionType = CatalogueAbstractTreeItem::DEFAULT_TYPE;
+                    break;
+                }
+            }
+
+            return selectionType;
+        }
+    }
+
+    QVector<std::shared_ptr<DBCatalogue> > selectedCatalogues(QTreeView *treeView) const
+    {
+        QVector<std::shared_ptr<DBCatalogue> > catalogues;
+        auto selectedItems = treeView->selectionModel()->selectedRows();
+        for (auto itemIndex : selectedItems) {
+            auto item = m_TreeModel->item(itemIndex);
+            if (item && item->type() == CATALOGUE_ITEM_TYPE) {
+                catalogues.append(static_cast<CatalogueTreeItem *>(item)->catalogue());
+            }
+        }
+
+        return catalogues;
+    }
+
+    QStringList selectedRepositories(QTreeView *treeView) const
+    {
+        QStringList repositories;
+        auto selectedItems = treeView->selectionModel()->selectedRows();
+        for (auto itemIndex : selectedItems) {
+            auto item = m_TreeModel->item(itemIndex);
+            if (item && item->type() == DATABASE_ITEM_TYPE) {
+                repositories.append(item->text());
+            }
+        }
+
+        return repositories;
+    }
 };
 
 CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
@@ -55,63 +111,25 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
 
     auto emitSelection = [this]() {
 
-        auto selectedItems = ui->treeView->selectionModel()->selectedRows();
-        if (selectedItems.isEmpty()) {
-            emit this->selectionCleared();
+        auto selectionType = impl->selectionType(ui->treeView);
+
+        switch (selectionType) {
+            case CATALOGUE_ITEM_TYPE:
+                emit this->catalogueSelected(impl->selectedCatalogues(ui->treeView));
+                break;
+            case DATABASE_ITEM_TYPE:
+                emit this->databaseSelected(impl->selectedRepositories(ui->treeView));
+                break;
+            case ALL_EVENT_ITEM_TYPE:
+                emit this->allEventsSelected();
+                break;
+            case TRASH_ITEM_TYPE:
+                emit this->trashSelected();
+                break;
+            default:
+                emit this->selectionCleared();
+                break;
         }
-        else {
-            QVector<std::shared_ptr<DBCatalogue> > catalogues;
-            QStringList databases;
-            auto firstIndex = selectedItems.first();
-            auto firstItem = impl->m_TreeModel->item(firstIndex);
-            if (!firstItem) {
-                Q_ASSERT(false);
-                return;
-            }
-            auto selectionType = firstItem->type();
-
-            for (auto itemIndex : selectedItems) {
-                auto item = impl->m_TreeModel->item(itemIndex);
-                if (item && item->type() == selectionType) {
-                    switch (selectionType) {
-                        case CATALOGUE_ITEM_TYPE:
-                            catalogues.append(static_cast<CatalogueTreeItem *>(item)->catalogue());
-                            break;
-                        case DATABASE_ITEM_TYPE:
-                            databases.append(item->text());
-                        case ALL_EVENT_ITEM_TYPE: // fallthrough
-                        case TRASH_ITEM_TYPE:     // fallthrough
-                        default:
-                            break;
-                    }
-                }
-                else {
-                    // Incoherent multi selection
-                    selectionType = -1;
-                    break;
-                }
-            }
-
-            switch (selectionType) {
-                case CATALOGUE_ITEM_TYPE:
-                    emit this->catalogueSelected(catalogues);
-                    break;
-                case DATABASE_ITEM_TYPE:
-                    emit this->databaseSelected(databases);
-                    break;
-                case ALL_EVENT_ITEM_TYPE:
-                    emit this->allEventsSelected();
-                    break;
-                case TRASH_ITEM_TYPE:
-                    emit this->trashSelected();
-                    break;
-                default:
-                    emit this->selectionCleared();
-                    break;
-            }
-        }
-
-
     };
 
     connect(ui->treeView, &QTreeView::clicked, emitSelection);

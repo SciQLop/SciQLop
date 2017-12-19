@@ -1,5 +1,6 @@
 #include "Catalogue/CatalogueEventsModel.h"
 
+#include <Catalogue/CatalogueController.h>
 #include <Common/DateUtils.h>
 #include <Common/MimeTypesDef.h>
 #include <DBEvent.h>
@@ -370,7 +371,7 @@ void CatalogueEventsModel::sort(int column, Qt::SortOrder order)
 
 Qt::DropActions CatalogueEventsModel::supportedDragActions() const
 {
-    return Qt::CopyAction | Qt::MoveAction;
+    return Qt::CopyAction;
 }
 
 QStringList CatalogueEventsModel::mimeTypes() const
@@ -415,9 +416,10 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
         }
     }
 
-    auto eventsEncodedData
-        = QByteArray{}; // sqpApp->catalogueController().->mimeDataForEvents(eventList); //TODO
-    mimeData->setData(MIME_TYPE_EVENT_LIST, eventsEncodedData);
+    if (!eventList.isEmpty() && eventProductList.isEmpty()) {
+        auto eventsEncodedData = sqpApp->catalogueController().mimeDataForEvents(eventList);
+        mimeData->setData(MIME_TYPE_EVENT_LIST, eventsEncodedData);
+    }
 
     if (eventList.count() + eventProductList.count() == 1) {
         // No time range MIME data if multiple events are dragged

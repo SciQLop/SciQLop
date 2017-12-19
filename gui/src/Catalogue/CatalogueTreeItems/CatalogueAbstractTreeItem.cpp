@@ -72,3 +72,10 @@ bool CatalogueAbstractTreeItem::canDropMimeData(const QMimeData *data, Qt::DropA
     Q_UNUSED(action);
     return false;
 }
+
+bool CatalogueAbstractTreeItem::dropMimeData(const QMimeData *data, Qt::DropAction action)
+{
+    Q_UNUSED(data);
+    Q_UNUSED(action);
+    return false;
+}

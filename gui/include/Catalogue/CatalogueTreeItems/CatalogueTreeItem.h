@@ -15,6 +15,7 @@ public:
     bool setData(int column, int role, const QVariant &value) override;
     Qt::ItemFlags flags(int column) const override;
     bool canDropMimeData(const QMimeData *data, Qt::DropAction action) override;
+    bool dropMimeData(const QMimeData *data, Qt::DropAction action) override;
 
     /// Returns the catalogue represented by the item
     std::shared_ptr<DBCatalogue> catalogue() const;

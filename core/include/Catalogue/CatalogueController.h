@@ -62,6 +62,12 @@ public:
 
     void saveAll();
 
+    /// Returns the MIME data associated to a list of variables
+    QByteArray mimeDataForEvents(const QVector<std::shared_ptr<DBEvent> > &events) const;
+
+    /// Returns the list of variables contained in a MIME data
+    QVector<std::shared_ptr<DBEvent> > eventsForMimeData(const QByteArray &mimeData) const;
+
 public slots:
     /// Manage init/end of the controller
     void initialize();

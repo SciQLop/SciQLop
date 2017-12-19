@@ -12,6 +12,7 @@
 #include <DBTag.h>
 #include <IRequestPredicate.h>
 
+#include <QDataStream>
 #include <QMutex>
 #include <QThread>
 
@@ -234,6 +235,46 @@ void CatalogueController::saveAll()
     }
 
     impl->savAllDB();
+}
+
+QByteArray
+CatalogueController::mimeDataForEvents(const QVector<std::shared_ptr<DBEvent> > &events) const
+{
+    auto encodedData = QByteArray{};
+
+    QMap<QString, QVariantList> idsPerRepository;
+    for (auto event : events) {
+        idsPerRepository[event->getRepository()] << event->getUniqId();
+    }
+
+    QDataStream stream{&encodedData, QIODevice::WriteOnly};
+    stream << idsPerRepository;
+
+    return encodedData;
+}
+
+QVector<std::shared_ptr<DBEvent> >
+CatalogueController::eventsForMimeData(const QByteArray &mimeData) const
+{
+    auto events = QVector<std::shared_ptr<DBEvent> >{};
+    QDataStream stream{mimeData};
+
+    QMap<QString, QVariantList> idsPerRepository;
+    stream >> idsPerRepository;
+
+    for (auto it = idsPerRepository.cbegin(); it != idsPerRepository.cend(); ++it) {
+        auto repository = it.key();
+        auto allRepositoryEvent = retrieveEvents(repository);
+        for (auto uuid : it.value()) {
+            for (auto repositoryEvent : allRepositoryEvent) {
+                if (uuid.toUuid() == repositoryEvent->getUniqId()) {
+                    events << repositoryEvent;
+                }
+            }
+        }
+    }
+
+    return events;
 }
 
 void CatalogueController::initialize()

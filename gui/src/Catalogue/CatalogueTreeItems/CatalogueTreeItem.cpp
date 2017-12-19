@@ -79,6 +79,16 @@ bool CatalogueTreeItem::canDropMimeData(const QMimeData *data, Qt::DropAction ac
     return data->hasFormat(MIME_TYPE_EVENT_LIST);
 }
 
+bool CatalogueTreeItem::dropMimeData(const QMimeData *data, Qt::DropAction action)
+{
+    Q_ASSERT(canDropMimeData(data, action));
+
+    auto events = sqpApp->catalogueController().eventsForMimeData(data->data(MIME_TYPE_EVENT_LIST));
+    // impl->m_Catalogue->addEvents(events); TODO: move events in the new catalogue
+    // Warning: Check that the events aren't already in the catalogue
+    // Also check for the repository !!!
+}
+
 std::shared_ptr<DBCatalogue> CatalogueTreeItem::catalogue() const
 {
     return impl->m_Catalogue;

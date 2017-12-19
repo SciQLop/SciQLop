@@ -25,6 +25,7 @@ public:
     virtual Qt::ItemFlags flags(int column) const;
     virtual bool setData(int column, int role, const QVariant &value);
     virtual bool canDropMimeData(const QMimeData *data, Qt::DropAction action);
+    virtual bool dropMimeData(const QMimeData *data, Qt::DropAction action);
 
 private:
     class CatalogueAbstractTreeItemPrivate;

@@ -79,6 +79,9 @@
      <property name="dragDropMode">
       <enum>QAbstractItemView::DragDrop</enum>
      </property>
+     <property name="selectionMode">
+      <enum>QAbstractItemView::ExtendedSelection</enum>
+     </property>
      <attribute name="headerVisible">
       <bool>false</bool>
      </attribute>

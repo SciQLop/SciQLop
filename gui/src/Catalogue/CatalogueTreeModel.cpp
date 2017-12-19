@@ -43,7 +43,7 @@ void CatalogueTreeModel::addChildItem(CatalogueAbstractTreeItem *child,
     parentItem->addChild(child);
     endInsertRows();
 
-    emit dataChanged(QModelIndex(), QModelIndex());
+    emit dataChanged(parentIndex, parentIndex);
 }
 
 CatalogueAbstractTreeItem *CatalogueTreeModel::item(const QModelIndex &index) const
@@ -176,7 +176,18 @@ bool CatalogueTreeModel::canDropMimeData(const QMimeData *data, Qt::DropAction a
 bool CatalogueTreeModel::dropMimeData(const QMimeData *data, Qt::DropAction action, int row,
                                       int column, const QModelIndex &parent)
 {
-    return false;
+    bool result = false;
+
+    auto draggedIndex = parent;
+    auto draggedItem = item(draggedIndex);
+    if (draggedItem) {
+        result = draggedItem->dropMimeData(data, action);
+        if (result) {
+            emit itemDropped(draggedIndex);
+        }
+    }
+
+    return result;
 }
 
 Qt::DropActions CatalogueTreeModel::supportedDropActions() const
