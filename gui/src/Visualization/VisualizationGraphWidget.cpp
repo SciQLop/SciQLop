@@ -303,7 +303,6 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, S
         this->setFlags(GraphFlag::DisableAll);
         setGraphRange(range);
         this->setFlags(GraphFlag::EnableAll);
-
         emit requestDataLoading({variable}, range, false);
     };
 
