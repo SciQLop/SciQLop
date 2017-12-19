@@ -64,9 +64,6 @@ public:
         m_VariableControllerThread.setObjectName("VariableControllerThread");
         m_VisualizationController->moveToThread(&m_VisualizationControllerThread);
         m_VisualizationControllerThread.setObjectName("VsualizationControllerThread");
-        m_CatalogueController->moveToThread(&m_CatalogueControllerThread);
-        m_CatalogueControllerThread.setObjectName("CatalogueControllerThread");
-
 
         // Additionnal init
         m_VariableController->setTimeController(m_TimeController.get());
@@ -85,9 +82,6 @@ public:
 
         m_VisualizationControllerThread.quit();
         m_VisualizationControllerThread.wait();
-
-        m_CatalogueControllerThread.quit();
-        m_CatalogueControllerThread.wait();
     }
 
     std::unique_ptr<DataSourceController> m_DataSourceController;
@@ -101,7 +95,6 @@ public:
     QThread m_NetworkControllerThread;
     QThread m_VariableControllerThread;
     QThread m_VisualizationControllerThread;
-    QThread m_CatalogueControllerThread;
 
     std::unique_ptr<DragDropGuiController> m_DragDropGuiController;
     std::unique_ptr<ActionsGuiController> m_ActionsGuiController;
@@ -136,16 +129,11 @@ SqpApplication::SqpApplication(int &argc, char **argv)
     connect(&impl->m_VisualizationControllerThread, &QThread::finished,
             impl->m_VisualizationController.get(), &VisualizationController::finalize);
 
-    connect(&impl->m_CatalogueControllerThread, &QThread::started,
-            impl->m_CatalogueController.get(), &CatalogueController::initialize);
-    connect(&impl->m_CatalogueControllerThread, &QThread::finished,
-            impl->m_CatalogueController.get(), &CatalogueController::finalize);
-
     impl->m_DataSourceControllerThread.start();
     impl->m_NetworkControllerThread.start();
     impl->m_VariableControllerThread.start();
     impl->m_VisualizationControllerThread.start();
-    impl->m_CatalogueControllerThread.start();
+    impl->m_CatalogueController->initialize();
 }
 
 SqpApplication::~SqpApplication()

@@ -49,10 +49,12 @@ int main(int argc, char *argv[])
 #endif
     Q_INIT_RESOURCE(sqpguiresources);
 
-    SqpApplication a{argc, argv};
     SqpApplication::setOrganizationName("LPP");
     SqpApplication::setOrganizationDomain("lpp.fr");
     SqpApplication::setApplicationName("SciQLop");
+
+    SqpApplication a{argc, argv};
+
     MainWindow w;
     w.show();
 

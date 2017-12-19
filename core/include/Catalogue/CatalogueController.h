@@ -71,11 +71,8 @@ public:
 public slots:
     /// Manage init/end of the controller
     void initialize();
-    void finalize();
 
 private:
-    void waitForFinish();
-
     class CatalogueControllerPrivate;
     spimpl::unique_impl_ptr<CatalogueControllerPrivate> impl;
 };

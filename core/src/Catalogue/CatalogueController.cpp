@@ -32,7 +32,6 @@ class CatalogueController::CatalogueControllerPrivate {
 public:
     explicit CatalogueControllerPrivate(CatalogueController *parent) : m_Q{parent} {}
 
-    QMutex m_WorkingMutex;
     CatalogueDao m_CatalogueDao;
 
     QStringList m_RepositoryList;
@@ -58,7 +57,6 @@ CatalogueController::~CatalogueController()
 {
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController destruction")
                                        << QThread::currentThread();
-    this->waitForFinish();
 }
 
 QStringList CatalogueController::getRepositories() const
@@ -279,9 +277,14 @@ CatalogueController::eventsForMimeData(const QByteArray &mimeData) const
 
 void CatalogueController::initialize()
 {
+<<<<<<< HEAD
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController init")
                                        << QThread::currentThread();
     impl->m_WorkingMutex.lock();
+=======
+    qCDebug(LOG_CatalogueController())
+        << tr("CatalogueController init") << QThread::currentThread();
+>>>>>>> 286decc... unthread the catalogue controller
     impl->m_CatalogueDao.initialize();
     auto defaultRepositoryLocation
         = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -301,16 +304,6 @@ void CatalogueController::initialize()
     }
 
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController init END");
-}
-
-void CatalogueController::finalize()
-{
-    impl->m_WorkingMutex.unlock();
-}
-
-void CatalogueController::waitForFinish()
-{
-    QMutexLocker locker{&impl->m_WorkingMutex};
 }
 
 void CatalogueController::CatalogueControllerPrivate::copyDBtoDB(const QString &dbFrom,
