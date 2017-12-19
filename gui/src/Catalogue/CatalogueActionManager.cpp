@@ -7,6 +7,9 @@
 #include <Visualization/VisualizationGraphWidget.h>
 #include <Visualization/VisualizationSelectionZoneItem.h>
 
+#include <Catalogue/CatalogueEventsWidget.h>
+#include <Catalogue/CatalogueExplorer.h>
+#include <Catalogue/CatalogueSideBarWidget.h>
 #include <Catalogue/CreateEventDialog.h>
 
 #include <DBCatalogue.h>
@@ -21,6 +24,14 @@
 #include <memory>
 
 struct CatalogueActionManager::CatalogueActionManagerPrivate {
+
+    CatalogueExplorer *m_CatalogueExplorer = nullptr;
+
+    CatalogueActionManagerPrivate(CatalogueExplorer *catalogueExplorer)
+            : m_CatalogueExplorer(catalogueExplorer)
+    {
+    }
+
     void createEventFromZones(const QString &eventName,
                               const QVector<VisualizationSelectionZoneItem *> &zones,
                               const std::shared_ptr<DBCatalogue> &catalogue = nullptr)
@@ -49,15 +60,25 @@ struct CatalogueActionManager::CatalogueActionManagerPrivate {
 
         sqpApp->catalogueController().addEvent(event);
 
+
         if (catalogue) {
             // TODO
             // catalogue->addEvent(event);
+            m_CatalogueExplorer->sideBarWidget().setCatalogueChanges(catalogue, true);
+            if (m_CatalogueExplorer->eventsWidget().displayedCatalogues().contains(catalogue)) {
+                m_CatalogueExplorer->eventsWidget().addEvent(event);
+                m_CatalogueExplorer->eventsWidget().setEventChanges(event, true);
+            }
+        }
+        else if (m_CatalogueExplorer->eventsWidget().isAllEventsDisplayed()) {
+            m_CatalogueExplorer->eventsWidget().addEvent(event);
+            m_CatalogueExplorer->eventsWidget().setEventChanges(event, true);
         }
     }
 };
 
-CatalogueActionManager::CatalogueActionManager()
-        : impl{spimpl::make_unique_impl<CatalogueActionManagerPrivate>()}
+CatalogueActionManager::CatalogueActionManager(CatalogueExplorer *catalogueExplorer)
+        : impl{spimpl::make_unique_impl<CatalogueActionManagerPrivate>(catalogueExplorer)}
 {
 }
 
@@ -82,7 +103,8 @@ void CatalogueActionManager::installSelectionZoneActions()
 
     auto createEventAction = actionController.addSectionZoneAction(
         {QObject::tr("Catalogues")}, QObject::tr("New Event..."), [this](auto zones) {
-            CreateEventDialog dialog;
+            CreateEventDialog dialog(
+                impl->m_CatalogueExplorer->sideBarWidget().getCatalogues("Default"));
             dialog.hideCatalogueChoice();
             if (dialog.exec() == QDialog::Accepted) {
                 impl->createEventFromZones(dialog.eventName(), zones);
@@ -92,12 +114,16 @@ void CatalogueActionManager::installSelectionZoneActions()
 
     auto createEventInCatalogueAction = actionController.addSectionZoneAction(
         {QObject::tr("Catalogues")}, QObject::tr("New Event in Catalogue..."), [this](auto zones) {
-            CreateEventDialog dialog;
+            CreateEventDialog dialog(
+                impl->m_CatalogueExplorer->sideBarWidget().getCatalogues("Default"));
             if (dialog.exec() == QDialog::Accepted) {
                 auto selectedCatalogue = dialog.selectedCatalogue();
                 if (!selectedCatalogue) {
                     selectedCatalogue = std::make_shared<DBCatalogue>();
                     selectedCatalogue->setName(dialog.catalogueName());
+                    // sqpApp->catalogueController().addCatalogue(selectedCatalogue); TODO
+                    impl->m_CatalogueExplorer->sideBarWidget().addCatalogue(selectedCatalogue,
+                                                                            "Default");
                 }
 
                 impl->createEventFromZones(dialog.eventName(), zones, selectedCatalogue);

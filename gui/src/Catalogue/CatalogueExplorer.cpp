@@ -11,12 +11,17 @@
 
 struct CatalogueExplorer::CatalogueExplorerPrivate {
     CatalogueActionManager m_ActionManager;
+
+    CatalogueExplorerPrivate(CatalogueExplorer *catalogueExplorer)
+            : m_ActionManager(catalogueExplorer)
+    {
+    }
 };
 
 CatalogueExplorer::CatalogueExplorer(QWidget *parent)
         : QDialog(parent, Qt::Dialog | Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint),
           ui(new Ui::CatalogueExplorer),
-          impl{spimpl::make_unique_impl<CatalogueExplorerPrivate>()}
+          impl{spimpl::make_unique_impl<CatalogueExplorerPrivate>(this)}
 {
     ui->setupUi(this);
 
@@ -95,4 +100,14 @@ CatalogueExplorer::~CatalogueExplorer()
 void CatalogueExplorer::setVisualizationWidget(VisualizationWidget *visualization)
 {
     ui->events->setVisualizationWidget(visualization);
+}
+
+CatalogueEventsWidget &CatalogueExplorer::eventsWidget() const
+{
+    return *ui->events;
+}
+
+CatalogueSideBarWidget &CatalogueExplorer::sideBarWidget() const
+{
+    return *ui->catalogues;
 }

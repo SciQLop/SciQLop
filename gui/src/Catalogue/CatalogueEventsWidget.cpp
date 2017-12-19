@@ -25,6 +25,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     CatalogueEventsModel *m_Model = nullptr;
     QStringList m_ZonesForTimeMode;
     QString m_ZoneForGraphMode;
+    QVector<std::shared_ptr<DBCatalogue> > m_DisplayedCatalogues;
 
     VisualizationWidget *m_VisualizationWidget = nullptr;
 
@@ -304,6 +305,11 @@ void CatalogueEventsWidget::setVisualizationWidget(VisualizationWidget *visualiz
     impl->m_VisualizationWidget = visualization;
 }
 
+void CatalogueEventsWidget::addEvent(const std::shared_ptr<DBEvent> &event)
+{
+    impl->addEvent(event, ui->treeView);
+}
+
 void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges)
 {
     impl->m_Model->refreshEvent(event);
@@ -323,18 +329,35 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
                 [this, event]() { setEventChanges(event, false); });
             ui->treeView->setIndexWidget(validationIndex, widget);
         }
+
+        impl->m_Model->setEventHasChanges(event, hasChanges);
     }
     else {
-        // Note: the widget is destroyed
-        ui->treeView->setIndexWidget(validationIndex, nullptr);
+        qCWarning(LOG_CatalogueEventsWidget())
+            << "setEventChanges: the event is not displayed in the model.";
     }
+}
 
-    impl->m_Model->setEventHasChanges(event, hasChanges);
+QVector<std::shared_ptr<DBCatalogue> > CatalogueEventsWidget::displayedCatalogues() const
+{
+    return impl->m_DisplayedCatalogues;
+}
+
+bool CatalogueEventsWidget::isAllEventsDisplayed() const
+{
+    return impl->m_DisplayedCatalogues.isEmpty();
+}
+
+bool CatalogueEventsWidget::isEventDisplayed(const std::shared_ptr<DBEvent> &event) const
+{
+    return impl->m_Model->indexOf(event).isValid();
 }
 
 void CatalogueEventsWidget::populateWithCatalogues(
     const QVector<std::shared_ptr<DBCatalogue> > &catalogues)
 {
+    impl->m_DisplayedCatalogues = catalogues;
+
     QSet<QUuid> eventIds;
     QVector<std::shared_ptr<DBEvent> > events;
 
@@ -353,6 +376,8 @@ void CatalogueEventsWidget::populateWithCatalogues(
 
 void CatalogueEventsWidget::populateWithAllEvents()
 {
+    impl->m_DisplayedCatalogues.clear();
+
     auto allEvents = sqpApp->catalogueController().retrieveAllEvents();
 
     QVector<std::shared_ptr<DBEvent> > events;
@@ -361,4 +386,14 @@ void CatalogueEventsWidget::populateWithAllEvents()
     }
 
     impl->setEvents(events, ui->treeView);
+}
+
+void CatalogueEventsWidget::refresh()
+{
+    if (impl->m_DisplayedCatalogues.isEmpty()) {
+        populateWithAllEvents();
+    }
+    else {
+        populateWithCatalogues(impl->m_DisplayedCatalogues);
+    }
 }

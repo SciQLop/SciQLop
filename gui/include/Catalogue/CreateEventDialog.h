@@ -15,7 +15,8 @@ class CreateEventDialog : public QDialog {
     Q_OBJECT
 
 public:
-    explicit CreateEventDialog(QWidget *parent = 0);
+    explicit CreateEventDialog(const QVector<std::shared_ptr<DBCatalogue> > &catalogues,
+                               QWidget *parent = 0);
     virtual ~CreateEventDialog();
 
     void hideCatalogueChoice();

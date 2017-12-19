@@ -8,6 +8,9 @@ namespace Ui {
 class CatalogueExplorer;
 }
 
+class CatalogueEventsWidget;
+class CatalogueSideBarWidget;
+
 class VisualizationWidget;
 
 class CatalogueExplorer : public QDialog {
@@ -18,6 +21,9 @@ public:
     virtual ~CatalogueExplorer();
 
     void setVisualizationWidget(VisualizationWidget *visualization);
+
+    CatalogueEventsWidget &eventsWidget() const;
+    CatalogueSideBarWidget &sideBarWidget() const;
 
 private:
     Ui::CatalogueExplorer *ui;

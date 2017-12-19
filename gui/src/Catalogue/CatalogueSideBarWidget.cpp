@@ -154,6 +154,13 @@ CatalogueSideBarWidget::~CatalogueSideBarWidget()
     delete ui;
 }
 
+void CatalogueSideBarWidget::addCatalogue(const std::shared_ptr<DBCatalogue> &catalogue,
+                                          const QString &repository)
+{
+    auto repositoryItem = impl->getDatabaseItem(repository);
+    impl->addCatalogueItem(catalogue, impl->m_TreeModel->indexOf(repositoryItem));
+}
+
 void CatalogueSideBarWidget::setCatalogueChanges(const std::shared_ptr<DBCatalogue> &catalogue,
                                                  bool hasChanges)
 {
@@ -162,6 +169,24 @@ void CatalogueSideBarWidget::setCatalogueChanges(const std::shared_ptr<DBCatalog
         impl->setHasChanges(hasChanges, index, ui->treeView);
         // catalogueItem->refresh();
     }
+}
+
+QVector<std::shared_ptr<DBCatalogue> >
+CatalogueSideBarWidget::getCatalogues(const QString &repository) const
+{
+    QVector<std::shared_ptr<DBCatalogue> > result;
+    auto repositoryItem = impl->getDatabaseItem(repository);
+    for (auto child : repositoryItem->children()) {
+        if (child->type() == CATALOGUE_ITEM_TYPE) {
+            auto catalogueItem = static_cast<CatalogueTreeItem *>(child);
+            result << catalogueItem->catalogue();
+        }
+        else {
+            qCWarning(LOG_CatalogueSideBarWidget()) << "getCatalogues: invalid structure";
+        }
+    }
+
+    return result;
 }
 
 void CatalogueSideBarWidget::onContextMenuRequested(const QPoint &pos)

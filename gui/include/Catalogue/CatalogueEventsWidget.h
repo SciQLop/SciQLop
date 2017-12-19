@@ -32,11 +32,17 @@ public:
 
     void setVisualizationWidget(VisualizationWidget *visualization);
 
+    void addEvent(const std::shared_ptr<DBEvent> &event);
     void setEventChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges);
+
+    QVector<std::shared_ptr<DBCatalogue> > displayedCatalogues() const;
+    bool isAllEventsDisplayed() const;
+    bool isEventDisplayed(const std::shared_ptr<DBEvent> &event) const;
 
 public slots:
     void populateWithCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
     void populateWithAllEvents();
+    void refresh();
 
 private:
     Ui::CatalogueEventsWidget *ui;
