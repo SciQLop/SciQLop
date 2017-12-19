@@ -80,6 +80,8 @@ public:
 
 signals:
     void updated();
+    /// Signal emitted when when the data series of the variable is loaded for the first time
+    void dataInitialized();
 
 private:
     class VariablePrivate;

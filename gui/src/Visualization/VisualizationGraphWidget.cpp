@@ -294,28 +294,44 @@ void VisualizationGraphWidget::enableAcquisition(bool enable)
 
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, SqpRange range)
 {
-    // Uses delegate to create the qcpplot components according to the variable
-    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+    /// Lambda used to set graph's units and range according to the variable passed in parameter
+    auto loadRange = [this](std::shared_ptr<Variable> variable, const SqpRange &range) {
+        impl->m_RenderingDelegate->setAxesUnits(*variable);
 
-    if (auto dataSeries = variable->dataSeries()) {
-        // Set axes properties according to the units of the data series
-        impl->m_RenderingDelegate->setAxesProperties(dataSeries);
+        enableAcquisition(false);
+        setGraphRange(range);
+        enableAcquisition(true);
 
-        // Sets rendering properties for the new plottables
-        // Warning: this method must be called after setAxesProperties(), as it can access to some
-        // axes properties that have to be initialized
-        impl->m_RenderingDelegate->setPlottablesProperties(dataSeries, createdPlottables);
-    }
-
-    impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
+        emit requestDataLoading({variable}, range, false);
+    };
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 
-    this->enableAcquisition(false);
-    this->setGraphRange(range);
-    this->enableAcquisition(true);
+    // Calls update of graph's range and units when the data of the variable have been initialized.
+    // Note: we use QueuedConnection here as the update event must be called in the UI thread
+    connect(variable.get(), &Variable::dataInitialized, this,
+            [ varW = std::weak_ptr<Variable>{variable}, range, loadRange ]() {
+                if (auto var = varW.lock()) {
+                    // If the variable is the first added in the graph, we load its range
+                    auto firstVariableInGraph = range == INVALID_RANGE;
+                    auto loadedRange = firstVariableInGraph ? var->range() : range;
+                    loadRange(var, loadedRange);
+                }
+            },
+            Qt::QueuedConnection);
 
-    emit requestDataLoading(QVector<std::shared_ptr<Variable> >() << variable, range, false);
+    // Uses delegate to create the qcpplot components according to the variable
+    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+
+    // Sets graph properties
+    impl->m_RenderingDelegate->setGraphProperties(*variable, createdPlottables);
+
+    impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
+
+    // If the variable already has its data loaded, load its units and its range in the graph
+    if (variable->dataSeries() != nullptr) {
+        loadRange(variable, range);
+    }
 
     emit variableAdded(variable);
 }
