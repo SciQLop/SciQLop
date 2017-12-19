@@ -4,6 +4,8 @@
 #include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
+#include <Variable/Variable.h>
+
 #include <Visualization/SqpColorScale.h>
 #include <Visualization/qcustomplot.h>
 
@@ -68,10 +70,16 @@ void setAxisProperties(QCPAxis &axis, const Unit &unit,
  */
 template <typename T, typename Enabled = void>
 struct AxisSetter {
-    static void setProperties(T &, QCustomPlot &, SqpColorScale &)
+    static void setProperties(QCustomPlot &, SqpColorScale &)
     {
         // Default implementation does nothing
         qCCritical(LOG_AxisRenderingUtils()) << "Can't set axis properties: unmanaged type of data";
+    }
+
+    static void setUnits(T &, QCustomPlot &, SqpColorScale &)
+    {
+        // Default implementation does nothing
+        qCCritical(LOG_AxisRenderingUtils()) << "Can't set axis units: unmanaged type of data";
     }
 };
 
@@ -83,7 +91,12 @@ struct AxisSetter {
 template <typename T>
 struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>::value
                                                or std::is_base_of<VectorSeries, T>::value> > {
-    static void setProperties(T &dataSeries, QCustomPlot &plot, SqpColorScale &)
+    static void setProperties(QCustomPlot &, SqpColorScale &)
+    {
+        // Nothing to do
+    }
+
+    static void setUnits(T &dataSeries, QCustomPlot &plot, SqpColorScale &)
     {
         dataSeries.lockRead();
         auto xAxisUnit = dataSeries.xAxisUnit();
@@ -101,17 +114,8 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>:
  */
 template <typename T>
 struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
-    static void setProperties(T &dataSeries, QCustomPlot &plot, SqpColorScale &colorScale)
+    static void setProperties(QCustomPlot &plot, SqpColorScale &colorScale)
     {
-        dataSeries.lockRead();
-        auto xAxisUnit = dataSeries.xAxisUnit();
-        auto yAxisUnit = dataSeries.yAxisUnit();
-        auto valuesUnit = dataSeries.valuesUnit();
-        dataSeries.unlock();
-
-        setAxisProperties(*plot.xAxis, xAxisUnit);
-        setAxisProperties(*plot.yAxis, yAxisUnit, QCPAxis::stLogarithmic);
-
         // Displays color scale in plot
         plot.plotLayout()->insertRow(0);
         plot.plotLayout()->addElement(0, 0, colorScale.m_Scale);
@@ -125,8 +129,20 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
         }
 
         // Set color scale properties
-        setAxisProperties(*colorScale.m_Scale->axis(), valuesUnit, QCPAxis::stLogarithmic);
         colorScale.m_AutomaticThreshold = true;
+    }
+
+    static void setUnits(T &dataSeries, QCustomPlot &plot, SqpColorScale &colorScale)
+    {
+        dataSeries.lockRead();
+        auto xAxisUnit = dataSeries.xAxisUnit();
+        auto yAxisUnit = dataSeries.yAxisUnit();
+        auto valuesUnit = dataSeries.valuesUnit();
+        dataSeries.unlock();
+
+        setAxisProperties(*plot.xAxis, xAxisUnit);
+        setAxisProperties(*plot.yAxis, yAxisUnit, QCPAxis::stLogarithmic);
+        setAxisProperties(*colorScale.m_Scale->axis(), valuesUnit, QCPAxis::stLogarithmic);
     }
 };
 
@@ -136,14 +152,25 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
  */
 template <typename T>
 struct AxisHelper : public IAxisHelper {
-    explicit AxisHelper(T &dataSeries) : m_DataSeries{dataSeries} {}
+    explicit AxisHelper(std::shared_ptr<T> dataSeries) : m_DataSeries{dataSeries} {}
 
     void setProperties(QCustomPlot &plot, SqpColorScale &colorScale) override
     {
-        AxisSetter<T>::setProperties(m_DataSeries, plot, colorScale);
+        AxisSetter<T>::setProperties(plot, colorScale);
     }
 
-    T &m_DataSeries;
+    void setUnits(QCustomPlot &plot, SqpColorScale &colorScale) override
+    {
+        if (m_DataSeries) {
+            AxisSetter<T>::setUnits(*m_DataSeries, plot, colorScale);
+        }
+        else {
+            qCCritical(LOG_AxisRenderingUtils()) << "Can't set units: inconsistency between the "
+                                                    "type of data series and the type supposed";
+        }
+    }
+
+    std::shared_ptr<T> m_DataSeries;
 };
 
 } // namespace
@@ -159,19 +186,22 @@ QString formatValue(double value, const QCPAxis &axis)
     }
 }
 
-std::unique_ptr<IAxisHelper>
-IAxisHelperFactory::create(std::shared_ptr<IDataSeries> dataSeries) noexcept
+std::unique_ptr<IAxisHelper> IAxisHelperFactory::create(const Variable &variable) noexcept
 {
-    if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(dataSeries)) {
-        return std::make_unique<AxisHelper<ScalarSeries> >(*scalarSeries);
+    switch (variable.type()) {
+        case DataSeriesType::SCALAR:
+            return std::make_unique<AxisHelper<ScalarSeries> >(
+                std::dynamic_pointer_cast<ScalarSeries>(variable.dataSeries()));
+        case DataSeriesType::SPECTROGRAM:
+            return std::make_unique<AxisHelper<SpectrogramSeries> >(
+                std::dynamic_pointer_cast<SpectrogramSeries>(variable.dataSeries()));
+        case DataSeriesType::VECTOR:
+            return std::make_unique<AxisHelper<VectorSeries> >(
+                std::dynamic_pointer_cast<VectorSeries>(variable.dataSeries()));
+        default:
+            // Creates default helper
+            break;
     }
-    else if (auto spectrogramSeries = std::dynamic_pointer_cast<SpectrogramSeries>(dataSeries)) {
-        return std::make_unique<AxisHelper<SpectrogramSeries> >(*spectrogramSeries);
-    }
-    else if (auto vectorSeries = std::dynamic_pointer_cast<VectorSeries>(dataSeries)) {
-        return std::make_unique<AxisHelper<VectorSeries> >(*vectorSeries);
-    }
-    else {
-        return std::make_unique<AxisHelper<IDataSeries> >(*dataSeries);
-    }
+
+    return std::make_unique<AxisHelper<IDataSeries> >(nullptr);
 }
