@@ -187,16 +187,23 @@ void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
         return;
     }
 
+    auto dataInit = false;
+
     // Add or merge the data
     impl->lockWrite();
     if (!impl->m_DataSeries) {
         impl->m_DataSeries = dataSeries->clone();
+        dataInit = true;
     }
     else {
         impl->m_DataSeries->merge(dataSeries.get());
     }
     impl->purgeDataSeries();
     impl->unlock();
+
+    if (dataInit) {
+        emit dataInitialized();
+    }
 }
 
 
