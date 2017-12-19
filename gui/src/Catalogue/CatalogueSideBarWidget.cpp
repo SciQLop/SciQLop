@@ -4,8 +4,9 @@
 
 #include <Catalogue/CatalogueController.h>
 #include <Catalogue/CatalogueExplorerHelper.h>
+#include <Catalogue/CatalogueTreeItems/CatalogueTextTreeItem.h>
+#include <Catalogue/CatalogueTreeItems/CatalogueTreeItem.h>
 #include <Catalogue/CatalogueTreeModel.h>
-#include <Catalogue/CatalogueTreeWidgetItem.h>
 #include <CatalogueDao.h>
 #include <ComparaisonPredicate.h>
 #include <DBCatalogue.h>
@@ -15,10 +16,10 @@
 Q_LOGGING_CATEGORY(LOG_CatalogueSideBarWidget, "CatalogueSideBarWidget")
 
 
-constexpr auto ALL_EVENT_ITEM_TYPE = QTreeWidgetItem::UserType;
-constexpr auto TRASH_ITEM_TYPE = QTreeWidgetItem::UserType + 1;
-constexpr auto CATALOGUE_ITEM_TYPE = QTreeWidgetItem::UserType + 2;
-constexpr auto DATABASE_ITEM_TYPE = QTreeWidgetItem::UserType + 3;
+constexpr auto ALL_EVENT_ITEM_TYPE = CatalogueAbstractTreeItem::DEFAULT_TYPE + 1;
+constexpr auto TRASH_ITEM_TYPE = CatalogueAbstractTreeItem::DEFAULT_TYPE + 2;
+constexpr auto CATALOGUE_ITEM_TYPE = CatalogueAbstractTreeItem::DEFAULT_TYPE + 3;
+constexpr auto DATABASE_ITEM_TYPE = CatalogueAbstractTreeItem::DEFAULT_TYPE + 4;
 
 
 struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
@@ -27,11 +28,11 @@ struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
 
     void configureTreeWidget(QTreeView *treeView);
     QModelIndex addDatabaseItem(const QString &name);
-    QTreeWidgetItem *getDatabaseItem(const QString &name);
+    CatalogueAbstractTreeItem *getDatabaseItem(const QString &name);
     void addCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue,
                           const QModelIndex &databaseIndex);
 
-    CatalogueTreeWidgetItem *getCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue) const;
+    CatalogueTreeItem *getCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue) const;
     void setHasChanges(bool value, const QModelIndex &index, QTreeView *treeView);
     bool hasChanges(const QModelIndex &index, QTreeView *treeView);
 };
@@ -74,12 +75,10 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
                 if (item && item->type() == selectionType) {
                     switch (selectionType) {
                         case CATALOGUE_ITEM_TYPE:
-                            catalogues.append(
-                                static_cast<CatalogueTreeWidgetItem *>(item)->catalogue());
+                            catalogues.append(static_cast<CatalogueTreeItem *>(item)->catalogue());
                             break;
                         case DATABASE_ITEM_TYPE:
-                            selectionType = DATABASE_ITEM_TYPE;
-                            databases.append(item->text(0));
+                            databases.append(item->text());
                         case ALL_EVENT_ITEM_TYPE: // fallthrough
                         case TRASH_ITEM_TYPE:     // fallthrough
                         default:
@@ -128,7 +127,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     });
 
     ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(ui->treeView, &QTreeWidget::customContextMenuRequested, this,
+    connect(ui->treeView, &QTreeView::customContextMenuRequested, this,
             &CatalogueSideBarWidget::onContextMenuRequested);
 }
 
@@ -143,7 +142,7 @@ void CatalogueSideBarWidget::setCatalogueChanges(const std::shared_ptr<DBCatalog
     if (auto catalogueItem = impl->getCatalogueItem(catalogue)) {
         auto index = impl->m_TreeModel->indexOf(catalogueItem);
         impl->setHasChanges(hasChanges, index, ui->treeView);
-        catalogueItem->refresh();
+        // catalogueItem->refresh();
     }
 }
 
@@ -181,18 +180,19 @@ void CatalogueSideBarWidget::onContextMenuRequested(const QPoint &pos)
 
 void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(QTreeView *treeView)
 {
-    auto allEventsItem = new QTreeWidgetItem{{"All Events"}, ALL_EVENT_ITEM_TYPE};
-    allEventsItem->setIcon(0, QIcon(":/icones/allEvents.png"));
+    auto allEventsItem = new CatalogueTextTreeItem{QIcon{":/icones/allEvents.png"}, "All Events",
+                                                   ALL_EVENT_ITEM_TYPE};
     m_TreeModel->addTopLevelItem(allEventsItem);
 
-    auto trashItem = new QTreeWidgetItem{{"Trash"}, TRASH_ITEM_TYPE};
-    trashItem->setIcon(0, QIcon(":/icones/trash.png"));
+    auto trashItem
+        = new CatalogueTextTreeItem{QIcon{":/icones/trash.png"}, "Trash", TRASH_ITEM_TYPE};
     m_TreeModel->addTopLevelItem(trashItem);
 
     auto separator = new QFrame{treeView};
     separator->setFrameShape(QFrame::HLine);
-    auto separatorItem = new QTreeWidgetItem{};
-    separatorItem->setFlags(Qt::NoItemFlags);
+    auto separatorItem
+        = new CatalogueTextTreeItem{QIcon{}, QString{}, CatalogueAbstractTreeItem::DEFAULT_TYPE};
+    separatorItem->setEnabled(false);
     auto separatorIndex = m_TreeModel->addTopLevelItem(separatorItem);
     treeView->setIndexWidget(separatorIndex, separator);
 
@@ -211,19 +211,18 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
 QModelIndex
 CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addDatabaseItem(const QString &name)
 {
-    auto databaseItem = new QTreeWidgetItem{{name}, DATABASE_ITEM_TYPE};
-    databaseItem->setIcon(0, QIcon{":/icones/database.png"});
+    auto databaseItem
+        = new CatalogueTextTreeItem{QIcon{":/icones/database.png"}, {name}, DATABASE_ITEM_TYPE};
     auto databaseIndex = m_TreeModel->addTopLevelItem(databaseItem);
 
     return databaseIndex;
 }
 
-QTreeWidgetItem *
+CatalogueAbstractTreeItem *
 CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getDatabaseItem(const QString &name)
 {
-    for (auto i = 0; i < m_TreeModel->topLevelItemCount(); ++i) {
-        auto item = m_TreeModel->topLevelItem(i);
-        if (item->type() == DATABASE_ITEM_TYPE && item->text(0) == name) {
+    for (auto item : m_TreeModel->topLevelItems()) {
+        if (item->type() == DATABASE_ITEM_TYPE && item->text() == name) {
             return item;
         }
     }
@@ -234,21 +233,19 @@ CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getDatabaseItem(const QSt
 void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addCatalogueItem(
     const std::shared_ptr<DBCatalogue> &catalogue, const QModelIndex &databaseIndex)
 {
-    auto catalogueItem = new CatalogueTreeWidgetItem{catalogue, CATALOGUE_ITEM_TYPE};
-    catalogueItem->setIcon(0, QIcon{":/icones/catalogue.png"});
+    auto catalogueItem
+        = new CatalogueTreeItem{catalogue, QIcon{":/icones/catalogue.png"}, CATALOGUE_ITEM_TYPE};
     m_TreeModel->addChildItem(catalogueItem, databaseIndex);
 }
 
-CatalogueTreeWidgetItem *CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getCatalogueItem(
+CatalogueTreeItem *CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getCatalogueItem(
     const std::shared_ptr<DBCatalogue> &catalogue) const
 {
-    for (auto i = 0; i < m_TreeModel->topLevelItemCount(); ++i) {
-        auto item = m_TreeModel->topLevelItem(i);
+    for (auto item : m_TreeModel->topLevelItems()) {
         if (item->type() == DATABASE_ITEM_TYPE) {
-            for (auto j = 0; j < item->childCount(); ++j) {
-                auto childItem = item->child(j);
+            for (auto childItem : item->children()) {
                 if (childItem->type() == CATALOGUE_ITEM_TYPE) {
-                    auto catalogueItem = static_cast<CatalogueTreeWidgetItem *>(childItem);
+                    auto catalogueItem = static_cast<CatalogueTreeItem *>(childItem);
                     if (catalogueItem->catalogue() == catalogue) {
                         return catalogueItem;
                     }

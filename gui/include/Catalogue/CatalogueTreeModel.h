@@ -3,11 +3,13 @@
 
 #include <Common/spimpl.h>
 #include <QAbstractItemModel>
-#include <QTreeWidgetItem>
+
+class CatalogueAbstractTreeItem;
 
 /**
  * @brief Model to display catalogue items based on QTreeWidgetItem
- * @warning Do not use the method QTreeWidgetItem::treeWidget for an item added to this model or the application will crash
+ * @warning Do not use the method QTreeWidgetItem::treeWidget for an item added to this model or the
+ * application will crash
  */
 class CatalogueTreeModel : public QAbstractItemModel {
     Q_OBJECT
@@ -20,14 +22,13 @@ public:
 
     enum class Column { Name, Validation, Count };
 
-    QModelIndex addTopLevelItem(QTreeWidgetItem *item);
-    int topLevelItemCount() const;
-    QTreeWidgetItem *topLevelItem(int i) const;
+    QModelIndex addTopLevelItem(CatalogueAbstractTreeItem *item);
+    QVector<CatalogueAbstractTreeItem *> topLevelItems() const;
 
-    void addChildItem(QTreeWidgetItem *child, const QModelIndex &parentIndex);
+    void addChildItem(CatalogueAbstractTreeItem *child, const QModelIndex &parentIndex);
 
-    QTreeWidgetItem *item(const QModelIndex &index) const;
-    QModelIndex indexOf(QTreeWidgetItem *item, int column = 0) const;
+    CatalogueAbstractTreeItem *item(const QModelIndex &index) const;
+    QModelIndex indexOf(CatalogueAbstractTreeItem *item, int column = 0) const;
 
     // model
     QModelIndex index(int row, int column,
@@ -38,6 +39,13 @@ public:
     Qt::ItemFlags flags(const QModelIndex &index) const override;
     QVariant data(const QModelIndex &index, int role) const override;
     bool setData(const QModelIndex &index, const QVariant &value, int role) override;
+
+    bool canDropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                         const QModelIndex &parent) const override;
+    bool dropMimeData(const QMimeData *data, Qt::DropAction action, int row, int column,
+                      const QModelIndex &parent) override;
+    Qt::DropActions supportedDropActions() const;
+    QStringList mimeTypes() const;
 
 private:
     class CatalogueTreeModelPrivate;
