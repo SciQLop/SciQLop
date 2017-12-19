@@ -225,7 +225,8 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::configureTreeWidget(
 {
     auto allEventsItem = new CatalogueTextTreeItem{QIcon{":/icones/allEvents.png"}, "All Events",
                                                    ALL_EVENT_ITEM_TYPE};
-    m_TreeModel->addTopLevelItem(allEventsItem);
+    auto allEventIndex = m_TreeModel->addTopLevelItem(allEventsItem);
+    treeView->setCurrentIndex(allEventIndex);
 
     auto trashItem
         = new CatalogueTextTreeItem{QIcon{":/icones/trash.png"}, "Trash", TRASH_ITEM_TYPE};

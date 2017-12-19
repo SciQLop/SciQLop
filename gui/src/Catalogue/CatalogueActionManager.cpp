@@ -13,6 +13,7 @@
 #include <Catalogue/CatalogueSideBarWidget.h>
 #include <Catalogue/CreateEventDialog.h>
 
+#include <CatalogueDao.h>
 #include <DBCatalogue.h>
 #include <DBEvent.h>
 #include <DBEventProduct.h>
@@ -106,7 +107,7 @@ void CatalogueActionManager::installSelectionZoneActions()
     auto createEventAction = actionController.addSectionZoneAction(
         {QObject::tr("Catalogues")}, QObject::tr("New Event..."), [this](auto zones) {
             CreateEventDialog dialog(
-                impl->m_CatalogueExplorer->sideBarWidget().getCatalogues("Default"));
+                impl->m_CatalogueExplorer->sideBarWidget().getCatalogues(REPOSITORY_DEFAULT));
             dialog.hideCatalogueChoice();
             if (dialog.exec() == QDialog::Accepted) {
                 impl->createEventFromZones(dialog.eventName(), zones);
@@ -117,7 +118,7 @@ void CatalogueActionManager::installSelectionZoneActions()
     auto createEventInCatalogueAction = actionController.addSectionZoneAction(
         {QObject::tr("Catalogues")}, QObject::tr("New Event in Catalogue..."), [this](auto zones) {
             CreateEventDialog dialog(
-                impl->m_CatalogueExplorer->sideBarWidget().getCatalogues("Default"));
+                impl->m_CatalogueExplorer->sideBarWidget().getCatalogues(REPOSITORY_DEFAULT));
             if (dialog.exec() == QDialog::Accepted) {
                 auto selectedCatalogue = dialog.selectedCatalogue();
                 if (!selectedCatalogue) {
@@ -125,7 +126,7 @@ void CatalogueActionManager::installSelectionZoneActions()
                     selectedCatalogue->setName(dialog.catalogueName());
                     // sqpApp->catalogueController().addCatalogue(selectedCatalogue); TODO
                     impl->m_CatalogueExplorer->sideBarWidget().addCatalogue(selectedCatalogue,
-                                                                            "Default");
+                                                                            REPOSITORY_DEFAULT);
                 }
 
                 impl->createEventFromZones(dialog.eventName(), zones, selectedCatalogue);

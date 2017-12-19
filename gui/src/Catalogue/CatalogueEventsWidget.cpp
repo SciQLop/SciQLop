@@ -320,19 +320,21 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
     auto validationIndex
         = eventIndex.sibling(eventIndex.row(), (int)CatalogueEventsModel::Column::Validation);
 
-    if (hasChanges) {
-        if (ui->treeView->indexWidget(validationIndex) == nullptr) {
-            auto widget = CatalogueExplorerHelper::buildValidationWidget(
-                ui->treeView,
-                [this, event]() {
-                    sqpApp->catalogueController().saveEvent(event);
-                    setEventChanges(event, false);
-                },
-                [this, event]() { setEventChanges(event, false); });
-            ui->treeView->setIndexWidget(validationIndex, widget);
-        }
+    if (validationIndex.isValid()) {
+        if (hasChanges) {
+            if (ui->treeView->indexWidget(validationIndex) == nullptr) {
+                auto widget = CatalogueExplorerHelper::buildValidationWidget(
+                    ui->treeView,
+                    [this, event]() {
+                        sqpApp->catalogueController().saveEvent(event);
+                        setEventChanges(event, false);
+                    },
+                    [this, event]() { setEventChanges(event, false); });
+                ui->treeView->setIndexWidget(validationIndex, widget);
+            }
 
-        impl->m_Model->setEventHasChanges(event, hasChanges);
+            impl->m_Model->setEventHasChanges(event, hasChanges);
+        }
     }
     else {
         qCWarning(LOG_CatalogueEventsWidget())
