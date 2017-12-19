@@ -9,6 +9,7 @@
 #include <Common/DateUtils.h>
 
 #include <Data/IDataSeries.h>
+#include <Variable/Variable.h>
 
 #include <SqpApplication.h>
 
@@ -302,14 +303,14 @@ void VisualizationGraphRenderingDelegate::onPlotUpdated() noexcept
     impl->m_Plot.replot();
 }
 
-void VisualizationGraphRenderingDelegate::setAxesProperties(
-    std::shared_ptr<IDataSeries> dataSeries) noexcept
+void VisualizationGraphRenderingDelegate::setAxesUnits(const Variable &variable) noexcept
 {
-    // Stores x-axis label to be able to retrieve it when x-axis pixmap is unselected
-    impl->m_XAxisLabel = dataSeries->xAxisUnit().m_Name;
 
-    auto axisHelper = IAxisHelperFactory::create(dataSeries);
-    axisHelper->setProperties(impl->m_Plot, impl->m_ColorScale);
+    auto axisHelper = IAxisHelperFactory::create(variable);
+    axisHelper->setUnits(impl->m_Plot, impl->m_ColorScale);
+
+    // Stores x-axis label to be able to retrieve it when x-axis pixmap is unselected
+    impl->m_XAxisLabel = impl->m_Plot.xAxis->label();
 
     // Updates x-axis state
     impl->updateXAxisState();
@@ -317,10 +318,15 @@ void VisualizationGraphRenderingDelegate::setAxesProperties(
     impl->m_Plot.layer(AXES_LAYER)->replot();
 }
 
-void VisualizationGraphRenderingDelegate::setPlottablesProperties(
-    std::shared_ptr<IDataSeries> dataSeries, PlottablesMap &plottables) noexcept
+void VisualizationGraphRenderingDelegate::setGraphProperties(const Variable &variable,
+                                                             PlottablesMap &plottables) noexcept
 {
-    auto plottablesHelper = IPlottablesHelperFactory::create(dataSeries);
+    // Axes' properties
+    auto axisHelper = IAxisHelperFactory::create(variable);
+    axisHelper->setProperties(impl->m_Plot, impl->m_ColorScale);
+
+    // Plottables' properties
+    auto plottablesHelper = IPlottablesHelperFactory::create(variable);
     plottablesHelper->setProperties(plottables);
 }
 
