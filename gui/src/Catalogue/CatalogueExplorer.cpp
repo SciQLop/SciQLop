@@ -42,16 +42,29 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
         ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
     });
 
-    connect(ui->catalogues, &CatalogueSideBarWidget::trashSelected,
-            [this]() { ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty); });
+    connect(ui->catalogues, &CatalogueSideBarWidget::trashSelected, [this]() {
+        ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
+        ui->events->clear();
+    });
 
     connect(ui->catalogues, &CatalogueSideBarWidget::allEventsSelected, [this]() {
         ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
         ui->events->populateWithAllEvents();
     });
 
-    connect(ui->catalogues, &CatalogueSideBarWidget::selectionCleared,
-            [this]() { ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty); });
+    connect(ui->catalogues, &CatalogueSideBarWidget::databaseSelected, [this](auto databaseList) {
+        QVector<std::shared_ptr<DBCatalogue> > catalogueList;
+        for (auto database : databaseList) {
+            catalogueList.append(ui->catalogues->getCatalogues(database));
+        }
+        ui->events->populateWithCatalogues(catalogueList);
+        ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
+    });
+
+    connect(ui->catalogues, &CatalogueSideBarWidget::selectionCleared, [this]() {
+        ui->inspector->showPage(CatalogueInspectorWidget::Page::Empty);
+        ui->events->clear();
+    });
 
     connect(ui->events, &CatalogueEventsWidget::eventsSelected, [this](auto events) {
         if (events.count() == 1) {

@@ -42,6 +42,7 @@ public:
 public slots:
     void populateWithCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
     void populateWithAllEvents();
+    void clear();
     void refresh();
 
 private:

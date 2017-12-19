@@ -293,6 +293,8 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
             setEventChanges(event, impl->m_Model->eventsHasChanges(event));
         }
     });
+
+    populateWithAllEvents();
 }
 
 CatalogueEventsWidget::~CatalogueEventsWidget()
@@ -345,7 +347,7 @@ QVector<std::shared_ptr<DBCatalogue> > CatalogueEventsWidget::displayedCatalogue
 
 bool CatalogueEventsWidget::isAllEventsDisplayed() const
 {
-    return impl->m_DisplayedCatalogues.isEmpty();
+    return impl->m_DisplayedCatalogues.isEmpty() && !impl->m_Model->events().isEmpty();
 }
 
 bool CatalogueEventsWidget::isEventDisplayed(const std::shared_ptr<DBEvent> &event) const
@@ -386,6 +388,12 @@ void CatalogueEventsWidget::populateWithAllEvents()
     }
 
     impl->setEvents(events, ui->treeView);
+}
+
+void CatalogueEventsWidget::clear()
+{
+    impl->m_DisplayedCatalogues.clear();
+    impl->setEvents({}, ui->treeView);
 }
 
 void CatalogueEventsWidget::refresh()
