@@ -270,24 +270,15 @@ void CatalogueController::waitForFinish()
 void CatalogueController::CatalogueControllerPrivate::copyDBtoDB(const QString &dbFrom,
                                                                  const QString &dbTo)
 {
-    auto cataloguesShared = std::list<std::shared_ptr<DBCatalogue> >{};
+    //    auto cataloguesShared = std::list<std::shared_ptr<DBCatalogue> >{};
     auto catalogues = m_CatalogueDao.getCatalogues(dbFrom);
-    for (auto catalogue : catalogues) {
-        cataloguesShared.push_back(std::make_shared<DBCatalogue>(catalogue));
-    }
-
-    auto eventsShared = std::list<std::shared_ptr<DBEvent> >{};
     auto events = m_CatalogueDao.getEvents(dbFrom);
+    for (auto catalogue : catalogues) {
+        m_CatalogueDao.copyCatalogue(catalogue, dbTo, true);
+    }
+
     for (auto event : events) {
-        eventsShared.push_back(std::make_shared<DBEvent>(event));
-    }
-
-    for (auto catalogue : cataloguesShared) {
-        m_CatalogueDao.copyCatalogue(*catalogue, dbTo, true);
-    }
-
-    for (auto event : eventsShared) {
-        m_CatalogueDao.copyEvent(*event, dbTo, true);
+        m_CatalogueDao.copyEvent(event, dbTo, true);
     }
 }
 
@@ -322,7 +313,7 @@ void CatalogueController::CatalogueControllerPrivate::savAllDB()
 void CatalogueController::CatalogueControllerPrivate::saveEvent(std::shared_ptr<DBEvent> event,
                                                                 bool persist)
 {
-    m_CatalogueDao.moveEvent(*event, toSyncRepository(event->getRepository()), true);
+    m_CatalogueDao.copyEvent(*event, toSyncRepository(event->getRepository()), true);
     if (persist) {
         savAllDB();
     }
@@ -331,7 +322,7 @@ void CatalogueController::CatalogueControllerPrivate::saveEvent(std::shared_ptr<
 void CatalogueController::CatalogueControllerPrivate::saveCatalogue(
     std::shared_ptr<DBCatalogue> catalogue, bool persist)
 {
-    m_CatalogueDao.moveCatalogue(*catalogue, toSyncRepository(catalogue->getRepository()), true);
+    m_CatalogueDao.copyCatalogue(*catalogue, toSyncRepository(catalogue->getRepository()), true);
     if (persist) {
         savAllDB();
     }

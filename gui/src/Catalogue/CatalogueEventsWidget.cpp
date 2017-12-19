@@ -315,7 +315,11 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
     if (hasChanges) {
         if (ui->treeView->indexWidget(validationIndex) == nullptr) {
             auto widget = CatalogueExplorerHelper::buildValidationWidget(
-                ui->treeView, [this, event]() { setEventChanges(event, false); },
+                ui->treeView,
+                [this, event]() {
+                    sqpApp->catalogueController().saveEvent(event);
+                    setEventChanges(event, false);
+                },
                 [this, event]() { setEventChanges(event, false); });
             ui->treeView->setIndexWidget(validationIndex, widget);
         }
