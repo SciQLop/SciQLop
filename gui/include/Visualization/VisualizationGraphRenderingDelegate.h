@@ -9,6 +9,7 @@ class IDataSeries;
 class QCustomPlot;
 class QMouseEvent;
 class Unit;
+class Variable;
 class VisualizationGraphWidget;
 
 class VisualizationGraphRenderingDelegate {
@@ -23,13 +24,14 @@ public:
     /// Updates rendering when data of plot changed
     void onPlotUpdated() noexcept;
 
-    /// Sets properties of the plot's axes from the data series passed as parameter
-    void setAxesProperties(std::shared_ptr<IDataSeries> dataSeries) noexcept;
+    /// Sets units of the plot's axes according to the properties of the variable passed as
+    /// parameter
+    void setAxesUnits(const Variable &variable) noexcept;
 
-    /// Sets rendering properties of the plottables passed as parameter, from the data series that
+    /// Sets graph properties of the plottables passed as parameter, from the variable that
     /// generated these
-    void setPlottablesProperties(std::shared_ptr<IDataSeries> dataSeries,
-                                 PlottablesMap &plottables) noexcept;
+    void setGraphProperties(const Variable &variable, PlottablesMap &plottables) noexcept;
+
 
     /// Shows or hides graph overlay (name, close button, etc.)
     void showGraphOverlay(bool show) noexcept;
