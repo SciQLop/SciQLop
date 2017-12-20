@@ -286,10 +286,12 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     });
 
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Name,
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Tags,
                                                  QHeaderView::Stretch);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Validation,
                                                  QHeaderView::Fixed);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Name,
+                                                 QHeaderView::Interactive);
     ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
                                           VALIDATION_COLUMN_SIZE);
     ui->treeView->header()->setSortIndicatorShown(true);

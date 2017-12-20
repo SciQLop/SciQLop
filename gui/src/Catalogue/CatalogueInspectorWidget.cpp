@@ -182,7 +182,7 @@ void CatalogueInspectorWidget::setEventProduct(const std::shared_ptr<DBEvent> &e
     showPage(Page::EventProperties);
     ui->leEventName->setEnabled(false);
     ui->leEventName->setText(event->getName());
-    ui->leEventProduct->setEnabled(true);
+    ui->leEventProduct->setEnabled(false);
     ui->leEventProduct->setText(eventProduct->getProductId());
 
     ui->leEventTags->setEnabled(false);
