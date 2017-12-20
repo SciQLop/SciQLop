@@ -249,6 +249,11 @@ void CatalogueController::saveAll()
     impl->m_EventKeysWithChanges.clear();
 }
 
+bool CatalogueController::hasChanges() const
+{
+    return !impl->m_EventKeysWithChanges.isEmpty(); // TODO: catalogues
+}
+
 QByteArray
 CatalogueController::mimeDataForEvents(const QVector<std::shared_ptr<DBEvent> > &events) const
 {

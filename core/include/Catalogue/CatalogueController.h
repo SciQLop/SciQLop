@@ -62,6 +62,7 @@ public:
     void saveCatalogue(std::shared_ptr<DBCatalogue> catalogue);
 
     void saveAll();
+    bool hasChanges() const;
 
     /// Returns the MIME data associated to a list of variables
     QByteArray mimeDataForEvents(const QVector<std::shared_ptr<DBEvent> > &events) const;
