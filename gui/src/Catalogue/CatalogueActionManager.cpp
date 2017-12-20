@@ -90,14 +90,21 @@ void CatalogueActionManager::installSelectionZoneActions()
     auto &actionController = sqpApp->actionsGuiController();
 
     auto createEventEnableFuntion = [](auto zones) {
-        QSet<VisualizationGraphWidget *> usedGraphs;
+
+        // Checks that all variables in the zones doesn't refer to the same product
+        QSet<QString> usedDatasource;
         for (auto zone : zones) {
             auto graph = zone->parentGraphWidget();
-            if (!usedGraphs.contains(graph)) {
-                usedGraphs.insert(graph);
-            }
-            else {
-                return false;
+            auto variables = graph->variables();
+
+            for (auto var : variables) {
+                auto datasourceId = var->metadata().value(DataSourceItem::ID_DATA_KEY).toString();
+                if (!usedDatasource.contains(datasourceId)) {
+                    usedDatasource.insert(datasourceId);
+                }
+                else {
+                    return false;
+                }
             }
         }
 
