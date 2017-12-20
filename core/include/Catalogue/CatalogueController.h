@@ -48,8 +48,9 @@ public:
     void updateEventProduct(std::shared_ptr<DBEventProduct> eventProduct);
     void removeEvent(std::shared_ptr<DBEvent> event);
     //    void trashEvent(std::shared_ptr<DBEvent> event);
-    //    void restore(QUuid eventId);
+    //        void restore(std::shared_ptr<DBEvent> event);
     void saveEvent(std::shared_ptr<DBEvent> event);
+    void discardEvent(std::shared_ptr<DBEvent> event);
     bool eventHasChanges(std::shared_ptr<DBEvent> event) const;
 
     // Catalogue

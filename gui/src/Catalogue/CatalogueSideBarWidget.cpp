@@ -315,10 +315,8 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::setHasChanges(bool v
     if (value) {
         if (!hasChanges(validationIndex, treeView)) {
             auto widget = CatalogueExplorerHelper::buildValidationWidget(
-                treeView,
-                [this, validationIndex, treeView]() {
-                    setHasChanges(false, validationIndex, treeView);
-                },
+                treeView, [this, validationIndex,
+                           treeView]() { setHasChanges(false, validationIndex, treeView); },
                 [this, validationIndex, treeView]() {
                     setHasChanges(false, validationIndex, treeView);
                 });

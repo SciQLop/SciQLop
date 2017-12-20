@@ -191,6 +191,26 @@ void CatalogueController::saveEvent(std::shared_ptr<DBEvent> event)
     impl->m_EventKeysWithChanges.remove(impl->eventUniqueKey(event));
 }
 
+void CatalogueController::discardEvent(std::shared_ptr<DBEvent> event)
+{
+    auto uniqIdPredicate = std::make_shared<ComparaisonPredicate>(
+        QString{"uniqId"}, event->getUniqId(), ComparaisonOperation::EQUALEQUAL);
+
+    auto repositoryPredicate = std::make_shared<ComparaisonPredicate>(
+        QString{"repository"}, impl->toSyncRepository(event->getRepository()),
+        ComparaisonOperation::EQUALEQUAL);
+
+    auto compCompoundPred = std::make_shared<CompoundPredicate>(CompoundOperation::AND);
+    compCompoundPred->AddRequestPredicate(uniqIdPredicate);
+    compCompoundPred->AddRequestPredicate(repositoryPredicate);
+
+
+    auto syncEvent = impl->m_CatalogueDao.getEvent(compCompoundPred);
+    impl->m_CatalogueDao.copyEvent(syncEvent, impl->toWorkRepository(event->getRepository()), true);
+    *event = syncEvent;
+    impl->m_EventKeysWithChanges.remove(impl->eventUniqueKey(event));
+}
+
 bool CatalogueController::eventHasChanges(std::shared_ptr<DBEvent> event) const
 {
     return impl->m_EventKeysWithChanges.contains(impl->eventUniqueKey(event));
@@ -297,8 +317,8 @@ CatalogueController::eventsForMimeData(const QByteArray &mimeData) const
 
 void CatalogueController::initialize()
 {
-    qCDebug(LOG_CatalogueController())
-        << tr("CatalogueController init") << QThread::currentThread();
+    qCDebug(LOG_CatalogueController()) << tr("CatalogueController init")
+                                       << QThread::currentThread();
 
     impl->m_CatalogueDao.initialize();
     auto defaultRepositoryLocation
