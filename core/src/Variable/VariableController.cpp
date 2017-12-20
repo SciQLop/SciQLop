@@ -890,6 +890,9 @@ void VariableController::VariableControllerPrivate::updateVariables(QUuid varReq
         // cleaning varRequestId
         qCDebug(LOG_VariableController()) << tr("m_VarGroupIdToVarIds erase") << varRequestId;
         m_VarGroupIdToVarIds.erase(varRequestId);
+        if (m_VarGroupIdToVarIds.empty()) {
+            emit q->acquisitionFinished();
+        }
     }
 }
 
@@ -1019,6 +1022,9 @@ void VariableController::VariableControllerPrivate::cancelVariableRequest(QUuid 
     }
     qCDebug(LOG_VariableController()) << tr("cancelVariableRequest: erase") << varRequestId;
     m_VarGroupIdToVarIds.erase(varRequestId);
+    if (m_VarGroupIdToVarIds.empty()) {
+        emit q->acquisitionFinished();
+    }
 }
 
 void VariableController::VariableControllerPrivate::executeVarRequest(std::shared_ptr<Variable> var,

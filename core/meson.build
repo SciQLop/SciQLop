@@ -5,6 +5,7 @@ catalogueapi_dep = dependency('CatalogueAPI', required : true, fallback:['Catalo
 
 core_moc_headers = [
   'include/Catalogue/CatalogueController.h',
+  'include/Common/SignalWaiter.h',
   'include/Data/IDataProvider.h',
   'include/DataSource/DataSourceController.h',
   'include/DataSource/DataSourceItemAction.h',
@@ -24,6 +25,7 @@ core_moc_files = qt5.preprocess(moc_headers : core_moc_headers)
 
 core_sources = [
   'src/Common/DateUtils.cpp',
+  'src/Common/SignalWaiter.cpp',
   'src/Common/StringUtils.cpp',
   'src/Common/MimeTypesDef.cpp',
   'src/Catalogue/CatalogueController.cpp',

@@ -85,6 +85,10 @@ signals:
     /// Signal emitted when a sub range of the cacheRange of the variable can be displayed
     void updateVarDisplaying(std::shared_ptr<Variable> variable, const SqpRange &range);
 
+    /// Signal emitted when all acquisitions related to the variables have been completed (whether
+    /// validated, canceled, or failed)
+    void acquisitionFinished();
+
 public slots:
     /// Request the data loading of the variable whithin range
     void onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables, const SqpRange &range,

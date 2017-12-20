@@ -14,6 +14,14 @@
  * @brief The SqpRange struct holds the information of time parameters
  */
 struct SqpRange {
+    /// Creates SqpRange from dates and times
+    static SqpRange fromDateTime(const QDate &startDate, const QTime &startTime,
+                                 const QDate &endDate, const QTime &endTime)
+    {
+        return {DateUtils::secondsSinceEpoch(QDateTime{startDate, startTime, Qt::UTC}),
+                DateUtils::secondsSinceEpoch(QDateTime{endDate, endTime, Qt::UTC})};
+    }
+
     /// Start time (UTC)
     double m_TStart;
     /// End time (UTC)
