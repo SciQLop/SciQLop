@@ -41,8 +41,7 @@ public:
     /// retrieveEvents with empty repository retrieve them from the default repository
     std::list<std::shared_ptr<DBEvent> > retrieveEvents(const QString &repository) const;
     std::list<std::shared_ptr<DBEvent> > retrieveAllEvents() const;
-    std::list<std::shared_ptr<DBEvent> >
-    retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> catalogue) const;
+
     void addEvent(std::shared_ptr<DBEvent> event);
     void updateEvent(std::shared_ptr<DBEvent> event);
     void updateEventProduct(std::shared_ptr<DBEventProduct> eventProduct);
@@ -54,6 +53,8 @@ public:
     bool eventHasChanges(std::shared_ptr<DBEvent> event) const;
 
     // Catalogue
+    std::list<std::shared_ptr<DBEvent> >
+    retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> catalogue) const;
     //    bool createCatalogue(const QString &name, QVector<QUuid> eventList);
     /// retrieveEvents with empty repository retrieve them from the default repository
     std::list<std::shared_ptr<DBCatalogue> > retrieveCatalogues(const QString &repository
