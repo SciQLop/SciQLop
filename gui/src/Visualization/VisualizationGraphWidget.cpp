@@ -310,12 +310,13 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, S
     // Calls update of graph's range and units when the data of the variable have been initialized.
     // Note: we use QueuedConnection here as the update event must be called in the UI thread
     connect(variable.get(), &Variable::dataInitialized, this,
-            [ varW = std::weak_ptr<Variable>{variable}, range, loadRange ]() {
+            [ varW = std::weak_ptr<Variable>{variable}, range, loadRange, this ]() {
                 if (auto var = varW.lock()) {
                     // If the variable is the first added in the graph, we load its range
                     auto firstVariableInGraph = range == INVALID_RANGE;
                     auto loadedRange = firstVariableInGraph ? var->range() : range;
                     loadRange(var, loadedRange);
+                    setYRange(var);
                 }
             },
             Qt::QueuedConnection);
