@@ -22,6 +22,7 @@
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
 
+#include <Catalogue/CatalogueController.h>
 #include <Catalogue/CatalogueExplorer.h>
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceWidget.h>
@@ -36,9 +37,11 @@
 #include <Visualization/VisualizationController.h>
 
 #include <QAction>
+#include <QCloseEvent>
 #include <QDate>
 #include <QDir>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QToolBar>
 #include <QToolButton>
 #include <memory.h>
@@ -74,6 +77,8 @@ public:
     SqpSettingsDialog *m_SettingsDialog;
     /// Catalogue dialog. MainWindow has the ownership
     CatalogueExplorer *m_CatalogExplorer;
+
+    bool checkDataToSave(QWidget *parentWidget);
 };
 
 MainWindow::MainWindow(QWidget *parent)
@@ -363,4 +368,38 @@ void MainWindow::changeEvent(QEvent *e)
         default:
             break;
     }
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    if (!impl->checkDataToSave(this)) {
+        event->ignore();
+    }
+    else {
+        event->accept();
+    }
+}
+
+bool MainWindow::MainWindowPrivate::checkDataToSave(QWidget *parentWidget)
+{
+    auto hasChanges = sqpApp->catalogueController().hasChanges();
+    if (hasChanges) {
+        // There are some unsaved changes
+        switch (QMessageBox::question(
+            parentWidget, "Save changes",
+            tr("The catalogue controller unsaved changes.\nDo you want to save them ?"),
+            QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel,
+            QMessageBox::SaveAll)) {
+            case QMessageBox::SaveAll:
+                sqpApp->catalogueController().saveAll();
+                break;
+            case QMessageBox::Discard:
+                break;
+            case QMessageBox::Cancel:
+            default:
+                return false;
+        }
+    }
+
+    return true;
 }

@@ -76,8 +76,8 @@ public:
         // - there is at least one data
         // - the data are consistent (no data holes)
         if (std::distance(dataIts.first, dataIts.second) == 0) {
-            qCInfo(LOG_FuzzingValidators()).noquote()
-                << message << "FAIL: the variable has no data";
+            qCInfo(LOG_FuzzingValidators()).noquote() << message
+                                                      << "FAIL: the variable has no data";
             QFAIL("");
         }
 
@@ -171,9 +171,9 @@ void validateRange(std::shared_ptr<Variable> variable, const SqpRange &expectedR
             qCInfo(LOG_FuzzingValidators()).noquote() << message << "OK";
         }
         else {
-            qCInfo(LOG_FuzzingValidators()).noquote()
-                << message << "FAIL (current range:" << range
-                << ", expected range:" << expectedRange << ")";
+            qCInfo(LOG_FuzzingValidators()).noquote() << message << "FAIL (current range:" << range
+                                                      << ", expected range:" << expectedRange
+                                                      << ")";
             QFAIL("");
         }
     };

@@ -78,8 +78,18 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
 
     connect(ui->leEventProduct, &QLineEdit::editingFinished, [ui, inspector, this]() {
         if (ui->leEventProduct->text() != m_DisplayedEventProduct->getProductId()) {
+            auto oldProductId = m_DisplayedEventProduct->getProductId();
             m_DisplayedEventProduct->setProductId(ui->leEventProduct->text());
-            emit inspector->eventProductUpdated(m_DisplayedEvent, m_DisplayedEventProduct);
+
+            auto eventProducts = m_DisplayedEvent->getEventProducts();
+            for (auto &eventProduct : eventProducts) {
+                if (eventProduct.getProductId() == oldProductId) {
+                    eventProduct.setProductId(m_DisplayedEventProduct->getProductId());
+                }
+            }
+            m_DisplayedEvent->setEventProducts(eventProducts);
+
+            emit inspector->eventUpdated(m_DisplayedEvent);
         }
     });
 
@@ -87,7 +97,16 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
         auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTStart->dateTime());
         if (time != m_DisplayedEventProduct->getTStart()) {
             m_DisplayedEventProduct->setTStart(time);
-            emit inspector->eventProductUpdated(m_DisplayedEvent, m_DisplayedEventProduct);
+
+            auto eventProducts = m_DisplayedEvent->getEventProducts();
+            for (auto &eventProduct : eventProducts) {
+                if (eventProduct.getProductId() == m_DisplayedEventProduct->getProductId()) {
+                    eventProduct.setTStart(m_DisplayedEventProduct->getTStart());
+                }
+            }
+            m_DisplayedEvent->setEventProducts(eventProducts);
+
+            emit inspector->eventUpdated(m_DisplayedEvent);
         }
     });
 
@@ -95,7 +114,16 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
         auto time = DateUtils::secondsSinceEpoch(ui->dateTimeEventTEnd->dateTime());
         if (time != m_DisplayedEventProduct->getTEnd()) {
             m_DisplayedEventProduct->setTEnd(time);
-            emit inspector->eventProductUpdated(m_DisplayedEvent, m_DisplayedEventProduct);
+
+            auto eventProducts = m_DisplayedEvent->getEventProducts();
+            for (auto &eventProduct : eventProducts) {
+                if (eventProduct.getProductId() == m_DisplayedEventProduct->getProductId()) {
+                    eventProduct.setTEnd(m_DisplayedEventProduct->getTEnd());
+                }
+            }
+            m_DisplayedEvent->setEventProducts(eventProducts);
+
+            emit inspector->eventUpdated(m_DisplayedEvent);
         }
     });
 }
@@ -145,6 +173,8 @@ void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
 void CatalogueInspectorWidget::setEventProduct(const std::shared_ptr<DBEvent> &event,
                                                const std::shared_ptr<DBEventProduct> &eventProduct)
 {
+
+    impl->m_DisplayedEvent = event;
     impl->m_DisplayedEventProduct = eventProduct;
 
     blockSignals(true);
@@ -152,7 +182,7 @@ void CatalogueInspectorWidget::setEventProduct(const std::shared_ptr<DBEvent> &e
     showPage(Page::EventProperties);
     ui->leEventName->setEnabled(false);
     ui->leEventName->setText(event->getName());
-    ui->leEventProduct->setEnabled(true);
+    ui->leEventProduct->setEnabled(false);
     ui->leEventProduct->setText(eventProduct->getProductId());
 
     ui->leEventTags->setEnabled(false);

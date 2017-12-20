@@ -34,7 +34,7 @@ public:
     std::shared_ptr<DBEventProduct> getEventProduct(const QModelIndex &index) const;
 
     /// Refresh the data for the specified event
-    void refreshEvent(const std::shared_ptr<DBEvent> &event);
+    void refreshEvent(const std::shared_ptr<DBEvent> &event, bool refreshEventProducts = false);
 
     /// Returns a QModelIndex which represent the specified event
     QModelIndex indexOf(const std::shared_ptr<DBEvent> &event) const;

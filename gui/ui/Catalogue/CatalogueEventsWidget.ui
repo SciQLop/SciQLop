@@ -30,6 +30,9 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QToolButton" name="btnAdd">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>+</string>
        </property>
@@ -82,6 +85,9 @@
      </item>
      <item>
       <widget class="QToolButton" name="btnChart">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>G</string>
        </property>

@@ -27,7 +27,8 @@ gui_moc_headers = [
   'include/Catalogue/CatalogueSideBarWidget.h',
   'include/Catalogue/CatalogueInspectorWidget.h',
   'include/Catalogue/CatalogueEventsModel.h',
-  'include/Catalogue/CreateEventDialog.h'
+  'include/Catalogue/CreateEventDialog.h',
+  'include/Catalogue/CatalogueTreeModel.h'
 ]
 
 gui_ui_files = [
@@ -118,11 +119,14 @@ gui_sources = [
   'src/Catalogue/CatalogueEventsWidget.cpp',
   'src/Catalogue/CatalogueSideBarWidget.cpp',
   'src/Catalogue/CatalogueInspectorWidget.cpp',
-  'src/Catalogue/CatalogueTreeWidgetItem.cpp',
+  'src/Catalogue/CatalogueTreeItems/CatalogueAbstractTreeItem.cpp',
+  'src/Catalogue/CatalogueTreeItems/CatalogueTreeItem.cpp',
+  'src/Catalogue/CatalogueTreeItems/CatalogueTextTreeItem.cpp',
   'src/Catalogue/CatalogueEventsModel.cpp',
   'src/Catalogue/CatalogueExplorerHelper.cpp',
   'src/Catalogue/CatalogueActionManager.cpp',
-  'src/Catalogue/CreateEventDialog.cpp'
+  'src/Catalogue/CreateEventDialog.cpp',
+  'src/Catalogue/CatalogueTreeModel.cpp'
 ]
 
 gui_inc = include_directories(['include'])

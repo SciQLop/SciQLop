@@ -27,6 +27,8 @@ public:
     static const QString NAME_DATA_KEY;
     /// Key associated with the plugin of the item
     static const QString PLUGIN_DATA_KEY;
+    /// Key associated with a unique id of the plugin
+    static const QString ID_DATA_KEY;
 
     explicit DataSourceItem(DataSourceItemType type, const QString &name);
     explicit DataSourceItem(DataSourceItemType type, QVariantHash data = {});

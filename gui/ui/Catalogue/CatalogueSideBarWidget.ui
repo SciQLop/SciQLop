@@ -30,6 +30,9 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QToolButton" name="btnAdd">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string>+</string>
        </property>
@@ -44,6 +47,9 @@
      </item>
      <item>
       <widget class="QToolButton" name="btnRemove">
+       <property name="enabled">
+        <bool>false</bool>
+       </property>
        <property name="text">
         <string> - </string>
        </property>
@@ -72,18 +78,22 @@
     </layout>
    </item>
    <item>
-    <widget class="QTreeWidget" name="treeWidget">
+    <widget class="QTreeView" name="treeView">
+     <property name="acceptDrops">
+      <bool>true</bool>
+     </property>
+     <property name="dragDropMode">
+      <enum>QAbstractItemView::DragDrop</enum>
+     </property>
      <property name="selectionMode">
       <enum>QAbstractItemView::ExtendedSelection</enum>
      </property>
      <attribute name="headerVisible">
       <bool>false</bool>
      </attribute>
-     <column>
-      <property name="text">
-       <string notr="true">1</string>
-      </property>
-     </column>
+     <attribute name="headerStretchLastSection">
+      <bool>false</bool>
+     </attribute>
     </widget>
    </item>
   </layout>

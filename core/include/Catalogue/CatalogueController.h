@@ -15,6 +15,7 @@
 
 class DBCatalogue;
 class DBEvent;
+class DBEventProduct;
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_CatalogueController)
 
@@ -44,10 +45,13 @@ public:
     retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> catalogue) const;
     void addEvent(std::shared_ptr<DBEvent> event);
     void updateEvent(std::shared_ptr<DBEvent> event);
+    void updateEventProduct(std::shared_ptr<DBEventProduct> eventProduct);
     void removeEvent(std::shared_ptr<DBEvent> event);
     //    void trashEvent(std::shared_ptr<DBEvent> event);
-    //    void restore(QUuid eventId);
+    //        void restore(std::shared_ptr<DBEvent> event);
     void saveEvent(std::shared_ptr<DBEvent> event);
+    void discardEvent(std::shared_ptr<DBEvent> event);
+    bool eventHasChanges(std::shared_ptr<DBEvent> event) const;
 
     // Catalogue
     //    bool createCatalogue(const QString &name, QVector<QUuid> eventList);
@@ -59,15 +63,19 @@ public:
     void saveCatalogue(std::shared_ptr<DBCatalogue> catalogue);
 
     void saveAll();
+    bool hasChanges() const;
+
+    /// Returns the MIME data associated to a list of variables
+    QByteArray mimeDataForEvents(const QVector<std::shared_ptr<DBEvent> > &events) const;
+
+    /// Returns the list of variables contained in a MIME data
+    QVector<std::shared_ptr<DBEvent> > eventsForMimeData(const QByteArray &mimeData) const;
 
 public slots:
     /// Manage init/end of the controller
     void initialize();
-    void finalize();
 
 private:
-    void waitForFinish();
-
     class CatalogueControllerPrivate;
     spimpl::unique_impl_ptr<CatalogueControllerPrivate> impl;
 };

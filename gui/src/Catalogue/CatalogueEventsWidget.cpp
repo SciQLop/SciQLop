@@ -14,6 +14,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QListWidget>
+#include <QMessageBox>
 
 Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
 
@@ -25,14 +26,22 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     CatalogueEventsModel *m_Model = nullptr;
     QStringList m_ZonesForTimeMode;
     QString m_ZoneForGraphMode;
+    QVector<std::shared_ptr<DBCatalogue> > m_DisplayedCatalogues;
 
     VisualizationWidget *m_VisualizationWidget = nullptr;
 
-    void setEvents(const QVector<std::shared_ptr<DBEvent> > &events, QTreeView *treeView)
+    void setEvents(const QVector<std::shared_ptr<DBEvent> > &events, CatalogueEventsWidget *widget)
     {
-        treeView->setSortingEnabled(false);
+        widget->ui->treeView->setSortingEnabled(false);
         m_Model->setEvents(events);
-        treeView->setSortingEnabled(true);
+        widget->ui->treeView->setSortingEnabled(true);
+
+        for (auto event : events) {
+            if (sqpApp->catalogueController().eventHasChanges(event)) {
+                auto index = m_Model->indexOf(event);
+                widget->setEventChanges(event, true);
+            }
+        }
     }
 
     void addEvent(const std::shared_ptr<DBEvent> &event, QTreeView *treeView)
@@ -195,6 +204,22 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
                 << "updateGraphMode: not compatible with multiple events selected";
         }
     }
+
+    void getSelectedItems(
+        QTreeView *treeView, QVector<std::shared_ptr<DBEvent> > &events,
+        QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > &eventProducts)
+    {
+        for (auto rowIndex : treeView->selectionModel()->selectedRows()) {
+            auto itemType = m_Model->itemTypeOf(rowIndex);
+            if (itemType == CatalogueEventsModel::ItemType::Event) {
+                events << m_Model->getEvent(rowIndex);
+            }
+            else if (itemType == CatalogueEventsModel::ItemType::EventProduct) {
+                eventProducts << qMakePair(m_Model->getParentEvent(rowIndex),
+                                           m_Model->getEventProduct(rowIndex));
+            }
+        }
+    }
 };
 
 CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
@@ -234,36 +259,32 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         }
     });
 
-    auto emitSelection = [this]() {
+    connect(ui->btnRemove, &QToolButton::clicked, [this]() {
         QVector<std::shared_ptr<DBEvent> > events;
         QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > eventProducts;
-
-        for (auto rowIndex : ui->treeView->selectionModel()->selectedRows()) {
-
-            auto itemType = impl->m_Model->itemTypeOf(rowIndex);
-            if (itemType == CatalogueEventsModel::ItemType::Event) {
-                events << impl->m_Model->getEvent(rowIndex);
-            }
-            else if (itemType == CatalogueEventsModel::ItemType::EventProduct) {
-                eventProducts << qMakePair(impl->m_Model->getParentEvent(rowIndex),
-                                           impl->m_Model->getEventProduct(rowIndex));
-            }
-        }
+        impl->getSelectedItems(ui->treeView, events, eventProducts);
 
         if (!events.isEmpty() && eventProducts.isEmpty()) {
-            emit this->eventsSelected(events);
-        }
-        else if (events.isEmpty() && !eventProducts.isEmpty()) {
-            emit this->eventProductsSelected(eventProducts);
-        }
-        else {
-            emit this->selectionCleared();
-        }
-    };
 
-    connect(ui->treeView, &QTreeView::clicked, emitSelection);
-    connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, emitSelection);
+            if (QMessageBox::warning(this, tr("Remove Event(s)"),
+                                     tr("The selected event(s) will be completly removed "
+                                        "from the repository!\nAre you sure you want to continue?"),
+                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+                == QMessageBox::Yes) {
 
+                for (auto event : events) {
+                    sqpApp->catalogueController().removeEvent(event);
+                    impl->removeEvent(event, ui->treeView);
+                }
+            }
+        }
+    });
+
+    connect(ui->treeView, &QTreeView::clicked, this, &CatalogueEventsWidget::emitSelection);
+    connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this,
+            &CatalogueEventsWidget::emitSelection);
+
+    ui->btnRemove->setEnabled(false); // Disabled by default when nothing is selected
     connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
         auto isNotMultiSelection = ui->treeView->selectionModel()->selectedRows().count() <= 1;
         ui->btnChart->setEnabled(isNotMultiSelection);
@@ -275,13 +296,20 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         else if (isNotMultiSelection && ui->btnChart->isChecked()) {
             impl->updateForGraphMode(ui->treeView);
         }
+
+        QVector<std::shared_ptr<DBEvent> > events;
+        QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > eventProducts;
+        impl->getSelectedItems(ui->treeView, events, eventProducts);
+        ui->btnRemove->setEnabled(!events.isEmpty() && eventProducts.isEmpty());
     });
 
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Name,
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Tags,
                                                  QHeaderView::Stretch);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Validation,
                                                  QHeaderView::Fixed);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Name,
+                                                 QHeaderView::Interactive);
     ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
                                           VALIDATION_COLUMN_SIZE);
     ui->treeView->header()->setSortIndicatorShown(true);
@@ -289,9 +317,11 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     connect(impl->m_Model, &CatalogueEventsModel::modelSorted, [this]() {
         auto allEvents = impl->m_Model->events();
         for (auto event : allEvents) {
-            setEventChanges(event, impl->m_Model->eventsHasChanges(event));
+            setEventChanges(event, sqpApp->catalogueController().eventHasChanges(event));
         }
     });
+
+    populateWithAllEvents();
 }
 
 CatalogueEventsWidget::~CatalogueEventsWidget()
@@ -304,6 +334,11 @@ void CatalogueEventsWidget::setVisualizationWidget(VisualizationWidget *visualiz
     impl->m_VisualizationWidget = visualization;
 }
 
+void CatalogueEventsWidget::addEvent(const std::shared_ptr<DBEvent> &event)
+{
+    impl->addEvent(event, ui->treeView);
+}
+
 void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges)
 {
     impl->m_Model->refreshEvent(event);
@@ -312,25 +347,55 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
     auto validationIndex
         = eventIndex.sibling(eventIndex.row(), (int)CatalogueEventsModel::Column::Validation);
 
-    if (hasChanges) {
-        if (ui->treeView->indexWidget(validationIndex) == nullptr) {
-            auto widget = CatalogueExplorerHelper::buildValidationWidget(
-                ui->treeView, [this, event]() { setEventChanges(event, false); },
-                [this, event]() { setEventChanges(event, false); });
-            ui->treeView->setIndexWidget(validationIndex, widget);
+    if (validationIndex.isValid()) {
+        if (hasChanges) {
+            if (ui->treeView->indexWidget(validationIndex) == nullptr) {
+                auto widget = CatalogueExplorerHelper::buildValidationWidget(
+                    ui->treeView,
+                    [this, event]() {
+                        sqpApp->catalogueController().saveEvent(event);
+                        setEventChanges(event, false);
+                    },
+                    [this, event]() {
+                        sqpApp->catalogueController().discardEvent(event);
+                        setEventChanges(event, false);
+                        impl->m_Model->refreshEvent(event, true);
+                        emitSelection();
+                    });
+                ui->treeView->setIndexWidget(validationIndex, widget);
+            }
+        }
+        else {
+            // Note: the widget is destroyed
+            ui->treeView->setIndexWidget(validationIndex, nullptr);
         }
     }
     else {
-        // Note: the widget is destroyed
-        ui->treeView->setIndexWidget(validationIndex, nullptr);
+        qCWarning(LOG_CatalogueEventsWidget())
+            << "setEventChanges: the event is not displayed in the model.";
     }
+}
 
-    impl->m_Model->setEventHasChanges(event, hasChanges);
+QVector<std::shared_ptr<DBCatalogue> > CatalogueEventsWidget::displayedCatalogues() const
+{
+    return impl->m_DisplayedCatalogues;
+}
+
+bool CatalogueEventsWidget::isAllEventsDisplayed() const
+{
+    return impl->m_DisplayedCatalogues.isEmpty() && !impl->m_Model->events().isEmpty();
+}
+
+bool CatalogueEventsWidget::isEventDisplayed(const std::shared_ptr<DBEvent> &event) const
+{
+    return impl->m_Model->indexOf(event).isValid();
 }
 
 void CatalogueEventsWidget::populateWithCatalogues(
     const QVector<std::shared_ptr<DBCatalogue> > &catalogues)
 {
+    impl->m_DisplayedCatalogues = catalogues;
+
     QSet<QUuid> eventIds;
     QVector<std::shared_ptr<DBEvent> > events;
 
@@ -344,11 +409,13 @@ void CatalogueEventsWidget::populateWithCatalogues(
         }
     }
 
-    impl->setEvents(events, ui->treeView);
+    impl->setEvents(events, this);
 }
 
 void CatalogueEventsWidget::populateWithAllEvents()
 {
+    impl->m_DisplayedCatalogues.clear();
+
     auto allEvents = sqpApp->catalogueController().retrieveAllEvents();
 
     QVector<std::shared_ptr<DBEvent> > events;
@@ -356,5 +423,38 @@ void CatalogueEventsWidget::populateWithAllEvents()
         events << event;
     }
 
-    impl->setEvents(events, ui->treeView);
+    impl->setEvents(events, this);
+}
+
+void CatalogueEventsWidget::clear()
+{
+    impl->m_DisplayedCatalogues.clear();
+    impl->setEvents({}, this);
+}
+
+void CatalogueEventsWidget::refresh()
+{
+    if (impl->m_DisplayedCatalogues.isEmpty()) {
+        populateWithAllEvents();
+    }
+    else {
+        populateWithCatalogues(impl->m_DisplayedCatalogues);
+    }
+}
+
+void CatalogueEventsWidget::emitSelection()
+{
+    QVector<std::shared_ptr<DBEvent> > events;
+    QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > eventProducts;
+    impl->getSelectedItems(ui->treeView, events, eventProducts);
+
+    if (!events.isEmpty() && eventProducts.isEmpty()) {
+        emit eventsSelected(events);
+    }
+    else if (events.isEmpty() && !eventProducts.isEmpty()) {
+        emit eventProductsSelected(eventProducts);
+    }
+    else {
+        emit selectionCleared();
+    }
 }
