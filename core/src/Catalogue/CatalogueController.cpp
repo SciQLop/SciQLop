@@ -183,6 +183,9 @@ void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
 
         impl->m_CatalogueDao.updateEvent(eventTemp);
     }
+
+    auto uniqueId = impl->eventUniqueKey(event);
+    impl->m_EventKeysWithChanges.insert(uniqueId);
 }
 
 void CatalogueController::saveEvent(std::shared_ptr<DBEvent> event)
