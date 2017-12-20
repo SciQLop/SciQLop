@@ -339,9 +339,23 @@ void CatalogueController::initialize()
     if (defaultRepositoryLocationDir.mkpath(defaultRepositoryLocation)) {
         defaultRepositoryLocationDir.cd(defaultRepositoryLocation);
         auto defaultRepository = defaultRepositoryLocationDir.absoluteFilePath(REPOSITORY_DEFAULT);
+
         qCInfo(LOG_CatalogueController()) << tr("Persistant data loading from: ")
                                           << defaultRepository;
-        this->addDB(defaultRepository);
+
+        QDir dbDir(defaultRepository);
+        impl->m_RepositoryList << REPOSITORY_DEFAULT;
+        if (dbDir.exists()) {
+            auto dirName = dbDir.dirName();
+
+            if (impl->m_CatalogueDao.addDB(defaultRepository, dirName)) {
+                impl->copyDBtoDB(dirName, impl->toWorkRepository(dirName));
+            }
+        }
+        else {
+            qCInfo(LOG_CatalogueController()) << tr("Initialisation of Default repository detected")
+                                              << defaultRepository;
+        }
     }
     else {
         qCWarning(LOG_CatalogueController())
