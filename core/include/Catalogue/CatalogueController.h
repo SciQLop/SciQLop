@@ -15,6 +15,7 @@
 
 class DBCatalogue;
 class DBEvent;
+class DBEventProduct;
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_CatalogueController)
 
@@ -44,6 +45,7 @@ public:
     retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> catalogue) const;
     void addEvent(std::shared_ptr<DBEvent> event);
     void updateEvent(std::shared_ptr<DBEvent> event);
+    void updateEventProduct(std::shared_ptr<DBEventProduct> eventProduct);
     void removeEvent(std::shared_ptr<DBEvent> event);
     //    void trashEvent(std::shared_ptr<DBEvent> event);
     //    void restore(QUuid eventId);

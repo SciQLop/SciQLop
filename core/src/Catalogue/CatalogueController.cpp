@@ -141,6 +141,11 @@ void CatalogueController::updateEvent(std::shared_ptr<DBEvent> event)
     impl->m_CatalogueDao.updateEvent(*event);
 }
 
+void CatalogueController::updateEventProduct(std::shared_ptr<DBEventProduct> eventProduct)
+{
+    impl->m_CatalogueDao.updateEventProduct(*eventProduct);
+}
+
 void CatalogueController::removeEvent(std::shared_ptr<DBEvent> event)
 {
     // Remove it from both repository and repository_work
