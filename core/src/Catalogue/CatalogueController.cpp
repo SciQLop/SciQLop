@@ -196,18 +196,29 @@ void CatalogueController::discardEvent(std::shared_ptr<DBEvent> event)
     auto uniqIdPredicate = std::make_shared<ComparaisonPredicate>(
         QString{"uniqId"}, event->getUniqId(), ComparaisonOperation::EQUALEQUAL);
 
-    auto repositoryPredicate = std::make_shared<ComparaisonPredicate>(
+    auto syncRepositoryPredicate = std::make_shared<ComparaisonPredicate>(
         QString{"repository"}, impl->toSyncRepository(event->getRepository()),
         ComparaisonOperation::EQUALEQUAL);
 
-    auto compCompoundPred = std::make_shared<CompoundPredicate>(CompoundOperation::AND);
-    compCompoundPred->AddRequestPredicate(uniqIdPredicate);
-    compCompoundPred->AddRequestPredicate(repositoryPredicate);
+    auto syncPred = std::make_shared<CompoundPredicate>(CompoundOperation::AND);
+    syncPred->AddRequestPredicate(uniqIdPredicate);
+    syncPred->AddRequestPredicate(syncRepositoryPredicate);
 
 
-    auto syncEvent = impl->m_CatalogueDao.getEvent(compCompoundPred);
+    auto workRepositoryPredicate = std::make_shared<ComparaisonPredicate>(
+        QString{"repository"}, impl->toWorkRepository(event->getRepository()),
+        ComparaisonOperation::EQUALEQUAL);
+
+    auto workPred = std::make_shared<CompoundPredicate>(CompoundOperation::AND);
+    workPred->AddRequestPredicate(uniqIdPredicate);
+    workPred->AddRequestPredicate(workRepositoryPredicate);
+
+
+    auto syncEvent = impl->m_CatalogueDao.getEvent(syncPred);
     impl->m_CatalogueDao.copyEvent(syncEvent, impl->toWorkRepository(event->getRepository()), true);
-    *event = syncEvent;
+
+    auto workEvent = impl->m_CatalogueDao.getEvent(workPred);
+    *event = workEvent;
     impl->m_EventKeysWithChanges.remove(impl->eventUniqueKey(event));
 }
 
