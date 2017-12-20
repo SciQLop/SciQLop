@@ -37,6 +37,10 @@ public:
     QStringList m_RepositoryList;
     CatalogueController *m_Q;
 
+    QSet<QString> m_EventKeysWithChanges;
+
+    QString eventUniqueKey(const std::shared_ptr<DBEvent> &event) const;
+
     void copyDBtoDB(const QString &dbFrom, const QString &dbTo);
     QString toWorkRepository(QString repository);
     QString toSyncRepository(QString repository);
@@ -137,6 +141,9 @@ void CatalogueController::updateEvent(std::shared_ptr<DBEvent> event)
 {
     event->setRepository(impl->toWorkRepository(event->getRepository()));
 
+    auto uniqueId = impl->eventUniqueKey(event);
+    impl->m_EventKeysWithChanges.insert(uniqueId);
+
     impl->m_CatalogueDao.updateEvent(*event);
 }
 
@@ -180,6 +187,12 @@ void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
 void CatalogueController::saveEvent(std::shared_ptr<DBEvent> event)
 {
     impl->saveEvent(event, true);
+    impl->m_EventKeysWithChanges.remove(impl->eventUniqueKey(event));
+}
+
+bool CatalogueController::eventHasChanges(std::shared_ptr<DBEvent> event) const
+{
+    return impl->m_EventKeysWithChanges.contains(impl->eventUniqueKey(event));
 }
 
 std::list<std::shared_ptr<DBCatalogue> >
@@ -233,6 +246,7 @@ void CatalogueController::saveAll()
     }
 
     impl->savAllDB();
+    impl->m_EventKeysWithChanges.clear();
 }
 
 QByteArray
@@ -304,6 +318,12 @@ void CatalogueController::initialize()
     }
 
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController init END");
+}
+
+QString CatalogueController::CatalogueControllerPrivate::eventUniqueKey(
+    const std::shared_ptr<DBEvent> &event) const
+{
+    return event->getUniqId().toString().append(event->getRepository());
 }
 
 void CatalogueController::CatalogueControllerPrivate::copyDBtoDB(const QString &dbFrom,

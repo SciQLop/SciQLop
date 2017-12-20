@@ -29,11 +29,18 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
     VisualizationWidget *m_VisualizationWidget = nullptr;
 
-    void setEvents(const QVector<std::shared_ptr<DBEvent> > &events, QTreeView *treeView)
+    void setEvents(const QVector<std::shared_ptr<DBEvent> > &events, CatalogueEventsWidget *widget)
     {
-        treeView->setSortingEnabled(false);
+        widget->ui->treeView->setSortingEnabled(false);
         m_Model->setEvents(events);
-        treeView->setSortingEnabled(true);
+        widget->ui->treeView->setSortingEnabled(true);
+
+        for (auto event : events) {
+            if (sqpApp->catalogueController().eventHasChanges(event)) {
+                auto index = m_Model->indexOf(event);
+                widget->setEventChanges(event, true);
+            }
+        }
     }
 
     void addEvent(const std::shared_ptr<DBEvent> &event, QTreeView *treeView)
@@ -290,7 +297,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     connect(impl->m_Model, &CatalogueEventsModel::modelSorted, [this]() {
         auto allEvents = impl->m_Model->events();
         for (auto event : allEvents) {
-            setEventChanges(event, impl->m_Model->eventsHasChanges(event));
+            setEventChanges(event, sqpApp->catalogueController().eventHasChanges(event));
         }
     });
 
@@ -332,8 +339,10 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
                     [this, event]() { setEventChanges(event, false); });
                 ui->treeView->setIndexWidget(validationIndex, widget);
             }
-
-            impl->m_Model->setEventHasChanges(event, hasChanges);
+        }
+        else {
+            // Note: the widget is destroyed
+            ui->treeView->setIndexWidget(validationIndex, nullptr);
         }
     }
     else {
@@ -375,7 +384,7 @@ void CatalogueEventsWidget::populateWithCatalogues(
         }
     }
 
-    impl->setEvents(events, ui->treeView);
+    impl->setEvents(events, this);
 }
 
 void CatalogueEventsWidget::populateWithAllEvents()
@@ -389,13 +398,13 @@ void CatalogueEventsWidget::populateWithAllEvents()
         events << event;
     }
 
-    impl->setEvents(events, ui->treeView);
+    impl->setEvents(events, this);
 }
 
 void CatalogueEventsWidget::clear()
 {
     impl->m_DisplayedCatalogues.clear();
-    impl->setEvents({}, ui->treeView);
+    impl->setEvents({}, this);
 }
 
 void CatalogueEventsWidget::refresh()

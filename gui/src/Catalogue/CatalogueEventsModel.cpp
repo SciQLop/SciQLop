@@ -24,7 +24,6 @@ const auto EVENT_PRODUCT_ITEM_TYPE = 2;
 struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     QVector<std::shared_ptr<DBEvent> > m_Events;
     std::unordered_map<DBEvent *, QVector<std::shared_ptr<DBEventProduct> > > m_EventProducts;
-    std::unordered_set<std::shared_ptr<DBEvent> > m_EventsWithChanges;
 
     QStringList columnNames()
     {
@@ -35,8 +34,8 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     QVariant sortData(int col, const std::shared_ptr<DBEvent> &event) const
     {
         if (col == (int)CatalogueEventsModel::Column::Validation) {
-            return m_EventsWithChanges.find(event) != m_EventsWithChanges.cend() ? true
-                                                                                 : QVariant();
+            auto hasChanges = sqpApp->catalogueController().eventHasChanges(event);
+            return hasChanges ? true : QVariant();
         }
 
         return eventData(col, event);
@@ -136,7 +135,6 @@ void CatalogueEventsModel::setEvents(const QVector<std::shared_ptr<DBEvent> > &e
 
     impl->m_Events = events;
     impl->m_EventProducts.clear();
-    impl->m_EventsWithChanges.clear();
     for (auto event : events) {
         impl->parseEventProduct(event);
     }
@@ -195,7 +193,6 @@ void CatalogueEventsModel::removeEvent(const std::shared_ptr<DBEvent> &event)
         beginRemoveRows(QModelIndex(), index, index);
         impl->m_Events.removeAt(index);
         impl->m_EventProducts.erase(event.get());
-        impl->m_EventsWithChanges.erase(event);
         endRemoveRows();
     }
 }
@@ -230,22 +227,6 @@ QModelIndex CatalogueEventsModel::indexOf(const std::shared_ptr<DBEvent> &event)
     }
 
     return QModelIndex();
-}
-
-void CatalogueEventsModel::setEventHasChanges(const std::shared_ptr<DBEvent> &event,
-                                              bool hasChanges)
-{
-    if (hasChanges) {
-        impl->m_EventsWithChanges.insert(event);
-    }
-    else {
-        impl->m_EventsWithChanges.erase(event);
-    }
-}
-
-bool CatalogueEventsModel::eventsHasChanges(const std::shared_ptr<DBEvent> &event) const
-{
-    return impl->m_EventsWithChanges.find(event) != impl->m_EventsWithChanges.cend();
 }
 
 QModelIndex CatalogueEventsModel::index(int row, int column, const QModelIndex &parent) const

@@ -50,6 +50,7 @@ public:
     //    void trashEvent(std::shared_ptr<DBEvent> event);
     //    void restore(QUuid eventId);
     void saveEvent(std::shared_ptr<DBEvent> event);
+    bool eventHasChanges(std::shared_ptr<DBEvent> event) const;
 
     // Catalogue
     //    bool createCatalogue(const QString &name, QVector<QUuid> eventList);
