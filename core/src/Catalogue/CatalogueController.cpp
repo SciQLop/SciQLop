@@ -297,14 +297,9 @@ CatalogueController::eventsForMimeData(const QByteArray &mimeData) const
 
 void CatalogueController::initialize()
 {
-<<<<<<< HEAD
-    qCDebug(LOG_CatalogueController()) << tr("CatalogueController init")
-                                       << QThread::currentThread();
-    impl->m_WorkingMutex.lock();
-=======
     qCDebug(LOG_CatalogueController())
         << tr("CatalogueController init") << QThread::currentThread();
->>>>>>> 286decc... unthread the catalogue controller
+
     impl->m_CatalogueDao.initialize();
     auto defaultRepositoryLocation
         = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
