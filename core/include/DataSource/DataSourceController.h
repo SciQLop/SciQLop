@@ -75,6 +75,10 @@ public slots:
     void initialize();
     void finalize();
 
+    /// Request the creation of a variable from the ID_DATA_KEY of a product
+    void requestVariable(const QString &datasourceIdKey);
+
+    /// Request the creation of a variable from metadata of a product
     void requestVariable(const QVariantHash &productData);
 
 signals:

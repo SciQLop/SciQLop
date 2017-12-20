@@ -145,6 +145,14 @@ public:
      */
     DataSourceItem *findItem(const QVariantHash &data, bool recursive);
 
+    /**
+     * @brief Searches the first child matching the specified \p ID_DATA_KEY in its metadata.
+     * @param id The id to search.
+     * @param recursive So the search recursively.
+     * @return the item matching the data or nullptr if it was not found.
+     */
+    DataSourceItem *findItem(const QString &datasourceIdKey, bool recursive);
+
     bool operator==(const DataSourceItem &other);
     bool operator!=(const DataSourceItem &other);
 

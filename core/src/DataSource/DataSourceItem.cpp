@@ -165,6 +165,24 @@ DataSourceItem *DataSourceItem::findItem(const QVariantHash &data, bool recursiv
     return nullptr;
 }
 
+DataSourceItem *DataSourceItem::findItem(const QString &datasourceIdKey, bool recursive)
+{
+    for (const auto &child : impl->m_Children) {
+        auto childId = child->impl->m_Data.value(ID_DATA_KEY);
+        if (childId == datasourceIdKey) {
+            return child.get();
+        }
+
+        if (recursive) {
+            if (auto foundItem = child->findItem(datasourceIdKey, true)) {
+                return foundItem;
+            }
+        }
+    }
+
+    return nullptr;
+}
+
 bool DataSourceItem::operator==(const DataSourceItem &other)
 {
     // Compares items' attributes
