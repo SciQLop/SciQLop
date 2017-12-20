@@ -37,6 +37,7 @@ void associateActions(DataSourceItem &item, const QUuid &dataSourceUid)
         auto actionLabel = QObject::tr(
             itemType == DataSourceItemType::PRODUCT ? "Load %1 product" : "Load %1 component");
         addLoadAction(actionLabel.arg(item.name()));
+        item.setData(DataSourceItem::ID_DATA_KEY, item.data(AMDA_XML_ID_KEY));
     }
 
     auto count = item.childCount();

@@ -1,5 +1,6 @@
 #include "Catalogue/CatalogueEventsModel.h"
 
+#include <Catalogue/CatalogueController.h>
 #include <Common/DateUtils.h>
 #include <Common/MimeTypesDef.h>
 #include <DBEvent.h>
@@ -23,7 +24,6 @@ const auto EVENT_PRODUCT_ITEM_TYPE = 2;
 struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     QVector<std::shared_ptr<DBEvent> > m_Events;
     std::unordered_map<DBEvent *, QVector<std::shared_ptr<DBEventProduct> > > m_EventProducts;
-    std::unordered_set<std::shared_ptr<DBEvent> > m_EventsWithChanges;
 
     QStringList columnNames()
     {
@@ -34,8 +34,8 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     QVariant sortData(int col, const std::shared_ptr<DBEvent> &event) const
     {
         if (col == (int)CatalogueEventsModel::Column::Validation) {
-            return m_EventsWithChanges.find(event) != m_EventsWithChanges.cend() ? true
-                                                                                 : QVariant();
+            auto hasChanges = sqpApp->catalogueController().eventHasChanges(event);
+            return hasChanges ? true : QVariant();
         }
 
         return eventData(col, event);
@@ -114,6 +114,14 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
         Q_ASSERT(false);
         return QStringLiteral("Unknown Data");
     }
+
+    void refreshChildrenOfIndex(CatalogueEventsModel *model, const QModelIndex &index) const
+    {
+        auto childCount = model->rowCount(index);
+        auto colCount = model->columnCount();
+        emit model->dataChanged(model->index(0, 0, index),
+                                model->index(childCount, colCount, index));
+    }
 };
 
 CatalogueEventsModel::CatalogueEventsModel(QObject *parent)
@@ -127,7 +135,6 @@ void CatalogueEventsModel::setEvents(const QVector<std::shared_ptr<DBEvent> > &e
 
     impl->m_Events = events;
     impl->m_EventProducts.clear();
-    impl->m_EventsWithChanges.clear();
     for (auto event : events) {
         impl->parseEventProduct(event);
     }
@@ -169,10 +176,14 @@ CatalogueEventsModel::getEventProduct(const QModelIndex &index) const
 
 void CatalogueEventsModel::addEvent(const std::shared_ptr<DBEvent> &event)
 {
-    beginInsertRows(QModelIndex(), impl->m_Events.count() - 1, impl->m_Events.count() - 1);
+    beginInsertRows(QModelIndex(), impl->m_Events.count(), impl->m_Events.count());
     impl->m_Events.append(event);
     impl->parseEventProduct(event);
     endInsertRows();
+
+    // Also refreshes its children event products
+    auto eventIndex = index(impl->m_Events.count(), 0);
+    impl->refreshChildrenOfIndex(this, eventIndex);
 }
 
 void CatalogueEventsModel::removeEvent(const std::shared_ptr<DBEvent> &event)
@@ -182,7 +193,6 @@ void CatalogueEventsModel::removeEvent(const std::shared_ptr<DBEvent> &event)
         beginRemoveRows(QModelIndex(), index, index);
         impl->m_Events.removeAt(index);
         impl->m_EventProducts.erase(event.get());
-        impl->m_EventsWithChanges.erase(event);
         endRemoveRows();
     }
 }
@@ -192,18 +202,41 @@ QVector<std::shared_ptr<DBEvent> > CatalogueEventsModel::events() const
     return impl->m_Events;
 }
 
-void CatalogueEventsModel::refreshEvent(const std::shared_ptr<DBEvent> &event)
+void CatalogueEventsModel::refreshEvent(const std::shared_ptr<DBEvent> &event,
+                                        bool refreshEventProducts)
 {
     auto eventIndex = indexOf(event);
     if (eventIndex.isValid()) {
+
+        if (refreshEventProducts) {
+            // Reparse the associated event products
+
+            auto nbEventProducts = impl->nbEventProducts(event);
+            auto newNbOfEventProducts = event->getEventProducts().size();
+            if (newNbOfEventProducts < nbEventProducts) {
+                beginRemoveRows(eventIndex, newNbOfEventProducts, nbEventProducts - 1);
+                impl->m_EventProducts.erase(event.get());
+                impl->parseEventProduct(event);
+                endRemoveRows();
+            }
+            else if (newNbOfEventProducts > nbEventProducts) {
+                beginInsertRows(eventIndex, nbEventProducts, newNbOfEventProducts - 1);
+                impl->m_EventProducts.erase(event.get());
+                impl->parseEventProduct(event);
+                endInsertRows();
+            }
+            else { // newNbOfEventProducts == nbEventProducts
+                impl->m_EventProducts.erase(event.get());
+                impl->parseEventProduct(event);
+            }
+        }
 
         // Refreshes the event line
         auto colCount = columnCount();
         emit dataChanged(eventIndex, index(eventIndex.row(), colCount));
 
         // Also refreshes its children event products
-        auto childCount = rowCount(eventIndex);
-        emit dataChanged(index(0, 0, eventIndex), index(childCount, colCount, eventIndex));
+        impl->refreshChildrenOfIndex(this, eventIndex);
     }
     else {
         qCWarning(LOG_CatalogueEventsModel()) << "refreshEvent: event not found.";
@@ -218,22 +251,6 @@ QModelIndex CatalogueEventsModel::indexOf(const std::shared_ptr<DBEvent> &event)
     }
 
     return QModelIndex();
-}
-
-void CatalogueEventsModel::setEventHasChanges(const std::shared_ptr<DBEvent> &event,
-                                              bool hasChanges)
-{
-    if (hasChanges) {
-        impl->m_EventsWithChanges.insert(event);
-    }
-    else {
-        impl->m_EventsWithChanges.erase(event);
-    }
-}
-
-bool CatalogueEventsModel::eventsHasChanges(const std::shared_ptr<DBEvent> &event) const
-{
-    return impl->m_EventsWithChanges.find(event) != impl->m_EventsWithChanges.cend();
 }
 
 QModelIndex CatalogueEventsModel::index(int row, int column, const QModelIndex &parent) const
@@ -354,6 +371,7 @@ QVariant CatalogueEventsModel::headerData(int section, Qt::Orientation orientati
 
 void CatalogueEventsModel::sort(int column, Qt::SortOrder order)
 {
+    beginResetModel();
     std::sort(impl->m_Events.begin(), impl->m_Events.end(),
               [this, column, order](auto e1, auto e2) {
                   auto data1 = impl->sortData(column, e1);
@@ -364,13 +382,13 @@ void CatalogueEventsModel::sort(int column, Qt::SortOrder order)
                   return order == Qt::AscendingOrder ? result : !result;
               });
 
-    emit dataChanged(QModelIndex(), QModelIndex());
+    endResetModel();
     emit modelSorted();
 }
 
 Qt::DropActions CatalogueEventsModel::supportedDragActions() const
 {
-    return Qt::CopyAction | Qt::MoveAction;
+    return Qt::CopyAction;
 }
 
 QStringList CatalogueEventsModel::mimeTypes() const
@@ -415,9 +433,10 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
         }
     }
 
-    auto eventsEncodedData
-        = QByteArray{}; // sqpApp->catalogueController().->mimeDataForEvents(eventList); //TODO
-    mimeData->setData(MIME_TYPE_EVENT_LIST, eventsEncodedData);
+    if (!eventList.isEmpty() && eventProductList.isEmpty()) {
+        auto eventsEncodedData = sqpApp->catalogueController().mimeDataForEvents(eventList);
+        mimeData->setData(MIME_TYPE_EVENT_LIST, eventsEncodedData);
+    }
 
     if (eventList.count() + eventProductList.count() == 1) {
         // No time range MIME data if multiple events are dragged

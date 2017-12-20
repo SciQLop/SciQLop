@@ -28,7 +28,10 @@ public:
     explicit CatalogueSideBarWidget(QWidget *parent = 0);
     virtual ~CatalogueSideBarWidget();
 
+    void addCatalogue(const std::shared_ptr<DBCatalogue> &catalogue, const QString &repository);
     void setCatalogueChanges(const std::shared_ptr<DBCatalogue> &catalogue, bool hasChanges);
+
+    QVector<std::shared_ptr<DBCatalogue> > getCatalogues(const QString &repository) const;
 
 private:
     Ui::CatalogueSideBarWidget *ui;

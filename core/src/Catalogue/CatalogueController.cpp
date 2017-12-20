@@ -12,6 +12,7 @@
 #include <DBTag.h>
 #include <IRequestPredicate.h>
 
+#include <QDataStream>
 #include <QMutex>
 #include <QThread>
 
@@ -22,8 +23,8 @@ Q_LOGGING_CATEGORY(LOG_CatalogueController, "CatalogueController")
 
 namespace {
 
-static QString REPOSITORY_WORK_SUFFIX = QString{"work"};
-static QString REPOSITORY_TRASH_SUFFIX = QString{"trash"};
+static QString REPOSITORY_WORK_SUFFIX = QString{"_work"};
+static QString REPOSITORY_TRASH_SUFFIX = QString{"_trash"};
 }
 
 class CatalogueController::CatalogueControllerPrivate {
@@ -31,15 +32,22 @@ class CatalogueController::CatalogueControllerPrivate {
 public:
     explicit CatalogueControllerPrivate(CatalogueController *parent) : m_Q{parent} {}
 
-    QMutex m_WorkingMutex;
     CatalogueDao m_CatalogueDao;
 
     QStringList m_RepositoryList;
     CatalogueController *m_Q;
 
+    QSet<QString> m_EventKeysWithChanges;
+
+    QString eventUniqueKey(const std::shared_ptr<DBEvent> &event) const;
+
     void copyDBtoDB(const QString &dbFrom, const QString &dbTo);
     QString toWorkRepository(QString repository);
     QString toSyncRepository(QString repository);
+    void savAllDB();
+
+    void saveEvent(std::shared_ptr<DBEvent> event, bool persist = true);
+    void saveCatalogue(std::shared_ptr<DBCatalogue> catalogue, bool persist = true);
 };
 
 CatalogueController::CatalogueController(QObject *parent)
@@ -53,7 +61,6 @@ CatalogueController::~CatalogueController()
 {
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController destruction")
                                        << QThread::currentThread();
-    this->waitForFinish();
 }
 
 QStringList CatalogueController::getRepositories() const
@@ -132,9 +139,17 @@ CatalogueController::retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> ca
 
 void CatalogueController::updateEvent(std::shared_ptr<DBEvent> event)
 {
-    event->setRepository(impl->toSyncRepository(event->getRepository()));
+    event->setRepository(impl->toWorkRepository(event->getRepository()));
+
+    auto uniqueId = impl->eventUniqueKey(event);
+    impl->m_EventKeysWithChanges.insert(uniqueId);
 
     impl->m_CatalogueDao.updateEvent(*event);
+}
+
+void CatalogueController::updateEventProduct(std::shared_ptr<DBEventProduct> eventProduct)
+{
+    impl->m_CatalogueDao.updateEventProduct(*eventProduct);
 }
 
 void CatalogueController::removeEvent(std::shared_ptr<DBEvent> event)
@@ -144,24 +159,72 @@ void CatalogueController::removeEvent(std::shared_ptr<DBEvent> event)
     impl->m_CatalogueDao.removeEvent(*event);
     event->setRepository(impl->toSyncRepository(event->getRepository()));
     impl->m_CatalogueDao.removeEvent(*event);
+    impl->savAllDB();
 }
 
 void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
 {
     event->setRepository(impl->toWorkRepository(event->getRepository()));
 
-    impl->m_CatalogueDao.addEvent(*event);
+    auto eventTemp = *event;
+    impl->m_CatalogueDao.addEvent(eventTemp);
 
     // Call update is necessary at the creation of add Event if it has some tags or some event
     // products
     if (!event->getEventProducts().empty() || !event->getTags().empty()) {
-        impl->m_CatalogueDao.updateEvent(*event);
+
+        auto eventProductsTemp = eventTemp.getEventProducts();
+        auto eventProductTempUpdated = std::list<DBEventProduct>{};
+        for (auto eventProductTemp : eventProductsTemp) {
+            eventProductTemp.setEvent(eventTemp);
+            eventProductTempUpdated.push_back(eventProductTemp);
+        }
+        eventTemp.setEventProducts(eventProductTempUpdated);
+
+        impl->m_CatalogueDao.updateEvent(eventTemp);
     }
 }
 
 void CatalogueController::saveEvent(std::shared_ptr<DBEvent> event)
 {
-    impl->m_CatalogueDao.moveEvent(*event, impl->toSyncRepository(event->getRepository()), true);
+    impl->saveEvent(event, true);
+    impl->m_EventKeysWithChanges.remove(impl->eventUniqueKey(event));
+}
+
+void CatalogueController::discardEvent(std::shared_ptr<DBEvent> event)
+{
+    auto uniqIdPredicate = std::make_shared<ComparaisonPredicate>(
+        QString{"uniqId"}, event->getUniqId(), ComparaisonOperation::EQUALEQUAL);
+
+    auto syncRepositoryPredicate = std::make_shared<ComparaisonPredicate>(
+        QString{"repository"}, impl->toSyncRepository(event->getRepository()),
+        ComparaisonOperation::EQUALEQUAL);
+
+    auto syncPred = std::make_shared<CompoundPredicate>(CompoundOperation::AND);
+    syncPred->AddRequestPredicate(uniqIdPredicate);
+    syncPred->AddRequestPredicate(syncRepositoryPredicate);
+
+
+    auto workRepositoryPredicate = std::make_shared<ComparaisonPredicate>(
+        QString{"repository"}, impl->toWorkRepository(event->getRepository()),
+        ComparaisonOperation::EQUALEQUAL);
+
+    auto workPred = std::make_shared<CompoundPredicate>(CompoundOperation::AND);
+    workPred->AddRequestPredicate(uniqIdPredicate);
+    workPred->AddRequestPredicate(workRepositoryPredicate);
+
+
+    auto syncEvent = impl->m_CatalogueDao.getEvent(syncPred);
+    impl->m_CatalogueDao.copyEvent(syncEvent, impl->toWorkRepository(event->getRepository()), true);
+
+    auto workEvent = impl->m_CatalogueDao.getEvent(workPred);
+    *event = workEvent;
+    impl->m_EventKeysWithChanges.remove(impl->eventUniqueKey(event));
+}
+
+bool CatalogueController::eventHasChanges(std::shared_ptr<DBEvent> event) const
+{
+    return impl->m_EventKeysWithChanges.contains(impl->eventUniqueKey(event));
 }
 
 std::list<std::shared_ptr<DBCatalogue> >
@@ -179,7 +242,7 @@ CatalogueController::retrieveCatalogues(const QString &repository) const
 
 void CatalogueController::updateCatalogue(std::shared_ptr<DBCatalogue> catalogue)
 {
-    catalogue->setRepository(impl->toSyncRepository(catalogue->getRepository()));
+    catalogue->setRepository(impl->toWorkRepository(catalogue->getRepository()));
 
     impl->m_CatalogueDao.updateCatalogue(*catalogue);
 }
@@ -195,8 +258,7 @@ void CatalogueController::removeCatalogue(std::shared_ptr<DBCatalogue> catalogue
 
 void CatalogueController::saveCatalogue(std::shared_ptr<DBCatalogue> catalogue)
 {
-    impl->m_CatalogueDao.moveCatalogue(*catalogue,
-                                       impl->toSyncRepository(catalogue->getRepository()), true);
+    impl->saveCatalogue(catalogue, true);
 }
 
 void CatalogueController::saveAll()
@@ -205,22 +267,70 @@ void CatalogueController::saveAll()
         // Save Event
         auto events = this->retrieveEvents(repository);
         for (auto event : events) {
-            this->saveEvent(event);
+            impl->saveEvent(event, false);
         }
 
         // Save Catalogue
         auto catalogues = this->retrieveCatalogues(repository);
         for (auto catalogue : catalogues) {
-            this->saveCatalogue(catalogue);
+            impl->saveCatalogue(catalogue, false);
         }
     }
+
+    impl->savAllDB();
+    impl->m_EventKeysWithChanges.clear();
+}
+
+bool CatalogueController::hasChanges() const
+{
+    return !impl->m_EventKeysWithChanges.isEmpty(); // TODO: catalogues
+}
+
+QByteArray
+CatalogueController::mimeDataForEvents(const QVector<std::shared_ptr<DBEvent> > &events) const
+{
+    auto encodedData = QByteArray{};
+
+    QMap<QString, QVariantList> idsPerRepository;
+    for (auto event : events) {
+        idsPerRepository[event->getRepository()] << event->getUniqId();
+    }
+
+    QDataStream stream{&encodedData, QIODevice::WriteOnly};
+    stream << idsPerRepository;
+
+    return encodedData;
+}
+
+QVector<std::shared_ptr<DBEvent> >
+CatalogueController::eventsForMimeData(const QByteArray &mimeData) const
+{
+    auto events = QVector<std::shared_ptr<DBEvent> >{};
+    QDataStream stream{mimeData};
+
+    QMap<QString, QVariantList> idsPerRepository;
+    stream >> idsPerRepository;
+
+    for (auto it = idsPerRepository.cbegin(); it != idsPerRepository.cend(); ++it) {
+        auto repository = it.key();
+        auto allRepositoryEvent = retrieveEvents(repository);
+        for (auto uuid : it.value()) {
+            for (auto repositoryEvent : allRepositoryEvent) {
+                if (uuid.toUuid() == repositoryEvent->getUniqId()) {
+                    events << repositoryEvent;
+                }
+            }
+        }
+    }
+
+    return events;
 }
 
 void CatalogueController::initialize()
 {
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController init")
                                        << QThread::currentThread();
-    impl->m_WorkingMutex.lock();
+
     impl->m_CatalogueDao.initialize();
     auto defaultRepositoryLocation
         = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
@@ -242,37 +352,24 @@ void CatalogueController::initialize()
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController init END");
 }
 
-void CatalogueController::finalize()
+QString CatalogueController::CatalogueControllerPrivate::eventUniqueKey(
+    const std::shared_ptr<DBEvent> &event) const
 {
-    impl->m_WorkingMutex.unlock();
-}
-
-void CatalogueController::waitForFinish()
-{
-    QMutexLocker locker{&impl->m_WorkingMutex};
+    return event->getUniqId().toString().append(event->getRepository());
 }
 
 void CatalogueController::CatalogueControllerPrivate::copyDBtoDB(const QString &dbFrom,
                                                                  const QString &dbTo)
 {
-    auto cataloguesShared = std::list<std::shared_ptr<DBCatalogue> >{};
+    //    auto cataloguesShared = std::list<std::shared_ptr<DBCatalogue> >{};
     auto catalogues = m_CatalogueDao.getCatalogues(dbFrom);
-    for (auto catalogue : catalogues) {
-        cataloguesShared.push_back(std::make_shared<DBCatalogue>(catalogue));
-    }
-
-    auto eventsShared = std::list<std::shared_ptr<DBEvent> >{};
     auto events = m_CatalogueDao.getEvents(dbFrom);
+    for (auto catalogue : catalogues) {
+        m_CatalogueDao.copyCatalogue(catalogue, dbTo, true);
+    }
+
     for (auto event : events) {
-        eventsShared.push_back(std::make_shared<DBEvent>(event));
-    }
-
-    for (auto catalogue : cataloguesShared) {
-        m_CatalogueDao.copyCatalogue(*catalogue, dbTo, true);
-    }
-
-    for (auto event : eventsShared) {
-        m_CatalogueDao.copyEvent(*event, dbTo, true);
+        m_CatalogueDao.copyEvent(event, dbTo, true);
     }
 }
 
@@ -280,7 +377,7 @@ QString CatalogueController::CatalogueControllerPrivate::toWorkRepository(QStrin
 {
     auto syncRepository = toSyncRepository(repository);
 
-    return QString("%1_%2").arg(syncRepository, REPOSITORY_WORK_SUFFIX);
+    return QString("%1%2").arg(syncRepository, REPOSITORY_WORK_SUFFIX);
 }
 
 QString CatalogueController::CatalogueControllerPrivate::toSyncRepository(QString repository)
@@ -293,4 +390,31 @@ QString CatalogueController::CatalogueControllerPrivate::toSyncRepository(QStrin
         syncRepository.remove(REPOSITORY_TRASH_SUFFIX);
     }
     return syncRepository;
+}
+
+void CatalogueController::CatalogueControllerPrivate::savAllDB()
+{
+    for (auto repository : m_RepositoryList) {
+        auto defaultRepositoryLocation
+            = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+        m_CatalogueDao.saveDB(defaultRepositoryLocation, repository);
+    }
+}
+
+void CatalogueController::CatalogueControllerPrivate::saveEvent(std::shared_ptr<DBEvent> event,
+                                                                bool persist)
+{
+    m_CatalogueDao.copyEvent(*event, toSyncRepository(event->getRepository()), true);
+    if (persist) {
+        savAllDB();
+    }
+}
+
+void CatalogueController::CatalogueControllerPrivate::saveCatalogue(
+    std::shared_ptr<DBCatalogue> catalogue, bool persist)
+{
+    m_CatalogueDao.copyCatalogue(*catalogue, toSyncRepository(catalogue->getRepository()), true);
+    if (persist) {
+        savAllDB();
+    }
 }

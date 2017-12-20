@@ -10,7 +10,8 @@ struct CreateEventDialog::CreateEventDialogPrivate {
     QVector<std::shared_ptr<DBCatalogue> > m_DisplayedCatalogues;
 };
 
-CreateEventDialog::CreateEventDialog(QWidget *parent)
+CreateEventDialog::CreateEventDialog(const QVector<std::shared_ptr<DBCatalogue> > &catalogues,
+                                     QWidget *parent)
         : QDialog(parent),
           ui(new Ui::CreateEventDialog),
           impl{spimpl::make_unique_impl<CreateEventDialogPrivate>()}
@@ -20,10 +21,9 @@ CreateEventDialog::CreateEventDialog(QWidget *parent)
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
-    auto catalogues = sqpApp->catalogueController().retrieveCatalogues();
-    for (auto cat : catalogues) {
+    impl->m_DisplayedCatalogues = catalogues;
+    for (auto cat : impl->m_DisplayedCatalogues) {
         ui->cbCatalogue->addItem(cat->getName());
-        impl->m_DisplayedCatalogues << cat;
     }
 }
 

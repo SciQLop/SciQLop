@@ -3,9 +3,11 @@
 
 #include <Common/spimpl.h>
 
+class CatalogueExplorer;
+
 class CatalogueActionManager {
 public:
-    CatalogueActionManager();
+    CatalogueActionManager(CatalogueExplorer *catalogueExplorer);
 
     void installSelectionZoneActions();
 
