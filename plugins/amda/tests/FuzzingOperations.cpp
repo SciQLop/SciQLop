@@ -35,8 +35,8 @@ struct CreateOperation : public IFuzzingOperation {
             = properties.value(PROVIDER_PROPERTY).value<std::shared_ptr<IDataProvider> >();
 
         auto variableName = QString{"Var_%1"}.arg(QUuid::createUuid().toString());
-        qCInfo(LOG_FuzzingOperations()).noquote()
-            << "Creating variable" << variableName << "(metadata:" << variableMetadata << ")...";
+        qCInfo(LOG_FuzzingOperations()).noquote() << "Creating variable" << variableName
+                                                  << "(metadata:" << variableMetadata << ")...";
 
         auto newVariable
             = variableController.createVariable(variableName, variableMetadata, variableProvider);
@@ -60,8 +60,8 @@ struct DeleteOperation : public IFuzzingOperation {
     {
         auto &variableState = fuzzingState.variableState(variableId);
 
-        qCInfo(LOG_FuzzingOperations()).noquote()
-            << "Deleting variable" << variableState.m_Variable->name() << "...";
+        qCInfo(LOG_FuzzingOperations()).noquote() << "Deleting variable"
+                                                  << variableState.m_Variable->name() << "...";
         variableController.deleteVariable(variableState.m_Variable);
 
         // Updates variable's state
@@ -139,9 +139,9 @@ struct MoveOperation : public IFuzzingOperation {
         auto isSynchronized = !fuzzingState.syncGroupId(variableId).isNull();
         auto newVariableRange = SqpRange{m_RangeStartMoveFun(variableRange.m_TStart, delta),
                                          m_RangeEndMoveFun(variableRange.m_TEnd, delta)};
-        qCInfo(LOG_FuzzingOperations()).noquote()
-            << "Performing" << m_Label << "on" << variable->name() << "(from" << variableRange
-            << "to" << newVariableRange << ")...";
+        qCInfo(LOG_FuzzingOperations()).noquote() << "Performing" << m_Label << "on"
+                                                  << variable->name() << "(from" << variableRange
+                                                  << "to" << newVariableRange << ")...";
         variableController.onRequestDataLoading({variable}, newVariableRange, isSynchronized);
 
         // Updates state
@@ -169,9 +169,9 @@ struct SynchronizeOperation : public IFuzzingOperation {
 
         // Chooses a random synchronization group and adds the variable into sync group
         auto syncGroupId = RandomGenerator::instance().randomChoice(fuzzingState.syncGroupsIds());
-        qCInfo(LOG_FuzzingOperations()).noquote()
-            << "Adding" << variableState.m_Variable->name() << "into synchronization group"
-            << syncGroupId << "...";
+        qCInfo(LOG_FuzzingOperations()).noquote() << "Adding" << variableState.m_Variable->name()
+                                                  << "into synchronization group" << syncGroupId
+                                                  << "...";
         variableController.onAddSynchronized(variableState.m_Variable, syncGroupId);
 
         // Updates state
@@ -194,9 +194,9 @@ struct DesynchronizeOperation : public IFuzzingOperation {
         // Gets the sync group of the variable
         auto syncGroupId = fuzzingState.syncGroupId(variableId);
 
-        qCInfo(LOG_FuzzingOperations()).noquote()
-            << "Removing" << variableState.m_Variable->name() << "from synchronization group"
-            << syncGroupId << "...";
+        qCInfo(LOG_FuzzingOperations()).noquote() << "Removing" << variableState.m_Variable->name()
+                                                  << "from synchronization group" << syncGroupId
+                                                  << "...";
         variableController.onAddSynchronized(variableState.m_Variable, syncGroupId);
 
         // Updates state
