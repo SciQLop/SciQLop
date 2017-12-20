@@ -14,6 +14,7 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QListWidget>
+#include <QMessageBox>
 
 Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
 
@@ -203,6 +204,22 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
                 << "updateGraphMode: not compatible with multiple events selected";
         }
     }
+
+    void getSelectedItems(
+        QTreeView *treeView, QVector<std::shared_ptr<DBEvent> > &events,
+        QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > &eventProducts)
+    {
+        for (auto rowIndex : treeView->selectionModel()->selectedRows()) {
+            auto itemType = m_Model->itemTypeOf(rowIndex);
+            if (itemType == CatalogueEventsModel::ItemType::Event) {
+                events << m_Model->getEvent(rowIndex);
+            }
+            else if (itemType == CatalogueEventsModel::ItemType::EventProduct) {
+                eventProducts << qMakePair(m_Model->getParentEvent(rowIndex),
+                                           m_Model->getEventProduct(rowIndex));
+            }
+        }
+    }
 };
 
 CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
@@ -242,21 +259,31 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         }
     });
 
+    connect(ui->btnRemove, &QToolButton::clicked, [this]() {
+        QVector<std::shared_ptr<DBEvent> > events;
+        QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > eventProducts;
+        impl->getSelectedItems(ui->treeView, events, eventProducts);
+
+        if (!events.isEmpty() && eventProducts.isEmpty()) {
+
+            if (QMessageBox::warning(this, tr("Remove Event(s)"),
+                                     tr("The selected event(s) will be completly removed "
+                                        "from the repository!\nAre you sure you want to continue?"),
+                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+                == QMessageBox::Yes) {
+
+                for (auto event : events) {
+                    sqpApp->catalogueController().removeEvent(event);
+                    impl->removeEvent(event, ui->treeView);
+                }
+            }
+        }
+    });
+
     auto emitSelection = [this]() {
         QVector<std::shared_ptr<DBEvent> > events;
         QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > eventProducts;
-
-        for (auto rowIndex : ui->treeView->selectionModel()->selectedRows()) {
-
-            auto itemType = impl->m_Model->itemTypeOf(rowIndex);
-            if (itemType == CatalogueEventsModel::ItemType::Event) {
-                events << impl->m_Model->getEvent(rowIndex);
-            }
-            else if (itemType == CatalogueEventsModel::ItemType::EventProduct) {
-                eventProducts << qMakePair(impl->m_Model->getParentEvent(rowIndex),
-                                           impl->m_Model->getEventProduct(rowIndex));
-            }
-        }
+        impl->getSelectedItems(ui->treeView, events, eventProducts);
 
         if (!events.isEmpty() && eventProducts.isEmpty()) {
             emit this->eventsSelected(events);
@@ -272,6 +299,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     connect(ui->treeView, &QTreeView::clicked, emitSelection);
     connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, emitSelection);
 
+    ui->btnRemove->setEnabled(false); // Disabled by default when nothing is selected
     connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
         auto isNotMultiSelection = ui->treeView->selectionModel()->selectedRows().count() <= 1;
         ui->btnChart->setEnabled(isNotMultiSelection);
@@ -283,6 +311,11 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         else if (isNotMultiSelection && ui->btnChart->isChecked()) {
             impl->updateForGraphMode(ui->treeView);
         }
+
+        QVector<std::shared_ptr<DBEvent> > events;
+        QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > eventProducts;
+        impl->getSelectedItems(ui->treeView, events, eventProducts);
+        ui->btnRemove->setEnabled(!events.isEmpty() && eventProducts.isEmpty());
     });
 
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);

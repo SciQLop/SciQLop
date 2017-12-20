@@ -159,6 +159,7 @@ void CatalogueController::removeEvent(std::shared_ptr<DBEvent> event)
     impl->m_CatalogueDao.removeEvent(*event);
     event->setRepository(impl->toSyncRepository(event->getRepository()));
     impl->m_CatalogueDao.removeEvent(*event);
+    impl->savAllDB();
 }
 
 void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
