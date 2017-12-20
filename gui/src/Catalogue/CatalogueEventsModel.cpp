@@ -202,10 +202,34 @@ QVector<std::shared_ptr<DBEvent> > CatalogueEventsModel::events() const
     return impl->m_Events;
 }
 
-void CatalogueEventsModel::refreshEvent(const std::shared_ptr<DBEvent> &event)
+void CatalogueEventsModel::refreshEvent(const std::shared_ptr<DBEvent> &event,
+                                        bool refreshEventProducts)
 {
     auto eventIndex = indexOf(event);
     if (eventIndex.isValid()) {
+
+        if (refreshEventProducts) {
+            // Reparse the associated event products
+
+            auto nbEventProducts = impl->nbEventProducts(event);
+            auto newNbOfEventProducts = event->getEventProducts().size();
+            if (newNbOfEventProducts < nbEventProducts) {
+                beginRemoveRows(eventIndex, newNbOfEventProducts, nbEventProducts - 1);
+                impl->m_EventProducts.erase(event.get());
+                impl->parseEventProduct(event);
+                endRemoveRows();
+            }
+            else if (newNbOfEventProducts > nbEventProducts) {
+                beginInsertRows(eventIndex, nbEventProducts, newNbOfEventProducts - 1);
+                impl->m_EventProducts.erase(event.get());
+                impl->parseEventProduct(event);
+                endInsertRows();
+            }
+            else { // newNbOfEventProducts == nbEventProducts
+                impl->m_EventProducts.erase(event.get());
+                impl->parseEventProduct(event);
+            }
+        }
 
         // Refreshes the event line
         auto colCount = columnCount();

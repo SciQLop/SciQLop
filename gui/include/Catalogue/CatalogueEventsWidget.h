@@ -50,6 +50,9 @@ private:
 
     class CatalogueEventsWidgetPrivate;
     spimpl::unique_impl_ptr<CatalogueEventsWidgetPrivate> impl;
+
+private slots:
+    void emitSelection();
 };
 
 #endif // SCIQLOP_CATALOGUEEVENTSWIDGET_H

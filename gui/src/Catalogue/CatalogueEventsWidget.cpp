@@ -280,24 +280,9 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         }
     });
 
-    auto emitSelection = [this]() {
-        QVector<std::shared_ptr<DBEvent> > events;
-        QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > eventProducts;
-        impl->getSelectedItems(ui->treeView, events, eventProducts);
-
-        if (!events.isEmpty() && eventProducts.isEmpty()) {
-            emit this->eventsSelected(events);
-        }
-        else if (events.isEmpty() && !eventProducts.isEmpty()) {
-            emit this->eventProductsSelected(eventProducts);
-        }
-        else {
-            emit this->selectionCleared();
-        }
-    };
-
-    connect(ui->treeView, &QTreeView::clicked, emitSelection);
-    connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, emitSelection);
+    connect(ui->treeView, &QTreeView::clicked, this, &CatalogueEventsWidget::emitSelection);
+    connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, this,
+            &CatalogueEventsWidget::emitSelection);
 
     ui->btnRemove->setEnabled(false); // Disabled by default when nothing is selected
     connect(ui->treeView->selectionModel(), &QItemSelectionModel::selectionChanged, [this]() {
@@ -374,7 +359,8 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
                     [this, event]() {
                         sqpApp->catalogueController().discardEvent(event);
                         setEventChanges(event, false);
-                        impl->m_Model->refreshEvent(event);
+                        impl->m_Model->refreshEvent(event, true);
+                        emitSelection();
                     });
                 ui->treeView->setIndexWidget(validationIndex, widget);
             }
@@ -453,5 +439,22 @@ void CatalogueEventsWidget::refresh()
     }
     else {
         populateWithCatalogues(impl->m_DisplayedCatalogues);
+    }
+}
+
+void CatalogueEventsWidget::emitSelection()
+{
+    QVector<std::shared_ptr<DBEvent> > events;
+    QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > > eventProducts;
+    impl->getSelectedItems(ui->treeView, events, eventProducts);
+
+    if (!events.isEmpty() && eventProducts.isEmpty()) {
+        emit eventsSelected(events);
+    }
+    else if (events.isEmpty() && !eventProducts.isEmpty()) {
+        emit eventProductsSelected(eventProducts);
+    }
+    else {
+        emit selectionCleared();
     }
 }
