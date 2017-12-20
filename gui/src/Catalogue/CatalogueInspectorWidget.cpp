@@ -64,7 +64,7 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
     });
 
     connect(ui->leEventTags, &QLineEdit::editingFinished, [ui, inspector, this]() {
-        auto tags = ui->leEventTags->text().split(QRegExp("\\s+"));
+        auto tags = ui->leEventTags->text().split(QRegExp("\\s+"), QString::SkipEmptyParts);
         std::list<QString> tagNames;
         for (auto tag : tags) {
             tagNames.push_back(tag);

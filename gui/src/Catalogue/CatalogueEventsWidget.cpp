@@ -357,9 +357,15 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
                         setEventChanges(event, false);
                     },
                     [this, event]() {
-                        sqpApp->catalogueController().discardEvent(event);
-                        setEventChanges(event, false);
-                        impl->m_Model->refreshEvent(event, true);
+                        bool removed = false;
+                        sqpApp->catalogueController().discardEvent(event, removed);
+                        if (removed) {
+                            impl->m_Model->removeEvent(event);
+                        }
+                        else {
+                            setEventChanges(event, false);
+                            impl->m_Model->refreshEvent(event, true);
+                        }
                         emitSelection();
                     });
                 ui->treeView->setIndexWidget(validationIndex, widget);

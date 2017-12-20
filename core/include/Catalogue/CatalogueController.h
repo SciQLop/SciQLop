@@ -49,7 +49,7 @@ public:
     //    void trashEvent(std::shared_ptr<DBEvent> event);
     //        void restore(std::shared_ptr<DBEvent> event);
     void saveEvent(std::shared_ptr<DBEvent> event);
-    void discardEvent(std::shared_ptr<DBEvent> event);
+    void discardEvent(std::shared_ptr<DBEvent> event, bool &removed);
     bool eventHasChanges(std::shared_ptr<DBEvent> event) const;
 
     // Catalogue
