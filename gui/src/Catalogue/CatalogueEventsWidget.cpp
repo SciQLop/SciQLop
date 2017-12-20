@@ -6,10 +6,15 @@
 #include <Catalogue/CatalogueExplorerHelper.h>
 #include <CatalogueDao.h>
 #include <DBCatalogue.h>
+#include <DBEventProduct.h>
+#include <DataSource/DataSourceController.h>
 #include <SqpApplication.h>
+#include <Variable/Variable.h>
+#include <Variable/VariableController.h>
 #include <Visualization/VisualizationTabWidget.h>
 #include <Visualization/VisualizationWidget.h>
 #include <Visualization/VisualizationZoneWidget.h>
+#include <Visualization/VisualizationGraphWidget.h>
 
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -28,6 +33,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     QString m_ZoneForGraphMode;
     QVector<std::shared_ptr<DBCatalogue> > m_DisplayedCatalogues;
     bool m_AllEventDisplayed = false;
+    QVector<VisualizationGraphWidget *> m_CustomGraphs;
 
     VisualizationWidget *m_VisualizationWidget = nullptr;
 
@@ -187,7 +193,29 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
             if (m_VisualizationWidget) {
                 if (auto tab = m_VisualizationWidget->currentTabWidget()) {
                     if (auto zone = tab->getZoneWithName(m_ZoneForGraphMode)) {
-                        // TODO
+
+                        for (auto graph : m_CustomGraphs) {
+                            graph->close();
+                        }
+                        m_CustomGraphs.clear();
+
+                        for (auto eventProduct : event->getEventProducts()) {
+                            auto productId = eventProduct.getProductId();
+
+                            auto context = new QObject{treeView};
+                            QObject::connect(&sqpApp->variableController(),
+                                             &VariableController::variableAdded, context,
+                                             [this, zone, context](auto variable) {
+                                                 auto graph = zone->createGraph(variable);
+                                                 m_CustomGraphs << graph;
+                                                 delete context; // removes the connection
+                                             },
+                                             Qt::QueuedConnection);
+
+                            QMetaObject::invokeMethod(
+                                &sqpApp->dataSourceController(), "requestVariableFromProductIdKey",
+                                Qt::QueuedConnection, Q_ARG(QString, productId));
+                        }
                     }
                 }
                 else {
