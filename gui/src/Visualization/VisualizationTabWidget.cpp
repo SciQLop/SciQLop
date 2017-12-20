@@ -375,10 +375,15 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropProducts(
         return;
     }
 
+    auto context = new QObject{tabWidget};
+    connect(&sqpApp->variableController(), &VariableController::variableAdded, context,
+            [this, index, tabWidget, context](auto variable) {
+                tabWidget->createZone({variable}, index);
+                delete context; // removes the connection
+            },
+            Qt::QueuedConnection);
+
     auto productData = productsMetaData.first().toHash();
     QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
                               Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
-
-
-    // TODO: add graph
 }

@@ -89,6 +89,8 @@ signals:
     /// validated, canceled, or failed)
     void acquisitionFinished();
 
+    void variableAdded(const std::shared_ptr<Variable> &variable);
+
 public slots:
     /// Request the data loading of the variable whithin range
     void onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables, const SqpRange &range,

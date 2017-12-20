@@ -516,6 +516,14 @@ void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragW
         auto products = sqpApp->dataSourceController().productsDataForMimeData(
             mimeData->data(MIME_TYPE_PRODUCT_LIST));
 
+        auto context = new QObject{this};
+        connect(&sqpApp->variableController(), &VariableController::variableAdded, context,
+                [this, graphWidget, context](auto variable) {
+                    graphWidget->addVariable(variable, graphWidget->graphRange());
+                    delete context; // removes the connection
+                },
+                Qt::QueuedConnection);
+
         auto productData = products.first().toHash();
         QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
                                   Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
@@ -630,10 +638,15 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropProducts(
         return;
     }
 
+    auto context = new QObject{zoneWidget};
+    connect(&sqpApp->variableController(), &VariableController::variableAdded, context,
+            [this, index, zoneWidget, context](auto variable) {
+                zoneWidget->createGraph(variable, index);
+                delete context; // removes the connection
+            },
+            Qt::QueuedConnection);
+
     auto productData = productsData.first().toHash();
     QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
                               Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
-
-
-    // TODO: add graph
 }
