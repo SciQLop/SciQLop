@@ -81,7 +81,10 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
     });
 
     connect(ui->inspector, &CatalogueInspectorWidget::eventProductUpdated,
-            [this](auto event, auto eventProduct) { ui->events->setEventChanges(event, true); });
+            [this](auto event, auto eventProduct) {
+                sqpApp->catalogueController().updateEventProduct(eventProduct);
+                ui->events->setEventChanges(event, true);
+            });
 }
 
 CatalogueExplorer::~CatalogueExplorer()
