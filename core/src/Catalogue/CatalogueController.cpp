@@ -184,8 +184,27 @@ void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
         impl->m_CatalogueDao.updateEvent(eventTemp);
     }
 
+<<<<<<< Upstream, based on feature/CatalogueDevelop2
     auto uniqueId = impl->eventUniqueKey(event);
     impl->m_EventKeysWithChanges.insert(uniqueId);
+=======
+
+    // update event parameter
+    auto uniqIdPredicate = std::make_shared<ComparaisonPredicate>(
+        QString{"uniqId"}, event->getUniqId(), ComparaisonOperation::EQUALEQUAL);
+
+    auto workRepositoryPredicate = std::make_shared<ComparaisonPredicate>(
+        QString{"repository"}, impl->toWorkRepository(event->getRepository()),
+        ComparaisonOperation::EQUALEQUAL);
+
+    auto workPred = std::make_shared<CompoundPredicate>(CompoundOperation::AND);
+    workPred->AddRequestPredicate(uniqIdPredicate);
+    workPred->AddRequestPredicate(workRepositoryPredicate);
+
+
+    auto workEvent = impl->m_CatalogueDao.getEvent(workPred);
+    *event = workEvent;
+>>>>>>> 575bb1a Discard an added event remove it now.
 }
 
 void CatalogueController::saveEvent(std::shared_ptr<DBEvent> event)
@@ -194,7 +213,7 @@ void CatalogueController::saveEvent(std::shared_ptr<DBEvent> event)
     impl->m_EventKeysWithChanges.remove(impl->eventUniqueKey(event));
 }
 
-void CatalogueController::discardEvent(std::shared_ptr<DBEvent> event)
+void CatalogueController::discardEvent(std::shared_ptr<DBEvent> event, bool &removed)
 {
     auto uniqIdPredicate = std::make_shared<ComparaisonPredicate>(
         QString{"uniqId"}, event->getUniqId(), ComparaisonOperation::EQUALEQUAL);
@@ -218,11 +237,21 @@ void CatalogueController::discardEvent(std::shared_ptr<DBEvent> event)
 
 
     auto syncEvent = impl->m_CatalogueDao.getEvent(syncPred);
-    impl->m_CatalogueDao.copyEvent(syncEvent, impl->toWorkRepository(event->getRepository()), true);
+    if (!syncEvent.getUniqId().isNull()) {
+        removed = false;
+        impl->m_CatalogueDao.copyEvent(syncEvent, impl->toWorkRepository(event->getRepository()),
+                                       true);
 
-    auto workEvent = impl->m_CatalogueDao.getEvent(workPred);
-    *event = workEvent;
-    impl->m_EventKeysWithChanges.remove(impl->eventUniqueKey(event));
+        auto workEvent = impl->m_CatalogueDao.getEvent(workPred);
+        *event = workEvent;
+        impl->m_EventKeysWithChanges.remove(impl->eventUniqueKey(event));
+    }
+    else {
+        removed = true;
+        // Since the element wasn't in sync repository. Discard it means remove it
+        event->setRepository(impl->toWorkRepository(event->getRepository()));
+        impl->m_CatalogueDao.removeEvent(*event);
+    }
 }
 
 bool CatalogueController::eventHasChanges(std::shared_ptr<DBEvent> event) const
