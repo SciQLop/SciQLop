@@ -163,7 +163,7 @@ void DataSourceController::finalize()
     impl->m_WorkingMutex.unlock();
 }
 
-void DataSourceController::requestVariable(const QString &datasourceIdKey)
+void DataSourceController::requestVariableFromProductIdKey(const QString &datasourceIdKey)
 {
     auto sourceItem = impl->findDataSourceItem(datasourceIdKey);
 
