@@ -268,7 +268,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         if (!events.isEmpty() && eventProducts.isEmpty()) {
 
             if (QMessageBox::warning(this, tr("Remove Event(s)"),
-                                     tr("The selected event(s) will be completly removed "
+                                     tr("The selected event(s) will be permanently removed "
                                         "from the repository!\nAre you sure you want to continue?"),
                                      QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
                 == QMessageBox::Yes) {

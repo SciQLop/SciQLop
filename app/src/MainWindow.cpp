@@ -386,8 +386,8 @@ bool MainWindow::MainWindowPrivate::checkDataToSave(QWidget *parentWidget)
     if (hasChanges) {
         // There are some unsaved changes
         switch (QMessageBox::question(
-            parentWidget, "Save changes",
-            tr("The catalogue controller unsaved changes.\nDo you want to save them ?"),
+            parentWidget, tr("Save changes"),
+            tr("The catalogue controller has unsaved changes.\nDo you want to save them ?"),
             QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel,
             QMessageBox::SaveAll)) {
             case QMessageBox::SaveAll:
