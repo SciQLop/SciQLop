@@ -62,6 +62,7 @@ public:
     void updateCatalogue(std::shared_ptr<DBCatalogue> catalogue);
     void removeCatalogue(std::shared_ptr<DBCatalogue> catalogue);
     void saveCatalogue(std::shared_ptr<DBCatalogue> catalogue);
+    void discardCatalogue(std::shared_ptr<DBCatalogue> catalogue, bool &removed);
 
     void saveAll();
     bool hasChanges() const;

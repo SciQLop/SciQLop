@@ -12,6 +12,7 @@
 #include <DBCatalogue.h>
 
 #include <QMenu>
+#include <QMessageBox>
 
 Q_LOGGING_CATEGORY(LOG_CatalogueSideBarWidget, "CatalogueSideBarWidget")
 
@@ -33,7 +34,7 @@ struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
                           const QModelIndex &databaseIndex);
 
     CatalogueTreeItem *getCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue) const;
-    void setHasChanges(bool value, const QModelIndex &index, QTreeView *treeView);
+    void setHasChanges(bool value, const QModelIndex &index, CatalogueSideBarWidget *sideBarWidget);
     bool hasChanges(const QModelIndex &index, QTreeView *treeView);
 
     int selectionType(QTreeView *treeView) const
@@ -109,39 +110,77 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
     ui->treeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
 
-    auto emitSelection = [this]() {
+    connect(ui->treeView, &QTreeView::clicked, this, &CatalogueSideBarWidget::emitSelection);
+    connect(ui->treeView->selectionModel(), &QItemSelectionModel::currentChanged, this,
+            &CatalogueSideBarWidget::emitSelection);
 
-        auto selectionType = impl->selectionType(ui->treeView);
 
-        switch (selectionType) {
-            case CATALOGUE_ITEM_TYPE:
-                emit this->catalogueSelected(impl->selectedCatalogues(ui->treeView));
-                break;
-            case DATABASE_ITEM_TYPE:
-                emit this->databaseSelected(impl->selectedRepositories(ui->treeView));
-                break;
-            case ALL_EVENT_ITEM_TYPE:
-                emit this->allEventsSelected();
-                break;
-            case TRASH_ITEM_TYPE:
-                emit this->trashSelected();
-                break;
-            default:
-                emit this->selectionCleared();
-                break;
+    //    connect(ui->btnAdd, &QToolButton::clicked, [this]() {
+    //        QVector<std::shared_ptr<DBCatalogue> > catalogues;
+    //        impl->getSelectedItems(ui->treeView, events, eventProducts);
+
+    //        if (!events.isEmpty() && eventProducts.isEmpty()) {
+
+    //            if (QMessageBox::warning(this, tr("Remove Event(s)"),
+    //                                     tr("The selected event(s) will be completly removed "
+    //                                        "from the repository!\nAre you sure you want to
+    //                                        continue?"),
+    //                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+    //                == QMessageBox::Yes) {
+
+    //                for (auto event : events) {
+    //                    sqpApp->catalogueController().removeEvent(event);
+    //                    impl->removeEvent(event, ui->treeView);
+    //                }
+    //            }
+    //        }
+    //    });
+
+
+    connect(impl->m_TreeModel, &CatalogueTreeModel::itemDropped, [this](auto index) {
+        auto item = impl->m_TreeModel->item(index);
+        if (item && item->type() == CATALOGUE_ITEM_TYPE) {
+            auto catalogue = static_cast<CatalogueTreeItem *>(item)->catalogue();
+            this->setCatalogueChanges(catalogue, true);
         }
-    };
+    });
+    connect(ui->btnRemove, &QToolButton::clicked, [this]() {
+        QVector<QPair<std::shared_ptr<DBCatalogue>, CatalogueAbstractTreeItem *> >
+            cataloguesToItems;
+        auto selectedIndexes = ui->treeView->selectionModel()->selectedRows();
 
-    connect(ui->treeView, &QTreeView::clicked, emitSelection);
-    connect(ui->treeView->selectionModel(), &QItemSelectionModel::currentChanged, emitSelection);
-    connect(impl->m_TreeModel, &CatalogueTreeModel::itemRenamed, [emitSelection, this](auto index) {
+        for (auto index : selectedIndexes) {
+            auto item = impl->m_TreeModel->item(index);
+            if (item && item->type() == CATALOGUE_ITEM_TYPE) {
+                auto catalogue = static_cast<CatalogueTreeItem *>(item)->catalogue();
+                cataloguesToItems << qMakePair(catalogue, item);
+            }
+        }
+
+        if (!cataloguesToItems.isEmpty()) {
+
+            if (QMessageBox::warning(this, tr("Remove Catalogue(s)"),
+                                     tr("The selected catalogues(s) will be completly removed "
+                                        "from the repository!\nAre you sure you want to continue?"),
+                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+                == QMessageBox::Yes) {
+
+                for (auto catalogueToItem : cataloguesToItems) {
+                    sqpApp->catalogueController().removeCatalogue(catalogueToItem.first);
+                    impl->m_TreeModel->removeChildItem(
+                        catalogueToItem.second,
+                        impl->m_TreeModel->indexOf(catalogueToItem.second->parent()));
+                }
+            }
+        }
+    });
+
+    connect(impl->m_TreeModel, &CatalogueTreeModel::itemRenamed, [this](auto index) {
         auto selectedIndexes = ui->treeView->selectionModel()->selectedRows();
         if (selectedIndexes.contains(index)) {
-            emitSelection();
+            this->emitSelection();
         }
-
-        auto item = impl->m_TreeModel->item(index);
-        impl->setHasChanges(true, index, ui->treeView);
+        impl->setHasChanges(true, index, this);
     });
 
     ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -166,7 +205,7 @@ void CatalogueSideBarWidget::setCatalogueChanges(const std::shared_ptr<DBCatalog
 {
     if (auto catalogueItem = impl->getCatalogueItem(catalogue)) {
         auto index = impl->m_TreeModel->indexOf(catalogueItem);
-        impl->setHasChanges(hasChanges, index, ui->treeView);
+        impl->setHasChanges(hasChanges, index, this);
         // catalogueItem->refresh();
     }
 }
@@ -187,6 +226,29 @@ CatalogueSideBarWidget::getCatalogues(const QString &repository) const
     }
 
     return result;
+}
+
+void CatalogueSideBarWidget::emitSelection()
+{
+    auto selectionType = impl->selectionType(ui->treeView);
+
+    switch (selectionType) {
+        case CATALOGUE_ITEM_TYPE:
+            emit this->catalogueSelected(impl->selectedCatalogues(ui->treeView));
+            break;
+        case DATABASE_ITEM_TYPE:
+            emit this->databaseSelected(impl->selectedRepositories(ui->treeView));
+            break;
+        case ALL_EVENT_ITEM_TYPE:
+            emit this->allEventsSelected();
+            break;
+        case TRASH_ITEM_TYPE:
+            emit this->trashSelected();
+            break;
+        default:
+            emit this->selectionCleared();
+            break;
+    }
 }
 
 void CatalogueSideBarWidget::onContextMenuRequested(const QPoint &pos)
@@ -307,25 +369,48 @@ CatalogueTreeItem *CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getCat
     return nullptr;
 }
 
-void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::setHasChanges(bool value,
-                                                                          const QModelIndex &index,
-                                                                          QTreeView *treeView)
+void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::setHasChanges(
+    bool value, const QModelIndex &index, CatalogueSideBarWidget *sideBarWidget)
 {
+    std::shared_ptr<DBCatalogue> catalogue = nullptr;
+    auto item = m_TreeModel->item(index);
+    if (item && item->type() == CATALOGUE_ITEM_TYPE) {
+        catalogue = static_cast<CatalogueTreeItem *>(item)->catalogue();
+    }
+
     auto validationIndex = index.sibling(index.row(), (int)CatalogueTreeModel::Column::Validation);
     if (value) {
-        if (!hasChanges(validationIndex, treeView)) {
+        if (!hasChanges(validationIndex, sideBarWidget->ui->treeView)) {
             auto widget = CatalogueExplorerHelper::buildValidationWidget(
-                treeView, [this, validationIndex,
-                           treeView]() { setHasChanges(false, validationIndex, treeView); },
-                [this, validationIndex, treeView]() {
-                    setHasChanges(false, validationIndex, treeView);
+                sideBarWidget->ui->treeView,
+                [this, validationIndex, sideBarWidget, catalogue]() {
+                    if (catalogue) {
+                        sqpApp->catalogueController().saveCatalogue(catalogue);
+                    }
+                    setHasChanges(false, validationIndex, sideBarWidget);
+                },
+                [this, validationIndex, sideBarWidget, catalogue, item]() {
+                    if (catalogue) {
+                        bool removed;
+                        sqpApp->catalogueController().discardCatalogue(catalogue, removed);
+
+                        if (removed) {
+                            m_TreeModel->removeChildItem(item,
+                                                         m_TreeModel->indexOf(item->parent()));
+                        }
+                        else {
+                            m_TreeModel->refresh(m_TreeModel->indexOf(item));
+                            setHasChanges(false, validationIndex, sideBarWidget);
+                        }
+                        sideBarWidget->emitSelection();
+                    }
                 });
-            treeView->setIndexWidget(validationIndex, widget);
+            sideBarWidget->ui->treeView->setIndexWidget(validationIndex, widget);
         }
     }
     else {
         // Note: the widget is destroyed
-        treeView->setIndexWidget(validationIndex, nullptr);
+        sideBarWidget->ui->treeView->setIndexWidget(validationIndex, nullptr);
     }
 }
 
