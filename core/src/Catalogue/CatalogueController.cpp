@@ -190,27 +190,14 @@ void CatalogueController::addEvent(std::shared_ptr<DBEvent> event)
         impl->m_CatalogueDao.updateEvent(eventTemp);
     }
 
-<<<<<<< Upstream, based on feature/CatalogueDevelop2
-    auto uniqueId = impl->eventUniqueKey(event);
-    impl->m_EventKeysWithChanges.insert(uniqueId);
-=======
-
-    // update event parameter
-    auto uniqIdPredicate = std::make_shared<ComparaisonPredicate>(
-        QString{"uniqId"}, event->getUniqId(), ComparaisonOperation::EQUALEQUAL);
-
-    auto workRepositoryPredicate = std::make_shared<ComparaisonPredicate>(
-        QString{"repository"}, impl->toWorkRepository(event->getRepository()),
-        ComparaisonOperation::EQUALEQUAL);
-
-    auto workPred = std::make_shared<CompoundPredicate>(CompoundOperation::AND);
-    workPred->AddRequestPredicate(uniqIdPredicate);
-    workPred->AddRequestPredicate(workRepositoryPredicate);
-
+    auto workPred = impl->createFinder(event->getUniqId(), event->getRepository(), DBType::WORK);
 
     auto workEvent = impl->m_CatalogueDao.getEvent(workPred);
     *event = workEvent;
->>>>>>> 575bb1a Discard an added event remove it now.
+
+
+    auto uniqueId = impl->eventUniqueKey(event);
+    impl->m_EventKeysWithChanges.insert(uniqueId);
 }
 
 void CatalogueController::saveEvent(std::shared_ptr<DBEvent> event)
