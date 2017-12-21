@@ -136,6 +136,9 @@ struct VariableController::VariableControllerPrivate {
     void cancelVariableRequest(QUuid varRequestId);
     void executeVarRequest(std::shared_ptr<Variable> var, VariableRequest &varRequest);
 
+    template <typename VariableIterator>
+    void desynchronize(VariableIterator variableIt, const QUuid &syncGroupId);
+
     QMutex m_WorkingMutex;
     /// Variable model. The VariableController has the ownership
     VariableModel *m_VariableModel;
@@ -258,8 +261,22 @@ void VariableController::deleteVariable(std::shared_ptr<Variable> variable) noex
     // make some treatments before the deletion
     emit variableAboutToBeDeleted(variable);
 
+    auto variableIt = impl->m_VariableToIdentifierMap.find(variable);
+    Q_ASSERT(variableIt != impl->m_VariableToIdentifierMap.cend());
+
+    auto variableId = variableIt->second;
+
+    // Removes variable's handler
+    impl->m_VarIdToVarRequestHandler.erase(variableId);
+
+    // Desynchronizes variable (if the variable is in a sync group)
+    auto syncGroupIt = impl->m_VariableIdGroupIdMap.find(variableId);
+    if (syncGroupIt != impl->m_VariableIdGroupIdMap.cend()) {
+        impl->desynchronize(variableIt, syncGroupIt->second);
+    }
+
     // Deletes identifier
-    impl->m_VariableToIdentifierMap.erase(variable);
+    impl->m_VariableToIdentifierMap.erase(variableIt);
 
     // Deletes provider
     auto nbProvidersDeleted = impl->m_VariableToProviderMap.erase(variable);
@@ -545,23 +562,7 @@ void VariableController::desynchronize(std::shared_ptr<Variable> variable,
         return;
     }
 
-    // Gets synchronization group
-    auto groupIt = impl->m_GroupIdToVariableSynchronizationGroupMap.find(synchronizationGroupId);
-    if (groupIt == impl->m_GroupIdToVariableSynchronizationGroupMap.cend()) {
-        qCCritical(LOG_VariableController())
-            << tr("Can't desynchronize variable %1: unknown synchronization group")
-                   .arg(variable->name());
-        return;
-    }
-
-    auto variableId = variableIt->second;
-
-    // Removes variable from synchronization group
-    auto synchronizationGroup = groupIt->second;
-    synchronizationGroup->removeVariableId(variableId);
-
-    // Removes link between variable and synchronization group
-    impl->m_VariableIdGroupIdMap.erase(variableId);
+    impl->desynchronize(variableIt, synchronizationGroupId);
 }
 
 void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables,
@@ -933,6 +934,7 @@ void VariableController::VariableControllerPrivate::updateVariableRequest(QUuid 
                     varHandler->m_PendingVarRequest = VariableRequest{};
                     auto var = findVariable(itVarHandler->first);
                     executeVarRequest(var, varHandler->m_RunningVarRequest);
+                    updateVariables(varHandler->m_RunningVarRequest.m_VariableGroupId);
                     break;
                 }
                 default:
@@ -1032,7 +1034,14 @@ void VariableController::VariableControllerPrivate::executeVarRequest(std::share
 {
     qCDebug(LOG_VariableController()) << tr("TORM: executeVarRequest");
 
-    auto varId = m_VariableToIdentifierMap.at(var);
+    auto varIdIt = m_VariableToIdentifierMap.find(var);
+    if (varIdIt == m_VariableToIdentifierMap.cend()) {
+        qCWarning(LOG_VariableController()) << tr(
+            "Can't execute request of a variable that is not registered (may has been deleted)");
+        return;
+    }
+
+    auto varId = varIdIt->second;
 
     auto varCacheRange = var->cacheRange();
     auto varCacheRangeRequested = varRequest.m_CacheRangeRequested;
@@ -1066,4 +1075,28 @@ void VariableController::VariableControllerPrivate::executeVarRequest(std::share
         acceptVariableRequest(varId,
                               var->dataSeries()->subDataSeries(varRequest.m_CacheRangeRequested));
     }
+}
+
+template <typename VariableIterator>
+void VariableController::VariableControllerPrivate::desynchronize(VariableIterator variableIt,
+                                                                  const QUuid &syncGroupId)
+{
+    const auto &variable = variableIt->first;
+    const auto &variableId = variableIt->second;
+
+    // Gets synchronization group
+    auto groupIt = m_GroupIdToVariableSynchronizationGroupMap.find(syncGroupId);
+    if (groupIt == m_GroupIdToVariableSynchronizationGroupMap.cend()) {
+        qCCritical(LOG_VariableController())
+            << tr("Can't desynchronize variable %1: unknown synchronization group")
+                   .arg(variable->name());
+        return;
+    }
+
+    // Removes variable from synchronization group
+    auto synchronizationGroup = groupIt->second;
+    synchronizationGroup->removeVariableId(variableId);
+
+    // Removes link between variable and synchronization group
+    m_VariableIdGroupIdMap.erase(variableId);
 }

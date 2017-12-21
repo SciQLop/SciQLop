@@ -59,7 +59,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
     explicit VisualizationGraphWidgetPrivate(const QString &name)
             : m_Name{name},
-              m_DoAcquisition{true},
+              m_Flags{GraphFlag::EnableAll},
               m_IsCalibration{false},
               m_RenderingDelegate{nullptr}
     {
@@ -77,7 +77,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     QString m_Name;
     // 1 variable -> n qcpplot
     std::map<std::shared_ptr<Variable>, PlottablesMap> m_VariableToPlotMultiMap;
-    bool m_DoAcquisition;
+    GraphFlags m_Flags;
     bool m_IsCalibration;
     /// Delegate used to attach rendering features to the plot
     std::unique_ptr<VisualizationGraphRenderingDelegate> m_RenderingDelegate;
@@ -287,9 +287,9 @@ VisualizationWidget *VisualizationGraphWidget::parentVisualizationWidget() const
     return qobject_cast<VisualizationWidget *>(parent);
 }
 
-void VisualizationGraphWidget::enableAcquisition(bool enable)
+void VisualizationGraphWidget::setFlags(GraphFlags flags)
 {
-    impl->m_DoAcquisition = enable;
+    impl->m_Flags = std::move(flags);
 }
 
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, SqpRange range)
@@ -311,9 +311,9 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, S
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 
-    this->enableAcquisition(false);
+    this->setFlags(GraphFlag::DisableAll);
     this->setGraphRange(range);
-    this->enableAcquisition(true);
+    this->setFlags(GraphFlag::EnableAll);
 
     emit requestDataLoading(QVector<std::shared_ptr<Variable> >() << variable, range, false);
 
@@ -696,12 +696,12 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
 {
     qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: VisualizationGraphWidget::onRangeChanged")
                                             << QThread::currentThread()->objectName() << "DoAcqui"
-                                            << impl->m_DoAcquisition;
+                                            << impl->m_Flags.testFlag(GraphFlag::EnableAcquisition);
 
     auto graphRange = SqpRange{t1.lower, t1.upper};
     auto oldGraphRange = SqpRange{t2.lower, t2.upper};
 
-    if (impl->m_DoAcquisition) {
+    if (impl->m_Flags.testFlag(GraphFlag::EnableAcquisition)) {
         QVector<std::shared_ptr<Variable> > variableUnderGraphVector;
 
         for (auto it = impl->m_VariableToPlotMultiMap.begin(),
@@ -711,13 +711,13 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
         }
         emit requestDataLoading(std::move(variableUnderGraphVector), graphRange,
                                 !impl->m_IsCalibration);
+    }
 
-        if (!impl->m_IsCalibration) {
-            qCDebug(LOG_VisualizationGraphWidget())
-                << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
-                << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
-            emit synchronize(graphRange, oldGraphRange);
-        }
+    if (impl->m_Flags.testFlag(GraphFlag::EnableSynchronization) && !impl->m_IsCalibration) {
+        qCDebug(LOG_VisualizationGraphWidget())
+            << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
+            << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
+        emit synchronize(graphRange, oldGraphRange);
     }
 
     auto pos = mapFromGlobal(QCursor::pos());
@@ -733,6 +733,9 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
     else {
         qCWarning(LOG_VisualizationGraphWidget()) << "onMouseMove: No parent zone widget";
     }
+
+    // Quits calibration
+    impl->m_IsCalibration = false;
 }
 
 void VisualizationGraphWidget::onMouseDoubleClick(QMouseEvent *event) noexcept
@@ -916,8 +919,6 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
     }
 
     impl->endDrawingZone(this);
-
-    impl->m_IsCalibration = false;
 
     // Selection / Deselection
     auto isSelectionZoneMode

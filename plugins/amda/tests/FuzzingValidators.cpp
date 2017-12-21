@@ -96,7 +96,7 @@ public:
         auto dataHoleIt = std::adjacent_find(
             dataIts.first, dataIts.second, [](const auto &it1, const auto &it2) {
                 /// @todo: validate resolution
-                return std::abs(it1.x() - it2.x()) > 2 * (LOCALHOST_SERVER_RESOLUTION - 1);
+                return std::abs(it1.x() - it2.x()) > 2 * LOCALHOST_SERVER_RESOLUTION;
             });
 
         if (dataHoleIt != dataIts.second) {

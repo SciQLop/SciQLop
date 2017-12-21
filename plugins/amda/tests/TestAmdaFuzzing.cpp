@@ -370,6 +370,10 @@ void TestAmdaFuzzing::testFuzzing()
 
 int main(int argc, char *argv[])
 {
+    // Increases the test function timeout (which is 5 minutes by default) to 12 hours
+    // https://stackoverflow.com/questions/42655932/setting-timeout-to-qt-test
+    qputenv("QTEST_FUNCTION_TIMEOUT", QByteArray::number(12*60*60*1000));
+
     QLoggingCategory::setFilterRules(
         "*.warning=false\n"
         "*.info=false\n"
