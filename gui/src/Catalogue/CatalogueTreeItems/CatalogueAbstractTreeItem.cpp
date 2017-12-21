@@ -24,6 +24,12 @@ void CatalogueAbstractTreeItem::addChild(CatalogueAbstractTreeItem *child)
     child->impl->m_Parent = this;
 }
 
+void CatalogueAbstractTreeItem::removeChild(CatalogueAbstractTreeItem *child)
+{
+    impl->m_Children.removeAll(child);
+    delete child;
+}
+
 QVector<CatalogueAbstractTreeItem *> CatalogueAbstractTreeItem::children() const
 {
     return impl->m_Children;

@@ -69,8 +69,8 @@ struct CatalogueActionManager::CatalogueActionManagerPrivate {
 
 
         if (catalogue) {
-            // TODO
-            // catalogue->addEvent(event);
+            catalogue->addEvent(event->getUniqId());
+            sqpApp->catalogueController().updateCatalogue(catalogue);
             m_CatalogueExplorer->sideBarWidget().setCatalogueChanges(catalogue, true);
             if (m_CatalogueExplorer->eventsWidget().displayedCatalogues().contains(catalogue)) {
                 m_CatalogueExplorer->eventsWidget().addEvent(event);
@@ -135,7 +135,7 @@ void CatalogueActionManager::installSelectionZoneActions()
                 if (!selectedCatalogue) {
                     selectedCatalogue = std::make_shared<DBCatalogue>();
                     selectedCatalogue->setName(dialog.catalogueName());
-                    // sqpApp->catalogueController().addCatalogue(selectedCatalogue); TODO
+                    sqpApp->catalogueController().addCatalogue(selectedCatalogue);
                     impl->m_CatalogueExplorer->sideBarWidget().addCatalogue(selectedCatalogue,
                                                                             REPOSITORY_DEFAULT);
                 }

@@ -33,6 +33,9 @@ public:
 
     QVector<std::shared_ptr<DBCatalogue> > getCatalogues(const QString &repository) const;
 
+private slots:
+    void emitSelection();
+
 private:
     Ui::CatalogueSideBarWidget *ui;
 

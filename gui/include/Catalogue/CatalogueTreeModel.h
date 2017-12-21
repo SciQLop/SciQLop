@@ -27,6 +27,9 @@ public:
     QVector<CatalogueAbstractTreeItem *> topLevelItems() const;
 
     void addChildItem(CatalogueAbstractTreeItem *child, const QModelIndex &parentIndex);
+    void removeChildItem(CatalogueAbstractTreeItem *child, const QModelIndex &parentIndex);
+    /// Refresh the data for the specified index
+    void refresh(const QModelIndex &index);
 
     CatalogueAbstractTreeItem *item(const QModelIndex &index) const;
     QModelIndex indexOf(CatalogueAbstractTreeItem *item, int column = 0) const;
