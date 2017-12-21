@@ -6,6 +6,7 @@
 #include <QTreeWidgetItem>
 #include <QWidget>
 
+class CatalogueAbstractTreeItem;
 class DBCatalogue;
 
 namespace Ui {
@@ -28,10 +29,14 @@ public:
     explicit CatalogueSideBarWidget(QWidget *parent = 0);
     virtual ~CatalogueSideBarWidget();
 
-    void addCatalogue(const std::shared_ptr<DBCatalogue> &catalogue, const QString &repository);
+    CatalogueAbstractTreeItem *addCatalogue(const std::shared_ptr<DBCatalogue> &catalogue,
+                                            const QString &repository);
     void setCatalogueChanges(const std::shared_ptr<DBCatalogue> &catalogue, bool hasChanges);
 
     QVector<std::shared_ptr<DBCatalogue> > getCatalogues(const QString &repository) const;
+
+private slots:
+    void emitSelection();
 
 private:
     Ui::CatalogueSideBarWidget *ui;

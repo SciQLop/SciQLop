@@ -15,6 +15,7 @@ public:
     virtual ~CatalogueAbstractTreeItem();
 
     void addChild(CatalogueAbstractTreeItem *child);
+    void removeChild(CatalogueAbstractTreeItem *child);
     QVector<CatalogueAbstractTreeItem *> children() const;
     CatalogueAbstractTreeItem *parent() const;
 

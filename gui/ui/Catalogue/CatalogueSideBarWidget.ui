@@ -31,7 +31,7 @@
      <item>
       <widget class="QToolButton" name="btnAdd">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="text">
         <string>+</string>
@@ -48,7 +48,7 @@
      <item>
       <widget class="QToolButton" name="btnRemove">
        <property name="enabled">
-        <bool>false</bool>
+        <bool>true</bool>
        </property>
        <property name="text">
         <string> - </string>
@@ -99,7 +99,6 @@
   </layout>
  </widget>
  <resources>
-  <include location="../../resources/sqpguiresources.qrc"/>
   <include location="../../resources/sqpguiresources.qrc"/>
  </resources>
  <connections/>

@@ -46,6 +46,23 @@ void CatalogueTreeModel::addChildItem(CatalogueAbstractTreeItem *child,
     emit dataChanged(parentIndex, parentIndex);
 }
 
+void CatalogueTreeModel::removeChildItem(CatalogueAbstractTreeItem *child,
+                                         const QModelIndex &parentIndex)
+{
+    auto parentItem = item(parentIndex);
+    int i = parentItem->children().indexOf(child);
+    beginRemoveRows(parentIndex, i, i);
+    parentItem->removeChild(child);
+    endRemoveRows();
+
+    emit dataChanged(parentIndex, parentIndex);
+}
+
+void CatalogueTreeModel::refresh(const QModelIndex &index)
+{
+    emit dataChanged(index, index);
+}
+
 CatalogueAbstractTreeItem *CatalogueTreeModel::item(const QModelIndex &index) const
 {
     return static_cast<CatalogueAbstractTreeItem *>(index.internalPointer());
