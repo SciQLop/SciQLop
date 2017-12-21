@@ -30,8 +30,8 @@ struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
     void configureTreeWidget(QTreeView *treeView);
     QModelIndex addDatabaseItem(const QString &name);
     CatalogueAbstractTreeItem *getDatabaseItem(const QString &name);
-    void addCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue,
-                          const QModelIndex &databaseIndex);
+    CatalogueAbstractTreeItem *addCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue,
+                                                const QModelIndex &databaseIndex);
 
     CatalogueTreeItem *getCatalogueItem(const std::shared_ptr<DBCatalogue> &catalogue) const;
     void setHasChanges(bool value, const QModelIndex &index, CatalogueSideBarWidget *sideBarWidget);
@@ -115,26 +115,15 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
             &CatalogueSideBarWidget::emitSelection);
 
 
-    //    connect(ui->btnAdd, &QToolButton::clicked, [this]() {
-    //        QVector<std::shared_ptr<DBCatalogue> > catalogues;
-    //        impl->getSelectedItems(ui->treeView, events, eventProducts);
+    connect(ui->btnAdd, &QToolButton::clicked, [this]() {
+        auto catalogue = std::make_shared<DBCatalogue>();
+        catalogue->setName(QString("Cat"));
+        sqpApp->catalogueController().addCatalogue(catalogue);
+        auto item = this->addCatalogue(catalogue, REPOSITORY_DEFAULT);
+        this->setCatalogueChanges(catalogue, true);
+        ui->treeView->edit(impl->m_TreeModel->indexOf(item));
 
-    //        if (!events.isEmpty() && eventProducts.isEmpty()) {
-
-    //            if (QMessageBox::warning(this, tr("Remove Event(s)"),
-    //                                     tr("The selected event(s) will be completly removed "
-    //                                        "from the repository!\nAre you sure you want to
-    //                                        continue?"),
-    //                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
-    //                == QMessageBox::Yes) {
-
-    //                for (auto event : events) {
-    //                    sqpApp->catalogueController().removeEvent(event);
-    //                    impl->removeEvent(event, ui->treeView);
-    //                }
-    //            }
-    //        }
-    //    });
+    });
 
 
     connect(impl->m_TreeModel, &CatalogueTreeModel::itemDropped, [this](auto index) {
@@ -193,11 +182,12 @@ CatalogueSideBarWidget::~CatalogueSideBarWidget()
     delete ui;
 }
 
-void CatalogueSideBarWidget::addCatalogue(const std::shared_ptr<DBCatalogue> &catalogue,
-                                          const QString &repository)
+CatalogueAbstractTreeItem *
+CatalogueSideBarWidget::addCatalogue(const std::shared_ptr<DBCatalogue> &catalogue,
+                                     const QString &repository)
 {
     auto repositoryItem = impl->getDatabaseItem(repository);
-    impl->addCatalogueItem(catalogue, impl->m_TreeModel->indexOf(repositoryItem));
+    return impl->addCatalogueItem(catalogue, impl->m_TreeModel->indexOf(repositoryItem));
 }
 
 void CatalogueSideBarWidget::setCatalogueChanges(const std::shared_ptr<DBCatalogue> &catalogue,
@@ -336,12 +326,14 @@ CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getDatabaseItem(const QSt
     return nullptr;
 }
 
-void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addCatalogueItem(
+CatalogueAbstractTreeItem *CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::addCatalogueItem(
     const std::shared_ptr<DBCatalogue> &catalogue, const QModelIndex &databaseIndex)
 {
     auto catalogueItem
         = new CatalogueTreeItem{catalogue, QIcon{":/icones/catalogue.png"}, CATALOGUE_ITEM_TYPE};
     m_TreeModel->addChildItem(catalogueItem, databaseIndex);
+
+    return catalogueItem;
 }
 
 CatalogueTreeItem *CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getCatalogueItem(
