@@ -67,13 +67,17 @@ void FuzzingState::synchronizeVariable(VariableId variableId, SyncGroupId syncGr
         return;
     }
 
-    // Registers variable into sync group: if it's the first variable, sets the variable range as
-    // the sync group range
+    // Registers variable into sync group
     auto &syncGroup = m_SyncGroupsPool.at(syncGroupId);
+    auto &variableState = m_VariablesPool.at(variableId);
     syncGroup.m_Variables.insert(variableId);
     if (syncGroup.m_Variables.size() == 1) {
-        auto &variableState = m_VariablesPool.at(variableId);
+        // If it's the first variable, sets the variable range as the sync group range
         syncGroup.m_Range = variableState.m_Range;
+    }
+    else {
+        // If a variable is added to an existing group, sets its range to the group's range
+        variableState.m_Range = syncGroup.m_Range;
     }
 }
 
@@ -97,13 +101,18 @@ void FuzzingState::updateRanges(VariableId variableId, const SqpRange &newRange)
     auto syncGroupId = this->syncGroupId(variableId);
 
     // Retrieves the variables to update:
-    // - if the variable is synchronized to others, updates all synchronized variables
+    // - if the variable is synchronized to others, updates the range of the group and of all
+    // synchronized variables
     // - otherwise, updates only the variable
-    auto variablesToUpdate = syncGroupId.isNull() ? std::set<VariableId>{variableId}
-                                                  : m_SyncGroupsPool.at(syncGroupId).m_Variables;
-
-    // Sets new range
-    for (const auto &variableId : variablesToUpdate) {
+    if (syncGroupId.isNull()) {
         m_VariablesPool.at(variableId).m_Range = newRange;
+    }
+    else {
+        auto &syncGroup = m_SyncGroupsPool.at(syncGroupId);
+        syncGroup.m_Range = newRange;
+
+        for (const auto &variableId : syncGroup.m_Variables) {
+            m_VariablesPool.at(variableId).m_Range = newRange;
+        }
     }
 }
