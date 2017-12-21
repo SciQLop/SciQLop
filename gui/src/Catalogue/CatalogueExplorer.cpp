@@ -19,6 +19,8 @@ struct CatalogueExplorer::CatalogueExplorerPrivate {
     std::unordered_map<std::shared_ptr<DBEvent>, QVector<VisualizationSelectionZoneItem *> >
         m_SelectionZonesPerEvents;
 
+    QMetaObject::Connection m_Conn;
+
     CatalogueExplorerPrivate(CatalogueExplorer *catalogueExplorer)
             : m_ActionManager(catalogueExplorer)
     {
@@ -100,22 +102,7 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
     // Manage Selection Zones associated to events
     connect(ui->events, &CatalogueEventsWidget::selectionZoneAdded,
             [this](auto event, auto productId, auto zone) {
-                impl->m_SelectionZonesPerEvents[event] << zone;
-                connect(zone, &VisualizationSelectionZoneItem::rangeEdited,
-                        [event, productId, this](auto range) {
-                            auto productList = event->getEventProducts();
-                            for (auto &product : productList) {
-                                if (product.getProductId() == productId) {
-                                    product.setTStart(range.m_TStart);
-                                    product.setTEnd(range.m_TEnd);
-                                }
-                            }
-                            event->setEventProducts(productList);
-                            sqpApp->catalogueController().updateEvent(event);
-                            ui->events->refreshEvent(event);
-                            ui->events->setEventChanges(event, true);
-                            ui->inspector->refresh();
-                        });
+                this->addSelectionZoneItem(event, productId, zone);
             });
 
     connect(ui->events, &CatalogueEventsWidget::eventsRemoved, [this](auto events) {
@@ -152,6 +139,7 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
 
 CatalogueExplorer::~CatalogueExplorer()
 {
+    disconnect(impl->m_Conn);
     delete ui;
 }
 
@@ -168,4 +156,38 @@ CatalogueEventsWidget &CatalogueExplorer::eventsWidget() const
 CatalogueSideBarWidget &CatalogueExplorer::sideBarWidget() const
 {
     return *ui->catalogues;
+}
+
+void CatalogueExplorer::clearSelectionZones()
+{
+    impl->m_SelectionZonesPerEvents.clear();
+}
+
+void CatalogueExplorer::addSelectionZoneItem(const std::shared_ptr<DBEvent> &event,
+                                             const QString &productId,
+                                             VisualizationSelectionZoneItem *selectionZone)
+{
+    impl->m_SelectionZonesPerEvents[event] << selectionZone;
+    connect(selectionZone, &VisualizationSelectionZoneItem::rangeEdited,
+            [event, productId, this](auto range) {
+                auto productList = event->getEventProducts();
+                for (auto &product : productList) {
+                    if (product.getProductId() == productId) {
+                        product.setTStart(range.m_TStart);
+                        product.setTEnd(range.m_TEnd);
+                    }
+                }
+                event->setEventProducts(productList);
+                sqpApp->catalogueController().updateEvent(event);
+                ui->events->refreshEvent(event);
+                ui->events->setEventChanges(event, true);
+                ui->inspector->refresh();
+            });
+
+    impl->m_Conn = connect(selectionZone, &VisualizationSelectionZoneItem::destroyed,
+                           [event, selectionZone, this]() {
+                               if (!impl->m_SelectionZonesPerEvents.empty()) {
+                                   impl->m_SelectionZonesPerEvents[event].removeAll(selectionZone);
+                               }
+                           });
 }
