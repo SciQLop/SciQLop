@@ -69,7 +69,7 @@ public:
     /// Sets the y-axis range based on the data of a variable
     void setYRange(std::shared_ptr<Variable> variable);
     SqpRange graphRange() const noexcept;
-    void setGraphRange(const SqpRange &range);
+    void setGraphRange(const SqpRange &range, bool calibration = false);
 
     // Zones
     /// Returns the ranges of all the selection zones on the graph

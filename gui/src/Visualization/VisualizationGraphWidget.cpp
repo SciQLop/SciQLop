@@ -388,11 +388,21 @@ SqpRange VisualizationGraphWidget::graphRange() const noexcept
     return SqpRange{graphRange.lower, graphRange.upper};
 }
 
-void VisualizationGraphWidget::setGraphRange(const SqpRange &range)
+void VisualizationGraphWidget::setGraphRange(const SqpRange &range, bool calibration)
 {
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange START");
+
+    if (calibration) {
+        impl->m_IsCalibration = true;
+    }
+
     ui->widget->xAxis->setRange(range.m_TStart, range.m_TEnd);
     ui->widget->replot();
+
+    if (calibration) {
+        impl->m_IsCalibration = false;
+    }
+
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange END");
 }
 
