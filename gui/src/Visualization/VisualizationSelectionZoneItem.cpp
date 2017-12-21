@@ -388,8 +388,11 @@ void VisualizationSelectionZoneItem::mouseMoveEvent(QMouseEvent *event, const QP
                 break;
         }
 
+        emit rangeEdited(range());
+
         for (auto associatedZone : impl->m_AssociatedEditedZones) {
             associatedZone->parentPlot()->replot();
+            emit associatedZone->rangeEdited(associatedZone->range());
         }
     }
     else {

@@ -36,6 +36,8 @@ public:
                          const std::shared_ptr<DBEventProduct> &eventProduct);
     void setCatalogue(const std::shared_ptr<DBCatalogue> &catalogue);
 
+    void refresh();
+
 public slots:
     void showPage(Page page);
 

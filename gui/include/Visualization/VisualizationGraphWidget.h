@@ -77,6 +77,8 @@ public:
     QVector<SqpRange> selectionZoneRanges() const;
     /// Adds new selection zones in the graph
     void addSelectionZones(const QVector<SqpRange> &ranges);
+    /// Adds a new selection zone in the graph
+    VisualizationSelectionZoneItem *addSelectionZone(const QString &name, const SqpRange &range);
     /// Removes the specified selection zone
     void removeSelectionZone(VisualizationSelectionZoneItem *selectionZone);
 

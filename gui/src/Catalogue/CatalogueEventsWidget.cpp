@@ -224,9 +224,9 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         return correctedGraphRanges;
     }
 
-    void updateForGraphMode(QTreeView *treeView)
+    void updateForGraphMode(CatalogueEventsWidget *catalogueEventWidget)
     {
-        auto selectedRows = treeView->selectionModel()->selectedRows();
+        auto selectedRows = catalogueEventWidget->ui->treeView->selectionModel()->selectedRows();
         if (selectedRows.count() != 1) {
             qCWarning(LOG_CatalogueEventsWidget())
                 << "updateGraphMode: not compatible with multiple events selected";
@@ -285,17 +285,21 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
             productRange.m_TStart = eventProduct.getTStart();
             productRange.m_TEnd = eventProduct.getTEnd();
 
-            auto context = new QObject{treeView};
+            auto context = new QObject{catalogueEventWidget};
             QObject::connect(
                 &sqpApp->variableController(), &VariableController::variableAdded, context,
-                [this, zone, context, range, productRange, productId](auto variable) {
+                [this, catalogueEventWidget, zone, context, event, range, productRange,
+                 productId](auto variable) {
 
                     if (variable->metadata().value(DataSourceItem::ID_DATA_KEY).toString()
                         == productId) {
                         auto graph = zone->createGraph(variable);
                         graph->setAutoRangeOnVariableInitialization(false);
 
-                        graph->addSelectionZones({productRange});
+                        auto selectionZone
+                            = graph->addSelectionZone(event->getName(), productRange);
+                        emit catalogueEventWidget->selectionZoneAdded(event, productId,
+                                                                      selectionZone);
                         m_CustomGraphs << graph;
 
                         graph->setGraphRange(range, true);
@@ -365,7 +369,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
                                    this->mapToGlobal(ui->btnChart->frameGeometry().center()))
                       .value(0);
 
-            impl->updateForGraphMode(ui->treeView);
+            impl->updateForGraphMode(this);
         }
     });
 
@@ -386,6 +390,8 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
                     sqpApp->catalogueController().removeEvent(event);
                     impl->removeEvent(event, ui->treeView);
                 }
+
+                emit this->eventsRemoved(events);
             }
         }
     });
@@ -404,7 +410,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
             impl->updateForTimeMode(ui->treeView);
         }
         else if (isNotMultiSelection && ui->btnChart->isChecked()) {
-            impl->updateForGraphMode(ui->treeView);
+            impl->updateForGraphMode(this);
         }
 
         QVector<std::shared_ptr<DBEvent> > events;
@@ -505,6 +511,11 @@ bool CatalogueEventsWidget::isAllEventsDisplayed() const
 bool CatalogueEventsWidget::isEventDisplayed(const std::shared_ptr<DBEvent> &event) const
 {
     return impl->m_Model->indexOf(event).isValid();
+}
+
+void CatalogueEventsWidget::refreshEvent(const std::shared_ptr<DBEvent> &event)
+{
+    impl->m_Model->refreshEvent(event, true);
 }
 
 void CatalogueEventsWidget::populateWithCatalogues(

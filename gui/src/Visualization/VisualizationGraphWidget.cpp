@@ -438,6 +438,20 @@ void VisualizationGraphWidget::addSelectionZones(const QVector<SqpRange> &ranges
     plot().replot(QCustomPlot::rpQueuedReplot);
 }
 
+VisualizationSelectionZoneItem *VisualizationGraphWidget::addSelectionZone(const QString &name,
+                                                                           const SqpRange &range)
+{
+    // note: ownership is transfered to QCustomPlot
+    auto zone = new VisualizationSelectionZoneItem(&plot());
+    zone->setName(name);
+    zone->setRange(range.m_TStart, range.m_TEnd);
+    impl->addSelectionZone(zone);
+
+    plot().replot(QCustomPlot::rpQueuedReplot);
+
+    return zone;
+}
+
 void VisualizationGraphWidget::removeSelectionZone(VisualizationSelectionZoneItem *selectionZone)
 {
     parentVisualizationWidget()->selectionZoneManager().setSelected(selectionZone, false);
