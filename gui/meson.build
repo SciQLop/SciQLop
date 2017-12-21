@@ -20,6 +20,7 @@ gui_moc_headers = [
   'include/Visualization/VisualizationDragDropContainer.h',
   'include/Visualization/VisualizationDragWidget.h',
   'include/Visualization/ColorScaleEditor.h',
+  'include/Visualization/VisualizationSelectionZoneItem.h',
   'include/Actions/SelectionZoneAction.h',
   'include/Visualization/VisualizationMultiZoneSelectionDialog.h',
   'include/Catalogue/CatalogueExplorer.h',

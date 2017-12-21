@@ -12,6 +12,10 @@ class CatalogueEventsWidget;
 class CatalogueSideBarWidget;
 
 class VisualizationWidget;
+class VisualizationSelectionZoneItem;
+
+class DBEvent;
+
 
 class CatalogueExplorer : public QDialog {
     Q_OBJECT
@@ -24,6 +28,10 @@ public:
 
     CatalogueEventsWidget &eventsWidget() const;
     CatalogueSideBarWidget &sideBarWidget() const;
+
+    void clearSelectionZones();
+    void addSelectionZoneItem(const std::shared_ptr<DBEvent> &event, const QString &productId,
+                              VisualizationSelectionZoneItem *selectionZone);
 
 private:
     Ui::CatalogueExplorer *ui;

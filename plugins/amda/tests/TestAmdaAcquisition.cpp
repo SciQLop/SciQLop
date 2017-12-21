@@ -115,7 +115,7 @@ void TestAmdaAcquisition::testAcquisition()
     // Retrieves data file
     QFETCH(QString, dataFilename);
     auto filePath = QFileInfo{TESTS_RESOURCES_PATH, dataFilename}.absoluteFilePath();
-    auto results = AmdaResultParser::readTxt(filePath, AmdaResultParser::ValueType::SCALAR);
+    auto results = AmdaResultParser::readTxt(filePath, DataSeriesType::SCALAR);
 
     /// Lambda used to validate a variable at each step
     auto validateVariable = [results](std::shared_ptr<Variable> variable, const SqpRange &range) {

@@ -209,3 +209,19 @@ void CatalogueInspectorWidget::setCatalogue(const std::shared_ptr<DBCatalogue> &
 
     blockSignals(false);
 }
+
+void CatalogueInspectorWidget::refresh()
+{
+    switch (static_cast<Page>(ui->stackedWidget->currentIndex())) {
+        case Page::CatalogueProperties:
+            setCatalogue(impl->m_DisplayedCatalogue);
+            break;
+        case Page::EventProperties: {
+            auto isEventShowed = ui->leEventName->isEnabled();
+            setEvent(impl->m_DisplayedEvent);
+            if (!isEventShowed && impl->m_DisplayedEvent) {
+                setEventProduct(impl->m_DisplayedEvent, impl->m_DisplayedEventProduct);
+            }
+        }
+    }
+}

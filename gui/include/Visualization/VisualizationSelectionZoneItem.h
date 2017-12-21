@@ -8,6 +8,11 @@
 class VisualizationGraphWidget;
 
 class VisualizationSelectionZoneItem : public QCPItemRect {
+    Q_OBJECT
+
+signals:
+    /// Signal emitted when the zone range is edited manually
+    void rangeEdited(const SqpRange &range);
 
 public:
     VisualizationSelectionZoneItem(QCustomPlot *plot);

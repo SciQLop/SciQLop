@@ -37,6 +37,20 @@ public:
 
         return sourceItem;
     }
+
+    // Search for the first datasource item matching the specified ID_DATA_KEY
+    DataSourceItem *findDataSourceItem(const QString &datasourceIdKey)
+    {
+        DataSourceItem *sourceItem = nullptr;
+        for (const auto &item : m_DataSourceItems) {
+            sourceItem = item.second->findItem(datasourceIdKey, true);
+            if (sourceItem) {
+                break;
+            }
+        }
+
+        return sourceItem;
+    }
 };
 
 DataSourceController::DataSourceController(QObject *parent)
@@ -147,6 +161,20 @@ void DataSourceController::initialize()
 void DataSourceController::finalize()
 {
     impl->m_WorkingMutex.unlock();
+}
+
+void DataSourceController::requestVariableFromProductIdKey(const QString &datasourceIdKey)
+{
+    auto sourceItem = impl->findDataSourceItem(datasourceIdKey);
+
+    if (sourceItem) {
+        auto sourceName = sourceItem->rootItem().name();
+        auto sourceId = impl->m_DataSources.key(sourceName);
+        loadProductItem(sourceId, *sourceItem);
+    }
+    else {
+        qCWarning(LOG_DataSourceController()) << tr("requestVariable, product data not found");
+    }
 }
 
 void DataSourceController::requestVariable(const QVariantHash &productData)

@@ -69,13 +69,16 @@ public:
     /// Sets the y-axis range based on the data of a variable
     void setYRange(std::shared_ptr<Variable> variable);
     SqpRange graphRange() const noexcept;
-    void setGraphRange(const SqpRange &range);
+    void setGraphRange(const SqpRange &range, bool calibration = false);
+    void setAutoRangeOnVariableInitialization(bool value);
 
     // Zones
     /// Returns the ranges of all the selection zones on the graph
     QVector<SqpRange> selectionZoneRanges() const;
     /// Adds new selection zones in the graph
     void addSelectionZones(const QVector<SqpRange> &ranges);
+    /// Adds a new selection zone in the graph
+    VisualizationSelectionZoneItem *addSelectionZone(const QString &name, const SqpRange &range);
     /// Removes the specified selection zone
     void removeSelectionZone(VisualizationSelectionZoneItem *selectionZone);
 

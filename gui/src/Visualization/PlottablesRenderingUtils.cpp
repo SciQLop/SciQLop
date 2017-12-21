@@ -6,6 +6,8 @@
 #include <Data/SpectrogramSeries.h>
 #include <Data/VectorSeries.h>
 
+#include <Variable/Variable.h>
+
 #include <Visualization/qcustomplot.h>
 
 Q_LOGGING_CATEGORY(LOG_PlottablesRenderingUtils, "PlottablesRenderingUtils")
@@ -17,7 +19,7 @@ namespace {
  */
 template <typename T, typename Enabled = void>
 struct PlottablesSetter {
-    static void setProperties(T &, PlottablesMap &)
+    static void setProperties(PlottablesMap &)
     {
         // Default implementation does nothing
         qCCritical(LOG_PlottablesRenderingUtils())
@@ -33,20 +35,25 @@ struct PlottablesSetter {
 template <typename T>
 struct PlottablesSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>::value
                                                      or std::is_base_of<VectorSeries, T>::value> > {
-    static void setProperties(T &dataSeries, PlottablesMap &plottables)
+    static void setProperties(PlottablesMap &plottables)
     {
-        // Gets the number of components of the data series
-        dataSeries.lockRead();
-        auto componentCount = dataSeries.valuesData()->componentCount();
-        dataSeries.unlock();
+        // Finds the plottable with the highest index to determine the number of colors to generate
+        auto end = plottables.cend();
+        auto maxPlottableIndexIt
+            = std::max_element(plottables.cbegin(), end, [](const auto &it1, const auto &it2) {
+                  return it1.first < it2.first;
+              });
+        auto componentCount = maxPlottableIndexIt != end ? maxPlottableIndexIt->first + 1 : 0;
 
         // Generates colors for each component
         auto colors = ColorUtils::colors(Qt::blue, Qt::red, componentCount);
 
         // For each component of the data series, creates a QCPGraph to add to the plot
         for (auto i = 0; i < componentCount; ++i) {
-            auto graph = plottables.at(i);
-            graph->setPen(QPen{colors.at(i)});
+            auto graphIt = plottables.find(i);
+            if (graphIt != end) {
+                graphIt->second->setPen(QPen{colors.at(i)});
+            }
         }
     }
 };
@@ -58,7 +65,7 @@ struct PlottablesSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSerie
 template <typename T>
 struct PlottablesSetter<T,
                         typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
-    static void setProperties(T &, PlottablesMap &plottables)
+    static void setProperties(PlottablesMap &plottables)
     {
         // Checks that for a spectrogram there is only one plottable, that is a colormap
         if (plottables.size() != 1) {
@@ -92,31 +99,28 @@ struct PlottablesSetter<T,
  */
 template <typename T>
 struct PlottablesHelper : public IPlottablesHelper {
-    explicit PlottablesHelper(T &dataSeries) : m_DataSeries{dataSeries} {}
-
     void setProperties(PlottablesMap &plottables) override
     {
-        PlottablesSetter<T>::setProperties(m_DataSeries, plottables);
+        PlottablesSetter<T>::setProperties(plottables);
     }
-
-    T &m_DataSeries;
 };
 
 } // namespace
 
 std::unique_ptr<IPlottablesHelper>
-IPlottablesHelperFactory::create(std::shared_ptr<IDataSeries> dataSeries) noexcept
+IPlottablesHelperFactory::create(const Variable &variable) noexcept
 {
-    if (auto scalarSeries = std::dynamic_pointer_cast<ScalarSeries>(dataSeries)) {
-        return std::make_unique<PlottablesHelper<ScalarSeries> >(*scalarSeries);
+    switch (variable.type()) {
+        case DataSeriesType::SCALAR:
+            return std::make_unique<PlottablesHelper<ScalarSeries> >();
+        case DataSeriesType::SPECTROGRAM:
+            return std::make_unique<PlottablesHelper<SpectrogramSeries> >();
+        case DataSeriesType::VECTOR:
+            return std::make_unique<PlottablesHelper<VectorSeries> >();
+        default:
+            // Returns default helper
+            break;
     }
-    else if (auto spectrogramSeries = std::dynamic_pointer_cast<SpectrogramSeries>(dataSeries)) {
-        return std::make_unique<PlottablesHelper<SpectrogramSeries> >(*spectrogramSeries);
-    }
-    else if (auto vectorSeries = std::dynamic_pointer_cast<VectorSeries>(dataSeries)) {
-        return std::make_unique<PlottablesHelper<VectorSeries> >(*vectorSeries);
-    }
-    else {
-        return std::make_unique<PlottablesHelper<IDataSeries> >(*dataSeries);
-    }
+
+    return std::make_unique<PlottablesHelper<IDataSeries> >();
 }

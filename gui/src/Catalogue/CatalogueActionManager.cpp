@@ -48,14 +48,18 @@ struct CatalogueActionManager::CatalogueActionManagerPrivate {
                 auto eventProduct = std::make_shared<DBEventProduct>();
                 eventProduct->setEvent(*event);
 
+                auto productId
+                    = var->metadata().value(DataSourceItem::ID_DATA_KEY, "UnknownID").toString();
+
                 auto zoneRange = zone->range();
                 eventProduct->setTStart(zoneRange.m_TStart);
                 eventProduct->setTEnd(zoneRange.m_TEnd);
 
-                eventProduct->setProductId(
-                    var->metadata().value(DataSourceItem::ID_DATA_KEY, "UnknownID").toString());
+                eventProduct->setProductId(productId);
 
                 productList.push_back(*eventProduct);
+
+                m_CatalogueExplorer->addSelectionZoneItem(event, productId, zone);
             }
         }
 

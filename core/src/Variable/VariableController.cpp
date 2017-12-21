@@ -373,6 +373,8 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
         //        impl->processRequest(newVariable, range, varRequestId);
         //        impl->updateVariableRequest(varRequestId);
 
+        emit variableAdded(newVariable);
+
         return newVariable;
     }
 
