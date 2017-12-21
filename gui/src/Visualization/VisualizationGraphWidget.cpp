@@ -94,6 +94,8 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
     bool m_HasMovedMouse = false; // Indicates if the mouse moved in a releaseMouse even
 
+    bool m_VariableAutoRangeOnInit = true;
+
     void startDrawingRect(const QPoint &pos, QCustomPlot &plot)
     {
         removeDrawingRect(plot);
@@ -314,7 +316,10 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, S
                 if (auto var = varW.lock()) {
                     // If the variable is the first added in the graph, we load its range
                     auto firstVariableInGraph = range == INVALID_RANGE;
-                    auto loadedRange = firstVariableInGraph ? var->range() : range;
+                    auto loadedRange = graphRange();
+                    if (impl->m_VariableAutoRangeOnInit) {
+                        loadedRange = firstVariableInGraph ? var->range() : range;
+                    }
                     loadRange(var, loadedRange);
                     setYRange(var);
                 }
@@ -404,6 +409,11 @@ void VisualizationGraphWidget::setGraphRange(const SqpRange &range, bool calibra
     }
 
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange END");
+}
+
+void VisualizationGraphWidget::setAutoRangeOnVariableInitialization(bool value)
+{
+    impl->m_VariableAutoRangeOnInit = value;
 }
 
 QVector<SqpRange> VisualizationGraphWidget::selectionZoneRanges() const

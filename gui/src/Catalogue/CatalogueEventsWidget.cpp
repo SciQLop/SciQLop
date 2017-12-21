@@ -27,6 +27,9 @@ Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
 /// Fixed size of the validation column
 const auto VALIDATION_COLUMN_SIZE = 35;
 
+/// Percentage added to the range of a event when it is displayed
+const auto EVENT_RANGE_MARGE = 30; // in %
+
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
     CatalogueEventsModel *m_Model = nullptr;
@@ -185,99 +188,130 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         }
     }
 
+    QVector<SqpRange> getGraphRanges(const std::shared_ptr<DBEvent> &event)
+    {
+        // Retrieves the range of each product and the maximum size
+        QVector<SqpRange> graphRanges;
+        double maxDt = 0;
+        for (auto eventProduct : event->getEventProducts()) {
+            SqpRange eventRange;
+            eventRange.m_TStart = eventProduct.getTStart();
+            eventRange.m_TEnd = eventProduct.getTEnd();
+            graphRanges << eventRange;
+
+            auto dt = eventRange.m_TEnd - eventRange.m_TStart;
+            if (dt > maxDt) {
+                maxDt = dt;
+            }
+        }
+
+        // Adds the marge
+        maxDt *= (100.0 + EVENT_RANGE_MARGE) / 100.0;
+
+        // Corrects the graph ranges so that they all have the same size
+        QVector<SqpRange> correctedGraphRanges;
+        for (auto range : graphRanges) {
+            auto dt = range.m_TEnd - range.m_TStart;
+            auto diff = qAbs((maxDt - dt) / 2.0);
+
+            SqpRange correctedRange;
+            correctedRange.m_TStart = range.m_TStart - diff;
+            correctedRange.m_TEnd = range.m_TEnd + diff;
+
+            correctedGraphRanges << correctedRange;
+        }
+
+        return correctedGraphRanges;
+    }
+
     void updateForGraphMode(QTreeView *treeView)
     {
         auto selectedRows = treeView->selectionModel()->selectedRows();
-
-        if (selectedRows.count() == 1) {
-            auto event = m_Model->getEvent(selectedRows.first());
-            if (m_VisualizationWidget && event) {
-                if (auto tab = m_VisualizationWidget->currentTabWidget()) {
-                    if (auto zone = tab->getZoneWithName(m_ZoneForGraphMode)) {
-
-                        for (auto graph : m_CustomGraphs) {
-                            graph->close();
-                            auto variables = graph->variables().toVector();
-
-                            QMetaObject::invokeMethod(
-                                &sqpApp->variableController(), "deleteVariables",
-                                Qt::QueuedConnection,
-                                Q_ARG(QVector<std::shared_ptr<Variable> >, variables));
-                        }
-                        m_CustomGraphs.clear();
-
-                        QVector<SqpRange> graphRanges;
-                        double maxDt = 0;
-                        for (auto eventProduct : event->getEventProducts()) {
-                            SqpRange eventRange;
-                            eventRange.m_TStart = eventProduct.getTStart();
-                            eventRange.m_TEnd = eventProduct.getTEnd();
-                            graphRanges << eventRange;
-
-                            auto dt = eventRange.m_TEnd - eventRange.m_TStart;
-                            if (dt > maxDt) {
-                                maxDt = dt;
-                            }
-                        }
-
-                        QVector<SqpRange> correctedGraphRanges;
-                        for (auto range : graphRanges) {
-                            auto dt = range.m_TEnd - range.m_TStart;
-                            auto diff = qAbs((maxDt - dt) / 2.0);
-
-                            SqpRange correctedRange;
-                            correctedRange.m_TStart = range.m_TStart - diff;
-                            correctedRange.m_TEnd = range.m_TEnd + diff;
-
-                            correctedGraphRanges << correctedRange;
-                        }
-
-                        auto itRange = correctedGraphRanges.cbegin();
-                        for (auto eventProduct : event->getEventProducts()) {
-                            auto productId = eventProduct.getProductId();
-
-                            auto range = *itRange;
-                            ++itRange;
-
-                            auto context = new QObject{treeView};
-                            QObject::connect(
-                                &sqpApp->variableController(), &VariableController::variableAdded,
-                                context,
-                                [this, zone, context, range, productId](auto variable) {
-
-                                    if (variable->metadata()
-                                            .value(DataSourceItem::ID_DATA_KEY, "UnknownID")
-                                            .toString()
-                                        == productId) {
-                                        auto graph = zone->createGraph(variable);
-                                        m_CustomGraphs << graph;
-
-                                        graph->setGraphRange(range, true);
-
-                                        delete context; // removes the connection
-                                    }
-                                },
-                                Qt::QueuedConnection);
-
-                            QMetaObject::invokeMethod(
-                                &sqpApp->dataSourceController(), "requestVariableFromProductIdKey",
-                                Qt::QueuedConnection, Q_ARG(QString, productId));
-                        }
-                    }
-                }
-                else {
-                    qCWarning(LOG_CatalogueEventsWidget())
-                        << "updateGraphMode: no tab found in the visualization";
-                }
-            }
-            else {
-                qCWarning(LOG_CatalogueEventsWidget())
-                    << "updateGraphMode: visualization widget not found";
-            }
-        }
-        else {
+        if (selectedRows.count() != 1) {
             qCWarning(LOG_CatalogueEventsWidget())
                 << "updateGraphMode: not compatible with multiple events selected";
+            return;
+        }
+
+        if (!m_VisualizationWidget) {
+            qCWarning(LOG_CatalogueEventsWidget())
+                << "updateGraphMode: visualization widget not found";
+            return;
+        }
+
+        auto event = m_Model->getEvent(selectedRows.first());
+        if (!event) {
+            // A event product is probably selected
+            qCInfo(LOG_CatalogueEventsWidget()) << "updateGraphMode: no events are selected";
+            return;
+        }
+
+        auto tab = m_VisualizationWidget->currentTabWidget();
+        if (!tab) {
+            qCWarning(LOG_CatalogueEventsWidget())
+                << "updateGraphMode: no tab found in the visualization";
+            return;
+        }
+
+        auto zone = tab->getZoneWithName(m_ZoneForGraphMode);
+        if (!zone) {
+            qCWarning(LOG_CatalogueEventsWidget()) << "updateGraphMode: zone not found";
+            return;
+        }
+
+        // Close the previous graph and delete the asociated variables
+        for (auto graph : m_CustomGraphs) {
+            graph->close();
+            auto variables = graph->variables().toVector();
+
+            QMetaObject::invokeMethod(&sqpApp->variableController(), "deleteVariables",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QVector<std::shared_ptr<Variable> >, variables));
+        }
+        m_CustomGraphs.clear();
+
+        // Calculates the range of each graph which will be created
+        auto graphRange = getGraphRanges(event);
+
+        // Loops through the event products and create the graph
+        auto itRange = graphRange.cbegin();
+        for (auto eventProduct : event->getEventProducts()) {
+            auto productId = eventProduct.getProductId();
+
+            auto range = *itRange;
+            ++itRange;
+
+            SqpRange productRange;
+            productRange.m_TStart = eventProduct.getTStart();
+            productRange.m_TEnd = eventProduct.getTEnd();
+
+            auto context = new QObject{treeView};
+            QObject::connect(
+                &sqpApp->variableController(), &VariableController::variableAdded, context,
+                [this, zone, context, range, productRange, productId](auto variable) {
+
+                    if (variable->metadata().value(DataSourceItem::ID_DATA_KEY).toString()
+                        == productId) {
+                        auto graph = zone->createGraph(variable);
+                        graph->setAutoRangeOnVariableInitialization(false);
+
+                        graph->addSelectionZones({productRange});
+                        m_CustomGraphs << graph;
+
+                        graph->setGraphRange(range, true);
+
+                        // Removes the graph from the graph list if it is closed manually
+                        QObject::connect(graph, &VisualizationGraphWidget::destroyed,
+                                         [this, graph]() { m_CustomGraphs.removeAll(graph); });
+
+                        delete context; // removes the connection
+                    }
+                },
+                Qt::QueuedConnection);
+
+            QMetaObject::invokeMethod(&sqpApp->dataSourceController(),
+                                      "requestVariableFromProductIdKey", Qt::QueuedConnection,
+                                      Q_ARG(QString, productId));
         }
     }
 

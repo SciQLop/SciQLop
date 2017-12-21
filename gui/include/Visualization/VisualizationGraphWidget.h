@@ -70,6 +70,7 @@ public:
     void setYRange(std::shared_ptr<Variable> variable);
     SqpRange graphRange() const noexcept;
     void setGraphRange(const SqpRange &range, bool calibration = false);
+    void setAutoRangeOnVariableInitialization(bool value);
 
     // Zones
     /// Returns the ranges of all the selection zones on the graph
