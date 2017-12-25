@@ -53,6 +53,8 @@ int main(int argc, char *argv[])
     SqpApplication::setOrganizationDomain("lpp.fr");
     SqpApplication::setApplicationName("SciQLop");
 
+    QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+
     SqpApplication a{argc, argv};
 
     MainWindow w;
