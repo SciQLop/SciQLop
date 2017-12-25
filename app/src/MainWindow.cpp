@@ -133,7 +133,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     auto openInspector = [this](bool checked, bool right, auto action) {
 
-        action->setIcon(QIcon{(checked xor right) ? ":/icones/next.png" : ":/icones/previous.png"});
+        action->setIcon(QIcon{(checked ^ right) ? ":/icones/next.png" : ":/icones/previous.png"});
 
         auto &lastInspectorSize
             = right ? impl->m_LastOpenRightInspectorSize : impl->m_LastOpenLeftInspectorSize;

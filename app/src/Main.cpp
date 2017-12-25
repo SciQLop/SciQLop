@@ -25,7 +25,7 @@
 #include <SqpApplication.h>
 #include <qglobal.h>
 
-#include <Plugin/PluginManager.h>
+#include <PluginManager/PluginManager.h>
 #include <QDir>
 #include <QtPlugin>
 
