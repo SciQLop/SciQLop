@@ -5,6 +5,15 @@ FILE (GLOB_RECURSE amdaplugin_SRCS
         resources/*.qrc
         )
 
+
+set(AMDA_server_type hybrid CACHE STRING "AMDA server type selected at CMake configure time")
+
+set(AMDA_SERVER_TYPE "hybrid;amdatest;localhost" CACHE STRING
+  "List of possible for AMDA server type")
+
+set_property(CACHE AMDA_server_type PROPERTY STRINGS ${AMDA_SERVER_TYPE})
+add_definitions(-DSCIQLOP_AMDA_SERVER="{AMDA_server_type}")
+
 add_definitions(-DQT_PLUGIN)
 add_definitions(-DSCIQLOP_PLUGIN_JSON_FILE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/amda.json")
 if(NOT BUILD_SHARED_LIBS)
@@ -28,4 +37,4 @@ add_definitions(-DAMDA_TESTS_RESOURCES_DIR="${CMAKE_CURRENT_LIST_DIR}/tests-reso
 declare_test(TestAmdaParser TestAmdaParser tests/TestAmdaParser.cpp "amdaplugin;Qt5::Test")
 declare_test(TestAmdaResultParser TestAmdaResultParser tests/TestAmdaResultParser.cpp "amdaplugin;Qt5::Test")
 declare_test(TestAmdaAcquisition TestAmdaAcquisition tests/TestAmdaAcquisition.cpp "amdaplugin;Qt5::Test")
-
+declare_test(TestAmdaFuzzing TestAmdaFuzzing "tests/TestAmdaFuzzing.cpp;tests/FuzzingValidators.cpp;tests/FuzzingUtils.cpp;tests/FuzzingOperations.cpp;tests/FuzzingDefs.cpp" "amdaplugin;Qt5::Test")

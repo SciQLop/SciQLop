@@ -41,7 +41,7 @@ core_sources = [
   'src/DataSource/DataSourceItemAction.cpp',
   'src/DataSource/DataSourceItemMergeHelper.cpp',
   'src/Network/NetworkController.cpp',
-  'src/Plugin/PluginManager.cpp',
+  'src/PluginManager/PluginManager.cpp',
   'src/Settings/SqpSettingsDefs.cpp',
   'src/Time/TimeController.cpp',
   'src/Variable/Variable.cpp',
@@ -53,7 +53,7 @@ core_sources = [
   'src/Visualization/VisualizationController.cpp'
 ]
 
-core_inc = include_directories(['include', '../plugin/include'])
+core_inc = include_directories(['include', 'include/Plugin'])
 
 sciqlop_core_lib = library('sciqlopcore',
                        core_sources,

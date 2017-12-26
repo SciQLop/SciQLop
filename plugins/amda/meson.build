@@ -20,14 +20,14 @@ amdaplugin_resources_files = [
   'resources/amdaresources.qrc'
 ]
 
-amdaplugin_inc = include_directories(['include', '../../plugin/include'])
+amdaplugin_inc = include_directories(['include'])
 
 moc_gen = generator(moc,
                 output  : 'moc_@BASENAME@.cpp',
                 arguments : ['@INPUT@',
                  '-DSCIQLOP_PLUGIN_JSON_FILE_PATH="'+meson.source_root()+'/plugins/amda/resources/amda.json"',
                  '-I', meson.current_source_dir()+'/include',
-                 '-I', meson.current_source_dir()+'/../../plugin/include',
+                 '-I', meson.current_source_dir()+'/../../core/include/',
                  '-o', '@OUTPUT@'])
 
 rcc_gen = generator(rcc,
