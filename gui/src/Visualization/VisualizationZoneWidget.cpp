@@ -336,6 +336,12 @@ VisualizationGraphWidget *VisualizationZoneWidget::firstGraph() const
     return firstGraph;
 }
 
+void VisualizationZoneWidget::closeAllGraphs()
+{
+    processGraphs(*ui->dragDropContainer->layout(),
+                  [](VisualizationGraphWidget &graphWidget) { graphWidget.close(); });
+}
+
 void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
 {
     if (visitor) {

@@ -178,6 +178,7 @@ bool CatalogueTreeModel::setData(const QModelIndex &index, const QVariant &value
 
     return false;
 }
+
 bool CatalogueTreeModel::canDropMimeData(const QMimeData *data, Qt::DropAction action, int row,
                                          int column, const QModelIndex &parent) const
 {
@@ -200,7 +201,7 @@ bool CatalogueTreeModel::dropMimeData(const QMimeData *data, Qt::DropAction acti
     if (draggedItem) {
         result = draggedItem->dropMimeData(data, action);
         if (result) {
-            emit itemDropped(draggedIndex);
+            emit itemDropped(draggedIndex, data, action);
         }
     }
 
@@ -214,5 +215,5 @@ Qt::DropActions CatalogueTreeModel::supportedDropActions() const
 
 QStringList CatalogueTreeModel::mimeTypes() const
 {
-    return {MIME_TYPE_EVENT_LIST};
+    return {MIME_TYPE_EVENT_LIST, MIME_TYPE_SOURCE_CATALOGUE_LIST};
 }

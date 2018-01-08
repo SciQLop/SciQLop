@@ -58,8 +58,6 @@ struct CatalogueActionManager::CatalogueActionManagerPrivate {
                 eventProduct->setProductId(productId);
 
                 productList.push_back(*eventProduct);
-
-                m_CatalogueExplorer->addSelectionZoneItem(event, productId, zone);
             }
         }
 

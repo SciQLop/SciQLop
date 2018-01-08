@@ -24,6 +24,7 @@ const auto EVENT_PRODUCT_ITEM_TYPE = 2;
 struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     QVector<std::shared_ptr<DBEvent> > m_Events;
     std::unordered_map<DBEvent *, QVector<std::shared_ptr<DBEventProduct> > > m_EventProducts;
+    QVector<std::shared_ptr<DBCatalogue> > m_SourceCatalogue;
 
     QStringList columnNames()
     {
@@ -127,6 +128,12 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
 CatalogueEventsModel::CatalogueEventsModel(QObject *parent)
         : QAbstractItemModel(parent), impl{spimpl::make_unique_impl<CatalogueEventsModelPrivate>()}
 {
+}
+
+void CatalogueEventsModel::setSourceCatalogues(
+    const QVector<std::shared_ptr<DBCatalogue> > &catalogues)
+{
+    impl->m_SourceCatalogue = catalogues;
 }
 
 void CatalogueEventsModel::setEvents(const QVector<std::shared_ptr<DBEvent> > &events)
@@ -388,12 +395,12 @@ void CatalogueEventsModel::sort(int column, Qt::SortOrder order)
 
 Qt::DropActions CatalogueEventsModel::supportedDragActions() const
 {
-    return Qt::CopyAction;
+    return Qt::CopyAction | Qt::MoveAction;
 }
 
 QStringList CatalogueEventsModel::mimeTypes() const
 {
-    return {MIME_TYPE_EVENT_LIST, MIME_TYPE_TIME_RANGE};
+    return {MIME_TYPE_EVENT_LIST, MIME_TYPE_SOURCE_CATALOGUE_LIST, MIME_TYPE_TIME_RANGE};
 }
 
 QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
@@ -436,6 +443,10 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
     if (!eventList.isEmpty() && eventProductList.isEmpty()) {
         auto eventsEncodedData = sqpApp->catalogueController().mimeDataForEvents(eventList);
         mimeData->setData(MIME_TYPE_EVENT_LIST, eventsEncodedData);
+
+        auto sourceCataloguesEncodedData
+            = sqpApp->catalogueController().mimeDataForCatalogues(impl->m_SourceCatalogue);
+        mimeData->setData(MIME_TYPE_SOURCE_CATALOGUE_LIST, sourceCataloguesEncodedData);
     }
 
     if (eventList.count() + eventProductList.count() == 1) {
