@@ -17,10 +17,12 @@
 #include <Visualization/VisualizationWidget.h>
 #include <Visualization/VisualizationZoneWidget.h>
 
+#include <QActionGroup>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QKeyEvent>
 #include <QListWidget>
+#include <QMenu>
 #include <QMessageBox>
 
 Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
@@ -87,65 +89,33 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
             return QStringList{};
         }
 
-        QDialog d(parent, Qt::Tool);
-        d.setWindowTitle("Choose a zone");
-        auto layout = new QVBoxLayout{&d};
-        layout->setContentsMargins(0, 0, 0, 0);
-        auto listWidget = new QListWidget{&d};
-        layout->addWidget(listWidget);
+        QActionGroup actionGroup{parent};
+        actionGroup.setExclusive(!allowMultiSelection);
 
-        QSet<QListWidgetItem *> checkedItems;
+        QMenu selectionMenu{parent};
+        selectionMenu.addSeparator();
+        QVector<QAction *> zoneActions;
         for (auto zone : availableZones) {
-            auto item = new QListWidgetItem{zone};
-            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
-            if (selectedZones.contains(zone)) {
-                item->setCheckState(Qt::Checked);
-                checkedItems << item;
-            }
-            else {
-                item->setCheckState(Qt::Unchecked);
-            }
-
-            listWidget->addItem(item);
+            auto zoneAction = selectionMenu.addAction(zone);
+            zoneAction->setCheckable(true);
+            zoneAction->setChecked(selectedZones.contains(zone));
+            actionGroup.addAction(zoneAction);
+            zoneActions << zoneAction;
         }
 
-        auto buttonBox = new QDialogButtonBox{QDialogButtonBox::Ok, &d};
-        layout->addWidget(buttonBox);
-
-        QObject::connect(buttonBox, &QDialogButtonBox::accepted, &d, &QDialog::accept);
-        QObject::connect(buttonBox, &QDialogButtonBox::rejected, &d, &QDialog::reject);
-
-        QObject::connect(listWidget, &QListWidget::itemChanged,
-                         [&checkedItems, allowMultiSelection, listWidget](auto item) {
-                             if (item->checkState() == Qt::Checked) {
-                                 if (!allowMultiSelection) {
-                                     for (auto checkedItem : checkedItems) {
-                                         listWidget->blockSignals(true);
-                                         checkedItem->setCheckState(Qt::Unchecked);
-                                         listWidget->blockSignals(false);
-                                     }
-
-                                     checkedItems.clear();
-                                 }
-                                 checkedItems << item;
-                             }
-                             else {
-                                 checkedItems.remove(item);
-                             }
-                         });
+        auto action = selectionMenu.exec(QCursor::pos());
 
         QStringList result;
 
-        d.setMinimumWidth(120);
-        d.resize(d.minimumSizeHint());
-        d.move(location);
-        if (d.exec() == QDialog::Accepted) {
-            for (auto item : checkedItems) {
-                result += item->text();
-            }
+        if (action == nullptr) {
+            result = selectedZones;
         }
         else {
-            result = selectedZones;
+            for (auto zoneAction : zoneActions) {
+                if (zoneAction->isChecked()) {
+                    result << zoneAction->text();
+                }
+            }
         }
 
         return result;
