@@ -259,7 +259,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
             return;
         }
 
-        // Close the previous graph and delete the asociated variables
+        // Closes the previous graph and delete the asociated variables
         for (auto graph : m_CustomGraphs) {
             graph->close();
             auto variables = graph->variables().toVector();
@@ -269,6 +269,9 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
                                       Q_ARG(QVector<std::shared_ptr<Variable> >, variables));
         }
         m_CustomGraphs.clear();
+
+        // Closes the remaining graphs inside the zone
+        zone->closeAllGraphs();
 
         // Calculates the range of each graph which will be created
         auto graphRange = getGraphRanges(event);

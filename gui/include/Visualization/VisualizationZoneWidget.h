@@ -68,6 +68,9 @@ public:
     /// Returns the first graph in the zone or nullptr if there is no graph inside
     VisualizationGraphWidget *firstGraph() const;
 
+    /// Closes all graphes inside the zone
+    void closeAllGraphs();
+
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
