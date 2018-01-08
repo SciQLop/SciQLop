@@ -44,6 +44,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     void setEvents(const QVector<std::shared_ptr<DBEvent> > &events, CatalogueEventsWidget *widget)
     {
         widget->ui->treeView->setSortingEnabled(false);
+        m_Model->setSourceCatalogues(m_DisplayedCatalogues);
         m_Model->setEvents(events);
         widget->ui->treeView->setSortingEnabled(true);
 

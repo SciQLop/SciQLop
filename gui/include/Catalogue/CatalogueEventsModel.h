@@ -6,6 +6,7 @@
 #include <QLoggingCategory>
 #include <unordered_set>
 
+class DBCatalogue;
 class DBEvent;
 class DBEventProduct;
 
@@ -22,6 +23,7 @@ public:
 
     enum class Column { Name, TStart, TEnd, Tags, Product, Validation, NbColumn };
 
+    void setSourceCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
     void setEvents(const QVector<std::shared_ptr<DBEvent> > &events);
     void addEvent(const std::shared_ptr<DBEvent> &event);
     void removeEvent(const std::shared_ptr<DBEvent> &event);

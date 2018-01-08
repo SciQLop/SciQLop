@@ -8,11 +8,13 @@
 #include <Catalogue/CatalogueTreeItems/CatalogueTreeItem.h>
 #include <Catalogue/CatalogueTreeModel.h>
 #include <CatalogueDao.h>
+#include <Common/MimeTypesDef.h>
 #include <ComparaisonPredicate.h>
 #include <DBCatalogue.h>
 
 #include <QMenu>
 #include <QMessageBox>
+#include <QMimeData>
 
 Q_LOGGING_CATEGORY(LOG_CatalogueSideBarWidget, "CatalogueSideBarWidget")
 
@@ -126,13 +128,26 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     });
 
 
-    connect(impl->m_TreeModel, &CatalogueTreeModel::itemDropped, [this](auto index) {
-        auto item = impl->m_TreeModel->item(index);
-        if (item && item->type() == CATALOGUE_ITEM_TYPE) {
-            auto catalogue = static_cast<CatalogueTreeItem *>(item)->catalogue();
-            this->setCatalogueChanges(catalogue, true);
-        }
-    });
+    connect(impl->m_TreeModel, &CatalogueTreeModel::itemDropped,
+            [this](auto index, auto mimeData, auto action) {
+                auto item = impl->m_TreeModel->item(index);
+                if (item && item->type() == CATALOGUE_ITEM_TYPE) {
+                    auto catalogue = static_cast<CatalogueTreeItem *>(item)->catalogue();
+                    this->setCatalogueChanges(catalogue, true);
+                }
+
+                if (action == Qt::MoveAction) {
+                    /// Display a save button on source catalogues
+                    auto sourceCatalogues = sqpApp->catalogueController().cataloguesForMimeData(
+                        mimeData->data(MIME_TYPE_SOURCE_CATALOGUE_LIST));
+                    for (auto catalogue : sourceCatalogues) {
+                        if (auto catalogueItem = impl->getCatalogueItem(catalogue)) {
+                            this->setCatalogueChanges(catalogue, true);
+                        }
+                    }
+                }
+            });
+
     connect(ui->btnRemove, &QToolButton::clicked, [this]() {
         QVector<QPair<std::shared_ptr<DBCatalogue>, CatalogueAbstractTreeItem *> >
             cataloguesToItems;
@@ -344,7 +359,7 @@ CatalogueTreeItem *CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::getCat
             for (auto childItem : item->children()) {
                 if (childItem->type() == CATALOGUE_ITEM_TYPE) {
                     auto catalogueItem = static_cast<CatalogueTreeItem *>(childItem);
-                    if (catalogueItem->catalogue() == catalogue) {
+                    if (catalogueItem->catalogue()->getUniqId() == catalogue->getUniqId()) {
                         return catalogueItem;
                     }
                 }

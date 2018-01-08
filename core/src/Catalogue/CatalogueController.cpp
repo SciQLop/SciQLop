@@ -382,6 +382,46 @@ CatalogueController::eventsForMimeData(const QByteArray &mimeData) const
     return events;
 }
 
+QByteArray CatalogueController::mimeDataForCatalogues(
+    const QVector<std::shared_ptr<DBCatalogue> > &catalogues) const
+{
+    auto encodedData = QByteArray{};
+
+    QMap<QString, QVariantList> idsPerRepository;
+    for (auto catalogue : catalogues) {
+        idsPerRepository[catalogue->getRepository()] << catalogue->getUniqId();
+    }
+
+    QDataStream stream{&encodedData, QIODevice::WriteOnly};
+    stream << idsPerRepository;
+
+    return encodedData;
+}
+
+QVector<std::shared_ptr<DBCatalogue> >
+CatalogueController::cataloguesForMimeData(const QByteArray &mimeData) const
+{
+    auto catalogues = QVector<std::shared_ptr<DBCatalogue> >{};
+    QDataStream stream{mimeData};
+
+    QMap<QString, QVariantList> idsPerRepository;
+    stream >> idsPerRepository;
+
+    for (auto it = idsPerRepository.cbegin(); it != idsPerRepository.cend(); ++it) {
+        auto repository = it.key();
+        auto allRepositoryCatalogues = retrieveCatalogues(repository);
+        for (auto uuid : it.value()) {
+            for (auto repositoryCatalogues : allRepositoryCatalogues) {
+                if (uuid.toUuid() == repositoryCatalogues->getUniqId()) {
+                    catalogues << repositoryCatalogues;
+                }
+            }
+        }
+    }
+
+    return catalogues;
+}
+
 void CatalogueController::initialize()
 {
     qCDebug(LOG_CatalogueController()) << tr("CatalogueController init")

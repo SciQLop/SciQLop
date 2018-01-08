@@ -16,7 +16,7 @@ class CatalogueTreeModel : public QAbstractItemModel {
 
 signals:
     void itemRenamed(const QModelIndex &index);
-    void itemDropped(const QModelIndex &parentIndex);
+    void itemDropped(const QModelIndex &parentIndex, const QMimeData *data, Qt::DropAction action);
 
 public:
     CatalogueTreeModel(QObject *parent = nullptr);
