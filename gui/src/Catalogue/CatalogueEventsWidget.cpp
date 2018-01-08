@@ -30,6 +30,8 @@ Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
 /// Percentage added to the range of a event when it is displayed
 const auto EVENT_RANGE_MARGE = 30; // in %
 
+const QString NEW_ZONE_TEXT = QStringLiteral("New Zone");
+
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
     CatalogueEventsModel *m_Model = nullptr;
@@ -82,19 +84,25 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     }
 
     QStringList selectZone(QWidget *parent, const QStringList &selectedZones,
-                           bool allowMultiSelection, const QPoint &location)
+                           bool allowMultiSelection, bool addNewZoneOption, const QPoint &location)
     {
         auto availableZones = getAvailableVisualizationZoneList();
-        if (availableZones.isEmpty()) {
+        if (!addNewZoneOption && availableZones.isEmpty()) {
             return QStringList{};
         }
 
         QActionGroup actionGroup{parent};
         actionGroup.setExclusive(!allowMultiSelection);
 
-        QMenu selectionMenu{parent};
-        selectionMenu.addSeparator();
         QVector<QAction *> zoneActions;
+
+        QMenu selectionMenu{parent};
+
+        if (addNewZoneOption) {
+            availableZones.prepend(NEW_ZONE_TEXT);
+        }
+
+        selectionMenu.addSeparator();
         for (auto zone : availableZones) {
             auto zoneAction = selectionMenu.addAction(zone);
             zoneAction->setCheckable(true);
@@ -103,11 +111,11 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
             zoneActions << zoneAction;
         }
 
-        auto action = selectionMenu.exec(QCursor::pos());
+        auto resultAction = selectionMenu.exec(QCursor::pos());
 
         QStringList result;
 
-        if (action == nullptr) {
+        if (resultAction == nullptr) {
             result = selectedZones;
         }
         else {
@@ -222,8 +230,9 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
             return;
         }
 
+        auto isNewZone = m_ZoneForGraphMode == NEW_ZONE_TEXT;
         auto zone = tab->getZoneWithName(m_ZoneForGraphMode);
-        if (!zone) {
+        if (!isNewZone && !zone) {
             qCWarning(LOG_CatalogueEventsWidget()) << "updateGraphMode: zone not found";
             return;
         }
@@ -240,7 +249,15 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         m_CustomGraphs.clear();
 
         // Closes the remaining graphs inside the zone
-        zone->closeAllGraphs();
+        if (zone) {
+            zone->closeAllGraphs();
+        }
+
+        // Creates the zone if needed
+        if (isNewZone) {
+            zone = tab->createEmptyZone(0);
+            m_ZoneForGraphMode = zone->name();
+        }
 
         // Calculates the range of each graph which will be created
         auto graphRange = getGraphRanges(event);
@@ -327,7 +344,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
         if (checked) {
             ui->btnChart->setChecked(false);
             impl->m_ZonesForTimeMode
-                = impl->selectZone(this, impl->m_ZonesForTimeMode, true,
+                = impl->selectZone(this, impl->m_ZonesForTimeMode, true, false,
                                    this->mapToGlobal(ui->btnTime->frameGeometry().center()));
 
             impl->updateForTimeMode(ui->treeView);
@@ -337,8 +354,9 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     connect(ui->btnChart, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
             ui->btnTime->setChecked(false);
+
             impl->m_ZoneForGraphMode
-                = impl->selectZone(this, {impl->m_ZoneForGraphMode}, false,
+                = impl->selectZone(this, {impl->m_ZoneForGraphMode}, false, true,
                                    this->mapToGlobal(ui->btnChart->frameGeometry().center()))
                       .value(0);
 
