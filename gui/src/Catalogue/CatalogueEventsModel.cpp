@@ -53,8 +53,14 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
             case CatalogueEventsModel::Column::TEnd:
                 return nbEventProducts(event) > 0 ? DateUtils::dateTime(event->getTEnd())
                                                   : QVariant{};
-            case CatalogueEventsModel::Column::Product:
-                return QString::number(nbEventProducts(event)) + " product(s)";
+            case CatalogueEventsModel::Column::Product: {
+                auto eventProducts = event->getEventProducts();
+                QStringList eventProductList;
+                for (auto evtProduct : eventProducts) {
+                    eventProductList << evtProduct.getProductId();
+                }
+                return eventProductList.join(";");
+            }
             case CatalogueEventsModel::Column::Tags: {
                 QString tagList;
                 auto tags = event->getTags();
