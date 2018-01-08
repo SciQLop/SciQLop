@@ -384,16 +384,29 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
 
         if (!events.isEmpty() && eventProducts.isEmpty()) {
 
-            if (QMessageBox::warning(this, tr("Remove Event(s)"),
-                                     tr("The selected event(s) will be permanently removed "
-                                        "from the repository!\nAre you sure you want to continue?"),
-                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
-                == QMessageBox::Yes) {
+            auto canRemoveEvent
+                = !this->isAllEventsDisplayed()
+                  || (QMessageBox::warning(
+                          this, tr("Remove Event(s)"),
+                          tr("The selected event(s) will be permanently removed "
+                             "from the repository!\nAre you sure you want to continue?"),
+                          QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+                      == QMessageBox::Yes);
 
+            if (canRemoveEvent) {
                 for (auto event : events) {
-                    sqpApp->catalogueController().removeEvent(event);
-                    impl->removeEvent(event, ui->treeView);
+                    if (this->isAllEventsDisplayed()) {
+                        impl->removeEvent(event, ui->treeView);
+                    }
+                    else {
+                        for (auto catalogue : this->displayedCatalogues()) {
+                            catalogue->removeEvent(event->getUniqId());
+                            sqpApp->catalogueController().updateCatalogue(catalogue);
+                        }
+                    }
+                    impl->m_Model->removeEvent(event);
                 }
+
 
                 emit this->eventsRemoved(events);
             }
