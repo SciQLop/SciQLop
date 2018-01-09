@@ -28,6 +28,9 @@ CatalogueInspectorWidget::CatalogueInspectorWidget(QWidget *parent)
 
     impl->connectCatalogueUpdateSignals(this, ui);
     impl->connectEventUpdateSignals(this, ui);
+
+    ui->dateTimeEventTStart->setDisplayFormat(DATETIME_FORMAT);
+    ui->dateTimeEventTEnd->setDisplayFormat(DATETIME_FORMAT);
 }
 
 CatalogueInspectorWidget::~CatalogueInspectorWidget()

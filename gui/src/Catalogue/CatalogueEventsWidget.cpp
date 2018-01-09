@@ -355,6 +355,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     ui->treeView->setDragDropMode(QAbstractItemView::DragDrop);
     ui->treeView->setDragEnabled(true);
 
+
     connect(ui->btnTime, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
             ui->btnChart->setChecked(false);
@@ -453,6 +454,10 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
                                                  QHeaderView::Interactive);
     ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
                                           VALIDATION_COLUMN_SIZE);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::TStart,
+                                                 QHeaderView::ResizeToContents);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::TEnd,
+                                                 QHeaderView::ResizeToContents);
     ui->treeView->header()->setSortIndicatorShown(true);
 
     connect(impl->m_Model, &CatalogueEventsModel::modelSorted, [this]() {

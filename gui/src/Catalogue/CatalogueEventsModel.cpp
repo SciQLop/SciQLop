@@ -48,11 +48,15 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
             case CatalogueEventsModel::Column::Name:
                 return event->getName();
             case CatalogueEventsModel::Column::TStart:
-                return nbEventProducts(event) > 0 ? DateUtils::dateTime(event->getTStart())
-                                                  : QVariant{};
+                return nbEventProducts(event) > 0
+                           ? DateUtils::dateTime(event->getTStart())
+                                 .toString(DATETIME_FORMAT_ONE_LINE)
+                           : QVariant{};
             case CatalogueEventsModel::Column::TEnd:
-                return nbEventProducts(event) > 0 ? DateUtils::dateTime(event->getTEnd())
-                                                  : QVariant{};
+                return nbEventProducts(event) > 0
+                           ? DateUtils::dateTime(event->getTEnd())
+                                 .toString(DATETIME_FORMAT_ONE_LINE)
+                           : QVariant{};
             case CatalogueEventsModel::Column::Product: {
                 auto eventProducts = event->getEventProducts();
                 QStringList eventProductList;
@@ -105,9 +109,11 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
             case CatalogueEventsModel::Column::Name:
                 return eventProduct->getProductId();
             case CatalogueEventsModel::Column::TStart:
-                return DateUtils::dateTime(eventProduct->getTStart());
+                return DateUtils::dateTime(eventProduct->getTStart())
+                    .toString(DATETIME_FORMAT_ONE_LINE);
             case CatalogueEventsModel::Column::TEnd:
-                return DateUtils::dateTime(eventProduct->getTEnd());
+                return DateUtils::dateTime(eventProduct->getTEnd())
+                    .toString(DATETIME_FORMAT_ONE_LINE);
             case CatalogueEventsModel::Column::Product:
                 return eventProduct->getProductId();
             case CatalogueEventsModel::Column::Tags:
