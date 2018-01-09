@@ -176,6 +176,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
                         catalogueToItem.second,
                         impl->m_TreeModel->indexOf(catalogueToItem.second->parent()));
                 }
+                emitSelection();
             }
         }
     });
