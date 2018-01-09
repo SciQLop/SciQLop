@@ -396,12 +396,19 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
             if (canRemoveEvent) {
                 for (auto event : events) {
                     if (this->isAllEventsDisplayed()) {
+                        sqpApp->catalogueController().removeEvent(event);
                         impl->removeEvent(event, ui->treeView);
                     }
                     else {
+                        QVector<std::shared_ptr<DBCatalogue> > modifiedCatalogues;
                         for (auto catalogue : this->displayedCatalogues()) {
-                            catalogue->removeEvent(event->getUniqId());
-                            sqpApp->catalogueController().updateCatalogue(catalogue);
+                            if (catalogue->removeEvent(event->getUniqId())) {
+                                sqpApp->catalogueController().updateCatalogue(catalogue);
+                                modifiedCatalogues << catalogue;
+                            }
+                        }
+                        if (!modifiedCatalogues.empty()) {
+                            emit eventCataloguesModified(modifiedCatalogues);
                         }
                     }
                     impl->m_Model->removeEvent(event);

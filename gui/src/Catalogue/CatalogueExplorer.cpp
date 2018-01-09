@@ -135,6 +135,13 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
                 sqpApp->catalogueController().updateEventProduct(eventProduct);
                 ui->events->setEventChanges(event, true);
             });
+
+    connect(ui->events, &CatalogueEventsWidget::eventCataloguesModified,
+            [this](const QVector<std::shared_ptr<DBCatalogue> > &catalogues) {
+                for (auto catalogue : catalogues) {
+                    ui->catalogues->setCatalogueChanges(catalogue, true);
+                }
+            });
 }
 
 CatalogueExplorer::~CatalogueExplorer()

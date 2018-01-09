@@ -30,6 +30,8 @@ signals:
     void selectionZoneAdded(const std::shared_ptr<DBEvent> &event, const QString &productId,
                             VisualizationSelectionZoneItem *selectionZone);
 
+    void eventCataloguesModified(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
+
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
     virtual ~CatalogueEventsWidget();
