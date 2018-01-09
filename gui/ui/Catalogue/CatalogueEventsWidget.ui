@@ -139,7 +139,6 @@
  </widget>
  <resources>
   <include location="../../resources/sqpguiresources.qrc"/>
-  <include location="../../resources/sqpguiresources.qrc"/>
  </resources>
  <connections/>
 </ui>

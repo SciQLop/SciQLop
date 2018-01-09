@@ -19,13 +19,11 @@
 
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QKeyEvent>
 #include <QListWidget>
 #include <QMessageBox>
 
 Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
-
-/// Fixed size of the validation column
-const auto VALIDATION_COLUMN_SIZE = 35;
 
 /// Percentage added to the range of a event when it is displayed
 const auto EVENT_RANGE_MARGE = 30; // in %
@@ -354,6 +352,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     ui->treeView->setDragDropMode(QAbstractItemView::DragDrop);
     ui->treeView->setDragEnabled(true);
 
+
     connect(ui->btnTime, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
             ui->btnChart->setChecked(false);
@@ -384,16 +383,36 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
 
         if (!events.isEmpty() && eventProducts.isEmpty()) {
 
-            if (QMessageBox::warning(this, tr("Remove Event(s)"),
-                                     tr("The selected event(s) will be permanently removed "
-                                        "from the repository!\nAre you sure you want to continue?"),
-                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
-                == QMessageBox::Yes) {
+            auto canRemoveEvent
+                = !this->isAllEventsDisplayed()
+                  || (QMessageBox::warning(
+                          this, tr("Remove Event(s)"),
+                          tr("The selected event(s) will be permanently removed "
+                             "from the repository!\nAre you sure you want to continue?"),
+                          QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+                      == QMessageBox::Yes);
 
+            if (canRemoveEvent) {
                 for (auto event : events) {
-                    sqpApp->catalogueController().removeEvent(event);
-                    impl->removeEvent(event, ui->treeView);
+                    if (this->isAllEventsDisplayed()) {
+                        sqpApp->catalogueController().removeEvent(event);
+                        impl->removeEvent(event, ui->treeView);
+                    }
+                    else {
+                        QVector<std::shared_ptr<DBCatalogue> > modifiedCatalogues;
+                        for (auto catalogue : this->displayedCatalogues()) {
+                            if (catalogue->removeEvent(event->getUniqId())) {
+                                sqpApp->catalogueController().updateCatalogue(catalogue);
+                                modifiedCatalogues << catalogue;
+                            }
+                        }
+                        if (!modifiedCatalogues.empty()) {
+                            emit eventCataloguesModified(modifiedCatalogues);
+                        }
+                    }
+                    impl->m_Model->removeEvent(event);
                 }
+
 
                 emit this->eventsRemoved(events);
             }
@@ -427,11 +446,13 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Tags,
                                                  QHeaderView::Stretch);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Validation,
-                                                 QHeaderView::Fixed);
+                                                 QHeaderView::ResizeToContents);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Name,
                                                  QHeaderView::Interactive);
-    ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
-                                          VALIDATION_COLUMN_SIZE);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::TStart,
+                                                 QHeaderView::ResizeToContents);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::TEnd,
+                                                 QHeaderView::ResizeToContents);
     ui->treeView->header()->setSortIndicatorShown(true);
 
     connect(impl->m_Model, &CatalogueEventsModel::modelSorted, [this]() {
@@ -489,6 +510,8 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
                         emitSelection();
                     });
                 ui->treeView->setIndexWidget(validationIndex, widget);
+                ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
+                                                      QHeaderView::ResizeToContents);
             }
         }
         else {
@@ -590,5 +613,17 @@ void CatalogueEventsWidget::emitSelection()
     }
     else {
         emit selectionCleared();
+    }
+}
+
+
+void CatalogueEventsWidget::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+        case Qt::Key_Delete: {
+            ui->btnRemove->click();
+        }
+        default:
+            break;
     }
 }

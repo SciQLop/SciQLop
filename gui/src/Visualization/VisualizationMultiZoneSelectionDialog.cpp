@@ -4,7 +4,7 @@
 #include "Common/DateUtils.h"
 #include "Visualization/VisualizationSelectionZoneItem.h"
 
-const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss");
+const auto DATETIME_FORMAT_S = QStringLiteral("yyyy/MM/dd hh:mm:ss");
 
 struct VisualizationMultiZoneSelectionDialog::VisualizationMultiZoneSelectionDialogPrivate {
     QVector<VisualizationSelectionZoneItem *> m_Zones;
@@ -46,9 +46,9 @@ void VisualizationMultiZoneSelectionDialog::setZones(
         }
 
         auto range = zone->range();
-        name += DateUtils::dateTime(range.m_TStart).toString(DATETIME_FORMAT);
+        name += DateUtils::dateTime(range.m_TStart).toString(DATETIME_FORMAT_S);
         name += " - ";
-        name += DateUtils::dateTime(range.m_TEnd).toString(DATETIME_FORMAT);
+        name += DateUtils::dateTime(range.m_TEnd).toString(DATETIME_FORMAT_S);
 
         auto item = new QListWidgetItem(name, ui->listWidget);
         item->setSelected(zone->selected());

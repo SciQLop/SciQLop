@@ -28,6 +28,9 @@ CatalogueInspectorWidget::CatalogueInspectorWidget(QWidget *parent)
 
     impl->connectCatalogueUpdateSignals(this, ui);
     impl->connectEventUpdateSignals(this, ui);
+
+    ui->dateTimeEventTStart->setDisplayFormat(DATETIME_FORMAT);
+    ui->dateTimeEventTEnd->setDisplayFormat(DATETIME_FORMAT);
 }
 
 CatalogueInspectorWidget::~CatalogueInspectorWidget()
@@ -148,8 +151,14 @@ void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
     ui->leEventName->setEnabled(true);
     ui->leEventName->setText(event->getName());
     ui->leEventProduct->setEnabled(false);
-    ui->leEventProduct->setText(
-        QString::number(event->getEventProducts().size()).append(" product(s)"));
+
+    auto eventProducts = event->getEventProducts();
+    QStringList eventProductList;
+    for (auto evtProduct : eventProducts) {
+        eventProductList << evtProduct.getProductId();
+    }
+
+    ui->leEventProduct->setText(eventProductList.join(";"));
 
     QString tagList;
     auto tags = event->getTagsNames();

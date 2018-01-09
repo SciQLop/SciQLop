@@ -76,6 +76,9 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
         ui->events->clear();
     });
 
+    connect(ui->catalogues, &CatalogueSideBarWidget::catalogueSaved, ui->events,
+            &CatalogueEventsWidget::refresh);
+
     // Updates the inspectot when something is selected in the events
     connect(ui->events, &CatalogueEventsWidget::eventsSelected, [this](auto events) {
         if (events.count() == 1) {
@@ -134,6 +137,13 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
             [this](auto event, auto eventProduct) {
                 sqpApp->catalogueController().updateEventProduct(eventProduct);
                 ui->events->setEventChanges(event, true);
+            });
+
+    connect(ui->events, &CatalogueEventsWidget::eventCataloguesModified,
+            [this](const QVector<std::shared_ptr<DBCatalogue> > &catalogues) {
+                for (auto catalogue : catalogues) {
+                    ui->catalogues->setCatalogueChanges(catalogue, true);
+                }
             });
 }
 

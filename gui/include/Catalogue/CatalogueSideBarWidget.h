@@ -24,6 +24,7 @@ signals:
     void allEventsSelected();
     void trashSelected();
     void selectionCleared();
+    void catalogueSaved(const std::shared_ptr<DBCatalogue> &catalogue);
 
 public:
     explicit CatalogueSideBarWidget(QWidget *parent = 0);
@@ -34,6 +35,10 @@ public:
     void setCatalogueChanges(const std::shared_ptr<DBCatalogue> &catalogue, bool hasChanges);
 
     QVector<std::shared_ptr<DBCatalogue> > getCatalogues(const QString &repository) const;
+
+    // QWidget interface
+protected:
+    void keyPressEvent(QKeyEvent *event);
 
 private slots:
     void emitSelection();

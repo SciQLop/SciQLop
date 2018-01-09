@@ -270,10 +270,10 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
                         break;
                 }
                 graphChild->setFlags(GraphFlag::DisableAll);
-                qCDebug(LOG_VisualizationZoneWidget())
-                    << tr("TORM: Range before: ") << graphChild->graphRange();
-                qCDebug(LOG_VisualizationZoneWidget())
-                    << tr("TORM: Range after : ") << graphChildRange;
+                qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: Range before: ")
+                                                       << graphChild->graphRange();
+                qCDebug(LOG_VisualizationZoneWidget()) << tr("TORM: Range after : ")
+                                                       << graphChildRange;
                 qCDebug(LOG_VisualizationZoneWidget())
                     << tr("TORM: child dt") << graphChildRange.m_TEnd - graphChildRange.m_TStart;
                 graphChild->setGraphRange(graphChildRange);

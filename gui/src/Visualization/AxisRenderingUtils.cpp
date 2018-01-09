@@ -13,8 +13,6 @@ Q_LOGGING_CATEGORY(LOG_AxisRenderingUtils, "AxisRenderingUtils")
 
 namespace {
 
-const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
-
 /// Format for datetimes on a axis
 const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
 

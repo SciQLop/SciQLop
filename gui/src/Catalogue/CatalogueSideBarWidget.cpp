@@ -12,6 +12,7 @@
 #include <ComparaisonPredicate.h>
 #include <DBCatalogue.h>
 
+#include <QKeyEvent>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMimeData>
@@ -110,7 +111,8 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
 
     ui->treeView->header()->setStretchLastSection(false);
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->treeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueTreeModel::Column::Name,
+                                                 QHeaderView::Stretch);
 
     connect(ui->treeView, &QTreeView::clicked, this, &CatalogueSideBarWidget::emitSelection);
     connect(ui->treeView->selectionModel(), &QItemSelectionModel::currentChanged, this,
@@ -175,6 +177,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
                         catalogueToItem.second,
                         impl->m_TreeModel->indexOf(catalogueToItem.second->parent()));
                 }
+                emitSelection();
             }
         }
     });
@@ -393,6 +396,7 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::setHasChanges(
                 [this, validationIndex, sideBarWidget, catalogue]() {
                     if (catalogue) {
                         sqpApp->catalogueController().saveCatalogue(catalogue);
+                        emit sideBarWidget->catalogueSaved(catalogue);
                     }
                     setHasChanges(false, validationIndex, sideBarWidget);
                 },
@@ -413,6 +417,8 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::setHasChanges(
                     }
                 });
             sideBarWidget->ui->treeView->setIndexWidget(validationIndex, widget);
+            sideBarWidget->ui->treeView->header()->resizeSection(
+                (int)CatalogueTreeModel::Column::Validation, QHeaderView::ResizeToContents);
         }
     }
     else {
@@ -426,4 +432,16 @@ bool CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::hasChanges(const QMo
 {
     auto validationIndex = index.sibling(index.row(), (int)CatalogueTreeModel::Column::Validation);
     return treeView->indexWidget(validationIndex) != nullptr;
+}
+
+
+void CatalogueSideBarWidget::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+        case Qt::Key_Delete: {
+            ui->btnRemove->click();
+        }
+        default:
+            break;
+    }
 }

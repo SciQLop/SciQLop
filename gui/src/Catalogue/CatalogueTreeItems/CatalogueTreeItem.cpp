@@ -111,16 +111,13 @@ bool CatalogueTreeItem::dropMimeData(const QMimeData *data, Qt::DropAction actio
         if (action == Qt::MoveAction) {
             for (auto catalogue : sourceCatalogues) {
                 catalogue->removeEvent(event->getUniqId());
+                sqpApp->catalogueController().updateCatalogue(catalogue);
             }
         }
 
         impl->m_Catalogue->addEvent(event->getUniqId());
+        sqpApp->catalogueController().updateCatalogue(impl->m_Catalogue);
     }
-
-    for (auto catalogue : sourceCatalogues) {
-        sqpApp->catalogueController().updateCatalogue(catalogue);
-    }
-    sqpApp->catalogueController().updateCatalogue(impl->m_Catalogue);
 }
 
 std::shared_ptr<DBCatalogue> CatalogueTreeItem::catalogue() const
