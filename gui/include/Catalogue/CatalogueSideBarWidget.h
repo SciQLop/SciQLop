@@ -24,6 +24,7 @@ signals:
     void allEventsSelected();
     void trashSelected();
     void selectionCleared();
+    void catalogueSaved(const std::shared_ptr<DBCatalogue> &catalogue);
 
 public:
     explicit CatalogueSideBarWidget(QWidget *parent = 0);

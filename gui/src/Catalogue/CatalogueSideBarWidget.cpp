@@ -394,6 +394,7 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::setHasChanges(
                 [this, validationIndex, sideBarWidget, catalogue]() {
                     if (catalogue) {
                         sqpApp->catalogueController().saveCatalogue(catalogue);
+                        emit sideBarWidget->catalogueSaved(catalogue);
                     }
                     setHasChanges(false, validationIndex, sideBarWidget);
                 },

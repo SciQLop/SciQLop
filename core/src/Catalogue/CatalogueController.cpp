@@ -290,6 +290,14 @@ void CatalogueController::saveCatalogue(std::shared_ptr<DBCatalogue> catalogue)
 {
     impl->saveCatalogue(catalogue, true);
     impl->m_KeysWithChanges.remove(impl->catalogueUniqueKey(catalogue));
+
+    // remove key of events of the catalogue
+    if (catalogue->getType() == CatalogueType::STATIC) {
+        auto events = this->retrieveEventsFromCatalogue(catalogue);
+        for (auto event : events) {
+            impl->m_KeysWithChanges.remove(impl->eventUniqueKey(event));
+        }
+    }
 }
 
 void CatalogueController::discardCatalogue(std::shared_ptr<DBCatalogue> catalogue, bool &removed)

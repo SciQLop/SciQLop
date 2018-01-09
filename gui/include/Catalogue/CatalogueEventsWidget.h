@@ -40,6 +40,7 @@ public:
 
     void addEvent(const std::shared_ptr<DBEvent> &event);
     void setEventChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges);
+    void setEventsChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges);
 
     QVector<std::shared_ptr<DBCatalogue> > displayedCatalogues() const;
     bool isAllEventsDisplayed() const;
