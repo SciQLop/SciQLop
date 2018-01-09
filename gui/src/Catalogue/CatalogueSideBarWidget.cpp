@@ -111,7 +111,8 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
 
     ui->treeView->header()->setStretchLastSection(false);
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
-    ui->treeView->header()->setSectionResizeMode(0, QHeaderView::Stretch);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueTreeModel::Column::Name,
+                                                 QHeaderView::Stretch);
 
     connect(ui->treeView, &QTreeView::clicked, this, &CatalogueSideBarWidget::emitSelection);
     connect(ui->treeView->selectionModel(), &QItemSelectionModel::currentChanged, this,
@@ -416,6 +417,8 @@ void CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::setHasChanges(
                     }
                 });
             sideBarWidget->ui->treeView->setIndexWidget(validationIndex, widget);
+            sideBarWidget->ui->treeView->header()->resizeSection(
+                (int)CatalogueTreeModel::Column::Validation, QHeaderView::ResizeToContents);
         }
     }
     else {

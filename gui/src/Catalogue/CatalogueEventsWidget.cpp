@@ -25,9 +25,6 @@
 
 Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
 
-/// Fixed size of the validation column
-const auto VALIDATION_COLUMN_SIZE = 35;
-
 /// Percentage added to the range of a event when it is displayed
 const auto EVENT_RANGE_MARGE = 30; // in %
 
@@ -449,11 +446,9 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Tags,
                                                  QHeaderView::Stretch);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Validation,
-                                                 QHeaderView::Fixed);
+                                                 QHeaderView::ResizeToContents);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Name,
                                                  QHeaderView::Interactive);
-    ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
-                                          VALIDATION_COLUMN_SIZE);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::TStart,
                                                  QHeaderView::ResizeToContents);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::TEnd,
@@ -515,6 +510,8 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
                         emitSelection();
                     });
                 ui->treeView->setIndexWidget(validationIndex, widget);
+                ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
+                                                      QHeaderView::ResizeToContents);
             }
         }
         else {
