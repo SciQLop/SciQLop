@@ -12,6 +12,7 @@
 #include <ComparaisonPredicate.h>
 #include <DBCatalogue.h>
 
+#include <QKeyEvent>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMimeData>
@@ -426,4 +427,16 @@ bool CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate::hasChanges(const QMo
 {
     auto validationIndex = index.sibling(index.row(), (int)CatalogueTreeModel::Column::Validation);
     return treeView->indexWidget(validationIndex) != nullptr;
+}
+
+
+void CatalogueSideBarWidget::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+        case Qt::Key_Delete: {
+            ui->btnRemove->click();
+        }
+        default:
+            break;
+    }
 }

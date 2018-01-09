@@ -35,6 +35,10 @@ public:
 
     QVector<std::shared_ptr<DBCatalogue> > getCatalogues(const QString &repository) const;
 
+    // QWidget interface
+protected:
+    void keyPressEvent(QKeyEvent *event);
+
 private slots:
     void emitSelection();
 

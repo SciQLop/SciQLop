@@ -53,6 +53,11 @@ public slots:
     void clear();
     void refresh();
 
+    // QWidget interface
+protected:
+    void keyPressEvent(QKeyEvent *event);
+
+
 private:
     Ui::CatalogueEventsWidget *ui;
 

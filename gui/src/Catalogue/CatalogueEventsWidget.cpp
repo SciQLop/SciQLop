@@ -19,6 +19,7 @@
 
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QKeyEvent>
 #include <QListWidget>
 #include <QMessageBox>
 
@@ -610,5 +611,17 @@ void CatalogueEventsWidget::emitSelection()
     }
     else {
         emit selectionCleared();
+    }
+}
+
+
+void CatalogueEventsWidget::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+        case Qt::Key_Delete: {
+            ui->btnRemove->click();
+        }
+        default:
+            break;
     }
 }
