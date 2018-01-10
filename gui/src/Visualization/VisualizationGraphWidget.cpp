@@ -258,9 +258,8 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     connect(&sqpApp->variableController(), &VariableController::updateVarDisplaying, this,
             &VisualizationGraphWidget::onUpdateVarDisplaying);
 
-#ifdef Q_OS_MAC
+    // Necessary for all platform since Qt::AA_EnableHighDpiScaling is enable.
     plot().setPlottingHint(QCP::phFastPolylines, true);
-#endif
 }
 
 
