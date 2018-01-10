@@ -39,7 +39,10 @@ void VisualizationSelectionZoneManager::clearSelection()
 {
     for (auto item : impl->m_SelectedItems) {
         item->setSelected(false);
-        item->parentPlot()->replot(QCustomPlot::rpQueuedReplot);
+        auto parentPlot = item->parentPlot();
+        if (parentPlot) {
+            parentPlot->replot(QCustomPlot::rpQueuedReplot);
+        }
     }
 
     impl->m_SelectedItems.clear();
