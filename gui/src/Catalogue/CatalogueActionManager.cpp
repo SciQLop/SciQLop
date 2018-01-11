@@ -25,14 +25,15 @@
 #include <memory>
 
 const auto CATALOGUE_MENU_NAME = QObject::tr("Catalogues");
-const auto CATALOGUE_CREATE_EVENT_MENU_NAME = QObject::tr("New Event");
+const auto CATALOGUE_CREATE_EVENT_MENU_NAME = QObject::tr("New Event...");
 
-const auto DEFAULT_EVENT_NAME = QObject::tr("New Event");
-const auto DEFAULT_CATALOGUE_NAME = QObject::tr("New Catalogue");
+const auto DEFAULT_EVENT_NAME = QObject::tr("Event");
+const auto DEFAULT_CATALOGUE_NAME = QObject::tr("Catalogue");
 
 struct CatalogueActionManager::CatalogueActionManagerPrivate {
 
     CatalogueExplorer *m_CatalogueExplorer = nullptr;
+    QVector<std::shared_ptr<SelectionZoneAction> > m_CreateInCatalogueActions;
 
     CatalogueActionManagerPrivate(CatalogueExplorer *catalogueExplorer)
             : m_CatalogueExplorer(catalogueExplorer)
@@ -85,6 +86,32 @@ struct CatalogueActionManager::CatalogueActionManagerPrivate {
             m_CatalogueExplorer->eventsWidget().setEventChanges(event, true);
         }
     }
+
+    SelectionZoneAction::EnableFunction createEventEnableFuntion() const
+    {
+        return [](auto zones) {
+
+            // Checks that all variables in the zones doesn't refer to the same product
+            QSet<QString> usedDatasource;
+            for (auto zone : zones) {
+                auto graph = zone->parentGraphWidget();
+                auto variables = graph->variables();
+
+                for (auto var : variables) {
+                    auto datasourceId
+                        = var->metadata().value(DataSourceItem::ID_DATA_KEY).toString();
+                    if (!usedDatasource.contains(datasourceId)) {
+                        usedDatasource.insert(datasourceId);
+                    }
+                    else {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        };
+    }
 };
 
 CatalogueActionManager::CatalogueActionManager(CatalogueExplorer *catalogueExplorer)
@@ -96,33 +123,10 @@ void CatalogueActionManager::installSelectionZoneActions()
 {
     auto &actionController = sqpApp->actionsGuiController();
 
-    auto createEventEnableFuntion = [](auto zones) {
-
-        // Checks that all variables in the zones doesn't refer to the same product
-        QSet<QString> usedDatasource;
-        for (auto zone : zones) {
-            auto graph = zone->parentGraphWidget();
-            auto variables = graph->variables();
-
-            for (auto var : variables) {
-                auto datasourceId = var->metadata().value(DataSourceItem::ID_DATA_KEY).toString();
-                if (!usedDatasource.contains(datasourceId)) {
-                    usedDatasource.insert(datasourceId);
-                }
-                else {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    };
-
-
     auto createEventAction = actionController.addSectionZoneAction(
         {CATALOGUE_MENU_NAME, CATALOGUE_CREATE_EVENT_MENU_NAME}, QObject::tr("Without Catalogue"),
         [this](auto zones) { impl->createEventFromZones(DEFAULT_EVENT_NAME, zones); });
-    createEventAction->setEnableFunction(createEventEnableFuntion);
+    createEventAction->setEnableFunction(impl->createEventEnableFuntion());
 
     auto createEventInNewCatalogueAction = actionController.addSectionZoneAction(
         {CATALOGUE_MENU_NAME, CATALOGUE_CREATE_EVENT_MENU_NAME}, QObject::tr("In New Catalogue"),
@@ -136,18 +140,32 @@ void CatalogueActionManager::installSelectionZoneActions()
 
             impl->createEventFromZones(DEFAULT_EVENT_NAME, zones, newCatalogue);
         });
-    createEventInNewCatalogueAction->setEnableFunction(createEventEnableFuntion);
+    createEventInNewCatalogueAction->setEnableFunction(impl->createEventEnableFuntion());
 
+
+    refreshCreateInCatalogueAction();
+}
+
+void CatalogueActionManager::refreshCreateInCatalogueAction()
+{
+    auto &actionController = sqpApp->actionsGuiController();
+
+    for (auto action : impl->m_CreateInCatalogueActions) {
+        actionController.removeAction(action);
+    }
+    impl->m_CreateInCatalogueActions.clear();
 
     auto allCatalogues
         = impl->m_CatalogueExplorer->sideBarWidget().getCatalogues(REPOSITORY_DEFAULT);
+
     for (auto catalogue : allCatalogues) {
         auto catalogueName = catalogue->getName();
         auto createEventInCatalogueAction = actionController.addSectionZoneAction(
             {CATALOGUE_MENU_NAME, CATALOGUE_CREATE_EVENT_MENU_NAME},
-            QObject::tr("In ").append(catalogueName), [this, catalogue](auto zones) {
+            QObject::tr("In \"").append(catalogueName).append("\""), [this, catalogue](auto zones) {
                 impl->createEventFromZones(DEFAULT_EVENT_NAME, zones, catalogue);
             });
-        createEventInCatalogueAction->setEnableFunction(createEventEnableFuntion);
+        createEventInCatalogueAction->setEnableFunction(impl->createEventEnableFuntion());
+        impl->m_CreateInCatalogueActions << createEventInCatalogueAction;
     }
 }

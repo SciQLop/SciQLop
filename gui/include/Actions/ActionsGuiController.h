@@ -19,6 +19,8 @@ public:
 
     QVector<std::shared_ptr<SelectionZoneAction> > selectionZoneActions() const;
 
+    void removeAction(const std::shared_ptr<SelectionZoneAction> &action);
+
 private:
     class ActionsGuiControllerPrivate;
     spimpl::unique_impl_ptr<ActionsGuiControllerPrivate> impl;

@@ -34,3 +34,8 @@ QVector<std::shared_ptr<SelectionZoneAction> > ActionsGuiController::selectionZo
 {
     return impl->m_SelectionZoneActions;
 }
+
+void ActionsGuiController::removeAction(const std::shared_ptr<SelectionZoneAction> &action)
+{
+    impl->m_SelectionZoneActions.removeAll(action);
+}
