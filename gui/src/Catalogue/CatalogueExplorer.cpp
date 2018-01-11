@@ -79,6 +79,9 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
     connect(ui->catalogues, &CatalogueSideBarWidget::catalogueSaved, ui->events,
             &CatalogueEventsWidget::refresh);
 
+    connect(ui->catalogues, &CatalogueSideBarWidget::catalogueListChanged,
+            [this]() { impl->m_ActionManager.refreshCreateInCatalogueAction(); });
+
     // Updates the inspectot when something is selected in the events
     connect(ui->events, &CatalogueEventsWidget::eventsSelected, [this](auto events) {
         if (events.count() == 1) {
@@ -126,6 +129,7 @@ CatalogueExplorer::CatalogueExplorer(QWidget *parent)
     connect(ui->inspector, &CatalogueInspectorWidget::catalogueUpdated, [this](auto catalogue) {
         sqpApp->catalogueController().updateCatalogue(catalogue);
         ui->catalogues->setCatalogueChanges(catalogue, true);
+        impl->m_ActionManager.refreshCreateInCatalogueAction();
     });
 
     connect(ui->inspector, &CatalogueInspectorWidget::eventUpdated, [this](auto event) {

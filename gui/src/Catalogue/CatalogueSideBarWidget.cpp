@@ -25,6 +25,8 @@ constexpr auto TRASH_ITEM_TYPE = CatalogueAbstractTreeItem::DEFAULT_TYPE + 2;
 constexpr auto CATALOGUE_ITEM_TYPE = CatalogueAbstractTreeItem::DEFAULT_TYPE + 3;
 constexpr auto DATABASE_ITEM_TYPE = CatalogueAbstractTreeItem::DEFAULT_TYPE + 4;
 
+const auto DEFAULT_CATALOGUE_NAME = QObject::tr("Catalogue");
+
 
 struct CatalogueSideBarWidget::CatalogueSideBarWidgetPrivate {
 
@@ -108,6 +110,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     ui->treeView->setModel(impl->m_TreeModel);
 
     impl->configureTreeWidget(ui->treeView);
+    emit catalogueListChanged();
 
     ui->treeView->header()->setStretchLastSection(false);
     ui->treeView->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
@@ -121,7 +124,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
 
     connect(ui->btnAdd, &QToolButton::clicked, [this]() {
         auto catalogue = std::make_shared<DBCatalogue>();
-        catalogue->setName(QString("Cat"));
+        catalogue->setName(DEFAULT_CATALOGUE_NAME);
         sqpApp->catalogueController().addCatalogue(catalogue);
         auto item = this->addCatalogue(catalogue, REPOSITORY_DEFAULT);
         this->setCatalogueChanges(catalogue, true);
@@ -133,6 +136,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     connect(impl->m_TreeModel, &CatalogueTreeModel::itemDropped,
             [this](auto index, auto mimeData, auto action) {
                 auto item = impl->m_TreeModel->item(index);
+
                 if (item && item->type() == CATALOGUE_ITEM_TYPE) {
                     auto catalogue = static_cast<CatalogueTreeItem *>(item)->catalogue();
                     this->setCatalogueChanges(catalogue, true);
@@ -144,9 +148,12 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
                         mimeData->data(MIME_TYPE_SOURCE_CATALOGUE_LIST));
                     for (auto catalogue : sourceCatalogues) {
                         if (auto catalogueItem = impl->getCatalogueItem(catalogue)) {
+                            catalogueItem->replaceCatalogue(catalogue);
                             this->setCatalogueChanges(catalogue, true);
                         }
                     }
+
+                    this->emitSelection();
                 }
             });
 
@@ -178,6 +185,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
                         impl->m_TreeModel->indexOf(catalogueToItem.second->parent()));
                 }
                 emitSelection();
+                emit catalogueListChanged();
             }
         }
     });
@@ -188,6 +196,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
             this->emitSelection();
         }
         impl->setHasChanges(true, index, this);
+        emit this->catalogueListChanged();
     });
 
     ui->treeView->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -205,7 +214,12 @@ CatalogueSideBarWidget::addCatalogue(const std::shared_ptr<DBCatalogue> &catalog
                                      const QString &repository)
 {
     auto repositoryItem = impl->getDatabaseItem(repository);
-    return impl->addCatalogueItem(catalogue, impl->m_TreeModel->indexOf(repositoryItem));
+    auto catalogueItem
+        = impl->addCatalogueItem(catalogue, impl->m_TreeModel->indexOf(repositoryItem));
+
+    emit catalogueListChanged();
+
+    return catalogueItem;
 }
 
 void CatalogueSideBarWidget::setCatalogueChanges(const std::shared_ptr<DBCatalogue> &catalogue,

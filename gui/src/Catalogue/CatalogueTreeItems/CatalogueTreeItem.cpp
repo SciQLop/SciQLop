@@ -124,3 +124,8 @@ std::shared_ptr<DBCatalogue> CatalogueTreeItem::catalogue() const
 {
     return impl->m_Catalogue;
 }
+
+void CatalogueTreeItem::replaceCatalogue(const std::shared_ptr<DBCatalogue> &catalogue)
+{
+    impl->m_Catalogue = catalogue;
+}

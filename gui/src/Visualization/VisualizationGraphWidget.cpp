@@ -12,6 +12,7 @@
 #include "ui_VisualizationGraphWidget.h"
 
 #include <Actions/ActionsGuiController.h>
+#include <Actions/FilteringAction.h>
 #include <Common/MimeTypesDef.h>
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
@@ -245,7 +246,7 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
             &VisualizationGraphWidget::onMouseDoubleClick);
     connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
                                    &QCPAxis::rangeChanged),
-            this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
+        this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
 
     // Activates menu when right clicking on the graph
     ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -633,6 +634,10 @@ void VisualizationGraphWidget::closeEvent(QCloseEvent *event)
 {
     Q_UNUSED(event);
 
+    for (auto i : impl->m_SelectionZones) {
+        parentVisualizationWidget()->selectionZoneManager().setSelected(i, false);
+    }
+
     // Prevents that all variables will be removed from graph when it will be closed
     for (auto &variableEntry : impl->m_VariableToPlotMultiMap) {
         emit variableAboutToBeRemoved(variableEntry.first);
@@ -703,24 +708,39 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
         QHash<QString, QMenu *> subMenus;
         QHash<QString, bool> subMenusEnabled;
+        QHash<QString, FilteringAction *> filteredMenu;
 
         for (auto zoneAction : zoneActions) {
 
             auto isEnabled = zoneAction->isEnabled(selectedItems);
 
             auto menu = &graphMenu;
+            QString menuPath;
             for (auto subMenuName : zoneAction->subMenuList()) {
-                if (!subMenus.contains(subMenuName)) {
+                menuPath += '/';
+                menuPath += subMenuName;
+
+                if (!subMenus.contains(menuPath)) {
                     menu = menu->addMenu(subMenuName);
-                    subMenus[subMenuName] = menu;
-                    subMenusEnabled[subMenuName] = isEnabled;
+                    subMenus[menuPath] = menu;
+                    subMenusEnabled[menuPath] = isEnabled;
                 }
                 else {
-                    menu = subMenus.value(subMenuName);
+                    menu = subMenus.value(menuPath);
                     if (isEnabled) {
                         // The sub menu is enabled if at least one of its actions is enabled
-                        subMenusEnabled[subMenuName] = true;
+                        subMenusEnabled[menuPath] = true;
                     }
+                }
+            }
+
+            FilteringAction *filterAction = nullptr;
+            if (sqpApp->actionsGuiController().isMenuFiltered(zoneAction->subMenuList())) {
+                filterAction = filteredMenu.value(menuPath);
+                if (!filterAction) {
+                    filterAction = new FilteringAction{this};
+                    filteredMenu[menuPath] = filterAction;
+                    menu->addAction(filterAction);
                 }
             }
 
@@ -729,6 +749,10 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
             action->setShortcut(zoneAction->displayedShortcut());
             QObject::connect(action, &QAction::triggered,
                              [zoneAction, selectedItems]() { zoneAction->execute(selectedItems); });
+
+            if (filterAction && zoneAction->isFilteringAllowed()) {
+                filterAction->addActionToFilter(action);
+            }
         }
 
         for (auto it = subMenus.cbegin(); it != subMenus.cend(); ++it) {
