@@ -633,6 +633,10 @@ void VisualizationGraphWidget::closeEvent(QCloseEvent *event)
 {
     Q_UNUSED(event);
 
+    for (auto i : impl->m_SelectionZones) {
+        parentVisualizationWidget()->selectionZoneManager().setSelected(i, false);
+    }
+
     // Prevents that all variables will be removed from graph when it will be closed
     for (auto &variableEntry : impl->m_VariableToPlotMultiMap) {
         emit variableAboutToBeRemoved(variableEntry.first);
