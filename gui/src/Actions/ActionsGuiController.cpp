@@ -3,6 +3,7 @@
 struct ActionsGuiController::ActionsGuiControllerPrivate {
 
     QVector<std::shared_ptr<SelectionZoneAction> > m_SelectionZoneActions;
+    QSet<QStringList> m_FilteredMenu;
 };
 
 ActionsGuiController::ActionsGuiController()
@@ -38,4 +39,14 @@ QVector<std::shared_ptr<SelectionZoneAction> > ActionsGuiController::selectionZo
 void ActionsGuiController::removeAction(const std::shared_ptr<SelectionZoneAction> &action)
 {
     impl->m_SelectionZoneActions.removeAll(action);
+}
+
+void ActionsGuiController::addFilterForMenu(const QStringList &menuPath)
+{
+    impl->m_FilteredMenu.insert(menuPath);
+}
+
+bool ActionsGuiController::isMenuFiltered(const QStringList &menuPath) const
+{
+    return impl->m_FilteredMenu.contains(menuPath);
 }

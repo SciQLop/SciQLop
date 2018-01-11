@@ -127,6 +127,7 @@ void CatalogueActionManager::installSelectionZoneActions()
         {CATALOGUE_MENU_NAME, CATALOGUE_CREATE_EVENT_MENU_NAME}, QObject::tr("Without Catalogue"),
         [this](auto zones) { impl->createEventFromZones(DEFAULT_EVENT_NAME, zones); });
     createEventAction->setEnableFunction(impl->createEventEnableFuntion());
+    createEventAction->setAllowedFiltering(false);
 
     auto createEventInNewCatalogueAction = actionController.addSectionZoneAction(
         {CATALOGUE_MENU_NAME, CATALOGUE_CREATE_EVENT_MENU_NAME}, QObject::tr("In New Catalogue"),
@@ -141,9 +142,11 @@ void CatalogueActionManager::installSelectionZoneActions()
             impl->createEventFromZones(DEFAULT_EVENT_NAME, zones, newCatalogue);
         });
     createEventInNewCatalogueAction->setEnableFunction(impl->createEventEnableFuntion());
-
+    createEventInNewCatalogueAction->setAllowedFiltering(false);
 
     refreshCreateInCatalogueAction();
+
+    actionController.addFilterForMenu({CATALOGUE_MENU_NAME, CATALOGUE_CREATE_EVENT_MENU_NAME});
 }
 
 void CatalogueActionManager::refreshCreateInCatalogueAction()

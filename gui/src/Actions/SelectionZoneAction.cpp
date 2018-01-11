@@ -15,6 +15,7 @@ struct SelectionZoneAction::SelectionZoneActionPrivate {
     QKeySequence m_DisplayedShortcut;
     SelectionZoneAction::ExecuteFunction m_Fun;
     SelectionZoneAction::EnableFunction m_EnableFun = [](auto zones) { return true; };
+    bool m_FilteringAllowed = true;
 };
 
 SelectionZoneAction::SelectionZoneAction(const QString &name, ExecuteFunction fun)
@@ -53,6 +54,16 @@ QString SelectionZoneAction::name() const noexcept
 QStringList SelectionZoneAction::subMenuList() const noexcept
 {
     return impl->m_SubMenuList;
+}
+
+void SelectionZoneAction::setAllowedFiltering(bool value)
+{
+    impl->m_FilteringAllowed = value;
+}
+
+bool SelectionZoneAction::isFilteringAllowed() const
+{
+    return impl->m_FilteringAllowed;
 }
 
 void SelectionZoneAction::execute(const QVector<VisualizationSelectionZoneItem *> &item)

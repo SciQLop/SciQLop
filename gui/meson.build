@@ -28,7 +28,8 @@ gui_moc_headers = [
   'include/Catalogue/CatalogueSideBarWidget.h',
   'include/Catalogue/CatalogueInspectorWidget.h',
   'include/Catalogue/CatalogueEventsModel.h',
-  'include/Catalogue/CatalogueTreeModel.h'
+  'include/Catalogue/CatalogueTreeModel.h',
+  'include/Actions/FilteringAction.h'
 ]
 
 gui_ui_files = [
@@ -112,6 +113,7 @@ gui_sources = [
   'src/Visualization/VisualizationSelectionZoneManager.cpp',
   'src/Actions/SelectionZoneAction.cpp',
   'src/Actions/ActionsGuiController.cpp',
+  'src/Actions/FilteringAction.cpp',
   'src/Visualization/VisualizationActionManager.cpp',
   'src/Visualization/VisualizationMultiZoneSelectionDialog.cpp',
   'src/Catalogue/CatalogueExplorer.cpp',
