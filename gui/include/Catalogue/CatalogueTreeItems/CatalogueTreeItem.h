@@ -19,6 +19,7 @@ public:
 
     /// Returns the catalogue represented by the item
     std::shared_ptr<DBCatalogue> catalogue() const;
+    void replaceCatalogue(const std::shared_ptr<DBCatalogue> &catalogue);
 
 private:
     class CatalogueTreeItemPrivate;

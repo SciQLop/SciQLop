@@ -133,6 +133,7 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
     connect(impl->m_TreeModel, &CatalogueTreeModel::itemDropped,
             [this](auto index, auto mimeData, auto action) {
                 auto item = impl->m_TreeModel->item(index);
+
                 if (item && item->type() == CATALOGUE_ITEM_TYPE) {
                     auto catalogue = static_cast<CatalogueTreeItem *>(item)->catalogue();
                     this->setCatalogueChanges(catalogue, true);
@@ -144,9 +145,12 @@ CatalogueSideBarWidget::CatalogueSideBarWidget(QWidget *parent)
                         mimeData->data(MIME_TYPE_SOURCE_CATALOGUE_LIST));
                     for (auto catalogue : sourceCatalogues) {
                         if (auto catalogueItem = impl->getCatalogueItem(catalogue)) {
+                            catalogueItem->replaceCatalogue(catalogue);
                             this->setCatalogueChanges(catalogue, true);
                         }
                     }
+
+                    this->emitSelection();
                 }
             });
 
