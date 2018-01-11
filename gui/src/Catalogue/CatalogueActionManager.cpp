@@ -11,7 +11,6 @@
 #include <Catalogue/CatalogueEventsWidget.h>
 #include <Catalogue/CatalogueExplorer.h>
 #include <Catalogue/CatalogueSideBarWidget.h>
-#include <Catalogue/CreateEventDialog.h>
 
 #include <CatalogueDao.h>
 #include <DBCatalogue.h>
@@ -24,6 +23,12 @@
 #include <QDialogButtonBox>
 #include <QLineEdit>
 #include <memory>
+
+const auto CATALOGUE_MENU_NAME = QObject::tr("Catalogues");
+const auto CATALOGUE_CREATE_EVENT_MENU_NAME = QObject::tr("New Event");
+
+const auto DEFAULT_EVENT_NAME = QObject::tr("New Event");
+const auto DEFAULT_CATALOGUE_NAME = QObject::tr("New Catalogue");
 
 struct CatalogueActionManager::CatalogueActionManagerPrivate {
 
@@ -113,33 +118,36 @@ void CatalogueActionManager::installSelectionZoneActions()
         return true;
     };
 
+
     auto createEventAction = actionController.addSectionZoneAction(
-        {QObject::tr("Catalogues")}, QObject::tr("New Event..."), [this](auto zones) {
-            CreateEventDialog dialog(
-                impl->m_CatalogueExplorer->sideBarWidget().getCatalogues(REPOSITORY_DEFAULT));
-            dialog.hideCatalogueChoice();
-            if (dialog.exec() == QDialog::Accepted) {
-                impl->createEventFromZones(dialog.eventName(), zones);
-            }
-        });
+        {CATALOGUE_MENU_NAME, CATALOGUE_CREATE_EVENT_MENU_NAME}, QObject::tr("Without Catalogue"),
+        [this](auto zones) { impl->createEventFromZones(DEFAULT_EVENT_NAME, zones); });
     createEventAction->setEnableFunction(createEventEnableFuntion);
 
-    auto createEventInCatalogueAction = actionController.addSectionZoneAction(
-        {QObject::tr("Catalogues")}, QObject::tr("New Event in Catalogue..."), [this](auto zones) {
-            CreateEventDialog dialog(
-                impl->m_CatalogueExplorer->sideBarWidget().getCatalogues(REPOSITORY_DEFAULT));
-            if (dialog.exec() == QDialog::Accepted) {
-                auto selectedCatalogue = dialog.selectedCatalogue();
-                if (!selectedCatalogue) {
-                    selectedCatalogue = std::make_shared<DBCatalogue>();
-                    selectedCatalogue->setName(dialog.catalogueName());
-                    sqpApp->catalogueController().addCatalogue(selectedCatalogue);
-                    impl->m_CatalogueExplorer->sideBarWidget().addCatalogue(selectedCatalogue,
-                                                                            REPOSITORY_DEFAULT);
-                }
+    auto createEventInNewCatalogueAction = actionController.addSectionZoneAction(
+        {CATALOGUE_MENU_NAME, CATALOGUE_CREATE_EVENT_MENU_NAME}, QObject::tr("In New Catalogue"),
+        [this](auto zones) {
 
-                impl->createEventFromZones(dialog.eventName(), zones, selectedCatalogue);
-            }
+            auto newCatalogue = std::make_shared<DBCatalogue>();
+            newCatalogue->setName(DEFAULT_CATALOGUE_NAME);
+            sqpApp->catalogueController().addCatalogue(newCatalogue);
+            impl->m_CatalogueExplorer->sideBarWidget().addCatalogue(newCatalogue,
+                                                                    REPOSITORY_DEFAULT);
+
+            impl->createEventFromZones(DEFAULT_EVENT_NAME, zones, newCatalogue);
         });
-    createEventInCatalogueAction->setEnableFunction(createEventEnableFuntion);
+    createEventInNewCatalogueAction->setEnableFunction(createEventEnableFuntion);
+
+
+    auto allCatalogues
+        = impl->m_CatalogueExplorer->sideBarWidget().getCatalogues(REPOSITORY_DEFAULT);
+    for (auto catalogue : allCatalogues) {
+        auto catalogueName = catalogue->getName();
+        auto createEventInCatalogueAction = actionController.addSectionZoneAction(
+            {CATALOGUE_MENU_NAME, CATALOGUE_CREATE_EVENT_MENU_NAME},
+            QObject::tr("In ").append(catalogueName), [this, catalogue](auto zones) {
+                impl->createEventFromZones(DEFAULT_EVENT_NAME, zones, catalogue);
+            });
+        createEventInCatalogueAction->setEnableFunction(createEventEnableFuntion);
+    }
 }
