@@ -879,6 +879,11 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
 
 void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 {
+    // Processes event only if the wheel occurs on axis rect
+    if (!dynamic_cast<QCPAxisRect *>(ui->widget->layoutElementAt(event->posF()))) {
+        return;
+    }
+
     auto value = event->angleDelta().x() + event->angleDelta().y();
     if (value != 0) {
 
