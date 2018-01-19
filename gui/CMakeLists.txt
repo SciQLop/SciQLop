@@ -24,7 +24,6 @@ QT5_WRAP_UI(
     ui/Catalogue/CatalogueExplorer.ui
     ui/Catalogue/CatalogueInspectorWidget.ui
     ui/Catalogue/CatalogueSideBarWidget.ui
-    ui/Catalogue/CreateEventDialog.ui
 )
 
 add_library(sciqlopgui ${gui_SRCS} ${UiGenerated_SRCS})
