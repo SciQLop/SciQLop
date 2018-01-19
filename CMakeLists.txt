@@ -50,7 +50,8 @@ enable_testing()
 
 find_package(CatalogueAPI CONFIG QUIET)
 if (NOT CatalogueAPI_FOUND)
-    execute_process(COMMAND git submodule update --init external/CatalogueAPI WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    execute_process(COMMAND git submodule init external/CatalogueAPI WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    execute_process(COMMAND git submodule update external/CatalogueAPI WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
     add_subdirectory(external/CatalogueAPI)
 endif()
 
