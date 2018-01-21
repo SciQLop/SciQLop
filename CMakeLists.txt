@@ -48,11 +48,11 @@ ENDIF(IWYU)
 enable_testing()
 
 
-find_package(CatalogueAPI CONFIG QUIET)
+find_package(catalogs CONFIG QUIET)
 if (NOT CatalogueAPI_FOUND)
-    execute_process(COMMAND git submodule init external/CatalogueAPI WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    execute_process(COMMAND git submodule update external/CatalogueAPI WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    add_subdirectory(external/CatalogueAPI)
+    execute_process(COMMAND git submodule init external/libcatalogs WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    execute_process(COMMAND git submodule update external/libcatalogs WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    add_subdirectory(external/libcatalogs)
 endif()
 
 add_subdirectory(core)

@@ -16,7 +16,7 @@ target_include_directories(sciqlopcore PUBLIC
 target_link_libraries(sciqlopcore PUBLIC
   Qt5::Core
   Qt5::Network
-  CatalogueAPI
+  catalogs
 )
 
 install(TARGETS sciqlopcore EXPORT SciQLOPCoreConfig

@@ -1,6 +1,6 @@
 
 qxorm_dep = dependency('QxOrm', required : true, fallback:['QxOrm','qxorm_dep'])
-catalogueapi_dep = dependency('CatalogueAPI', required : true, fallback:['CatalogueAPI','CatalogueAPI_dep'])
+libcatalogs_dep = dependency('libcatalogs', required : true, fallback:['libcatalogs','libcatalogs_dep'])
 
 
 core_moc_headers = [
@@ -60,14 +60,14 @@ sciqlop_core_lib = library('sciqlopcore',
                        core_moc_files,
                        cpp_args : '-DCORE_LIB',
                        include_directories : core_inc,
-                       dependencies : [qt5core, qt5network, catalogueapi_dep],
+                       dependencies : [qt5core, qt5network, libcatalogs_dep],
                        install : true
                        )
 
 
 sciqlop_core = declare_dependency(link_with : sciqlop_core_lib,
                                 include_directories : core_inc,
-                                dependencies : [qt5core, qt5network, catalogueapi_dep])
+                                dependencies : [qt5core, qt5network, libcatalogs_dep])
 
 
 
