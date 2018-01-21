@@ -1,0 +1,6 @@
+[submodule "external/CatalogueAPI"]
+	path = external/CatalogueAPI
+	url = https://hephaistos.lpp.polytechnique.fr/rhodecode/HG_REPOSITORIES/LPP/INSTRUMENTATION/USERS/JEANDET/CatalogueAPI
+[submodule "external/libcatalogs"]
+	path = external/libcatalogs
+	url = https://hephaistos.lpp.polytechnique.fr/rhodecode/HG_REPOSITORIES/LPP/SciQLOP_Repos/libcatalogs

@@ -9,6 +9,7 @@ class DBCatalogue;
 class DBEvent;
 class DBEventProduct;
 class VisualizationWidget;
+class VisualizationSelectionZoneItem;
 
 namespace Ui {
 class CatalogueEventsWidget;
@@ -21,10 +22,15 @@ class CatalogueEventsWidget : public QWidget {
 
 signals:
     void eventsSelected(const QVector<std::shared_ptr<DBEvent> > &event);
+    void eventsRemoved(const QVector<std::shared_ptr<DBEvent> > &event);
     void eventProductsSelected(
         const QVector<QPair<std::shared_ptr<DBEvent>, std::shared_ptr<DBEventProduct> > >
             &eventproducts);
     void selectionCleared();
+    void selectionZoneAdded(const std::shared_ptr<DBEvent> &event, const QString &productId,
+                            VisualizationSelectionZoneItem *selectionZone);
+
+    void eventCataloguesModified(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
 
 public:
     explicit CatalogueEventsWidget(QWidget *parent = 0);
@@ -34,16 +40,24 @@ public:
 
     void addEvent(const std::shared_ptr<DBEvent> &event);
     void setEventChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges);
+    void setEventsChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges);
 
     QVector<std::shared_ptr<DBCatalogue> > displayedCatalogues() const;
     bool isAllEventsDisplayed() const;
     bool isEventDisplayed(const std::shared_ptr<DBEvent> &event) const;
+
+    void refreshEvent(const std::shared_ptr<DBEvent> &event);
 
 public slots:
     void populateWithCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
     void populateWithAllEvents();
     void clear();
     void refresh();
+
+    // QWidget interface
+protected:
+    void keyPressEvent(QKeyEvent *event);
+
 
 private:
     Ui::CatalogueEventsWidget *ui;

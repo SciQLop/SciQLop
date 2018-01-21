@@ -1,5 +1,3 @@
-qxorm_dep = dependency('QxOrm', required : true, fallback:['QxOrm','qxorm_dep'])
-catalogueapi_dep = dependency('CatalogueAPI', required : true, fallback:['CatalogueAPI','CatalogueAPI_dep'])
 
 gui_moc_headers = [
   'include/DataSource/DataSourceWidget.h',
@@ -20,6 +18,7 @@ gui_moc_headers = [
   'include/Visualization/VisualizationDragDropContainer.h',
   'include/Visualization/VisualizationDragWidget.h',
   'include/Visualization/ColorScaleEditor.h',
+  'include/Visualization/VisualizationSelectionZoneItem.h',
   'include/Actions/SelectionZoneAction.h',
   'include/Visualization/VisualizationMultiZoneSelectionDialog.h',
   'include/Catalogue/CatalogueExplorer.h',
@@ -27,8 +26,8 @@ gui_moc_headers = [
   'include/Catalogue/CatalogueSideBarWidget.h',
   'include/Catalogue/CatalogueInspectorWidget.h',
   'include/Catalogue/CatalogueEventsModel.h',
-  'include/Catalogue/CreateEventDialog.h',
-  'include/Catalogue/CatalogueTreeModel.h'
+  'include/Catalogue/CatalogueTreeModel.h',
+  'include/Actions/FilteringAction.h'
 ]
 
 gui_ui_files = [
@@ -49,8 +48,7 @@ gui_ui_files = [
   'ui/Catalogue/CatalogueExplorer.ui',
   'ui/Catalogue/CatalogueEventsWidget.ui',
   'ui/Catalogue/CatalogueSideBarWidget.ui',
-  'ui/Catalogue/CatalogueInspectorWidget.ui',
-  'ui/Catalogue/CreateEventDialog.ui'
+  'ui/Catalogue/CatalogueInspectorWidget.ui'
 ]
 
 gui_qresources = ['resources/sqpguiresources.qrc']
@@ -113,6 +111,7 @@ gui_sources = [
   'src/Visualization/VisualizationSelectionZoneManager.cpp',
   'src/Actions/SelectionZoneAction.cpp',
   'src/Actions/ActionsGuiController.cpp',
+  'src/Actions/FilteringAction.cpp',
   'src/Visualization/VisualizationActionManager.cpp',
   'src/Visualization/VisualizationMultiZoneSelectionDialog.cpp',
   'src/Catalogue/CatalogueExplorer.cpp',
@@ -125,7 +124,6 @@ gui_sources = [
   'src/Catalogue/CatalogueEventsModel.cpp',
   'src/Catalogue/CatalogueExplorerHelper.cpp',
   'src/Catalogue/CatalogueActionManager.cpp',
-  'src/Catalogue/CreateEventDialog.cpp',
   'src/Catalogue/CatalogueTreeModel.cpp'
 ]
 
@@ -136,12 +134,12 @@ sciqlop_gui_lib = library('sciqlopgui',
                        gui_moc_files,
                        rcc_files,
                        include_directories : [gui_inc],
-                       dependencies : [ qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core, catalogueapi_dep],
+                       dependencies : [ qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core],
                        install : true
                        )
 
 sciqlop_gui = declare_dependency(link_with : sciqlop_gui_lib,
                                 include_directories : gui_inc,
-                                dependencies : [qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core, catalogueapi_dep])
+                                dependencies : [qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core])
 
 

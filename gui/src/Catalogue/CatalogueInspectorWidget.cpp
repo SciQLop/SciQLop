@@ -28,6 +28,9 @@ CatalogueInspectorWidget::CatalogueInspectorWidget(QWidget *parent)
 
     impl->connectCatalogueUpdateSignals(this, ui);
     impl->connectEventUpdateSignals(this, ui);
+
+    ui->dateTimeEventTStart->setDisplayFormat(DATETIME_FORMAT);
+    ui->dateTimeEventTEnd->setDisplayFormat(DATETIME_FORMAT);
 }
 
 CatalogueInspectorWidget::~CatalogueInspectorWidget()
@@ -64,7 +67,7 @@ void CatalogueInspectorWidget::CatalogueInspectorWidgetPrivate::connectEventUpda
     });
 
     connect(ui->leEventTags, &QLineEdit::editingFinished, [ui, inspector, this]() {
-        auto tags = ui->leEventTags->text().split(QRegExp("\\s+"));
+        auto tags = ui->leEventTags->text().split(QRegExp("\\s+"), QString::SkipEmptyParts);
         std::list<QString> tagNames;
         for (auto tag : tags) {
             tagNames.push_back(tag);
@@ -148,8 +151,14 @@ void CatalogueInspectorWidget::setEvent(const std::shared_ptr<DBEvent> &event)
     ui->leEventName->setEnabled(true);
     ui->leEventName->setText(event->getName());
     ui->leEventProduct->setEnabled(false);
-    ui->leEventProduct->setText(
-        QString::number(event->getEventProducts().size()).append(" product(s)"));
+
+    auto eventProducts = event->getEventProducts();
+    QStringList eventProductList;
+    for (auto evtProduct : eventProducts) {
+        eventProductList << evtProduct.getProductId();
+    }
+
+    ui->leEventProduct->setText(eventProductList.join(";"));
 
     QString tagList;
     auto tags = event->getTagsNames();
@@ -208,4 +217,20 @@ void CatalogueInspectorWidget::setCatalogue(const std::shared_ptr<DBCatalogue> &
     ui->leCatalogueAuthor->setText(catalogue->getAuthor());
 
     blockSignals(false);
+}
+
+void CatalogueInspectorWidget::refresh()
+{
+    switch (static_cast<Page>(ui->stackedWidget->currentIndex())) {
+        case Page::CatalogueProperties:
+            setCatalogue(impl->m_DisplayedCatalogue);
+            break;
+        case Page::EventProperties: {
+            auto isEventShowed = ui->leEventName->isEnabled();
+            setEvent(impl->m_DisplayedEvent);
+            if (!isEventShowed && impl->m_DisplayedEvent) {
+                setEventProduct(impl->m_DisplayedEvent, impl->m_DisplayedEventProduct);
+            }
+        }
+    }
 }

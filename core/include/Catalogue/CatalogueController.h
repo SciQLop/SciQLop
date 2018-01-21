@@ -41,8 +41,7 @@ public:
     /// retrieveEvents with empty repository retrieve them from the default repository
     std::list<std::shared_ptr<DBEvent> > retrieveEvents(const QString &repository) const;
     std::list<std::shared_ptr<DBEvent> > retrieveAllEvents() const;
-    std::list<std::shared_ptr<DBEvent> >
-    retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> catalogue) const;
+
     void addEvent(std::shared_ptr<DBEvent> event);
     void updateEvent(std::shared_ptr<DBEvent> event);
     void updateEventProduct(std::shared_ptr<DBEventProduct> eventProduct);
@@ -50,17 +49,21 @@ public:
     //    void trashEvent(std::shared_ptr<DBEvent> event);
     //        void restore(std::shared_ptr<DBEvent> event);
     void saveEvent(std::shared_ptr<DBEvent> event);
-    void discardEvent(std::shared_ptr<DBEvent> event);
+    void discardEvent(std::shared_ptr<DBEvent> event, bool &removed);
     bool eventHasChanges(std::shared_ptr<DBEvent> event) const;
 
     // Catalogue
-    //    bool createCatalogue(const QString &name, QVector<QUuid> eventList);
+    std::list<std::shared_ptr<DBEvent> >
+    retrieveEventsFromCatalogue(std::shared_ptr<DBCatalogue> catalogue) const;
+
     /// retrieveEvents with empty repository retrieve them from the default repository
     std::list<std::shared_ptr<DBCatalogue> > retrieveCatalogues(const QString &repository
                                                                 = QString()) const;
+    void addCatalogue(std::shared_ptr<DBCatalogue> catalogue);
     void updateCatalogue(std::shared_ptr<DBCatalogue> catalogue);
     void removeCatalogue(std::shared_ptr<DBCatalogue> catalogue);
     void saveCatalogue(std::shared_ptr<DBCatalogue> catalogue);
+    void discardCatalogue(std::shared_ptr<DBCatalogue> catalogue, bool &removed);
 
     void saveAll();
     bool hasChanges() const;
@@ -70,6 +73,13 @@ public:
 
     /// Returns the list of variables contained in a MIME data
     QVector<std::shared_ptr<DBEvent> > eventsForMimeData(const QByteArray &mimeData) const;
+
+    /// Returns the MIME data associated to a list of variables
+    QByteArray
+    mimeDataForCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues) const;
+
+    /// Returns the list of variables contained in a MIME data
+    QVector<std::shared_ptr<DBCatalogue> > cataloguesForMimeData(const QByteArray &mimeData) const;
 
 public slots:
     /// Manage init/end of the controller

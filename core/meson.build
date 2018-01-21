@@ -1,6 +1,6 @@
 
 qxorm_dep = dependency('QxOrm', required : true, fallback:['QxOrm','qxorm_dep'])
-catalogueapi_dep = dependency('CatalogueAPI', required : true, fallback:['CatalogueAPI','CatalogueAPI_dep'])
+libcatalogs_dep = dependency('libcatalogs', required : true, fallback:['libcatalogs','libcatalogs_dep'])
 
 
 core_moc_headers = [
@@ -41,7 +41,7 @@ core_sources = [
   'src/DataSource/DataSourceItemAction.cpp',
   'src/DataSource/DataSourceItemMergeHelper.cpp',
   'src/Network/NetworkController.cpp',
-  'src/Plugin/PluginManager.cpp',
+  'src/PluginManager/PluginManager.cpp',
   'src/Settings/SqpSettingsDefs.cpp',
   'src/Time/TimeController.cpp',
   'src/Variable/Variable.cpp',
@@ -53,21 +53,21 @@ core_sources = [
   'src/Visualization/VisualizationController.cpp'
 ]
 
-core_inc = include_directories(['include', '../plugin/include'])
+core_inc = include_directories(['include', 'include/Plugin'])
 
 sciqlop_core_lib = library('sciqlopcore',
                        core_sources,
                        core_moc_files,
                        cpp_args : '-DCORE_LIB',
                        include_directories : core_inc,
-                       dependencies : [qt5core, qt5network, catalogueapi_dep],
+                       dependencies : [qt5core, qt5network, libcatalogs_dep],
                        install : true
                        )
 
 
 sciqlop_core = declare_dependency(link_with : sciqlop_core_lib,
                                 include_directories : core_inc,
-                                dependencies : [qt5core, qt5network, catalogueapi_dep])
+                                dependencies : [qt5core, qt5network, libcatalogs_dep])
 
 
 

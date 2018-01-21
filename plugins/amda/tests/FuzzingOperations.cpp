@@ -176,6 +176,9 @@ struct SynchronizeOperation : public IFuzzingOperation {
 
         // Updates state
         fuzzingState.synchronizeVariable(variableId, syncGroupId);
+
+        variableController.onRequestDataLoading({variableState.m_Variable}, variableState.m_Range,
+                                                false);
     }
 };
 
@@ -197,7 +200,7 @@ struct DesynchronizeOperation : public IFuzzingOperation {
         qCInfo(LOG_FuzzingOperations()).noquote() << "Removing" << variableState.m_Variable->name()
                                                   << "from synchronization group" << syncGroupId
                                                   << "...";
-        variableController.onAddSynchronized(variableState.m_Variable, syncGroupId);
+        variableController.desynchronize(variableState.m_Variable, syncGroupId);
 
         // Updates state
         fuzzingState.desynchronizeVariable(variableId, syncGroupId);

@@ -25,6 +25,20 @@ namespace Ui {
 class VisualizationGraphWidget;
 } // namespace Ui
 
+/// Defines options that can be associated with the graph
+enum GraphFlag {
+    DisableAll = 0x0,        ///< Disables acquisition and synchronization
+    EnableAcquisition = 0x1, ///< When this flag is set, the change of the graph's range leads to
+                             /// the acquisition of data
+    EnableSynchronization = 0x2, ///< When this flag is set, the change of the graph's range causes
+                                 /// the call to the synchronization of the graphs contained in the
+    /// same zone of this graph
+    EnableAll = ~DisableAll ///< Enables acquisition and synchronization
+};
+
+Q_DECLARE_FLAGS(GraphFlags, GraphFlag)
+Q_DECLARE_OPERATORS_FOR_FLAGS(GraphFlags)
+
 class VisualizationGraphWidget : public VisualizationDragWidget, public IVisualizationWidget {
     Q_OBJECT
 
@@ -41,8 +55,8 @@ public:
     /// Returns the main VisualizationWidget which contains the graph or nullptr
     VisualizationWidget *parentVisualizationWidget() const;
 
-    /// If acquisition isn't enable, requestDataLoading signal cannot be emit
-    void enableAcquisition(bool enable);
+    /// Sets graph options
+    void setFlags(GraphFlags flags);
 
     void addVariable(std::shared_ptr<Variable> variable, SqpRange range);
 
@@ -55,13 +69,16 @@ public:
     /// Sets the y-axis range based on the data of a variable
     void setYRange(std::shared_ptr<Variable> variable);
     SqpRange graphRange() const noexcept;
-    void setGraphRange(const SqpRange &range);
+    void setGraphRange(const SqpRange &range, bool calibration = false);
+    void setAutoRangeOnVariableInitialization(bool value);
 
     // Zones
     /// Returns the ranges of all the selection zones on the graph
     QVector<SqpRange> selectionZoneRanges() const;
     /// Adds new selection zones in the graph
     void addSelectionZones(const QVector<SqpRange> &ranges);
+    /// Adds a new selection zone in the graph
+    VisualizationSelectionZoneItem *addSelectionZone(const QString &name, const SqpRange &range);
     /// Removes the specified selection zone
     void removeSelectionZone(VisualizationSelectionZoneItem *selectionZone);
 

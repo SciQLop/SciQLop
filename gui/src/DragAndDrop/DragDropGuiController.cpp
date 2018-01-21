@@ -7,6 +7,7 @@
 #include "Visualization/VisualizationWidget.h"
 #include "Visualization/operations/FindVariableOperation.h"
 
+#include "DataSource/DataSourceController.h"
 #include "Variable/Variable.h"
 #include "Variable/VariableController.h"
 
@@ -286,11 +287,22 @@ bool DragDropGuiController::checkMimeDataForVisualization(
             // result = false: cannot drop multiple variables in the visualisation
         }
     }
+    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST)) {
+        auto productDataList = sqpApp->dataSourceController().productsDataForMimeData(
+            mimeData->data(MIME_TYPE_PRODUCT_LIST));
+        if (productDataList.count() == 1) {
+            result = true;
+        }
+        else {
+            // result = false: cannot drop multiple products in the visualisation
+        }
+    }
     else {
         // Other MIME data
         // no special rules, accepted by default
         result = true;
     }
+
 
     return result;
 }

@@ -1,6 +1,8 @@
 #ifndef SCIQLOP_PLOTTABLESRENDERINGUTILS_H
 #define SCIQLOP_PLOTTABLESRENDERINGUTILS_H
 
+#include <Data/DataSeriesType.h>
+
 #include <Visualization/VisualizationDefs.h>
 
 #include <memory>
@@ -9,9 +11,9 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_PlottablesRenderingUtils)
 
-class IDataSeries;
 class QCPColorScale;
 class QCustomPlot;
+class Variable;
 
 /**
  * Helper used to handle plottables rendering
@@ -25,9 +27,8 @@ struct IPlottablesHelper {
 };
 
 struct IPlottablesHelperFactory {
-    /// Creates IPlottablesHelper according to a data series
-    static std::unique_ptr<IPlottablesHelper>
-    create(std::shared_ptr<IDataSeries> dataSeries) noexcept;
+    /// Creates IPlottablesHelper according to the type of data series a variable holds
+    static std::unique_ptr<IPlottablesHelper> create(const Variable &variable) noexcept;
 };
 
 #endif // SCIQLOP_PLOTTABLESRENDERINGUTILS_H

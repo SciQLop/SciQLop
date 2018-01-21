@@ -7,6 +7,7 @@
 
 #include "Visualization/MacScrollBarStyle.h"
 
+#include "DataSource/DataSourceController.h"
 #include "Variable/VariableController.h"
 
 #include "Common/MimeTypesDef.h"
@@ -69,6 +70,8 @@ struct VisualizationTabWidget::VisualizationTabWidgetPrivate {
     void dropZone(int index, VisualizationTabWidget *tabWidget);
     void dropVariables(const QList<std::shared_ptr<Variable> > &variables, int index,
                        VisualizationTabWidget *tabWidget);
+    void dropProducts(const QVariantList &productsMetaData, int index,
+                      VisualizationTabWidget *tabWidget);
 };
 
 VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *parent)
@@ -90,6 +93,8 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
     ui->dragDropContainer->setMimeType(MIME_TYPE_ZONE,
                                        VisualizationDragDropContainer::DropBehavior::Inserted);
     ui->dragDropContainer->setMimeType(MIME_TYPE_VARIABLE_LIST,
+                                       VisualizationDragDropContainer::DropBehavior::Inserted);
+    ui->dragDropContainer->setMimeType(MIME_TYPE_PRODUCT_LIST,
                                        VisualizationDragDropContainer::DropBehavior::Inserted);
 
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
@@ -229,6 +234,11 @@ void VisualizationTabWidget::dropMimeData(int index, const QMimeData *mimeData)
             mimeData->data(MIME_TYPE_VARIABLE_LIST));
         impl->dropVariables(variables, index, this);
     }
+    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST)) {
+        auto productsData = sqpApp->dataSourceController().productsDataForMimeData(
+            mimeData->data(MIME_TYPE_PRODUCT_LIST));
+        impl->dropProducts(productsData, index, this);
+    }
     else {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropMimeData, unknown MIME data received.");
@@ -351,4 +361,29 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropVariables(
     }
 
     tabWidget->createZone(variables, index);
+}
+
+void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropProducts(
+    const QVariantList &productsMetaData, int index, VisualizationTabWidget *tabWidget)
+{
+    // Note: the AcceptMimeDataFunction (set on the drop container) ensure there is a single and
+    // compatible variable here
+    if (productsMetaData.count() != 1) {
+        qCWarning(LOG_VisualizationZoneWidget())
+            << tr("VisualizationTabWidget::dropProducts, dropping multiple products, operation "
+                  "aborted.");
+        return;
+    }
+
+    auto context = new QObject{tabWidget};
+    connect(&sqpApp->variableController(), &VariableController::variableAdded, context,
+            [this, index, tabWidget, context](auto variable) {
+                tabWidget->createZone({variable}, index);
+                delete context; // removes the connection
+            },
+            Qt::QueuedConnection);
+
+    auto productData = productsMetaData.first().toHash();
+    QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
+                              Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
 }

@@ -60,6 +60,13 @@ public:
     /// The path in the sub menus, if any
     QStringList subMenuList() const noexcept;
 
+    /// Sets if filtering the action is allowed via a FilteringAction
+    void setAllowedFiltering(bool value);
+
+    /// Returns true if filtering the action is allowed via a FilteringAction. By default it is
+    /// allowed.
+    bool isFilteringAllowed() const;
+
 public slots:
     /// Executes the action
     void execute(const QVector<VisualizationSelectionZoneItem *> &item);

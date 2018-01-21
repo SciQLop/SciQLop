@@ -6,20 +6,31 @@
 #include <Catalogue/CatalogueExplorerHelper.h>
 #include <CatalogueDao.h>
 #include <DBCatalogue.h>
+#include <DBEventProduct.h>
+#include <DataSource/DataSourceController.h>
+#include <DataSource/DataSourceItem.h>
 #include <SqpApplication.h>
+#include <Variable/Variable.h>
+#include <Variable/VariableController.h>
+#include <Visualization/VisualizationGraphWidget.h>
 #include <Visualization/VisualizationTabWidget.h>
 #include <Visualization/VisualizationWidget.h>
 #include <Visualization/VisualizationZoneWidget.h>
 
+#include <QActionGroup>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QKeyEvent>
 #include <QListWidget>
+#include <QMenu>
 #include <QMessageBox>
 
 Q_LOGGING_CATEGORY(LOG_CatalogueEventsWidget, "CatalogueEventsWidget")
 
-/// Fixed size of the validation column
-const auto VALIDATION_COLUMN_SIZE = 35;
+/// Percentage added to the range of a event when it is displayed
+const auto EVENT_RANGE_MARGE = 30; // in %
+
+const QString NEW_ZONE_TEXT = QStringLiteral("New Zone");
 
 struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
@@ -27,12 +38,15 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     QStringList m_ZonesForTimeMode;
     QString m_ZoneForGraphMode;
     QVector<std::shared_ptr<DBCatalogue> > m_DisplayedCatalogues;
+    bool m_AllEventDisplayed = false;
+    QVector<VisualizationGraphWidget *> m_CustomGraphs;
 
     VisualizationWidget *m_VisualizationWidget = nullptr;
 
     void setEvents(const QVector<std::shared_ptr<DBEvent> > &events, CatalogueEventsWidget *widget)
     {
         widget->ui->treeView->setSortingEnabled(false);
+        m_Model->setSourceCatalogues(m_DisplayedCatalogues);
         m_Model->setEvents(events);
         widget->ui->treeView->setSortingEnabled(true);
 
@@ -70,72 +84,46 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
     }
 
     QStringList selectZone(QWidget *parent, const QStringList &selectedZones,
-                           bool allowMultiSelection, const QPoint &location)
+                           bool allowMultiSelection, bool addNewZoneOption, const QPoint &location)
     {
         auto availableZones = getAvailableVisualizationZoneList();
-        if (availableZones.isEmpty()) {
+        if (!addNewZoneOption && availableZones.isEmpty()) {
             return QStringList{};
         }
 
-        QDialog d(parent, Qt::Tool);
-        d.setWindowTitle("Choose a zone");
-        auto layout = new QVBoxLayout{&d};
-        layout->setContentsMargins(0, 0, 0, 0);
-        auto listWidget = new QListWidget{&d};
-        layout->addWidget(listWidget);
+        QActionGroup actionGroup{parent};
+        actionGroup.setExclusive(!allowMultiSelection);
 
-        QSet<QListWidgetItem *> checkedItems;
-        for (auto zone : availableZones) {
-            auto item = new QListWidgetItem{zone};
-            item->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable);
-            if (selectedZones.contains(zone)) {
-                item->setCheckState(Qt::Checked);
-                checkedItems << item;
-            }
-            else {
-                item->setCheckState(Qt::Unchecked);
-            }
+        QVector<QAction *> zoneActions;
 
-            listWidget->addItem(item);
+        QMenu selectionMenu{parent};
+
+        if (addNewZoneOption) {
+            availableZones.prepend(NEW_ZONE_TEXT);
         }
 
-        auto buttonBox = new QDialogButtonBox{QDialogButtonBox::Ok, &d};
-        layout->addWidget(buttonBox);
+        selectionMenu.addSeparator();
+        for (auto zone : availableZones) {
+            auto zoneAction = selectionMenu.addAction(zone);
+            zoneAction->setCheckable(true);
+            zoneAction->setChecked(selectedZones.contains(zone));
+            actionGroup.addAction(zoneAction);
+            zoneActions << zoneAction;
+        }
 
-        QObject::connect(buttonBox, &QDialogButtonBox::accepted, &d, &QDialog::accept);
-        QObject::connect(buttonBox, &QDialogButtonBox::rejected, &d, &QDialog::reject);
-
-        QObject::connect(listWidget, &QListWidget::itemChanged,
-                         [&checkedItems, allowMultiSelection, listWidget](auto item) {
-                             if (item->checkState() == Qt::Checked) {
-                                 if (!allowMultiSelection) {
-                                     for (auto checkedItem : checkedItems) {
-                                         listWidget->blockSignals(true);
-                                         checkedItem->setCheckState(Qt::Unchecked);
-                                         listWidget->blockSignals(false);
-                                     }
-
-                                     checkedItems.clear();
-                                 }
-                                 checkedItems << item;
-                             }
-                             else {
-                                 checkedItems.remove(item);
-                             }
-                         });
+        auto resultAction = selectionMenu.exec(QCursor::pos());
 
         QStringList result;
 
-        d.setMinimumWidth(120);
-        d.resize(d.minimumSizeHint());
-        d.move(location);
-        if (d.exec() == QDialog::Accepted) {
-            for (auto item : checkedItems) {
-                result += item->text();
-            }
+        if (resultAction == nullptr) {
+            result = selectedZones;
         }
         else {
-            result = selectedZones;
+            for (auto zoneAction : zoneActions) {
+                if (zoneAction->isChecked()) {
+                    result << zoneAction->text();
+                }
+            }
         }
 
         return result;
@@ -177,31 +165,146 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         }
     }
 
-    void updateForGraphMode(QTreeView *treeView)
+    QVector<SqpRange> getGraphRanges(const std::shared_ptr<DBEvent> &event)
     {
-        auto selectedRows = treeView->selectionModel()->selectedRows();
+        // Retrieves the range of each product and the maximum size
+        QVector<SqpRange> graphRanges;
+        double maxDt = 0;
+        for (auto eventProduct : event->getEventProducts()) {
+            SqpRange eventRange;
+            eventRange.m_TStart = eventProduct.getTStart();
+            eventRange.m_TEnd = eventProduct.getTEnd();
+            graphRanges << eventRange;
 
-        if (selectedRows.count() == 1) {
-            auto event = m_Model->getEvent(selectedRows.first());
-            if (m_VisualizationWidget) {
-                if (auto tab = m_VisualizationWidget->currentTabWidget()) {
-                    if (auto zone = tab->getZoneWithName(m_ZoneForGraphMode)) {
-                        // TODO
-                    }
-                }
-                else {
-                    qCWarning(LOG_CatalogueEventsWidget())
-                        << "updateGraphMode: no tab found in the visualization";
-                }
-            }
-            else {
-                qCWarning(LOG_CatalogueEventsWidget())
-                    << "updateGraphMode: visualization widget not found";
+            auto dt = eventRange.m_TEnd - eventRange.m_TStart;
+            if (dt > maxDt) {
+                maxDt = dt;
             }
         }
-        else {
+
+        // Adds the marge
+        maxDt *= (100.0 + EVENT_RANGE_MARGE) / 100.0;
+
+        // Corrects the graph ranges so that they all have the same size
+        QVector<SqpRange> correctedGraphRanges;
+        for (auto range : graphRanges) {
+            auto dt = range.m_TEnd - range.m_TStart;
+            auto diff = qAbs((maxDt - dt) / 2.0);
+
+            SqpRange correctedRange;
+            correctedRange.m_TStart = range.m_TStart - diff;
+            correctedRange.m_TEnd = range.m_TEnd + diff;
+
+            correctedGraphRanges << correctedRange;
+        }
+
+        return correctedGraphRanges;
+    }
+
+    void updateForGraphMode(CatalogueEventsWidget *catalogueEventWidget)
+    {
+        auto selectedRows = catalogueEventWidget->ui->treeView->selectionModel()->selectedRows();
+        if (selectedRows.count() != 1) {
             qCWarning(LOG_CatalogueEventsWidget())
                 << "updateGraphMode: not compatible with multiple events selected";
+            return;
+        }
+
+        if (!m_VisualizationWidget) {
+            qCWarning(LOG_CatalogueEventsWidget())
+                << "updateGraphMode: visualization widget not found";
+            return;
+        }
+
+        auto event = m_Model->getEvent(selectedRows.first());
+        if (!event) {
+            // A event product is probably selected
+            qCInfo(LOG_CatalogueEventsWidget()) << "updateGraphMode: no events are selected";
+            return;
+        }
+
+        auto tab = m_VisualizationWidget->currentTabWidget();
+        if (!tab) {
+            qCWarning(LOG_CatalogueEventsWidget())
+                << "updateGraphMode: no tab found in the visualization";
+            return;
+        }
+
+        auto isNewZone = m_ZoneForGraphMode == NEW_ZONE_TEXT;
+        auto zone = tab->getZoneWithName(m_ZoneForGraphMode);
+        if (!isNewZone && !zone) {
+            qCWarning(LOG_CatalogueEventsWidget()) << "updateGraphMode: zone not found";
+            return;
+        }
+
+        // Closes the previous graph and delete the asociated variables
+        for (auto graph : m_CustomGraphs) {
+            graph->close();
+            auto variables = graph->variables().toVector();
+
+            QMetaObject::invokeMethod(&sqpApp->variableController(), "deleteVariables",
+                                      Qt::QueuedConnection,
+                                      Q_ARG(QVector<std::shared_ptr<Variable> >, variables));
+        }
+        m_CustomGraphs.clear();
+
+        // Closes the remaining graphs inside the zone
+        if (zone) {
+            zone->closeAllGraphs();
+        }
+
+        // Creates the zone if needed
+        if (isNewZone) {
+            zone = tab->createEmptyZone(0);
+            m_ZoneForGraphMode = zone->name();
+        }
+
+        // Calculates the range of each graph which will be created
+        auto graphRange = getGraphRanges(event);
+
+        // Loops through the event products and create the graph
+        auto itRange = graphRange.cbegin();
+        for (auto eventProduct : event->getEventProducts()) {
+            auto productId = eventProduct.getProductId();
+
+            auto range = *itRange;
+            ++itRange;
+
+            SqpRange productRange;
+            productRange.m_TStart = eventProduct.getTStart();
+            productRange.m_TEnd = eventProduct.getTEnd();
+
+            auto context = new QObject{catalogueEventWidget};
+            QObject::connect(
+                &sqpApp->variableController(), &VariableController::variableAdded, context,
+                [this, catalogueEventWidget, zone, context, event, range, productRange,
+                 productId](auto variable) {
+
+                    if (variable->metadata().value(DataSourceItem::ID_DATA_KEY).toString()
+                        == productId) {
+                        auto graph = zone->createGraph(variable);
+                        graph->setAutoRangeOnVariableInitialization(false);
+
+                        auto selectionZone
+                            = graph->addSelectionZone(event->getName(), productRange);
+                        emit catalogueEventWidget->selectionZoneAdded(event, productId,
+                                                                      selectionZone);
+                        m_CustomGraphs << graph;
+
+                        graph->setGraphRange(range, true);
+
+                        // Removes the graph from the graph list if it is closed manually
+                        QObject::connect(graph, &VisualizationGraphWidget::destroyed,
+                                         [this, graph]() { m_CustomGraphs.removeAll(graph); });
+
+                        delete context; // removes the connection
+                    }
+                },
+                Qt::QueuedConnection);
+
+            QMetaObject::invokeMethod(&sqpApp->dataSourceController(),
+                                      "requestVariableFromProductIdKey", Qt::QueuedConnection,
+                                      Q_ARG(QString, productId));
         }
     }
 
@@ -236,11 +339,12 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     ui->treeView->setDragDropMode(QAbstractItemView::DragDrop);
     ui->treeView->setDragEnabled(true);
 
+
     connect(ui->btnTime, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
             ui->btnChart->setChecked(false);
             impl->m_ZonesForTimeMode
-                = impl->selectZone(this, impl->m_ZonesForTimeMode, true,
+                = impl->selectZone(this, impl->m_ZonesForTimeMode, true, false,
                                    this->mapToGlobal(ui->btnTime->frameGeometry().center()));
 
             impl->updateForTimeMode(ui->treeView);
@@ -250,12 +354,13 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     connect(ui->btnChart, &QToolButton::clicked, [this](auto checked) {
         if (checked) {
             ui->btnTime->setChecked(false);
+
             impl->m_ZoneForGraphMode
-                = impl->selectZone(this, {impl->m_ZoneForGraphMode}, false,
+                = impl->selectZone(this, {impl->m_ZoneForGraphMode}, false, true,
                                    this->mapToGlobal(ui->btnChart->frameGeometry().center()))
                       .value(0);
 
-            impl->updateForGraphMode(ui->treeView);
+            impl->updateForGraphMode(this);
         }
     });
 
@@ -266,16 +371,38 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
 
         if (!events.isEmpty() && eventProducts.isEmpty()) {
 
-            if (QMessageBox::warning(this, tr("Remove Event(s)"),
-                                     tr("The selected event(s) will be completly removed "
-                                        "from the repository!\nAre you sure you want to continue?"),
-                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
-                == QMessageBox::Yes) {
+            auto canRemoveEvent
+                = !this->isAllEventsDisplayed()
+                  || (QMessageBox::warning(
+                          this, tr("Remove Event(s)"),
+                          tr("The selected event(s) will be permanently removed "
+                             "from the repository!\nAre you sure you want to continue?"),
+                          QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+                      == QMessageBox::Yes);
 
+            if (canRemoveEvent) {
                 for (auto event : events) {
-                    sqpApp->catalogueController().removeEvent(event);
-                    impl->removeEvent(event, ui->treeView);
+                    if (this->isAllEventsDisplayed()) {
+                        sqpApp->catalogueController().removeEvent(event);
+                        impl->removeEvent(event, ui->treeView);
+                    }
+                    else {
+                        QVector<std::shared_ptr<DBCatalogue> > modifiedCatalogues;
+                        for (auto catalogue : this->displayedCatalogues()) {
+                            if (catalogue->removeEvent(event->getUniqId())) {
+                                sqpApp->catalogueController().updateCatalogue(catalogue);
+                                modifiedCatalogues << catalogue;
+                            }
+                        }
+                        if (!modifiedCatalogues.empty()) {
+                            emit eventCataloguesModified(modifiedCatalogues);
+                        }
+                    }
+                    impl->m_Model->removeEvent(event);
                 }
+
+
+                emit this->eventsRemoved(events);
             }
         }
     });
@@ -294,7 +421,7 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
             impl->updateForTimeMode(ui->treeView);
         }
         else if (isNotMultiSelection && ui->btnChart->isChecked()) {
-            impl->updateForGraphMode(ui->treeView);
+            impl->updateForGraphMode(this);
         }
 
         QVector<std::shared_ptr<DBEvent> > events;
@@ -307,11 +434,13 @@ CatalogueEventsWidget::CatalogueEventsWidget(QWidget *parent)
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Tags,
                                                  QHeaderView::Stretch);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Validation,
-                                                 QHeaderView::Fixed);
+                                                 QHeaderView::ResizeToContents);
     ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::Name,
                                                  QHeaderView::Interactive);
-    ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
-                                          VALIDATION_COLUMN_SIZE);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::TStart,
+                                                 QHeaderView::ResizeToContents);
+    ui->treeView->header()->setSectionResizeMode((int)CatalogueEventsModel::Column::TEnd,
+                                                 QHeaderView::ResizeToContents);
     ui->treeView->header()->setSortIndicatorShown(true);
 
     connect(impl->m_Model, &CatalogueEventsModel::modelSorted, [this]() {
@@ -357,12 +486,20 @@ void CatalogueEventsWidget::setEventChanges(const std::shared_ptr<DBEvent> &even
                         setEventChanges(event, false);
                     },
                     [this, event]() {
-                        sqpApp->catalogueController().discardEvent(event);
-                        setEventChanges(event, false);
-                        impl->m_Model->refreshEvent(event, true);
+                        bool removed = false;
+                        sqpApp->catalogueController().discardEvent(event, removed);
+                        if (removed) {
+                            impl->m_Model->removeEvent(event);
+                        }
+                        else {
+                            setEventChanges(event, false);
+                            impl->m_Model->refreshEvent(event, true);
+                        }
                         emitSelection();
                     });
                 ui->treeView->setIndexWidget(validationIndex, widget);
+                ui->treeView->header()->resizeSection((int)CatalogueEventsModel::Column::Validation,
+                                                      QHeaderView::ResizeToContents);
             }
         }
         else {
@@ -383,7 +520,7 @@ QVector<std::shared_ptr<DBCatalogue> > CatalogueEventsWidget::displayedCatalogue
 
 bool CatalogueEventsWidget::isAllEventsDisplayed() const
 {
-    return impl->m_DisplayedCatalogues.isEmpty() && !impl->m_Model->events().isEmpty();
+    return impl->m_AllEventDisplayed;
 }
 
 bool CatalogueEventsWidget::isEventDisplayed(const std::shared_ptr<DBEvent> &event) const
@@ -391,10 +528,16 @@ bool CatalogueEventsWidget::isEventDisplayed(const std::shared_ptr<DBEvent> &eve
     return impl->m_Model->indexOf(event).isValid();
 }
 
+void CatalogueEventsWidget::refreshEvent(const std::shared_ptr<DBEvent> &event)
+{
+    impl->m_Model->refreshEvent(event, true);
+}
+
 void CatalogueEventsWidget::populateWithCatalogues(
     const QVector<std::shared_ptr<DBCatalogue> > &catalogues)
 {
     impl->m_DisplayedCatalogues = catalogues;
+    impl->m_AllEventDisplayed = false;
 
     QSet<QUuid> eventIds;
     QVector<std::shared_ptr<DBEvent> > events;
@@ -415,6 +558,7 @@ void CatalogueEventsWidget::populateWithCatalogues(
 void CatalogueEventsWidget::populateWithAllEvents()
 {
     impl->m_DisplayedCatalogues.clear();
+    impl->m_AllEventDisplayed = true;
 
     auto allEvents = sqpApp->catalogueController().retrieveAllEvents();
 
@@ -429,15 +573,16 @@ void CatalogueEventsWidget::populateWithAllEvents()
 void CatalogueEventsWidget::clear()
 {
     impl->m_DisplayedCatalogues.clear();
+    impl->m_AllEventDisplayed = false;
     impl->setEvents({}, this);
 }
 
 void CatalogueEventsWidget::refresh()
 {
-    if (impl->m_DisplayedCatalogues.isEmpty()) {
+    if (isAllEventsDisplayed()) {
         populateWithAllEvents();
     }
-    else {
+    else if (!impl->m_DisplayedCatalogues.isEmpty()) {
         populateWithCatalogues(impl->m_DisplayedCatalogues);
     }
 }
@@ -456,5 +601,17 @@ void CatalogueEventsWidget::emitSelection()
     }
     else {
         emit selectionCleared();
+    }
+}
+
+
+void CatalogueEventsWidget::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key()) {
+        case Qt::Key_Delete: {
+            ui->btnRemove->click();
+        }
+        default:
+            break;
     }
 }

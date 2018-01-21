@@ -14,7 +14,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_PluginManager)
 /**
  * @brief The PluginManager class aims to handle the plugins loaded dynamically into SciQLop.
  */
-class SCIQLOP_CORE_EXPORT PluginManager {
+class  PluginManager {
 public:
     explicit PluginManager();
 

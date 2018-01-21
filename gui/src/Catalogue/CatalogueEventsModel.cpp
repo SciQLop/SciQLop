@@ -24,6 +24,7 @@ const auto EVENT_PRODUCT_ITEM_TYPE = 2;
 struct CatalogueEventsModel::CatalogueEventsModelPrivate {
     QVector<std::shared_ptr<DBEvent> > m_Events;
     std::unordered_map<DBEvent *, QVector<std::shared_ptr<DBEventProduct> > > m_EventProducts;
+    QVector<std::shared_ptr<DBCatalogue> > m_SourceCatalogue;
 
     QStringList columnNames()
     {
@@ -47,13 +48,23 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
             case CatalogueEventsModel::Column::Name:
                 return event->getName();
             case CatalogueEventsModel::Column::TStart:
-                return nbEventProducts(event) > 0 ? DateUtils::dateTime(event->getTStart())
-                                                  : QVariant{};
+                return nbEventProducts(event) > 0
+                           ? DateUtils::dateTime(event->getTStart())
+                                 .toString(DATETIME_FORMAT_ONE_LINE)
+                           : QVariant{};
             case CatalogueEventsModel::Column::TEnd:
-                return nbEventProducts(event) > 0 ? DateUtils::dateTime(event->getTEnd())
-                                                  : QVariant{};
-            case CatalogueEventsModel::Column::Product:
-                return QString::number(nbEventProducts(event)) + " product(s)";
+                return nbEventProducts(event) > 0
+                           ? DateUtils::dateTime(event->getTEnd())
+                                 .toString(DATETIME_FORMAT_ONE_LINE)
+                           : QVariant{};
+            case CatalogueEventsModel::Column::Product: {
+                auto eventProducts = event->getEventProducts();
+                QStringList eventProductList;
+                for (auto evtProduct : eventProducts) {
+                    eventProductList << evtProduct.getProductId();
+                }
+                return eventProductList.join(";");
+            }
             case CatalogueEventsModel::Column::Tags: {
                 QString tagList;
                 auto tags = event->getTags();
@@ -98,9 +109,11 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
             case CatalogueEventsModel::Column::Name:
                 return eventProduct->getProductId();
             case CatalogueEventsModel::Column::TStart:
-                return DateUtils::dateTime(eventProduct->getTStart());
+                return DateUtils::dateTime(eventProduct->getTStart())
+                    .toString(DATETIME_FORMAT_ONE_LINE);
             case CatalogueEventsModel::Column::TEnd:
-                return DateUtils::dateTime(eventProduct->getTEnd());
+                return DateUtils::dateTime(eventProduct->getTEnd())
+                    .toString(DATETIME_FORMAT_ONE_LINE);
             case CatalogueEventsModel::Column::Product:
                 return eventProduct->getProductId();
             case CatalogueEventsModel::Column::Tags:
@@ -127,6 +140,12 @@ struct CatalogueEventsModel::CatalogueEventsModelPrivate {
 CatalogueEventsModel::CatalogueEventsModel(QObject *parent)
         : QAbstractItemModel(parent), impl{spimpl::make_unique_impl<CatalogueEventsModelPrivate>()}
 {
+}
+
+void CatalogueEventsModel::setSourceCatalogues(
+    const QVector<std::shared_ptr<DBCatalogue> > &catalogues)
+{
+    impl->m_SourceCatalogue = catalogues;
 }
 
 void CatalogueEventsModel::setEvents(const QVector<std::shared_ptr<DBEvent> > &events)
@@ -388,12 +407,12 @@ void CatalogueEventsModel::sort(int column, Qt::SortOrder order)
 
 Qt::DropActions CatalogueEventsModel::supportedDragActions() const
 {
-    return Qt::CopyAction;
+    return Qt::CopyAction | Qt::MoveAction;
 }
 
 QStringList CatalogueEventsModel::mimeTypes() const
 {
-    return {MIME_TYPE_EVENT_LIST, MIME_TYPE_TIME_RANGE};
+    return {MIME_TYPE_EVENT_LIST, MIME_TYPE_SOURCE_CATALOGUE_LIST, MIME_TYPE_TIME_RANGE};
 }
 
 QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
@@ -436,6 +455,10 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
     if (!eventList.isEmpty() && eventProductList.isEmpty()) {
         auto eventsEncodedData = sqpApp->catalogueController().mimeDataForEvents(eventList);
         mimeData->setData(MIME_TYPE_EVENT_LIST, eventsEncodedData);
+
+        auto sourceCataloguesEncodedData
+            = sqpApp->catalogueController().mimeDataForCatalogues(impl->m_SourceCatalogue);
+        mimeData->setData(MIME_TYPE_SOURCE_CATALOGUE_LIST, sourceCataloguesEncodedData);
     }
 
     if (eventList.count() + eventProductList.count() == 1) {

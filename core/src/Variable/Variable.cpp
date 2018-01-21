@@ -9,6 +9,29 @@
 
 Q_LOGGING_CATEGORY(LOG_Variable, "Variable")
 
+namespace {
+
+/**
+ * Searches in metadata for a value that can be converted to DataSeriesType
+ * @param metadata the metadata where to search
+ * @return the value converted to a DataSeriesType if it was found, UNKNOWN type otherwise
+ * @sa DataSeriesType
+ */
+DataSeriesType findDataSeriesType(const QVariantHash &metadata)
+{
+    auto dataSeriesType = DataSeriesType::UNKNOWN;
+
+    // Go through the metadata and stop at the first value that could be converted to DataSeriesType
+    for (auto it = metadata.cbegin(), end = metadata.cend();
+         it != end && dataSeriesType == DataSeriesType::UNKNOWN; ++it) {
+        dataSeriesType = DataSeriesTypeUtils::fromString(it.value().toString());
+    }
+
+    return dataSeriesType;
+}
+
+} // namespace
+
 struct Variable::VariablePrivate {
     explicit VariablePrivate(const QString &name, const QVariantHash &metadata)
             : m_Name{name},
@@ -17,7 +40,8 @@ struct Variable::VariablePrivate {
               m_Metadata{metadata},
               m_DataSeries{nullptr},
               m_RealRange{INVALID_RANGE},
-              m_NbPoints{0}
+              m_NbPoints{0},
+              m_Type{findDataSeriesType(m_Metadata)}
     {
     }
 
@@ -28,7 +52,8 @@ struct Variable::VariablePrivate {
               m_Metadata{other.m_Metadata},
               m_DataSeries{other.m_DataSeries != nullptr ? other.m_DataSeries->clone() : nullptr},
               m_RealRange{other.m_RealRange},
-              m_NbPoints{other.m_NbPoints}
+              m_NbPoints{other.m_NbPoints},
+              m_Type{findDataSeriesType(m_Metadata)}
     {
     }
 
@@ -75,6 +100,7 @@ struct Variable::VariablePrivate {
     std::shared_ptr<IDataSeries> m_DataSeries;
     SqpRange m_RealRange;
     int m_NbPoints;
+    DataSeriesType m_Type;
 
     QReadWriteLock m_Lock;
 };
@@ -161,16 +187,23 @@ void Variable::mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept
         return;
     }
 
+    auto dataInit = false;
+
     // Add or merge the data
     impl->lockWrite();
     if (!impl->m_DataSeries) {
         impl->m_DataSeries = dataSeries->clone();
+        dataInit = true;
     }
     else {
         impl->m_DataSeries->merge(dataSeries.get());
     }
     impl->purgeDataSeries();
     impl->unlock();
+
+    if (dataInit) {
+        emit dataInitialized();
+    }
 }
 
 
@@ -181,6 +214,15 @@ std::shared_ptr<IDataSeries> Variable::dataSeries() const noexcept
     impl->unlock();
 
     return dataSeries;
+}
+
+DataSeriesType Variable::type() const noexcept
+{
+    impl->lockRead();
+    auto type = impl->m_Type;
+    impl->unlock();
+
+    return type;
 }
 
 QVariantHash Variable::metadata() const noexcept

@@ -10,6 +10,7 @@ public:
     CatalogueActionManager(CatalogueExplorer *catalogueExplorer);
 
     void installSelectionZoneActions();
+    void refreshCreateInCatalogueAction();
 
 private:
     class CatalogueActionManagerPrivate;

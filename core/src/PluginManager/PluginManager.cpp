@@ -1,4 +1,4 @@
-#include <Plugin/PluginManager.h>
+#include <PluginManager/PluginManager.h>
 
 #include <Plugin/IPlugin.h>
 

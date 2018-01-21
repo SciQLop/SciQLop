@@ -52,9 +52,6 @@ const auto COLUMN_PROPERTIES = QHash<int, ColumnProperties>{
     {UNIT_COLUMN, {QObject::tr("Unit")}},      {MISSION_COLUMN, {QObject::tr("Mission")}},
     {PLUGIN_COLUMN, {QObject::tr("Plugin")}}};
 
-/// Format for datetimes
-const auto DATETIME_FORMAT = QStringLiteral("dd/MM/yyyy \nhh:mm:ss:zzz");
-
 QString uniqueName(const QString &defaultName,
                    const std::vector<std::shared_ptr<Variable> > &variables)
 {

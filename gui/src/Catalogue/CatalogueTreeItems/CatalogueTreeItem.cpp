@@ -76,20 +76,56 @@ Qt::ItemFlags CatalogueTreeItem::flags(int column) const
 
 bool CatalogueTreeItem::canDropMimeData(const QMimeData *data, Qt::DropAction action)
 {
-    return data->hasFormat(MIME_TYPE_EVENT_LIST);
+    // Check that the event is not dropped on the same catalogue
+    auto sourceCatalogues = sqpApp->catalogueController().cataloguesForMimeData(
+        data->data(MIME_TYPE_SOURCE_CATALOGUE_LIST));
+    for (auto catalogue : sourceCatalogues) {
+        if (catalogue->getUniqId() == impl->m_Catalogue->getUniqId()) {
+            return false;
+        }
+    }
+
+    auto events = sqpApp->catalogueController().eventsForMimeData(data->data(MIME_TYPE_EVENT_LIST));
+    auto canDrop = data->hasFormat(MIME_TYPE_EVENT_LIST);
+
+    for (auto event : events) {
+        canDrop &= (event->getRepository() == impl->m_Catalogue->getRepository());
+    }
+
+    return canDrop;
 }
 
 bool CatalogueTreeItem::dropMimeData(const QMimeData *data, Qt::DropAction action)
 {
     Q_ASSERT(canDropMimeData(data, action));
+    // Warning: Check that the events aren't already in the catalogue
+    // No need to check check for the repository: inter-repository drop is forbidden in
+    // canDropMimeData
 
     auto events = sqpApp->catalogueController().eventsForMimeData(data->data(MIME_TYPE_EVENT_LIST));
-    // impl->m_Catalogue->addEvents(events); TODO: move events in the new catalogue
-    // Warning: Check that the events aren't already in the catalogue
-    // Also check for the repository !!!
+    auto sourceCatalogues = sqpApp->catalogueController().cataloguesForMimeData(
+        data->data(MIME_TYPE_SOURCE_CATALOGUE_LIST));
+
+    for (auto event : events) {
+
+        if (action == Qt::MoveAction) {
+            for (auto catalogue : sourceCatalogues) {
+                catalogue->removeEvent(event->getUniqId());
+                sqpApp->catalogueController().updateCatalogue(catalogue);
+            }
+        }
+
+        impl->m_Catalogue->addEvent(event->getUniqId());
+        sqpApp->catalogueController().updateCatalogue(impl->m_Catalogue);
+    }
 }
 
 std::shared_ptr<DBCatalogue> CatalogueTreeItem::catalogue() const
 {
     return impl->m_Catalogue;
+}
+
+void CatalogueTreeItem::replaceCatalogue(const std::shared_ptr<DBCatalogue> &catalogue)
+{
+    impl->m_Catalogue = catalogue;
 }

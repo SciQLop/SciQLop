@@ -133,7 +133,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     auto openInspector = [this](bool checked, bool right, auto action) {
 
-        action->setIcon(QIcon{(checked xor right) ? ":/icones/next.png" : ":/icones/previous.png"});
+        action->setIcon(QIcon{(checked ^ right) ? ":/icones/next.png" : ":/icones/previous.png"});
 
         auto &lastInspectorSize
             = right ? impl->m_LastOpenRightInspectorSize : impl->m_LastOpenLeftInspectorSize;
@@ -386,8 +386,8 @@ bool MainWindow::MainWindowPrivate::checkDataToSave(QWidget *parentWidget)
     if (hasChanges) {
         // There are some unsaved changes
         switch (QMessageBox::question(
-            parentWidget, "Save changes",
-            tr("The catalogue controller unsaved changes.\nDo you want to save them ?"),
+            parentWidget, tr("Save changes"),
+            tr("The catalogue controller has unsaved changes.\nDo you want to save them ?"),
             QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel,
             QMessageBox::SaveAll)) {
             case QMessageBox::SaveAll:

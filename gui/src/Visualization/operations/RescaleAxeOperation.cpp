@@ -59,9 +59,11 @@ void RescaleAxeOperation::visit(VisualizationGraphWidget *graphWidget)
     if (graphWidget) {
         // If the widget contains the variable, rescale it
         if (impl->m_Variable && graphWidget->contains(*impl->m_Variable)) {
-            graphWidget->enableAcquisition(false);
+            // During rescale, acquisition for the graph is disabled but synchronization is still
+            // enabled
+            graphWidget->setFlags(GraphFlag::EnableSynchronization);
             graphWidget->setGraphRange(impl->m_Range);
-            graphWidget->enableAcquisition(true);
+            graphWidget->setFlags(GraphFlag::EnableAll);
         }
     }
     else {

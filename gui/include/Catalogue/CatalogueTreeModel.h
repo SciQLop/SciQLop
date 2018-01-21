@@ -16,7 +16,7 @@ class CatalogueTreeModel : public QAbstractItemModel {
 
 signals:
     void itemRenamed(const QModelIndex &index);
-    void itemDropped(const QModelIndex &parentIndex);
+    void itemDropped(const QModelIndex &parentIndex, const QMimeData *data, Qt::DropAction action);
 
 public:
     CatalogueTreeModel(QObject *parent = nullptr);
@@ -27,6 +27,9 @@ public:
     QVector<CatalogueAbstractTreeItem *> topLevelItems() const;
 
     void addChildItem(CatalogueAbstractTreeItem *child, const QModelIndex &parentIndex);
+    void removeChildItem(CatalogueAbstractTreeItem *child, const QModelIndex &parentIndex);
+    /// Refresh the data for the specified index
+    void refresh(const QModelIndex &index);
 
     CatalogueAbstractTreeItem *item(const QModelIndex &index) const;
     QModelIndex indexOf(CatalogueAbstractTreeItem *item, int column = 0) const;

@@ -39,21 +39,6 @@ QString dateFormat(double sqpRange) noexcept
     return dateTime.toString(AMDA_TIME_FORMAT);
 }
 
-AmdaResultParser::ValueType valueType(const QString &valueType)
-{
-    if (valueType == QStringLiteral("scalar")) {
-        return AmdaResultParser::ValueType::SCALAR;
-    }
-    else if (valueType == QStringLiteral("spectrogram")) {
-        return AmdaResultParser::ValueType::SPECTROGRAM;
-    }
-    else if (valueType == QStringLiteral("vector")) {
-        return AmdaResultParser::ValueType::VECTOR;
-    }
-    else {
-        return AmdaResultParser::ValueType::UNKNOWN;
-    }
-}
 
 } // namespace
 
@@ -171,7 +156,8 @@ void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVa
 
     // Retrieves the data type that determines whether the expected format for the result file is
     // scalar, vector...
-    auto productValueType = valueType(data.value(AMDA_DATA_TYPE_KEY).toString());
+    auto productValueType
+        = DataSeriesTypeUtils::fromString(data.value(AMDA_DATA_TYPE_KEY).toString());
 
     // /////////// //
     // Creates URL //

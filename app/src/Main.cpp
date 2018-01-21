@@ -25,7 +25,7 @@
 #include <SqpApplication.h>
 #include <qglobal.h>
 
-#include <Plugin/PluginManager.h>
+#include <PluginManager/PluginManager.h>
 #include <QDir>
 #include <QtPlugin>
 
@@ -52,6 +52,8 @@ int main(int argc, char *argv[])
     SqpApplication::setOrganizationName("LPP");
     SqpApplication::setOrganizationDomain("lpp.fr");
     SqpApplication::setApplicationName("SciQLop");
+
+    QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
     SqpApplication a{argc, argv};
 

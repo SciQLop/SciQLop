@@ -12,6 +12,7 @@
 #include "ui_VisualizationGraphWidget.h"
 
 #include <Actions/ActionsGuiController.h>
+#include <Actions/FilteringAction.h>
 #include <Common/MimeTypesDef.h>
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
@@ -59,16 +60,16 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
     explicit VisualizationGraphWidgetPrivate(const QString &name)
             : m_Name{name},
-              m_DoAcquisition{true},
+              m_Flags{GraphFlag::EnableAll},
               m_IsCalibration{false},
               m_RenderingDelegate{nullptr}
     {
     }
 
-    void updateData(PlottablesMap &plottables, std::shared_ptr<IDataSeries> dataSeries,
+    void updateData(PlottablesMap &plottables, std::shared_ptr<Variable> variable,
                     const SqpRange &range)
     {
-        VisualizationGraphHelper::updateData(plottables, dataSeries, range);
+        VisualizationGraphHelper::updateData(plottables, variable, range);
 
         // Prevents that data has changed to update rendering
         m_RenderingDelegate->onPlotUpdated();
@@ -77,7 +78,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     QString m_Name;
     // 1 variable -> n qcpplot
     std::map<std::shared_ptr<Variable>, PlottablesMap> m_VariableToPlotMultiMap;
-    bool m_DoAcquisition;
+    GraphFlags m_Flags;
     bool m_IsCalibration;
     /// Delegate used to attach rendering features to the plot
     std::unique_ptr<VisualizationGraphRenderingDelegate> m_RenderingDelegate;
@@ -93,6 +94,8 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     QVector<VisualizationSelectionZoneItem *> m_SelectionZones;
 
     bool m_HasMovedMouse = false; // Indicates if the mouse moved in a releaseMouse even
+
+    bool m_VariableAutoRangeOnInit = true;
 
     void startDrawingRect(const QPoint &pos, QCustomPlot &plot)
     {
@@ -243,7 +246,7 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
             &VisualizationGraphWidget::onMouseDoubleClick);
     connect(ui->widget->xAxis, static_cast<void (QCPAxis::*)(const QCPRange &, const QCPRange &)>(
                                    &QCPAxis::rangeChanged),
-            this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
+        this, &VisualizationGraphWidget::onRangeChanged, Qt::DirectConnection);
 
     // Activates menu when right clicking on the graph
     ui->widget->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -256,9 +259,8 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     connect(&sqpApp->variableController(), &VariableController::updateVarDisplaying, this,
             &VisualizationGraphWidget::onUpdateVarDisplaying);
 
-#ifdef Q_OS_MAC
+    // Necessary for all platform since Qt::AA_EnableHighDpiScaling is enable.
     plot().setPlottingHint(QCP::phFastPolylines, true);
-#endif
 }
 
 
@@ -287,35 +289,54 @@ VisualizationWidget *VisualizationGraphWidget::parentVisualizationWidget() const
     return qobject_cast<VisualizationWidget *>(parent);
 }
 
-void VisualizationGraphWidget::enableAcquisition(bool enable)
+void VisualizationGraphWidget::setFlags(GraphFlags flags)
 {
-    impl->m_DoAcquisition = enable;
+    impl->m_Flags = std::move(flags);
 }
 
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, SqpRange range)
 {
-    // Uses delegate to create the qcpplot components according to the variable
-    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+    /// Lambda used to set graph's units and range according to the variable passed in parameter
+    auto loadRange = [this](std::shared_ptr<Variable> variable, const SqpRange &range) {
+        impl->m_RenderingDelegate->setAxesUnits(*variable);
 
-    if (auto dataSeries = variable->dataSeries()) {
-        // Set axes properties according to the units of the data series
-        impl->m_RenderingDelegate->setAxesProperties(dataSeries);
-
-        // Sets rendering properties for the new plottables
-        // Warning: this method must be called after setAxesProperties(), as it can access to some
-        // axes properties that have to be initialized
-        impl->m_RenderingDelegate->setPlottablesProperties(dataSeries, createdPlottables);
-    }
-
-    impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
+        this->setFlags(GraphFlag::DisableAll);
+        setGraphRange(range);
+        this->setFlags(GraphFlag::EnableAll);
+        emit requestDataLoading({variable}, range, false);
+    };
 
     connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
 
-    this->enableAcquisition(false);
-    this->setGraphRange(range);
-    this->enableAcquisition(true);
+    // Calls update of graph's range and units when the data of the variable have been initialized.
+    // Note: we use QueuedConnection here as the update event must be called in the UI thread
+    connect(variable.get(), &Variable::dataInitialized, this,
+            [ varW = std::weak_ptr<Variable>{variable}, range, loadRange, this ]() {
+                if (auto var = varW.lock()) {
+                    // If the variable is the first added in the graph, we load its range
+                    auto firstVariableInGraph = range == INVALID_RANGE;
+                    auto loadedRange = graphRange();
+                    if (impl->m_VariableAutoRangeOnInit) {
+                        loadedRange = firstVariableInGraph ? var->range() : range;
+                    }
+                    loadRange(var, loadedRange);
+                    setYRange(var);
+                }
+            },
+            Qt::QueuedConnection);
 
-    emit requestDataLoading(QVector<std::shared_ptr<Variable> >() << variable, range, false);
+    // Uses delegate to create the qcpplot components according to the variable
+    auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
+
+    // Sets graph properties
+    impl->m_RenderingDelegate->setGraphProperties(*variable, createdPlottables);
+
+    impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
+
+    // If the variable already has its data loaded, load its units and its range in the graph
+    if (variable->dataSeries() != nullptr) {
+        loadRange(variable, range);
+    }
 
     emit variableAdded(variable);
 }
@@ -371,12 +392,27 @@ SqpRange VisualizationGraphWidget::graphRange() const noexcept
     return SqpRange{graphRange.lower, graphRange.upper};
 }
 
-void VisualizationGraphWidget::setGraphRange(const SqpRange &range)
+void VisualizationGraphWidget::setGraphRange(const SqpRange &range, bool calibration)
 {
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange START");
+
+    if (calibration) {
+        impl->m_IsCalibration = true;
+    }
+
     ui->widget->xAxis->setRange(range.m_TStart, range.m_TEnd);
     ui->widget->replot();
+
+    if (calibration) {
+        impl->m_IsCalibration = false;
+    }
+
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange END");
+}
+
+void VisualizationGraphWidget::setAutoRangeOnVariableInitialization(bool value)
+{
+    impl->m_VariableAutoRangeOnInit = value;
 }
 
 QVector<SqpRange> VisualizationGraphWidget::selectionZoneRanges() const
@@ -399,6 +435,20 @@ void VisualizationGraphWidget::addSelectionZones(const QVector<SqpRange> &ranges
     }
 
     plot().replot(QCustomPlot::rpQueuedReplot);
+}
+
+VisualizationSelectionZoneItem *VisualizationGraphWidget::addSelectionZone(const QString &name,
+                                                                           const SqpRange &range)
+{
+    // note: ownership is transfered to QCustomPlot
+    auto zone = new VisualizationSelectionZoneItem(&plot());
+    zone->setName(name);
+    zone->setRange(range.m_TStart, range.m_TEnd);
+    impl->addSelectionZone(zone);
+
+    plot().replot(QCustomPlot::rpQueuedReplot);
+
+    return zone;
 }
 
 void VisualizationGraphWidget::removeSelectionZone(VisualizationSelectionZoneItem *selectionZone)
@@ -584,6 +634,10 @@ void VisualizationGraphWidget::closeEvent(QCloseEvent *event)
 {
     Q_UNUSED(event);
 
+    for (auto i : impl->m_SelectionZones) {
+        parentVisualizationWidget()->selectionZoneManager().setSelected(i, false);
+    }
+
     // Prevents that all variables will be removed from graph when it will be closed
     for (auto &variableEntry : impl->m_VariableToPlotMultiMap) {
         emit variableAboutToBeRemoved(variableEntry.first);
@@ -654,24 +708,39 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
         QHash<QString, QMenu *> subMenus;
         QHash<QString, bool> subMenusEnabled;
+        QHash<QString, FilteringAction *> filteredMenu;
 
         for (auto zoneAction : zoneActions) {
 
             auto isEnabled = zoneAction->isEnabled(selectedItems);
 
             auto menu = &graphMenu;
+            QString menuPath;
             for (auto subMenuName : zoneAction->subMenuList()) {
-                if (!subMenus.contains(subMenuName)) {
+                menuPath += '/';
+                menuPath += subMenuName;
+
+                if (!subMenus.contains(menuPath)) {
                     menu = menu->addMenu(subMenuName);
-                    subMenus[subMenuName] = menu;
-                    subMenusEnabled[subMenuName] = isEnabled;
+                    subMenus[menuPath] = menu;
+                    subMenusEnabled[menuPath] = isEnabled;
                 }
                 else {
-                    menu = subMenus.value(subMenuName);
+                    menu = subMenus.value(menuPath);
                     if (isEnabled) {
                         // The sub menu is enabled if at least one of its actions is enabled
-                        subMenusEnabled[subMenuName] = true;
+                        subMenusEnabled[menuPath] = true;
                     }
+                }
+            }
+
+            FilteringAction *filterAction = nullptr;
+            if (sqpApp->actionsGuiController().isMenuFiltered(zoneAction->subMenuList())) {
+                filterAction = filteredMenu.value(menuPath);
+                if (!filterAction) {
+                    filterAction = new FilteringAction{this};
+                    filteredMenu[menuPath] = filterAction;
+                    menu->addAction(filterAction);
                 }
             }
 
@@ -680,6 +749,10 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
             action->setShortcut(zoneAction->displayedShortcut());
             QObject::connect(action, &QAction::triggered,
                              [zoneAction, selectedItems]() { zoneAction->execute(selectedItems); });
+
+            if (filterAction && zoneAction->isFilteringAllowed()) {
+                filterAction->addActionToFilter(action);
+            }
         }
 
         for (auto it = subMenus.cbegin(); it != subMenus.cend(); ++it) {
@@ -696,12 +769,12 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
 {
     qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: VisualizationGraphWidget::onRangeChanged")
                                             << QThread::currentThread()->objectName() << "DoAcqui"
-                                            << impl->m_DoAcquisition;
+                                            << impl->m_Flags.testFlag(GraphFlag::EnableAcquisition);
 
     auto graphRange = SqpRange{t1.lower, t1.upper};
     auto oldGraphRange = SqpRange{t2.lower, t2.upper};
 
-    if (impl->m_DoAcquisition) {
+    if (impl->m_Flags.testFlag(GraphFlag::EnableAcquisition)) {
         QVector<std::shared_ptr<Variable> > variableUnderGraphVector;
 
         for (auto it = impl->m_VariableToPlotMultiMap.begin(),
@@ -711,13 +784,13 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
         }
         emit requestDataLoading(std::move(variableUnderGraphVector), graphRange,
                                 !impl->m_IsCalibration);
+    }
 
-        if (!impl->m_IsCalibration) {
-            qCDebug(LOG_VisualizationGraphWidget())
-                << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
-                << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
-            emit synchronize(graphRange, oldGraphRange);
-        }
+    if (impl->m_Flags.testFlag(GraphFlag::EnableSynchronization) && !impl->m_IsCalibration) {
+        qCDebug(LOG_VisualizationGraphWidget())
+            << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
+            << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
+        emit synchronize(graphRange, oldGraphRange);
     }
 
     auto pos = mapFromGlobal(QCursor::pos());
@@ -733,6 +806,9 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
     else {
         qCWarning(LOG_VisualizationGraphWidget()) << "onMouseMove: No parent zone widget";
     }
+
+    // Quits calibration
+    impl->m_IsCalibration = false;
 }
 
 void VisualizationGraphWidget::onMouseDoubleClick(QMouseEvent *event) noexcept
@@ -803,6 +879,11 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
 
 void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
 {
+    // Processes event only if the wheel occurs on axis rect
+    if (!dynamic_cast<QCPAxisRect *>(ui->widget->layoutElementAt(event->posF()))) {
+        return;
+    }
+
     auto value = event->angleDelta().x() + event->angleDelta().y();
     if (value != 0) {
 
@@ -917,8 +998,6 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
 
     impl->endDrawingZone(this);
 
-    impl->m_IsCalibration = false;
-
     // Selection / Deselection
     auto isSelectionZoneMode
         = sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones;
@@ -988,7 +1067,7 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
         qCDebug(LOG_VisualizationGraphWidget())
             << "TORM: VisualizationGraphWidget::onDataCacheVariableUpdated E" << dateTime;
         if (dateTime.contains(variable->range()) || dateTime.intersect(variable->range())) {
-            impl->updateData(variableEntry.second, variable->dataSeries(), variable->range());
+            impl->updateData(variableEntry.second, variable, variable->range());
         }
     }
 }
@@ -998,6 +1077,6 @@ void VisualizationGraphWidget::onUpdateVarDisplaying(std::shared_ptr<Variable> v
 {
     auto it = impl->m_VariableToPlotMultiMap.find(variable);
     if (it != impl->m_VariableToPlotMultiMap.end()) {
-        impl->updateData(it->second, variable->dataSeries(), range);
+        impl->updateData(it->second, variable, range);
     }
 }
