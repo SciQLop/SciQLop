@@ -55,6 +55,13 @@ if (NOT CatalogueAPI_FOUND)
     add_subdirectory(external/libcatalogs)
 endif()
 
+find_package(pybind11 CONFIG QUIET)
+if (NOT pybind11_FOUND)
+    execute_process(COMMAND git submodule init external/pybind11 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    execute_process(COMMAND git submodule update external/pybind11 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    add_subdirectory(external/pybind11)
+endif()
+
 add_subdirectory(core)
 add_subdirectory(gui)
 add_subdirectory(app)

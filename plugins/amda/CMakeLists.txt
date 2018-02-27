@@ -12,7 +12,7 @@ set(AMDA_SERVER_TYPE "hybrid;amdatest;localhost" CACHE STRING
   "List of possible for AMDA server type")
 
 set_property(CACHE AMDA_server_type PROPERTY STRINGS ${AMDA_SERVER_TYPE})
-add_definitions(-DSCIQLOP_AMDA_SERVER="{AMDA_server_type}")
+add_definitions(-DSCIQLOP_AMDA_SERVER="${AMDA_server_type}")
 
 add_definitions(-DQT_PLUGIN)
 add_definitions(-DSCIQLOP_PLUGIN_JSON_FILE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/amda.json")
@@ -38,3 +38,25 @@ declare_test(TestAmdaParser TestAmdaParser tests/TestAmdaParser.cpp "amdaplugin;
 declare_test(TestAmdaResultParser TestAmdaResultParser tests/TestAmdaResultParser.cpp "amdaplugin;Qt5::Test")
 declare_test(TestAmdaAcquisition TestAmdaAcquisition tests/TestAmdaAcquisition.cpp "amdaplugin;Qt5::Test")
 declare_test(TestAmdaFuzzing TestAmdaFuzzing "tests/TestAmdaFuzzing.cpp;tests/FuzzingValidators.cpp;tests/FuzzingUtils.cpp;tests/FuzzingOperations.cpp;tests/FuzzingDefs.cpp" "amdaplugin;Qt5::Test")
+
+pybind11_add_module(pytestamda tests/PyTestAmdaWrapper.cpp)
+target_link_libraries(pytestamda PUBLIC amdaplugin)
+
+#pybind11_add_module(pytestamdalib SHARED tests/PyTestAmdaWrapper.cpp)
+add_library(pytestamdalib tests/PyTestAmdaWrapper.cpp)
+target_link_libraries(pytestamdalib PUBLIC pybind11::module)
+target_link_libraries(pytestamdalib PUBLIC pybind11::embed)
+target_link_libraries(pytestamdalib PUBLIC amdaplugin)
+
+declare_test(TestPytestamda TestPytestamda "tests/PyTestAmdaWrapperExe.cpp" "amdaplugin;pytestamdalib")
+target_compile_definitions(TestPytestamda PRIVATE -DPYTESTAMDA_SCRIPT="${CMAKE_CURRENT_LIST_DIR}/tests/pyamdatests.py")
+
+find_package(PythonInterp 3 REQUIRED)
+
+add_test(NAME pyamdatests
+  COMMAND ${PYTHON_EXECUTABLE}
+    ${CMAKE_CURRENT_LIST_DIR}/tests/pyamdatests.py
+    pyamdatests)
+
+set_tests_properties(pyamdatests  PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR})
+
