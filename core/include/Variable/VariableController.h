@@ -55,6 +55,9 @@ public:
     QList<std::shared_ptr<Variable> > variablesForMimeData(const QByteArray &mimeData) const;
 
     static AcquisitionZoomType getZoomType(const SqpRange &range, const SqpRange &oldRange);
+
+    /// Returns True if there are pending downloads
+    bool hasPendingDownloads();
 signals:
     /// Signal emitted when a variable is about to be deleted from the controller
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
@@ -140,5 +143,6 @@ private:
     class VariableControllerPrivate;
     spimpl::unique_impl_ptr<VariableControllerPrivate> impl;
 };
+
 
 #endif // SCIQLOP_VARIABLECONTROLLER_H

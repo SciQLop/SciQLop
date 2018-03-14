@@ -135,7 +135,7 @@ struct VariableController::VariableControllerPrivate {
     void updateVariableRequest(QUuid varRequestId);
     void cancelVariableRequest(QUuid varRequestId);
     void executeVarRequest(std::shared_ptr<Variable> var, VariableRequest &varRequest);
-
+    bool hasPendingDownloads();
     template <typename VariableIterator>
     void desynchronize(VariableIterator variableIt, const QUuid &syncGroupId);
 
@@ -656,6 +656,11 @@ void VariableController::waitForFinish()
     QMutexLocker locker{&impl->m_WorkingMutex};
 }
 
+bool VariableController::hasPendingDownloads()
+{
+    return impl->hasPendingDownloads();
+}
+
 AcquisitionZoomType VariableController::getZoomType(const SqpRange &range, const SqpRange &oldRange)
 {
     // t1.m_TStart <= t2.m_TStart && t2.m_TEnd <= t1.m_TEnd
@@ -1077,6 +1082,11 @@ void VariableController::VariableControllerPrivate::executeVarRequest(std::share
         acceptVariableRequest(varId,
                               var->dataSeries()->subDataSeries(varRequest.m_CacheRangeRequested));
     }
+}
+
+bool VariableController::VariableControllerPrivate::hasPendingDownloads()
+{
+    return !m_VarGroupIdToVarIds.empty();
 }
 
 template <typename VariableIterator>

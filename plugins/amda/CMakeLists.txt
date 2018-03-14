@@ -48,15 +48,26 @@ target_link_libraries(pytestamdalib PUBLIC pybind11::module)
 target_link_libraries(pytestamdalib PUBLIC pybind11::embed)
 target_link_libraries(pytestamdalib PUBLIC amdaplugin)
 
-declare_test(TestPytestamda TestPytestamda "tests/PyTestAmdaWrapperExe.cpp" "amdaplugin;pytestamdalib")
-target_compile_definitions(TestPytestamda PRIVATE -DPYTESTAMDA_SCRIPT="${CMAKE_CURRENT_LIST_DIR}/tests/pyamdatests.py")
+declare_test(TestAmdaFileParserEmbed TestAmdaFileParserEmbed "tests/PyTestAmdaWrapperExe.cpp" "amdaplugin;pytestamdalib")
+target_compile_definitions(TestAmdaFileParserEmbed PRIVATE -DPYTESTAMDA_SCRIPT="${CMAKE_CURRENT_LIST_DIR}/tests/TestAmdaFileParser.py")
+
+declare_test(TestAmdaDownloadEmbed TestAmdaDownloadEmbed "tests/PyTestAmdaWrapperExe.cpp" "amdaplugin;pytestamdalib")
+target_compile_definitions(TestAmdaDownloadEmbed PRIVATE -DPYTESTAMDA_SCRIPT="${CMAKE_CURRENT_LIST_DIR}/tests/TestAmdaDownload.py")
+
 
 find_package(PythonInterp 3 REQUIRED)
 
-add_test(NAME pyamdatests
+add_test(NAME TestAmdaFileParser
   COMMAND ${PYTHON_EXECUTABLE}
-    ${CMAKE_CURRENT_LIST_DIR}/tests/pyamdatests.py
-    pyamdatests)
+    ${CMAKE_CURRENT_LIST_DIR}/tests/TestAmdaFileParser.py
+    TestAmdaFileParser)
+set_tests_properties(TestAmdaFileParser  PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR})
 
-set_tests_properties(pyamdatests  PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR})
+
+add_test(NAME TestAmdaDownload
+  COMMAND ${PYTHON_EXECUTABLE}
+    ${CMAKE_CURRENT_LIST_DIR}/tests/TestAmdaDownload.py
+    TestAmdaDownload)
+set_tests_properties(TestAmdaDownload  PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR})
+
 

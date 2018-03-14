@@ -20,11 +20,11 @@
 --                     Mail : alexis.jeandet@member.fsf.org
 ----------------------------------------------------------------------------*/
 #include <QString>
-extern int pytestamda_test(int argc, char** argv, const char* testScriptPath );
+extern int pytestamda_test(const char* testScriptPath );
 
 int main(int argc, char** argv)
 {
-    pytestamda_test(argc, argv, PYTESTAMDA_SCRIPT);
+    pytestamda_test(PYTESTAMDA_SCRIPT);
     return 0;
 }
 
