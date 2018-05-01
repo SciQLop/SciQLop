@@ -1,0 +1,10 @@
+[wrap-file]
+directory = pybind11-2.2.2
+
+source_url = https://github.com/pybind/pybind11/archive/v2.2.2.zip
+source_filename = pybind11-2.2.2.zip
+source_hash = 20314968531faa4c8579da2c46c2ce13aecd68ae79b6dd8cf9b99698b2304348
+
+patch_url = https://wrapdb.mesonbuild.com/v1/projects/pybind11/2.2.2/1/get_zip
+patch_filename = pybind11-2.2.2-1-wrap.zip
+patch_hash = 18a273260a59368b59ae754838d76a606ea6be6126e40c59fff5214252b1e26d

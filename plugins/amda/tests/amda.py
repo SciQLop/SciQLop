@@ -15,6 +15,10 @@ def load_scalar(fname):
             float(line.split()[1])]
             for line in f if "#" not in line]
 
+def extract_vector(variable):
+    return zip(*[(pt.x, pt.value(0), pt.value(1), pt.value(2)) for pt in variable])
+
+
 """
 Copied from myAMDA should be factored in somehow
 """
@@ -27,3 +31,13 @@ def generate_data(tstart, tstop, dt):
     y = [(x0 + (i+1) * delta).astype('float')/1000000 for i in range(vector_size)]
     z = [(x0 + (i+2) * delta).astype('float')/1000000 for i in range(vector_size)]
     return t,x,y,z
+
+def compare_with_ref(var, ref):
+    t_ref, x_ref, y_ref, z_ref = ref
+    t,x,y,z = extract_vector(var)
+    return all([
+             all([t_ref[i].astype(float)/1000000 == t[i] for i in range(len(t))]),
+             all([x_ref[i] == x[i] for i in range(len(x))]),
+             all([y_ref[i] == y[i] for i in range(len(y))]),
+             all([z_ref[i] == z[i] for i in range(len(z))])
+             ])
