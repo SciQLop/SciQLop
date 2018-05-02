@@ -22,6 +22,29 @@ private slots:
         QCOMPARE(resp.data(), QString("{\n  \"user-agent\": \"SciQLop 1.0\"\n}\n"));
     }
 
+    void simpleAsyncGet()
+    {
+        bool done = false;
+        int status = -1;
+        QByteArray data;
+        auto callback = [&done, &status, &data](QUuid uuid,Response resp)
+            {
+                status = resp.status_code();
+                done = true;
+                data = resp.data();
+            };
+        auto uuid = Downloader::getAsync("http://ovh.net/files/1Mio.dat", callback);
+        QCOMPARE(Downloader::downloadFinished(uuid), false);
+        while (!done)
+        {
+            QCoreApplication::processEvents();
+        }
+        QCOMPARE(Downloader::downloadFinished(uuid), true);
+        QCOMPARE(status, 200);
+        QCOMPARE(data[0],'\xBA');
+        QCOMPARE(data[data.length()-1],'\x20');
+    }
+
     void wrongUrl()
     {
         auto resp = Downloader::get("https://lpp.polytechniqe2.fr");
