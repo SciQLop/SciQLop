@@ -66,6 +66,7 @@ FILE (GLOB_RECURSE core_SRCS
     ./src/Data/DataSeriesUtils.cpp
     ./src/Data/VectorSeries.cpp
     ./src/Network/NetworkController.cpp
+    ./src/Network/Downloader.cpp
     ./src/Catalogue/CatalogueController.cpp
     ./src/Visualization/VisualizationController.cpp
     ./src/PluginManager/PluginManager.cpp
