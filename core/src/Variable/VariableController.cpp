@@ -145,7 +145,6 @@ struct VariableController::VariableControllerPrivate {
     QItemSelectionModel *m_VariableSelectionModel;
 
 
-    TimeController *m_TimeController{nullptr};
     std::unique_ptr<VariableCacheStrategy> m_VariableCacheStrategy;
     std::unique_ptr<VariableAcquisitionWorker> m_VariableAcquisitionWorker;
     QThread m_VariableAcquisitionWorkerThread;
@@ -211,11 +210,6 @@ VariableModel *VariableController::variableModel() noexcept
 QItemSelectionModel *VariableController::variableSelectionModel() noexcept
 {
     return impl->m_VariableSelectionModel;
-}
-
-void VariableController::setTimeController(TimeController *timeController) noexcept
-{
-    impl->m_TimeController = timeController;
 }
 
 std::shared_ptr<Variable>
@@ -339,15 +333,15 @@ VariableController::variablesForMimeData(const QByteArray &mimeData) const
 
 std::shared_ptr<Variable>
 VariableController::createVariable(const QString &name, const QVariantHash &metadata,
-                                   std::shared_ptr<IDataProvider> provider) noexcept
+                                   std::shared_ptr<IDataProvider> provider, const SqpRange& range) noexcept
 {
-    if (!impl->m_TimeController) {
-        qCCritical(LOG_VariableController())
-            << tr("Impossible to create variable: The time controller is null");
-        return nullptr;
-    }
+//    if (!impl->m_TimeController) {
+//        qCCritical(LOG_VariableController())
+//            << tr("Impossible to create variable: The time controller is null");
+//        return nullptr;
+//    }
 
-    auto range = impl->m_TimeController->dateTime();
+//    auto range = impl->m_TimeController->dateTime();
 
     if (auto newVariable = impl->m_VariableModel->createVariable(name, metadata)) {
         auto varId = QUuid::createUuid();

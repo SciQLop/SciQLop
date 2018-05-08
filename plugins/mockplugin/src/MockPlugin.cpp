@@ -21,16 +21,16 @@ std::unique_ptr<IDataProvider> createDataProvider() noexcept
     return std::make_unique<CosinusProvider>();
 }
 
-std::unique_ptr<DataSourceItem> createProductItem(const QVariantHash &data,
+std::unique_ptr<DataSourceItem> createProductItem(const QVariantHash &metaData,
                                                   const QUuid &dataSourceUid)
 {
-    auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT, data);
+    auto result = std::make_unique<DataSourceItem>(DataSourceItemType::PRODUCT, metaData);
 
     // Adds plugin name to product metadata
     result->setData(DataSourceItem::PLUGIN_DATA_KEY, DATA_SOURCE_NAME);
-    result->setData(DataSourceItem::ID_DATA_KEY, data.value(DataSourceItem::NAME_DATA_KEY));
+    result->setData(DataSourceItem::ID_DATA_KEY, metaData.value(DataSourceItem::NAME_DATA_KEY));
 
-    auto productName = data.value(DataSourceItem::NAME_DATA_KEY).toString();
+    auto productName = metaData.value(DataSourceItem::NAME_DATA_KEY).toString();
 
     // Add action to load product from DataSourceController
     result->addAction(std::make_unique<DataSourceItemAction>(

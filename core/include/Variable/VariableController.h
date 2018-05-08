@@ -39,7 +39,6 @@ public:
     VariableModel *variableModel() noexcept;
     QItemSelectionModel *variableSelectionModel() noexcept;
 
-    void setTimeController(TimeController *timeController) noexcept;
 
     /**
      * Clones the variable passed in parameter and adds the duplicate to the controller
@@ -106,7 +105,7 @@ public slots:
      * @return the pointer to the new variable or nullptr if the creation failed
      */
     std::shared_ptr<Variable> createVariable(const QString &name, const QVariantHash &metadata,
-                                             std::shared_ptr<IDataProvider> provider) noexcept;
+                                             std::shared_ptr<IDataProvider> provider, const SqpRange &range) noexcept;
 
     /// Update the temporal parameters of every selected variable to dateTime
     void onDateTimeOnSelection(const SqpRange &dateTime);

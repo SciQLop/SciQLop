@@ -131,10 +131,10 @@ void TestAmdaAcquisition::testAcquisition()
 
     // Creates variable
     QFETCH(SqpRange, initialRange);
-    sqpApp->timeController().onTimeToUpdate(initialRange);
+    sqpApp->timeController().setDateTimeRange(initialRange);
     auto provider = std::make_shared<AmdaProvider>();
     auto variable = sqpApp->variableController().createVariable(
-        "bx_gse", {{"dataType", "scalar"}, {"xml:id", "imf(0)"}}, provider);
+        "bx_gse", {{"dataType", "scalar"}, {"xml:id", "imf(0)"}}, provider, initialRange);
 
     QTest::qWait(OPERATION_DELAY);
     validateVariable(variable, initialRange);

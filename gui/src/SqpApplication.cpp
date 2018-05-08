@@ -66,7 +66,7 @@ public:
         m_VisualizationControllerThread.setObjectName("VsualizationControllerThread");
 
         // Additionnal init
-        m_VariableController->setTimeController(m_TimeController.get());
+        //m_VariableController->setTimeController(m_TimeController.get());
     }
 
     virtual ~SqpApplicationPrivate()

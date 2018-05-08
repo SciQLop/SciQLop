@@ -35,7 +35,7 @@ signals:
 
 public slots:
     /// Slot called when a new dateTime has been defined.
-    void onTimeToUpdate(SqpRange dateTime);
+    void setDateTimeRange(SqpRange dateTime);
 
     /// Slot called when the dateTime has to be notified. Call timeUpdated signal
     void onTimeNotify();

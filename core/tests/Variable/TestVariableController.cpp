@@ -32,7 +32,7 @@ std::unique_ptr<TimeController> defaultTimeController()
 
     QDateTime start{QDate{2017, 01, 01}, QTime{0, 0, 0, 0}};
     QDateTime end{QDate{2017, 01, 02}, QTime{0, 0, 0, 0}};
-    timeController->onTimeToUpdate(
+    timeController->setDateTimeRange(
         SqpRange{DateUtils::secondsSinceEpoch(start), DateUtils::secondsSinceEpoch(end)});
 
     return timeController;
@@ -53,11 +53,11 @@ void TestVariableController::testDeleteVariable()
     // Creates variable controller
     auto timeController = defaultTimeController();
     VariableController variableController{};
-    variableController.setTimeController(timeController.get());
+    //variableController.setTimeController(timeController.get());
 
     // Creates a variable from the controller
     auto variable
-        = variableController.createVariable("variable", {}, std::make_shared<TestProvider>());
+        = variableController.createVariable("variable", {}, std::make_shared<TestProvider>(), timeController->dateTime());
 
     qDebug() << QString::number(variable.use_count());
 

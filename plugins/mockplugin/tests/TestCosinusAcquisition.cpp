@@ -153,10 +153,10 @@ void TestCosinusAcquisition::testAcquisition()
 
     // Creates variable
     QFETCH(SqpRange, initialRange);
-    sqpApp->timeController().onTimeToUpdate(initialRange);
+    sqpApp->timeController().setDateTimeRange(initialRange);
     auto provider = std::make_shared<CosinusProvider>();
     auto variable = sqpApp->variableController().createVariable(
-        "MMS", {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 10.}}, provider);
+        "MMS", {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 10.}}, provider, initialRange);
 
 
     QFETCH(int, operationDelay);

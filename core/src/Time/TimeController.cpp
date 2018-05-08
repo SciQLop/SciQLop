@@ -40,7 +40,7 @@ SqpRange TimeController::timeRangeForMimeData(const QByteArray &mimeData)
     return timeRange;
 }
 
-void TimeController::onTimeToUpdate(SqpRange dateTime)
+void TimeController::setDateTimeRange(SqpRange dateTime)
 {
     impl->m_DateTime = dateTime;
 }

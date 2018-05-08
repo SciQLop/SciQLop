@@ -39,7 +39,7 @@ struct CreateOperation : public IFuzzingOperation {
                                                   << "(metadata:" << variableMetadata << ")...";
 
         auto newVariable
-            = variableController.createVariable(variableName, variableMetadata, variableProvider);
+            = variableController.createVariable(variableName, variableMetadata, variableProvider, properties.value(INITIAL_RANGE_PROPERTY).value<SqpRange>());
 
         // Updates variable's state
         auto &variableState = fuzzingState.variableState(variableId);

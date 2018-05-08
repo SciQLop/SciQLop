@@ -112,15 +112,15 @@ struct IOperation {
  *Variable creation operation in the controller
  */
 struct Create : public IOperation {
-    explicit Create(int index) : m_Index{index} {}
+    explicit Create(int index, const SqpRange &range) : m_Index{index},m_range(range) {}
 
     void exec(VariableController &variableController) const override
     {
         auto variable = variableController.createVariable(QString::number(m_Index), {},
-                                                          std::make_unique<TestProvider>());
+                                                          std::make_unique<TestProvider>(), m_range);
     }
-
     int m_Index; ///< The index of the variable to create in the controller
+    SqpRange m_range;
 };
 
 /**
@@ -227,10 +227,10 @@ void testSyncCase1()
 
     Iterations iterations{};
     // Creates variables var0, var1 and var2
-    iterations.push_back({std::make_shared<Create>(0), {{0, initialRange}}});
-    iterations.push_back({std::make_shared<Create>(1), {{0, initialRange}, {1, initialRange}}});
+    iterations.push_back({std::make_shared<Create>(0, initialRange), {{0, initialRange}}});
+    iterations.push_back({std::make_shared<Create>(1, initialRange), {{0, initialRange}, {1, initialRange}}});
     iterations.push_back(
-        {std::make_shared<Create>(2), {{0, initialRange}, {1, initialRange}, {2, initialRange}}});
+        {std::make_shared<Create>(2, initialRange), {{0, initialRange}, {1, initialRange}, {2, initialRange}}});
 
     // Adds variables into the sync group (ranges don't need to be tested here)
     iterations.push_back({std::make_shared<Synchronize>(0, syncId)});
@@ -302,8 +302,8 @@ void testSyncCase2()
 
     Iterations iterations{};
     // Creates variables var0 and var1
-    iterations.push_back({std::make_shared<Create>(0), {{0, initialRange}}});
-    iterations.push_back({std::make_shared<Create>(1), {{0, initialRange}, {1, initialRange}}});
+    iterations.push_back({std::make_shared<Create>(0, initialRange), {{0, initialRange}}});
+    iterations.push_back({std::make_shared<Create>(1, initialRange), {{0, initialRange}, {1, initialRange}}});
 
     // Adds variables into the sync group (ranges don't need to be tested here)
     iterations.push_back({std::make_shared<Synchronize>(0, syncId)});
@@ -361,7 +361,7 @@ void testSyncOnVarCase1()
 
     Iterations creations{};
     // Creates variables var0, var1 and var2
-    creations.push_back({std::make_shared<Create>(0), {{0, initialRange}}});
+    creations.push_back({std::make_shared<Create>(0, initialRange), {{0, initialRange}}});
 
     Iterations synchronization{};
     // Adds variables into the sync group (ranges don't need to be tested here)
@@ -447,11 +447,11 @@ void TestVariableSync::testSync()
     // Inits controllers
     TimeController timeController{};
     VariableController variableController{};
-    variableController.setTimeController(&timeController);
+    //variableController.setTimeController(&timeController);
 
     QFETCH(QUuid, syncId);
     QFETCH(SqpRange, initialRange);
-    timeController.onTimeToUpdate(initialRange);
+    timeController.setDateTimeRange(initialRange);
 
     // Synchronization group used
     variableController.onAddSynchronizationGroupId(syncId);
@@ -474,11 +474,11 @@ void TestVariableSync::testSyncOneVar()
     // Inits controllers
     TimeController timeController{};
     VariableController variableController{};
-    variableController.setTimeController(&timeController);
+    //variableController.setTimeController(&timeController);
 
     QFETCH(QUuid, syncId);
     QFETCH(SqpRange, initialRange);
-    timeController.onTimeToUpdate(initialRange);
+    timeController.setDateTimeRange(initialRange);
 
     // Synchronization group used
     variableController.onAddSynchronizationGroupId(syncId);

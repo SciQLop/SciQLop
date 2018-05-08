@@ -361,7 +361,7 @@ void TestAmdaFuzzing::testFuzzing()
     // Sets initial range on time controller
     SqpRange initialRange{initialRangeStart, initialRangeEnd};
     qCInfo(LOG_TestAmdaFuzzing()).noquote() << "Setting initial range to" << initialRange << "...";
-    timeController.onTimeToUpdate(initialRange);
+    timeController.setDateTimeRange(initialRange);
     properties.insert(INITIAL_RANGE_PROPERTY, QVariant::fromValue(initialRange));
 
     FuzzingTest test{variableController, properties};

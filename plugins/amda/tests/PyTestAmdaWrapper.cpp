@@ -74,8 +74,8 @@ PYBIND11_MODULE(pytestamda, m){
 
     py::class_<VariableController>(m, "VariableController")
             .def_static("createVariable",[](const QString &name,
-                        std::shared_ptr<IDataProvider> provider){
-        return sqpApp->variableController().createVariable(name, {{"dataType", "vector"}, {"xml:id", "c1_b"}}, provider);
+                        std::shared_ptr<IDataProvider> provider, const SqpRange& range){
+        return sqpApp->variableController().createVariable(name, {{"dataType", "vector"}, {"xml:id", "c1_b"}}, provider, range);
     })
             .def_static("hasPendingDownloads",
                         [](){return sqpApp->variableController().hasPendingDownloads();}
@@ -106,7 +106,7 @@ PYBIND11_MODULE(pytestamda, m){
     });
 
     py::class_<TimeController>(m,"TimeController")
-            .def_static("setTime", [](SqpRange range){sqpApp->timeController().onTimeToUpdate(range);});
+            .def_static("setTime", [](SqpRange range){sqpApp->timeController().setDateTimeRange(range);});
 
 
     auto amda_provider = std::make_shared<AmdaProvider>();

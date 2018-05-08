@@ -51,7 +51,7 @@ TimeWidget::TimeWidget(QWidget *parent)
     auto dateTime = SqpRange{DateUtils::secondsSinceEpoch(startDateTime),
                              DateUtils::secondsSinceEpoch(endDateTime)};
 
-    sqpApp->timeController().onTimeToUpdate(dateTime);
+    sqpApp->timeController().setDateTimeRange(dateTime);
 }
 
 
