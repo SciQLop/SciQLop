@@ -60,6 +60,8 @@ public:
         QVariant status_code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
         Response resp = Response(reply->readAll(), status_code.toInt());
         delete reply;
+        if(user!="" and passwd!="")
+            auth.remove(url);
         return resp;
     }
 
@@ -68,7 +70,7 @@ public:
         auto uuid = QUuid::createUuid();
         QNetworkRequest request = buildRequest(url, user, passwd);
         QNetworkReply *reply = manager.get(request);
-        auto callback_wrapper = [uuid, callback, this](){
+        auto callback_wrapper = [url, uuid, callback, this](){
             QNetworkReply* reply;
             {
                 QWriteLocker locker(&pending_requests_lock);
@@ -76,6 +78,7 @@ public:
             }
             QVariant status_code = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute);
             Response resp = Response(reply->readAll(), status_code.toInt());
+            auth.remove(url);
             delete reply;
             callback(uuid, resp);
         };
