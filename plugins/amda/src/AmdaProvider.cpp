@@ -145,7 +145,7 @@ void AmdaProvider::onReplyDownloadProgress(QUuid acqIdentifier,
     }
 }
 
-void AmdaProvider::retrieveData(QUuid token, const SqpRange &dateTime, const QVariantHash &data)
+void AmdaProvider::retrieveData(QUuid token, const DateTimeRange &dateTime, const QVariantHash &data)
 {
     // Retrieves product ID from data: if the value is invalid, no request is made
     auto productId = data.value(AMDA_XML_ID_KEY).toString();

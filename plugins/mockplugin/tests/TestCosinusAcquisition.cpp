@@ -33,7 +33,7 @@ const auto DATETIME_FORMAT = QStringLiteral("yyyy/MM/dd hh:mm:ss:zzz");
  * @return true if the data of the candidate series and the reference series are identical in the
  * range, false otherwise
  */
-bool checkDataSeries(std::shared_ptr<IDataSeries> candidate, const SqpRange &range,
+bool checkDataSeries(std::shared_ptr<IDataSeries> candidate, const DateTimeRange &range,
                      std::shared_ptr<IDataSeries> reference)
 {
     if (candidate == nullptr || reference == nullptr) {
@@ -76,10 +76,10 @@ void TestCosinusAcquisition::testAcquisition_data()
     // Test structure //
     // ////////////// //
 
-    QTest::addColumn<SqpRange>("referenceRange");           // Range for generating reference series
-    QTest::addColumn<SqpRange>("initialRange");             // First acquisition
+    QTest::addColumn<DateTimeRange>("referenceRange");           // Range for generating reference series
+    QTest::addColumn<DateTimeRange>("initialRange");             // First acquisition
     QTest::addColumn<int>("operationDelay");                // Acquisitions to make
-    QTest::addColumn<std::vector<SqpRange> >("operations"); // Acquisitions to make
+    QTest::addColumn<std::vector<DateTimeRange> >("operations"); // Acquisitions to make
 
     // ////////// //
     // Test cases //
@@ -91,48 +91,48 @@ void TestCosinusAcquisition::testAcquisition_data()
     };
 
     QTest::newRow("cosinus")
-        << SqpRange{dateTime(2017, 1, 1, 12, 0, 0), dateTime(2017, 1, 1, 13, 0, 0)}
-        << SqpRange{dateTime(2017, 1, 1, 12, 30, 0), dateTime(2017, 1, 1, 12, 35, 1)} << 250
-        << std::vector<SqpRange>{
+        << DateTimeRange{dateTime(2017, 1, 1, 12, 0, 0), dateTime(2017, 1, 1, 13, 0, 0)}
+        << DateTimeRange{dateTime(2017, 1, 1, 12, 30, 0), dateTime(2017, 1, 1, 12, 35, 1)} << 250
+        << std::vector<DateTimeRange>{
                // Pan (jump) left
-               SqpRange{dateTime(2017, 1, 1, 12, 45, 0), dateTime(2017, 1, 1, 12, 50, 0)},
+               DateTimeRange{dateTime(2017, 1, 1, 12, 45, 0), dateTime(2017, 1, 1, 12, 50, 0)},
                // Pan (jump) right
-               SqpRange{dateTime(2017, 1, 1, 12, 15, 0), dateTime(2017, 1, 1, 12, 20, 0)},
+               DateTimeRange{dateTime(2017, 1, 1, 12, 15, 0), dateTime(2017, 1, 1, 12, 20, 0)},
                // Pan (overlay) right
-               SqpRange{dateTime(2017, 1, 1, 12, 14, 0), dateTime(2017, 1, 1, 12, 19, 0)},
+               DateTimeRange{dateTime(2017, 1, 1, 12, 14, 0), dateTime(2017, 1, 1, 12, 19, 0)},
                // Pan (overlay) left
-               SqpRange{dateTime(2017, 1, 1, 12, 15, 0), dateTime(2017, 1, 1, 12, 20, 0)},
+               DateTimeRange{dateTime(2017, 1, 1, 12, 15, 0), dateTime(2017, 1, 1, 12, 20, 0)},
                // Pan (overlay) left
-               SqpRange{dateTime(2017, 1, 1, 12, 16, 0), dateTime(2017, 1, 1, 12, 21, 0)},
+               DateTimeRange{dateTime(2017, 1, 1, 12, 16, 0), dateTime(2017, 1, 1, 12, 21, 0)},
                // Zoom in
-               SqpRange{dateTime(2017, 1, 1, 12, 17, 30), dateTime(2017, 1, 1, 12, 19, 30)},
+               DateTimeRange{dateTime(2017, 1, 1, 12, 17, 30), dateTime(2017, 1, 1, 12, 19, 30)},
                // Zoom out
-               SqpRange{dateTime(2017, 1, 1, 12, 12, 30), dateTime(2017, 1, 1, 12, 24, 30)}};
+               DateTimeRange{dateTime(2017, 1, 1, 12, 12, 30), dateTime(2017, 1, 1, 12, 24, 30)}};
 
     QTest::newRow("cosinus_big")
-        << SqpRange{dateTime(2017, 1, 1, 1, 0, 0), dateTime(2017, 1, 5, 13, 0, 0)}
-        << SqpRange{dateTime(2017, 1, 2, 6, 30, 0), dateTime(2017, 1, 2, 18, 30, 0)} << 5000
-        << std::vector<SqpRange>{
+        << DateTimeRange{dateTime(2017, 1, 1, 1, 0, 0), dateTime(2017, 1, 5, 13, 0, 0)}
+        << DateTimeRange{dateTime(2017, 1, 2, 6, 30, 0), dateTime(2017, 1, 2, 18, 30, 0)} << 5000
+        << std::vector<DateTimeRange>{
                // Pan (jump) left
-               SqpRange{dateTime(2017, 1, 1, 13, 30, 0), dateTime(2017, 1, 1, 18, 30, 0)},
+               DateTimeRange{dateTime(2017, 1, 1, 13, 30, 0), dateTime(2017, 1, 1, 18, 30, 0)},
                // Pan (jump) right
-               SqpRange{dateTime(2017, 1, 3, 4, 30, 0), dateTime(2017, 1, 3, 10, 30, 0)},
+               DateTimeRange{dateTime(2017, 1, 3, 4, 30, 0), dateTime(2017, 1, 3, 10, 30, 0)},
                // Pan (overlay) right
-               SqpRange{dateTime(2017, 1, 3, 8, 30, 0), dateTime(2017, 1, 3, 12, 30, 0)},
+               DateTimeRange{dateTime(2017, 1, 3, 8, 30, 0), dateTime(2017, 1, 3, 12, 30, 0)},
                // Pan (overlay) left
-               SqpRange{dateTime(2017, 1, 2, 8, 30, 0), dateTime(2017, 1, 3, 10, 30, 0)},
+               DateTimeRange{dateTime(2017, 1, 2, 8, 30, 0), dateTime(2017, 1, 3, 10, 30, 0)},
                // Pan (overlay) left
-               SqpRange{dateTime(2017, 1, 1, 12, 30, 0), dateTime(2017, 1, 3, 5, 30, 0)},
+               DateTimeRange{dateTime(2017, 1, 1, 12, 30, 0), dateTime(2017, 1, 3, 5, 30, 0)},
                // Zoom in
-               SqpRange{dateTime(2017, 1, 2, 2, 30, 0), dateTime(2017, 1, 2, 8, 30, 0)},
+               DateTimeRange{dateTime(2017, 1, 2, 2, 30, 0), dateTime(2017, 1, 2, 8, 30, 0)},
                // Zoom out
-               SqpRange{dateTime(2017, 1, 1, 14, 30, 0), dateTime(2017, 1, 3, 12, 30, 0)}};
+               DateTimeRange{dateTime(2017, 1, 1, 14, 30, 0), dateTime(2017, 1, 3, 12, 30, 0)}};
 }
 
 void TestCosinusAcquisition::testAcquisition()
 {
     // Retrieves reference range
-    QFETCH(SqpRange, referenceRange);
+    QFETCH(DateTimeRange, referenceRange);
     CosinusProvider referenceProvider{};
     auto dataSeries = referenceProvider.provideDataSeries(
         referenceRange, {{COSINUS_TYPE_KEY, "scalar"}, {COSINUS_FREQUENCY_KEY, 10.}});
@@ -142,7 +142,7 @@ void TestCosinusAcquisition::testAcquisition()
 
     /// Lambda used to validate a variable at each step
     auto validateVariable
-        = [dataSeries](std::shared_ptr<Variable> variable, const SqpRange &range) {
+        = [dataSeries](std::shared_ptr<Variable> variable, const DateTimeRange &range) {
               // Checks that the variable's range has changed
               qInfo() << "range vs expected range" << variable->range() << range;
               QCOMPARE(variable->range(), range);
@@ -152,7 +152,7 @@ void TestCosinusAcquisition::testAcquisition()
           };
 
     // Creates variable
-    QFETCH(SqpRange, initialRange);
+    QFETCH(DateTimeRange, initialRange);
     sqpApp->timeController().setDateTimeRange(initialRange);
     auto provider = std::make_shared<CosinusProvider>();
     auto variable = sqpApp->variableController().createVariable(
@@ -165,7 +165,7 @@ void TestCosinusAcquisition::testAcquisition()
 
     QTest::qWait(operationDelay);
     // Makes operations on the variable
-    QFETCH(std::vector<SqpRange>, operations);
+    QFETCH(std::vector<DateTimeRange>, operations);
     for (const auto &operation : operations) {
         // Asks request on the variable and waits during its execution
         sqpApp->variableController().onRequestDataLoading({variable}, operation, false);

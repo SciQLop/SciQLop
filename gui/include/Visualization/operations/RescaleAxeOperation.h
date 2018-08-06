@@ -24,7 +24,7 @@ public:
      * Ctor
      * @param variable the variable to remove from widgets
      */
-    explicit RescaleAxeOperation(std::shared_ptr<Variable> variable, const SqpRange &range);
+    explicit RescaleAxeOperation(std::shared_ptr<Variable> variable, const DateTimeRange &range);
 
     void visitEnter(VisualizationWidget *widget) override final;
     void visitLeave(VisualizationWidget *widget) override final;

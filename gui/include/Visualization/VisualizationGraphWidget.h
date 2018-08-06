@@ -15,7 +15,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationGraphWidget)
 
 class QCPRange;
 class QCustomPlot;
-class SqpRange;
+class DateTimeRange;
 class Variable;
 class VisualizationWidget;
 class VisualizationZoneWidget;
@@ -58,7 +58,7 @@ public:
     /// Sets graph options
     void setFlags(GraphFlags flags);
 
-    void addVariable(std::shared_ptr<Variable> variable, SqpRange range);
+    void addVariable(std::shared_ptr<Variable> variable, DateTimeRange range);
 
     /// Removes a variable from the graph
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
@@ -68,17 +68,17 @@ public:
 
     /// Sets the y-axis range based on the data of a variable
     void setYRange(std::shared_ptr<Variable> variable);
-    SqpRange graphRange() const noexcept;
-    void setGraphRange(const SqpRange &range, bool calibration = false);
+    DateTimeRange graphRange() const noexcept;
+    void setGraphRange(const DateTimeRange &range, bool calibration = false);
     void setAutoRangeOnVariableInitialization(bool value);
 
     // Zones
     /// Returns the ranges of all the selection zones on the graph
-    QVector<SqpRange> selectionZoneRanges() const;
+    QVector<DateTimeRange> selectionZoneRanges() const;
     /// Adds new selection zones in the graph
-    void addSelectionZones(const QVector<SqpRange> &ranges);
+    void addSelectionZones(const QVector<DateTimeRange> &ranges);
     /// Adds a new selection zone in the graph
-    VisualizationSelectionZoneItem *addSelectionZone(const QString &name, const SqpRange &range);
+    VisualizationSelectionZoneItem *addSelectionZone(const QString &name, const DateTimeRange &range);
     /// Removes the specified selection zone
     void removeSelectionZone(VisualizationSelectionZoneItem *selectionZone);
 
@@ -110,8 +110,8 @@ public:
     void removeHorizontalCursor();
 
 signals:
-    void synchronize(const SqpRange &range, const SqpRange &oldRange);
-    void requestDataLoading(QVector<std::shared_ptr<Variable> > variable, const SqpRange &range,
+    void synchronize(const DateTimeRange &range, const DateTimeRange &oldRange);
+    void requestDataLoading(QVector<std::shared_ptr<Variable> > variable, const DateTimeRange &range,
                             bool synchronise);
 
     /// Signal emitted when the variable is about to be removed from the graph
@@ -152,7 +152,7 @@ private slots:
 
     void onDataCacheVariableUpdated();
 
-    void onUpdateVarDisplaying(std::shared_ptr<Variable> variable, const SqpRange &range);
+    void onUpdateVarDisplaying(std::shared_ptr<Variable> variable, const DateTimeRange &range);
 };
 
 #endif // SCIQLOP_VISUALIZATIONGRAPHWIDGET_H

@@ -10,11 +10,11 @@ class SCIQLOP_CORE_EXPORT VariableSingleThresholdCacheStrategy : public Variable
 public:
     VariableSingleThresholdCacheStrategy() = default;
 
-    std::pair<SqpRange, SqpRange> computeRange(const SqpRange &vRange,
-                                               const SqpRange &rangeRequested) override
+    std::pair<DateTimeRange, DateTimeRange> computeRange(const DateTimeRange &vRange,
+                                               const DateTimeRange &rangeRequested) override
     {
 
-        auto varRanges = std::pair<SqpRange, SqpRange>{};
+        auto varRanges = std::pair<DateTimeRange, DateTimeRange>{};
 
         auto toleranceFactor = SqpSettings::toleranceValue(
             GENERAL_TOLERANCE_AT_UPDATE_KEY, GENERAL_TOLERANCE_AT_UPDATE_DEFAULT_VALUE);
@@ -22,7 +22,7 @@ public:
 
         varRanges.first = rangeRequested;
         varRanges.second
-            = SqpRange{rangeRequested.m_TStart - tolerance, rangeRequested.m_TEnd + tolerance};
+            = DateTimeRange{rangeRequested.m_TStart - tolerance, rangeRequested.m_TEnd + tolerance};
 
         return varRanges;
     }

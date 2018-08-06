@@ -35,10 +35,10 @@ public:
 
     QString name() const noexcept;
     void setName(const QString &name) noexcept;
-    SqpRange range() const noexcept;
-    void setRange(const SqpRange &range) noexcept;
-    SqpRange cacheRange() const noexcept;
-    void setCacheRange(const SqpRange &cacheRange) noexcept;
+    DateTimeRange range() const noexcept;
+    void setRange(const DateTimeRange &range) noexcept;
+    DateTimeRange cacheRange() const noexcept;
+    void setCacheRange(const DateTimeRange &cacheRange) noexcept;
 
     /// @return the number of points hold by the variable. The number of points is updated each time
     /// the data series changes
@@ -50,7 +50,7 @@ public:
     /// @return the real range, invalid range if the data series is null or empty
     /// @sa setDataSeries()
     /// @sa setRange()
-    SqpRange realRange() const noexcept;
+    DateTimeRange realRange() const noexcept;
 
     /// @return the data of the variable, nullptr if there is no data
     std::shared_ptr<IDataSeries> dataSeries() const noexcept;
@@ -60,23 +60,23 @@ public:
 
     QVariantHash metadata() const noexcept;
 
-    bool contains(const SqpRange &range) const noexcept;
-    bool intersect(const SqpRange &range) const noexcept;
-    bool isInside(const SqpRange &range) const noexcept;
+    bool contains(const DateTimeRange &range) const noexcept;
+    bool intersect(const DateTimeRange &range) const noexcept;
+    bool isInside(const DateTimeRange &range) const noexcept;
 
-    bool cacheContains(const SqpRange &range) const noexcept;
-    bool cacheIntersect(const SqpRange &range) const noexcept;
-    bool cacheIsInside(const SqpRange &range) const noexcept;
+    bool cacheContains(const DateTimeRange &range) const noexcept;
+    bool cacheIntersect(const DateTimeRange &range) const noexcept;
+    bool cacheIsInside(const DateTimeRange &range) const noexcept;
 
-    QVector<SqpRange> provideNotInCacheRangeList(const SqpRange &range) const noexcept;
-    QVector<SqpRange> provideInCacheRangeList(const SqpRange &range) const noexcept;
+    QVector<DateTimeRange> provideNotInCacheRangeList(const DateTimeRange &range) const noexcept;
+    QVector<DateTimeRange> provideInCacheRangeList(const DateTimeRange &range) const noexcept;
     void mergeDataSeries(std::shared_ptr<IDataSeries> dataSeries) noexcept;
 
-    static QVector<SqpRange> provideNotInCacheRangeList(const SqpRange &oldRange,
-                                                        const SqpRange &nextRange);
+    static QVector<DateTimeRange> provideNotInCacheRangeList(const DateTimeRange &oldRange,
+                                                        const DateTimeRange &nextRange);
 
-    static QVector<SqpRange> provideInCacheRangeList(const SqpRange &oldRange,
-                                                     const SqpRange &nextRange);
+    static QVector<DateTimeRange> provideInCacheRangeList(const DateTimeRange &oldRange,
+                                                     const DateTimeRange &nextRange);
 
 signals:
     void updated();

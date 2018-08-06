@@ -30,7 +30,7 @@ public:
 
     /// Sets the range of the zone, only works if there is at least one graph in the zone
     /// Note: calibrations between graphs are lost.
-    void setZoneRange(const SqpRange &range);
+    void setZoneRange(const DateTimeRange &range);
 
     /// Adds a graph widget
     void addGraph(VisualizationGraphWidget *graphWidget);

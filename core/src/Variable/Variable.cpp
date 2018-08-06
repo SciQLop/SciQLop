@@ -83,7 +83,7 @@ struct Variable::VariablePrivate {
 
             m_RealRange
                 = (minXAxisIt != end && maxXAxisIt != end && minXAxisIt->x() <= maxXAxisIt->x())
-                      ? SqpRange{minXAxisIt->x(), maxXAxisIt->x()}
+                      ? DateTimeRange{minXAxisIt->x(), maxXAxisIt->x()}
                       : INVALID_RANGE;
             m_DataSeries->unlock();
         }
@@ -94,11 +94,11 @@ struct Variable::VariablePrivate {
 
     QString m_Name;
 
-    SqpRange m_Range;
-    SqpRange m_CacheRange;
+    DateTimeRange m_Range;
+    DateTimeRange m_CacheRange;
     QVariantHash m_Metadata;
     std::shared_ptr<IDataSeries> m_DataSeries;
-    SqpRange m_RealRange;
+    DateTimeRange m_RealRange;
     int m_NbPoints;
     DataSeriesType m_Type;
 
@@ -135,7 +135,7 @@ void Variable::setName(const QString &name) noexcept
     impl->unlock();
 }
 
-SqpRange Variable::range() const noexcept
+DateTimeRange Variable::range() const noexcept
 {
     impl->lockRead();
     auto range = impl->m_Range;
@@ -143,7 +143,7 @@ SqpRange Variable::range() const noexcept
     return range;
 }
 
-void Variable::setRange(const SqpRange &range) noexcept
+void Variable::setRange(const DateTimeRange &range) noexcept
 {
     impl->lockWrite();
     impl->m_Range = range;
@@ -151,7 +151,7 @@ void Variable::setRange(const SqpRange &range) noexcept
     impl->unlock();
 }
 
-SqpRange Variable::cacheRange() const noexcept
+DateTimeRange Variable::cacheRange() const noexcept
 {
     impl->lockRead();
     auto cacheRange = impl->m_CacheRange;
@@ -159,7 +159,7 @@ SqpRange Variable::cacheRange() const noexcept
     return cacheRange;
 }
 
-void Variable::setCacheRange(const SqpRange &cacheRange) noexcept
+void Variable::setCacheRange(const DateTimeRange &cacheRange) noexcept
 {
     impl->lockWrite();
     if (cacheRange != impl->m_CacheRange) {
@@ -173,7 +173,7 @@ int Variable::nbPoints() const noexcept
     return impl->m_NbPoints;
 }
 
-SqpRange Variable::realRange() const noexcept
+DateTimeRange Variable::realRange() const noexcept
 {
     return impl->m_RealRange;
 }
@@ -233,7 +233,7 @@ QVariantHash Variable::metadata() const noexcept
     return metadata;
 }
 
-bool Variable::contains(const SqpRange &range) const noexcept
+bool Variable::contains(const DateTimeRange &range) const noexcept
 {
     impl->lockRead();
     auto res = impl->m_Range.contains(range);
@@ -241,7 +241,7 @@ bool Variable::contains(const SqpRange &range) const noexcept
     return res;
 }
 
-bool Variable::intersect(const SqpRange &range) const noexcept
+bool Variable::intersect(const DateTimeRange &range) const noexcept
 {
 
     impl->lockRead();
@@ -250,15 +250,15 @@ bool Variable::intersect(const SqpRange &range) const noexcept
     return res;
 }
 
-bool Variable::isInside(const SqpRange &range) const noexcept
+bool Variable::isInside(const DateTimeRange &range) const noexcept
 {
     impl->lockRead();
-    auto res = range.contains(SqpRange{impl->m_Range.m_TStart, impl->m_Range.m_TEnd});
+    auto res = range.contains(DateTimeRange{impl->m_Range.m_TStart, impl->m_Range.m_TEnd});
     impl->unlock();
     return res;
 }
 
-bool Variable::cacheContains(const SqpRange &range) const noexcept
+bool Variable::cacheContains(const DateTimeRange &range) const noexcept
 {
     impl->lockRead();
     auto res = impl->m_CacheRange.contains(range);
@@ -266,7 +266,7 @@ bool Variable::cacheContains(const SqpRange &range) const noexcept
     return res;
 }
 
-bool Variable::cacheIntersect(const SqpRange &range) const noexcept
+bool Variable::cacheIntersect(const DateTimeRange &range) const noexcept
 {
     impl->lockRead();
     auto res = impl->m_CacheRange.intersect(range);
@@ -274,19 +274,19 @@ bool Variable::cacheIntersect(const SqpRange &range) const noexcept
     return res;
 }
 
-bool Variable::cacheIsInside(const SqpRange &range) const noexcept
+bool Variable::cacheIsInside(const DateTimeRange &range) const noexcept
 {
     impl->lockRead();
-    auto res = range.contains(SqpRange{impl->m_CacheRange.m_TStart, impl->m_CacheRange.m_TEnd});
+    auto res = range.contains(DateTimeRange{impl->m_CacheRange.m_TStart, impl->m_CacheRange.m_TEnd});
     impl->unlock();
     return res;
 }
 
 
-QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &range) const noexcept
+QVector<DateTimeRange> Variable::provideNotInCacheRangeList(const DateTimeRange &range) const noexcept
 {
     // This code assume that cach in contigue. Can return 0, 1 or 2 SqpRange
-    auto notInCache = QVector<SqpRange>{};
+    auto notInCache = QVector<DateTimeRange>{};
     if (impl->m_CacheRange != INVALID_RANGE) {
 
         if (!this->cacheContains(range)) {
@@ -296,15 +296,15 @@ QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &range) co
             }
             else if (range.m_TStart < impl->m_CacheRange.m_TStart
                      && range.m_TEnd <= impl->m_CacheRange.m_TEnd) {
-                notInCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TStart};
+                notInCache << DateTimeRange{range.m_TStart, impl->m_CacheRange.m_TStart};
             }
             else if (range.m_TStart < impl->m_CacheRange.m_TStart
                      && range.m_TEnd > impl->m_CacheRange.m_TEnd) {
-                notInCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TStart}
-                           << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
+                notInCache << DateTimeRange{range.m_TStart, impl->m_CacheRange.m_TStart}
+                           << DateTimeRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
             }
             else if (range.m_TStart < impl->m_CacheRange.m_TEnd) {
-                notInCache << SqpRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
+                notInCache << DateTimeRange{impl->m_CacheRange.m_TEnd, range.m_TEnd};
             }
             else {
                 qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
@@ -319,11 +319,11 @@ QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &range) co
     return notInCache;
 }
 
-QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &range) const noexcept
+QVector<DateTimeRange> Variable::provideInCacheRangeList(const DateTimeRange &range) const noexcept
 {
     // This code assume that cach in contigue. Can return 0 or 1 SqpRange
 
-    auto inCache = QVector<SqpRange>{};
+    auto inCache = QVector<DateTimeRange>{};
 
     if (impl->m_CacheRange != INVALID_RANGE) {
 
@@ -331,7 +331,7 @@ QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &range) const
             if (range.m_TStart <= impl->m_CacheRange.m_TStart
                 && range.m_TEnd >= impl->m_CacheRange.m_TStart
                 && range.m_TEnd < impl->m_CacheRange.m_TEnd) {
-                inCache << SqpRange{impl->m_CacheRange.m_TStart, range.m_TEnd};
+                inCache << DateTimeRange{impl->m_CacheRange.m_TStart, range.m_TEnd};
             }
 
             else if (range.m_TStart >= impl->m_CacheRange.m_TStart
@@ -340,7 +340,7 @@ QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &range) const
             }
             else if (range.m_TStart > impl->m_CacheRange.m_TStart
                      && range.m_TEnd > impl->m_CacheRange.m_TEnd) {
-                inCache << SqpRange{range.m_TStart, impl->m_CacheRange.m_TEnd};
+                inCache << DateTimeRange{range.m_TStart, impl->m_CacheRange.m_TEnd};
             }
             else if (range.m_TStart <= impl->m_CacheRange.m_TStart
                      && range.m_TEnd >= impl->m_CacheRange.m_TEnd) {
@@ -357,12 +357,12 @@ QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &range) const
 }
 
 
-QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &oldRange,
-                                                       const SqpRange &nextRange)
+QVector<DateTimeRange> Variable::provideNotInCacheRangeList(const DateTimeRange &oldRange,
+                                                       const DateTimeRange &nextRange)
 {
 
     // This code assume that cach in contigue. Can return 0, 1 or 2 SqpRange
-    auto notInCache = QVector<SqpRange>{};
+    auto notInCache = QVector<DateTimeRange>{};
     if (oldRange != INVALID_RANGE) {
 
         if (!oldRange.contains(nextRange)) {
@@ -371,14 +371,14 @@ QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &oldRange,
             }
             else if (nextRange.m_TStart < oldRange.m_TStart
                      && nextRange.m_TEnd <= oldRange.m_TEnd) {
-                notInCache << SqpRange{nextRange.m_TStart, oldRange.m_TStart};
+                notInCache << DateTimeRange{nextRange.m_TStart, oldRange.m_TStart};
             }
             else if (nextRange.m_TStart < oldRange.m_TStart && nextRange.m_TEnd > oldRange.m_TEnd) {
-                notInCache << SqpRange{nextRange.m_TStart, oldRange.m_TStart}
-                           << SqpRange{oldRange.m_TEnd, nextRange.m_TEnd};
+                notInCache << DateTimeRange{nextRange.m_TStart, oldRange.m_TStart}
+                           << DateTimeRange{oldRange.m_TEnd, nextRange.m_TEnd};
             }
             else if (nextRange.m_TStart < oldRange.m_TEnd) {
-                notInCache << SqpRange{oldRange.m_TEnd, nextRange.m_TEnd};
+                notInCache << DateTimeRange{oldRange.m_TEnd, nextRange.m_TEnd};
             }
             else {
                 qCCritical(LOG_Variable()) << tr("Detection of unknown case.")
@@ -393,19 +393,19 @@ QVector<SqpRange> Variable::provideNotInCacheRangeList(const SqpRange &oldRange,
     return notInCache;
 }
 
-QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &oldRange,
-                                                    const SqpRange &nextRange)
+QVector<DateTimeRange> Variable::provideInCacheRangeList(const DateTimeRange &oldRange,
+                                                    const DateTimeRange &nextRange)
 {
     // This code assume that cach is contigue. Can return 0 or 1 SqpRange
 
-    auto inCache = QVector<SqpRange>{};
+    auto inCache = QVector<DateTimeRange>{};
 
     if (oldRange != INVALID_RANGE) {
 
         if (oldRange.intersect(nextRange)) {
             if (nextRange.m_TStart <= oldRange.m_TStart && nextRange.m_TEnd >= oldRange.m_TStart
                 && nextRange.m_TEnd < oldRange.m_TEnd) {
-                inCache << SqpRange{oldRange.m_TStart, nextRange.m_TEnd};
+                inCache << DateTimeRange{oldRange.m_TStart, nextRange.m_TEnd};
             }
 
             else if (nextRange.m_TStart >= oldRange.m_TStart
@@ -413,7 +413,7 @@ QVector<SqpRange> Variable::provideInCacheRangeList(const SqpRange &oldRange,
                 inCache << nextRange;
             }
             else if (nextRange.m_TStart > oldRange.m_TStart && nextRange.m_TEnd > oldRange.m_TEnd) {
-                inCache << SqpRange{nextRange.m_TStart, oldRange.m_TEnd};
+                inCache << DateTimeRange{nextRange.m_TStart, oldRange.m_TEnd};
             }
             else if (nextRange.m_TStart <= oldRange.m_TStart
                      && nextRange.m_TEnd >= oldRange.m_TEnd) {

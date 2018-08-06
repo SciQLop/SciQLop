@@ -16,7 +16,7 @@ auto date = [](int year, int month, int day, int hours, int minutes, int seconds
 };
 
 /// Generates a series of test data for a range
-std::shared_ptr<ScalarSeries> dataSeries(const SqpRange &range)
+std::shared_ptr<ScalarSeries> dataSeries(const DateTimeRange &range)
 {
     auto xAxisData = std::vector<double>{};
     auto valuesData = std::vector<double>{};
@@ -60,18 +60,18 @@ void TestVariable::testClone_data()
 
     QTest::addColumn<QString>("name");
     QTest::addColumn<QVariantHash>("metadata");
-    QTest::addColumn<SqpRange>("range");
-    QTest::addColumn<SqpRange>("cacheRange");
+    QTest::addColumn<DateTimeRange>("range");
+    QTest::addColumn<DateTimeRange>("cacheRange");
     QTest::addColumn<std::shared_ptr<ScalarSeries> >("dataSeries");
 
     // ////////// //
     // Test cases //
     // ////////// //
 
-    auto cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 13, 0, 0)};
+    auto cacheRange = DateTimeRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 13, 0, 0)};
     QTest::newRow("clone1") << QStringLiteral("var1")
                             << QVariantHash{{"data1", 1}, {"data2", "abc"}}
-                            << SqpRange{date(2017, 1, 1, 12, 30, 0), (date(2017, 1, 1, 12, 45, 0))}
+                            << DateTimeRange{date(2017, 1, 1, 12, 30, 0), (date(2017, 1, 1, 12, 45, 0))}
                             << cacheRange << dataSeries(cacheRange);
 }
 
@@ -80,8 +80,8 @@ void TestVariable::testClone()
     // Creates variable
     QFETCH(QString, name);
     QFETCH(QVariantHash, metadata);
-    QFETCH(SqpRange, range);
-    QFETCH(SqpRange, cacheRange);
+    QFETCH(DateTimeRange, range);
+    QFETCH(DateTimeRange, cacheRange);
     QFETCH(std::shared_ptr<ScalarSeries>, dataSeries);
 
     Variable variable{name, metadata};
@@ -116,13 +116,13 @@ void TestVariable::testNotInCacheRangeList()
     auto varRS = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 20, 0}};
     auto varRE = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 40, 0}};
 
-    auto sqpR = SqpRange{DateUtils::secondsSinceEpoch(varRS), DateUtils::secondsSinceEpoch(varRE)};
+    auto sqpR = DateTimeRange{DateUtils::secondsSinceEpoch(varRS), DateUtils::secondsSinceEpoch(varRE)};
 
     auto varCRS = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 0, 0}};
     auto varCRE = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 0, 0}};
 
     auto sqpCR
-        = SqpRange{DateUtils::secondsSinceEpoch(varCRS), DateUtils::secondsSinceEpoch(varCRE)};
+        = DateTimeRange{DateUtils::secondsSinceEpoch(varCRS), DateUtils::secondsSinceEpoch(varCRE)};
 
     Variable var{"Var test"};
     var.setRange(sqpR);
@@ -131,7 +131,7 @@ void TestVariable::testNotInCacheRangeList()
     // 1: [ts,te] < varTS
     auto ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
     auto te = QDateTime{QDate{2017, 01, 01}, QTime{2, 1, 0, 0}};
-    auto sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    auto sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
 
     auto notInCach = var.provideNotInCacheRangeList(sqp);
 
@@ -145,7 +145,7 @@ void TestVariable::testNotInCacheRangeList()
     // 2: ts < varTS < te < varTE
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 30, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideNotInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 1);
     notInCachRange = notInCach.first();
@@ -155,7 +155,7 @@ void TestVariable::testNotInCacheRangeList()
     // 3: varTS < ts < te < varTE
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 20, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 30, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideNotInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 0);
 
@@ -163,7 +163,7 @@ void TestVariable::testNotInCacheRangeList()
     // 4: varTS < ts < varTE < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 20, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideNotInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 1);
     notInCachRange = notInCach.first();
@@ -173,7 +173,7 @@ void TestVariable::testNotInCacheRangeList()
     // 5: varTS < varTE < ts < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 20, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideNotInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 1);
     notInCachRange = notInCach.first();
@@ -183,7 +183,7 @@ void TestVariable::testNotInCacheRangeList()
     // 6: ts <varTS < varTE < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 1, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideNotInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 2);
     notInCachRange = notInCach.first();
@@ -200,12 +200,12 @@ void TestVariable::testInCacheRangeList()
     auto varRS = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 20, 0}};
     auto varRE = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 40, 0}};
 
-    auto sqpR = SqpRange{DateUtils::secondsSinceEpoch(varRS), DateUtils::secondsSinceEpoch(varRE)};
+    auto sqpR = DateTimeRange{DateUtils::secondsSinceEpoch(varRS), DateUtils::secondsSinceEpoch(varRE)};
 
     auto varCRS = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 0, 0}};
     auto varCRE = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 0, 0}};
     auto sqpCR
-        = SqpRange{DateUtils::secondsSinceEpoch(varCRS), DateUtils::secondsSinceEpoch(varCRE)};
+        = DateTimeRange{DateUtils::secondsSinceEpoch(varCRS), DateUtils::secondsSinceEpoch(varCRE)};
 
     Variable var{"Var test"};
     var.setRange(sqpR);
@@ -214,7 +214,7 @@ void TestVariable::testInCacheRangeList()
     // 1: [ts,te] < varTS
     auto ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
     auto te = QDateTime{QDate{2017, 01, 01}, QTime{2, 1, 0, 0}};
-    auto sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    auto sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
 
     auto notInCach = var.provideInCacheRangeList(sqp);
 
@@ -223,7 +223,7 @@ void TestVariable::testInCacheRangeList()
     // 2: ts < varTS < te < varTE
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 0, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 30, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 1);
     auto notInCachRange = notInCach.first();
@@ -233,7 +233,7 @@ void TestVariable::testInCacheRangeList()
     // 3: varTS < ts < te < varTE
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 20, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 30, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 1);
     notInCachRange = notInCach.first();
@@ -243,7 +243,7 @@ void TestVariable::testInCacheRangeList()
     // 4: varTS < ts < varTE < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 3, 20, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 1);
     notInCachRange = notInCach.first();
@@ -253,14 +253,14 @@ void TestVariable::testInCacheRangeList()
     // 5: varTS < varTE < ts < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 4, 20, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 0);
 
     // 6: ts <varTS < varTE < te
     ts = QDateTime{QDate{2017, 01, 01}, QTime{2, 1, 0, 0}};
     te = QDateTime{QDate{2017, 01, 01}, QTime{2, 5, 0, 0}};
-    sqp = SqpRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
+    sqp = DateTimeRange{DateUtils::secondsSinceEpoch(ts), DateUtils::secondsSinceEpoch(te)};
     notInCach = var.provideInCacheRangeList(sqp);
     QCOMPARE(notInCach.size(), 1);
     notInCachRange = notInCach.first();
@@ -272,7 +272,7 @@ namespace {
 
 /// Struct used to represent an operation for @sa TestVariable::testNbPoints()
 struct NbPointsOperation {
-    SqpRange m_CacheRange;                      /// Range to set for the variable
+    DateTimeRange m_CacheRange;                      /// Range to set for the variable
     std::shared_ptr<ScalarSeries> m_DataSeries; /// Series to merge in the variable
     int m_ExpectedNbPoints; /// Number of points in the variable expected after operation
 };
@@ -297,19 +297,19 @@ void TestVariable::testNbPoints_data()
     NbPointsOperations operations{};
 
     // Sets cache range (expected nb points = values data)
-    auto cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 9)};
+    auto cacheRange = DateTimeRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 9)};
     operations.push_back({cacheRange, dataSeries(cacheRange), 10});
 
     // Doubles cache but don't add data series (expected nb points don't change)
-    cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 19)};
+    cacheRange = DateTimeRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 19)};
     operations.push_back({cacheRange, dataSeries(INVALID_RANGE), 10});
 
     // Doubles cache and data series (expected nb points change)
-    cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 19)};
+    cacheRange = DateTimeRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 12, 0, 19)};
     operations.push_back({cacheRange, dataSeries(cacheRange), 20});
 
     // Decreases cache (expected nb points decreases as the series is purged)
-    cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 5), date(2017, 1, 1, 12, 0, 9)};
+    cacheRange = DateTimeRange{date(2017, 1, 1, 12, 0, 5), date(2017, 1, 1, 12, 0, 9)};
     operations.push_back({cacheRange, dataSeries(INVALID_RANGE), 5});
 
     QTest::newRow("nbPoints1") << operations;
@@ -339,9 +339,9 @@ namespace {
 /// Struct used to represent a range operation on a variable
 /// @sa TestVariable::testRealRange()
 struct RangeOperation {
-    SqpRange m_CacheRange;                      /// Range to set for the variable
+    DateTimeRange m_CacheRange;                      /// Range to set for the variable
     std::shared_ptr<ScalarSeries> m_DataSeries; /// Series to merge in the variable
-    SqpRange m_ExpectedRealRange; /// Real Range expected after operation on the variable
+    DateTimeRange m_ExpectedRealRange; /// Real Range expected after operation on the variable
 };
 
 using RangeOperations = std::vector<RangeOperation>;
@@ -364,22 +364,22 @@ void TestVariable::testRealRange_data()
     RangeOperations operations{};
 
     // Inits cache range and data series (expected real range = cache range)
-    auto cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 13, 0, 0)};
+    auto cacheRange = DateTimeRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 13, 0, 0)};
     operations.push_back({cacheRange, dataSeries(cacheRange), cacheRange});
 
     // Changes cache range and updates data series (expected real range = cache range)
-    cacheRange = SqpRange{date(2017, 1, 1, 14, 0, 0), date(2017, 1, 1, 15, 0, 0)};
+    cacheRange = DateTimeRange{date(2017, 1, 1, 14, 0, 0), date(2017, 1, 1, 15, 0, 0)};
     operations.push_back({cacheRange, dataSeries(cacheRange), cacheRange});
 
     // Changes cache range and update data series but with a lower range (expected real range =
     // data series range)
-    cacheRange = SqpRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 16, 0, 0)};
-    auto dataSeriesRange = SqpRange{date(2017, 1, 1, 14, 0, 0), date(2017, 1, 1, 15, 0, 0)};
+    cacheRange = DateTimeRange{date(2017, 1, 1, 12, 0, 0), date(2017, 1, 1, 16, 0, 0)};
+    auto dataSeriesRange = DateTimeRange{date(2017, 1, 1, 14, 0, 0), date(2017, 1, 1, 15, 0, 0)};
     operations.push_back({cacheRange, dataSeries(dataSeriesRange), dataSeriesRange});
 
     // Changes cache range but DON'T update data series (expected real range = cache range
     // before operation)
-    cacheRange = SqpRange{date(2017, 1, 1, 10, 0, 0), date(2017, 1, 1, 17, 0, 0)};
+    cacheRange = DateTimeRange{date(2017, 1, 1, 10, 0, 0), date(2017, 1, 1, 17, 0, 0)};
     operations.push_back({cacheRange, nullptr, dataSeriesRange});
 
     QTest::newRow("realRange1") << operations;

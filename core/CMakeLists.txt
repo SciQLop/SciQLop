@@ -10,6 +10,7 @@ FILE (GLOB_RECURSE core_SRCS
     ./include/Common/StringUtils.h
     ./include/Common/SignalWaiter.h
     ./include/Common/DateUtils.h
+    ./include/Common/Numeric.h
     ./include/Plugin/IPlugin.h
     ./include/Data/ArrayDataIterator.h
     ./include/Data/VariableRequest.h
@@ -32,6 +33,7 @@ FILE (GLOB_RECURSE core_SRCS
     ./include/Data/IDataProvider.h
     ./include/Data/IDataSeries.h
     ./include/Network/NetworkController.h
+    ./include/Network/Downloader.h
     ./include/Version.h
     ./include/CoreGlobal.h
     ./include/Catalogue/CatalogueController.h
@@ -46,6 +48,7 @@ FILE (GLOB_RECURSE core_SRCS
     ./include/Variable/Variable.h
     ./include/Variable/VariableCacheController.h
     ./include/Variable/VariableController.h
+    ./include/Variable/VariableController2.h
     ./include/Time/TimeController.h
     ./include/Settings/ISqpSettingsBindable.h
     ./include/Settings/SqpSettingsDefs.h
@@ -71,6 +74,7 @@ FILE (GLOB_RECURSE core_SRCS
     ./src/Visualization/VisualizationController.cpp
     ./src/PluginManager/PluginManager.cpp
     ./src/Variable/VariableController.cpp
+    ./src/Variable/VariableController2.cpp
     ./src/Variable/VariableModel.cpp
     ./src/Variable/VariableCacheController.cpp
     ./src/Variable/VariableSynchronizationGroup.cpp

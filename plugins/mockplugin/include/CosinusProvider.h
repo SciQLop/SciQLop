@@ -27,13 +27,13 @@ public:
 
 
     /// Provide data
-    std::shared_ptr<IDataSeries> provideDataSeries(const SqpRange &dataRangeRequested,
+    std::shared_ptr<IDataSeries> provideDataSeries(const DateTimeRange &dataRangeRequested,
                                                    const QVariantHash &data);
 
 
 private:
     std::shared_ptr<IDataSeries>
-    retrieveData(QUuid acqIdentifier, const SqpRange &dataRangeRequested, const QVariantHash &data);
+    retrieveData(QUuid acqIdentifier, const DateTimeRange &dataRangeRequested, const QVariantHash &data);
 
     QHash<QUuid, bool> m_VariableToEnableProvider;
 };

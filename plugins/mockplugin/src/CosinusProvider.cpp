@@ -159,7 +159,7 @@ std::shared_ptr<IDataProvider> CosinusProvider::clone() const
 }
 
 std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
-                                                           const SqpRange &dataRangeRequested,
+                                                           const DateTimeRange &dataRangeRequested,
                                                            const QVariantHash &data)
 {
     // TODO: Add Mutex
@@ -279,7 +279,7 @@ void CosinusProvider::requestDataAborting(QUuid acqIdentifier)
     }
 }
 
-std::shared_ptr<IDataSeries> CosinusProvider::provideDataSeries(const SqpRange &dataRangeRequested,
+std::shared_ptr<IDataSeries> CosinusProvider::provideDataSeries(const DateTimeRange &dataRangeRequested,
                                                                 const QVariantHash &data)
 {
     auto uid = QUuid::createUuid();

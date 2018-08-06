@@ -60,8 +60,8 @@ VariableAcquisitionWorker::~VariableAcquisitionWorker()
 
 
 QUuid VariableAcquisitionWorker::pushVariableRequest(QUuid varRequestId, QUuid vIdentifier,
-                                                     SqpRange rangeRequested,
-                                                     SqpRange cacheRangeRequested,
+                                                     DateTimeRange rangeRequested,
+                                                     DateTimeRange cacheRangeRequested,
                                                      DataProviderParameters parameters,
                                                      std::shared_ptr<IDataProvider> provider)
 {
@@ -196,7 +196,7 @@ void VariableAcquisitionWorker::onVariableAcquisitionFailed(QUuid acqIdentifier)
 
 void VariableAcquisitionWorker::onVariableDataAcquired(QUuid acqIdentifier,
                                                        std::shared_ptr<IDataSeries> dataSeries,
-                                                       SqpRange dataRangeAcquired)
+                                                       DateTimeRange dataRangeAcquired)
 {
     qCDebug(LOG_VariableAcquisitionWorker()) << tr("TORM: onVariableDataAcquired on range ")
                                              << acqIdentifier << dataRangeAcquired;

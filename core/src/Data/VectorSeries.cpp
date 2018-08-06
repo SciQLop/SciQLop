@@ -61,7 +61,7 @@ std::unique_ptr<IDataSeries> VectorSeries::clone() const
     return std::make_unique<VectorSeries>(*this);
 }
 
-std::shared_ptr<IDataSeries> VectorSeries::subDataSeries(const SqpRange &range)
+std::shared_ptr<IDataSeries> VectorSeries::subDataSeries(const DateTimeRange &range)
 {
     auto subXAxisData = std::vector<double>();
     auto subValuesData = std::vector<double>();

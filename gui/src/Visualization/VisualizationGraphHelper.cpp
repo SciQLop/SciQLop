@@ -92,13 +92,13 @@ struct PlottablesCreator<T,
  */
 template <typename T, typename Enabled = void>
 struct PlottablesUpdater {
-    static void setPlotYAxisRange(T &, const SqpRange &, QCustomPlot &)
+    static void setPlotYAxisRange(T &, const DateTimeRange &, QCustomPlot &)
     {
         qCCritical(LOG_VisualizationGraphHelper())
             << QObject::tr("Can't set plot y-axis range: unmanaged data series type");
     }
 
-    static void updatePlottables(T &, PlottablesMap &, const SqpRange &, bool)
+    static void updatePlottables(T &, PlottablesMap &, const DateTimeRange &, bool)
     {
         qCCritical(LOG_VisualizationGraphHelper())
             << QObject::tr("Can't update plottables: unmanaged data series type");
@@ -114,7 +114,7 @@ template <typename T>
 struct PlottablesUpdater<T,
                          typename std::enable_if_t<std::is_base_of<ScalarSeries, T>::value
                                                    or std::is_base_of<VectorSeries, T>::value> > {
-    static void setPlotYAxisRange(T &dataSeries, const SqpRange &xAxisRange, QCustomPlot &plot)
+    static void setPlotYAxisRange(T &dataSeries, const DateTimeRange &xAxisRange, QCustomPlot &plot)
     {
         auto minValue = 0., maxValue = 0.;
 
@@ -132,7 +132,7 @@ struct PlottablesUpdater<T,
         plot.yAxis->setRange(QCPRange{minValue, maxValue});
     }
 
-    static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const SqpRange &range,
+    static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const DateTimeRange &range,
                                  bool rescaleAxes)
     {
 
@@ -179,7 +179,7 @@ struct PlottablesUpdater<T,
 template <typename T>
 struct PlottablesUpdater<T,
                          typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
-    static void setPlotYAxisRange(T &dataSeries, const SqpRange &xAxisRange, QCustomPlot &plot)
+    static void setPlotYAxisRange(T &dataSeries, const DateTimeRange &xAxisRange, QCustomPlot &plot)
     {
         double min, max;
         std::tie(min, max) = dataSeries.yBounds();
@@ -189,7 +189,7 @@ struct PlottablesUpdater<T,
         }
     }
 
-    static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const SqpRange &range,
+    static void updatePlottables(T &dataSeries, PlottablesMap &plottables, const DateTimeRange &range,
                                  bool rescaleAxes)
     {
         if (plottables.empty()) {
@@ -256,8 +256,8 @@ struct PlottablesUpdater<T,
 struct IPlottablesHelper {
     virtual ~IPlottablesHelper() noexcept = default;
     virtual PlottablesMap create(QCustomPlot &plot) const = 0;
-    virtual void setYAxisRange(const SqpRange &xAxisRange, QCustomPlot &plot) const = 0;
-    virtual void update(PlottablesMap &plottables, const SqpRange &range,
+    virtual void setYAxisRange(const DateTimeRange &xAxisRange, QCustomPlot &plot) const = 0;
+    virtual void update(PlottablesMap &plottables, const DateTimeRange &range,
                         bool rescaleAxes = false) const = 0;
 };
 
@@ -274,7 +274,7 @@ struct PlottablesHelper : public IPlottablesHelper {
         return PlottablesCreator<T>::createPlottables(plot);
     }
 
-    void update(PlottablesMap &plottables, const SqpRange &range, bool rescaleAxes) const override
+    void update(PlottablesMap &plottables, const DateTimeRange &range, bool rescaleAxes) const override
     {
         if (m_DataSeries) {
             PlottablesUpdater<T>::updatePlottables(*m_DataSeries, plottables, range, rescaleAxes);
@@ -286,7 +286,7 @@ struct PlottablesHelper : public IPlottablesHelper {
         }
     }
 
-    void setYAxisRange(const SqpRange &xAxisRange, QCustomPlot &plot) const override
+    void setYAxisRange(const DateTimeRange &xAxisRange, QCustomPlot &plot) const override
     {
         if (m_DataSeries) {
             PlottablesUpdater<T>::setPlotYAxisRange(*m_DataSeries, xAxisRange, plot);
@@ -354,7 +354,7 @@ void VisualizationGraphHelper::setYAxisRange(std::shared_ptr<Variable> variable,
 
 void VisualizationGraphHelper::updateData(PlottablesMap &plottables,
                                           std::shared_ptr<Variable> variable,
-                                          const SqpRange &dateTime)
+                                          const DateTimeRange &dateTime)
 {
     auto helper = createHelper(variable);
     helper->update(plottables, dateTime);

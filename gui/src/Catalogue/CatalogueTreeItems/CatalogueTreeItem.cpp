@@ -118,6 +118,7 @@ bool CatalogueTreeItem::dropMimeData(const QMimeData *data, Qt::DropAction actio
         impl->m_Catalogue->addEvent(event->getUniqId());
         sqpApp->catalogueController().updateCatalogue(impl->m_Catalogue);
     }
+    return true;
 }
 
 std::shared_ptr<DBCatalogue> CatalogueTreeItem::catalogue() const

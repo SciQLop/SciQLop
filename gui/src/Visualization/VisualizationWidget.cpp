@@ -203,7 +203,7 @@ void VisualizationWidget::onVariableAboutToBeDeleted(std::shared_ptr<Variable> v
 }
 
 void VisualizationWidget::onRangeChanged(std::shared_ptr<Variable> variable,
-                                         const SqpRange &range) noexcept
+                                         const DateTimeRange &range) noexcept
 {
     // Calls the operation of rescaling all graph that contrains variable in the visualization
     auto rescaleVariableOperation = RescaleAxeOperation{variable, range};

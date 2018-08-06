@@ -23,7 +23,7 @@ const auto OPERATION_DELAY = 100;
  * Example: For a range between 00:00:10 and 00:00:20, the generated values are
  * {10,11,12,13,14,15,16,17,18,19,20}
  */
-std::vector<double> values(const SqpRange &range)
+std::vector<double> values(const DateTimeRange &range)
 {
     QTime referenceTime{0, 0};
 
@@ -38,7 +38,7 @@ std::vector<double> values(const SqpRange &range)
 }
 
 void validateRanges(VariableController &variableController,
-                    const std::map<int, SqpRange> &expectedRanges)
+                    const std::map<int, DateTimeRange> &expectedRanges)
 {
     for (const auto &expectedRangeEntry : expectedRanges) {
         auto variableIndex = expectedRangeEntry.first;
@@ -112,7 +112,7 @@ struct IOperation {
  *Variable creation operation in the controller
  */
 struct Create : public IOperation {
-    explicit Create(int index, const SqpRange &range) : m_Index{index},m_range(range) {}
+    explicit Create(int index, const DateTimeRange &range) : m_Index{index},m_range(range) {}
 
     void exec(VariableController &variableController) const override
     {
@@ -120,14 +120,14 @@ struct Create : public IOperation {
                                                           std::make_unique<TestProvider>(), m_range);
     }
     int m_Index; ///< The index of the variable to create in the controller
-    SqpRange m_range;
+    DateTimeRange m_range;
 };
 
 /**
  * Variable move/shift operation in the controller
  */
 struct Move : public IOperation {
-    explicit Move(int index, const SqpRange &newRange, bool shift = false, int delayMS = 10)
+    explicit Move(int index, const DateTimeRange &newRange, bool shift = false, int delayMS = 10)
             : m_Index{index}, m_NewRange{newRange}, m_Shift{shift}, m_DelayMs{delayMS}
     {
     }
@@ -141,7 +141,7 @@ struct Move : public IOperation {
     }
 
     int m_Index;         ///< The index of the variable to move
-    SqpRange m_NewRange; ///< The new range of the variable
+    DateTimeRange m_NewRange; ///< The new range of the variable
     bool m_Shift;        ///< Performs a shift (
     int m_DelayMs;       ///< wait the delay after running the request (
 };
@@ -182,7 +182,7 @@ struct Synchronize : public IOperation {
  */
 struct Iteration {
     std::shared_ptr<IOperation> m_Operation;  ///< Operation to perform
-    std::map<int, SqpRange> m_ExpectedRanges; ///< Expected ranges (by variable index)
+    std::map<int, DateTimeRange> m_ExpectedRanges; ///< Expected ranges (by variable index)
 };
 
 using Iterations = std::vector<Iteration>;
@@ -219,7 +219,7 @@ void testSyncCase1()
 
     /// Generates a range according to a start time and a end time (the date is the same)
     auto range = [](const QTime &startTime, const QTime &endTime) {
-        return SqpRange{DateUtils::secondsSinceEpoch(QDateTime{{2017, 1, 1}, startTime, Qt::UTC}),
+        return DateTimeRange{DateUtils::secondsSinceEpoch(QDateTime{{2017, 1, 1}, startTime, Qt::UTC}),
                         DateUtils::secondsSinceEpoch(QDateTime{{2017, 1, 1}, endTime, Qt::UTC})};
     };
 
@@ -298,7 +298,7 @@ void testSyncCase2()
             QDateTime{{year, month, day}, QTime{hours, minutes, seconds}, Qt::UTC});
     };
 
-    auto initialRange = SqpRange{dateTime(2017, 1, 1, 12, 0, 0), dateTime(2017, 1, 1, 13, 0, 0)};
+    auto initialRange = DateTimeRange{dateTime(2017, 1, 1, 12, 0, 0), dateTime(2017, 1, 1, 13, 0, 0)};
 
     Iterations iterations{};
     // Creates variables var0 and var1
@@ -317,29 +317,29 @@ void testSyncCase2()
         iterations.push_back(
             {std::make_shared<Move>(0, var0NewRange), {{0, var0NewRange}, {1, var0NewRange}}});
     };
-    moveVar0(SqpRange{dateTime(2017, 1, 1, 12, 0, 0), dateTime(2017, 1, 1, 13, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 1, 14, 0, 0), dateTime(2017, 1, 1, 15, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 1, 8, 0, 0), dateTime(2017, 1, 1, 9, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 1, 12, 0, 0), dateTime(2017, 1, 1, 13, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 1, 14, 0, 0), dateTime(2017, 1, 1, 15, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 1, 8, 0, 0), dateTime(2017, 1, 1, 9, 0, 0)});
     //    moveVar0(SqpRange{dateTime(2017, 1, 1, 7, 30, 0), dateTime(2017, 1, 1, 9, 30, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 1, 2, 0, 0), dateTime(2017, 1, 1, 4, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 1, 6, 0, 0), dateTime(2017, 1, 1, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 1, 2, 0, 0), dateTime(2017, 1, 1, 4, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 1, 6, 0, 0), dateTime(2017, 1, 1, 8, 0, 0)});
 
-    moveVar0(SqpRange{dateTime(2017, 1, 10, 6, 0, 0), dateTime(2017, 1, 15, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 1, 25, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 2, 6, 0, 0), dateTime(2017, 1, 8, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 10, 6, 0, 0), dateTime(2017, 1, 15, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 1, 25, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 2, 6, 0, 0), dateTime(2017, 1, 8, 8, 0, 0)});
 
-    moveVar0(SqpRange{dateTime(2017, 4, 10, 6, 0, 0), dateTime(2017, 6, 15, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 2, 25, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 7, 2, 6, 0, 0), dateTime(2017, 10, 8, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 4, 10, 6, 0, 0), dateTime(2017, 6, 15, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 2, 25, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 7, 2, 6, 0, 0), dateTime(2017, 10, 8, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 4, 10, 6, 0, 0), dateTime(2017, 6, 15, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 2, 25, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 7, 2, 6, 0, 0), dateTime(2017, 10, 8, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 4, 10, 6, 0, 0), dateTime(2017, 6, 15, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 2, 25, 8, 0, 0)});
-    moveVar0(SqpRange{dateTime(2017, 7, 2, 6, 0, 0), dateTime(2017, 10, 8, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 4, 10, 6, 0, 0), dateTime(2017, 6, 15, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 2, 25, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 7, 2, 6, 0, 0), dateTime(2017, 10, 8, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 4, 10, 6, 0, 0), dateTime(2017, 6, 15, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 2, 25, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 7, 2, 6, 0, 0), dateTime(2017, 10, 8, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 4, 10, 6, 0, 0), dateTime(2017, 6, 15, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 2, 25, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 7, 2, 6, 0, 0), dateTime(2017, 10, 8, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 4, 10, 6, 0, 0), dateTime(2017, 6, 15, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 1, 17, 6, 0, 0), dateTime(2017, 2, 25, 8, 0, 0)});
+    moveVar0(DateTimeRange{dateTime(2017, 7, 2, 6, 0, 0), dateTime(2017, 10, 8, 8, 0, 0)});
 
 
     QTest::newRow("sync2") << syncId << initialRange << iterations << 4000;
@@ -353,7 +353,7 @@ void testSyncOnVarCase1()
 
     /// Generates a range according to a start time and a end time (the date is the same)
     auto range = [](const QTime &startTime, const QTime &endTime) {
-        return SqpRange{DateUtils::secondsSinceEpoch(QDateTime{{2017, 1, 1}, startTime, Qt::UTC}),
+        return DateTimeRange{DateUtils::secondsSinceEpoch(QDateTime{{2017, 1, 1}, startTime, Qt::UTC}),
                         DateUtils::secondsSinceEpoch(QDateTime{{2017, 1, 1}, endTime, Qt::UTC})};
     };
 
@@ -412,7 +412,7 @@ void TestVariableSync::testSync_data()
     // ////////////// //
 
     QTest::addColumn<QUuid>("syncId");
-    QTest::addColumn<SqpRange>("initialRange");
+    QTest::addColumn<DateTimeRange>("initialRange");
     QTest::addColumn<Iterations>("iterations");
     QTest::addColumn<int>("operationDelay");
 
@@ -431,7 +431,7 @@ void TestVariableSync::testSyncOneVar_data()
     // ////////////// //
 
     QTest::addColumn<QUuid>("syncId");
-    QTest::addColumn<SqpRange>("initialRange");
+    QTest::addColumn<DateTimeRange>("initialRange");
     QTest::addColumn<Iterations>("creations");
     QTest::addColumn<Iterations>("iterations");
 
@@ -450,7 +450,7 @@ void TestVariableSync::testSync()
     //variableController.setTimeController(&timeController);
 
     QFETCH(QUuid, syncId);
-    QFETCH(SqpRange, initialRange);
+    QFETCH(DateTimeRange, initialRange);
     timeController.setDateTimeRange(initialRange);
 
     // Synchronization group used
@@ -477,7 +477,7 @@ void TestVariableSync::testSyncOneVar()
     //variableController.setTimeController(&timeController);
 
     QFETCH(QUuid, syncId);
-    QFETCH(SqpRange, initialRange);
+    QFETCH(DateTimeRange, initialRange);
     timeController.setDateTimeRange(initialRange);
 
     // Synchronization group used

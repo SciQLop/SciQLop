@@ -67,7 +67,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     }
 
     void updateData(PlottablesMap &plottables, std::shared_ptr<Variable> variable,
-                    const SqpRange &range)
+                    const DateTimeRange &range)
     {
         VisualizationGraphHelper::updateData(plottables, variable, range);
 
@@ -294,10 +294,10 @@ void VisualizationGraphWidget::setFlags(GraphFlags flags)
     impl->m_Flags = std::move(flags);
 }
 
-void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, SqpRange range)
+void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, DateTimeRange range)
 {
     /// Lambda used to set graph's units and range according to the variable passed in parameter
-    auto loadRange = [this](std::shared_ptr<Variable> variable, const SqpRange &range) {
+    auto loadRange = [this](std::shared_ptr<Variable> variable, const DateTimeRange &range) {
         impl->m_RenderingDelegate->setAxesUnits(*variable);
 
         this->setFlags(GraphFlag::DisableAll);
@@ -386,13 +386,13 @@ void VisualizationGraphWidget::setYRange(std::shared_ptr<Variable> variable)
     VisualizationGraphHelper::setYAxisRange(variable, *ui->widget);
 }
 
-SqpRange VisualizationGraphWidget::graphRange() const noexcept
+DateTimeRange VisualizationGraphWidget::graphRange() const noexcept
 {
     auto graphRange = ui->widget->xAxis->range();
-    return SqpRange{graphRange.lower, graphRange.upper};
+    return DateTimeRange{graphRange.lower, graphRange.upper};
 }
 
-void VisualizationGraphWidget::setGraphRange(const SqpRange &range, bool calibration)
+void VisualizationGraphWidget::setGraphRange(const DateTimeRange &range, bool calibration)
 {
     qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange START");
 
@@ -415,9 +415,9 @@ void VisualizationGraphWidget::setAutoRangeOnVariableInitialization(bool value)
     impl->m_VariableAutoRangeOnInit = value;
 }
 
-QVector<SqpRange> VisualizationGraphWidget::selectionZoneRanges() const
+QVector<DateTimeRange> VisualizationGraphWidget::selectionZoneRanges() const
 {
-    QVector<SqpRange> ranges;
+    QVector<DateTimeRange> ranges;
     for (auto zone : impl->m_SelectionZones) {
         ranges << zone->range();
     }
@@ -425,7 +425,7 @@ QVector<SqpRange> VisualizationGraphWidget::selectionZoneRanges() const
     return ranges;
 }
 
-void VisualizationGraphWidget::addSelectionZones(const QVector<SqpRange> &ranges)
+void VisualizationGraphWidget::addSelectionZones(const QVector<DateTimeRange> &ranges)
 {
     for (const auto &range : ranges) {
         // note: ownership is transfered to QCustomPlot
@@ -438,7 +438,7 @@ void VisualizationGraphWidget::addSelectionZones(const QVector<SqpRange> &ranges
 }
 
 VisualizationSelectionZoneItem *VisualizationGraphWidget::addSelectionZone(const QString &name,
-                                                                           const SqpRange &range)
+                                                                           const DateTimeRange &range)
 {
     // note: ownership is transfered to QCustomPlot
     auto zone = new VisualizationSelectionZoneItem(&plot());
@@ -771,8 +771,8 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
                                             << QThread::currentThread()->objectName() << "DoAcqui"
                                             << impl->m_Flags.testFlag(GraphFlag::EnableAcquisition);
 
-    auto graphRange = SqpRange{t1.lower, t1.upper};
-    auto oldGraphRange = SqpRange{t2.lower, t2.upper};
+    auto graphRange = DateTimeRange{t1.lower, t1.upper};
+    auto oldGraphRange = DateTimeRange{t2.lower, t2.upper};
 
     if (impl->m_Flags.testFlag(GraphFlag::EnableAcquisition)) {
         QVector<std::shared_ptr<Variable> > variableUnderGraphVector;
@@ -1058,7 +1058,7 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
 void VisualizationGraphWidget::onDataCacheVariableUpdated()
 {
     auto graphRange = ui->widget->xAxis->range();
-    auto dateTime = SqpRange{graphRange.lower, graphRange.upper};
+    auto dateTime = DateTimeRange{graphRange.lower, graphRange.upper};
 
     for (auto &variableEntry : impl->m_VariableToPlotMultiMap) {
         auto variable = variableEntry.first;
@@ -1073,7 +1073,7 @@ void VisualizationGraphWidget::onDataCacheVariableUpdated()
 }
 
 void VisualizationGraphWidget::onUpdateVarDisplaying(std::shared_ptr<Variable> variable,
-                                                     const SqpRange &range)
+                                                     const DateTimeRange &range)
 {
     auto it = impl->m_VariableToPlotMultiMap.find(variable);
     if (it != impl->m_VariableToPlotMultiMap.end()) {

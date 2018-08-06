@@ -23,17 +23,17 @@ public:
     explicit VariableCacheController(QObject *parent = 0);
 
 
-    void addDateTime(std::shared_ptr<Variable> variable, const SqpRange &dateTime);
+    void addDateTime(std::shared_ptr<Variable> variable, const DateTimeRange &dateTime);
 
     /// Clears cache concerning a variable
     void clear(std::shared_ptr<Variable> variable) noexcept;
 
     /// Return all of the SqpDataTime part of the dateTime whose are not in the cache
-    QVector<SqpRange> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
-                                                    const SqpRange &dateTime);
+    QVector<DateTimeRange> provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
+                                                    const DateTimeRange &dateTime);
 
 
-    QVector<SqpRange> dateCacheList(std::shared_ptr<Variable> variable) const noexcept;
+    QVector<DateTimeRange> dateCacheList(std::shared_ptr<Variable> variable) const noexcept;
 
     void displayCache(std::shared_ptr<Variable> variable) const;
 

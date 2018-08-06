@@ -48,7 +48,7 @@ TimeWidget::TimeWidget(QWidget *parent)
     ui->startDateTimeEdit->setDateTime(startDateTime);
     ui->endDateTimeEdit->setDateTime(endDateTime);
 
-    auto dateTime = SqpRange{DateUtils::secondsSinceEpoch(startDateTime),
+    auto dateTime = DateTimeRange{DateUtils::secondsSinceEpoch(startDateTime),
                              DateUtils::secondsSinceEpoch(endDateTime)};
 
     sqpApp->timeController().setDateTimeRange(dateTime);
@@ -60,7 +60,7 @@ TimeWidget::~TimeWidget()
     delete ui;
 }
 
-void TimeWidget::setTimeRange(SqpRange time)
+void TimeWidget::setTimeRange(DateTimeRange time)
 {
     auto startDateTime = DateUtils::dateTime(time.m_TStart);
     auto endDateTime = DateUtils::dateTime(time.m_TEnd);
@@ -69,9 +69,9 @@ void TimeWidget::setTimeRange(SqpRange time)
     ui->endDateTimeEdit->setDateTime(endDateTime);
 }
 
-SqpRange TimeWidget::timeRange() const
+DateTimeRange TimeWidget::timeRange() const
 {
-    return SqpRange{DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
+    return DateTimeRange{DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
                     DateUtils::secondsSinceEpoch(ui->endDateTimeEdit->dateTime())};
 }
 

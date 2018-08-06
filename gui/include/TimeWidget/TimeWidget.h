@@ -18,12 +18,12 @@ public:
     explicit TimeWidget(QWidget *parent = 0);
     virtual ~TimeWidget();
 
-    void setTimeRange(SqpRange time);
-    SqpRange timeRange() const;
+    void setTimeRange(DateTimeRange time);
+    DateTimeRange timeRange() const;
 
 signals:
     /// Signal emitted when the time parameters has beed updated
-    void timeUpdated(SqpRange time);
+    void timeUpdated(DateTimeRange time);
 
 public slots:
     /// slot called when time parameters update has ben requested

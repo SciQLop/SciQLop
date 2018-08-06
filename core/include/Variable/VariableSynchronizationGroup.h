@@ -23,10 +23,11 @@ class Variable;
 class SCIQLOP_CORE_EXPORT VariableSynchronizationGroup : public QObject {
     Q_OBJECT
 public:
-    explicit VariableSynchronizationGroup(QObject *parent = 0);
+    explicit VariableSynchronizationGroup(QObject *parent = Q_NULLPTR);
+    explicit VariableSynchronizationGroup(QUuid variable, QObject *parent = Q_NULLPTR);
 
-    void addVariableId(QUuid vIdentifier);
-    void removeVariableId(QUuid vIdentifier);
+    void addVariable(QUuid vIdentifier);
+    void removeVariable(QUuid vIdentifier);
 
     const std::set<QUuid> &getIds() const noexcept;
 

@@ -39,11 +39,11 @@ struct CreateOperation : public IFuzzingOperation {
                                                   << "(metadata:" << variableMetadata << ")...";
 
         auto newVariable
-            = variableController.createVariable(variableName, variableMetadata, variableProvider, properties.value(INITIAL_RANGE_PROPERTY).value<SqpRange>());
+            = variableController.createVariable(variableName, variableMetadata, variableProvider, properties.value(INITIAL_RANGE_PROPERTY).value<DateTimeRange>());
 
         // Updates variable's state
         auto &variableState = fuzzingState.variableState(variableId);
-        variableState.m_Range = properties.value(INITIAL_RANGE_PROPERTY).value<SqpRange>();
+        variableState.m_Range = properties.value(INITIAL_RANGE_PROPERTY).value<DateTimeRange>();
         std::swap(variableState.m_Variable, newVariable);
     }
 };
@@ -94,7 +94,7 @@ struct DeleteOperation : public IFuzzingOperation {
  */
 struct MoveOperation : public IFuzzingOperation {
     using MoveFunction = std::function<double(double currentValue, double maxValue)>;
-    using MaxMoveFunction = std::function<double(const SqpRange &range, const SqpRange &maxRange)>;
+    using MaxMoveFunction = std::function<double(const DateTimeRange &range, const DateTimeRange &maxRange)>;
 
     explicit MoveOperation(MoveFunction rangeStartMoveFun, MoveFunction rangeEndMoveFun,
                            MaxMoveFunction maxMoveFun,
@@ -120,7 +120,7 @@ struct MoveOperation : public IFuzzingOperation {
 
         // Gets the max range defined
         auto maxRange = properties.value(MAX_RANGE_PROPERTY, QVariant::fromValue(INVALID_RANGE))
-                            .value<SqpRange>();
+                            .value<DateTimeRange>();
         auto variableRange = variableState.m_Range;
 
         if (maxRange == INVALID_RANGE || variableRange.m_TStart < maxRange.m_TStart
@@ -137,7 +137,7 @@ struct MoveOperation : public IFuzzingOperation {
 
         // Moves variable to its new range
         auto isSynchronized = !fuzzingState.syncGroupId(variableId).isNull();
-        auto newVariableRange = SqpRange{m_RangeStartMoveFun(variableRange.m_TStart, delta),
+        auto newVariableRange = DateTimeRange{m_RangeStartMoveFun(variableRange.m_TStart, delta),
                                          m_RangeEndMoveFun(variableRange.m_TEnd, delta)};
         qCInfo(LOG_FuzzingOperations()).noquote() << "Performing" << m_Label << "on"
                                                   << variable->name() << "(from" << variableRange
@@ -228,21 +228,21 @@ std::unique_ptr<IFuzzingOperation> FuzzingOperationFactory::create(FuzzingOperat
         case FuzzingOperationType::PAN_LEFT:
             return std::make_unique<MoveOperation>(
                 std::minus<double>(), std::minus<double>(),
-                [](const SqpRange &range, const SqpRange &maxRange) {
+                [](const DateTimeRange &range, const DateTimeRange &maxRange) {
                     return range.m_TStart - maxRange.m_TStart;
                 },
                 QStringLiteral("Pan left operation"));
         case FuzzingOperationType::PAN_RIGHT:
             return std::make_unique<MoveOperation>(
                 std::plus<double>(), std::plus<double>(),
-                [](const SqpRange &range, const SqpRange &maxRange) {
+                [](const DateTimeRange &range, const DateTimeRange &maxRange) {
                     return maxRange.m_TEnd - range.m_TEnd;
                 },
                 QStringLiteral("Pan right operation"));
         case FuzzingOperationType::ZOOM_IN:
             return std::make_unique<MoveOperation>(
                 std::plus<double>(), std::minus<double>(),
-                [](const SqpRange &range, const SqpRange &maxRange) {
+                [](const DateTimeRange &range, const DateTimeRange &maxRange) {
                     Q_UNUSED(maxRange)
                     return range.m_TEnd - (range.m_TStart + range.m_TEnd) / 2.;
                 },
@@ -250,7 +250,7 @@ std::unique_ptr<IFuzzingOperation> FuzzingOperationFactory::create(FuzzingOperat
         case FuzzingOperationType::ZOOM_OUT:
             return std::make_unique<MoveOperation>(
                 std::minus<double>(), std::plus<double>(),
-                [](const SqpRange &range, const SqpRange &maxRange) {
+                [](const DateTimeRange &range, const DateTimeRange &maxRange) {
                     return std::min(range.m_TStart - maxRange.m_TStart,
                                     maxRange.m_TEnd - range.m_TEnd);
                 },

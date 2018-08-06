@@ -16,7 +16,7 @@
  */
 struct AcquisitionDataPacket {
     std::shared_ptr<IDataSeries> m_DateSeries;
-    SqpRange m_Range;
+    DateTimeRange m_Range;
 };
 
 SCIQLOP_REGISTER_META_TYPE(ACQUISITIONDATAPACKET_REGISTRY, AcquisitionDataPacket)

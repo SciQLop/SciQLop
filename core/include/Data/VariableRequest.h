@@ -16,8 +16,8 @@
  */
 struct VariableRequest {
     QUuid m_VariableGroupId;
-    SqpRange m_RangeRequested;
-    SqpRange m_CacheRangeRequested;
+    DateTimeRange m_RangeRequested;
+    DateTimeRange m_CacheRangeRequested;
     std::shared_ptr<IDataSeries> m_DataSeries;
 };
 

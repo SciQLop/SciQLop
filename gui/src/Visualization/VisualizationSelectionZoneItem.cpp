@@ -180,9 +180,9 @@ QString VisualizationSelectionZoneItem::name() const
     return impl->m_NameLabelItem->text();
 }
 
-SqpRange VisualizationSelectionZoneItem::range() const
+DateTimeRange VisualizationSelectionZoneItem::range() const
 {
-    SqpRange range;
+    DateTimeRange range;
     range.m_TStart = impl->m_T1 <= impl->m_T2 ? impl->m_T1 : impl->m_T2;
     range.m_TEnd = impl->m_T1 > impl->m_T2 ? impl->m_T1 : impl->m_T2;
     return range;

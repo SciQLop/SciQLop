@@ -52,7 +52,7 @@ signals:
      * identified by acqIdentifier
      */
     void dataProvided(QUuid acqIdentifier, std::shared_ptr<IDataSeries> dateSeriesAcquired,
-                      const SqpRange &dataRangeAcquired);
+                      const DateTimeRange &dataRangeAcquired);
 
     /**
      * @brief dataProvidedProgress notify the progression of the data identifier by acqIdentifier

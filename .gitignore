@@ -6,3 +6,6 @@ core/include/Version.h
 3rdparty/
 subprojects/CatalogueAPI/
 subprojects/QxOrm/
+documentation/*
+.idea/*
+**/__pycache__/*

@@ -141,7 +141,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
                         for (auto zoneName : m_ZonesForTimeMode) {
                             if (auto zone = tab->getZoneWithName(zoneName)) {
-                                SqpRange eventRange;
+                                DateTimeRange eventRange;
                                 eventRange.m_TStart = event->getTStart();
                                 eventRange.m_TEnd = event->getTEnd();
                                 zone->setZoneRange(eventRange);
@@ -165,13 +165,13 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         }
     }
 
-    QVector<SqpRange> getGraphRanges(const std::shared_ptr<DBEvent> &event)
+    QVector<DateTimeRange> getGraphRanges(const std::shared_ptr<DBEvent> &event)
     {
         // Retrieves the range of each product and the maximum size
-        QVector<SqpRange> graphRanges;
+        QVector<DateTimeRange> graphRanges;
         double maxDt = 0;
         for (auto eventProduct : event->getEventProducts()) {
-            SqpRange eventRange;
+            DateTimeRange eventRange;
             eventRange.m_TStart = eventProduct.getTStart();
             eventRange.m_TEnd = eventProduct.getTEnd();
             graphRanges << eventRange;
@@ -186,12 +186,12 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         maxDt *= (100.0 + EVENT_RANGE_MARGE) / 100.0;
 
         // Corrects the graph ranges so that they all have the same size
-        QVector<SqpRange> correctedGraphRanges;
+        QVector<DateTimeRange> correctedGraphRanges;
         for (auto range : graphRanges) {
             auto dt = range.m_TEnd - range.m_TStart;
             auto diff = qAbs((maxDt - dt) / 2.0);
 
-            SqpRange correctedRange;
+            DateTimeRange correctedRange;
             correctedRange.m_TStart = range.m_TStart - diff;
             correctedRange.m_TEnd = range.m_TEnd + diff;
 
@@ -270,7 +270,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
             auto range = *itRange;
             ++itRange;
 
-            SqpRange productRange;
+            DateTimeRange productRange;
             productRange.m_TStart = eventProduct.getTStart();
             productRange.m_TEnd = eventProduct.getTEnd();
 

@@ -12,7 +12,7 @@ class VisualizationSelectionZoneItem : public QCPItemRect {
 
 signals:
     /// Signal emitted when the zone range is edited manually
-    void rangeEdited(const SqpRange &range);
+    void rangeEdited(const DateTimeRange &range);
 
 public:
     VisualizationSelectionZoneItem(QCustomPlot *plot);
@@ -23,7 +23,7 @@ public:
     void setName(const QString &name);
     QString name() const;
 
-    SqpRange range() const;
+    DateTimeRange range() const;
     void setRange(double tstart, double tend);
     void setStart(double tstart);
     void setEnd(double tend);

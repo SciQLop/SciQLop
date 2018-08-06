@@ -53,17 +53,17 @@ target_link_libraries(pytestamdalib PUBLIC pysciqlop)
 
 GET_PROPERTY(CORE_PYTHON_PATH GLOBAL PROPERTY CORE_PYTHON_PATH)
 
-declare_test(TestAmdaFileParserEmbed TestAmdaFileParserEmbed "tests/PyTestAmdaWrapperExe.cpp" "amdaplugin;pytestamdalib")
+declare_test(TestAmdaFileParserEmbed TestAmdaFileParserEmbed "tests/PyTestAmdaWrapperExe.cpp" "pytestamdalib")
 target_compile_definitions(TestAmdaFileParserEmbed PRIVATE -DPYTESTAMDA_SCRIPT="${CMAKE_CURRENT_LIST_DIR}/tests/TestAmdaFileParser.py")
 set_tests_properties(TestAmdaFileParserEmbed  PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}:${CORE_PYTHON_PATH})
 
 
-declare_test(TestAmdaDownloadEmbed TestAmdaDownloadEmbed "tests/PyTestAmdaWrapperExe.cpp" "amdaplugin;pytestamdalib")
+declare_test(TestAmdaDownloadEmbed TestAmdaDownloadEmbed "tests/PyTestAmdaWrapperExe.cpp" "pytestamdalib")
 target_compile_definitions(TestAmdaDownloadEmbed PRIVATE -DPYTESTAMDA_SCRIPT="${CMAKE_CURRENT_LIST_DIR}/tests/TestAmdaDownload.py")
 set_tests_properties(TestAmdaDownloadEmbed  PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}:${CORE_PYTHON_PATH})
 
 
-declare_test(TestAmdaMiniFuzzEmbed TestAmdaMiniFuzzEmbed "tests/PyTestAmdaWrapperExe.cpp" "amdaplugin;pytestamdalib")
+declare_test(TestAmdaMiniFuzzEmbed TestAmdaMiniFuzzEmbed "tests/PyTestAmdaWrapperExe.cpp" "pytestamdalib")
 target_compile_definitions(TestAmdaMiniFuzzEmbed PRIVATE -DPYTESTAMDA_SCRIPT="${CMAKE_CURRENT_LIST_DIR}/tests/TestAmdaMiniFuzz.py")
 set_tests_properties(TestAmdaMiniFuzzEmbed  PROPERTIES ENVIRONMENT PYTHONPATH=${CMAKE_CURRENT_BINARY_DIR}:${CORE_PYTHON_PATH})
 

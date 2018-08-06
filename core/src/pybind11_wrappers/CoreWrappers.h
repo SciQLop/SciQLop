@@ -34,7 +34,7 @@ std::ostream &operator <<(std::ostream& os, const IDataSeries& ds)
     return os;
 }
 
-std::ostream &operator <<(std::ostream& os, const SqpRange& range)
+std::ostream &operator <<(std::ostream& os, const DateTimeRange& range)
 {
     os << "=========================" << std::endl
        << "SqpRange:" << std::endl

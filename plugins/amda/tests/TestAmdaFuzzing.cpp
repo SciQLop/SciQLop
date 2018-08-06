@@ -318,7 +318,7 @@ void TestAmdaFuzzing::testFuzzing_data()
     // Test cases //
     // ////////// //
 
-    auto maxRange = SqpRange::fromDateTime({2017, 1, 1}, {0, 0}, {2017, 1, 5}, {0, 0});
+    auto maxRange = DateTimeRange::fromDateTime({2017, 1, 1}, {0, 0}, {2017, 1, 5}, {0, 0});
     MetadataPool metadataPool{{{"dataType", "vector"}, {"xml:id", "imf"}}};
 
     // Note: we don't use auto here as we want to pass std::shared_ptr<IDataProvider> as is in the
@@ -346,7 +346,7 @@ void TestAmdaFuzzing::testFuzzing()
 
     // Generates random initial range (bounded to max range)
     auto maxRange = properties.value(MAX_RANGE_PROPERTY, QVariant::fromValue(INVALID_RANGE))
-                        .value<SqpRange>();
+                        .value<DateTimeRange>();
 
     QVERIFY(maxRange != INVALID_RANGE);
 
@@ -359,7 +359,7 @@ void TestAmdaFuzzing::testFuzzing()
     }
 
     // Sets initial range on time controller
-    SqpRange initialRange{initialRangeStart, initialRangeEnd};
+    DateTimeRange initialRange{initialRangeStart, initialRangeEnd};
     qCInfo(LOG_TestAmdaFuzzing()).noquote() << "Setting initial range to" << initialRange << "...";
     timeController.setDateTimeRange(initialRange);
     properties.insert(INITIAL_RANGE_PROPERTY, QVariant::fromValue(initialRange));

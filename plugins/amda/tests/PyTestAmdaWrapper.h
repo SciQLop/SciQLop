@@ -19,15 +19,20 @@
 /*--                  Author : Alexis Jeandet
 --                     Mail : alexis.jeandet@member.fsf.org
 ----------------------------------------------------------------------------*/
-#include <QString>
-#include "PyTestAmdaWrapper.h"
+#include <string>
 
-int main(int argc, char** argv)
+#include <pybind11/pybind11.h>
+#include <pybind11/embed.h>
+
+namespace py = pybind11;
+
+
+int pytestamda_test(const char* testScriptPath )
 {
-    int r = pytestamda_test(PYTESTAMDA_SCRIPT);
+    py::scoped_interpreter guard{};
+    py::globals()["__file__"] = py::str(testScriptPath);
+    py::eval_file(testScriptPath);
     return 0;
 }
-
-
 
 

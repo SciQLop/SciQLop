@@ -94,7 +94,7 @@ public:
 signals:
     void abortProgessRequested(std::shared_ptr<Variable> variable);
     void requestVariable(const QVariantHash &productData);
-    void requestVariableRangeUpdate(std::shared_ptr<Variable> variable, const SqpRange &range);
+    void requestVariableRangeUpdate(std::shared_ptr<Variable> variable, const DateTimeRange &range);
 
 private:
     class VariableModelPrivate;

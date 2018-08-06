@@ -424,7 +424,7 @@ QMimeData *CatalogueEventsModel::mimeData(const QModelIndexList &indexes) const
     QVector<std::shared_ptr<DBEvent> > eventList;
     QVector<std::shared_ptr<DBEventProduct> > eventProductList;
 
-    SqpRange firstTimeRange;
+    DateTimeRange firstTimeRange;
     for (const auto &index : indexes) {
         if (index.column() == 0) { // only the first column
 

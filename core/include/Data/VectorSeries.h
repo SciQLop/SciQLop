@@ -28,7 +28,7 @@ public:
 
     std::unique_ptr<IDataSeries> clone() const;
 
-    std::shared_ptr<IDataSeries> subDataSeries(const SqpRange &range) override;
+    std::shared_ptr<IDataSeries> subDataSeries(const DateTimeRange &range) override;
 };
 
 #endif // SCIQLOP_VECTORSERIES_H

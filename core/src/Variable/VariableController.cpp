@@ -12,6 +12,8 @@
 #include <Data/VariableRequest.h>
 #include <Time/TimeController.h>
 
+#include <Common/Numeric.h>
+
 #include <QDataStream>
 #include <QMutex>
 #include <QThread>
@@ -26,8 +28,8 @@ Q_LOGGING_CATEGORY(LOG_VariableController, "VariableController")
 
 namespace {
 
-SqpRange computeSynchroRangeRequested(const SqpRange &varRange, const SqpRange &graphRange,
-                                      const SqpRange &oldGraphRange)
+DateTimeRange computeSynchroRangeRequested(const DateTimeRange &varRange, const DateTimeRange &graphRange,
+                                      const DateTimeRange &oldGraphRange)
 {
     auto zoomType = VariableController::getZoomType(graphRange, oldGraphRange);
 
@@ -120,7 +122,7 @@ struct VariableController::VariableControllerPrivate {
     }
 
 
-    void processRequest(std::shared_ptr<Variable> var, const SqpRange &rangeRequested,
+    void processRequest(std::shared_ptr<Variable> var, const DateTimeRange &rangeRequested,
                         QUuid varRequestId);
 
     std::shared_ptr<Variable> findVariable(QUuid vIdentifier);
@@ -333,7 +335,7 @@ VariableController::variablesForMimeData(const QByteArray &mimeData) const
 
 std::shared_ptr<Variable>
 VariableController::createVariable(const QString &name, const QVariantHash &metadata,
-                                   std::shared_ptr<IDataProvider> provider, const SqpRange& range) noexcept
+                                   std::shared_ptr<IDataProvider> provider, const DateTimeRange& range) noexcept
 {
 //    if (!impl->m_TimeController) {
 //        qCCritical(LOG_VariableController())
@@ -376,7 +378,7 @@ VariableController::createVariable(const QString &name, const QVariantHash &meta
     return nullptr;
 }
 
-void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
+void VariableController::onDateTimeOnSelection(const DateTimeRange &dateTime)
 {
     // NOTE: Even if acquisition request is aborting, the graphe range will be changed
     qCDebug(LOG_VariableController()) << "VariableController::onDateTimeOnSelection"
@@ -417,7 +419,7 @@ void VariableController::onDateTimeOnSelection(const SqpRange &dateTime)
 }
 
 void VariableController::onUpdateDateTime(std::shared_ptr<Variable> variable,
-                                          const SqpRange &dateTime)
+                                          const DateTimeRange &dateTime)
 {
     auto itVar = impl->m_VariableToIdentifierMap.find(variable);
     if (itVar == impl->m_VariableToIdentifierMap.cend()) {
@@ -435,8 +437,8 @@ void VariableController::onUpdateDateTime(std::shared_ptr<Variable> variable,
     this->onRequestDataLoading(QVector<std::shared_ptr<Variable> >{variable}, dateTime, synchro);
 }
 
-void VariableController::onDataProvided(QUuid vIdentifier, const SqpRange &rangeRequested,
-                                        const SqpRange &cacheRangeRequested,
+void VariableController::onDataProvided(QUuid vIdentifier, const DateTimeRange &rangeRequested,
+                                        const DateTimeRange &cacheRangeRequested,
                                         QVector<AcquisitionDataPacket> dataAcquired)
 {
     qCDebug(LOG_VariableController()) << tr("onDataProvided") << QThread::currentThread();
@@ -532,7 +534,7 @@ void VariableController::onAddSynchronized(std::shared_ptr<Variable> variable,
         if (groupIdToVSGIt != impl->m_GroupIdToVariableSynchronizationGroupMap.cend()) {
             impl->m_VariableIdGroupIdMap.insert(
                 std::make_pair(varToVarIdIt->second, synchronizationGroupId));
-            groupIdToVSGIt->second->addVariableId(varToVarIdIt->second);
+            groupIdToVSGIt->second->addVariable(varToVarIdIt->second);
         }
         else {
             qCCritical(LOG_VariableController())
@@ -562,7 +564,7 @@ void VariableController::desynchronize(std::shared_ptr<Variable> variable,
 }
 
 void VariableController::onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables,
-                                              const SqpRange &range, bool synchronise)
+                                              const DateTimeRange &range, bool synchronise)
 {
     // variables is assumed synchronized
     // TODO: Asser variables synchronization
@@ -655,34 +657,27 @@ bool VariableController::hasPendingDownloads()
     return impl->hasPendingDownloads();
 }
 
-AcquisitionZoomType VariableController::getZoomType(const SqpRange &range, const SqpRange &oldRange)
+AcquisitionZoomType VariableController::getZoomType(const DateTimeRange &range, const DateTimeRange &oldRange)
 {
-    // t1.m_TStart <= t2.m_TStart && t2.m_TEnd <= t1.m_TEnd
-    auto zoomType = AcquisitionZoomType::Unknown;
-    if (range.m_TStart <= oldRange.m_TStart && oldRange.m_TEnd <= range.m_TEnd) {
-        qCDebug(LOG_VariableController()) << "zoomtype: ZoomOut";
-        zoomType = AcquisitionZoomType::ZoomOut;
+    if (almost_equal(range.delta(), oldRange.delta(), 1)) // same delta -> must be a pan or nothing
+    {
+        if(range.m_TStart > oldRange.m_TStart)
+            return AcquisitionZoomType::PanRight;
+        if(range.m_TStart < oldRange.m_TStart)
+            return AcquisitionZoomType::PanLeft;
     }
-    else if (range.m_TStart > oldRange.m_TStart && range.m_TEnd > oldRange.m_TEnd) {
-        qCDebug(LOG_VariableController()) << "zoomtype: PanRight";
-        zoomType = AcquisitionZoomType::PanRight;
+    else // different delta -> must be a zoom
+    {
+        if(range.m_TStart > oldRange.m_TStart)
+            return AcquisitionZoomType::ZoomIn;
+        if(range.m_TStart < oldRange.m_TStart)
+            return AcquisitionZoomType::ZoomOut;
     }
-    else if (range.m_TStart < oldRange.m_TStart && range.m_TEnd < oldRange.m_TEnd) {
-        qCDebug(LOG_VariableController()) << "zoomtype: PanLeft";
-        zoomType = AcquisitionZoomType::PanLeft;
-    }
-    else if (range.m_TStart >= oldRange.m_TStart && oldRange.m_TEnd >= range.m_TEnd) {
-        qCDebug(LOG_VariableController()) << "zoomtype: ZoomIn";
-        zoomType = AcquisitionZoomType::ZoomIn;
-    }
-    else {
-        qCDebug(LOG_VariableController()) << "getZoomType: Unknown type detected";
-    }
-    return zoomType;
+    return AcquisitionZoomType::Unknown;
 }
 
 void VariableController::VariableControllerPrivate::processRequest(std::shared_ptr<Variable> var,
-                                                                   const SqpRange &rangeRequested,
+                                                                   const DateTimeRange &rangeRequested,
                                                                    QUuid varRequestId)
 {
     auto itVar = m_VariableToIdentifierMap.find(var);
@@ -1101,7 +1096,7 @@ void VariableController::VariableControllerPrivate::desynchronize(VariableIterat
 
     // Removes variable from synchronization group
     auto synchronizationGroup = groupIt->second;
-    synchronizationGroup->removeVariableId(variableId);
+    synchronizationGroup->removeVariable(variableId);
 
     // Removes link between variable and synchronization group
     m_VariableIdGroupIdMap.erase(variableId);

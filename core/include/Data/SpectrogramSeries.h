@@ -29,7 +29,7 @@ public:
     std::unique_ptr<IDataSeries> clone() const override;
 
     /// @sa DataSeries::subDataSeries()
-    std::shared_ptr<IDataSeries> subDataSeries(const SqpRange &range) override;
+    std::shared_ptr<IDataSeries> subDataSeries(const DateTimeRange &range) override;
 
     inline double xResolution() const noexcept { return m_XResolution; }
 

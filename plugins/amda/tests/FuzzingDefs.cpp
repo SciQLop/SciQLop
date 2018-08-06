@@ -96,7 +96,7 @@ void FuzzingState::desynchronizeVariable(VariableId variableId, SyncGroupId sync
     }
 }
 
-void FuzzingState::updateRanges(VariableId variableId, const SqpRange &newRange)
+void FuzzingState::updateRanges(VariableId variableId, const DateTimeRange &newRange)
 {
     auto syncGroupId = this->syncGroupId(variableId);
 

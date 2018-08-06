@@ -8,16 +8,16 @@ Q_LOGGING_CATEGORY(LOG_VariableCacheController, "VariableCacheController")
 
 struct VariableCacheController::VariableCacheControllerPrivate {
 
-    std::unordered_map<std::shared_ptr<Variable>, QVector<SqpRange> > m_VariableToSqpRangeListMap;
+    std::unordered_map<std::shared_ptr<Variable>, QVector<DateTimeRange> > m_VariableToSqpRangeListMap;
 
-    void addInCacheDataByEnd(const SqpRange &dateTime, QVector<SqpRange> &dateTimeList,
-                             QVector<SqpRange> &notInCache, int cacheIndex, double currentTStart);
+    void addInCacheDataByEnd(const DateTimeRange &dateTime, QVector<DateTimeRange> &dateTimeList,
+                             QVector<DateTimeRange> &notInCache, int cacheIndex, double currentTStart);
 
-    void addInCacheDataByStart(const SqpRange &dateTime, QVector<SqpRange> &dateTimeList,
-                               QVector<SqpRange> &notInCache, int cacheIndex, double currentTStart);
+    void addInCacheDataByStart(const DateTimeRange &dateTime, QVector<DateTimeRange> &dateTimeList,
+                               QVector<DateTimeRange> &notInCache, int cacheIndex, double currentTStart);
 
 
-    void addDateTimeRecurse(const SqpRange &dateTime, QVector<SqpRange> &dateTimeList,
+    void addDateTimeRecurse(const DateTimeRange &dateTime, QVector<DateTimeRange> &dateTimeList,
                             int cacheIndex);
 };
 
@@ -28,7 +28,7 @@ VariableCacheController::VariableCacheController(QObject *parent)
 }
 
 void VariableCacheController::addDateTime(std::shared_ptr<Variable> variable,
-                                          const SqpRange &dateTime)
+                                          const DateTimeRange &dateTime)
 {
     qCDebug(LOG_VariableCacheController()) << "VariableCacheController::addDateTime"
                                            << QThread::currentThread()->objectName();
@@ -77,14 +77,14 @@ void VariableCacheController::clear(std::shared_ptr<Variable> variable) noexcept
     qCDebug(LOG_VariableCacheController()) << clearCacheMessage;
 }
 
-QVector<SqpRange>
+QVector<DateTimeRange>
 VariableCacheController::provideNotInCacheDateTimeList(std::shared_ptr<Variable> variable,
-                                                       const SqpRange &dateTime)
+                                                       const DateTimeRange &dateTime)
 {
     qCDebug(LOG_VariableCacheController())
         << "VariableCacheController::provideNotInCacheDateTimeList"
         << QThread::currentThread()->objectName();
-    auto notInCache = QVector<SqpRange>{};
+    auto notInCache = QVector<DateTimeRange>{};
 
     // This algorithm is recursif. The idea is to localise the start time then the end time in the
     // list of date time request associated to the variable
@@ -101,7 +101,7 @@ VariableCacheController::provideNotInCacheDateTimeList(std::shared_ptr<Variable>
     return notInCache;
 }
 
-QVector<SqpRange>
+QVector<DateTimeRange>
 VariableCacheController::dateCacheList(std::shared_ptr<Variable> variable) const noexcept
 {
     qCDebug(LOG_VariableCacheController()) << "VariableCacheController::dateCacheList"
@@ -111,12 +111,12 @@ VariableCacheController::dateCacheList(std::shared_ptr<Variable> variable) const
     }
     catch (const std::out_of_range &e) {
         qCWarning(LOG_VariableCacheController()) << e.what();
-        return QVector<SqpRange>{};
+        return QVector<DateTimeRange>{};
     }
 }
 
 void VariableCacheController::VariableCacheControllerPrivate::addDateTimeRecurse(
-    const SqpRange &dateTime, QVector<SqpRange> &dateTimeList, int cacheIndex)
+    const DateTimeRange &dateTime, QVector<DateTimeRange> &dateTimeList, int cacheIndex)
 {
     const auto dateTimeListSize = dateTimeList.count();
     if (cacheIndex >= dateTimeListSize) {
@@ -140,7 +140,7 @@ void VariableCacheController::VariableCacheControllerPrivate::addDateTimeRecurse
         // rerun the algo from this index with the merged interval
         auto mTStart = std::min(dateTime.m_TStart, currentDateTime.m_TStart);
         auto mTEnd = std::max(dateTime.m_TEnd, currentDateTime.m_TEnd);
-        auto mergeDateTime = SqpRange{mTStart, mTEnd};
+        auto mergeDateTime = DateTimeRange{mTStart, mTEnd};
 
         dateTimeList.remove(cacheIndex);
         addDateTimeRecurse(mergeDateTime, dateTimeList, cacheIndex);
@@ -149,7 +149,7 @@ void VariableCacheController::VariableCacheControllerPrivate::addDateTimeRecurse
 
 
 void VariableCacheController::VariableCacheControllerPrivate::addInCacheDataByEnd(
-    const SqpRange &dateTime, QVector<SqpRange> &dateTimeList, QVector<SqpRange> &notInCache,
+    const DateTimeRange &dateTime, QVector<DateTimeRange> &dateTimeList, QVector<DateTimeRange> &notInCache,
     int cacheIndex, double currentTStart)
 {
     const auto dateTimeListSize = dateTimeList.count();
@@ -157,7 +157,7 @@ void VariableCacheController::VariableCacheControllerPrivate::addInCacheDataByEn
         if (currentTStart < dateTime.m_TEnd) {
 
             // te localised after all other interval: The last interval is [currentTsart, te]
-            notInCache.push_back(SqpRange{currentTStart, dateTime.m_TEnd});
+            notInCache.push_back(DateTimeRange{currentTStart, dateTime.m_TEnd});
         }
         return;
     }
@@ -165,10 +165,10 @@ void VariableCacheController::VariableCacheControllerPrivate::addInCacheDataByEn
     auto currentDateTimeJ = dateTimeList[cacheIndex];
     if (dateTime.m_TEnd <= currentDateTimeJ.m_TStart) {
         // te localised between to interval: The last interval is [currentTsart, te]
-        notInCache.push_back(SqpRange{currentTStart, dateTime.m_TEnd});
+        notInCache.push_back(DateTimeRange{currentTStart, dateTime.m_TEnd});
     }
     else {
-        notInCache.push_back(SqpRange{currentTStart, currentDateTimeJ.m_TStart});
+        notInCache.push_back(DateTimeRange{currentTStart, currentDateTimeJ.m_TStart});
         if (dateTime.m_TEnd > currentDateTimeJ.m_TEnd) {
             // te not localised before the current interval: we need to look at the next interval
             addInCacheDataByEnd(dateTime, dateTimeList, notInCache, ++cacheIndex,
@@ -178,13 +178,13 @@ void VariableCacheController::VariableCacheControllerPrivate::addInCacheDataByEn
 }
 
 void VariableCacheController::VariableCacheControllerPrivate::addInCacheDataByStart(
-    const SqpRange &dateTime, QVector<SqpRange> &dateTimeList, QVector<SqpRange> &notInCache,
+    const DateTimeRange &dateTime, QVector<DateTimeRange> &dateTimeList, QVector<DateTimeRange> &notInCache,
     int cacheIndex, double currentTStart)
 {
     const auto dateTimeListSize = dateTimeList.count();
     if (cacheIndex >= dateTimeListSize) {
         // ts localised after all other interval: The last interval is [ts, te]
-        notInCache.push_back(SqpRange{currentTStart, dateTime.m_TEnd});
+        notInCache.push_back(DateTimeRange{currentTStart, dateTime.m_TEnd});
         return;
     }
 

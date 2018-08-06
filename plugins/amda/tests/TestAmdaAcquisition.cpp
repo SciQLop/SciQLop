@@ -33,7 +33,7 @@ const auto TESTS_RESOURCES_PATH
 const auto OPERATION_DELAY = 10000;
 
 template <typename T>
-bool compareDataSeries(std::shared_ptr<IDataSeries> candidate, SqpRange candidateCacheRange,
+bool compareDataSeries(std::shared_ptr<IDataSeries> candidate, DateTimeRange candidateCacheRange,
                        std::shared_ptr<IDataSeries> reference)
 {
     auto compareLambda = [](const auto &it1, const auto &it2) {
@@ -75,8 +75,8 @@ void TestAmdaAcquisition::testAcquisition_data()
     // ////////////// //
 
     QTest::addColumn<QString>("dataFilename");  // File containing expected data of acquisitions
-    QTest::addColumn<SqpRange>("initialRange"); // First acquisition
-    QTest::addColumn<std::vector<SqpRange> >("operations"); // Acquisitions to make
+    QTest::addColumn<DateTimeRange>("initialRange"); // First acquisition
+    QTest::addColumn<std::vector<DateTimeRange> >("operations"); // Acquisitions to make
 
     // ////////// //
     // Test cases //
@@ -90,12 +90,12 @@ void TestAmdaAcquisition::testAcquisition_data()
 
     QTest::newRow("amda")
         << "AmdaData-2012-01-01-12-00-00_2012-01-03-12-00-00.txt"
-        << SqpRange{dateTime(2012, 1, 2, 2, 3, 0), dateTime(2012, 1, 2, 2, 4, 0)}
-        << std::vector<SqpRange>{
+        << DateTimeRange{dateTime(2012, 1, 2, 2, 3, 0), dateTime(2012, 1, 2, 2, 4, 0)}
+        << std::vector<DateTimeRange>{
                // 2 : pan (jump) left for two min
-               SqpRange{dateTime(2012, 1, 2, 2, 1, 0), dateTime(2012, 1, 2, 2, 2, 0)},
+               DateTimeRange{dateTime(2012, 1, 2, 2, 1, 0), dateTime(2012, 1, 2, 2, 2, 0)},
                // 3 : pan (jump) right for four min
-               SqpRange{dateTime(2012, 1, 2, 2, 5, 0), dateTime(2012, 1, 2, 2, 6, 0)},
+               DateTimeRange{dateTime(2012, 1, 2, 2, 5, 0), dateTime(2012, 1, 2, 2, 6, 0)},
                // 4 : pan (overlay) right for 30 sec
                /*SqpRange{dateTime(2012, 1, 2, 2, 5, 30), dateTime(2012, 1, 2, 2, 6, 30)},
                // 5 : pan (overlay) left for 30 sec
@@ -118,7 +118,7 @@ void TestAmdaAcquisition::testAcquisition()
     auto results = AmdaResultParser::readTxt(filePath, DataSeriesType::SCALAR);
 
     /// Lambda used to validate a variable at each step
-    auto validateVariable = [results](std::shared_ptr<Variable> variable, const SqpRange &range) {
+    auto validateVariable = [results](std::shared_ptr<Variable> variable, const DateTimeRange &range) {
         // Checks that the variable's range has changed
         qInfo() << tr("Compare var range vs range") << variable->range() << range;
         QCOMPARE(variable->range(), range);
@@ -130,7 +130,7 @@ void TestAmdaAcquisition::testAcquisition()
     };
 
     // Creates variable
-    QFETCH(SqpRange, initialRange);
+    QFETCH(DateTimeRange, initialRange);
     sqpApp->timeController().setDateTimeRange(initialRange);
     auto provider = std::make_shared<AmdaProvider>();
     auto variable = sqpApp->variableController().createVariable(
@@ -140,7 +140,7 @@ void TestAmdaAcquisition::testAcquisition()
     validateVariable(variable, initialRange);
 
     // Makes operations on the variable
-    QFETCH(std::vector<SqpRange>, operations);
+    QFETCH(std::vector<DateTimeRange>, operations);
     for (const auto &operation : operations) {
         // Asks request on the variable and waits during its execution
         sqpApp->variableController().onRequestDataLoading({variable}, operation, false);

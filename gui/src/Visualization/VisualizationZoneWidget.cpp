@@ -153,7 +153,7 @@ VisualizationZoneWidget::~VisualizationZoneWidget()
     delete ui;
 }
 
-void VisualizationZoneWidget::setZoneRange(const SqpRange &range)
+void VisualizationZoneWidget::setZoneRange(const DateTimeRange &range)
 {
     if (auto graph = firstGraph()) {
         graph->setGraphRange(range);
@@ -198,8 +198,8 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
 
 
     // Lambda to synchronize zone widget
-    auto synchronizeZoneWidget = [this, graphWidget](const SqpRange &graphRange,
-                                                     const SqpRange &oldGraphRange) {
+    auto synchronizeZoneWidget = [this, graphWidget](const DateTimeRange &graphRange,
+                                                     const DateTimeRange &oldGraphRange) {
 
         auto zoomType = VariableController::getZoomType(graphRange, oldGraphRange);
         auto frameLayout = ui->dragDropContainer->layout();
@@ -289,7 +289,7 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     connect(graphWidget, &VisualizationGraphWidget::variableAboutToBeRemoved, this,
             &VisualizationZoneWidget::onVariableAboutToBeRemoved);
 
-    auto range = SqpRange{};
+    auto range = DateTimeRange{};
     if (auto firstGraph = this->firstGraph()) {
         // Case of a new graph in a existant zone
         range = firstGraph->graphRange();

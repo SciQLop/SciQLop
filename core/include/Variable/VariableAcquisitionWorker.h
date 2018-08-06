@@ -28,8 +28,8 @@ public:
     explicit VariableAcquisitionWorker(QObject *parent = 0);
     virtual ~VariableAcquisitionWorker();
 
-    QUuid pushVariableRequest(QUuid varRequestId, QUuid vIdentifier, SqpRange rangeRequested,
-                              SqpRange cacheRangeRequested, DataProviderParameters parameters,
+    QUuid pushVariableRequest(QUuid varRequestId, QUuid vIdentifier, DateTimeRange rangeRequested,
+                              DateTimeRange cacheRangeRequested, DataProviderParameters parameters,
                               std::shared_ptr<IDataProvider> provider);
 
     void abortProgressRequested(QUuid vIdentifier);
@@ -37,8 +37,8 @@ public:
     void initialize();
     void finalize();
 signals:
-    void dataProvided(QUuid vIdentifier, const SqpRange &rangeRequested,
-                      const SqpRange &cacheRangeRequested,
+    void dataProvided(QUuid vIdentifier, const DateTimeRange &rangeRequested,
+                      const DateTimeRange &cacheRangeRequested,
                       QVector<AcquisitionDataPacket> dataAcquired);
 
     void variableRequestInProgress(QUuid vIdentifier, double progress);
@@ -49,7 +49,7 @@ signals:
 
 public slots:
     void onVariableDataAcquired(QUuid acqIdentifier, std::shared_ptr<IDataSeries> dataSeries,
-                                SqpRange dataRangeAcquired);
+                                DateTimeRange dataRangeAcquired);
     void onVariableRetrieveDataInProgress(QUuid acqIdentifier, double progress);
     void onVariableAcquisitionFailed(QUuid acqIdentifier);
 

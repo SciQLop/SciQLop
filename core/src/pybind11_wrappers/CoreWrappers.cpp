@@ -3,6 +3,7 @@
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
 #include <pybind11/chrono.h>
+#include <pybind11/functional.h>
 
 #include <string>
 #include <sstream>
@@ -19,6 +20,8 @@
 #include <Variable/VariableController.h>
 
 #include <Time/TimeController.h>
+
+#include <Network/Downloader.h>
 
 
 
@@ -39,6 +42,14 @@ PYBIND11_MODULE(pysciqlopcore,m){
             .def(py::self == py::self)
             .def(py::self != py::self)
             .def("__repr__",__repr__<Unit>);
+
+    py::class_<Response>(m,"Response")
+            .def("status_code", &Response::status_code);
+
+    py::class_<Downloader>(m,"Downloader")
+            .def_static("get", Downloader::get)
+            .def_static("getAsync", Downloader::getAsync)
+            .def_static("downloadFinished", Downloader::downloadFinished);
 
     py::class_<DataSeriesIteratorValue>(m,"DataSeriesIteratorValue")
             .def_property_readonly("x", &DataSeriesIteratorValue::x)
@@ -95,21 +106,21 @@ PYBIND11_MODULE(pysciqlopcore,m){
             .def("__repr__",__repr__<Variable>);
 
 
-    py::class_<SqpRange>(m,"SqpRange")
-            .def("fromDateTime", &SqpRange::fromDateTime, py::return_value_policy::move)
-            .def(py::init([](double start, double stop){return SqpRange{start, stop};}))
+    py::class_<DateTimeRange>(m,"SqpRange")
+            .def("fromDateTime", &DateTimeRange::fromDateTime, py::return_value_policy::move)
+            .def(py::init([](double start, double stop){return DateTimeRange{start, stop};}))
             .def(py::init([](system_clock::time_point start, system_clock::time_point stop)
     {
                      double start_ = 0.001 * duration_cast<milliseconds>(start.time_since_epoch()).count();
                      double stop_ = 0.001 * duration_cast<milliseconds>(stop.time_since_epoch()).count();
-                     return SqpRange{start_, stop_};
+                     return DateTimeRange{start_, stop_};
                  }))
-            .def_property_readonly("start", [](const SqpRange& range){
+            .def_property_readonly("start", [](const DateTimeRange& range){
         return  system_clock::from_time_t(range.m_TStart);
     })
-            .def_property_readonly("stop", [](const SqpRange& range){
+            .def_property_readonly("stop", [](const DateTimeRange& range){
         return  system_clock::from_time_t(range.m_TEnd);
     })
-            .def("__repr__", __repr__<SqpRange>);
+            .def("__repr__", __repr__<DateTimeRange>);
 
 }

@@ -69,7 +69,7 @@ extern const QString VALIDATION_FREQUENCY_BOUNDS_PROPERTY;
 class Variable;
 struct VariableState {
     std::shared_ptr<Variable> m_Variable{nullptr};
-    SqpRange m_Range{INVALID_RANGE};
+    DateTimeRange m_Range{INVALID_RANGE};
 };
 
 using VariableId = int;
@@ -82,7 +82,7 @@ using VariablesPool = std::map<VariableId, VariableState>;
  */
 struct SyncGroup {
     std::set<VariableId> m_Variables{};
-    SqpRange m_Range{INVALID_RANGE};
+    DateTimeRange m_Range{INVALID_RANGE};
 };
 
 using SyncGroupId = QUuid;
@@ -119,7 +119,7 @@ struct FuzzingState {
     /// Updates the range of a variable and all variables to which it is synchronized
     /// @param the variable for which to affect the range
     /// @param the range to affect
-    void updateRanges(VariableId variableId, const SqpRange &newRange);
+    void updateRanges(VariableId variableId, const DateTimeRange &newRange);
 
     VariablesPool m_VariablesPool;
     SyncGroupsPool m_SyncGroupsPool;

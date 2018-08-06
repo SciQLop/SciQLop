@@ -28,8 +28,8 @@ struct AcquisitionRequest {
     QUuid m_AcqIdentifier;
     QUuid m_vIdentifier;
     DataProviderParameters m_DataProviderParameters;
-    SqpRange m_RangeRequested;
-    SqpRange m_CacheRangeRequested;
+    DateTimeRange m_RangeRequested;
+    DateTimeRange m_CacheRangeRequested;
     int m_Size;
     int m_Progression;
     std::shared_ptr<IDataProvider> m_Provider;

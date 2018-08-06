@@ -53,7 +53,7 @@ public:
     /// Returns the list of variables contained in a MIME data
     QList<std::shared_ptr<Variable> > variablesForMimeData(const QByteArray &mimeData) const;
 
-    static AcquisitionZoomType getZoomType(const SqpRange &range, const SqpRange &oldRange);
+    static AcquisitionZoomType getZoomType(const DateTimeRange &range, const DateTimeRange &oldRange);
 
     /// Returns True if there are pending downloads
     bool hasPendingDownloads();
@@ -62,10 +62,10 @@ signals:
     void variableAboutToBeDeleted(std::shared_ptr<Variable> variable);
 
     /// Signal emitted when a data acquisition is requested on a range for a variable
-    void rangeChanged(std::shared_ptr<Variable> variable, const SqpRange &range);
+    void rangeChanged(std::shared_ptr<Variable> variable, const DateTimeRange &range);
 
     /// Signal emitted when a sub range of the cacheRange of the variable can be displayed
-    void updateVarDisplaying(std::shared_ptr<Variable> variable, const SqpRange &range);
+    void updateVarDisplaying(std::shared_ptr<Variable> variable, const DateTimeRange &range);
 
     /// Signal emitted when all acquisitions related to the variables have been completed (whether
     /// validated, canceled, or failed)
@@ -95,7 +95,7 @@ public slots:
     void deleteVariables(const QVector<std::shared_ptr<Variable> > &variables) noexcept;
 
     /// Request the data loading of the variable whithin range
-    void onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables, const SqpRange &range,
+    void onRequestDataLoading(QVector<std::shared_ptr<Variable> > variables, const DateTimeRange &range,
                               bool synchronise);
     /**
      * Creates a new variable and adds it to the model
@@ -105,17 +105,17 @@ public slots:
      * @return the pointer to the new variable or nullptr if the creation failed
      */
     std::shared_ptr<Variable> createVariable(const QString &name, const QVariantHash &metadata,
-                                             std::shared_ptr<IDataProvider> provider, const SqpRange &range) noexcept;
+                                             std::shared_ptr<IDataProvider> provider, const DateTimeRange &range) noexcept;
 
     /// Update the temporal parameters of every selected variable to dateTime
-    void onDateTimeOnSelection(const SqpRange &dateTime);
+    void onDateTimeOnSelection(const DateTimeRange &dateTime);
 
     /// Update the temporal parameters of the specified variable
-    void onUpdateDateTime(std::shared_ptr<Variable> variable, const SqpRange &dateTime);
+    void onUpdateDateTime(std::shared_ptr<Variable> variable, const DateTimeRange &dateTime);
 
 
-    void onDataProvided(QUuid vIdentifier, const SqpRange &rangeRequested,
-                        const SqpRange &cacheRangeRequested,
+    void onDataProvided(QUuid vIdentifier, const DateTimeRange &rangeRequested,
+                        const DateTimeRange &cacheRangeRequested,
                         QVector<AcquisitionDataPacket> dataAcquired);
 
     void onVariableRetrieveDataInProgress(QUuid identifier, double progress);

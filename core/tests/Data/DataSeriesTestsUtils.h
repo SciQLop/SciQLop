@@ -254,7 +254,7 @@ void testSubDataSeries_struct() {
     // Data series from which extract the subdata series
     QTest::addColumn<std::shared_ptr<DataSeriesType> >("dataSeries");
     // Range to extract
-    QTest::addColumn<SqpRange>("range");
+    QTest::addColumn<DateTimeRange>("range");
 
     // Expected values for the subdata series
     QTest::addColumn<DataContainer>("expectedXAxisData");
@@ -268,7 +268,7 @@ void testSubDataSeries_struct() {
 template <typename DataSeriesType, typename ExpectedValuesType>
 void testSubDataSeries_t(){
     QFETCH(std::shared_ptr<DataSeriesType>, dataSeries);
-    QFETCH(SqpRange, range);
+    QFETCH(DateTimeRange, range);
 
     // Makes the operation
     auto subDataSeries = std::dynamic_pointer_cast<DataSeriesType>(dataSeries->subDataSeries(range));

@@ -16,12 +16,18 @@ VariableSynchronizationGroup::VariableSynchronizationGroup(QObject *parent)
 {
 }
 
-void VariableSynchronizationGroup::addVariableId(QUuid vIdentifier)
+VariableSynchronizationGroup::VariableSynchronizationGroup(QUuid variable, QObject *parent)
+    :QObject{parent}, impl{spimpl::make_unique_impl<VariableSynchronizationGroupPrivate>()}
+{
+    this->addVariable(variable);
+}
+
+void VariableSynchronizationGroup::addVariable(QUuid vIdentifier)
 {
     impl->m_VariableIdSet.insert(vIdentifier);
 }
 
-void VariableSynchronizationGroup::removeVariableId(QUuid vIdentifier)
+void VariableSynchronizationGroup::removeVariable(QUuid vIdentifier)
 {
     impl->m_VariableIdSet.erase(vIdentifier);
 }

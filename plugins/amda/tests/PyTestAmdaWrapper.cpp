@@ -51,9 +51,10 @@
 #include <pywrappers_common.h>
 #include <CoreWrappers.h>
 
+#include "PyTestAmdaWrapper.h"
+
 
 using namespace std::chrono;
-namespace py = pybind11;
 
 
 
@@ -74,7 +75,7 @@ PYBIND11_MODULE(pytestamda, m){
 
     py::class_<VariableController>(m, "VariableController")
             .def_static("createVariable",[](const QString &name,
-                        std::shared_ptr<IDataProvider> provider, const SqpRange& range){
+                        std::shared_ptr<IDataProvider> provider, const DateTimeRange& range){
         return sqpApp->variableController().createVariable(name, {{"dataType", "vector"}, {"xml:id", "c1_b"}}, provider, range);
     })
             .def_static("hasPendingDownloads",
@@ -96,7 +97,7 @@ PYBIND11_MODULE(pytestamda, m){
                         [](std::shared_ptr<Variable> variable){
         sqpApp->variableController().deleteVariable(variable);}
                         )
-            .def_static("update_range",[](std::shared_ptr<Variable> variable, const SqpRange &range, bool synchronise){
+            .def_static("update_range",[](std::shared_ptr<Variable> variable, const DateTimeRange &range, bool synchronise){
         sqpApp->variableController().onRequestDataLoading({variable}, range, synchronise);
     })
             .def_static("wait_for_downloads",[](){
@@ -106,7 +107,7 @@ PYBIND11_MODULE(pytestamda, m){
     });
 
     py::class_<TimeController>(m,"TimeController")
-            .def_static("setTime", [](SqpRange range){sqpApp->timeController().setDateTimeRange(range);});
+            .def_static("setTime", [](DateTimeRange range){sqpApp->timeController().setDateTimeRange(range);});
 
 
     auto amda_provider = std::make_shared<AmdaProvider>();
@@ -122,14 +123,4 @@ PYBIND11_MODULE(pytestamda, m){
 
 
 }
-
-
-int pytestamda_test(const char* testScriptPath )
-{
-    py::scoped_interpreter guard{};
-    py::globals()["__file__"] = py::str(testScriptPath);
-    py::eval_file(testScriptPath);
-    return 0;
-}
-
 

@@ -13,9 +13,9 @@
 /**
  * @brief The SqpRange struct holds the information of time parameters
  */
-struct SqpRange {
+struct DateTimeRange {
     /// Creates SqpRange from dates and times
-    static SqpRange fromDateTime(const QDate &startDate, const QTime &startTime,
+    static DateTimeRange fromDateTime(const QDate &startDate, const QTime &startTime,
                                  const QDate &endDate, const QTime &endTime)
     {
         return {DateUtils::secondsSinceEpoch(QDateTime{startDate, startTime, Qt::UTC}),
@@ -27,17 +27,19 @@ struct SqpRange {
     /// End time (UTC)
     double m_TEnd;
 
-    bool contains(const SqpRange &dateTime) const noexcept
+    double delta()const {return this->m_TEnd - this->m_TStart;}
+
+    bool contains(const DateTimeRange &dateTime) const noexcept
     {
         return (m_TStart <= dateTime.m_TStart && m_TEnd >= dateTime.m_TEnd);
     }
 
-    bool intersect(const SqpRange &dateTime) const noexcept
+    bool intersect(const DateTimeRange &dateTime) const noexcept
     {
         return (m_TEnd >= dateTime.m_TStart && m_TStart <= dateTime.m_TEnd);
     }
 
-    bool operator==(const SqpRange &other) const
+    bool operator==(const DateTimeRange &other) const
     {
         auto equals = [](const auto &v1, const auto &v2) {
             return (std::isnan(v1) && std::isnan(v2)) || v1 == v2;
@@ -45,13 +47,13 @@ struct SqpRange {
 
         return equals(m_TStart, other.m_TStart) && equals(m_TEnd, other.m_TEnd);
     }
-    bool operator!=(const SqpRange &other) const { return !(*this == other); }
+    bool operator!=(const DateTimeRange &other) const { return !(*this == other); }
 };
 
 const auto INVALID_RANGE
-    = SqpRange{std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
+    = DateTimeRange{std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN()};
 
-inline QDebug operator<<(QDebug d, SqpRange obj)
+inline QDebug operator<<(QDebug d, DateTimeRange obj)
 {
     auto tendDateTimeStart = DateUtils::dateTime(obj.m_TStart);
     auto tendDateTimeEnd = DateUtils::dateTime(obj.m_TEnd);
@@ -61,6 +63,6 @@ inline QDebug operator<<(QDebug d, SqpRange obj)
 }
 
 // Required for using shared_ptr in signals/slots
-SCIQLOP_REGISTER_META_TYPE(SQPRANGE_REGISTRY, SqpRange)
+SCIQLOP_REGISTER_META_TYPE(SQPRANGE_REGISTRY, DateTimeRange)
 
 #endif // SCIQLOP_SQPRANGE_H

@@ -6,7 +6,7 @@ Q_LOGGING_CATEGORY(LOG_TimeController, "TimeController")
 
 struct TimeController::TimeControllerPrivate {
 
-    SqpRange m_DateTime;
+    DateTimeRange m_DateTime;
 };
 
 TimeController::TimeController(QObject *parent)
@@ -15,12 +15,12 @@ TimeController::TimeController(QObject *parent)
     qCDebug(LOG_TimeController()) << tr("TimeController construction");
 }
 
-SqpRange TimeController::dateTime() const noexcept
+DateTimeRange TimeController::dateTime() const noexcept
 {
     return impl->m_DateTime;
 }
 
-QByteArray TimeController::mimeDataForTimeRange(const SqpRange &timeRange)
+QByteArray TimeController::mimeDataForTimeRange(const DateTimeRange &timeRange)
 {
     QByteArray encodedData;
     QDataStream stream{&encodedData, QIODevice::WriteOnly};
@@ -30,17 +30,17 @@ QByteArray TimeController::mimeDataForTimeRange(const SqpRange &timeRange)
     return encodedData;
 }
 
-SqpRange TimeController::timeRangeForMimeData(const QByteArray &mimeData)
+DateTimeRange TimeController::timeRangeForMimeData(const QByteArray &mimeData)
 {
     QDataStream stream{mimeData};
 
-    SqpRange timeRange;
+    DateTimeRange timeRange;
     stream >> timeRange.m_TStart >> timeRange.m_TEnd;
 
     return timeRange;
 }
 
-void TimeController::setDateTimeRange(SqpRange dateTime)
+void TimeController::setDateTimeRange(DateTimeRange dateTime)
 {
     impl->m_DateTime = dateTime;
 }

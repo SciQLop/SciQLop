@@ -10,7 +10,7 @@
  */
 struct DataProviderParameters {
     /// Times for which retrieve data
-    QVector<SqpRange> m_Times;
+    QVector<DateTimeRange> m_Times;
     /// Extra data that can be used by the provider to retrieve data
     QVariantHash m_Data;
 };

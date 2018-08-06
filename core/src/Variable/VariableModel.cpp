@@ -290,7 +290,7 @@ QMimeData *VariableModel::mimeData(const QModelIndexList &indexes) const
     QList<std::shared_ptr<Variable> > variableList;
 
 
-    SqpRange firstTimeRange;
+    DateTimeRange firstTimeRange;
     for (const auto &index : indexes) {
         if (index.column() == 0) { // only the first column
             auto variable = impl->m_Variables.at(index.row());

@@ -33,7 +33,7 @@ std::unique_ptr<TimeController> defaultTimeController()
     QDateTime start{QDate{2017, 01, 01}, QTime{0, 0, 0, 0}};
     QDateTime end{QDate{2017, 01, 02}, QTime{0, 0, 0, 0}};
     timeController->setDateTimeRange(
-        SqpRange{DateUtils::secondsSinceEpoch(start), DateUtils::secondsSinceEpoch(end)});
+        DateTimeRange{DateUtils::secondsSinceEpoch(start), DateUtils::secondsSinceEpoch(end)});
 
     return timeController;
 }

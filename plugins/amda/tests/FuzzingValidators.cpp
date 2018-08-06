@@ -163,8 +163,8 @@ DataValidatorHelper &DataValidatorHelper::instance()
  * @param getVariableRangeFun the function to retrieve the range from the variable
  * @remarks if the variable is null, checks that the expected range is the invalid range
  */
-void validateRange(std::shared_ptr<Variable> variable, const SqpRange &expectedRange,
-                   std::function<SqpRange(const Variable &)> getVariableRangeFun)
+void validateRange(std::shared_ptr<Variable> variable, const DateTimeRange &expectedRange,
+                   std::function<DateTimeRange(const Variable &)> getVariableRangeFun)
 {
     auto compare = [](const auto &range, const auto &expectedRange, const auto &message) {
         if (range == expectedRange) {

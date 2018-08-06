@@ -169,7 +169,7 @@ void TestSpectrogramSeries::testSubDataSeries_data()
                .setY({1., 2.})
                .setValues({10., 11., 20., 21., 30., 31})
                .build()
-        << SqpRange{0., 5.} << DataContainer{1., 2., 3.}
+        << DateTimeRange{0., 5.} << DataContainer{1., 2., 3.}
         << Components{{10., 20., 30.}, {11., 21., 31.}};
 
     QTest::newRow("subDataSeries (the range includes no data)")
@@ -178,7 +178,7 @@ void TestSpectrogramSeries::testSubDataSeries_data()
                .setY({1., 2.})
                .setValues({10., 11., 20., 21., 30., 31})
                .build()
-        << SqpRange{4., 5.} << DataContainer{} << Components{{}, {}};
+        << DateTimeRange{4., 5.} << DataContainer{} << Components{{}, {}};
 
     QTest::newRow("subDataSeries (the range includes some data)")
         << SpectrogramBuilder{}
@@ -186,7 +186,7 @@ void TestSpectrogramSeries::testSubDataSeries_data()
                .setY({1., 2.})
                .setValues({10., 11., 20., 21., 30., 31})
                .build()
-        << SqpRange{1.1, 3} << DataContainer{2., 3.} << Components{{20., 30.}, {21., 31.}};
+        << DateTimeRange{1.1, 3} << DataContainer{2., 3.} << Components{{20., 30.}, {21., 31.}};
 }
 
 void TestSpectrogramSeries::testSubDataSeries()

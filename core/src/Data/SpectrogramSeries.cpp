@@ -29,7 +29,7 @@ std::unique_ptr<IDataSeries> SpectrogramSeries::clone() const
     return std::make_unique<SpectrogramSeries>(*this);
 }
 
-std::shared_ptr<IDataSeries> SpectrogramSeries::subDataSeries(const SqpRange &range)
+std::shared_ptr<IDataSeries> SpectrogramSeries::subDataSeries(const DateTimeRange &range)
 {
     auto subXAxisData = std::vector<double>();
     auto subValuesData = QVector<double>(); // Uses QVector to append easily values to it

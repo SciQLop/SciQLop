@@ -28,7 +28,7 @@ public:
     void requestDataAborting(QUuid acqIdentifier) override;
 
 private:
-    void retrieveData(QUuid token, const SqpRange &dateTime, const QVariantHash &data);
+    void retrieveData(QUuid token, const DateTimeRange &dateTime, const QVariantHash &data);
 
     void updateRequestProgress(QUuid acqIdentifier, std::shared_ptr<QNetworkRequest> request,
                                double progress);
