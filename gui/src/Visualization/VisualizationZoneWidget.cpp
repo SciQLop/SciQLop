@@ -9,7 +9,7 @@
 #include "Common/MimeTypesDef.h"
 #include "Common/VisualizationDef.h"
 
-#include <Data/SqpRange.h>
+#include <Data/DateTimeRange.h>
 #include <DataSource/DataSourceController.h>
 #include <Time/TimeController.h>
 #include <Variable/Variable.h>
@@ -23,6 +23,7 @@
 #include <cmath>
 
 #include <QLayout>
+#include <QStyle>
 
 Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 

@@ -2,7 +2,7 @@
 #define SCIQLOP_VISUALIZATIONWIDGET_H
 
 #include "Visualization/IVisualizationWidget.h"
-#include <Data/SqpRange.h>
+#include <Data/DateTimeRange.h>
 
 #include <QLoggingCategory>
 #include <QWidget>

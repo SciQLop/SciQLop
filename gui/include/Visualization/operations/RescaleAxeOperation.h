@@ -2,7 +2,7 @@
 #define SCIQLOP_RESCALEAXEOPERATION_H
 
 #include "Visualization/IVisualizationWidgetVisitor.h"
-#include <Data/SqpRange.h>
+#include <Data/DateTimeRange.h>
 
 #include <Common/spimpl.h>
 

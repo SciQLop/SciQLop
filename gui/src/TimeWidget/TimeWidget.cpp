@@ -12,6 +12,7 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QMimeData>
+#include <QStyle>
 
 
 struct TimeWidget::TimeWidgetPrivate {

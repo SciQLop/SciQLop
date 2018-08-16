@@ -1,7 +1,7 @@
 #ifndef SCIQLOP_VISUALIZATIONZONEWIDGET_H
 #define SCIQLOP_VISUALIZATIONZONEWIDGET_H
 
-#include "Data/SqpRange.h"
+#include "Data/DateTimeRange.h"
 #include "Visualization/IVisualizationWidget.h"
 #include "Visualization/VisualizationDragWidget.h"
 

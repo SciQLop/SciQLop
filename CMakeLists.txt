@@ -9,7 +9,7 @@ OPTION (CPPCHECK "Analyzes the source code with cppcheck" OFF)
 OPTION (CLANG_TIDY "Analyzes the source code with Clang Tidy" OFF)
 OPTION (IWYU "Analyzes the source code with Include What You Use" OFF)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 
 set(CMAKE_AUTOMOC ON)
 #https://gitlab.kitware.com/cmake/cmake/issues/15227
@@ -46,21 +46,6 @@ IF(IWYU)
 ENDIF(IWYU)
 
 enable_testing()
-
-
-find_package(catalogs CONFIG QUIET)
-if (NOT CatalogueAPI_FOUND)
-    execute_process(COMMAND git submodule init external/libcatalogs WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    execute_process(COMMAND git submodule update external/libcatalogs WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    add_subdirectory(external/libcatalogs)
-endif()
-
-find_package(pybind11 CONFIG QUIET)
-if (NOT pybind11_FOUND)
-    execute_process(COMMAND git submodule init external/pybind11 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    execute_process(COMMAND git submodule update external/pybind11 WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    add_subdirectory(external/pybind11)
-endif()
 
 add_subdirectory(core)
 add_subdirectory(gui)

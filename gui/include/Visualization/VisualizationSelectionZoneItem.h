@@ -2,7 +2,7 @@
 #define SCIQLOP_VISUALIZATIONSELECTIONZONEITEM_H
 
 #include <Common/spimpl.h>
-#include <Data/SqpRange.h>
+#include <Data/DateTimeRange.h>
 #include <Visualization/qcustomplot.h>
 
 class VisualizationGraphWidget;

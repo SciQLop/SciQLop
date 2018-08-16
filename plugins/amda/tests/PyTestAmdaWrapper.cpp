@@ -32,7 +32,7 @@
 #include <SqpApplication.h>
 #include <Variable/VariableController.h>
 #include <Time/TimeController.h>
-#include <Data/SqpRange.h>
+#include <Data/DateTimeRange.h>
 #include <Data/DataSeriesType.h>
 #include <Common/DateUtils.h>
 #include <Variable/Variable.h>

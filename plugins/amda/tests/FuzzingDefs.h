@@ -1,7 +1,7 @@
 #ifndef SCIQLOP_FUZZINGDEFS_H
 #define SCIQLOP_FUZZINGDEFS_H
 
-#include <Data/SqpRange.h>
+#include <Data/DateTimeRange.h>
 
 #include <QString>
 #include <QUuid>
