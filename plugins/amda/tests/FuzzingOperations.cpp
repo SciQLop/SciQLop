@@ -4,7 +4,7 @@
 #include <Data/IDataProvider.h>
 
 #include <Variable/Variable.h>
-#include <Variable/VariableController.h>
+#include <Variable/VariableController2.h>
 
 #include <QUuid>
 
@@ -22,7 +22,7 @@ struct CreateOperation : public IFuzzingOperation {
     }
 
     void execute(VariableId variableId, FuzzingState &fuzzingState,
-                 VariableController &variableController,
+                 VariableController2 &variableController,
                  const Properties &properties) const override
     {
         // Retrieves metadata pool from properties, and choose one of the metadata entries to
@@ -56,7 +56,7 @@ struct DeleteOperation : public IFuzzingOperation {
     }
 
     void execute(VariableId variableId, FuzzingState &fuzzingState,
-                 VariableController &variableController, const Properties &) const override
+                 VariableController2 &variableController, const Properties &) const override
     {
         auto &variableState = fuzzingState.variableState(variableId);
 
@@ -112,7 +112,7 @@ struct MoveOperation : public IFuzzingOperation {
     }
 
     void execute(VariableId variableId, FuzzingState &fuzzingState,
-                 VariableController &variableController,
+                 VariableController2 &variableController,
                  const Properties &properties) const override
     {
         auto &variableState = fuzzingState.variableState(variableId);
@@ -142,7 +142,7 @@ struct MoveOperation : public IFuzzingOperation {
         qCInfo(LOG_FuzzingOperations()).noquote() << "Performing" << m_Label << "on"
                                                   << variable->name() << "(from" << variableRange
                                                   << "to" << newVariableRange << ")...";
-        variableController.onRequestDataLoading({variable}, newVariableRange, isSynchronized);
+        variableController.changeRange({variable}, newVariableRange);
 
         // Updates state
         fuzzingState.updateRanges(variableId, newVariableRange);
@@ -163,7 +163,7 @@ struct SynchronizeOperation : public IFuzzingOperation {
     }
 
     void execute(VariableId variableId, FuzzingState &fuzzingState,
-                 VariableController &variableController, const Properties &) const override
+                 VariableController2 &variableController, const Properties &) const override
     {
         auto &variableState = fuzzingState.variableState(variableId);
 
@@ -172,13 +172,12 @@ struct SynchronizeOperation : public IFuzzingOperation {
         qCInfo(LOG_FuzzingOperations()).noquote() << "Adding" << variableState.m_Variable->name()
                                                   << "into synchronization group" << syncGroupId
                                                   << "...";
-        variableController.onAddSynchronized(variableState.m_Variable, syncGroupId);
+        //variableController.onAddSynchronized(variableState.m_Variable, syncGroupId);
 
         // Updates state
         fuzzingState.synchronizeVariable(variableId, syncGroupId);
 
-        variableController.onRequestDataLoading({variableState.m_Variable}, variableState.m_Range,
-                                                false);
+        variableController.changeRange({variableState.m_Variable}, variableState.m_Range);
     }
 };
 
@@ -190,7 +189,7 @@ struct DesynchronizeOperation : public IFuzzingOperation {
     }
 
     void execute(VariableId variableId, FuzzingState &fuzzingState,
-                 VariableController &variableController, const Properties &) const override
+                 VariableController2 &variableController, const Properties &) const override
     {
         auto &variableState = fuzzingState.variableState(variableId);
 
@@ -200,7 +199,7 @@ struct DesynchronizeOperation : public IFuzzingOperation {
         qCInfo(LOG_FuzzingOperations()).noquote() << "Removing" << variableState.m_Variable->name()
                                                   << "from synchronization group" << syncGroupId
                                                   << "...";
-        variableController.desynchronize(variableState.m_Variable, syncGroupId);
+        //variableController.desynchronize(variableState.m_Variable, syncGroupId);
 
         // Updates state
         fuzzingState.desynchronizeVariable(variableId, syncGroupId);
@@ -210,7 +209,7 @@ struct DesynchronizeOperation : public IFuzzingOperation {
 struct UnknownOperation : public IFuzzingOperation {
     bool canExecute(VariableId, const FuzzingState &) const override { return false; }
 
-    void execute(VariableId, FuzzingState &, VariableController &,
+    void execute(VariableId, FuzzingState &, VariableController2 &,
                  const Properties &) const override
     {
     }

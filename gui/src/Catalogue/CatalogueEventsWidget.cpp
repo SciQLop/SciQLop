@@ -11,7 +11,6 @@
 #include <DataSource/DataSourceItem.h>
 #include <SqpApplication.h>
 #include <Variable/Variable.h>
-#include <Variable/VariableController.h>
 #include <Variable/VariableController2.h>
 #include <Visualization/VisualizationGraphWidget.h>
 #include <Visualization/VisualizationTabWidget.h>

@@ -9,10 +9,8 @@
 #include <QThread>
 #include <Time/TimeController.h>
 #include <Variable/Variable.h>
-#include <Variable/VariableController.h>
 #include <Variable/VariableController2.h>
 #include <Variable/VariableModel2.h>
-#include <Variable/VariableModel.h>
 #include <Visualization/VisualizationController.h>
 
 Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")

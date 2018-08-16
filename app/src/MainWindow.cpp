@@ -33,7 +33,6 @@
 #include <Time/TimeController.h>
 #include <TimeWidget/TimeWidget.h>
 #include <Variable/Variable.h>
-#include <Variable/VariableController.h>
 #include <Visualization/VisualizationController.h>
 
 #include <QAction>

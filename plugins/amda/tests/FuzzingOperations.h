@@ -8,6 +8,7 @@
 
 #include <QLoggingCategory>
 #include <QMetaType>
+#include <Variable/VariableController2.h>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_FuzzingOperations)
 
@@ -43,7 +44,7 @@ struct IFuzzingOperation {
     /// @remarks fuzzingState is passed as a reference because, according to the operation, it can
     /// be modified (in/out parameter)
     virtual void execute(VariableId variableId, FuzzingState &fuzzingState,
-                         VariableController &variableController,
+                         VariableController2 &variableController,
                          const Properties &properties = {}) const = 0;
 };
 
