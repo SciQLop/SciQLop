@@ -53,7 +53,7 @@ public:
      * @param index The index where the zone should be inserted in the layout
      * @return the pointer to the created zone
      */
-    VisualizationZoneWidget *createZone(const QList<std::shared_ptr<Variable> > &variables,
+    VisualizationZoneWidget *createZone(const std::vector<std::shared_ptr<Variable> > &variables,
                                         int index);
 
     /**

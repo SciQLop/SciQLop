@@ -253,11 +253,12 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     connect(ui->widget, &QCustomPlot::customContextMenuRequested, this,
             &VisualizationGraphWidget::onGraphMenuRequested);
 
-    connect(this, &VisualizationGraphWidget::requestDataLoading, &sqpApp->variableController(),
-            &VariableController::onRequestDataLoading);
+    //@TODO implement this :)
+//    connect(this, &VisualizationGraphWidget::requestDataLoading, &sqpApp->variableController(),
+//            &VariableController::onRequestDataLoading);
 
-    connect(&sqpApp->variableController(), &VariableController::updateVarDisplaying, this,
-            &VisualizationGraphWidget::onUpdateVarDisplaying);
+//    connect(&sqpApp->variableController(), &VariableController2::updateVarDisplaying, this,
+//            &VisualizationGraphWidget::onUpdateVarDisplaying);
 
     // Necessary for all platform since Qt::AA_EnableHighDpiScaling is enable.
     plot().setPlottingHint(QCP::phFastPolylines, true);
@@ -365,12 +366,12 @@ void VisualizationGraphWidget::removeVariable(std::shared_ptr<Variable> variable
     ui->widget->replot();
 }
 
-QList<std::shared_ptr<Variable> > VisualizationGraphWidget::variables() const
+std::vector<std::shared_ptr<Variable> > VisualizationGraphWidget::variables() const
 {
-    auto variables = QList<std::shared_ptr<Variable> >{};
+    auto variables = std::vector<std::shared_ptr<Variable> >{};
     for (auto it = std::cbegin(impl->m_VariableToPlotMultiMap);
          it != std::cend(impl->m_VariableToPlotMultiMap); ++it) {
-        variables << it->first;
+        variables.push_back (it->first);
     }
 
     return variables;

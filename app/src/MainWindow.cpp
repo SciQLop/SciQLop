@@ -319,8 +319,8 @@ MainWindow::MainWindow(QWidget *parent)
     // /////////// //
 
     // Controllers / controllers connections
-    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(DateTimeRange)), &sqpApp->variableController(),
-            SLOT(onDateTimeOnSelection(DateTimeRange)));
+//    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(DateTimeRange)), &sqpApp->variableController(),
+//            SLOT(onDateTimeOnSelection(DateTimeRange)));
 
     // Widgets / controllers connections
 

@@ -12,6 +12,7 @@
 #include <SqpApplication.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController.h>
+#include <Variable/VariableController2.h>
 #include <Visualization/VisualizationGraphWidget.h>
 #include <Visualization/VisualizationTabWidget.h>
 #include <Visualization/VisualizationWidget.h>
@@ -240,11 +241,9 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
         // Closes the previous graph and delete the asociated variables
         for (auto graph : m_CustomGraphs) {
             graph->close();
-            auto variables = graph->variables().toVector();
-
-            QMetaObject::invokeMethod(&sqpApp->variableController(), "deleteVariables",
-                                      Qt::QueuedConnection,
-                                      Q_ARG(QVector<std::shared_ptr<Variable> >, variables));
+            auto variables = graph->variables();
+            for(const auto& variable:variables)
+                sqpApp->variableController().deleteVariable(variable);
         }
         m_CustomGraphs.clear();
 
@@ -276,7 +275,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
 
             auto context = new QObject{catalogueEventWidget};
             QObject::connect(
-                &sqpApp->variableController(), &VariableController::variableAdded, context,
+                &sqpApp->variableController(), &VariableController2::variableAdded, context,
                 [this, catalogueEventWidget, zone, context, event, range, productRange,
                  productId](auto variable) {
 

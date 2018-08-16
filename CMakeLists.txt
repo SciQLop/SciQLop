@@ -47,7 +47,13 @@ ENDIF(IWYU)
 
 enable_testing()
 
-add_subdirectory(core)
+find_package(core CONFIG QUIET)
+if (NOT sciqlopcore_FOUND)
+    execute_process(COMMAND git submodule init core WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    execute_process(COMMAND git submodule update core WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    add_subdirectory(core)
+endif()
+
 add_subdirectory(gui)
 add_subdirectory(app)
 add_subdirectory(plugins)

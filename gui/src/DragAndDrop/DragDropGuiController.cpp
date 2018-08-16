@@ -9,7 +9,7 @@
 
 #include "DataSource/DataSourceController.h"
 #include "Variable/Variable.h"
-#include "Variable/VariableController.h"
+#include "Variable/VariableController2.h"
 
 #include "Common/MimeTypesDef.h"
 #include "Common/VisualizationDef.h"
@@ -244,12 +244,12 @@ bool DragDropGuiController::checkMimeDataForVisualization(
     auto result = false;
 
     if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
-        auto variables = sqpApp->variableController().variablesForMimeData(
+        auto variables = sqpApp->variableController().variables(
             mimeData->data(MIME_TYPE_VARIABLE_LIST));
 
-        if (variables.count() == 1) {
+        if (variables.size() == 1) {
 
-            auto variable = variables.first();
+            auto variable = variables[0];
             if (variable->dataSeries() != nullptr) {
 
                 // Check that the variable is not already in a graph

@@ -30,7 +30,7 @@
 #include <pybind11/chrono.h>
 
 #include <SqpApplication.h>
-#include <Variable/VariableController.h>
+#include <Variable/VariableController2.h>
 #include <Time/TimeController.h>
 #include <Data/DateTimeRange.h>
 #include <Data/DataSeriesType.h>
@@ -73,38 +73,38 @@ PYBIND11_MODULE(pytestamda, m){
 
     m.doc() = "hello";
 
-    py::class_<VariableController>(m, "VariableController")
-            .def_static("createVariable",[](const QString &name,
-                        std::shared_ptr<IDataProvider> provider, const DateTimeRange& range){
-        return sqpApp->variableController().createVariable(name, {{"dataType", "vector"}, {"xml:id", "c1_b"}}, provider, range);
-    })
-            .def_static("hasPendingDownloads",
-                        [](){return sqpApp->variableController().hasPendingDownloads();}
-                        )
-            .def_static("addSynchronizationGroup",
-                        [](QUuid uuid){sqpApp->variableController().onAddSynchronizationGroupId(uuid);}
-                        )
-            .def_static("removeSynchronizationGroup",
-                [](QUuid uuid){sqpApp->variableController().onRemoveSynchronizationGroupId(uuid);}
-                )
-            .def_static("synchronizeVar",
-                [](std::shared_ptr<Variable> variable, QUuid uuid){sqpApp->variableController().onAddSynchronized(variable, uuid);}
-                )
-            .def_static("deSynchronizeVar",
-                [](std::shared_ptr<Variable> variable, QUuid uuid){sqpApp->variableController().desynchronize(variable, uuid);}
-                )
-            .def_static("deleteVariable",
-                        [](std::shared_ptr<Variable> variable){
-        sqpApp->variableController().deleteVariable(variable);}
-                        )
-            .def_static("update_range",[](std::shared_ptr<Variable> variable, const DateTimeRange &range, bool synchronise){
-        sqpApp->variableController().onRequestDataLoading({variable}, range, synchronise);
-    })
-            .def_static("wait_for_downloads",[](){
-        while (sqpApp->variableController().hasPendingDownloads()) {
-            usleep(100);
-        }
-    });
+//    py::class_<VariableController>(m, "VariableController")
+//            .def_static("createVariable",[](const QString &name,
+//                        std::shared_ptr<IDataProvider> provider, const DateTimeRange& range){
+//        return sqpApp->variableController().createVariable(name, {{"dataType", "vector"}, {"xml:id", "c1_b"}}, provider, range);
+//    })
+//            .def_static("hasPendingDownloads",
+//                        [](){return sqpApp->variableController().hasPendingDownloads();}
+//                        )
+//            .def_static("addSynchronizationGroup",
+//                        [](QUuid uuid){sqpApp->variableController().onAddSynchronizationGroupId(uuid);}
+//                        )
+//            .def_static("removeSynchronizationGroup",
+//                [](QUuid uuid){sqpApp->variableController().onRemoveSynchronizationGroupId(uuid);}
+//                )
+//            .def_static("synchronizeVar",
+//                [](std::shared_ptr<Variable> variable, QUuid uuid){sqpApp->variableController().onAddSynchronized(variable, uuid);}
+//                )
+//            .def_static("deSynchronizeVar",
+//                [](std::shared_ptr<Variable> variable, QUuid uuid){sqpApp->variableController().desynchronize(variable, uuid);}
+//                )
+//            .def_static("deleteVariable",
+//                        [](std::shared_ptr<Variable> variable){
+//        sqpApp->variableController().deleteVariable(variable);}
+//                        )
+//            .def_static("update_range",[](std::shared_ptr<Variable> variable, const DateTimeRange &range, bool synchronise){
+//        sqpApp->variableController().onRequestDataLoading({variable}, range, synchronise);
+//    })
+//            .def_static("wait_for_downloads",[](){
+//        while (sqpApp->variableController().hasPendingDownloads()) {
+//            usleep(100);
+//        }
+//    });
 
     py::class_<TimeController>(m,"TimeController")
             .def_static("setTime", [](DateTimeRange range){sqpApp->timeController().setDateTimeRange(range);});

@@ -8,7 +8,7 @@
 #include "Visualization/MacScrollBarStyle.h"
 
 #include "DataSource/DataSourceController.h"
-#include "Variable/VariableController.h"
+#include "Variable/VariableController2.h"
 
 #include "Common/MimeTypesDef.h"
 
@@ -68,7 +68,7 @@ struct VisualizationTabWidget::VisualizationTabWidgetPrivate {
 
     void dropGraph(int index, VisualizationTabWidget *tabWidget);
     void dropZone(int index, VisualizationTabWidget *tabWidget);
-    void dropVariables(const QList<std::shared_ptr<Variable> > &variables, int index,
+    void dropVariables(const std::vector<std::shared_ptr<Variable> > &variables, int index,
                        VisualizationTabWidget *tabWidget);
     void dropProducts(const QVariantList &productsMetaData, int index,
                       VisualizationTabWidget *tabWidget);
@@ -154,7 +154,7 @@ VisualizationZoneWidget *VisualizationTabWidget::createZone(std::shared_ptr<Vari
 }
 
 VisualizationZoneWidget *
-VisualizationTabWidget::createZone(const QList<std::shared_ptr<Variable> > &variables, int index)
+VisualizationTabWidget::createZone(const std::vector<std::shared_ptr<Variable> > &variables, int index)
 {
     auto zoneWidget = createEmptyZone(index);
 
@@ -230,7 +230,7 @@ void VisualizationTabWidget::dropMimeData(int index, const QMimeData *mimeData)
         impl->dropZone(index, this);
     }
     else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
-        auto variables = sqpApp->variableController().variablesForMimeData(
+        auto variables = sqpApp->variableController().variables(
             mimeData->data(MIME_TYPE_VARIABLE_LIST));
         impl->dropVariables(variables, index, this);
     }
@@ -273,7 +273,7 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
 
     const auto &variables = graphWidget->variables();
 
-    if (!variables.isEmpty()) {
+    if (!variables.empty()) {
         // Abort the requests for the variables (if any)
         // Commented, because it's not sure if it's needed or not
         // for (const auto& var : variables)
@@ -348,12 +348,12 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropZone(
 }
 
 void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropVariables(
-    const QList<std::shared_ptr<Variable> > &variables, int index,
+    const std::vector<std::shared_ptr<Variable> > &variables, int index,
     VisualizationTabWidget *tabWidget)
 {
     // Note: the AcceptMimeDataFunction (set on the drop container) ensure there is a single and
     // compatible variable here
-    if (variables.count() > 1) {
+    if (variables.size() > 1) {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropVariables, dropping multiple variables, operation "
                   "aborted.");
@@ -376,7 +376,7 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropProducts(
     }
 
     auto context = new QObject{tabWidget};
-    connect(&sqpApp->variableController(), &VariableController::variableAdded, context,
+    connect(&sqpApp->variableController(), &VariableController2::variableAdded, context,
             [this, index, tabWidget, context](auto variable) {
                 tabWidget->createZone({variable}, index);
                 delete context; // removes the connection

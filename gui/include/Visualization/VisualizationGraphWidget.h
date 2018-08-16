@@ -64,7 +64,7 @@ public:
     void removeVariable(std::shared_ptr<Variable> variable) noexcept;
 
     /// Returns the list of all variables used in the graph
-    QList<std::shared_ptr<Variable> > variables() const;
+    std::vector<std::shared_ptr<Variable> > variables() const;
 
     /// Sets the y-axis range based on the data of a variable
     void setYRange(std::shared_ptr<Variable> variable);

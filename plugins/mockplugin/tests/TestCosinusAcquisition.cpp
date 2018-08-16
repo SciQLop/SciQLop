@@ -6,7 +6,7 @@
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
 #include <Variable/Variable.h>
-#include <Variable/VariableController.h>
+#include <Variable/VariableController2.h>
 
 #include <QObject>
 #include <QtTest>
@@ -168,7 +168,7 @@ void TestCosinusAcquisition::testAcquisition()
     QFETCH(std::vector<DateTimeRange>, operations);
     for (const auto &operation : operations) {
         // Asks request on the variable and waits during its execution
-        sqpApp->variableController().onRequestDataLoading({variable}, operation, false);
+        sqpApp->variableController().changeRange(variable, operation);
 
         QTest::qWait(operationDelay);
         validateVariable(variable, operation);
@@ -177,7 +177,7 @@ void TestCosinusAcquisition::testAcquisition()
 
     for (const auto &operation : operations) {
         // Asks request on the variable and waits during its execution
-        sqpApp->variableController().onRequestDataLoading({variable}, operation, false);
+        sqpApp->variableController().changeRange(variable, operation);
     }
     QTest::qWait(operationDelay);
     validateVariable(variable, operations.back());

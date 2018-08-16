@@ -11,7 +11,7 @@
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
 #include <Variable/Variable.h>
-#include <Variable/VariableController.h>
+#include <Variable/VariableController2.h>
 
 #include <QLoggingCategory>
 #include <QObject>
@@ -173,7 +173,7 @@ void validate(const VariablesPool &variablesPool, const Validators &validators)
  */
 class FuzzingTest {
 public:
-    explicit FuzzingTest(VariableController &variableController, Properties properties)
+    explicit FuzzingTest(VariableController2 &variableController, Properties properties)
             : m_VariableController{variableController},
               m_Properties{std::move(properties)},
               m_FuzzingState{}
@@ -186,7 +186,7 @@ public:
         // Inits sync groups and registers them into the variable controller
         for (auto i = 0; i < nbMaxSyncGroups(); ++i) {
             auto syncGroupId = SyncGroupId::createUuid();
-            variableController.onAddSynchronizationGroupId(syncGroupId);
+            //variableController.onAddSynchronizationGroupId(syncGroupId);
             m_FuzzingState.m_SyncGroupsPool[syncGroupId] = SyncGroup{};
         }
     }
@@ -229,8 +229,8 @@ public:
                 auto waitAcquisition = nextValidationCounter == 0
                                        || operationsPool().at(fuzzingOperation).m_WaitAcquisition;
 
-                fuzzingOperation->execute(variableId, m_FuzzingState, m_VariableController,
-                                          m_Properties);
+//                fuzzingOperation->execute(variableId, m_FuzzingState, m_VariableController,
+//                                          m_Properties);
 
                 if (waitAcquisition) {
                     qCDebug(LOG_TestAmdaFuzzing()) << "Waiting for acquisition to finish...";
@@ -285,7 +285,7 @@ private:
     DECLARE_PROPERTY_GETTER(validationFrequencies, VALIDATION_FREQUENCY_BOUNDS, IntPair)
     DECLARE_PROPERTY_GETTER(acquisitionTimeout, ACQUISITION_TIMEOUT, int)
 
-    VariableController &m_VariableController;
+    VariableController2 &m_VariableController;
     Properties m_Properties;
     FuzzingState m_FuzzingState;
 };

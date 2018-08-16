@@ -19,6 +19,8 @@ class DataSourceController;
 class NetworkController;
 class TimeController;
 class VariableController;
+class VariableController2;
+class VariableModel2;
 class VisualizationController;
 class DragDropGuiController;
 class ActionsGuiController;
@@ -37,14 +39,17 @@ class SqpApplication : public QApplication {
     Q_OBJECT
 public:
     explicit SqpApplication(int &argc, char **argv);
-    virtual ~SqpApplication();
+     ~SqpApplication() override;
     void initialize();
 
     /// Accessors for the differents sciqlop controllers
     DataSourceController &dataSourceController() noexcept;
     NetworkController &networkController() noexcept;
     TimeController &timeController() noexcept;
-    VariableController &variableController() noexcept;
+    VariableController2 &variableController() noexcept;
+    std::shared_ptr<VariableController2> variableControllerOwner() noexcept;
+    //@TODO there should not be any global model it's just GUI impl detail
+//    VariableModel2 &variableModel() noexcept;
     VisualizationController &visualizationController() noexcept;
     CatalogueController &catalogueController() noexcept;
 

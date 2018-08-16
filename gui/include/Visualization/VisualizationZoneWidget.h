@@ -62,7 +62,7 @@ public:
      * @param index The index where the graph should be inserted in the layout
      * @return the pointer to the created graph
      */
-    VisualizationGraphWidget *createGraph(const QList<std::shared_ptr<Variable> > variables,
+    VisualizationGraphWidget *createGraph( std::vector<std::shared_ptr<Variable> > variables,
                                           int index);
 
     /// Returns the first graph in the zone or nullptr if there is no graph inside

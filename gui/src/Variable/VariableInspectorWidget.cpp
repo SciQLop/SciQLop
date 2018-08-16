@@ -1,9 +1,9 @@
 #include <Variable/RenameVariableDialog.h>
 #include <Variable/Variable.h>
-#include <Variable/VariableController.h>
+#include <Variable/VariableController2.h>
 #include <Variable/VariableInspectorWidget.h>
 #include <Variable/VariableMenuHeaderWidget.h>
-#include <Variable/VariableModel.h>
+#include <Variable/VariableModel2.h>
 
 #include <ui_VariableInspectorWidget.h>
 
@@ -92,8 +92,8 @@ public:
 
                 if (clickX > x && clickX < x + w) {
                     if (clickY > y && clickY < y + h) {
-                        auto variableModel = sqpApp->variableController().variableModel();
-                        variableModel->abortProgress(index);
+                        //auto& variableModel = sqpApp->variableModel();
+                        //variableModel->abortProgress(index);
                     }
                     return true;
                 }
@@ -125,15 +125,15 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
     //    auto sortFilterModel = new QSortFilterProxyModel{this};
     //    sortFilterModel->setSourceModel(sqpApp->variableController().variableModel());
 
-    auto variableModel = sqpApp->variableController().variableModel();
-    ui->tableView->setModel(variableModel);
+    m_model = new VariableModel2(sqpApp->variableControllerOwner());
+    ui->tableView->setModel(m_model);
 
     // Adds extra signal/slot between view and model, so the view can be updated instantly when
     // there is a change of data in the model
-    connect(variableModel, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)), this,
+    connect(m_model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)), this,
             SLOT(refresh()));
 
-    ui->tableView->setSelectionModel(sqpApp->variableController().variableSelectionModel());
+    //ui->tableView->setSelectionModel(sqpApp->variableController().variableSelectionModel());
     ui->tableView->setItemDelegateForColumn(0, m_ProgressBarItemDelegate);
 
     // Fixes column sizes
@@ -164,10 +164,10 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
     auto selectedRows = ui->tableView->selectionModel()->selectedRows();
 
     // Gets the model to retrieve the underlying selected variables
-    auto model = sqpApp->variableController().variableModel();
+    auto& vc = sqpApp->variableController();
     auto selectedVariables = QVector<std::shared_ptr<Variable> >{};
     for (const auto &selectedRow : qAsConst(selectedRows)) {
-        if (auto selectedVariable = model->variable(selectedRow.row())) {
+        if (auto selectedVariable = vc[selectedRow.row()]) {
             selectedVariables.push_back(selectedVariable);
         }
     }
@@ -194,11 +194,11 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
 
             tableMenu.addAction(tr("Duplicate"), duplicateFun);
 
-            auto renameFun = [ varW = std::weak_ptr<Variable>(selectedVariable), &model, this ]()
+            auto renameFun = [ varW = std::weak_ptr<Variable>(selectedVariable), this ]()
             {
                 if (auto var = varW.lock()) {
                     // Generates forbidden names (names associated to existing variables)
-                    auto allVariables = model->variables();
+                    auto allVariables = sqpApp->variableController().variables();
                     auto forbiddenNames = QVector<QString>(allVariables.size());
                     std::transform(allVariables.cbegin(), allVariables.cend(),
                                    forbiddenNames.begin(),
@@ -216,7 +216,8 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
 
         // 'Delete' action
         auto deleteFun = [&selectedVariables]() {
-            sqpApp->variableController().deleteVariables(selectedVariables);
+            for(const auto& var:selectedVariables)
+                sqpApp->variableController().deleteVariable(var);
         };
 
         tableMenu.addAction(QIcon{":/icones/delete.png"}, tr("Delete"), deleteFun);

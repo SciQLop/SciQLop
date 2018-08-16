@@ -7,6 +7,8 @@
 
 #include <memory>
 
+#include <Variable/VariableModel2.h>
+
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableInspectorWidget)
 
 class Variable;
@@ -45,6 +47,7 @@ private:
     Ui::VariableInspectorWidget *ui;
 
     QProgressBarItemDelegate *m_ProgressBarItemDelegate;
+    VariableModel2* m_model;
 
 private slots:
     /// Slot called when right clicking on an variable in the table (displays a menu)
