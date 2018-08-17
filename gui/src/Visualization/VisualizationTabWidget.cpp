@@ -231,7 +231,7 @@ void VisualizationTabWidget::dropMimeData(int index, const QMimeData *mimeData)
     }
     else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
         auto variables = sqpApp->variableController().variables(
-            mimeData->data(MIME_TYPE_VARIABLE_LIST));
+            Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
         impl->dropVariables(variables, index, this);
     }
     else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST)) {

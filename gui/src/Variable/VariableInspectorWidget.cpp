@@ -4,6 +4,7 @@
 #include <Variable/VariableInspectorWidget.h>
 #include <Variable/VariableMenuHeaderWidget.h>
 #include <Variable/VariableModel2.h>
+#include <DataSource/DataSourceController.h>
 
 #include <ui_VariableInspectorWidget.h>
 
@@ -125,13 +126,22 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
     //    auto sortFilterModel = new QSortFilterProxyModel{this};
     //    sortFilterModel->setSourceModel(sqpApp->variableController().variableModel());
 
-    m_model = new VariableModel2(sqpApp->variableControllerOwner());
+    m_model = new VariableModel2();
     ui->tableView->setModel(m_model);
+    connect(m_model, &VariableModel2::createVariable,
+            [](const QVariantHash &productData)
+    {
+        sqpApp->dataSourceController().requestVariable(productData);
+    });
+    auto vc = &(sqpApp->variableController());
+    connect(vc, &VariableController2::variableAdded, m_model, &VariableModel2::variableAdded);
+    connect(vc, &VariableController2::variableDeleted, m_model, &VariableModel2::variableDeleted);
+    connect(m_model, &VariableModel2::asyncChangeRange, vc, &VariableController2::asyncChangeRange);
 
     // Adds extra signal/slot between view and model, so the view can be updated instantly when
     // there is a change of data in the model
-    connect(m_model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)), this,
-            SLOT(refresh()));
+    //connect(m_model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)), this,
+    //        SLOT(refresh()));
 
     //ui->tableView->setSelectionModel(sqpApp->variableController().variableSelectionModel());
     ui->tableView->setItemDelegateForColumn(0, m_ProgressBarItemDelegate);

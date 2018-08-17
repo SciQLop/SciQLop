@@ -19,7 +19,6 @@ class SqpApplication::SqpApplicationPrivate {
 public:
     SqpApplicationPrivate()
             : m_VariableController{std::make_shared<VariableController2>()},
-              m_VariableModel{m_VariableController},
               m_PlotInterractionMode(SqpApplication::PlotsInteractionMode::None),
               m_PlotCursorMode(SqpApplication::PlotsCursorMode::NoCursor)
     {
@@ -29,11 +28,12 @@ public:
 
         // VariableController <-> DataSourceController
         connect(&m_DataSourceController,
-                SIGNAL(variableCreationRequested(const QString &, const QVariantHash &,
-                                                 std::shared_ptr<IDataProvider>)),
-                m_VariableController.get(),
-                SLOT(createVariable(const QString &, const QVariantHash &,
-                                    std::shared_ptr<IDataProvider>)));
+                &DataSourceController::createVariable,[](const QString &variableName,
+                const QVariantHash &variableMetadata,
+                std::shared_ptr<IDataProvider> variableProvider)
+        {
+            sqpApp->variableController().createVariable(variableName,variableMetadata,variableProvider,sqpApp->timeController().dateTime());
+        });
 
 //        connect(m_VariableController->variableModel(), &VariableModel::requestVariable,
 //                m_DataSourceController.get(), &DataSourceController::requestVariable);
@@ -79,7 +79,6 @@ public:
     NetworkController m_NetworkController;
     VisualizationController m_VisualizationController;
     CatalogueController m_CatalogueController;
-    VariableModel2 m_VariableModel;
 
     QThread m_DataSourceControllerThread;
     QThread m_NetworkControllerThread;

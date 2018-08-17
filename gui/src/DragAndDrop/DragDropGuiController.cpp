@@ -245,7 +245,7 @@ bool DragDropGuiController::checkMimeDataForVisualization(
 
     if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
         auto variables = sqpApp->variableController().variables(
-            mimeData->data(MIME_TYPE_VARIABLE_LIST));
+            Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
 
         if (variables.size() == 1) {
 

@@ -30,9 +30,9 @@ const auto SPECTROGRAM_ZERO_BANDS = std::set<int>{2, 15, 19, 29};
 struct ICosinusType {
     virtual ~ICosinusType() = default;
     /// @return the number of components generated for the type
-    virtual int componentCount() const = 0;
+    virtual std::size_t componentCount() const = 0;
     /// @return the data series created for the type
-    virtual std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+    virtual IDataSeries* createDataSeries(std::vector<double> xAxisData,
                                                           std::vector<double> valuesData) const = 0;
     /// Generates values (one value per component)
     /// @param x the x-axis data used to generate values
@@ -43,12 +43,12 @@ struct ICosinusType {
 };
 
 struct ScalarCosinus : public ICosinusType {
-    int componentCount() const override { return 1; }
+    std::size_t componentCount() const override { return 1; }
 
-    std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+    IDataSeries* createDataSeries(std::vector<double> xAxisData,
                                                   std::vector<double> valuesData) const override
     {
-        return std::make_shared<ScalarSeries>(std::move(xAxisData), std::move(valuesData),
+        return new ScalarSeries(std::move(xAxisData), std::move(valuesData),
                                               Unit{QStringLiteral("t"), true}, Unit{});
     }
 
@@ -67,12 +67,12 @@ struct SpectrogramCosinus : public ICosinusType {
     {
     }
 
-    int componentCount() const override { return m_YAxisData.size(); }
+    std::size_t componentCount() const override { return m_YAxisData.size(); }
 
-    std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+    IDataSeries* createDataSeries(std::vector<double> xAxisData,
                                                   std::vector<double> valuesData) const override
     {
-        return std::make_shared<SpectrogramSeries>(
+        return new SpectrogramSeries(
             std::move(xAxisData), m_YAxisData, std::move(valuesData),
             Unit{QStringLiteral("t"), true}, m_YAxisUnit, m_ValuesUnit);
     }
@@ -107,12 +107,12 @@ struct SpectrogramCosinus : public ICosinusType {
 };
 
 struct VectorCosinus : public ICosinusType {
-    int componentCount() const override { return 3; }
+    std::size_t componentCount() const override { return 3; }
 
-    std::shared_ptr<IDataSeries> createDataSeries(std::vector<double> xAxisData,
+    IDataSeries* createDataSeries(std::vector<double> xAxisData,
                                                   std::vector<double> valuesData) const override
     {
-        return std::make_shared<VectorSeries>(std::move(xAxisData), std::move(valuesData),
+        return new VectorSeries(std::move(xAxisData), std::move(valuesData),
                                               Unit{QStringLiteral("t"), true}, Unit{});
     }
 
@@ -244,6 +244,41 @@ std::shared_ptr<IDataSeries> CosinusProvider::retrieveData(QUuid acqIdentifier,
         // We can close progression beacause all data has been retrieved
         emit dataProvidedProgress(acqIdentifier, 100);
     }
+    return std::shared_ptr<IDataSeries>(type->createDataSeries(std::move(xAxisData), std::move(valuesData)));
+}
+
+IDataSeries *CosinusProvider::_generate(const DateTimeRange &range, const QVariantHash &metaData)
+{
+    auto dataIndex = 0;
+
+    // Retrieves cosinus type
+    auto typeVariant = metaData.value(COSINUS_TYPE_KEY, COSINUS_TYPE_DEFAULT_VALUE);
+    auto type = cosinusType(typeVariant.toString());
+    auto freqVariant = metaData.value(COSINUS_FREQUENCY_KEY, COSINUS_FREQUENCY_DEFAULT_VALUE);
+    double freq = freqVariant.toDouble();
+    double start = std::ceil(range.m_TStart * freq);
+    double end = std::floor(range.m_TEnd * freq);
+    if (end < start) {
+        std::swap(start, end);
+    }
+    std::size_t dataCount = static_cast<std::size_t>(end - start + 1);
+    std::size_t componentCount = type->componentCount();
+
+    auto xAxisData = std::vector<double>{};
+    xAxisData.resize(dataCount);
+
+    auto valuesData = std::vector<double>{};
+    valuesData.resize(dataCount * componentCount);
+
+    int progress = 0;
+    auto progressEnd = dataCount;
+    for (auto time = start; time <= end; ++time, ++dataIndex)
+    {
+            const auto x = time / freq;
+            xAxisData[dataIndex] = x;
+            // Generates values (depending on the type)
+            type->generateValues(x, valuesData, dataIndex);
+    }
     return type->createDataSeries(std::move(xAxisData), std::move(valuesData));
 }
 
@@ -264,6 +299,12 @@ void CosinusProvider::requestDataLoading(QUuid acqIdentifier,
         }
     }
 }
+
+IDataSeries* CosinusProvider::getData(const DataProviderParameters &parameters)
+{
+    return _generate(parameters.m_Times.front(),parameters.m_Data);
+}
+
 
 void CosinusProvider::requestDataAborting(QUuid acqIdentifier)
 {

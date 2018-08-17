@@ -119,7 +119,7 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
 
         if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
             auto variables = sqpApp->variableController().variables(
-                mimeData->data(MIME_TYPE_VARIABLE_LIST));
+                Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
 
             if (variables.size() != 1) {
                 return false;
@@ -460,7 +460,7 @@ void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
     }
     else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
         auto variables = sqpApp->variableController().variables(
-            mimeData->data(MIME_TYPE_VARIABLE_LIST));
+            Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
         impl->dropVariables(variables, index, this);
     }
     else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST)) {
@@ -488,7 +488,7 @@ void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragW
 
     if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
         auto variables = sqpApp->variableController().variables(
-            mimeData->data(MIME_TYPE_VARIABLE_LIST));
+            Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
         for (const auto &var : variables) {
             graphWidget->addVariable(var, graphWidget->graphRange());
         }

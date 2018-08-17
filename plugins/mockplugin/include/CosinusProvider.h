@@ -22,6 +22,8 @@ public:
     void requestDataLoading(QUuid acqIdentifier, const DataProviderParameters &parameters) override;
 
 
+    virtual IDataSeries* getData(const DataProviderParameters &parameters) override;
+
     /// @sa IDataProvider::requestDataAborting(). The current impl isn't thread safe.
     void requestDataAborting(QUuid acqIdentifier) override;
 
@@ -34,6 +36,8 @@ public:
 private:
     std::shared_ptr<IDataSeries>
     retrieveData(QUuid acqIdentifier, const DateTimeRange &dataRangeRequested, const QVariantHash &data);
+
+    IDataSeries* _generate(const DateTimeRange &range, const QVariantHash &metaData);
 
     QHash<QUuid, bool> m_VariableToEnableProvider;
 };
