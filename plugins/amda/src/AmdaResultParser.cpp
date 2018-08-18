@@ -5,6 +5,7 @@
 #include <QFile>
 
 #include <cmath>
+#include <Data/IDataSeries.h>
 
 Q_LOGGING_CATEGORY(LOG_AmdaResultParser, "AmdaResultParser")
 
@@ -99,14 +100,21 @@ std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
         return nullptr;
     }
 
-    QTextStream stream{&file};
+    return std::shared_ptr<IDataSeries>{AmdaResultParser::readTxt(QTextStream{&file},type)};
+}
+
+IDataSeries *AmdaResultParser::readTxt(QTextStream stream,
+                                                       DataSeriesType type) noexcept
+{
+    if (type == DataSeriesType::UNKNOWN)
+    {
+        return nullptr;
+    }
 
     // Checks if the file was found on the server
     auto firstLine = stream.readLine();
-    if (firstLine.compare(FILE_NOT_FOUND_MESSAGE) == 0) {
-        qCCritical(LOG_AmdaResultParser())
-            << QObject::tr("Can't retrieve AMDA data from file %1: file was not found on server")
-                   .arg(filePath);
+    if (firstLine.compare(FILE_NOT_FOUND_MESSAGE) == 0)
+    {
         return nullptr;
     }
 

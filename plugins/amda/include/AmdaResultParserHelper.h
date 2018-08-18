@@ -33,7 +33,7 @@ struct IAmdaResultParserHelper {
     /// @warning as the data are moved in the data series, the helper shouldn't be used after
     /// calling this method
     /// @return the data series created
-    virtual std::shared_ptr<IDataSeries> createSeries() = 0;
+    virtual IDataSeries* createSeries() = 0;
 
     /// Reads a line from the AMDA file to extract a property that will be used to generate the data
     /// series
@@ -51,7 +51,7 @@ struct IAmdaResultParserHelper {
 class ScalarParserHelper : public IAmdaResultParserHelper {
 public:
     bool checkProperties() override;
-    std::shared_ptr<IDataSeries> createSeries() override;
+    IDataSeries* createSeries() override;
     void readPropertyLine(const QString &line) override;
     void readResultLine(const QString &line) override;
 
@@ -70,7 +70,7 @@ private:
 class SpectrogramParserHelper : public IAmdaResultParserHelper {
 public:
     bool checkProperties() override;
-    std::shared_ptr<IDataSeries> createSeries() override;
+    IDataSeries* createSeries() override;
     void readPropertyLine(const QString &line) override;
     void readResultLine(const QString &line) override;
 
@@ -91,7 +91,7 @@ private:
 class VectorParserHelper : public IAmdaResultParserHelper {
 public:
     bool checkProperties() override;
-    std::shared_ptr<IDataSeries> createSeries() override;
+    IDataSeries* createSeries() override;
     void readPropertyLine(const QString &line) override;
     void readResultLine(const QString &line) override;
 

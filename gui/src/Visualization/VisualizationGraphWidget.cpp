@@ -297,35 +297,6 @@ void VisualizationGraphWidget::setFlags(GraphFlags flags)
 
 void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, DateTimeRange range)
 {
-    /// Lambda used to set graph's units and range according to the variable passed in parameter
-    auto loadRange = [this](std::shared_ptr<Variable> variable, const DateTimeRange &range) {
-        impl->m_RenderingDelegate->setAxesUnits(*variable);
-
-        this->setFlags(GraphFlag::DisableAll);
-        setGraphRange(range);
-        this->setFlags(GraphFlag::EnableAll);
-        emit requestDataLoading({variable}, range, false);
-    };
-
-    connect(variable.get(), SIGNAL(updated()), this, SLOT(onDataCacheVariableUpdated()));
-
-    // Calls update of graph's range and units when the data of the variable have been initialized.
-    // Note: we use QueuedConnection here as the update event must be called in the UI thread
-    connect(variable.get(), &Variable::dataInitialized, this,
-            [ varW = std::weak_ptr<Variable>{variable}, range, loadRange, this ]() {
-                if (auto var = varW.lock()) {
-                    // If the variable is the first added in the graph, we load its range
-                    auto firstVariableInGraph = range == INVALID_RANGE;
-                    auto loadedRange = graphRange();
-                    if (impl->m_VariableAutoRangeOnInit) {
-                        loadedRange = firstVariableInGraph ? var->range() : range;
-                    }
-                    loadRange(var, loadedRange);
-                    setYRange(var);
-                }
-            },
-            Qt::QueuedConnection);
-
     // Uses delegate to create the qcpplot components according to the variable
     auto createdPlottables = VisualizationGraphHelper::create(variable, *ui->widget);
 
@@ -336,9 +307,17 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, D
 
     // If the variable already has its data loaded, load its units and its range in the graph
     if (variable->dataSeries() != nullptr) {
-        loadRange(variable, range);
+        impl->m_RenderingDelegate->setAxesUnits(*variable);
+        this->setFlags(GraphFlag::DisableAll);
+        setGraphRange(range);
+        this->setFlags(GraphFlag::EnableAll);
     }
-
+    connect(variable.get(),&Variable::updated,
+            [variable=variable,this]()
+    {
+        QMetaObject::invokeMethod(this,[variable=variable,this](){this->onUpdateVarDisplaying(variable,this->graphRange());});
+    });
+    this->onUpdateVarDisplaying(variable,range);//My bullshit
     emit variableAdded(variable);
 }
 
@@ -395,8 +374,6 @@ DateTimeRange VisualizationGraphWidget::graphRange() const noexcept
 
 void VisualizationGraphWidget::setGraphRange(const DateTimeRange &range, bool calibration)
 {
-    qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange START");
-
     if (calibration) {
         impl->m_IsCalibration = true;
     }
@@ -407,8 +384,6 @@ void VisualizationGraphWidget::setGraphRange(const DateTimeRange &range, bool ca
     if (calibration) {
         impl->m_IsCalibration = false;
     }
-
-    qCDebug(LOG_VisualizationGraphWidget()) << tr("VisualizationGraphWidget::setGraphRange END");
 }
 
 void VisualizationGraphWidget::setAutoRangeOnVariableInitialization(bool value)
@@ -768,29 +743,19 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
 void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange &t2)
 {
-    qCDebug(LOG_VisualizationGraphWidget()) << tr("TORM: VisualizationGraphWidget::onRangeChanged")
-                                            << QThread::currentThread()->objectName() << "DoAcqui"
-                                            << impl->m_Flags.testFlag(GraphFlag::EnableAcquisition);
-
     auto graphRange = DateTimeRange{t1.lower, t1.upper};
     auto oldGraphRange = DateTimeRange{t2.lower, t2.upper};
 
     if (impl->m_Flags.testFlag(GraphFlag::EnableAcquisition)) {
-        QVector<std::shared_ptr<Variable> > variableUnderGraphVector;
-
         for (auto it = impl->m_VariableToPlotMultiMap.begin(),
                   end = impl->m_VariableToPlotMultiMap.end();
              it != end; it = impl->m_VariableToPlotMultiMap.upper_bound(it->first)) {
-            variableUnderGraphVector.push_back(it->first);
+            sqpApp->variableController().asyncChangeRange(it->first, graphRange);
         }
-        emit requestDataLoading(std::move(variableUnderGraphVector), graphRange,
-                                !impl->m_IsCalibration);
     }
 
-    if (impl->m_Flags.testFlag(GraphFlag::EnableSynchronization) && !impl->m_IsCalibration) {
-        qCDebug(LOG_VisualizationGraphWidget())
-            << tr("TORM: VisualizationGraphWidget::Synchronize notify !!")
-            << QThread::currentThread()->objectName() << graphRange << oldGraphRange;
+    if (impl->m_Flags.testFlag(GraphFlag::EnableSynchronization) && !impl->m_IsCalibration)
+    {
         emit synchronize(graphRange, oldGraphRange);
     }
 
@@ -803,9 +768,6 @@ void VisualizationGraphWidget::onRangeChanged(const QCPRange &t1, const QCPRange
         else {
             parentZone->notifyMouseLeaveGraph(this);
         }
-    }
-    else {
-        qCWarning(LOG_VisualizationGraphWidget()) << "onMouseMove: No parent zone widget";
     }
 
     // Quits calibration
@@ -840,9 +802,6 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
         else {
             parentZone->notifyMouseLeaveGraph(this);
         }
-    }
-    else {
-        qCWarning(LOG_VisualizationGraphWidget()) << "onMouseMove: No parent zone widget";
     }
 
     // Search for the selection zone under the mouse
@@ -909,7 +868,7 @@ void VisualizationGraphWidget::onMouseWheel(QWheelEvent *event) noexcept
                 plot().setNotAntialiasedElements(QCP::aeAll);
             }
 
-            plot().replot(QCustomPlot::rpQueuedReplot);
+            //plot().replot(QCustomPlot::rpQueuedReplot);
         }
     }
 }

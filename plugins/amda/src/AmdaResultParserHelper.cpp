@@ -249,9 +249,9 @@ bool ScalarParserHelper::checkProperties()
                      QObject::tr("The x-axis unit could not be found in the file"));
 }
 
-std::shared_ptr<IDataSeries> ScalarParserHelper::createSeries()
+IDataSeries* ScalarParserHelper::createSeries()
 {
-    return std::make_shared<ScalarSeries>(std::move(m_XAxisData), std::move(m_ValuesData),
+    return new ScalarSeries(std::move(m_XAxisData), std::move(m_ValuesData),
                                           m_Properties.value(X_AXIS_UNIT_PROPERTY).value<Unit>(),
                                           m_Properties.value(VALUES_UNIT_PROPERTY).value<Unit>());
 }
@@ -307,12 +307,12 @@ bool SpectrogramParserHelper::checkProperties()
     return true;
 }
 
-std::shared_ptr<IDataSeries> SpectrogramParserHelper::createSeries()
+IDataSeries* SpectrogramParserHelper::createSeries()
 {
     // Before creating the series, we handle its data holes
     handleDataHoles();
 
-    return std::make_shared<SpectrogramSeries>(
+    return new SpectrogramSeries(
         std::move(m_XAxisData), std::move(m_YAxisData), std::move(m_ValuesData),
         Unit{"t", true}, // x-axis unit is always a time unit
         m_Properties.value(Y_AXIS_UNIT_PROPERTY).value<Unit>(),
@@ -406,9 +406,9 @@ bool VectorParserHelper::checkProperties()
                      QObject::tr("The x-axis unit could not be found in the file"));
 }
 
-std::shared_ptr<IDataSeries> VectorParserHelper::createSeries()
+IDataSeries* VectorParserHelper::createSeries()
 {
-    return std::make_shared<VectorSeries>(std::move(m_XAxisData), std::move(m_ValuesData),
+    return new VectorSeries(std::move(m_XAxisData), std::move(m_ValuesData),
                                           m_Properties.value(X_AXIS_UNIT_PROPERTY).value<Unit>(),
                                           m_Properties.value(VALUES_UNIT_PROPERTY).value<Unit>());
 }

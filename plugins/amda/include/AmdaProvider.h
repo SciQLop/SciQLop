@@ -23,22 +23,8 @@ public:
     explicit AmdaProvider();
     std::shared_ptr<IDataProvider> clone() const override;
 
-    void requestDataLoading(QUuid acqIdentifier, const DataProviderParameters &parameters) override;
+    virtual IDataSeries *getData(const DataProviderParameters &parameters)override;
 
-    void requestDataAborting(QUuid acqIdentifier) override;
-
-private:
-    void retrieveData(QUuid token, const DateTimeRange &dateTime, const QVariantHash &data);
-
-    void updateRequestProgress(QUuid acqIdentifier, std::shared_ptr<QNetworkRequest> request,
-                               double progress);
-
-    std::map<QUuid, std::map<std::shared_ptr<QNetworkRequest>, double> >
-        m_AcqIdToRequestProgressMap;
-
-private slots:
-    void onReplyDownloadProgress(QUuid acqIdentifier,
-                                 std::shared_ptr<QNetworkRequest> networkRequest, double progress);
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H

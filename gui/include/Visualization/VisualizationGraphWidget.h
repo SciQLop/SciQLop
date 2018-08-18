@@ -111,8 +111,7 @@ public:
 
 signals:
     void synchronize(const DateTimeRange &range, const DateTimeRange &oldRange);
-    void requestDataLoading(QVector<std::shared_ptr<Variable> > variable, const DateTimeRange &range,
-                            bool synchronise);
+    void changeRange(const std::shared_ptr<Variable>& variable, const DateTimeRange &range);
 
     /// Signal emitted when the variable is about to be removed from the graph
     void variableAboutToBeRemoved(std::shared_ptr<Variable> var);

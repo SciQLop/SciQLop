@@ -80,6 +80,7 @@ void TimeWidget::onTimeUpdateRequested()
 {
     auto dateTime = timeRange();
     emit timeUpdated(std::move(dateTime));
+    sqpApp->timeController().setDateTimeRange(dateTime);
 }
 
 void TimeWidget::dragEnterEvent(QDragEnterEvent *event)

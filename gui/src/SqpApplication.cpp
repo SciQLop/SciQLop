@@ -35,9 +35,6 @@ public:
             sqpApp->variableController().createVariable(variableName,variableMetadata,variableProvider,sqpApp->timeController().dateTime());
         });
 
-//        connect(m_VariableController->variableModel(), &VariableModel::requestVariable,
-//                m_DataSourceController.get(), &DataSourceController::requestVariable);
-
         // VariableController <-> VisualizationController
 //        connect(m_VariableController.get(),
 //                SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)),

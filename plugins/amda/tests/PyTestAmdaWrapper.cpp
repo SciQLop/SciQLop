@@ -115,11 +115,11 @@ PYBIND11_MODULE(pytestamda, m){
 
     py::class_<AmdaProvider, std::shared_ptr<AmdaProvider>, IDataProvider>(m, "AmdaProvider");
 
-    py::class_<AmdaResultParser>(m, "AmdaResultParser")
-            .def_static("readTxt", AmdaResultParser::readTxt)
-            .def("readScalarTxt", [](const QString& path){
-        return std::dynamic_pointer_cast<ScalarSeries>(AmdaResultParser::readTxt(path, DataSeriesType::SCALAR));
-    }, py::return_value_policy::copy);
+//    py::class_<AmdaResultParser>(m, "AmdaResultParser")
+//            .def_static("readTxt", AmdaResultParser::readTxt)
+//            .def("readScalarTxt", [](const QString& path){
+//        return std::dynamic_pointer_cast<ScalarSeries>(AmdaResultParser::readTxt(path, DataSeriesType::SCALAR));
+//    }, py::return_value_policy::copy);
 
 
 }
