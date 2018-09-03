@@ -194,6 +194,6 @@ IDataSeries *CosinusProvider::_generate(const DateTimeRange &range, const QVaria
 
 IDataSeries* CosinusProvider::getData(const DataProviderParameters &parameters)
 {
-    return _generate(parameters.m_Times.front(),parameters.m_Data);
+    return _generate(parameters.m_Range, parameters.m_Data);
 }
 

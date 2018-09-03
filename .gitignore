@@ -7,5 +7,6 @@ core/include/Version.h
 subprojects/CatalogueAPI/
 subprojects/QxOrm/
 documentation/*
-.idea/*
+**/.idea/*
 **/__pycache__/*
+*.srctrl*

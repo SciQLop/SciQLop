@@ -6,6 +6,7 @@
 
 #include <QLoggingCategory>
 #include <QWidget>
+#include <QUuid>
 
 #include <memory>
 
@@ -152,6 +153,8 @@ private slots:
     void onDataCacheVariableUpdated();
 
     void onUpdateVarDisplaying(std::shared_ptr<Variable> variable, const DateTimeRange &range);
+
+    void variableUpdated(QUuid id);
 };
 
 #endif // SCIQLOP_VISUALIZATIONGRAPHWIDGET_H

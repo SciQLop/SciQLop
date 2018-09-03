@@ -10,7 +10,7 @@ namespace {
 const auto AMDA_DEFAULT_SERVER_URL = QStringLiteral("amda.irap.omp.eu");
 
 /// URL of the AMDA test server
-const auto AMDA_TEST_SERVER_URL = QStringLiteral("amdatest.irap.omp.eu");
+const auto AMDA_TEST_SERVER_URL = QStringLiteral("amdadev.irap.omp.eu/");
 
 /// Port used for local server
 const auto AMDA_LOCAL_SERVER_PORT = 6543;

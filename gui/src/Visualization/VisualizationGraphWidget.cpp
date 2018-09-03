@@ -312,11 +312,9 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, D
         setGraphRange(range);
         this->setFlags(GraphFlag::EnableAll);
     }
-    connect(variable.get(),&Variable::updated,
-            [variable=variable,this]()
-    {
-        QMetaObject::invokeMethod(this,[variable=variable,this](){this->onUpdateVarDisplaying(variable,this->graphRange());});
-    });
+    //@TODO this is bad! when variable is moved to another graph it still fires
+    // even if this has been deleted
+    connect(variable.get(),&Variable::updated,this, &VisualizationGraphWidget::variableUpdated);
     this->onUpdateVarDisplaying(variable,range);//My bullshit
     emit variableAdded(variable);
 }
@@ -1038,5 +1036,16 @@ void VisualizationGraphWidget::onUpdateVarDisplaying(std::shared_ptr<Variable> v
     auto it = impl->m_VariableToPlotMultiMap.find(variable);
     if (it != impl->m_VariableToPlotMultiMap.end()) {
         impl->updateData(it->second, variable, range);
+    }
+}
+
+void VisualizationGraphWidget::variableUpdated(QUuid id)
+{
+    for(auto& [var,plotables]:impl->m_VariableToPlotMultiMap)
+    {
+        if(var->ID()==id)
+        {
+                impl->updateData(plotables,var,this->graphRange());
+        }
     }
 }

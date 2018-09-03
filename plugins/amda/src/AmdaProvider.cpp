@@ -67,7 +67,7 @@ std::shared_ptr<IDataProvider> AmdaProvider::clone() const
 
 IDataSeries* AmdaProvider::getData(const DataProviderParameters &parameters)
 {
-    auto range = parameters.m_Times.front();
+    auto range = parameters.m_Range;
     auto metaData = parameters.m_Data;
     auto productId = metaData.value(AMDA_XML_ID_KEY).toString();
     auto productValueType

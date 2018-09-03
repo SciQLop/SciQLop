@@ -47,10 +47,13 @@ ENDIF(IWYU)
 
 enable_testing()
 
-find_package(core CONFIG QUIET)
-if (NOT sciqlopcore_FOUND)
-    execute_process(COMMAND git submodule init core WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    execute_process(COMMAND git submodule update core WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+find_package(SciQLOPCore CONFIG QUIET)
+if (NOT SciQLOPCore_FOUND)
+    if(NOT IS_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/core)
+        message("Init submodule Core")
+        execute_process(COMMAND git submodule init core WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+        execute_process(COMMAND git submodule update core WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    endif()
     add_subdirectory(core)
 endif()
 

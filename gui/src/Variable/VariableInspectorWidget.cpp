@@ -172,12 +172,9 @@ VariableInspectorWidget::~VariableInspectorWidget()
 void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
 {
     auto selectedRows = ui->tableView->selectionModel()->selectedRows();
-
-    // Gets the model to retrieve the underlying selected variables
-    auto& vc = sqpApp->variableController();
     auto selectedVariables = QVector<std::shared_ptr<Variable> >{};
     for (const auto &selectedRow : qAsConst(selectedRows)) {
-        if (auto selectedVariable = vc[selectedRow.row()]) {
+        if (auto selectedVariable = this->m_model->variables()[selectedRow.row()]) {
             selectedVariables.push_back(selectedVariable);
         }
     }
