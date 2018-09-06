@@ -30,6 +30,7 @@ endif()
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 
 find_package(Qt5 COMPONENTS Core Widgets Network PrintSupport Svg Test REQUIRED)
 
@@ -60,4 +61,4 @@ endif()
 add_subdirectory(gui)
 add_subdirectory(app)
 add_subdirectory(plugins)
-add_subdirectory(docs)
+#add_subdirectory(docs)
