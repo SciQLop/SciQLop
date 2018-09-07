@@ -31,6 +31,7 @@ SET_TARGET_PROPERTIES(sciqlopgui PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS TRUE)
 
 target_include_directories(sciqlopgui PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/Visualization>
     $<INSTALL_INTERFACE:include/SciQLOP>
     )
 
