@@ -4,8 +4,7 @@ CMakeLists.txt.user
 core/src/Version.cpp
 core/include/Version.h
 3rdparty/
-subprojects/CatalogueAPI/
-subprojects/QxOrm/
+subprojects/*
 documentation/*
 **/.idea/*
 **/__pycache__/*

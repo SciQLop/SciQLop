@@ -127,7 +127,7 @@ gui_sources = [
   'src/Catalogue/CatalogueTreeModel.cpp'
 ]
 
-gui_inc = include_directories(['include'])
+gui_inc = include_directories(['include', 'include/Visualization'])
 
 sciqlop_gui_lib = library('sciqlopgui',
                        gui_sources,

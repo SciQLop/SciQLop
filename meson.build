@@ -1,4 +1,4 @@
-project('SciQLOP', 'cpp',default_options : ['cpp_std=c++14'])
+project('SciQLOP', 'cpp',default_options : ['cpp_std=c++17'], meson_version:'>=0.47.0')
 
 qt5 = import('qt5')
 qt5core = dependency('qt5', modules : 'Core')
@@ -8,6 +8,7 @@ qt5svg = dependency('qt5', modules : 'Svg')
 qt5xml = dependency('qt5', modules : 'Xml')
 qt5network = dependency('qt5', modules : 'Network')
 qt5printsupport = dependency('qt5', modules : 'PrintSupport')
+qt5Concurrent = dependency('qt5', modules : 'Concurrent')
 qt5test = dependency('qt5', modules : 'Test')
 
 moc = find_program('moc-qt5','moc')
