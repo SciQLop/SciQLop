@@ -50,3 +50,5 @@ install(TARGETS sciqlopgui EXPORT SciQLOPGuiConfig
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SciQLOP)
 install(EXPORT SciQLOPGuiConfig DESTINATION share/SciQLOPGui/cmake)
 export(TARGETS sciqlopgui FILE SciQLOPGuiConfig.cmake)
+
+subdirs(tests)
