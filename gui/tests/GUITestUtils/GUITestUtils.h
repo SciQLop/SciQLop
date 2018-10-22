@@ -11,12 +11,18 @@
 
 #include <qcustomplot.h>
 
-QPoint center(QWidget* widget)
+template <typename T>
+QPoint center(T* widget)
 {
     return QPoint{widget->width()/2,widget->height()/2};
 }
 
 HAS_METHOD(viewport)
+
+template <typename T>
+using is_QWidgetOrDerived = std::is_base_of<QWidget,T>;
+
+template <typename T> using viewport_type = decltype(std::declval<T>().viewport());
 
 HAS_METHOD(topLevelItem)
 
@@ -25,7 +31,7 @@ void mouseMove(T* widget, QPoint pos, Qt::MouseButton mouseModifier)
 {
     QCursor::setPos(widget->mapToGlobal(pos));
     QMouseEvent event(QEvent::MouseMove, pos, Qt::NoButton, mouseModifier, Qt::NoModifier);
-    if constexpr(has_viewport<T>)
+    if constexpr(has_viewport<T> && is_QWidgetOrDerived<viewport_type<T>>::value )
     {
         qApp->sendEvent(widget->viewport(), &event);
     }
@@ -40,7 +46,7 @@ void mouseMove(T* widget, QPoint pos, Qt::MouseButton mouseModifier)
 template <typename T>
 void setMouseTracking(T* widget)
 {
-    if constexpr(has_viewport<T>)
+    if constexpr(has_viewport<T> && is_QWidgetOrDerived<viewport_type<T>>::value)
     {
         widget->viewport()->setMouseTracking(true);
     }
@@ -48,12 +54,6 @@ void setMouseTracking(T* widget)
     {
         widget->setMouseTracking(true);
     }
-}
-
-template <>
-void setMouseTracking<QCustomPlot>(QCustomPlot* widget)
-{
-    widget->setMouseTracking(true);
 }
 
 template <typename T, typename T2>
