@@ -86,6 +86,9 @@ public:
     /// Undo the last zoom  done with a zoom box
     void undoZoom();
 
+    void zoom(double factor, int center, Qt::Orientation orientation);
+    void move(double factor, Qt::Orientation orientation);
+
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
     bool canDrop(const Variable &variable) const override;
@@ -123,6 +126,12 @@ protected:
     void closeEvent(QCloseEvent *event) override;
     void enterEvent(QEvent *event) override;
     void leaveEvent(QEvent *event) override;
+    void wheelEvent(QWheelEvent * event) override;
+    void mouseMoveEvent(QMouseEvent *event) override;
+    void mouseReleaseEvent(QMouseEvent *event) override;
+    void mousePressEvent(QMouseEvent *event) override;
+    void keyReleaseEvent(QKeyEvent * event) override;
+    void keyPressEvent(QKeyEvent * event) override;
 
     QCustomPlot &plot() const noexcept;
 
@@ -131,13 +140,13 @@ private:
 
     class VisualizationGraphWidgetPrivate;
     spimpl::unique_impl_ptr<VisualizationGraphWidgetPrivate> impl;
-
+    QPoint _dragLastPos;
 private slots:
     /// Slot called when right clicking on the graph (displays a menu)
     void onGraphMenuRequested(const QPoint &pos) noexcept;
 
     /// Rescale the X axe to range parameter
-    void onRangeChanged(const QCPRange &t1, const QCPRange &t2);
+    void onRangeChanged(const QCPRange &newRange, const QCPRange &oldRange);
 
     /// Slot called when a mouse double click was made
     void onMouseDoubleClick(QMouseEvent *event) noexcept;

@@ -20,7 +20,7 @@ QPoint center(T* widget)
 HAS_METHOD(viewport)
 
 template <typename T>
-using is_QWidgetOrDerived = std::is_base_of<QWidget,T>;
+static inline constexpr bool is_QWidgetOrDerived = std::is_base_of<QWidget,T>::value;
 
 template <typename T> using viewport_type = decltype(std::declval<T>().viewport());
 
@@ -31,9 +31,16 @@ void mouseMove(T* widget, QPoint pos, Qt::MouseButton mouseModifier)
 {
     QCursor::setPos(widget->mapToGlobal(pos));
     QMouseEvent event(QEvent::MouseMove, pos, Qt::NoButton, mouseModifier, Qt::NoModifier);
-    if constexpr(has_viewport<T> && is_QWidgetOrDerived<viewport_type<T>>::value )
+    if constexpr(has_viewport<T>)
     {
-        qApp->sendEvent(widget->viewport(), &event);
+        if constexpr(is_QWidgetOrDerived<viewport_type<T>>)
+        {
+            qApp->sendEvent(widget->viewport(), &event);
+        }
+        else
+        {
+            qApp->sendEvent(widget, &event);
+        }
     }
     else
     {
@@ -46,9 +53,16 @@ void mouseMove(T* widget, QPoint pos, Qt::MouseButton mouseModifier)
 template <typename T>
 void setMouseTracking(T* widget)
 {
-    if constexpr(has_viewport<T> && is_QWidgetOrDerived<viewport_type<T>>::value)
+    if constexpr(has_viewport<T>)
     {
-        widget->viewport()->setMouseTracking(true);
+        if constexpr(is_QWidgetOrDerived<viewport_type<T>>)
+        {
+            widget->viewport()->setMouseTracking(true);
+        }
+        else
+        {
+            widget->setMouseTracking(true);
+        }
     }
     else
     {

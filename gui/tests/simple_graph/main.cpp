@@ -30,7 +30,7 @@ ALIAS_TEMPLATE_FUNCTION(isReady, static_cast<SqpApplication *>(qApp)->variableCo
             QCoreApplication::processEvents();\
         w.addVariable(var, range);\
         GET_CHILD_WIDGET_FOR_GUI_TESTS(w, plot, QCustomPlot, "widget");\
-        auto cent = center(plot);\
+        auto cent = center(&w);\
 
 
 class A_SimpleGraph : public QObject {
@@ -44,23 +44,20 @@ private slots:
         A_SIMPLE_GRAPH_FIXTURE
 
         for (auto i = 0; i < 10; i++) {
-            QTest::mousePress(plot, Qt::LeftButton, Qt::NoModifier, cent, 5);
-            mouseMove(plot, {cent.x() + 200, cent.y()}, Qt::LeftButton);
-            QTest::mouseRelease(plot, Qt::LeftButton);
+            QTest::mousePress(&w, Qt::LeftButton, Qt::NoModifier, cent, 500);
+            mouseMove(&w, {cent.x() + 200, cent.y()}, Qt::LeftButton);
+            QTest::mouseRelease(&w, Qt::LeftButton);
             while (!isReady(var))
                 QCoreApplication::processEvents();
-            /*
-             * Just for visual inspection while running tests
-             */
-            plot->rescaleAxes();
-            plot->replot();
-            QCoreApplication::processEvents();
         }
         while (!isReady(var))
             QCoreApplication::processEvents();
         auto r = var->range();
+        /*
+         * Scrolling to the left implies going back in time
+         * Scroll only implies keeping the same delta T -> shit only transformation
+        */
         QVERIFY(r.m_TEnd < range.m_TEnd);
-        // this fails :(
         QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(),range.delta(),1));
     }
 };
