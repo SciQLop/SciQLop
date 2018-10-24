@@ -130,6 +130,7 @@ protected:
     void mouseMoveEvent(QMouseEvent *event) override;
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
+    void mouseDoubleClickEvent(QMouseEvent *event) override;
     void keyReleaseEvent(QKeyEvent * event) override;
     void keyPressEvent(QKeyEvent * event) override;
 
@@ -146,7 +147,7 @@ private slots:
     void onGraphMenuRequested(const QPoint &pos) noexcept;
 
     /// Rescale the X axe to range parameter
-    void onRangeChanged(const QCPRange &newRange, const QCPRange &oldRange);
+   // void onRangeChanged(const QCPRange &newRange, const QCPRange &oldRange);
 
     /// Slot called when a mouse double click was made
     void onMouseDoubleClick(QMouseEvent *event) noexcept;

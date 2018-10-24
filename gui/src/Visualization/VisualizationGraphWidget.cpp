@@ -210,6 +210,46 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
         auto axisY = plot.axisRect()->axis(QCPAxis::atLeft);
         return axisX->range().contains(axisPoint.x()) && axisY->range().contains(axisPoint.y());
     }
+
+    inline QCPRange _pixDistanceToRange(double pos1, double pos2, QCPAxis *axis)
+    {
+        if (axis->scaleType() == QCPAxis::stLinear)
+        {
+            auto diff = axis->pixelToCoord(pos1) - axis->pixelToCoord(pos2);
+            return QCPRange{axis->range().lower + diff, axis->range().upper + diff};
+        }
+        else
+        {
+            auto diff = axis->pixelToCoord(pos1) / axis->pixelToCoord(pos2);
+            return QCPRange{axis->range().lower * diff, axis->range().upper * diff};
+        }
+    }
+
+    void setRange(const QCPRange &newRange)
+    {
+        auto graphRange = DateTimeRange{newRange.lower, newRange.upper};
+
+        if (m_Flags.testFlag(GraphFlag::EnableAcquisition))
+        {
+            for (auto it = m_VariableToPlotMultiMap.begin(),
+                      end = m_VariableToPlotMultiMap.end();
+                 it != end; it = m_VariableToPlotMultiMap.upper_bound(it->first))
+            {
+                sqpApp->variableController().asyncChangeRange(it->first, graphRange);
+            }
+        }
+    }
+
+    void moveGraph(const QPoint& origin, const QPoint& destination, QCustomPlot* plot)
+    {
+        auto currentPos = destination;
+        auto xAxis = plot->axisRect()->rangeDragAxis(Qt::Horizontal);
+        auto yAxis = plot->axisRect()->rangeDragAxis(Qt::Vertical);
+        xAxis->setRange(_pixDistanceToRange(origin.x(), currentPos.x(), xAxis));
+        yAxis->setRange(_pixDistanceToRange(origin.y(), currentPos.y(), yAxis));
+        setRange(xAxis->range());
+        plot->replot(QCustomPlot::rpQueuedReplot);
+    }
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget *parent)
@@ -233,6 +273,7 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
 
     // ↓ swhitch to this ASAP, VisualizationGraphWidget should intercept all UI events
     this->setFocusPolicy(Qt::WheelFocus);
+    this->setMouseTracking(true);
     ui->widget->setAttribute(Qt::WA_TransparentForMouseEvents);
     //    connect(ui->widget, &QCustomPlot::mousePress, this,
     //    &VisualizationGraphWidget::onMousePress); connect(ui->widget, &QCustomPlot::mouseRelease,
@@ -455,11 +496,10 @@ void VisualizationGraphWidget::undoZoom()
 void VisualizationGraphWidget::zoom(double factor, int center, Qt::Orientation orientation)
 
 {
-    auto oldRange = ui->widget->xAxis->range();
     QCPAxis *axis = ui->widget->axisRect()->rangeZoomAxis(orientation);
     axis->scaleRange(factor, axis->pixelToCoord(center));
     if (orientation == Qt::Horizontal)
-        onRangeChanged(axis->range(), oldRange);
+        impl->setRange(axis->range());
     ui->widget->replot(QCustomPlot::rpQueuedReplot);
 }
 
@@ -488,7 +528,7 @@ void VisualizationGraphWidget::move(double factor, Qt::Orientation orientation)
                        ui->widget->axisRect()->rangeDragAxis(orientation)->range().upper * diff);
     }
     if (orientation == Qt::Horizontal)
-        onRangeChanged(axis->range(), oldRange);
+        impl->setRange(axis->range());
     ui->widget->replot(QCustomPlot::rpQueuedReplot);
 }
 
@@ -709,33 +749,29 @@ void VisualizationGraphWidget::wheelEvent(QWheelEvent *event)
     QWidget::wheelEvent(event);
 }
 
-inline QCPRange _pixDistanceToRange(double pos1, double pos2, QCPAxis *axis)
-{
-    if (axis->scaleType() == QCPAxis::stLinear)
-    {
-        auto diff = axis->pixelToCoord(pos1) - axis->pixelToCoord(pos2);
-        return QCPRange{axis->range().lower + diff, axis->range().upper + diff};
-    }
-    else
-    {
-        auto diff = axis->pixelToCoord(pos1) / axis->pixelToCoord(pos2);
-        return QCPRange{axis->range().lower * diff, axis->range().upper * diff};
-    }
-}
+
 
 void VisualizationGraphWidget::mouseMoveEvent(QMouseEvent *event)
 {
-    if (event->buttons() & Qt::LeftButton) {
-        auto currentPos = event->pos();
-        auto xAxis = ui->widget->axisRect()->rangeDragAxis(Qt::Horizontal);
-        auto yAxis = ui->widget->axisRect()->rangeDragAxis(Qt::Vertical);
-        auto oldXRange = xAxis->range();
-        xAxis->setRange(_pixDistanceToRange(_dragLastPos.x(), currentPos.x(), xAxis));
-        yAxis->setRange(_pixDistanceToRange(_dragLastPos.y(), currentPos.y(), yAxis));
-        onRangeChanged(oldXRange, xAxis->range());
-        ui->widget->replot(QCustomPlot::rpQueuedReplot);
-        _dragLastPos = currentPos;
+    if (event->buttons() == Qt::LeftButton)
+    {
+        impl->moveGraph(_dragLastPos, event->pos(), ui->widget);
+        _dragLastPos = event->pos();
     }
+    else if(impl->m_DrawingZoomRect)
+    {
+        QPointF pos{ui->widget->xAxis->pixelToCoord(event->pos().x()), ui->widget->yAxis->pixelToCoord(event->pos().y())};
+        impl->m_DrawingZoomRect->bottomRight->setCoords(pos);
+    }
+    else if (impl->m_DrawingZone)
+    {
+        impl->m_DrawingZone->setEnd(ui->widget->xAxis->pixelToCoord(event->pos().x()));
+    }
+    else
+    {
+        impl->m_RenderingDelegate->updateTooltip(event);
+    }
+    event->accept();
     QWidget::mouseMoveEvent(event);
 }
 
@@ -752,10 +788,19 @@ void VisualizationGraphWidget::mousePressEvent(QMouseEvent *event)
         }
         else {
             setCursor(Qt::ClosedHandCursor);
-            this->_dragLastPos= event->pos();
+            this->_dragLastPos = event->pos();
         }
     }
+    else if (event->button()==Qt::RightButton)
+    {
+        onGraphMenuRequested(event->pos());
+    }
     QWidget::mousePressEvent(event);
+}
+
+void VisualizationGraphWidget::mouseDoubleClickEvent(QMouseEvent *event)
+{
+    impl->m_RenderingDelegate->onMouseDoubleClick(event);
 }
 
 void VisualizationGraphWidget::keyReleaseEvent(QKeyEvent *event)
@@ -921,38 +966,38 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
     }
 }
 
-void VisualizationGraphWidget::onRangeChanged(const QCPRange &newRange, const QCPRange &oldRange)
-{
-    auto graphRange = DateTimeRange{newRange.lower, newRange.upper};
-    auto oldGraphRange = DateTimeRange{oldRange.lower, oldRange.upper};
+//void VisualizationGraphWidget::onRangeChanged(const QCPRange &newRange, const QCPRange &oldRange)
+//{
+//    auto graphRange = DateTimeRange{newRange.lower, newRange.upper};
+//    auto oldGraphRange = DateTimeRange{oldRange.lower, oldRange.upper};
 
-    if (impl->m_Flags.testFlag(GraphFlag::EnableAcquisition)) {
-        for (auto it = impl->m_VariableToPlotMultiMap.begin(),
-                  end = impl->m_VariableToPlotMultiMap.end();
-             it != end; it = impl->m_VariableToPlotMultiMap.upper_bound(it->first)) {
-            sqpApp->variableController().asyncChangeRange(it->first, graphRange);
-        }
-    }
+//    if (impl->m_Flags.testFlag(GraphFlag::EnableAcquisition)) {
+//        for (auto it = impl->m_VariableToPlotMultiMap.begin(),
+//                  end = impl->m_VariableToPlotMultiMap.end();
+//             it != end; it = impl->m_VariableToPlotMultiMap.upper_bound(it->first)) {
+//            sqpApp->variableController().asyncChangeRange(it->first, graphRange);
+//        }
+//    }
 
-    //    if (impl->m_Flags.testFlag(GraphFlag::EnableSynchronization) && !impl->m_IsCalibration)
-    //    {
-    //        emit synchronize(graphRange, oldGraphRange);
-    //    }
+//    //    if (impl->m_Flags.testFlag(GraphFlag::EnableSynchronization) && !impl->m_IsCalibration)
+//    //    {
+//    //        emit synchronize(graphRange, oldGraphRange);
+//    //    }
 
-    //    auto pos = mapFromGlobal(QCursor::pos());
-    //    auto axisPos = impl->posToAxisPos(pos, plot());
-    //    if (auto parentZone = parentZoneWidget()) {
-    //        if (impl->pointIsInAxisRect(axisPos, plot())) {
-    //            parentZone->notifyMouseMoveInGraph(pos, axisPos, this);
-    //        }
-    //        else {
-    //            parentZone->notifyMouseLeaveGraph(this);
-    //        }
-    //    }
+//    //    auto pos = mapFromGlobal(QCursor::pos());
+//    //    auto axisPos = impl->posToAxisPos(pos, plot());
+//    //    if (auto parentZone = parentZoneWidget()) {
+//    //        if (impl->pointIsInAxisRect(axisPos, plot())) {
+//    //            parentZone->notifyMouseMoveInGraph(pos, axisPos, this);
+//    //        }
+//    //        else {
+//    //            parentZone->notifyMouseLeaveGraph(this);
+//    //        }
+//    //    }
 
-    // Quits calibration
-    //    impl->m_IsCalibration = false;
-}
+//    // Quits calibration
+//    //    impl->m_IsCalibration = false;
+//}
 
 void VisualizationGraphWidget::onMouseDoubleClick(QMouseEvent *event) noexcept
 {
@@ -962,7 +1007,7 @@ void VisualizationGraphWidget::onMouseDoubleClick(QMouseEvent *event) noexcept
 void VisualizationGraphWidget::onMouseMove(QMouseEvent *event) noexcept
 {
     // Handles plot rendering when mouse is moving
-    impl->m_RenderingDelegate->onMouseMove(event);
+    impl->m_RenderingDelegate->updateTooltip(event);
 
     auto axisPos = impl->posToAxisPos(event->pos(), plot());
 
@@ -1074,11 +1119,6 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
         }
     }
 
-    // Allows mouse panning only in default mode
-    //    plot().setInteraction(QCP::iRangeDrag, sqpApp->plotsInteractionMode()
-    //                                                   ==
-    //                                                   SqpApplication::PlotsInteractionMode::None
-    //                                               && !isDragDropClick);
 
     // Allows zone edition only in selection zone mode without drag&drop
     impl->setSelectionZonesEditionEnabled(isSelectionZoneMode && !isDragDropClick);

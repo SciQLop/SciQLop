@@ -20,7 +20,7 @@ public:
     explicit VisualizationGraphRenderingDelegate(VisualizationGraphWidget &graphWidget);
 
     void onMouseDoubleClick(QMouseEvent *event) noexcept;
-    void onMouseMove(QMouseEvent *event) noexcept;
+    void updateTooltip(QMouseEvent *event) noexcept;
     /// Updates rendering when data of plot changed
     void onPlotUpdated() noexcept;
 

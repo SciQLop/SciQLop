@@ -233,7 +233,7 @@ void VisualizationGraphRenderingDelegate::onMouseDoubleClick(QMouseEvent *event)
     }
 }
 
-void VisualizationGraphRenderingDelegate::onMouseMove(QMouseEvent *event) noexcept
+void VisualizationGraphRenderingDelegate::updateTooltip(QMouseEvent *event) noexcept
 {
     // Cancels pending refresh
     impl->m_TracerTimer.disconnect();
