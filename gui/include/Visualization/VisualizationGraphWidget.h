@@ -141,7 +141,7 @@ private:
 
     class VisualizationGraphWidgetPrivate;
     spimpl::unique_impl_ptr<VisualizationGraphWidgetPrivate> impl;
-    QPoint _dragLastPos;
+
 private slots:
     /// Slot called when right clicking on the graph (displays a menu)
     void onGraphMenuRequested(const QPoint &pos) noexcept;
