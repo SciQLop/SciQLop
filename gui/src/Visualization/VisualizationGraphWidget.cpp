@@ -169,9 +169,15 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
         }
     }
 
-    void startDrawingZone(const QPoint &pos, VisualizationGraphWidget *graph)
+    void selectZone(const QPoint &pos)
     {
-        endDrawingZone(graph);
+        auto zoneAtPos = selectionZoneAt(pos);
+        setSelectionZonesEditionEnabled(sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones);
+    }
+
+    void startDrawingZone(const QPoint &pos)
+    {
+        endDrawingZone();
 
         auto axisPos = posToAxisPos(pos);
 
@@ -180,7 +186,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
         m_DrawingZone->setEditionEnabled(false);
     }
 
-    void endDrawingZone(VisualizationGraphWidget *graph)
+    void endDrawingZone()
     {
         if (m_DrawingZone) {
             auto drawingZoneRange = m_DrawingZone->range();
@@ -189,12 +195,22 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
                 addSelectionZone(m_DrawingZone);
             }
             else {
-                graph->plot().removeItem(m_DrawingZone); // the item is deleted by QCustomPlot
+                m_plot->removeItem(m_DrawingZone);
             }
 
-            graph->plot().replot(QCustomPlot::rpQueuedReplot);
+            m_plot->replot(QCustomPlot::rpQueuedReplot);
             m_DrawingZone = nullptr;
         }
+    }
+
+    void moveSelectionZone(const QPoint& destination)
+    {
+        /*
+         * I give up on this for now
+         * @TODO implement this, the difficulty is that selection zones have their own
+         * event handling code which seems to rely on QCP GUI event handling propagation
+         * which was a realy bad design choice.
+        */
     }
 
     void setSelectionZonesEditionEnabled(bool value)
@@ -783,13 +799,22 @@ void VisualizationGraphWidget::mouseMoveEvent(QMouseEvent *event)
     }
     else if (event->buttons() == Qt::LeftButton)
     {
-        impl->moveGraph(event->pos());
+        switch (sqpApp->plotsInteractionMode())
+        {
+            case SqpApplication::PlotsInteractionMode::None:
+                impl->moveGraph(event->pos());
+                break;
+            case SqpApplication::PlotsInteractionMode::SelectionZones:
+
+                break;
+            default:
+                break;
+        }
     }
     else
     {
         impl->m_RenderingDelegate->updateTooltip(event);
     }
-    event->accept();
     QWidget::mouseMoveEvent(event);
 }
 
@@ -801,7 +826,7 @@ void VisualizationGraphWidget::mouseReleaseEvent(QMouseEvent *event)
     }
     else if(impl->isDrawingZoneRect())
     {
-        impl->endDrawingZone(this);
+        impl->endDrawingZone();
     }
     else
     {
@@ -812,35 +837,43 @@ void VisualizationGraphWidget::mouseReleaseEvent(QMouseEvent *event)
 
 void VisualizationGraphWidget::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-        if (event->modifiers() == Qt::ControlModifier) {
-        }
-        else if (event->modifiers() == Qt::AltModifier) {
-
-        }
-        else
-        {
-            switch (sqpApp->plotsInteractionMode())
-            {
-            case SqpApplication::PlotsInteractionMode::DragAndDrop :
-                break;
-            case SqpApplication::PlotsInteractionMode::SelectionZones :
-                if (!impl->selectionZoneAt(event->pos())) {
-                    impl->startDrawingZone(event->pos(), this);
-                }
-                break;
-            case SqpApplication::PlotsInteractionMode::ZoomBox :
-                impl->startDrawingRect(event->pos());
-                break;
-            default:
-                setCursor(Qt::ClosedHandCursor);
-                impl->updateMousePosition(event->pos());
-            }
-        }
-    }
-    else if (event->button()==Qt::RightButton)
+    if (event->button()==Qt::RightButton)
     {
         onGraphMenuRequested(event->pos());
+    }
+    else
+    {
+        auto selectedZone = impl->selectionZoneAt(event->pos());
+        switch (sqpApp->plotsInteractionMode())
+        {
+        case SqpApplication::PlotsInteractionMode::DragAndDrop :
+            break;
+        case SqpApplication::PlotsInteractionMode::SelectionZones :
+            impl->setSelectionZonesEditionEnabled(true);
+            if ((event->modifiers() == Qt::ControlModifier) && (selectedZone != nullptr))
+            {
+                    selectedZone->setAssociatedEditedZones(parentVisualizationWidget()->selectionZoneManager().selectedItems());
+            }
+            else
+            {
+                if (!selectedZone)
+                {
+                    parentVisualizationWidget()->selectionZoneManager().clearSelection();
+                    impl->startDrawingZone(event->pos());
+                }
+                else
+                {
+                    parentVisualizationWidget()->selectionZoneManager().select({ selectedZone });
+                }
+            }
+            break;
+        case SqpApplication::PlotsInteractionMode::ZoomBox :
+            impl->startDrawingRect(event->pos());
+            break;
+        default:
+            setCursor(Qt::ClosedHandCursor);
+            impl->updateMousePosition(event->pos());
+        }
     }
     QWidget::mousePressEvent(event);
 }
@@ -1128,7 +1161,7 @@ void VisualizationGraphWidget::onMousePress(QMouseEvent *event) noexcept
             // Starts a new selection zone
             auto zoneAtPos = impl->selectionZoneAt(event->pos());
             if (!zoneAtPos) {
-                impl->startDrawingZone(event->pos(), this);
+                impl->startDrawingZone(event->pos());
             }
         }
     }
@@ -1191,7 +1224,7 @@ void VisualizationGraphWidget::onMouseRelease(QMouseEvent *event) noexcept
         }
     }
 
-    impl->endDrawingZone(this);
+    impl->endDrawingZone();
 
     // Selection / Deselection
     auto isSelectionZoneMode

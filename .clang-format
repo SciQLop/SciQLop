@@ -2,7 +2,7 @@
 # See http://clang.llvm.org/docs/ClangFormatStyleOptions.html for a definition 
 # of the options
 Language: Cpp
-BasedOnStyle:  LLVM
+BasedOnStyle:  WebKit
 
 # Line length
 ColumnLimit: 100
@@ -12,8 +12,7 @@ IndentWidth: 4
 AccessModifierOffset: -4 # -IndentWidth
 ConstructorInitializerIndentWidth: 8 # 2 * IndentWidth
 
-# Break only before function braces
-BreakBeforeBraces: Stroustrup
+BreakBeforeBraces: Allman
 
 AllowShortFunctionsOnASingleLine: Inline
 AlwaysBreakTemplateDeclarations: true
@@ -22,5 +21,6 @@ BreakBeforeBinaryOperators: true
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 IndentCaseLabels: true
 MaxEmptyLinesToKeep: 2
-Standard: Cpp03
+Standard: Cpp11
+UseTab: Never
 

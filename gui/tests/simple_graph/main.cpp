@@ -29,7 +29,6 @@ ALIAS_TEMPLATE_FUNCTION(isReady, static_cast<SqpApplication *>(qApp)->variableCo
     while (!isReady(var))\
     QCoreApplication::processEvents();\
     w.addVariable(var, range);\
-    GET_CHILD_WIDGET_FOR_GUI_TESTS(w, plot, QCustomPlot, "widget");\
     auto cent = center(&w);
 
 
