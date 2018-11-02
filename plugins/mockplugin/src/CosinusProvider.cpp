@@ -84,16 +84,18 @@ struct SpectrogramCosinus : public ICosinusType {
 
             double value;
 
-            if (SPECTROGRAM_ZERO_BANDS.find(y) != SPECTROGRAM_ZERO_BANDS.end()) {
-                value = 0.;
-            }
-            else if (SPECTROGRAM_NAN_BANDS.find(y) != SPECTROGRAM_NAN_BANDS.end()) {
-                value = std::numeric_limits<double>::quiet_NaN();
-            }
-            else {
+//            if (SPECTROGRAM_ZERO_BANDS.find(y) != SPECTROGRAM_ZERO_BANDS.end()) {
+//                value = 0.;
+//            }
+//            else if (SPECTROGRAM_NAN_BANDS.find(y) != SPECTROGRAM_NAN_BANDS.end()) {
+//                value = std::numeric_limits<double>::quiet_NaN();
+//            }
+//            else
+            {
                 // Generates value for non NaN/zero bands
-                auto r = 3 * std::sqrt(x * x + y * y) + 1e-2;
-                value = 2 * x * (std::cos(r + 2) / r - std::sin(r + 2) / r);
+                //auto r = 3 * std::sqrt(x * x + y * y) + 1e-2;
+                //value = 2 * x * (std::cos(r + 2) / r - std::sin(r + 2) / r);
+                value  = x + 10*y;
             }
 
             values[componentCount * dataIndex + i] = value;
@@ -136,8 +138,11 @@ std::unique_ptr<ICosinusType> cosinusType(const QString &type) noexcept
     else if (type.compare(QStringLiteral("spectrogram"), Qt::CaseInsensitive) == 0) {
         // Generates default y-axis data for spectrogram [0., 1., 2., ...]
         std::vector<double> yAxisData(SPECTROGRAM_NUMBER_BANDS);
-        std::iota(yAxisData.begin(), yAxisData.end(), 0.);
-
+        std::iota(yAxisData.begin(), yAxisData.end(), 1.);
+        for (auto & v:yAxisData)
+        {
+            v = std::pow(2,v);
+        }
         return std::make_unique<SpectrogramCosinus>(std::move(yAxisData), Unit{"eV"},
                                                     Unit{"eV/(cm^2-s-sr-eV)"});
     }

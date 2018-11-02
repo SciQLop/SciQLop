@@ -70,7 +70,7 @@ PYBIND11_MODULE(pytestmockplugin, m){
 
     py::class_<VariableController2>(m, "VariableController2").def_static("createVariable",[](const QString &name,
                         std::shared_ptr<IDataProvider> provider, const DateTimeRange& range){
-        return sqpApp->variableController().createVariable(name, {{"cosinusType", "spectrogram"}, {"cosinusFrequency", "1.0"}}, provider, range);
+        return sqpApp->variableController().createVariable(name, {{"cosinusType", "spectrogram"}, {"cosinusFrequency", "0.1"}}, provider, range);
     });
 
     py::class_<TimeController>(m,"TimeController")
