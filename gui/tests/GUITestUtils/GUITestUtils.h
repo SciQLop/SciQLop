@@ -85,11 +85,11 @@ auto getItem(T* widget, T2 itemIndex)
 
 #define SELECT_ITEM(widget, itemIndex, item)\
     auto item = getItem(widget, itemIndex);\
-{\
-    auto itemCenterPos = widget->visualItemRect(item).center();\
-    QTest::mouseClick(widget->viewport(), Qt::LeftButton, Qt::NoModifier, itemCenterPos);\
-    QVERIFY(widget->selectedItems().size() > 0);\
-    QVERIFY(widget->selectedItems().contains(item));\
+    {\
+      auto itemCenterPos = widget->visualItemRect(item).center();\
+      QTest::mouseClick(widget->viewport(), Qt::LeftButton, Qt::NoModifier, itemCenterPos);\
+      QVERIFY(widget->selectedItems().size() > 0);\
+      QVERIFY(widget->selectedItems().contains(item));\
     }
 
 
@@ -133,12 +133,15 @@ void dragnDropItem(T1* sourceWidget, T2* destWidget, T3* item, T4* destItem=Q_NU
     mouseMove(sourceWidget,itemCenterPos,Qt::LeftButton);
 }
 
-#define PREPARE_GUI_TEST(main_widget)\
-    main_widget.setGeometry(QRect(QPoint(QApplication::desktop()->geometry().center() - QPoint(250, 250)),\
-    QSize(500, 500)));\
-    main_widget.show();\
-    qApp->setActiveWindow(&main_widget);\
-    QVERIFY(QTest::qWaitForWindowActive(&main_widget))
+template<typename T>
+bool prepare_gui_test(T* w)
+{
+    w->setGeometry(QRect(QPoint(QApplication::desktop()->geometry().center() - QPoint(250, 250)),
+    QSize(500, 500)));
+    w->show();
+    qApp->setActiveWindow(w);
+    return QTest::qWaitForWindowActive(w);
+}
 
 #define GET_CHILD_WIDGET_FOR_GUI_TESTS(parent, child, childType, childName)\
     childType* child = parent.findChild<childType*>(childName); \

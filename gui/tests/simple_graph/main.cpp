@@ -18,19 +18,21 @@
 
 ALIAS_TEMPLATE_FUNCTION(isReady, static_cast<SqpApplication *>(qApp)->variableController().isReady)
 
-#define A_SIMPLE_GRAPH_FIXTURE \
-    VisualizationGraphWidget w;\
-    PREPARE_GUI_TEST(w);\
-    auto provider = std::make_shared<SimpleRange<10> >();\
-    auto range = DateTimeRange::fromDateTime(QDate(2018, 8, 7), QTime(14, 00), QDate(2018, 8, 7),\
-    QTime(16, 00));\
-    auto var = static_cast<SqpApplication *>(qApp)->variableController().createVariable(\
-    "V1", {{"", "scalar"}}, provider, range);\
-    while (!isReady(var))\
-    QCoreApplication::processEvents();\
-    w.addVariable(var, range);\
-    auto cent = center(&w);
-
+std::tuple< std::unique_ptr<VisualizationGraphWidget>,
+            std::shared_ptr<Variable>,
+            DateTimeRange >
+build_simple_graph_test()
+{
+    auto w = std::make_unique<VisualizationGraphWidget>();
+    auto provider = std::make_shared<SimpleRange<10> >();
+    auto range = DateTimeRange::fromDateTime(QDate(2018, 8, 7), QTime(14, 00), QDate(2018, 8, 7),QTime(16, 00));
+    auto var = static_cast<SqpApplication *>(qApp)->variableController().createVariable("V1", {{"", "scalar"}}, provider, range);
+    w->addVariable(var, range);
+    while (!isReady(var))
+    QCoreApplication::processEvents();
+    auto cent = center(w.get());
+    return {std::move(w), var, range};
+}
 
 
 class A_SimpleGraph : public QObject {
@@ -41,12 +43,14 @@ public:
 private slots:
     void scrolls_left_with_mouse()
     {
-        A_SIMPLE_GRAPH_FIXTURE;
+        auto [w, var, range] = build_simple_graph_test();
+        QVERIFY(prepare_gui_test(w.get()));
+        auto cent = center(w.get());
 
         for (auto i = 0; i < 100; i++) {
-            QTest::mousePress(&w, Qt::LeftButton, Qt::NoModifier, cent, 1);
-            mouseMove(&w, {cent.x() + 200, cent.y()}, Qt::LeftButton);
-            QTest::mouseRelease(&w, Qt::LeftButton);
+            QTest::mousePress(w.get(), Qt::LeftButton, Qt::NoModifier, cent, 1);
+            mouseMove(w.get(), {cent.x() + 200, cent.y()}, Qt::LeftButton);
+            QTest::mouseRelease(w.get(), Qt::LeftButton);
             while (!isReady(var))
                 QCoreApplication::processEvents();
         }
@@ -63,12 +67,14 @@ private slots:
 
     void scrolls_right_with_mouse()
     {
-        A_SIMPLE_GRAPH_FIXTURE;
+        auto [w, var, range] = build_simple_graph_test();
+        QVERIFY(prepare_gui_test(w.get()));
+        auto cent = center(w.get());
 
         for (auto i = 0; i < 100; i++) {
-            QTest::mousePress(&w, Qt::LeftButton, Qt::NoModifier, cent, 1);
-            mouseMove(&w, {cent.x() - 200, cent.y()}, Qt::LeftButton);
-            QTest::mouseRelease(&w, Qt::LeftButton);
+            QTest::mousePress(w.get(), Qt::LeftButton, Qt::NoModifier, cent, 1);
+            mouseMove(w.get(), {cent.x() - 200, cent.y()}, Qt::LeftButton);
+            QTest::mouseRelease(w.get(), Qt::LeftButton);
             while (!isReady(var))
                 QCoreApplication::processEvents();
         }
