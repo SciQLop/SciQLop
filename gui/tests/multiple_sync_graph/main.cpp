@@ -19,7 +19,8 @@
 template <int GraphCount=2>
 std::tuple< std::unique_ptr<VisualizationZoneWidget>,
             std::vector<std::shared_ptr<Variable>>,
-            std::vector<VisualizationGraphWidget*> >
+            std::vector<VisualizationGraphWidget*>,
+            DateTimeRange>
 build_multi_graph_test()
 {
     auto w = std::make_unique<VisualizationZoneWidget>();
@@ -39,8 +40,7 @@ build_multi_graph_test()
         graphs.push_back(graph);
         w->addGraph(graph);
     }
-    auto cent = center(w.get());
-    return {std::move(w), variables, graphs};
+    return {std::move(w), variables, graphs, range};
 }
 
 
@@ -52,34 +52,42 @@ public:
 private slots:
     void scrolls_left_with_mouse()
     {
-        auto [w, variables, graphs] = build_multi_graph_test<3>();
+        auto [w, variables, graphs, range] = build_multi_graph_test<3>();
+        auto var   = variables.front();
+        auto graph = graphs.front();
         QVERIFY(prepare_gui_test(w.get()));
+        for (auto i = 0; i < 100; i++) {
+            scroll_graph(graph, -200);
+            waitForVar(var);
+        }
+        auto r = variables.back()->range();
 
         /*
          * Scrolling to the left implies going back in time
          * Scroll only implies keeping the same delta T -> shit only transformation
         */
-        //QVERIFY(r.m_TEnd < range.m_TEnd);
-        //QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(),range.delta(),1));
+        QVERIFY(r.m_TEnd < range.m_TEnd);
+        QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(),range.delta(),1));
     }
 
     void scrolls_right_with_mouse()
     {
-        auto [w, variables, graphs] = build_multi_graph_test<3>();
+        auto [w, variables, graphs, range] = build_multi_graph_test<3>();
+        auto var   = variables.front();
+        auto graph = graphs.front();
         QVERIFY(prepare_gui_test(w.get()));
-//        w->show();
-//        for(int i=0;i<10000;i++)
-//        {
-//            QThread::usleep(1000);
-//            qApp->processEvents();
-//        }
+        for (auto i = 0; i < 100; i++) {
+            scroll_graph(graph, 200);
+            waitForVar(var);
+        }
+        auto r = variables.back()->range();
 
         /*
          * Scrolling to the right implies going forward in time
          * Scroll only implies keeping the same delta T -> shit only transformation
         */
-        //QVERIFY(r.m_TEnd > range.m_TEnd);
-        //QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(),range.delta(),1));
+        QVERIFY(r.m_TEnd > range.m_TEnd);
+        QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(),range.delta(),1));
     }
 };
 

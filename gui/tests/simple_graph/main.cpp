@@ -28,7 +28,6 @@ build_simple_graph_test()
     while (!isReady(var)) QCoreApplication::processEvents();
     w->addVariable(var, range);
     while (!isReady(var)) QCoreApplication::processEvents();
-    auto cent = center(w.get());
     return {std::move(w), var, range};
 }
 
