@@ -11,6 +11,9 @@
 
 #include <qcustomplot.h>
 
+#include <SqpApplication.h>
+#include <Variable/Variable.h>
+
 template <typename T>
 QPoint center(T* widget)
 {
@@ -131,6 +134,23 @@ void dragnDropItem(T1* sourceWidget, T2* destWidget, T3* item, T4* destItem=Q_NU
         QTest::mouseRelease(destWidget->viewport(), Qt::LeftButton);
     });
     mouseMove(sourceWidget,itemCenterPos,Qt::LeftButton);
+}
+
+template <typename T>
+void scroll_graph(T* w, int dx)
+{
+    auto cent = center(w);
+    QTest::mousePress(w, Qt::LeftButton, Qt::NoModifier, cent, 1);
+    mouseMove(w, {cent.x() + dx, cent.y()}, Qt::LeftButton);
+    QTest::mouseRelease(w, Qt::LeftButton);
+}
+
+ALIAS_TEMPLATE_FUNCTION(isReady, static_cast<SqpApplication *>(qApp)->variableController().isReady)
+
+void waitForVar(std::shared_ptr<Variable> var)
+{
+    while (!isReady(var))
+        QCoreApplication::processEvents();
 }
 
 template<typename T>

@@ -16,9 +16,6 @@
 #include <TestProviders.h>
 #include <GUITestUtils.h>
 
-
-ALIAS_TEMPLATE_FUNCTION(isReady, static_cast<SqpApplication *>(qApp)->variableController().isReady)
-
 template <int GraphCount=2>
 std::tuple< std::unique_ptr<VisualizationZoneWidget>,
             std::vector<std::shared_ptr<Variable>>,
@@ -70,12 +67,12 @@ private slots:
     {
         auto [w, variables, graphs] = build_multi_graph_test<3>();
         QVERIFY(prepare_gui_test(w.get()));
-        w->show();
-        for(int i=0;i<10000;i++)
-        {
-            QThread::usleep(1000);
-            qApp->processEvents();
-        }
+//        w->show();
+//        for(int i=0;i<10000;i++)
+//        {
+//            QThread::usleep(1000);
+//            qApp->processEvents();
+//        }
 
         /*
          * Scrolling to the right implies going forward in time
