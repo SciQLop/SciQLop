@@ -1,7 +1,8 @@
 <RCC>
     <qresource prefix="/">
-		<file>samples/AmdaSample.json</file>
-		<file>samples/AmdaSampleV2.json</file>
-		<file>samples/AmdaSampleV3.json</file>
+        <file>samples/AmdaSample.json</file>
+        <file>samples/AmdaSampleV2.json</file>
+        <file>samples/AmdaSampleV3.json</file>
+        <file>samples/amda_tree.json</file>
     </qresource>
 </RCC>
