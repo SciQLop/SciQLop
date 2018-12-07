@@ -169,9 +169,10 @@ void VisualizationZoneWidget::setZoneRange(const DateTimeRange &range)
 void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)
 {
     // Synchronize new graph with others in the zone
-    impl->m_Synchronizer->addGraph(*graphWidget);
+//    impl->m_Synchronizer->addGraph(*graphWidget);
 
-    ui->dragDropContainer->addDragWidget(graphWidget);
+//    ui->dragDropContainer->addDragWidget(graphWidget);
+    insertGraph(0,graphWidget);
 
 }
 

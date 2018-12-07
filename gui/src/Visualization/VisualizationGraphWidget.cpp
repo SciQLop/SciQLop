@@ -832,7 +832,7 @@ void VisualizationGraphWidget::wheelEvent(QWheelEvent *event)
     else {
         move(wheelSteps, Qt::Horizontal);
     }
-    //QWidget::wheelEvent(event);
+    event->accept();
 }
 
 
@@ -863,7 +863,7 @@ void VisualizationGraphWidget::mouseMoveEvent(QMouseEvent *event)
     {
         impl->m_RenderingDelegate->updateTooltip(event);
     }
-    QWidget::mouseMoveEvent(event);
+    event->accept();
 }
 
 void VisualizationGraphWidget::mouseReleaseEvent(QMouseEvent *event)
@@ -880,7 +880,7 @@ void VisualizationGraphWidget::mouseReleaseEvent(QMouseEvent *event)
     {
         setCursor(Qt::ArrowCursor);
     }
-    QWidget::mouseReleaseEvent(event);
+    event->accept();
 }
 
 void VisualizationGraphWidget::mousePressEvent(QMouseEvent *event)
@@ -923,7 +923,7 @@ void VisualizationGraphWidget::mousePressEvent(QMouseEvent *event)
             impl->enterPlotDrag(event->pos());
         }
     }
-    QWidget::mousePressEvent(event);
+    event->accept();
 }
 
 void VisualizationGraphWidget::mouseDoubleClickEvent(QMouseEvent *event)
@@ -945,6 +945,7 @@ void VisualizationGraphWidget::keyReleaseEvent(QKeyEvent *event)
             break;
     }
     setCursor(Qt::ArrowCursor);
+    event->accept();
 }
 
 void VisualizationGraphWidget::keyPressEvent(QKeyEvent *event)
