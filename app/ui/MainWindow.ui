@@ -81,7 +81,6 @@
         </item>
        </layout>
       </widget>
-      <widget class="SqpSidePane" name="leftInspectorSidePane" native="true"/>
       <widget class="VisualizationWidget" name="view" native="true">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
@@ -90,7 +89,6 @@
         </sizepolicy>
        </property>
       </widget>
-      <widget class="SqpSidePane" name="rightInspectorSidePane" native="true"/>
       <widget class="QWidget" name="rightMainInspectorWidget" native="true">
        <layout class="QVBoxLayout" name="verticalLayout_3">
         <property name="spacing">
@@ -132,7 +130,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>21</height>
+     <height>41</height>
     </rect>
    </property>
   </widget>
@@ -144,12 +142,6 @@
    <class>VisualizationWidget</class>
    <extends>QWidget</extends>
    <header location="global">Visualization/VisualizationWidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>SqpSidePane</class>
-   <extends>QWidget</extends>
-   <header location="global">SidePane/SqpSidePane.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

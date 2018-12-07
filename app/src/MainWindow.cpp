@@ -93,11 +93,7 @@ MainWindow::MainWindow(QWidget *parent)
     impl->m_CatalogExplorer->setVisualizationWidget(m_Ui->view);
 
 
-    auto leftSidePane = m_Ui->leftInspectorSidePane->sidePane();
-    auto openLeftInspectorAction = new QAction{QIcon{
-                                                   ":/icones/previous.png",
-                                               },
-                                               tr("Show/hide the left inspector"), this};
+
 
 
     auto spacerLeftTop = new QWidget{};
@@ -106,16 +102,6 @@ MainWindow::MainWindow(QWidget *parent)
     auto spacerLeftBottom = new QWidget{};
     spacerLeftBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    leftSidePane->addWidget(spacerLeftTop);
-    leftSidePane->addAction(openLeftInspectorAction);
-    leftSidePane->addWidget(spacerLeftBottom);
-
-
-    auto rightSidePane = m_Ui->rightInspectorSidePane->sidePane();
-    auto openRightInspectorAction = new QAction{QIcon{
-                                                    ":/icones/next.png",
-                                                },
-                                                tr("Show/hide the right inspector"), this};
 
     auto spacerRightTop = new QWidget{};
     spacerRightTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -123,12 +109,6 @@ MainWindow::MainWindow(QWidget *parent)
     auto spacerRightBottom = new QWidget{};
     spacerRightBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    rightSidePane->addWidget(spacerRightTop);
-    rightSidePane->addAction(openRightInspectorAction);
-    rightSidePane->addWidget(spacerRightBottom);
-
-    openLeftInspectorAction->setCheckable(true);
-    openRightInspectorAction->setCheckable(true);
 
     auto openInspector = [this](bool checked, bool right, auto action) {
 
@@ -168,15 +148,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     };
 
-
-    connect(openLeftInspectorAction, &QAction::triggered,
-            [openInspector, openLeftInspectorAction](bool checked) {
-                openInspector(checked, false, openLeftInspectorAction);
-            });
-    connect(openRightInspectorAction, &QAction::triggered,
-            [openInspector, openRightInspectorAction](bool checked) {
-                openInspector(checked, true, openRightInspectorAction);
-            });
 
     // //////////////// //
     // Menu and Toolbar //
