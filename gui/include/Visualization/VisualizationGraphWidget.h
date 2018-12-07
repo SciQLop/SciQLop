@@ -70,7 +70,7 @@ public:
     /// Sets the y-axis range based on the data of a variable
     void setYRange(std::shared_ptr<Variable> variable);
     DateTimeRange graphRange() const noexcept;
-    void setGraphRange(const DateTimeRange &range, bool calibration = false);
+    void setGraphRange(const DateTimeRange &range, bool updateVar = false);
     void setAutoRangeOnVariableInitialization(bool value);
 
     // Zones
@@ -86,8 +86,9 @@ public:
     /// Undo the last zoom  done with a zoom box
     void undoZoom();
 
-    void zoom(double factor, int center, Qt::Orientation orientation);
-    void move(double factor, Qt::Orientation orientation);
+    void zoom(double factor, int center, Qt::Orientation orientation, bool forward=true);
+    void move(double factor, Qt::Orientation orientation, bool forward=true);
+    void move(double dx, double dy, bool forward=true);
 
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
@@ -122,6 +123,11 @@ signals:
     /// Signal emitted when the variable has been added to the graph
     void variableAdded(std::shared_ptr<Variable> var);
 
+
+    void zoom_sig(double factor, int center, Qt::Orientation orientation, bool forward=true);
+    void move_sig(double factor, Qt::Orientation orientation, bool forward=true);
+    void move_sig(double dx, double dy, bool forward=true);
+
 protected:
     void closeEvent(QCloseEvent *event) override;
     void enterEvent(QEvent *event) override;
@@ -142,6 +148,7 @@ private:
     class VisualizationGraphWidgetPrivate;
     spimpl::unique_impl_ptr<VisualizationGraphWidgetPrivate> impl;
 
+    void _ugly_sync_(const QPoint& pos,const QPointF& axisPos);
 private slots:
     /// Slot called when right clicking on the graph (displays a menu)
     void onGraphMenuRequested(const QPoint &pos) noexcept;

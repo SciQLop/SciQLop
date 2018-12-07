@@ -85,6 +85,8 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
     bool m_IsCalibration;
     QCustomPlot* m_plot;
     QPoint m_lastMousePos;
+    QCPRange m_lastXRange;
+    QCPRange m_lastYRange;
     /// Delegate used to attach rendering features to the plot
     std::unique_ptr<VisualizationGraphRenderingDelegate> m_RenderingDelegate;
 
@@ -102,9 +104,12 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
 
     bool m_VariableAutoRangeOnInit = true;
 
-    inline void updateMousePosition(const QPoint& position)
+    inline void enterPlotDrag(const QPoint& position)
     {
-        m_lastMousePos = position;
+        m_lastMousePos = m_plot->mapFromParent(position);
+        m_lastXRange = m_plot->xAxis->range();
+        m_lastYRange = m_plot->yAxis->range();
+
     }
 
     inline bool isDrawingZoomRect(){return m_DrawingZoomRect!=nullptr;}
@@ -288,31 +293,98 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
         }
     }
 
-    void setRange(const QCPRange &newRange)
+    void setRange(const DateTimeRange &newRange)
     {
-        auto graphRange = DateTimeRange{newRange.lower, newRange.upper};
-
         if (m_Flags.testFlag(GraphFlag::EnableAcquisition))
         {
             for (auto it = m_VariableToPlotMultiMap.begin(),
                       end = m_VariableToPlotMultiMap.end();
                  it != end; it = m_VariableToPlotMultiMap.upper_bound(it->first))
             {
-                sqpApp->variableController().asyncChangeRange(it->first, graphRange);
+                sqpApp->variableController().asyncChangeRange(it->first, newRange);
             }
         }
     }
 
-    void moveGraph(const QPoint& destination)
+    void setRange(const QCPRange &newRange)
     {
-        auto currentPos = destination;
+        auto graphRange = DateTimeRange{newRange.lower, newRange.upper};
+        setRange(graphRange);
+    }
+
+    std::tuple<double,double> moveGraph(const QPoint& destination)
+    {
+        auto currentPos = m_plot->mapFromParent(destination);
         auto xAxis = m_plot->axisRect()->rangeDragAxis(Qt::Horizontal);
         auto yAxis = m_plot->axisRect()->rangeDragAxis(Qt::Vertical);
-        xAxis->setRange(_pixDistanceToRange(m_lastMousePos.x(), currentPos.x(), xAxis));
-        yAxis->setRange(_pixDistanceToRange(m_lastMousePos.y(), currentPos.y(), yAxis));
+        auto oldXRange = xAxis->range();
+        auto oldYRange = yAxis->range();
+        double dx = xAxis->pixelToCoord(m_lastMousePos.x()) - xAxis->pixelToCoord(currentPos.x());
+        xAxis->setRange(m_lastXRange.lower+dx, m_lastXRange.upper+dx);
+        if(yAxis->scaleType() == QCPAxis::stLinear)
+        {
+            double dy = yAxis->pixelToCoord(m_lastMousePos.y()) - yAxis->pixelToCoord(currentPos.y());
+            yAxis->setRange(m_lastYRange.lower+dy, m_lastYRange.upper+dy);
+        }
+        else
+        {
+            double dy = yAxis->pixelToCoord(m_lastMousePos.y()) / yAxis->pixelToCoord(currentPos.y());
+            yAxis->setRange(m_lastYRange.lower*dy, m_lastYRange.upper*dy);
+        }
+        auto newXRange = xAxis->range();
+        auto newYRange = yAxis->range();
         setRange(xAxis->range());
         m_plot->replot(QCustomPlot::rpQueuedReplot);
-        m_lastMousePos = destination;
+        //m_lastMousePos = currentPos;
+        return {newXRange.lower - oldXRange.lower, newYRange.lower - oldYRange.lower};
+    }
+
+    void zoom(double factor, int center, Qt::Orientation orientation)
+    {
+        QCPAxis *axis = m_plot->axisRect()->rangeZoomAxis(orientation);
+        axis->scaleRange(factor, axis->pixelToCoord(center));
+        if (orientation == Qt::Horizontal)
+            setRange(axis->range());
+        m_plot->replot(QCustomPlot::rpQueuedReplot);
+    }
+
+    void move(double dx, double dy)
+    {
+        auto xAxis = m_plot->axisRect()->rangeDragAxis(Qt::Horizontal);
+        auto yAxis = m_plot->axisRect()->rangeDragAxis(Qt::Vertical);
+        xAxis->setRange(QCPRange(xAxis->range().lower+dx, xAxis->range().upper+dx));
+        yAxis->setRange(QCPRange(yAxis->range().lower+dy, yAxis->range().upper+dy));
+        setRange(xAxis->range());
+        m_plot->replot(QCustomPlot::rpQueuedReplot);
+    }
+
+    void move(double factor, Qt::Orientation orientation)
+    {
+        auto oldRange = m_plot->xAxis->range();
+        QCPAxis *axis = m_plot->axisRect()->rangeDragAxis(orientation);
+        if (m_plot->xAxis->scaleType() == QCPAxis::stLinear) {
+            double rg = (axis->range().upper - axis->range().lower) * (factor / 10);
+            axis->setRange(axis->range().lower + (rg), axis->range().upper + (rg));
+        }
+        else if (m_plot->xAxis->scaleType() == QCPAxis::stLogarithmic) {
+            int start = 0, stop = 0;
+            double diff = 0.;
+            if (factor > 0.0) {
+                stop = m_plot->width() * factor / 10;
+                start = 2 * m_plot->width() * factor / 10;
+            }
+            if (factor < 0.0) {
+                factor *= -1.0;
+                start = m_plot->width() * factor / 10;
+                stop = 2 * m_plot->width() * factor / 10;
+            }
+            diff = axis->pixelToCoord(start) / axis->pixelToCoord(stop);
+            axis->setRange(m_plot->axisRect()->rangeDragAxis(orientation)->range().lower * diff,
+                           m_plot->axisRect()->rangeDragAxis(orientation)->range().upper * diff);
+        }
+        if (orientation == Qt::Horizontal)
+            setRange(axis->range());
+        m_plot->replot(QCustomPlot::rpQueuedReplot);
     }
 };
 
@@ -448,18 +520,14 @@ DateTimeRange VisualizationGraphWidget::graphRange() const noexcept
     return DateTimeRange{graphRange.lower, graphRange.upper};
 }
 
-void VisualizationGraphWidget::setGraphRange(const DateTimeRange &range, bool calibration)
+void VisualizationGraphWidget::setGraphRange(const DateTimeRange &range, bool updateVar)
 {
-    if (calibration) {
-        impl->m_IsCalibration = true;
-    }
 
+    if(updateVar)
+        impl->setRange(range);
     impl->m_plot->xAxis->setRange(range.m_TStart, range.m_TEnd);
     impl->m_plot->replot(QCustomPlot::rpQueuedReplot);
 
-    if (calibration) {
-        impl->m_IsCalibration = false;
-    }
 }
 
 void VisualizationGraphWidget::setAutoRangeOnVariableInitialization(bool value)
@@ -529,43 +597,25 @@ void VisualizationGraphWidget::undoZoom()
     plot().replot(QCustomPlot::rpQueuedReplot);
 }
 
-void VisualizationGraphWidget::zoom(double factor, int center, Qt::Orientation orientation)
-
+void VisualizationGraphWidget::zoom(double factor, int center, Qt::Orientation orientation, bool forward)
 {
-    QCPAxis *axis = impl->m_plot->axisRect()->rangeZoomAxis(orientation);
-    axis->scaleRange(factor, axis->pixelToCoord(center));
-    if (orientation == Qt::Horizontal)
-        impl->setRange(axis->range());
-    impl->m_plot->replot(QCustomPlot::rpQueuedReplot);
+    impl->zoom(factor, center, orientation);
+    if(forward && orientation==Qt::Horizontal)
+        emit this->zoom_sig(factor, center, orientation, false);
 }
 
-void VisualizationGraphWidget::move(double factor, Qt::Orientation orientation)
+void VisualizationGraphWidget::move(double factor, Qt::Orientation orientation, bool forward)
 {
-    auto oldRange = impl->m_plot->xAxis->range();
-    QCPAxis *axis = impl->m_plot->axisRect()->rangeDragAxis(orientation);
-    if (impl->m_plot->xAxis->scaleType() == QCPAxis::stLinear) {
-        double rg = (axis->range().upper - axis->range().lower) * (factor / 10);
-        axis->setRange(axis->range().lower + (rg), axis->range().upper + (rg));
-    }
-    else if (impl->m_plot->xAxis->scaleType() == QCPAxis::stLogarithmic) {
-        int start = 0, stop = 0;
-        double diff = 0.;
-        if (factor > 0.0) {
-            stop = this->width() * factor / 10;
-            start = 2 * this->width() * factor / 10;
-        }
-        if (factor < 0.0) {
-            factor *= -1.0;
-            start = this->width() * factor / 10;
-            stop = 2 * this->width() * factor / 10;
-        }
-        diff = axis->pixelToCoord(start) / axis->pixelToCoord(stop);
-        axis->setRange(impl->m_plot->axisRect()->rangeDragAxis(orientation)->range().lower * diff,
-                       impl->m_plot->axisRect()->rangeDragAxis(orientation)->range().upper * diff);
-    }
-    if (orientation == Qt::Horizontal)
-        impl->setRange(axis->range());
-    impl->m_plot->replot(QCustomPlot::rpQueuedReplot);
+    impl->move(factor, orientation);
+    if(forward)
+        emit this->move_sig(factor, orientation, false);
+}
+
+void VisualizationGraphWidget::move(double dx, double dy, bool forward)
+{
+    impl->move(dx, dy);
+    if(forward)
+        emit this->move_sig(dx, dy, false);
 }
 
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
@@ -782,7 +832,7 @@ void VisualizationGraphWidget::wheelEvent(QWheelEvent *event)
     else {
         move(wheelSteps, Qt::Horizontal);
     }
-    QWidget::wheelEvent(event);
+    //QWidget::wheelEvent(event);
 }
 
 
@@ -799,16 +849,14 @@ void VisualizationGraphWidget::mouseMoveEvent(QMouseEvent *event)
     }
     else if (event->buttons() == Qt::LeftButton)
     {
-        switch (sqpApp->plotsInteractionMode())
+        if(sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::None)
         {
-            case SqpApplication::PlotsInteractionMode::None:
-                impl->moveGraph(event->pos());
-                break;
-            case SqpApplication::PlotsInteractionMode::SelectionZones:
+            auto [dx,dy] = impl->moveGraph(event->pos());
+            emit this->move_sig(dx,0., false); // don't sync Y transformations
+        }
+        else if(sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones)
+        {
 
-                break;
-            default:
-                break;
         }
     }
     else
@@ -872,7 +920,7 @@ void VisualizationGraphWidget::mousePressEvent(QMouseEvent *event)
             break;
         default:
             setCursor(Qt::ClosedHandCursor);
-            impl->updateMousePosition(event->pos());
+            impl->enterPlotDrag(event->pos());
         }
     }
     QWidget::mousePressEvent(event);
@@ -960,7 +1008,7 @@ void VisualizationGraphWidget::onGraphMenuRequested(const QPoint &pos) noexcept
 
     // Iterates on variables (unique keys)
     for (auto it = impl->m_VariableToPlotMultiMap.cbegin(),
-              end = impl->m_VariableToPlotMultiMap.cend();
+         end = impl->m_VariableToPlotMultiMap.cend();
          it != end; it = impl->m_VariableToPlotMultiMap.upper_bound(it->first)) {
         // 'Remove variable' action
         graphMenu.addAction(tr("Remove variable %1").arg(it->first->name()),

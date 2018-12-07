@@ -172,14 +172,41 @@ void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)
     impl->m_Synchronizer->addGraph(*graphWidget);
 
     ui->dragDropContainer->addDragWidget(graphWidget);
+
 }
 
 void VisualizationZoneWidget::insertGraph(int index, VisualizationGraphWidget *graphWidget)
 {
+    DEPRECATE(
+    auto layout = ui->dragDropContainer->layout();
+    for(int i=0;i<layout->count();i++)
+    {
+        auto graph = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(i)->widget());
+        connect(graphWidget, &VisualizationGraphWidget::zoom_sig, graph, &VisualizationGraphWidget::zoom);
+
+        connect(graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
+                graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
+        connect(graphWidget, qOverload<double,double,bool>(&VisualizationGraphWidget::move_sig),
+                graph,       qOverload<double,double,bool>(&VisualizationGraphWidget::move));
+
+        connect(graph, &VisualizationGraphWidget::zoom_sig, graphWidget, &VisualizationGraphWidget::zoom);
+
+        connect(graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
+                graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
+        connect(graph,       qOverload<double,double,bool>(&VisualizationGraphWidget::move_sig),
+                graphWidget, qOverload<double,double,bool>(&VisualizationGraphWidget::move));
+    }
+    if(auto graph = firstGraph())
+    {
+        graphWidget->setGraphRange(graph->graphRange(), true);
+    }
+    )
+
     // Synchronize new graph with others in the zone
     impl->m_Synchronizer->addGraph(*graphWidget);
 
     ui->dragDropContainer->insertDragWidget(index, graphWidget);
+
 }
 
 VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<Variable> variable)
