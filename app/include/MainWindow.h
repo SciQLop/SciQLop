@@ -46,13 +46,15 @@ class MainWindow : public QMainWindow {
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = 0);
-    virtual ~MainWindow();
+    explicit MainWindow(QWidget *parent = nullptr);
+    virtual ~MainWindow() override;
 public slots:
 
 protected:
-    void changeEvent(QEvent *e);
-    void closeEvent(QCloseEvent *event);
+    void changeEvent(QEvent *e) override;
+    void closeEvent(QCloseEvent *event) override;
+
+    void keyPressEvent(QKeyEvent *event) override;
 
 private:
     std::unique_ptr<Ui::MainWindow> m_Ui;

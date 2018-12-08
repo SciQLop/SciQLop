@@ -350,6 +350,25 @@ void MainWindow::closeEvent(QCloseEvent *event)
     }
 }
 
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    switch (event->key())
+    {
+    case Qt::Key_F11:
+        if(this->isFullScreen())
+        {
+            this->showNormal();
+        }
+        else
+        {
+            this->showFullScreen();
+        }
+        break;
+    default:
+        break;
+    }
+}
+
 bool MainWindow::MainWindowPrivate::checkDataToSave(QWidget *parentWidget)
 {
     auto hasChanges = sqpApp->catalogueController().hasChanges();
