@@ -12,11 +12,12 @@
 
 #include <Common/spimpl.h>
 
+#include <Data/DateTimeRange.h>
+
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationGraphWidget)
 
 class QCPRange;
 class QCustomPlot;
-class DateTimeRange;
 class Variable;
 class VisualizationWidget;
 class VisualizationZoneWidget;
@@ -70,7 +71,7 @@ public:
     /// Sets the y-axis range based on the data of a variable
     void setYRange(std::shared_ptr<Variable> variable);
     DateTimeRange graphRange() const noexcept;
-    void setGraphRange(const DateTimeRange &range, bool updateVar = false);
+    void setGraphRange(const DateTimeRange &range, bool updateVar=false, bool forward=false);
     void setAutoRangeOnVariableInitialization(bool value);
 
     // Zones
@@ -89,6 +90,7 @@ public:
     void zoom(double factor, int center, Qt::Orientation orientation, bool forward=true);
     void move(double factor, Qt::Orientation orientation, bool forward=true);
     void move(double dx, double dy, bool forward=true);
+    void transform(const DateTimeRangeTransformation& tranformation, bool forward=true);
 
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor *visitor) override;
@@ -127,6 +129,7 @@ signals:
     void zoom_sig(double factor, int center, Qt::Orientation orientation, bool forward=true);
     void move_sig(double factor, Qt::Orientation orientation, bool forward=true);
     void move_sig(double dx, double dy, bool forward=true);
+    void transform_sig(const DateTimeRangeTransformation& tranformation, bool forward=true);
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -148,7 +151,6 @@ private:
     class VisualizationGraphWidgetPrivate;
     spimpl::unique_impl_ptr<VisualizationGraphWidgetPrivate> impl;
 
-    void _ugly_sync_(const QPoint& pos,const QPointF& axisPos);
 private slots:
     /// Slot called when right clicking on the graph (displays a menu)
     void onGraphMenuRequested(const QPoint &pos) noexcept;

@@ -184,6 +184,7 @@ void VisualizationZoneWidget::insertGraph(int index, VisualizationGraphWidget *g
     {
         auto graph = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(i)->widget());
         connect(graphWidget, &VisualizationGraphWidget::zoom_sig, graph, &VisualizationGraphWidget::zoom);
+        connect(graphWidget, &VisualizationGraphWidget::transform_sig, graph, &VisualizationGraphWidget::transform);
 
         connect(graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
                 graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
@@ -191,6 +192,7 @@ void VisualizationZoneWidget::insertGraph(int index, VisualizationGraphWidget *g
                 graph,       qOverload<double,double,bool>(&VisualizationGraphWidget::move));
 
         connect(graph, &VisualizationGraphWidget::zoom_sig, graphWidget, &VisualizationGraphWidget::zoom);
+        connect(graph, &VisualizationGraphWidget::transform_sig, graphWidget, &VisualizationGraphWidget::transform);
 
         connect(graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
                 graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
@@ -539,7 +541,7 @@ void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragW
     }
     else if (mimeData->hasFormat(MIME_TYPE_TIME_RANGE)) {
         auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME_TYPE_TIME_RANGE));
-        graphWidget->setGraphRange(range);
+        graphWidget->setGraphRange(range, true, true);
     }
     else {
         qCWarning(LOG_VisualizationZoneWidget())

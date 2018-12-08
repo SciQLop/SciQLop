@@ -62,7 +62,7 @@ void RescaleAxeOperation::visit(VisualizationGraphWidget *graphWidget)
             // During rescale, acquisition for the graph is disabled but synchronization is still
             // enabled
             graphWidget->setFlags(GraphFlag::EnableSynchronization);
-            graphWidget->setGraphRange(impl->m_Range);
+            graphWidget->setGraphRange(impl->m_Range, true);
             graphWidget->setFlags(GraphFlag::EnableAll);
         }
     }

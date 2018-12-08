@@ -23,6 +23,7 @@
 #include <Time/TimeController.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController2.h>
+#include <Data/DateTimeRangeHelper.h>
 
 #include <unordered_map>
 
@@ -293,23 +294,30 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
         }
     }
 
-    void setRange(const DateTimeRange &newRange)
+    void setRange(const DateTimeRange &newRange, bool updateVar=true)
     {
-        if (m_Flags.testFlag(GraphFlag::EnableAcquisition))
+        this->m_plot->xAxis->setRange(newRange.m_TStart, newRange.m_TEnd);
+        if(updateVar)
         {
             for (auto it = m_VariableToPlotMultiMap.begin(),
-                      end = m_VariableToPlotMultiMap.end();
+                 end = m_VariableToPlotMultiMap.end();
                  it != end; it = m_VariableToPlotMultiMap.upper_bound(it->first))
             {
                 sqpApp->variableController().asyncChangeRange(it->first, newRange);
             }
         }
+        m_plot->replot(QCustomPlot::rpQueuedReplot);
     }
 
     void setRange(const QCPRange &newRange)
     {
         auto graphRange = DateTimeRange{newRange.lower, newRange.upper};
         setRange(graphRange);
+    }
+
+    void rescaleY()
+    {
+        m_plot->yAxis->rescale(true);
     }
 
     std::tuple<double,double> moveGraph(const QPoint& destination)
@@ -334,7 +342,6 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
         auto newXRange = xAxis->range();
         auto newYRange = yAxis->range();
         setRange(xAxis->range());
-        m_plot->replot(QCustomPlot::rpQueuedReplot);
         //m_lastMousePos = currentPos;
         return {newXRange.lower - oldXRange.lower, newYRange.lower - oldYRange.lower};
     }
@@ -345,6 +352,15 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate {
         axis->scaleRange(factor, axis->pixelToCoord(center));
         if (orientation == Qt::Horizontal)
             setRange(axis->range());
+        m_plot->replot(QCustomPlot::rpQueuedReplot);
+    }
+
+    void transform(const DateTimeRangeTransformation &tranformation)
+    {
+        auto graphRange = m_plot->xAxis->range();
+        DateTimeRange range{graphRange.lower, graphRange.upper};
+        range = range.transform(tranformation);
+        setRange(range);
         m_plot->replot(QCustomPlot::rpQueuedReplot);
     }
 
@@ -520,13 +536,16 @@ DateTimeRange VisualizationGraphWidget::graphRange() const noexcept
     return DateTimeRange{graphRange.lower, graphRange.upper};
 }
 
-void VisualizationGraphWidget::setGraphRange(const DateTimeRange &range, bool updateVar)
+void VisualizationGraphWidget::setGraphRange(const DateTimeRange &range, bool updateVar, bool forward)
 {
-
-    if(updateVar)
-        impl->setRange(range);
-    impl->m_plot->xAxis->setRange(range.m_TStart, range.m_TEnd);
-    impl->m_plot->replot(QCustomPlot::rpQueuedReplot);
+    auto oldRange = graphRange();
+    impl->setRange(range, updateVar);
+    if(forward)
+    {
+        auto newRange = graphRange();
+        if(auto tf = DateTimeRangeHelper::computeTransformation(oldRange,newRange))
+            emit this->transform_sig(tf.value(), false);
+    }
 
 }
 
@@ -616,6 +635,13 @@ void VisualizationGraphWidget::move(double dx, double dy, bool forward)
     impl->move(dx, dy);
     if(forward)
         emit this->move_sig(dx, dy, false);
+}
+
+void VisualizationGraphWidget::transform(const DateTimeRangeTransformation &tranformation, bool forward)
+{
+    impl->transform(tranformation);
+    if(forward)
+        emit this->transform_sig(tranformation, false);
 }
 
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
@@ -871,7 +897,11 @@ void VisualizationGraphWidget::mouseReleaseEvent(QMouseEvent *event)
 {
     if(impl->isDrawingZoomRect())
     {
+        auto oldRange = this->graphRange();
         impl->applyZoomRect();
+        auto newRange = this->graphRange();
+        if(auto tf = DateTimeRangeHelper::computeTransformation(oldRange,newRange))
+            emit this->transform_sig(tf.value(), false);
     }
     else if(impl->isDrawingZoneRect())
     {
@@ -959,7 +989,7 @@ void VisualizationGraphWidget::keyPressEvent(QKeyEvent *event)
         case Qt::Key_Shift:
             break;
         case Qt::Key_M:
-            impl->m_plot->rescaleAxes();
+            impl->rescaleY();
             impl->m_plot->replot(QCustomPlot::rpQueuedReplot);
             break;
         case Qt::Key_Left:
