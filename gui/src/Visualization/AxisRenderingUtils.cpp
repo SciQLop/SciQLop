@@ -101,7 +101,9 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>:
         auto valuesUnit = dataSeries.valuesUnit();
         dataSeries.unlock();
 
-        setAxisProperties(*plot.xAxis, xAxisUnit);
+//        setAxisProperties(*plot.xAxis, xAxisUnit);
+        // This is cheating but it's ok ;)
+        setAxisProperties(*plot.xAxis, Unit{"s", true});
         setAxisProperties(*plot.yAxis, valuesUnit);
     }
 };
@@ -138,7 +140,9 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
         auto valuesUnit = dataSeries.valuesUnit();
         dataSeries.unlock();
 
-        setAxisProperties(*plot.xAxis, xAxisUnit);
+        //setAxisProperties(*plot.xAxis, xAxisUnit);
+        // This is cheating but it's ok ;)
+        setAxisProperties(*plot.xAxis, Unit{"s", true});
         setAxisProperties(*plot.yAxis, yAxisUnit, QCPAxis::stLogarithmic);
         setAxisProperties(*colorScale.m_Scale->axis(), valuesUnit, QCPAxis::stLogarithmic);
     }

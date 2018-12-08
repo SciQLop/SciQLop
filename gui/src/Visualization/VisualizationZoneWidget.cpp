@@ -528,10 +528,26 @@ void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragW
             mimeData->data(MIME_TYPE_PRODUCT_LIST));
 
         auto context = new QObject{this};
+        auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME_TYPE_TIME_RANGE));
+        // BTW this is really dangerous, this assumes the next created variable will be this one...
         connect(&sqpApp->variableController(), &VariableController2::variableAdded, context,
-                [this, graphWidget, context](auto variable) {
-                    graphWidget->addVariable(variable, graphWidget->graphRange());
-                    delete context; // removes the connection
+                [this, graphWidget, context, range](auto variable) {
+                    if(sqpApp->variableController().isReady(variable))
+                    {
+                        graphWidget->addVariable(variable, range);
+                        delete context;
+                    }
+                    else
+                    {
+                        // -> this is pure insanity! this is a workaround to make a bad design work
+                        QObject::connect(variable.get(), &Variable::updated,context,
+                            [graphWidget, context, range, variable]()
+                            {
+                                graphWidget->addVariable(variable, range);
+                                delete context;
+                            });
+                    }
+
                 },
                 Qt::QueuedConnection);
 

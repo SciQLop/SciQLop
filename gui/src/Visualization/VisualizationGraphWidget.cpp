@@ -471,12 +471,23 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, D
 
     impl->m_VariableToPlotMultiMap.insert({variable, std::move(createdPlottables)});
 
+    setGraphRange(range);
     // If the variable already has its data loaded, load its units and its range in the graph
     if (variable->dataSeries() != nullptr) {
         impl->m_RenderingDelegate->setAxesUnits(*variable);
-        this->setFlags(GraphFlag::DisableAll);
-        setGraphRange(range);
-        this->setFlags(GraphFlag::EnableAll);
+    }
+    else
+    {
+        auto context = new QObject{this};
+        connect(variable.get(), &Variable::updated, context,
+                [this, variable, context, range](QUuid)
+                    {
+                        this->impl->m_RenderingDelegate->setAxesUnits(*variable);
+                        this->impl->rescaleY();
+                        this->impl->m_plot->replot(QCustomPlot::rpQueuedReplot);
+                        delete context;
+                    }
+                    );
     }
     //@TODO this is bad! when variable is moved to another graph it still fires
     // even if this has been deleted
