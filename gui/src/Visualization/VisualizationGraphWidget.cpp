@@ -428,6 +428,8 @@ VisualizationGraphWidget::VisualizationGraphWidget(const QString &name, QWidget 
     impl->m_plot->setAttribute(Qt::WA_TransparentForMouseEvents);
     impl->m_plot->setContextMenuPolicy(Qt::CustomContextMenu);
     impl->m_plot->setParent(this);
+
+    connect(&sqpApp->variableController(), &VariableController2::variableDeleted, this, &VisualizationGraphWidget::variableDeleted);
 }
 
 
@@ -1408,4 +1410,9 @@ void VisualizationGraphWidget::variableUpdated(QUuid id)
         }
     }
     this->impl->rescaleY();
+}
+
+void VisualizationGraphWidget::variableDeleted(const std::shared_ptr<Variable> & variable)
+{
+    this->removeVariable(variable);
 }

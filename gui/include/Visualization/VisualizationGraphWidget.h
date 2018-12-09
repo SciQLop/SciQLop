@@ -174,6 +174,7 @@ private slots:
     void onUpdateVarDisplaying(std::shared_ptr<Variable> variable, const DateTimeRange &range);
 
     void variableUpdated(QUuid id);
+    void variableDeleted(const std::shared_ptr<Variable>&);
 };
 
 #endif // SCIQLOP_VISUALIZATIONGRAPHWIDGET_H
