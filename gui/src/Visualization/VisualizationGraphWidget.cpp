@@ -965,6 +965,11 @@ void VisualizationGraphWidget::mousePressEvent(QMouseEvent *event)
             if(auto item = impl->m_plot->itemAt(event->pos()))
             {
                 emit impl->m_plot->itemClick(item,event);
+                if(qobject_cast<VisualizationSelectionZoneItem*>(item))
+                {
+                    setCursor(Qt::ClosedHandCursor);
+                    impl->enterPlotDrag(event->pos());
+                }
             }
             else
             {
