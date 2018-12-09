@@ -962,8 +962,15 @@ void VisualizationGraphWidget::mousePressEvent(QMouseEvent *event)
             impl->startDrawingRect(event->pos());
             break;
         default:
-            setCursor(Qt::ClosedHandCursor);
-            impl->enterPlotDrag(event->pos());
+            if(auto item = impl->m_plot->itemAt(event->pos()))
+            {
+                emit impl->m_plot->itemClick(item,event);
+            }
+            else
+            {
+                setCursor(Qt::ClosedHandCursor);
+                impl->enterPlotDrag(event->pos());
+            }
         }
     }
     //event->accept();
