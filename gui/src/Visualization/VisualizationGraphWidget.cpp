@@ -483,7 +483,6 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable> variable, D
                 [this, variable, context, range](QUuid)
                     {
                         this->impl->m_RenderingDelegate->setAxesUnits(*variable);
-                        this->impl->rescaleY();
                         this->impl->m_plot->replot(QCustomPlot::rpQueuedReplot);
                         delete context;
                     }
@@ -1408,4 +1407,5 @@ void VisualizationGraphWidget::variableUpdated(QUuid id)
             impl->updateData(plotables, var, this->graphRange());
         }
     }
+    this->impl->rescaleY();
 }
