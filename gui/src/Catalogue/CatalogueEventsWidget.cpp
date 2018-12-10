@@ -289,7 +289,7 @@ struct CatalogueEventsWidget::CatalogueEventsWidgetPrivate {
                                                                       selectionZone);
                         m_CustomGraphs << graph;
 
-                        graph->setGraphRange(range, true);
+                        graph->setGraphRange(range, true, true);
 
                         // Removes the graph from the graph list if it is closed manually
                         QObject::connect(graph, &VisualizationGraphWidget::destroyed,

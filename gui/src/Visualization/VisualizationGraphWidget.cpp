@@ -892,13 +892,14 @@ void VisualizationGraphWidget::mouseMoveEvent(QMouseEvent *event)
         }
         else if(sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones)
         {
-            if(auto item = impl->m_plot->itemAt(event->pos()))
+            auto posInPlot = this->impl->m_plot->mapFromParent(event->pos());
+            if(auto item = impl->m_plot->itemAt(posInPlot))
             {
                 if(qobject_cast<VisualizationSelectionZoneItem*>(item))
                 {
-                    QMouseEvent e{QEvent::MouseMove,this->impl->m_plot->mapFromParent(event->pos()),event->button(),event->buttons(),event->modifiers()};
+                    QMouseEvent e{QEvent::MouseMove, posInPlot, event->button(),event->buttons(),event->modifiers()};
                     sqpApp->sendEvent(this->impl->m_plot, &e);
-                    this->impl->m_plot->replot(QCustomPlot::rpQueuedReplot);
+                    this->impl->m_plot->replot(QCustomPlot::rpImmediateRefresh);
                 }
             }
 

@@ -179,32 +179,17 @@ void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)
 void VisualizationZoneWidget::insertGraph(int index, VisualizationGraphWidget *graphWidget)
 {
     DEPRECATE(
-    auto layout = ui->dragDropContainer->layout();
-    for(int i=0;i<layout->count();i++)
-    {
-        auto graph = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(i)->widget());
-        connect(graphWidget, &VisualizationGraphWidget::setrange_sig, graph, &VisualizationGraphWidget::setGraphRange);
-        connect(graph, &VisualizationGraphWidget::setrange_sig, graphWidget, &VisualizationGraphWidget::setGraphRange);
-//        connect(graphWidget, &VisualizationGraphWidget::zoom_sig, graph, &VisualizationGraphWidget::zoom);
-//        connect(graphWidget, &VisualizationGraphWidget::transform_sig, graph, &VisualizationGraphWidget::transform);
-
-//        connect(graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
-//                graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
-//        connect(graphWidget, qOverload<double,double,bool>(&VisualizationGraphWidget::move_sig),
-//                graph,       qOverload<double,double,bool>(&VisualizationGraphWidget::move));
-
-//        connect(graph, &VisualizationGraphWidget::zoom_sig, graphWidget, &VisualizationGraphWidget::zoom);
-//        connect(graph, &VisualizationGraphWidget::transform_sig, graphWidget, &VisualizationGraphWidget::transform);
-
-//        connect(graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
-//                graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
-//        connect(graph,       qOverload<double,double,bool>(&VisualizationGraphWidget::move_sig),
-//                graphWidget, qOverload<double,double,bool>(&VisualizationGraphWidget::move));
-    }
-    if(auto graph = firstGraph())
-    {
-        graphWidget->setGraphRange(graph->graphRange(), true);
-    }
+        auto layout = ui->dragDropContainer->layout();
+        for(int i=0;i<layout->count();i++)
+        {
+            auto graph = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(i)->widget());
+            connect(graphWidget, &VisualizationGraphWidget::setrange_sig, graph, &VisualizationGraphWidget::setGraphRange);
+            connect(graph, &VisualizationGraphWidget::setrange_sig, graphWidget, &VisualizationGraphWidget::setGraphRange);
+        }
+        if(auto graph = firstGraph())
+        {
+            graphWidget->setGraphRange(graph->graphRange(), true);
+        }
     )
 
     // Synchronize new graph with others in the zone
@@ -232,65 +217,65 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
 
 
     // Lambda to synchronize zone widget
-    auto synchronizeZoneWidget = [this, graphWidget](const DateTimeRange &graphRange,
-                                                     const DateTimeRange &oldGraphRange) {
+//    auto synchronizeZoneWidget = [this, graphWidget](const DateTimeRange &graphRange,
+//                                                     const DateTimeRange &oldGraphRange) {
 
-        auto zoomType = DateTimeRangeHelper::getTransformationType(oldGraphRange, graphRange);
-        auto frameLayout = ui->dragDropContainer->layout();
-        for (auto i = 0; i < frameLayout->count(); ++i) {
-            auto graphChild
-                = dynamic_cast<VisualizationGraphWidget *>(frameLayout->itemAt(i)->widget());
-            if (graphChild && (graphChild != graphWidget)) {
+//        auto zoomType = DateTimeRangeHelper::getTransformationType(oldGraphRange, graphRange);
+//        auto frameLayout = ui->dragDropContainer->layout();
+//        for (auto i = 0; i < frameLayout->count(); ++i) {
+//            auto graphChild
+//                = dynamic_cast<VisualizationGraphWidget *>(frameLayout->itemAt(i)->widget());
+//            if (graphChild && (graphChild != graphWidget)) {
 
-                auto graphChildRange = graphChild->graphRange();
-                switch (zoomType) {
-                    case TransformationType::ZoomIn: {
-                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
-                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
-                        graphChildRange.m_TStart += deltaLeft;
-                        graphChildRange.m_TEnd -= deltaRight;
-                        break;
-                    }
+//                auto graphChildRange = graphChild->graphRange();
+//                switch (zoomType) {
+//                    case TransformationType::ZoomIn: {
+//                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
+//                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
+//                        graphChildRange.m_TStart += deltaLeft;
+//                        graphChildRange.m_TEnd -= deltaRight;
+//                        break;
+//                    }
 
-                    case TransformationType::ZoomOut: {
-                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
-                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
-                        graphChildRange.m_TStart -= deltaLeft;
-                        graphChildRange.m_TEnd += deltaRight;
-                        break;
-                    }
-                    case TransformationType::PanRight: {
-                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
-                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
-                        graphChildRange.m_TStart += deltaLeft;
-                        graphChildRange.m_TEnd += deltaRight;
-                        break;
-                    }
-                    case TransformationType::PanLeft: {
-                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
-                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
-                        graphChildRange.m_TStart -= deltaLeft;
-                        graphChildRange.m_TEnd -= deltaRight;
-                        break;
-                    }
-                    case TransformationType::Unknown: {
-                        break;
-                    }
-                    default:
-                        qCCritical(LOG_VisualizationZoneWidget())
-                            << tr("Impossible to synchronize: zoom type not take into account");
-                        // No action
-                        break;
-                }
-                graphChild->setFlags(GraphFlag::DisableAll);
-                graphChild->setGraphRange(graphChildRange);
-                graphChild->setFlags(GraphFlag::EnableAll);
-            }
-        }
-    };
+//                    case TransformationType::ZoomOut: {
+//                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+//                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
+//                        graphChildRange.m_TStart -= deltaLeft;
+//                        graphChildRange.m_TEnd += deltaRight;
+//                        break;
+//                    }
+//                    case TransformationType::PanRight: {
+//                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
+//                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
+//                        graphChildRange.m_TStart += deltaLeft;
+//                        graphChildRange.m_TEnd += deltaRight;
+//                        break;
+//                    }
+//                    case TransformationType::PanLeft: {
+//                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+//                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
+//                        graphChildRange.m_TStart -= deltaLeft;
+//                        graphChildRange.m_TEnd -= deltaRight;
+//                        break;
+//                    }
+//                    case TransformationType::Unknown: {
+//                        break;
+//                    }
+//                    default:
+//                        qCCritical(LOG_VisualizationZoneWidget())
+//                            << tr("Impossible to synchronize: zoom type not take into account");
+//                        // No action
+//                        break;
+//                }
+//                graphChild->setFlags(GraphFlag::DisableAll);
+//                graphChild->setGraphRange(graphChildRange, true);
+//                graphChild->setFlags(GraphFlag::EnableAll);
+//            }
+//        }
+//    };
 
     // connection for synchronization
-    connect(graphWidget, &VisualizationGraphWidget::synchronize, synchronizeZoneWidget);
+    //connect(graphWidget, &VisualizationGraphWidget::synchronize, synchronizeZoneWidget);
     connect(graphWidget, &VisualizationGraphWidget::variableAdded, this,
             &VisualizationZoneWidget::onVariableAdded);
     connect(graphWidget, &VisualizationGraphWidget::variableAboutToBeRemoved, this,
