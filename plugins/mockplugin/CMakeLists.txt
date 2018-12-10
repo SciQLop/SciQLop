@@ -24,6 +24,7 @@ install(TARGETS mockplugin
 include(sciqlop_tests)
 
 add_definitions(-DMOCKPLUGIN_TESTS_RESOURCES_DIR="${CMAKE_CURRENT_LIST_DIR}/tests-resources")
+add_definitions(-DMOCKPLUGIN_LIB)
 
 #declare_test(TestCosinusAcquisition TestCosinusAcquisition tests/TestCosinusAcquisition.cpp "mockplugin;Qt5::Test")
 if(PyWrappers)

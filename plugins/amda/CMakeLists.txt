@@ -13,6 +13,8 @@ set(AMDA_SERVER_TYPE "hybrid;amdatest;localhost" CACHE STRING
 
 set_property(CACHE AMDA_server_type PROPERTY STRINGS ${AMDA_SERVER_TYPE})
 add_definitions(-DSCIQLOP_AMDA_SERVER="${AMDA_server_type}")
+add_definitions(-DAMDAPLUGIN_LIB)
+add_definitions(-DAMDA_LIB)
 
 add_definitions(-DQT_PLUGIN)
 add_definitions(-DSCIQLOP_PLUGIN_JSON_FILE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/amda.json")

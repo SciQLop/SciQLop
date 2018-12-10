@@ -18,7 +18,8 @@ class GenericWS : public QObject, public IPlugin {
     Q_PLUGIN_METADATA(IID "sciqlop.plugin.IPlugin" FILE SCIQLOP_PLUGIN_JSON_FILE_PATH)
 public:
     /// @sa IPlugin::initialize()
-    void initialize() override;
+    void initialize() override
+    {}
 };
 
 #endif // GENERICWSPLUGIN_H
