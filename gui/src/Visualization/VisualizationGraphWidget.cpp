@@ -14,6 +14,7 @@
 #include <Actions/ActionsGuiController.h>
 #include <Actions/FilteringAction.h>
 #include <Common/MimeTypesDef.h>
+#include <Common/containers.h>
 #include <Data/ArrayData.h>
 #include <Data/IDataSeries.h>
 #include <Data/SpectrogramSeries.h>
@@ -940,7 +941,17 @@ void VisualizationGraphWidget::mousePressEvent(QMouseEvent *event)
             impl->setSelectionZonesEditionEnabled(true);
             if ((event->modifiers() == Qt::ControlModifier) && (selectedZone != nullptr))
             {
-                    selectedZone->setAssociatedEditedZones(parentVisualizationWidget()->selectionZoneManager().selectedItems());
+                    auto alreadySelectedZones = parentVisualizationWidget()->selectionZoneManager().selectedItems();
+                    selectedZone->setAssociatedEditedZones(alreadySelectedZones);
+                    if(SciQLop::containers::contains(alreadySelectedZones, selectedZone))
+                    {
+                        alreadySelectedZones.removeOne(selectedZone);
+                    }
+                    else
+                    {
+                        alreadySelectedZones.append(selectedZone);
+                    }
+                    parentVisualizationWidget()->selectionZoneManager().select(alreadySelectedZones);
             }
             else
             {
