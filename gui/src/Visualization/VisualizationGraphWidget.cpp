@@ -1418,7 +1418,6 @@ void VisualizationGraphWidget::variableUpdated(QUuid id)
             impl->updateData(plotables, var, this->graphRange());
         }
     }
-    this->impl->rescaleY();
 }
 
 void VisualizationGraphWidget::variableDeleted(const std::shared_ptr<Variable> & variable)
