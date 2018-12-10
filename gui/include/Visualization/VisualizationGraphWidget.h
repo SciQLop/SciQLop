@@ -130,6 +130,7 @@ signals:
     void move_sig(double factor, Qt::Orientation orientation, bool forward=true);
     void move_sig(double dx, double dy, bool forward=true);
     void transform_sig(const DateTimeRangeTransformation& tranformation, bool forward=true);
+    void setrange_sig(const DateTimeRange& range, bool updateVar=false, bool forward=true);
 
 protected:
     void closeEvent(QCloseEvent *event) override;

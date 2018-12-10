@@ -245,8 +245,11 @@ bool tryReadUnit(Properties &properties, const QString &key, const QString &line
 
 bool ScalarParserHelper::checkProperties()
 {
-    return checkUnit(m_Properties, X_AXIS_UNIT_PROPERTY,
-                     QObject::tr("The x-axis unit could not be found in the file"));
+    if(auto hasXUnit = checkUnit(m_Properties, X_AXIS_UNIT_PROPERTY, QObject::tr("The x-axis unit could not be found in the file"));!hasXUnit)
+    {
+        m_Properties[X_AXIS_UNIT_PROPERTY] = QVariant::fromValue(Unit{"s",true});
+    }
+    return true;
 }
 
 IDataSeries* ScalarParserHelper::createSeries()
@@ -402,8 +405,11 @@ void SpectrogramParserHelper::handleDataHoles()
 
 bool VectorParserHelper::checkProperties()
 {
-    return checkUnit(m_Properties, X_AXIS_UNIT_PROPERTY,
-                     QObject::tr("The x-axis unit could not be found in the file"));
+    if(auto hasXUnit = checkUnit(m_Properties, X_AXIS_UNIT_PROPERTY, QObject::tr("The x-axis unit could not be found in the file"));!hasXUnit)
+    {
+        m_Properties[X_AXIS_UNIT_PROPERTY] = QVariant::fromValue(Unit{"s",true});
+    }
+    return true;
 }
 
 IDataSeries* VectorParserHelper::createSeries()

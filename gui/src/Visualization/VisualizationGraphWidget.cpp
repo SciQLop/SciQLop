@@ -550,13 +550,10 @@ DateTimeRange VisualizationGraphWidget::graphRange() const noexcept
 
 void VisualizationGraphWidget::setGraphRange(const DateTimeRange &range, bool updateVar, bool forward)
 {
-    auto oldRange = graphRange();
     impl->setRange(range, updateVar);
     if(forward)
     {
-        auto newRange = graphRange();
-        if(auto tf = DateTimeRangeHelper::computeTransformation(oldRange,newRange))
-            emit this->transform_sig(tf.value(), false);
+        emit this->setrange_sig(this->graphRange(), true, false);
     }
 
 }
@@ -632,28 +629,28 @@ void VisualizationGraphWidget::zoom(double factor, int center, Qt::Orientation o
 {
     impl->zoom(factor, center, orientation);
     if(forward && orientation==Qt::Horizontal)
-        emit this->zoom_sig(factor, center, orientation, false);
+        emit this->setrange_sig(this->graphRange(), true, false);
 }
 
 void VisualizationGraphWidget::move(double factor, Qt::Orientation orientation, bool forward)
 {
     impl->move(factor, orientation);
     if(forward)
-        emit this->move_sig(factor, orientation, false);
+        emit this->setrange_sig(this->graphRange(), true, false);
 }
 
 void VisualizationGraphWidget::move(double dx, double dy, bool forward)
 {
     impl->move(dx, dy);
     if(forward)
-        emit this->move_sig(dx, dy, false);
+        emit this->setrange_sig(this->graphRange(), true, false);
 }
 
 void VisualizationGraphWidget::transform(const DateTimeRangeTransformation &tranformation, bool forward)
 {
     impl->transform(tranformation);
     if(forward)
-        emit this->transform_sig(tranformation, false);
+        emit this->setrange_sig(this->graphRange(), true, false);
 }
 
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor *visitor)
@@ -890,7 +887,7 @@ void VisualizationGraphWidget::mouseMoveEvent(QMouseEvent *event)
         if(sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::None)
         {
             auto [dx,dy] = impl->moveGraph(event->pos());
-            emit this->move_sig(dx,0., false); // don't sync Y transformations
+            emit this->setrange_sig(this->graphRange(), true, false);
         }
         else if(sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones)
         {

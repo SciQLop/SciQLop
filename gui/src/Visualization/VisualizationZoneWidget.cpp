@@ -183,21 +183,23 @@ void VisualizationZoneWidget::insertGraph(int index, VisualizationGraphWidget *g
     for(int i=0;i<layout->count();i++)
     {
         auto graph = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(i)->widget());
-        connect(graphWidget, &VisualizationGraphWidget::zoom_sig, graph, &VisualizationGraphWidget::zoom);
-        connect(graphWidget, &VisualizationGraphWidget::transform_sig, graph, &VisualizationGraphWidget::transform);
+        connect(graphWidget, &VisualizationGraphWidget::setrange_sig, graph, &VisualizationGraphWidget::setGraphRange);
+        connect(graph, &VisualizationGraphWidget::setrange_sig, graphWidget, &VisualizationGraphWidget::setGraphRange);
+//        connect(graphWidget, &VisualizationGraphWidget::zoom_sig, graph, &VisualizationGraphWidget::zoom);
+//        connect(graphWidget, &VisualizationGraphWidget::transform_sig, graph, &VisualizationGraphWidget::transform);
 
-        connect(graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
-                graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
-        connect(graphWidget, qOverload<double,double,bool>(&VisualizationGraphWidget::move_sig),
-                graph,       qOverload<double,double,bool>(&VisualizationGraphWidget::move));
+//        connect(graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
+//                graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
+//        connect(graphWidget, qOverload<double,double,bool>(&VisualizationGraphWidget::move_sig),
+//                graph,       qOverload<double,double,bool>(&VisualizationGraphWidget::move));
 
-        connect(graph, &VisualizationGraphWidget::zoom_sig, graphWidget, &VisualizationGraphWidget::zoom);
-        connect(graph, &VisualizationGraphWidget::transform_sig, graphWidget, &VisualizationGraphWidget::transform);
+//        connect(graph, &VisualizationGraphWidget::zoom_sig, graphWidget, &VisualizationGraphWidget::zoom);
+//        connect(graph, &VisualizationGraphWidget::transform_sig, graphWidget, &VisualizationGraphWidget::transform);
 
-        connect(graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
-                graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
-        connect(graph,       qOverload<double,double,bool>(&VisualizationGraphWidget::move_sig),
-                graphWidget, qOverload<double,double,bool>(&VisualizationGraphWidget::move));
+//        connect(graph,       qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move_sig),
+//                graphWidget, qOverload<double,Qt::Orientation,bool>(&VisualizationGraphWidget::move));
+//        connect(graph,       qOverload<double,double,bool>(&VisualizationGraphWidget::move_sig),
+//                graphWidget, qOverload<double,double,bool>(&VisualizationGraphWidget::move));
     }
     if(auto graph = firstGraph())
     {
