@@ -9,7 +9,7 @@
 
 # Overview
 
-** SciQLOP ** (**SCI**entific **Q**t application for **L**earning from **O**bservations of **P**lasmas) aims to be an ergonomic
+**SciQLOP** (**SCI**entific **Q**t application for **L**earning from **O**bservations of **P**lasmas) aims to be an ergonomic
 and powerful tool enabling visualization and analysis of in-situ space plasma data. This goal rises some
 challenges either technical and in the conception and the design.
 The time resolution allowed by nowadays measurements imply the ability to plot millions of points just for
@@ -30,6 +30,15 @@ mkdir build && cd build
 cmake ../
 make
 
+```
+
+### On windows
+```
+git clone https://hephaistos.lpp.polytechnique.fr/rhodecode/HG_REPOSITORIES/LPP/SciQLOP_Repos/SciQLop
+cd SciQLop
+mkdir build && cd build
+cmake -DCMAKE_CXX_FLAGS='-D_hypot=hypot' -DBUILD_SHARED_LIBS=TRUE ../
+make
 ```
 
 ## How to contribute
