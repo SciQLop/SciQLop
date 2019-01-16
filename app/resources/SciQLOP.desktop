@@ -1,14 +1,13 @@
 [Desktop Entry]
 Version=1.0
-Name=QLop
-Name[en_US]=SciQLOP
+Name=SciQLOP
 
 Type=Application
 GenericName=SciQLOP
 Comment=SCIentific Qt application for Learning from Observations of Plasmas
 
-Exec=sciqlopapp 
-Icon=/usr/share/SciQLOP/icons/sciqlopLOGO.svg
+Exec=sciqlop
+Icon=sciqlopLOGO
 Terminal=false
 
 Categories=Qt;Education;Science;

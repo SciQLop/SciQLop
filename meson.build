@@ -21,6 +21,9 @@ if build_machine.system()=='darwin'
   meson.add_install_script('build_cfg/mac/install_script.sh')
 elif host_machine.system()=='windows'
   meson.add_install_script('build_cfg/windows/install_script.sh')
+elif host_machine.system()=='linux'
+  install_data('app/resources/sciqlopLOGO.svg', install_dir : 'share/icons/hicolor/scalable/')
+  install_data('app/resources/SciQLOP.desktop', install_dir : 'share/applications')
 endif
 
 # Sets AMDA server that will be used during execution.
