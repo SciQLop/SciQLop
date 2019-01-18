@@ -27,11 +27,18 @@ else
   rc = []
 endif
 
+app_libs = []
+
+if 'static' == get_option('default_library')
+  app_libs = [ sciqlop_amdaplugin, sciqlop_mockplugin]
+endif
+
 sciqlop_app = executable('sciqlop',
                        app_sources,
                        app_moc_files,
                        rc,
                        include_directories : [ app_inc],
+                       link_with: app_libs,
                        dependencies : [sciqlop_gui, sciqlop_core],
                        install : true
                        )

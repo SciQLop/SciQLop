@@ -37,8 +37,8 @@ add_project_arguments('-DSCIQLOP_AMDA_SERVER="hybrid"', language : 'cpp')
 
 subdir('core')
 subdir('gui')
-subdir('app')
 subdir('plugins')
+subdir('app')
 
 cppcheck = find_program('cppcheck', required : false)
 

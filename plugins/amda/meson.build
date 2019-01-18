@@ -22,36 +22,17 @@ amdaplugin_resources_files = [
 
 amdaplugin_inc = include_directories(['include'])
 
-moc_gen = generator(moc,
-                output  : 'moc_@BASENAME@.cpp',
-                arguments : ['@INPUT@',
-                 '-DSCIQLOP_PLUGIN_JSON_FILE_PATH="'+meson.source_root()+'/plugins/amda/resources/amda.json"',
-                 '-I', meson.current_source_dir()+'/include',
-                 '-I', meson.current_source_dir()+'/../../core/include/',
-                 '-o', '@OUTPUT@'])
-
-rcc_gen = generator(rcc,
-                output  : 'qrc_@BASENAME@.cpp',
-                arguments : ['--name=@BASENAME@"',
-                 '--output',
-                 '@OUTPUT@',
-                 '@INPUT@'])
-
-amdaplugin_moc_plugin_files = moc_gen.process(amdaplugin_moc_headers)
-
-amdaplugin_rcc_plugin_files = rcc_gen.process(amdaplugin_resources_files)
-
-#amdaplugin_rcc_plugin_files = qt5.preprocess(
-#                               qresources : amdaplugin_resources_files)
-
-amdaplugin_moc_files = qt5.preprocess(
-                               ui_files : amdaplugin_ui_files)
+amdaplugin_prep_files = qt5.preprocess(moc_headers : amdaplugin_moc_headers,
+                                             moc_extra_arguments: ['-DSCIQLOP_PLUGIN_JSON_FILE_PATH="'+
+                                                                   meson.source_root()+
+                                                                   '/plugins/amda/resources/amda.json"'],
+                                             include_directories: [amdaplugin_inc, core_inc],
+                                             qresources : amdaplugin_resources_files,
+                                             ui_files : amdaplugin_ui_files)
 
 sciqlop_amdaplugin = library('amdaplugin',
                        amdaplugin_sources,
-                       amdaplugin_moc_files,
-                       amdaplugin_rcc_plugin_files,
-                       amdaplugin_moc_plugin_files,
+                       amdaplugin_prep_files,
                        cpp_args : ['-DAMDA_LIB','-DQT_PLUGIN'],
                        include_directories : [amdaplugin_inc],
                        dependencies : [sciqlop_core, sciqlop_gui],
