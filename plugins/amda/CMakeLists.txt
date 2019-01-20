@@ -43,6 +43,9 @@ declare_test(TestAmdaFuzzing TestAmdaFuzzing "tests/TestAmdaFuzzing.cpp;tests/Fu
 
 
 if(PyWrappers)
+    if(MINGW)
+        add_definitions(-D_hypot=hypot)
+    endif()
     pybind11_add_module(pytestamda tests/PyTestAmdaWrapper.cpp)
     target_link_libraries(pytestamda PUBLIC amdaplugin)
     target_link_libraries(pytestamda PUBLIC pysciqlop)
