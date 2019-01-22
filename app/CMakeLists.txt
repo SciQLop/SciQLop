@@ -10,7 +10,7 @@ QT5_WRAP_UI(UiGenerated_SRCS
     ui/MainWindow.ui
 )
 
-add_executable(sciqlopapp ${app_SRCS} ${UiGenerated_SRCS})
+add_executable(sciqlopapp WIN32 ${app_SRCS} ${UiGenerated_SRCS})
 if(NOT BUILD_SHARED_LIBS)
     add_definitions(-DQT_STATICPLUGIN)
     target_link_libraries(sciqlopapp mockplugin)
