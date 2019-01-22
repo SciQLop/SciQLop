@@ -30,13 +30,21 @@ amdaplugin_prep_files = qt5.preprocess(moc_headers : amdaplugin_moc_headers,
                                              qresources : amdaplugin_resources_files,
                                              ui_files : amdaplugin_ui_files)
 
+cpp_args = ['-DAMDA_LIB','-DQT_PLUGIN']
+message('======================='+get_option('default_library')+'==========================')
+if(get_option('default_library') == 'static')
+    message('building amda plugin as static lib')
+    cpp_args += ['-DQT_STATICPLUGIN']
+endif
+
 sciqlop_amdaplugin = library('amdaplugin',
                        amdaplugin_sources,
                        amdaplugin_prep_files,
-                       cpp_args : ['-DAMDA_LIB','-DQT_PLUGIN'],
+                       cpp_args : cpp_args,
                        include_directories : [amdaplugin_inc],
                        dependencies : [sciqlop_core, sciqlop_gui],
-                       install : true
+                       install : true,
+                       install_dir : join_paths(get_option('libdir'), 'SciQLop')
                        )
 
 

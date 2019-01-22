@@ -22,11 +22,17 @@ gen = generator(moc,
 
 mockplugin_moc_files = gen.process(mockplugin_moc_headers)
 
+cpp_args = ['-DMOCKPLUGIN_LIB','-DQT_PLUGIN']
+if(get_option('default_library')=='static')
+    cpp_args += ['-DQT_STATICPLUGIN']
+endif
+
 sciqlop_mockplugin = library('mockplugin',
                        mockplugin_sources,
                        mockplugin_moc_files,
-                       cpp_args : '-DMOCKPLUGIN_LIB',
+                       cpp_args : cpp_args,
                        include_directories : [mockplugin_inc],
                        dependencies : [sciqlop_core, sciqlop_gui],
-                       install : true
+                       install : true,
+                       install_dir : join_paths(get_option('libdir'), 'SciQLop')
                        )

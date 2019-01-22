@@ -28,9 +28,10 @@ else
 endif
 
 app_libs = []
-
+cpp_args = []
 if 'static' == get_option('default_library')
   app_libs = [ sciqlop_amdaplugin, sciqlop_mockplugin]
+  cpp_args += ['-DQT_STATICPLUGIN']
 endif
 
 sciqlop_app = executable('sciqlop',
@@ -39,7 +40,7 @@ sciqlop_app = executable('sciqlop',
                        rc,
                        include_directories : [ app_inc],
                        link_with: app_libs,
+                       cpp_args: cpp_args,
                        dependencies : [sciqlop_gui, sciqlop_core],
                        install : true
                        )
-
