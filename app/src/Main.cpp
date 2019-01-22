@@ -64,9 +64,9 @@ int main(int argc, char* argv[])
     // Loads plugins
     auto pluginDir = QDir { a.applicationDirPath() };
     auto pluginLookupPath = {
-        a.applicationDirPath() + "/../lib64/SciQlop",
+        a.applicationDirPath() + "/../lib64/SciQLop",
         a.applicationDirPath() + "/../lib64/sciqlop",
-        a.applicationDirPath() + "/../lib/SciQlop",
+        a.applicationDirPath() + "/../lib/SciQLop",
         a.applicationDirPath() + "/../lib/sciqlop",
     };
 
