@@ -29,6 +29,7 @@ target_link_libraries(sciqlopapp
 
 install(TARGETS sciqlopapp DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES resources/SciQLOP.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications/)
+install(FILES resources/SciQLOP.appdata.xml DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo/)
 install(FILES resources/sciqlopLOGO.svg DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/SciQLOP/icons/)
 
 

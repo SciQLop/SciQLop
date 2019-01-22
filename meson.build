@@ -24,6 +24,7 @@ elif host_machine.system()=='windows'
 elif host_machine.system()=='linux'
   install_data('app/resources/sciqlopLOGO.svg', install_dir : 'share/icons/hicolor/scalable/')
   install_data('app/resources/SciQLOP.desktop', install_dir : 'share/applications')
+  install_data('app/resources/SciQLOP.appdata.xml', install_dir : 'share/metainfo')
 endif
 
 # Sets AMDA server that will be used during execution.
