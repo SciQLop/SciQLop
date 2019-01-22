@@ -64,10 +64,14 @@ int main(int argc, char* argv[])
     // Loads plugins
     auto pluginDir = QDir { a.applicationDirPath() };
     auto pluginLookupPath = {
+#if _WIN32 || _WIN64
+        a.applicationDirPath() + "/SciQLop"
+#else
         a.applicationDirPath() + "/../lib64/SciQLop",
         a.applicationDirPath() + "/../lib64/sciqlop",
         a.applicationDirPath() + "/../lib/SciQLop",
         a.applicationDirPath() + "/../lib/sciqlop",
+#endif
     };
 
 #if _WIN32 || _WIN64
