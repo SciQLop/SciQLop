@@ -19,7 +19,7 @@ target_link_libraries(mockplugin sciqlopgui)
 install(TARGETS mockplugin
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}/SciQlop
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}/SciQlop
-    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
+    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR}/SciQlop)
 
 include(sciqlop_tests)
 

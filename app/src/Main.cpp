@@ -33,14 +33,15 @@
 
 Q_LOGGING_CATEGORY(LOG_Main, "Main")
 
-namespace {
+namespace
+{
 
 const auto PLUGIN_DIRECTORY_NAME = QStringLiteral("plugins");
 
 
 } // namespace
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 #ifdef QT_STATICPLUGIN
     Q_IMPORT_PLUGIN(MockPlugin)
@@ -55,21 +56,18 @@ int main(int argc, char *argv[])
 
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
-    SqpApplication a{argc, argv};
+    SqpApplication a { argc, argv };
 
     MainWindow w;
     w.show();
 
     // Loads plugins
-    auto pluginDir = QDir{a.applicationDirPath()};
+    auto pluginDir = QDir { a.applicationDirPath() };
     auto pluginLookupPath = {
-        a.applicationDirPath(),
-        a.applicationDirPath() + "/" + PLUGIN_DIRECTORY_NAME,
         a.applicationDirPath() + "/../lib64/SciQlop",
         a.applicationDirPath() + "/../lib64/sciqlop",
         a.applicationDirPath() + "/../lib/SciQlop",
         a.applicationDirPath() + "/../lib/sciqlop",
-        a.applicationDirPath() + "/../plugins",
     };
 
 #if _WIN32 || _WIN64
@@ -77,11 +75,13 @@ int main(int argc, char *argv[])
     pluginDir.cd(PLUGIN_DIRECTORY_NAME);
 #endif
 
-    PluginManager pluginManager{};
+    PluginManager pluginManager {};
 
-    for (auto &&path : pluginLookupPath) {
-        QDir directory{path};
-        if (directory.exists()) {
+    for (auto&& path : pluginLookupPath)
+    {
+        QDir directory { path };
+        if (directory.exists())
+        {
             qCDebug(LOG_Main())
                 << QObject::tr("Plugin directory: %1").arg(directory.absolutePath());
             pluginManager.loadPlugins(directory);
