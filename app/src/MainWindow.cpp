@@ -49,7 +49,8 @@
 
 Q_LOGGING_CATEGORY(LOG_MainWindow, "MainWindow")
 
-namespace {
+namespace
+{
 const auto LEFTMAININSPECTORWIDGETSPLITTERINDEX = 0;
 const auto LEFTINSPECTORSIDEPANESPLITTERINDEX = 1;
 const auto VIEWPLITTERINDEX = 2;
@@ -57,71 +58,70 @@ const auto RIGHTINSPECTORSIDEPANESPLITTERINDEX = 3;
 const auto RIGHTMAININSPECTORWIDGETSPLITTERINDEX = 4;
 }
 
-class MainWindow::MainWindowPrivate {
+class MainWindow::MainWindowPrivate
+{
 public:
-    explicit MainWindowPrivate(MainWindow *mainWindow)
-            : m_LastOpenLeftInspectorSize{},
-              m_LastOpenRightInspectorSize{},
-              m_GeneralSettingsWidget{new SqpSettingsGeneralWidget{mainWindow}},
-              m_SettingsDialog{new SqpSettingsDialog{mainWindow}},
-              m_CatalogExplorer{new CatalogueExplorer{mainWindow}}
+    explicit MainWindowPrivate(MainWindow* mainWindow)
+            : m_LastOpenLeftInspectorSize {}
+            , m_LastOpenRightInspectorSize {}
+            , m_GeneralSettingsWidget { new SqpSettingsGeneralWidget { mainWindow } }
+            , m_SettingsDialog { new SqpSettingsDialog { mainWindow } }
+    //, m_CatalogExplorer { new CatalogueExplorer { mainWindow } }
     {
     }
 
     QSize m_LastOpenLeftInspectorSize;
     QSize m_LastOpenRightInspectorSize;
     /// General settings widget. MainWindow has the ownership
-    SqpSettingsGeneralWidget *m_GeneralSettingsWidget;
+    SqpSettingsGeneralWidget* m_GeneralSettingsWidget;
     /// Settings dialog. MainWindow has the ownership
-    SqpSettingsDialog *m_SettingsDialog;
+    SqpSettingsDialog* m_SettingsDialog;
     /// Catalogue dialog. MainWindow has the ownership
-    CatalogueExplorer *m_CatalogExplorer;
+    // CatalogueExplorer* m_CatalogExplorer;
 
-    bool checkDataToSave(QWidget *parentWidget);
+    bool checkDataToSave(QWidget* parentWidget);
 };
 
-MainWindow::MainWindow(QWidget *parent)
-        : QMainWindow{parent},
-          m_Ui{new Ui::MainWindow},
-          impl{spimpl::make_unique_impl<MainWindowPrivate>(this)}
+MainWindow::MainWindow(QWidget* parent)
+        : QMainWindow { parent }
+        , m_Ui { new Ui::MainWindow }
+        , impl { spimpl::make_unique_impl<MainWindowPrivate>(this) }
 {
     m_Ui->setupUi(this);
 
     m_Ui->splitter->setCollapsible(LEFTINSPECTORSIDEPANESPLITTERINDEX, false);
     m_Ui->splitter->setCollapsible(RIGHTINSPECTORSIDEPANESPLITTERINDEX, false);
 
-    impl->m_CatalogExplorer->setVisualizationWidget(m_Ui->view);
+    // impl->m_CatalogExplorer->setVisualizationWidget(m_Ui->view);
 
 
-
-
-
-    auto spacerLeftTop = new QWidget{};
+    auto spacerLeftTop = new QWidget {};
     spacerLeftTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    auto spacerLeftBottom = new QWidget{};
+    auto spacerLeftBottom = new QWidget {};
     spacerLeftBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
 
-    auto spacerRightTop = new QWidget{};
+    auto spacerRightTop = new QWidget {};
     spacerRightTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
-    auto spacerRightBottom = new QWidget{};
+    auto spacerRightBottom = new QWidget {};
     spacerRightBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
 
     auto openInspector = [this](bool checked, bool right, auto action) {
+        action->setIcon(
+            QIcon { (checked ^ right) ? ":/icones/next.png" : ":/icones/previous.png" });
 
-        action->setIcon(QIcon{(checked ^ right) ? ":/icones/next.png" : ":/icones/previous.png"});
-
-        auto &lastInspectorSize
+        auto& lastInspectorSize
             = right ? impl->m_LastOpenRightInspectorSize : impl->m_LastOpenLeftInspectorSize;
 
         auto nextInspectorSize = right ? m_Ui->rightMainInspectorWidget->size()
                                        : m_Ui->leftMainInspectorWidget->size();
 
         // Update of the last opened geometry
-        if (checked) {
+        if (checked)
+        {
             lastInspectorSize = nextInspectorSize;
         }
 
@@ -133,19 +133,20 @@ MainWindow::MainWindow(QWidget *parent)
             = right ? RIGHTMAININSPECTORWIDGETSPLITTERINDEX : LEFTMAININSPECTORWIDGETSPLITTERINDEX;
 
         auto currentSizes = m_Ui->splitter->sizes();
-        if (checked) {
+        if (checked)
+        {
             // adjust sizes individually here, e.g.
             currentSizes[splitterInspectorIndex] -= lastInspectorSize.width();
             currentSizes[VIEWPLITTERINDEX] += lastInspectorSize.width();
             m_Ui->splitter->setSizes(currentSizes);
         }
-        else {
+        else
+        {
             // adjust sizes individually here, e.g.
             currentSizes[splitterInspectorIndex] += lastInspectorSize.width();
             currentSizes[VIEWPLITTERINDEX] -= lastInspectorSize.width();
             m_Ui->splitter->setSizes(currentSizes);
         }
-
     };
 
 
@@ -159,50 +160,49 @@ MainWindow::MainWindow(QWidget *parent)
         impl->m_SettingsDialog->loadSettings();
 
         // Open settings dialog and save settings if the dialog is accepted
-        if (impl->m_SettingsDialog->exec() == QDialog::Accepted) {
+        if (impl->m_SettingsDialog->exec() == QDialog::Accepted)
+        {
             impl->m_SettingsDialog->saveSettings();
         }
-
     });
 
     auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
 
-    auto timeWidget = new TimeWidget{};
+    auto timeWidget = new TimeWidget {};
     mainToolBar->addWidget(timeWidget);
 
     // Interaction modes
-    auto actionPointerMode = new QAction{QIcon(":/icones/pointer.png"), "Move", this};
+    auto actionPointerMode = new QAction { QIcon(":/icones/pointer.png"), "Move", this };
     actionPointerMode->setCheckable(true);
-    actionPointerMode->setChecked(sqpApp->plotsInteractionMode()
-                                  == SqpApplication::PlotsInteractionMode::None);
+    actionPointerMode->setChecked(
+        sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::None);
     connect(actionPointerMode, &QAction::triggered,
-            []() { sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::None); });
+        []() { sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::None); });
 
-    auto actionZoomMode = new QAction{QIcon(":/icones/zoom.png"), "Zoom", this};
+    auto actionZoomMode = new QAction { QIcon(":/icones/zoom.png"), "Zoom", this };
     actionZoomMode->setCheckable(true);
-    actionZoomMode->setChecked(sqpApp->plotsInteractionMode()
-                               == SqpApplication::PlotsInteractionMode::ZoomBox);
-    connect(actionZoomMode, &QAction::triggered, []() {
-        sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::ZoomBox);
-    });
+    actionZoomMode->setChecked(
+        sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::ZoomBox);
+    connect(actionZoomMode, &QAction::triggered,
+        []() { sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::ZoomBox); });
 
-    auto actionOrganisationMode = new QAction{QIcon(":/icones/drag.png"), "Organize", this};
+    auto actionOrganisationMode = new QAction { QIcon(":/icones/drag.png"), "Organize", this };
     actionOrganisationMode->setCheckable(true);
-    actionOrganisationMode->setChecked(sqpApp->plotsInteractionMode()
-                                       == SqpApplication::PlotsInteractionMode::DragAndDrop);
+    actionOrganisationMode->setChecked(
+        sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::DragAndDrop);
     connect(actionOrganisationMode, &QAction::triggered, []() {
         sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::DragAndDrop);
     });
 
-    auto actionZonesMode = new QAction{QIcon(":/icones/rectangle.png"), "Zones", this};
+    auto actionZonesMode = new QAction { QIcon(":/icones/rectangle.png"), "Zones", this };
     actionZonesMode->setCheckable(true);
-    actionZonesMode->setChecked(sqpApp->plotsInteractionMode()
-                                == SqpApplication::PlotsInteractionMode::SelectionZones);
+    actionZonesMode->setChecked(
+        sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones);
     connect(actionZonesMode, &QAction::triggered, []() {
         sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::SelectionZones);
     });
 
-    auto modeActionGroup = new QActionGroup{this};
+    auto modeActionGroup = new QActionGroup { this };
     modeActionGroup->addAction(actionZoomMode);
     modeActionGroup->addAction(actionZonesMode);
     modeActionGroup->addAction(actionOrganisationMode);
@@ -217,7 +217,7 @@ MainWindow::MainWindow(QWidget *parent)
     mainToolBar->addSeparator();
 
     // Cursors
-    auto btnCursor = new QToolButton{this};
+    auto btnCursor = new QToolButton { this };
     btnCursor->setIcon(QIcon(":/icones/cursor.png"));
     btnCursor->setText("Cursor");
     btnCursor->setToolTip("Cursor");
@@ -227,43 +227,43 @@ MainWindow::MainWindow(QWidget *parent)
 
     auto noCursorAction = cursorMenu->addAction("No Cursor");
     noCursorAction->setCheckable(true);
-    noCursorAction->setChecked(sqpApp->plotsCursorMode()
-                               == SqpApplication::PlotsCursorMode::NoCursor);
+    noCursorAction->setChecked(
+        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::NoCursor);
     connect(noCursorAction, &QAction::triggered,
-            []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::NoCursor); });
+        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::NoCursor); });
 
     cursorMenu->addSeparator();
     auto verticalCursorAction = cursorMenu->addAction("Vertical Cursor");
     verticalCursorAction->setCheckable(true);
-    verticalCursorAction->setChecked(sqpApp->plotsCursorMode()
-                                     == SqpApplication::PlotsCursorMode::Vertical);
+    verticalCursorAction->setChecked(
+        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::Vertical);
     connect(verticalCursorAction, &QAction::triggered,
-            []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Vertical); });
+        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Vertical); });
 
     auto temporalCursorAction = cursorMenu->addAction("Temporal Cursor");
     temporalCursorAction->setCheckable(true);
-    temporalCursorAction->setChecked(sqpApp->plotsCursorMode()
-                                     == SqpApplication::PlotsCursorMode::Temporal);
+    temporalCursorAction->setChecked(
+        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::Temporal);
     connect(temporalCursorAction, &QAction::triggered,
-            []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Temporal); });
+        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Temporal); });
 
     auto horizontalCursorAction = cursorMenu->addAction("Horizontal Cursor");
     horizontalCursorAction->setCheckable(true);
-    horizontalCursorAction->setChecked(sqpApp->plotsCursorMode()
-                                       == SqpApplication::PlotsCursorMode::Horizontal);
+    horizontalCursorAction->setChecked(
+        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::Horizontal);
     connect(horizontalCursorAction, &QAction::triggered,
-            []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Horizontal); });
+        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Horizontal); });
 
     auto crossCursorAction = cursorMenu->addAction("Cross Cursor");
     crossCursorAction->setCheckable(true);
-    crossCursorAction->setChecked(sqpApp->plotsCursorMode()
-                                  == SqpApplication::PlotsCursorMode::Cross);
+    crossCursorAction->setChecked(
+        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::Cross);
     connect(crossCursorAction, &QAction::triggered,
-            []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Cross); });
+        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Cross); });
 
     mainToolBar->addWidget(btnCursor);
 
-    auto cursorModeActionGroup = new QActionGroup{this};
+    auto cursorModeActionGroup = new QActionGroup { this };
     cursorModeActionGroup->setExclusive(true);
     cursorModeActionGroup->addAction(noCursorAction);
     cursorModeActionGroup->addAction(verticalCursorAction);
@@ -273,43 +273,44 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Catalog
     mainToolBar->addSeparator();
-    mainToolBar->addAction(QIcon(":/icones/catalogue.png"), "Catalogues",
-                           [this]() { impl->m_CatalogExplorer->show(); });
+    //    mainToolBar->addAction(QIcon(":/icones/catalogue.png"), "Catalogues",
+    //        [this]() { impl->m_CatalogExplorer->show(); });
 
     // //////// //
     // Settings //
     // //////// //
 
     // Registers "general settings" widget to the settings dialog
-    impl->m_SettingsDialog->registerWidget(QStringLiteral("General"),
-                                           impl->m_GeneralSettingsWidget);
+    impl->m_SettingsDialog->registerWidget(
+        QStringLiteral("General"), impl->m_GeneralSettingsWidget);
 
     // /////////// //
     // Connections //
     // /////////// //
 
     // Controllers / controllers connections
-//    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(DateTimeRange)), &sqpApp->variableController(),
-//            SLOT(onDateTimeOnSelection(DateTimeRange)));
+    //    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(DateTimeRange)),
+    //    &sqpApp->variableController(),
+    //            SLOT(onDateTimeOnSelection(DateTimeRange)));
 
     // Widgets / controllers connections
 
     // DataSource
-    connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem *)),
-            m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem *)));
+    connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem*)),
+        m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem*)));
 
     // Time
     connect(timeWidget, SIGNAL(timeUpdated(DateTimeRange)), &sqpApp->timeController(),
-            SLOT(onTimeToUpdate(DateTimeRange)));
+        SLOT(onTimeToUpdate(DateTimeRange)));
 
     // Visualization
     connect(&sqpApp->visualizationController(),
-            SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), m_Ui->view,
-            SLOT(onVariableAboutToBeDeleted(std::shared_ptr<Variable>)));
+        SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), m_Ui->view,
+        SLOT(onVariableAboutToBeDeleted(std::shared_ptr<Variable>)));
 
     connect(&sqpApp->visualizationController(),
-            SIGNAL(rangeChanged(std::shared_ptr<Variable>, const DateTimeRange &)), m_Ui->view,
-            SLOT(onRangeChanged(std::shared_ptr<Variable>, const DateTimeRange &)));
+        SIGNAL(rangeChanged(std::shared_ptr<Variable>, const DateTimeRange&)), m_Ui->view,
+        SLOT(onRangeChanged(std::shared_ptr<Variable>, const DateTimeRange&)));
 
     // Widgets / widgets connections
 
@@ -317,21 +318,19 @@ MainWindow::MainWindow(QWidget *parent)
     // potentially attach a menu to the variable's menu to do so before this menu is displayed.
     // The order of connections is also important, since it determines the order in which each
     // widget will attach its menu
-    connect(
-        m_Ui->variableInspectorWidget,
-        SIGNAL(tableMenuAboutToBeDisplayed(QMenu *, const QVector<std::shared_ptr<Variable> > &)),
-        m_Ui->view, SLOT(attachVariableMenu(QMenu *, const QVector<std::shared_ptr<Variable> > &)),
+    connect(m_Ui->variableInspectorWidget,
+        SIGNAL(tableMenuAboutToBeDisplayed(QMenu*, const QVector<std::shared_ptr<Variable>>&)),
+        m_Ui->view, SLOT(attachVariableMenu(QMenu*, const QVector<std::shared_ptr<Variable>>&)),
         Qt::DirectConnection);
 }
 
-MainWindow::~MainWindow()
-{
-}
+MainWindow::~MainWindow() {}
 
-void MainWindow::changeEvent(QEvent *e)
+void MainWindow::changeEvent(QEvent* e)
 {
     QMainWindow::changeEvent(e);
-    switch (e->type()) {
+    switch (e->type())
+    {
         case QEvent::LanguageChange:
             m_Ui->retranslateUi(this);
             break;
@@ -340,55 +339,58 @@ void MainWindow::changeEvent(QEvent *e)
     }
 }
 
-void MainWindow::closeEvent(QCloseEvent *event)
+void MainWindow::closeEvent(QCloseEvent* event)
 {
-    if (!impl->checkDataToSave(this)) {
+    if (!impl->checkDataToSave(this))
+    {
         event->ignore();
     }
-    else {
+    else
+    {
         event->accept();
     }
 }
 
-void MainWindow::keyPressEvent(QKeyEvent *event)
+void MainWindow::keyPressEvent(QKeyEvent* event)
 {
     switch (event->key())
     {
-    case Qt::Key_F11:
-        if(this->isFullScreen())
-        {
-            this->showNormal();
-        }
-        else
-        {
-            this->showFullScreen();
-        }
-        break;
-    default:
-        break;
+        case Qt::Key_F11:
+            if (this->isFullScreen())
+            {
+                this->showNormal();
+            }
+            else
+            {
+                this->showFullScreen();
+            }
+            break;
+        default:
+            break;
     }
 }
 
-bool MainWindow::MainWindowPrivate::checkDataToSave(QWidget *parentWidget)
+bool MainWindow::MainWindowPrivate::checkDataToSave(QWidget* parentWidget)
 {
-    auto hasChanges = sqpApp->catalogueController().hasChanges();
-    if (hasChanges) {
-        // There are some unsaved changes
-        switch (QMessageBox::question(
-            parentWidget, tr("Save changes"),
-            tr("The catalogue controller has unsaved changes.\nDo you want to save them ?"),
-            QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel,
-            QMessageBox::SaveAll)) {
-            case QMessageBox::SaveAll:
-                sqpApp->catalogueController().saveAll();
-                break;
-            case QMessageBox::Discard:
-                break;
-            case QMessageBox::Cancel:
-            default:
-                return false;
-        }
-    }
+    //    auto hasChanges = sqpApp->catalogueController().hasChanges();
+    //    if (hasChanges)
+    //    {
+    //        // There are some unsaved changes
+    //        switch (QMessageBox::question(parentWidget, tr("Save changes"),
+    //            tr("The catalogue controller has unsaved changes.\nDo you want to save them ?"),
+    //            QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel,
+    //            QMessageBox::SaveAll))
+    //        {
+    //            case QMessageBox::SaveAll:
+    //                sqpApp->catalogueController().saveAll();
+    //                break;
+    //            case QMessageBox::Discard:
+    //                break;
+    //            case QMessageBox::Cancel:
+    //            default:
+    //                return false;
+    //        }
+    //    }
 
     return true;
 }

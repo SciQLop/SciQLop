@@ -5,62 +5,77 @@
 #include <QAbstractItemModel>
 #include <QLoggingCategory>
 #include <unordered_set>
+#include <vector>
 
-class DBCatalogue;
-class DBEvent;
-class DBEventProduct;
+#include <Catalogue/CatalogueController.h>
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_CatalogueEventsModel)
 
-class CatalogueEventsModel : public QAbstractItemModel {
+class CatalogueEventsModel : public QAbstractItemModel
+{
     Q_OBJECT
 
 signals:
     void modelSorted();
 
 public:
-    CatalogueEventsModel(QObject *parent = nullptr);
+    CatalogueEventsModel(QObject* parent = nullptr);
 
-    enum class Column { Name, TStart, TEnd, Tags, Product, Validation, NbColumn };
+    enum class Column
+    {
+        Name,
+        TStart,
+        TEnd,
+        Tags,
+        Product,
+        Validation,
+        NbColumn
+    };
 
-    void setSourceCatalogues(const QVector<std::shared_ptr<DBCatalogue> > &catalogues);
-    void setEvents(const QVector<std::shared_ptr<DBEvent> > &events);
-    void addEvent(const std::shared_ptr<DBEvent> &event);
-    void removeEvent(const std::shared_ptr<DBEvent> &event);
-    QVector<std::shared_ptr<DBEvent> > events() const;
+    void setSourceCatalogues(const QVector<std::shared_ptr<DBCatalogue>>& catalogues);
+    void setEvents(const std::vector<CatalogueController::Event_ptr>& events);
+    void addEvent(const std::shared_ptr<DBEvent>& event);
+    void removeEvent(const std::shared_ptr<DBEvent>& event);
+    std::vector<CatalogueController::Event_ptr> events() const;
 
-    enum class ItemType { Root, Event, EventProduct };
-    ItemType itemTypeOf(const QModelIndex &index) const;
-    std::shared_ptr<DBEvent> getEvent(const QModelIndex &index) const;
-    std::shared_ptr<DBEvent> getParentEvent(const QModelIndex &index) const;
-    std::shared_ptr<DBEventProduct> getEventProduct(const QModelIndex &index) const;
+    enum class ItemType
+    {
+        Root,
+        Event,
+        EventProduct
+    };
+    ItemType itemTypeOf(const QModelIndex& index) const;
+    CatalogueController::Event_ptr getEvent(const QModelIndex& index) const;
+    CatalogueController::Event_ptr getParentEvent(const QModelIndex& index) const;
+    std::optional<CatalogueController::Product_t> getEventProduct(const QModelIndex& index) const;
 
     /// Refresh the data for the specified event
-    void refreshEvent(const std::shared_ptr<DBEvent> &event, bool refreshEventProducts = false);
+    void refreshEvent(
+        const CatalogueController::Event_ptr& event, bool refreshEventProducts = false);
 
     /// Returns a QModelIndex which represent the specified event
-    QModelIndex indexOf(const std::shared_ptr<DBEvent> &event) const;
+    QModelIndex indexOf(const CatalogueController::Event_ptr& event) const;
 
     /// Marks a change flag on the specified event to allow sorting on the validation column
-    void setEventHasChanges(const std::shared_ptr<DBEvent> &event, bool hasChanges);
+    void setEventHasChanges(const std::shared_ptr<DBEvent>& event, bool hasChanges);
 
     /// Returns true if the specified event has unsaved changes
-    bool eventsHasChanges(const std::shared_ptr<DBEvent> &event) const;
+    bool eventsHasChanges(const std::shared_ptr<DBEvent>& event) const;
 
     // Model
-    QModelIndex index(int row, int column, const QModelIndex &parent = QModelIndex()) const;
-    QModelIndex parent(const QModelIndex &index) const;
-    int rowCount(const QModelIndex &parent = QModelIndex()) const override;
-    int columnCount(const QModelIndex &parent = QModelIndex()) const override;
-    Qt::ItemFlags flags(const QModelIndex &index) const override;
-    QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    QVariant headerData(int section, Qt::Orientation orientation,
-                        int role = Qt::DisplayRole) const override;
+    QModelIndex index(int row, int column, const QModelIndex& parent = QModelIndex()) const;
+    QModelIndex parent(const QModelIndex& index) const;
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override;
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override;
+    Qt::ItemFlags flags(const QModelIndex& index) const override;
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+    QVariant headerData(
+        int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
     void sort(int column, Qt::SortOrder order = Qt::AscendingOrder) override;
 
     Qt::DropActions supportedDragActions() const override;
     QStringList mimeTypes() const override;
-    QMimeData *mimeData(const QModelIndexList &indexes) const override;
+    QMimeData* mimeData(const QModelIndexList& indexes) const override;
 
 private:
     class CatalogueEventsModelPrivate;

@@ -15,36 +15,37 @@
 
 Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")
 
-class SqpApplication::SqpApplicationPrivate {
+class SqpApplication::SqpApplicationPrivate
+{
 public:
     SqpApplicationPrivate()
-            : m_VariableController{std::make_shared<VariableController2>()},
-              m_PlotInterractionMode(SqpApplication::PlotsInteractionMode::None),
-              m_PlotCursorMode(SqpApplication::PlotsCursorMode::NoCursor)
+            : m_VariableController { std::make_shared<VariableController2>() }
+            , m_PlotInterractionMode(SqpApplication::PlotsInteractionMode::None)
+            , m_PlotCursorMode(SqpApplication::PlotsCursorMode::NoCursor)
     {
         // /////////////////////////////// //
         // Connections between controllers //
         // /////////////////////////////// //
 
         // VariableController <-> DataSourceController
-        connect(&m_DataSourceController,
-                &DataSourceController::createVariable,[](const QString &variableName,
-                const QVariantHash &variableMetadata,
-                std::shared_ptr<IDataProvider> variableProvider)
-        {
-            sqpApp->variableController().createVariable(variableName,variableMetadata,variableProvider,sqpApp->timeController().dateTime());
-        });
+        connect(&m_DataSourceController, &DataSourceController::createVariable,
+            [](const QString& variableName, const QVariantHash& variableMetadata,
+                std::shared_ptr<IDataProvider> variableProvider) {
+                sqpApp->variableController().createVariable(variableName, variableMetadata,
+                    variableProvider, sqpApp->timeController().dateTime());
+            });
 
         // VariableController <-> VisualizationController
-//        connect(m_VariableController.get(),
-//                SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)),
-//                m_VisualizationController.get(),
-//                SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), Qt::DirectConnection);
+        //        connect(m_VariableController.get(),
+        //                SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)),
+        //                m_VisualizationController.get(),
+        //                SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)),
+        //                Qt::DirectConnection);
 
-//        connect(m_VariableController.get(),
-//                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const DateTimeRange &)),
-//                m_VisualizationController.get(),
-//                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const DateTimeRange &)));
+        //        connect(m_VariableController.get(),
+        //                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const DateTimeRange &)),
+        //                m_VisualizationController.get(),
+        //                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const DateTimeRange &)));
 
 
         m_DataSourceController.moveToThread(&m_DataSourceControllerThread);
@@ -55,7 +56,7 @@ public:
         m_VisualizationControllerThread.setObjectName("VsualizationControllerThread");
 
         // Additionnal init
-        //m_VariableController->setTimeController(m_TimeController.get());
+        // m_VariableController->setTimeController(m_TimeController.get());
     }
 
     virtual ~SqpApplicationPrivate()
@@ -89,58 +90,54 @@ public:
 };
 
 
-SqpApplication::SqpApplication(int &argc, char **argv)
-        : QApplication{argc, argv}, impl{spimpl::make_unique_impl<SqpApplicationPrivate>()}
+SqpApplication::SqpApplication(int& argc, char** argv)
+        : QApplication { argc, argv }, impl { spimpl::make_unique_impl<SqpApplicationPrivate>() }
 {
     qCDebug(LOG_SqpApplication()) << tr("SqpApplication construction") << QThread::currentThread();
 
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
-    connect(&impl->m_DataSourceControllerThread, &QThread::started,
-            &impl->m_DataSourceController, &DataSourceController::initialize);
-    connect(&impl->m_DataSourceControllerThread, &QThread::finished,
-            &impl->m_DataSourceController, &DataSourceController::finalize);
+    connect(&impl->m_DataSourceControllerThread, &QThread::started, &impl->m_DataSourceController,
+        &DataSourceController::initialize);
+    connect(&impl->m_DataSourceControllerThread, &QThread::finished, &impl->m_DataSourceController,
+        &DataSourceController::finalize);
 
     connect(&impl->m_NetworkControllerThread, &QThread::started, &impl->m_NetworkController,
-            &NetworkController::initialize);
+        &NetworkController::initialize);
     connect(&impl->m_NetworkControllerThread, &QThread::finished, &impl->m_NetworkController,
-            &NetworkController::finalize);
+        &NetworkController::finalize);
 
     connect(&impl->m_VisualizationControllerThread, &QThread::started,
-            &impl->m_VisualizationController, &VisualizationController::initialize);
+        &impl->m_VisualizationController, &VisualizationController::initialize);
     connect(&impl->m_VisualizationControllerThread, &QThread::finished,
-            &impl->m_VisualizationController, &VisualizationController::finalize);
+        &impl->m_VisualizationController, &VisualizationController::finalize);
 
     impl->m_DataSourceControllerThread.start();
     impl->m_NetworkControllerThread.start();
     impl->m_VisualizationControllerThread.start();
-    impl->m_CatalogueController.initialize();
+    // impl->m_CatalogueController.initialize();
 }
 
-SqpApplication::~SqpApplication()
-{
-}
+SqpApplication::~SqpApplication() {}
 
-void SqpApplication::initialize()
-{
-}
+void SqpApplication::initialize() {}
 
-DataSourceController &SqpApplication::dataSourceController() noexcept
+DataSourceController& SqpApplication::dataSourceController() noexcept
 {
     return impl->m_DataSourceController;
 }
 
-NetworkController &SqpApplication::networkController() noexcept
+NetworkController& SqpApplication::networkController() noexcept
 {
     return impl->m_NetworkController;
 }
 
-TimeController &SqpApplication::timeController() noexcept
+TimeController& SqpApplication::timeController() noexcept
 {
     return impl->m_TimeController;
 }
 
-VariableController2 &SqpApplication::variableController() noexcept
+VariableController2& SqpApplication::variableController() noexcept
 {
     return *impl->m_VariableController;
 }
@@ -150,27 +147,27 @@ std::shared_ptr<VariableController2> SqpApplication::variableControllerOwner() n
     return impl->m_VariableController;
 }
 
-//VariableModel2 &SqpApplication::variableModel() noexcept
+// VariableModel2 &SqpApplication::variableModel() noexcept
 //{
 //    return impl->m_VariableModel;
 //}
 
-VisualizationController &SqpApplication::visualizationController() noexcept
+VisualizationController& SqpApplication::visualizationController() noexcept
 {
     return impl->m_VisualizationController;
 }
 
-CatalogueController &SqpApplication::catalogueController() noexcept
+CatalogueController& SqpApplication::catalogueController() noexcept
 {
     return impl->m_CatalogueController;
 }
 
-DragDropGuiController &SqpApplication::dragDropGuiController() noexcept
+DragDropGuiController& SqpApplication::dragDropGuiController() noexcept
 {
     return impl->m_DragDropGuiController;
 }
 
-ActionsGuiController &SqpApplication::actionsGuiController() noexcept
+ActionsGuiController& SqpApplication::actionsGuiController() noexcept
 {
     return impl->m_ActionsGuiController;
 }

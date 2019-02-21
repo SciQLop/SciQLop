@@ -1,0 +1,30 @@
+{
+    "app-id": "org.LPP.SciQLop",
+    "runtime": "org.kde.Platform",
+    "runtime-version": "5.12",
+    "sdk": "org.kde.Sdk",
+    "command": "sciqlop",
+    "finish-args": [
+        "--socket=x11",
+        "--socket=wayland",
+        "--socket=session-bus",
+        "--share=ipc",
+        "--device=dri",
+        "--share=network",
+        "--filesystem=home"
+    ],
+    "modules": [
+        {
+            "name": "sciqlop",
+            "buildsystem" : "meson",
+            "config-opts" : ["-DFlatpak=true", "-Ddefault_library=static"],
+            "sources" : [
+                {
+                    "type" : "git",
+                     "url" : "https://github.com/LaboratoryOfPlasmaPhysics/SciQLOP",
+                     "branch" : "master"
+                }
+	    ]
+        }
+    ]
+}
