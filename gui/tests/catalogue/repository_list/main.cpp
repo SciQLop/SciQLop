@@ -14,10 +14,7 @@
 #include <GUITestUtils.h>
 #include <TestProviders.h>
 
-//#include <Catalogue/CatalogueEventsWidget.h>
-
-#include <Catalogue2/eventstreeview.h>
-#include <Catalogue2/repositoriesmodel.h>
+#include <Catalogue2/repositoriestreeview.h>
 
 
 class An_EventList : public QObject
@@ -52,14 +49,13 @@ int main(int argc, char* argv[])
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
     SqpApplication a { argc, argv };
-    QTreeView w;
+    RepositoriesTreeView w;
     sqpApp->catalogueController().add("test");
     sqpApp->catalogueController().add("stuff");
     sqpApp->catalogueController().add("default");
     sqpApp->catalogueController().add("new catalogue", "default");
     sqpApp->catalogueController().add("new catalogue2", "default");
-    RepositoriesModel* model = new RepositoriesModel();
-    w.setModel(model);
     w.show();
+    w.refresh();
     return a.exec();
 }

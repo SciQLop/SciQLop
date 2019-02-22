@@ -10,6 +10,7 @@
     include/SidePane/SqpSidePane.h
     include/Catalogue2/eventsmodel.h
     include/Catalogue2/eventstreeview.h
+    include/Catalogue2/repositoriestreeview.h
     include/Catalogue2/repositoriesmodel.h
 #    include/Catalogue/CatalogueActionManager.h
 #    include/Catalogue/CatalogueTreeModel.h
@@ -79,6 +80,7 @@
         src/SidePane/SqpSidePane.cpp
         src/Catalogue2/eventsmodel.cpp
         src/Catalogue2/eventstreeview.cpp
+        src/Catalogue2/repositoriestreeview.cpp
         src/Catalogue2/repositoriesmodel.cpp
         #src/Catalogue/CatalogueEventsWidget.cpp
         #src/Catalogue/CatalogueSideBarWidget.cpp

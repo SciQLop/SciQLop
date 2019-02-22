@@ -14,15 +14,14 @@
     You should have received a copy of the GNU General Public License
     along with SciQLop.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include <Catalogue2/eventsmodel.h>
-#include <Catalogue2/eventstreeview.h>
+#include <Catalogue2/repositoriesmodel.h>
+#include <Catalogue2/repositoriestreeview.h>
 
-EventsTreeView::EventsTreeView(QWidget* parent) : QTreeView(parent)
+RepositoriesTreeView::RepositoriesTreeView(QWidget* parent) : QTreeView(parent)
 {
-    this->setModel(new EventsModel());
+    auto m = model();
+    this->setModel(new RepositoriesModel(this));
+    delete m;
 }
 
-void EventsTreeView::setEvents(std::vector<CatalogueController::Event_ptr> events)
-{
-    static_cast<EventsModel*>(this->model())->setEvents(events);
-}
+
