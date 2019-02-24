@@ -22,6 +22,10 @@ RepositoriesTreeView::RepositoriesTreeView(QWidget* parent) : QTreeView(parent)
     auto m = model();
     this->setModel(new RepositoriesModel(this));
     delete m;
+    connect(this->selectionModel(), &QItemSelectionModel::currentChanged, [this](const QModelIndex &current, const QModelIndex &previous){
+        Q_UNUSED(previous);
+        this->_itemSelected(current);
+    });
 }
 
 

@@ -12,6 +12,8 @@
     include/Catalogue2/eventstreeview.h
     include/Catalogue2/repositoriestreeview.h
     include/Catalogue2/repositoriesmodel.h
+    include/Catalogue2/browser.h
+    include/Catalogue2/eventeditor.h
 #    include/Catalogue/CatalogueActionManager.h
 #    include/Catalogue/CatalogueTreeModel.h
 #    include/Catalogue/CatalogueExplorer.h
@@ -82,6 +84,8 @@
         src/Catalogue2/eventstreeview.cpp
         src/Catalogue2/repositoriestreeview.cpp
         src/Catalogue2/repositoriesmodel.cpp
+        src/Catalogue2/browser.cpp
+        src/Catalogue2/eventeditor.cpp
         #src/Catalogue/CatalogueEventsWidget.cpp
         #src/Catalogue/CatalogueSideBarWidget.cpp
         #src/Catalogue/CatalogueTreeItems/CatalogueAbstractTreeItem.cpp
@@ -154,6 +158,8 @@ QT5_WRAP_UI(
     ui/Visualization/VisualizationWidget.ui
     ui/Visualization/VisualizationZoneWidget.ui
     ui/Visualization/VisualizationMultiZoneSelectionDialog.ui
+    ui/Catalogue2/browser.ui
+    ui/Catalogue2/eventeditor.ui
     #ui/Catalogue/CatalogueEventsWidget.ui
     #ui/Catalogue/CatalogueExplorer.ui
     #ui/Catalogue/CatalogueInspectorWidget.ui

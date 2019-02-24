@@ -16,100 +16,24 @@
 */
 #include "Catalogue2/eventsmodel.h"
 #include <SqpApplication.h>
+#include <Common/containers.h>
 
 EventsModel::EventsModel(QObject* parent) : QAbstractItemModel(parent) {}
 
 EventsModel::ItemType EventsModel::type(const QModelIndex& index) const
 {
-    if (!index.isValid())
+    if (EventsModelItem* item = to_item(index))
     {
-        return ItemType::None;
+        return item->type;
     }
-    else if (index.internalPointer() == nullptr)
-    {
-        return ItemType::Event;
-    }
-    else
-    {
-        return ItemType::Product;
-    }
-}
-
-QVariant EventsModel::data(int col, const CatalogueController::Event_ptr& event) const
-{
-    switch (static_cast<Columns>(col))
-    {
-        case EventsModel::Columns::Name:
-            return QString::fromStdString(event->name);
-        case EventsModel::Columns::TStart:
-            if (auto start = event->startTime())
-                return DateUtils::dateTime(*start).toString(DATETIME_FORMAT_ONE_LINE);
-            else
-                return QVariant {};
-        case EventsModel::Columns::TEnd:
-            if (auto stop = event->stopTime())
-                return DateUtils::dateTime(*stop).toString(DATETIME_FORMAT_ONE_LINE);
-            else
-                return QVariant {};
-        case EventsModel::Columns::Product:
-        {
-            QStringList eventProductList;
-            for (const auto& evtProduct : event->products)
-            {
-                eventProductList << QString::fromStdString(evtProduct.name);
-            }
-            return eventProductList.join(";");
-        }
-        case EventsModel::Columns::Tags:
-        {
-            QString tagList;
-            for (const auto& tag : event->tags)
-            {
-                tagList += QString::fromStdString(tag);
-                tagList += ' ';
-            }
-            return tagList;
-        }
-        default:
-            break;
-    }
-    return QVariant {};
-}
-
-QVariant EventsModel::data(int col, const CatalogueController::Product_t& product) const
-{
-    switch (static_cast<Columns>(col))
-    {
-        case EventsModel::Columns::Name:
-            return QString::fromStdString(product.name);
-        case EventsModel::Columns::TStart:
-            return DateUtils::dateTime(product.startTime).toString(DATETIME_FORMAT_ONE_LINE);
-        case EventsModel::Columns::TEnd:
-            return DateUtils::dateTime(product.stopTime).toString(DATETIME_FORMAT_ONE_LINE);
-        case EventsModel::Columns::Product:
-            return QString::fromStdString(product.name);
-        default:
-            break;
-    }
-    return QVariant {};
+    return ItemType::None;
 }
 
 QVariant EventsModel::data(const QModelIndex& index, int role) const
 {
-    if (_events.size() && index.isValid() && role == Qt::DisplayRole)
+    if (index.isValid())
     {
-        switch (type(index))
-        {
-            case EventsModel::ItemType::Event:
-                return data(index.column(), _events[index.row()]);
-            case EventsModel::ItemType::Product:
-            {
-                auto event = static_cast<CatalogueController::Event_t*>(index.internalPointer());
-                return data(index.column(), event->products[index.row()]);
-            }
-            default:
-                break;
-        }
+        return to_item(index)->data(index.column(),role);
     }
     return QVariant {};
 }
@@ -123,16 +47,12 @@ QModelIndex EventsModel::index(int row, int column, const QModelIndex& parent) c
 
     switch (type(parent))
     {
-        case EventsModel::ItemType::None:
-            return createIndex(row, column, nullptr);
-        case EventsModel::ItemType::Event:
-        {
-            return createIndex(row, column, _events[parent.row()].get());
-        }
-        case EventsModel::ItemType::Product:
-            break;
-        default:
-            break;
+        case ItemType::None: // is an event
+            return createIndex(row, column, _items[row].get());
+        case ItemType::Event: // is a product
+            return createIndex(row, column, to_item(parent)->children[row].get());
+        case ItemType::Product:
+            QModelIndex();
     }
 
     return QModelIndex();
@@ -140,23 +60,11 @@ QModelIndex EventsModel::index(int row, int column, const QModelIndex& parent) c
 
 QModelIndex EventsModel::parent(const QModelIndex& index) const
 {
-    switch (type(index))
+    auto item = to_item(index);
+    if (item->type == ItemType::Product)
     {
-        case EventsModel::ItemType::None:
-            break;
-        case EventsModel::ItemType::Event:
-            break;
-        case EventsModel::ItemType::Product:
-        {
-            auto parentEvent = static_cast<CatalogueController::Event_t*>(index.internalPointer());
-            auto pos = std::distance(std::cbegin(_events),
-                std::find_if(std::cbegin(_events), std::cend(_events),
-                    [parentEvent](auto event) { return event.get() == parentEvent; }));
-            if (pos >= 0 && pos < _events.size())
-            {
-                return createIndex(pos, 0);
-            }
-        }
+        auto repoIndex = SciQLop::containers::index_of(_items, item->parent);
+        return createIndex(repoIndex, 0, item->parent);
     }
     return QModelIndex();
 }
@@ -167,17 +75,13 @@ int EventsModel::rowCount(const QModelIndex& parent) const
     {
         return 0;
     }
-
     switch (type(parent))
     {
-        case EventsModel::ItemType::None:
-            return _events.size();
-        case EventsModel::ItemType::Event:
-            return _events[parent.row()]->products.size();
-            break;
-        case EventsModel::ItemType::Product:
-            break;
-        default:
+        case ItemType::None:
+            return _items.size();
+        case ItemType::Event:
+            return to_item(parent)->children.size();
+        case ItemType::Product:
             break;
     }
     return 0;

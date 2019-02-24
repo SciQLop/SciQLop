@@ -22,6 +22,10 @@
 RepositoriesModel::RepositoriesModel(QObject* parent) : QAbstractItemModel(parent)
 {
     refresh();
+    connect(&(sqpApp->catalogueController()), &CatalogueController::repositoryAdded, this,
+        [this](const QString&) { this->refresh(); });
+    connect(&(sqpApp->catalogueController()), &CatalogueController::catalogueAdded, this,
+        [this](const CatalogueController::Catalogue_ptr&, const QString&) { this->refresh(); });
 }
 
 RepositoriesModel::ItemType RepositoriesModel::type(const QModelIndex& index) const

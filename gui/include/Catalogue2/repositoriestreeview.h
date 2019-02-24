@@ -17,9 +17,9 @@
 #ifndef REPOSITORIESTREEVIEW_H
 #define REPOSITORIESTREEVIEW_H
 
+#include <Catalogue2/repositoriesmodel.h>
 #include <QObject>
 #include <QTreeView>
-#include <Catalogue2/repositoriesmodel.h>
 
 class RepositoriesTreeView : public QTreeView
 {
@@ -28,14 +28,25 @@ public:
     RepositoriesTreeView(QWidget* parent = nullptr);
 
 public slots:
-    void refresh()
-    {
-        static_cast<RepositoriesModel*>(model())->refresh();
-    }
+    void refresh() { static_cast<RepositoriesModel*>(model())->refresh(); }
 
 signals:
     void repositorySelected(const QString& repository);
+    void catalogueSelected(const CatalogueController::Catalogue_ptr& catalogue);
 
+private:
+    void _itemSelected(const QModelIndex& index)
+    {
+        auto item = RepositoriesModel::to_item(index);
+        if (item->type == RepositoriesModel::ItemType::Repository)
+        {
+            emit repositorySelected(item->repository());
+        }
+        else if (item->type == RepositoriesModel::ItemType::Catalogue)
+        {
+            emit catalogueSelected(item->catalogue());
+        }
+    }
 };
 
 #endif // REPOSITORIESTREEVIEW_H

@@ -18,19 +18,12 @@
 #define EVENTSMODEL_H
 #include <Catalogue/CatalogueController.h>
 #include <QAbstractItemModel>
+#include <QIcon>
 #include <array>
 
 class EventsModel : public QAbstractItemModel
 {
     Q_OBJECT
-    std::vector<CatalogueController::Event_ptr> _events;
-
-    enum class ItemType
-    {
-        None,
-        Event,
-        Product
-    };
 
     enum class Columns
     {
@@ -48,8 +41,131 @@ class EventsModel : public QAbstractItemModel
 
 
 public:
+    enum class ItemType
+    {
+        None,
+        Event,
+        Product
+    };
+
+    struct EventsModelItem
+    {
+        ItemType type;
+        std::variant<CatalogueController::Event_ptr, CatalogueController::Product_t> item;
+        EventsModelItem() : type { ItemType::None } {}
+        EventsModelItem(const CatalogueController::Event_ptr& event)
+                : type { ItemType::Event }, item { event }, parent { nullptr }, icon {}
+        {
+            std::transform(std::cbegin(event->products), std::cend(event->products),
+                std::back_inserter(children),
+                [this](auto& product) { return std::make_unique<EventsModelItem>(product, this); });
+        }
+
+        EventsModelItem(const CatalogueController::Product_t& product, EventsModelItem* parent)
+                : type { ItemType::Product }, item { product }, parent { parent }, icon {}
+        {
+        }
+        CatalogueController::Event_ptr event() const
+        {
+            return std::get<CatalogueController::Event_ptr>(item);
+        }
+        CatalogueController::Product_t product() const
+        {
+            return std::get<CatalogueController::Product_t>(item);
+        }
+        QVariant data(int col, int role) const
+        {
+            if(role==Qt::DisplayRole)
+            {
+                switch (type)
+                {
+                case ItemType::Product :
+                    return data(product(),col);
+                case ItemType::Event:
+                    return data(event(),col);
+                default:
+                    break;
+                }
+            }
+            return QVariant{};
+        }
+        QVariant data(const CatalogueController::Event_ptr& event, int col) const
+        {
+            switch (static_cast<Columns>(col))
+            {
+                case EventsModel::Columns::Name:
+                    return QString::fromStdString(event->name);
+                case EventsModel::Columns::TStart:
+                    if (auto start = event->startTime())
+                        return DateUtils::dateTime(*start).toString(DATETIME_FORMAT_ONE_LINE);
+                    else
+                        return QVariant {};
+                case EventsModel::Columns::TEnd:
+                    if (auto stop = event->stopTime())
+                        return DateUtils::dateTime(*stop).toString(DATETIME_FORMAT_ONE_LINE);
+                    else
+                        return QVariant {};
+                case EventsModel::Columns::Product:
+                {
+                    QStringList eventProductList;
+                    for (const auto& evtProduct : event->products)
+                    {
+                        eventProductList << QString::fromStdString(evtProduct.name);
+                    }
+                    return eventProductList.join(";");
+                }
+                case EventsModel::Columns::Tags:
+                {
+                    QString tagList;
+                    for (const auto& tag : event->tags)
+                    {
+                        tagList += QString::fromStdString(tag);
+                        tagList += ' ';
+                    }
+                    return tagList;
+                }
+                default:
+                    break;
+            }
+            return QVariant {};
+        }
+
+        QVariant data(const CatalogueController::Product_t& product, int col) const
+        {
+            switch (static_cast<Columns>(col))
+            {
+                case EventsModel::Columns::Name:
+                    return QString::fromStdString(product.name);
+                case EventsModel::Columns::TStart:
+                    return DateUtils::dateTime(product.startTime).toString(DATETIME_FORMAT_ONE_LINE);
+                case EventsModel::Columns::TEnd:
+                    return DateUtils::dateTime(product.stopTime).toString(DATETIME_FORMAT_ONE_LINE);
+                case EventsModel::Columns::Product:
+                    return QString::fromStdString(product.name);
+                default:
+                    break;
+            }
+            return QVariant {};
+        }
+
+        QString text() const
+        {
+            if (type == ItemType::Event)
+                return QString::fromStdString(event()->name);
+            if (type == ItemType::Product)
+                return QString::fromStdString(product().name);
+            return QString();
+        }
+        std::vector<std::unique_ptr<EventsModelItem>> children;
+        EventsModelItem* parent = nullptr;
+        QIcon icon;
+    };
     EventsModel(QObject* parent = nullptr);
 
+    static inline EventsModelItem* to_item(const QModelIndex& index)
+    {
+        return static_cast<EventsModelItem*>(index.internalPointer());
+    }
 
     ItemType type(const QModelIndex& index) const;
 
@@ -57,8 +173,6 @@ public:
     {
         return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled;
     }
-    QVariant data(int col, const CatalogueController::Event_ptr& event) const;
-    QVariant data(int col, const CatalogueController::Product_t& product) const;
     QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
 
     QModelIndex index(
@@ -79,9 +193,14 @@ public slots:
     void setEvents(std::vector<CatalogueController::Event_ptr> events)
     {
         beginResetModel();
-        std::swap(_events, events);
+        _items.clear();
+        std::transform(std::begin(events), std::end(events), std::back_inserter(_items),
+            [](const auto& event) { return std::make_unique<EventsModelItem>(event); });
         endResetModel();
     }
+
+private:
+    std::vector<std::unique_ptr<EventsModelItem>> _items;
 };
 
 #endif // EVENTSMODEL_H

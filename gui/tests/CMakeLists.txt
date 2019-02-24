@@ -5,3 +5,4 @@ declare_test(multiple_sync_graph multiple_sync_graph multiple_sync_graph/main.cp
 
 declare_manual_test(event_list event_list catalogue/event_list/main.cpp "sciqlopgui;TestUtils;GUITestUtils;Qt5::Test")
 declare_manual_test(repository_list repository_list catalogue/repository_list/main.cpp "sciqlopgui;TestUtils;GUITestUtils;Qt5::Test")
+declare_manual_test(catalogue_browser catalogue_browser catalogue/browser/main.cpp "sciqlopgui;TestUtils;GUITestUtils;Qt5::Test")

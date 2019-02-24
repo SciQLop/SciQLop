@@ -26,6 +26,8 @@ class RepositoriesModel : public QAbstractItemModel
     Q_OBJECT
 
 
+
+public:
     enum class ItemType
     {
         None,
@@ -67,12 +69,11 @@ class RepositoriesModel : public QAbstractItemModel
 
     std::vector<std::unique_ptr<RepoModelItem>> _items;
 
-    inline RepoModelItem* to_item(const QModelIndex& index) const
+    static inline RepoModelItem* to_item(const QModelIndex& index)
     {
         return static_cast<RepoModelItem*>(index.internalPointer());
     }
 
-public:
     RepositoriesModel(QObject* parent = nullptr);
 
     ItemType type(const QModelIndex& index) const;

@@ -27,8 +27,15 @@ class EventsTreeView : public QTreeView
 public:
     EventsTreeView(QWidget* parent = nullptr);
 
+signals:
+    void eventSelected(const CatalogueController::Event_ptr& event);
+    void productSelected(const CatalogueController::Product_t& product, const CatalogueController::Event_ptr& event);
+
 public slots:
     void setEvents(std::vector<CatalogueController::Event_ptr> events);
+
+private:
+    void _itemSelected(const QModelIndex& index);
 };
 
 #endif // EVENTSTREEVIEW_H
