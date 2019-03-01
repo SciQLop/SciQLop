@@ -1,0 +1,5 @@
+[wrap-git]
+directory = stduuid
+url = https://github.com/jeandet/stduuid.git
+revision = meson
+

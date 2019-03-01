@@ -1,0 +1,5 @@
+[wrap-git]
+directory = catalogicpp
+url = https://github.com/jeandet/catalogicpp.git
+revision = master
+

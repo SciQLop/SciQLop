@@ -23,7 +23,7 @@
 #include "ui_MainWindow.h"
 
 #include <Catalogue/CatalogueController.h>
-#include <Catalogue/CatalogueExplorer.h>
+//#include <Catalogue/CatalogueExplorer.h>
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceWidget.h>
 #include <Settings/SqpSettingsDialog.h>
