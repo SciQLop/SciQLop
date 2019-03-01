@@ -14,17 +14,6 @@
     include/Catalogue2/repositoriesmodel.h
     include/Catalogue2/browser.h
     include/Catalogue2/eventeditor.h
-#    include/Catalogue/CatalogueActionManager.h
-#    include/Catalogue/CatalogueTreeModel.h
-#    include/Catalogue/CatalogueExplorer.h
-#    include/Catalogue/CatalogueSideBarWidget.h
-#    include/Catalogue/CatalogueInspectorWidget.h
-#    include/Catalogue/CatalogueTreeItems/CatalogueTextTreeItem.h
-#    include/Catalogue/CatalogueTreeItems/CatalogueTreeItem.h
-#    include/Catalogue/CatalogueTreeItems/CatalogueAbstractTreeItem.h
-#    include/Catalogue/CatalogueEventsModel.h
-#    include/Catalogue/CatalogueEventsWidget.h
-#    include/Catalogue/CatalogueExplorerHelper.h
     include/Visualization/VisualizationGraphHelper.h
     include/Visualization/VisualizationTabWidget.h
     include/Visualization/VisualizationDefs.h
@@ -86,17 +75,6 @@
         src/Catalogue2/repositoriesmodel.cpp
         src/Catalogue2/browser.cpp
         src/Catalogue2/eventeditor.cpp
-        #src/Catalogue/CatalogueEventsWidget.cpp
-        #src/Catalogue/CatalogueSideBarWidget.cpp
-        #src/Catalogue/CatalogueTreeItems/CatalogueAbstractTreeItem.cpp
-        #src/Catalogue/CatalogueTreeItems/CatalogueTextTreeItem.cpp
-        #src/Catalogue/CatalogueTreeItems/CatalogueTreeItem.cpp
-        #src/Catalogue/CatalogueExplorerHelper.cpp
-        #src/Catalogue/CatalogueExplorer.cpp
-        #src/Catalogue/CatalogueTreeModel.cpp
-        #src/Catalogue/CatalogueInspectorWidget.cpp
-        #src/Catalogue/CatalogueEventsModel.cpp
-        #src/Catalogue/CatalogueActionManager.cpp
         src/Visualization/VisualizationDragDropContainer.cpp
         src/Visualization/VisualizationTabWidget.cpp
         src/Visualization/VisualizationWidget.cpp
@@ -160,10 +138,6 @@ QT5_WRAP_UI(
     ui/Visualization/VisualizationMultiZoneSelectionDialog.ui
     ui/Catalogue2/browser.ui
     ui/Catalogue2/eventeditor.ui
-    #ui/Catalogue/CatalogueEventsWidget.ui
-    #ui/Catalogue/CatalogueExplorer.ui
-    #ui/Catalogue/CatalogueInspectorWidget.ui
-    #ui/Catalogue/CatalogueSideBarWidget.ui
 )
 
 add_library(sciqlopgui ${gui_SRCS} ${UiGenerated_SRCS})
