@@ -4,18 +4,19 @@
 
 #include <QFile>
 
-#include <cmath>
 #include <Data/IDataSeries.h>
+#include <cmath>
 
 Q_LOGGING_CATEGORY(LOG_AmdaResultParser, "AmdaResultParser")
 
-namespace {
+namespace
+{
 
 /// Message in result file when the file was not found on server
 const auto FILE_NOT_FOUND_MESSAGE = QStringLiteral("Not Found");
 
 /// Checks if a line is a comment line
-bool isCommentLine(const QString &line)
+bool isCommentLine(const QString& line)
 {
     return line.startsWith("#");
 }
@@ -27,14 +28,15 @@ bool isCommentLine(const QString &line)
  */
 std::unique_ptr<IAmdaResultParserHelper> createHelper(DataSeriesType valueType)
 {
-    switch (valueType) {
+    switch (valueType)
+    {
         case DataSeriesType::SCALAR:
             return std::make_unique<ScalarParserHelper>();
         case DataSeriesType::SPECTROGRAM:
             return std::make_unique<SpectrogramParserHelper>();
         case DataSeriesType::VECTOR:
             return std::make_unique<VectorParserHelper>();
-        case DataSeriesType::UNKNOWN:
+        case DataSeriesType::NONE:
             // Invalid case
             break;
     }
@@ -50,12 +52,13 @@ std::unique_ptr<IAmdaResultParserHelper> createHelper(DataSeriesType valueType)
  * @param helper the helper used to read properties line by line
  * @param stream the stream to read
  */
-void readProperties(IAmdaResultParserHelper &helper, QTextStream &stream)
+void readProperties(IAmdaResultParserHelper& helper, QTextStream& stream)
 {
     // Searches properties in the comment lines (as long as the reading has not reached the data)
     // AMDA V2: while (stream.readLineInto(&line) && !line.contains(DATA_HEADER_REGEX)) {
-    QString line{};
-    while (stream.readLineInto(&line) && isCommentLine(line)) {
+    QString line {};
+    while (stream.readLineInto(&line) && isCommentLine(line))
+    {
         helper.readPropertyLine(line);
     }
 }
@@ -65,16 +68,19 @@ void readProperties(IAmdaResultParserHelper &helper, QTextStream &stream)
  * @param helper the helper used to read results line by line
  * @param stream the stream to read
  */
-void readResults(IAmdaResultParserHelper &helper, QTextStream &stream)
+void readResults(IAmdaResultParserHelper& helper, QTextStream& stream)
 {
-    QString line{};
+    QString line {};
 
     // Skip comment lines
-    while (stream.readLineInto(&line) && isCommentLine(line)) {
+    while (stream.readLineInto(&line) && isCommentLine(line))
+    {
     }
 
-    if (!stream.atEnd()) {
-        do {
+    if (!stream.atEnd())
+    {
+        do
+        {
             helper.readResultLine(line);
         } while (stream.readLineInto(&line));
     }
@@ -82,31 +88,32 @@ void readResults(IAmdaResultParserHelper &helper, QTextStream &stream)
 
 } // namespace
 
-std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(const QString &filePath,
-                                                       DataSeriesType type) noexcept
+std::shared_ptr<IDataSeries> AmdaResultParser::readTxt(
+    const QString& filePath, DataSeriesType type) noexcept
 {
-    if (type == DataSeriesType::UNKNOWN) {
+    if (type == DataSeriesType::NONE)
+    {
         qCCritical(LOG_AmdaResultParser())
             << QObject::tr("Can't retrieve AMDA data: the type of values to be read is unknown");
         return nullptr;
     }
 
-    QFile file{filePath};
+    QFile file { filePath };
 
-    if (!file.open(QFile::ReadOnly | QIODevice::Text)) {
+    if (!file.open(QFile::ReadOnly | QIODevice::Text))
+    {
         qCCritical(LOG_AmdaResultParser())
             << QObject::tr("Can't retrieve AMDA data from file %1: %2")
                    .arg(filePath, file.errorString());
         return nullptr;
     }
 
-    return std::shared_ptr<IDataSeries>{AmdaResultParser::readTxt(QTextStream{&file},type)};
+    return std::shared_ptr<IDataSeries> { AmdaResultParser::readTxt(QTextStream { &file }, type) };
 }
 
-IDataSeries *AmdaResultParser::readTxt(QTextStream stream,
-                                                       DataSeriesType type) noexcept
+IDataSeries* AmdaResultParser::readTxt(QTextStream stream, DataSeriesType type) noexcept
 {
-    if (type == DataSeriesType::UNKNOWN)
+    if (type == DataSeriesType::NONE)
     {
         return nullptr;
     }
@@ -126,7 +133,8 @@ IDataSeries *AmdaResultParser::readTxt(QTextStream stream,
     readProperties(*helper, stream);
 
     // Checks properties
-    if (helper->checkProperties()) {
+    if (helper->checkProperties())
+    {
         // Reads results
         // AMDA V2: remove line
         stream.seek(0); // returns to the beginning of the file
@@ -135,7 +143,8 @@ IDataSeries *AmdaResultParser::readTxt(QTextStream stream,
         // Creates data series
         return helper->createSeries();
     }
-    else {
+    else
+    {
         return nullptr;
     }
 }
