@@ -9,28 +9,29 @@ class IDataSeries;
 class QCustomPlot;
 class QMouseEvent;
 class Unit;
-class Variable;
+class Variable2;
 class VisualizationGraphWidget;
 
-class VisualizationGraphRenderingDelegate {
+class VisualizationGraphRenderingDelegate
+{
 public:
     /// Ctor
     /// @param graphWidget the graph widget to which the delegate is associated
     /// @remarks the graph widget must exist throughout the life cycle of the delegate
-    explicit VisualizationGraphRenderingDelegate(VisualizationGraphWidget &graphWidget);
+    explicit VisualizationGraphRenderingDelegate(VisualizationGraphWidget& graphWidget);
 
-    void onMouseDoubleClick(QMouseEvent *event) noexcept;
-    void updateTooltip(QMouseEvent *event) noexcept;
+    void onMouseDoubleClick(QMouseEvent* event) noexcept;
+    void updateTooltip(QMouseEvent* event) noexcept;
     /// Updates rendering when data of plot changed
     void onPlotUpdated() noexcept;
 
     /// Sets units of the plot's axes according to the properties of the variable passed as
     /// parameter
-    void setAxesUnits(const Variable &variable) noexcept;
+    void setAxesUnits(Variable2& variable) noexcept;
 
     /// Sets graph properties of the plottables passed as parameter, from the variable that
     /// generated these
-    void setGraphProperties(const Variable &variable, PlottablesMap &plottables) noexcept;
+    void setGraphProperties(Variable2& variable, PlottablesMap& plottables) noexcept;
 
 
     /// Shows or hides graph overlay (name, close button, etc.)

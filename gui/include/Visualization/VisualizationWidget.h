@@ -12,30 +12,32 @@
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationWidget)
 
 class QMenu;
-class Variable;
+class Variable2;
 class VisualizationTabWidget;
 class VisualizationSelectionZoneManager;
 
-namespace Ui {
+namespace Ui
+{
 class VisualizationWidget;
 } // namespace Ui
 
-class VisualizationWidget : public QWidget, public IVisualizationWidget {
+class VisualizationWidget : public QWidget, public IVisualizationWidget
+{
     Q_OBJECT
 
 public:
-    explicit VisualizationWidget(QWidget *parent = 0);
+    explicit VisualizationWidget(QWidget* parent = 0);
     virtual ~VisualizationWidget();
 
     /// Returns the class which manage the selection of selection zone across the visualization
-    VisualizationSelectionZoneManager &selectionZoneManager() const;
+    VisualizationSelectionZoneManager& selectionZoneManager() const;
 
-    VisualizationTabWidget *currentTabWidget() const;
+    VisualizationTabWidget* currentTabWidget() const;
 
     // IVisualizationWidget interface
-    void accept(IVisualizationWidgetVisitor *visitor) override;
-    bool canDrop(const Variable &variable) const override;
-    bool contains(const Variable &variable) const override;
+    void accept(IVisualizationWidgetVisitor* visitor) override;
+    bool canDrop(Variable2& variable) const override;
+    bool contains(Variable2& variable) const override;
     QString name() const override;
 
 public slots:
@@ -44,19 +46,19 @@ public slots:
      * @param menu the parent menu of the generated menu
      * @param variables the variables for which to generate the menu
      */
-    void attachVariableMenu(QMenu *menu,
-                            const QVector<std::shared_ptr<Variable> > &variables) noexcept;
+    void attachVariableMenu(
+        QMenu* menu, const QVector<std::shared_ptr<Variable2>>& variables) noexcept;
 
     /// Slot called when a variable is about to be deleted from SciQlop
-    void onVariableAboutToBeDeleted(std::shared_ptr<Variable> variable) noexcept;
+    void onVariableAboutToBeDeleted(std::shared_ptr<Variable2> variable) noexcept;
 
-    void onRangeChanged(std::shared_ptr<Variable> variable, const DateTimeRange &range) noexcept;
+    void onRangeChanged(std::shared_ptr<Variable2> variable, const DateTimeRange& range) noexcept;
 
 protected:
-    void closeEvent(QCloseEvent *event) override;
+    void closeEvent(QCloseEvent* event) override;
 
 private:
-    Ui::VisualizationWidget *ui;
+    Ui::VisualizationWidget* ui;
 
     class VisualizationWidgetPrivate;
     spimpl::unique_impl_ptr<VisualizationWidgetPrivate> impl;

@@ -11,7 +11,7 @@
 
 class QMenu;
 class IVisualizationWidget;
-class Variable;
+class Variable2;
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_GenerateVariableMenuOperation)
 
@@ -20,7 +20,8 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_GenerateVariableMenuOperation)
  * visualization widgets to determine which can accommodate a variable. The result of the operation
  * is a menu that contains actions to add the variable into the containers.
  */
-class GenerateVariableMenuOperation : public IVisualizationWidgetVisitor {
+class GenerateVariableMenuOperation : public IVisualizationWidgetVisitor
+{
 public:
     /**
      * Ctor
@@ -29,16 +30,16 @@ public:
      * @param variableContainers the containers that already contain the variable for which to
      * generate the menu
      */
-    explicit GenerateVariableMenuOperation(QMenu *menu, std::shared_ptr<Variable> variable,
-                                           std::set<IVisualizationWidget *> variableContainers);
+    explicit GenerateVariableMenuOperation(QMenu* menu, std::shared_ptr<Variable2> variable,
+        std::set<IVisualizationWidget*> variableContainers);
 
-    void visitEnter(VisualizationWidget *widget) override final;
-    void visitLeave(VisualizationWidget *widget) override final;
-    void visitEnter(VisualizationTabWidget *tabWidget) override final;
-    void visitLeave(VisualizationTabWidget *tabWidget) override final;
-    void visitEnter(VisualizationZoneWidget *zoneWidget) override final;
-    void visitLeave(VisualizationZoneWidget *zoneWidget) override final;
-    void visit(VisualizationGraphWidget *graphWidget) override final;
+    void visitEnter(VisualizationWidget* widget) override final;
+    void visitLeave(VisualizationWidget* widget) override final;
+    void visitEnter(VisualizationTabWidget* tabWidget) override final;
+    void visitLeave(VisualizationTabWidget* tabWidget) override final;
+    void visitEnter(VisualizationZoneWidget* zoneWidget) override final;
+    void visitLeave(VisualizationZoneWidget* zoneWidget) override final;
+    void visit(VisualizationGraphWidget* graphWidget) override final;
 
 private:
     class GenerateVariableMenuOperationPrivate;

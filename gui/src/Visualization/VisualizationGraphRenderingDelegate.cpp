@@ -13,7 +13,8 @@
 
 #include <SqpApplication.h>
 
-namespace {
+namespace
+{
 
 /// Name of the axes layer in QCustomPlot
 const auto AXES_LAYER = QStringLiteral("axes");
@@ -34,15 +35,15 @@ const auto GRAPH_TOOLTIP_FORMAT = QStringLiteral("key: %1\nvalue: %2");
 const auto COLORMAP_TOOLTIP_FORMAT = QStringLiteral("x: %1\ny: %2\nvalue: %3");
 
 /// Offset used to shift the tooltip of the mouse
-const auto TOOLTIP_OFFSET = QPoint{20, 20};
+const auto TOOLTIP_OFFSET = QPoint { 20, 20 };
 
 /// Tooltip display rectangle (the tooltip is hidden when the mouse leaves this rectangle)
-const auto TOOLTIP_RECT = QRect{10, 10, 10, 10};
+const auto TOOLTIP_RECT = QRect { 10, 10, 10, 10 };
 
 /// Timeout after which the tooltip is displayed
 const auto TOOLTIP_TIMEOUT = 500;
 
-void initPointTracerStyle(QCPItemTracer &tracer) noexcept
+void initPointTracerStyle(QCPItemTracer& tracer) noexcept
 {
     tracer.setInterpolating(false);
     tracer.setStyle(QCPItemTracer::tsCircle);
@@ -52,16 +53,16 @@ void initPointTracerStyle(QCPItemTracer &tracer) noexcept
     tracer.setSelectable(false);
 }
 
-QPixmap pixmap(const QString &iconPath) noexcept
+QPixmap pixmap(const QString& iconPath) noexcept
 {
-    return QIcon{iconPath}.pixmap(QSize{16, 16});
+    return QIcon { iconPath }.pixmap(QSize { 16, 16 });
 }
 
-void initClosePixmapStyle(QCPItemPixmap &pixmap) noexcept
+void initClosePixmapStyle(QCPItemPixmap& pixmap) noexcept
 {
     // Icon
     pixmap.setPixmap(
-        sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton).pixmap(QSize{16, 16}));
+        sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton).pixmap(QSize { 16, 16 }));
 
     // Position
     pixmap.topLeft->setType(QCPItemPosition::ptAxisRectRatio);
@@ -72,7 +73,7 @@ void initClosePixmapStyle(QCPItemPixmap &pixmap) noexcept
     pixmap.setSelectable(true);
 }
 
-void initXAxisPixmapStyle(QCPItemPixmap &itemPixmap) noexcept
+void initXAxisPixmapStyle(QCPItemPixmap& itemPixmap) noexcept
 {
     // Icon
     itemPixmap.setPixmap(pixmap(HIDE_AXIS_ICON_PATH));
@@ -86,7 +87,7 @@ void initXAxisPixmapStyle(QCPItemPixmap &itemPixmap) noexcept
     itemPixmap.setSelectable(true);
 }
 
-void initTitleTextStyle(QCPItemText &text) noexcept
+void initTitleTextStyle(QCPItemText& text) noexcept
 {
     // Font and background styles
     text.setColor(Qt::gray);
@@ -107,13 +108,14 @@ void initTitleTextStyle(QCPItemText &text) noexcept
  * @param xCoord calculates the x index if true, calculates y index if false
  * @return the cell index
  */
-int colorMapCellIndex(const QCPColorMap &colormap, double coord, bool xCoord)
+int colorMapCellIndex(const QCPColorMap& colormap, double coord, bool xCoord)
 {
     // Determines the axis of the colormap according to xCoord, and whether it is logarithmic or not
     auto isLogarithmic = (xCoord ? colormap.keyAxis() : colormap.valueAxis())->scaleType()
-                         == QCPAxis::stLogarithmic;
+        == QCPAxis::stLogarithmic;
 
-    if (isLogarithmic) {
+    if (isLogarithmic)
+    {
         // For a logarithmic axis we can't use the conversion method of colormap, so we calculate
         // the index manually based on the position of the coordinate on the axis
 
@@ -127,13 +129,16 @@ int colorMapCellIndex(const QCPColorMap &colormap, double coord, bool xCoord)
         // According to the coord position, calculates the closest index in the range
         return std::round((std::log10(coord) - std::log10(range.lower)) / valueStep);
     }
-    else {
+    else
+    {
         // For a linear axis, we use the conversion method of colormap
         int index;
-        if (xCoord) {
+        if (xCoord)
+        {
             colormap.data()->coordToCell(coord, 0., &index, nullptr);
         }
-        else {
+        else
+        {
             colormap.data()->coordToCell(0., coord, nullptr, &index);
         }
 
@@ -143,17 +148,18 @@ int colorMapCellIndex(const QCPColorMap &colormap, double coord, bool xCoord)
 
 } // namespace
 
-struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegatePrivate {
-    explicit VisualizationGraphRenderingDelegatePrivate(VisualizationGraphWidget &graphWidget)
-            : m_Plot{graphWidget.plot()},
-              m_PointTracer{new QCPItemTracer{&m_Plot}},
-              m_TracerTimer{},
-              m_ClosePixmap{new QCPItemPixmap{&m_Plot}},
-              m_TitleText{new QCPItemText{&m_Plot}},
-              m_XAxisPixmap{new QCPItemPixmap{&m_Plot}},
-              m_ShowXAxis{true},
-              m_XAxisLabel{},
-              m_ColorScale{SqpColorScale{m_Plot}}
+struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegatePrivate
+{
+    explicit VisualizationGraphRenderingDelegatePrivate(VisualizationGraphWidget& graphWidget)
+            : m_Plot { graphWidget.plot() }
+            , m_PointTracer { new QCPItemTracer { &m_Plot } }
+            , m_TracerTimer {}
+            , m_ClosePixmap { new QCPItemPixmap { &m_Plot } }
+            , m_TitleText { new QCPItemText { &m_Plot } }
+            , m_XAxisPixmap { new QCPItemPixmap { &m_Plot } }
+            , m_ShowXAxis { true }
+            , m_XAxisLabel {}
+            , m_ColorScale { SqpColorScale { m_Plot } }
     {
         initPointTracerStyle(*m_PointTracer);
 
@@ -165,12 +171,13 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
         initClosePixmapStyle(*m_ClosePixmap);
 
         // Connects pixmap selection to graph widget closing
-        QObject::connect(&m_Plot, &QCustomPlot::itemClick,
-                         [&graphWidget, this](auto item, auto mouseEvent) {
-                             if (item == m_ClosePixmap) {
-                                 graphWidget.close();
-                             }
-                         });
+        QObject::connect(
+            &m_Plot, &QCustomPlot::itemClick, [&graphWidget, this](auto item, auto mouseEvent) {
+                if (item == m_ClosePixmap)
+                {
+                    graphWidget.close();
+                }
+            });
 
         // Inits graph name in plot overlay
         m_TitleText->setLayer(OVERLAY_LAYER);
@@ -183,7 +190,8 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
 
         // Connects pixmap selection to graph x-axis showing/hiding
         QObject::connect(&m_Plot, &QCustomPlot::itemClick, [this](auto item, auto mouseEvent) {
-            if (m_XAxisPixmap == item) {
+            if (m_XAxisPixmap == item)
+            {
                 // Changes the selection state and refreshes the x-axis
                 m_ShowXAxis = !m_ShowXAxis;
                 this->updateXAxisState();
@@ -202,38 +210,40 @@ struct VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegateP
     void updateXAxisState() noexcept
     {
         m_Plot.xAxis->setTickLabels(m_ShowXAxis);
-        m_Plot.xAxis->setLabel(m_ShowXAxis ? m_XAxisLabel : QString{});
+        m_Plot.xAxis->setLabel(m_ShowXAxis ? m_XAxisLabel : QString {});
     }
 
-    QCustomPlot &m_Plot;
-    QCPItemTracer *m_PointTracer;
+    QCustomPlot& m_Plot;
+    QCPItemTracer* m_PointTracer;
     QTimer m_TracerTimer;
-    QCPItemPixmap *m_ClosePixmap; /// Graph's close button
-    QCPItemText *m_TitleText;     /// Graph's title
-    QCPItemPixmap *m_XAxisPixmap;
+    QCPItemPixmap* m_ClosePixmap; /// Graph's close button
+    QCPItemText* m_TitleText; /// Graph's title
+    QCPItemPixmap* m_XAxisPixmap;
     bool m_ShowXAxis; /// X-axis properties are shown or hidden
     QString m_XAxisLabel;
     SqpColorScale m_ColorScale; /// Color scale used for some types of graphs (as spectrograms)
 };
 
 VisualizationGraphRenderingDelegate::VisualizationGraphRenderingDelegate(
-    VisualizationGraphWidget &graphWidget)
-        : impl{spimpl::make_unique_impl<VisualizationGraphRenderingDelegatePrivate>(graphWidget)}
+    VisualizationGraphWidget& graphWidget)
+        : impl { spimpl::make_unique_impl<VisualizationGraphRenderingDelegatePrivate>(graphWidget) }
 {
 }
 
-void VisualizationGraphRenderingDelegate::onMouseDoubleClick(QMouseEvent *event) noexcept
+void VisualizationGraphRenderingDelegate::onMouseDoubleClick(QMouseEvent* event) noexcept
 {
     // Opens color scale editor if color scale is double clicked
-    auto colorScale = static_cast<QCPColorScale *>(impl->m_Plot.layoutElementAt(event->pos()));
-    if (impl->m_ColorScale.m_Scale == colorScale) {
-        if (ColorScaleEditor{impl->m_ColorScale}.exec() == QDialog::Accepted) {
+    auto colorScale = static_cast<QCPColorScale*>(impl->m_Plot.layoutElementAt(event->pos()));
+    if (impl->m_ColorScale.m_Scale == colorScale)
+    {
+        if (ColorScaleEditor { impl->m_ColorScale }.exec() == QDialog::Accepted)
+        {
             impl->m_Plot.replot();
         }
     }
 }
 
-void VisualizationGraphRenderingDelegate::updateTooltip(QMouseEvent *event) noexcept
+void VisualizationGraphRenderingDelegate::updateTooltip(QMouseEvent* event) noexcept
 {
     // Cancels pending refresh
     impl->m_TracerTimer.disconnect();
@@ -243,17 +253,19 @@ void VisualizationGraphRenderingDelegate::updateTooltip(QMouseEvent *event) noex
     impl->m_PointTracer->setVisible(false);
     impl->m_Plot.replot();
 
-    QString tooltip{};
+    QString tooltip {};
 
     // Gets the graph under the mouse position
     auto eventPos = event->pos();
-    if (auto graph = qobject_cast<QCPGraph *>(impl->m_Plot.plottableAt(eventPos))) {
+    if (auto graph = qobject_cast<QCPGraph*>(impl->m_Plot.plottableAt(eventPos)))
+    {
         auto mouseKey = graph->keyAxis()->pixelToCoord(eventPos.x());
         auto graphData = graph->data();
 
         // Gets the closest data point to the mouse
         auto graphDataIt = graphData->findBegin(mouseKey);
-        if (graphDataIt != graphData->constEnd()) {
+        if (graphDataIt != graphData->constEnd())
+        {
             // Sets tooltip
             auto key = formatValue(graphDataIt->key, *graph->keyAxis());
             auto value = formatValue(graphDataIt->value, *graph->valueAxis());
@@ -268,7 +280,8 @@ void VisualizationGraphRenderingDelegate::updateTooltip(QMouseEvent *event) noex
             impl->m_Plot.replot();
         }
     }
-    else if (auto colorMap = qobject_cast<QCPColorMap *>(impl->m_Plot.plottableAt(eventPos))) {
+    else if (auto colorMap = qobject_cast<QCPColorMap*>(impl->m_Plot.plottableAt(eventPos)))
+    {
         // Gets x and y coords
         auto x = colorMap->keyAxis()->pixelToCoord(eventPos.x());
         auto y = colorMap->valueAxis()->pixelToCoord(eventPos.y());
@@ -280,15 +293,16 @@ void VisualizationGraphRenderingDelegate::updateTooltip(QMouseEvent *event) noex
 
         // Sets tooltips
         tooltip = COLORMAP_TOOLTIP_FORMAT.arg(formatValue(x, *colorMap->keyAxis()),
-                                              formatValue(y, *colorMap->valueAxis()),
-                                              formatValue(value, *colorMap->colorScale()->axis()));
+            formatValue(y, *colorMap->valueAxis()),
+            formatValue(value, *colorMap->colorScale()->axis()));
     }
 
-    if (!tooltip.isEmpty()) {
+    if (!tooltip.isEmpty())
+    {
         // Starts timer to show tooltip after timeout
         auto showTooltip = [tooltip, eventPos, this]() {
             QToolTip::showText(impl->m_Plot.mapToGlobal(eventPos) + TOOLTIP_OFFSET, tooltip,
-                               &impl->m_Plot, TOOLTIP_RECT);
+                &impl->m_Plot, TOOLTIP_RECT);
         };
 
         QObject::connect(&impl->m_TracerTimer, &QTimer::timeout, showTooltip);
@@ -303,7 +317,7 @@ void VisualizationGraphRenderingDelegate::onPlotUpdated() noexcept
     impl->m_Plot.replot();
 }
 
-void VisualizationGraphRenderingDelegate::setAxesUnits(const Variable &variable) noexcept
+void VisualizationGraphRenderingDelegate::setAxesUnits(Variable2& variable) noexcept
 {
 
     auto axisHelper = IAxisHelperFactory::create(variable);
@@ -318,8 +332,8 @@ void VisualizationGraphRenderingDelegate::setAxesUnits(const Variable &variable)
     impl->m_Plot.layer(AXES_LAYER)->replot();
 }
 
-void VisualizationGraphRenderingDelegate::setGraphProperties(const Variable &variable,
-                                                             PlottablesMap &plottables) noexcept
+void VisualizationGraphRenderingDelegate::setGraphProperties(
+    Variable2& variable, PlottablesMap& plottables) noexcept
 {
     // Axes' properties
     auto axisHelper = IAxisHelperFactory::create(variable);

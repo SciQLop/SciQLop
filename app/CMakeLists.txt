@@ -13,8 +13,14 @@ QT5_WRAP_UI(UiGenerated_SRCS
 add_executable(sciqlopapp WIN32 ${app_SRCS} ${UiGenerated_SRCS})
 if(NOT BUILD_SHARED_LIBS)
     add_definitions(-DQT_STATICPLUGIN)
-    target_link_libraries(sciqlopapp mockplugin)
-    target_link_libraries(sciqlopapp amdaplugin)
+    if(BUILD_PLUGINS)
+        target_link_libraries(sciqlopapp mockplugin)
+        target_link_libraries(sciqlopapp amdaplugin)
+    endif()
+endif()
+
+if(NOT BUILD_PLUGINS)
+    add_definitions(-DSQP_NO_PLUGINS)
 endif()
 
 target_link_libraries(sciqlopapp

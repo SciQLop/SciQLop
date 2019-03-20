@@ -148,7 +148,7 @@ void scroll_graph(T* w, int dx)
 
 ALIAS_TEMPLATE_FUNCTION(isReady, static_cast<SqpApplication*>(qApp)->variableController().isReady)
 
-void waitForVar(std::shared_ptr<Variable> var)
+void waitForVar(std::shared_ptr<Variable2> var)
 {
     while (!isReady(var))
         QCoreApplication::processEvents();

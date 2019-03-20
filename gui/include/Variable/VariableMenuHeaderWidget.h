@@ -6,11 +6,12 @@
 
 #include <memory>
 
-namespace Ui {
+namespace Ui
+{
 class VariableMenuHeaderWidget;
 } // Ui
 
-class Variable;
+class Variable2;
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VariableMenuHeaderWidget)
 
@@ -19,19 +20,20 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_VariableMenuHeaderWidget)
  * variable inspector
  * @sa VariableInspectorWidget
  */
-class VariableMenuHeaderWidget : public QWidget {
+class VariableMenuHeaderWidget : public QWidget
+{
 public:
     /**
      * Ctor
      * @param variables the list of variables used to generate the header
      * @param parent the parent widget
      */
-    explicit VariableMenuHeaderWidget(const QVector<std::shared_ptr<Variable> > &variables,
-                                      QWidget *parent = 0);
+    explicit VariableMenuHeaderWidget(
+        const QVector<std::shared_ptr<Variable2>>& variables, QWidget* parent = 0);
     virtual ~VariableMenuHeaderWidget() noexcept;
 
 private:
-    Ui::VariableMenuHeaderWidget *ui;
+    Ui::VariableMenuHeaderWidget* ui;
 };
 
 #endif // SCIQLOP_VARIABLEMENUHEADERWIDGET_H

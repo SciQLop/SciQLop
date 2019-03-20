@@ -1,10 +1,10 @@
+#include <DataSource/DataSourceController.h>
 #include <Variable/RenameVariableDialog.h>
 #include <Variable/Variable.h>
 #include <Variable/VariableController2.h>
 #include <Variable/VariableInspectorWidget.h>
 #include <Variable/VariableMenuHeaderWidget.h>
 #include <Variable/VariableModel2.h>
-#include <DataSource/DataSourceController.h>
 
 #include <ui_VariableInspectorWidget.h>
 
@@ -19,22 +19,25 @@
 Q_LOGGING_CATEGORY(LOG_VariableInspectorWidget, "VariableInspectorWidget")
 
 
-class QProgressBarItemDelegate : public QStyledItemDelegate {
+class QProgressBarItemDelegate : public QStyledItemDelegate
+{
 
 public:
-    QProgressBarItemDelegate(QObject *parent) : QStyledItemDelegate{parent} {}
+    QProgressBarItemDelegate(QObject* parent) : QStyledItemDelegate { parent } {}
 
-    void paint(QPainter *painter, const QStyleOptionViewItem &option,
-               const QModelIndex &index) const
+    void paint(
+        QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const
     {
         auto data = index.data(Qt::DisplayRole);
         auto progressData = index.data(VariableRoles::ProgressRole);
-        if (data.isValid() && progressData.isValid()) {
+        if (data.isValid() && progressData.isValid())
+        {
             auto name = data.value<QString>();
             auto progress = progressData.value<double>();
-            if (progress > 0) {
+            if (progress > 0)
+            {
                 auto cancelButtonWidth = 20;
-                auto progressBarOption = QStyleOptionProgressBar{};
+                auto progressBarOption = QStyleOptionProgressBar {};
                 auto progressRect = option.rect;
                 progressRect.setWidth(progressRect.width() - cancelButtonWidth);
                 progressBarOption.rect = progressRect;
@@ -47,66 +50,75 @@ public:
                 progressBarOption.textAlignment = Qt::AlignCenter;
 
 
-                QApplication::style()->drawControl(QStyle::CE_ProgressBar, &progressBarOption,
-                                                   painter);
+                QApplication::style()->drawControl(
+                    QStyle::CE_ProgressBar, &progressBarOption, painter);
 
                 // Cancel button
                 auto buttonRect = QRect(progressRect.right(), option.rect.top(), cancelButtonWidth,
-                                        option.rect.height());
-                auto buttonOption = QStyleOptionButton{};
+                    option.rect.height());
+                auto buttonOption = QStyleOptionButton {};
                 buttonOption.rect = buttonRect;
                 buttonOption.text = "X";
 
                 QApplication::style()->drawControl(QStyle::CE_PushButton, &buttonOption, painter);
             }
-            else {
+            else
+            {
                 QStyledItemDelegate::paint(painter, option, index);
             }
         }
-        else {
+        else
+        {
             QStyledItemDelegate::paint(painter, option, index);
         }
     }
 
-    bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option,
-                     const QModelIndex &index)
+    bool editorEvent(QEvent* event, QAbstractItemModel* model, const QStyleOptionViewItem& option,
+        const QModelIndex& index)
     {
-        if (event->type() == QEvent::MouseButtonRelease) {
+        if (event->type() == QEvent::MouseButtonRelease)
+        {
             auto data = index.data(Qt::DisplayRole);
             auto progressData = index.data(VariableRoles::ProgressRole);
-            if (data.isValid() && progressData.isValid()) {
+            if (data.isValid() && progressData.isValid())
+            {
                 auto cancelButtonWidth = 20;
                 auto progressRect = option.rect;
                 progressRect.setWidth(progressRect.width() - cancelButtonWidth);
                 // Cancel button
                 auto buttonRect = QRect(progressRect.right(), option.rect.top(), cancelButtonWidth,
-                                        option.rect.height());
+                    option.rect.height());
 
-                auto e = (QMouseEvent *)event;
+                auto e = (QMouseEvent*)event;
                 auto clickX = e->x();
                 auto clickY = e->y();
 
-                auto x = buttonRect.left();   // the X coordinate
-                auto y = buttonRect.top();    // the Y coordinate
-                auto w = buttonRect.width();  // button width
+                auto x = buttonRect.left(); // the X coordinate
+                auto y = buttonRect.top(); // the Y coordinate
+                auto w = buttonRect.width(); // button width
                 auto h = buttonRect.height(); // button height
 
-                if (clickX > x && clickX < x + w) {
-                    if (clickY > y && clickY < y + h) {
-                        //auto& variableModel = sqpApp->variableModel();
-                        //variableModel->abortProgress(index);
+                if (clickX > x && clickX < x + w)
+                {
+                    if (clickY > y && clickY < y + h)
+                    {
+                        // auto& variableModel = sqpApp->variableModel();
+                        // variableModel->abortProgress(index);
                     }
                     return true;
                 }
-                else {
+                else
+                {
                     return QStyledItemDelegate::editorEvent(event, model, option, index);
                 }
             }
-            else {
+            else
+            {
                 return QStyledItemDelegate::editorEvent(event, model, option, index);
             }
         }
-        else {
+        else
+        {
             return QStyledItemDelegate::editorEvent(event, model, option, index);
         }
 
@@ -115,10 +127,10 @@ public:
     }
 };
 
-VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
-        : QWidget{parent},
-          ui{new Ui::VariableInspectorWidget},
-          m_ProgressBarItemDelegate{new QProgressBarItemDelegate{this}}
+VariableInspectorWidget::VariableInspectorWidget(QWidget* parent)
+        : QWidget { parent }
+        , ui { new Ui::VariableInspectorWidget }
+        , m_ProgressBarItemDelegate { new QProgressBarItemDelegate { this } }
 {
     ui->setupUi(this);
 
@@ -128,9 +140,7 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
 
     m_model = new VariableModel2();
     ui->tableView->setModel(m_model);
-    connect(m_model, &VariableModel2::createVariable,
-            [](const QVariantHash &productData)
-    {
+    connect(m_model, &VariableModel2::createVariable, [](const QVariantHash& productData) {
         sqpApp->dataSourceController().requestVariable(productData);
     });
     auto vc = &(sqpApp->variableController());
@@ -140,16 +150,17 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
 
     // Adds extra signal/slot between view and model, so the view can be updated instantly when
     // there is a change of data in the model
-    //connect(m_model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)), this,
+    // connect(m_model, SIGNAL(dataChanged(const QModelIndex &, const QModelIndex &)), this,
     //        SLOT(refresh()));
 
-    //ui->tableView->setSelectionModel(sqpApp->variableController().variableSelectionModel());
+    // ui->tableView->setSelectionModel(sqpApp->variableController().variableSelectionModel());
     ui->tableView->setItemDelegateForColumn(0, m_ProgressBarItemDelegate);
 
     // Fixes column sizes
     auto model = ui->tableView->model();
     const auto count = model->columnCount();
-    for (auto i = 0; i < count; ++i) {
+    for (auto i = 0; i < count; ++i)
+    {
         ui->tableView->setColumnWidth(
             i, model->headerData(i, Qt::Horizontal, Qt::SizeHintRole).toSize().width());
     }
@@ -161,7 +172,7 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget *parent)
     // Connection to show a menu when right clicking on the tree
     ui->tableView->setContextMenuPolicy(Qt::CustomContextMenu);
     connect(ui->tableView, &QTableView::customContextMenuRequested, this,
-            &VariableInspectorWidget::onTableMenuRequested);
+        &VariableInspectorWidget::onTableMenuRequested);
 }
 
 VariableInspectorWidget::~VariableInspectorWidget()
@@ -169,50 +180,55 @@ VariableInspectorWidget::~VariableInspectorWidget()
     delete ui;
 }
 
-void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
+void VariableInspectorWidget::onTableMenuRequested(const QPoint& pos) noexcept
 {
     auto selectedRows = ui->tableView->selectionModel()->selectedRows();
-    auto selectedVariables = QVector<std::shared_ptr<Variable> >{};
-    for (const auto &selectedRow : qAsConst(selectedRows)) {
-        if (auto selectedVariable = this->m_model->variables()[selectedRow.row()]) {
+    auto selectedVariables = QVector<std::shared_ptr<Variable2>> {};
+    for (const auto& selectedRow : qAsConst(selectedRows))
+    {
+        if (auto selectedVariable = this->m_model->variables()[selectedRow.row()])
+        {
             selectedVariables.push_back(selectedVariable);
         }
     }
 
-    QMenu tableMenu{};
+    QMenu tableMenu {};
 
     // Emits a signal so that potential receivers can populate the menu before displaying it
     emit tableMenuAboutToBeDisplayed(&tableMenu, selectedVariables);
 
     // Adds menu-specific actions
-    if (!selectedVariables.isEmpty()) {
+    if (!selectedVariables.isEmpty())
+    {
         tableMenu.addSeparator();
 
         // 'Rename' and 'Duplicate' actions (only if one variable selected)
-        if (selectedVariables.size() == 1) {
+        if (selectedVariables.size() == 1)
+        {
             auto selectedVariable = selectedVariables.front();
 
-            auto duplicateFun = [varW = std::weak_ptr<Variable>(selectedVariable)]()
-            {
-                if (auto var = varW.lock()) {
+            auto duplicateFun = [varW = std::weak_ptr<Variable2>(selectedVariable)]() {
+                if (auto var = varW.lock())
+                {
                     sqpApp->variableController().cloneVariable(var);
                 }
             };
 
             tableMenu.addAction(tr("Duplicate"), duplicateFun);
 
-            auto renameFun = [ varW = std::weak_ptr<Variable>(selectedVariable), this ]()
-            {
-                if (auto var = varW.lock()) {
+            auto renameFun = [varW = std::weak_ptr<Variable2>(selectedVariable), this]() {
+                if (auto var = varW.lock())
+                {
                     // Generates forbidden names (names associated to existing variables)
                     auto allVariables = sqpApp->variableController().variables();
                     auto forbiddenNames = QVector<QString>(allVariables.size());
                     std::transform(allVariables.cbegin(), allVariables.cend(),
-                                   forbiddenNames.begin(),
-                                   [](const auto &variable) { return variable->name(); });
+                        forbiddenNames.begin(),
+                        [](const auto& variable) { return variable->name(); });
 
-                    RenameVariableDialog dialog{var->name(), forbiddenNames, this};
-                    if (dialog.exec() == QDialog::Accepted) {
+                    RenameVariableDialog dialog { var->name(), forbiddenNames, this };
+                    if (dialog.exec() == QDialog::Accepted)
+                    {
                         var->setName(dialog.name());
                     }
                 }
@@ -223,18 +239,20 @@ void VariableInspectorWidget::onTableMenuRequested(const QPoint &pos) noexcept
 
         // 'Delete' action
         auto deleteFun = [&selectedVariables]() {
-            for(const auto& var:selectedVariables)
+            for (const auto& var : selectedVariables)
                 sqpApp->variableController().deleteVariable(var);
         };
 
-        tableMenu.addAction(QIcon{":/icones/delete.png"}, tr("Delete"), deleteFun);
+        tableMenu.addAction(QIcon { ":/icones/delete.png" }, tr("Delete"), deleteFun);
     }
 
-    if (!tableMenu.isEmpty()) {
+    if (!tableMenu.isEmpty())
+    {
         // Generates menu header (inserted before first action)
         auto firstAction = tableMenu.actions().first();
-        auto headerAction = new QWidgetAction{&tableMenu};
-        headerAction->setDefaultWidget(new VariableMenuHeaderWidget{selectedVariables, &tableMenu});
+        auto headerAction = new QWidgetAction { &tableMenu };
+        headerAction->setDefaultWidget(
+            new VariableMenuHeaderWidget { selectedVariables, &tableMenu });
         tableMenu.insertAction(firstAction, headerAction);
 
         // Displays menu

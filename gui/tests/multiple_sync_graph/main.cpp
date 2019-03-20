@@ -1,37 +1,36 @@
-#include <QtTest>
-#include <QObject>
-#include <QString>
-#include <QScreen>
 #include <QMainWindow>
+#include <QObject>
+#include <QScreen>
+#include <QString>
 #include <QWheelEvent>
+#include <QtTest>
 
 #include <qcustomplot.h>
 
+#include <Common/cpp_utils.h>
 #include <SqpApplication.h>
 #include <Variable/VariableController2.h>
-#include <Common/cpp_utils.h>
 
-#include <Visualization/VisualizationZoneWidget.h>
-#include <Visualization/VisualizationGraphWidget.h>
-#include <TestProviders.h>
 #include <GUITestUtils.h>
+#include <TestProviders.h>
+#include <Visualization/VisualizationGraphWidget.h>
+#include <Visualization/VisualizationZoneWidget.h>
 
-template <int GraphCount=2>
-std::tuple< std::unique_ptr<VisualizationZoneWidget>,
-            std::vector<std::shared_ptr<Variable>>,
-            std::vector<VisualizationGraphWidget*>,
-            DateTimeRange>
+template <int GraphCount = 2>
+std::tuple<std::unique_ptr<VisualizationZoneWidget>, std::vector<std::shared_ptr<Variable2>>,
+    std::vector<VisualizationGraphWidget*>, DateTimeRange>
 build_multi_graph_test()
 {
     auto w = std::make_unique<VisualizationZoneWidget>();
-    auto provider = std::make_shared<SimpleRange<10> >();
-    auto range = DateTimeRange::fromDateTime(QDate(2018, 8, 7), QTime(14, 00), QDate(2018, 8, 7),QTime(16, 00));
-    std::vector<std::shared_ptr<Variable>> variables;
+    auto provider = std::make_shared<SimpleRange<10>>();
+    auto range = DateTimeRange::fromDateTime(
+        QDate(2018, 8, 7), QTime(14, 00), QDate(2018, 8, 7), QTime(16, 00));
+    std::vector<std::shared_ptr<Variable2>> variables;
     std::vector<VisualizationGraphWidget*> graphs;
-    for(auto i=0;i<GraphCount;i++)
+    for (auto i = 0; i < GraphCount; i++)
     {
-        auto var = static_cast<SqpApplication *>(qApp)->variableController().createVariable(
-                    QString("V%1").arg(i), {{"", "scalar"}}, provider, range);
+        auto var = static_cast<SqpApplication*>(qApp)->variableController().createVariable(
+            QString("V%1").arg(i), { { "", "scalar" } }, provider, range);
         auto graph = new VisualizationGraphWidget();
         graph->addVariable(var, range);
         while (!isReady(var))
@@ -40,23 +39,25 @@ build_multi_graph_test()
         graphs.push_back(graph);
         w->addGraph(graph);
     }
-    return {std::move(w), variables, graphs, range};
+    return { std::move(w), variables, graphs, range };
 }
 
 
-class A_MultipleSyncGraphs : public QObject {
+class A_MultipleSyncGraphs : public QObject
+{
     Q_OBJECT
 public:
-    explicit A_MultipleSyncGraphs(QObject *parent = Q_NULLPTR) : QObject(parent) {}
+    explicit A_MultipleSyncGraphs(QObject* parent = Q_NULLPTR) : QObject(parent) {}
 
 private slots:
     void scrolls_left_with_mouse()
     {
         auto [w, variables, graphs, range] = build_multi_graph_test<3>();
-        auto var   = variables.front();
+        auto var = variables.front();
         auto graph = graphs.front();
         QVERIFY(prepare_gui_test(w.get()));
-        for (auto i = 0; i < 100; i++) {
+        for (auto i = 0; i < 100; i++)
+        {
             scroll_graph(graph, -200);
             waitForVar(var);
         }
@@ -65,18 +66,19 @@ private slots:
         /*
          * Scrolling to the left implies going back in time
          * Scroll only implies keeping the same delta T -> shit only transformation
-        */
+         */
         QVERIFY(r.m_TEnd < range.m_TEnd);
-        QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(),range.delta(),1));
+        QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(), range.delta(), 1));
     }
 
     void scrolls_right_with_mouse()
     {
         auto [w, variables, graphs, range] = build_multi_graph_test<3>();
-        auto var   = variables.front();
+        auto var = variables.front();
         auto graph = graphs.front();
         QVERIFY(prepare_gui_test(w.get()));
-        for (auto i = 0; i < 100; i++) {
+        for (auto i = 0; i < 100; i++)
+        {
             scroll_graph(graph, 200);
             waitForVar(var);
         }
@@ -85,9 +87,9 @@ private slots:
         /*
          * Scrolling to the right implies going forward in time
          * Scroll only implies keeping the same delta T -> shit only transformation
-        */
+         */
         QVERIFY(r.m_TEnd > range.m_TEnd);
-        QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(),range.delta(),1));
+        QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(), range.delta(), 1));
     }
 };
 
@@ -95,9 +97,9 @@ private slots:
 QT_BEGIN_NAMESPACE
 QTEST_ADD_GPU_BLACKLIST_SUPPORT_DEFS
 QT_END_NAMESPACE
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
-    SqpApplication app{argc, argv};
+    SqpApplication app { argc, argv };
     app.setAttribute(Qt::AA_Use96Dpi, true);
     QTEST_DISABLE_KEYPAD_NAVIGATION;
     QTEST_ADD_GPU_BLACKLIST_SUPPORT;

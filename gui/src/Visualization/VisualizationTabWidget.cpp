@@ -17,7 +17,8 @@
 
 Q_LOGGING_CATEGORY(LOG_VisualizationTabWidget, "VisualizationTabWidget")
 
-namespace {
+namespace
+{
 
 /**
  * Applies a function to all zones of the tab represented by its layout
@@ -25,12 +26,15 @@ namespace {
  * @param fun the function to apply to each zone
  */
 template <typename Fun>
-void processZones(QLayout &layout, Fun fun)
+void processZones(QLayout& layout, Fun fun)
 {
-    for (auto i = 0; i < layout.count(); ++i) {
-        if (auto item = layout.itemAt(i)) {
+    for (auto i = 0; i < layout.count(); ++i)
+    {
+        if (auto item = layout.itemAt(i))
+        {
             if (auto visualizationZoneWidget
-                = qobject_cast<VisualizationZoneWidget *>(item->widget())) {
+                = qobject_cast<VisualizationZoneWidget*>(item->widget()))
+            {
                 fun(*visualizationZoneWidget);
             }
         }
@@ -39,15 +43,16 @@ void processZones(QLayout &layout, Fun fun)
 
 /// Generates a default name for a new zone, according to the number of zones already displayed in
 /// the tab
-QString defaultZoneName(QLayout &layout)
+QString defaultZoneName(QLayout& layout)
 {
     QSet<QString> existingNames;
-    processZones(layout,
-                 [&existingNames](auto &zoneWidget) { existingNames.insert(zoneWidget.name()); });
+    processZones(
+        layout, [&existingNames](auto& zoneWidget) { existingNames.insert(zoneWidget.name()); });
 
     int zoneNum = 1;
     QString name;
-    do {
+    do
+    {
         name = QObject::tr("Zone ").append(QString::number(zoneNum));
         ++zoneNum;
     } while (existingNames.contains(name));
@@ -57,8 +62,9 @@ QString defaultZoneName(QLayout &layout)
 
 } // namespace
 
-struct VisualizationTabWidget::VisualizationTabWidgetPrivate {
-    explicit VisualizationTabWidgetPrivate(const QString &name) : m_Name{name} {}
+struct VisualizationTabWidget::VisualizationTabWidgetPrivate
+{
+    explicit VisualizationTabWidgetPrivate(const QString& name) : m_Name { name } {}
 
     QString m_Name;
 
@@ -66,18 +72,18 @@ struct VisualizationTabWidget::VisualizationTabWidgetPrivate {
     std::unique_ptr<MacScrollBarStyle> m_MacScrollBarStyle = std::make_unique<MacScrollBarStyle>();
 #endif
 
-    void dropGraph(int index, VisualizationTabWidget *tabWidget);
-    void dropZone(int index, VisualizationTabWidget *tabWidget);
-    void dropVariables(const std::vector<std::shared_ptr<Variable> > &variables, int index,
-                       VisualizationTabWidget *tabWidget);
-    void dropProducts(const QVariantList &productsMetaData, int index,
-                      VisualizationTabWidget *tabWidget);
+    void dropGraph(int index, VisualizationTabWidget* tabWidget);
+    void dropZone(int index, VisualizationTabWidget* tabWidget);
+    void dropVariables(const std::vector<std::shared_ptr<Variable2>>& variables, int index,
+        VisualizationTabWidget* tabWidget);
+    void dropProducts(
+        const QVariantList& productsMetaData, int index, VisualizationTabWidget* tabWidget);
 };
 
-VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *parent)
-        : QWidget{parent},
-          ui{new Ui::VisualizationTabWidget},
-          impl{spimpl::make_unique_impl<VisualizationTabWidgetPrivate>(name)}
+VisualizationTabWidget::VisualizationTabWidget(const QString& name, QWidget* parent)
+        : QWidget { parent }
+        , ui { new Ui::VisualizationTabWidget }
+        , impl { spimpl::make_unique_impl<VisualizationTabWidgetPrivate>(name) }
 {
     ui->setupUi(this);
 
@@ -88,22 +94,22 @@ VisualizationTabWidget::VisualizationTabWidget(const QString &name, QWidget *par
     ui->dragDropContainer->setPlaceHolderType(DragDropGuiController::PlaceHolderType::Zone, "Zone");
     ui->dragDropContainer->layout()->setContentsMargins(0, 0, 0, 12);
     ui->dragDropContainer->layout()->setSpacing(0);
-    ui->dragDropContainer->setMimeType(MIME_TYPE_GRAPH,
-                                       VisualizationDragDropContainer::DropBehavior::Inserted);
-    ui->dragDropContainer->setMimeType(MIME_TYPE_ZONE,
-                                       VisualizationDragDropContainer::DropBehavior::Inserted);
-    ui->dragDropContainer->setMimeType(MIME_TYPE_VARIABLE_LIST,
-                                       VisualizationDragDropContainer::DropBehavior::Inserted);
-    ui->dragDropContainer->setMimeType(MIME_TYPE_PRODUCT_LIST,
-                                       VisualizationDragDropContainer::DropBehavior::Inserted);
+    ui->dragDropContainer->setMimeType(
+        MIME_TYPE_GRAPH, VisualizationDragDropContainer::DropBehavior::Inserted);
+    ui->dragDropContainer->setMimeType(
+        MIME_TYPE_ZONE, VisualizationDragDropContainer::DropBehavior::Inserted);
+    ui->dragDropContainer->setMimeType(
+        MIME_TYPE_VARIABLE_LIST, VisualizationDragDropContainer::DropBehavior::Inserted);
+    ui->dragDropContainer->setMimeType(
+        MIME_TYPE_PRODUCT_LIST, VisualizationDragDropContainer::DropBehavior::Inserted);
 
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
-        return sqpApp->dragDropGuiController().checkMimeDataForVisualization(mimeData,
-                                                                             ui->dragDropContainer);
+        return sqpApp->dragDropGuiController().checkMimeDataForVisualization(
+            mimeData, ui->dragDropContainer);
     });
 
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredInContainer, this,
-            &VisualizationTabWidget::dropMimeData);
+        &VisualizationTabWidget::dropMimeData);
 
     sqpApp->dragDropGuiController().addDragDropScrollArea(ui->scrollArea);
 
@@ -117,12 +123,12 @@ VisualizationTabWidget::~VisualizationTabWidget()
     delete ui;
 }
 
-void VisualizationTabWidget::addZone(VisualizationZoneWidget *zoneWidget)
+void VisualizationTabWidget::addZone(VisualizationZoneWidget* zoneWidget)
 {
     ui->dragDropContainer->addDragWidget(zoneWidget);
 }
 
-void VisualizationTabWidget::insertZone(int index, VisualizationZoneWidget *zoneWidget)
+void VisualizationTabWidget::insertZone(int index, VisualizationZoneWidget* zoneWidget)
 {
     ui->dragDropContainer->insertDragWidget(index, zoneWidget);
 }
@@ -130,17 +136,18 @@ void VisualizationTabWidget::insertZone(int index, VisualizationZoneWidget *zone
 QStringList VisualizationTabWidget::availableZoneWidgets() const
 {
     QStringList zones;
-    processZones(tabLayout(),
-                 [&zones](VisualizationZoneWidget &zoneWidget) { zones << zoneWidget.name(); });
+    processZones(
+        tabLayout(), [&zones](VisualizationZoneWidget& zoneWidget) { zones << zoneWidget.name(); });
 
     return zones;
 }
 
-VisualizationZoneWidget *VisualizationTabWidget::getZoneWithName(const QString &zoneName)
+VisualizationZoneWidget* VisualizationTabWidget::getZoneWithName(const QString& zoneName)
 {
-    VisualizationZoneWidget *result = nullptr;
-    processZones(tabLayout(), [&zoneName, &result](VisualizationZoneWidget &zoneWidget) {
-        if (!result && zoneWidget.name() == zoneName) {
+    VisualizationZoneWidget* result = nullptr;
+    processZones(tabLayout(), [&zoneName, &result](VisualizationZoneWidget& zoneWidget) {
+        if (!result && zoneWidget.name() == zoneName)
+        {
             result = &zoneWidget;
         }
     });
@@ -148,13 +155,13 @@ VisualizationZoneWidget *VisualizationTabWidget::getZoneWithName(const QString &
     return result;
 }
 
-VisualizationZoneWidget *VisualizationTabWidget::createZone(std::shared_ptr<Variable> variable)
+VisualizationZoneWidget* VisualizationTabWidget::createZone(std::shared_ptr<Variable2> variable)
 {
-    return createZone({variable}, -1);
+    return createZone({ variable }, -1);
 }
 
-VisualizationZoneWidget *
-VisualizationTabWidget::createZone(const std::vector<std::shared_ptr<Variable> > &variables, int index)
+VisualizationZoneWidget* VisualizationTabWidget::createZone(
+    const std::vector<std::shared_ptr<Variable2>>& variables, int index)
 {
     auto zoneWidget = createEmptyZone(index);
 
@@ -164,40 +171,41 @@ VisualizationTabWidget::createZone(const std::vector<std::shared_ptr<Variable> >
     return zoneWidget;
 }
 
-VisualizationZoneWidget *VisualizationTabWidget::createEmptyZone(int index)
+VisualizationZoneWidget* VisualizationTabWidget::createEmptyZone(int index)
 {
     auto zoneWidget
-        = new VisualizationZoneWidget{defaultZoneName(*ui->dragDropContainer->layout()), this};
+        = new VisualizationZoneWidget { defaultZoneName(*ui->dragDropContainer->layout()), this };
     this->insertZone(index, zoneWidget);
 
     return zoneWidget;
 }
 
-void VisualizationTabWidget::accept(IVisualizationWidgetVisitor *visitor)
+void VisualizationTabWidget::accept(IVisualizationWidgetVisitor* visitor)
 {
-    if (visitor) {
+    if (visitor)
+    {
         visitor->visitEnter(this);
 
         // Apply visitor to zone children: widgets different from zones are not visited (no action)
-        processZones(tabLayout(), [visitor](VisualizationZoneWidget &zoneWidget) {
-            zoneWidget.accept(visitor);
-        });
+        processZones(tabLayout(),
+            [visitor](VisualizationZoneWidget& zoneWidget) { zoneWidget.accept(visitor); });
 
         visitor->visitLeave(this);
     }
-    else {
+    else
+    {
         qCCritical(LOG_VisualizationTabWidget()) << tr("Can't visit widget : the visitor is null");
     }
 }
 
-bool VisualizationTabWidget::canDrop(const Variable &variable) const
+bool VisualizationTabWidget::canDrop(Variable2& variable) const
 {
     // A tab can always accomodate a variable
     Q_UNUSED(variable);
     return true;
 }
 
-bool VisualizationTabWidget::contains(const Variable &variable) const
+bool VisualizationTabWidget::contains(Variable2& variable) const
 {
     Q_UNUSED(variable);
     return false;
@@ -208,50 +216,56 @@ QString VisualizationTabWidget::name() const
     return impl->m_Name;
 }
 
-void VisualizationTabWidget::closeEvent(QCloseEvent *event)
+void VisualizationTabWidget::closeEvent(QCloseEvent* event)
 {
     // Closes zones in the tab
-    processZones(tabLayout(), [](VisualizationZoneWidget &zoneWidget) { zoneWidget.close(); });
+    processZones(tabLayout(), [](VisualizationZoneWidget& zoneWidget) { zoneWidget.close(); });
 
     QWidget::closeEvent(event);
 }
 
-QLayout &VisualizationTabWidget::tabLayout() const noexcept
+QLayout& VisualizationTabWidget::tabLayout() const noexcept
 {
     return *ui->dragDropContainer->layout();
 }
 
-void VisualizationTabWidget::dropMimeData(int index, const QMimeData *mimeData)
+void VisualizationTabWidget::dropMimeData(int index, const QMimeData* mimeData)
 {
-    if (mimeData->hasFormat(MIME_TYPE_GRAPH)) {
+    if (mimeData->hasFormat(MIME_TYPE_GRAPH))
+    {
         impl->dropGraph(index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_ZONE)) {
+    else if (mimeData->hasFormat(MIME_TYPE_ZONE))
+    {
         impl->dropZone(index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+    else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
+    {
         auto variables = sqpApp->variableController().variables(
-            Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+            Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
         impl->dropVariables(variables, index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST)) {
+    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST))
+    {
         auto productsData = sqpApp->dataSourceController().productsDataForMimeData(
             mimeData->data(MIME_TYPE_PRODUCT_LIST));
         impl->dropProducts(productsData, index, this);
     }
-    else {
+    else
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropMimeData, unknown MIME data received.");
     }
 }
 
 void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
-    int index, VisualizationTabWidget *tabWidget)
+    int index, VisualizationTabWidget* tabWidget)
 {
-    auto &helper = sqpApp->dragDropGuiController();
+    auto& helper = sqpApp->dragDropGuiController();
 
-    auto graphWidget = qobject_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
-    if (!graphWidget) {
+    auto graphWidget = qobject_cast<VisualizationGraphWidget*>(helper.getCurrentDragWidget());
+    if (!graphWidget)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropGraph, drop aborted, the dropped graph is not "
                   "found or invalid.");
@@ -260,8 +274,9 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
     }
 
     auto parentDragDropContainer
-        = qobject_cast<VisualizationDragDropContainer *>(graphWidget->parentWidget());
-    if (!parentDragDropContainer) {
+        = qobject_cast<VisualizationDragDropContainer*>(graphWidget->parentWidget());
+    if (!parentDragDropContainer)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropGraph, drop aborted, the parent container of "
                   "the dropped graph is not found.");
@@ -271,9 +286,10 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
 
     auto nbGraph = parentDragDropContainer->countDragWidget();
 
-    const auto &variables = graphWidget->variables();
+    const auto& variables = graphWidget->variables();
 
-    if (!variables.empty()) {
+    if (!variables.empty())
+    {
         // Abort the requests for the variables (if any)
         // Commented, because it's not sure if it's needed or not
         // for (const auto& var : variables)
@@ -281,27 +297,32 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
         //    sqpApp->variableController().onAbortProgressRequested(var);
         //}
 
-        if (nbGraph == 1) {
+        if (nbGraph == 1)
+        {
             // This is the only graph in the previous zone, close the zone
             helper.delayedCloseWidget(graphWidget->parentZoneWidget());
         }
-        else {
+        else
+        {
             // Close the graph
             helper.delayedCloseWidget(graphWidget);
         }
 
         auto zoneWidget = tabWidget->createZone(variables, index);
         auto firstGraph = zoneWidget->firstGraph();
-        if (firstGraph) {
+        if (firstGraph)
+        {
             firstGraph->addSelectionZones(graphWidget->selectionZoneRanges());
         }
-        else {
+        else
+        {
             qCWarning(LOG_VisualizationZoneWidget())
                 << tr("VisualizationTabWidget::dropGraph, no graph added in the widget.");
             Q_ASSERT(false);
         }
     }
-    else {
+    else
+    {
         // The graph is empty, create an empty zone and move the graph inside
 
         auto parentZoneWidget = graphWidget->parentZoneWidget();
@@ -312,19 +333,21 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropGraph(
         zoneWidget->addGraph(graphWidget);
 
         // Close the old zone if it was the only graph inside
-        if (nbGraph == 1) {
+        if (nbGraph == 1)
+        {
             helper.delayedCloseWidget(parentZoneWidget);
         }
     }
 }
 
 void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropZone(
-    int index, VisualizationTabWidget *tabWidget)
+    int index, VisualizationTabWidget* tabWidget)
 {
-    auto &helper = sqpApp->dragDropGuiController();
+    auto& helper = sqpApp->dragDropGuiController();
 
-    auto zoneWidget = qobject_cast<VisualizationZoneWidget *>(helper.getCurrentDragWidget());
-    if (!zoneWidget) {
+    auto zoneWidget = qobject_cast<VisualizationZoneWidget*>(helper.getCurrentDragWidget());
+    if (!zoneWidget)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropZone, drop aborted, the dropped zone is not "
                   "found or invalid.");
@@ -333,8 +356,9 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropZone(
     }
 
     auto parentDragDropContainer
-        = qobject_cast<VisualizationDragDropContainer *>(zoneWidget->parentWidget());
-    if (!parentDragDropContainer) {
+        = qobject_cast<VisualizationDragDropContainer*>(zoneWidget->parentWidget());
+    if (!parentDragDropContainer)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropZone, drop aborted, the parent container of "
                   "the dropped zone is not found.");
@@ -348,12 +372,13 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropZone(
 }
 
 void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropVariables(
-    const std::vector<std::shared_ptr<Variable> > &variables, int index,
-    VisualizationTabWidget *tabWidget)
+    const std::vector<std::shared_ptr<Variable2>>& variables, int index,
+    VisualizationTabWidget* tabWidget)
 {
     // Note: the AcceptMimeDataFunction (set on the drop container) ensure there is a single and
     // compatible variable here
-    if (variables.size() > 1) {
+    if (variables.size() > 1)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropVariables, dropping multiple variables, operation "
                   "aborted.");
@@ -364,26 +389,27 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropVariables(
 }
 
 void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropProducts(
-    const QVariantList &productsMetaData, int index, VisualizationTabWidget *tabWidget)
+    const QVariantList& productsMetaData, int index, VisualizationTabWidget* tabWidget)
 {
     // Note: the AcceptMimeDataFunction (set on the drop container) ensure there is a single and
     // compatible variable here
-    if (productsMetaData.count() != 1) {
+    if (productsMetaData.count() != 1)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropProducts, dropping multiple products, operation "
                   "aborted.");
         return;
     }
 
-    auto context = new QObject{tabWidget};
+    auto context = new QObject { tabWidget };
     connect(&sqpApp->variableController(), &VariableController2::variableAdded, context,
-            [this, index, tabWidget, context](auto variable) {
-                tabWidget->createZone({variable}, index);
-                delete context; // removes the connection
-            },
-            Qt::QueuedConnection);
+        [this, index, tabWidget, context](auto variable) {
+            tabWidget->createZone({ variable }, index);
+            delete context; // removes the connection
+        },
+        Qt::QueuedConnection);
 
     auto productData = productsMetaData.first().toHash();
     QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
-                              Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
+        Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
 }

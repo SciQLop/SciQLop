@@ -13,7 +13,7 @@
 #include <Data/DateTimeRangeHelper.h>
 #include <DataSource/DataSourceController.h>
 #include <Time/TimeController.h>
-#include <Variable/Variable.h>
+#include <Variable/Variable2.h>
 #include <Variable/VariableController2.h>
 
 #include <Visualization/operations/FindVariableOperation.h>
@@ -28,7 +28,8 @@
 
 Q_LOGGING_CATEGORY(LOG_VisualizationZoneWidget, "VisualizationZoneWidget")
 
-namespace {
+namespace
+{
 
 /**
  * Applies a function to all graphs of the zone represented by its layout
@@ -36,12 +37,15 @@ namespace {
  * @param fun the function to apply to each graph
  */
 template <typename Fun>
-void processGraphs(QLayout &layout, Fun fun)
+void processGraphs(QLayout& layout, Fun fun)
 {
-    for (auto i = 0; i < layout.count(); ++i) {
-        if (auto item = layout.itemAt(i)) {
+    for (auto i = 0; i < layout.count(); ++i)
+    {
+        if (auto item = layout.itemAt(i))
+        {
             if (auto visualizationGraphWidget
-                = qobject_cast<VisualizationGraphWidget *>(item->widget())) {
+                = qobject_cast<VisualizationGraphWidget*>(item->widget()))
+            {
                 fun(*visualizationGraphWidget);
             }
         }
@@ -50,15 +54,16 @@ void processGraphs(QLayout &layout, Fun fun)
 
 /// Generates a default name for a new graph, according to the number of graphs already displayed in
 /// the zone
-QString defaultGraphName(QLayout &layout)
+QString defaultGraphName(QLayout& layout)
 {
     QSet<QString> existingNames;
     processGraphs(
-        layout, [&existingNames](auto &graphWidget) { existingNames.insert(graphWidget.name()); });
+        layout, [&existingNames](auto& graphWidget) { existingNames.insert(graphWidget.name()); });
 
     int zoneNum = 1;
     QString name;
-    do {
+    do
+    {
         name = QObject::tr("Graph ").append(QString::number(zoneNum));
         ++zoneNum;
     } while (existingNames.contains(name));
@@ -68,65 +73,70 @@ QString defaultGraphName(QLayout &layout)
 
 } // namespace
 
-struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate {
+struct VisualizationZoneWidget::VisualizationZoneWidgetPrivate
+{
 
     explicit VisualizationZoneWidgetPrivate()
-            : m_SynchronisationGroupId{QUuid::createUuid()},
-              m_Synchronizer{std::make_unique<QCustomPlotSynchronizer>()}
+            : m_SynchronisationGroupId { QUuid::createUuid() }
+            , m_Synchronizer { std::make_unique<QCustomPlotSynchronizer>() }
     {
     }
     QUuid m_SynchronisationGroupId;
     std::unique_ptr<IGraphSynchronizer> m_Synchronizer;
 
-    void dropGraph(int index, VisualizationZoneWidget *zoneWidget);
-    void dropVariables(const std::vector<std::shared_ptr<Variable> > &variables, int index,
-                       VisualizationZoneWidget *zoneWidget);
-    void dropProducts(const QVariantList &productsData, int index,
-                      VisualizationZoneWidget *zoneWidget);
+    void dropGraph(int index, VisualizationZoneWidget* zoneWidget);
+    void dropVariables(const std::vector<std::shared_ptr<Variable2>>& variables, int index,
+        VisualizationZoneWidget* zoneWidget);
+    void dropProducts(
+        const QVariantList& productsData, int index, VisualizationZoneWidget* zoneWidget);
 };
 
-VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *parent)
-        : VisualizationDragWidget{parent},
-          ui{new Ui::VisualizationZoneWidget},
-          impl{spimpl::make_unique_impl<VisualizationZoneWidgetPrivate>()}
+VisualizationZoneWidget::VisualizationZoneWidget(const QString& name, QWidget* parent)
+        : VisualizationDragWidget { parent }
+        , ui { new Ui::VisualizationZoneWidget }
+        , impl { spimpl::make_unique_impl<VisualizationZoneWidgetPrivate>() }
 {
     ui->setupUi(this);
 
     ui->zoneNameLabel->setText(name);
 
     ui->dragDropContainer->setPlaceHolderType(DragDropGuiController::PlaceHolderType::Graph);
-    ui->dragDropContainer->setMimeType(MIME_TYPE_GRAPH,
-                                       VisualizationDragDropContainer::DropBehavior::Inserted);
+    ui->dragDropContainer->setMimeType(
+        MIME_TYPE_GRAPH, VisualizationDragDropContainer::DropBehavior::Inserted);
     ui->dragDropContainer->setMimeType(
         MIME_TYPE_VARIABLE_LIST, VisualizationDragDropContainer::DropBehavior::InsertedAndMerged);
     ui->dragDropContainer->setMimeType(
         MIME_TYPE_PRODUCT_LIST, VisualizationDragDropContainer::DropBehavior::InsertedAndMerged);
-    ui->dragDropContainer->setMimeType(MIME_TYPE_TIME_RANGE,
-                                       VisualizationDragDropContainer::DropBehavior::Merged);
-    ui->dragDropContainer->setMimeType(MIME_TYPE_ZONE,
-                                       VisualizationDragDropContainer::DropBehavior::Forbidden);
-    ui->dragDropContainer->setMimeType(MIME_TYPE_SELECTION_ZONE,
-                                       VisualizationDragDropContainer::DropBehavior::Forbidden);
+    ui->dragDropContainer->setMimeType(
+        MIME_TYPE_TIME_RANGE, VisualizationDragDropContainer::DropBehavior::Merged);
+    ui->dragDropContainer->setMimeType(
+        MIME_TYPE_ZONE, VisualizationDragDropContainer::DropBehavior::Forbidden);
+    ui->dragDropContainer->setMimeType(
+        MIME_TYPE_SELECTION_ZONE, VisualizationDragDropContainer::DropBehavior::Forbidden);
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
-        return sqpApp->dragDropGuiController().checkMimeDataForVisualization(mimeData,
-                                                                             ui->dragDropContainer);
+        return sqpApp->dragDropGuiController().checkMimeDataForVisualization(
+            mimeData, ui->dragDropContainer);
     });
 
     auto acceptDragWidgetFun = [](auto dragWidget, auto mimeData) {
-        if (!mimeData) {
+        if (!mimeData)
+        {
             return false;
         }
 
-        if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+        if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
+        {
             auto variables = sqpApp->variableController().variables(
-                Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+                Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
 
-            if (variables.size() != 1) {
+            if (variables.size() != 1)
+            {
                 return false;
             }
             auto variable = variables.front();
 
-            if (auto graphWidget = dynamic_cast<const VisualizationGraphWidget *>(dragWidget)) {
+            if (auto graphWidget = dynamic_cast<const VisualizationGraphWidget*>(dragWidget))
+            {
                 return graphWidget->canDrop(*variable);
             }
         }
@@ -136,9 +146,9 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
     ui->dragDropContainer->setAcceptDragWidgetFunction(acceptDragWidgetFun);
 
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredInContainer, this,
-            &VisualizationZoneWidget::dropMimeData);
+        &VisualizationZoneWidget::dropMimeData);
     connect(ui->dragDropContainer, &VisualizationDragDropContainer::dropOccuredOnWidget, this,
-            &VisualizationZoneWidget::dropMimeDataOnGraph);
+        &VisualizationZoneWidget::dropMimeDataOnGraph);
 
     // 'Close' options : widget is deleted when closed
     setAttribute(Qt::WA_DeleteOnClose);
@@ -146,8 +156,8 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString &name, QWidget *p
     ui->closeButton->setIcon(sqpApp->style()->standardIcon(QStyle::SP_TitleBarCloseButton));
 
     // Synchronisation id
-    QMetaObject::invokeMethod(&sqpApp->variableController(), "onAddSynchronizationGroupId",
-                              Qt::QueuedConnection, Q_ARG(QUuid, impl->m_SynchronisationGroupId));
+    //    QMetaObject::invokeMethod(&sqpApp->variableController(), "onAddSynchronizationGroupId",
+    //        Qt::QueuedConnection, Q_ARG(QUuid, impl->m_SynchronisationGroupId));
 }
 
 VisualizationZoneWidget::~VisualizationZoneWidget()
@@ -155,60 +165,55 @@ VisualizationZoneWidget::~VisualizationZoneWidget()
     delete ui;
 }
 
-void VisualizationZoneWidget::setZoneRange(const DateTimeRange &range)
+void VisualizationZoneWidget::setZoneRange(const DateTimeRange& range)
 {
-    if (auto graph = firstGraph()) {
+    if (auto graph = firstGraph())
+    {
         graph->setGraphRange(range);
     }
-    else {
+    else
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("setZoneRange:Cannot set the range of an empty zone.");
     }
 }
 
-void VisualizationZoneWidget::addGraph(VisualizationGraphWidget *graphWidget)
+void VisualizationZoneWidget::addGraph(VisualizationGraphWidget* graphWidget)
 {
     // Synchronize new graph with others in the zone
-//    impl->m_Synchronizer->addGraph(*graphWidget);
+    //    impl->m_Synchronizer->addGraph(*graphWidget);
 
-//    ui->dragDropContainer->addDragWidget(graphWidget);
-    insertGraph(0,graphWidget);
-
+    //    ui->dragDropContainer->addDragWidget(graphWidget);
+    insertGraph(0, graphWidget);
 }
 
-void VisualizationZoneWidget::insertGraph(int index, VisualizationGraphWidget *graphWidget)
+void VisualizationZoneWidget::insertGraph(int index, VisualizationGraphWidget* graphWidget)
 {
     DEPRECATE(
-        auto layout = ui->dragDropContainer->layout();
-        for(int i=0;i<layout->count();i++)
-        {
-            auto graph = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(i)->widget());
-            connect(graphWidget, &VisualizationGraphWidget::setrange_sig, graph, &VisualizationGraphWidget::setGraphRange);
-            connect(graph, &VisualizationGraphWidget::setrange_sig, graphWidget, &VisualizationGraphWidget::setGraphRange);
-        }
-        if(auto graph = firstGraph())
-        {
-            graphWidget->setGraphRange(graph->graphRange(), true);
-        }
-    )
+        auto layout = ui->dragDropContainer->layout(); for (int i = 0; i < layout->count(); i++) {
+            auto graph = qobject_cast<VisualizationGraphWidget*>(layout->itemAt(i)->widget());
+            connect(graphWidget, &VisualizationGraphWidget::setrange_sig, graph,
+                &VisualizationGraphWidget::setGraphRange);
+            connect(graph, &VisualizationGraphWidget::setrange_sig, graphWidget,
+                &VisualizationGraphWidget::setGraphRange);
+        } if (auto graph = firstGraph()) { graphWidget->setGraphRange(graph->graphRange(), true); })
 
     // Synchronize new graph with others in the zone
     impl->m_Synchronizer->addGraph(*graphWidget);
 
     ui->dragDropContainer->insertDragWidget(index, graphWidget);
-
 }
 
-VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<Variable> variable)
+VisualizationGraphWidget* VisualizationZoneWidget::createGraph(std::shared_ptr<Variable2> variable)
 {
     return createGraph(variable, -1);
 }
 
-VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<Variable> variable,
-                                                               int index)
+VisualizationGraphWidget* VisualizationZoneWidget::createGraph(
+    std::shared_ptr<Variable2> variable, int index)
 {
     auto graphWidget
-        = new VisualizationGraphWidget{defaultGraphName(*ui->dragDropContainer->layout()), this};
+        = new VisualizationGraphWidget { defaultGraphName(*ui->dragDropContainer->layout()), this };
 
 
     // Set graph properties
@@ -217,76 +222,79 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
 
 
     // Lambda to synchronize zone widget
-//    auto synchronizeZoneWidget = [this, graphWidget](const DateTimeRange &graphRange,
-//                                                     const DateTimeRange &oldGraphRange) {
+    //    auto synchronizeZoneWidget = [this, graphWidget](const DateTimeRange &graphRange,
+    //                                                     const DateTimeRange &oldGraphRange) {
 
-//        auto zoomType = DateTimeRangeHelper::getTransformationType(oldGraphRange, graphRange);
-//        auto frameLayout = ui->dragDropContainer->layout();
-//        for (auto i = 0; i < frameLayout->count(); ++i) {
-//            auto graphChild
-//                = dynamic_cast<VisualizationGraphWidget *>(frameLayout->itemAt(i)->widget());
-//            if (graphChild && (graphChild != graphWidget)) {
+    //        auto zoomType = DateTimeRangeHelper::getTransformationType(oldGraphRange, graphRange);
+    //        auto frameLayout = ui->dragDropContainer->layout();
+    //        for (auto i = 0; i < frameLayout->count(); ++i) {
+    //            auto graphChild
+    //                = dynamic_cast<VisualizationGraphWidget *>(frameLayout->itemAt(i)->widget());
+    //            if (graphChild && (graphChild != graphWidget)) {
 
-//                auto graphChildRange = graphChild->graphRange();
-//                switch (zoomType) {
-//                    case TransformationType::ZoomIn: {
-//                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
-//                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
-//                        graphChildRange.m_TStart += deltaLeft;
-//                        graphChildRange.m_TEnd -= deltaRight;
-//                        break;
-//                    }
+    //                auto graphChildRange = graphChild->graphRange();
+    //                switch (zoomType) {
+    //                    case TransformationType::ZoomIn: {
+    //                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
+    //                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
+    //                        graphChildRange.m_TStart += deltaLeft;
+    //                        graphChildRange.m_TEnd -= deltaRight;
+    //                        break;
+    //                    }
 
-//                    case TransformationType::ZoomOut: {
-//                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
-//                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
-//                        graphChildRange.m_TStart -= deltaLeft;
-//                        graphChildRange.m_TEnd += deltaRight;
-//                        break;
-//                    }
-//                    case TransformationType::PanRight: {
-//                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
-//                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
-//                        graphChildRange.m_TStart += deltaLeft;
-//                        graphChildRange.m_TEnd += deltaRight;
-//                        break;
-//                    }
-//                    case TransformationType::PanLeft: {
-//                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
-//                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
-//                        graphChildRange.m_TStart -= deltaLeft;
-//                        graphChildRange.m_TEnd -= deltaRight;
-//                        break;
-//                    }
-//                    case TransformationType::Unknown: {
-//                        break;
-//                    }
-//                    default:
-//                        qCCritical(LOG_VisualizationZoneWidget())
-//                            << tr("Impossible to synchronize: zoom type not take into account");
-//                        // No action
-//                        break;
-//                }
-//                graphChild->setFlags(GraphFlag::DisableAll);
-//                graphChild->setGraphRange(graphChildRange, true);
-//                graphChild->setFlags(GraphFlag::EnableAll);
-//            }
-//        }
-//    };
+    //                    case TransformationType::ZoomOut: {
+    //                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+    //                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
+    //                        graphChildRange.m_TStart -= deltaLeft;
+    //                        graphChildRange.m_TEnd += deltaRight;
+    //                        break;
+    //                    }
+    //                    case TransformationType::PanRight: {
+    //                        auto deltaLeft = graphRange.m_TStart - oldGraphRange.m_TStart;
+    //                        auto deltaRight = graphRange.m_TEnd - oldGraphRange.m_TEnd;
+    //                        graphChildRange.m_TStart += deltaLeft;
+    //                        graphChildRange.m_TEnd += deltaRight;
+    //                        break;
+    //                    }
+    //                    case TransformationType::PanLeft: {
+    //                        auto deltaLeft = oldGraphRange.m_TStart - graphRange.m_TStart;
+    //                        auto deltaRight = oldGraphRange.m_TEnd - graphRange.m_TEnd;
+    //                        graphChildRange.m_TStart -= deltaLeft;
+    //                        graphChildRange.m_TEnd -= deltaRight;
+    //                        break;
+    //                    }
+    //                    case TransformationType::Unknown: {
+    //                        break;
+    //                    }
+    //                    default:
+    //                        qCCritical(LOG_VisualizationZoneWidget())
+    //                            << tr("Impossible to synchronize: zoom type not take into
+    //                            account");
+    //                        // No action
+    //                        break;
+    //                }
+    //                graphChild->setFlags(GraphFlag::DisableAll);
+    //                graphChild->setGraphRange(graphChildRange, true);
+    //                graphChild->setFlags(GraphFlag::EnableAll);
+    //            }
+    //        }
+    //    };
 
     // connection for synchronization
-    //connect(graphWidget, &VisualizationGraphWidget::synchronize, synchronizeZoneWidget);
+    // connect(graphWidget, &VisualizationGraphWidget::synchronize, synchronizeZoneWidget);
     connect(graphWidget, &VisualizationGraphWidget::variableAdded, this,
-            &VisualizationZoneWidget::onVariableAdded);
+        &VisualizationZoneWidget::onVariableAdded);
     connect(graphWidget, &VisualizationGraphWidget::variableAboutToBeRemoved, this,
-            &VisualizationZoneWidget::onVariableAboutToBeRemoved);
+        &VisualizationZoneWidget::onVariableAboutToBeRemoved);
 
-    auto range = DateTimeRange{};
-    if (auto firstGraph = this->firstGraph()) {
+    auto range = DateTimeRange {};
+    if (auto firstGraph = this->firstGraph())
+    {
         // Case of a new graph in a existant zone
         range = firstGraph->graphRange();
     }
-    else {
+    else
+    {
         // Case of a new graph as the first of the zone
         range = variable->range();
     }
@@ -299,28 +307,32 @@ VisualizationGraphWidget *VisualizationZoneWidget::createGraph(std::shared_ptr<V
     return graphWidget;
 }
 
-VisualizationGraphWidget *
-VisualizationZoneWidget::createGraph(const std::vector<std::shared_ptr<Variable> > variables, int index)
+VisualizationGraphWidget* VisualizationZoneWidget::createGraph(
+    const std::vector<std::shared_ptr<Variable2>> variables, int index)
 {
-    if (variables.empty()) {
+    if (variables.empty())
+    {
         return nullptr;
     }
 
     auto graphWidget = createGraph(variables.front(), index);
-    for (auto variableIt = variables.cbegin() + 1; variableIt != variables.cend(); ++variableIt) {
+    for (auto variableIt = variables.cbegin() + 1; variableIt != variables.cend(); ++variableIt)
+    {
         graphWidget->addVariable(*variableIt, graphWidget->graphRange());
     }
 
     return graphWidget;
 }
 
-VisualizationGraphWidget *VisualizationZoneWidget::firstGraph() const
+VisualizationGraphWidget* VisualizationZoneWidget::firstGraph() const
 {
-    VisualizationGraphWidget *firstGraph = nullptr;
+    VisualizationGraphWidget* firstGraph = nullptr;
     auto layout = ui->dragDropContainer->layout();
-    if (layout->count() > 0) {
+    if (layout->count() > 0)
+    {
         if (auto visualizationGraphWidget
-            = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
+            = qobject_cast<VisualizationGraphWidget*>(layout->itemAt(0)->widget()))
+        {
             firstGraph = visualizationGraphWidget;
         }
     }
@@ -331,35 +343,36 @@ VisualizationGraphWidget *VisualizationZoneWidget::firstGraph() const
 void VisualizationZoneWidget::closeAllGraphs()
 {
     processGraphs(*ui->dragDropContainer->layout(),
-                  [](VisualizationGraphWidget &graphWidget) { graphWidget.close(); });
+        [](VisualizationGraphWidget& graphWidget) { graphWidget.close(); });
 }
 
-void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor *visitor)
+void VisualizationZoneWidget::accept(IVisualizationWidgetVisitor* visitor)
 {
-    if (visitor) {
+    if (visitor)
+    {
         visitor->visitEnter(this);
 
         // Apply visitor to graph children: widgets different from graphs are not visited (no
         // action)
-        processGraphs(
-            *ui->dragDropContainer->layout(),
-            [visitor](VisualizationGraphWidget &graphWidget) { graphWidget.accept(visitor); });
+        processGraphs(*ui->dragDropContainer->layout(),
+            [visitor](VisualizationGraphWidget& graphWidget) { graphWidget.accept(visitor); });
 
         visitor->visitLeave(this);
     }
-    else {
+    else
+    {
         qCCritical(LOG_VisualizationZoneWidget()) << tr("Can't visit widget : the visitor is null");
     }
 }
 
-bool VisualizationZoneWidget::canDrop(const Variable &variable) const
+bool VisualizationZoneWidget::canDrop(Variable2& variable) const
 {
     // A tab can always accomodate a variable
     Q_UNUSED(variable);
     return true;
 }
 
-bool VisualizationZoneWidget::contains(const Variable &variable) const
+bool VisualizationZoneWidget::contains(Variable2& variable) const
 {
     Q_UNUSED(variable);
     return false;
@@ -370,14 +383,15 @@ QString VisualizationZoneWidget::name() const
     return ui->zoneNameLabel->text();
 }
 
-QMimeData *VisualizationZoneWidget::mimeData(const QPoint &position) const
+QMimeData* VisualizationZoneWidget::mimeData(const QPoint& position) const
 {
     Q_UNUSED(position);
 
     auto mimeData = new QMimeData;
-    mimeData->setData(MIME_TYPE_ZONE, QByteArray{});
+    mimeData->setData(MIME_TYPE_ZONE, QByteArray {});
 
-    if (auto firstGraph = this->firstGraph()) {
+    if (auto firstGraph = this->firstGraph())
+    {
         auto timeRangeData = TimeController::mimeDataForTimeRange(firstGraph->graphRange());
         mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
     }
@@ -390,112 +404,117 @@ bool VisualizationZoneWidget::isDragAllowed() const
     return true;
 }
 
-void VisualizationZoneWidget::notifyMouseMoveInGraph(const QPointF &graphPosition,
-                                                     const QPointF &plotPosition,
-                                                     VisualizationGraphWidget *graphWidget)
+void VisualizationZoneWidget::notifyMouseMoveInGraph(const QPointF& graphPosition,
+    const QPointF& plotPosition, VisualizationGraphWidget* graphWidget)
 {
-    processGraphs(*ui->dragDropContainer->layout(), [&graphPosition, &plotPosition, &graphWidget](
-                                                        VisualizationGraphWidget &processedGraph) {
-
-        switch (sqpApp->plotsCursorMode()) {
-            case SqpApplication::PlotsCursorMode::Vertical:
-                processedGraph.removeHorizontalCursor();
-                processedGraph.addVerticalCursorAtViewportPosition(graphPosition.x());
-                break;
-            case SqpApplication::PlotsCursorMode::Temporal:
-                processedGraph.addVerticalCursor(plotPosition.x());
-                processedGraph.removeHorizontalCursor();
-                break;
-            case SqpApplication::PlotsCursorMode::Horizontal:
-                processedGraph.removeVerticalCursor();
-                if (&processedGraph == graphWidget) {
-                    processedGraph.addHorizontalCursorAtViewportPosition(graphPosition.y());
-                }
-                else {
+    processGraphs(*ui->dragDropContainer->layout(),
+        [&graphPosition, &plotPosition, &graphWidget](VisualizationGraphWidget& processedGraph) {
+            switch (sqpApp->plotsCursorMode())
+            {
+                case SqpApplication::PlotsCursorMode::Vertical:
                     processedGraph.removeHorizontalCursor();
-                }
-                break;
-            case SqpApplication::PlotsCursorMode::Cross:
-                if (&processedGraph == graphWidget) {
                     processedGraph.addVerticalCursorAtViewportPosition(graphPosition.x());
-                    processedGraph.addHorizontalCursorAtViewportPosition(graphPosition.y());
-                }
-                else {
+                    break;
+                case SqpApplication::PlotsCursorMode::Temporal:
+                    processedGraph.addVerticalCursor(plotPosition.x());
+                    processedGraph.removeHorizontalCursor();
+                    break;
+                case SqpApplication::PlotsCursorMode::Horizontal:
+                    processedGraph.removeVerticalCursor();
+                    if (&processedGraph == graphWidget)
+                    {
+                        processedGraph.addHorizontalCursorAtViewportPosition(graphPosition.y());
+                    }
+                    else
+                    {
+                        processedGraph.removeHorizontalCursor();
+                    }
+                    break;
+                case SqpApplication::PlotsCursorMode::Cross:
+                    if (&processedGraph == graphWidget)
+                    {
+                        processedGraph.addVerticalCursorAtViewportPosition(graphPosition.x());
+                        processedGraph.addHorizontalCursorAtViewportPosition(graphPosition.y());
+                    }
+                    else
+                    {
+                        processedGraph.removeHorizontalCursor();
+                        processedGraph.removeVerticalCursor();
+                    }
+                    break;
+                case SqpApplication::PlotsCursorMode::NoCursor:
                     processedGraph.removeHorizontalCursor();
                     processedGraph.removeVerticalCursor();
-                }
-                break;
-            case SqpApplication::PlotsCursorMode::NoCursor:
-                processedGraph.removeHorizontalCursor();
-                processedGraph.removeVerticalCursor();
-                break;
-        }
-
-
-    });
+                    break;
+            }
+        });
 }
 
-void VisualizationZoneWidget::notifyMouseLeaveGraph(VisualizationGraphWidget *graphWidget)
+void VisualizationZoneWidget::notifyMouseLeaveGraph(VisualizationGraphWidget* graphWidget)
 {
-    processGraphs(*ui->dragDropContainer->layout(), [](VisualizationGraphWidget &processedGraph) {
+    processGraphs(*ui->dragDropContainer->layout(), [](VisualizationGraphWidget& processedGraph) {
         processedGraph.removeHorizontalCursor();
         processedGraph.removeVerticalCursor();
     });
 }
 
-void VisualizationZoneWidget::closeEvent(QCloseEvent *event)
+void VisualizationZoneWidget::closeEvent(QCloseEvent* event)
 {
     // Closes graphs in the zone
     processGraphs(*ui->dragDropContainer->layout(),
-                  [](VisualizationGraphWidget &graphWidget) { graphWidget.close(); });
+        [](VisualizationGraphWidget& graphWidget) { graphWidget.close(); });
 
     // Delete synchronization group from variable controller
     QMetaObject::invokeMethod(&sqpApp->variableController(), "onRemoveSynchronizationGroupId",
-                              Qt::QueuedConnection, Q_ARG(QUuid, impl->m_SynchronisationGroupId));
+        Qt::QueuedConnection, Q_ARG(QUuid, impl->m_SynchronisationGroupId));
 
     QWidget::closeEvent(event);
 }
 
-void VisualizationZoneWidget::onVariableAdded(std::shared_ptr<Variable> variable)
+void VisualizationZoneWidget::onVariableAdded(std::shared_ptr<Variable2> variable)
 {
     QMetaObject::invokeMethod(&sqpApp->variableController(), "onAddSynchronized",
-                              Qt::QueuedConnection, Q_ARG(std::shared_ptr<Variable>, variable),
-                              Q_ARG(QUuid, impl->m_SynchronisationGroupId));
+        Qt::QueuedConnection, Q_ARG(std::shared_ptr<Variable2>, variable),
+        Q_ARG(QUuid, impl->m_SynchronisationGroupId));
 }
 
-void VisualizationZoneWidget::onVariableAboutToBeRemoved(std::shared_ptr<Variable> variable)
+void VisualizationZoneWidget::onVariableAboutToBeRemoved(std::shared_ptr<Variable2> variable)
 {
     QMetaObject::invokeMethod(&sqpApp->variableController(), "desynchronize", Qt::QueuedConnection,
-                              Q_ARG(std::shared_ptr<Variable>, variable),
-                              Q_ARG(QUuid, impl->m_SynchronisationGroupId));
+        Q_ARG(std::shared_ptr<Variable2>, variable), Q_ARG(QUuid, impl->m_SynchronisationGroupId));
 }
 
-void VisualizationZoneWidget::dropMimeData(int index, const QMimeData *mimeData)
+void VisualizationZoneWidget::dropMimeData(int index, const QMimeData* mimeData)
 {
-    if (mimeData->hasFormat(MIME_TYPE_GRAPH)) {
+    if (mimeData->hasFormat(MIME_TYPE_GRAPH))
+    {
         impl->dropGraph(index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+    else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
+    {
         auto variables = sqpApp->variableController().variables(
-            Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+            Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
         impl->dropVariables(variables, index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST)) {
+    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST))
+    {
         auto products = sqpApp->dataSourceController().productsDataForMimeData(
             mimeData->data(MIME_TYPE_PRODUCT_LIST));
         impl->dropProducts(products, index, this);
     }
-    else {
+    else
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationZoneWidget::dropMimeData, unknown MIME data received.");
     }
 }
 
-void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragWidget,
-                                                  const QMimeData *mimeData)
+void VisualizationZoneWidget::dropMimeDataOnGraph(
+    VisualizationDragWidget* dragWidget, const QMimeData* mimeData)
 {
-    auto graphWidget = qobject_cast<VisualizationGraphWidget *>(dragWidget);
-    if (!graphWidget) {
+    auto graphWidget = qobject_cast<VisualizationGraphWidget*>(dragWidget);
+    if (!graphWidget)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationZoneWidget::dropMimeDataOnGraph, dropping in an unknown widget, "
                   "drop aborted");
@@ -503,62 +522,66 @@ void VisualizationZoneWidget::dropMimeDataOnGraph(VisualizationDragWidget *dragW
         return;
     }
 
-    if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST)) {
+    if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
+    {
         auto variables = sqpApp->variableController().variables(
-            Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
-        for (const auto &var : variables) {
+            Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+        for (const auto& var : variables)
+        {
             graphWidget->addVariable(var, graphWidget->graphRange());
         }
     }
-    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST)) {
+    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST))
+    {
         auto products = sqpApp->dataSourceController().productsDataForMimeData(
             mimeData->data(MIME_TYPE_PRODUCT_LIST));
 
-        auto context = new QObject{this};
+        auto context = new QObject { this };
         auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME_TYPE_TIME_RANGE));
         // BTW this is really dangerous, this assumes the next created variable will be this one...
         connect(&sqpApp->variableController(), &VariableController2::variableAdded, context,
-                [this, graphWidget, context, range](auto variable) {
-                    if(sqpApp->variableController().isReady(variable))
-                    {
-                        graphWidget->addVariable(variable, range);
-                        delete context;
-                    }
-                    else
-                    {
-                        // -> this is pure insanity! this is a workaround to make a bad design work
-                        QObject::connect(variable.get(), &Variable::updated,context,
-                            [graphWidget, context, range, variable]()
-                            {
-                                graphWidget->addVariable(variable, range);
-                                delete context;
-                            });
-                    }
-
-                },
-                Qt::QueuedConnection);
+            [this, graphWidget, context, range](auto variable) {
+                if (sqpApp->variableController().isReady(variable))
+                {
+                    graphWidget->addVariable(variable, range);
+                    delete context;
+                }
+                else
+                {
+                    // -> this is pure insanity! this is a workaround to make a bad design work
+                    QObject::connect(variable.get(), &Variable2::updated, context,
+                        [graphWidget, context, range, variable]() {
+                            graphWidget->addVariable(variable, range);
+                            delete context;
+                        });
+                }
+            },
+            Qt::QueuedConnection);
 
         auto productData = products.first().toHash();
         QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
-                                  Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
+            Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
     }
-    else if (mimeData->hasFormat(MIME_TYPE_TIME_RANGE)) {
+    else if (mimeData->hasFormat(MIME_TYPE_TIME_RANGE))
+    {
         auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME_TYPE_TIME_RANGE));
         graphWidget->setGraphRange(range, true, true);
     }
-    else {
+    else
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationZoneWidget::dropMimeDataOnGraph, unknown MIME data received.");
     }
 }
 
 void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
-    int index, VisualizationZoneWidget *zoneWidget)
+    int index, VisualizationZoneWidget* zoneWidget)
 {
-    auto &helper = sqpApp->dragDropGuiController();
+    auto& helper = sqpApp->dragDropGuiController();
 
-    auto graphWidget = qobject_cast<VisualizationGraphWidget *>(helper.getCurrentDragWidget());
-    if (!graphWidget) {
+    auto graphWidget = qobject_cast<VisualizationGraphWidget*>(helper.getCurrentDragWidget());
+    if (!graphWidget)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationZoneWidget::dropGraph, drop aborted, the dropped graph is not "
                   "found or invalid.");
@@ -567,8 +590,9 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
     }
 
     auto parentDragDropContainer
-        = qobject_cast<VisualizationDragDropContainer *>(graphWidget->parentWidget());
-    if (!parentDragDropContainer) {
+        = qobject_cast<VisualizationDragDropContainer*>(graphWidget->parentWidget());
+    if (!parentDragDropContainer)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationZoneWidget::dropGraph, drop aborted, the parent container of "
                   "the dropped graph is not found.");
@@ -576,9 +600,10 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
         return;
     }
 
-    const auto &variables = graphWidget->variables();
+    const auto& variables = graphWidget->variables();
 
-    if (parentDragDropContainer != zoneWidget->ui->dragDropContainer && !variables.empty()) {
+    if (parentDragDropContainer != zoneWidget->ui->dragDropContainer && !variables.empty())
+    {
         // The drop didn't occur in the same zone
 
         // Abort the requests for the variables (if any)
@@ -590,11 +615,13 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
 
         auto previousParentZoneWidget = graphWidget->parentZoneWidget();
         auto nbGraph = parentDragDropContainer->countDragWidget();
-        if (nbGraph == 1) {
+        if (nbGraph == 1)
+        {
             // This is the only graph in the previous zone, close the zone
             helper.delayedCloseWidget(previousParentZoneWidget);
         }
-        else {
+        else
+        {
             // Close the graph
             helper.delayedCloseWidget(graphWidget);
         }
@@ -603,18 +630,22 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
         auto newGraphWidget = zoneWidget->createGraph(variables, index);
         newGraphWidget->addSelectionZones(graphWidget->selectionZoneRanges());
     }
-    else {
+    else
+    {
         // The drop occurred in the same zone or the graph is empty
         // Simple move of the graph, no variable operation associated
         parentDragDropContainer->layout()->removeWidget(graphWidget);
 
-        if (variables.empty() && parentDragDropContainer != zoneWidget->ui->dragDropContainer) {
+        if (variables.empty() && parentDragDropContainer != zoneWidget->ui->dragDropContainer)
+        {
             // The graph is empty and dropped in a different zone.
             // Take the range of the first graph in the zone (if existing).
             auto layout = zoneWidget->ui->dragDropContainer->layout();
-            if (layout->count() > 0) {
+            if (layout->count() > 0)
+            {
                 if (auto visualizationGraphWidget
-                    = qobject_cast<VisualizationGraphWidget *>(layout->itemAt(0)->widget())) {
+                    = qobject_cast<VisualizationGraphWidget*>(layout->itemAt(0)->widget()))
+                {
                     graphWidget->setGraphRange(visualizationGraphWidget->graphRange());
                 }
             }
@@ -625,38 +656,40 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropGraph(
 }
 
 void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropVariables(
-    const std::vector<std::shared_ptr<Variable> > &variables, int index,
-    VisualizationZoneWidget *zoneWidget)
+    const std::vector<std::shared_ptr<Variable2>>& variables, int index,
+    VisualizationZoneWidget* zoneWidget)
 {
     // Note: the AcceptMimeDataFunction (set on the drop container) ensure there is a single and
     // compatible variable here
-    if (variables.size() > 1) {
+    if (variables.size() > 1)
+    {
         return;
     }
     zoneWidget->createGraph(variables, index);
 }
 
 void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropProducts(
-    const QVariantList &productsData, int index, VisualizationZoneWidget *zoneWidget)
+    const QVariantList& productsData, int index, VisualizationZoneWidget* zoneWidget)
 {
     // Note: the AcceptMimeDataFunction (set on the drop container) ensure there is a single and
     // compatible variable here
-    if (productsData.count() != 1) {
+    if (productsData.count() != 1)
+    {
         qCWarning(LOG_VisualizationZoneWidget())
             << tr("VisualizationTabWidget::dropProducts, dropping multiple products, operation "
                   "aborted.");
         return;
     }
 
-    auto context = new QObject{zoneWidget};
+    auto context = new QObject { zoneWidget };
     connect(&sqpApp->variableController(), &VariableController2::variableAdded, context,
-            [this, index, zoneWidget, context](auto variable) {
-                zoneWidget->createGraph(variable, index);
-                delete context; // removes the connection
-            },
-            Qt::QueuedConnection);
+        [this, index, zoneWidget, context](auto variable) {
+            zoneWidget->createGraph(variable, index);
+            delete context; // removes the connection
+        },
+        Qt::QueuedConnection);
 
     auto productData = productsData.first().toHash();
     QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
-                              Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
+        Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
 }

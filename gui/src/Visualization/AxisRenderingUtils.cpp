@@ -1,17 +1,18 @@
 #include "Visualization/AxisRenderingUtils.h"
 
-#include <Data/ScalarSeries.h>
-#include <Data/SpectrogramSeries.h>
-#include <Data/VectorSeries.h>
+#include <Data/ScalarTimeSerie.h>
+#include <Data/SpectrogramTimeSerie.h>
+#include <Data/VectorTimeSerie.h>
 
-#include <Variable/Variable.h>
+#include <Variable/Variable2.h>
 
 #include <Visualization/SqpColorScale.h>
 #include <Visualization/qcustomplot.h>
 
 Q_LOGGING_CATEGORY(LOG_AxisRenderingUtils, "AxisRenderingUtils")
 
-namespace {
+namespace
+{
 
 /// Format for datetimes on a axis
 const auto DATETIME_TICKER_FORMAT = QStringLiteral("yyyy/MM/dd \nhh:mm:ss");
@@ -23,17 +24,20 @@ const auto NUMBER_PRECISION = 9;
 /// non-time data
 QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis, QCPAxis::ScaleType scaleType)
 {
-    if (isTimeAxis) {
+    if (isTimeAxis)
+    {
         auto dateTicker = QSharedPointer<QCPAxisTickerDateTime>::create();
         dateTicker->setDateTimeFormat(DATETIME_TICKER_FORMAT);
         dateTicker->setDateTimeSpec(Qt::UTC);
 
         return dateTicker;
     }
-    else if (scaleType == QCPAxis::stLogarithmic) {
+    else if (scaleType == QCPAxis::stLogarithmic)
+    {
         return QSharedPointer<QCPAxisTickerLog>::create();
     }
-    else {
+    else
+    {
         // default ticker
         return QSharedPointer<QCPAxisTicker>::create();
     }
@@ -45,36 +49,38 @@ QSharedPointer<QCPAxisTicker> axisTicker(bool isTimeAxis, QCPAxis::ScaleType sca
  * @param unit the unit to set for the axis
  * @param scaleType the scale type to set for the axis
  */
-void setAxisProperties(QCPAxis &axis, const Unit &unit,
-                       QCPAxis::ScaleType scaleType = QCPAxis::stLinear)
+void setAxisProperties(QCPAxis& axis, const std::string& unit, bool isTime,
+    QCPAxis::ScaleType scaleType = QCPAxis::stLinear)
 {
     // label (unit name)
-    axis.setLabel(unit.m_Name);
+    axis.setLabel(QString::fromStdString(unit));
 
     // scale type
     axis.setScaleType(scaleType);
-    if (scaleType == QCPAxis::stLogarithmic) {
+    if (scaleType == QCPAxis::stLogarithmic)
+    {
         // Scientific notation
         axis.setNumberPrecision(0);
         axis.setNumberFormat("eb");
     }
 
     // ticker (depending on the type of unit)
-    axis.setTicker(axisTicker(unit.m_TimeUnit, scaleType));
+    axis.setTicker(axisTicker(isTime, scaleType));
 }
 
 /**
  * Delegate used to set axes properties
  */
 template <typename T, typename Enabled = void>
-struct AxisSetter {
-    static void setProperties(QCustomPlot &, SqpColorScale &)
+struct AxisSetter
+{
+    static void setProperties(QCustomPlot&, SqpColorScale&)
     {
         // Default implementation does nothing
         qCCritical(LOG_AxisRenderingUtils()) << "Can't set axis properties: unmanaged type of data";
     }
 
-    static void setUnits(T &, QCustomPlot &, SqpColorScale &)
+    static void setUnits(T&, QCustomPlot&, SqpColorScale&)
     {
         // Default implementation does nothing
         qCCritical(LOG_AxisRenderingUtils()) << "Can't set axis units: unmanaged type of data";
@@ -87,24 +93,20 @@ struct AxisSetter {
  * @sa VectorSeries
  */
 template <typename T>
-struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>::value
-                                               or std::is_base_of<VectorSeries, T>::value> > {
-    static void setProperties(QCustomPlot &, SqpColorScale &)
+struct AxisSetter<T,
+    typename std::enable_if_t<std::is_base_of<ScalarTimeSerie, T>::value
+        or std::is_base_of<VectorTimeSerie, T>::value>>
+{
+    static void setProperties(QCustomPlot&, SqpColorScale&)
     {
         // Nothing to do
     }
 
-    static void setUnits(T &dataSeries, QCustomPlot &plot, SqpColorScale &)
+    static void setUnits(T& dataSeries, QCustomPlot& plot, SqpColorScale&)
     {
-        dataSeries.lockRead();
-        auto xAxisUnit = dataSeries.xAxisUnit();
-        auto valuesUnit = dataSeries.valuesUnit();
-        dataSeries.unlock();
-
-//        setAxisProperties(*plot.xAxis, xAxisUnit);
-        // This is cheating but it's ok ;)
-        setAxisProperties(*plot.xAxis, Unit{"s", true});
-        setAxisProperties(*plot.yAxis, valuesUnit);
+        auto serie = dynamic_cast<TimeSeries::ITimeSerie*>(&dataSeries);
+        setAxisProperties(*plot.xAxis, "s", true);
+        setAxisProperties(*plot.yAxis, serie->unit(1), false);
     }
 };
 
@@ -113,18 +115,20 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<ScalarSeries, T>:
  * @sa SpectrogramSeries
  */
 template <typename T>
-struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries, T>::value> > {
-    static void setProperties(QCustomPlot &plot, SqpColorScale &colorScale)
+struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramTimeSerie, T>::value>>
+{
+    static void setProperties(QCustomPlot& plot, SqpColorScale& colorScale)
     {
         // Displays color scale in plot
         plot.plotLayout()->insertRow(0);
         plot.plotLayout()->addElement(0, 0, colorScale.m_Scale);
         colorScale.m_Scale->setType(QCPAxis::atTop);
-        colorScale.m_Scale->setMinimumMargins(QMargins{0, 0, 0, 0});
+        colorScale.m_Scale->setMinimumMargins(QMargins { 0, 0, 0, 0 });
 
         // Aligns color scale with axes
         auto marginGroups = plot.axisRect()->marginGroups();
-        for (auto it = marginGroups.begin(), end = marginGroups.end(); it != end; ++it) {
+        for (auto it = marginGroups.begin(), end = marginGroups.end(); it != end; ++it)
+        {
             colorScale.m_Scale->setMarginGroup(it.key(), it.value());
         }
 
@@ -132,19 +136,13 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
         colorScale.m_AutomaticThreshold = true;
     }
 
-    static void setUnits(T &dataSeries, QCustomPlot &plot, SqpColorScale &colorScale)
+    static void setUnits(T& dataSeries, QCustomPlot& plot, SqpColorScale& colorScale)
     {
-        dataSeries.lockRead();
-        auto xAxisUnit = dataSeries.xAxisUnit();
-        auto yAxisUnit = dataSeries.yAxisUnit();
-        auto valuesUnit = dataSeries.valuesUnit();
-        dataSeries.unlock();
-
-        //setAxisProperties(*plot.xAxis, xAxisUnit);
-        // This is cheating but it's ok ;)
-        setAxisProperties(*plot.xAxis, Unit{"s", true});
-        setAxisProperties(*plot.yAxis, yAxisUnit, QCPAxis::stLogarithmic);
-        setAxisProperties(*colorScale.m_Scale->axis(), valuesUnit, QCPAxis::stLogarithmic);
+        auto serie = dynamic_cast<TimeSeries::ITimeSerie*>(&dataSeries);
+        setAxisProperties(*plot.xAxis, "s", true);
+        setAxisProperties(*plot.yAxis, serie->unit(1), false, QCPAxis::stLogarithmic);
+        setAxisProperties(
+            *colorScale.m_Scale->axis(), serie->unit(2), false, QCPAxis::stLogarithmic);
     }
 };
 
@@ -153,57 +151,63 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramSeries
  * @tparam T the data series' type
  */
 template <typename T>
-struct AxisHelper : public IAxisHelper {
-    explicit AxisHelper(std::shared_ptr<T> dataSeries) : m_DataSeries{dataSeries} {}
+struct AxisHelper : public IAxisHelper
+{
+    explicit AxisHelper(T* dataSeries) : m_DataSeries { dataSeries } {}
 
-    void setProperties(QCustomPlot &plot, SqpColorScale &colorScale) override
+    void setProperties(QCustomPlot& plot, SqpColorScale& colorScale) override
     {
         AxisSetter<T>::setProperties(plot, colorScale);
     }
 
-    void setUnits(QCustomPlot &plot, SqpColorScale &colorScale) override
+    void setUnits(QCustomPlot& plot, SqpColorScale& colorScale) override
     {
-        if (m_DataSeries) {
+        if (m_DataSeries)
+        {
             AxisSetter<T>::setUnits(*m_DataSeries, plot, colorScale);
         }
-        else {
+        else
+        {
             qCCritical(LOG_AxisRenderingUtils()) << "Can't set units: inconsistency between the "
                                                     "type of data series and the type supposed";
         }
     }
 
-    std::shared_ptr<T> m_DataSeries;
+    T* m_DataSeries;
 };
 
 } // namespace
 
-QString formatValue(double value, const QCPAxis &axis)
+QString formatValue(double value, const QCPAxis& axis)
 {
     // If the axis is a time axis, formats the value as a date
-    if (auto axisTicker = qSharedPointerDynamicCast<QCPAxisTickerDateTime>(axis.ticker())) {
+    if (auto axisTicker = qSharedPointerDynamicCast<QCPAxisTickerDateTime>(axis.ticker()))
+    {
         return DateUtils::dateTime(value, axisTicker->dateTimeSpec()).toString(DATETIME_FORMAT);
     }
-    else {
+    else
+    {
         return QString::number(value, NUMBER_FORMAT, NUMBER_PRECISION);
     }
 }
 
-std::unique_ptr<IAxisHelper> IAxisHelperFactory::create(const Variable &variable) noexcept
+std::unique_ptr<IAxisHelper> IAxisHelperFactory::create(Variable2& variable) noexcept
 {
-    switch (variable.type()) {
+    switch (variable.type())
+    {
         case DataSeriesType::SCALAR:
-            return std::make_unique<AxisHelper<ScalarSeries> >(
-                std::dynamic_pointer_cast<ScalarSeries>(variable.dataSeries()));
+            return std::make_unique<AxisHelper<ScalarTimeSerie>>(
+                dynamic_cast<ScalarTimeSerie*>(variable.data()->base()));
         case DataSeriesType::SPECTROGRAM:
-            return std::make_unique<AxisHelper<SpectrogramSeries> >(
-                std::dynamic_pointer_cast<SpectrogramSeries>(variable.dataSeries()));
+            return std::make_unique<AxisHelper<SpectrogramTimeSerie>>(
+                dynamic_cast<SpectrogramTimeSerie*>(variable.data()->base()));
         case DataSeriesType::VECTOR:
-            return std::make_unique<AxisHelper<VectorSeries> >(
-                std::dynamic_pointer_cast<VectorSeries>(variable.dataSeries()));
+            return std::make_unique<AxisHelper<VectorTimeSerie>>(
+                dynamic_cast<VectorTimeSerie*>(variable.data()->base()));
         default:
             // Creates default helper
             break;
     }
 
-    return std::make_unique<AxisHelper<IDataSeries> >(nullptr);
+    return std::make_unique<AxisHelper<TimeSeries::ITimeSerie>>(nullptr);
 }
