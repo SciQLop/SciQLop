@@ -153,7 +153,7 @@ struct AxisSetter<T, typename std::enable_if_t<std::is_base_of<SpectrogramTimeSe
 template <typename T>
 struct AxisHelper : public IAxisHelper
 {
-    explicit AxisHelper(T* dataSeries) : m_DataSeries { dataSeries } {}
+    explicit AxisHelper(std::shared_ptr<T> dataSeries) : m_DataSeries { dataSeries } {}
 
     void setProperties(QCustomPlot& plot, SqpColorScale& colorScale) override
     {
@@ -173,7 +173,7 @@ struct AxisHelper : public IAxisHelper
         }
     }
 
-    T* m_DataSeries;
+    std::shared_ptr<T> m_DataSeries;
 };
 
 } // namespace
@@ -197,13 +197,13 @@ std::unique_ptr<IAxisHelper> IAxisHelperFactory::create(Variable2& variable) noe
     {
         case DataSeriesType::SCALAR:
             return std::make_unique<AxisHelper<ScalarTimeSerie>>(
-                dynamic_cast<ScalarTimeSerie*>(variable.data()->base()));
+                std::dynamic_pointer_cast<ScalarTimeSerie>(variable.data()));
         case DataSeriesType::SPECTROGRAM:
             return std::make_unique<AxisHelper<SpectrogramTimeSerie>>(
-                dynamic_cast<SpectrogramTimeSerie*>(variable.data()->base()));
+                std::dynamic_pointer_cast<SpectrogramTimeSerie>(variable.data()));
         case DataSeriesType::VECTOR:
             return std::make_unique<AxisHelper<VectorTimeSerie>>(
-                dynamic_cast<VectorTimeSerie*>(variable.data()->base()));
+                std::dynamic_pointer_cast<VectorTimeSerie>(variable.data()));
         default:
             // Creates default helper
             break;

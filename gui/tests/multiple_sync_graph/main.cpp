@@ -64,10 +64,10 @@ private slots:
         auto r = variables.back()->range();
 
         /*
-         * Scrolling to the left implies going back in time
-         * Scroll only implies keeping the same delta T -> shit only transformation
+         * Scrolling to the left implies going forward in time
+         * Scroll only implies keeping the same delta T -> shift only transformation
          */
-        QVERIFY(r.m_TEnd < range.m_TEnd);
+        QVERIFY(r.m_TEnd > range.m_TEnd);
         QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(), range.delta(), 1));
     }
 
@@ -85,10 +85,10 @@ private slots:
         auto r = variables.back()->range();
 
         /*
-         * Scrolling to the right implies going forward in time
-         * Scroll only implies keeping the same delta T -> shit only transformation
+         * Scrolling to the right implies going back in time
+         * Scroll only implies keeping the same delta T -> shift only transformation
          */
-        QVERIFY(r.m_TEnd > range.m_TEnd);
+        QVERIFY(r.m_TEnd < range.m_TEnd);
         QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(), range.delta(), 1));
     }
 };

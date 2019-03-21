@@ -340,7 +340,7 @@ struct IPlottablesHelper
 template <typename T>
 struct PlottablesHelper : public IPlottablesHelper
 {
-    explicit PlottablesHelper(T* dataSeries) : m_DataSeries { dataSeries } {}
+    explicit PlottablesHelper(std::shared_ptr<T> dataSeries) : m_DataSeries { dataSeries } {}
 
     PlottablesMap create(QCustomPlot& plot) const override
     {
@@ -376,7 +376,7 @@ struct PlottablesHelper : public IPlottablesHelper
         }
     }
 
-    T* m_DataSeries;
+    std::shared_ptr<T> m_DataSeries;
 };
 
 /// Creates IPlottablesHelper according to the type of data series a variable holds
@@ -386,13 +386,13 @@ std::unique_ptr<IPlottablesHelper> createHelper(std::shared_ptr<Variable2> varia
     {
         case DataSeriesType::SCALAR:
             return std::make_unique<PlottablesHelper<ScalarTimeSerie>>(
-                dynamic_cast<ScalarTimeSerie*>(variable->data()->base()));
+                std::dynamic_pointer_cast<ScalarTimeSerie>(variable->data()));
         case DataSeriesType::SPECTROGRAM:
             return std::make_unique<PlottablesHelper<SpectrogramTimeSerie>>(
-                dynamic_cast<SpectrogramTimeSerie*>(variable->data()->base()));
+                std::dynamic_pointer_cast<SpectrogramTimeSerie>(variable->data()));
         case DataSeriesType::VECTOR:
             return std::make_unique<PlottablesHelper<VectorTimeSerie>>(
-                dynamic_cast<VectorTimeSerie*>(variable->data()->base()));
+                std::dynamic_pointer_cast<VectorTimeSerie>(variable->data()));
         default:
             // Creates default helper
             break;
