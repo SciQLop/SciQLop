@@ -7,18 +7,18 @@
 #include <Data/DataProviderParameters.h>
 #include <Network/NetworkController.h>
 #include <SqpApplication.h>
-#include <Variable/Variable.h>
 
+#include <Network/Downloader.h>
+#include <QJsonDocument>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QTemporaryFile>
 #include <QThread>
-#include <QJsonDocument>
-#include <Network/Downloader.h>
 
 Q_LOGGING_CATEGORY(LOG_AmdaProvider, "AmdaProvider")
 
-namespace {
+namespace
+{
 
 /// URL format for a request on AMDA server. The parameters are as follows:
 /// - %1: server URL
@@ -54,10 +54,7 @@ QString dateFormat(double sqpRange) noexcept
 
 } // namespace
 
-AmdaProvider::AmdaProvider()
-{
-
-}
+AmdaProvider::AmdaProvider() {}
 
 std::shared_ptr<IDataProvider> AmdaProvider::clone() const
 {
@@ -65,7 +62,7 @@ std::shared_ptr<IDataProvider> AmdaProvider::clone() const
     return std::make_shared<AmdaProvider>();
 }
 
-IDataSeries* AmdaProvider::getData(const DataProviderParameters &parameters)
+TimeSeries::ITimeSerie* AmdaProvider::getData(const DataProviderParameters& parameters)
 {
     auto range = parameters.m_Range;
     auto metaData = parameters.m_Data;
@@ -74,15 +71,15 @@ IDataSeries* AmdaProvider::getData(const DataProviderParameters &parameters)
         = DataSeriesTypeUtils::fromString(metaData.value(AMDA_DATA_TYPE_KEY).toString());
     auto startDate = dateFormat(range.m_TStart);
     auto endDate = dateFormat(range.m_TEnd);
-    QVariantHash urlProperties{{AMDA_SERVER_KEY, metaData.value(AMDA_SERVER_KEY)}};
-    auto token_url = QString{AMDA_TOKEN_URL_FORMAT}.arg(AmdaServer::instance().url(urlProperties));
+    QVariantHash urlProperties { { AMDA_SERVER_KEY, metaData.value(AMDA_SERVER_KEY) } };
+    auto token_url
+        = QString { AMDA_TOKEN_URL_FORMAT }.arg(AmdaServer::instance().url(urlProperties));
     auto response = Downloader::get(token_url);
-    auto url = QString{AMDA_URL_FORMAT_WITH_TOKEN}.arg(AmdaServer::instance().url(urlProperties),
-                                                 startDate, endDate, productId, QString(response.data()));
+    auto url = QString { AMDA_URL_FORMAT_WITH_TOKEN }.arg(AmdaServer::instance().url(urlProperties),
+        startDate, endDate, productId, QString(response.data()));
     response = Downloader::get(url);
     auto test = QJsonDocument::fromJson(response.data());
     url = test["dataFileURLs"].toString();
     response = Downloader::get(url);
-    return AmdaResultParser::readTxt(QTextStream{response.data()},productValueType);
+    return nullptr; // AmdaResultParser::readTxt(QTextStream { response.data() }, productValueType);
 }
-

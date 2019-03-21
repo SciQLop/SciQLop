@@ -17,14 +17,14 @@ class QNetworkRequest;
 /**
  * @brief The AmdaProvider class is an example of how a data provider can generate data
  */
-class SCIQLOP_AMDA_EXPORT AmdaProvider : public IDataProvider {
+class SCIQLOP_AMDA_EXPORT AmdaProvider : public IDataProvider
+{
     Q_OBJECT
 public:
     explicit AmdaProvider();
     std::shared_ptr<IDataProvider> clone() const override;
 
-    virtual IDataSeries *getData(const DataProviderParameters &parameters)override;
-
+    virtual TimeSeries::ITimeSerie* getData(const DataProviderParameters& parameters) override;
 };
 
 #endif // SCIQLOP_AMDAPROVIDER_H

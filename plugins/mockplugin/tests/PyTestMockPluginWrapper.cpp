@@ -19,45 +19,41 @@
 /*--                  Author : Alexis Jeandet
 --                     Mail : alexis.jeandet@member.fsf.org
 ----------------------------------------------------------------------------*/
-#include <string>
-#include <sstream>
 #include <memory>
+#include <sstream>
+#include <string>
 
-#include <pybind11/pybind11.h>
-#include <pybind11/operators.h>
+#include <pybind11/chrono.h>
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
-#include <pybind11/chrono.h>
+#include <pybind11/operators.h>
+#include <pybind11/pybind11.h>
 
-#include <SqpApplication.h>
-#include <Variable/VariableController2.h>
-#include <Time/TimeController.h>
-#include <Data/DateTimeRange.h>
-#include <Data/DataSeriesType.h>
 #include <Common/DateUtils.h>
-#include <Variable/Variable.h>
-#include <Data/ScalarSeries.h>
-#include <Data/VectorSeries.h>
+#include <Data/DataSeriesType.h>
+#include <Data/DateTimeRange.h>
+#include <SqpApplication.h>
+#include <Time/TimeController.h>
+#include <Variable/VariableController2.h>
 
-#include <MockPlugin.h>
 #include <CosinusProvider.h>
+#include <MockPlugin.h>
 
 #include <QFile>
 
-#include <pywrappers_common.h>
 #include <CoreWrappers.h>
-
+#include <pywrappers_common.h>
 
 
 using namespace std::chrono;
 namespace py = pybind11;
 
 
-
-PYBIND11_MODULE(pytestmockplugin, m){
+PYBIND11_MODULE(pytestmockplugin, m)
+{
 
     int argc = 0;
-    char ** argv=nullptr;
+    char** argv = nullptr;
     SqpApplication::setOrganizationName("LPP");
     SqpApplication::setOrganizationDomain("lpp.fr");
     SqpApplication::setApplicationName("SciQLop");
@@ -68,18 +64,23 @@ PYBIND11_MODULE(pytestmockplugin, m){
 
     m.doc() = "";
 
-    py::class_<VariableController2>(m, "VariableController2").def_static("createVariable",[](const QString &name,
-                        std::shared_ptr<IDataProvider> provider, const DateTimeRange& range){
-        return sqpApp->variableController().createVariable(name, {{"cosinusType", "spectrogram"}, {"cosinusFrequency", "0.1"}}, provider, range);
+    py::class_<VariableController2>(m, "VariableController2")
+        .def_static("createVariable",
+            [](const QString& name, std::shared_ptr<IDataProvider> provider,
+                const DateTimeRange& range) {
+                return sqpApp->variableController().createVariable(name,
+                    { { "cosinusType", "spectrogram" }, { "cosinusFrequency", "0.1" } }, provider,
+                    range);
+            });
+
+    py::class_<TimeController>(m, "TimeController").def_static("setTime", [](DateTimeRange range) {
+        sqpApp->timeController().setDateTimeRange(range);
     });
 
-    py::class_<TimeController>(m,"TimeController")
-            .def_static("setTime", [](DateTimeRange range){sqpApp->timeController().setDateTimeRange(range);});
-
     auto mock_provider = std::make_shared<CosinusProvider>();
-    m.def("mock_provider",[mock_provider](){return mock_provider;}, py::return_value_policy::copy);
+    m.def("mock_provider", [mock_provider]() { return mock_provider; },
+        py::return_value_policy::copy);
 
-    py::class_<CosinusProvider, std::shared_ptr<CosinusProvider>, IDataProvider>(m, "CosinusProvider");
-
+    py::class_<CosinusProvider, std::shared_ptr<CosinusProvider>, IDataProvider>(
+        m, "CosinusProvider");
 }
-

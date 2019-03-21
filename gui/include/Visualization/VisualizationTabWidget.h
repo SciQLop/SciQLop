@@ -11,7 +11,7 @@
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_VisualizationTabWidget)
 
-class Variable;
+class Variable2;
 class VisualizationZoneWidget;
 
 namespace Ui

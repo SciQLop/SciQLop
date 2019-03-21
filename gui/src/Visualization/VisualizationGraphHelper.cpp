@@ -120,8 +120,11 @@ struct PlottablesUpdater<T, typename std::enable_if_t<std::is_base_of<ScalarTime
         auto minValue = 0., maxValue = 0.;
         if (auto serie = dynamic_cast<ScalarTimeSerie*>(&dataSeries))
         {
-            maxValue = (*std::max_element(std::begin(*serie), std::end(*serie))).v();
-            minValue = (*std::min_element(std::begin(*serie), std::end(*serie))).v();
+            if (serie->size())
+            {
+                maxValue = (*std::max_element(std::begin(*serie), std::end(*serie))).v();
+                minValue = (*std::min_element(std::begin(*serie), std::end(*serie))).v();
+            }
         }
         plot.yAxis->setRange(QCPRange { minValue, maxValue });
     }

@@ -304,12 +304,12 @@ MainWindow::MainWindow(QWidget* parent)
 
     // Visualization
     connect(&sqpApp->visualizationController(),
-        SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)), m_Ui->view,
-        SLOT(onVariableAboutToBeDeleted(std::shared_ptr<Variable>)));
+        SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable2>)), m_Ui->view,
+        SLOT(onVariableAboutToBeDeleted(std::shared_ptr<Variable2>)));
 
     connect(&sqpApp->visualizationController(),
-        SIGNAL(rangeChanged(std::shared_ptr<Variable>, const DateTimeRange&)), m_Ui->view,
-        SLOT(onRangeChanged(std::shared_ptr<Variable>, const DateTimeRange&)));
+        SIGNAL(rangeChanged(std::shared_ptr<Variable2>, const DateTimeRange&)), m_Ui->view,
+        SLOT(onRangeChanged(std::shared_ptr<Variable2>, const DateTimeRange&)));
 
     // Widgets / widgets connections
 

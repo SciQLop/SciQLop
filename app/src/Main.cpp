@@ -46,8 +46,9 @@ int main(int argc, char* argv[])
 #ifdef QT_STATICPLUGIN
 #ifndef SQP_NO_PLUGINS
     Q_IMPORT_PLUGIN(MockPlugin)
-    Q_IMPORT_PLUGIN(AmdaPlugin)
-    Q_INIT_RESOURCE(amdaresources);
+    Q_IMPORT_PLUGIN(PythonProviders)
+    // Q_IMPORT_PLUGIN(AmdaPlugin)
+    // Q_INIT_RESOURCE(amdaresources);
 #endif
 #endif
     Q_INIT_RESOURCE(sqpguiresources);

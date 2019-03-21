@@ -4,7 +4,6 @@
 
 #include <QFile>
 
-#include <Data/IDataSeries.h>
 #include <cmath>
 
 Q_LOGGING_CATEGORY(LOG_AmdaResultParser, "AmdaResultParser")

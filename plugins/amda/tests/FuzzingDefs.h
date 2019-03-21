@@ -67,9 +67,10 @@ extern const QString VALIDATION_FREQUENCY_BOUNDS_PROPERTY;
 // /////// //
 
 class Variable;
-struct VariableState {
-    std::shared_ptr<Variable> m_Variable{nullptr};
-    DateTimeRange m_Range{INVALID_RANGE};
+struct VariableState
+{
+    std::shared_ptr<Variable> m_Variable { nullptr };
+    DateTimeRange m_Range { INVALID_RANGE };
 };
 
 using VariableId = int;
@@ -80,9 +81,10 @@ using VariablesPool = std::map<VariableId, VariableState>;
  * with each other, and the current range of the group (i.e. range of the last synchronized variable
  * that has been moved)
  */
-struct SyncGroup {
-    std::set<VariableId> m_Variables{};
-    DateTimeRange m_Range{INVALID_RANGE};
+struct SyncGroup
+{
+    std::set<VariableId> m_Variables {};
+    DateTimeRange m_Range { INVALID_RANGE };
 };
 
 using SyncGroupId = QUuid;
@@ -92,12 +94,13 @@ using SyncGroupsPool = std::map<SyncGroupId, SyncGroup>;
  * Defines a current state during a fuzzing state. It contains all the variables manipulated during
  * the test, as well as the synchronization status of these variables.
  */
-struct FuzzingState {
-    const SyncGroup &syncGroup(SyncGroupId id) const;
-    SyncGroup &syncGroup(SyncGroupId id);
+struct FuzzingState
+{
+    const SyncGroup& syncGroup(SyncGroupId id) const;
+    SyncGroup& syncGroup(SyncGroupId id);
 
-    const VariableState &variableState(VariableId id) const;
-    VariableState &variableState(VariableId id);
+    const VariableState& variableState(VariableId id) const;
+    VariableState& variableState(VariableId id);
 
     /// @return the identifier of the synchronization group in which the variable passed in
     /// parameter is located. If the variable is not in any group, returns an invalid identifier
@@ -119,7 +122,7 @@ struct FuzzingState {
     /// Updates the range of a variable and all variables to which it is synchronized
     /// @param the variable for which to affect the range
     /// @param the range to affect
-    void updateRanges(VariableId variableId, const DateTimeRange &newRange);
+    void updateRanges(VariableId variableId, const DateTimeRange& newRange);
 
     VariablesPool m_VariablesPool;
     SyncGroupsPool m_SyncGroupsPool;
