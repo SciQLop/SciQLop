@@ -2,10 +2,6 @@
 
 #include <Common/ColorUtils.h>
 
-#include <Data/ScalarSeries.h>
-#include <Data/SpectrogramSeries.h>
-#include <Data/VectorSeries.h>
-
 #include <Variable/Variable2.h>
 
 #include <Visualization/qcustomplot.h>
@@ -133,5 +129,5 @@ std::unique_ptr<IPlottablesHelper> IPlottablesHelperFactory::create(Variable2& v
             break;
     }
 
-    return std::make_unique<PlottablesHelper<IDataSeries>>();
+    return std::make_unique<PlottablesHelper<TimeSeries::ITimeSerie>>();
 }

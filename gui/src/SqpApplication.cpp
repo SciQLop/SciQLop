@@ -8,7 +8,6 @@
 #include <Network/NetworkController.h>
 #include <QThread>
 #include <Time/TimeController.h>
-#include <Variable/Variable.h>
 #include <Variable/VariableController2.h>
 #include <Variable/VariableModel2.h>
 #include <Visualization/VisualizationController.h>

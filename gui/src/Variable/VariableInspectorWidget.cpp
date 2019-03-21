@@ -1,6 +1,5 @@
 #include <DataSource/DataSourceController.h>
 #include <Variable/RenameVariableDialog.h>
-#include <Variable/Variable.h>
 #include <Variable/VariableController2.h>
 #include <Variable/VariableInspectorWidget.h>
 #include <Variable/VariableMenuHeaderWidget.h>

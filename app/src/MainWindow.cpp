@@ -32,7 +32,6 @@
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
 #include <TimeWidget/TimeWidget.h>
-#include <Variable/Variable.h>
 #include <Visualization/VisualizationController.h>
 
 #include <QAction>

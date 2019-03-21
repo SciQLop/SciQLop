@@ -10,7 +10,6 @@
 #include <QtTest>
 
 #include <SqpApplication.h>
-#include <Variable/Variable.h>
 #include <Variable/VariableController2.h>
 #include <qcustomplot.h>
 

@@ -15,10 +15,7 @@
 #include <Actions/FilteringAction.h>
 #include <Common/MimeTypesDef.h>
 #include <Common/containers.h>
-#include <Data/ArrayData.h>
 #include <Data/DateTimeRangeHelper.h>
-#include <Data/IDataSeries.h>
-#include <Data/SpectrogramSeries.h>
 #include <DragAndDrop/DragDropGuiController.h>
 #include <Settings/SqpSettingsDefs.h>
 #include <SqpApplication.h>

@@ -1,7 +1,6 @@
 #include "Visualization/VisualizationGraphHelper.h"
 #include "Visualization/qcustomplot.h"
 
-#include <Data/DataSeriesUtils.h>
 #include <Data/ScalarTimeSerie.h>
 #include <Data/SpectrogramTimeSerie.h>
 #include <Data/VectorTimeSerie.h>

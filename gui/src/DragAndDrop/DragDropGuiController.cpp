@@ -8,7 +8,6 @@
 #include "Visualization/operations/FindVariableOperation.h"
 
 #include "DataSource/DataSourceController.h"
-#include "Variable/Variable.h"
 #include "Variable/VariableController2.h"
 
 #include "Common/MimeTypesDef.h"
@@ -256,7 +255,7 @@ bool DragDropGuiController::checkMimeDataForVisualization(
     if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
     {
         auto variables = sqpApp->variableController().variables(
-            Variable::variablesIDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+            Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
 
         if (variables.size() == 1)
         {

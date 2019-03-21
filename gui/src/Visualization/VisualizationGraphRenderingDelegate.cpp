@@ -8,9 +8,6 @@
 
 #include <Common/DateUtils.h>
 
-#include <Data/IDataSeries.h>
-#include <Variable/Variable.h>
-
 #include <SqpApplication.h>
 
 namespace
