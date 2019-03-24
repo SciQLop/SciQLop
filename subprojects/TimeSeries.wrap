@@ -1,0 +1,5 @@
+[wrap-git]
+directory = TimeSeries
+url = https://github.com/jeandet/TimeSeries.git
+revision = master
+
