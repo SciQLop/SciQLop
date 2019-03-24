@@ -20,6 +20,7 @@ class PythonProviders : public QObject, public IPlugin
 public:
     /// @sa IPlugin::initialize()
     void initialize() override;
+    ~PythonProviders();
 };
 
 #endif // PYTHON_PROVIDERS_H

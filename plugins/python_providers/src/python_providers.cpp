@@ -4,6 +4,14 @@ namespace py = pybind11;
 
 void PythonProviders::initialize()
 {
-    py::scoped_interpreter guard {};
+    py::initialize_interpreter(false);
     py::print("Hello, World!");
+    py::print("Hello, World!");
+    py::print("Hello, World!");
+    py::print("Hello, World!");
+}
+
+PythonProviders::~PythonProviders()
+{
+    py::finalize_interpreter();
 }
