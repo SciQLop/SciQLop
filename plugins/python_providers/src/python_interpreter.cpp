@@ -18,8 +18,8 @@ PythonInterpreter::PythonInterpreter()
     py::initialize_interpreter(false);
 }
 
-void PythonInterpreter::add_register_callback(std::function<void(const std::vector<std::string>&,
-        std::function<std::shared_ptr<TimeSeries::ITimeSerie>(std::string&, double, double)>)>
+void PythonInterpreter::add_register_callback(std::function<void(const std::vector<std::pair<std::string,std::vector<std::pair<std::string,std::string>>>>&,
+        provider_funct_t)>
         callback)
 {
     py::module PythonProviders = py::module::import("PythonProviders");
@@ -43,5 +43,9 @@ void PythonInterpreter::eval(const std::string& file)
     {
         std::cout << pythonErr.what();
     }
+}
+
+void PythonInterpreter::release()
+{
     _rel = new py::gil_scoped_release();
 }

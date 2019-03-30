@@ -24,8 +24,8 @@ public:
     ~PythonProviders();
 
 private:
-    void register_product(const std::vector<std::string>& path_list,
-        std::function<std::shared_ptr<TimeSeries::ITimeSerie>(std::string& name, double, double)>
+    void register_product(const std::vector<std::pair<std::string,std::vector<std::pair<std::string,std::string>>>>& product_list,
+        PythonInterpreter::provider_funct_t
             f);
     PythonInterpreter _interpreter;
 };

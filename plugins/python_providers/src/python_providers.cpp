@@ -4,6 +4,7 @@
 #include <Data/IDataProvider.h>
 #include <Data/ScalarTimeSerie.h>
 #include <Data/SpectrogramTimeSerie.h>
+#include <Data/TimeSeriesUtils.h>
 #include <Data/VectorTimeSerie.h>
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceItem.h>
@@ -27,11 +28,7 @@ struct noop_deleter
 class PythonProvider : public IDataProvider
 {
 public:
-    PythonProvider(
-        std::function<std::shared_ptr<TimeSeries::ITimeSerie>(std::string&, double, double)> f)
-            : _pythonFunction { f }
-    {
-    }
+    PythonProvider(PythonInterpreter::provider_funct_t f) : _pythonFunction { f } {}
 
     PythonProvider(const PythonProvider& other) : _pythonFunction { other._pythonFunction } {}
 
@@ -44,33 +41,20 @@ public:
         auto product = parameters.m_Data.value("PRODUCT", "").toString().toStdString();
         auto range = parameters.m_Range;
         auto result = _pythonFunction(product, range.m_TStart, range.m_TEnd);
-        if (auto ts = std::dynamic_pointer_cast<VectorTimeSerie>(result))
-        {
-            return new VectorTimeSerie(*ts);
-        }
-        if (auto ts = std::dynamic_pointer_cast<ScalarTimeSerie>(result))
-        {
-            return new ScalarTimeSerie(*ts);
-        }
-        if (auto ts = std::dynamic_pointer_cast<SpectrogramTimeSerie>(result))
-        {
-            return new SpectrogramTimeSerie(*ts);
-        }
-        return nullptr;
+        return TimeSeriesUtils::copy(result);
     }
 
 private:
-    std::function<std::shared_ptr<TimeSeries::ITimeSerie>(std::string&, double, double)>
-        _pythonFunction;
+    PythonInterpreter::provider_funct_t _pythonFunction;
 };
 
 
 void PythonProviders::initialize()
 {
     _interpreter.add_register_callback(
-        [this](const std::vector<std::string>& path_list,
-            std::function<std::shared_ptr<TimeSeries::ITimeSerie>(std::string&, double, double)>
-                f) { this->register_product(path_list, f); });
+        [this](const std::vector<std::pair<std::string,
+                   std::vector<std::pair<std::string, std::string>>>>& product_list,
+            PythonInterpreter::provider_funct_t f) { this->register_product(product_list, f); });
 
     for (const auto& path : QStandardPaths::standardLocations(QStandardPaths::AppLocalDataLocation))
     {
@@ -87,6 +71,7 @@ void PythonProviders::initialize()
             }
         }
     }
+    _interpreter.release();
 }
 
 PythonProviders::~PythonProviders() {}
@@ -137,20 +122,28 @@ std::unique_ptr<DataSourceItem> make_product_item(
     return result;
 }
 
-void PythonProviders::register_product(const std::vector<std::string>& path_list,
-    std::function<std::shared_ptr<TimeSeries::ITimeSerie>(std::string&, double, double)> f)
+void PythonProviders::register_product(
+    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, std::string>>>>&
+        product_list,
+    PythonInterpreter::provider_funct_t f)
 {
     auto& dataSourceController = sqpApp->dataSourceController();
     auto id = dataSourceController.registerDataSource(DATA_SOURCE_NAME);
     auto root = make_folder_item(DATA_SOURCE_NAME);
-    std::for_each(
-        std::cbegin(path_list), std::cend(path_list), [id, f, root = root.get()](const auto& path) {
+    std::for_each(std::cbegin(product_list), std::cend(product_list),
+        [id, f, root = root.get()](const auto& product) {
+            const auto& path = product.first;
             auto path_list = QString::fromStdString(path).split('/');
             auto name = *(std::cend(path_list) - 1);
             auto path_item
                 = make_path_items(std::cbegin(path_list), std::cend(path_list) - 1, root);
-            path_item->appendChild(
-                make_product_item({ { DataSourceItem::NAME_DATA_KEY, name } }, id));
+            QVariantHash metaData { { DataSourceItem::NAME_DATA_KEY, name } };
+            std::for_each(std::cbegin(product.second), std::cend(product.second),
+                [&metaData](const auto& mdata) {
+                    metaData[QString::fromStdString(mdata.first)]
+                        = QString::fromStdString(mdata.second);
+                });
+            path_item->appendChild(make_product_item(metaData, id));
         });
     dataSourceController.setDataSourceItem(id, std::move(root));
     dataSourceController.setDataProvider(id, std::make_unique<PythonProvider>(f));
