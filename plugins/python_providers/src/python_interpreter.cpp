@@ -18,9 +18,8 @@ PythonInterpreter::PythonInterpreter()
     py::initialize_interpreter(false);
 }
 
-void PythonInterpreter::add_register_callback(std::function<void(const std::vector<std::pair<std::string,std::vector<std::pair<std::string,std::string>>>>&,
-        provider_funct_t)>
-        callback)
+void PythonInterpreter::add_register_callback(
+    std::function<void(const std::vector<product_t>&, provider_funct_t)> callback)
 {
     py::module PythonProviders = py::module::import("PythonProviders");
     PythonProviders.attr("register_product") = callback;

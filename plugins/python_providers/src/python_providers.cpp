@@ -20,11 +20,6 @@
 
 const auto DATA_SOURCE_NAME = QStringLiteral("PythonProviders");
 
-struct noop_deleter
-{
-    void operator()(TimeSeries::ITimeSerie*) {}
-};
-
 class PythonProvider : public IDataProvider
 {
 public:
@@ -40,7 +35,13 @@ public:
     {
         auto product = parameters.m_Data.value("PRODUCT", "").toString().toStdString();
         auto range = parameters.m_Range;
-        auto result = _pythonFunction(product, range.m_TStart, range.m_TEnd);
+        std::vector<std::tuple<std::string, std::string>> metadata;
+        std::transform(parameters.m_Data.constKeyValueBegin(), parameters.m_Data.constKeyValueEnd(),
+            std::back_inserter(metadata), [](const auto& item) {
+                return std::tuple<std::string, std::string> { item.first.toStdString(),
+                    item.second.toString().toStdString() };
+            });
+        auto result = _pythonFunction(metadata, range.m_TStart, range.m_TEnd);
         return TimeSeriesUtils::copy(result);
     }
 
@@ -52,8 +53,7 @@ private:
 void PythonProviders::initialize()
 {
     _interpreter.add_register_callback(
-        [this](const std::vector<std::pair<std::string,
-                   std::vector<std::pair<std::string, std::string>>>>& product_list,
+        [this](const std::vector<PythonInterpreter::product_t>& product_list,
             PythonInterpreter::provider_funct_t f) { this->register_product(product_list, f); });
 
     for (const auto& path : QStandardPaths::standardLocations(QStandardPaths::AppLocalDataLocation))
@@ -123,22 +123,22 @@ std::unique_ptr<DataSourceItem> make_product_item(
 }
 
 void PythonProviders::register_product(
-    const std::vector<std::pair<std::string, std::vector<std::pair<std::string, std::string>>>>&
-        product_list,
+    const std::vector<PythonInterpreter::product_t>& product_list,
     PythonInterpreter::provider_funct_t f)
 {
     auto& dataSourceController = sqpApp->dataSourceController();
-    auto id = dataSourceController.registerDataSource(DATA_SOURCE_NAME);
-    auto root = make_folder_item(DATA_SOURCE_NAME);
+    QString test = DATA_SOURCE_NAME + QUuid::createUuid().toString();
+    auto id = dataSourceController.registerDataSource(test);
+    auto root = make_folder_item(test);
     std::for_each(std::cbegin(product_list), std::cend(product_list),
         [id, f, root = root.get()](const auto& product) {
-            const auto& path = product.first;
+            const auto& path = std::get<0>(product);
             auto path_list = QString::fromStdString(path).split('/');
             auto name = *(std::cend(path_list) - 1);
             auto path_item
                 = make_path_items(std::cbegin(path_list), std::cend(path_list) - 1, root);
             QVariantHash metaData { { DataSourceItem::NAME_DATA_KEY, name } };
-            std::for_each(std::cbegin(product.second), std::cend(product.second),
+            std::for_each(std::cbegin(std::get<2>(product)), std::cend(std::get<2>(product)),
                 [&metaData](const auto& mdata) {
                     metaData[QString::fromStdString(mdata.first)]
                         = QString::fromStdString(mdata.second);

@@ -24,9 +24,8 @@ public:
     ~PythonProviders();
 
 private:
-    void register_product(const std::vector<std::pair<std::string,std::vector<std::pair<std::string,std::string>>>>& product_list,
-        PythonInterpreter::provider_funct_t
-            f);
+    void register_product(const std::vector<PythonInterpreter::product_t>& product_list,
+        PythonInterpreter::provider_funct_t f);
     PythonInterpreter _interpreter;
 };
 
