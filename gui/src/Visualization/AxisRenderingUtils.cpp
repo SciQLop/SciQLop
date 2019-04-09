@@ -95,7 +95,8 @@ struct AxisSetter
 template <typename T>
 struct AxisSetter<T,
     typename std::enable_if_t<std::is_base_of<ScalarTimeSerie, T>::value
-        or std::is_base_of<VectorTimeSerie, T>::value>>
+        or std::is_base_of<VectorTimeSerie, T>::value
+        or std::is_base_of<MultiComponentTimeSerie, T>::value>>
 {
     static void setProperties(QCustomPlot&, SqpColorScale&)
     {
@@ -204,6 +205,9 @@ std::unique_ptr<IAxisHelper> IAxisHelperFactory::create(Variable2& variable) noe
         case DataSeriesType::VECTOR:
             return std::make_unique<AxisHelper<VectorTimeSerie>>(
                 std::dynamic_pointer_cast<VectorTimeSerie>(variable.data()));
+        case DataSeriesType::MULTICOMPONENT:
+            return std::make_unique<AxisHelper<MultiComponentTimeSerie>>(
+                std::dynamic_pointer_cast<MultiComponentTimeSerie>(variable.data()));
         default:
             // Creates default helper
             break;

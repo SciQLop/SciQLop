@@ -261,7 +261,8 @@ struct PlottablesUpdater<T, typename std::enable_if_t<std::is_base_of<VectorTime
 
 
 template <typename T>
-struct PlottablesUpdater<T, typename std::enable_if_t<std::is_base_of<MultiComponentTimeSerie, T>::value>>
+struct PlottablesUpdater<T,
+    typename std::enable_if_t<std::is_base_of<MultiComponentTimeSerie, T>::value>>
 {
     static void setPlotYAxisRange(T& dataSeries, const DateTimeRange& xAxisRange, QCustomPlot& plot)
     {
@@ -269,11 +270,13 @@ struct PlottablesUpdater<T, typename std::enable_if_t<std::is_base_of<MultiCompo
         if (auto serie = dynamic_cast<MultiComponentTimeSerie*>(&dataSeries))
         {
             // TODO
-//            std::for_each(
-//                std::begin(*serie), std::end(*serie), [&minValue, &maxValue](const auto& v) {
-//                    minValue = std::min({ minValue, std::min_element(v.begin(),v.end()) });
-//                    maxValue = std::max({ maxValue, std::max_element(v.begin(),v.end()) });
-//                });
+            //            std::for_each(
+            //                std::begin(*serie), std::end(*serie), [&minValue, &maxValue](const
+            //                auto& v) {
+            //                    minValue = std::min({ minValue,
+            //                    std::min_element(v.begin(),v.end()) }); maxValue = std::max({
+            //                    maxValue, std::max_element(v.begin(),v.end()) });
+            //                });
         }
 
         plot.yAxis->setRange(QCPRange { minValue, maxValue });
@@ -289,7 +292,12 @@ struct PlottablesUpdater<T, typename std::enable_if_t<std::is_base_of<MultiCompo
                 auto dataContainer = QSharedPointer<SqpDataContainer>::create();
                 if (auto serie = dynamic_cast<MultiComponentTimeSerie*>(&dataSeries))
                 {
-// TODO
+                    // TODO
+                    std::for_each(std::begin(*serie), std::end(*serie),
+                        [&dataContainer, component = plottable.first](const auto& value) {
+                            dataContainer->appendGraphData(
+                                QCPGraphData(value.t(), value[component]));
+                        });
                 }
                 graph->setData(dataContainer);
             }

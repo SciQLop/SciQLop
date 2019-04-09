@@ -33,7 +33,8 @@ struct PlottablesSetter
 template <typename T>
 struct PlottablesSetter<T,
     typename std::enable_if_t<std::is_base_of<ScalarTimeSerie, T>::value
-        or std::is_base_of<VectorTimeSerie, T>::value>>
+        or std::is_base_of<VectorTimeSerie, T>::value
+        or std::is_base_of<MultiComponentTimeSerie, T>::value>>
 {
     static void setProperties(PlottablesMap& plottables)
     {
@@ -124,6 +125,8 @@ std::unique_ptr<IPlottablesHelper> IPlottablesHelperFactory::create(Variable2& v
             return std::make_unique<PlottablesHelper<SpectrogramTimeSerie>>();
         case DataSeriesType::VECTOR:
             return std::make_unique<PlottablesHelper<VectorTimeSerie>>();
+        case DataSeriesType::MULTICOMPONENT:
+            return std::make_unique<PlottablesHelper<MultiComponentTimeSerie>>();
         default:
             // Returns default helper
             break;
