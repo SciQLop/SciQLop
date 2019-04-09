@@ -1,7 +1,8 @@
 import sys
 sys.path.append("/home/jeandet/Documents/prog/build-SciQLop-Desktop-Debug/core")
+import traceback
 import os
-import datetime
+from datetime import datetime, timedelta, timezone
 import PythonProviders
 import pysciqlopcore
 import numpy as np
@@ -21,16 +22,16 @@ def get_sample(metadata,start,stop):
             elif key == 'type':
                 if value == 'vector':
                     ts_type = pysciqlopcore.VectorTimeSerie
-        tstart=datetime.datetime.fromtimestamp(start)
-        tend=datetime.datetime.fromtimestamp(stop)
+        tstart=datetime.datetime.utcfromtimestamp(start)
+        tend=datetime.datetime.utcfromtimestamp(stop)
         df = amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id=param_id)
-        t = np.array([d.timestamp()-7200 for d in df.index])
+        #t = np.array([d.timestamp()-7200 for d in df.index])
+        t = np.array([d.timestamp() for d in df.index])
         values = df.values
-        print(len(t))
-        print(len(values))
         return ts_type(t,values)
         return ts_type(1)
     except Exception as e:
+        print(traceback.format_exc())
         print("Error in amda.py ",str(e))
         return ts_type(1)
 

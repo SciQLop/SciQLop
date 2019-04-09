@@ -27,7 +27,10 @@ public:
 template <typename T, typename Enabled = void>
 struct PlottablesCreator
 {
-    static PlottablesMap createPlottables(QCustomPlot&) { return {}; }
+    static PlottablesMap createPlottables(QCustomPlot&, const std::shared_ptr<T>& dataSeries)
+    {
+        return {};
+    }
 };
 
 PlottablesMap createGraphs(QCustomPlot& plot, int nbGraphs)
@@ -53,7 +56,10 @@ PlottablesMap createGraphs(QCustomPlot& plot, int nbGraphs)
 template <typename T>
 struct PlottablesCreator<T, typename std::enable_if_t<std::is_base_of<ScalarTimeSerie, T>::value>>
 {
-    static PlottablesMap createPlottables(QCustomPlot& plot) { return createGraphs(plot, 1); }
+    static PlottablesMap createPlottables(QCustomPlot& plot, const std::shared_ptr<T>& dataSeries)
+    {
+        return createGraphs(plot, 1);
+    }
 };
 
 /**
@@ -63,7 +69,24 @@ struct PlottablesCreator<T, typename std::enable_if_t<std::is_base_of<ScalarTime
 template <typename T>
 struct PlottablesCreator<T, typename std::enable_if_t<std::is_base_of<VectorTimeSerie, T>::value>>
 {
-    static PlottablesMap createPlottables(QCustomPlot& plot) { return createGraphs(plot, 3); }
+    static PlottablesMap createPlottables(QCustomPlot& plot, const std::shared_ptr<T>& dataSeries)
+    {
+        return createGraphs(plot, 3);
+    }
+};
+
+/**
+ * Specialization of PlottablesCreator for MultiComponentTimeSeries
+ * @sa VectorSeries
+ */
+template <typename T>
+struct PlottablesCreator<T,
+    typename std::enable_if_t<std::is_base_of<MultiComponentTimeSerie, T>::value>>
+{
+    static PlottablesMap createPlottables(QCustomPlot& plot, const std::shared_ptr<T>& dataSeries)
+    {
+        return createGraphs(plot, dataSeries->size(1));
+    }
 };
 
 /**
@@ -74,7 +97,7 @@ template <typename T>
 struct PlottablesCreator<T,
     typename std::enable_if_t<std::is_base_of<SpectrogramTimeSerie, T>::value>>
 {
-    static PlottablesMap createPlottables(QCustomPlot& plot)
+    static PlottablesMap createPlottables(QCustomPlot& plot, const std::shared_ptr<T>& dataSeries)
     {
         PlottablesMap result {};
         result.insert({ 0, new QCPColorMap { plot.xAxis, plot.yAxis } });
@@ -236,6 +259,54 @@ struct PlottablesUpdater<T, typename std::enable_if_t<std::is_base_of<VectorTime
     }
 };
 
+
+template <typename T>
+struct PlottablesUpdater<T, typename std::enable_if_t<std::is_base_of<MultiComponentTimeSerie, T>::value>>
+{
+    static void setPlotYAxisRange(T& dataSeries, const DateTimeRange& xAxisRange, QCustomPlot& plot)
+    {
+        double minValue = 0., maxValue = 0.;
+        if (auto serie = dynamic_cast<MultiComponentTimeSerie*>(&dataSeries))
+        {
+            // TODO
+//            std::for_each(
+//                std::begin(*serie), std::end(*serie), [&minValue, &maxValue](const auto& v) {
+//                    minValue = std::min({ minValue, std::min_element(v.begin(),v.end()) });
+//                    maxValue = std::max({ maxValue, std::max_element(v.begin(),v.end()) });
+//                });
+        }
+
+        plot.yAxis->setRange(QCPRange { minValue, maxValue });
+    }
+
+    static void updatePlottables(
+        T& dataSeries, PlottablesMap& plottables, const DateTimeRange& range, bool rescaleAxes)
+    {
+        for (const auto& plottable : plottables)
+        {
+            if (auto graph = dynamic_cast<QCPGraph*>(plottable.second))
+            {
+                auto dataContainer = QSharedPointer<SqpDataContainer>::create();
+                if (auto serie = dynamic_cast<MultiComponentTimeSerie*>(&dataSeries))
+                {
+// TODO
+                }
+                graph->setData(dataContainer);
+            }
+        }
+
+        if (!plottables.empty())
+        {
+            auto plot = plottables.begin()->second->parentPlot();
+
+            if (rescaleAxes)
+            {
+                plot->rescaleAxes();
+            }
+        }
+    }
+};
+
 /**
  * Specialization of PlottablesUpdater for spectrograms
  * @sa SpectrogramSeries
@@ -346,7 +417,7 @@ struct PlottablesHelper : public IPlottablesHelper
 
     PlottablesMap create(QCustomPlot& plot) const override
     {
-        return PlottablesCreator<T>::createPlottables(plot);
+        return PlottablesCreator<T>::createPlottables(plot, m_DataSeries);
     }
 
     void update(
@@ -395,6 +466,9 @@ std::unique_ptr<IPlottablesHelper> createHelper(std::shared_ptr<Variable2> varia
         case DataSeriesType::VECTOR:
             return std::make_unique<PlottablesHelper<VectorTimeSerie>>(
                 std::dynamic_pointer_cast<VectorTimeSerie>(variable->data()));
+        case DataSeriesType::MULTICOMPONENT:
+            return std::make_unique<PlottablesHelper<MultiComponentTimeSerie>>(
+                std::dynamic_pointer_cast<MultiComponentTimeSerie>(variable->data()));
         default:
             // Creates default helper
             break;

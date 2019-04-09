@@ -23,7 +23,7 @@ const auto DATA_SOURCE_NAME = QStringLiteral("PythonProviders");
 class PythonProvider : public IDataProvider
 {
 public:
-    PythonProvider(PythonInterpreter::provider_funct_t f) : _pythonFunction { f } {}
+    explicit PythonProvider(PythonInterpreter::provider_funct_t f) : _pythonFunction { f } {}
 
     PythonProvider(const PythonProvider& other) : _pythonFunction { other._pythonFunction } {}
 
@@ -147,5 +147,4 @@ void PythonProviders::register_product(
         });
     dataSourceController.setDataSourceItem(id, std::move(root));
     dataSourceController.setDataProvider(id, std::make_unique<PythonProvider>(f));
-    std::cout << "Gone there" << std::endl;
 }
