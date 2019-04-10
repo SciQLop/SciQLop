@@ -15,6 +15,7 @@ amda = AMDA()
 
 def get_sample(metadata,start,stop):
     ts_type = pysciqlopcore.ScalarTimeSerie
+    default_ctor_args = 1
     try:
         param_id = None
         for key,value in metadata:
@@ -25,18 +26,18 @@ def get_sample(metadata,start,stop):
                     ts_type = pysciqlopcore.VectorTimeSerie
                 elif value == 'multicomponent':
                     ts_type = pysciqlopcore.MultiComponentTimeSerie
+                    default_ctor_args = (0,2)
         tstart=datetime.datetime.fromtimestamp(start, tz=timezone.utc)
         tend=datetime.datetime.fromtimestamp(stop, tz=timezone.utc)
-        df = amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id=param_id)
+        df = amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id=param_id, method="REST")
         #t = np.array([d.timestamp()-7200 for d in df.index])
         t = np.array([d.timestamp() for d in df.index])
         values = df.values
         return ts_type(t,values.transpose())
-        return ts_type(1)
     except Exception as e:
         print(traceback.format_exc())
         print("Error in amda.py ",str(e))
-        return ts_type(1)
+        return ts_type(default_ctor_args)
 
 
 if len(amda.component) is 0:

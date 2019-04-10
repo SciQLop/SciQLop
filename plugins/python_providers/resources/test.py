@@ -3,6 +3,7 @@ sys.path.append("/home/jeandet/Documents/prog/build-SciQLop-Desktop-Debug/core")
 import PythonProviders
 import pysciqlopcore
 import numpy as np
+import math
 
 someglobal = 1
 
@@ -25,7 +26,7 @@ def make_multicomponent(x):
 
 
 def get_data(metadata,start,stop):
-    x = np.arange(start, stop)
+    x = np.arange(math.ceil(start), math.floor(stop))
     for key,value in metadata:
         if key == 'xml:id':
             param_id = value
