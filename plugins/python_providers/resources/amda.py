@@ -30,10 +30,9 @@ def get_sample(metadata,start,stop):
         tstart=datetime.datetime.fromtimestamp(start, tz=timezone.utc)
         tend=datetime.datetime.fromtimestamp(stop, tz=timezone.utc)
         df = amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id=param_id, method="REST")
-        #t = np.array([d.timestamp()-7200 for d in df.index])
         t = np.array([d.timestamp() for d in df.index])
         values = df.values
-        return ts_type(t,values.transpose())
+        return ts_type(t,values)
     except Exception as e:
         print(traceback.format_exc())
         print("Error in amda.py ",str(e))

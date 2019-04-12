@@ -11,19 +11,42 @@ from spwc.cdaweb import cdaweb
 
 cd = cdaweb()
 
-def get_sample(name,start,stop):
+def cda_get_sample(metadata, start,stop):
+    ts_type = pysciqlopcore.ScalarTimeSerie
+    default_ctor_args = 1
     try:
-        tstart=datetime.datetime.fromtimestamp(start)
-        tend=datetime.datetime.fromtimestamp(stop)
-        df = cd.get_variable(dataset="MMS2_SCM_SRVY_L2_SCSRVY",variable="mms2_scm_acb_gse_scsrvy_srvy_l2",tstart=tstart,tend=tend)
-        t = np.array([d.timestamp()-7200 for d in df.index])
+        variable_id = None
+        dataset_id = None
+        for key,value in metadata:
+            if key == 'VAR_ID':
+                variable_id = value
+            elif key == 'DATASET_ID':
+                dataset_id = value
+            elif key == 'type':
+                if value == 'vector':
+                    ts_type = pysciqlopcore.VectorTimeSerie
+                elif value == 'multicomponent':
+                    ts_type = pysciqlopcore.MultiComponentTimeSerie
+                    default_ctor_args = (0,2)
+        tstart=datetime.datetime.fromtimestamp(start, tz=timezone.utc)
+        tend=datetime.datetime.fromtimestamp(stop, tz=timezone.utc)
+        df = cd.get_variable(dataset=dataset_id,variable=variable_id,tstart=tstart,tend=tend)
+        t = np.array([d.timestamp() for d in df.index])
         values = df.values
-        return pysciqlopcore.VectorTimeSerie(t,values)
-    except Exception as e:
-        print("fuck ",str(e))
-        return pysciqlopcore.VectorTimeSerie(1)
+        print(values.shape)
+        return ts_type(t,values)
+    except Exception as e: 
+        print(traceback.format_exc())
+        print("Error in amda.py ",str(e))
+        return ts_type(default_ctor_args)
 
 
-PythonProviders.register_product([("/CDA/mms4_scm_acb_gse_scsrvy_srvy_l2",[],[("type","vector")])],get_sample)
+products = [
+   ("/CDA/Themis/ThA/tha_fgl_gsm", [], [("type","multicomponent"), ('size','4'), ("DATASET_ID","THA_L2_FGM"), ("VAR_ID","tha_fgl_gsm")]),
+   ("/CDA/Themis/ThB/thb_fgl_gsm", [], [("type","multicomponent"), ('size','4'), ("DATASET_ID","THB_L2_FGM"), ("VAR_ID","thb_fgl_gsm")]),
+ 
+]
+
+PythonProviders.register_product(products, cda_get_sample)
 
 
