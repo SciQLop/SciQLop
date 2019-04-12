@@ -12,16 +12,16 @@ def make_scalar(x):
     return pysciqlopcore.ScalarTimeSerie(x,y)
 
 def make_vector(x):
-    v=np.ones((3,len(x)))
+    v=np.ones((len(x),3))
     for i in range(3):
-        v[:][i] = np.cos(x/10. + float(i))
+        v.transpose()[:][i] = np.cos(x/10. + float(i))
     return pysciqlopcore.VectorTimeSerie(x,v)
 
 
 def make_multicomponent(x):
-    v=np.ones((4,len(x)))
+    v=np.ones((len(x),4))
     for i in range(4):
-        v[:][i] = float(i+1) * np.cos(x/10. + float(i))
+        v.transpose()[:][i] = float(i+1) * np.cos(x/10. + float(i))
     return pysciqlopcore.MultiComponentTimeSerie(x,v)
 
 

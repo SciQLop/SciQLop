@@ -269,14 +269,11 @@ struct PlottablesUpdater<T,
         double minValue = 0., maxValue = 0.;
         if (auto serie = dynamic_cast<MultiComponentTimeSerie*>(&dataSeries))
         {
-            // TODO
-            //            std::for_each(
-            //                std::begin(*serie), std::end(*serie), [&minValue, &maxValue](const
-            //                auto& v) {
-            //                    minValue = std::min({ minValue,
-            //                    std::min_element(v.begin(),v.end()) }); maxValue = std::max({
-            //                    maxValue, std::max_element(v.begin(),v.end()) });
-            //                });
+            std::for_each(
+                std::begin(*serie), std::end(*serie), [&minValue, &maxValue](const auto& v) {
+                    minValue = std::min( minValue, std::min_element(v.begin(), v.end())->v() );
+                    maxValue = std::max( maxValue, std::max_element(v.begin(), v.end())->v() );
+                });
         }
 
         plot.yAxis->setRange(QCPRange { minValue, maxValue });
