@@ -275,7 +275,6 @@ struct PlottablesUpdater<T,
                     maxValue = std::max( maxValue, std::max_element(v.begin(), v.end())->v() );
                 });
         }
-
         plot.yAxis->setRange(QCPRange { minValue, maxValue });
     }
 

@@ -1,4 +1,3 @@
-#include <Data/DateTimeRange.h>
 #include <TimeSeries.h>
 #include <functional>
 #include <iostream>

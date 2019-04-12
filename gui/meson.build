@@ -58,7 +58,8 @@ gui_moc_headers = [
  './include/Actions/ActionsGuiController.h',
  './include/Actions/FilteringAction.h',
  './include/Actions/SelectionZoneAction.h'
-]
+ ]
+
 
 gui_ui_files = [
  './ui/Settings/SqpSettingsGeneralWidget.ui',
@@ -95,7 +96,7 @@ gui_moc_files = qt5.preprocess(moc_headers : gui_moc_headers,
                                ui_files : gui_ui_files)
 
 gui_sources = [
-  './src/Common/ColorUtils.cpp',
+ './src/Common/ColorUtils.cpp',
  './src/Common/VisualizationDef.cpp',
  './src/SqpApplication.cpp',
  './src/DragAndDrop/DragDropTabSwitcher.cpp',
@@ -147,8 +148,8 @@ gui_sources = [
  './src/Visualization/SqpColorScale.cpp',
  './src/Actions/FilteringAction.cpp',
  './src/Actions/SelectionZoneAction.cpp',
- './src/Actions/ActionsGuiController.cpp',
-]
+ './src/Actions/ActionsGuiController.cpp'
+ ]
 
 gui_inc = include_directories(['include', 'include/Visualization'])
 
