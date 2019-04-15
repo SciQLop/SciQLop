@@ -27,8 +27,8 @@ def get_sample(metadata,start,stop):
                 elif value == 'multicomponent':
                     ts_type = pysciqlopcore.MultiComponentTimeSerie
                     default_ctor_args = (0,2)
-        tstart=datetime.datetime.fromtimestamp(start, tz=timezone.utc)
-        tend=datetime.datetime.fromtimestamp(stop, tz=timezone.utc)
+        tstart=datetime.fromtimestamp(start, tz=timezone.utc)
+        tend=datetime.fromtimestamp(stop, tz=timezone.utc)
         df = amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id=param_id, method="REST")
         t = np.array([d.timestamp() for d in df.index])
         values = df.values
@@ -50,7 +50,7 @@ for name,component in amda.component.items():
 
 products = []
 for key,parameter in parameters.items():
-    path = f"/AMDA/{parameter['mission']}/{parameter['instrument']}/{parameter['dataset']}/{parameter['name']}" 
+    path = f"/AMDA/{parameter['mission']}/{parameter.get('observatory','')}/{parameter['instrument']}/{parameter['dataset']}/{parameter['name']}"
     components = [component['name'] for component in parameter.get('components',[])]
     metadata = [ (key,item) for key,item in parameter.items() if key is not 'components' ]
     n_components = parameter.get('size',0)
