@@ -133,7 +133,7 @@ void PythonProviders::register_product(
     std::for_each(std::cbegin(product_list), std::cend(product_list),
         [id, f, root = root.get()](const auto& product) {
             const auto& path = std::get<0>(product);
-            auto path_list = QString::fromStdString(path).split('/');
+            auto path_list = QString::fromStdString(path).split('/', QString::SkipEmptyParts);
             auto name = *(std::cend(path_list) - 1);
             auto path_item
                 = make_path_items(std::cbegin(path_list), std::cend(path_list) - 1, root);
