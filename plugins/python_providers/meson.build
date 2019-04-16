@@ -22,6 +22,8 @@ gen = generator(moc,
 
 python_providers_moc_files = gen.process(python_providers_moc_headers)
 
+python_providers_prep_files = qt5.preprocess(qresources : 'resources/python_providers.qrc')
+
 cpp_args = ['-DPYTHON_PROVIDERS_LIB','-DQT_PLUGIN']
 if(get_option('default_library')=='static')
     cpp_args += ['-DQT_STATICPLUGIN']
@@ -40,6 +42,7 @@ sciqlop_python_interpreter = library('python_interpreter',
 sciqlop_python_providers = library('pythonproviders',
                        python_providers_sources,
                        python_providers_moc_files,
+                       python_providers_prep_files,
                        cpp_args : cpp_args,
                        include_directories : [python_providers_inc],
                        link_with : [sciqlop_python_interpreter],
