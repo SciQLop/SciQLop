@@ -30,7 +30,7 @@ endif
 app_libs = []
 cpp_args = []
 if 'static' == get_option('default_library')
-  app_libs = [sciqlop_mockplugin, sciqlop_python_providers]
+  app_libs = [sciqlop_python_providers]
   cpp_args += ['-DQT_STATICPLUGIN']
 endif
 
