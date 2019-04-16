@@ -34,8 +34,7 @@ sciqlop_python_interpreter = library('python_interpreter',
                                      include_directories : [python_providers_inc],
                                      dependencies : [pybind11_dep, sciqlop_core],
                                      cpp_args : ['-DQT_NO_KEYWORDS'],
-                                     install : true,
-                                     install_dir : join_paths(get_option('libdir'), 'SciQLop')
+                                     install : true
                                      )
 
 
