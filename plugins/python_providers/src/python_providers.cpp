@@ -52,6 +52,17 @@ private:
 
 void PythonProviders::initialize()
 {
+    auto app_path = sqpApp->applicationDirPath();
+    _interpreter.eval_str("import sys");
+    for(const auto& path:{"/../lib","/../lib64","/../core"})
+    {
+        QDir d{app_path+path};
+        if(d.exists())
+        {
+            _interpreter.eval_str("sys.path.append(\""+d.path().toStdString()+"\")");
+        }
+    }
+
     _interpreter.add_register_callback(
         [this](const std::vector<PythonInterpreter::product_t>& product_list,
             PythonInterpreter::provider_funct_t f) { this->register_product(product_list, f); });
@@ -70,6 +81,13 @@ void PythonProviders::initialize()
                 }
             }
         }
+    }
+    for (const auto& embed_file : { ":/test.py", ":/amda.py", ":/cdaweb.py"})
+    {
+        QFile file(embed_file);
+        file.open(QFile::ReadOnly);
+        if(file.isOpen())
+            _interpreter.eval_str(file.readAll().toStdString());
     }
     _interpreter.release();
 }

@@ -1,5 +1,5 @@
-import sys
-sys.path.append("/home/jeandet/Documents/prog/build-SciQLop-Desktop-Debug/core")
+import traceback
+import pandas as pds
 import PythonProviders
 import pysciqlopcore
 import numpy as np

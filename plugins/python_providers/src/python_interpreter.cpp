@@ -7,6 +7,7 @@
 #include <pybind11/functional.h>
 #include <pybind11/stl.h>
 
+
 namespace py = pybind11;
 
 
@@ -37,6 +38,18 @@ void PythonInterpreter::eval(const std::string& file)
     try
     {
         py::eval_file(file);
+    }
+    catch (py::error_already_set const& pythonErr)
+    {
+        std::cout << pythonErr.what();
+    }
+}
+
+void PythonInterpreter::eval_str(const std::string& content)
+{
+    try
+    {
+        py::eval<py::eval_statements>(content);
     }
     catch (py::error_already_set const& pythonErr)
     {

@@ -17,6 +17,7 @@ public:
         std::function<void(const std::vector<product_t>&, provider_funct_t)> callback);
     ~PythonInterpreter();
     void eval(const std::string& file);
+    void eval_str(const std::string &content);
     void release();
 
 private:

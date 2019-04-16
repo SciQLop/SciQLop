@@ -1,12 +1,10 @@
-import sys
-sys.path.append("/home/jeandet/Documents/prog/build-SciQLop-Desktop-Debug/core")
 import os
-import datetime
 import PythonProviders
 import pysciqlopcore
 import numpy as np
 import pandas as pds
 import requests
+from datetime import datetime, timedelta, timezone
 from spwc.cdaweb import cdaweb
 
 cd = cdaweb()
@@ -31,8 +29,8 @@ def cda_get_sample(metadata, start,stop):
                 elif value == 'multicomponent':
                     ts_type = pysciqlopcore.MultiComponentTimeSerie
                     default_ctor_args = (0,2)
-        tstart=datetime.datetime.fromtimestamp(start, tz=timezone.utc)
-        tend=datetime.datetime.fromtimestamp(stop, tz=timezone.utc)
+        tstart=datetime.fromtimestamp(start, tz=timezone.utc)
+        tend=datetime.fromtimestamp(stop, tz=timezone.utc)
         df = cd.get_variable(dataset=dataset_id,variable=variable_id,tstart=tstart,tend=tend)
         if len(df):
             df = df.drop(columns = drop_cols)
