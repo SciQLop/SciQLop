@@ -21,7 +21,7 @@ LD_PRELOAD=$(pwd)/AppDir/usr/lib/libpython3.7m.so.1.0 PATH=$(pwd)/AppDir/usr/bin
 LD_LIBRARY_PATH=AppDir/usr/lib/ PKG_CONFIG_PATH=./AppDir/usr/lib/pkgconfig/:$PKG_CONFIG_PATH PATH=./AppDir/usr/bin/:$PATH meson --prefix=/usr ..
 ninja
 DESTDIR=$(pwd)/AppDir ninja install
-cp -r -t AppDir/usr/lib64/* AppDir/usr/lib/
+cp -rf AppDir/usr/lib64/* AppDir/usr/lib/
 rm -rf AppDir/usr/lib64/
 wget https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage
 chmod +x  linuxdeployqt-continuous-x86_64.AppImage && ./linuxdeployqt-continuous-x86_64.AppImage --appimage-extract
