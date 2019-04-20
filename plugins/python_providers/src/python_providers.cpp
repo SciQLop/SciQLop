@@ -54,7 +54,7 @@ void PythonProviders::initialize()
 {
     auto app_path = sqpApp->applicationDirPath();
     _interpreter.eval_str("import sys");
-    for(const auto& path:{"/../lib","/../lib64","/../core"})
+    for(const auto& path:{"/../lib","/../lib64","/../core","/../../lib"})
     {
         QDir d{app_path+path};
         if(d.exists())
