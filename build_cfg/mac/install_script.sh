@@ -2,7 +2,7 @@
 
 mkdir -p ${MESON_INSTALL_PREFIX}/Contents/Frameworks
 mv ${MESON_INSTALL_PREFIX}/lib/*plugin* ${MESON_INSTALL_PREFIX}/Contents/MacOS
-macdeployqt ${MESON_INSTALL_PREFIX} -verbose=3
+macdeployqt ${MESON_INSTALL_PREFIX} -verbose=3 -executable=/tmp/SciQLOP.app/Contents/MacOS/sciqlop
 install_name_tool -change @rpath/QtCore.framework/Versions/5/QtCore @executable_path/../Frameworks/QtCore.framework/Versions/5/QtCore /tmp/SciQLOP.app/Contents/MacOS/sciqlop
 install_name_tool -change @rpath/QtPrintSupport.framework/Versions/5/QtPrintSupport @executable_path/../Frameworks/QtPrintSupport.framework/Versions/5/QtPrintSupport /tmp/SciQLOP.app/Contents/MacOS/sciqlop
 install_name_tool -change @rpath/QtGui.framework/Versions/5/QtGui @executable_path/../Frameworks/QtGui.framework/Versions/5/QtGui /tmp/SciQLOP.app/Contents/MacOS/sciqlop
