@@ -10,7 +10,12 @@ QT5_WRAP_UI(UiGenerated_SRCS
     ui/MainWindow.ui
 )
 
-add_executable(sciqlopapp WIN32 ${app_SRCS} ${UiGenerated_SRCS})
+if(ENABLE_WIN32_CONSOLE)
+    add_executable(sciqlopapp ${app_SRCS} ${UiGenerated_SRCS})
+else()
+    add_executable(sciqlopapp WIN32 ${app_SRCS} ${UiGenerated_SRCS})
+endif()
+
 if(NOT BUILD_SHARED_LIBS)
     add_definitions(-DQT_STATICPLUGIN)
     if(BUILD_PLUGINS)

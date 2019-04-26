@@ -13,6 +13,7 @@ OPTION (BUILD_APP "Build SciQLop application" ON)
 OPTION (BUILD_CORE "Build SciQLop Core module" ON)
 OPTION (BUILD_GUI "Build SciQLop GUI module" ON)
 OPTION (BUILD_PLUGINS "Build SciQLop plugins" ON)
+OPTION (ENABLE_WIN32_CONSOLE "Enables console on Win32 platfrom" OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 
