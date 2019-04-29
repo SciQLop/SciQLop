@@ -44,7 +44,6 @@
 #include <QToolButton>
 #include <memory.h>
 
-#include "iostream"
 
 Q_LOGGING_CATEGORY(LOG_MainWindow, "MainWindow")
 
@@ -87,6 +86,7 @@ MainWindow::MainWindow(QWidget* parent)
         , impl { spimpl::make_unique_impl<MainWindowPrivate>(this) }
 {
     m_Ui->setupUi(this);
+    setWindowTitle(QString("SciQLop v%1").arg(SCIQLOP_VERSION));
 
     m_Ui->splitter->setCollapsible(LEFTINSPECTORSIDEPANESPLITTERINDEX, false);
     m_Ui->splitter->setCollapsible(RIGHTINSPECTORSIDEPANESPLITTERINDEX, false);

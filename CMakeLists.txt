@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.6)
-project(SciQLOP CXX)
+set(SCIQLOP_VERSION 1.0.0)
+project(SciQLOP
+    VERSION ${SCIQLOP_VERSION}
+    DESCRIPTION "SciQLOP (SCIentific Qt application for Learning from Observations of Plasmas) is an ergonomic and powerful tool enabling visualization and analysis of in situ spacecraft plasma data."
+    HOMEPAGE_URL https://github.com/LaboratoryOfPlasmaPhysics/SciQLOP
+    LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
@@ -72,6 +77,8 @@ IF(Coverage)
 ENDIF(Coverage)
 
 enable_testing()
+
+add_definitions(-DSCIQLOP_VERSION="${SCIQLOP_VERSION}")
 
 if(BUILD_CORE)
     find_package(SciQLOPCore CONFIG QUIET)
