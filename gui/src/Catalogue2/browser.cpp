@@ -2,23 +2,25 @@
 #include "ui_browser.h"
 #include <SqpApplication.h>
 
-Browser::Browser(QWidget* parent) : QWidget(parent), ui(new Ui::Browser)
+CataloguesBrowser::CataloguesBrowser(QWidget* parent)
+        : QWidget(parent, Qt::Window), ui(new Ui::Browser)
 {
     ui->setupUi(this);
     connect(ui->repositories, &RepositoriesTreeView::repositorySelected, this,
-        &Browser::repositorySelected);
+        &CataloguesBrowser::repositorySelected);
     connect(ui->repositories, &RepositoriesTreeView::catalogueSelected, this,
-        &Browser::catalogueSelected);
-    connect(ui->events, &EventsTreeView::eventSelected, this, &Browser::eventSelected);
-    connect(ui->events, &EventsTreeView::productSelected, this, &Browser::productSelected);
+        &CataloguesBrowser::catalogueSelected);
+    connect(ui->events, &EventsTreeView::eventSelected, this, &CataloguesBrowser::eventSelected);
+    connect(
+        ui->events, &EventsTreeView::productSelected, this, &CataloguesBrowser::productSelected);
 }
 
-Browser::~Browser()
+CataloguesBrowser::~CataloguesBrowser()
 {
     delete ui;
 }
 
-void Browser::repositorySelected(const QString& repo)
+void CataloguesBrowser::repositorySelected(const QString& repo)
 {
     this->ui->Infos->setCurrentIndex(0);
     this->ui->events->setEvents(sqpApp->catalogueController().events(repo));
@@ -29,7 +31,7 @@ void Browser::repositorySelected(const QString& repo)
         QString::number(sqpApp->catalogueController().events(repo).size()));
 }
 
-void Browser::catalogueSelected(const CatalogueController::Catalogue_ptr& catalogue)
+void CataloguesBrowser::catalogueSelected(const CatalogueController::Catalogue_ptr& catalogue)
 {
     this->ui->Infos->setCurrentIndex(1);
     this->ui->events->setEvents(sqpApp->catalogueController().events(catalogue));
@@ -37,14 +39,15 @@ void Browser::catalogueSelected(const CatalogueController::Catalogue_ptr& catalo
         QString::number(sqpApp->catalogueController().events(catalogue).size()));
 }
 
-void Browser::eventSelected(const CatalogueController::Event_ptr& event)
+void CataloguesBrowser::eventSelected(const CatalogueController::Event_ptr& event)
 {
     this->ui->Infos->setCurrentIndex(2);
     this->ui->Event->setEvent(event);
 }
 
-void Browser::productSelected(const CatalogueController::Product_t& product, const CatalogueController::Event_ptr& event)
+void CataloguesBrowser::productSelected(
+    const CatalogueController::Product_t& product, const CatalogueController::Event_ptr& event)
 {
     this->ui->Infos->setCurrentIndex(2);
-    this->ui->Event->setProduct(product,event);
+    this->ui->Event->setProduct(product, event);
 }

@@ -1,27 +1,30 @@
 #ifndef BROWSER_H
 #define BROWSER_H
 
-#include <QWidget>
 #include <Catalogue/CatalogueController.h>
+#include <QWidget>
 
-namespace Ui {
+namespace Ui
+{
 class Browser;
 }
 
-class Browser : public QWidget
+class CataloguesBrowser : public QWidget
 {
     Q_OBJECT
 
 public:
-    explicit Browser(QWidget *parent = nullptr);
-    ~Browser();
+    explicit CataloguesBrowser(QWidget* parent = nullptr);
+    ~CataloguesBrowser();
 private slots:
     void repositorySelected(const QString& repo);
     void catalogueSelected(const CatalogueController::Catalogue_ptr& catalogue);
     void eventSelected(const CatalogueController::Event_ptr& event);
-    void productSelected(const CatalogueController::Product_t& product, const CatalogueController::Event_ptr& event);
+    void productSelected(
+        const CatalogueController::Product_t& product, const CatalogueController::Event_ptr& event);
+
 private:
-    Ui::Browser *ui;
+    Ui::Browser* ui;
 };
 
 #endif // BROWSER_H

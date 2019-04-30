@@ -23,7 +23,7 @@
 #include "ui_MainWindow.h"
 
 #include <Catalogue/CatalogueController.h>
-//#include <Catalogue/CatalogueExplorer.h>
+#include <Catalogue2/browser.h>
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceWidget.h>
 #include <Settings/SqpSettingsDialog.h>
@@ -64,7 +64,7 @@ public:
             , m_LastOpenRightInspectorSize {}
             , m_GeneralSettingsWidget { new SqpSettingsGeneralWidget { mainWindow } }
             , m_SettingsDialog { new SqpSettingsDialog { mainWindow } }
-    //, m_CatalogExplorer { new CatalogueExplorer { mainWindow } }
+            , m_CatalogExplorer { new CataloguesBrowser { mainWindow } }
     {
     }
 
@@ -75,7 +75,7 @@ public:
     /// Settings dialog. MainWindow has the ownership
     SqpSettingsDialog* m_SettingsDialog;
     /// Catalogue dialog. MainWindow has the ownership
-    // CatalogueExplorer* m_CatalogExplorer;
+    CataloguesBrowser* m_CatalogExplorer;
 
     bool checkDataToSave(QWidget* parentWidget);
 };
@@ -272,8 +272,8 @@ MainWindow::MainWindow(QWidget* parent)
 
     // Catalog
     mainToolBar->addSeparator();
-    //    mainToolBar->addAction(QIcon(":/icones/catalogue.png"), "Catalogues",
-    //        [this]() { impl->m_CatalogExplorer->show(); });
+    mainToolBar->addAction(QIcon(":/icones/catalogue.png"), "Catalogues",
+        [this]() { impl->m_CatalogExplorer->show(); });
 
     // //////// //
     // Settings //

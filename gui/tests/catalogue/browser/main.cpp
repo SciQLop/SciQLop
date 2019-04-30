@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
     SqpApplication a { argc, argv };
-    Browser w;
+    CataloguesBrowser w;
     sqpApp->catalogueController().add("test");
     sqpApp->catalogueController().add("stuff");
     sqpApp->catalogueController().add("default");

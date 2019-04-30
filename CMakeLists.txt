@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.6)
-set(SCIQLOP_VERSION 1.0.0)
+set(SCIQLOP_VERSION 1.1.0)
 project(SciQLOP
     VERSION ${SCIQLOP_VERSION}
     DESCRIPTION "SciQLOP (SCIentific Qt application for Learning from Observations of Plasmas) is an ergonomic and powerful tool enabling visualization and analysis of in situ spacecraft plasma data."
