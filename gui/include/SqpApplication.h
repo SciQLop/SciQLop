@@ -3,8 +3,14 @@
 
 #include "SqpApplication.h"
 
+#include <QAction>
 #include <QApplication>
 #include <QLoggingCategory>
+#include <QMenuBar>
+#include <QProxyStyle>
+#include <QStyleOption>
+#include <QWidget>
+#include <QWidgetAction>
 
 #include <Common/spimpl.h>
 
@@ -13,7 +19,7 @@ Q_DECLARE_LOGGING_CATEGORY(LOG_SqpApplication)
 #if defined(sqpApp)
 #undef sqpApp
 #endif
-#define sqpApp (static_cast<SqpApplication *>(QCoreApplication::instance()))
+#define sqpApp (static_cast<SqpApplication*>(QCoreApplication::instance()))
 
 class DataSourceController;
 class NetworkController;
@@ -26,6 +32,27 @@ class DragDropGuiController;
 class ActionsGuiController;
 class CatalogueController;
 
+/* stolen from here https://forum.qt.io/topic/90403/show-tooltip-immediatly/6 */
+class MyProxyStyle : public QProxyStyle
+{
+public:
+    using QProxyStyle::QProxyStyle;
+
+    int styleHint(StyleHint hint, const QStyleOption* option = nullptr,
+        const QWidget* widget = nullptr, QStyleHintReturn* returnData = nullptr) const override
+    {
+        if (widget)
+            auto cname = widget->metaObject()->className();
+        if (hint == QStyle::SH_ToolButton_PopupDelay && widget
+            /*&& widget->inherits(QWidgetAction::staticMetaObject.className())*/)
+        {
+            return 0;
+        }
+
+        return QProxyStyle::styleHint(hint, option, widget, returnData);
+    }
+};
+
 /**
  * @brief The SqpApplication class aims to make the link between SciQlop
  * and its plugins. This is the intermediate class that SciQlop has to use
@@ -35,32 +62,46 @@ class CatalogueController;
  * You can load a data source driver plugin then create a data source.
  */
 
-class SqpApplication : public QApplication {
+class SqpApplication : public QApplication
+{
     Q_OBJECT
 public:
-    explicit SqpApplication(int &argc, char **argv);
-     ~SqpApplication() override;
+    explicit SqpApplication(int& argc, char** argv);
+    ~SqpApplication() override;
     void initialize();
 
     /// Accessors for the differents sciqlop controllers
-    DataSourceController &dataSourceController() noexcept;
-    NetworkController &networkController() noexcept;
-    TimeController &timeController() noexcept;
-    VariableController2 &variableController() noexcept;
+    DataSourceController& dataSourceController() noexcept;
+    NetworkController& networkController() noexcept;
+    TimeController& timeController() noexcept;
+    VariableController2& variableController() noexcept;
     std::shared_ptr<VariableController2> variableControllerOwner() noexcept;
     //@TODO there should not be any global model it's just GUI impl detail
-//    VariableModel2 &variableModel() noexcept;
-    VisualizationController &visualizationController() noexcept;
-    CatalogueController &catalogueController() noexcept;
+    //    VariableModel2 &variableModel() noexcept;
+    VisualizationController& visualizationController() noexcept;
+    CatalogueController& catalogueController() noexcept;
 
     /// Accessors for the differents sciqlop helpers, these helpers classes are like controllers but
     /// doesn't live in a thread and access gui
-    DragDropGuiController &dragDropGuiController() noexcept;
-    ActionsGuiController &actionsGuiController() noexcept;
+    DragDropGuiController& dragDropGuiController() noexcept;
+    ActionsGuiController& actionsGuiController() noexcept;
 
-    enum class PlotsInteractionMode { None, ZoomBox, DragAndDrop, SelectionZones };
+    enum class PlotsInteractionMode
+    {
+        None,
+        ZoomBox,
+        DragAndDrop,
+        SelectionZones
+    };
 
-    enum class PlotsCursorMode { NoCursor, Vertical, Temporal, Horizontal, Cross };
+    enum class PlotsCursorMode
+    {
+        NoCursor,
+        Vertical,
+        Temporal,
+        Horizontal,
+        Cross
+    };
 
     PlotsInteractionMode plotsInteractionMode() const;
     void setPlotsInteractionMode(PlotsInteractionMode mode);

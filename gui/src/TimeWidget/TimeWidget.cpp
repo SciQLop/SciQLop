@@ -15,32 +15,27 @@
 #include <QStyle>
 
 
-struct TimeWidget::TimeWidgetPrivate {
+struct TimeWidget::TimeWidgetPrivate
+{
 
     explicit TimeWidgetPrivate() {}
 
     QPoint m_DragStartPosition;
 };
 
-TimeWidget::TimeWidget(QWidget *parent)
-        : QWidget{parent},
-          ui{new Ui::TimeWidget},
-          impl{spimpl::make_unique_impl<TimeWidgetPrivate>()}
+TimeWidget::TimeWidget(QWidget* parent)
+        : QWidget { parent }
+        , ui { new Ui::TimeWidget }
+        , impl { spimpl::make_unique_impl<TimeWidgetPrivate>() }
 {
     ui->setupUi(this);
 
-    ui->applyToolButton->setIcon(sqpApp->style()->standardIcon(QStyle::SP_DialogApplyButton));
-
     // Connection
     connect(ui->startDateTimeEdit, &QDateTimeEdit::dateTimeChanged, this,
-            &TimeWidget::onTimeUpdateRequested);
+        &TimeWidget::onTimeUpdateRequested);
 
     connect(ui->endDateTimeEdit, &QDateTimeEdit::dateTimeChanged, this,
-            &TimeWidget::onTimeUpdateRequested);
-
-
-    connect(ui->applyToolButton, &QToolButton::clicked, &sqpApp->timeController(),
-            &TimeController::onTimeNotify);
+        &TimeWidget::onTimeUpdateRequested);
 
     // Initialisation
     auto endDateTime = QDateTime::currentDateTimeUtc();
@@ -49,8 +44,8 @@ TimeWidget::TimeWidget(QWidget *parent)
     ui->startDateTimeEdit->setDateTime(startDateTime);
     ui->endDateTimeEdit->setDateTime(endDateTime);
 
-    auto dateTime = DateTimeRange{DateUtils::secondsSinceEpoch(startDateTime),
-                             DateUtils::secondsSinceEpoch(endDateTime)};
+    auto dateTime = DateTimeRange { DateUtils::secondsSinceEpoch(startDateTime),
+        DateUtils::secondsSinceEpoch(endDateTime) };
 
     sqpApp->timeController().setDateTimeRange(dateTime);
 }
@@ -72,8 +67,8 @@ void TimeWidget::setTimeRange(DateTimeRange time)
 
 DateTimeRange TimeWidget::timeRange() const
 {
-    return DateTimeRange{DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
-                    DateUtils::secondsSinceEpoch(ui->endDateTimeEdit->dateTime())};
+    return DateTimeRange { DateUtils::secondsSinceEpoch(ui->startDateTimeEdit->dateTime()),
+        DateUtils::secondsSinceEpoch(ui->endDateTimeEdit->dateTime()) };
 }
 
 void TimeWidget::onTimeUpdateRequested()
@@ -83,60 +78,67 @@ void TimeWidget::onTimeUpdateRequested()
     sqpApp->timeController().setDateTimeRange(dateTime);
 }
 
-void TimeWidget::dragEnterEvent(QDragEnterEvent *event)
+void TimeWidget::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (event->mimeData()->hasFormat(MIME_TYPE_TIME_RANGE)) {
+    if (event->mimeData()->hasFormat(MIME_TYPE_TIME_RANGE))
+    {
         event->acceptProposedAction();
         setStyleSheet("QDateTimeEdit{background-color: #BBD5EE; border:2px solid #2A7FD4}");
     }
-    else {
+    else
+    {
         event->ignore();
     }
 }
 
-void TimeWidget::dragLeaveEvent(QDragLeaveEvent *event)
+void TimeWidget::dragLeaveEvent(QDragLeaveEvent* event)
 {
-    setStyleSheet(QString{});
+    setStyleSheet(QString {});
 }
 
-void TimeWidget::dropEvent(QDropEvent *event)
+void TimeWidget::dropEvent(QDropEvent* event)
 {
-    if (event->mimeData()->hasFormat(MIME_TYPE_TIME_RANGE)) {
+    if (event->mimeData()->hasFormat(MIME_TYPE_TIME_RANGE))
+    {
         auto mimeData = event->mimeData()->data(MIME_TYPE_TIME_RANGE);
         auto timeRange = TimeController::timeRangeForMimeData(mimeData);
 
         setTimeRange(timeRange);
     }
-    else {
+    else
+    {
         event->ignore();
     }
 
-    setStyleSheet(QString{});
+    setStyleSheet(QString {});
 }
 
 
-void TimeWidget::mousePressEvent(QMouseEvent *event)
+void TimeWidget::mousePressEvent(QMouseEvent* event)
 {
-    if (event->button() == Qt::LeftButton) {
+    if (event->button() == Qt::LeftButton)
+    {
         impl->m_DragStartPosition = event->pos();
     }
 
     QWidget::mousePressEvent(event);
 }
 
-void TimeWidget::mouseMoveEvent(QMouseEvent *event)
+void TimeWidget::mouseMoveEvent(QMouseEvent* event)
 {
-    if (!(event->buttons() & Qt::LeftButton)) {
+    if (!(event->buttons() & Qt::LeftButton))
+    {
         return;
     }
 
     if ((event->pos() - impl->m_DragStartPosition).manhattanLength()
-        < QApplication::startDragDistance()) {
+        < QApplication::startDragDistance())
+    {
         return;
     }
 
     // Note: The management of the drag object is done by Qt
-    auto drag = new QDrag{this};
+    auto drag = new QDrag { this };
 
     auto mimeData = new QMimeData;
     auto timeData = TimeController::mimeDataForTimeRange(timeRange());
@@ -144,7 +146,7 @@ void TimeWidget::mouseMoveEvent(QMouseEvent *event)
 
     drag->setMimeData(mimeData);
 
-    auto pixmap = QPixmap{":/icones/time.png"};
+    auto pixmap = QPixmap { ":/icones/time.png" };
     drag->setPixmap(pixmap.scaledToWidth(22));
 
     sqpApp->dragDropGuiController().resetDragAndDrop();

@@ -34,6 +34,8 @@
 #include <TimeWidget/TimeWidget.h>
 #include <Visualization/VisualizationController.h>
 
+#include "toolbar.h"
+
 #include <QAction>
 #include <QCloseEvent>
 #include <QDate>
@@ -164,115 +166,12 @@ MainWindow::MainWindow(QWidget* parent)
             impl->m_SettingsDialog->saveSettings();
         }
     });
-
-    auto mainToolBar = this->addToolBar(QStringLiteral("MainToolBar"));
-
-    auto timeWidget = new TimeWidget {};
-    mainToolBar->addWidget(timeWidget);
-
-    // Interaction modes
-    auto actionPointerMode = new QAction { QIcon(":/icones/pointer.png"), "Move", this };
-    actionPointerMode->setCheckable(true);
-    actionPointerMode->setChecked(
-        sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::None);
-    connect(actionPointerMode, &QAction::triggered,
-        []() { sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::None); });
-
-    auto actionZoomMode = new QAction { QIcon(":/icones/zoom.png"), "Zoom", this };
-    actionZoomMode->setCheckable(true);
-    actionZoomMode->setChecked(
-        sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::ZoomBox);
-    connect(actionZoomMode, &QAction::triggered,
-        []() { sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::ZoomBox); });
-
-    auto actionOrganisationMode = new QAction { QIcon(":/icones/drag.png"), "Organize", this };
-    actionOrganisationMode->setCheckable(true);
-    actionOrganisationMode->setChecked(
-        sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::DragAndDrop);
-    connect(actionOrganisationMode, &QAction::triggered, []() {
-        sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::DragAndDrop);
-    });
-
-    auto actionZonesMode = new QAction { QIcon(":/icones/rectangle.png"), "Zones", this };
-    actionZonesMode->setCheckable(true);
-    actionZonesMode->setChecked(
-        sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones);
-    connect(actionZonesMode, &QAction::triggered, []() {
-        sqpApp->setPlotsInteractionMode(SqpApplication::PlotsInteractionMode::SelectionZones);
-    });
-
-    auto modeActionGroup = new QActionGroup { this };
-    modeActionGroup->addAction(actionZoomMode);
-    modeActionGroup->addAction(actionZonesMode);
-    modeActionGroup->addAction(actionOrganisationMode);
-    modeActionGroup->addAction(actionPointerMode);
-    modeActionGroup->setExclusive(true);
-
-    mainToolBar->addSeparator();
-    mainToolBar->addAction(actionPointerMode);
-    mainToolBar->addAction(actionZoomMode);
-    mainToolBar->addAction(actionOrganisationMode);
-    mainToolBar->addAction(actionZonesMode);
-    mainToolBar->addSeparator();
-
-    // Cursors
-    auto btnCursor = new QToolButton { this };
-    btnCursor->setIcon(QIcon(":/icones/cursor.png"));
-    btnCursor->setText("Cursor");
-    btnCursor->setToolTip("Cursor");
-    btnCursor->setPopupMode(QToolButton::InstantPopup);
-    auto cursorMenu = new QMenu("CursorMenu", this);
-    btnCursor->setMenu(cursorMenu);
-
-    auto noCursorAction = cursorMenu->addAction("No Cursor");
-    noCursorAction->setCheckable(true);
-    noCursorAction->setChecked(
-        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::NoCursor);
-    connect(noCursorAction, &QAction::triggered,
-        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::NoCursor); });
-
-    cursorMenu->addSeparator();
-    auto verticalCursorAction = cursorMenu->addAction("Vertical Cursor");
-    verticalCursorAction->setCheckable(true);
-    verticalCursorAction->setChecked(
-        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::Vertical);
-    connect(verticalCursorAction, &QAction::triggered,
-        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Vertical); });
-
-    auto temporalCursorAction = cursorMenu->addAction("Temporal Cursor");
-    temporalCursorAction->setCheckable(true);
-    temporalCursorAction->setChecked(
-        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::Temporal);
-    connect(temporalCursorAction, &QAction::triggered,
-        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Temporal); });
-
-    auto horizontalCursorAction = cursorMenu->addAction("Horizontal Cursor");
-    horizontalCursorAction->setCheckable(true);
-    horizontalCursorAction->setChecked(
-        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::Horizontal);
-    connect(horizontalCursorAction, &QAction::triggered,
-        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Horizontal); });
-
-    auto crossCursorAction = cursorMenu->addAction("Cross Cursor");
-    crossCursorAction->setCheckable(true);
-    crossCursorAction->setChecked(
-        sqpApp->plotsCursorMode() == SqpApplication::PlotsCursorMode::Cross);
-    connect(crossCursorAction, &QAction::triggered,
-        []() { sqpApp->setPlotsCursorMode(SqpApplication::PlotsCursorMode::Cross); });
-
-    mainToolBar->addWidget(btnCursor);
-
-    auto cursorModeActionGroup = new QActionGroup { this };
-    cursorModeActionGroup->setExclusive(true);
-    cursorModeActionGroup->addAction(noCursorAction);
-    cursorModeActionGroup->addAction(verticalCursorAction);
-    cursorModeActionGroup->addAction(temporalCursorAction);
-    cursorModeActionGroup->addAction(horizontalCursorAction);
-    cursorModeActionGroup->addAction(crossCursorAction);
-
-    // Catalog
-    mainToolBar->addSeparator();
-    mainToolBar->addAction(QIcon(":/icones/catalogue.png"), "Catalogues",
+    auto mainToolBar = new ToolBar(this);
+    this->addToolBar(mainToolBar);
+    connect(mainToolBar, &ToolBar::setPlotsInteractionMode, sqpApp,
+        &SqpApplication::setPlotsInteractionMode);
+    connect(mainToolBar, &ToolBar::setPlotsCursorMode, sqpApp, &SqpApplication::setPlotsCursorMode);
+    connect(mainToolBar, &ToolBar::showCataloguesBrowser,
         [this]() { impl->m_CatalogExplorer->show(); });
 
     // //////// //
@@ -287,11 +186,6 @@ MainWindow::MainWindow(QWidget* parent)
     // Connections //
     // /////////// //
 
-    // Controllers / controllers connections
-    //    connect(&sqpApp->timeController(), SIGNAL(timeUpdated(DateTimeRange)),
-    //    &sqpApp->variableController(),
-    //            SLOT(onDateTimeOnSelection(DateTimeRange)));
-
     // Widgets / controllers connections
 
     // DataSource
@@ -299,8 +193,10 @@ MainWindow::MainWindow(QWidget* parent)
         m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem*)));
 
     // Time
-    connect(timeWidget, SIGNAL(timeUpdated(DateTimeRange)), &sqpApp->timeController(),
-        SLOT(onTimeToUpdate(DateTimeRange)));
+    //    connect(timeWidget, SIGNAL(timeUpdated(DateTimeRange)), &sqpApp->timeController(),
+    //        SLOT(onTimeToUpdate(DateTimeRange)));
+    connect(mainToolBar, &ToolBar::timeUpdated, &sqpApp->timeController(),
+        &TimeController::setDateTimeRange);
 
     // Visualization
     connect(&sqpApp->visualizationController(),

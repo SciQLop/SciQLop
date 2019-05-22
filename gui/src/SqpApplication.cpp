@@ -92,6 +92,7 @@ public:
 SqpApplication::SqpApplication(int& argc, char** argv)
         : QApplication { argc, argv }, impl { spimpl::make_unique_impl<SqpApplicationPrivate>() }
 {
+    this->setStyle(new MyProxyStyle(this->style()));
     qCDebug(LOG_SqpApplication()) << tr("SqpApplication construction") << QThread::currentThread();
 
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
