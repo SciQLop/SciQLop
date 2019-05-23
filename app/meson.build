@@ -1,6 +1,6 @@
 
 app_moc_headers = [
-  'include/MainWindow.h'
+  'include/MainWindow.h',
   'include/toolbar.h'
 ]
 
@@ -16,7 +16,7 @@ app_moc_files = qt5.preprocess(moc_headers : app_moc_headers,
 
 app_sources = [
   'src/Main.cpp',
-  'src/MainWindow.cpp'
+  'src/MainWindow.cpp',
   'src/toolbar.cpp'
 ]
 
