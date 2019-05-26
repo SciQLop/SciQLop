@@ -271,8 +271,8 @@ struct PlottablesUpdater<T,
         {
             std::for_each(
                 std::begin(*serie), std::end(*serie), [&minValue, &maxValue](const auto& v) {
-                    minValue = std::min( minValue, std::min_element(v.begin(), v.end())->v() );
-                    maxValue = std::max( maxValue, std::max_element(v.begin(), v.end())->v() );
+                    minValue = std::min(minValue, std::min_element(v.begin(), v.end())->v());
+                    maxValue = std::max(maxValue, std::max_element(v.begin(), v.end())->v());
                 });
         }
         plot.yAxis->setRange(QCPRange { minValue, maxValue });
@@ -329,25 +329,58 @@ struct PlottablesUpdater<T,
         //        {
         //            plot.yAxis->setRange(QCPRange { min, max });
         //        }
+        double minValue = 0., maxValue = 0.;
+        if (auto serie = dynamic_cast<SpectrogramTimeSerie*>(&dataSeries))
+        {
+            auto& yAxis = serie->axis(1);
+            if (yAxis.size())
+            {
+                minValue = *std::min_element(std::cbegin(yAxis), std::cend(yAxis));
+                maxValue = *std::max_element(std::cbegin(yAxis), std::cend(yAxis));
+            }
+        }
+        plot.yAxis->setRange(QCPRange { minValue, maxValue });
     }
 
     static void updatePlottables(
         T& dataSeries, PlottablesMap& plottables, const DateTimeRange& range, bool rescaleAxes)
     {
         // TODO
-        //        if (plottables.empty())
-        //        {
-        //            qCDebug(LOG_VisualizationGraphHelper())
-        //                << QObject::tr("Can't update spectrogram: no colormap has been
-        //                associated");
-        //            return;
-        //        }
+        if (plottables.empty())
+        {
+            qCDebug(LOG_VisualizationGraphHelper())
+                << QObject::tr("Can't update spectrogram: no colormap has been associated");
+            return;
+        }
+
 
         //        // Gets the colormap to update (normally there is only one colormap)
-        //        Q_ASSERT(plottables.size() == 1);
-        //        auto colormap = dynamic_cast<QCPColorMap*>(plottables.at(0));
-        //        Q_ASSERT(colormap != nullptr);
-
+        Q_ASSERT(plottables.size() == 1);
+        auto colormap = dynamic_cast<QCPColorMap*>(plottables.at(0));
+        Q_ASSERT(colormap != nullptr);
+        if (auto serie = dynamic_cast<SpectrogramTimeSerie*>(&dataSeries))
+        {
+            colormap->data()->setSize(serie->shape()[0], serie->shape()[1]);
+            if (serie->size(0))
+            {
+                colormap->data()->setRange(
+                    QCPRange { serie->begin()->t(), (serie->end() - 1)->t() },
+                    QCPRange { 1., 1000. });
+                for (int x_index = 0; x_index < serie->shape()[0]; x_index++)
+                {
+                    auto pixline = (*serie)[x_index];
+                    for (int y_index = 0; y_index < serie->shape()[1]; y_index++)
+                    {
+                        auto value = pixline[y_index];
+                        colormap->data()->setCell(x_index, y_index, value);
+                        if (std::isnan(value))
+                        {
+                            colormap->data()->setAlpha(x_index, y_index, 0);
+                        }
+                    }
+                }
+            }
+        }
         //        dataSeries.lockRead();
 
         //        // Processing spectrogram data for display in QCustomPlot
@@ -389,12 +422,12 @@ struct PlottablesUpdater<T,
         //        }
 
         //        // Rescales axes
-        //        auto plot = colormap->parentPlot();
-
-        //        if (rescaleAxes)
-        //        {
-        //            plot->rescaleAxes();
-        //        }
+        auto plot = colormap->parentPlot();
+        setPlotYAxisRange(dataSeries, {}, *plot);
+        if (rescaleAxes)
+        {
+            plot->rescaleAxes();
+        }
     }
 };
 

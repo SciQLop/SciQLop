@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, timezone
 import PythonProviders
 import pysciqlopcore
 import numpy as np
-import pandas as pds
 import requests
 import copy
 from spwc.amda import AMDA
@@ -27,10 +26,8 @@ def get_sample(metadata,start,stop):
                     default_ctor_args = (0,2)
         tstart=datetime.fromtimestamp(start, tz=timezone.utc)
         tend=datetime.fromtimestamp(stop, tz=timezone.utc)
-        df = amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id=param_id, method="REST")
-        t = np.array([d.timestamp() for d in df.index])
-        values = df.values
-        return ts_type(t,values)
+        var = amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id=param_id, method="REST")
+        return ts_type(var.time,var.data)
     except Exception as e:
         print(traceback.format_exc())
         print("Error in amda.py ",str(e))
@@ -55,7 +52,10 @@ for key,parameter in parameters.items():
     if n_components is '3':
         metadata.append(("type","vector"))
     elif n_components !=0:
-        metadata.append(("type","multicomponent"))
+        if parameter.get('display_type','')=="spectrogram":
+            metadata.append(("type","spectrogram"))
+        else:
+            metadata.append(("type","multicomponent"))
     else:
         metadata.append(("type","scalar"))
     products.append( (path, components, metadata))
