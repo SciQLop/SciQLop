@@ -3,9 +3,12 @@
 
 #include <Data/ScalarTimeSerie.h>
 #include <Data/SpectrogramTimeSerie.h>
+#include <Data/TimeSeriesUtils.h>
 #include <Data/VectorTimeSerie.h>
 
+#include <Common/cpp_utils.h>
 #include <Variable/Variable2.h>
+#include <algorithm>
 
 Q_LOGGING_CATEGORY(LOG_VisualizationGraphHelper, "VisualizationGraphHelper")
 
@@ -321,31 +324,14 @@ struct PlottablesUpdater<T,
 {
     static void setPlotYAxisRange(T& dataSeries, const DateTimeRange& xAxisRange, QCustomPlot& plot)
     {
-        // TODO
-        //        double min, max;
-        //        std::tie(min, max) = dataSeries.yBounds();
-
-        //        if (!std::isnan(min) && !std::isnan(max))
-        //        {
-        //            plot.yAxis->setRange(QCPRange { min, max });
-        //        }
-        double minValue = 0., maxValue = 0.;
-        if (auto serie = dynamic_cast<SpectrogramTimeSerie*>(&dataSeries))
-        {
-            auto& yAxis = serie->axis(1);
-            if (yAxis.size())
-            {
-                minValue = *std::min_element(std::cbegin(yAxis), std::cend(yAxis));
-                maxValue = *std::max_element(std::cbegin(yAxis), std::cend(yAxis));
-            }
-        }
+        auto [minValue, maxValue] = dataSeries.axis_range(1);
+        std::cout << "min=" << minValue << "   max=" << maxValue << std::endl;
         plot.yAxis->setRange(QCPRange { minValue, maxValue });
     }
 
     static void updatePlottables(
         T& dataSeries, PlottablesMap& plottables, const DateTimeRange& range, bool rescaleAxes)
     {
-        // TODO
         if (plottables.empty())
         {
             qCDebug(LOG_VisualizationGraphHelper())
@@ -353,80 +339,82 @@ struct PlottablesUpdater<T,
             return;
         }
 
-
-        //        // Gets the colormap to update (normally there is only one colormap)
+        // Gets the colormap to update (normally there is only one colormap)
         Q_ASSERT(plottables.size() == 1);
         auto colormap = dynamic_cast<QCPColorMap*>(plottables.at(0));
         Q_ASSERT(colormap != nullptr);
+        auto plot = colormap->parentPlot();
+        auto [minValue, maxValue] = dataSeries.axis_range(1);
+        plot->yAxis->setRange(QCPRange { minValue, maxValue });
         if (auto serie = dynamic_cast<SpectrogramTimeSerie*>(&dataSeries))
         {
-            colormap->data()->setSize(serie->shape()[0], serie->shape()[1]);
-            if (serie->size(0))
+            if (serie->size(0) > 2)
             {
+                const auto& xAxis = serie->axis(0);
+                auto yAxis = serie->axis(1); // copy for in place reverse order
+                std::reverse(std::begin(yAxis), std::end(yAxis));
+                auto xAxisProperties = TimeSeriesUtils::axis_analysis<TimeSeriesUtils::IsLinear,
+                    TimeSeriesUtils::CheckMedian>(xAxis);
+                auto yAxisProperties = TimeSeriesUtils::axis_analysis<TimeSeriesUtils::IsLog,
+                    TimeSeriesUtils::DontCheckMedian>(yAxis);
+
+                int colormap_h_size = std::min(32000,
+                    static_cast<int>(xAxisProperties.range / xAxisProperties.max_resolution));
+                auto colormap_v_size
+                    = static_cast<int>(yAxisProperties.range / yAxisProperties.max_resolution);
+
+                colormap->data()->setSize(colormap_h_size, colormap_v_size);
                 colormap->data()->setRange(
                     QCPRange { serie->begin()->t(), (serie->end() - 1)->t() },
-                    QCPRange { 1., 1000. });
-                for (int x_index = 0; x_index < serie->shape()[0]; x_index++)
+                    { minValue, maxValue });
+
+                std::vector<std::pair<int, int>> y_access_pattern;
+                for (int y_index = 0, cel_index = 0; y_index < colormap_v_size; y_index++)
                 {
-                    auto pixline = (*serie)[x_index];
-                    for (int y_index = 0; y_index < serie->shape()[1]; y_index++)
+                    double current_y = pow(
+                        10., (yAxisProperties.max_resolution * y_index) + std::log10(minValue));
+                    if (current_y > yAxis[cel_index])
+                        cel_index++;
+                    y_access_pattern.push_back({ y_index, yAxis.size() - 1 - cel_index });
+                }
+
+                auto line = serie->begin();
+                double current_time = xAxis[0];
+                int x_index = 0;
+
+                while (x_index < colormap_h_size)
+                {
+                    if (current_time > (line + 1)->t())
                     {
-                        auto value = pixline[y_index];
-                        colormap->data()->setCell(x_index, y_index, value);
-                        if (std::isnan(value))
+                        line++;
+                    }
+                    if ((current_time - xAxis[0])
+                        > (x_index * xAxisProperties.range / colormap_h_size))
+                    {
+                        x_index++;
+                    }
+                    if (line->t() <= (current_time + xAxisProperties.max_resolution))
+                    {
+                        std::for_each(std::cbegin(y_access_pattern), std::cend(y_access_pattern),
+                            [&colormap, &line, x_index](const auto& acc) {
+                                colormap->data()->setCell(x_index, acc.first, (*line)[acc.second]);
+                            });
+                    }
+                    else
+                    {
+                        for (int y_index = 0; y_index < colormap_v_size; y_index++)
                         {
-                            colormap->data()->setAlpha(x_index, y_index, 0);
+                            colormap->data()->setCell(x_index, y_index, std::nan(""));
                         }
                     }
+                    current_time += xAxisProperties.max_resolution;
                 }
             }
-        }
-        //        dataSeries.lockRead();
 
-        //        // Processing spectrogram data for display in QCustomPlot
-        //        auto its = dataSeries.xAxisRange(range.m_TStart, range.m_TEnd);
-
-        //        // Computes logarithmic y-axis resolution for the spectrogram
-        //        auto yData = its.first->y();
-        //        auto yResolution = DataSeriesUtils::resolution(yData.begin(), yData.end(), true);
-
-        //        // Generates mesh for colormap
-        //        auto mesh = DataSeriesUtils::regularMesh(its.first, its.second,
-        //            DataSeriesUtils::Resolution { dataSeries.xResolution() }, yResolution);
-
-        //        dataSeries.unlock();
-
-        //        colormap->data()->setSize(mesh.m_NbX, mesh.m_NbY);
-        //        if (!mesh.isEmpty())
-        //        {
-        //            colormap->data()->setRange(QCPRange { mesh.m_XMin, mesh.xMax() },
-        //                // y-axis range is converted to linear values
-        //                QCPRange { std::pow(10, mesh.m_YMin), std::pow(10, mesh.yMax()) });
-
-        //            // Sets values
-        //            auto index = 0;
-        //            for (auto it = mesh.m_Data.begin(), end = mesh.m_Data.end(); it != end; ++it,
-        //            ++index)
-        //            {
-        //                auto xIndex = index % mesh.m_NbX;
-        //                auto yIndex = index / mesh.m_NbX;
-
-        //                colormap->data()->setCell(xIndex, yIndex, *it);
-
-        //                // Makes the NaN values to be transparent in the colormap
-        //                if (std::isnan(*it))
-        //                {
-        //                    colormap->data()->setAlpha(xIndex, yIndex, 0);
-        //                }
-        //            }
-        //        }
-
-        //        // Rescales axes
-        auto plot = colormap->parentPlot();
-        setPlotYAxisRange(dataSeries, {}, *plot);
-        if (rescaleAxes)
-        {
-            plot->rescaleAxes();
+            if (rescaleAxes)
+            {
+                plot->rescaleAxes();
+            }
         }
     }
 };
@@ -444,7 +432,8 @@ struct IPlottablesHelper
 };
 
 /**
- * Default implementation of IPlottablesHelper, which takes data series to create/update plottables
+ * Default implementation of IPlottablesHelper, which takes data series to create/update
+ * plottables
  * @tparam T the data series' type
  */
 template <typename T>
