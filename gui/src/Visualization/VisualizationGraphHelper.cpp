@@ -410,7 +410,7 @@ struct PlottablesUpdater<T,
                     current_time += xAxisProperties.max_resolution;
                 }
             }
-
+            colormap->rescaleDataRange(true);
             if (rescaleAxes)
             {
                 plot->rescaleAxes();
