@@ -9,6 +9,7 @@
 #include <Common/cpp_utils.h>
 #include <Variable/Variable2.h>
 #include <algorithm>
+#include <cmath>
 
 Q_LOGGING_CATEGORY(LOG_VisualizationGraphHelper, "VisualizationGraphHelper")
 
@@ -272,11 +273,10 @@ struct PlottablesUpdater<T,
         double minValue = 0., maxValue = 0.;
         if (auto serie = dynamic_cast<MultiComponentTimeSerie*>(&dataSeries))
         {
-            std::for_each(
-                std::begin(*serie), std::end(*serie), [&minValue, &maxValue](const auto& v) {
-                    minValue = std::min(minValue, std::min_element(v.begin(), v.end())->v());
-                    maxValue = std::max(maxValue, std::max_element(v.begin(), v.end())->v());
-                });
+            std::for_each(std::begin(*serie), std::end(*serie), [&minValue, &maxValue](auto& v) {
+                minValue = std::min(minValue, std::min_element(v.begin(), v.end())->v());
+                maxValue = std::max(maxValue, std::max_element(v.begin(), v.end())->v());
+            });
         }
         plot.yAxis->setRange(QCPRange { minValue, maxValue });
     }
@@ -313,6 +313,46 @@ struct PlottablesUpdater<T,
         }
     }
 };
+
+/*=============================================================*/
+// TODO move this to dedicated srcs
+/*=============================================================*/
+struct ColomapProperties
+{
+    int h_size_px;
+    int v_size_px;
+    double h_resolutuon;
+    double v_resolutuon;
+};
+
+inline ColomapProperties CMAxisAnalysis(const TimeSeriesUtils::axis_properties& xAxisProperties,
+    const TimeSeriesUtils::axis_properties& yAxisProperties)
+{
+    int colormap_h_size
+        = std::min(32000, static_cast<int>(xAxisProperties.range / xAxisProperties.max_resolution));
+    int colormap_v_size = static_cast<int>(yAxisProperties.range / yAxisProperties.max_resolution);
+    double colormap_h_resolution = xAxisProperties.range / static_cast<double>(colormap_h_size);
+    double colormap_v_resolution = yAxisProperties.range / static_cast<double>(colormap_v_size);
+    return ColomapProperties { colormap_h_size, colormap_v_size, colormap_h_resolution,
+        colormap_v_resolution };
+}
+
+inline std::vector<std::pair<int, int>> build_access_pattern(const std::vector<double>& axis,
+    const TimeSeriesUtils::axis_properties& axisProperties,
+    const ColomapProperties& colormap_properties)
+{
+    std::vector<std::pair<int, int>> access_pattern;
+    for (int index = 0, cel_index = 0; index < colormap_properties.v_size_px; index++)
+    {
+        double current_y = pow(10., (axisProperties.max_resolution * index) + axisProperties.min);
+        if (current_y > axis[cel_index])
+            cel_index++;
+        access_pattern.push_back({ index, axis.size() - 1 - cel_index });
+    }
+    return access_pattern;
+}
+
+/*=============================================================*/
 
 /**
  * Specialization of PlottablesUpdater for spectrograms
@@ -354,57 +394,75 @@ struct PlottablesUpdater<T,
                 auto yAxis = serie->axis(1); // copy for in place reverse order
                 std::reverse(std::begin(yAxis), std::end(yAxis));
                 auto xAxisProperties = TimeSeriesUtils::axis_analysis<TimeSeriesUtils::IsLinear,
-                    TimeSeriesUtils::CheckMedian>(xAxis);
+                    TimeSeriesUtils::CheckMedian>(xAxis, serie->min_sampling);
                 auto yAxisProperties = TimeSeriesUtils::axis_analysis<TimeSeriesUtils::IsLog,
                     TimeSeriesUtils::DontCheckMedian>(yAxis);
+                auto colormap_properties = CMAxisAnalysis(xAxisProperties, yAxisProperties);
 
-                int colormap_h_size = std::min(32000,
-                    static_cast<int>(xAxisProperties.range / xAxisProperties.max_resolution));
-                auto colormap_v_size
-                    = static_cast<int>(yAxisProperties.range / yAxisProperties.max_resolution);
-
-                colormap->data()->setSize(colormap_h_size, colormap_v_size);
+                colormap->data()->setSize(
+                    colormap_properties.h_size_px, colormap_properties.v_size_px);
                 colormap->data()->setRange(
-                    QCPRange { serie->begin()->t(), (serie->end() - 1)->t() },
-                    { minValue, maxValue });
+                    QCPRange { xAxisProperties.min, xAxisProperties.max }, { minValue, maxValue });
 
-                std::vector<std::pair<int, int>> y_access_pattern;
-                for (int y_index = 0, cel_index = 0; y_index < colormap_v_size; y_index++)
-                {
-                    double current_y = pow(
-                        10., (yAxisProperties.max_resolution * y_index) + std::log10(minValue));
-                    if (current_y > yAxis[cel_index])
-                        cel_index++;
-                    y_access_pattern.push_back({ y_index, yAxis.size() - 1 - cel_index });
-                }
+                auto y_access_pattern
+                    = build_access_pattern(yAxis, yAxisProperties, colormap_properties);
 
                 auto line = serie->begin();
-                double current_time = xAxis[0];
+                auto next_line = line + 1;
+                double current_time = xAxisProperties.min;
                 int x_index = 0;
-
-                while (x_index < colormap_h_size)
+                auto x_min_resolution
+                    = std::fmin(2. * serie->max_sampling, xAxisProperties.max_resolution * 100.);
+                std::vector<double> line_values(serie->size(1));
+                double avg_coef = 0.;
+                bool has_nan = false;
+                while (x_index < colormap_properties.h_size_px)
                 {
-                    if (current_time > (line + 1)->t())
+                    if (next_line != std::end(*serie) and current_time >= next_line->t())
                     {
-                        line++;
+                        line = next_line;
+                        next_line++;
                     }
-                    if ((current_time - xAxis[0])
-                        > (x_index * xAxisProperties.range / colormap_h_size))
-                    {
-                        x_index++;
-                    }
-                    if (line->t() <= (current_time + xAxisProperties.max_resolution))
+                    if ((current_time - xAxisProperties.min)
+                        > (static_cast<double>(x_index + 1) * colormap_properties.h_resolutuon))
                     {
                         std::for_each(std::cbegin(y_access_pattern), std::cend(y_access_pattern),
-                            [&colormap, &line, x_index](const auto& acc) {
-                                colormap->data()->setCell(x_index, acc.first, (*line)[acc.second]);
+                            [&colormap, &line_values, x_index, avg_coef](const auto& acc) {
+                                colormap->data()->setCell(
+                                    x_index, acc.first, line_values[acc.second] / avg_coef);
                             });
+                        std::fill(std::begin(line_values), std::end(line_values), 0.);
+                        x_index++;
+                        avg_coef = 0.;
+                        has_nan = false;
+                    }
+                    if (line->t() + x_min_resolution > current_time)
+                    {
+                        if (has_nan)
+                        {
+                            std::transform(std::begin(*line), std::end(*line),
+                                std::begin(line_values),
+                                [](const auto& input) { return input.v(); });
+                            has_nan = false;
+                        }
+                        else
+                        {
+                            std::transform(std::begin(*line), std::end(*line),
+                                std::cbegin(line_values), std::begin(line_values),
+                                [](const auto& input, auto output) { return input.v() + output; });
+                        }
+                        avg_coef += 1.;
                     }
                     else
                     {
-                        for (int y_index = 0; y_index < colormap_v_size; y_index++)
+                        for (int y_index = 0; y_index < colormap_properties.v_size_px; y_index++)
                         {
-                            colormap->data()->setCell(x_index, y_index, std::nan(""));
+                            if (avg_coef > 0.)
+                            {
+                                has_nan = true;
+                                std::fill(
+                                    std::begin(line_values), std::end(line_values), std::nan(""));
+                            }
                         }
                     }
                     current_time += xAxisProperties.max_resolution;

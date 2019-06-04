@@ -32,6 +32,8 @@ def amda_make_spectro(var=None):
     if var is None:
         return pysciqlopcore.SpectrogramTimeSerie((0,2))
     else:
+        min_sampling = float(var.meta.get("DATASET_MIN_SAMPLING","nan"))
+        max_sampling = float(var.meta.get("DATASET_MAX_SAMPLING","nan"))
         if "PARAMETER_TABLE_MIN_VALUES[1]" in var.meta:
             min_v = np.array([ float(v) for v in var.meta["PARAMETER_TABLE_MIN_VALUES[1]"].split(',') ])
             max_v = np.array([ float(v) for v in var.meta["PARAMETER_TABLE_MAX_VALUES[1]"].split(',') ])
@@ -42,7 +44,7 @@ def amda_make_spectro(var=None):
             y = (max_v + min_v)/2.
         else:
             y = np.logspace(1,3,var.data.shape[1])[::-1]
-        return pysciqlopcore.SpectrogramTimeSerie(var.time,y,var.data)
+        return pysciqlopcore.SpectrogramTimeSerie(var.time,y,var.data,min_sampling,max_sampling)
 
 def amda_get_sample(metadata,start,stop):
     ts_type = amda_make_scalar

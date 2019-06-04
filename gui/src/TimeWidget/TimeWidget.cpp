@@ -74,7 +74,7 @@ DateTimeRange TimeWidget::timeRange() const
 void TimeWidget::onTimeUpdateRequested()
 {
     auto dateTime = timeRange();
-    emit timeUpdated(std::move(dateTime));
+    emit timeUpdated(dateTime);
     sqpApp->timeController().setDateTimeRange(dateTime);
 }
 

@@ -64,7 +64,7 @@ def get_data(metadata,start,stop):
                     ts_type = pysciqlopcore.MultiComponentTimeSerie
                     default_ctor_args = (0,2)
                 elif value == 'spectrogram':
-                    ts_type = lambda t,values: pysciqlopcore.SpectrogramTimeSerie(t,np.logspace(1,3,32)[::-1],values)
+                    ts_type = lambda t,values: pysciqlopcore.SpectrogramTimeSerie(t,np.logspace(1,3,32)[::-1],values,np.nan,np.nan)
                     default_ctor_args = (0,2)
             if key == 'cache' and value == 'true':
                 use_cache = True
