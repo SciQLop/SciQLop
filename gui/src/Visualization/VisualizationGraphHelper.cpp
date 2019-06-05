@@ -342,12 +342,12 @@ inline std::vector<std::pair<int, int>> build_access_pattern(const std::vector<d
     const ColomapProperties& colormap_properties)
 {
     std::vector<std::pair<int, int>> access_pattern;
-    for (int index = 0, cel_index = 0; index < colormap_properties.v_size_px; index++)
+    for (int index = 0, cel_index = axis.size() - 1; index < colormap_properties.v_size_px; index++)
     {
         double current_y = pow(10., (axisProperties.max_resolution * index) + axisProperties.min);
         if (current_y > axis[cel_index])
-            cel_index++;
-        access_pattern.push_back({ index, axis.size() - 1 - cel_index });
+            cel_index--;
+        access_pattern.push_back({ index, cel_index });
     }
     return access_pattern;
 }
@@ -405,7 +405,7 @@ struct PlottablesUpdater<T,
                     QCPRange { xAxisProperties.min, xAxisProperties.max }, { minValue, maxValue });
 
                 auto y_access_pattern
-                    = build_access_pattern(yAxis, yAxisProperties, colormap_properties);
+                    = build_access_pattern(serie->axis(1), yAxisProperties, colormap_properties);
 
                 auto line = serie->begin();
                 auto next_line = line + 1;
@@ -415,7 +415,6 @@ struct PlottablesUpdater<T,
                     = std::fmin(2. * serie->max_sampling, xAxisProperties.max_resolution * 100.);
                 std::vector<double> line_values(serie->size(1));
                 double avg_coef = 0.;
-                bool has_nan = false;
                 while (x_index < colormap_properties.h_size_px)
                 {
                     if (next_line != std::end(*serie) and current_time >= next_line->t())
@@ -434,18 +433,9 @@ struct PlottablesUpdater<T,
                         std::fill(std::begin(line_values), std::end(line_values), 0.);
                         x_index++;
                         avg_coef = 0.;
-                        has_nan = false;
                     }
                     if (line->t() + x_min_resolution > current_time)
                     {
-                        if (has_nan)
-                        {
-                            std::transform(std::begin(*line), std::end(*line),
-                                std::begin(line_values),
-                                [](const auto& input) { return input.v(); });
-                            has_nan = false;
-                        }
-                        else
                         {
                             std::transform(std::begin(*line), std::end(*line),
                                 std::cbegin(line_values), std::begin(line_values),
@@ -459,13 +449,11 @@ struct PlottablesUpdater<T,
                         {
                             if (avg_coef > 0.)
                             {
-                                has_nan = true;
-                                std::fill(
-                                    std::begin(line_values), std::end(line_values), std::nan(""));
+                                std::fill(std::begin(line_values), std::end(line_values), 0);
                             }
                         }
                     }
-                    current_time += xAxisProperties.max_resolution;
+                    current_time += xAxisProperties.max_resolution * 0.9;
                 }
             }
             colormap->rescaleDataRange(true);
