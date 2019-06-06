@@ -44,7 +44,7 @@ def amda_make_spectro(var=None):
             y = (max_v + min_v)/2.
         else:
             y = np.logspace(1,3,var.data.shape[1])[::-1]
-        return pysciqlopcore.SpectrogramTimeSerie(var.time,y,var.data,min_sampling,max_sampling)
+        return pysciqlopcore.SpectrogramTimeSerie(var.time,y,var.data,min_sampling,max_sampling,True)
 
 def amda_get_sample(metadata,start,stop):
     ts_type = amda_make_scalar
