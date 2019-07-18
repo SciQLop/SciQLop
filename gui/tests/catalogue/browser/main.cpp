@@ -10,7 +10,6 @@
 #include <SqpApplication.h>
 
 #include <GUITestUtils.h>
-#include <TestProviders.h>
 
 #include <Catalogue/CatalogueController.h>
 #include <Catalogue2/browser.h>

@@ -52,7 +52,12 @@ public:
     {
         ItemType type;
         std::variant<CatalogueController::Event_ptr, CatalogueController::Product_t> item;
-        EventsModelItem() : type { ItemType::None } {}
+        // EventsModelItem() : type { ItemType::None } {}
+        EventsModelItem() = delete;
+        EventsModelItem(const EventsModelItem&) = delete;
+        EventsModelItem(EventsModelItem&&) = delete;
+        EventsModelItem& operator=(const EventsModelItem&) = delete;
+        EventsModelItem& operator=(EventsModelItem&&) = delete;
         EventsModelItem(const CatalogueController::Event_ptr& event)
                 : type { ItemType::Event }, item { event }, parent { nullptr }, icon {}
         {
@@ -65,6 +70,7 @@ public:
                 : type { ItemType::Product }, item { product }, parent { parent }, icon {}
         {
         }
+        ~EventsModelItem() { children.clear(); }
         CatalogueController::Event_ptr event() const
         {
             return std::get<CatalogueController::Event_ptr>(item);
@@ -75,19 +81,19 @@ public:
         }
         QVariant data(int col, int role) const
         {
-            if(role==Qt::DisplayRole)
+            if (role == Qt::DisplayRole)
             {
                 switch (type)
                 {
-                case ItemType::Product :
-                    return data(product(),col);
-                case ItemType::Event:
-                    return data(event(),col);
-                default:
-                    break;
+                    case ItemType::Product:
+                        return data(product(), col);
+                    case ItemType::Event:
+                        return data(event(), col);
+                    default:
+                        break;
                 }
             }
-            return QVariant{};
+            return QVariant {};
         }
         QVariant data(const CatalogueController::Event_ptr& event, int col) const
         {
@@ -137,7 +143,8 @@ public:
                 case EventsModel::Columns::Name:
                     return QString::fromStdString(product.name);
                 case EventsModel::Columns::TStart:
-                    return DateUtils::dateTime(product.startTime).toString(DATETIME_FORMAT_ONE_LINE);
+                    return DateUtils::dateTime(product.startTime)
+                        .toString(DATETIME_FORMAT_ONE_LINE);
                 case EventsModel::Columns::TEnd:
                     return DateUtils::dateTime(product.stopTime).toString(DATETIME_FORMAT_ONE_LINE);
                 case EventsModel::Columns::Product:
@@ -166,6 +173,8 @@ public:
     {
         return static_cast<EventsModelItem*>(index.internalPointer());
     }
+
+    ~EventsModel() { _items.clear(); }
 
     ItemType type(const QModelIndex& index) const;
 
