@@ -32,7 +32,6 @@
 #include <SqpApplication.h>
 #include <Time/TimeController.h>
 #include <TimeWidget/TimeWidget.h>
-#include <Visualization/VisualizationController.h>
 
 #include "toolbar.h"
 
@@ -197,15 +196,6 @@ MainWindow::MainWindow(QWidget* parent)
     //        SLOT(onTimeToUpdate(DateTimeRange)));
     connect(mainToolBar, &ToolBar::timeUpdated, &sqpApp->timeController(),
         &TimeController::setDateTimeRange);
-
-    // Visualization
-    connect(&sqpApp->visualizationController(),
-        SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable2>)), m_Ui->view,
-        SLOT(onVariableAboutToBeDeleted(std::shared_ptr<Variable2>)));
-
-    connect(&sqpApp->visualizationController(),
-        SIGNAL(rangeChanged(std::shared_ptr<Variable2>, const DateTimeRange&)), m_Ui->view,
-        SLOT(onRangeChanged(std::shared_ptr<Variable2>, const DateTimeRange&)));
 
     // Widgets / widgets connections
 

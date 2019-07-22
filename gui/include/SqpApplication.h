@@ -27,7 +27,6 @@ class TimeController;
 class VariableController;
 class VariableController2;
 class VariableModel2;
-class VisualizationController;
 class DragDropGuiController;
 class ActionsGuiController;
 class CatalogueController;
@@ -76,9 +75,6 @@ public:
     TimeController& timeController() noexcept;
     VariableController2& variableController() noexcept;
     std::shared_ptr<VariableController2> variableControllerOwner() noexcept;
-    //@TODO there should not be any global model it's just GUI impl detail
-    //    VariableModel2 &variableModel() noexcept;
-    VisualizationController& visualizationController() noexcept;
     CatalogueController& catalogueController() noexcept;
 
     /// Accessors for the differents sciqlop helpers, these helpers classes are like controllers but

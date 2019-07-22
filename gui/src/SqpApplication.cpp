@@ -10,7 +10,6 @@
 #include <Time/TimeController.h>
 #include <Variable/VariableController2.h>
 #include <Variable/VariableModel2.h>
-#include <Visualization/VisualizationController.h>
 
 Q_LOGGING_CATEGORY(LOG_SqpApplication, "SqpApplication")
 
@@ -34,25 +33,11 @@ public:
                     variableProvider, sqpApp->timeController().dateTime());
             });
 
-        // VariableController <-> VisualizationController
-        //        connect(m_VariableController.get(),
-        //                SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)),
-        //                m_VisualizationController.get(),
-        //                SIGNAL(variableAboutToBeDeleted(std::shared_ptr<Variable>)),
-        //                Qt::DirectConnection);
-
-        //        connect(m_VariableController.get(),
-        //                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const DateTimeRange &)),
-        //                m_VisualizationController.get(),
-        //                SIGNAL(rangeChanged(std::shared_ptr<Variable>, const DateTimeRange &)));
-
 
         m_DataSourceController.moveToThread(&m_DataSourceControllerThread);
         m_DataSourceControllerThread.setObjectName("DataSourceControllerThread");
         m_NetworkController.moveToThread(&m_NetworkControllerThread);
         m_NetworkControllerThread.setObjectName("NetworkControllerThread");
-        m_VisualizationController.moveToThread(&m_VisualizationControllerThread);
-        m_VisualizationControllerThread.setObjectName("VsualizationControllerThread");
 
         // Additionnal init
         // m_VariableController->setTimeController(m_TimeController.get());
@@ -65,21 +50,16 @@ public:
 
         m_NetworkControllerThread.quit();
         m_NetworkControllerThread.wait();
-
-        m_VisualizationControllerThread.quit();
-        m_VisualizationControllerThread.wait();
     }
 
     DataSourceController m_DataSourceController;
     std::shared_ptr<VariableController2> m_VariableController;
     TimeController m_TimeController;
     NetworkController m_NetworkController;
-    VisualizationController m_VisualizationController;
     CatalogueController m_CatalogueController;
 
     QThread m_DataSourceControllerThread;
     QThread m_NetworkControllerThread;
-    QThread m_VisualizationControllerThread;
 
     DragDropGuiController m_DragDropGuiController;
     ActionsGuiController m_ActionsGuiController;
@@ -107,15 +87,8 @@ SqpApplication::SqpApplication(int& argc, char** argv)
     connect(&impl->m_NetworkControllerThread, &QThread::finished, &impl->m_NetworkController,
         &NetworkController::finalize);
 
-    connect(&impl->m_VisualizationControllerThread, &QThread::started,
-        &impl->m_VisualizationController, &VisualizationController::initialize);
-    connect(&impl->m_VisualizationControllerThread, &QThread::finished,
-        &impl->m_VisualizationController, &VisualizationController::finalize);
-
     impl->m_DataSourceControllerThread.start();
     impl->m_NetworkControllerThread.start();
-    impl->m_VisualizationControllerThread.start();
-    // impl->m_CatalogueController.initialize();
 }
 
 SqpApplication::~SqpApplication() {}
@@ -145,16 +118,6 @@ VariableController2& SqpApplication::variableController() noexcept
 std::shared_ptr<VariableController2> SqpApplication::variableControllerOwner() noexcept
 {
     return impl->m_VariableController;
-}
-
-// VariableModel2 &SqpApplication::variableModel() noexcept
-//{
-//    return impl->m_VariableModel;
-//}
-
-VisualizationController& SqpApplication::visualizationController() noexcept
-{
-    return impl->m_VisualizationController;
 }
 
 CatalogueController& SqpApplication::catalogueController() noexcept
