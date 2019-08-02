@@ -27,10 +27,10 @@ public:
 
     PythonProvider(const PythonProvider& other) : _pythonFunction { other._pythonFunction } {}
 
-    std::shared_ptr<IDataProvider> clone() const override
-    {
-        return std::make_shared<PythonProvider>(*this);
-    }
+//    std::shared_ptr<IDataProvider> clone() const override
+//    {
+//        return std::make_shared<PythonProvider>(*this);
+//    }
     virtual TimeSeries::ITimeSerie* getData(const DataProviderParameters& parameters) override
     {
         auto product = parameters.m_Data.value("PRODUCT", "").toString().toStdString();

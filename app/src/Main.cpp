@@ -31,7 +31,6 @@
 
 #include <QLoggingCategory>
 
-Q_LOGGING_CATEGORY(LOG_Main, "Main")
 
 namespace
 {
@@ -43,56 +42,10 @@ const auto PLUGIN_DIRECTORY_NAME = QStringLiteral("plugins");
 
 int main(int argc, char* argv[])
 {
-#ifdef QT_STATICPLUGIN
-#ifndef SQP_NO_PLUGINS
-    Q_IMPORT_PLUGIN(PythonProviders)
-    Q_INIT_RESOURCE(python_providers);
-#endif
-#endif
-    Q_INIT_RESOURCE(sqpguiresources);
-
-    SqpApplication::setOrganizationName("LPP");
-    SqpApplication::setOrganizationDomain("lpp.fr");
-    SqpApplication::setApplicationName("SciQLop");
-
-    QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-
+    init_resources();
     SqpApplication a { argc, argv };
-
+    load_plugins(a);
     MainWindow w;
     w.show();
-
-    // Loads plugins
-    auto pluginDir = QDir { a.applicationDirPath() };
-    auto pluginLookupPath = {
-#if _WIN32 || _WIN64
-        a.applicationDirPath() + "/SciQLop"
-#else
-        a.applicationDirPath() + "/../lib64/SciQLop",
-        a.applicationDirPath() + "/../lib64/sciqlop",
-        a.applicationDirPath() + "/../lib/SciQLop",
-        a.applicationDirPath() + "/../lib/sciqlop",
-#endif
-    };
-
-#if _WIN32 || _WIN64
-    pluginDir.mkdir(PLUGIN_DIRECTORY_NAME);
-    pluginDir.cd(PLUGIN_DIRECTORY_NAME);
-#endif
-
-    PluginManager pluginManager {};
-
-    for (auto&& path : pluginLookupPath)
-    {
-        QDir directory { path };
-        if (directory.exists())
-        {
-            qCDebug(LOG_Main())
-                << QObject::tr("Plugin directory: %1").arg(directory.absolutePath());
-            pluginManager.loadPlugins(directory);
-        }
-    }
-    pluginManager.loadStaticPlugins();
-
     return a.exec();
 }

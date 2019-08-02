@@ -2,7 +2,8 @@ include_directories(include)
 
 FILE (GLOB_RECURSE app_SRCS
         include/*.h
-        src/*.cpp
+        src/MainWindow.cpp
+        src/toolbar.cpp
         resources/*.qrc
         )
 
@@ -10,10 +11,12 @@ QT5_WRAP_UI(UiGenerated_SRCS
     ui/MainWindow.ui
 )
 
+add_library(sciqlopapp ${UiGenerated_SRCS} ${app_SRCS})
+
 if(ENABLE_WIN32_CONSOLE)
-    add_executable(sciqlopapp ${app_SRCS} ${UiGenerated_SRCS})
+    add_executable(sciqlop src/Main.cpp)
 else()
-    add_executable(sciqlopapp WIN32 ${app_SRCS} ${UiGenerated_SRCS})
+    add_executable(sciqlop WIN32 src/Main.cpp)
 endif()
 
 if(NOT BUILD_SHARED_LIBS)
@@ -39,9 +42,20 @@ target_link_libraries(sciqlopapp
   sciqlopcore
 )
 
-install(TARGETS sciqlopapp DESTINATION ${CMAKE_INSTALL_BINDIR})
+target_link_libraries(sciqlop
+  sciqlopapp
+)
+
+install(TARGETS sciqlopapp
+    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+
+install(TARGETS sciqlop DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES resources/SciQLOP.desktop DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/applications/)
 install(FILES resources/SciQLOP.appdata.xml DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/metainfo/)
 install(FILES resources/sciqlopLOGO.svg DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/SciQLOP/icons/)
 
 
+add_subdirectory(PySide2-bindings)

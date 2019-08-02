@@ -1,0 +1,72 @@
+<?xml version="1.0"?>
+<typesystem package="SciQLopBindings">
+    <load-typesystem name="typesystem_core.xml" generate="no" />
+    <load-typesystem name="typesystem_gui.xml" generate="no" />
+    <load-typesystem name="typesystem_widgets.xml" generate="no" />
+    <primitive-type name="std::string"/>
+    <primitive-type name="std::size_t"/>
+    <container-type name="std::vector" type="vector">
+        <include file-name="vector" location="global"/>
+        <conversion-rule>
+            <native-to-target>
+                %INTYPE::size_type vectorSize = %in.size();
+                PyObject* %out = PyList_New((int) vectorSize);
+                for (%INTYPE::size_type idx = 0; idx &lt; vectorSize; ++idx) {
+                    %INTYPE_0 cppItem(%in[idx]);
+                    PyList_SET_ITEM(%out, idx, %CONVERTTOPYTHON[%INTYPE_0](cppItem));
+                }
+                return %out;
+            </native-to-target>
+            <target-to-native>
+                <add-conversion type="PySequence">
+                    Shiboken::AutoDecRef seq(PySequence_Fast(%in, 0));
+                    int vectorSize = PySequence_Fast_GET_SIZE(seq.object());
+                    %out.reserve(vectorSize);
+                    for (int idx = 0; idx &lt; vectorSize; ++idx ) {
+                        PyObject* pyItem = PySequence_Fast_GET_ITEM(seq.object(), idx);
+                        %OUTTYPE_0 cppItem = %CONVERTTOCPP[%OUTTYPE_0](pyItem);
+                        %out.push_back(cppItem);
+                    }
+                </add-conversion>
+            </target-to-native>
+        </conversion-rule>
+    </container-type>
+    <object-type name="MainWindow" />
+    <object-type name="SqpApplication">
+        <modify-function signature="SqpApplication(int&amp;,char**)" access="private"/>
+    </object-type>
+    <object-type name="PyDataProvider" />
+    <function signature="SqpApplication_ctor()"/>
+    <function signature="init_resources()"/>
+    <primitive-type name="NpArray" target-lang-api-name="PyObject">
+      <include file-name="numpy_wrappers.h" location="local"/>
+      <conversion-rule>
+          <native-to-target>
+          return %in.py_object();
+          </native-to-target>
+          <target-to-native>
+            <add-conversion type="PyObject" check="NpArray::isNpArray(%in)">
+            %out = %OUTTYPE(%in);
+            </add-conversion>
+          </target-to-native>
+        </conversion-rule>
+    </primitive-type>
+    <function signature="load_plugins(const SqpApplication&amp;)"/>
+    <object-type name="ScalarTimeSerie">
+        <add-function signature="ScalarTimeSerie(NpArray&amp;,NpArray&amp;)" return-type="ScalarTimeSerie">
+            <inject-code class="target">
+                %BEGIN_ALLOW_THREADS
+                %0 = new ScalarTimeSerieWrapper();
+                %0.set_data(%1.to_std_vect(),%2.to_std_vect());
+                %END_ALLOW_THREADS
+            </inject-code>
+        </add-function>
+        <add-function signature="size()" return-type="int" access="public" static="no">
+            <inject-code class="target">
+                %RETURN_TYPE %0 = %CPPSELF.%FUNCTION_NAME();
+                %PYARG_0 = %CONVERTTOPYTHON[%RETURN_TYPE](%0);
+            </inject-code>
+        </add-function>
+    </object-type>
+    <function signature="test_np_array(NpArray&amp;)"/>
+</typesystem>
