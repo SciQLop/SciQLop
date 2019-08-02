@@ -22,7 +22,8 @@
 #ifndef SCIQLOP_MAINWINDOW_H
 #define SCIQLOP_MAINWINDOW_H
 
-#include <QListWidgetItem>
+#include <PluginManager/PluginManager.h>
+#include <QDir>
 #include <QLoggingCategory>
 #include <QMainWindow>
 #include <QProgressBar>
@@ -30,31 +31,33 @@
 #include <QThread>
 #include <QVBoxLayout>
 #include <QWidget>
+#include <QtPlugin>
+#include <SqpApplication.h>
 
 #include <Common/spimpl.h>
 
 #include <memory>
 
-Q_DECLARE_LOGGING_CATEGORY(LOG_MainWindow)
-
-namespace Ui {
+namespace Ui
+{
 class MainWindow;
 } // namespace Ui
 
 
-class MainWindow : public QMainWindow {
+class MainWindow : public QMainWindow
+{
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget* parent = nullptr);
     virtual ~MainWindow() override;
 public slots:
 
 protected:
-    void changeEvent(QEvent *e) override;
-    void closeEvent(QCloseEvent *event) override;
+    void changeEvent(QEvent* e) override;
+    void closeEvent(QCloseEvent* event) override;
 
-    void keyPressEvent(QKeyEvent *event) override;
+    void keyPressEvent(QKeyEvent* event) override;
 
 private:
     std::unique_ptr<Ui::MainWindow> m_Ui;
@@ -64,5 +67,54 @@ private:
     class MainWindowPrivate;
     spimpl::unique_impl_ptr<MainWindowPrivate> impl;
 };
+
+inline void init_resources()
+{
+#ifdef QT_STATICPLUGIN
+#ifndef SQP_NO_PLUGINS
+    Q_IMPORT_PLUGIN(PythonProviders)
+    Q_INIT_RESOURCE(python_providers);
+#endif
+#endif
+    Q_INIT_RESOURCE(sqpguiresources);
+    SqpApplication::setOrganizationName("LPP");
+    SqpApplication::setOrganizationDomain("lpp.fr");
+    SqpApplication::setApplicationName("SciQLop");
+
+    QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+}
+
+inline void load_plugins(const SqpApplication& a)
+{
+    // Loads plugins
+    auto pluginDir = QDir { a.applicationDirPath() };
+    auto pluginLookupPath = {
+#if _WIN32 || _WIN64
+        a.applicationDirPath() + "/SciQLop"
+#else
+        a.applicationDirPath() + "/../lib64/SciQLop",
+        a.applicationDirPath() + "/../lib64/sciqlop",
+        a.applicationDirPath() + "/../lib/SciQLop",
+        a.applicationDirPath() + "/../lib/sciqlop",
+#endif
+    };
+
+#if _WIN32 || _WIN64
+    pluginDir.mkdir(PLUGIN_DIRECTORY_NAME);
+    pluginDir.cd(PLUGIN_DIRECTORY_NAME);
+#endif
+
+    PluginManager pluginManager {};
+
+    for (auto&& path : pluginLookupPath)
+    {
+        QDir directory { path };
+        if (directory.exists())
+        {
+            pluginManager.loadPlugins(directory);
+        }
+    }
+    pluginManager.loadStaticPlugins();
+}
 
 #endif // SCIQLOP_MAINWINDOW_H

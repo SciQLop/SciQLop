@@ -110,4 +110,11 @@ private:
     spimpl::unique_impl_ptr<SqpApplicationPrivate> impl;
 };
 
+inline SqpApplication* SqpApplication_ctor()
+{
+    static int argc;
+    static char** argv;
+    return new SqpApplication(argc, argv);
+}
+
 #endif // SCIQLOP_SQPAPPLICATION_H

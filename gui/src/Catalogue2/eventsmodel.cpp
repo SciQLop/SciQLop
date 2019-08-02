@@ -112,16 +112,6 @@ void EventsModel::sort(int column, Qt::SortOrder order)
                 [inverse = order != Qt::SortOrder::AscendingOrder](
                     const std::unique_ptr<EventsModelItem>& a,
                     const std::unique_ptr<EventsModelItem>& b) {
-                    static int i = 0;
-                    i++;
-                    if (!a->event())
-                    {
-                        throw;
-                    }
-                    if (!b->event())
-                    {
-                        throw;
-                    }
                     return (a->event()->name < b->event()->name) xor inverse;
                 });
             break;
@@ -130,45 +120,13 @@ void EventsModel::sort(int column, Qt::SortOrder order)
                 [inverse = order != Qt::SortOrder::AscendingOrder](
                     const std::unique_ptr<EventsModelItem>& a,
                     const std::unique_ptr<EventsModelItem>& b) {
-                    static int i = 0;
-                    i++;
-                    if (!a)
+                    if (auto t1 = a->event()->startTime(); auto t2 = b->event()->startTime())
                     {
-                        throw;
+                        if (t1 and t2)
+                            return bool((t1.value() < t2.value()) xor inverse);
                     }
-                    if (!b)
-                    {
-                        throw;
-                    }
-                    if (!a->event())
-                    {
-                        throw;
-                    }
-                    if (!b->event())
-                    {
-                        throw;
-                    }
-                    return (a->event()->name < b->event()->name) xor inverse;
+                    return true;
                 });
-            //            std::sort(std::begin(_items), std::end(_items),
-            //                [inverse = order != Qt::SortOrder::AscendingOrder](
-            //                    const std::unique_ptr<EventsModelItem>& a,
-            //                    const std::unique_ptr<EventsModelItem>& b) {
-            //                    static int i = 0;
-            //                    i++;
-            //                    if (a and b)
-            //                    {
-            //                        if (a->type == ItemType::Event and b->type == ItemType::Event)
-            //                        {
-            //                            if (auto e1 = a->event(); auto e2 = b->event())
-            //                            {
-            //                                return bool((e1->startTime() < e2->startTime()) xor
-            //                                inverse);
-            //                            }
-            //                        }
-            //                    }
-            //                    return false;
-            //                });
             break;
         case EventsModel::Columns::TEnd:
             std::sort(std::begin(_items), std::end(_items),
