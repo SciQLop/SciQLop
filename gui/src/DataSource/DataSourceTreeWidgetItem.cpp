@@ -138,7 +138,7 @@ struct DataSourceTreeWidgetItem::DataSourceTreeWidgetItemPrivate {
     QString m_Name;
     /// Actions associated to the item. The parent of the item (QTreeWidget) takes the ownership of
     /// the actions
-    QList<QAction *> m_Actions;
+    QList<QAction *> m_Actions; //TODO check if no memory leak here
 };
 
 DataSourceTreeWidgetItem::DataSourceTreeWidgetItem(const DataSourceItem *data, int type)

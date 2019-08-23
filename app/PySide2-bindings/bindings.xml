@@ -31,18 +31,36 @@
             </target-to-native>
         </conversion-rule>
     </container-type>
+    <object-type name="PyDataProvider" />
+    <object-type name="Product" />
     <object-type name="MainWindow" />
     <object-type name="SqpApplication">
         <modify-function signature="SqpApplication(int&amp;,char**)" access="private"/>
     </object-type>
-    <object-type name="PyDataProvider" />
-    <function signature="SqpApplication_ctor()"/>
+    <object-type name="Providers">
+        <modify-function  signature="register_provider(PyDataProvider*)">
+          <modify-argument index="1">
+              <define-ownership owner="c++" />
+          </modify-argument>
+        </modify-function>
+    </object-type>
+    <function signature="SqpApplication_ctor()" return-type="SqpApplication*"/>
+    <add-function signature="SqpApplication_ctor(PySequence)" return-type="SqpApplication*">
+        <inject-code class="target">
+            static int argc;
+            static char **argv;
+            Shiboken::listToArgcArgv(%1, &amp;argc, &amp;argv, "PySideApp");
+            auto retval = new SqpApplication(argc,argv);
+            %PYARG_0 = %CONVERTTOPYTHON[%RETURN_TYPE](retval);
+        </inject-code>
+    </add-function>
     <function signature="init_resources()"/>
     <primitive-type name="NpArray" target-lang-api-name="PyObject">
       <include file-name="numpy_wrappers.h" location="local"/>
       <conversion-rule>
           <native-to-target>
-          return %in.py_object();
+          auto result = %in.py_object();
+          return result;
           </native-to-target>
           <target-to-native>
             <add-conversion type="PyObject" check="NpArray::isNpArray(%in)">
@@ -68,5 +86,6 @@
             </inject-code>
         </add-function>
     </object-type>
+    <function signature="test_PyDataProvider(PyDataProvider&amp;)"/>
     <function signature="test_np_array(NpArray&amp;)"/>
 </typesystem>

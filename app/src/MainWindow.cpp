@@ -25,6 +25,7 @@
 #include <Catalogue/CatalogueController.h>
 #include <Catalogue2/browser.h>
 #include <DataSource/DataSourceController.h>
+#include <DataSource/DataSourceItem.h>
 #include <DataSource/DataSourceWidget.h>
 #include <Settings/SqpSettingsDialog.h>
 #include <Settings/SqpSettingsGeneralWidget.h>
@@ -48,29 +49,16 @@
 
 Q_LOGGING_CATEGORY(LOG_MainWindow, "MainWindow")
 
-namespace
-{
-const auto LEFTMAININSPECTORWIDGETSPLITTERINDEX = 0;
-const auto LEFTINSPECTORSIDEPANESPLITTERINDEX = 1;
-const auto VIEWPLITTERINDEX = 2;
-const auto RIGHTINSPECTORSIDEPANESPLITTERINDEX = 3;
-const auto RIGHTMAININSPECTORWIDGETSPLITTERINDEX = 4;
-}
-
 class MainWindow::MainWindowPrivate
 {
 public:
     explicit MainWindowPrivate(MainWindow* mainWindow)
-            : m_LastOpenLeftInspectorSize {}
-            , m_LastOpenRightInspectorSize {}
-            , m_GeneralSettingsWidget { new SqpSettingsGeneralWidget { mainWindow } }
+            : m_GeneralSettingsWidget { new SqpSettingsGeneralWidget { mainWindow } }
             , m_SettingsDialog { new SqpSettingsDialog { mainWindow } }
             , m_CatalogExplorer { new CataloguesBrowser { mainWindow } }
     {
     }
 
-    QSize m_LastOpenLeftInspectorSize;
-    QSize m_LastOpenRightInspectorSize;
     /// General settings widget. MainWindow has the ownership
     SqpSettingsGeneralWidget* m_GeneralSettingsWidget;
     /// Settings dialog. MainWindow has the ownership
@@ -88,67 +76,6 @@ MainWindow::MainWindow(QWidget* parent)
 {
     m_Ui->setupUi(this);
     setWindowTitle(QString("SciQLop v%1").arg(SCIQLOP_VERSION));
-
-    m_Ui->splitter->setCollapsible(LEFTINSPECTORSIDEPANESPLITTERINDEX, false);
-    m_Ui->splitter->setCollapsible(RIGHTINSPECTORSIDEPANESPLITTERINDEX, false);
-
-    // impl->m_CatalogExplorer->setVisualizationWidget(m_Ui->view);
-
-
-    auto spacerLeftTop = new QWidget {};
-    spacerLeftTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-    auto spacerLeftBottom = new QWidget {};
-    spacerLeftBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-
-    auto spacerRightTop = new QWidget {};
-    spacerRightTop->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-    auto spacerRightBottom = new QWidget {};
-    spacerRightBottom->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-
-    auto openInspector = [this](bool checked, bool right, auto action) {
-        action->setIcon(
-            QIcon { (checked ^ right) ? ":/icones/next.png" : ":/icones/previous.png" });
-
-        auto& lastInspectorSize
-            = right ? impl->m_LastOpenRightInspectorSize : impl->m_LastOpenLeftInspectorSize;
-
-        auto nextInspectorSize = right ? m_Ui->rightMainInspectorWidget->size()
-                                       : m_Ui->leftMainInspectorWidget->size();
-
-        // Update of the last opened geometry
-        if (checked)
-        {
-            lastInspectorSize = nextInspectorSize;
-        }
-
-        auto startSize = lastInspectorSize;
-        auto endSize = startSize;
-        endSize.setWidth(0);
-
-        auto splitterInspectorIndex
-            = right ? RIGHTMAININSPECTORWIDGETSPLITTERINDEX : LEFTMAININSPECTORWIDGETSPLITTERINDEX;
-
-        auto currentSizes = m_Ui->splitter->sizes();
-        if (checked)
-        {
-            // adjust sizes individually here, e.g.
-            currentSizes[splitterInspectorIndex] -= lastInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] += lastInspectorSize.width();
-            m_Ui->splitter->setSizes(currentSizes);
-        }
-        else
-        {
-            // adjust sizes individually here, e.g.
-            currentSizes[splitterInspectorIndex] += lastInspectorSize.width();
-            currentSizes[VIEWPLITTERINDEX] -= lastInspectorSize.width();
-            m_Ui->splitter->setSizes(currentSizes);
-        }
-    };
-
 
     // //////////////// //
     // Menu and Toolbar //
@@ -188,8 +115,8 @@ MainWindow::MainWindow(QWidget* parent)
     // Widgets / controllers connections
 
     // DataSource
-    connect(&sqpApp->dataSourceController(), SIGNAL(dataSourceItemSet(DataSourceItem*)),
-        m_Ui->dataSourceWidget, SLOT(addDataSource(DataSourceItem*)));
+    connect(&sqpApp->dataSourceController(), &DataSourceController::dataSourceItemSet,
+        m_Ui->dataSourceWidget, &DataSourceWidget::addDataSource);
 
     // Time
     //    connect(timeWidget, SIGNAL(timeUpdated(DateTimeRange)), &sqpApp->timeController(),

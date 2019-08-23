@@ -29,6 +29,8 @@ extern "C"
 #endif
 #include <assert.h>
 
+#include <map>
+
 inline int init_numpy()
 {
     import_array(); // PyError if not successful
@@ -39,32 +41,31 @@ template <typename dest_type = PyObject>
 struct PyObjectWrapper
 {
 private:
-    PyObject* _py_obj;
-
+    PyObject* _py_obj = nullptr;
     void inc_refcount()
     {
-        if (_py_obj)
-            Py_IncRef(_py_obj);
+        Py_XINCREF(_py_obj);
     }
     void dec_refcount()
     {
-        if (_py_obj)
-            Py_DecRef(_py_obj);
+        Py_XDECREF(_py_obj);
+        _py_obj = nullptr;
     }
 
 public:
     PyObjectWrapper() : _py_obj { nullptr } {}
-    PyObjectWrapper(const PyObjectWrapper& other) : _py_obj { other._py_obj } { inc_refcount(); };
-    PyObjectWrapper(PyObjectWrapper&& other) : _py_obj { other._py_obj }
+    PyObjectWrapper(const PyObjectWrapper& other) : _py_obj { other._py_obj } { inc_refcount(); }
+    PyObjectWrapper(PyObjectWrapper&& other) : _py_obj { other._py_obj } { inc_refcount(); }
+    explicit PyObjectWrapper(PyObject* obj) : _py_obj { obj }
     {
-        other._py_obj = nullptr;
+        inc_refcount();
     }
-    PyObjectWrapper(PyObject* obj) : _py_obj { obj } { inc_refcount(); }
     ~PyObjectWrapper() { dec_refcount(); }
     PyObjectWrapper& operator=(PyObjectWrapper&& other)
     {
+        dec_refcount();
         this->_py_obj = other._py_obj;
-        other._py_obj = nullptr;
+        inc_refcount();
         return *this;
     }
     PyObjectWrapper& operator=(const PyObjectWrapper& other)
@@ -91,14 +92,14 @@ private:
 public:
     static bool isNpArray(PyObject* obj)
     {
-        return obj && PyArray_Check(reinterpret_cast<PyArrayObject*>(obj))
-            && PyArray_IS_C_CONTIGUOUS(reinterpret_cast<PyArrayObject*>(obj));
+        auto arr = reinterpret_cast<PyArrayObject*>(obj);
+        auto is_c_aray = obj && PyArray_Check(arr) && PyArray_ISCARRAY(arr);
+        return is_c_aray;
     }
     NpArray() : _py_obj { nullptr } {}
-    NpArray(NpArray&& other) : _py_obj { std::move(other._py_obj) } {}
+    NpArray(NpArray&& other) : _py_obj { other._py_obj } {}
     explicit NpArray(PyObject* obj) : _py_obj { obj }
     {
-        std::cout << "NpArray ctor" << std::endl;
         assert(isNpArray(obj));
         assert(PyArray_ISFLOAT(_py_obj.get()));
     }
@@ -111,7 +112,7 @@ public:
 
     NpArray& operator=(NpArray&& other)
     {
-        this->_py_obj = std::move(other._py_obj);
+        this->_py_obj = other._py_obj;
         return *this;
     }
 
