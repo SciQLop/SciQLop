@@ -9,7 +9,7 @@
 #include <QWidget>
 #include <TimeWidget/TimeWidget.h>
 
-// @TODO remove this, shouldn't need to include SqpApplication to get PlotsInteractionMode
+// TODO remove this, shouldn't need to include SqpApplication to get PlotsInteractionMode
 #include <SqpApplication.h>
 
 class ToolBar : public QToolBar

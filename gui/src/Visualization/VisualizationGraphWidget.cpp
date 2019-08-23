@@ -219,7 +219,7 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate
     {
         /*
          * I give up on this for now
-         * @TODO implement this, the difficulty is that selection zones have their own
+         * TODO implement this, the difficulty is that selection zones have their own
          * event handling code which seems to rely on QCP GUI event handling propagation
          * which was a realy bad design choice.
          */
@@ -506,7 +506,7 @@ void VisualizationGraphWidget::addVariable(std::shared_ptr<Variable2> variable, 
                 delete context;
             });
     }
-    //@TODO this is bad! when variable is moved to another graph it still fires
+    //TODO this is bad! when variable is moved to another graph it still fires
     // even if this has been deleted
     connect(variable.get(), &Variable2::updated, this, &VisualizationGraphWidget::variableUpdated);
     this->onUpdateVarDisplaying(variable, range); // My bullshit

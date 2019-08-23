@@ -8,39 +8,39 @@
 
 #include <QMenu>
 
-namespace {
+namespace
+{
 
 /// Number of columns displayed in the tree
 const auto TREE_NB_COLUMNS = 1;
 
 /// Header labels for the tree
-const auto TREE_HEADER_LABELS = QStringList{QObject::tr("Name")};
+const auto TREE_HEADER_LABELS = QStringList { QObject::tr("Name") };
 
 /**
  * Creates the item associated to a data source
  * @param dataSource the data source for which to create the item
  * @return the new item
  */
-DataSourceTreeWidgetItem *createTreeWidgetItem(DataSourceItem *dataSource)
+DataSourceTreeWidgetItem* createTreeWidgetItem(DataSourceItem* dataSource)
 {
     // Creates item for the data source
-    auto item = new DataSourceTreeWidgetItem{dataSource};
-
+    auto item = new DataSourceTreeWidgetItem { dataSource };
     // Generates items for the children of the data source
-    for (auto i = 0; i < dataSource->childCount(); ++i) {
-        item->addChild(createTreeWidgetItem(dataSource->child(i)));
-    }
-
+    std::for_each(dataSource->cbegin(), dataSource->cend(),
+        [&item](const std::unique_ptr<DataSourceItem>& child) {
+            item->addChild(createTreeWidgetItem(child.get()));
+        });
     return item;
 }
 
 } // namespace
 
-DataSourceWidget::DataSourceWidget(QWidget *parent)
-        : QWidget{parent},
-          ui{new Ui::DataSourceWidget},
-          m_Root{
-              std::make_unique<DataSourceItem>(DataSourceItemType::NODE, QStringLiteral("Sources"))}
+DataSourceWidget::DataSourceWidget(QWidget* parent)
+        : QWidget { parent }
+        , ui { new Ui::DataSourceWidget }
+        , m_Root { std::make_unique<DataSourceItem>(
+              DataSourceItemType::NODE, QStringLiteral("Sources")) }
 {
     ui->setupUi(this);
 
@@ -51,7 +51,7 @@ DataSourceWidget::DataSourceWidget(QWidget *parent)
 
     // Connection to show a menu when right clicking on the tree
     connect(ui->treeWidget, &QTreeWidget::customContextMenuRequested, this,
-            &DataSourceWidget::onTreeMenuRequested);
+        &DataSourceWidget::onTreeMenuRequested);
 
     // Connection to filter tree
     connect(ui->filterLineEdit, &QLineEdit::textChanged, this, &DataSourceWidget::filterChanged);
@@ -65,14 +65,13 @@ DataSourceWidget::~DataSourceWidget() noexcept
     delete ui;
 }
 
-void DataSourceWidget::addDataSource(DataSourceItem *dataSource) noexcept
+void DataSourceWidget::addDataSource(DataSourceItem* dataSource) noexcept
 {
     // Merges the data source (without taking its root)
-    if (dataSource) {
-        for (auto i = 0, count = dataSource->childCount(); i < count; ++i) {
-            m_Root->merge(*dataSource->child(i));
-        }
-
+    if (dataSource)
+    {
+        std::for_each(std::cbegin(*dataSource), std::cend(*dataSource),
+            [this](const auto& child) { this->m_Root->merge(*child.get()); });
         updateTreeWidget();
     }
 }
@@ -90,33 +89,35 @@ void DataSourceWidget::updateTreeWidget() noexcept
     ui->treeWidget->sortByColumn(0, Qt::AscendingOrder);
 }
 
-void DataSourceWidget::filterChanged(const QString &text) noexcept
+void DataSourceWidget::filterChanged(const QString& text) noexcept
 {
-    auto validateItem = [&text](const DataSourceTreeWidgetItem &item) {
-        auto regExp = QRegExp{text, Qt::CaseInsensitive, QRegExp::Wildcard};
+    auto validateItem = [&text](const DataSourceTreeWidgetItem& item) {
+        auto regExp = QRegExp { text, Qt::CaseInsensitive, QRegExp::Wildcard };
 
         // An item is valid if any of its metadata validates the text filter
         auto itemMetadata = item.data()->data();
         auto itemMetadataEnd = itemMetadata.cend();
         auto acceptFilter
-            = [&regExp](const auto &variant) { return variant.toString().contains(regExp); };
+            = [&regExp](const auto& variant) { return variant.toString().contains(regExp); };
 
         return std::find_if(itemMetadata.cbegin(), itemMetadataEnd, acceptFilter)
-               != itemMetadataEnd;
+            != itemMetadataEnd;
     };
 
     // Applies filter on tree widget
     DataSourceTreeWidgetHelper::filter(*ui->treeWidget, validateItem);
 }
 
-void DataSourceWidget::onTreeMenuRequested(const QPoint &pos) noexcept
+void DataSourceWidget::onTreeMenuRequested(const QPoint& pos) noexcept
 {
     // Retrieves the selected item in the tree, and build the menu from its actions
-    if (auto selectedItem = dynamic_cast<DataSourceTreeWidgetItem *>(ui->treeWidget->itemAt(pos))) {
-        QMenu treeMenu{};
+    if (auto selectedItem = dynamic_cast<DataSourceTreeWidgetItem*>(ui->treeWidget->itemAt(pos)))
+    {
+        QMenu treeMenu {};
         treeMenu.addActions(selectedItem->actions());
 
-        if (!treeMenu.isEmpty()) {
+        if (!treeMenu.isEmpty())
+        {
             treeMenu.exec(QCursor::pos());
         }
     }

@@ -63,7 +63,7 @@ include_directories(
             ${PYSIDE_INCLUDE_DIR}/QtGui
             ${PYSIDE_INCLUDE_DIR}/QtWidgets)
 
-add_library(SciQLopBindings MODULE ${BINDINGS_SOURCE} numpy_wrappers.h)
+add_library(SciQLopBindings MODULE ${BINDINGS_SOURCE} numpy_wrappers.h PyDataProvider.h)
 set_target_properties(
     SciQLopBindings
     PROPERTIES

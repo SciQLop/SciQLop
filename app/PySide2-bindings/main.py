@@ -6,6 +6,7 @@ from PySide2.QtWidgets import QApplication, QMainWindow, QDockWidget
 from PySide2.QtCore import QSize, Qt
 from PySide2 import QtGui
 import os
+sys.path.append(os.getcwd())
 from SciQLopBindings import SqpApplication, MainWindow, init_resources, load_plugins, SqpApplication_ctor
 from qtconsole.rich_ipython_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
@@ -91,7 +92,7 @@ def print_process_id():
 
 if __name__ == "__main__":
     init_resources()
-    app = SqpApplication_ctor()
+    app = SqpApplication_ctor(sys.argv)
     QtGui.qApp = app
     load_plugins(app)
     main_window = MainWindow()
