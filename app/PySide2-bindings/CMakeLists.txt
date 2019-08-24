@@ -10,6 +10,7 @@ set(BINDINGS_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}")
 
 configure_file("${BINDINGS_SRC_DIR}/bindings.xml" "${BINDINGS_BUILD_DIR}/bindings.xml" COPYONLY)
 configure_file("${BINDINGS_SRC_DIR}/main.py" "${BINDINGS_BUILD_DIR}/main.py" COPYONLY)
+configure_file("${BINDINGS_SRC_DIR}/TestPlugin.py" "${BINDINGS_BUILD_DIR}/plugins/TestPlugin.py" COPYONLY)
 
 execute_process(COMMAND "${PYTHON_EXECUTABLE}" "${BINDINGS_SRC_DIR}/src_list.py" cmake "${BINDINGS_BUILD_DIR}" OUTPUT_VARIABLE BINDINGS_SOURCE)
 

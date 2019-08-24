@@ -5,6 +5,7 @@
     <load-typesystem name="typesystem_widgets.xml" generate="no" />
     <primitive-type name="std::string"/>
     <primitive-type name="std::size_t"/>
+    <enum-type name="DataSeriesType"/>
     <container-type name="std::vector" type="vector">
         <include file-name="vector" location="global"/>
         <conversion-rule>
@@ -31,30 +32,6 @@
             </target-to-native>
         </conversion-rule>
     </container-type>
-    <object-type name="PyDataProvider" />
-    <object-type name="Product" />
-    <object-type name="MainWindow" />
-    <object-type name="SqpApplication">
-        <modify-function signature="SqpApplication(int&amp;,char**)" access="private"/>
-    </object-type>
-    <object-type name="Providers">
-        <modify-function  signature="register_provider(PyDataProvider*)">
-          <modify-argument index="1">
-              <define-ownership owner="c++" />
-          </modify-argument>
-        </modify-function>
-    </object-type>
-    <function signature="SqpApplication_ctor()" return-type="SqpApplication*"/>
-    <add-function signature="SqpApplication_ctor(PySequence)" return-type="SqpApplication*">
-        <inject-code class="target">
-            static int argc;
-            static char **argv;
-            Shiboken::listToArgcArgv(%1, &amp;argc, &amp;argv, "PySideApp");
-            auto retval = new SqpApplication(argc,argv);
-            %PYARG_0 = %CONVERTTOPYTHON[%RETURN_TYPE](retval);
-        </inject-code>
-    </add-function>
-    <function signature="init_resources()"/>
     <primitive-type name="NpArray" target-lang-api-name="PyObject">
       <include file-name="numpy_wrappers.h" location="local"/>
       <conversion-rule>
@@ -69,13 +46,30 @@
           </target-to-native>
         </conversion-rule>
     </primitive-type>
+    <object-type name="PyDataProvider"/>
+    <object-type name="Product" />
+    <object-type name="MainWindow" />
+    <object-type name="SqpApplication">
+        <modify-function signature="SqpApplication(int&amp;,char**)" access="private"/>
+    </object-type>
+    <function signature="SqpApplication_ctor()" return-type="SqpApplication*"/>
+    <add-function signature="SqpApplication_ctor(PySequence)" return-type="SqpApplication*">
+        <inject-code class="target">
+            static int argc;
+            static char **argv;
+            Shiboken::listToArgcArgv(%1, &amp;argc, &amp;argv, "PySideApp");
+            auto retval = new SqpApplication(argc,argv);
+            %PYARG_0 = %CONVERTTOPYTHON[%RETURN_TYPE](retval);
+        </inject-code>
+    </add-function>
+    <function signature="init_resources()"/>
     <function signature="load_plugins(const SqpApplication&amp;)"/>
     <object-type name="ScalarTimeSerie">
         <add-function signature="ScalarTimeSerie(NpArray&amp;,NpArray&amp;)" return-type="ScalarTimeSerie">
             <inject-code class="target">
                 %BEGIN_ALLOW_THREADS
                 %0 = new ScalarTimeSerieWrapper();
-                %0.set_data(%1.to_std_vect(),%2.to_std_vect());
+                %0.set_data(std::move(%1.data),std::move(%2.data));
                 %END_ALLOW_THREADS
             </inject-code>
         </add-function>
@@ -86,6 +80,24 @@
             </inject-code>
         </add-function>
     </object-type>
-    <function signature="test_PyDataProvider(PyDataProvider&amp;)"/>
+    <object-type name="VectorTimeSerie">
+        <add-function signature="VectorTimeSerie(NpArray&amp;,NpArray&amp;)" return-type="VectorTimeSerie">
+            <inject-code class="target">
+                %BEGIN_ALLOW_THREADS
+                %0 = new VectorTimeSerieWrapper();
+                %0.set_data(std::move(%1.data),%2.to_std_vect_vect());
+                %END_ALLOW_THREADS
+            </inject-code>
+        </add-function>
+        <add-function signature="size()" return-type="int" access="public" static="no">
+            <inject-code class="target">
+                %RETURN_TYPE %0 = %CPPSELF.%FUNCTION_NAME();
+                %PYARG_0 = %CONVERTTOPYTHON[%RETURN_TYPE](%0);
+            </inject-code>
+        </add-function>
+    </object-type>
     <function signature="test_np_array(NpArray&amp;)"/>
 </typesystem>
+
+
+

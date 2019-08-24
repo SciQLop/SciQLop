@@ -99,5 +99,8 @@ if __name__ == "__main__":
     term = IPythonDockWidget(available_vars={"app":app, "main_window":main_window}, custom_banner="SciQLop IPython Console ")
     main_window.addDockWidget(Qt.BottomDockWidgetArea, term)
     main_window.show()
+    for file in os.listdir('plugins'):
+        if os.path.isfile(f"plugins/{file}"):
+            exec(open(f"plugins/{file}").read())
     sys.exit(app.exec_())
 
