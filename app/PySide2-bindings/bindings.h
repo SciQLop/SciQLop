@@ -6,6 +6,8 @@
 #include "numpy_wrappers.h"
 #include <Data/IDataProvider.h>
 #include <Data/ScalarTimeSerie.h>
+#include <Data/VectorTimeSerie.h>
+#include <Data/DataSeriesType.h>
 #include <SqpApplication.h>
 
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <Data/DataProviderParameters.h>
+#include <Data/DataSeriesType.h>
 #include <Data/IDataProvider.h>
 #include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceItem.h>
@@ -20,7 +21,7 @@ struct Product
             : path { path }, components { components }, metadata { metadata }
     {
     }
-    virtual ~Product() = default;
+    ~Product() = default;
 };
 
 class PyDataProvider : public IDataProvider
@@ -34,8 +35,7 @@ public:
 
     virtual ~PyDataProvider() {}
 
-    virtual QPair<NpArray, NpArray> getData(
-        const std::string& key, double start_time, double stop_time)
+    virtual QPair<QPair<NpArray,NpArray>,DataSeriesType> get_data(const QMap<QString,QString>& key, double start_time, double stop_time)
     {
         (void)key, (void)start_time, (void)stop_time;
         return {};
@@ -45,10 +45,54 @@ public:
     {
         if (parameters.m_Data.contains("name"))
         {
-            auto data = getData(parameters.m_Data["name"].toString().toStdString(),
+            QMap<QString,QString> metadata;
+            std::for_each(parameters.m_Data.constKeyValueBegin(), parameters.m_Data.constKeyValueEnd(), [&metadata](const auto& item) {
+                metadata[item.first] = item.second.toString();
+                });
+            auto [data, type] = get_data(metadata,
                 parameters.m_Range.m_TStart, parameters.m_Range.m_TEnd);
             // TODO add shape/type switch
-            return new ScalarTimeSerie { data.first.to_std_vect(), data.second.to_std_vect() };
+            //if (builder)
+            {
+                auto& [t,y]=data;
+                switch (type)
+                {
+                    case DataSeriesType::SCALAR:
+                        return new ScalarTimeSerie { std::move(t.data),
+                            std::move(y.data) };
+                        break;
+                    case DataSeriesType::VECTOR:
+                        return new VectorTimeSerie { std::move(t.data),
+                            y.to_std_vect_vect() };
+                        break;
+                    case DataSeriesType::MULTICOMPONENT:
+                    {
+                        auto y_size = y.flat_size();
+                        auto t_size = t.flat_size();
+
+                        if(t_size && (y_size%t_size)==0)
+                        {
+                            return new MultiComponentTimeSerie { std::move(t.data),
+                                std::move(y.data),{t_size, y_size/t_size} };
+                        }
+                        break;
+                    }
+                    case DataSeriesType::SPECTROGRAM:
+                    {
+                        auto y_size = y.flat_size();
+                        auto t_size = t.flat_size();
+
+                        if(t_size && (y_size%t_size)==0)
+                        {
+                            return new SpectrogramTimeSerie { std::move(t.data),
+                                std::move(y.data),{t_size, y_size/t_size} };
+                        }
+                        break;
+                    }
+                    default:
+                        break;
+                }
+            }
         }
         return nullptr;
     }
@@ -65,25 +109,3 @@ public:
             });
     }
 };
-
-
-struct Providers
-{
-    Providers() = default;
-    virtual ~Providers() = default;
-    inline void register_provider(PyDataProvider* provider)
-    {
-        auto& dataSourceController = sqpApp->dataSourceController();
-        dataSourceController.setDataProvider(
-            provider->id(), std::unique_ptr<IDataProvider>(provider));
-    }
-};
-
-
-inline ScalarTimeSerie test_PyDataProvider(PyDataProvider& prov)
-{
-    auto v = prov.getData("", 0., 0.);
-    ScalarTimeSerie s;
-    s.set_data(v.first.to_std_vect(), v.second.to_std_vect());
-    return s;
-}
