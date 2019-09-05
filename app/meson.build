@@ -46,3 +46,21 @@ sciqlop_app = executable('sciqlop',
                        dependencies : [sciqlop_gui, sciqlop_core],
                        install : true
                        )
+
+sciqlop_app_lib = library('sciqlop',
+                       app_sources,
+                       app_moc_files,
+                       rc,
+                       include_directories : [ app_inc],
+                       link_with: app_libs,
+                       cpp_args: cpp_args,
+                       dependencies : [sciqlop_gui, sciqlop_core],
+                       install : true
+                       )
+
+sciqlop_app_dep = declare_dependency(link_with : sciqlop_app_lib,
+                                include_directories : app_inc,
+                                dependencies : [sciqlop_gui, sciqlop_core])
+
+                       
+subdir('PySide2-bindings')

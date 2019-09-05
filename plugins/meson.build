@@ -1,3 +1,3 @@
 #subdir('mockplugin')
-subdir('python_providers')
+#subdir('python_providers')
 #subdir('amda')

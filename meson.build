@@ -1,4 +1,4 @@
-project('SciQLOP', 'cpp',default_options : ['cpp_std=c++17'], meson_version:'>=0.47.0')
+project('SciQLOP', 'cpp',default_options : ['cpp_std=c++17'], meson_version:'>=0.51.0')
 add_global_arguments('-DSCIQLOP_VERSION="1.1.0"', language : 'cpp')
 
 qt5 = import('qt5')
