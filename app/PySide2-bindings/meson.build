@@ -41,3 +41,5 @@ sciqlop_bindings = python3.extension_module('SciQLopBindings',sciqlop_bindings_s
 
 configure_file(input:'main.py', output:'main.py', copy:true)
 configure_file(input:'TestPlugin.py', output:'TestPlugin.py', copy:true)
+
+executable('sciqlop', 'main.cpp', dependencies :python3.dependency())
