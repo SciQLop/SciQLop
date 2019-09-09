@@ -25,6 +25,7 @@ auto build_CatalogueBrowser_test()
     auto catalogue = sqpApp->catalogueController().add("new catalogue2", "default");
     for (auto _ : std::array<char, EventsCount>())
     {
+        (void)_;
         static int i = 0;
         auto event = CatalogueController::make_event_ptr();
         event->name = std::string("Event ") + std::to_string(i++);

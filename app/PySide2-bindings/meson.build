@@ -19,6 +19,7 @@ sciqlop_bindings_incs = shiboken2_build_flags + [
     '-I'+meson.current_source_dir()+'/../../gui/include',
     '-I'+meson.current_source_dir()+'/../../core/include',
     '-I'+meson.current_source_dir()+'/../../subprojects/TimeSeries/include',
+    '-I'+meson.current_source_dir()+'/../../subprojects/cpp_utils/include',
     '-I'+python3.get_path('include'),
     '-I'+qt_headers_path
     ]
@@ -35,7 +36,7 @@ subdir('SciQLopBindings')
 shiboken_dep = declare_dependency(compile_args: shiboken2_build_flags, link_args: shiboken2_link_flags)
 
 sciqlop_bindings = python3.extension_module('SciQLopBindings',sciqlop_bindings_src,shiboken2_generator_out,
-        dependencies : [sciqlop_app_dep, python3.dependency(), shiboken_dep],
+        dependencies : [sciqlop_app_dep, python3.dependency(), shiboken_dep, cpp_utils_dep],
 )
 
 

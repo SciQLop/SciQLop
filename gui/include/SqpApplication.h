@@ -40,8 +40,6 @@ public:
     int styleHint(StyleHint hint, const QStyleOption* option = nullptr,
         const QWidget* widget = nullptr, QStyleHintReturn* returnData = nullptr) const override
     {
-        if (widget)
-            auto cname = widget->metaObject()->className();
         if (hint == QStyle::SH_ToolButton_PopupDelay && widget
             /*&& widget->inherits(QWidgetAction::staticMetaObject.className())*/)
         {

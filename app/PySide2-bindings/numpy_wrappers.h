@@ -31,10 +31,14 @@ extern "C"
 #include <assert.h>
 
 #include <map>
+#include <warnings.h>
 
 inline int init_numpy()
 {
+    DISABLE_WARNING_PUSH
+    DISABLE_WARNING_CONVERSION_NULL
     import_array(); // PyError if not successful
+    DISABLE_WARNING_POP
     return 0;
 }
 const static int numpy_initialized = init_numpy();
