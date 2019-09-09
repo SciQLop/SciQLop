@@ -1,5 +1,0 @@
-# Ignore false positive relative to App macro
-\.h:\d+:.IPSIS_S04.*found: Ui
-
-# Ignore false positive relative to macros
-Main\.cpp:\d+:.*IPSIS_S04_VARIABLE.*found: (__ppc64__)
