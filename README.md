@@ -24,22 +24,13 @@ SciQLOP lightweight and intuitive is one of the priorities to make it usable and
 ## How to build
 
 ```
-git clone https://hephaistos.lpp.polytechnique.fr/rhodecode/HG_REPOSITORIES/LPP/SciQLOP_Repos/SciQLop
+git clone https://github.com/SciQLop/SciQLop
 cd SciQLop
 mkdir build && cd build
-cmake ../
-make
-
+meson
+ninja
 ```
 
-### On windows
-```
-git clone https://hephaistos.lpp.polytechnique.fr/rhodecode/HG_REPOSITORIES/LPP/SciQLOP_Repos/SciQLop
-cd SciQLop
-mkdir build && cd build
-cmake -DCMAKE_CXX_FLAGS='-D_hypot=hypot' -DBUILD_SHARED_LIBS=TRUE ../
-make
-```
 
 ## How to contribute
 
