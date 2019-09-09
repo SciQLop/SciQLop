@@ -1,7 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>amda.py</file>
-        <file>cdaweb.py</file>
-        <file>test.py</file>
-    </qresource>
-</RCC>

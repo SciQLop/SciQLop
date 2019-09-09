@@ -18,7 +18,7 @@ shiboken2_typesystem  = run_command(python3, 'shiboken-helper.py', '--typesystem
 sciqlop_bindings_incs = shiboken2_build_flags + [
     '-I'+meson.current_source_dir()+'/../../gui/include',
     '-I'+meson.current_source_dir()+'/../../core/include',
-    '-I'+meson.current_source_dir()+'/../../core/external/TimeSeries/include',
+    '-I'+meson.current_source_dir()+'/../../subprojects/TimeSeries/include',
     '-I'+python3.get_path('include'),
     '-I'+qt_headers_path
     ]

@@ -1,5 +1,0 @@
-AmdaResultParser\.h:\d+:.*IPSIS_S01.*
-AmdaResultParserHelper\.h:\d+:.*IPSIS_S01.*
-
-AmdaProvider\.cpp:\d+:.*IPSIS_S04_VARIABLE.*found: QStringLiteral
-AmdaResultParserHelper\.cpp:\d+:.*IPSIS_S04_VARIABLE.*found: QT_VERSION_CHECK

@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>samples/amda_tree.json</file>
-    </qresource>
-</RCC>

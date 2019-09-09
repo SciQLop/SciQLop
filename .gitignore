@@ -9,3 +9,7 @@ documentation/*
 **/.idea/*
 **/__pycache__/*
 *.srctrl*
+*.kdev4
+.vscode
+*.pyc
+*.swp
