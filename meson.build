@@ -12,6 +12,8 @@ qt5printsupport = dependency('qt5', modules : 'PrintSupport')
 qt5Concurrent = dependency('qt5', modules : 'Concurrent')
 qt5test = dependency('qt5', modules : 'Test')
 
+cpp_utils_dep = dependency('cpp_utils', fallback:['cpp_utils','cpp_utils_dep'])
+
 moc = find_program('moc-qt5','moc')
 rcc = find_program('rcc-qt5','rcc')
 
