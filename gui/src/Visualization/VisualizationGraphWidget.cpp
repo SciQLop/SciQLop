@@ -14,7 +14,8 @@
 #include <Actions/ActionsGuiController.h>
 #include <Actions/FilteringAction.h>
 #include <Common/MimeTypesDef.h>
-#include <Common/containers.h>
+#include <cpp_utils_qt/cpp_utils_qt.hpp>
+#include <containers/algorithms.hpp>
 #include <Data/DateTimeRangeHelper.h>
 #include <DragAndDrop/DragDropGuiController.h>
 #include <Settings/SqpSettingsDefs.h>
@@ -1002,7 +1003,7 @@ void VisualizationGraphWidget::mousePressEvent(QMouseEvent* event)
                     auto alreadySelectedZones
                         = parentVisualizationWidget()->selectionZoneManager().selectedItems();
                     selectedZone->setAssociatedEditedZones(alreadySelectedZones);
-                    if (SciQLop::containers::contains(alreadySelectedZones, selectedZone))
+                    if (cpp_utils::containers::contains(alreadySelectedZones, selectedZone))
                     {
                         alreadySelectedZones.removeOne(selectedZone);
                     }

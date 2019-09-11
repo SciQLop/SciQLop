@@ -7,7 +7,7 @@
 #include <cstdlib>
 
 
-#include <Common/cpp_utils.h>
+#include <cpp_utils.hpp>
 #include <SqpApplication.h>
 
 #include <GUITestUtils.h>

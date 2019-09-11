@@ -1,7 +1,7 @@
 #ifndef GUITESTUTILS_H
 #define GUITESTUTILS_H
 
-#include <Common/cpp_utils.h>
+#include <types/detectors.hpp>
 #include <QCoreApplication>
 #include <QCursor>
 #include <QDesktopWidget>
@@ -19,7 +19,7 @@ QPoint center(T* widget)
     return QPoint { widget->width() / 2, widget->height() / 2 };
 }
 
-HAS_METHOD(viewport)
+HAS_METHOD(has_viewport, viewport)
 
 template <typename T>
 static inline constexpr bool is_QWidgetOrDerived = std::is_base_of<QWidget, T>::value;
@@ -27,14 +27,14 @@ static inline constexpr bool is_QWidgetOrDerived = std::is_base_of<QWidget, T>::
 template <typename T>
 using viewport_type = decltype(std::declval<T>().viewport());
 
-HAS_METHOD(topLevelItem)
+HAS_METHOD(has_topLevelItem, topLevelItem)
 
 template <typename T>
 void mouseMove(T* widget, QPoint pos, Qt::MouseButton mouseModifier)
 {
     QCursor::setPos(widget->mapToGlobal(pos));
     QMouseEvent event(QEvent::MouseMove, pos, Qt::NoButton, mouseModifier, Qt::NoModifier);
-    if constexpr (has_viewport<T>)
+    if constexpr (has_viewport_v<T>)
     {
         if constexpr (is_QWidgetOrDerived<viewport_type<T>>)
         {
@@ -56,7 +56,7 @@ void mouseMove(T* widget, QPoint pos, Qt::MouseButton mouseModifier)
 template <typename T>
 void setMouseTracking(T* widget)
 {
-    if constexpr (has_viewport<T>)
+    if constexpr (has_viewport_v<T>)
     {
         if constexpr (is_QWidgetOrDerived<viewport_type<T>>)
         {
@@ -76,7 +76,7 @@ void setMouseTracking(T* widget)
 template <typename T, typename T2>
 auto getItem(T* widget, T2 itemIndex)
 {
-    if constexpr (has_topLevelItem<T>)
+    if constexpr (has_topLevelItem_v<T>)
     {
         return widget->topLevelItem(itemIndex);
     }
@@ -105,7 +105,7 @@ template <typename T1, typename T2, typename T3, typename T4 = void>
 void dragnDropItem(T1* sourceWidget, T2* destWidget, T3* item, T4* destItem = Q_NULLPTR)
 {
     auto itemCenterPos = sourceWidget->visualItemRect(item).center();
-    if constexpr (has_viewport<T1>)
+    if constexpr (has_viewport_v<T1>)
     {
         QTest::mousePress(sourceWidget->viewport(), Qt::LeftButton, Qt::NoModifier, itemCenterPos);
     }
@@ -123,7 +123,7 @@ void dragnDropItem(T1* sourceWidget, T2* destWidget, T3* item, T4* destItem = Q_
             auto destItemCenterPos = destWidget->visualItemRect(destItem).center();
             QTest::mouseRelease(destWidget, Qt::LeftButton, Qt::NoModifier, destItemCenterPos);
         }
-        else if constexpr (has_viewport<T2>)
+        else if constexpr (has_viewport_v<T2>)
         {
             QTest::mouseRelease(destWidget->viewport(), Qt::LeftButton);
         }

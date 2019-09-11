@@ -15,7 +15,7 @@
     along with SciQLop.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <Catalogue2/repositoriesmodel.h>
-#include <Common/containers.h>
+#include <containers/algorithms.hpp>
 #include <SqpApplication.h>
 
 
@@ -83,7 +83,7 @@ QModelIndex RepositoriesModel::parent(const QModelIndex& index) const
     auto item = to_item(index);
     if (item->type == ItemType::Catalogue)
     {
-        auto repoIndex = SciQLop::containers::index_of(_items, item->parent);
+        auto repoIndex = cpp_utils::containers::index_of(_items, item->parent);
         return createIndex(repoIndex, 0, item->parent);
     }
     return QModelIndex();
