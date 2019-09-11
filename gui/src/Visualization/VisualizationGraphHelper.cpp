@@ -6,7 +6,7 @@
 #include <Data/TimeSeriesUtils.h>
 #include <Data/VectorTimeSerie.h>
 
-#include <Common/cpp_utils.h>
+#include <cpp_utils.hpp>
 #include <Variable/Variable2.h>
 #include <algorithm>
 #include <cmath>

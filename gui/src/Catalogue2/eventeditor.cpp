@@ -1,7 +1,7 @@
 #include "Catalogue2/eventeditor.h"
 #include "ui_eventeditor.h"
 #include <Common/DateUtils.h>
-#include <Common/StringUtils.h>
+#include <containers/algorithms.hpp>
 
 EventEditor::EventEditor(QWidget* parent) : QWidget(parent), ui(new Ui::EventEditor)
 {
@@ -38,15 +38,15 @@ void EventEditor::_setEventName(const CatalogueController::Event_ptr& event, mod
 
 void EventEditor::_setTags(const CatalogueController::Event_ptr& event, mode is_editable)
 {
-    this->ui->Tags->setText(StringUtils::join(event->tags, ", "));
+    this->ui->Tags->setText(QString::fromStdString(cpp_utils::containers::join(event->tags, ',')));
     this->ui->Tags->setEnabled(bool(is_editable));
 }
 
 void EventEditor::_setProducts(const CatalogueController::Event_ptr& event, mode is_editable)
 {
     QStringList products;
-    this->ui->Products->setText(StringUtils::join(event->products, ", ",
-        [](const auto& product) { return QString::fromStdString(product.name); }));
+    std::transform(std::cbegin(event->products),std::cend(event->products),std::begin(products),[](const auto& product) { return QString::fromStdString(product.name); });
+    this->ui->Products->setText(cpp_utils::containers::join(products, QString(", ")));
     this->ui->Products->setEnabled(bool(is_editable));
 }
 
