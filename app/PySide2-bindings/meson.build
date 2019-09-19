@@ -2,7 +2,9 @@ shiboken2 = find_program('shiboken2')
 qmake = find_program('qmake-qt5','qmake')
 
 pymod = import('python')
-python3 = pymod.find_installation('python3', modules:['PySide2','shiboken2', 'shiboken2_generator'])
+python3 = pymod.find_installation('python3', modules:['PySide2','shiboken2', 'shiboken2_generator', 'numpy'])
+python3_dep = python3.dependency()
+numpy_inc = run_command(python3, '-c', 'import numpy;print(numpy.get_include())').stdout().strip('\n')
 
 qt5_modules = ['QtCore','QtGui','QtWidgets']
 
@@ -21,7 +23,8 @@ sciqlop_bindings_incs = shiboken2_build_flags + [
     '-I'+meson.current_source_dir()+'/../../subprojects/TimeSeries/include',
     '-I'+meson.current_source_dir()+'/../../subprojects/cpp_utils/include',
     '-I'+python3.get_path('include'),
-    '-I'+qt_headers_path
+    '-I'+qt_headers_path,
+    '-I'+numpy_inc
     ]
 
 foreach mod:qt5_modules
@@ -37,7 +40,8 @@ subdir('plugins')
 shiboken_dep = declare_dependency(compile_args: shiboken2_build_flags, link_args: shiboken2_link_flags)
 
 sciqlop_bindings = python3.extension_module('SciQLopBindings',sciqlop_bindings_src,shiboken2_generator_out,
-        dependencies : [sciqlop_app_dep, python3.dependency(), shiboken_dep, cpp_utils_dep],
+        dependencies : [sciqlop_app_dep, python3_dep, shiboken_dep, cpp_utils_dep],
+        include_directories : numpy_inc
 )
 
 
