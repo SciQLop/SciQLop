@@ -1,5 +1,12 @@
-project('SciQLOP', 'cpp',default_options : ['cpp_std=c++17'], meson_version:'>=0.51.0')
-add_global_arguments('-DSCIQLOP_VERSION="1.1.0"', language : 'cpp')
+project(
+  'SciQLOP',
+  'cpp',
+  default_options : 'cpp_std=c++17',
+  meson_version : '>=0.51.0',
+  version : '1.1.0',
+  license : 'GPL3'
+)
+add_global_arguments('-DSCIQLOP_VERSION="@0@"'.format(meson.project_version()), language : 'cpp')
 
 qt5 = import('qt5')
 qt5core = dependency('qt5', modules : 'Core')
