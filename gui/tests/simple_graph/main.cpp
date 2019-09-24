@@ -7,7 +7,7 @@
 
 #include <qcustomplot.h>
 
-#include <Common/cpp_utils.h>
+#include <cpp_utils.hpp>
 #include <SqpApplication.h>
 #include <Variable/VariableController2.h>
 
@@ -56,7 +56,7 @@ private slots:
          * Scroll only implies keeping the same delta T -> shit only transformation
          */
         QVERIFY(r.m_TEnd < range.m_TEnd);
-        QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(), range.delta(), 1));
+        QVERIFY(cpp_utils::numeric::almost_equal<double>(r.delta(), range.delta(), 1));
     }
 
     void scrolls_right_with_mouse()
@@ -74,7 +74,7 @@ private slots:
          * Scroll only implies keeping the same delta T -> shit only transformation
          */
         QVERIFY(r.m_TEnd > range.m_TEnd);
-        QVERIFY(SciQLop::numeric::almost_equal<double>(r.delta(), range.delta(), 1));
+        QVERIFY(cpp_utils::numeric::almost_equal<double>(r.delta(), range.delta(), 1));
     }
 };
 
