@@ -1,0 +1,1 @@
+option('biuld_gui_tests', type : 'boolean', value : true, description : 'Build GUI tests.')

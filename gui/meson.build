@@ -173,4 +173,7 @@ catalogue_browser = executable('catalogue_browser', 'tests/catalogue/browser/mai
                                 include_directories : gui_tests_inc,
                                 dependencies :[sciqlop_gui, qt5test])
 
-subdir('tests')
+                                
+if get_option('biuld_gui_tests')
+    subdir('tests')
+endif
