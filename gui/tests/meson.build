@@ -21,5 +21,10 @@ foreach unit_test : tests
                           include_directories: tests_inc,
 						  cpp_args : ['-DCORE_TESTS_RESOURCES_DIR="'+meson.current_source_dir()+'/../tests-resources"']
 						  )
-  test('Test-' + unit_test['name'], test_exe, args: ['-teamcity', '-o', '@0@.teamcity.txt'.format(unit_test['name'])])
+  if get_option('teamcity')
+    test_exe_args = ['-teamcity', '-o', '@0@.teamcity.txt'.format(unit_test['name'])]
+  else
+    test_exe_args = []
+  endif
+  test('Test-' + unit_test['name'], test_exe, args: test_exe_args)
 endforeach

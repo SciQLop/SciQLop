@@ -1,1 +1,2 @@
 option('biuld_gui_tests', type : 'boolean', value : true, description : 'Build GUI tests.')
+option('teamcity', type : 'boolean', value : false, description : 'Enables TeamCity output format for tests.')
