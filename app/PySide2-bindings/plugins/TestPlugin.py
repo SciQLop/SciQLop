@@ -81,7 +81,6 @@ class MyProvider(PyDataProvider):
                 cache_product = f"tests/{p_type}"
                 var = _cache.get_data(cache_product, DateTimeRange(datetime.fromtimestamp(start, tz=timezone.utc), datetime.fromtimestamp(stop, tz=timezone.utc)), partial(_get_data, p_type), fragment_hours=24)
             else:
-                print("No Cache")
                 var = _get_data(p_type, start, stop)
             return ((var.time,var.data), ts_type)
         except Exception as e:
