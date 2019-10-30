@@ -1,4 +1,4 @@
-#include <DataSource/DataSourceController.h>
+#include <DataSource/datasources.h>
 #include <Variable/RenameVariableDialog.h>
 #include <Variable/VariableController2.h>
 #include <Variable/VariableInspectorWidget.h>
@@ -139,8 +139,8 @@ VariableInspectorWidget::VariableInspectorWidget(QWidget* parent)
 
     m_model = new VariableModel2();
     ui->tableView->setModel(m_model);
-    connect(m_model, &VariableModel2::createVariable, [](const QVariantHash& productData) {
-        sqpApp->dataSourceController().requestVariable(productData);
+    connect(m_model, &VariableModel2::createVariable, [](const QString& productPath) {
+        sqpApp->dataSources().createVariable(productPath);
     });
     auto vc = &(sqpApp->variableController());
     connect(vc, &VariableController2::variableAdded, m_model, &VariableModel2::variableAdded);

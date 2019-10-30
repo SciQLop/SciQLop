@@ -2,9 +2,10 @@
 #include <Data/DataProviderParameters.h>
 #include <Data/DataSeriesType.h>
 #include <Data/IDataProvider.h>
-#include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceItem.h>
 #include <DataSource/DataSourceItemAction.h>
+#include <DataSource/datasources.h>
+
 #include <QPair>
 #include <SqpApplication.h>
 // must be included last because of Python/Qt definition of slots
@@ -68,8 +69,8 @@ class PyDataProvider : public IDataProvider
 public:
     PyDataProvider()
     {
-        auto& dataSourceController = sqpApp->dataSourceController();
-        dataSourceController.registerProvider(this);
+        auto& dataSources = sqpApp->dataSources();
+        dataSources.addProvider(this);
     }
 
     virtual ~PyDataProvider() {}
@@ -118,12 +119,12 @@ public:
 
     inline void register_products(const QVector<Product*>& products)
     {
-        auto& dataSourceController = sqpApp->dataSourceController();
+        auto& dataSources = sqpApp->dataSources();
         auto id = this->id();
         auto data_source_name = this->name();
         std::for_each(std::cbegin(products), std::cend(products),
-            [&id, &dataSourceController](const Product* product) {
-                dataSourceController.setDataSourceItem(id, product->path, product->metadata);
+            [&id, &dataSources](const Product* product) {
+                dataSources.addDataSourceItem(id, product->path, product->metadata);
             });
     }
 };

@@ -13,7 +13,7 @@
 
 #include <Actions/ActionsGuiController.h>
 #include <Actions/FilteringAction.h>
-#include <Common/MimeTypesDef.h>
+#include <MimeTypes/MimeTypes.h>
 #include <cpp_utils_qt/cpp_utils_qt.hpp>
 #include <containers/algorithms.hpp>
 #include <Data/DateTimeRangeHelper.h>
@@ -731,17 +731,17 @@ QMimeData* VisualizationGraphWidget::mimeData(const QPoint& position) const
     if (sqpApp->plotsInteractionMode() == SqpApplication::PlotsInteractionMode::SelectionZones
         && selectionZoneItemUnderCursor)
     {
-        mimeData->setData(MIME_TYPE_TIME_RANGE,
+        mimeData->setData(MIME::MIME_TYPE_TIME_RANGE,
             TimeController::mimeDataForTimeRange(selectionZoneItemUnderCursor->range()));
-        mimeData->setData(MIME_TYPE_SELECTION_ZONE,
+        mimeData->setData(MIME::MIME_TYPE_SELECTION_ZONE,
             TimeController::mimeDataForTimeRange(selectionZoneItemUnderCursor->range()));
     }
     else
     {
-        mimeData->setData(MIME_TYPE_GRAPH, QByteArray {});
+        mimeData->setData(MIME::MIME_TYPE_GRAPH, QByteArray {});
 
         auto timeRangeData = TimeController::mimeDataForTimeRange(graphRange());
-        mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
+        mimeData->setData(MIME::MIME_TYPE_TIME_RANGE, timeRangeData);
     }
 
     return mimeData;

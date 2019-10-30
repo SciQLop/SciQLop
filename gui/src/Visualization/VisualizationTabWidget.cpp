@@ -7,10 +7,10 @@
 
 #include "Visualization/MacScrollBarStyle.h"
 
-#include "DataSource/DataSourceController.h"
+#include "DataSource/datasources.h"
 #include "Variable/VariableController2.h"
 
-#include "Common/MimeTypesDef.h"
+#include "MimeTypes/MimeTypes.h"
 
 #include "DragAndDrop/DragDropGuiController.h"
 #include "SqpApplication.h"
@@ -95,13 +95,13 @@ VisualizationTabWidget::VisualizationTabWidget(const QString& name, QWidget* par
     ui->dragDropContainer->layout()->setContentsMargins(0, 0, 0, 12);
     ui->dragDropContainer->layout()->setSpacing(0);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_GRAPH, VisualizationDragDropContainer::DropBehavior::Inserted);
+        MIME::MIME_TYPE_GRAPH, VisualizationDragDropContainer::DropBehavior::Inserted);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_ZONE, VisualizationDragDropContainer::DropBehavior::Inserted);
+        MIME::MIME_TYPE_ZONE, VisualizationDragDropContainer::DropBehavior::Inserted);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_VARIABLE_LIST, VisualizationDragDropContainer::DropBehavior::Inserted);
+        MIME::MIME_TYPE_VARIABLE_LIST, VisualizationDragDropContainer::DropBehavior::Inserted);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_PRODUCT_LIST, VisualizationDragDropContainer::DropBehavior::Inserted);
+        MIME::MIME_TYPE_PRODUCT_LIST, VisualizationDragDropContainer::DropBehavior::Inserted);
 
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
         return sqpApp->dragDropGuiController().checkMimeDataForVisualization(
@@ -231,24 +231,24 @@ QLayout& VisualizationTabWidget::tabLayout() const noexcept
 
 void VisualizationTabWidget::dropMimeData(int index, const QMimeData* mimeData)
 {
-    if (mimeData->hasFormat(MIME_TYPE_GRAPH))
+    if (mimeData->hasFormat(MIME::MIME_TYPE_GRAPH))
     {
         impl->dropGraph(index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_ZONE))
+    else if (mimeData->hasFormat(MIME::MIME_TYPE_ZONE))
     {
         impl->dropZone(index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
+    else if (mimeData->hasFormat(MIME::MIME_TYPE_VARIABLE_LIST))
     {
         auto variables = sqpApp->variableController().variables(
-            Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+            Variable2::IDs(mimeData->data(MIME::MIME_TYPE_VARIABLE_LIST)));
         impl->dropVariables(variables, index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST))
+    else if (mimeData->hasFormat(MIME::MIME_TYPE_PRODUCT_LIST))
     {
-        auto productsData = sqpApp->dataSourceController().productsDataForMimeData(
-            mimeData->data(MIME_TYPE_PRODUCT_LIST));
+        auto productsData = MIME::decode(
+            mimeData->data(MIME::MIME_TYPE_PRODUCT_LIST));
         impl->dropProducts(productsData, index, this);
     }
     else
@@ -409,7 +409,7 @@ void VisualizationTabWidget::VisualizationTabWidgetPrivate::dropProducts(
         },
         Qt::QueuedConnection);
 
-    auto productData = productsMetaData.first().toHash();
-    QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
-        Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
+    auto productPath = productsMetaData.first().toString();
+    QMetaObject::invokeMethod(&sqpApp->dataSources(), "createVariable",
+                              Qt::QueuedConnection, Q_ARG(QString, productPath));
 }
