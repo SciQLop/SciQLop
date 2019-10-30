@@ -7,10 +7,9 @@
 #include "Visualization/VisualizationWidget.h"
 #include "Visualization/operations/FindVariableOperation.h"
 
-#include "DataSource/DataSourceController.h"
 #include "Variable/VariableController2.h"
 
-#include "Common/MimeTypesDef.h"
+#include "MimeTypes/MimeTypes.h"
 #include "Common/VisualizationDef.h"
 
 #include <QDir>
@@ -252,10 +251,10 @@ bool DragDropGuiController::checkMimeDataForVisualization(
 
     auto result = false;
 
-    if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
+    if (mimeData->hasFormat(MIME::MIME_TYPE_VARIABLE_LIST))
     {
         auto variables = sqpApp->variableController().variables(
-            Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+            Variable2::IDs(mimeData->data(MIME::MIME_TYPE_VARIABLE_LIST)));
 
         if (variables.size() == 1)
         {
@@ -306,10 +305,10 @@ bool DragDropGuiController::checkMimeDataForVisualization(
             // result = false: cannot drop multiple variables in the visualisation
         }
     }
-    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST))
+    else if (mimeData->hasFormat(MIME::MIME_TYPE_PRODUCT_LIST))
     {
-        auto productDataList = sqpApp->dataSourceController().productsDataForMimeData(
-            mimeData->data(MIME_TYPE_PRODUCT_LIST));
+        auto productDataList = MIME::decode(
+            mimeData->data(MIME::MIME_TYPE_PRODUCT_LIST));
         if (productDataList.count() == 1)
         {
             result = true;

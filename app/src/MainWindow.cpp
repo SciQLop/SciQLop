@@ -24,7 +24,6 @@
 
 #include <Catalogue/CatalogueController.h>
 #include <Catalogue2/browser.h>
-#include <DataSource/DataSourceController.h>
 #include <DataSource/DataSourceItem.h>
 #include <DataSource/DataSourceWidget.h>
 #include <Settings/SqpSettingsDialog.h>
@@ -113,10 +112,6 @@ MainWindow::MainWindow(QWidget* parent)
     // /////////// //
 
     // Widgets / controllers connections
-
-    // DataSource
-    connect(&sqpApp->dataSourceController(), &DataSourceController::dataSourceItemSet,
-        m_Ui->dataSourceWidget, &DataSourceWidget::addDataSource);
 
     // Time
     //    connect(timeWidget, SIGNAL(timeUpdated(DateTimeRange)), &sqpApp->timeController(),

@@ -6,12 +6,12 @@
 #include "Visualization/VisualizationWidget.h"
 #include "ui_VisualizationZoneWidget.h"
 
-#include "Common/MimeTypesDef.h"
+#include "MimeTypes/MimeTypes.h"
 #include "Common/VisualizationDef.h"
 
 #include <Data/DateTimeRange.h>
 #include <Data/DateTimeRangeHelper.h>
-#include <DataSource/DataSourceController.h>
+#include <DataSource/datasources.h>
 #include <Time/TimeController.h>
 #include <Variable/Variable2.h>
 #include <Variable/VariableController2.h>
@@ -102,17 +102,17 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString& name, QWidget* p
 
     ui->dragDropContainer->setPlaceHolderType(DragDropGuiController::PlaceHolderType::Graph);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_GRAPH, VisualizationDragDropContainer::DropBehavior::Inserted);
+        MIME::MIME_TYPE_GRAPH, VisualizationDragDropContainer::DropBehavior::Inserted);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_VARIABLE_LIST, VisualizationDragDropContainer::DropBehavior::InsertedAndMerged);
+        MIME::MIME_TYPE_VARIABLE_LIST, VisualizationDragDropContainer::DropBehavior::InsertedAndMerged);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_PRODUCT_LIST, VisualizationDragDropContainer::DropBehavior::InsertedAndMerged);
+        MIME::MIME_TYPE_PRODUCT_LIST, VisualizationDragDropContainer::DropBehavior::InsertedAndMerged);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_TIME_RANGE, VisualizationDragDropContainer::DropBehavior::Merged);
+        MIME::MIME_TYPE_TIME_RANGE, VisualizationDragDropContainer::DropBehavior::Merged);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_ZONE, VisualizationDragDropContainer::DropBehavior::Forbidden);
+        MIME::MIME_TYPE_ZONE, VisualizationDragDropContainer::DropBehavior::Forbidden);
     ui->dragDropContainer->setMimeType(
-        MIME_TYPE_SELECTION_ZONE, VisualizationDragDropContainer::DropBehavior::Forbidden);
+        MIME::MIME_TYPE_SELECTION_ZONE, VisualizationDragDropContainer::DropBehavior::Forbidden);
     ui->dragDropContainer->setAcceptMimeDataFunction([this](auto mimeData) {
         return sqpApp->dragDropGuiController().checkMimeDataForVisualization(
             mimeData, ui->dragDropContainer);
@@ -124,10 +124,10 @@ VisualizationZoneWidget::VisualizationZoneWidget(const QString& name, QWidget* p
             return false;
         }
 
-        if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
+        if (mimeData->hasFormat(MIME::MIME_TYPE_VARIABLE_LIST))
         {
             auto variables = sqpApp->variableController().variables(
-                Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+                Variable2::IDs(mimeData->data(MIME::MIME_TYPE_VARIABLE_LIST)));
 
             if (variables.size() != 1)
             {
@@ -388,12 +388,12 @@ QMimeData* VisualizationZoneWidget::mimeData(const QPoint& position) const
     Q_UNUSED(position);
 
     auto mimeData = new QMimeData;
-    mimeData->setData(MIME_TYPE_ZONE, QByteArray {});
+    mimeData->setData(MIME::MIME_TYPE_ZONE, QByteArray {});
 
     if (auto firstGraph = this->firstGraph())
     {
         auto timeRangeData = TimeController::mimeDataForTimeRange(firstGraph->graphRange());
-        mimeData->setData(MIME_TYPE_TIME_RANGE, timeRangeData);
+        mimeData->setData(MIME::MIME_TYPE_TIME_RANGE, timeRangeData);
     }
 
     return mimeData;
@@ -486,20 +486,20 @@ void VisualizationZoneWidget::onVariableAboutToBeRemoved(std::shared_ptr<Variabl
 
 void VisualizationZoneWidget::dropMimeData(int index, const QMimeData* mimeData)
 {
-    if (mimeData->hasFormat(MIME_TYPE_GRAPH))
+    if (mimeData->hasFormat(MIME::MIME_TYPE_GRAPH))
     {
         impl->dropGraph(index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
+    else if (mimeData->hasFormat(MIME::MIME_TYPE_VARIABLE_LIST))
     {
         auto variables = sqpApp->variableController().variables(
-            Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+            Variable2::IDs(mimeData->data(MIME::MIME_TYPE_VARIABLE_LIST)));
         impl->dropVariables(variables, index, this);
     }
-    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST))
+    else if (mimeData->hasFormat(MIME::MIME_TYPE_PRODUCT_LIST))
     {
-        auto products = sqpApp->dataSourceController().productsDataForMimeData(
-            mimeData->data(MIME_TYPE_PRODUCT_LIST));
+        auto products = MIME::decode(
+            mimeData->data(MIME::MIME_TYPE_PRODUCT_LIST));
         impl->dropProducts(products, index, this);
     }
     else
@@ -522,22 +522,22 @@ void VisualizationZoneWidget::dropMimeDataOnGraph(
         return;
     }
 
-    if (mimeData->hasFormat(MIME_TYPE_VARIABLE_LIST))
+    if (mimeData->hasFormat(MIME::MIME_TYPE_VARIABLE_LIST))
     {
         auto variables = sqpApp->variableController().variables(
-            Variable2::IDs(mimeData->data(MIME_TYPE_VARIABLE_LIST)));
+            Variable2::IDs(mimeData->data(MIME::MIME_TYPE_VARIABLE_LIST)));
         for (const auto& var : variables)
         {
             graphWidget->addVariable(var, graphWidget->graphRange());
         }
     }
-    else if (mimeData->hasFormat(MIME_TYPE_PRODUCT_LIST))
+    else if (mimeData->hasFormat(MIME::MIME_TYPE_PRODUCT_LIST))
     {
-        auto products = sqpApp->dataSourceController().productsDataForMimeData(
-            mimeData->data(MIME_TYPE_PRODUCT_LIST));
+        auto products = MIME::decode(
+            mimeData->data(MIME::MIME_TYPE_PRODUCT_LIST));
 
         auto context = new QObject { this };
-        auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME_TYPE_TIME_RANGE));
+        auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME::MIME_TYPE_TIME_RANGE));
         // BTW this is really dangerous, this assumes the next created variable will be this one...
         connect(&sqpApp->variableController(), &VariableController2::variableAdded, context,
             [this, graphWidget, context, range](auto variable) {
@@ -558,13 +558,13 @@ void VisualizationZoneWidget::dropMimeDataOnGraph(
             },
             Qt::QueuedConnection);
 
-        auto productData = products.first().toHash();
-        QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
-            Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
+        auto productPath = products.first().toString();
+        QMetaObject::invokeMethod(&sqpApp->dataSources(), "createVariable",
+                                  Qt::QueuedConnection, Q_ARG(QString, productPath));
     }
-    else if (mimeData->hasFormat(MIME_TYPE_TIME_RANGE))
+    else if (mimeData->hasFormat(MIME::MIME_TYPE_TIME_RANGE))
     {
-        auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME_TYPE_TIME_RANGE));
+        auto range = TimeController::timeRangeForMimeData(mimeData->data(MIME::MIME_TYPE_TIME_RANGE));
         graphWidget->setGraphRange(range, true, true);
     }
     else
@@ -689,7 +689,7 @@ void VisualizationZoneWidget::VisualizationZoneWidgetPrivate::dropProducts(
         },
         Qt::QueuedConnection);
 
-    auto productData = productsData.first().toHash();
-    QMetaObject::invokeMethod(&sqpApp->dataSourceController(), "requestVariable",
-        Qt::QueuedConnection, Q_ARG(QVariantHash, productData));
+    auto productPath = productsData.first().toString();
+    QMetaObject::invokeMethod(&sqpApp->dataSources(), "createVariable",
+                              Qt::QueuedConnection, Q_ARG(QString, productPath));
 }

@@ -2,7 +2,7 @@
 #include "ui_TimeWidget.h"
 
 #include <Common/DateUtils.h>
-#include <Common/MimeTypesDef.h>
+#include <MimeTypes/MimeTypes.h>
 
 #include <DragAndDrop/DragDropGuiController.h>
 #include <SqpApplication.h>
@@ -80,7 +80,7 @@ void TimeWidget::onTimeUpdateRequested()
 
 void TimeWidget::dragEnterEvent(QDragEnterEvent* event)
 {
-    if (event->mimeData()->hasFormat(MIME_TYPE_TIME_RANGE))
+    if (event->mimeData()->hasFormat(MIME::MIME_TYPE_TIME_RANGE))
     {
         event->acceptProposedAction();
         setStyleSheet("QDateTimeEdit{background-color: #BBD5EE; border:2px solid #2A7FD4}");
@@ -98,9 +98,9 @@ void TimeWidget::dragLeaveEvent(QDragLeaveEvent* event)
 
 void TimeWidget::dropEvent(QDropEvent* event)
 {
-    if (event->mimeData()->hasFormat(MIME_TYPE_TIME_RANGE))
+    if (event->mimeData()->hasFormat(MIME::MIME_TYPE_TIME_RANGE))
     {
-        auto mimeData = event->mimeData()->data(MIME_TYPE_TIME_RANGE);
+        auto mimeData = event->mimeData()->data(MIME::MIME_TYPE_TIME_RANGE);
         auto timeRange = TimeController::timeRangeForMimeData(mimeData);
 
         setTimeRange(timeRange);
@@ -142,7 +142,7 @@ void TimeWidget::mouseMoveEvent(QMouseEvent* event)
 
     auto mimeData = new QMimeData;
     auto timeData = TimeController::mimeDataForTimeRange(timeRange());
-    mimeData->setData(MIME_TYPE_TIME_RANGE, timeData);
+    mimeData->setData(MIME::MIME_TYPE_TIME_RANGE, timeData);
 
     drag->setMimeData(mimeData);
 

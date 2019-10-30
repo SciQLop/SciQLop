@@ -3,7 +3,7 @@
 #include <Actions/ActionsGuiController.h>
 #include <Catalogue/CatalogueController.h>
 #include <Data/IDataProvider.h>
-#include <DataSource/DataSourceController.h>
+#include <DataSource/datasources.h>
 #include <DragAndDrop/DragDropGuiController.h>
 #include <Network/NetworkController.h>
 #include <QThread>
@@ -26,7 +26,8 @@ public:
         // /////////////////////////////// //
 
         // VariableController <-> DataSourceController
-        connect(&m_DataSourceController, &DataSourceController::createVariable,
+        connect(&m_DataSources, static_cast<void (DataSources::*)(const QString&, const QVariantHash&,
+                std::shared_ptr<IDataProvider>)>(&DataSources::createVariable),
             [](const QString& variableName, const QVariantHash& variableMetadata,
                 std::shared_ptr<IDataProvider> variableProvider) {
                 sqpApp->variableController().createVariable(variableName, variableMetadata,
@@ -34,8 +35,6 @@ public:
             });
 
 
-        m_DataSourceController.moveToThread(&m_DataSourceControllerThread);
-        m_DataSourceControllerThread.setObjectName("DataSourceControllerThread");
         m_NetworkController.moveToThread(&m_NetworkControllerThread);
         m_NetworkControllerThread.setObjectName("NetworkControllerThread");
 
@@ -45,20 +44,17 @@ public:
 
     virtual ~SqpApplicationPrivate()
     {
-        m_DataSourceControllerThread.quit();
-        m_DataSourceControllerThread.wait();
 
         m_NetworkControllerThread.quit();
         m_NetworkControllerThread.wait();
     }
 
-    DataSourceController m_DataSourceController;
+    DataSources m_DataSources;
     std::shared_ptr<VariableController2> m_VariableController;
     TimeController m_TimeController;
     NetworkController m_NetworkController;
     CatalogueController m_CatalogueController;
 
-    QThread m_DataSourceControllerThread;
     QThread m_NetworkControllerThread;
 
     DragDropGuiController m_DragDropGuiController;
@@ -77,17 +73,11 @@ SqpApplication::SqpApplication(int& argc, char** argv)
 
     QGuiApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 
-    connect(&impl->m_DataSourceControllerThread, &QThread::started, &impl->m_DataSourceController,
-        &DataSourceController::initialize);
-    connect(&impl->m_DataSourceControllerThread, &QThread::finished, &impl->m_DataSourceController,
-        &DataSourceController::finalize);
-
     connect(&impl->m_NetworkControllerThread, &QThread::started, &impl->m_NetworkController,
         &NetworkController::initialize);
     connect(&impl->m_NetworkControllerThread, &QThread::finished, &impl->m_NetworkController,
         &NetworkController::finalize);
 
-    impl->m_DataSourceControllerThread.start();
     impl->m_NetworkControllerThread.start();
 }
 
@@ -95,9 +85,14 @@ SqpApplication::~SqpApplication() {}
 
 void SqpApplication::initialize() {}
 
-DataSourceController& SqpApplication::dataSourceController() noexcept
+//DataSourceController& SqpApplication::dataSourceController() noexcept
+//{
+//    return impl->m_DataSourceController;
+//}
+
+DataSources& SqpApplication::dataSources() noexcept
 {
-    return impl->m_DataSourceController;
+    return impl->m_DataSources;
 }
 
 NetworkController& SqpApplication::networkController() noexcept
