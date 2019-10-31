@@ -28,5 +28,6 @@
         <file>icones/save.png</file>
         <file>icones/discard.png</file>
         <file>icones/Simple_icon_time.svg</file>
+        <file>icones/satellite.svg</file>
     </qresource>
 </RCC>

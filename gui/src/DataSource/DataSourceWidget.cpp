@@ -32,7 +32,7 @@ DataSourceWidget::DataSourceWidget(QWidget* parent)
     // Connection to filter tree
     connect(ui->filterLineEdit, &QLineEdit::textChanged, &m_model_proxy, static_cast<void (QSortFilterProxyModel::*)(const QString&)>(
         &QSortFilterProxyModel::setFilterRegExp));
-
+    sqpApp->dataSources().addIcon("satellite",QVariant(QIcon(":/icones/satellite.svg")));
 }
 
 DataSourceWidget::~DataSourceWidget() noexcept
