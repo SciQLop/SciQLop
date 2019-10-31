@@ -13,19 +13,19 @@ def amda_make_scalar(var=None):
     if var is None:
         return ((np.array(), np.array()), DataSeriesType.SCALAR)
     else:
-        return ((var.time.copy(),var.data.copy()), DataSeriesType.SCALAR)
+        return ((var.time,var.data), DataSeriesType.SCALAR)
 
 def amda_make_vector(var=None):
     if var is None:
         return ((np.array(), np.array()), DataSeriesType.VECTOR)
     else:
-        return ((var.time.copy(),var.data.copy()), DataSeriesType.VECTOR)
+        return ((var.time,var.data), DataSeriesType.VECTOR)
 
 def amda_make_multi_comp(var=None):
     if var is None:
         return ((np.array(), np.array()), DataSeriesType.MULTICOMPONENT)
     else:
-        return ((var.time.copy(),var.data.copy()), DataSeriesType.MULTICOMPONENT)
+        return ((var.time,var.data), DataSeriesType.MULTICOMPONENT)
 
 def amda_make_spectro(var=None):
     if var is None:
@@ -43,7 +43,7 @@ def amda_make_spectro(var=None):
             y = (max_v + min_v)/2.
         else:
             y = np.logspace(1,3,var.data.shape[1])[::-1]
-        return ((var.time.copy(),var.data.copy()), DataSeriesType.SPECTROGRAM)
+        return ((var.time,var.data), DataSeriesType.SPECTROGRAM)
         #return pysciqlopcore.SpectrogramTimeSerie(var.time,y,var.data,min_sampling,max_sampling,True)
 
 def amda_get_sample(metadata,start,stop):
