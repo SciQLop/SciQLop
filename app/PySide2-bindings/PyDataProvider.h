@@ -116,6 +116,10 @@ public:
         return ts;
     }
 
+    inline void set_icon(const QString& path, const QString& name)
+    {
+        sqpApp->dataSources().setIcon(path, name);
+    }
 
     inline void register_products(const QVector<Product*>& products)
     {
