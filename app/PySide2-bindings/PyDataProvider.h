@@ -7,6 +7,7 @@
 #include <DataSource/datasources.h>
 
 #include <QPair>
+#include <QList>
 #include <SqpApplication.h>
 // must be included last because of Python/Qt definition of slots
 #include "numpy_wrappers.h"
@@ -51,14 +52,14 @@ MultiComponentTimeSerie* make_multi_comp(T& t, T& y)
 }
 
 template <typename T>
-SpectrogramTimeSerie* make_spectro(T& t, T& y)
+SpectrogramTimeSerie* make_spectro(T& t, T& y, T& z)
 {
-    auto y_size = y.flat_size();
+    auto z_size = z.flat_size();
     auto t_size = t.flat_size();
-    if (t_size && (y_size % t_size) == 0)
+    if (t_size && (z_size % t_size) == 0)
     {
-        return new SpectrogramTimeSerie { std::move(t.data), std::move(y.data),
-            { t_size, y_size / t_size } };
+        return new SpectrogramTimeSerie { std::move(t.data), std::move(y.data), std::move(z.data),
+            { t_size, z_size / t_size }, std::nan("1"), std::nan("1") };
     }
     return nullptr;
 }
@@ -75,7 +76,7 @@ public:
 
     virtual ~PyDataProvider() {}
 
-    virtual QPair<QPair<NpArray, NpArray>, DataSeriesType> get_data(
+    virtual QPair<QPair<QPair<NpArray,NpArray>,NpArray>, DataSeriesType> get_data(
         const QMap<QString, QString>& key, double start_time, double stop_time)
     {
         (void)key, (void)start_time, (void)stop_time;
@@ -94,20 +95,21 @@ public:
             auto [data, type]
                 = get_data(metadata, parameters.m_Range.m_TStart, parameters.m_Range.m_TEnd);
 
-            auto& [t, y] = data;
+            auto& [axes, values] = data;
+            auto& [x, y] = axes;
             switch (type)
             {
                 case DataSeriesType::SCALAR:
-                    ts = make_scalar(t, y);
+                    ts = make_scalar(x, values);
                     break;
                 case DataSeriesType::VECTOR:
-                    ts = make_vector(t, y);
+                    ts = make_vector(x, values);
                     break;
                 case DataSeriesType::MULTICOMPONENT:
-                    ts = make_multi_comp(t, y);
+                    ts = make_multi_comp(x, values);
                     break;
                 case DataSeriesType::SPECTROGRAM:
-                    ts = make_spectro(t, y);
+                    ts = make_spectro(x, y, values);
                     break;
                 default:
                     break;
