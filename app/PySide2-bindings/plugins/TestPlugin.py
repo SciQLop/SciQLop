@@ -82,11 +82,11 @@ class MyProvider(PyDataProvider):
                 var = _cache.get_data(cache_product, DateTimeRange(datetime.fromtimestamp(start, tz=timezone.utc), datetime.fromtimestamp(stop, tz=timezone.utc)), partial(_get_data, p_type), fragment_hours=24)
             else:
                 var = _get_data(p_type, start, stop)
-            return ((var.time,var.data), ts_type)
+            return (((var.time, np.array([])),var.data), ts_type)
         except Exception as e:
             print(traceback.format_exc())
             print("Error in test.py ",str(e))
-            return ((np.array(), np.array()), ts_type)
+            return (((np.array([]), np.array([])), np.array([])), ts_type)
 
 
 t=MyProvider()
