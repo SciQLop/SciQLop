@@ -39,7 +39,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>24</height>
+     <height>29</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -54,6 +54,9 @@
      <height>0</height>
     </size>
    </property>
+   <property name="accessibleName">
+    <string/>
+   </property>
    <property name="nativeMenuBar">
     <bool>true</bool>
    </property>
@@ -61,7 +64,7 @@
   <widget class="QStatusBar" name="statusBar"/>
   <widget class="QDockWidget" name="dockWidget">
    <property name="features">
-    <set>QDockWidget::DockWidgetMovable</set>
+    <set>QDockWidget::AllDockWidgetFeatures</set>
    </property>
    <property name="windowTitle">
     <string>Products</string>
@@ -73,7 +76,7 @@
   </widget>
   <widget class="QDockWidget" name="dockWidget_2">
    <property name="features">
-    <set>QDockWidget::DockWidgetMovable</set>
+    <set>QDockWidget::AllDockWidgetFeatures</set>
    </property>
    <property name="windowTitle">
     <string>Variables</string>
