@@ -92,6 +92,7 @@ MainWindow::MainWindow(QWidget* parent)
         }
     });
     auto mainToolBar = new ToolBar(this);
+    mainToolBar->setWindowTitle("Tool bar");
     this->addToolBar(mainToolBar);
     connect(mainToolBar, &ToolBar::setPlotsInteractionMode, sqpApp,
         &SqpApplication::setPlotsInteractionMode);
