@@ -81,7 +81,13 @@ class AmdaProvider(PyDataProvider):
 
         products = []
         for key, parameter in parameters.items():
-            path = f"/AMDA/{parameter['mission']}/{parameter.get('observatory','')}/{parameter['instrument']}/{parameter['dataset']}/{parameter['name']}"
+            mission_name = amda.mission[parameter['mission']]['name']
+            observatory_name = parameter.get('observatory','')
+            if observatory_name != '':
+                observatory_name = amda.observatory[observatory_name]['name']
+            instrument_name = amda.instrument[parameter['instrument']]['name']
+            dataset_name = amda.dataset[parameter['dataset']]['name']
+            path = f"/AMDA/{mission_name}/{observatory_name}/{instrument_name}/{dataset_name}/{parameter['name']}"
             components = [component['name'] for component in parameter.get('components',[])]
             metadata = {key: item for key, item in parameter.items() if key is not 'components'}
             n_components = parameter.get('size', 0)
@@ -95,8 +101,9 @@ class AmdaProvider(PyDataProvider):
                 metadata["type"] = "scalar"
             products.append(Product(path, components, metadata))
         self.register_products(products)
-        for mission in amda.mission:
-            self.set_icon(f'/AMDA/{mission}','satellite')
+        for _,mission in amda.mission.items():
+            if ('target' in mission) and (mission['xml:id'] != 'Ephemerides') and (mission['target'] != 'Earth'):
+                self.set_icon(f'/AMDA/{mission["name"]}','satellite')
 
     def get_data(self, metadata, start, stop):
         ts_type = amda_make_scalar

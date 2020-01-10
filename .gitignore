@@ -1,4 +1,5 @@
 build/
+_build/
 CMakeLists.txt.user
 /.project
 core/src/Version.cpp
