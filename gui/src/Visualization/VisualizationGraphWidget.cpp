@@ -417,6 +417,21 @@ struct VisualizationGraphWidget::VisualizationGraphWidgetPrivate
             setRange(axis->range());
         m_plot->replot(QCustomPlot::rpQueuedReplot);
     }
+    void toggle_y_log_scale()
+    {
+        if(m_plot->yAxis->scaleType()==QCPAxis::stLinear)
+        {
+            m_plot->yAxis->setScaleType(QCPAxis::stLogarithmic);
+            QSharedPointer<QCPAxisTickerLog> logTicker(new QCPAxisTickerLog);
+            m_plot->yAxis->setTicker(logTicker);
+        }
+        else
+        {
+            m_plot->yAxis->setScaleType(QCPAxis::stLinear);
+            QSharedPointer<QCPAxisTicker> ticker(new QCPAxisTicker);
+            m_plot->yAxis->setTicker(ticker);
+        }
+    }
 };
 
 VisualizationGraphWidget::VisualizationGraphWidget(const QString& name, QWidget* parent)
@@ -677,6 +692,11 @@ void VisualizationGraphWidget::transform(
     impl->transform(tranformation);
     if (forward)
         emit this->setrange_sig(this->graphRange(), true, false);
+}
+
+void VisualizationGraphWidget::toggle_y_log_scale()
+{
+    impl->toggle_y_log_scale();
 }
 
 void VisualizationGraphWidget::accept(IVisualizationWidgetVisitor* visitor)
@@ -1139,6 +1159,9 @@ void VisualizationGraphWidget::keyPressEvent(QKeyEvent* event)
             {
                 zoom(2, this->height() / 2, Qt::Vertical);
             }
+            break;
+        case Qt::Key_L:
+            toggle_y_log_scale();
             break;
         default:
             QWidget::keyPressEvent(event);

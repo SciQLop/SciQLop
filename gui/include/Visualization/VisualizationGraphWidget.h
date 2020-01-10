@@ -96,6 +96,8 @@ public:
     void move(double dx, double dy, bool forward = true);
     void transform(const DateTimeRangeTransformation& tranformation, bool forward = true);
 
+    void toggle_y_log_scale();
+
     // IVisualizationWidget interface
     void accept(IVisualizationWidgetVisitor* visitor) override;
     bool canDrop(Variable2& variable) const override;
