@@ -949,7 +949,7 @@ void VisualizationGraphWidget::mouseMoveEvent(QMouseEvent* event)
         impl->m_RenderingDelegate->updateTooltip(event);
     }
     // event->accept();
-    QWidget::mouseMoveEvent(event);
+    VisualizationDragWidget::mouseMoveEvent(event);
 }
 
 void VisualizationGraphWidget::mouseReleaseEvent(QMouseEvent* event)
@@ -1061,7 +1061,7 @@ void VisualizationGraphWidget::mousePressEvent(QMouseEvent* event)
         }
     }
     // event->accept();
-    QWidget::mousePressEvent(event);
+    VisualizationDragWidget::mousePressEvent(event);
 }
 
 void VisualizationGraphWidget::mouseDoubleClickEvent(QMouseEvent* event)
