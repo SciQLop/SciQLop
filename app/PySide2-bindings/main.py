@@ -1,11 +1,12 @@
 # This Python file uses the following encoding: utf-8
 import os
+import os
+os.environ['QT_API'] = 'pyside2'
 print(os.getcwd())
 import sys
 from PySide2.QtWidgets import QApplication, QMainWindow, QDockWidget
 from PySide2.QtCore import QSize, Qt
 from PySide2 import QtGui
-import os
 sys.path.append(os.getcwd())
 from SciQLopBindings import SqpApplication, MainWindow, init_resources, load_plugins, SqpApplication_ctor
 from qtconsole.rich_ipython_widget import RichJupyterWidget

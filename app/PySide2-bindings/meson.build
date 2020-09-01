@@ -3,7 +3,7 @@ qmake = find_program('qmake-qt5','qmake')
 
 pymod = import('python')
 python3 = pymod.find_installation('python3', modules:['PySide2','shiboken2', 'shiboken2_generator', 'numpy'])
-python3_dep = python3.dependency()
+python3_dep = python3.dependency(embed:true)
 numpy_inc = run_command(python3, '-c', 'import numpy;print(numpy.get_include())').stdout().strip('\n')
 
 qt5_modules = ['QtCore','QtGui','QtWidgets']
@@ -47,4 +47,4 @@ sciqlop_bindings = python3.extension_module('SciQLopBindings',sciqlop_bindings_s
 
 configure_file(input:'main.py', output:'main.py', copy:true)
 
-executable('sciqlop', 'main.cpp', dependencies :python3.dependency())
+executable('sciqlop', 'main.cpp', dependencies :python3_dep)
