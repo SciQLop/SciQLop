@@ -6,6 +6,7 @@ core/src/Version.cpp
 core/include/Version.h
 3rdparty/
 subprojects/*
+!subprojects/*.wrap
 documentation/*
 **/.idea/*
 **/__pycache__/*

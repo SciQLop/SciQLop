@@ -1,0 +1,10 @@
+[wrap-file]
+directory = Catch2-2.9.0
+
+source_url = https://github.com/catchorg/Catch2/archive/v2.9.0.zip
+source_filename = Catch2-2.9.0.zip
+source_hash = df1d8ce6b80ebd6449b838540d88d670c2d7d76525c6cb412c52b5aa1c166816
+
+patch_url = https://wrapdb.mesonbuild.com/v1/projects/catch2/2.9.0/1/get_zip
+patch_filename = catch2-2.9.0-1-wrap.zip
+patch_hash = 26f8f042c86433525e86078aff69524c631f20e0f5678e6620e3a37b51fe776b
