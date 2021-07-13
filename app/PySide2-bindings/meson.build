@@ -17,6 +17,11 @@ shiboken2_build_flags = run_command(python3, 'shiboken-helper.py', '--includes',
 shiboken2_link_flags  = run_command(python3, 'shiboken-helper.py', '--libs', modules_arg).stdout().strip('\n').split(' ')
 shiboken2_typesystem  = run_command(python3, 'shiboken-helper.py', '--typesystem').stdout().strip('\n')
 
+message('shiboken2_build_flags = @0@'.format(shiboken2_build_flags))
+message('shiboken2_link_flags = @0@'.format(shiboken2_link_flags))
+message('shiboken2_typesystem = @0@'.format(shiboken2_typesystem))
+
+
 sciqlop_bindings_incs = shiboken2_build_flags + [
     '-I'+meson.current_source_dir()+'/../../gui/include',
     '-I'+meson.current_source_dir()+'/../../core/include',
