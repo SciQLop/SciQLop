@@ -5,7 +5,7 @@ from SciQLopBindings import PyDataProvider, Product, VectorTimeSerie, ScalarTime
 import numpy as np
 import requests
 import copy
-from spwc.amda import AMDA
+from speasy.amda import AMDA
 
 amda = AMDA()
 

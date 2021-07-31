@@ -1,11 +1,11 @@
 import traceback
 from SciQLopBindings import PyDataProvider, Product, VectorTimeSerie, ScalarTimeSerie, DataSeriesType
 import numpy as np
-from spwc.cache import _cache
-from spwc.common.datetime_range import DateTimeRange
+from speasy.cache import _cache
+from speasy.common.datetime_range import DateTimeRange
 from datetime import datetime, timedelta, timezone
-from spwc.common.variable import SpwcVariable
-from spwc.amda import AMDA
+from speasy.common.variable import SpeasyVariable
+from speasy.amda import AMDA
 
 amda = AMDA()
 
