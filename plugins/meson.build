@@ -1,0 +1,2 @@
+
+subdir('demo_plugin')
