@@ -29,32 +29,16 @@ else
   rc = []
 endif
 
-app_libs = []
-cpp_args = []
-if 'static' == get_option('default_library')
-  app_libs = [sciqlop_python_providers]
-  cpp_args += ['-DQT_STATICPLUGIN']
-endif
+cpp_args = ['-DQT_STATICPLUGIN']
 
-#sciqlop_app = executable('sciqlop',
-#                       app_sources,
-#                       app_moc_files,
-#                       rc,
-#                       include_directories : [ app_inc],
-#                       link_with: app_libs,
-#                       cpp_args: cpp_args,
-#                       dependencies : [sciqlop_gui, sciqlop_core],
-#                       install : true
-#                       )
 
 sciqlop_app_lib = library('sciqlop',
                        app_sources,
                        app_moc_files,
                        rc,
                        include_directories : [ app_inc],
-                       link_with: app_libs,
                        cpp_args: cpp_args,
-                       dependencies : [sciqlop_gui, sciqlop_core],
+                       dependencies : [sciqlop_gui, sciqlop_core, demo_plugin_dep],
                        install : true
                        )
 

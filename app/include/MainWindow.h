@@ -70,12 +70,7 @@ private:
 
 inline void init_resources()
 {
-#ifdef QT_STATICPLUGIN
-#ifndef SQP_NO_PLUGINS
-    Q_IMPORT_PLUGIN(PythonProviders)
-    Q_INIT_RESOURCE(python_providers);
-#endif
-#endif
+    Q_IMPORT_PLUGIN(DemoPlugin);
     Q_INIT_RESOURCE(sqpguiresources);
     SqpApplication::setOrganizationName("LPP");
     SqpApplication::setOrganizationDomain("lpp.fr");
