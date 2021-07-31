@@ -10,6 +10,6 @@ ninja install
 ~/Library/Python/3.7/bin/virtualenv --always-copy /tmp/SciQLOP.app
 ~/Library/Python/3.7/bin/virtualenv --relocatable /tmp/SciQLOP.app
 source /tmp/SciQLOP.app/bin/activate
-/tmp/SciQLOP.app/bin/pip install git+https://github.com/jeandet/spwc
+/tmp/SciQLOP.app/bin/pip install speasy
 cp $HERE/SciQLOP_wrapper /tmp/SciQLOP.app/Contents/MacOS/
 chmod +x /tmp/SciQLOP.app/Contents/MacOS/SciQLOP_wrapper

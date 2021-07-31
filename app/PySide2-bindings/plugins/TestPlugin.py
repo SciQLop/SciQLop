@@ -2,35 +2,35 @@ import traceback
 from SciQLopBindings import PyDataProvider, Product, VectorTimeSerie, ScalarTimeSerie, DataSeriesType
 import numpy as np
 import math
-from spwc.cache import _cache
-from spwc.common.datetime_range import DateTimeRange
+from speasy.cache import _cache
+from speasy.common.datetime_range import DateTimeRange
 from functools import partial
 from datetime import datetime, timedelta, timezone
-from spwc.common.variable import SpwcVariable
+from speasy.common.variable import SpeasyVariable
 
 
 def make_scalar(x):
     y = np.cos(x/10.)
-    return SpwcVariable(time=x, data=y)
+    return SpeasyVariable(time=x, data=y)
 
 def make_vector(x):
     v=np.ones((len(x),3))
     for i in range(3):
         v.transpose()[:][i] = np.cos(x/10. + float(i)) + (100. * np.cos(x/10000. + float(i)))
-    return SpwcVariable(time=x, data=v)
+    return SpeasyVariable(time=x, data=v)
 
 
 def make_multicomponent(x):
     v=np.ones((len(x),4))
     for i in range(4):
         v.transpose()[:][i] = float(i+1) * np.cos(x/10. + float(i))
-    return SpwcVariable(time=x, data=v)
+    return SpeasyVariable(time=x, data=v)
 
 def make_spectrogram(x):
     v=np.ones((len(x),32))
     for i in range(32):
         v.transpose()[:][i] = 100.*(2.+ float(i+1) * np.cos(x/1024. + float(i)))
-    return SpwcVariable(time=x, data=v)
+    return SpeasyVariable(time=x, data=v)
 
 
 def _get_data(p_type, start, stop):

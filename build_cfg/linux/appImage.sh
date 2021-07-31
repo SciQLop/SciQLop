@@ -20,7 +20,7 @@ cp $HERE/AppRun $SCIQLOP_APPDIR/
 chmod +x $SCIQLOP_APPDIR/AppRun
 # Tweak to find custom python from build dir
 sed "s|/usr|$SCIQLOP_APPDIR/usr|" -i $SCIQLOP_APPDIR/usr/lib/pkgconfig/python3.pc
-LD_PRELOAD=$SCIQLOP_APPDIR/usr/lib/libpython3.7m.so.1.0 PATH=$SCIQLOP_APPDIR/usr/bin/:/usr/bin/ LD_LIBRARY_PATH=AppDir/usr/lib/:AppDir/usr/lib/python3.7/ $SCIQLOP_APPDIR/usr/bin/python3 $SCIQLOP_APPDIR/usr/bin/pip3 install git+https://github.com/jeandet/spwc
+LD_PRELOAD=$SCIQLOP_APPDIR/usr/lib/libpython3.7m.so.1.0 PATH=$SCIQLOP_APPDIR/usr/bin/:/usr/bin/ LD_LIBRARY_PATH=AppDir/usr/lib/:AppDir/usr/lib/python3.7/ $SCIQLOP_APPDIR/usr/bin/python3 $SCIQLOP_APPDIR/usr/bin/pip3 install speasy
 LD_LIBRARY_PATH=$SCIQLOP_APPDIR/usr/lib/ PKG_CONFIG_PATH=$SCIQLOP_APPDIR/usr/lib/pkgconfig/:$PKG_CONFIG_PATH PATH=$SCIQLOP_APPDIR/usr/bin/:$PATH meson --prefix=/usr ..
 ninja
 DESTDIR=$SCIQLOP_APPDIR ninja install
