@@ -9,16 +9,16 @@ demoplugin_sources = [
 
 demoplugin_moc_files = qt5.preprocess(
                                      moc_headers: demoplugin_moc_headers,
-                                     dependencies: sciqlop_core,
+                                     dependencies: sciqlop_gui,
                                      include_directories: core_inc,
                                      moc_extra_arguments : ['-DQT_PLUGIN', '-DQT_STATICPLUGIN']
                                      )
 
 demo_plugin = static_library('demo_plugin',
-                       'DemoPlugin.cpp',
+                       'DemoPlugin.cpp','DataSource.cpp',
                        demoplugin_moc_files,
-                       extra_files: 'DemoPlugin.hpp',
-                       dependencies : [sciqlop_core],
+                       extra_files: ['DemoPlugin.hpp', 'DataSource.hpp'],
+                       dependencies : [sciqlop_gui],
                        cpp_args : ['-DQT_PLUGIN', '-DQT_STATICPLUGIN']
                        )
 
