@@ -4,6 +4,8 @@
 #include <IPlugin.h>
 #include <QtPlugin>
 
+#include <memory>
+
 #define PLUGIN_JSON_FILE_PATH "DemoPlugin.json"
 
 
@@ -14,6 +16,7 @@ class DemoPlugin : public QObject, public IPlugin {
 public:
     /// @sa IPlugin::initialize()
     void initialize() final;
+
 };
 
 #endif // SCIQLOP_DEMOPLUGIN_H
