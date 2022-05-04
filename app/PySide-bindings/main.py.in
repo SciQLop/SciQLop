@@ -1,12 +1,11 @@
 # This Python file uses the following encoding: utf-8
 import os
-import os
-os.environ['QT_API'] = 'pyside2'
+os.environ['QT_API'] = '{{ pyside_package.lower() }}'
 print(os.getcwd())
 import sys
-from PySide2.QtWidgets import QApplication, QMainWindow, QDockWidget
-from PySide2.QtCore import QSize, Qt
-from PySide2 import QtGui
+from {{ pyside_package }}.QtWidgets import QApplication, QMainWindow, QDockWidget
+from {{ pyside_package }}.QtCore import QSize, Qt
+from {{ pyside_package }} import QtGui
 sys.path.append(os.getcwd())
 from SciQLopBindings import SqpApplication, MainWindow, init_resources, load_plugins, SqpApplication_ctor
 from qtconsole.rich_ipython_widget import RichJupyterWidget
@@ -102,6 +101,12 @@ if __name__ == "__main__":
     main_window.show()
     for file in os.listdir('plugins'):
         if os.path.isfile(f"plugins/{file}"):
-            exec(open(f"plugins/{file}").read())
+            try:
+                exec(open(f"plugins/{file}").read())
+            except Exception as e:
+                print(traceback.format_exc())
+                print(f"Error while loading {file} ")
+
+
     sys.exit(app.exec_())
 

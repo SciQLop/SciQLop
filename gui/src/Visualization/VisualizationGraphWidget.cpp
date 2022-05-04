@@ -874,7 +874,7 @@ void VisualizationGraphWidget::closeEvent(QCloseEvent* event)
     }
 }
 
-void VisualizationGraphWidget::enterEvent(QEvent* event)
+void VisualizationGraphWidget::enterEvent(AnyEvent_t *event)
 {
     Q_UNUSED(event);
     impl->m_RenderingDelegate->showGraphOverlay(true);
@@ -904,23 +904,23 @@ void VisualizationGraphWidget::leaveEvent(QEvent* event)
 void VisualizationGraphWidget::wheelEvent(QWheelEvent* event)
 {
     double factor;
-    double wheelSteps = event->delta() / 120.0; // a single step delta is +/-120 usually
+    double wheelSteps = event->angleDelta().y() / 120.0; // a single step delta is +/-120 usually
     if (event->modifiers() == Qt::ControlModifier)
     {
-        if (event->orientation() == Qt::Vertical) // mRangeZoom.testFlag(Qt::Vertical))
+        if (event->angleDelta().x() == 0.) // mRangeZoom.testFlag(Qt::Vertical))
         {
             setCursor(Qt::SizeVerCursor);
             factor = pow(impl->m_plot->axisRect()->rangeZoomFactor(Qt::Vertical), wheelSteps);
-            zoom(factor, event->pos().y(), Qt::Vertical);
+            zoom(factor, event->position().y(), Qt::Vertical);
         }
     }
     else if (event->modifiers() == Qt::ShiftModifier)
     {
-        if (event->orientation() == Qt::Vertical) // mRangeZoom.testFlag(Qt::Vertical))
+        if (event->angleDelta().x() == 0.) // mRangeZoom.testFlag(Qt::Vertical))
         {
             setCursor(Qt::SizeHorCursor);
             factor = pow(impl->m_plot->axisRect()->rangeZoomFactor(Qt::Horizontal), wheelSteps);
-            zoom(factor, event->pos().x(), Qt::Horizontal);
+            zoom(factor, event->position().x(), Qt::Horizontal);
         }
     }
     else
@@ -1357,7 +1357,7 @@ void VisualizationGraphWidget::onMouseMove(QMouseEvent* event) noexcept
 void VisualizationGraphWidget::onMouseWheel(QWheelEvent* event) noexcept
 {
     // Processes event only if the wheel occurs on axis rect
-    if (!dynamic_cast<QCPAxisRect*>(impl->m_plot->layoutElementAt(event->posF())))
+    if (!dynamic_cast<QCPAxisRect*>(impl->m_plot->layoutElementAt(event->position())))
     {
         return;
     }

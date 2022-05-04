@@ -79,17 +79,17 @@ gui_ui_files = [
 
 gui_qresources = ['resources/sqpguiresources.qrc']
 
-rcc_gen = generator(rcc,
-                output  : 'qrc_@BASENAME@.cpp',
-                arguments : [
-                 '--output',
-                 '@OUTPUT@',
-                 '@INPUT@',
-                 '@EXTRA_ARGS@'])
+#rcc_gen = generator(rcc,
+#                output  : 'qrc_@BASENAME@.cpp',
+#                arguments : [
+#                 '--output',
+#                 '@OUTPUT@',
+#                 '@INPUT@',
+#                 '@EXTRA_ARGS@'])
 
-rcc_files = rcc_gen.process(gui_qresources, extra_args : ['-name', 'sqpguiresources'])
+rcc_files = qtmod.compile_resources(name: 'sqpguiresources', sources: gui_qresources)
 
-gui_moc_files = qt5.preprocess(moc_headers : gui_moc_headers,
+gui_moc_files = qtmod.preprocess(moc_headers : gui_moc_headers,
                                ui_files : gui_ui_files)
 
 gui_sources = [
@@ -152,20 +152,20 @@ sciqlop_gui_lib = library('sciqlopgui',
                        gui_moc_files,
                        rcc_files,
                        include_directories : [gui_inc],
-                       dependencies : [ qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core],
+                       dependencies : [ qt_printsupport, qt_gui, qt_widgets, qt_svg, sciqlop_core],
                        install : true
                        )
 
 sciqlop_gui = declare_dependency(link_with : sciqlop_gui_lib,
                                 include_directories : gui_inc,
-                                dependencies : [qt5printsupport, qt5gui, qt5widgets, qt5svg, sciqlop_core])
+                                dependencies : [qt_printsupport, qt_gui, qt_widgets, qt_svg, sciqlop_core])
 
 gui_tests_inc = include_directories(['tests/GUITestUtils'])
 
-catalogue_browser_moc_files = qt5.preprocess(moc_sources : 'tests/catalogue/browser/main.cpp')
+catalogue_browser_moc_files = qtmod.preprocess(moc_sources : 'tests/catalogue/browser/main.cpp')
 catalogue_browser = executable('catalogue_browser', 'tests/catalogue/browser/main.cpp',catalogue_browser_moc_files,
                                 include_directories : gui_tests_inc,
-                                dependencies :[sciqlop_gui, qt5test])
+                                dependencies :[sciqlop_gui, qt_test])
 
                                 
 if get_option('biuld_gui_tests')

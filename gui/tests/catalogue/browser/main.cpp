@@ -68,7 +68,7 @@ private slots:
 };
 
 QT_BEGIN_NAMESPACE
-QTEST_ADD_GPU_BLACKLIST_SUPPORT_DEFS
+//QTEST_ADD_GPU_BLACKLIST_SUPPORT_DEFS
 QT_END_NAMESPACE
 int main(int argc, char* argv[])
 {
@@ -77,7 +77,7 @@ int main(int argc, char* argv[])
     SqpApplication app { argc, argv };
     app.setAttribute(Qt::AA_Use96Dpi, true);
     QTEST_DISABLE_KEYPAD_NAVIGATION;
-    QTEST_ADD_GPU_BLACKLIST_SUPPORT;
+    //QTEST_ADD_GPU_BLACKLIST_SUPPORT;
     A_CatalogueBrowser tc;
     QTEST_SET_MAIN_SOURCE_PATH;
     return QTest::qExec(&tc, argc, argv);

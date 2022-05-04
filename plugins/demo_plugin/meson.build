@@ -7,7 +7,7 @@ demoplugin_sources = [
 ]
 
 
-demoplugin_moc_files = qt5.preprocess(
+demoplugin_moc_files = qtmod.preprocess(
                                      moc_headers: demoplugin_moc_headers,
                                      dependencies: sciqlop_gui,
                                      include_directories: core_inc,

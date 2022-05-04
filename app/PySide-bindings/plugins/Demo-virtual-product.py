@@ -1,13 +1,10 @@
 import traceback
 from SciQLopBindings import PyDataProvider, Product, VectorTimeSerie, ScalarTimeSerie, DataSeriesType
 import numpy as np
-from speasy.cache import _cache
-from speasy.common.datetime_range import DateTimeRange
-from datetime import datetime, timedelta, timezone
-from speasy.common.variable import SpeasyVariable
-from speasy.amda import AMDA
 
-amda = AMDA()
+from datetime import datetime, timedelta, timezone
+from speasy.products import SpeasyVariable
+import speasy as spz
 
 
 def vp_make_scalar(var=None):
@@ -25,7 +22,7 @@ class DemoVP(PyDataProvider):
         try:
             tstart = datetime.fromtimestamp(start, tz=timezone.utc)
             tend = datetime.fromtimestamp(stop, tz=timezone.utc)
-            thb_bs = amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id='thb_bs', method="REST")
+            thb_bs = spz.get_parameter('amda/thb_bs', start_time=tstart, stop_time=tend)
             thb_bs.data = np.sqrt((thb_bs.data*thb_bs.data).sum(axis=1))
             return vp_make_scalar(thb_bs)
         except Exception as e:

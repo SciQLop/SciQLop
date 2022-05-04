@@ -4,7 +4,7 @@
 #include <types/detectors.hpp>
 #include <QCoreApplication>
 #include <QCursor>
-#include <QDesktopWidget>
+//#include <QDesktopWidget>
 #include <QMouseEvent>
 #include <QPoint>
 #include <QtTest>
@@ -157,7 +157,7 @@ template <typename T>
 bool prepare_gui_test(T* w)
 {
     w->setGeometry(QRect(
-        QPoint(QApplication::desktop()->geometry().center() - QPoint(250, 250)), QSize(500, 500)));
+        QPoint(QApplication::primaryScreen()->geometry().center() - QPoint(250, 250)), QSize(500, 500)));
     w->show();
     qApp->setActiveWindow(w);
     return QTest::qWaitForWindowActive(w);
