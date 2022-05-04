@@ -2,27 +2,39 @@ project(
   'SciQLOP',
   'cpp',
   default_options : 'cpp_std=c++17',
-  meson_version : '>=0.51.0',
+  meson_version : '>=0.61.0',
   version : '1.1.0',
   license : 'GPL3'
 )
 add_global_arguments('-DSCIQLOP_VERSION="@0@"'.format(meson.project_version()), language : 'cpp')
 
-qt5 = import('qt5')
-qt5core = dependency('qt5', modules : 'Core')
-qt5widgets = dependency('qt5', modules : 'Widgets')
-qt5gui = dependency('qt5', modules : 'Gui')
-qt5svg = dependency('qt5', modules : 'Svg')
-qt5xml = dependency('qt5', modules : 'Xml')
-qt5network = dependency('qt5', modules : 'Network')
-qt5printsupport = dependency('qt5', modules : 'PrintSupport')
-qt5Concurrent = dependency('qt5', modules : 'Concurrent')
-qt5test = dependency('qt5', modules : 'Test')
+qt_sdk=get_option('qt_version')
+if qt_sdk=='auto'
+    qt_version=run_command(find_program('qmake'), '-query', 'QT_VERSION').stdout()
+    if qt_version.startswith('5.')
+        qt_sdk='qt5'
+    elif qt_version.startswith('6.')
+        qt_sdk='qt6'
+    endif
+endif
+
+
+qtmod = import(qt_sdk)
+
+qt_core = dependency(qt_sdk, modules : 'Core', method:'qmake')
+qt_widgets = dependency(qt_sdk, modules : 'Widgets')
+qt_gui = dependency(qt_sdk, modules : 'Gui')
+qt_svg = dependency(qt_sdk, modules : 'Svg')
+qt_xml = dependency(qt_sdk, modules : 'Xml')
+qt_network = dependency(qt_sdk, modules : 'Network')
+qt_printsupport = dependency(qt_sdk, modules : 'PrintSupport')
+qt_Concurrent = dependency(qt_sdk, modules : 'Concurrent')
+qt_test = dependency(qt_sdk, modules : 'Test')
 
 cpp_utils_dep = dependency('cpp_utils', fallback:['cpp_utils','cpp_utils_dep'])
 
-moc = find_program('moc-qt5','moc')
-rcc = find_program('rcc-qt5','rcc')
+#moc = find_program('moc-qt6','moc')
+#rcc = find_program('rcc-qt6','rcc')
 
 if build_machine.system()=='darwin'
   add_global_link_arguments('-headerpad_max_install_names', language : 'cpp')

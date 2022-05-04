@@ -7,6 +7,7 @@
 #include <QLoggingCategory>
 #include <QUuid>
 #include <QWidget>
+#include <QEnterEvent>
 
 #include <memory>
 
@@ -22,6 +23,12 @@ class Variable2;
 class VisualizationWidget;
 class VisualizationZoneWidget;
 class VisualizationSelectionZoneItem;
+
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
+    #define AnyEvent_t QEvent
+#else
+    #define AnyEvent_t QEnterEvent
+#endif
 
 namespace Ui
 {
@@ -140,7 +147,7 @@ signals:
 
 protected:
     void closeEvent(QCloseEvent* event) override;
-    void enterEvent(QEvent* event) override;
+    void enterEvent(AnyEvent_t* event) override;
     void leaveEvent(QEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;

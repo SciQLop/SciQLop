@@ -10,7 +10,7 @@ app_ui_files = [
 
 app_qresources = ['resources/qlopapp.qrc']
 
-app_moc_files = qt5.preprocess(moc_headers : app_moc_headers,
+app_moc_files = qtmod.preprocess(moc_headers : app_moc_headers,
                                ui_files : app_ui_files,
                                qresources : app_qresources)
 
@@ -47,4 +47,4 @@ sciqlop_app_dep = declare_dependency(link_with : sciqlop_app_lib,
                                 dependencies : [sciqlop_gui, sciqlop_core])
 
                        
-subdir('PySide2-bindings')
+subdir('PySide-bindings')

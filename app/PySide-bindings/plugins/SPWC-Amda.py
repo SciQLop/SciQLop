@@ -5,9 +5,7 @@ from SciQLopBindings import PyDataProvider, Product, VectorTimeSerie, ScalarTime
 import numpy as np
 import requests
 import copy
-from speasy.amda import AMDA
-
-amda = AMDA()
+import speasy as spz
 
 
 def amda_make_scalar(var=None):
@@ -59,7 +57,7 @@ def amda_get_sample(metadata, start, stop):
                     ts_type = amda_make_spectro
         tstart = datetime.fromtimestamp(start, tz=timezone.utc)
         tend = datetime.fromtimestamp(stop, tz=timezone.utc)
-        var = amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id=param_id, method="REST")
+        var = spz.amda.get_parameter(start_time=tstart, stop_time=tend, parameter_id=param_id, method="REST")
         return ts_type(var)
     except Exception as e:
         print(traceback.format_exc())
@@ -70,10 +68,10 @@ def amda_get_sample(metadata, start, stop):
 class AmdaProvider(PyDataProvider):
     def __init__(self):
         super(AmdaProvider, self).__init__()
-        if len(amda.component) is 0:
+        '''if len(amda.component) is 0:
             amda.update_inventory()
-        parameters = copy.deepcopy(amda.parameter)
-        for name, component in amda.component.items():
+        parameters = copy.deepcopy(spz.inventory.flat_inventories.amda.parameter)
+        for name, component in spz.inventory.flat_inventories.amda.components.items():
             if 'components' in parameters[component['parameter']]:
                 parameters[component['parameter']]['components'].append(component)
             else:
@@ -104,6 +102,7 @@ class AmdaProvider(PyDataProvider):
         for _,mission in amda.mission.items():
             if ('target' in mission) and (mission['xml:id'] != 'Ephemerides') and (mission['target'] != 'Earth'):
                 self.set_icon(f'/AMDA/{mission["name"]}','satellite')
+        '''
 
     def get_data(self, metadata, start, stop):
         ts_type = amda_make_scalar

@@ -8,7 +8,9 @@
 
 #include <functional>
 
-class VisualizationSelectionZoneItem;
+#include <VisualizationSelectionZoneItem.h>
+
+//class VisualizationSelectionZoneItem;
 
 Q_DECLARE_LOGGING_CATEGORY(LOG_SelectionZoneAction)
 

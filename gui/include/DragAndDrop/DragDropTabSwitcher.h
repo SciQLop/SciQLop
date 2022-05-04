@@ -18,7 +18,7 @@ public:
     void removeTabBar(QTabBar *tabBar);
 
 protected:
-    bool eventFilter(QObject *obj, QEvent *event);
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
 private:
     class DragDropTabSwitcherPrivate;
