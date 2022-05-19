@@ -29,6 +29,6 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
 ]
-dependencies = ['numpy', 'SciQLopBindings', 'speasy']
+dependencies = ['numpy', 'SciQLopBindings', 'speasy', 'qtconsole']
 [project.urls]
 homepage = "https://github.com/SciQLop/SciQLop"
