@@ -1,3 +1,0 @@
-#!/bin/bash
-HERE=$( cd "$(dirname "$0")" ; pwd -P )
-PYTHONPATH=$HERE/../../lib/python3.7/:$HERE/../../lib/python3.7/site-packages/ LD_PRELOAD=$HERE/../../.Python $HERE/sciqlop
