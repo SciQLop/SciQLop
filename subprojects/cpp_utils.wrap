@@ -1,5 +1,0 @@
-[wrap-git]
-directory = cpp_utils
-url = https://github.com/jeandet/cpp_utils.git
-revision = master
-
