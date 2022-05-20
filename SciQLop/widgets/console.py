@@ -1,6 +1,6 @@
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
-from PySide6.QtWidgets import QApplication, QMainWindow, QDockWidget
+from PySide6.QtWidgets import QDockWidget
 from PySide6.QtCore import QSize
 
 class IPythonWidget(RichJupyterWidget):
