@@ -35,15 +35,21 @@ class Worker(QRunnable):
 
     @Slot()
     def run(self):
-        self.signals.result.emit(self.fn(*self.args, **self.kwargs))
+        try:
+            self.signals.result.emit(self.fn(*self.args, **self.kwargs))
+        except Exception as e:
+            print(f"Oups can't load {name} , {e}")
+            traceback.print_exc()
+
 
 
 def load_plugin(mod, main_window):
-    try:
-        return mod.load(main_window)
-    except Exception as e:
-        print(f"Oups can't load {name} , {e}")
-        traceback.print_exc()
+    if mod:
+        try:
+            return mod.load(main_window)
+        except Exception as e:
+            print(f"Oups can't load {name} , {e}")
+            traceback.print_exc()
 
 
 def load_module(name):
