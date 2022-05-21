@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QComboBox
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject
 from datetime import datetime
+from SciQLopBindings import EventTimeSpan
 
 
 def catalog_display_txt(catalog):
@@ -76,6 +77,7 @@ class Plugin(QObject):
         self.panel_selector = PanelSelector()
         self.show_catalog = CatalogGUISpawner(self.ui)
         self.main_window = main_window
+        self.last_event = None
 
         main_window.toolBar().addAction(self.show_catalog)
         main_window.toolBar().addWidget(self.catalog_selector)
@@ -89,6 +91,8 @@ class Plugin(QObject):
     @Slot()
     def event_selected(self, event):
         if self.panel_selector.currentText() != 'None':
+            if self.last_event is not None:
+                del self.last_event
             e = tscat.get_events(tscat.filtering.UUID(event))[0]
             print(e)
             if e:
@@ -96,6 +100,7 @@ class Plugin(QObject):
                 print(p)
                 if p:
                     p.setTimeRange(*timestamps(*zoom_out(e.start, e.stop, 0.3)))
+                    self.last_event = EventTimeSpan(p, *timestamps(e.start, e.stop))
 
 
 def load(main_window):
