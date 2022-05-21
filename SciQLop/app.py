@@ -4,6 +4,8 @@ from SciQLop.plugins import load_all
 import os
 import sys
 os.environ['QT_API'] = 'PySide6'
+print("Forcing TZ to UTC")
+os.environ['TZ'] = 'UTC'
 
 
 class SciQLopApp(QtWidgets.QApplication):
