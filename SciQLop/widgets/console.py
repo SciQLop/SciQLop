@@ -15,7 +15,7 @@ class IPythonWidget(RichJupyterWidget):
     def __init__(self, parent=None, custom_banner=None, *args, **kwargs):
         if parent is not None:
             kwargs["parent"] = parent
-        super(IPythonWidget, self).__init__(*args, **kwargs)
+        super(IPythonWidget, self).__init__()
         if custom_banner is not None:
             self.banner = custom_banner
         self.setWindowTitle(self.banner)

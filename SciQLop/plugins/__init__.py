@@ -42,13 +42,12 @@ class Worker(QRunnable):
             traceback.print_exc()
 
 
-
 def load_plugin(mod, main_window):
     if mod:
         try:
             return mod.load(main_window)
         except Exception as e:
-            print(f"Oups can't load {name} , {e}")
+            print(f"Oups can't load {mod} , {e}")
             traceback.print_exc()
 
 
@@ -62,7 +61,7 @@ def load_module(name):
 
 
 def background_load(plugin, main_window):
-    w=Worker(load_module, plugin)
+    w = Worker(load_module, plugin)
     w.signals.result.connect(lambda mod: load_plugin(mod, main_window))
     return threadpool.start(w)
 
