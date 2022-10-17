@@ -2,21 +2,14 @@ from SciQLopBindings import DataProvider, Product, ScalarTimeSerie, VectorTimeSe
 from SciQLopBindings import SciQLopCore, MainWindow, TimeSyncPanel, ProductsTree, DataSeriesType
 import numpy as np
 
+from SciQLop.backend.products_model import ProductNode
+from SciQLop.backend import products
+
 from typing import Dict
 import speasy as spz
 from speasy.products import SpeasyVariable
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex, SpeasyIndex
 from datetime import datetime
-
-
-def explore_nodes(node, path, leaves):
-    for name, child in node.__dict__.items():
-        if name and child:
-            cur_path = path + "/" + name
-            if isinstance(child, ParameterIndex):
-                leaves[cur_path] = child
-            elif hasattr(child, "__dict__"):
-                explore_nodes(child, cur_path, leaves)
 
 
 def count_components(param: ParameterIndex):
@@ -73,7 +66,7 @@ type_str = {
 }
 
 
-def make_product(path, node: ParameterIndex):
+def make_product(name, node: ParameterIndex):
     p_type = data_serie_type(node)
     comp = count_components(node)
     meta = get_node_meta(node)
@@ -81,21 +74,26 @@ def make_product(path, node: ParameterIndex):
     meta["components"] = str(comp)
     meta["type"] = type_str[p_type]
     meta["provider"] = node.spz_provider()
-    return Product(path, [], p_type, meta)
+    return ProductNode(name, meta, is_parameter=True)
+
+
+def explore_nodes(inventory_node, product_node: ProductNode):
+    for name, child in inventory_node.__dict__.items():
+        if name and child:
+            if isinstance(child, ParameterIndex):
+                product_node.append_child(make_product(name, child))
+            elif hasattr(child, "__dict__"):
+                cur_prod = ProductNode(name, {})
+                product_node.append_child(cur_prod)
+                explore_nodes(child, cur_prod)
 
 
 class SpeasyPlugin(DataProvider):
     def __init__(self, parent=None):
         super(SpeasyPlugin, self).__init__(parent)
-        leaves: Dict[str, SpeasyIndex] = {}
-        print(f"start: {datetime.now()}")
-        explore_nodes(spz.inventories.tree, 'speasy', leaves)
-        self.products = {
-            node.spz_uid(): make_product(path, node)
-            for path, node in leaves.items()
-        }
-        print(f"stop: {datetime.now()}")
-        self.register_products(list(self.products.values()))
+        root_node = ProductNode(name="speasy", metadata={})
+        explore_nodes(spz.inventories.tree, root_node)
+        products.add_products(root_node)
 
     def get_data(self, metadata, start, stop):
         print(metadata)
