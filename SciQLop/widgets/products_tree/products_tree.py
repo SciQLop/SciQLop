@@ -6,8 +6,6 @@ from .tree_view import TreeView
 class ProductTree(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(ProductTree, self).__init__(parent)
-        self._filter_timer = QtCore.QTimer(self)
-        self._filter_timer.setSingleShot(True)
         self._model_proxy = QtCore.QSortFilterProxyModel(self)
         self._model_proxy.setSourceModel(products)
         self._view = TreeView(self)
@@ -19,9 +17,10 @@ class ProductTree(QtWidgets.QWidget):
         self._completer = QtWidgets.QCompleter(self)
         self._completer.setModel(products.completion_model)
         self._completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self._completer.setCompletionMode(QtWidgets.QCompleter.PopupCompletion)
+        self._completer.setModelSorting(QtWidgets.QCompleter.CaseSensitivelySortedModel)
         self._filter.setCompleter(self._completer)
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().addWidget(self._filter)
         self.layout().addWidget(self._view)
-        self._filter.textChanged.connect(lambda text: self._filter_timer.start(1000))
-        self._filter_timer.timeout.connect(lambda: self._model_proxy.setFilterFixedString(self._filter.text()))
+        self._filter.editingFinished.connect(lambda: self._model_proxy.setFilterFixedString(self._filter.text()))
