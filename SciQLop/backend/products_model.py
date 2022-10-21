@@ -4,12 +4,15 @@ from PySide6.QtGui import QIcon
 
 
 class ProductNode:
+    __slots__ = ["_metadata", "_name", "_children", "_parent", "_is_param", "_str_content"]
+
     def __init__(self, name: str, metadata: Dict[str, str], parent: 'ProductNode' = None, is_parameter=False):
         self._metadata = metadata
         self._name = name
         self._children = []
         self._parent = parent
         self._is_param = is_parameter
+        self._str_content = f"name: {name}" + "\n".join([f"{key}: {value}" for key, value in metadata.items()])
 
     def append_child(self, child: 'ProductNode'):
         child.set_parent(self)
@@ -53,6 +56,10 @@ class ProductNode:
         if self._parent is not None:
             return self._parent.index_of(self)
         return 0
+
+    @property
+    def str(self):
+        return self._str_content
 
     def child(self, row: int) -> 'ProductNode' or None:
         if 0 <= row < len(self._children):
@@ -99,7 +106,7 @@ class ProductsModel(QAbstractItemModel):
         strings = set()
         for_all_nodes(lambda node: strings.update(_make_completion_list(node)), products)
         strings.update(set(self._completion_model.stringList()))
-        self._completion_model.setStringList(list(strings))
+        self._completion_model.setStringList(sorted(list(strings)))
 
     def index(self, row: int, column: int, parent: QModelIndex | QPersistentModelIndex = ...) -> QModelIndex:
         if self.hasIndex(row, column, parent):
@@ -146,7 +153,7 @@ class ProductsModel(QAbstractItemModel):
         if role == Qt.DisplayRole:
             return item.name
         if role == Qt.UserRole:
-            return f"name: {item.name}" + "\n".join([f"{key}: {value}" for key, value in item.metadata.items()])
+            return item.str
         if role == Qt.DecorationRole:
             return self._icons.get(item.icon, None)
         if role == Qt.ToolTipRole:
