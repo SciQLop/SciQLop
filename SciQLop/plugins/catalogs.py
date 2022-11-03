@@ -4,7 +4,7 @@ from PySide6.QtWidgets import QComboBox
 from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject
 from datetime import datetime
-from SciQLopBindings import EventTimeSpan
+from SciQLop.widgets.mainwindow import SciQLopMainWindow
 
 
 def catalog_display_txt(catalog):
@@ -70,7 +70,7 @@ class CatalogGUISpawner(QAction):
 
 
 class Plugin(QObject):
-    def __init__(self, main_window):
+    def __init__(self, main_window: SciQLopMainWindow):
         super(Plugin, self).__init__(main_window)
         self.ui = TSCatGUI()
         self.catalog_selector = CatalogSelector()
@@ -79,12 +79,11 @@ class Plugin(QObject):
         self.main_window = main_window
         self.last_event = None
 
-        main_window.toolBar().addAction(self.show_catalog)
-        main_window.toolBar().addWidget(self.catalog_selector)
-        main_window.toolBar().addWidget(self.panel_selector)
+        main_window.toolBar.addAction(self.show_catalog)
+        main_window.toolBar.addWidget(self.catalog_selector)
+        main_window.toolBar.addWidget(self.panel_selector)
 
-        main_window.panels_list_changed.connect(self.panel_selector.update_list)
-        main_window.panels_list_changed.connect(self.panel_selector.update_list)
+        main_window.central_widget.panels_list_changed.connect(self.panel_selector.update_list)
 
         self.ui.event_selected.connect(self.event_selected)
 
@@ -100,8 +99,8 @@ class Plugin(QObject):
                 print(p)
                 if p:
                     p.setTimeRange(*timestamps(*zoom_out(e.start, e.stop, 0.3)))
-                    self.last_event = EventTimeSpan(p, *timestamps(e.start, e.stop))
+                    # self.last_event = EventTimeSpan(p, *timestamps(e.start, e.stop))
 
 
-def load(main_window):
+def load(main_window: SciQLopMainWindow):
     return Plugin(main_window)

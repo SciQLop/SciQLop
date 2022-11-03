@@ -1,4 +1,5 @@
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtWidgets, QtGui
+
 from SciQLop.backend import products
 from .tree_view import TreeView
 
@@ -14,6 +15,9 @@ class ProductTree(QtWidgets.QWidget):
         self._model_proxy.setRecursiveFilteringEnabled(True)
         self._model_proxy.setAutoAcceptChildRows(True)
         self._filter = QtWidgets.QLineEdit(self)
+        self._filter.setClearButtonEnabled(True)
+        self._filter.addAction(QtGui.QIcon(":/icons/zoom.png"), QtWidgets.QLineEdit.LeadingPosition)
+        self._filter.setPlaceholderText("Search...")
         self._completer = QtWidgets.QCompleter(self)
         self._completer.setModel(products.completion_model)
         self._completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)

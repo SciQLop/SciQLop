@@ -1,22 +1,22 @@
 [build-system]
-requires = ["setuptools>=43.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+build-backend = "flit_core.buildapi"
+requires = ["flit_core"]
 
 [project]
 name = 'SciQLop'
-version = "1.0.0"
+version = "0.0.1"
 description = "An ergonomic and efficient application to browse and label in situ plasma measurements from multi-mission satellite data."
-keywords= ["machine-learning", "satellite", "plasma-physics", "nasa-data", "amda", "cdpp"]
+keywords = ["machine-learning", "satellite", "plasma-physics", "nasa-data", "amda", "cdpp"]
 authors = [
-  {name = "Alexis Jeandet", email = "alexis.jeandet@member.fsf.org" }
+    { name = "Alexis Jeandet", email = "alexis.jeandet@member.fsf.org" }
 ]
 
 maintainers = [
-  {name = "Alexis Jeandet", email = "alexis.jeandet@member.fsf.org" }
+    { name = "Alexis Jeandet", email = "alexis.jeandet@member.fsf.org" }
 ]
 
-requires-python=">=3.7"
-license = {file="COPYING"}
+requires-python = ">=3.8"
+license = { file = "COPYING" }
 readme = "README.md"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -24,11 +24,18 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
-dependencies = ['numpy', 'SciQLopBindings', 'speasy', 'qtconsole', 'tscat_gui']
+dependencies = ['numpy', 'SciQLopPlots>=0.0.7', 'speasy', 'qtconsole', 'tscat_gui>=0.2.0', 'seaborn']
 [project.urls]
 homepage = "https://github.com/SciQLop/SciQLop"
+
+[project.gui-scripts]
+sciqlop = "SciQLop.app:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+qt_api = "pyside6"
