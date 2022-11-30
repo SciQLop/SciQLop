@@ -1,5 +1,5 @@
 from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex
-from SciQLopPlots import MultiLineGraph, enums, LineGraph, axis
+from SciQLopPlots import MultiLineGraph, enums, LineGraph, axis, ColorMapGraph
 from .data_provider import DataProvider, DataOrder
 from datetime import datetime
 from typing import Optional, Tuple
@@ -23,6 +23,8 @@ class _PlotPipeline_worker(QThread):
             self.update_plot = self.update_plot_multiline
         elif isinstance(graph, LineGraph):
             self.update_plot = self.update_plot_line
+        elif isinstance(graph, ColorMapGraph):
+            self.update_plot = self.update_plot_colormap
         if provider.data_order == DataOrder.ROW_MAJOR:
             self._data_order = enums.DataOrder.y_first
         else:
@@ -35,16 +37,26 @@ class _PlotPipeline_worker(QThread):
     def get_data_task(self, new_range: axis.range):
         data = self.get_data(new_range)
         if data is not None:
-            self.update_plot(*data)
+            if len(data) == 3:
+                self.update_plot(*data)
+            else:
+                self.update_plot(data[0], None, data[1])
         self.current_range = new_range
 
-    def update_plot_line(self, x: np.ndarray, y: np.ndarray):
+    def update_plot_line(self, x: np.ndarray, skip: None, y: np.ndarray):
         if len(x) > 0 and len(x) == len(y):
-            self.graph.plot(x, y.flatten())
+            self.graph.plot(x, y.ravel())
 
-    def update_plot_multiline(self, x: np.ndarray, y: np.ndarray):
+    def update_plot_multiline(self, x: np.ndarray, skip: None, y: np.ndarray):
         if len(x) > 0 and len(x) == len(y):
-            self.graph.plot(x, y.flatten(), self._data_order)
+            self.graph.plot(x, y.ravel(), self._data_order)
+
+    def update_plot_colormap(self, x: np.ndarray, y: np.ndarray, z: np.ndarray):
+        if len(x) > 0 and len(x) == len(y):
+            if len(y.shape) == 2:
+                self.graph.plot(x, y[0].ravel(), z.ravel())
+            else:
+                self.graph.plot(x, y.ravel(), z.ravel())
 
     def run(self):
         mutex = QMutex()

@@ -58,6 +58,8 @@ class Plot(SciQLopPlots.PlotWidget):
                                       line_count=int(product.metadata['components']))
         elif product.parameter_type == ParameterType.SCALAR:
             self.add_line_graph(providers[product.provider], product.uid)
+        elif product.parameter_type == ParameterType.SPECTROGRAM:
+            self.add_colormap_graph(providers[product.provider], product.uid)
 
     def add_line_graph(self, provider: DataProvider, product: str):
         graph = self.addLineGraph(self._generate_colors(1)[0])
@@ -66,5 +68,10 @@ class Plot(SciQLopPlots.PlotWidget):
 
     def add_multi_line_graph(self, provider: DataProvider, product: str, line_count: int):
         graph = self.addMultiLineGraph(self._generate_colors(line_count))
+        pipeline = PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.xRange())
+        self._pipeline.append(pipeline)
+
+    def add_colormap_graph(self, provider: DataProvider, product: str):
+        graph = self.addColorMapGraph()
         pipeline = PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.xRange())
         self._pipeline.append(pipeline)

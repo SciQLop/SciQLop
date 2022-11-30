@@ -28,5 +28,5 @@ class DataProvider:
     def data_order(self) -> DataOrder:
         return self._data_order
 
-    def get_data(self, node, start, stop) -> Optional[Tuple[np.array, np.array]]:
+    def get_data(self, node, start, stop) -> Optional[Tuple[np.array]]:
         pass

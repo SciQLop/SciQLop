@@ -97,7 +97,11 @@ class SpeasyPlugin(DataProvider):
         if v:
             t = v.time.astype(np.timedelta64) / np.timedelta64(1, 's')
             values = v.values.astype(np.float)
-            return t, values
+            if len(v.axes) == 1:
+                return t, values
+            else:
+                y = v.axes[1].values
+                return t, y, values
 
 
 def load(main_window):
