@@ -3,7 +3,7 @@ import numpy as np
 from SciQLop.backend.products_model import ProductNode, ParameterType
 from SciQLop.backend import products
 from SciQLop.backend.data_provider import DataProvider, DataOrder
-from typing import Dict
+from typing import Dict, List
 import speasy as spz
 from speasy.products import SpeasyVariable
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex, SpeasyIndex
@@ -11,17 +11,29 @@ from datetime import datetime
 from enum import Enum
 
 
+def get_components(param: ParameterIndex) -> List[str] or None:
+    if param.spz_provider() == 'amda':
+        components = list(
+            map(lambda p: p.spz_name(), filter(lambda n: type(n) is ComponentIndex, param.__dict__.values())))
+        if len(components) > 0:
+            return components
+    if hasattr(param, 'LABL_PTR_1'):
+        return param.LABL_PTR_1.split(',')
+    if hasattr(param, 'LABLAXIS'):
+        return param.LABLAXIS.split(',')
+    if param.spz_provider() == 'ssc':
+        return ['x', 'y', 'z']
+    return None
+
+
 def count_components(param: ParameterIndex):
+    labels = get_components(param)
+    if labels is not None:
+        return len(labels)
     if hasattr(param, "size"):
         return int(param.size)
-    if hasattr(param, 'LABL_PTR_1'):
-        return len(param.LABL_PTR_1.split(','))
-    if hasattr(param, 'LABLAXIS'):
-        return len(param.LABLAXIS.split(','))
     if hasattr(param, 'array_dimension') and param.array_dimension != "":
         return int(param.array_dimension.split(':')[-1])
-    if param.spz_provider() == 'ssc':
-        return 3
     return 0
 
 
@@ -36,7 +48,7 @@ def data_serie_type(param: ParameterIndex):
         display_type = None
     components_cnt = count_components(param)
     if display_type is not None or components_cnt != 0:
-        if display_type == 'spectrogram':
+        if (display_type or '').lower().strip() == 'spectrogram':
             return ParameterType.SPECTROGRAM
         else:
             if components_cnt == 0 or components_cnt == 1:
@@ -58,10 +70,9 @@ def get_node_meta(node):
 
 def make_product(name, node: ParameterIndex, provider):
     p_type = data_serie_type(node)
-    comp = count_components(node)
     meta = get_node_meta(node)
     meta["uid"] = node.spz_uid()
-    meta["components"] = str(comp)
+    meta["components"] = get_components(node)
     meta["provider"] = node.spz_provider()
     return ProductNode(name, metadata=meta, is_parameter=True, provider=provider,
                        uid=f"{node.spz_provider()}/{node.spz_uid()}", parameter_type=p_type)
@@ -80,7 +91,7 @@ def explore_nodes(inventory_node, product_node: ProductNode, provider):
 
 class SpeasyPlugin(DataProvider):
     def __init__(self, parent=None):
-        super(SpeasyPlugin, self).__init__(name="Speasy", parent=parent, data_order=DataOrder.ROW_MAJOR)
+        super(SpeasyPlugin, self).__init__(name="Speasy", parent=parent, data_order=DataOrder.Y_FIRST)
         root_node = ProductNode(name="speasy", metadata={}, provider=self.name, uid=self.name)
         explore_nodes(spz.inventories.tree, root_node, provider=self.name)
         products.add_products(root_node)
@@ -88,20 +99,12 @@ class SpeasyPlugin(DataProvider):
     def get_data(self, product, start, stop):
         try:
             v: SpeasyVariable = spz.get_data(product, start, stop)
-            # print(f"got data: {v}")
             if v:
                 v.replace_fillval_by_nan(inplace=True)
+                return v
         except Exception as e:
             print(e)
             return None
-        if v:
-            t = v.time.astype(np.timedelta64) / np.timedelta64(1, 's')
-            values = v.values.astype(np.float)
-            if len(v.axes) == 1:
-                return t, values
-            else:
-                y = v.axes[1].values
-                return t, y, values
 
 
 def load(main_window):

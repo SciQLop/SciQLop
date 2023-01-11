@@ -11,6 +11,7 @@ class ProductTree(QtWidgets.QWidget):
         self._model_proxy.setSourceModel(products)
         self._view = TreeView(self)
         self._view.setModel(self._model_proxy)
+        self._view.setSortingEnabled(False)
         self._model_proxy.setFilterRole(QtCore.Qt.UserRole)
         self._model_proxy.setRecursiveFilteringEnabled(True)
         self._model_proxy.setAutoAcceptChildRows(True)

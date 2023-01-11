@@ -1,6 +1,7 @@
 from datetime import datetime
 from .products_model import ProductsModel as _ProductsModel
-from SciQLopPlots import axis
+
+from speasy.products import SpeasyVariable
 
 products = _ProductsModel()
 
@@ -8,7 +9,7 @@ products = _ProductsModel()
 class TimeRange:
     __slots__ = ["_start", "_stop"]
 
-    def __init__(self, start: datetime, stop: datetime):
+    def __init__(self, start: float, stop: float):
         self._start = start
         self._stop = stop
 
@@ -17,8 +18,29 @@ class TimeRange:
         return self._start
 
     @property
+    def datetime_start(self):
+        return datetime.utcfromtimestamp(self._start)
+
+    @property
     def stop(self):
         return self._stop
 
-    def to_sciqlopplots_range(self):
-        return axis.range(self.start.timestamp(), self.stop.timestamp())
+    @property
+    def datetime_stop(self):
+        return datetime.utcfromtimestamp(self._stop)
+
+    def __mul__(self, other):
+        if type(other) is float:
+            new_dt = (self._stop - self._start) * other / 2.
+            center = (self._start + self._stop) / 2.
+            return TimeRange(center - new_dt, center + new_dt)
+        else:
+            return NotImplemented
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __repr__(self):
+        return f"""TimeRange: {self._start}, {self._stop}
+\t{self.datetime_start}, {self.datetime_stop}
+        """

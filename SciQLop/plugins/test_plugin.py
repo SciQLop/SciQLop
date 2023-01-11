@@ -4,14 +4,15 @@ from SciQLop.backend.products_model import ProductNode, ParameterType
 from SciQLop.backend import products
 from SciQLop.backend.data_provider import DataProvider, DataOrder
 import humanize
+from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis
 
 
 class TestPlugin(DataProvider):
     def __init__(self, parent=None):
-        super(TestPlugin, self).__init__(name="TestPlugin", parent=parent, data_order=DataOrder.ROW_MAJOR)
+        super(TestPlugin, self).__init__(name="TestPlugin", parent=parent, data_order=DataOrder.Y_FIRST)
         root_node = ProductNode(name="TestPlugin", metadata={}, provider=self.name, uid=self.name)
         root_node.append_child(
-            ProductNode(name="TestMultiComponent", metadata={'components': '3'},
+            ProductNode(name="TestMultiComponent", metadata={'components': ["x", "y", "z"]},
                         provider=self.name,
                         uid="TestMultiComponent",
                         is_parameter=True,
@@ -20,9 +21,13 @@ class TestPlugin(DataProvider):
 
     def get_data(self, product, start, stop):
         x = np.arange(start.timestamp(), stop.timestamp(), 0.1) * 1.
-        y = np.cos([(x + l * 100) / 100. for l in range(3)]) * 10.
+        y = np.empty((len(x), 3))
+        y[:, 0] = np.cos(x / 100.) * 10.
+        y[:, 1] = np.cos((x + 100) / 100.) * 10.
+        y[:, 2] = np.cos((x + 200) / 100.) * 10.
         print(f"{humanize.intword(len(x))} points")
-        return x, y.T
+        return SpeasyVariable(axes=[VariableTimeAxis((x * 1e9).astype("datetime64[ns]"))], values=DataContainer(y),
+                              columns=["x", "y", "z"])
 
 
 def load(main_window):

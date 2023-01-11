@@ -28,18 +28,19 @@ class DateTimeRangeWidget(QWidget):
         self.layout().addWidget(QLabel("TStop:"))
         self.layout().addWidget(self._stop_date)
         if default_time_range is not None:
-            self._start_date.setDateTime(default_time_range.start)
-            self._stop_date.setDateTime(default_time_range.stop)
+            self._start_date.setDateTime(default_time_range.datetime_start)
+            self._stop_date.setDateTime(default_time_range.datetime_stop)
         self._start_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(
-            TimeRange(self._start_date.dateTime().toPython(), self._stop_date.dateTime().toPython())))
+            TimeRange(self._start_date.dateTime().toSecsSinceEpoch(), self._stop_date.dateTime().toSecsSinceEpoch())))
         self._stop_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(
-            TimeRange(self._start_date.dateTime().toPython(), self._stop_date.dateTime().toPython())))
+            TimeRange(self._start_date.dateTime().toSecsSinceEpoch(), self._stop_date.dateTime().toSecsSinceEpoch())))
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
             drag = QDrag(self)
             drag.setMimeData(
-                encode_mime(TimeRange(self._start_date.dateTime().toPython(), self._stop_date.dateTime().toPython())))
+                encode_mime(TimeRange(self._start_date.dateTime().toSecsSinceEpoch(),
+                                      self._stop_date.dateTime().toSecsSinceEpoch())))
             drag.setPixmap(QPixmap("://icons/time.png").scaledToHeight(32))
             drag.exec()
 

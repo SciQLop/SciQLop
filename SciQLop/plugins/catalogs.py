@@ -5,6 +5,7 @@ from PySide6.QtGui import QAction, QIcon
 from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject
 from datetime import datetime
 from SciQLop.widgets.mainwindow import SciQLopMainWindow
+from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel, TimeRange
 
 
 def catalog_display_txt(catalog):
@@ -94,11 +95,13 @@ class Plugin(QObject):
                 del self.last_event
             e = tscat.get_events(tscat.filtering.UUID(event))[0]
             print(e)
+            time_range = TimeRange(*timestamps(*zoom_out(e.start, e.stop, 0.3)))
+            print(time_range)
             if e:
-                p = self.main_window.plotPanel(self.panel_selector.currentText())
+                p: TimeSyncPanel = self.main_window.plot_panel(self.panel_selector.currentText())
                 print(p)
                 if p:
-                    p.setTimeRange(*timestamps(*zoom_out(e.start, e.stop, 0.3)))
+                    p.time_range = time_range
                     # self.last_event = EventTimeSpan(p, *timestamps(e.start, e.stop))
 
 

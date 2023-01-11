@@ -1,62 +1,38 @@
 from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex
-from SciQLopPlots import MultiLineGraph, enums, LineGraph, axis, ColorMapGraph
 from .data_provider import DataProvider, DataOrder
+from . import TimeRange
+from .graph import Graph
+from .enums import GraphType
 from datetime import datetime
 from typing import Optional, Tuple
 import numpy as np
+from speasy.products import SpeasyVariable
 
 
 class _PlotPipeline_worker(QThread):
 
-    def __init__(self, graph, provider: DataProvider, product: str, time_range: axis.range):
+    def __init__(self, graph: Graph, provider: DataProvider, product: str, time_range: TimeRange):
         QThread.__init__(self)
         self.setTerminationEnabled(True)
         self.wait_condition = QWaitCondition()
-        self.next_range: Optional[axis.range] = time_range
-        self.current_range: Optional[axis.range] = None
+        self.next_range: Optional[TimeRange] = time_range
+        self.current_range: Optional[TimeRange] = None
         self.provider = provider
         self.product = product
         self.graph = graph
         self.moveToThread(self)
         self.start()
-        if isinstance(graph, MultiLineGraph):
-            self.update_plot = self.update_plot_multiline
-        elif isinstance(graph, LineGraph):
-            self.update_plot = self.update_plot_line
-        elif isinstance(graph, ColorMapGraph):
-            self.update_plot = self.update_plot_colormap
-        if provider.data_order == DataOrder.ROW_MAJOR:
-            self._data_order = enums.DataOrder.y_first
-        else:
-            self._data_order = enums.DataOrder.x_first
+        self._data_order = provider.data_order
 
-    def get_data(self, new_range: axis.range) -> Optional[Tuple[np.ndarray]]:
-        return self.provider.get_data(self.product, datetime.utcfromtimestamp(new_range.first),
-                                      datetime.utcfromtimestamp(new_range.second))
+    def get_data(self, new_range: TimeRange) -> Optional[SpeasyVariable]:
+        return self.provider.get_data(self.product, datetime.utcfromtimestamp(new_range.start),
+                                      datetime.utcfromtimestamp(new_range.stop))
 
-    def get_data_task(self, new_range: axis.range):
+    def get_data_task(self, new_range: TimeRange):
         data = self.get_data(new_range)
         if data is not None:
-            if len(data) == 3:
-                self.update_plot(*data)
-            else:
-                self.update_plot(data[0], None, data[1])
+            self.graph.plot(data)
         self.current_range = new_range
-
-    def update_plot_line(self, x: np.ndarray, skip: None, y: np.ndarray):
-        if len(x) > 0 and len(x) == len(y):
-            self.graph.plot(x, y.ravel())
-
-    def update_plot_multiline(self, x: np.ndarray, skip: None, y: np.ndarray):
-        if len(x) > 0 and len(x) == len(y):
-            self.graph.plot(x, y.ravel(), self._data_order)
-
-    def update_plot_colormap(self, x: np.ndarray, y: np.ndarray, z: np.ndarray):
-        if len(x) > 0 and len(x) == len(y):
-            if len(y.shape) == 2:
-                self.graph.plot(x, y[0].ravel(), z.ravel())
-            else:
-                self.graph.plot(x, y.ravel(), z.ravel())
 
     def run(self):
         mutex = QMutex()
@@ -70,13 +46,13 @@ class _PlotPipeline_worker(QThread):
 
 
 class _PlotPipelineController(QThread):
-    def __init__(self, graph, provider: DataProvider, product: str, time_range: axis.range):
+    def __init__(self, graph, provider: DataProvider, product: str, time_range: TimeRange):
         QThread.__init__(self)
         self.setTerminationEnabled(True)
         self.moveToThread(self)
         self.wait_condition = QWaitCondition()
-        self.next_range: Optional[axis.range] = time_range
-        self.current_range: Optional[axis.range] = None
+        self.next_range: Optional[TimeRange] = time_range
+        self.current_range: Optional[TimeRange] = None
         self.start()
         self._worker = _PlotPipeline_worker(graph, provider, product, time_range)
 
@@ -97,7 +73,7 @@ class _PlotPipelineController(QThread):
 
 
 class PlotPipeline(QObject):
-    def __init__(self, graph, provider: DataProvider, product: str, time_range: axis.range):
+    def __init__(self, graph: Graph, provider: DataProvider, product: str, time_range: TimeRange):
         QObject.__init__(self, graph)
         self._worker = _PlotPipeline_worker(graph, provider, product, time_range)
         graph.xRangeChanged.connect(self.get_data)
@@ -109,6 +85,6 @@ class PlotPipeline(QObject):
             self._worker.quit()
             self._worker.wait()
 
-    def get_data(self, new_range: axis.range):
+    def get_data(self, new_range: TimeRange):
         self._worker.next_range = new_range
         self._worker.wait_condition.wakeOne()

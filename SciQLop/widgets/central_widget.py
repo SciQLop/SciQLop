@@ -2,7 +2,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Signal, QMimeData
 from PySide6.QtWidgets import QDockWidget, QMainWindow
 from .drag_and_drop import DropHandler, DropHelper
-from .time_sync_panel import TimeSyncPanel
+from .plots.time_sync_panel import TimeSyncPanel
 from ..mime.types import PRODUCT_LIST_MIME_TYPE
 from ..mime import decode_mime
 from ..backend import TimeRange
@@ -27,13 +27,16 @@ class CentralWidget(QtWidgets.QMainWindow):
     def _plot(self, mime_data: QMimeData) -> bool:
         assert mime_data.hasFormat(PRODUCT_LIST_MIME_TYPE)
         products = decode_mime(mime_data)
-        panel = TimeSyncPanel(name="pan")
+        panel = TimeSyncPanel(name="pan", time_range=self._default_time_range)
         self.add_plot_panel(panel)
         panel.plot(products)
         return True
 
+    def plot_panel(self, name: str) -> TimeSyncPanel or None:
+        return self._panels.get(name)
+
     def add_plot_panel(self, panel: TimeSyncPanel):
-        panel.setXRange(self._default_time_range.to_sciqlopplots_range())
+        panel.time_range = self._default_time_range
         dw = QDockWidget(self)
         dw.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         dw.setAllowedAreas(QtGui.Qt.DockWidgetArea.AllDockWidgetAreas)

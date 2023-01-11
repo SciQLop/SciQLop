@@ -4,7 +4,7 @@ from .products_tree import ProductTree as PyProductTree
 from .. import resources
 from .central_widget import CentralWidget
 from .datetime_range import DateTimeRangeWidgetAction
-from .time_sync_panel import TimeSyncPanel
+from .plots.time_sync_panel import TimeSyncPanel
 from datetime import datetime, timedelta
 from ..backend import TimeRange
 
@@ -16,10 +16,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._setup_ui()
 
     def _setup_ui(self):
-        default_time_range = TimeRange(datetime.utcnow() - timedelta(days=361),
-                                       datetime.utcnow() - timedelta(days=360))
+        default_time_range = TimeRange((datetime.utcnow() - timedelta(days=361)).timestamp(),
+                                       (datetime.utcnow() - timedelta(days=360)).timestamp())
         self.setDockNestingEnabled(True)
-        self.central_widget = CentralWidget(self, default_time_range)
+        self.central_widget = CentralWidget(self, time_range=default_time_range)
         self.setCentralWidget(self.central_widget)
         self.productTree = PyProductTree(self)
         self.productTree.setMinimumWidth(100)
@@ -55,6 +55,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def add_plot_panel(self, panel):
         self.central_widget.add_plot_panel(panel)
+
+    def plot_panel(self, name:str):
+        return self.central_widget.plot_panel(name)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         if event.key() == QtCore.Qt.Key.Key_F11:

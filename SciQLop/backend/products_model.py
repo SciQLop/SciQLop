@@ -38,7 +38,7 @@ class Product:
         return self._parameter_type
 
     @property
-    def metadata(self) -> Dict[str, str]:
+    def metadata(self) -> Dict[str, str or List[str]]:
         return self._metadata
 
     @property
@@ -61,7 +61,8 @@ class Product:
 class ProductNode:
     __slots__ = ["_children", "_parent", "_product"]
 
-    def __init__(self, name: str, uid: str, provider: str, metadata: Dict[str, str], parent: 'ProductNode' = None,
+    def __init__(self, name: str, uid: str, provider: str, metadata: Dict[str, str or List[str]],
+                 parent: 'ProductNode' = None,
                  is_parameter=False, parameter_type: ParameterType = ParameterType.NONE):
         self._parent = parent
         self._children = []
@@ -187,6 +188,15 @@ class ProductsModel(QAbstractItemModel):
             return parent.internalPointer().column_count
         else:
             return self._root.column_count
+
+    def canFetchMore(self, parent: QModelIndex or QPersistentModelIndex) -> bool:
+        if not parent.isValid():
+            return False
+        item: ProductNode = parent.internalPointer()
+        return item.child_count > 0
+
+    def fetchMore(self, parent: QModelIndex or QPersistentModelIndex) -> None:
+        pass
 
     def data(self, index: QModelIndex | QPersistentModelIndex, role: int = ...) -> Any:
         if not index.isValid():
