@@ -28,15 +28,16 @@ class CentralWidget(QtWidgets.QMainWindow):
     def _plot(self, mime_data: QMimeData) -> bool:
         assert mime_data.hasFormat(PRODUCT_LIST_MIME_TYPE)
         products = decode_mime(mime_data)
-        panel = TimeSyncPanel(name=make_simple_incr_name(base="Panel"), time_range=self._default_time_range)
-        self.add_plot_panel(panel)
+        panel = self.new_plot_panel()
         panel.plot(products)
         return True
 
     def plot_panel(self, name: str) -> TimeSyncPanel or None:
         return self._panels.get(name)
 
-    def add_plot_panel(self, panel: TimeSyncPanel):
+    def new_plot_panel(self) -> TimeSyncPanel:
+        panel: TimeSyncPanel = TimeSyncPanel(name=make_simple_incr_name(base="Panel"),
+                                             time_range=self._default_time_range)
         panel.time_range = self._default_time_range
         dw = QDockWidget(self)
         dw.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -48,13 +49,18 @@ class CentralWidget(QtWidgets.QMainWindow):
         self._panels[panel.name] = panel
         panel.destroyed.connect(lambda: self.remove_panel(panel))
         self.panels_list_changed.emit(self.panels())
+        return panel
 
     def set_default_time_range(self, time_range: TimeRange):
         self._default_time_range = time_range
 
-    def remove_panel(self, panel: TimeSyncPanel):
-        if panel.name in self._panels:
-            self._panels.pop(panel.name)
+    def remove_panel(self, panel: TimeSyncPanel or str):
+        if type(panel) is str:
+            name = panel
+        else:
+            name = panel.name
+        if name in self._panels:
+            self._panels.pop(name)
         self.panels_list_changed.emit(self.panels())
 
     def panels(self):

@@ -35,7 +35,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._dt_range_action.range_changed.connect(self.central_widget.set_default_time_range)
         self.addTSPanel = QtGui.QAction(self)
         self.addTSPanel.setIcon(QtGui.QIcon("://icons/add.png"))
-        self.addTSPanel.triggered.connect(lambda: self.add_plot_panel(TimeSyncPanel("pan")))
+        self.addTSPanel.triggered.connect(lambda: self.new_plot_panel())
         self.toolBar.addAction(self.addTSPanel)
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
         self.resize(1024, 768)
@@ -53,10 +53,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             doc.setWidget(widget)
             self.addDockWidget(area, doc)
 
-    def add_plot_panel(self, panel):
-        self.central_widget.add_plot_panel(panel)
+    def new_plot_panel(self) -> TimeSyncPanel:
+        return self.central_widget.new_plot_panel()
 
-    def plot_panel(self, name:str):
+    def plot_panel(self, name: str):
         return self.central_widget.plot_panel(name)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
