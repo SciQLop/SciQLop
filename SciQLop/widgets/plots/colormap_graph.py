@@ -14,7 +14,8 @@ class ColorMapGraph(Graph):
         parent.yAxis2.setScaleType(QCPAxis.stLogarithmic)
         parent.yAxis2.setTicker(QCPAxisTickerLog())
         parent.yAxis2.setVisible(True)
-        self._graph = parent.addSciQLopColorMap(parent.xAxis, parent.yAxis2, "test")
+        self._graph = parent.addSciQLopColorMap(parent.xAxis, parent.yAxis2, "ColorMap")
+        self._graph.colorMap().setLayer(parent.layer("background"))
         self._last_value = None
         self.colorScale = QCPColorScale(parent)
         self.colorScale.setDataScaleType(QCPAxis.stLogarithmic)
@@ -34,5 +35,7 @@ class ColorMapGraph(Graph):
         self._last_value = v
         x, y, z = regrid(v)
         self._graph.colorMap().setDataRange(QCPRange(np.nanmin(z[np.nonzero(z)]), np.nanmax(z)))
+        if self._graph.colorMap().name() != v.name:
+            self._graph.colorMap().setName(v.name)
         self._graph.setData(x, y, z)
         self._graph.colorMap().rescaleValueAxis()
