@@ -6,6 +6,7 @@ from .plots.time_sync_panel import TimeSyncPanel
 from ..mime.types import PRODUCT_LIST_MIME_TYPE
 from ..mime import decode_mime
 from ..backend import TimeRange
+from ..backend.unique_names import make_simple_incr_name
 
 
 class CentralWidget(QtWidgets.QMainWindow):
@@ -27,7 +28,7 @@ class CentralWidget(QtWidgets.QMainWindow):
     def _plot(self, mime_data: QMimeData) -> bool:
         assert mime_data.hasFormat(PRODUCT_LIST_MIME_TYPE)
         products = decode_mime(mime_data)
-        panel = TimeSyncPanel(name="pan", time_range=self._default_time_range)
+        panel = TimeSyncPanel(name=make_simple_incr_name(base="Panel"), time_range=self._default_time_range)
         self.add_plot_panel(panel)
         panel.plot(products)
         return True
