@@ -30,6 +30,7 @@ class ColorMapGraph(Graph):
         self.scale = QCPColorGradient(QCPColorGradient.gpJet)
         self.scale.setNanHandling(QCPColorGradient.nhTransparent)
         self._graph.colorMap().setGradient(self.scale)
+        self._graph.colorMap().addToLegend()
 
     def plot(self, v: SpeasyVariable):
         self._last_value = v
@@ -37,5 +38,6 @@ class ColorMapGraph(Graph):
         self._graph.colorMap().setDataRange(QCPRange(np.nanmin(z[np.nonzero(z)]), np.nanmax(z)))
         if self._graph.colorMap().name() != v.name:
             self._graph.colorMap().setName(v.name)
+
         self._graph.setData(x, y, z)
         self._graph.colorMap().rescaleValueAxis()

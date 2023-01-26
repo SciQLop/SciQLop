@@ -25,6 +25,7 @@ class LineGraph(Graph):
                 for color, index in zip(self.parent_plot.generate_colors(len(self._last_value.columns)),
                                         range(len(self._last_value.columns))):
                     self.graphAt(index).setPen(QPen(color))
+                    self.graphAt(index).addToLegend()
             self.plot(self._last_value)
 
     def plot(self, v: SpeasyVariable):

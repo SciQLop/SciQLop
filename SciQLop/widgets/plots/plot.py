@@ -1,7 +1,7 @@
 from typing import List
-from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, SciQLopGraph
+from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, SciQLopGraph, QCPLegend, QCPAbstractLegendItem
 from PySide6.QtCore import QMimeData, Qt, QMargins, Signal
-from PySide6.QtGui import QColorConstants, QColor, QPen
+from PySide6.QtGui import QColorConstants, QColor, QPen, QMouseEvent
 
 from ..drag_and_drop import DropHandler, DropHelper
 from ...backend.products_model import Product, ParameterType
@@ -40,6 +40,7 @@ def _configure_plot(plot: QCustomPlot):
     if layout:
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
+    plot.setAutoAddPlottableToLegend(False)
 
 
 class TimeSeriesPlot(QCustomPlot):
@@ -60,6 +61,17 @@ class TimeSeriesPlot(QCustomPlot):
         self._palette_index = 0
         _configure_plot(self)
         self.xAxis.rangeChanged.connect(lambda range: self.time_range_changed.emit(TimeRange(range.lower, range.upper)))
+        self.legendDoubleClick.connect(self._hide_graph)
+
+    def _hide_graph(self, legend: QCPLegend, item: QCPAbstractLegendItem, event: QMouseEvent):
+        item.plottable().setVisible(not item.plottable().visible())
+        if item.plottable().visible():
+            item.setTextColor(QColorConstants.Black)
+            item.setSelectedTextColor(QColorConstants.Black)
+        else:
+            item.setTextColor(QColorConstants.Gray)
+            item.setSelectedTextColor(QColorConstants.Gray)
+        self.replot(QCustomPlot.rpQueuedReplot)
 
     def generate_colors(self, count: int) -> List[QColor]:
         index = self._palette_index
