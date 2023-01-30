@@ -1,3 +1,12 @@
 pytest-runner
 pytest
 pytest-cov
+pyside6
+scipy
+qtconsole
+speasy
+sciqlopplots
+seaborn
+humanize
+tscat
+tscat_gui
