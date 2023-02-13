@@ -1,4 +1,4 @@
-from ...backend.graph import Graph
+from SciQLop.backend.pipelines_model.graph import Graph
 from ...backend.enums import GraphType
 from ...backend.enums import DataOrder
 from SciQLopPlots import SciQLopGraph

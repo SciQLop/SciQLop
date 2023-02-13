@@ -1,11 +1,9 @@
 from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex
-from .data_provider import DataProvider, DataOrder
-from . import TimeRange
-from .graph import Graph
-from .enums import GraphType
+from SciQLop.backend.pipelines_model.data_provider import DataProvider
+from SciQLop.backend import TimeRange
+from SciQLop.backend.pipelines_model.graph import Graph
 from datetime import datetime
-from typing import Optional, Tuple
-import numpy as np
+from typing import Optional
 from speasy.products import SpeasyVariable
 
 

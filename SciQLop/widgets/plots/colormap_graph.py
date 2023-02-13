@@ -1,8 +1,7 @@
-from ...backend.graph import Graph
+from SciQLop.backend.pipelines_model.graph import Graph
 from ...backend.enums import GraphType
-from SciQLopPlots import SciQLopGraph, QCustomPlot, QCPColorScale, QCPAxis, QCPColorMap, QCPColorGradient, \
+from SciQLopPlots import QCustomPlot, QCPColorScale, QCPAxis, QCPColorGradient, \
     QCPAxisTickerLog, QCPRange
-from PySide6.QtGui import QColor
 import numpy as np
 from speasy.products import SpeasyVariable
 from ...backend.resampling.spectro_regrid import regrid

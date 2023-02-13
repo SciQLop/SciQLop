@@ -1,5 +1,5 @@
 from typing import Tuple, Optional
-from .enums import DataOrder
+from SciQLop.backend.enums import DataOrder
 from speasy.products import SpeasyVariable
 
 providers = {}

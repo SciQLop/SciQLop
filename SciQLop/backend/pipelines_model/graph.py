@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject, Signal
-from . import TimeRange
-from .enums import GraphType, DataOrder
+from SciQLop.backend import TimeRange
+from SciQLop.backend.enums import GraphType, DataOrder
 from speasy.products import SpeasyVariable
 
 

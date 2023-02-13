@@ -1,14 +1,10 @@
-import numpy as np
-
 from SciQLop.backend.products_model import ProductNode, ParameterType
 from SciQLop.backend import products
-from SciQLop.backend.data_provider import DataProvider, DataOrder
-from typing import Dict, List
+from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
+from typing import List
 import speasy as spz
 from speasy.products import SpeasyVariable
-from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex, SpeasyIndex
-from datetime import datetime
-from enum import Enum
+from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:

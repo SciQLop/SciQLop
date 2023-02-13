@@ -1,14 +1,13 @@
 from typing import List
-from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, SciQLopGraph, QCPLegend, QCPAbstractLegendItem
+from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem
 from PySide6.QtCore import QMimeData, Qt, QMargins, Signal
-from PySide6.QtGui import QColorConstants, QColor, QPen, QMouseEvent
+from PySide6.QtGui import QColorConstants, QColor, QMouseEvent
 
 from ..drag_and_drop import DropHandler, DropHelper
 from ...backend.products_model import Product, ParameterType
-from ...backend.plot_pipeline import PlotPipeline
-from ...backend.data_provider import DataProvider
-from ...backend.data_provider import providers
-from ...backend.enums import DataOrder
+from SciQLop.backend.pipelines_model.plot_pipeline import PlotPipeline
+from SciQLop.backend.pipelines_model.data_provider import DataProvider
+from SciQLop.backend.pipelines_model.data_provider import providers
 from ...backend import TimeRange
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
