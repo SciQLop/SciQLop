@@ -78,6 +78,9 @@ class ProductNode:
         else:
             raise ValueError("Can't set parent when one is already set")
 
+    def __getitem__(self, item: str) -> "ProductNode" or None:
+        return next(iter(filter(lambda n: n._product.name == item, self._children)), None)
+
     @property
     def children(self) -> List['ProductNode']:
         return self._children
@@ -138,6 +141,14 @@ class ProductsModel(QAbstractItemModel):
     @property
     def completion_model(self):
         return self._completion_model
+
+    def product(self, path: str) -> Product or None:
+        p = self._root
+        for element in path.split('/'):
+            if p is not None:
+                p = p[element]
+        if p is not None:
+            return p.product
 
     def add_products(self, products: ProductNode):
         self.beginResetModel()

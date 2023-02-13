@@ -7,6 +7,7 @@ from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
 from ...backend.products_model import Product
+from ...backend import products as _products
 from .plot import TimeSeriesPlot
 from ...backend import TimeRange
 
@@ -92,16 +93,19 @@ class TimeSyncPanel(QScrollArea):
         self.plot(products, -1)
         return True
 
-    def plot(self, products: List[Product], index: Optional[int] = None):
+    def plot(self, products: List[Product or str], index: Optional[int] = None):
         for product in products:
-            p = TimeSeriesPlot(self)
-            p.time_range_changed.connect(lambda time_range: TimeSyncPanel.time_range.fset(self, time_range))
-            p.time_range = self.time_range
-            self._plot_container.add_widget(p, -1 if index is None else index)
-            p.plot(product)
-            p.parent_place_holder_manager = self._place_holder_manager
-            if index is not None:
-                index += 1
+            if type(product) is str:
+                product = _products.product(product)
+            if product is not None:
+                p = TimeSeriesPlot(self)
+                p.time_range_changed.connect(lambda time_range: TimeSyncPanel.time_range.fset(self, time_range))
+                p.time_range = self.time_range
+                self._plot_container.add_widget(p, -1 if index is None else index)
+                p.plot(product)
+                p.parent_place_holder_manager = self._place_holder_manager
+                if index is not None:
+                    index += 1
 
     def insertWidget(self, index: int, widget: QWidget or TimeSeriesPlot):
         self._plot_container.add_widget(widget, index)
