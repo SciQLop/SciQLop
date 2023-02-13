@@ -1,5 +1,6 @@
 from datetime import datetime, time
 from typing import Optional, List
+from functools import singledispatchmethod
 from PySide6.QtCore import QMimeData, Signal
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
 
@@ -7,7 +8,7 @@ from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
 from ...backend.products_model import Product
-from ...backend import products as _products
+from ...backend import listify
 from .plot import TimeSeriesPlot
 from ...backend import TimeRange
 
@@ -48,7 +49,7 @@ class TimeSyncPanel(QScrollArea):
         self._drop_helper = DropHelper(widget=self,
                                        handlers=[
                                            DropHandler(mime_type=PRODUCT_LIST_MIME_TYPE,
-                                                       callback=self._plot)])
+                                                       callback=self._plot_mime)])
         self._place_holder_manager = PlaceHolderManager(self,
                                                         handlers=[DropHandler(mime_type=PRODUCT_LIST_MIME_TYPE,
                                                                               callback=self._insert_plots)])
@@ -87,28 +88,34 @@ class TimeSyncPanel(QScrollArea):
         self.plot(products, self.indexOf(placeholder))
         return True
 
-    def _plot(self, mime_data: QMimeData) -> bool:
+    def _plot_mime(self, mime_data: QMimeData, index=None) -> bool:
         assert mime_data.hasFormat(PRODUCT_LIST_MIME_TYPE)
         products = decode_mime(mime_data, preferred_formats=[PRODUCT_LIST_MIME_TYPE])
         self.plot(products, -1)
         return True
 
-    def plot(self, products: List[Product or str], index: Optional[int] = None):
-        for product in products:
-            if type(product) is str:
-                product = _products.product(product)
-            if product is not None:
-                p = TimeSeriesPlot(self)
-                p.time_range_changed.connect(lambda time_range: TimeSyncPanel.time_range.fset(self, time_range))
-                p.time_range = self.time_range
-                self._plot_container.add_widget(p, -1 if index is None else index)
-                p.plot(product)
-                p.parent_place_holder_manager = self._place_holder_manager
-                if index is not None:
-                    index += 1
+    def _plot(self, product: Product or str, index: int) -> bool:
+        if product is not None:
+            p = TimeSeriesPlot(self)
+            p.time_range_changed.connect(lambda time_range: TimeSyncPanel.time_range.fset(self, time_range))
+            p.time_range = self.time_range
+            self._plot_container.add_widget(p, index)
+            p.plot(product)
+            p.parent_place_holder_manager = self._place_holder_manager
+            return True
+        return False
+
+    def plot(self, products: List[Product or str] or Product or str, index: Optional[int] = None):
+        products = listify(products)
+        indexes = [-1] * len(products) if index is None else range(index, index + len(products))
+        list(map(lambda p_i: self._plot(*p_i), zip(products, indexes)))
 
     def insertWidget(self, index: int, widget: QWidget or TimeSeriesPlot):
         self._plot_container.add_widget(widget, index)
 
     def count(self) -> int:
         return self._plot_container.count()
+
+    def __getitem__(self, index: int) -> TimeSeriesPlot:
+        plots = filter(lambda w: isinstance(w, TimeSeriesPlot), self._plot_container.plots)
+        return list(plots)[index]

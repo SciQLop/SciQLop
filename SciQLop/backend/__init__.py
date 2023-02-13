@@ -6,6 +6,12 @@ from speasy.products import SpeasyVariable
 products = _ProductsModel()
 
 
+def listify(a):
+    if type(a) in (list, tuple):
+        return a
+    return [a]
+
+
 class TimeRange:
     __slots__ = ["_start", "_stop"]
 

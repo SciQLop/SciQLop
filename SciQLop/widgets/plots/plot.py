@@ -8,6 +8,7 @@ from ...backend.products_model import Product, ParameterType
 from SciQLop.backend.pipelines_model.plot_pipeline import PlotPipeline
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.data_provider import providers
+from SciQLop.backend import products
 from ...backend import TimeRange
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
@@ -100,7 +101,9 @@ class TimeSeriesPlot(QCustomPlot):
             self.xAxis.setRange(time_range.start, time_range.stop)
             self.replot(QCustomPlot.rpQueuedReplot)
 
-    def plot(self, product: Product):
+    def plot(self, product: Product or str):
+        if type(product) is str:
+            product = products.product(product)
         if product.parameter_type in (ParameterType.VECTOR, ParameterType.MULTICOMPONENT, ParameterType.SCALAR):
             self.add_multi_line_graph(providers[product.provider], product.uid,
                                       components=product.metadata.get('components') or [product.name])
