@@ -1,10 +1,4 @@
 from datetime import datetime
-from .products_model import ProductsModel as _ProductsModel
-
-from speasy.products import SpeasyVariable
-
-products = _ProductsModel()
-
 
 def listify(a):
     if type(a) in (list, tuple):

@@ -1,10 +1,12 @@
-from SciQLop.backend.products_model import ProductNode, ParameterType
-from SciQLop.backend import products
-from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
 from typing import List
+
 import speasy as spz
-from speasy.products import SpeasyVariable
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
+from speasy.products import SpeasyVariable
+
+from SciQLop.backend.models import products
+from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
+from SciQLop.backend.products_model import ProductNode, ParameterType
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:

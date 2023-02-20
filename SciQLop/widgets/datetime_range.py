@@ -1,10 +1,12 @@
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QDateTimeEdit, QWidgetAction
-from PySide6.QtGui import QMouseEvent, QDrag, QPixmap
+import pickle
+
 from PySide6.QtCore import Qt, QMimeData, Signal
+from PySide6.QtGui import QMouseEvent, QDrag, QPixmap
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QDateTimeEdit, QWidgetAction
+
+from ..backend import TimeRange
 from ..mime import register_mime, encode_mime
 from ..mime.types import TIME_RANGE_MIME_TYPE
-from ..backend import TimeRange
-import pickle
 
 
 def _QDateTimeEdit(parent):
@@ -43,21 +45,6 @@ class DateTimeRangeWidget(QWidget):
                                       self._stop_date.dateTime().toSecsSinceEpoch())))
             drag.setPixmap(QPixmap("://icons/time.png").scaledToHeight(32))
             drag.exec()
-
-    """
-    void TimeWidget::mousePressEvent(QMouseEvent *event)
-{
-  if (event->button() == Qt::LeftButton) {
-
-    QDrag *drag = new QDrag(this);
-    drag->setMimeData(MIME::mimeData(timeRange()));
-    drag->setPixmap(QPixmap{"://icons/time.png"}.scaledToHeight(32));
-
-    Qt::DropAction dropAction = drag->exec();
-
-  }
-}
-    """
 
 
 class DateTimeRangeWidgetAction(QWidgetAction):

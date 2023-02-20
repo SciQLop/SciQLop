@@ -1,7 +1,7 @@
 import numpy as np
 
 from SciQLop.backend.products_model import ProductNode, ParameterType
-from SciQLop.backend import products
+from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
 import humanize
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis

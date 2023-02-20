@@ -1,22 +1,22 @@
-from datetime import datetime, time
+from datetime import datetime
 from typing import Optional, List
-from functools import singledispatchmethod
+
 from PySide6.QtCore import QMimeData, Signal
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
 
+from .plot import TimeSeriesPlot
+from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
+from ...backend import TimeRange
+from ...backend import listify
+from ...backend.pipelines_model import TimeSyncPanel as _TimeSyncPanel
+from ...backend.products_model import Product
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE
-from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
-from ...backend.products_model import Product
-from ...backend import listify
-from .plot import TimeSeriesPlot
-from ...backend import TimeRange
 
 
 class _TimeSyncPanelContainer(QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
-        self._plots = []
         self.setLayout(QVBoxLayout(self))
 
     def indexOf(self, widget: QWidget):
@@ -24,23 +24,23 @@ class _TimeSyncPanelContainer(QWidget):
 
     def add_widget(self, widget: QWidget, index: int):
         self.layout().insertWidget(index, widget)
-        if isinstance(widget, TimeSeriesPlot):
-            self._plots.append(widget)
 
     def count(self) -> int:
         return self.layout().count()
 
     @property
     def plots(self) -> List[TimeSeriesPlot]:
-        return self._plots
+        return list(filter(lambda w: isinstance(w, TimeSeriesPlot),
+                           map(lambda i: self.layout().itemAt(i).widget(), range(self.layout().count()))))
 
 
-class TimeSyncPanel(QScrollArea):
+class TimeSyncPanel(QScrollArea, _TimeSyncPanel):
     time_range_changed = Signal(TimeRange)
     _time_range: TimeRange = TimeRange(0., 0.)
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None):
         QScrollArea.__init__(self, parent)
+        _TimeSyncPanel.__init__(self, name)
         self._name = name
         self._plot_container = _TimeSyncPanelContainer(self)
         self.setWidget(self._plot_container)
@@ -81,6 +81,18 @@ class TimeSyncPanel(QScrollArea):
 
     def indexOf(self, widget: QWidget):
         return self._plot_container.indexOf(widget)
+
+    def index_of(self, child):
+        return self._plot_container.indexOf(child)
+
+    def child_at(self, row: int):
+        if 0 <= row < len(self._plot_container.plots):
+            return self._plot_container.plots[row]
+        return None
+
+    @property
+    def children_items(self):
+        return self._plot_container.plots
 
     def _insert_plots(self, mime_data: QMimeData, placeholder: QWidget) -> bool:
         assert mime_data.hasFormat(PRODUCT_LIST_MIME_TYPE)

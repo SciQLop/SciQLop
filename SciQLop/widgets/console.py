@@ -1,7 +1,10 @@
-from qtconsole.rich_jupyter_widget import RichJupyterWidget
-from qtconsole.inprocess import QtInProcessKernelManager
-from PySide6.QtWidgets import QDockWidget
+from typing import Dict, Any
+
 from PySide6.QtCore import QSize
+from PySide6.QtWidgets import QDockWidget
+from qtconsole.inprocess import QtInProcessKernelManager
+from qtconsole.rich_jupyter_widget import RichJupyterWidget
+
 
 class IPythonWidget(RichJupyterWidget):
     """Live IPython console widget.
@@ -27,6 +30,7 @@ class IPythonWidget(RichJupyterWidget):
         def stop():
             kernel_client.stop_channels()
             kernel_manager.shutdown_kernel()
+
         self.exit_requested.connect(stop)
         self.setMinimumHeight(100)
 
@@ -58,6 +62,7 @@ class Console(QDockWidget):
     :param parent: Parent :class:`qt.QMainWindow` containing this
         :class:`qt.QDockWidget`
     """
+
     def __init__(self, parent=None, available_vars=None, custom_banner=None,
                  title="Console"):
         super(Console, self).__init__(title, parent)
@@ -69,7 +74,9 @@ class Console(QDockWidget):
 
         if available_vars is not None:
             self.ipyconsole.pushVariables(available_vars)
-        self.ipyconsole.pushVariables({"blah":self})
+
+    def pushVariables(self, variables: Dict[str, Any]):
+        self.ipyconsole.pushVariables(variables)
 
     def showEvent(self, event):
         """Make sure this widget is raised when it is shown

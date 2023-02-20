@@ -1,13 +1,17 @@
-from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex
-from SciQLop.backend.pipelines_model.data_provider import DataProvider
-from SciQLop.backend import TimeRange
-from SciQLop.backend.pipelines_model.graph import Graph
 from datetime import datetime
 from typing import Optional
+
+from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex
 from speasy.products import SpeasyVariable
 
+from SciQLop.backend import TimeRange
+from SciQLop.backend.pipelines_model.base.pipeline_model_item import PipelineModelItem
+from SciQLop.backend.pipelines_model.data_provider import DataProvider
+from SciQLop.backend.pipelines_model.graph import Graph
+from .base import model
 
-class _PlotPipeline_worker(QThread):
+
+class _PlotPipelineWorker(QThread):
 
     def __init__(self, graph: Graph, provider: DataProvider, product: str, time_range: TimeRange):
         QThread.__init__(self)
@@ -52,7 +56,7 @@ class _PlotPipelineController(QThread):
         self.next_range: Optional[TimeRange] = time_range
         self.current_range: Optional[TimeRange] = None
         self.start()
-        self._worker = _PlotPipeline_worker(graph, provider, product, time_range)
+        self._worker = _PlotPipelineWorker(graph, provider, product, time_range)
 
     def __del__(self):
         self._worker.requestInterruption()
@@ -70,11 +74,23 @@ class _PlotPipelineController(QThread):
             self.wait_condition.wait(mutex)
 
 
-class PlotPipeline(QObject):
+class PlotPipeline(QObject, PipelineModelItem):
     def __init__(self, graph: Graph, provider: DataProvider, product: str, time_range: TimeRange):
         QObject.__init__(self, graph)
-        self._worker = _PlotPipeline_worker(graph, provider, product, time_range)
+        with model.model_update_ctx():
+            PipelineModelItem.__init__(self, f"{provider.name}/{product}", graph)
+        self._worker = _PlotPipelineWorker(graph, provider, product, time_range)
         graph.xRangeChanged.connect(self.get_data)
+        self._graph = graph
+        self._product = product
+
+    @property
+    def graph(self):
+        return self._graph
+
+    @property
+    def product(self):
+        return self._product
 
     def __del__(self):
         self._worker.requestInterruption()

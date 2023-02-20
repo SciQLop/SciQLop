@@ -1,11 +1,13 @@
-from PySide6 import QtCore, QtWidgets, QtGui
-from .console import Console
-from .products_tree import ProductTree as PyProductTree
-from .. import resources
-from .central_widget import CentralWidget
-from .datetime_range import DateTimeRangeWidgetAction
-from .plots.time_sync_panel import TimeSyncPanel
 from datetime import datetime, timedelta
+
+from PySide6 import QtCore, QtWidgets, QtGui
+
+from .central_widget import CentralWidget
+from .console import Console
+from .datetime_range import DateTimeRangeWidgetAction
+from .pipelines import PipelineTree
+from .plots.time_sync_panel import TimeSyncPanel
+from .products_tree import ProductTree as PyProductTree
 from ..backend import TimeRange
 
 
@@ -22,13 +24,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.central_widget = CentralWidget(self, time_range=default_time_range)
         self.setCentralWidget(self.central_widget)
         self.productTree = PyProductTree(self)
-        self.productTree.setMinimumWidth(100)
-        self.addWidgetIntoDock(QtCore.Qt.LeftDockWidgetArea, self.productTree)
+        self.add_left_pan(self.productTree)
+        self.pipelinesTree = PipelineTree(self)
+        self.add_left_pan(self.pipelinesTree)
         self.console = Console(parent=self, available_vars={"main_window": self},
                                custom_banner="SciQLop IPython Console ")
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.console)
         self.setWindowTitle("SciQLop")
         self.toolBar = QtWidgets.QToolBar(self)
+        self.toolBar.setWindowTitle("Toolbar")
         self.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self.toolBar)
         self._dt_range_action = DateTimeRangeWidgetAction(self, default_time_range=default_time_range)
         self.toolBar.addAction(self._dt_range_action)
@@ -46,11 +50,16 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._statusbar)
 
+    def add_left_pan(self, widget):
+        widget.setMinimumWidth(100)
+        self.addWidgetIntoDock(QtCore.Qt.LeftDockWidgetArea, widget)
+
     def addWidgetIntoDock(self, area, widget):
         if widget is not None:
             doc = QtWidgets.QDockWidget(self)
             doc.setAllowedAreas(area)
             doc.setWidget(widget)
+            doc.setWindowTitle(widget.windowTitle())
             self.addDockWidget(area, doc)
 
     def new_plot_panel(self) -> TimeSyncPanel:

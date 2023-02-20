@@ -1,20 +1,22 @@
 from typing import List
-from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem
+
 from PySide6.QtCore import QMimeData, Qt, QMargins, Signal
 from PySide6.QtGui import QColorConstants, QColor, QMouseEvent
+from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem
+from seaborn import color_palette
 
-from ..drag_and_drop import DropHandler, DropHelper
-from ...backend.products_model import Product, ParameterType
-from SciQLop.backend.pipelines_model.plot_pipeline import PlotPipeline
+from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.data_provider import providers
-from SciQLop.backend import products
+from SciQLop.backend.pipelines_model.plot import Plot as _Plot
+from SciQLop.backend.pipelines_model.plot_pipeline import PlotPipeline
+from .colormap_graph import ColorMapGraph
+from .line_graph import LineGraph
+from ..drag_and_drop import DropHandler, DropHelper
 from ...backend import TimeRange
+from ...backend.products_model import Product, ParameterType
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
-from .line_graph import LineGraph
-from .colormap_graph import ColorMapGraph
-from seaborn import color_palette
 
 
 def _to_qcolor(r: float, g: float, b: float):
@@ -43,12 +45,13 @@ def _configure_plot(plot: QCustomPlot):
     plot.setAutoAddPlottableToLegend(False)
 
 
-class TimeSeriesPlot(QCustomPlot):
+class TimeSeriesPlot(QCustomPlot, _Plot):
     time_range_changed = Signal(TimeRange)
     _time_range: TimeRange = TimeRange(0., 0.)
 
     def __init__(self, parent=None):
         QCustomPlot.__init__(self, parent)
+        _Plot.__init__(self, f"Plot", parent)
         self.setMinimumHeight(300)
         self._drop_helper = DropHelper(widget=self,
                                        handlers=[
@@ -113,11 +116,9 @@ class TimeSeriesPlot(QCustomPlot):
     def add_multi_line_graph(self, provider: DataProvider, product: str, components: List[str]):
         graph = LineGraph(self, provider.data_order)
         self.xAxis.rangeChanged.connect(lambda range: graph.xRangeChanged.emit(TimeRange(range.lower, range.upper)))
-        pipeline = PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range)
-        self._pipeline.append(pipeline)
+        self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 
     def add_colormap_graph(self, provider: DataProvider, product: str):
         graph = ColorMapGraph(self, self.addColorMap(self.xAxis, self.yAxis))
         self.xAxis.rangeChanged.connect(lambda range: graph.xRangeChanged.emit(TimeRange(range.lower, range.upper)))
-        pipeline = PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range)
-        self._pipeline.append(pipeline)
+        self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
