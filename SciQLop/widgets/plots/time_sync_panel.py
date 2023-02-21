@@ -1,15 +1,15 @@
 from datetime import datetime
 from typing import Optional, List
 
-from PySide6.QtCore import QMimeData, Signal
+from PySide6.QtCore import QMimeData, Signal, Qt
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
 
 from .plot import TimeSeriesPlot
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
+from ...backend import Product
 from ...backend import TimeRange
 from ...backend import listify
 from ...backend.pipelines_model import TimeSyncPanel as _TimeSyncPanel
-from ...backend.products_model import Product
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE
 
@@ -131,3 +131,9 @@ class TimeSyncPanel(QScrollArea, _TimeSyncPanel):
     def __getitem__(self, index: int) -> TimeSeriesPlot:
         plots = filter(lambda w: isinstance(w, TimeSeriesPlot), self._plot_container.plots)
         return list(plots)[index]
+
+    def select(self):
+        self.setStyleSheet("border: 3px dashed blue")
+
+    def unselect(self):
+        self.setStyleSheet("")

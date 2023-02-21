@@ -1,5 +1,8 @@
 from datetime import datetime
 
+from .products_model.product_node import ProductNode as Product
+
+
 def listify(a):
     if type(a) in (list, tuple):
         return a

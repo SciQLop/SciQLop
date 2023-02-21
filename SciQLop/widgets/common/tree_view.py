@@ -2,6 +2,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 
 
 class TreeView(QtWidgets.QTreeView):
+
     def __init__(self, parent=None):
         super(TreeView, self).__init__(parent)
         self.header().setVisible(False)

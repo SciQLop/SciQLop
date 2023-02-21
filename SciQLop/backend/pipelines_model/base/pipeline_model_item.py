@@ -61,3 +61,9 @@ class PipelineModelItem:
     @property
     def column_count(self) -> int:
         return 1
+
+    def select(self):
+        pass
+
+    def unselect(self):
+        pass

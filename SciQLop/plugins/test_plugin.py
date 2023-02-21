@@ -1,22 +1,23 @@
+import humanize
 import numpy as np
+from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis
 
-from SciQLop.backend.products_model import ProductNode, ParameterType
+from SciQLop.backend import Product
+from SciQLop.backend.enums import ParameterType
 from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
-import humanize
-from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis
 
 
 class TestPlugin(DataProvider):
     def __init__(self, parent=None):
         super(TestPlugin, self).__init__(name="TestPlugin", parent=parent, data_order=DataOrder.Y_FIRST)
-        root_node = ProductNode(name="TestPlugin", metadata={}, provider=self.name, uid=self.name)
+        root_node = Product(name="TestPlugin", metadata={}, provider=self.name, uid=self.name)
         root_node.append_child(
-            ProductNode(name="TestMultiComponent", metadata={'components': ["x", "y", "z"]},
-                        provider=self.name,
-                        uid="TestMultiComponent",
-                        is_parameter=True,
-                        parameter_type=ParameterType.VECTOR))
+            Product(name="TestMultiComponent", metadata={'components': ["x", "y", "z"]},
+                    provider=self.name,
+                    uid="TestMultiComponent",
+                    is_parameter=True,
+                    parameter_type=ParameterType.VECTOR))
         products.add_products(root_node)
 
     def get_data(self, product, start, stop):

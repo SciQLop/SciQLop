@@ -30,3 +30,6 @@ class PipelineTree(QtWidgets.QWidget):
         self.layout().addWidget(self._view)
         self._filter.editingFinished.connect(lambda: self._model_proxy.setFilterFixedString(self._filter.text()))
         self.setWindowTitle("Pipelines")
+        self._selection_model = self._view.selectionModel()
+        self._selection_model.selectionChanged.connect(
+            lambda a, b: pipelines.select(list(map(self._model_proxy.mapToSource, self._view.selectedIndexes()))))

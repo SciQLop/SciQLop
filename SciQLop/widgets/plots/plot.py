@@ -13,8 +13,9 @@ from SciQLop.backend.pipelines_model.plot_pipeline import PlotPipeline
 from .colormap_graph import ColorMapGraph
 from .line_graph import LineGraph
 from ..drag_and_drop import DropHandler, DropHelper
+from ...backend import Product
 from ...backend import TimeRange
-from ...backend.products_model import Product, ParameterType
+from ...backend.enums import ParameterType
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
 
@@ -122,3 +123,9 @@ class TimeSeriesPlot(QCustomPlot, _Plot):
         graph = ColorMapGraph(self, self.addColorMap(self.xAxis, self.yAxis))
         self.xAxis.rangeChanged.connect(lambda range: graph.xRangeChanged.emit(TimeRange(range.lower, range.upper)))
         self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
+
+    def select(self):
+        self.setStyleSheet("border: 3px dashed blue")
+
+    def unselect(self):
+        self.setStyleSheet("")

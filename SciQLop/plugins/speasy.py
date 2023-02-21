@@ -4,9 +4,10 @@ import speasy as spz
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
 from speasy.products import SpeasyVariable
 
+from SciQLop.backend import Product
+from SciQLop.backend.enums import ParameterType
 from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
-from SciQLop.backend.products_model import ProductNode, ParameterType
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:
@@ -72,17 +73,17 @@ def make_product(name, node: ParameterIndex, provider):
     meta["uid"] = node.spz_uid()
     meta["components"] = get_components(node)
     meta["provider"] = node.spz_provider()
-    return ProductNode(name, metadata=meta, is_parameter=True, provider=provider,
-                       uid=f"{node.spz_provider()}/{node.spz_uid()}", parameter_type=p_type)
+    return Product(name, metadata=meta, is_parameter=True, provider=provider,
+                   uid=f"{node.spz_provider()}/{node.spz_uid()}", parameter_type=p_type)
 
 
-def explore_nodes(inventory_node, product_node: ProductNode, provider):
+def explore_nodes(inventory_node, product_node: Product, provider):
     for name, child in inventory_node.__dict__.items():
         if name and child:
             if isinstance(child, ParameterIndex):
                 product_node.append_child(make_product(name, child, provider=provider))
             elif hasattr(child, "__dict__"):
-                cur_prod = ProductNode(name, metadata={}, uid=name, provider=provider)
+                cur_prod = Product(name, metadata={}, uid=name, provider=provider)
                 product_node.append_child(cur_prod)
                 explore_nodes(child, cur_prod, provider=provider)
 
@@ -90,7 +91,7 @@ def explore_nodes(inventory_node, product_node: ProductNode, provider):
 class SpeasyPlugin(DataProvider):
     def __init__(self, parent=None):
         super(SpeasyPlugin, self).__init__(name="Speasy", parent=parent, data_order=DataOrder.Y_FIRST)
-        root_node = ProductNode(name="speasy", metadata={}, provider=self.name, uid=self.name)
+        root_node = Product(name="speasy", metadata={}, provider=self.name, uid=self.name)
         explore_nodes(spz.inventories.tree, root_node, provider=self.name)
         products.add_products(root_node)
 

@@ -1,5 +1,5 @@
 from contextlib import ContextDecorator
-from typing import Dict, Any, Sequence
+from typing import Dict, Any, Sequence, List
 
 from PySide6.QtCore import QModelIndex, QMimeData, QAbstractItemModel, QStringListModel, QPersistentModelIndex, Qt
 from PySide6.QtGui import QIcon
@@ -25,6 +25,7 @@ class PipelinesModel(QAbstractItemModel):
         self._mime_data = None
         self._completion_model = QStringListModel(self)
         self._root = PipelineModelItem('root', None)
+        self._last_selected: List[PipelineModelItem] = []
 
     def model_update_ctx(self):
         return _model_change_ctx(self)
@@ -53,11 +54,9 @@ class PipelinesModel(QAbstractItemModel):
             return QModelIndex()
         child_item: PipelineModelItem = index.internalPointer()
         parent_item: PipelineModelItem = child_item.parent_item
-
-        if parent_item is self._root:
-            return QModelIndex()
-
-        return self.createIndex(parent_item.row, 0, parent_item)
+        if parent_item is not None:
+            return self.createIndex(parent_item.row, 0, parent_item)
+        return QModelIndex()
 
     def rowCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:
         if parent.column() > 0:
@@ -85,17 +84,25 @@ class PipelinesModel(QAbstractItemModel):
         pass
 
     def data(self, index: QModelIndex | QPersistentModelIndex, role: int = ...) -> Any:
-        if not index.isValid():
-            return None
-        item: PipelineModelItem = index.internalPointer()
-        if role == Qt.DisplayRole:
-            return item.name
-        if role == Qt.UserRole:
-            return item.name
-        if role == Qt.DecorationRole:
-            return self._icons.get(item.icon, None)
-        if role == Qt.ToolTipRole:
-            return ""
+        if index.isValid():
+            item: PipelineModelItem = index.internalPointer()
+            if role == Qt.DisplayRole:
+                return item.name
+            if role == Qt.UserRole:
+                return item.name
+            if role == Qt.DecorationRole:
+                return self._icons.get(item.icon, None)
+            if role == Qt.ToolTipRole:
+                return ""
+
+    def select(self, indexes: List[QModelIndex | QPersistentModelIndex]):
+        if len(self._last_selected):
+            list(map(lambda i: i.unselect(), self._last_selected))
+        for index in indexes:
+            if index.isValid():
+                item: PipelineModelItem = index.internalPointer()
+                item.select()
+                self._last_selected.append(item)
 
     def mimeData(self, indexes: Sequence[QModelIndex]) -> QMimeData:
         return None
