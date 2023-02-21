@@ -1,5 +1,5 @@
-import platform
 import os
+import platform
 import sys
 
 os.environ['QT_API'] = 'PySide6'
@@ -7,6 +7,10 @@ print("Forcing TZ to UTC")
 os.environ['TZ'] = 'UTC'
 if platform.system() == 'Linux':
     os.environ['QT_QPA_PLATFORM'] = 'xcb'
+
+_STYLE_SHEET_ = """
+QWidget:focus { border: 1px dashed light blue }
+"""
 
 
 def main():
@@ -20,6 +24,7 @@ def main():
             self.setOrganizationName("LPP")
             self.setOrganizationDomain("lpp.fr")
             self.setApplicationName("SciQLop")
+            self.setStyleSheet(_STYLE_SHEET_)
 
     app = SciQLopApp(sys.argv)
     w = SciQLopMainWindow()
