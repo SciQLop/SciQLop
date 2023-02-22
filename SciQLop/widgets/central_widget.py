@@ -48,6 +48,7 @@ class CentralWidget(QtWidgets.QMainWindow):
         dw.setWindowTitle(panel.name)
         self._panels[panel.name] = panel
         panel.destroyed.connect(lambda: self.remove_panel(panel))
+        panel.delete_me.connect(dw.close)
         self.panels_list_changed.emit(self.panels())
         return panel
 

@@ -103,6 +103,18 @@ class PipelinesModel(QAbstractItemModel):
                 item: PipelineModelItem = index.internalPointer()
                 item.select()
                 self._last_selected.append(item)
+                self._last_selected = list(filter(None.__ne__, self._last_selected))
+
+    def delete(self, indexes: List[QModelIndex | QPersistentModelIndex]):
+        self.beginResetModel()
+        self._last_selected = []
+        for index in indexes:
+            if index.isValid():
+                item: PipelineModelItem = index.internalPointer()
+                if item.child_count:
+                    self.delete([self.index(i, index.column(), index) for i in range(item.child_count)])
+                item.delete()
+        self.endResetModel()
 
     def mimeData(self, indexes: Sequence[QModelIndex]) -> QMimeData:
         return None

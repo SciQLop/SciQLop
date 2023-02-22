@@ -20,6 +20,10 @@ class ProductNode:
         self._str_content = f"name: {name}" + "\n".join([f"{key}: {value}" for key, value in metadata.items()])
         # self._product = Product(name, uid, provider, metadata, is_parameter, parameter_type)
 
+    def copy(self):
+        return ProductNode(name=self.name, uid=self.uid, provider=self.provider, metadata=self.metadata,
+                           is_parameter=self.is_parameter, parameter_type=self.parameter_type, parent=None)
+
     def append_child(self, child: 'ProductNode'):
         child.set_parent(self)
         self._children.append(child)

@@ -2,6 +2,8 @@ from typing import List
 
 from PySide6.QtCore import QMimeData, Qt, QMargins, Signal
 from PySide6.QtGui import QColorConstants, QColor, QMouseEvent
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QFrame
+
 from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem
 from seaborn import color_palette
 
@@ -46,26 +48,31 @@ def _configure_plot(plot: QCustomPlot):
     plot.setAutoAddPlottableToLegend(False)
 
 
-class TimeSeriesPlot(QCustomPlot, _Plot):
+class TimeSeriesPlot(QFrame, _Plot):
     time_range_changed = Signal(TimeRange)
     _time_range: TimeRange = TimeRange(0., 0.)
 
     def __init__(self, parent=None):
-        QCustomPlot.__init__(self, parent)
+        super(TimeSeriesPlot, self).__init__(parent)
         _Plot.__init__(self, f"Plot", parent)
+        self._plot = QCustomPlot(self)
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(self._plot)
         self.setMinimumHeight(300)
         self._drop_helper = DropHelper(widget=self,
                                        handlers=[
                                            DropHandler(mime_type=PRODUCT_LIST_MIME_TYPE,
-                                                       callback=self._plot),
+                                                       callback=self._plot_from_mime_data),
                                            DropHandler(mime_type=TIME_RANGE_MIME_TYPE,
                                                        callback=self._set_time_range)])
         self._pipeline: List[PlotPipeline] = []
         self._palette = color_palette()
         self._palette_index = 0
-        _configure_plot(self)
+        _configure_plot(self._plot)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.layout().setContentsMargins(0, 0, 0, 0)
         self.xAxis.rangeChanged.connect(lambda range: self.time_range_changed.emit(TimeRange(range.lower, range.upper)))
-        self.legendDoubleClick.connect(self._hide_graph)
+        self._plot.legendDoubleClick.connect(self._hide_graph)
 
     def _hide_graph(self, legend: QCPLegend, item: QCPAbstractLegendItem, event: QMouseEvent):
         item.plottable().setVisible(not item.plottable().visible())
@@ -77,6 +84,23 @@ class TimeSeriesPlot(QCustomPlot, _Plot):
             item.setSelectedTextColor(QColorConstants.Gray)
         self.replot(QCustomPlot.rpQueuedReplot)
 
+    @property
+    def xAxis(self):
+        return self._plot.xAxis
+
+    @property
+    def yAxis(self):
+        return self._plot.yAxis
+
+    def replot(self, refresh_priority):
+        return self._plot.replot(refresh_priority)
+
+    def addSciQLopGraph(self, x_axis, y_axis, labels, data_order):
+        return self._plot.addSciQLopGraph(x_axis, y_axis, labels, data_order)
+
+    def graph_at(self, index):
+        return self._plot.graphAt(index)
+
     def generate_colors(self, count: int) -> List[QColor]:
         index = self._palette_index
         self._palette_index += count
@@ -84,7 +108,7 @@ class TimeSeriesPlot(QCustomPlot, _Plot):
             _to_qcolor(*self._palette[(index + i) % len(self._palette)]) for i in range(count)
         ]
 
-    def _plot(self, mime_data: QMimeData) -> bool:
+    def _plot_from_mime_data(self, mime_data: QMimeData) -> bool:
         products: List[Product] = decode_mime(mime_data)
         for product in products:
             self.plot(product)
@@ -120,12 +144,17 @@ class TimeSeriesPlot(QCustomPlot, _Plot):
         self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 
     def add_colormap_graph(self, provider: DataProvider, product: str):
-        graph = ColorMapGraph(self, self.addColorMap(self.xAxis, self.yAxis))
+        graph = ColorMapGraph(self._plot, self._plot.addColorMap(self.xAxis, self.yAxis))
         self.xAxis.rangeChanged.connect(lambda range: graph.xRangeChanged.emit(TimeRange(range.lower, range.upper)))
         self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 
     def select(self):
-        self.setStyleSheet("border: 3px dashed blue")
+        self.setStyleSheet("border: 3px dashed blue;")
 
     def unselect(self):
         self.setStyleSheet("")
+
+    def delete(self):
+        _Plot.delete(self)
+        self.close()
+        self.deleteLater()

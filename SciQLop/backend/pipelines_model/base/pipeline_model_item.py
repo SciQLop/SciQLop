@@ -12,6 +12,11 @@ class PipelineModelItem:
             parent.append_child(self)
         self._children_items: List['PipelineModelItem'] = []
 
+    def __eq__(self, other: 'PipelineModelItem'):
+        if other is not None:
+            return self._parent_item == other._parent_item and self.row == other.row
+        return False
+
     @property
     def icon(self):
         return ""
@@ -40,6 +45,9 @@ class PipelineModelItem:
         child.parent_item = self
         self._children_items.append(child)
 
+    def remove_child(self, child: 'PipelineModelItem'):
+        self._children_items.remove(child)
+
     def index_of(self, child: 'PipelineModelItem'):
         return self._children_items.index(child)
 
@@ -67,3 +75,7 @@ class PipelineModelItem:
 
     def unselect(self):
         pass
+
+    def delete(self):
+        if self._parent_item is not None:
+            self._parent_item.remove_child(self)

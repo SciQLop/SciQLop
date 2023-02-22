@@ -1,4 +1,5 @@
 from PySide6 import QtCore, QtWidgets, QtGui
+from PySide6.QtGui import Qt
 
 from SciQLop.backend.models import pipelines
 from ..common import TreeView
@@ -33,3 +34,7 @@ class PipelineTree(QtWidgets.QWidget):
         self._selection_model = self._view.selectionModel()
         self._selection_model.selectionChanged.connect(
             lambda a, b: pipelines.select(list(map(self._model_proxy.mapToSource, self._view.selectedIndexes()))))
+
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Delete:
+            pipelines.delete(list(map(self._model_proxy.mapToSource, self._view.selectedIndexes())))

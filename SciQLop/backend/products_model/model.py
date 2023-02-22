@@ -131,7 +131,7 @@ class ProductsModel(QAbstractItemModel):
 
 def _mime_encode_product_list(products: List[ProductNode]) -> QMimeData:
     mdata = QMimeData()
-    mdata.setData(PRODUCT_LIST_MIME_TYPE, pickle.dumps(products))
+    mdata.setData(PRODUCT_LIST_MIME_TYPE, pickle.dumps(list(map(lambda p: p.copy(), products))))
     mdata.setText(":".join(list(map(lambda p: f"{p.provider}/{p.uid}", products))))
     return mdata
 

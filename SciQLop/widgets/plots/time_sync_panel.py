@@ -3,6 +3,7 @@ from typing import Optional, List
 
 from PySide6.QtCore import QMimeData, Signal, Qt
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
+from PySide6.QtGui import QPalette
 
 from .plot import TimeSeriesPlot
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
@@ -18,6 +19,8 @@ class _TimeSyncPanelContainer(QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
         self.setLayout(QVBoxLayout(self))
+        self.setContentsMargins(0, 0, 0, 0)
+        self.layout().setContentsMargins(0, 0, 0, 0)
 
     def indexOf(self, widget: QWidget):
         return self.layout().indexOf(widget)
@@ -37,9 +40,11 @@ class _TimeSyncPanelContainer(QWidget):
 class TimeSyncPanel(QScrollArea, _TimeSyncPanel):
     time_range_changed = Signal(TimeRange)
     _time_range: TimeRange = TimeRange(0., 0.)
+    delete_me = Signal()
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None):
         QScrollArea.__init__(self, parent)
+        self.setContentsMargins(0, 0, 0, 0)
         _TimeSyncPanel.__init__(self, name)
         self._name = name
         self._plot_container = _TimeSyncPanelContainer(self)
@@ -137,3 +142,7 @@ class TimeSyncPanel(QScrollArea, _TimeSyncPanel):
 
     def unselect(self):
         self.setStyleSheet("")
+
+    def delete(self):
+        _TimeSyncPanel.delete(self)
+        self.delete_me.emit()
