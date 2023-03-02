@@ -12,6 +12,7 @@ from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.data_provider import providers
 from SciQLop.backend.pipelines_model.plot import Plot as _Plot
 from SciQLop.backend.pipelines_model.plot_pipeline import PlotPipeline
+from SciQLop.backend.products_model.product_node import ProductNode
 from .colormap_graph import ColorMapGraph
 from .line_graph import LineGraph
 from ..drag_and_drop import DropHandler, DropHelper
@@ -133,20 +134,20 @@ class TimeSeriesPlot(QFrame, _Plot):
         if type(product) is str:
             product = products.product(product)
         if product.parameter_type in (ParameterType.VECTOR, ParameterType.MULTICOMPONENT, ParameterType.SCALAR):
-            self.add_multi_line_graph(providers[product.provider], product.uid,
+            self.add_multi_line_graph(providers[product.provider], product,
                                       components=product.metadata.get('components') or [product.name])
         elif product.parameter_type == ParameterType.SPECTROGRAM:
-            self.add_colormap_graph(providers[product.provider], product.uid)
+            self.add_colormap_graph(providers[product.provider], product)
 
-    def add_multi_line_graph(self, provider: DataProvider, product: str, components: List[str]):
-        graph = LineGraph(self, provider.data_order)
-        self.xAxis.rangeChanged.connect(lambda range: graph.xRangeChanged.emit(TimeRange(range.lower, range.upper)))
-        self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
+    def add_multi_line_graph(self, provider: DataProvider, product: ProductNode, components: List[str]):
+        graph = LineGraph(parent=self, provider=provider, product=product)
+        self.xAxis.rangeChanged.connect(lambda r: graph.xRangeChanged.emit(TimeRange(r.lower, r.upper)))
+        # self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 
-    def add_colormap_graph(self, provider: DataProvider, product: str):
-        graph = ColorMapGraph(self._plot, self._plot.addColorMap(self.xAxis, self.yAxis))
-        self.xAxis.rangeChanged.connect(lambda range: graph.xRangeChanged.emit(TimeRange(range.lower, range.upper)))
-        self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
+    def add_colormap_graph(self, provider: DataProvider, product: ProductNode):
+        graph = ColorMapGraph(parent=self._plot, provider=provider, product=product)
+        self.xAxis.rangeChanged.connect(lambda r: graph.xRangeChanged.emit(TimeRange(r.lower, r.upper)))
+        # self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 
     def select(self):
         self.setStyleSheet("border: 3px dashed blue;")

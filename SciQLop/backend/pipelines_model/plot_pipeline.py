@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Callable
 
 from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex
 from speasy.products import SpeasyVariable
@@ -7,21 +7,23 @@ from speasy.products import SpeasyVariable
 from SciQLop.backend import TimeRange
 from SciQLop.backend.pipelines_model.base.pipeline_model_item import PipelineModelItem
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
-from SciQLop.backend.pipelines_model.graph import Graph
+from SciQLop.backend.products_model.product_node import ProductNode
+
 from .base import model
 
 
 class _PlotPipelineWorker(QThread):
 
-    def __init__(self, graph: Graph, provider: DataProvider, product: str, time_range: TimeRange):
+    def __init__(self, data_callback: Callable[[SpeasyVariable], None], provider: DataProvider, product: ProductNode,
+                 time_range: TimeRange):
         QThread.__init__(self)
         self.setTerminationEnabled(True)
         self.wait_condition = QWaitCondition()
         self.next_range: Optional[TimeRange] = time_range
         self.current_range: Optional[TimeRange] = None
-        self.provider = provider
         self.product = product
-        self.graph = graph
+        self.provider = provider
+        self.data_callback = data_callback
         self.moveToThread(self)
         self.start()
         self._data_order = provider.data_order
@@ -33,7 +35,7 @@ class _PlotPipelineWorker(QThread):
     def get_data_task(self, new_range: TimeRange):
         data = self.get_data(new_range)
         if data is not None:
-            self.graph.plot(data)
+            self.data_callback(data)
         self.current_range = new_range
 
     def run(self):
@@ -48,7 +50,7 @@ class _PlotPipelineWorker(QThread):
 
 
 class _PlotPipelineController(QThread):
-    def __init__(self, graph, provider: DataProvider, product: str, time_range: TimeRange):
+    def __init__(self, data_callback: Callable[[SpeasyVariable], None], product: ProductNode, time_range: TimeRange):
         QThread.__init__(self)
         self.setTerminationEnabled(True)
         self.moveToThread(self)
@@ -56,7 +58,7 @@ class _PlotPipelineController(QThread):
         self.next_range: Optional[TimeRange] = time_range
         self.current_range: Optional[TimeRange] = None
         self.start()
-        self._worker = _PlotPipelineWorker(graph, provider, product, time_range)
+        self._worker = _PlotPipelineWorker(data_callback, product, time_range)
 
     def __del__(self):
         self._worker.requestInterruption()
@@ -75,18 +77,12 @@ class _PlotPipelineController(QThread):
 
 
 class PlotPipeline(QObject, PipelineModelItem):
-    def __init__(self, graph: Graph, provider: DataProvider, product: str, time_range: TimeRange):
-        QObject.__init__(self, graph)
+    def __init__(self, parent: QObject, provider: DataProvider, product: ProductNode, time_range: TimeRange):
+        QObject.__init__(self, parent)
         with model.model_update_ctx():
-            PipelineModelItem.__init__(self, f"{provider.name}/{product}", graph)
-        self._worker = _PlotPipelineWorker(graph, provider, product, time_range)
-        graph.xRangeChanged.connect(self.get_data)
-        self._graph = graph
+            PipelineModelItem.__init__(self, f"{product.provider}/{product}", parent)
+        self._worker = _PlotPipelineWorker(parent.plot, provider, product, time_range)
         self._product = product
-
-    @property
-    def graph(self):
-        return self._graph
 
     @property
     def product(self):

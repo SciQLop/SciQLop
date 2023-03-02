@@ -17,6 +17,8 @@ def main():
     from PySide6 import QtWidgets
     from SciQLop.widgets.mainwindow import SciQLopMainWindow
     from SciQLop.plugins import load_all
+    from SciQLop.resources import icons
+    print(icons)
 
     class SciQLopApp(QtWidgets.QApplication):
         def __init__(self, args):

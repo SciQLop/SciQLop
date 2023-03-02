@@ -1,4 +1,6 @@
 from SciQLop.backend.pipelines_model.graph import Graph
+from SciQLop.backend.pipelines_model.data_provider import DataProvider
+from SciQLop.backend.products_model.product_node import ProductNode
 from ...backend.enums import GraphType
 from SciQLopPlots import QCustomPlot, QCPColorScale, QCPAxis, QCPColorGradient, \
     QCPAxisTickerLog, QCPRange
@@ -8,8 +10,8 @@ from ...backend.resampling.spectro_regrid import regrid
 
 
 class ColorMapGraph(Graph):
-    def __init__(self, parent: QCustomPlot, data_order):
-        Graph.__init__(self, parent=parent, graph_type=GraphType.ColorMap, data_order=data_order)
+    def __init__(self, parent: QCustomPlot, provider: DataProvider, product: ProductNode):
+        Graph.__init__(self, parent=parent, graph_type=GraphType.ColorMap, provider=provider, product=product)
         parent.yAxis2.setScaleType(QCPAxis.stLogarithmic)
         parent.yAxis2.setTicker(QCPAxisTickerLog())
         parent.yAxis2.setVisible(True)

@@ -1,4 +1,6 @@
 from SciQLop.backend.pipelines_model.graph import Graph
+from SciQLop.backend.pipelines_model.data_provider import DataProvider
+from SciQLop.backend.products_model.product_node import ProductNode
 from ...backend.enums import GraphType
 from ...backend.enums import DataOrder
 from SciQLopPlots import SciQLopGraph
@@ -9,8 +11,8 @@ from PySide6.QtGui import QPen
 
 
 class LineGraph(Graph):
-    def __init__(self, parent, data_order):
-        Graph.__init__(self, parent=parent, graph_type=GraphType.MultiLines, data_order=data_order)
+    def __init__(self, parent, provider: DataProvider, product: ProductNode):
+        Graph.__init__(self, parent=parent, graph_type=GraphType.MultiLines, provider=provider, product=product)
         self._graph = None
         self._last_value = None
 
