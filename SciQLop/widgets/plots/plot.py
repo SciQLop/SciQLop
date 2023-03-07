@@ -2,9 +2,9 @@ from typing import List
 
 from PySide6.QtCore import QMimeData, Qt, QMargins, Signal
 from PySide6.QtGui import QColorConstants, QColor, QMouseEvent
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QFrame
-
-from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem
+from PySide6.QtWidgets import QVBoxLayout, QFrame
+from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem, QCPMarginGroup, \
+    QCPColorScale
 from seaborn import color_palette
 
 from SciQLop.backend.models import products
@@ -31,6 +31,7 @@ def _configure_plot(plot: QCustomPlot):
     plot.setInteractions(
         QCP.iRangeDrag | QCP.iRangeZoom | QCP.iSelectPlottables | QCP.iSelectAxes | QCP.iSelectLegend | QCP.iSelectItems)
     plot.legend.setVisible(True)
+    plot.legend.setSelectableParts(QCPLegend.SelectablePart.spItems)
     date_ticker = QCPAxisTickerDateTime()
     date_ticker.setDateTimeFormat("yyyy/MM/dd \nhh:mm:ss")
     date_ticker.setDateTimeSpec(Qt.UTC)
@@ -72,6 +73,7 @@ class TimeSeriesPlot(QFrame, _Plot):
         self.setContentsMargins(0, 0, 0, 0)
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.xAxis.rangeChanged.connect(lambda range: self.time_range_changed.emit(TimeRange(range.lower, range.upper)))
+        self._plot.selectionChangedByUser.connect(self._update_selection)
         self._plot.legendDoubleClick.connect(self._hide_graph)
 
     def _hide_graph(self, legend: QCPLegend, item: QCPAbstractLegendItem, event: QMouseEvent):
@@ -84,19 +86,48 @@ class TimeSeriesPlot(QFrame, _Plot):
             item.setSelectedTextColor(QColorConstants.Gray)
         self.replot(QCustomPlot.rpQueuedReplot)
 
+    def _update_selection(self):
+        for i in range(self._plot.graphCount()):
+            graph = self._plot.graph(i)
+            item = self._plot.legend.itemWithPlottable(graph)
+            if item.selected() or graph.selected():
+                item.setSelected(True)
+                graph.setSelected(True)
+
+    def set_margin_group(self, margin_group: QCPMarginGroup):
+        self._plot.axisRect(0).setMarginGroup(QCP.msLeft, margin_group)
+
     @property
     def xAxis(self):
         return self._plot.xAxis
 
     @property
+    def xAxis2(self):
+        return self._plot.xAxis2
+
+    @property
     def yAxis(self):
         return self._plot.yAxis
+
+    @property
+    def yAxis2(self):
+        return self._plot.yAxis2
 
     def replot(self, refresh_priority):
         return self._plot.replot(refresh_priority)
 
     def addSciQLopGraph(self, x_axis, y_axis, labels, data_order):
         return self._plot.addSciQLopGraph(x_axis, y_axis, labels, data_order)
+
+    def addSciQLopColorMap(self, x_axis, y_axis, label, with_color_scale=True):
+        colormap = self._plot.addSciQLopColorMap(x_axis, y_axis, label)
+        colormap.colorMap().setLayer(self._plot.layer("background"))
+        if with_color_scale:
+            color_scale = QCPColorScale(self._plot)
+            self._plot.plotLayout().addElement(0, 1, color_scale)
+            return color_scale, colormap
+        else:
+            return colormap
 
     def graph_at(self, index):
         return self._plot.graphAt(index)
@@ -144,7 +175,7 @@ class TimeSeriesPlot(QFrame, _Plot):
         # self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 
     def add_colormap_graph(self, provider: DataProvider, product: ProductNode):
-        graph = ColorMapGraph(parent=self._plot, provider=provider, product=product)
+        graph = ColorMapGraph(parent=self, provider=provider, product=product)
         self.xAxis.rangeChanged.connect(lambda r: graph.xRangeChanged.emit(TimeRange(r.lower, r.upper)))
         # self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 

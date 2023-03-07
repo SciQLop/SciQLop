@@ -1,9 +1,9 @@
 from datetime import datetime
 from typing import Optional, List
 
-from PySide6.QtCore import QMimeData, Signal, Qt
+from PySide6.QtCore import QMimeData, Signal
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
-from PySide6.QtGui import QPalette
+from SciQLopPlots import QCPMarginGroup
 
 from .plot import TimeSeriesPlot
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
@@ -18,6 +18,7 @@ from ...mime.types import PRODUCT_LIST_MIME_TYPE
 class _TimeSyncPanelContainer(QWidget):
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
+        self._margin_group = QCPMarginGroup(None)
         self.setLayout(QVBoxLayout(self))
         self.setContentsMargins(0, 0, 0, 0)
         self.layout().setContentsMargins(0, 0, 0, 0)
@@ -27,6 +28,8 @@ class _TimeSyncPanelContainer(QWidget):
 
     def add_widget(self, widget: QWidget, index: int):
         self.layout().insertWidget(index, widget)
+        if isinstance(widget, TimeSeriesPlot):
+            widget.set_margin_group(self._margin_group)
 
     def count(self) -> int:
         return self.layout().count()

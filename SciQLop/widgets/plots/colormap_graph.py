@@ -10,21 +10,19 @@ from ...backend.resampling.spectro_regrid import regrid
 
 
 class ColorMapGraph(Graph):
-    def __init__(self, parent: QCustomPlot, provider: DataProvider, product: ProductNode):
+    def __init__(self, parent, provider: DataProvider, product: ProductNode):
         Graph.__init__(self, parent=parent, graph_type=GraphType.ColorMap, provider=provider, product=product)
         parent.yAxis2.setScaleType(QCPAxis.stLogarithmic)
         parent.yAxis2.setTicker(QCPAxisTickerLog())
         parent.yAxis2.setVisible(True)
-        self._graph = parent.addSciQLopColorMap(parent.xAxis, parent.yAxis2, "ColorMap")
-        self._graph.colorMap().setLayer(parent.layer("background"))
+        self.colorScale, self._graph = parent.addSciQLopColorMap(parent.xAxis, parent.yAxis2, "ColorMap", with_color_scale=True)
+
         self._last_value = None
-        self.colorScale = QCPColorScale(parent)
         self.colorScale.setDataScaleType(QCPAxis.stLogarithmic)
         self.colorScale.axis().setTicker(QCPAxisTickerLog())
         self.colorScale.setType(QCPAxis.atRight)
         self._graph.colorMap().setColorScale(self.colorScale)
         self._graph.colorMap().setInterpolate(False)
-        parent.plotLayout().addElement(0, 1, self.colorScale)
         self._graph.colorMap().setDataScaleType(QCPAxis.stLogarithmic)
         self.colorScale.setType(QCPAxis.atRight)
 
