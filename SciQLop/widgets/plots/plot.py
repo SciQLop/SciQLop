@@ -113,7 +113,7 @@ class TimeSeriesPlot(QFrame, _Plot):
     def yAxis2(self):
         return self._plot.yAxis2
 
-    def replot(self, refresh_priority):
+    def replot(self, refresh_priority=QCustomPlot.rpQueuedReplot):
         return self._plot.replot(refresh_priority)
 
     def addSciQLopGraph(self, x_axis, y_axis, labels, data_order):
@@ -172,12 +172,17 @@ class TimeSeriesPlot(QFrame, _Plot):
     def add_multi_line_graph(self, provider: DataProvider, product: ProductNode, components: List[str]):
         graph = LineGraph(parent=self, provider=provider, product=product)
         self.xAxis.rangeChanged.connect(lambda r: graph.xRangeChanged.emit(TimeRange(r.lower, r.upper)))
+        return graph
         # self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 
     def add_colormap_graph(self, provider: DataProvider, product: ProductNode):
         graph = ColorMapGraph(parent=self, provider=provider, product=product)
         self.xAxis.rangeChanged.connect(lambda r: graph.xRangeChanged.emit(TimeRange(r.lower, r.upper)))
+        return graph
         # self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
+
+    def remove_graph(self, graph):
+        self._plot.removeGraph(graph)
 
     def select(self):
         self.setStyleSheet("border: 3px dashed blue;")

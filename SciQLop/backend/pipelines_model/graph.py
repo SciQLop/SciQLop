@@ -22,10 +22,15 @@ class Graph(QObject, PipelineModelItem):
         self._parent_plot = parent
         self._data_order = provider.data_order
         self._product = product
+        self._graph = None
 
     @property
     def data_order(self):
         return self._data_order
+
+    @property
+    def graph(self):
+        return self._graph
 
     @property
     def parent_plot(self):
@@ -37,3 +42,9 @@ class Graph(QObject, PipelineModelItem):
 
     def plot(self, data: SpeasyVariable):
         pass
+
+    def delete(self):
+        super().delete()
+        del self._pipeline
+        del self._graph
+        self._parent_plot.replot()

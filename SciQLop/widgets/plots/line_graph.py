@@ -1,13 +1,14 @@
-from SciQLop.backend.pipelines_model.graph import Graph
-from SciQLop.backend.pipelines_model.data_provider import DataProvider
-from SciQLop.backend.products_model.product_node import ProductNode
-from ...backend.enums import GraphType
-from ...backend.enums import DataOrder
-from SciQLopPlots import SciQLopGraph
-from PySide6.QtCore import QMetaObject, Qt, Slot
 import numpy as np
-from speasy.products import SpeasyVariable
+from PySide6.QtCore import QMetaObject, Qt, Slot
 from PySide6.QtGui import QPen
+from SciQLopPlots import SciQLopGraph
+from speasy.products import SpeasyVariable
+
+from SciQLop.backend.pipelines_model.data_provider import DataProvider
+from SciQLop.backend.pipelines_model.graph import Graph
+from SciQLop.backend.products_model.product_node import ProductNode
+from ...backend.enums import DataOrder
+from ...backend.enums import GraphType
 
 
 class LineGraph(Graph):
@@ -43,3 +44,6 @@ class LineGraph(Graph):
 
     def graphAt(self, index: int):
         return self._graph.graphAt(index)
+
+    def delete(self):
+        super().delete()

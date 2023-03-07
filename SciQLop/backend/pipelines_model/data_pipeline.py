@@ -98,3 +98,6 @@ class DataPipeline(QObject, PipelineModelItem):
     def get_data(self, new_range: TimeRange):
         self._worker.next_range = new_range
         self._worker.wait_condition.wakeOne()
+
+    def delete(self):
+        self.parent_item.delete()
