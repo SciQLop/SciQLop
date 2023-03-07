@@ -95,9 +95,9 @@ class SpeasyPlugin(DataProvider):
         explore_nodes(spz.inventories.tree, root_node, provider=self.name)
         products.add_products(root_node)
 
-    def get_data(self, product, start, stop):
+    def get_data(self, product: Product, start, stop):
         try:
-            v: SpeasyVariable = spz.get_data(product, start, stop)
+            v: SpeasyVariable = spz.get_data(product.uid, start, stop)
             if v:
                 v.replace_fillval_by_nan(inplace=True)
                 return v
