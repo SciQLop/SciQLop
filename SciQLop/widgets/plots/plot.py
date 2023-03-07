@@ -11,7 +11,6 @@ from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.data_provider import providers
 from SciQLop.backend.pipelines_model.plot import Plot as _Plot
-from SciQLop.backend.pipelines_model.plot_pipeline import PlotPipeline
 from SciQLop.backend.products_model.product_node import ProductNode
 from .colormap_graph import ColorMapGraph
 from .line_graph import LineGraph
@@ -66,7 +65,7 @@ class TimeSeriesPlot(QFrame, _Plot):
                                                        callback=self._plot_from_mime_data),
                                            DropHandler(mime_type=TIME_RANGE_MIME_TYPE,
                                                        callback=self._set_time_range)])
-        self._pipeline: List[PlotPipeline] = []
+
         self._palette = color_palette()
         self._palette_index = 0
         _configure_plot(self._plot)

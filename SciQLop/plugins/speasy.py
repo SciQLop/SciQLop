@@ -89,8 +89,8 @@ def explore_nodes(inventory_node, product_node: Product, provider):
 
 
 class SpeasyPlugin(DataProvider):
-    def __init__(self, parent=None):
-        super(SpeasyPlugin, self).__init__(name="Speasy", parent=parent, data_order=DataOrder.Y_FIRST)
+    def __init__(self):
+        super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST)
         root_node = Product(name="speasy", metadata={}, provider=self.name, uid=self.name)
         explore_nodes(spz.inventories.tree, root_node, provider=self.name)
         products.add_products(root_node)
@@ -106,5 +106,5 @@ class SpeasyPlugin(DataProvider):
             return None
 
 
-def load(main_window):
-    return SpeasyPlugin(main_window)
+def load(*args):
+    return SpeasyPlugin()

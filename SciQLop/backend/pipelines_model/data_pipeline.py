@@ -12,7 +12,7 @@ from SciQLop.backend.products_model.product_node import ProductNode
 from .base import model
 
 
-class _PlotPipelineWorker(QThread):
+class _DataPipelineWorker(QThread):
 
     def __init__(self, data_callback: Callable[[SpeasyVariable], None], provider: DataProvider, product: ProductNode,
                  time_range: TimeRange):
@@ -49,7 +49,7 @@ class _PlotPipelineWorker(QThread):
             self.wait_condition.wait(mutex)
 
 
-class _PlotPipelineController(QThread):
+class _DataPipelineController(QThread):
     def __init__(self, data_callback: Callable[[SpeasyVariable], None], product: ProductNode, time_range: TimeRange):
         QThread.__init__(self)
         self.setTerminationEnabled(True)
@@ -58,7 +58,7 @@ class _PlotPipelineController(QThread):
         self.next_range: Optional[TimeRange] = time_range
         self.current_range: Optional[TimeRange] = None
         self.start()
-        self._worker = _PlotPipelineWorker(data_callback, product, time_range)
+        self._worker = _DataPipelineWorker(data_callback, product, time_range)
 
     def __del__(self):
         self._worker.requestInterruption()
@@ -76,12 +76,12 @@ class _PlotPipelineController(QThread):
             self.wait_condition.wait(mutex)
 
 
-class PlotPipeline(QObject, PipelineModelItem):
+class DataPipeline(QObject, PipelineModelItem):
     def __init__(self, parent: QObject, provider: DataProvider, product: ProductNode, time_range: TimeRange):
         QObject.__init__(self, parent)
         with model.model_update_ctx():
-            PipelineModelItem.__init__(self, f"{product.provider}/{product}", parent)
-        self._worker = _PlotPipelineWorker(parent.plot, provider, product, time_range)
+            PipelineModelItem.__init__(self, f"{product.provider}/{product.uid}", parent)
+        self._worker = _DataPipelineWorker(parent.plot, provider, product, time_range)
         self._product = product
 
     @property

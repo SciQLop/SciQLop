@@ -6,7 +6,7 @@ providers = {}
 
 
 class DataProvider:
-    def __init__(self, name: str, parent=None, data_order: DataOrder = DataOrder.X_FIRST):
+    def __init__(self, name: str, data_order: DataOrder = DataOrder.X_FIRST):
         global providers
         providers[name] = self
         self._name = name

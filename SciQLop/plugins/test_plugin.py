@@ -10,10 +10,10 @@ from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrde
 
 class TestPlugin(DataProvider):
     def __init__(self, parent=None):
-        super(TestPlugin, self).__init__(name="TestPlugin", parent=parent, data_order=DataOrder.Y_FIRST)
+        super(TestPlugin, self).__init__(name="TestPlugin", data_order=DataOrder.Y_FIRST)
         root_node = Product(name="TestPlugin", metadata={}, provider=self.name, uid=self.name)
         root_node.append_child(
-            Product(name="TestMultiComponent", metadata={'components': ["x", "y", "z"]},
+            Product(name="TestMultiComponent", metadata={'components': "x;y;z"},
                     provider=self.name,
                     uid="TestMultiComponent",
                     is_parameter=True,
