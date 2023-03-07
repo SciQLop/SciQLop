@@ -1,3 +1,4 @@
+import bisect
 from typing import List, Dict
 
 from ..enums import ParameterType
@@ -26,7 +27,7 @@ class ProductNode:
 
     def append_child(self, child: 'ProductNode'):
         child.set_parent(self)
-        self._children.append(child)
+        bisect.insort(self._children, child, key=lambda c: c.name)
 
     def set_parent(self, parent: 'ProductNode'):
         if self._parent is None:
