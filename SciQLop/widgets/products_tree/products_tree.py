@@ -7,14 +7,9 @@ from SciQLop.widgets.common import TreeView
 class ProductTree(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(ProductTree, self).__init__(parent)
-        self._model_proxy = QtCore.QSortFilterProxyModel(self)
-        self._model_proxy.setSourceModel(products)
         self._view = TreeView(self)
-        self._view.setModel(self._model_proxy)
+        self._view.setModel(products)
         self._view.setSortingEnabled(False)
-        self._model_proxy.setFilterRole(QtCore.Qt.UserRole)
-        self._model_proxy.setRecursiveFilteringEnabled(True)
-        self._model_proxy.setAutoAcceptChildRows(True)
         self._filter = QtWidgets.QLineEdit(self)
         self._filter.setClearButtonEnabled(True)
         self._filter.addAction(QtGui.QIcon(":/icons/zoom.png"), QtWidgets.QLineEdit.LeadingPosition)
@@ -28,5 +23,5 @@ class ProductTree(QtWidgets.QWidget):
         self.setLayout(QtWidgets.QVBoxLayout())
         self.layout().addWidget(self._filter)
         self.layout().addWidget(self._view)
-        self._filter.editingFinished.connect(lambda: self._model_proxy.setFilterFixedString(self._filter.text()))
+        self._filter.textChanged.connect(lambda: products.set_filter(self._filter.text()))
         self.setWindowTitle("Products")
