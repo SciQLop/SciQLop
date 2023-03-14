@@ -18,7 +18,7 @@ def for_all_nodes(f, node):
 
 
 def _make_completion_list(product: ProductNode):
-    return [f"name: {product.name}"] + [f"{key}: {value}" for key, value in product.metadata.items()]
+    return product.name
 
 
 class _FilterNode:
@@ -91,7 +91,7 @@ class ProductsModel(QAbstractItemModel):
 
     def _update_completion(self, products: ProductNode):
         strings = set()
-        for_all_nodes(lambda node: strings.update(_make_completion_list(node)), products)
+        for_all_nodes(lambda n: strings.add(n.name), products)
         strings.update(set(self._completion_model.stringList()))
         self._completion_model.setStringList(sorted(list(strings)))
 
@@ -143,6 +143,15 @@ class ProductsModel(QAbstractItemModel):
         if role == Qt.ToolTipRole:
             return "<br/>".join(
                 [f"<b>{key}:</b> {value}" for key, value in item.metadata.items() if not key.startswith('__')])
+
+    def canFetchMore(self, parent: QModelIndex | QPersistentModelIndex) -> bool:
+        if not parent.isValid():
+            return False
+        parent_item: _FilterNode = parent.internalPointer()
+        return len(parent_item.children) > 0
+
+    def fetchMore(self, parent: QModelIndex | QPersistentModelIndex) -> None:
+        pass
 
     def mimeData(self, indexes: Sequence[QModelIndex]) -> QMimeData:
         products = list(filter(lambda index: index.is_parameter,
