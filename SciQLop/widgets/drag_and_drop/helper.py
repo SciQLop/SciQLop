@@ -1,10 +1,9 @@
-from enum import Enum
-from PySide6.QtWidgets import QWidget, QMainWindow, QVBoxLayout, QTabBar
-from PySide6.QtGui import QDropEvent, QDragEnterEvent, QDragMoveEvent
-from PySide6.QtCore import Qt, QPointF
 from typing import List, Optional
+
+from PySide6.QtGui import QDropEvent, QDragEnterEvent, QDragMoveEvent
+from PySide6.QtWidgets import QWidget, QMainWindow, QTabBar
+
 from .drop_handler import DropHandler
-from .placeholder import PlaceHolder, PlaceHolderPosition
 from .place_holder_manager import PlaceHolderManager
 
 

@@ -6,7 +6,7 @@ os.environ['QT_API'] = 'PySide6'
 print("Forcing TZ to UTC")
 os.environ['TZ'] = 'UTC'
 if platform.system() == 'Linux':
-    os.environ['QT_QPA_PLATFORM'] = 'xcb'
+    os.environ['QT_QPA_PLATFORM'] = os.environ.get("SCIQLOP_QT_QPA_PLATFORM", 'xcb')
 
 _STYLE_SHEET_ = """
 QWidget:focus { border: 1px dashed light blue }
