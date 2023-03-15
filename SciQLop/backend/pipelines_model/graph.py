@@ -1,3 +1,5 @@
+from typing import Optional
+
 from PySide6.QtCore import QObject, Signal
 from speasy.products import SpeasyVariable
 
@@ -11,6 +13,8 @@ from ..products_model.product_node import ProductNode
 
 class Graph(QObject, PipelineModelItem):
     xRangeChanged = Signal(TimeRange)
+    _pipeline: Optional[DataPipeline] = None
+    _graph = None
 
     def __init__(self, parent, graph_type: GraphType, provider: DataProvider,
                  product: ProductNode):
@@ -22,7 +26,6 @@ class Graph(QObject, PipelineModelItem):
         self._parent_plot = parent
         self._data_order = provider.data_order
         self._product = product
-        self._graph = None
 
     @property
     def data_order(self):
@@ -45,6 +48,8 @@ class Graph(QObject, PipelineModelItem):
 
     def delete(self):
         super().delete()
-        del self._pipeline
-        del self._graph
+        if self._pipeline is not None:
+            del self._pipeline
+        if self._graph is not None:
+            del self._graph
         self._parent_plot.replot()

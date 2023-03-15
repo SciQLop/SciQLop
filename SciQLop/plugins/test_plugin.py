@@ -1,4 +1,3 @@
-import humanize
 import numpy as np
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis
 
@@ -26,7 +25,6 @@ class TestPlugin(DataProvider):
         y[:, 0] = np.cos(x / 100.) * 10.
         y[:, 1] = np.cos((x + 100) / 100.) * 10.
         y[:, 2] = np.cos((x + 200) / 100.) * 10.
-        print(f"{humanize.intword(len(x))} points")
         return SpeasyVariable(axes=[VariableTimeAxis((x * 1e9).astype("datetime64[ns]"))], values=DataContainer(y),
                               columns=["x", "y", "z"])
 

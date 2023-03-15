@@ -62,6 +62,9 @@ class TimeSyncPanel(QScrollArea, _TimeSyncPanel):
                                                         handlers=[DropHandler(mime_type=PRODUCT_LIST_MIME_TYPE,
                                                                               callback=self._insert_plots)])
 
+    def __del__(self):
+        _TimeSyncPanel.delete(self)
+
     @property
     def name(self) -> str:
         return self._name
@@ -74,9 +77,7 @@ class TimeSyncPanel(QScrollArea, _TimeSyncPanel):
     def time_range(self, time_range: TimeRange):
         if self._time_range != time_range:
             self._time_range = time_range
-            print(time_range)
             for p in self._plot_container.plots:
-                print(p)
                 p.time_range = time_range
             self.time_range_changed.emit(time_range)
 
@@ -147,5 +148,5 @@ class TimeSyncPanel(QScrollArea, _TimeSyncPanel):
         self.setStyleSheet("")
 
     def delete(self):
-        _TimeSyncPanel.delete(self)
         self.delete_me.emit()
+        _TimeSyncPanel.delete(self)

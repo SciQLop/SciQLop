@@ -156,7 +156,6 @@ class TimeSeriesPlot(QFrame, _Plot):
     @time_range.setter
     def time_range(self, time_range: TimeRange):
         if self._time_range != time_range:
-            print("Setting xAxis range")
             self.xAxis.setRange(time_range.start, time_range.stop)
             self.replot(QCustomPlot.rpQueuedReplot)
 

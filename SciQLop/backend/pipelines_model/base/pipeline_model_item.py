@@ -46,7 +46,8 @@ class PipelineModelItem:
         self._children_items.append(child)
 
     def remove_child(self, child: 'PipelineModelItem'):
-        self._children_items.remove(child)
+        if child in self._children_items:
+            self._children_items.remove(child)
 
     def index_of(self, child: 'PipelineModelItem'):
         return self._children_items.index(child)
