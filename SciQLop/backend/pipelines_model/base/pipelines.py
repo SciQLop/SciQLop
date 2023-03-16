@@ -1,10 +1,30 @@
 from contextlib import ContextDecorator
 from typing import Dict, Any, Sequence, List
 
-from PySide6.QtCore import QModelIndex, QMimeData, QAbstractItemModel, QStringListModel, QPersistentModelIndex, Qt
+from PySide6.QtCore import QModelIndex, QMimeData, QAbstractItemModel, QStringListModel, QPersistentModelIndex, Qt, \
+    QObject
 from PySide6.QtGui import QIcon
 
-from SciQLop.backend.pipelines_model.base.pipeline_model_item import PipelineModelItem
+from SciQLop.backend.pipelines_model.base.pipeline_model_item import QObjectPipelineModelItem, \
+    QObjectPipelineModelItemMeta, PipelineModelItem
+
+
+class RootNode(QObjectPipelineModelItem, QObject, metaclass=QObjectPipelineModelItemMeta):
+    def __init__(self):
+        QObject.__init__(self, None)
+        QObjectPipelineModelItem.__init__(self, "root")
+        self._children = []
+
+    def append_child(self, child: PipelineModelItem):
+        self._children.append(child)
+        child.parent_node = self
+
+    def remove_child(self, child):
+        self._children.remove(child)
+
+    @property
+    def children_nodes(self) -> List['PipelineModelItem']:
+        return self._children
 
 
 class _model_change_ctx(ContextDecorator):
@@ -24,7 +44,7 @@ class PipelinesModel(QAbstractItemModel):
         self._icons: Dict[str, QIcon] = {}
         self._mime_data = None
         self._completion_model = QStringListModel(self)
-        self._root = PipelineModelItem('root', None)
+        self._root = RootNode()
         self._last_selected: List[PipelineModelItem] = []
 
     def model_update_ctx(self):
@@ -35,6 +55,10 @@ class PipelinesModel(QAbstractItemModel):
             self._root.append_child(panel)
 
     @property
+    def root_node(self):
+        return self._root
+
+    @property
     def completion_model(self):
         return self._completion_model
 
@@ -43,8 +67,8 @@ class PipelinesModel(QAbstractItemModel):
             if not parent.isValid():
                 parent_item = self._root
             else:
-                parent_item: PipelineModelItem = parent.internalPointer()
-            child_item: PipelineModelItem = parent_item.child_at(row)
+                parent_item: PipelineModelItem = parent.internalPointer()  # type: ignore
+            child_item: PipelineModelItem = parent_item.child_node_at(row)
             if child_item is not None:
                 return self.createIndex(row, column, child_item)
         return QModelIndex()
@@ -52,8 +76,8 @@ class PipelinesModel(QAbstractItemModel):
     def parent(self, index: QModelIndex | QPersistentModelIndex = ...) -> QModelIndex:
         if not index.isValid():
             return QModelIndex()
-        child_item: PipelineModelItem = index.internalPointer()
-        parent_item: PipelineModelItem = child_item.parent_item
+        child_item: PipelineModelItem = index.internalPointer()  # type: ignore
+        parent_item: PipelineModelItem = child_item.parent_node
         if parent_item is not None:
             return self.createIndex(parent_item.row, 0, parent_item)
         return QModelIndex()
@@ -61,18 +85,13 @@ class PipelinesModel(QAbstractItemModel):
     def rowCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:
         if parent.column() > 0:
             return 0
-        if not parent.isValid():
-            parent_item = self._root
-        else:
-            parent_item: PipelineModelItem = parent.internalPointer()
+
+        parent_item: PipelineModelItem = self._root if not parent.isValid() else parent.internalPointer()
 
         return parent_item.child_count
 
     def columnCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:
-        if parent.isValid():
-            return parent.internalPointer().column_count
-        else:
-            return self._root.column_count
+        return parent.internalPointer().column_count if parent.isValid() else self._root.column_count  # type: ignore
 
     def canFetchMore(self, parent: QModelIndex or QPersistentModelIndex) -> bool:
         if not parent.isValid():
@@ -111,9 +130,7 @@ class PipelinesModel(QAbstractItemModel):
         for index in indexes:
             if index.isValid():
                 item: PipelineModelItem = index.internalPointer()
-                if item.child_count:
-                    self.delete([self.index(i, index.column(), index) for i in range(item.child_count)])
-                item.delete()
+                item.delete_node()
         self.endResetModel()
 
     def mimeData(self, indexes: Sequence[QModelIndex]) -> QMimeData:

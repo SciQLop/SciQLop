@@ -14,7 +14,6 @@ from ...backend.enums import GraphType
 class LineGraph(Graph):
     def __init__(self, parent, provider: DataProvider, product: ProductNode):
         Graph.__init__(self, parent=parent, graph_type=GraphType.MultiLines, provider=provider, product=product)
-        self._graph = None
         self._last_value = None
 
     @Slot()
@@ -44,6 +43,3 @@ class LineGraph(Graph):
 
     def graphAt(self, index: int):
         return self._graph.graphAt(index)
-
-    def delete(self):
-        super().delete()

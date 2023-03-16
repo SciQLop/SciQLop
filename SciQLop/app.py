@@ -18,7 +18,9 @@ def main():
     from SciQLop.widgets.mainwindow import SciQLopMainWindow
     from SciQLop.plugins import load_all
     from SciQLop.resources import icons
-    print(icons)
+    from SciQLop.backend import logging
+    logging.setup()
+    logging.getLogger().info(str(icons))
 
     class SciQLopApp(QtWidgets.QApplication):
         def __init__(self, args):

@@ -1,11 +1,12 @@
-from SciQLop.backend.pipelines_model.graph import Graph
+import numpy as np
+from SciQLopPlots import QCPAxis, QCPColorGradient, \
+    QCPAxisTickerLog, QCPRange
+from speasy.products import SpeasyVariable
+
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
+from SciQLop.backend.pipelines_model.graph import Graph
 from SciQLop.backend.products_model.product_node import ProductNode
 from ...backend.enums import GraphType
-from SciQLopPlots import QCustomPlot, QCPColorScale, QCPAxis, QCPColorGradient, \
-    QCPAxisTickerLog, QCPRange
-import numpy as np
-from speasy.products import SpeasyVariable
 from ...backend.resampling.spectro_regrid import regrid
 
 
@@ -15,7 +16,8 @@ class ColorMapGraph(Graph):
         parent.yAxis2.setScaleType(QCPAxis.stLogarithmic)
         parent.yAxis2.setTicker(QCPAxisTickerLog())
         parent.yAxis2.setVisible(True)
-        self.colorScale, self._graph = parent.addSciQLopColorMap(parent.xAxis, parent.yAxis2, "ColorMap", with_color_scale=True)
+        self.colorScale, self._graph = parent.addSciQLopColorMap(parent.xAxis, parent.yAxis2, "ColorMap",
+                                                                 with_color_scale=True)
 
         self._last_value = None
         self.colorScale.setDataScaleType(QCPAxis.stLogarithmic)

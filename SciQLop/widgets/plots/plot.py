@@ -7,12 +7,14 @@ from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCP
     QCPColorScale
 from seaborn import color_palette
 
+from SciQLop.backend.models import pipelines
 from SciQLop.backend.models import products
+from SciQLop.backend.pipelines_model.base.pipeline_model_item import QWidgetPipelineModelItem, \
+    QWidgetPipelineModelItemMeta, PipelineModelItem
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.data_provider import providers
-from SciQLop.backend.pipelines_model.plot import Plot as _Plot
 from SciQLop.backend.products_model.product_node import ProductNode
-from .colormap_graph import ColorMapGraph
+from .colormap_graph import ColorMapGraph, Graph
 from .line_graph import LineGraph
 from ..drag_and_drop import DropHandler, DropHelper
 from ...backend import Product
@@ -49,13 +51,14 @@ def _configure_plot(plot: QCustomPlot):
     plot.setAutoAddPlottableToLegend(False)
 
 
-class TimeSeriesPlot(QFrame, _Plot):
+class TimeSeriesPlot(QFrame, QWidgetPipelineModelItem, metaclass=QWidgetPipelineModelItemMeta):
     time_range_changed = Signal(TimeRange)
     _time_range: TimeRange = TimeRange(0., 0.)
 
     def __init__(self, parent=None):
-        super(TimeSeriesPlot, self).__init__(parent)
-        _Plot.__init__(self, f"Plot", parent)
+        QFrame.__init__(self, parent)
+        QWidgetPipelineModelItem.__init__(self, f"Plot")
+        self._parent = parent
         self._plot = QCustomPlot(self)
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(self._plot)
@@ -170,15 +173,13 @@ class TimeSeriesPlot(QFrame, _Plot):
 
     def add_multi_line_graph(self, provider: DataProvider, product: ProductNode, components: List[str]):
         graph = LineGraph(parent=self, provider=provider, product=product)
-        self.xAxis.rangeChanged.connect(lambda r: graph.xRangeChanged.emit(TimeRange(r.lower, r.upper)))
+        self.time_range_changed.connect(graph.xRangeChanged)
         return graph
-        # self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 
     def add_colormap_graph(self, provider: DataProvider, product: ProductNode):
         graph = ColorMapGraph(parent=self, provider=provider, product=product)
-        self.xAxis.rangeChanged.connect(lambda r: graph.xRangeChanged.emit(TimeRange(r.lower, r.upper)))
+        self.time_range_changed.connect(graph.xRangeChanged)
         return graph
-        # self._pipeline.append(PlotPipeline(graph=graph, provider=provider, product=product, time_range=self.time_range))
 
     def remove_graph(self, graph):
         self._plot.removeGraph(graph)
@@ -189,7 +190,21 @@ class TimeSeriesPlot(QFrame, _Plot):
     def unselect(self):
         self.setStyleSheet("")
 
-    def delete(self):
-        _Plot.delete(self)
-        self.close()
-        self.deleteLater()
+    @property
+    def children_nodes(self) -> List[Graph]:
+        return list(filter(lambda c: isinstance(c, Graph), self.children()))
+
+    @property
+    def parent_node(self) -> PipelineModelItem:
+        return self._parent
+
+    @parent_node.setter
+    def parent_node(self, parent: PipelineModelItem):
+        self._parent = parent
+
+    def delete_node(self):
+        with pipelines.model_update_ctx():
+            children = self.children_nodes
+            for child in children:
+                child.delete_node()
+            super(TimeSeriesPlot, self).delete_node()

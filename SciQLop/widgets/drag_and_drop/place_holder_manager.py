@@ -47,7 +47,7 @@ class PlaceHolderManager:
         self._place_holder = None
 
     def leave_drag(self):
-        self._place_holder_delay.start(200)
+        self._place_holder_delay.start(500)
 
     def create_place_holder_if_needed(self, mime_type: str, child_widget: QWidget, position: QPointF) -> bool:
         if self.accepts(mime_type=mime_type):

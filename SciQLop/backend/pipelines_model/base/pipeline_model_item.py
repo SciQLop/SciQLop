@@ -1,71 +1,73 @@
-from typing import List
+from abc import ABC, abstractmethod, ABCMeta
+from typing import List, Optional
+
+from PySide6.QtCore import QObject
+from PySide6.QtWidgets import QWidget
+
+from ... import logging
+
+log = logging.getLogger(__name__)
 
 
-class PipelineModelItem:
-    # __slots__ = ['_name', '_parent_item', '_children_items']
+class PipelineModelItem(ABC):
 
-    def __init__(self, name: str, parent: 'PipelineModelItem' or None):
-        self._name = name
-        self._parent_item = parent
+    def __init__(self):
+        pass
 
-        if parent:
-            parent.append_child(self)
-        self._children_items: List['PipelineModelItem'] = []
+    def __del__(self):
+        log.info(f"Deleting {self.__class__.__name__}: {id(self):08x}")
 
-    def __eq__(self, other: 'PipelineModelItem'):
+    def __eq__(self, other: 'PipelineModelItem') -> bool:
         if other is not None:
-            return self._parent_item == other._parent_item and self.row == other.row
+            return self.parent_node == other.parent_node and self.row == other.row
         return False
 
     @property
-    def icon(self):
+    def icon(self) -> str:
         return ""
 
     @property
+    @abstractmethod
     def name(self) -> str:
-        return self._name
+        ...
 
     @name.setter
+    @abstractmethod
     def name(self, new_name: str):
-        self._name = new_name
+        ...
 
     @property
-    def parent_item(self) -> 'PipelineModelItem':
-        return self._parent_item
+    @abstractmethod
+    def parent_node(self) -> 'PipelineModelItem':
+        ...
 
-    @parent_item.setter
-    def parent_item(self, parent: 'PipelineModelItem'):
-        self._parent_item = parent
+    @parent_node.setter
+    @abstractmethod
+    def parent_node(self, parent: 'PipelineModelItem'):
+        ...
 
     @property
-    def children_items(self) -> List['PipelineModelItem']:
-        return self._children_items
+    @abstractmethod
+    def children_nodes(self) -> List['PipelineModelItem']:
+        ...
 
-    def append_child(self, child: 'PipelineModelItem'):
-        child.parent_item = self
-        self._children_items.append(child)
+    def index_of(self, child: 'PipelineModelItem') -> int:
+        return self.children_nodes.index(child)
 
-    def remove_child(self, child: 'PipelineModelItem'):
-        if child in self._children_items:
-            self._children_items.remove(child)
-
-    def index_of(self, child: 'PipelineModelItem'):
-        return self._children_items.index(child)
-
-    def child_at(self, row: int) -> 'PipelineModelItem' or None:
-        if 0 <= row < len(self._children_items):
-            return self._children_items[row]
+    def child_node_at(self, row: int) -> 'PipelineModelItem' or None:
+        if 0 <= row < len(self.children_nodes):
+            return self.children_nodes[row]
         return None
 
     @property
     def row(self) -> int:
-        if self._parent_item is not None:
-            return self._parent_item.index_of(self)
+        if self.parent_node is not None:
+            return self.parent_node.index_of(self)
         return 0
 
     @property
     def child_count(self) -> int:
-        return len(self._children_items)
+        return len(self.children_nodes)
 
     @property
     def column_count(self) -> int:
@@ -77,6 +79,67 @@ class PipelineModelItem:
     def unselect(self):
         pass
 
-    def delete(self):
-        if self._parent_item is not None:
-            self._parent_item.remove_child(self)
+    @abstractmethod
+    def delete_node(self):
+        ...
+
+
+class QObjectPipelineModelItemMeta(type(QObject), ABCMeta):
+    pass
+
+
+class QObjectPipelineModelItem(PipelineModelItem):
+    def __init__(self: QObject, name: str):
+        super(QObjectPipelineModelItem, self).__init__()
+        self.setObjectName(name)
+
+    @property
+    def name(self: QObject) -> str:
+        return self.objectName()
+
+    @name.setter
+    def name(self: QObject, new_name: str):
+        self.setObjectName(new_name)
+
+    @property
+    def parent_node(self: QObject) -> 'PipelineModelItem':
+        return self.parent()
+
+    @parent_node.setter
+    @abstractmethod
+    def parent_node(self: QObject, parent: 'PipelineModelItem'):
+        self.setParent(parent)
+
+    @property
+    @abstractmethod
+    def children_nodes(self: QObject) -> List['PipelineModelItem']:
+        return self.children()
+
+    def delete_node(self: QObject):
+        self.deleteLater()
+
+
+class QWidgetPipelineModelItemMeta(type(QWidget), ABCMeta):
+    pass
+
+
+class QWidgetPipelineModelItem(QObjectPipelineModelItem):
+    def __init__(self: QWidget, name: str):
+        super(QWidgetPipelineModelItem, self).__init__(name=name)
+
+    @property
+    def parent_node(self: QWidget) -> 'PipelineModelItem':
+        return self.parentWidget()
+
+    @parent_node.setter
+    @abstractmethod
+    def parent_node(self: QWidget, parent: QWidget):
+        self.setParent(parent)
+
+    @property
+    @abstractmethod
+    def children_nodes(self: QObject) -> List['PipelineModelItem']:
+        return self.children()
+
+    def delete_node(self: QObject):
+        self.deleteLater()

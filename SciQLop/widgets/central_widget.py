@@ -1,12 +1,41 @@
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Signal, QMimeData
 from PySide6.QtWidgets import QDockWidget, QMainWindow
+from PySide6.QtGui import QCloseEvent
+
 from .drag_and_drop import DropHandler, DropHelper
 from .plots.time_sync_panel import TimeSyncPanel
-from ..mime.types import PRODUCT_LIST_MIME_TYPE
-from ..mime import decode_mime
 from ..backend import TimeRange
 from ..backend.unique_names import make_simple_incr_name
+from ..mime import decode_mime
+from ..mime.types import PRODUCT_LIST_MIME_TYPE
+
+
+class TimeSyncPanelDockWidgetWrapper(QDockWidget):
+    closed = Signal(str)
+
+    def __init__(self, panel: TimeSyncPanel, parent=None):
+        super(TimeSyncPanelDockWidgetWrapper, self).__init__(parent)
+        self._panel = panel
+        self.setAllowedAreas(QtGui.Qt.DockWidgetArea.AllDockWidgetAreas)
+        self.setWidget(panel)
+        self.setWindowTitle(panel.name)
+        panel.destroyed.connect(self._close)
+
+    def _close(self):
+        self._panel = None
+        self.close()
+
+    @property
+    def panel(self):
+        return self._panel
+
+    def closeEvent(self, event: QCloseEvent) -> bool:
+        self.closed.emit(self.windowTitle())
+        if self._panel is not None:
+            self._panel.delete_node()
+        self.deleteLater()
+        return True
 
 
 class CentralWidget(QtWidgets.QMainWindow):
@@ -33,22 +62,18 @@ class CentralWidget(QtWidgets.QMainWindow):
         return True
 
     def plot_panel(self, name: str) -> TimeSyncPanel or None:
-        return self._panels.get(name)
+        for w in list(filter(lambda w: isinstance(w, TimeSyncPanelDockWidgetWrapper)), self.children()):
+            if w.name == name:
+                return w.panel
 
     def new_plot_panel(self) -> TimeSyncPanel:
         panel: TimeSyncPanel = TimeSyncPanel(name=make_simple_incr_name(base="Panel"),
                                              time_range=self._default_time_range)
         panel.time_range = self._default_time_range
-        dw = QDockWidget(self)
-        dw.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
-        dw.setAllowedAreas(QtGui.Qt.DockWidgetArea.AllDockWidgetAreas)
-        dw.setWidget(panel)
-        panel.setParent(dw)
+        dw = TimeSyncPanelDockWidgetWrapper(panel=panel, parent=self)
         self.addDockWidget(QtGui.Qt.DockWidgetArea.TopDockWidgetArea, dw)
-        dw.setWindowTitle(panel.name)
         self._panels[panel.name] = panel
-        panel.destroyed.connect(lambda: self.remove_panel(panel))
-        panel.delete_me.connect(dw.close)
+        dw.closed.connect(self.remove_panel)
         self.panels_list_changed.emit(self.panels())
         return panel
 

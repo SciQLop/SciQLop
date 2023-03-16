@@ -1,3 +1,4 @@
-from SciQLop.backend.pipelines_model.base.pipelines import PipelinesModel
+from .pipeline_model_item import PipelineModelItem
+from .pipelines import PipelinesModel
 
 model = PipelinesModel()
