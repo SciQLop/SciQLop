@@ -9,7 +9,7 @@ from seaborn import color_palette
 
 from SciQLop.backend.models import pipelines
 from SciQLop.backend.models import products
-from SciQLop.backend.pipelines_model.base.pipeline_model_item import QWidgetPipelineModelItem, \
+from SciQLop.backend.pipelines_model.base.pipeline_node import QWidgetPipelineModelItem, \
     QWidgetPipelineModelItemMeta, PipelineModelItem
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.data_provider import providers

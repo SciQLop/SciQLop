@@ -5,7 +5,7 @@ from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex
 from speasy.products import SpeasyVariable
 
 from SciQLop.backend import TimeRange
-from SciQLop.backend.pipelines_model.base.pipeline_model_item import QObjectPipelineModelItem, \
+from SciQLop.backend.pipelines_model.base.pipeline_node import QObjectPipelineModelItem, \
     QObjectPipelineModelItemMeta
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.products_model.product_node import ProductNode

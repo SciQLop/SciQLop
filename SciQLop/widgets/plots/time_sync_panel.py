@@ -5,9 +5,9 @@ from PySide6.QtCore import QMimeData, Signal
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
 from SciQLopPlots import QCPMarginGroup
 
-from SciQLop.backend.pipelines_model.base.pipeline_model_item import QWidgetPipelineModelItem, \
+from SciQLop.backend.pipelines_model.base.pipeline_node import QWidgetPipelineModelItem, \
     QWidgetPipelineModelItemMeta
-from .plot import TimeSeriesPlot
+from .time_series_plot import TimeSeriesPlot
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
 from ...backend import Product
 from ...backend import TimeRange

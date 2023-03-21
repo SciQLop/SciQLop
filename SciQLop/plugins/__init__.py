@@ -1,6 +1,7 @@
+import importlib
 import os
 import traceback
-import importlib
+
 from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject
 
 here = os.path.dirname(os.path.realpath(__file__))

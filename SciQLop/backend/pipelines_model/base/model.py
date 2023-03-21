@@ -5,7 +5,7 @@ from PySide6.QtCore import QModelIndex, QMimeData, QAbstractItemModel, QStringLi
     QObject
 from PySide6.QtGui import QIcon
 
-from SciQLop.backend.pipelines_model.base.pipeline_model_item import QObjectPipelineModelItem, \
+from SciQLop.backend.pipelines_model.base.pipeline_node import QObjectPipelineModelItem, \
     QObjectPipelineModelItemMeta, PipelineModelItem
 
 

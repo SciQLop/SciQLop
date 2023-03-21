@@ -1,7 +1,7 @@
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Signal, QMimeData
-from PySide6.QtWidgets import QDockWidget, QMainWindow
 from PySide6.QtGui import QCloseEvent
+from PySide6.QtWidgets import QDockWidget, QMainWindow
 
 from .drag_and_drop import DropHandler, DropHelper
 from .plots.time_sync_panel import TimeSyncPanel
@@ -30,12 +30,12 @@ class TimeSyncPanelDockWidgetWrapper(QDockWidget):
     def panel(self):
         return self._panel
 
-    def closeEvent(self, event: QCloseEvent) -> bool:
+    def closeEvent(self, event: QCloseEvent):
+        event.accept()
         self.closed.emit(self.windowTitle())
         if self._panel is not None:
             self._panel.delete_node()
         self.deleteLater()
-        return True
 
 
 class CentralWidget(QtWidgets.QMainWindow):
@@ -88,6 +88,11 @@ class CentralWidget(QtWidgets.QMainWindow):
         if name in self._panels:
             self._panels.pop(name)
         self.panels_list_changed.emit(self.panels())
+
+    def closeEvent(self, event: QCloseEvent):
+        event.accept()
+        for p in self._panels.values():
+            p.delete_node()
 
     def panels(self):
         return list(self._panels.keys())

@@ -1,4 +1,4 @@
-from .pipeline_model_item import PipelineModelItem
-from .pipelines import PipelinesModel
+from .model import PipelinesModel
+from .pipeline_node import PipelineModelItem
 
 model = PipelinesModel()

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from PySide6 import QtCore, QtWidgets, QtGui
+from PySide6.QtGui import QCloseEvent
 
 from .central_widget import CentralWidget
 from .console import Console
@@ -74,3 +75,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 self.showNormal()
             else:
                 self.showFullScreen()
+
+    def closeEvent(self, event: QCloseEvent):
+        event.accept()
+        self.central_widget.close()
