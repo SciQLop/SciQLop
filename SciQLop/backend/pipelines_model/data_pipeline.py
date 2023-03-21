@@ -36,10 +36,10 @@ class _DataPipelineWorker(QThread):
                                       datetime.utcfromtimestamp(new_range.stop))
 
     def get_data_task(self, new_range: TimeRange):
+        self.current_range = new_range
         data = self.get_data(new_range)
         if data is not None:
             self.data_callback(data)
-        self.current_range = new_range
 
     def run(self):
         mutex = QMutex()

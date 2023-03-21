@@ -3,7 +3,7 @@ from typing import List
 from PySide6.QtCore import QMimeData, Qt, QMargins, Signal
 from PySide6.QtGui import QColorConstants, QColor, QMouseEvent
 from PySide6.QtWidgets import QVBoxLayout, QFrame
-from SciQLopPlots import QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem, QCPMarginGroup, \
+from SciQLopPlots import SciQLopPlot, QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem, QCPMarginGroup, \
     QCPColorScale
 from seaborn import color_palette
 
@@ -14,7 +14,7 @@ from SciQLop.backend.pipelines_model.base.pipeline_node import QWidgetPipelineMo
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.data_provider import providers
 from SciQLop.backend.products_model.product_node import ProductNode
-from .colormap_graph import ColorMapGraph, Graph
+from .colormap_graph import ColorMapGraph
 from .line_graph import LineGraph
 from ..drag_and_drop import DropHandler, DropHelper
 from ...backend import Product
@@ -28,7 +28,7 @@ def _to_qcolor(r: float, g: float, b: float):
     return QColor(int(r * 255), int(g * 255), int(b * 255))
 
 
-def _configure_plot(plot: QCustomPlot):
+def _configure_plot(plot: SciQLopPlot):
     plot.setPlottingHint(QCP.phFastPolylines, True)
     plot.setInteractions(
         QCP.iRangeDrag | QCP.iRangeZoom | QCP.iSelectPlottables | QCP.iSelectAxes | QCP.iSelectLegend | QCP.iSelectItems)
@@ -57,9 +57,10 @@ class TimeSeriesPlot(QFrame, QWidgetPipelineModelItem, metaclass=QWidgetPipeline
 
     def __init__(self, parent=None):
         QFrame.__init__(self, parent)
-        QWidgetPipelineModelItem.__init__(self, f"Plot")
+        with pipelines.model_update_ctx():
+            QWidgetPipelineModelItem.__init__(self, f"Plot")
         self._parent = parent
-        self._plot = QCustomPlot(self)
+        self._plot = SciQLopPlot(self)
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(self._plot)
         self.setMinimumHeight(300)
@@ -99,6 +100,10 @@ class TimeSeriesPlot(QFrame, QWidgetPipelineModelItem, metaclass=QWidgetPipeline
 
     def set_margin_group(self, margin_group: QCPMarginGroup):
         self._plot.axisRect(0).setMarginGroup(QCP.msLeft, margin_group)
+
+    @property
+    def plot_instance(self):
+        return self._plot
 
     @property
     def xAxis(self):
@@ -191,8 +196,8 @@ class TimeSeriesPlot(QFrame, QWidgetPipelineModelItem, metaclass=QWidgetPipeline
         self.setStyleSheet("")
 
     @property
-    def children_nodes(self) -> List[Graph]:
-        return list(filter(lambda c: isinstance(c, Graph), self.children()))
+    def children_nodes(self) -> List[PipelineModelItem]:
+        return list(filter(lambda c: isinstance(c, PipelineModelItem), self.children()))
 
     @property
     def parent_node(self) -> PipelineModelItem:
