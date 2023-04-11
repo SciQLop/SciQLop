@@ -62,7 +62,9 @@ class PipelineModelItem(ABC):
     @property
     def row(self) -> int:
         if self.parent_node is not None:
-            return self.parent_node.index_of(self)
+            for i, node in enumerate(self.parent_node.children_nodes):
+                if self is node:
+                    return i
         return 0
 
     @property
