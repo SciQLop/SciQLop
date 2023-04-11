@@ -1,9 +1,11 @@
-import tscat
-from tscat_gui import TSCatGUI
-from PySide6.QtWidgets import QComboBox
-from PySide6.QtGui import QAction, QIcon
-from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject
 from datetime import datetime
+
+import tscat
+from PySide6.QtCore import Slot, QObject
+from PySide6.QtGui import QAction, QIcon
+from PySide6.QtWidgets import QComboBox, QToolBar
+from tscat_gui import TSCatGUI
+
 from SciQLop.widgets.mainwindow import SciQLopMainWindow
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel, TimeRange
 
@@ -79,10 +81,11 @@ class Plugin(QObject):
         self.show_catalog = CatalogGUISpawner(self.ui)
         self.main_window = main_window
         self.last_event = None
+        self.toolbar: QToolBar = main_window.addToolBar("Catalogs")
 
-        main_window.toolBar.addAction(self.show_catalog)
-        main_window.toolBar.addWidget(self.catalog_selector)
-        main_window.toolBar.addWidget(self.panel_selector)
+        self.toolbar.addAction(self.show_catalog)
+        self.toolbar.addWidget(self.catalog_selector)
+        self.toolbar.addWidget(self.panel_selector)
 
         main_window.central_widget.panels_list_changed.connect(self.panel_selector.update_list)
 
@@ -105,5 +108,4 @@ class Plugin(QObject):
                     # self.last_event = EventTimeSpan(p, *timestamps(e.start, e.stop))
 
 
-def load(main_window: SciQLopMainWindow):
-    return Plugin(main_window)
+

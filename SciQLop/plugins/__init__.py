@@ -68,6 +68,7 @@ def background_load(plugin, main_window):
 
 
 def load_all(main_window):
-    plugin_list = [f[:-3] for f in os.listdir(here) if f[-3:] == '.py' and f != '__init__.py']
+    plugin_list = [f[:-3] for f in os.listdir(here) if f[-3:] == '.py' and f != '__init__.py'] + \
+                  [f for f in os.listdir(here) if os.path.isdir(f"{here}/{f}") and not f.startswith('_')]
     print(plugin_list)
     return [background_load(plugin, main_window) for plugin in plugin_list]
