@@ -12,9 +12,12 @@ from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
 from ...backend import Product
 from ...backend import TimeRange
 from ...backend import listify
+from ...backend import logging
 from ...backend.models import pipelines
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE
+
+log = logging.getLogger(__name__)
 
 
 class _TimeSyncPanelContainer(QWidget):
@@ -49,7 +52,8 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None):
         QScrollArea.__init__(self, parent)
-        QWidgetPipelineModelItem.__init__(self, name)
+        with pipelines.model_update_ctx():
+            QWidgetPipelineModelItem.__init__(self, name)
         pipelines.add_add_panel(self)
         self.setContentsMargins(0, 0, 0, 0)
         self._name = name
@@ -152,6 +156,7 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
         self.setStyleSheet("")
 
     def delete_node(self):
+        log.debug(f"deleting node {type(self)}:{self.name}")
         with pipelines.model_update_ctx():
             self.parent_node.remove_child(self)
             children = self.children_nodes

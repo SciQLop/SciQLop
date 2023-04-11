@@ -40,6 +40,7 @@ class CatalogSelector(QComboBox):
         super(CatalogSelector, self).__init__(parent)
         self.catalogs = [None]
         self.update_list()
+        self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
 
     def update_list(self):
         selected = self.catalogs[self.currentIndex()]
@@ -53,6 +54,7 @@ class PanelSelector(QComboBox):
     def __init__(self, parent=None):
         super(PanelSelector, self).__init__(parent)
         self.addItems(["None"])
+        self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
 
     def update_list(self, panels):
         selected = self.currentText()
@@ -106,6 +108,3 @@ class Plugin(QObject):
                 if p:
                     p.time_range = time_range
                     # self.last_event = EventTimeSpan(p, *timestamps(e.start, e.stop))
-
-
-

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod, ABCMeta
-from typing import List, Optional
+from typing import List
 
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import QWidget
@@ -116,6 +116,7 @@ class QObjectPipelineModelItem(PipelineModelItem):
         return self.children()
 
     def delete_node(self: QObject):
+        log.debug(f"deleting node {type(self)}:{self.name}")
         self.deleteLater()
 
 

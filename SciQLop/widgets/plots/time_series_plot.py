@@ -3,7 +3,8 @@ from typing import List
 from PySide6.QtCore import QMimeData, Qt, QMargins, Signal
 from PySide6.QtGui import QColorConstants, QColor, QMouseEvent
 from PySide6.QtWidgets import QVBoxLayout, QFrame
-from SciQLopPlots import SciQLopPlot, QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem, QCPMarginGroup, \
+from SciQLopPlots import SciQLopPlot, QCustomPlot, QCP, QCPAxisTickerDateTime, QCPLegend, QCPAbstractLegendItem, \
+    QCPMarginGroup, \
     QCPColorScale
 from seaborn import color_palette
 
@@ -20,6 +21,7 @@ from ..drag_and_drop import DropHandler, DropHelper
 from ...backend import Product
 from ...backend import TimeRange
 from ...backend.enums import ParameterType
+from ...backend.unique_names import make_simple_incr_name
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
 
@@ -56,9 +58,9 @@ class TimeSeriesPlot(QFrame, QWidgetPipelineModelItem, metaclass=QWidgetPipeline
     _time_range: TimeRange = TimeRange(0., 0.)
 
     def __init__(self, parent=None):
-        QFrame.__init__(self, parent)
+        QFrame.__init__(self, parent=parent)
         with pipelines.model_update_ctx():
-            QWidgetPipelineModelItem.__init__(self, f"Plot")
+            QWidgetPipelineModelItem.__init__(self, make_simple_incr_name(base="Plot"))
         self._parent = parent
         self._plot = SciQLopPlot(self)
         self.setLayout(QVBoxLayout())

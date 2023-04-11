@@ -93,15 +93,6 @@ class PipelinesModel(QAbstractItemModel):
     def columnCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:
         return parent.internalPointer().column_count if parent.isValid() else self._root.column_count  # type: ignore
 
-    def canFetchMore(self, parent: QModelIndex or QPersistentModelIndex) -> bool:
-        if not parent.isValid():
-            return False
-        item: PipelineModelItem = parent.internalPointer()
-        return item.child_count > 0
-
-    def fetchMore(self, parent: QModelIndex or QPersistentModelIndex) -> None:
-        pass
-
     def data(self, index: QModelIndex | QPersistentModelIndex, role: int = ...) -> Any:
         if index.isValid():
             item: PipelineModelItem = index.internalPointer()

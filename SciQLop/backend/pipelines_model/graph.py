@@ -50,6 +50,7 @@ class Graph(QObject, QObjectPipelineModelItem, metaclass=QObjectPipelineModelIte
         pass
 
     def delete_node(self):
+        log.debug(f"deleting node {type(self)}:{self.name}")
         with pipelines.model_update_ctx():
             self.xRangeChanged.disconnect()
             if self._graph is not None:
