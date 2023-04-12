@@ -25,9 +25,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.central_widget = CentralWidget(self, time_range=default_time_range)
         self.setCentralWidget(self.central_widget)
         self.productTree = PyProductTree(self)
-        self.add_left_pan(self.productTree)
+        self.add_side_pan(self.productTree)
         self.pipelinesTree = PipelineTree(self)
-        self.add_left_pan(self.pipelinesTree)
+        self.add_side_pan(self.pipelinesTree)
         self.console = Console(parent=self, available_vars={"main_window": self},
                                custom_banner="SciQLop IPython Console ")
         self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.console)
@@ -51,14 +51,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._statusbar)
 
-    def add_left_pan(self, widget):
+    def add_side_pan(self, widget):
         widget.setMinimumWidth(100)
-        self.addWidgetIntoDock(QtCore.Qt.LeftDockWidgetArea, widget)
+        self.addWidgetIntoDock(QtCore.Qt.LeftDockWidgetArea, widget,
+                               QtCore.Qt.LeftDockWidgetArea | QtCore.Qt.RightDockWidgetArea)
 
-    def addWidgetIntoDock(self, area, widget):
+    def addWidgetIntoDock(self, area, widget, allowed_area=QtCore.Qt.AllDockWidgetAreas):
         if widget is not None:
             doc = QtWidgets.QDockWidget(self)
-            doc.setAllowedAreas(area)
+            doc.setAllowedAreas(allowed_area)
             doc.setWidget(widget)
             doc.setWindowTitle(widget.windowTitle())
             self.addDockWidget(area, doc)

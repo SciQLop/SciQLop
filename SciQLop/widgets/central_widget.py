@@ -1,3 +1,5 @@
+from typing import List
+
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Signal, QMimeData
 from PySide6.QtGui import QCloseEvent
@@ -94,5 +96,5 @@ class CentralWidget(QtWidgets.QMainWindow):
         for p in self._panels.values():
             p.delete_node()
 
-    def panels(self):
+    def panels(self) -> List[str]:
         return list(self._panels.keys())
