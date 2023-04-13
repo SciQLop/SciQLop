@@ -1,7 +1,4 @@
-from typing import Dict, Any
-
 from PySide6.QtCore import QSize
-from PySide6.QtWidgets import QDockWidget
 from qtconsole.inprocess import QtInProcessKernelManager
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
@@ -48,7 +45,7 @@ class IPythonWidget(RichJupyterWidget):
         self.kernel_manager.kernel.shell.push(variable_dict)
 
 
-class Console(QDockWidget):
+class Console(IPythonWidget):
     """Dock Widget including a :class:`IPythonWidget` inside
     a vertical layout.
 
@@ -65,22 +62,9 @@ class Console(QDockWidget):
 
     def __init__(self, parent=None, available_vars=None, custom_banner=None,
                  title="Console"):
-        super(Console, self).__init__(title, parent)
-
-        self.ipyconsole = IPythonWidget(custom_banner=custom_banner)
+        super(Console, self).__init__(parent, custom_banner=custom_banner)
 
         self.layout().setContentsMargins(0, 0, 0, 0)
-        self.setWidget(self.ipyconsole)
 
         if available_vars is not None:
-            self.ipyconsole.pushVariables(available_vars)
-
-    def pushVariables(self, variables: Dict[str, Any]):
-        self.ipyconsole.pushVariables(variables)
-
-    def showEvent(self, event):
-        """Make sure this widget is raised when it is shown
-        (when it is first created as a tab in PlotWindow or when it is shown
-        again after hiding).
-        """
-        self.raise_()
+            self.pushVariables(available_vars)

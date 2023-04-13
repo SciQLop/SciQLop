@@ -110,6 +110,7 @@ class LightweightManager(QWidget):
 
         self.catalog_selector.catalog_selected.connect(self.catalog_selected)
         self.update_panels_list.connect(self.panel_selector.update_list)
+        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
     @Slot()
     def catalog_selected(self, catalogs: List[CatalogItem]):

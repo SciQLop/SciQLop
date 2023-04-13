@@ -1,9 +1,9 @@
 from typing import List
 
-from PySide6 import QtCore, QtWidgets, QtGui
+import PySide6QtAds as QtAds
 from PySide6.QtCore import Signal, QMimeData
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QDockWidget, QMainWindow
+from PySide6.QtWidgets import QWidget
 
 from .drag_and_drop import DropHandler, DropHelper
 from .plots.time_sync_panel import TimeSyncPanel
@@ -13,15 +13,13 @@ from ..mime import decode_mime
 from ..mime.types import PRODUCT_LIST_MIME_TYPE
 
 
-class TimeSyncPanelDockWidgetWrapper(QDockWidget):
+class TimeSyncPanelDockWidgetWrapper(QtAds.CDockWidget):
     closed = Signal(str)
 
     def __init__(self, panel: TimeSyncPanel, parent=None):
-        super(TimeSyncPanelDockWidgetWrapper, self).__init__(parent)
+        super(TimeSyncPanelDockWidgetWrapper, self).__init__(panel.name)
         self._panel = panel
-        self.setAllowedAreas(QtGui.Qt.DockWidgetArea.AllDockWidgetAreas)
         self.setWidget(panel)
-        self.setWindowTitle(panel.name)
         panel.destroyed.connect(self._close)
 
     def _close(self):
@@ -40,14 +38,13 @@ class TimeSyncPanelDockWidgetWrapper(QDockWidget):
         self.deleteLater()
 
 
-class CentralWidget(QtWidgets.QMainWindow):
+class CentralWidget(QWidget):
     panels_list_changed = Signal(list)
 
     def __init__(self, parent, time_range: TimeRange):
-        QMainWindow.__init__(self, parent)
-        self.setWindowFlags(QtCore.Qt.WindowType.Widget)
+        QWidget.__init__(self, parent)
+        self.dock_manager = QtAds.CDockManager(self)
         self.setWindowTitle("Plot area")
-        self.setDockNestingEnabled(True)
         self.setMinimumSize(200, 200)
         self._panels = {}
         self._default_time_range = time_range
@@ -73,7 +70,7 @@ class CentralWidget(QtWidgets.QMainWindow):
                                              time_range=self._default_time_range)
         panel.time_range = self._default_time_range
         dw = TimeSyncPanelDockWidgetWrapper(panel=panel, parent=self)
-        self.addDockWidget(QtGui.Qt.DockWidgetArea.TopDockWidgetArea, dw)
+        self.dock_manager.addDockWidget(QtAds.DockWidgetArea.TopDockWidgetArea, dw)
         self._panels[panel.name] = panel
         dw.closed.connect(self.remove_panel)
         self.panels_list_changed.emit(self.panels())

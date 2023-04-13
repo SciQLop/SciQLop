@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import PySide6QtAds as QtAds
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtGui import QCloseEvent
+from PySide6.QtWidgets import QWidget, QSizePolicy
 
 from .central_widget import CentralWidget
 from .console import Console
@@ -37,7 +38,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.add_side_pan(self.pipelinesTree)
         self.console = Console(parent=self, available_vars={"main_window": self},
                                custom_banner="SciQLop IPython Console ")
-        self.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.console)
+        self.addWidgetIntoDock(QtAds.BottomDockWidgetArea, self.console)
         self.setWindowTitle("SciQLop")
         self.toolBar = QtWidgets.QToolBar(self)
         self.toolBar.setWindowTitle("Toolbar")
@@ -58,11 +59,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._statusbar)
 
-    def add_side_pan(self, widget):
+    def add_side_pan(self, widget: QWidget):
         if widget is not None:
             widget.setMinimumWidth(100)
+            widget.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
             doc = QtAds.CDockWidget(widget.windowTitle())
             doc.setWidget(widget)
+            doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
+            doc.setMinimumWidth(100)
             self.dock_manager.addAutoHideDockWidget(QtAds.PySide6QtAds.ads.SideBarLocation.SideBarLeft, doc)
 
     def addWidgetIntoDock(self, area, widget, allowed_area=QtAds.AllDockAreas):
