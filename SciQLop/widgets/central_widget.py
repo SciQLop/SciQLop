@@ -1,9 +1,9 @@
 from typing import List
 
 import PySide6QtAds as QtAds
-from PySide6.QtCore import Signal, QMimeData
+from PySide6.QtCore import Signal, QMimeData, Qt
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QWidget, QMainWindow
 
 from .drag_and_drop import DropHandler, DropHelper
 from .plots.time_sync_panel import TimeSyncPanel
@@ -38,11 +38,12 @@ class TimeSyncPanelDockWidgetWrapper(QtAds.CDockWidget):
         self.deleteLater()
 
 
-class CentralWidget(QWidget):
+class CentralWidget(QMainWindow):
     panels_list_changed = Signal(list)
 
     def __init__(self, parent, time_range: TimeRange):
-        QWidget.__init__(self, parent)
+        QMainWindow.__init__(self, parent)
+        self.setWindowFlags(Qt.WindowType.Widget)
         self.dock_manager = QtAds.CDockManager(self)
         self.setWindowTitle("Plot area")
         self.setMinimumSize(200, 200)
