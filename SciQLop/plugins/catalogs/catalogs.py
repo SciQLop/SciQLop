@@ -9,22 +9,6 @@ from SciQLop.widgets.mainwindow import SciQLopMainWindow
 from .lightweight_manager import LightweightManager
 
 
-def catalog_display_txt(catalog):
-    if catalog is not None:
-        return catalog.name
-    return "None"
-
-
-def index_of(catalogs, catalog):
-    index = 0
-    if catalog:
-        for c in catalogs:
-            if (c is not None) and (c.uuid == catalog.uuid):
-                return index
-            index += 1
-    return 0
-
-
 def zoom_out(start: datetime, stop: datetime, factor: float):
     delta = ((stop - start) / 2.) * factor
     return start - delta, stop + delta
