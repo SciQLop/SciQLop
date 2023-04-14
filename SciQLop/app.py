@@ -14,13 +14,14 @@ QWidget:focus { border: 1px dashed light blue }
 
 
 def main():
-    from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL
+    from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml
+    import PySide6QtAds
     from SciQLop.widgets.mainwindow import SciQLopMainWindow
     from SciQLop.plugins import load_all
     from SciQLop.resources import icons
     from SciQLop.backend import logging
     logging.setup()
-    logging.getLogger().info(str(icons) + str(QtPrintSupport) + str(QtOpenGL))
+    logging.getLogger().info(str(icons) + str(QtPrintSupport) + str(QtOpenGL) + str(QtQml) + str(PySide6QtAds))
 
     class SciQLopApp(QtWidgets.QApplication):
         def __init__(self, args):
