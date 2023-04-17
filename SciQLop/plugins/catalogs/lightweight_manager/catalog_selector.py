@@ -49,8 +49,9 @@ class CatalogSelector(QListView):
         selected_catalog = self.catalogs[item.data(Qt.UserRole)]
         if selected_catalog:
             if item.checkState() == Qt.CheckState.Checked:
-                self._selected_catalogs.append(selected_catalog)
-                self.catalog_selected.emit(self._selected_catalogs)
+                if selected_catalog not in self._selected_catalogs:
+                    self._selected_catalogs.append(selected_catalog)
+                    self.catalog_selected.emit(self._selected_catalogs)
             else:
                 if selected_catalog in self._selected_catalogs:
                     self._selected_catalogs.remove(selected_catalog)

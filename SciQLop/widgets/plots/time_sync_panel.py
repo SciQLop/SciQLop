@@ -21,6 +21,8 @@ log = logging.getLogger(__name__)
 
 
 class _TimeSyncPanelContainer(QWidget):
+    plot_list_changed = Signal()
+
     def __init__(self, parent=None):
         QWidget.__init__(self, parent=parent)
         self._margin_group = QCPMarginGroup(None)
@@ -35,6 +37,8 @@ class _TimeSyncPanelContainer(QWidget):
         self.layout().insertWidget(index, widget)
         if isinstance(widget, TimeSeriesPlot):
             widget.set_margin_group(self._margin_group)
+            widget.destroyed.connect(lambda: self.plot_list_changed.emit())
+            self.plot_list_changed.emit()
 
     def count(self) -> int:
         return self.layout().count()
@@ -49,6 +53,7 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
     time_range_changed = Signal(TimeRange)
     _time_range: TimeRange = TimeRange(0., 0.)
     delete_me = Signal()
+    plot_list_changed = Signal()
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None):
         QScrollArea.__init__(self, parent)
@@ -68,6 +73,8 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
         self._place_holder_manager = PlaceHolderManager(self,
                                                         handlers=[DropHandler(mime_type=PRODUCT_LIST_MIME_TYPE,
                                                                               callback=self._insert_plots)])
+
+        self._plot_container.plot_list_changed.connect(self.plot_list_changed)
 
     @property
     def parent_node(self: QWidget) -> 'PipelineModelItem':
@@ -89,6 +96,10 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
                 p.time_range = time_range
             self.time_range_changed.emit(time_range)
 
+    @property
+    def time_spans(self):
+        return self._spans
+
     def __repr__(self):
         return f"TimeSyncPanel: {self._name}"
 
@@ -109,6 +120,10 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
 
     @property
     def children_nodes(self) -> List[TimeSeriesPlot]:
+        return self._plot_container.plots
+
+    @property
+    def plots(self) -> List[TimeSeriesPlot]:
         return self._plot_container.plots
 
     def _insert_plots(self, mime_data: QMimeData, placeholder: QWidget) -> bool:

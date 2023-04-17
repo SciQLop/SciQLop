@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import PySide6QtAds as QtAds
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QWidget, QSizePolicy
+from PySide6.QtWidgets import QWidget, QSizePolicy, QMenu
 
 from .central_widget import CentralWidget
 from .console import Console
@@ -23,6 +23,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def _setup_ui(self):
         QtAds.CDockManager.setAutoHideConfigFlag(QtAds.CDockManager.DefaultAutoHideConfig)
         self.dock_manager = QtAds.CDockManager(self)
+        self._menubar = QtWidgets.QMenuBar(self)
+        self.setMenuBar(self._menubar)
+        self._menubar.setGeometry(QtCore.QRect(0, 0, 615, 23))
+        self._menubar.setDefaultUp(True)
+        self.viewMenu = QMenu("View")
+        self._menubar.addMenu(self.viewMenu)
 
         default_time_range = TimeRange((datetime.utcnow() - timedelta(days=361)).timestamp(),
                                        (datetime.utcnow() - timedelta(days=360)).timestamp())
@@ -52,10 +58,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolBar.addAction(self.addTSPanel)
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
         self.resize(1024, 768)
-        self._menubar = QtWidgets.QMenuBar(self)
-        self.setMenuBar(self._menubar)
-        self._menubar.setGeometry(QtCore.QRect(0, 0, 615, 23))
-        self._menubar.setDefaultUp(True)
+
         self._statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._statusbar)
 
@@ -68,6 +71,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
             doc.setMinimumWidth(100)
             self.dock_manager.addAutoHideDockWidget(QtAds.PySide6QtAds.ads.SideBarLocation.SideBarLeft, doc)
+            self.viewMenu.addAction(doc.toggleViewAction())
 
     def addWidgetIntoDock(self, area, widget, allowed_area=QtAds.AllDockAreas):
         if widget is not None:
@@ -91,3 +95,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def closeEvent(self, event: QCloseEvent):
         event.accept()
         self.central_widget.close()
+
+    def push_variables_to_console(self, variables: dict):
+        self.console.pushVariables(variable_dict=variables)

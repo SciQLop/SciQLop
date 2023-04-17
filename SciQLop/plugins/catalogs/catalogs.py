@@ -33,7 +33,7 @@ class Plugin(QObject):
     def __init__(self, main_window: SciQLopMainWindow):
         super(Plugin, self).__init__(main_window)
         self.manager_ui = TSCatGUI()
-        self.lightweight_manager = LightweightManager()
+        self.lightweight_manager = LightweightManager(main_window=main_window)
         self.show_catalog = CatalogGUISpawner(self.manager_ui)
         self.main_window = main_window
         self.last_event = None

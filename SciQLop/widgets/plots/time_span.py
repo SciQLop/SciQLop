@@ -1,20 +1,53 @@
+from typing import List
+
+from PySide6.QtCore import QObject, Signal
 from SciQLopPlots import SciQLopVerticalSpan, QCPRange
 
-from SciQLop.backend.models import pipelines
-from SciQLop.backend.pipelines_model.base.pipeline_node import QObjectPipelineModelItem, QObjectPipelineModelItemMeta
-from .time_series_plot import TimeSeriesPlot
+from .time_sync_panel import TimeSyncPanel
+from ...backend import TimeRange
 
 
-class TimeSpan(SciQLopVerticalSpan, QObjectPipelineModelItem, metaclass=QObjectPipelineModelItemMeta):
+class TimeSpan(QObject):
+    _spans: List[SciQLopVerticalSpan] = []
+    range_changed = Signal(TimeRange)
 
-    def __init__(self, time_range: QCPRange, parent: TimeSeriesPlot = None):
-        SciQLopVerticalSpan.__init__(self, parent.plot_instance, time_range)
-        with pipelines.model_update_ctx():
-            QObjectPipelineModelItem.__init__(self, "TimeSpan")
+    def __init__(self, time_range: TimeRange, plot_panel: TimeSyncPanel, parent=None, visible=True, read_only=False):
+        QObject.__init__(self, parent)
+        self._spans = []
+        self._time_range = time_range
+        self._plot_panel = plot_panel
+        self._visible = visible
+        self.read_only = read_only
+        self._plot_panel.plot_list_changed.connect(self.update_spans)
 
-    def delete_node(self):
-        self.parent_node.plot_instance.removeItem(self._rectangle)
-        self.parent_node.plot_instance.removeItem(self._left_border._line)
-        self.parent_node.plot_instance.removeItem(self._right_border._line)
-        self.parent_node.replot()
-        QObjectPipelineModelItem.delete_node(self)
+    def update_spans(self):
+        if self._visible:
+            self._spans = []
+            for plot in self._plot_panel.plots:
+                span = SciQLopVerticalSpan(plot.plot_instance, QCPRange(self._time_range.start, self._time_range.stop))
+                self._spans.append(span)
+                span.set_read_only(self.read_only)
+        else:
+            self._spans = []
+
+    def show(self):
+        self._visible = True
+        self.update_spans()
+
+    def hide(self):
+        self._visible = False
+        self.update_spans()
+
+    @property
+    def read_only(self):
+        return self._read_only
+
+    @read_only.setter
+    def read_only(self, read_only):
+        self._read_only = read_only
+        for s in self._spans:
+            s.set_read_only(read_only)
+
+    @property
+    def time_range(self):
+        return self._time_range

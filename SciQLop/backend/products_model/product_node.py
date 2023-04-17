@@ -36,7 +36,7 @@ class ProductNode:
             raise ValueError("Can't set parent when one is already set")
 
     def __getitem__(self, item: str) -> "ProductNode" or None:
-        return next(iter(filter(lambda n: n._product.name == item, self._children)), None)
+        return next(iter(filter(lambda n: n.name == item, self._children)), None)
 
     @property
     def children(self) -> List['ProductNode']:
@@ -99,3 +99,11 @@ class ProductNode:
     @property
     def str(self):
         return self._str_content
+
+    @property
+    def path(self):
+        if self._parent:
+            parent_path = self._parent.path
+            if parent_path != "":
+                return self.parent.path + "/" + self.name
+        return self.name

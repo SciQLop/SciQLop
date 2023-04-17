@@ -17,7 +17,7 @@ def main():
     from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml
     import PySide6QtAds
     from SciQLop.widgets.mainwindow import SciQLopMainWindow
-    from SciQLop.plugins import load_all
+    from SciQLop.plugins import load_all, loaded_plugins
     from SciQLop.resources import icons
     from SciQLop.backend import logging
     logging.setup()
@@ -34,6 +34,7 @@ def main():
     app = SciQLopApp(sys.argv)
     w = SciQLopMainWindow()
     w.show()
+    w.push_variables_to_console({"plugins": loaded_plugins})
     p = load_all(w)
     app.exec()
 

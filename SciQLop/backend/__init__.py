@@ -43,6 +43,9 @@ class TimeRange:
     def __rmul__(self, other):
         return self.__mul__(other)
 
+    def overlaps(self, other: "TimeRange"):
+        return max(self._start, other._start) <= min(self._stop, other._stop)
+
     def __repr__(self):
         return f"""TimeRange: {self._start}, {self._stop}
 \t{self.datetime_start}, {self.datetime_stop}

@@ -172,11 +172,12 @@ class TimeSeriesPlot(QFrame, QWidgetPipelineModelItem, metaclass=QWidgetPipeline
     def plot(self, product: Product or str):
         if type(product) is str:
             product = products.product(product)
-        if product.parameter_type in (ParameterType.VECTOR, ParameterType.MULTICOMPONENT, ParameterType.SCALAR):
-            self.add_multi_line_graph(providers[product.provider], product,
-                                      components=product.metadata.get('components') or [product.name])
-        elif product.parameter_type == ParameterType.SPECTROGRAM:
-            self.add_colormap_graph(providers[product.provider], product)
+        if product:
+            if product.parameter_type in (ParameterType.VECTOR, ParameterType.MULTICOMPONENT, ParameterType.SCALAR):
+                self.add_multi_line_graph(providers[product.provider], product,
+                                          components=product.metadata.get('components') or [product.name])
+            elif product.parameter_type == ParameterType.SPECTROGRAM:
+                self.add_colormap_graph(providers[product.provider], product)
 
     def add_multi_line_graph(self, provider: DataProvider, product: ProductNode, components: List[str]):
         graph = LineGraph(parent=self, provider=provider, product=product)

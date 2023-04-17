@@ -8,7 +8,6 @@ from PySide6.QtGui import QIcon
 from SciQLop.mime import register_mime, encode_mime
 from SciQLop.mime.types import PRODUCT_LIST_MIME_TYPE
 from .product_node import ProductNode
-import re
 
 
 def for_all_nodes(f, node):
@@ -61,7 +60,7 @@ class ProductsModel(QAbstractItemModel):
         self._icons: Dict[str, QIcon] = {}
         self._mime_data = None
         self._completion_model = QStringListModel(self)
-        self._root = ProductNode(name="root", metadata={}, uid='root', provider="")
+        self._root = ProductNode(name="", metadata={}, uid='root', provider="")
         self.set_filter("")
 
     def set_filter(self, filter_regex: str):
@@ -172,7 +171,7 @@ class ProductsModel(QAbstractItemModel):
 def _mime_encode_product_list(products: List[ProductNode]) -> QMimeData:
     mdata = QMimeData()
     mdata.setData(PRODUCT_LIST_MIME_TYPE, pickle.dumps(list(map(lambda p: p.copy(), products))))
-    mdata.setText(":".join(list(map(lambda p: f"{p.provider}/{p.uid}", products))))
+    mdata.setText(":".join(list(map(lambda p: f"{p.path}", products))))
     return mdata
 
 

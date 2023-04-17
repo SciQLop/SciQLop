@@ -3,7 +3,7 @@ from typing import List
 import PySide6QtAds as QtAds
 from PySide6.QtCore import Signal, QMimeData, Qt
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QWidget, QMainWindow
+from PySide6.QtWidgets import QMainWindow
 
 from .drag_and_drop import DropHandler, DropHelper
 from .plots.time_sync_panel import TimeSyncPanel
@@ -62,9 +62,9 @@ class CentralWidget(QMainWindow):
         return True
 
     def plot_panel(self, name: str) -> TimeSyncPanel or None:
-        for w in list(filter(lambda w: isinstance(w, TimeSyncPanelDockWidgetWrapper)), self.children()):
-            if w.name == name:
-                return w.panel
+        widgets = self.dock_manager.dockWidgetsMap()
+        if name in widgets:
+            return widgets[name].panel
 
     def new_plot_panel(self) -> TimeSyncPanel:
         panel: TimeSyncPanel = TimeSyncPanel(name=make_simple_incr_name(base="Panel"),
