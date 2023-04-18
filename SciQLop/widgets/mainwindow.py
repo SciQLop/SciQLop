@@ -33,6 +33,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         default_time_range = TimeRange((datetime.utcnow() - timedelta(days=361)).timestamp(),
                                        (datetime.utcnow() - timedelta(days=360)).timestamp())
         self.central_widget = CentralWidget(self, time_range=default_time_range)
+        self.central_widget.dock_widget_added.connect(lambda dw: self.viewMenu.addAction(dw.toggleViewAction()))
         central_dock_widget = QtAds.CDockWidget("Plot Area")
         central_dock_widget.setWidget(self.central_widget)
         central_dock_area = self.dock_manager.setCentralWidget(central_dock_widget)
@@ -78,6 +79,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             doc = QtAds.CDockWidget(widget.windowTitle())
             doc.setWidget(widget)
             self.dock_manager.addDockWidget(area, doc)
+            self.viewMenu.addAction(doc.toggleViewAction())
 
     def new_plot_panel(self) -> TimeSyncPanel:
         return self.central_widget.new_plot_panel()

@@ -21,6 +21,7 @@ class TimeSyncPanelDockWidgetWrapper(QtAds.CDockWidget):
         self._panel = panel
         self.setWidget(panel)
         panel.destroyed.connect(self._close)
+        self.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
 
     def _close(self):
         self._panel = None
@@ -40,6 +41,7 @@ class TimeSyncPanelDockWidgetWrapper(QtAds.CDockWidget):
 
 class CentralWidget(QMainWindow):
     panels_list_changed = Signal(list)
+    dock_widget_added = Signal(TimeSyncPanelDockWidgetWrapper)
 
     def __init__(self, parent, time_range: TimeRange):
         QMainWindow.__init__(self, parent)
@@ -75,6 +77,7 @@ class CentralWidget(QMainWindow):
         self._panels[panel.name] = panel
         dw.closed.connect(self.remove_panel)
         self.panels_list_changed.emit(self.panels())
+        self.dock_widget_added.emit(dw)
         return panel
 
     def set_default_time_range(self, time_range: TimeRange):
