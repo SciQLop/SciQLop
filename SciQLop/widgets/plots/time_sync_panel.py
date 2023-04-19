@@ -1,21 +1,21 @@
 from datetime import datetime
 from typing import Optional, List
 
-from PySide6.QtCore import QMimeData, Signal
+from PySide6.QtCore import QMimeData, Signal, Qt
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
 from SciQLopPlots import QCPMarginGroup
 
-from SciQLop.backend.pipelines_model.base.pipeline_node import QWidgetPipelineModelItem, \
-    QWidgetPipelineModelItemMeta
 from .time_series_plot import TimeSeriesPlot
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
 from ...backend import Product
+from SciQLop.backend.pipelines_model.base import PipelineModelItem
+from SciQLop.backend.pipelines_model.base import model as pipelines_model
 from ...backend import TimeRange
 from ...backend import listify
 from ...backend import logging
-from ...backend.models import pipelines
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE
+from SciQLop.backend.pipelines_model.auto_register import auto_register
 
 log = logging.getLogger(__name__)
 
@@ -37,11 +37,14 @@ class _TimeSyncPanelContainer(QWidget):
         self.layout().insertWidget(index, widget)
         if isinstance(widget, TimeSeriesPlot):
             widget.set_margin_group(self._margin_group)
-            widget.destroyed.connect(lambda: self.plot_list_changed.emit())
+            widget.destroyed.connect(self.plot_list_changed)
             self.plot_list_changed.emit()
 
     def count(self) -> int:
         return self.layout().count()
+
+    def remove_plot(self, plot: TimeSeriesPlot):
+        self.layout().removeWidget(plot)
 
     @property
     def plots(self) -> List[TimeSeriesPlot]:
@@ -49,17 +52,20 @@ class _TimeSyncPanelContainer(QWidget):
                            map(lambda i: self.layout().itemAt(i).widget(), range(self.layout().count()))))
 
 
-class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipelineModelItemMeta):
+class MetaTimeSyncPanel(type(QScrollArea), type(PipelineModelItem)):
+    pass
+
+
+@auto_register
+class TimeSyncPanel(QScrollArea, PipelineModelItem, metaclass=MetaTimeSyncPanel):
     time_range_changed = Signal(TimeRange)
     _time_range: TimeRange = TimeRange(0., 0.)
-    delete_me = Signal()
+    delete_me = Signal(object)
     plot_list_changed = Signal()
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None):
         QScrollArea.__init__(self, parent)
-        with pipelines.model_update_ctx():
-            QWidgetPipelineModelItem.__init__(self, name)
-        pipelines.add_add_panel(self)
+        self.setObjectName(name)
         self.setContentsMargins(0, 0, 0, 0)
         self._name = name
         self._plot_container = _TimeSyncPanelContainer(self)
@@ -75,14 +81,7 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
                                                                               callback=self._insert_plots)])
 
         self._plot_container.plot_list_changed.connect(self.plot_list_changed)
-
-    @property
-    def parent_node(self: QWidget) -> 'PipelineModelItem':
-        return pipelines.root_node
-
-    @parent_node.setter
-    def parent_node(self, parent):
-        pass
+        self._parent_node = None
 
     @property
     def time_range(self) -> TimeRange:
@@ -95,6 +94,15 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
             for p in self._plot_container.plots:
                 p.time_range = time_range
             self.time_range_changed.emit(time_range)
+
+    @property
+    def name(self):
+        return self.objectName()
+
+    @name.setter
+    def name(self, new_name):
+        with pipelines_model.model_update_ctx():
+            self.setObjectName(new_name)
 
     @property
     def time_spans(self):
@@ -119,10 +127,6 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
         return None
 
     @property
-    def children_nodes(self) -> List[TimeSeriesPlot]:
-        return self._plot_container.plots
-
-    @property
     def plots(self) -> List[TimeSeriesPlot]:
         return self._plot_container.plots
 
@@ -140,10 +144,11 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
 
     def _plot(self, product: Product or str, index: int) -> bool:
         if product is not None:
-            p = TimeSeriesPlot(self)
+            p = TimeSeriesPlot(parent=self)
             p.time_range_changed.connect(lambda time_range: TimeSyncPanel.time_range.fset(self, time_range))
             p.time_range = self.time_range
             self._plot_container.add_widget(p, index)
+            p.parent_node = self
             p.plot(product)
             p.parent_place_holder_manager = self._place_holder_manager
             return True
@@ -170,11 +175,39 @@ class TimeSyncPanel(QScrollArea, QWidgetPipelineModelItem, metaclass=QWidgetPipe
     def unselect(self):
         self.setStyleSheet("")
 
+    def __del__(self):
+        print("lkdslkdf")
+
+    def __eq__(self, other: 'PipelineModelItem') -> bool:
+        return self is other
+
+    @property
+    def icon(self) -> str:
+        return ""
+
+    @property
+    def parent_node(self) -> 'PipelineModelItem':
+        return self._parent_node
+
+    @parent_node.setter
+    def parent_node(self, parent: 'PipelineModelItem'):
+        with pipelines_model.model_update_ctx():
+            if self._parent_node is not None:
+                self._parent_node.remove_children_node(self)
+            self._parent_node = parent
+            if parent is not None:
+                parent.add_children_node(self)
+
+    @property
+    def children_nodes(self) -> List['PipelineModelItem']:
+        return self._plot_container.plots
+
+    def remove_children_node(self, node: 'PipelineModelItem'):
+        self._plot_container.remove_plot(node)
+
+    def add_children_node(self, node: 'PipelineModelItem'):
+        pass
+
     def delete_node(self):
-        log.debug(f"deleting node {type(self)}:{self.name}")
-        with pipelines.model_update_ctx():
-            self.parent_node.remove_child(self)
-            children = self.children_nodes
-            for child in children:
-                child.delete_node()
-            super(TimeSyncPanel, self).delete_node()
+        self._plot_container.close()
+        self.delete_me.emit(self)

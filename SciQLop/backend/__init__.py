@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from SciQLopPlots import QCPRange
+
 from .products_model.product_node import ProductNode as Product
 
 
@@ -15,6 +17,10 @@ class TimeRange:
     def __init__(self, start: float, stop: float):
         self._start = start
         self._stop = stop
+
+    @staticmethod
+    def from_qcprange(qcprange: QCPRange):
+        return TimeRange(qcprange.lower, qcprange.upper)
 
     @property
     def start(self):

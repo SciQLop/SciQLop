@@ -1,30 +1,86 @@
 from contextlib import ContextDecorator
-from typing import Dict, Any, Sequence, List
+from typing import Dict, Any, Sequence, List, Protocol
+from abc import ABCMeta
 
 from PySide6.QtCore import QModelIndex, QMimeData, QAbstractItemModel, QStringListModel, QPersistentModelIndex, Qt, \
     QObject
 from PySide6.QtGui import QIcon
 
-from SciQLop.backend.pipelines_model.base.pipeline_node import QObjectPipelineModelItem, \
-    QObjectPipelineModelItemMeta, PipelineModelItem
+from SciQLop.backend.pipelines_model.base.pipeline_node import PipelineModelItem
 
 
-class RootNode(QObjectPipelineModelItem, QObject, metaclass=QObjectPipelineModelItemMeta):
+class RootNodeItemMeta(type(QObject), type(PipelineModelItem)):
+    pass
+
+
+class RootNode(QObject, PipelineModelItem, metaclass=RootNodeItemMeta):
     def __init__(self):
         QObject.__init__(self, None)
-        QObjectPipelineModelItem.__init__(self, "root")
-        self._children = []
+        self.setObjectName("root")
+        self._children: List['PipelineModelItem'] = []
 
-    def append_child(self, child: PipelineModelItem):
-        self._children.append(child)
-        child.parent_node = self
+    @property
+    def name(self) -> str:
+        return self.objectName()
 
-    def remove_child(self, child):
-        self._children.remove(child)
+    @name.setter
+    def name(self, new_name: str):
+        pass
+
+    @property
+    def parent_node(self) -> 'QObject':
+        return None
+
+    @parent_node.setter
+    def parent_node(self, parent: 'QObject'):
+        pass
 
     @property
     def children_nodes(self) -> List['PipelineModelItem']:
         return self._children
+
+    def index_of(self, child: 'PipelineModelItem') -> int:
+        return self.children_nodes.index(child)
+
+    def child_node_at(self, row: int) -> 'PipelineModelItem' or None:
+        if 0 <= row < len(self.children_nodes):
+            return self.children_nodes[row]
+        return None
+
+    def remove_children_node(self, node: 'PipelineModelItem'):
+        self._children.remove(node)
+
+    def add_children_node(self, node: 'PipelineModelItem'):
+        self._children.append(node)
+
+    @property
+    def row(self) -> int:
+        if self.parent_node is not None:
+            for i, node in enumerate(self.parent_node.children_nodes):
+                if self is node:
+                    return i
+        return 0
+
+    @property
+    def child_count(self) -> int:
+        return len(self.children_nodes)
+
+    @property
+    def column_count(self) -> int:
+        return 1
+
+    def select(self):
+        pass
+
+    def unselect(self):
+        pass
+
+    def delete_node(self):
+        for c in self.children_nodes:
+            c.delete_node()
+
+    def __eq__(self, other: PipelineModelItem) -> bool:
+        return other is self
 
 
 class _model_change_ctx(ContextDecorator):
@@ -52,7 +108,11 @@ class PipelinesModel(QAbstractItemModel):
 
     def add_add_panel(self, panel: PipelineModelItem):
         with self.model_update_ctx():
-            self._root.append_child(panel)
+            panel.parent_node = self._root
+
+    def remove_panel(self, panel: PipelineModelItem):
+        with self.model_update_ctx():
+            panel.parent_node = None
 
     @property
     def root_node(self):
@@ -68,7 +128,8 @@ class PipelinesModel(QAbstractItemModel):
                 parent_item = self._root
             else:
                 parent_item: PipelineModelItem = parent.internalPointer()  # type: ignore
-            child_item: PipelineModelItem = parent_item.child_node_at(row)
+            child_item: PipelineModelItem = parent_item.children_nodes[row] if row < len(
+                parent_item.children_nodes) else None
             if child_item is not None:
                 return self.createIndex(row, column, child_item)
         return QModelIndex()
@@ -79,7 +140,11 @@ class PipelinesModel(QAbstractItemModel):
         child_item: PipelineModelItem = index.internalPointer()  # type: ignore
         parent_item: PipelineModelItem = child_item.parent_node
         if parent_item is not None:
-            return self.createIndex(parent_item.row, 0, parent_item)
+            grand_parent = parent_item.parent_node
+            if grand_parent is not None:
+                return self.createIndex(grand_parent.children_nodes.index(parent_item), 0, parent_item)
+            else:
+                return self.createIndex(0, 0, parent_item)
         return QModelIndex()
 
     def rowCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:
@@ -88,10 +153,10 @@ class PipelinesModel(QAbstractItemModel):
 
         parent_item: PipelineModelItem = self._root if not parent.isValid() else parent.internalPointer()
 
-        return parent_item.child_count
+        return len(parent_item.children_nodes)
 
     def columnCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:
-        return parent.internalPointer().column_count if parent.isValid() else self._root.column_count  # type: ignore
+        return 1  # type: ignore
 
     def data(self, index: QModelIndex | QPersistentModelIndex, role: int = ...) -> Any:
         if index.isValid():
@@ -134,3 +199,10 @@ class PipelinesModel(QAbstractItemModel):
             flags |= Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
             return flags
         return Qt.NoItemFlags
+
+    def close(self):
+        self.delete([self.index(0, 0, QModelIndex())])
+
+    def reset(self):
+        self.beginResetModel()
+        self.endResetModel()

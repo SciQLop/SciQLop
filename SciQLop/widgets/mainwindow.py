@@ -12,6 +12,7 @@ from .pipelines import PipelineTree
 from .plots.time_sync_panel import TimeSyncPanel
 from .products_tree import ProductTree as PyProductTree
 from ..backend import TimeRange
+from SciQLop.backend.models import pipelines
 
 
 class SciQLopMainWindow(QtWidgets.QMainWindow):
@@ -96,7 +97,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def closeEvent(self, event: QCloseEvent):
         event.accept()
-        self.central_widget.close()
+        pipelines.close()
 
     def push_variables_to_console(self, variables: dict):
         self.console.pushVariables(variable_dict=variables)

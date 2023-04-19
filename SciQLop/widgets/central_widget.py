@@ -1,7 +1,7 @@
 from typing import List
 
 import PySide6QtAds as QtAds
-from PySide6.QtCore import Signal, QMimeData, Qt
+from PySide6.QtCore import Signal, QMimeData, Qt, Slot
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QMainWindow
 
@@ -9,6 +9,7 @@ from .drag_and_drop import DropHandler, DropHelper
 from .plots.time_sync_panel import TimeSyncPanel
 from ..backend import TimeRange
 from ..backend.unique_names import make_simple_incr_name
+from ..backend.models import pipelines
 from ..mime import decode_mime
 from ..mime.types import PRODUCT_LIST_MIME_TYPE
 
@@ -16,27 +17,29 @@ from ..mime.types import PRODUCT_LIST_MIME_TYPE
 class TimeSyncPanelDockWidgetWrapper(QtAds.CDockWidget):
     closed = Signal(str)
 
-    def __init__(self, panel: TimeSyncPanel, parent=None):
-        super(TimeSyncPanelDockWidgetWrapper, self).__init__(panel.name)
-        self._panel = panel
+    def __init__(self, name, time_range, parent=None):
+        super(TimeSyncPanelDockWidgetWrapper, self).__init__(name)
+        panel = TimeSyncPanel(parent=None, name=name,
+                              time_range=time_range)
+        panel.time_range = time_range
+        # self._panel.please_delete_me.connect(self._panel_asked_to_be_deleted)
         self.setWidget(panel)
-        panel.destroyed.connect(self._close)
+        panel.delete_me.connect(self.closeDockWidget)
+        # self.viewToggled.connect(self._handle_view_toggled)
         self.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
 
-    def _close(self):
-        self._panel = None
-        self.close()
+    @property
+    def panel(self) -> TimeSyncPanel:
+        return self.widget()
 
     @property
-    def panel(self):
-        return self._panel
+    def name(self):
+        return self.panel.name
 
-    def closeEvent(self, event: QCloseEvent):
-        event.accept()
-        self.closed.emit(self.windowTitle())
-        if self._panel is not None:
-            self._panel.delete_node()
-        self.deleteLater()
+    def __del__(self):
+        with pipelines.model_update_ctx():
+            print('TimeSyncPanelDockWidgetWrapper dtor')
+            pipelines.remove_panel(self.panel)
 
 
 class CentralWidget(QMainWindow):
@@ -49,7 +52,6 @@ class CentralWidget(QMainWindow):
         self.dock_manager = QtAds.CDockManager(self)
         self.setWindowTitle("Plot area")
         self.setMinimumSize(200, 200)
-        self._panels = {}
         self._default_time_range = time_range
         self._drop_helper = DropHelper(widget=self,
                                        handlers=[
@@ -64,38 +66,34 @@ class CentralWidget(QMainWindow):
         return True
 
     def plot_panel(self, name: str) -> TimeSyncPanel or None:
-        widgets = self.dock_manager.dockWidgetsMap()
-        if name in widgets:
-            return widgets[name].panel
+        widget = self.dock_manager.findDockWidget(name)
+        if widget:
+            return widget.panel
 
     def new_plot_panel(self) -> TimeSyncPanel:
-        panel: TimeSyncPanel = TimeSyncPanel(name=make_simple_incr_name(base="Panel"),
-                                             time_range=self._default_time_range)
-        panel.time_range = self._default_time_range
-        dw = TimeSyncPanelDockWidgetWrapper(panel=panel, parent=self)
+        dw = TimeSyncPanelDockWidgetWrapper(name=make_simple_incr_name(base="Panel"),
+                                            time_range=self._default_time_range, parent=self)
         self.dock_manager.addDockWidget(QtAds.DockWidgetArea.TopDockWidgetArea, dw)
-        self._panels[panel.name] = panel
-        dw.closed.connect(self.remove_panel)
-        self.panels_list_changed.emit(self.panels())
         self.dock_widget_added.emit(dw)
-        return panel
+        self.panels_list_changed.emit(self.panels())
+        pipelines.add_add_panel(dw.panel)
+        return dw.panel
 
     def set_default_time_range(self, time_range: TimeRange):
         self._default_time_range = time_range
 
-    def remove_panel(self, panel: TimeSyncPanel or str):
+    def remove_panel(self, panel: TimeSyncPanelDockWidgetWrapper or str):
+        print(f"remove_panel {panel}")
         if type(panel) is str:
-            name = panel
+            dw: TimeSyncPanelDockWidgetWrapper = self.dock_manager.findDockWidget(panel)
         else:
-            name = panel.name
-        if name in self._panels:
-            self._panels.pop(name)
+            dw = panel
+        dw.release_widget()
+        self.dock_manager.removeDockWidget(dw)
         self.panels_list_changed.emit(self.panels())
 
     def closeEvent(self, event: QCloseEvent):
         event.accept()
-        for p in self._panels.values():
-            p.delete_node()
 
     def panels(self) -> List[str]:
-        return list(self._panels.keys())
+        return list(self.dock_manager.dockWidgetsMap().keys())
