@@ -176,7 +176,7 @@ class TimeSeriesPlot(QFrame, QWidgetPipelineModelItem, metaclass=QWidgetPipeline
             if product.parameter_type in (ParameterType.VECTOR, ParameterType.MULTICOMPONENT, ParameterType.SCALAR):
                 self.add_multi_line_graph(providers[product.provider], product,
                                           components=product.metadata.get('components') or [product.name])
-            elif product.parameter_type == ParameterType.SPECTROGRAM:
+            elif product.parameter_type == ParameterType.SPECTROGRAM and not self.has_colormap:
                 self.add_colormap_graph(providers[product.provider], product)
 
     def add_multi_line_graph(self, provider: DataProvider, product: ProductNode, components: List[str]):
@@ -209,6 +209,10 @@ class TimeSeriesPlot(QFrame, QWidgetPipelineModelItem, metaclass=QWidgetPipeline
     @parent_node.setter
     def parent_node(self, parent: PipelineModelItem):
         self._parent = parent
+
+    @property
+    def has_colormap(self):
+        return len(list(filter(lambda c: isinstance(c, ColorMapGraph), self.children_nodes))) > 0
 
     def delete_node(self):
         with pipelines.model_update_ctx():
