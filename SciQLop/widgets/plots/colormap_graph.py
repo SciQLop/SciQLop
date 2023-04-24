@@ -33,6 +33,9 @@ class ColorMapGraph(Graph):
         self._graph.colorMap().setGradient(self.scale)
         self._graph.colorMap().addToLegend()
 
+        self.pipeline.plot.connect(self.plot)
+        self.pipeline.get_data(parent.time_range)
+
     def plot(self, v: SpeasyVariable):
         self._last_value = v
         x, y, z = regrid(v)
