@@ -62,7 +62,6 @@ class MetaTimeSeriesPlot(type(QFrame), type(PipelineModelItem)):
 @auto_register
 class TimeSeriesPlot(QFrame, PipelineModelItem, metaclass=MetaTimeSeriesPlot):
     time_range_changed = Signal(TimeRange)
-    _time_range: TimeRange = TimeRange(0., 0.)
 
     def __init__(self, parent=None):
         QFrame.__init__(self, parent=parent)
@@ -174,7 +173,7 @@ class TimeSeriesPlot(QFrame, PipelineModelItem, metaclass=MetaTimeSeriesPlot):
 
     @time_range.setter
     def time_range(self, time_range: TimeRange):
-        if self._time_range != time_range:
+        if TimeRange.from_qcprange(self.xAxis.range()) != time_range:
             self.xAxis.setRange(time_range.start, time_range.stop)
             self.replot(QCustomPlot.rpQueuedReplot)
 
