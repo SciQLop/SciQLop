@@ -28,7 +28,7 @@ class EventSelector(QListView):
 
     def _event_selected(self, selected: QItemSelection, deselected: QItemSelection):
         indexes = selected.indexes()
-        if len(indexes):
+        if len(indexes) and len(self._events):
             item = self.model.itemFromIndex(indexes[0])
             self.event_selected.emit(self._events[item.data(Qt.UserRole)])
 

@@ -91,7 +91,7 @@ class TimeSyncPanel(QScrollArea, PipelineModelItem, metaclass=MetaTimeSyncPanel)
     def time_range(self, time_range: TimeRange):
         if self._time_range != time_range:
             self._time_range = time_range
-            for p in self._plot_container.plots:
+            for p in self.plots:
                 p.time_range = time_range
             self.time_range_changed.emit(time_range)
 

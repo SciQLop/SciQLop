@@ -74,7 +74,11 @@ class LightweightManager(QWidget):
     @Slot()
     def event_selected(self, event):
         if self.follow_selected_event.isChecked() and self.current_panel is not None:
-            self.current_panel.time_range = TimeRange(event.start.timestamp(), event.stop.timestamp()) * 1.3
+            log.info(f"event selected {event}, setting panel: {self.current_panel}")
+            if event.start == event.stop:
+                self.current_panel.time_range = TimeRange(event.start.timestamp() - 3600, event.stop.timestamp() + 3600)
+            else:
+                self.current_panel.time_range = TimeRange(event.start.timestamp(), event.stop.timestamp()) * 1.3
 
     def update_spans(self):
         if self.current_panel is not None:

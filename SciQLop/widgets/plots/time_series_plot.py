@@ -26,6 +26,9 @@ from ...backend.enums import ParameterType, DataOrder
 from ...backend.unique_names import make_simple_incr_name
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
+from ...backend import logging
+
+log = logging.getLogger(__name__)
 
 
 def _to_qcolor(r: float, g: float, b: float):
@@ -174,6 +177,7 @@ class TimeSeriesPlot(QFrame, PipelineModelItem, metaclass=MetaTimeSeriesPlot):
     @time_range.setter
     def time_range(self, time_range: TimeRange):
         if TimeRange.from_qcprange(self.xAxis.range()) != time_range:
+            log.info(f"setting xAxis range: {time_range}")
             self.xAxis.setRange(time_range.start, time_range.stop)
             self.replot(QCustomPlot.rpQueuedReplot)
 
