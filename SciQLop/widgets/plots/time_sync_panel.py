@@ -176,7 +176,7 @@ class TimeSyncPanel(QScrollArea, PipelineModelItem, metaclass=MetaTimeSyncPanel)
         self.setStyleSheet("")
 
     def __del__(self):
-        print("lkdslkdf")
+        log.debug("deleting TimeSyncPanel")
 
     def __eq__(self, other: 'PipelineModelItem') -> bool:
         return self is other
