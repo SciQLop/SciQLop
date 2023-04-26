@@ -42,4 +42,4 @@ class LineGraph(Graph):
         super().close()
 
     def __del__(self):
-        log.info(f"Dtor {self.__class__.__name__}: {id(self):08x}")
+        log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")

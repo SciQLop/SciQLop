@@ -42,7 +42,7 @@ class QObjectNode(PipelineModelItem, QObject, metaclass=QObjectNodeMeta):
             if hasattr(self._wrapped_object, 'model_please_delete_me'):
                 self._wrapped_object.model_please_delete_me.connect(self.delete_node)
             self._wrapped_class_name = self._wrapped_object.__class__.__name__
-            log.info(f"Setting wrapped object {self._wrapped_class_name}:{self._wrapped_object}")
+            log.debug(f"Setting wrapped object {self._wrapped_class_name}:{self._wrapped_object}")
             self._wrapped_object.destroyed.connect(self._wrapped_object_deleted)
 
     @property
@@ -139,7 +139,7 @@ class QObjectNode(PipelineModelItem, QObject, metaclass=QObjectNodeMeta):
 
     def __del__(self):
         self._cleanup()
-        log.info(f"Deleting {self._wrapped_class_name}: {id(self):08x}")
+        log.debug(f"Deleting {self._wrapped_class_name}: {id(self):08x}")
 
     def __eq__(self, other: PipelineModelItem) -> bool:
         if other is not None:

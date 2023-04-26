@@ -50,7 +50,7 @@ class _DataPipelineWorker(QObject):
         self._get_data_sig.emit()
 
     def __del__(self):
-        log.info(f"Dtor {self.__class__.__name__}: {id(self):08x}")
+        log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
 
 
 class _DataPipelineController(QThread):
@@ -65,7 +65,7 @@ class _DataPipelineController(QThread):
         self.start()
 
     def __del__(self):
-        log.info(f"Dtor {self.__class__.__name__}: {id(self):08x}")
+        log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
         self._worker.requestInterruption()
         self._worker.wait_condition.wakeOne()
         self._worker.wait(1000)
@@ -108,7 +108,7 @@ class DataPipeline(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
             self._worker_thread = None
 
     def __del__(self):
-        log.info(f"Dtor {self.__class__.__name__}: {id(self):08x}")
+        log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
         self.close()
 
     def get_data(self, new_range: TimeRange):

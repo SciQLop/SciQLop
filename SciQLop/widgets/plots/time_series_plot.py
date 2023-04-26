@@ -177,7 +177,7 @@ class TimeSeriesPlot(QFrame, PipelineModelItem, metaclass=MetaTimeSeriesPlot):
     @time_range.setter
     def time_range(self, time_range: TimeRange):
         if TimeRange.from_qcprange(self.xAxis.range()) != time_range:
-            log.info(f"setting xAxis range: {time_range}")
+            log.debug(f"setting xAxis range: {time_range}")
             self.xAxis.setRange(time_range.start, time_range.stop)
             self.replot(QCustomPlot.rpQueuedReplot)
 
