@@ -18,16 +18,21 @@ Keeping SciQLOP lightweight and intuitive has been a top priority during the sof
 If you are looking for a reliable and powerful tool for analyzing space plasma data, SciQLOP is an excellent choice. With its intuitive interface and advanced features, it offers a seamless workflow that can save you time and effort. Download SciQLOP today and experience the benefits for yourself!
 
 
-## How to build
+## How to install SciQLop
 
+Since SciQLop depends on specific versions of PySide6 you should use a dedicated virtualenv for SciQLop to avoid any conflict
+with any other Python package already installed in your system.
+
+- Using releases from PyPi
+```Bash
+python -m pip install sciqlop
 ```
-git clone https://github.com/SciQLop/SciQLop
-cd SciQLop
-mkdir build && cd build
-meson
-ninja
+- Using the latest code from GitHub
+```Bash
+python -m pip install git+https://github.com/SciQLop/SciQLop
 ```
 
+Once installed the sciqlop launcher should be in your PATH and you should be able to start SciQLop from your terminal.
 
 ## How to contribute
 
