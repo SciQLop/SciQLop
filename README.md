@@ -1,6 +1,6 @@
 
 <div style="text-align:center">
-<img src="gui/resources/icones/sciqlop2PNG_1024.png" alt="sciqlop_logo" style="width: 200px;"/>
+<img src="SciQLop/resources/icons/SciQLop.png" alt="sciqlop_logo" style="width: 200px;"/>
 <br /><br />
 <img src="pictures/sciqlop_screenshot.png" alt="sciqlop_logo" style="width: 80%;"/>
 </div>
@@ -33,6 +33,65 @@ python -m pip install git+https://github.com/SciQLop/SciQLop
 ```
 
 Once installed the sciqlop launcher should be in your PATH and you should be able to start SciQLop from your terminal.
+
+## Experimental Python API Examples:
+
+The following API examples are for early adopters and will likely change a bit in the future!
+
+- Creating plot panels:
+```python
+from SciQLop.backend import TimeRange
+from datetime import datetime
+
+# all plots are stacked
+p = main_window.new_plot_panel()
+p.time_range = TimeRange(datetime(2015,10,22,6,4,30).timestamp(), datetime(2015,10,22,6,6,0).timestamp())
+p.plot("speasy/cda/MMS/MMS1/FGM/MMS1_FGM_BRST_L2/mms1_fgm_b_gsm_brst_l2")
+p.plot("speasy/cda/MMS/MMS1/DIS/MMS1_FPI_BRST_L2_DIS_MOMS/mms1_dis_bulkv_gse_brst")
+p.plot("speasy/cda/MMS/MMS1/DIS/MMS1_FPI_BRST_L2_DIS_MOMS/mms1_dis_energyspectr_omni_brst")
+
+# tha_peif_sc_pot and tha_peif_en_eflux will share the same plot 
+p2 = main_window.new_plot_panel()
+p2.plot("speasy/cda/THEMIS/THA/L2/THA_L2_ESA/tha_peif_en_eflux")
+p2.plots[0].plot("speasy/cda/THEMIS/THA/L2/THA_L2_ESA/tha_peif_sc_pot")
+p2.plot("speasy/cda/THEMIS/THA/L2/THA_L2_ESA/tha_peif_velocity_dsl")
+```
+> **_NOTE:_**  An easy way to get product paths, is to drag a product from Products  Tree to any text zone or even your Python terminal.
+
+- Custom products:
+
+```python
+from datetime import datetime
+
+import numpy as np
+
+from SciQLop.backend.pipelines_model.easy_provider import EasyVector, EasyScalar
+
+
+# The following functions can do anything from loading data from a file to any complex computation, they should not 
+# block the GUI since they will be run in background.
+
+def my_vect(start: datetime, stop: datetime) -> (np.ndarray, np.ndarray):
+    x = np.arange(start.timestamp(), stop.timestamp(), 0.1) * 1.
+    y = np.empty((len(x), 3))
+    y[:, 0] = np.cos(x / 100.) * 10.
+    y[:, 1] = np.cos((x + 100) / 100.) * 10.
+    y[:, 2] = np.cos((x + 200) / 100.) * 10.
+    return x, y
+
+
+def my_scalar(start: datetime, stop: datetime) -> (np.ndarray, np.ndarray):
+    x = np.arange(start.timestamp(), stop.timestamp(), 0.1) * 1.
+    y = np.empty((len(x), 1))
+    y[:, 0] = np.cos(x / 100.) * 10.
+    return x, y
+
+
+my_vector_provider = EasyVector(path='some_root_folder/my_hello_world_vector', get_data_callback=my_vect,
+                                components_names=["x", "y", "z"], metadata={})
+my_scalar_provider = EasyScalar(path='some_other_root_folder/my_hello_world_scalar', get_data_callback=my_scalar,
+                                component_name="x", metadata={})
+```
 
 ## How to contribute
 
