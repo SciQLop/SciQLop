@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta
 
 import PySide6QtAds as QtAds
@@ -23,6 +24,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _setup_ui(self):
         QtAds.CDockManager.setAutoHideConfigFlag(QtAds.CDockManager.DefaultAutoHideConfig)
+        if "WAYLAND_DISPLAY" in os.environ:
+            QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerForceQWidgetTitleBar, True)
         self.dock_manager = QtAds.CDockManager(self)
         self._menubar = QtWidgets.QMenuBar(self)
         self.setMenuBar(self._menubar)
