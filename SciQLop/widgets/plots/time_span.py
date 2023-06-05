@@ -1,6 +1,6 @@
 from typing import List
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, Slot
 from SciQLopPlots import SciQLopVerticalSpan, QCPRange
 
 from .time_sync_panel import TimeSyncPanel
@@ -25,10 +25,19 @@ class TimeSpan(QObject):
             self._spans = []
             for plot in self._plot_panel.plots:
                 span = SciQLopVerticalSpan(plot.plot_instance, QCPRange(self._time_range.start, self._time_range.stop))
+                span.range_changed.connect(self.set_range)
                 self._spans.append(span)
                 span.set_read_only(self.read_only)
         else:
             self._spans = []
+
+    @Slot()
+    def set_range(self, new_range: QCPRange):
+        new_range_tr = TimeRange.from_qcprange(new_range)
+        if self._time_range != new_range_tr:
+            for s in self._spans:
+                s.set_range(new_range)
+            self._time_range = new_range_tr
 
     def show(self):
         self._visible = True
