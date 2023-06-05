@@ -1,10 +1,13 @@
 import tscat
-
+from PySide6.QtCore import Signal, QObject
 from SciQLop.backend import TimeRange
 
 
-class Event:
+class Event(QObject):
+    range_changed = Signal(object)
+
     def __init__(self, event: tscat._Event):
+        QObject.__init__(self)
         self._event = event
 
     @property
@@ -22,3 +25,4 @@ class Event:
     def set_range(self, time_range: TimeRange):
         self._event.start = time_range.datetime_start
         self._event.stop = time_range.datetime_stop
+        self.range_changed.emit(self.range)

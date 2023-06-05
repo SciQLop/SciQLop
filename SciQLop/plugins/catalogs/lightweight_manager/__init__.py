@@ -103,9 +103,10 @@ class LightweightManager(QWidget):
 
     @Slot()
     def _allow_edition_state_change(self, state):
-        if type(state) is int:
-            ro = (state == Qt.Unchecked.value)
-        else:
-            ro = (state == Qt.Unchecked)
-        for s in self._time_span_ctrlr.spans:
-            s.read_only = ro
+        if self._time_span_ctrlr is not None:
+            if type(state) is int:
+                ro = (state == Qt.Unchecked.value)
+            else:
+                ro = (state == Qt.Unchecked)
+            for s in self._time_span_ctrlr.spans:
+                s.read_only = ro

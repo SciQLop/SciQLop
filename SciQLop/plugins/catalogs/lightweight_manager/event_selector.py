@@ -5,6 +5,16 @@ from PySide6.QtCore import Signal, QItemSelection
 from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QComboBox, QListView
 from .event import Event
+from SciQLop.backend import TimeRange
+
+
+class EventItem(QStandardItem):
+    def __int__(self, *args, **kwargs):
+        QStandardItem.__init__(self, *args, **kwargs)
+
+    def set_range(self, new_range: TimeRange):
+        self.setText(f"{new_range.datetime_start} -> {new_range.datetime_stop} ")
+
 
 class EventSelector(QListView):
     event_selected = Signal(object)
@@ -19,12 +29,14 @@ class EventSelector(QListView):
     def update_list(self, events: List[tscat._Event]):
         self._events = {}
         self.model.clear()
-        for index, event in enumerate(events):
-            item = QStandardItem()
-            item.setData(event.uuid, Qt.UserRole)
-            item.setText(f"{event.start}:{event.stop}")
+        for index, _event in enumerate(events):
+            e = Event(_event)
+            item = EventItem()
+            item.setData(_event.uuid, Qt.UserRole)
+            item.set_range(e.range)
+            e.range_changed.connect(item.set_range)
             self.model.setItem(index, item)
-            self._events[event.uuid] = Event(event)
+            self._events[_event.uuid] = e
 
     def _event_selected(self, selected: QItemSelection, deselected: QItemSelection):
         indexes = selected.indexes()
