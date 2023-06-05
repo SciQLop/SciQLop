@@ -38,6 +38,7 @@ class TimeSpan(QObject):
             for s in self._spans:
                 s.set_range(new_range)
             self._time_range = new_range_tr
+            self.range_changed.emit(new_range_tr)
 
     def show(self):
         self._visible = True

@@ -10,6 +10,7 @@ from SciQLop.widgets.plots.time_span import TimeSpan
 from SciQLop.widgets.plots.time_span_controller import TimeSpanController
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel
 from .catalog_selector import CatalogItem, CatalogSelector
+from .event import Event
 from .event_selector import EventSelector
 
 log = getLogger(__name__)
@@ -72,24 +73,25 @@ class LightweightManager(QWidget):
         self.update_spans()
 
     @Slot()
-    def event_selected(self, event):
+    def event_selected(self, e: Event):
         if self.follow_selected_event.isChecked() and self.current_panel is not None:
             log.debug(f"event selected {event}, setting panel: {self.current_panel}")
-            if event.start == event.stop:
-                self.current_panel.time_range = TimeRange(event.start.timestamp() - 3600, event.stop.timestamp() + 3600)
+            if e.start == e.stop:
+                self.current_panel.time_range = TimeRange(e.start - 3600, e.stop + 3600)
             else:
-                self.current_panel.time_range = TimeRange(event.start.timestamp(), event.stop.timestamp()) * 1.3
+                self.current_panel.time_range = TimeRange(e.start, e.stop) * 1.3
 
     def update_spans(self):
         if self.current_panel is not None:
             if self._time_span_ctrlr is None:
                 self._time_span_ctrlr = TimeSpanController(parent=self, plot_panel=self.current_panel)
             ro = not self.allow_edition.isChecked()
-            spans = [
-                TimeSpan(TimeRange(event.start.timestamp(), event.stop.timestamp()), plot_panel=self.current_panel,
-                         visible=False, read_only=ro) for
-                event
-                in self.event_selector.events]
+            spans = []
+            for e in self.event_selector.events:
+                span = TimeSpan(e.range, plot_panel=self.current_panel, visible=False, read_only=ro)
+                span.range_changed.connect(e.set_range)
+                spans.append(span)
+
             self._time_span_ctrlr.spans = spans
             self.current_panel.replot()
 
