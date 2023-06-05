@@ -43,7 +43,7 @@ class TimeSpan(QObject):
         return self._read_only
 
     @read_only.setter
-    def read_only(self, read_only):
+    def read_only(self, read_only: bool):
         self._read_only = read_only
         for s in self._spans:
             s.set_read_only(read_only)

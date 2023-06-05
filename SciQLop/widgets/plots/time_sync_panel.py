@@ -104,10 +104,6 @@ class TimeSyncPanel(QScrollArea, PipelineModelItem, metaclass=MetaTimeSyncPanel)
         with pipelines_model.model_update_ctx():
             self.setObjectName(new_name)
 
-    @property
-    def time_spans(self):
-        return self._spans
-
     def __repr__(self):
         return f"TimeSyncPanel: {self._name}"
 

@@ -82,14 +82,16 @@ class LightweightManager(QWidget):
 
     def update_spans(self):
         if self.current_panel is not None:
-            self._time_span_ctrlr = TimeSpanController(parent=self, plot_panel=self.current_panel)
+            if self._time_span_ctrlr is None:
+                self._time_span_ctrlr = TimeSpanController(parent=self, plot_panel=self.current_panel)
             ro = not self.allow_edition.isChecked()
-            self.spans = [
+            spans = [
                 TimeSpan(TimeRange(event.start.timestamp(), event.stop.timestamp()), plot_panel=self.current_panel,
                          visible=False, read_only=ro) for
                 event
                 in self.event_selector.events]
-            self._time_span_ctrlr.set_ranges(self.spans)
+            self._time_span_ctrlr.spans = spans
+            self.current_panel.replot()
 
     @Slot()
     def panel_selected(self, panel):
@@ -99,6 +101,9 @@ class LightweightManager(QWidget):
 
     @Slot()
     def _allow_edition_state_change(self, state):
-        ro = state == Qt.Unchecked
-        for s in self.spans:
+        if type(state) is int:
+            ro = (state == Qt.Unchecked.value)
+        else:
+            ro = (state == Qt.Unchecked)
+        for s in self._time_span_ctrlr.spans:
             s.read_only = ro
