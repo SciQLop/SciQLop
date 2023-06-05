@@ -1,21 +1,21 @@
 from datetime import datetime
 from typing import Optional, List
 
-from PySide6.QtCore import QMimeData, Signal, Qt
+from PySide6.QtCore import QMimeData, Signal
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
-from SciQLopPlots import QCPMarginGroup
+from SciQLopPlots import QCPMarginGroup, QCustomPlot
 
+from SciQLop.backend.pipelines_model.auto_register import auto_register
+from SciQLop.backend.pipelines_model.base import PipelineModelItem
+from SciQLop.backend.pipelines_model.base import model as pipelines_model
 from .time_series_plot import TimeSeriesPlot
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
 from ...backend import Product
-from SciQLop.backend.pipelines_model.base import PipelineModelItem
-from SciQLop.backend.pipelines_model.base import model as pipelines_model
 from ...backend import TimeRange
 from ...backend import listify
 from ...backend import logging
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE
-from SciQLop.backend.pipelines_model.auto_register import auto_register
 
 log = logging.getLogger(__name__)
 
@@ -158,6 +158,10 @@ class TimeSyncPanel(QScrollArea, PipelineModelItem, metaclass=MetaTimeSyncPanel)
         products = listify(products)
         indexes = [-1] * len(products) if index is None else range(index, index + len(products))
         list(map(lambda p_i: self._plot(*p_i), zip(products, indexes)))
+
+    def replot(self, refresh_priority=QCustomPlot.rpQueuedReplot):
+        for p in self.plots:
+            p.replot(refresh_priority)
 
     def insertWidget(self, index: int, widget: QWidget or TimeSeriesPlot):
         self._plot_container.add_widget(widget, index)
