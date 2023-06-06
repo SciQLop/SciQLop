@@ -2,16 +2,17 @@ from typing import Mapping, Union, List
 
 import tscat
 from PySide6.QtCore import Signal, QModelIndex, QSize, QPersistentModelIndex, QAbstractItemModel, Slot
-from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QPainter
+from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QPainter, QColor
 from PySide6.QtWidgets import QTableView, QAbstractScrollArea, QSizePolicy, QPushButton, QHeaderView, \
-    QStyledItemDelegate, QWidget, QStyleOptionViewItem, QAbstractItemView, QStyle
+    QStyledItemDelegate, QWidget, QStyleOptionViewItem, QAbstractItemView, QStyle, QColorDialog
 
 
 # stolen from https://qtadventures.wordpress.com/2012/02/04/adding-button-to-qviewtable/
 class ButtonDelegate(QStyledItemDelegate):
     create_event = Signal(str)
+    change_color = Signal(QColor, str)
 
-    def __init__(self, item_view: QAbstractItemView, *args, **kwargs):
+    def __init__(self, item_view: QAbstractItemView, *args, update_button=None, **kwargs):
         QStyledItemDelegate.__init__(self, item_view, *args, **kwargs)
         self._btn = QPushButton(item_view)
         self._btn.hide()
@@ -20,6 +21,10 @@ class ButtonDelegate(QStyledItemDelegate):
         item_view.entered.connect(self.cellEntered)
         self._edit_mode = False
         self._currentEditedCellIndex = QPersistentModelIndex()
+        if update_button is None:
+            self._update_button = lambda index, btn: btn.setText(str(index.data()))
+        else:
+            self._update_button = update_button
 
     @Slot()
     def _handle_btn_pressed(self):
@@ -33,9 +38,13 @@ class ButtonDelegate(QStyledItemDelegate):
                      index: Union[QModelIndex, QPersistentModelIndex]) -> QWidget:
         if self._is_column(index, 1):
             btn = QPushButton(parent)
-            btn.setText(str(index.data()))
+            self._update_button(index, btn)
             btn.pressed.connect(self._handle_btn_pressed)
             return btn
+        elif self._is_column(index, 2):
+            d = QColorDialog(index.data(Qt.ItemDataRole.BackgroundRole))
+            d.setOption(QColorDialog.ColorDialogOption.ShowAlphaChannel)
+            return d
         else:
             return QStyledItemDelegate.createEditor(self, parent, option, index)
 
@@ -43,6 +52,8 @@ class ButtonDelegate(QStyledItemDelegate):
         if self._is_column(index, 1):
             btn: QPushButton = editor
             btn.setProperty("data_value", index.data())
+        elif self._is_column(index, 2):
+            dial: QColorDialog = editor
         else:
             QStyledItemDelegate.setEditorData(self, editor, index)
 
@@ -51,6 +62,10 @@ class ButtonDelegate(QStyledItemDelegate):
         if self._is_column(index, 1):
             btn: QPushButton = editor
             model.setData(index, btn.property("data_value"))
+        elif self._is_column(index, 2):
+            dial: QColorDialog = editor
+            model.setData(index, editor.currentColor(), Qt.ItemDataRole.BackgroundRole)
+            self.change_color.emit(editor.currentColor(), model.data(index, Qt.ItemDataRole.UserRole))
         else:
             QStyledItemDelegate.setModelData(self, editor, model, index)
 
@@ -58,7 +73,7 @@ class ButtonDelegate(QStyledItemDelegate):
               index: Union[QModelIndex, QPersistentModelIndex]) -> None:
         if self._is_column(index, 1):
             self._btn.setGeometry(option.rect)
-            self._btn.setText(str(index.data()))
+            self._update_button(index, self._btn)
             if option.state == QStyle.StateFlag.State_Selected:
                 painter.fillRect(option.rect, option.palette.hignlight)
             px = self._btn.grab()
@@ -96,9 +111,20 @@ class CatalogItem(QStandardItem):
     def __init__(self, catalog: tscat._Catalogue):
         QStandardItem.__init__(self)
         self._add_event = CreateEventItem()
+        self._color_item = QStandardItem()
+        if 'color' not in catalog.variable_attributes():
+            catalog.color = QColor(100, 100, 100, 50).name(QColor.NameFormat.HexArgb)
+        self._color_item.setData(
+            QColor.fromString(catalog.color),
+            Qt.ItemDataRole.BackgroundRole)
         self.tscat_instance = catalog
         self.setCheckable(True)
         self.setCheckState(Qt.Unchecked)
+
+    def setData(self, value, role=Qt.ItemDataRole.UserRole + 1) -> None:
+        QStandardItem.setData(self, value, role)
+        if self.text() != self.tscat_instance.name:
+            self.tscat_instance.name = self.text()
 
     @property
     def tscat_instance(self):
@@ -111,6 +137,7 @@ class CatalogItem(QStandardItem):
         self.setText(tscat_obj.name)
         self.setData(tscat_obj.uuid, Qt.UserRole)
         self._add_event.setData(tscat_obj.uuid, Qt.UserRole)
+        self._color_item.setData(tscat_obj.uuid, Qt.UserRole)
 
     @property
     def uuid(self):
@@ -128,6 +155,14 @@ class CatalogItem(QStandardItem):
     def create_event_item(self):
         return self._add_event
 
+    @property
+    def color_item(self):
+        return self._color_item
+
+    @property
+    def color(self) -> QColor:
+        return self._color_item.data(Qt.ItemDataRole.BackgroundRole)
+
     def __str__(self):
         return self.name
 
@@ -135,6 +170,7 @@ class CatalogItem(QStandardItem):
 class CatalogSelector(QTableView):
     catalog_selected = Signal(list)
     create_event = Signal(str)
+    change_color = Signal(QColor, str)
     catalogs: Mapping[str, CatalogItem] = {}
 
     def __init__(self, parent=None):
@@ -146,13 +182,14 @@ class CatalogSelector(QTableView):
         self._selected_catalogs = []
         self.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        self.setShowGrid(False)
+        # self.setShowGrid(False)
         self.horizontalHeader().hide()
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.verticalHeader().hide()
-        self._btnDelegate = ButtonDelegate(self)
-        self.setItemDelegate(self._btnDelegate)
-        self._btnDelegate.create_event.connect(self.create_event)
+        self._createEventBtnDelegate = ButtonDelegate(self)
+        self.setItemDelegate(self._createEventBtnDelegate)
+        self._createEventBtnDelegate.create_event.connect(self.create_event)
+        self._createEventBtnDelegate.change_color.connect(self.change_color)
 
     def minimumSizeHint(self):
         return QSize(0, 0)
@@ -185,4 +222,8 @@ class CatalogSelector(QTableView):
         for index, catalog in enumerate(self.catalogs.values()):
             self.model.setItem(index, 0, catalog)
             self.model.setItem(index, 1, catalog.create_event_item)
+            self.model.setItem(index, 2, catalog.color_item)
             # self.setIndexWidget(self.model.index(index, 1), catalog.create_event_item.button)
+
+    def color(self, catalog_uid):
+        return self.catalogs[catalog_uid].color

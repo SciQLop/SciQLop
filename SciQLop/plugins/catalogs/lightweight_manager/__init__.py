@@ -3,6 +3,7 @@ from typing import List, Optional
 
 import tscat
 from PySide6.QtCore import Slot, Signal, Qt
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QCheckBox
 
 from SciQLop.backend import TimeRange
@@ -59,6 +60,7 @@ class LightweightManager(QWidget):
 
         self.catalog_selector.catalog_selected.connect(self.catalog_selected)
         self.catalog_selector.create_event.connect(self.create_event)
+        self.catalog_selector.change_color.connect(self.update_colors)
         self.update_panels_list.connect(self.panel_selector.update_list)
         self.panel_selector.panel_selection_changed.connect(self.panel_selected)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
@@ -71,7 +73,7 @@ class LightweightManager(QWidget):
     def catalog_selected(self, catalogs: List[CatalogItem]):
         events = []
         for c in catalogs:
-            events += c.events
+            events += [Event(e, c.uuid) for e in c.events]
         self.event_selector.update_list(events)
         self.update_spans()
 
@@ -102,11 +104,21 @@ class LightweightManager(QWidget):
             ro = not self.allow_edition.isChecked()
             spans = []
             for e in self.event_selector.events:
-                span = TimeSpan(e.range, plot_panel=self.current_panel, visible=False, read_only=ro)
+                span = TimeSpan(e.range, plot_panel=self.current_panel, visible=False, read_only=ro,
+                                color=self.catalog_selector.color(e.catalog_uid))
                 span.range_changed.connect(e.set_range)
+                e.color_changed.connect(span.set_color)
                 spans.append(span)
 
             self._time_span_ctrlr.spans = spans
+            self.current_panel.replot()
+
+    @Slot()
+    def update_colors(self, color: QColor, catalog_uid: str):
+        if self.current_panel is not None:
+            for e in self.event_selector.events:
+                if e.catalog_uid == catalog_uid:
+                    e.color_changed.emit(color)
             self.current_panel.replot()
 
     @Slot()

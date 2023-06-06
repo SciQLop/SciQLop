@@ -1,6 +1,5 @@
 from typing import List, Mapping
 
-import tscat
 from PySide6.QtCore import Signal, QItemSelection
 from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QComboBox, QListView
@@ -27,17 +26,16 @@ class EventSelector(QListView):
         self._events: Mapping[str, Event] = {}
         self.selectionModel().selectionChanged.connect(self._event_selected)
 
-    def update_list(self, events: List[tscat._Event]):
+    def update_list(self, events: List[Event]):
         self._events = {}
         self.model.clear()
-        for index, _event in enumerate(sorted(events, key=lambda ev: ev.start + (ev.stop - ev.start))):
-            e = Event(_event)
+        for index, e in enumerate(sorted(events, key=lambda ev: ev.start + (ev.stop - ev.start))):
             item = EventItem()
-            item.setData(_event.uuid, Qt.UserRole)
+            item.setData(e.uuid, Qt.UserRole)
             item.set_range(e.range)
             e.range_changed.connect(item.set_range)
             self.model.setItem(index, item)
-            self._events[_event.uuid] = e
+            self._events[e.uuid] = e
 
     def _event_selected(self, selected: QItemSelection, deselected: QItemSelection):
         indexes = selected.indexes()
