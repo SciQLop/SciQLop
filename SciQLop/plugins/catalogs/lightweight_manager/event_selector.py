@@ -4,8 +4,9 @@ import tscat
 from PySide6.QtCore import Signal, QItemSelection
 from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QComboBox, QListView
-from .event import Event
+
 from SciQLop.backend import TimeRange
+from .event import Event
 
 
 class EventItem(QStandardItem):
@@ -29,7 +30,7 @@ class EventSelector(QListView):
     def update_list(self, events: List[tscat._Event]):
         self._events = {}
         self.model.clear()
-        for index, _event in enumerate(events):
+        for index, _event in enumerate(sorted(events, key=lambda ev: ev.start + (ev.stop - ev.start))):
             e = Event(_event)
             item = EventItem()
             item.setData(_event.uuid, Qt.UserRole)
