@@ -1,5 +1,7 @@
+import os
 from typing import List, Optional
 
+import tscat
 from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QCheckBox
 
@@ -56,6 +58,7 @@ class LightweightManager(QWidget):
         self.setWindowTitle("Catalogs")
 
         self.catalog_selector.catalog_selected.connect(self.catalog_selected)
+        self.catalog_selector.create_event.connect(self.create_event)
         self.update_panels_list.connect(self.panel_selector.update_list)
         self.panel_selector.panel_selection_changed.connect(self.panel_selected)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
@@ -71,6 +74,17 @@ class LightweightManager(QWidget):
             events += c.events
         self.event_selector.update_list(events)
         self.update_spans()
+
+    @Slot()
+    def create_event(self, catalog_uid: str):
+        if self.current_panel is not None:
+            erange = self.current_panel.time_range * 0.5
+            e = tscat.create_event(erange.datetime_start,
+                                   erange.datetime_stop,
+                                   author=os.getlogin())
+            tscat.add_events_to_catalogue(catalogue=self.catalog_selector.catalogs[catalog_uid].tscat_instance,
+                                          events=e)
+            self.catalog_selector.reload_catalog(catalog_uid)
 
     @Slot()
     def event_selected(self, e: Event):
