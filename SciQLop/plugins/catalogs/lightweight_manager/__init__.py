@@ -3,8 +3,8 @@ from typing import List, Optional
 
 import tscat
 from PySide6.QtCore import Slot, Signal, Qt
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QCheckBox
+from PySide6.QtGui import QColor, QIcon
+from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QCheckBox, QGridLayout, QPushButton
 
 from SciQLop.backend import TimeRange
 from SciQLop.backend.logging import getLogger
@@ -42,21 +42,29 @@ class LightweightManager(QWidget):
 
     def __init__(self, main_window: SciQLopMainWindow, parent=None):
         super().__init__(parent=parent)
-        self.setLayout(QVBoxLayout())
+        self.setLayout(QGridLayout())
         self.main_window = main_window
         self.catalog_selector = CatalogSelector(self)
         self.follow_selected_event = QCheckBox("Jump on selected event", self)
         self.allow_edition = QCheckBox("Allow edition", self)
         self.panel_selector = PanelSelector(self)
         self.event_selector = EventSelector(self)
-        self.layout().addWidget(self.panel_selector)
-        self.layout().addWidget(self.follow_selected_event)
-        self.layout().addWidget(self.allow_edition)
-        self.layout().addWidget(self.catalog_selector)
-        self.layout().addWidget(self.event_selector)
+        self.save_button = QPushButton(self)
+        self.save_button.setIcon(QIcon(":/icons/save.png"))
+        self.refresh_button = QPushButton(self)
+        self.refresh_button.setText("Refresh")
+        self.layout().addWidget(self.save_button, 0, 0, 1, 1)
+        self.layout().addWidget(self.refresh_button, 0, 1, 1, 1)
+        self.layout().addWidget(self.panel_selector, 1, 0, 1, -1)
+        self.layout().addWidget(self.follow_selected_event, 2, 0, 1, -1)
+        self.layout().addWidget(self.allow_edition, 3, 0, 1, -1)
+        self.layout().addWidget(self.catalog_selector, 4, 0, 1, -1)
+        self.layout().addWidget(self.event_selector, 5, 0, 1, -1)
 
         self.setWindowTitle("Catalogs")
 
+        self.save_button.clicked.connect(self.save)
+        self.refresh_button.clicked.connect(self.refresh)
         self.catalog_selector.catalog_selected.connect(self.catalog_selected)
         self.catalog_selector.create_event.connect(self.create_event)
         self.catalog_selector.change_color.connect(self.update_colors)
@@ -66,6 +74,15 @@ class LightweightManager(QWidget):
         self.allow_edition.stateChanged.connect(self._allow_edition_state_change)
 
         self._time_span_ctrlr: Optional[TimeSpanController] = None
+
+    @Slot()
+    def save(self):
+        tscat.save()
+
+    @Slot()
+    def refresh(self):
+        self.event_selector.update_list([])
+        self.catalog_selector.update_list()
 
     @Slot()
     def update_panels_list(self, panels):

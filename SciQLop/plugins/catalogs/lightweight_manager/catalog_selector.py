@@ -104,6 +104,31 @@ class CreateEventItem(QStandardItem):
         self.setText("Add event")
 
 
+class CatalogColorItem(QStandardItem):
+    _tscat_obj: tscat._Catalogue
+
+    def __init__(self, catalog: tscat._Catalogue):
+        QStandardItem.__init__(self)
+        self.tscat_instance = catalog
+
+    def setData(self, value, role=Qt.ItemDataRole.UserRole + 1) -> None:
+        QStandardItem.setData(self, value, role)
+        if role == Qt.ItemDataRole.BackgroundRole:
+            self.tscat_instance.color = value.name(QColor.NameFormat.HexArgb)
+
+    @property
+    def tscat_instance(self):
+        return self._tscat_obj
+
+    @tscat_instance.setter
+    def tscat_instance(self, tscat_obj):
+        self._tscat_obj = tscat_obj
+        self.setData(tscat_obj.uuid, Qt.UserRole)
+        if 'color' not in tscat_obj.variable_attributes():
+            tscat_obj.color = QColor(100, 100, 100, 50).name(QColor.NameFormat.HexArgb)
+        self.setData(QColor.fromString(tscat_obj.color), Qt.ItemDataRole.BackgroundRole)
+
+
 class CatalogItem(QStandardItem):
     _tscat_obj: tscat._Catalogue
     _events: List[tscat._Event]
@@ -111,12 +136,7 @@ class CatalogItem(QStandardItem):
     def __init__(self, catalog: tscat._Catalogue):
         QStandardItem.__init__(self)
         self._add_event = CreateEventItem()
-        self._color_item = QStandardItem()
-        if 'color' not in catalog.variable_attributes():
-            catalog.color = QColor(100, 100, 100, 50).name(QColor.NameFormat.HexArgb)
-        self._color_item.setData(
-            QColor.fromString(catalog.color),
-            Qt.ItemDataRole.BackgroundRole)
+        self._color_item = CatalogColorItem(catalog)
         self.tscat_instance = catalog
         self.setCheckable(True)
         self.setCheckState(Qt.Unchecked)
@@ -137,7 +157,7 @@ class CatalogItem(QStandardItem):
         self.setText(tscat_obj.name)
         self.setData(tscat_obj.uuid, Qt.UserRole)
         self._add_event.setData(tscat_obj.uuid, Qt.UserRole)
-        self._color_item.setData(tscat_obj.uuid, Qt.UserRole)
+        self._color_item.tscat_instance = tscat_obj
 
     @property
     def uuid(self):
