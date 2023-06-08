@@ -1,6 +1,5 @@
 from contextlib import ContextDecorator
-from typing import Dict, Any, Sequence, List, Protocol
-from abc import ABCMeta
+from typing import Dict, Any, Sequence, List
 
 from PySide6.QtCore import QModelIndex, QMimeData, QAbstractItemModel, QStringListModel, QPersistentModelIndex, Qt, \
     QObject
@@ -102,6 +101,9 @@ class PipelinesModel(QAbstractItemModel):
         self._completion_model = QStringListModel(self)
         self._root = RootNode()
         self._last_selected: List[PipelineModelItem] = []
+
+    def register_icon(self, name: str, icon: QIcon):
+        self._icons[name] = icon
 
     def model_update_ctx(self):
         return _model_change_ctx(self)

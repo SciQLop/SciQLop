@@ -30,5 +30,7 @@
         <file>icons/Simple_icon_time.svg</file>
         <file>icons/satellite.svg</file>
         <file>icons/SciQLop.png</file>
+        <file>icons/MPL.png</file>
+        <file>icons/QCP.png</file>
     </qresource>
 </RCC>

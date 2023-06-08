@@ -37,7 +37,7 @@ class PanelDockWidgetWrapper(QtAds.CDockWidget):
 
     def __del__(self):
         with pipelines.model_update_ctx():
-            print('TimeSyncPanelDockWidgetWrapper dtor')
+            print('PanelDockWidgetWrapper dtor')
             pipelines.remove_panel(self.panel)
 
 
@@ -81,7 +81,7 @@ class CentralWidget(QMainWindow):
         return tsp
 
     def new_mpl_plot_panel(self) -> MPLPanel:
-        dw = PanelDockWidgetWrapper(panel=MPLPanel(parent=None, name=make_simple_incr_name(base="Panel")))
+        dw = PanelDockWidgetWrapper(panel=MPLPanel(parent=None, name=make_simple_incr_name(base="MPLPanel")))
         tsp: MPLPanel = dw.panel
         self.dock_manager.addDockWidget(QtAds.DockWidgetArea.TopDockWidgetArea, dw)
         self.dock_widget_added.emit(dw)

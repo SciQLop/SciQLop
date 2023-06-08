@@ -1,7 +1,8 @@
 from typing import List
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QFrame, QScrollArea, QVBoxLayout
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
 
 from SciQLop.backend.pipelines_model.auto_register import auto_register
 from SciQLop.backend.pipelines_model.base import PipelineModelItem
@@ -84,6 +85,9 @@ class MPLFigure(QFrame, PipelineModelItem, metaclass=MetaMPLPlot):
         self.mpl_figure.canvas.draw()
 
 
+pipelines_model.register_icon("MPL", QIcon("://icons/MPL.png"))
+
+
 @auto_register
 class MPLPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
     delete_me = Signal(object)
@@ -96,6 +100,7 @@ class MPLPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
         self._plot_container = PanelContainer(plot_type=MPLFigure, parent=self)
         self.setWidget(self._plot_container)
         self.setWidgetResizable(True)
+        self._parent_node = None
 
     @property
     def name(self):
@@ -106,19 +111,42 @@ class MPLPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
         with pipelines_model.model_update_ctx():
             self.setObjectName(new_name)
 
+    @property
+    def icon(self) -> str:
+        return "MPL"
+
     def select(self):
         self.setStyleSheet("border: 3px dashed blue")
 
     def unselect(self):
         self.setStyleSheet("")
 
+    def count(self) -> int:
+        return self._plot_container.count()
+
+    def indexOf(self, widget: QWidget):
+        return self._plot_container.indexOf(widget)
+
+    def index_of(self, child):
+        return self._plot_container.indexOf(child)
+
+    def child_at(self, row: int):
+        if 0 <= row < len(self._plot_container.plots):
+            return self._plot_container.plots[row]
+        return None
+
+    @property
+    def children_nodes(self) -> List['PipelineModelItem']:
+        return self._plot_container.plots
+
     def remove_children_node(self, node: 'PipelineModelItem'):
-        pass
+        self._plot_container.remove_plot(node)
 
     def add_children_node(self, node: 'PipelineModelItem'):
         pass
 
     def delete_node(self):
+        self._plot_container.close()
         self.delete_me.emit(self)
 
     def new_figure(self, *args, index=-1, **kwargs) -> MPLFigure:
@@ -129,3 +157,26 @@ class MPLPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
     @property
     def figures(self) -> List[MPLFigure]:
         return self._plot_container.plots
+
+    @property
+    def parent_node(self) -> 'PipelineModelItem':
+        return self._parent_node
+
+    @parent_node.setter
+    def parent_node(self, parent: 'PipelineModelItem'):
+        with pipelines_model.model_update_ctx():
+            if self._parent_node is not None:
+                self._parent_node.remove_children_node(self)
+            self._parent_node = parent
+            if parent is not None:
+                parent.add_children_node(self)
+
+    def __del__(self):
+        log.debug("deleting MPLPanel")
+
+    def __eq__(self, other: 'PipelineModelItem') -> bool:
+        return self is other
+
+    def __getitem__(self, index: int) -> MPLFigure:
+        plots: List[MPLFigure] = filter(lambda w: isinstance(w, MPLFigure), self._plot_container.plots)
+        return list(plots)[index]

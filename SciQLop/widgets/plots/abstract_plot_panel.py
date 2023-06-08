@@ -45,6 +45,6 @@ class PanelContainer(QWidget):
         self.layout().removeWidget(plot)
 
     @property
-    def plots(self) -> List[QWidget]:
+    def plots(self) -> List[PlotPanel]:
         return list(filter(lambda w: isinstance(w, self._plot_type),
                            map(lambda i: self.layout().itemAt(i).widget(), range(self.layout().count()))))

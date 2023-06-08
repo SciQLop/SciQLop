@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Optional, List
 
 from PySide6.QtCore import QMimeData, Signal
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QWidget, QScrollArea
 from SciQLopPlots import QCustomPlot, QCPMarginGroup
 
@@ -31,6 +32,9 @@ class TSPanelContainer(PanelContainer):
             widget.set_margin_group(self._margin_group)
 
         PanelContainer.add_widget(self, widget, index)
+
+
+pipelines_model.register_icon("QCP", QIcon("://icons/QCP.png"))
 
 
 @auto_register
@@ -160,7 +164,7 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
 
     @property
     def icon(self) -> str:
-        return ""
+        return "QCP"
 
     @property
     def parent_node(self) -> 'PipelineModelItem':

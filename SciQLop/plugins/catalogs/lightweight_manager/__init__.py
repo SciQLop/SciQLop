@@ -36,7 +36,6 @@ class PanelSelector(QComboBox):
 
 
 class LightweightManager(QWidget):
-    update_panels_list = Signal(list)
     current_panel: Optional[TimeSyncPanel] = None
     main_window: SciQLopMainWindow = None
     spans: List[TimeSpan] = []
@@ -61,13 +60,17 @@ class LightweightManager(QWidget):
         self.catalog_selector.catalog_selected.connect(self.catalog_selected)
         self.catalog_selector.create_event.connect(self.create_event)
         self.catalog_selector.change_color.connect(self.update_colors)
-        self.update_panels_list.connect(self.panel_selector.update_list)
         self.panel_selector.panel_selection_changed.connect(self.panel_selected)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.event_selector.event_selected.connect(self.event_selected)
         self.allow_edition.stateChanged.connect(self._allow_edition_state_change)
 
         self._time_span_ctrlr: Optional[TimeSpanController] = None
+
+    @Slot()
+    def update_panels_list(self, panels):
+        self.panel_selector.update_list(list(map(lambda p: p.name, filter(lambda p: isinstance(p, TimeSyncPanel),
+                                                                          map(self.main_window.plot_panel, panels)))))
 
     @Slot()
     def catalog_selected(self, catalogs: List[CatalogItem]):
