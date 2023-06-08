@@ -31,7 +31,6 @@ class MPLFigure(QFrame, PipelineModelItem, metaclass=MetaMPLPlot):
         self._canvas = FigureCanvas(Figure())
         self.layout().addWidget(NavigationToolbar(self._canvas, self))
         self.layout().addWidget(self._canvas)
-        self.setMinimumHeight(300)
 
     def select(self):
         self.setStyleSheet("border: 3px dashed blue;")
@@ -86,7 +85,6 @@ class MPLFigure(QFrame, PipelineModelItem, metaclass=MetaMPLPlot):
 
 
 pipelines_model.register_icon("MPL", QIcon("://icons/MPL.png"))
-
 
 @auto_register
 class MPLPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):

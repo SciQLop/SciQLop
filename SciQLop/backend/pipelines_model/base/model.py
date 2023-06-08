@@ -168,9 +168,11 @@ class PipelinesModel(QAbstractItemModel):
             if role == Qt.UserRole:
                 return item.name
             if role == Qt.DecorationRole:
-                return self._icons.get(item.icon, None)
+                if item.icon in self._icons:
+                    return self._icons[item.icon]
             if role == Qt.ToolTipRole:
                 return ""
+        return None
 
     def select(self, indexes: List[QModelIndex | QPersistentModelIndex]):
         if len(self._last_selected):
@@ -197,7 +199,6 @@ class PipelinesModel(QAbstractItemModel):
     def flags(self, index: QModelIndex | QPersistentModelIndex) -> int:
         if index.isValid():
             flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
-            item: PipelineModelItem = index.internalPointer()
             flags |= Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled
             return flags
         return Qt.NoItemFlags
