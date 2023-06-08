@@ -2,12 +2,13 @@ from datetime import datetime
 from typing import Optional, List
 
 from PySide6.QtCore import QMimeData, Signal
-from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
-from SciQLopPlots import QCPMarginGroup, QCustomPlot
+from PySide6.QtWidgets import QWidget, QScrollArea
+from SciQLopPlots import QCustomPlot, QCPMarginGroup
 
 from SciQLop.backend.pipelines_model.auto_register import auto_register
 from SciQLop.backend.pipelines_model.base import PipelineModelItem
 from SciQLop.backend.pipelines_model.base import model as pipelines_model
+from .abstract_plot_panel import MetaPlotPanel, PlotPanel, PanelContainer
 from .time_series_plot import TimeSeriesPlot
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
 from ...backend import Product
@@ -20,44 +21,20 @@ from ...mime.types import PRODUCT_LIST_MIME_TYPE
 log = logging.getLogger(__name__)
 
 
-class _TimeSyncPanelContainer(QWidget):
-    plot_list_changed = Signal()
-
+class TSPanelContainer(PanelContainer):
     def __init__(self, parent=None):
-        QWidget.__init__(self, parent=parent)
+        PanelContainer.__init__(self, TimeSeriesPlot, parent=parent)
         self._margin_group = QCPMarginGroup(None)
-        self.setLayout(QVBoxLayout(self))
-        self.setContentsMargins(0, 0, 0, 0)
-        self.layout().setContentsMargins(0, 0, 0, 0)
-
-    def indexOf(self, widget: QWidget):
-        return self.layout().indexOf(widget)
 
     def add_widget(self, widget: QWidget, index: int):
-        self.layout().insertWidget(index, widget)
         if isinstance(widget, TimeSeriesPlot):
             widget.set_margin_group(self._margin_group)
-            widget.destroyed.connect(self.plot_list_changed)
-            self.plot_list_changed.emit()
 
-    def count(self) -> int:
-        return self.layout().count()
-
-    def remove_plot(self, plot: TimeSeriesPlot):
-        self.layout().removeWidget(plot)
-
-    @property
-    def plots(self) -> List[TimeSeriesPlot]:
-        return list(filter(lambda w: isinstance(w, TimeSeriesPlot),
-                           map(lambda i: self.layout().itemAt(i).widget(), range(self.layout().count()))))
-
-
-class MetaTimeSyncPanel(type(QScrollArea), type(PipelineModelItem)):
-    pass
+        PanelContainer.add_widget(self, widget, index)
 
 
 @auto_register
-class TimeSyncPanel(QScrollArea, PipelineModelItem, metaclass=MetaTimeSyncPanel):
+class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
     time_range_changed = Signal(TimeRange)
     _time_range: TimeRange = TimeRange(0., 0.)
     delete_me = Signal(object)
@@ -68,7 +45,7 @@ class TimeSyncPanel(QScrollArea, PipelineModelItem, metaclass=MetaTimeSyncPanel)
         self.setObjectName(name)
         self.setContentsMargins(0, 0, 0, 0)
         self._name = name
-        self._plot_container = _TimeSyncPanelContainer(self)
+        self._plot_container = TSPanelContainer(parent=self)
         self.setWidget(self._plot_container)
         self.setWidgetResizable(True)
         self.time_range = time_range or TimeRange(datetime.utcnow().timestamp(), datetime.utcnow().timestamp())

@@ -6,14 +6,15 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QWidget, QSizePolicy, QMenu
 
+from SciQLop.backend.models import pipelines
 from .central_widget import CentralWidget
 from .console import Console
 from .datetime_range import DateTimeRangeWidgetAction
 from .pipelines import PipelineTree
+from .plots.mpl_panel import MPLPanel
 from .plots.time_sync_panel import TimeSyncPanel
 from .products_tree import ProductTree as PyProductTree
 from ..backend import TimeRange
-from SciQLop.backend.models import pipelines
 
 
 class SciQLopMainWindow(QtWidgets.QMainWindow):
@@ -87,6 +88,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def new_plot_panel(self) -> TimeSyncPanel:
         return self.central_widget.new_plot_panel()
+
+    def new_mpl_plot_panel(self) -> MPLPanel:
+        return self.central_widget.new_mpl_plot_panel()
 
     def plot_panel(self, name: str):
         return self.central_widget.plot_panel(name)
