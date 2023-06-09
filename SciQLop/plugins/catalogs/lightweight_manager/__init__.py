@@ -4,7 +4,8 @@ from typing import List, Optional
 import tscat
 from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtGui import QColor, QIcon
-from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QCheckBox, QGridLayout, QPushButton
+from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QCheckBox, QGridLayout, QPushButton, \
+    QDoubleSpinBox, QLabel
 
 from SciQLop.backend import TimeRange
 from SciQLop.backend.logging import getLogger
@@ -46,6 +47,11 @@ class LightweightManager(QWidget):
         self.main_window = main_window
         self.catalog_selector = CatalogSelector(self)
         self.follow_selected_event = QCheckBox("Jump on selected event", self)
+        self.zoom_factor = QDoubleSpinBox(self)
+        self.zoom_factor.setMinimum(0.01)
+        self.zoom_factor.setMaximum(100)
+        self.zoom_factor.setValue(0.6)
+        self.zoom_factor.setSingleStep(0.1)
         self.allow_edition = QCheckBox("Allow edition", self)
         self.panel_selector = PanelSelector(self)
         self.event_selector = EventSelector(self)
@@ -57,9 +63,11 @@ class LightweightManager(QWidget):
         self.layout().addWidget(self.refresh_button, 0, 1, 1, 1)
         self.layout().addWidget(self.panel_selector, 1, 0, 1, -1)
         self.layout().addWidget(self.follow_selected_event, 2, 0, 1, -1)
-        self.layout().addWidget(self.allow_edition, 3, 0, 1, -1)
-        self.layout().addWidget(self.catalog_selector, 4, 0, 1, -1)
-        self.layout().addWidget(self.event_selector, 5, 0, 1, -1)
+        self.layout().addWidget(QLabel("Zoom factor", self), 3, 0, 1, 1)
+        self.layout().addWidget(self.zoom_factor, 3, 1, 1, -1)
+        self.layout().addWidget(self.allow_edition, 4, 0, 1, -1)
+        self.layout().addWidget(self.catalog_selector, 5, 0, 1, -1)
+        self.layout().addWidget(self.event_selector, 6, 0, 1, -1)
 
         self.setWindowTitle("Catalogs")
 
@@ -115,7 +123,7 @@ class LightweightManager(QWidget):
             if e.start == e.stop:
                 self.current_panel.time_range = TimeRange(e.start - 3600, e.stop + 3600)
             else:
-                self.current_panel.time_range = TimeRange(e.start, e.stop) * 1.3
+                self.current_panel.time_range = TimeRange(e.start, e.stop) * (1. / self.zoom_factor.value())
 
     def update_spans(self):
         if self.current_panel is not None:
