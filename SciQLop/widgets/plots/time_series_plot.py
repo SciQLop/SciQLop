@@ -72,7 +72,7 @@ class TimeSeriesPlot(QFrame, PipelineModelItem, metaclass=MetaTimeSeriesPlot):
         self._plot = SciQLopPlot(self)
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(self._plot)
-        self.setMinimumHeight(100)
+        self.setMinimumHeight(300)
         self._drop_helper = DropHelper(widget=self,
                                        handlers=[
                                            DropHandler(mime_type=PRODUCT_LIST_MIME_TYPE,
