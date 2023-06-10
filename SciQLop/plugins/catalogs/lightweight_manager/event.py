@@ -8,6 +8,7 @@ from SciQLop.backend import TimeRange
 class Event(QObject):
     range_changed = Signal(object)
     color_changed = Signal(QColor)
+    selection_changed = Signal(bool)
 
     def __init__(self, event: tscat._Event, catalog_uid: str):
         QObject.__init__(self)

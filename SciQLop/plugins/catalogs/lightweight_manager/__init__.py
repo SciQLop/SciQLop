@@ -82,6 +82,7 @@ class LightweightManager(QWidget):
         self.allow_edition.stateChanged.connect(self._allow_edition_state_change)
 
         self._time_span_ctrlr: Optional[TimeSpanController] = None
+        self._last_selected_event: Optional[Event] = None
 
     @Slot()
     def save(self):
@@ -118,12 +119,18 @@ class LightweightManager(QWidget):
 
     @Slot()
     def event_selected(self, e: Event):
-        if self.follow_selected_event.isChecked() and self.current_panel is not None:
-            log.debug(f"event selected {event}, setting panel: {self.current_panel}")
-            if e.start == e.stop:
-                self.current_panel.time_range = TimeRange(e.start - 3600, e.stop + 3600)
+        if self.current_panel is not None:
+            if self.follow_selected_event.isChecked():
+                log.debug(f"event selected {event}, setting panel: {self.current_panel}")
+                if e.start == e.stop:
+                    self.current_panel.time_range = TimeRange(e.start - 3600, e.stop + 3600)
+                else:
+                    self.current_panel.time_range = TimeRange(e.start, e.stop) * (1. / self.zoom_factor.value())
             else:
-                self.current_panel.time_range = TimeRange(e.start, e.stop) * (1. / self.zoom_factor.value())
+                e.selection_changed.emit(True)
+                if self._last_selected_event is not None:
+                    self._last_selected_event.selection_changed.emit(False)
+                self._last_selected_event = e
 
     def update_spans(self):
         if self.current_panel is not None:
@@ -136,6 +143,7 @@ class LightweightManager(QWidget):
                                 color=self.catalog_selector.color(e.catalog_uid))
                 span.range_changed.connect(e.set_range)
                 e.color_changed.connect(span.set_color)
+                e.selection_changed.connect(span.change_selection)
                 spans.append(span)
 
             self._time_span_ctrlr.spans = spans
