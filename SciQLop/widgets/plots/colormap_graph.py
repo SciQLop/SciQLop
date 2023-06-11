@@ -1,6 +1,6 @@
 import numpy as np
 from SciQLopPlots import QCPAxis, QCPColorGradient, \
-    QCPAxisTickerLog, QCPRange
+    QCPAxisTickerLog, QCPRange, QCPColorScale, SciQLopColorMap
 from speasy.products import SpeasyVariable
 
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
@@ -38,13 +38,14 @@ class PythonResampler(QObject):
 
 class ColorMapGraph(Graph):
 
-    def __init__(self, parent, provider: DataProvider, product: ProductNode):
+    def __init__(self, parent, y_axis: QCPAxis, colormap: SciQLopColorMap, color_scale: QCPColorScale,
+                 provider: DataProvider, product: ProductNode):
         Graph.__init__(self, parent=parent, graph_type=GraphType.ColorMap, provider=provider, product=product)
-        parent.yAxis2.setScaleType(QCPAxis.stLogarithmic)
-        parent.yAxis2.setTicker(QCPAxisTickerLog())
-        parent.yAxis2.setVisible(True)
-        self.colorScale, self._graph = parent.addSciQLopColorMap(parent.xAxis, parent.yAxis2, "ColorMap",
-                                                                 with_color_scale=True)
+        y_axis.setScaleType(QCPAxis.stLogarithmic)
+        y_axis.setTicker(QCPAxisTickerLog())
+        y_axis.setVisible(True)
+        self.colorScale: QCPColorScale = color_scale
+        self._graph: SciQLopColorMap = colormap
 
         self._last_value = None
         self.colorScale.setDataScaleType(QCPAxis.stLogarithmic)
@@ -65,18 +66,26 @@ class ColorMapGraph(Graph):
         self._resampler.moveToThread(self._resampler_thread)
         self._resampler.plot_sig.connect(self._plot, Qt.ConnectionType.QueuedConnection)
         self.pipeline.plot.connect(self.plot)
-        self.pipeline.get_data(parent.time_range)
         self._resampler_thread.start()
+        self.pipeline.get_data(parent.time_range)
+        # hack to get plot refresh TODO: investigate this
+        self.pipeline.get_data(parent.time_range)
 
     def plot(self, v: SpeasyVariable):
-        self._resampler.plot(v)
         if self._graph.colorMap().name() != v.name:
             self._graph.colorMap().setName(v.name)
+        self._resampler.plot(v)
 
     def _plot(self, x, y, z):
         self._graph.colorMap().setDataRange(QCPRange(np.nanmin(z[np.nonzero(z)]), np.nanmax(z)))
         self._graph.setData(x, y, z)
         self._graph.colorMap().rescaleValueAxis()
+
+    def hide_color_scale(self):
+        self.scale.hide()
+
+    def show_color_scale(self):
+        self.scale.show()
 
     def __del__(self):
         self._resampler_thread.finished.connect(self._resampler_thread.deleteLater)

@@ -202,7 +202,9 @@ class TimeSeriesPlot(QFrame, PipelineModelItem, metaclass=MetaTimeSeriesPlot):
         self._register_new_graph(graph)
 
     def _add_colormap_graph(self, provider: DataProvider, product: ProductNode):
-        graph = ColorMapGraph(parent=self, provider=provider, product=product)
+        color_scale, colormap = self.addSciQLopColorMap(self.xAxis, self.yAxis2, "ColorMap", with_color_scale=True)
+        graph = ColorMapGraph(parent=self, y_axis=self.yAxis2, color_scale=color_scale, colormap=colormap,
+                              provider=provider, product=product)
         self._register_new_graph(graph)
 
     def remove_graph(self, graph):
