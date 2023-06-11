@@ -91,3 +91,7 @@ class TimeSpan(QObject):
         self._color = new_color
         for s in self._spans:
             s.set_color(new_color)
+
+    @property
+    def selected(self):
+        return self._selected

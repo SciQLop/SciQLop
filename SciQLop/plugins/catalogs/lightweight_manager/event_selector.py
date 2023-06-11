@@ -1,6 +1,6 @@
 from typing import List, Mapping
 
-from PySide6.QtCore import Signal, QItemSelection
+from PySide6.QtCore import Signal, QItemSelection, Slot, QItemSelectionModel
 from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import QComboBox, QListView
 
@@ -21,31 +21,45 @@ class EventSelector(QListView):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.model = QStandardItemModel()
-        self.setModel(self.model)
+        self._model = QStandardItemModel()
+        self.setModel(self._model)
         self._events: Mapping[str, Event] = {}
+        self._items: Mapping[str, EventItem] = {}
         self.selectionModel().selectionChanged.connect(self._event_selected)
 
     def update_list(self, events: List[Event]):
         self._events = {}
-        self.model.clear()
+        self._model.clear()
         for index, e in enumerate(sorted(events, key=lambda ev: ev.start + (ev.stop - ev.start))):
             item = EventItem()
-            item.setData(e.uuid, Qt.UserRole)
+            item.setData(e.uuid, Qt.ItemDataRole.UserRole)
             item.set_range(e.range)
             e.range_changed.connect(item.set_range)
-            self.model.setItem(index, item)
+            self._model.setItem(index, item)
             self._events[e.uuid] = e
+            self._items[e.uuid] = item
+
+    def _selected_uuids(self) -> List[str]:
+        return list(map(lambda idx: self._model.itemFromIndex(idx).data(Qt.ItemDataRole.UserRole)
+                        , self.selectionModel().selectedIndexes()))
 
     def _event_selected(self, selected: QItemSelection, deselected: QItemSelection):
         indexes = selected.indexes()
         if len(indexes) and len(self._events):
-            item = self.model.itemFromIndex(indexes[0])
-            self.event_selected.emit(self._events[item.data(Qt.UserRole)])
+            item = self._model.itemFromIndex(indexes[0])
+            self.event_selected.emit(self._events[item.data(Qt.ItemDataRole.UserRole)])
 
     @property
     def events(self):
         return self._events.values()
+
+    @Slot()
+    def select_event(self, uuid: str):
+        selected = self._selected_uuids()
+        if len(selected) != 1 or uuid not in selected:
+            self.clearSelection()
+            self.selectionModel().select(self._model.indexFromItem(self._items[uuid]),
+                                         QItemSelectionModel.SelectionFlag.Select)
 
 
 class PanelSelector(QComboBox):

@@ -22,6 +22,9 @@ class TimeRange:
     def from_qcprange(qcprange: QCPRange):
         return TimeRange(qcprange.lower, qcprange.upper)
 
+    def to_qcprange(self):
+        return QCPRange(self._start, self._stop)
+
     @property
     def start(self):
         return self._start
