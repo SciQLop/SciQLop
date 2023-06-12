@@ -191,15 +191,15 @@ class CatalogSelector(QTableView):
     catalog_selected = Signal(list)
     create_event = Signal(str)
     change_color = Signal(QColor, str)
-    catalogs: Mapping[str, CatalogItem] = {}
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.model = QStandardItemModel()
+        self.catalogs: Mapping[str, CatalogItem] = {}
+        self._selected_catalogs = []
         self.setModel(self.model)
         self.update_list()
         self.clicked.connect(self._catalog_selected)
-        self._selected_catalogs = []
         self.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         # self.setShowGrid(False)
@@ -237,13 +237,18 @@ class CatalogSelector(QTableView):
             self.catalog_selected.emit(self._selected_catalogs)
 
     def update_list(self):
-        self.catalogs = {c.uuid: CatalogItem(c) for c in tscat.get_catalogues()}
         self.model.clear()
+        self.catalogs = {c.uuid: CatalogItem(c) for c in tscat.get_catalogues()}
+        selected_catalogs = []
         for index, catalog in enumerate(self.catalogs.values()):
+            if any(filter(lambda c: c.uuid == catalog.uuid, self._selected_catalogs)):
+                catalog.setCheckState(Qt.CheckState.Checked)
+                selected_catalogs.append(catalog)
             self.model.setItem(index, 0, catalog)
             self.model.setItem(index, 1, catalog.create_event_item)
             self.model.setItem(index, 2, catalog.color_item)
-            # self.setIndexWidget(self.model.index(index, 1), catalog.create_event_item.button)
+        self._selected_catalogs = selected_catalogs
+        self.catalog_selected.emit(self._selected_catalogs)
 
     def color(self, catalog_uid):
         return self.catalogs[catalog_uid].color

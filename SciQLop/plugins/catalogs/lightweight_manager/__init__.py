@@ -80,6 +80,7 @@ class LightweightManager(QWidget):
         self.panel_selector.panel_selection_changed.connect(self.panel_selected)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.event_selector.event_selected.connect(self.event_selected)
+        self.event_selector.delete_events.connect(self.delete_events)
         self.allow_edition.stateChanged.connect(self._allow_edition_state_change)
 
         self._time_span_ctrlr: Optional[TimeSpanController] = None
@@ -117,6 +118,13 @@ class LightweightManager(QWidget):
             tscat.add_events_to_catalogue(catalogue=self.catalog_selector.catalogs[catalog_uid].tscat_instance,
                                           events=e)
             self.catalog_selector.reload_catalog(catalog_uid)
+
+    @Slot()
+    def delete_events(self, events: List[str]):
+        if len(events):
+            for uuid in events:
+                tscat.get_events(tscat.filtering.UUID(uuid))[0].remove(permanently=True)
+            self.refresh()
 
     @Slot()
     def event_selected(self, e: Event):

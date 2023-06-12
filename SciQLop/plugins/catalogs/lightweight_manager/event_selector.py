@@ -1,7 +1,7 @@
 from typing import List, Mapping
 
 from PySide6.QtCore import Signal, QItemSelection, Slot, QItemSelectionModel
-from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel
+from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QKeyEvent
 from PySide6.QtWidgets import QComboBox, QListView
 
 from SciQLop.backend import TimeRange
@@ -18,6 +18,7 @@ class EventItem(QStandardItem):
 
 class EventSelector(QListView):
     event_selected = Signal(object)
+    delete_events = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -29,6 +30,7 @@ class EventSelector(QListView):
 
     def update_list(self, events: List[Event]):
         self._events = {}
+        self._items = {}
         self._model.clear()
         for index, e in enumerate(sorted(events, key=lambda ev: ev.start + (ev.stop - ev.start))):
             item = EventItem()
@@ -48,6 +50,15 @@ class EventSelector(QListView):
         if len(indexes) and len(self._events):
             item = self._model.itemFromIndex(indexes[0])
             self.event_selected.emit(self._events[item.data(Qt.ItemDataRole.UserRole)])
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Delete:
+            selected_uuids = self._selected_uuids()
+            if len(selected_uuids):
+                self.delete_events.emit(selected_uuids)
+            event.accept()
+        else:
+            QListView.keyPressEvent(self, event)
 
     @property
     def events(self):
