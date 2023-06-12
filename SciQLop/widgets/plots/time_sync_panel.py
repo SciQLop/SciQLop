@@ -1,10 +1,11 @@
 from datetime import datetime
 from typing import Optional, List
 
-from PySide6.QtCore import QMimeData, Signal
+import numpy as np
+from PySide6.QtCore import QMimeData, Signal, QMargins
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QWidget, QScrollArea
-from SciQLopPlots import QCustomPlot, QCPMarginGroup
+from SciQLopPlots import QCustomPlot, QCPMarginGroup, QCPAxisRect, QCP
 
 from SciQLop.backend.pipelines_model.auto_register import auto_register
 from SciQLop.backend.pipelines_model.base import PipelineModelItem
@@ -25,13 +26,32 @@ log = logging.getLogger(__name__)
 class TSPanelContainer(PanelContainer):
     def __init__(self, parent=None):
         PanelContainer.__init__(self, TimeSeriesPlot, parent=parent)
-        self._margin_group = QCPMarginGroup(None)
+        # self._margin_group = QCPMarginGroup(None)
 
     def add_widget(self, widget: QWidget, index: int):
-        if isinstance(widget, TimeSeriesPlot):
-            widget.set_margin_group(self._margin_group)
+        # if isinstance(widget, TimeSeriesPlot):
+        #    widget.set_margin_group(self._margin_group)
 
         PanelContainer.add_widget(self, widget, index)
+
+    def update_margins(self):
+        axis_rects: List[QCPAxisRect] = [w.plot_instance.axisRect() for w in self.plots]
+        if len(axis_rects):
+            max_left_margin = 0
+            min_right_pos = 1e9
+            for ar in axis_rects:
+                left_margin = ar.calculateAutoMargin(QCP.MarginSide.msLeft)
+                max_left_margin = max(max_left_margin, left_margin)
+                w = ar.width()
+                min_right_pos = min(min_right_pos, ar.margins().left() + w)
+
+            for ar in axis_rects:
+                margins = ar.margins()
+                total_w = ar.width() + margins.left() + margins.right()
+                new_right_margin = total_w - min_right_pos
+                ar.setMinimumMargins(QMargins(max_left_margin, ar.calculateAutoMargin(QCP.MarginSide.msTop),
+                                              new_right_margin,
+                                              ar.calculateAutoMargin(QCP.MarginSide.msTop)))
 
 
 pipelines_model.register_icon("QCP", QIcon("://icons/QCP.png"))
@@ -75,6 +95,7 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
             for p in self.plots:
                 p.time_range = time_range
             self.time_range_changed.emit(time_range)
+            self._plot_container.update_margins()
 
     @property
     def name(self):
@@ -135,6 +156,9 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
         products = listify(products)
         indexes = [-1] * len(products) if index is None else range(index, index + len(products))
         list(map(lambda p_i: self._plot(*p_i), zip(products, indexes)))
+
+    def update_margins(self):
+        self._plot_container.update_margins()
 
     def replot(self, refresh_priority=QCustomPlot.rpQueuedReplot):
         for p in self.plots:
