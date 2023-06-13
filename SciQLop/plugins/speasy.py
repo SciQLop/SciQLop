@@ -55,7 +55,8 @@ def data_serie_type(param: ParameterIndex):
             if components_cnt == 3:
                 return ParameterType.VECTOR
             return ParameterType.MULTICOMPONENT
-
+    if 'amda' in param.spz_provider().lower():
+        return ParameterType.MULTICOMPONENT  # should be a safe backup
     return ParameterType.NONE
 
 
