@@ -1,6 +1,6 @@
 import numpy as np
 from PySide6.QtGui import QPen
-from SciQLopPlots import SciQLopGraph
+from SciQLopPlots import SciQLopGraph, QCPSelectionDecorator
 from speasy.products import SpeasyVariable
 
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
@@ -23,6 +23,9 @@ class LineGraph(Graph):
         self.graph.create_graphs(labels)
         for color, index in zip(self.parent().generate_colors(len(labels)), range(len(labels))):
             self.graphAt(index).setPen(QPen(color))
+            selection_decorator = self.graphAt(index).selectionDecorator()
+            selection_decorator.setPen(QPen(color, selection_decorator.pen().width()))
+            self.graphAt(index).setSelectionDecorator(selection_decorator)
             self.graphAt(index).addToLegend()
 
     def plot(self, v: SpeasyVariable):
