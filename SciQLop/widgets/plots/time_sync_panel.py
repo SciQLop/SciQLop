@@ -84,6 +84,17 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
         self._plot_container.plot_list_changed.connect(self.plot_list_changed)
         self._parent_node = None
 
+    def link_panel(self, panel: 'TimeSyncPanel'):
+        panel.time_range_changed.connect(self.set_time_range)
+        self.time_range_changed.connect(panel.set_time_range)
+
+    def unlink_panel(self, panel: 'TimeSyncPanel'):
+        panel.time_range_changed.disconnect(self.set_time_range)
+        self.time_range_changed.disconnect(panel.set_time_range)
+
+    def set_time_range(self, time_range: TimeRange):
+        self.time_range = time_range
+
     @property
     def time_range(self) -> TimeRange:
         return self._time_range
