@@ -1,5 +1,5 @@
 from PySide6 import QtCore, QtGui
-from PySide6.QtWidgets import QSizePolicy, QWidget, QLineEdit, QCompleter, QVBoxLayout
+from PySide6.QtWidgets import QSizePolicy, QWidget, QLineEdit, QCompleter, QVBoxLayout, QAbstractScrollArea
 
 from SciQLop.backend.models import products
 from SciQLop.widgets.common import TreeView
@@ -9,6 +9,7 @@ class ProductTree(QWidget):
     def __init__(self, parent=None):
         super(ProductTree, self).__init__(parent)
         self._view = TreeView(self)
+        self._view.setSizeAdjustPolicy(QAbstractScrollArea.AdjustIgnored)
         self._view.setModel(products)
         self._view.setSortingEnabled(False)
         self._filter = QLineEdit(self)
