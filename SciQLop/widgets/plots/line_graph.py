@@ -25,7 +25,6 @@ class LineGraph(Graph):
             self.graphAt(index).setPen(QPen(color))
             selection_decorator = self.graphAt(index).selectionDecorator()
             selection_decorator.setPen(QPen(color, selection_decorator.pen().width()))
-            self.graphAt(index).setSelectionDecorator(selection_decorator)
             self.graphAt(index).addToLegend()
 
     def plot(self, v: SpeasyVariable):

@@ -134,6 +134,15 @@ class TimeSeriesPlot(QFrame, PipelineModelItem, metaclass=MetaTimeSeriesPlot):
     def replot(self, refresh_priority=QCustomPlot.rpQueuedReplot):
         return self._plot.replot(refresh_priority)
 
+    def autoscale_y_axis(self):
+        self.yAxis.rescale()
+
+    def enable_y_autoscale(self):
+        self.time_range_changed.connect(self.autoscale_y_axis)
+
+    def disable_y_autoscale(self):
+        self.time_range_changed.disconnect(self.autoscale_y_axis)
+
     def addSciQLopGraph(self, x_axis, y_axis, data_order, labels=None):
         if labels is not None:
             return SciQLopGraph(self._plot, x_axis, y_axis, labels, data_order)

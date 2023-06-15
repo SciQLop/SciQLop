@@ -60,7 +60,8 @@ class EasyScalar(EasyProvider):
             return res
         elif type(res) is tuple:
             x, y = res
-            return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x))], values=DataContainer(y),
+            return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x))],
+                                  values=DataContainer(np.ascontiguousarray(y)),
                                   columns=self._columns)
         else:
             return None
@@ -80,10 +81,21 @@ class EasyVector(EasyProvider):
             return res
         elif type(res) is tuple:
             x, y = res
-            return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x))], values=DataContainer(y),
+            return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x))],
+                                  values=DataContainer(np.ascontiguousarray(y)),
                                   columns=self._columns)
         else:
             return None
+
+
+class EasyMultiComponent(EasyVector):
+    def __init__(self, path, get_data_callback, components_names: List[str], metadata: dict,
+                 data_order: DataOrder = DataOrder.Y_FIRST):
+        super(EasyVector, self).__init__(path=path, callback=get_data_callback,
+                                         parameter_type=ParameterType.MULTICOMPONENT,
+                                         metadata={**metadata, "components": ';'.join(components_names)},
+                                         data_order=data_order)
+        self._columns = components_names
 
 
 class EasySpectrogram(EasyProvider):
@@ -100,6 +112,7 @@ class EasySpectrogram(EasyProvider):
             return res
         elif type(res) is tuple:
             x, y, z = res
-            return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x)), VariableAxis(y)], values=DataContainer(z))
+            return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x)), VariableAxis(np.ascontiguousarray(y))],
+                                  values=DataContainer(np.ascontiguousarray(z)))
         else:
             return None
