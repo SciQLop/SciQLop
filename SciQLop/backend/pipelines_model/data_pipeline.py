@@ -33,15 +33,18 @@ class _DataPipelineWorker(QObject):
         self._data_order = provider.data_order
 
     def _get_data(self):
-        self.range_mutex.lock()
-        next_range = deepcopy(self.next_range)
-        self.range_mutex.unlock()
-        if next_range != self.current_range:
-            data = self.provider.get_data(self.product, datetime.utcfromtimestamp(next_range.start),
-                                          datetime.utcfromtimestamp(next_range.stop))
-            self.current_range = next_range
-            if data is not None:
-                self.plot.emit(data)
+        try:
+            self.range_mutex.lock()
+            next_range = deepcopy(self.next_range)
+            self.range_mutex.unlock()
+            if next_range != self.current_range:
+                data = self.provider.get_data(self.product, datetime.utcfromtimestamp(next_range.start),
+                                              datetime.utcfromtimestamp(next_range.stop))
+                self.current_range = next_range
+                if data is not None:
+                    self.plot.emit(data)
+        except Exception as e:
+            print(e)
 
     def get_data(self, new_range: TimeRange):
         self.range_mutex.lock()
@@ -53,32 +56,32 @@ class _DataPipelineWorker(QObject):
         log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
 
 
-class _DataPipelineController(QThread):
-    def __init__(self, data_callback: Callable[[SpeasyVariable], None], product: ProductNode, time_range: TimeRange):
-        QThread.__init__(self)
-        self.setTerminationEnabled(True)
-        self.wait_condition = QWaitCondition()
-        self.next_range: Optional[TimeRange] = time_range
-        self.current_range: Optional[TimeRange] = None
-        self._worker = _DataPipelineWorker(data_callback, product, time_range)
-        self.moveToThread(self)
-        self.start()
+#class _DataPipelineController(QThread):
+#    def __init__(self, data_callback: Callable[[SpeasyVariable], None], product: ProductNode, time_range: TimeRange):
+#        QThread.__init__(self)
+#        self.setTerminationEnabled(True)
+#        self.wait_condition = QWaitCondition()
+#        self.next_range: Optional[TimeRange] = time_range
+#        self.current_range: Optional[TimeRange] = None
+#        self._worker = _DataPipelineWorker(data_callback, product, time_range)
+#        self.moveToThread(self)
+#        self.start()
+#
+#    def __del__(self):
+#        log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
+#        #self._worker.requestInterruption()
+#        #self._worker.wait_condition.wakeOne()
+#        #self._worker.wait(1000)
 
-    def __del__(self):
-        log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
-        self._worker.requestInterruption()
-        self._worker.wait_condition.wakeOne()
-        self._worker.wait(1000)
-
-    def run(self):
-        mutex = QMutex()
-        while not QThread.currentThread().isInterruptionRequested():
-            mutex.lock()
-            self.wait_condition.wait(mutex, 500.)
-            if self.next_range != self._worker.current_range:
-                self._worker.next_range = self.next_range
-                self._worker.wait_condition.wakeOne()
-            mutex.unlock()
+#    def run(self):
+#        mutex = QMutex()
+#        while not QThread.currentThread().isInterruptionRequested():
+#            mutex.lock()
+#            self.wait_condition.wait(mutex, 500.)
+#            if self.next_range != self._worker.current_range:
+#                self._worker.next_range = self.next_range
+#                self._worker.wait_condition.wakeOne()
+#            mutex.unlock()
 
 
 @auto_register
@@ -89,6 +92,7 @@ class DataPipeline(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
     def __init__(self, parent: QObject, provider: DataProvider, product: ProductNode, time_range: TimeRange):
         QObject.__init__(self, parent)
         self._worker_thread = QThread(self)
+        self._worker_thread.setObjectName("DataPipelineWorkerThread")
         self.setObjectName(f"{product.provider}/{product.uid}")
         self._worker = _DataPipelineWorker(provider, product, time_range)
         self._worker.moveToThread(self._worker_thread)

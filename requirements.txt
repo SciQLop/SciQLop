@@ -1,0 +1,8 @@
+numpy
+SciQLopPlots>=0.5.0
+speasy>=1.2.2
+qtconsole
+tscat_gui>=0.2.0
+seaborn
+scipy
+PySide6-QtAds==4.1.0.2

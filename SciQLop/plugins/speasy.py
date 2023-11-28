@@ -16,9 +16,9 @@ def get_components(param: ParameterIndex) -> List[str] or None:
             map(lambda p: p.spz_name(), filter(lambda n: type(n) is ComponentIndex, param.__dict__.values())))
         if len(components) > 0:
             return components
-    if hasattr(param, 'LABL_PTR_1'):
+    if hasattr(param, 'LABL_PTR_1') and type(param.LABL_PTR_1) is str:
         return param.LABL_PTR_1.split(',')
-    if hasattr(param, 'LABLAXIS'):
+    if hasattr(param, 'LABLAXIS') and type(param.LABLAXIS) is str:
         return param.LABLAXIS.split(',')
     if param.spz_provider() == 'ssc':
         return ['x', 'y', 'z']
@@ -92,9 +92,11 @@ def explore_nodes(inventory_node, product_node: Product, provider):
 class SpeasyPlugin(DataProvider):
     def __init__(self):
         super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST)
+        print("Loading Speasy plugin...")
         root_node = Product(name="speasy", metadata={}, provider=self.name, uid=self.name)
         explore_nodes(spz.inventories.tree, root_node, provider=self.name)
         products.add_products(root_node)
+        print("Speasy plugin loaded")
 
     def get_data(self, product: Product, start, stop):
         try:
@@ -108,4 +110,5 @@ class SpeasyPlugin(DataProvider):
 
 
 def load(*args):
+    print("Loading Speasy plugin...")
     return SpeasyPlugin()

@@ -1,0 +1,72 @@
+name: Pyinstaller
+
+on:
+  release:
+    types: [published]
+  push:
+  pull_request:
+
+
+jobs:
+  build_linux:
+    runs-on: ubuntu-latest
+    container: debian:10
+    steps:
+      - uses: actions/checkout@v3
+      - name: install python
+        run: |
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PATH"
+          apt-get update && apt-get upgrade -y 
+          apt-get install -y curl git gcc make zlib1g-dev libffi-dev libssl-dev libbz2-dev libreadline-dev libsqlite3-dev wget llvm libncurses5-dev xz-utils tk-dev libxcb-cursor0 libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+          curl https://pyenv.run | bash
+          pyenv install 3.10
+      - name: bundle SciQLop
+        run: |
+          export PYENV_ROOT="$HOME/.pyenv"
+          export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$HOME/.local/bin:$PATH"
+          git config --global --add safe.directory '*'
+          pyenv local 3.10
+          export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PYENV_ROOT/versions/$(pyenv version-name)/bin:$PATH" 
+          python3.10 -m ensurepip
+          python3.10 -m pip install --upgrade pip
+          python3.10 -m pip install --upgrade pyinstaller 'numpy' .
+          pyinstaller SciQLop.spec
+      - name: Save packages as artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: SciQLop_Linux
+          path: dist/SciQLop
+
+  build_osx_windows:
+    strategy:
+      matrix:
+        os: [macos-11,  windows-latest]
+        python-version: ['3.10']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          architecture: x64
+      - name: Build for Python ${{ matrix.python-version }}
+        run: |
+          git config --global --add safe.directory '*'
+          pip install --upgrade pyinstaller 'numpy' .
+          pyinstaller SciQLop.spec
+
+      - name: Save packages as artifacts
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v3
+        with:
+          name: SciQLop.exe
+          path: dist/SciQLop*
+
+      - name: Save packages as artifacts
+        if: runner.os != 'Windows'
+        uses: actions/upload-artifact@v3
+        with:
+          name: SciQLop.app
+          path: dist/SciQLop*

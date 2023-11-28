@@ -27,7 +27,7 @@ def regrid(v: SpeasyVariable) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
                       values.ravel(),
                       (np.repeat(resampled_t, len(new_y)), np.tile(new_y, len(resampled_t))),
                       method='nearest',
-                      fill_value=np.nan)
+                      fill_value=np.nan, rescale=True)
 
     if values.dtype != np.float64:
         values = values.astype(np.float64)

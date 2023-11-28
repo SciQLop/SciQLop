@@ -3,11 +3,9 @@ import os
 import traceback
 from types import SimpleNamespace
 
-from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject
+from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject, QThread
 
 here = os.path.dirname(os.path.realpath(__file__))
-
-threadpool = QThreadPool()
 
 loaded_plugins = SimpleNamespace()
 
@@ -32,6 +30,7 @@ class Worker(QRunnable):
 
     def __init__(self, fn, *args, **kwargs):
         super(Worker, self).__init__()
+        print(f"Loading {fn.__name__} args={args} kwargs={kwargs}")
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
@@ -40,6 +39,7 @@ class Worker(QRunnable):
     @Slot()
     def run(self):
         try:
+            print(f"Loading {self.fn.__name__}")
             self.signals.result.emit(*self.fn(*self.args, **self.kwargs))
         except Exception as e:
             print(f"Oups can't load {name} , {e}")
@@ -49,12 +49,15 @@ class Worker(QRunnable):
 def load_plugin(name, mod, main_window):
     if mod:
         try:
+            print(f"Loading {name}")
             r = mod.load(main_window)
             loaded_plugins.__dict__[name] = r
             return r
         except Exception as e:
             print(f"Oups can't load {mod} , {e}")
             traceback.print_exc()
+    else:
+        print(f"Oups can't load {name} , {mod}")
 
 
 def load_module(name):
@@ -67,13 +70,14 @@ def load_module(name):
 
 
 def background_load(plugin, main_window):
+    print(f"Loading {plugin}")
     w = Worker(load_module, plugin)
     w.signals.result.connect(lambda name, mod: load_plugin(name, mod, main_window))
-    return threadpool.start(w)
+    return QThreadPool.globalInstance().start(w)
 
 
 def load_all(main_window):
     plugin_list = [f[:-3] for f in os.listdir(here) if f[-3:] == '.py' and f != '__init__.py'] + \
                   [f for f in os.listdir(here) if os.path.isdir(f"{here}/{f}") and not f.startswith('_')]
     print(plugin_list)
-    return {plugin: background_load(plugin, main_window) for plugin in plugin_list}
+    return {plugin: load_plugin(*load_module(plugin), main_window) for plugin in plugin_list}

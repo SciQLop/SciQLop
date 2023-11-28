@@ -32,5 +32,6 @@
         <file>icons/SciQLop.png</file>
         <file>icons/MPL.png</file>
         <file>icons/QCP.png</file>
+        <file>splash.png</file>
     </qresource>
 </RCC>
