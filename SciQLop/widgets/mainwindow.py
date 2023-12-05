@@ -1,5 +1,6 @@
 import os
 from datetime import datetime, timedelta
+from typing import Optional
 
 import PySide6QtAds as QtAds
 from PySide6 import QtCore, QtWidgets, QtGui
@@ -9,6 +10,7 @@ from PySide6.QtWidgets import QWidget, QSizePolicy, QMenu
 from SciQLop.backend.models import pipelines
 from .central_widget import CentralWidget
 from .console import Console
+from .logs_widget import LogsWidget
 from .datetime_range import DateTimeRangeWidgetAction
 from .pipelines import PipelineTree
 from .plots.mpl_panel import MPLPanel
@@ -50,7 +52,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.add_side_pan(self.pipelinesTree)
         self.console = Console(parent=self, available_vars={"main_window": self},
                                custom_banner="SciQLop IPython Console ")
-        self.addWidgetIntoDock(QtAds.BottomDockWidgetArea, self.console)
+        bottom_area = self.addWidgetIntoDock(QtAds.BottomDockWidgetArea, self.console)
+        self.logs = LogsWidget(self)
+        self.addWidgetIntoDock(QtAds.BottomDockWidgetArea, self.logs, bottom_area)
+
         self.setWindowTitle("SciQLop")
         self.toolBar = QtWidgets.QToolBar(self)
         self.toolBar.setWindowTitle("Toolbar")
@@ -79,12 +84,16 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             self.dock_manager.addAutoHideDockWidget(QtAds.PySide6QtAds.ads.SideBarLocation.SideBarLeft, doc)
             self.viewMenu.addAction(doc.toggleViewAction())
 
-    def addWidgetIntoDock(self, area, widget, allowed_area=QtAds.AllDockAreas):
+    def addWidgetIntoDock(self, allowed_area, widget, area=None) -> Optional[QtAds.CDockAreaWidget]:
         if widget is not None:
             doc = QtAds.CDockWidget(widget.windowTitle())
             doc.setWidget(widget)
-            self.dock_manager.addDockWidget(area, doc)
+            dock_aera = self.dock_manager.addDockWidget(allowed_area, doc)
+            if area:
+                self.dock_manager.addDockWidgetTabToArea(doc, area)
             self.viewMenu.addAction(doc.toggleViewAction())
+            return dock_aera
+        return None
 
     def new_plot_panel(self) -> TimeSyncPanel:
         return self.central_widget.new_plot_panel()

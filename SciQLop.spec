@@ -1,12 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
 from sys import platform
+import os
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--debug", action="store_true")
+options = parser.parse_args()
+
+
 from PyInstaller.utils.hooks import collect_all
 block_cipher = None
 
 icon = None
 
 datas = [('SciQLop/resources/*','SciQLop/resources'),('SciQLop/plugins/*','SciQLop/plugins')]
-binaries = [('/lib/x86_64-linux-gnu/libcrypt.so.1', '.')]
+binaries = []
+if os.path.exists('/lib/x86_64-linux-gnu/libcrypt.so.1'):
+    binaries.append( ('/lib/x86_64-linux-gnu/libcrypt.so.1', '.') )
+
 hiddenimports = ['tscat_gui', 'SciQLop', 'SciQLop.widgets.plots.time_span', 'SciQLop.widgets.plots.time_span_controller', 'SciQLop.plugins.catalogs.lightweight_manager', 'SciQLop.backend.pipelines_model.easy_provider']
 
 def add_all_from_module(name):
@@ -19,6 +30,7 @@ add_all_from_module('debugpy')
 add_all_from_module('speasy')
 add_all_from_module('pycdfpp')
 add_all_from_module('pyistp')
+add_all_from_module('qtconsole')
 
 
 if platform.startswith("darwin"):
@@ -80,8 +92,10 @@ else:
           a.zipfiles,
           a.datas,
           name='SciQLop',
-          debug=False,
+          debug=options.debug,
           strip=False,
           upx=True,
           runtime_tmpdir=None,
-          console=False )
+          console=False,
+          icon="SciQLop/resources/icons/SciQLop.ico")
+

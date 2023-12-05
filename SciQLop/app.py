@@ -1,6 +1,7 @@
 import os
 import platform
 import sys
+from io import StringIO
 
 os.environ['QT_API'] = 'PySide6'
 print("Forcing TZ to UTC")
@@ -12,8 +13,26 @@ _STYLE_SHEET_ = """
 QWidget:focus { border: 1px dashed light blue }
 """
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))+'/..'))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)) + '/..'))
 
+
+class FakeStdout:
+    def __init__(self):
+        self._buffer = ""
+
+    def write(self, msg):
+        self._buffer += msg
+
+    def flush(self):
+        pass
+
+    def get(self):
+        return self._buffer
+
+
+sys.stdout = FakeStdout()
+sys.stdin = StringIO()
+sys.stderr = FakeStdout()
 
 def main():
     from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml, QtCore, QtGui
@@ -36,14 +55,18 @@ def main():
     splash = QtWidgets.QSplashScreen(pixmap)
     splash.show()
     app.processEvents()
+    splash.showMessage("Loading SciQLop...")
+    app.processEvents()
 
     from SciQLop.widgets.mainwindow import SciQLopMainWindow
     from SciQLop.plugins import load_all, loaded_plugins
-
+    app.processEvents()
     w = SciQLopMainWindow()
     w.show()
+    app.processEvents()
     w.push_variables_to_console({"plugins": loaded_plugins})
     load_all(w)
+    app.processEvents()
     splash.finish(w)
     app.exec()
 

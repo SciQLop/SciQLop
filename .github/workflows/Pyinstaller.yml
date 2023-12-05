@@ -2,7 +2,7 @@ name: Pyinstaller
 
 on:
   release:
-    types: [published]
+    types: [ published ]
   push:
   pull_request:
 
@@ -30,7 +30,7 @@ jobs:
           export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PYENV_ROOT/versions/$(pyenv version-name)/bin:$PATH" 
           python3.10 -m ensurepip
           python3.10 -m pip install --upgrade pip
-          python3.10 -m pip install --upgrade pyinstaller 'numpy' .
+          python3.10 -m pip install --upgrade pyinstaller pyinstaller-hooks-contrib 'numpy' .
           pyinstaller SciQLop.spec
       - name: Save packages as artifacts
         uses: actions/upload-artifact@v3
@@ -41,8 +41,9 @@ jobs:
   build_osx_windows:
     strategy:
       matrix:
-        os: [macos-11,  windows-latest]
-        python-version: ['3.10']
+        #os: [ macos-11,  windows-latest ]
+        os: [ windows-latest ]
+        python-version: [ '3.10' ]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -54,8 +55,8 @@ jobs:
       - name: Build for Python ${{ matrix.python-version }}
         run: |
           git config --global --add safe.directory '*'
-          pip install --upgrade pyinstaller 'numpy' .
-          pyinstaller SciQLop.spec
+          pip install --upgrade pyinstaller pyinstaller-hooks-contrib 'numpy' .
+          pyinstaller SciQLop.spec -- --debug 
 
       - name: Save packages as artifacts
         if: runner.os == 'Windows'
