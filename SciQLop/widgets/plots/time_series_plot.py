@@ -26,9 +26,9 @@ from ...backend.enums import ParameterType, DataOrder
 from ...backend.unique_names import make_simple_incr_name
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
-from ...backend import logging
+from ...backend import sciqlop_logging
 
-log = logging.getLogger(__name__)
+log = sciqlop_logging.getLogger(__name__)
 
 
 def _to_qcolor(r: float, g: float, b: float):

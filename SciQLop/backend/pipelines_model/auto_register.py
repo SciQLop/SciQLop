@@ -4,9 +4,9 @@ from PySide6.QtCore import QObject, Slot
 
 from .base import model
 from .base.pipeline_node import PipelineModelItem
-from .. import logging
+from .. import sciqlop_logging
 
-log = logging.getLogger(__name__)
+log = sciqlop_logging.getLogger(__name__)
 
 _nodes: List['QObjectNode'] = []
 

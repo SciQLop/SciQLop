@@ -8,10 +8,10 @@ from SciQLop.backend.pipelines_model.auto_register import auto_register
 from SciQLop.backend.pipelines_model.base import PipelineModelItem
 from SciQLop.backend.pipelines_model.base import model as pipelines_model
 from .abstract_plot_panel import MetaPlotPanel, PlotPanel, PanelContainer
-from ...backend import logging
+from ...backend import sciqlop_logging
 from ...backend.unique_names import make_simple_incr_name
 
-log = logging.getLogger(__name__)
+log = sciqlop_logging.getLogger(__name__)
 
 from matplotlib.backends.backend_qtagg import (
     FigureCanvas, NavigationToolbar2QT as NavigationToolbar)

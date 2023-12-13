@@ -16,11 +16,11 @@ from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
 from ...backend import Product
 from ...backend import TimeRange
 from ...backend import listify
-from ...backend import logging
+from ...backend import sciqlop_logging
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE
 
-log = logging.getLogger(__name__)
+log = sciqlop_logging.getLogger(__name__)
 
 
 class TSPanelContainer(PanelContainer):

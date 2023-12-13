@@ -6,10 +6,10 @@ from speasy.products import SpeasyVariable
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.graph import Graph
 from SciQLop.backend.products_model.product_node import ProductNode
-from ...backend import logging
+from ...backend import sciqlop_logging
 from ...backend.enums import GraphType
 
-log = logging.getLogger(__name__)
+log = sciqlop_logging.getLogger(__name__)
 
 
 class LineGraph(Graph):

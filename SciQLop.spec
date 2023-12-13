@@ -31,6 +31,7 @@ add_all_from_module('speasy')
 add_all_from_module('pycdfpp')
 add_all_from_module('pyistp')
 add_all_from_module('qtconsole')
+add_all_from_module('jupyterlab')
 
 
 if platform.startswith("darwin"):
@@ -57,7 +58,7 @@ if platform.startswith("darwin"):
               a.scripts,
               [],
               exclude_binaries=True,
-              name='speed_tester',
+              name='SciQLop',
               debug=True,
               bootloader_ignore_signals=False,
               strip=False,

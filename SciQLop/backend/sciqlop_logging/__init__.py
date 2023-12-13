@@ -1,6 +1,8 @@
 import logging
 import os
 import sys
+from .logger import Logger
+from io import StringIO
 
 INFO = logging.INFO
 WARNING = logging.WARNING
@@ -14,7 +16,19 @@ def getLogger(name=None):
     return logging.getLogger("SciQLop")
 
 
+_stdout = Logger()
+_stderr = Logger()
+_stdin = StringIO()
+
+
+def replace_stdios():
+    sys.stdout = _stdout
+    sys.stdin = _stdin
+    sys.stderr = _stderr
+
+
 def setup(log_filename=None, log_level=None):
+    replace_stdios()
     if log_level is not None:
         getLogger().setLevel(log_level)
     else:

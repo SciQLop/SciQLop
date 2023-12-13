@@ -6,3 +6,6 @@ tscat_gui>=0.2.0
 seaborn
 scipy
 PySide6-QtAds==4.1.0.2
+IPython
+ipykernel
+jupyterlab

@@ -5,9 +5,9 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
 
 from SciQLop.backend.pipelines_model.base import PipelineModelItem
-from ...backend import logging
+from ...backend import sciqlop_logging
 
-log = logging.getLogger(__name__)
+log = sciqlop_logging.getLogger(__name__)
 
 
 @runtime_checkable

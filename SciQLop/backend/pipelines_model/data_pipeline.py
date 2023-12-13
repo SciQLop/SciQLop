@@ -12,9 +12,9 @@ from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.base import PipelineModelItem, MetaPipelineModelItem
 from SciQLop.backend.pipelines_model.base import model as pipelines_model
 from SciQLop.backend.products_model.product_node import ProductNode
-from .. import logging
+from .. import sciqlop_logging
 
-log = logging.getLogger(__name__)
+log = sciqlop_logging.getLogger(__name__)
 
 
 class _DataPipelineWorker(QObject):
@@ -54,34 +54,6 @@ class _DataPipelineWorker(QObject):
 
     def __del__(self):
         log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
-
-
-#class _DataPipelineController(QThread):
-#    def __init__(self, data_callback: Callable[[SpeasyVariable], None], product: ProductNode, time_range: TimeRange):
-#        QThread.__init__(self)
-#        self.setTerminationEnabled(True)
-#        self.wait_condition = QWaitCondition()
-#        self.next_range: Optional[TimeRange] = time_range
-#        self.current_range: Optional[TimeRange] = None
-#        self._worker = _DataPipelineWorker(data_callback, product, time_range)
-#        self.moveToThread(self)
-#        self.start()
-#
-#    def __del__(self):
-#        log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
-#        #self._worker.requestInterruption()
-#        #self._worker.wait_condition.wakeOne()
-#        #self._worker.wait(1000)
-
-#    def run(self):
-#        mutex = QMutex()
-#        while not QThread.currentThread().isInterruptionRequested():
-#            mutex.lock()
-#            self.wait_condition.wait(mutex, 500.)
-#            if self.next_range != self._worker.current_range:
-#                self._worker.next_range = self.next_range
-#                self._worker.wait_condition.wakeOne()
-#            mutex.unlock()
 
 
 @auto_register

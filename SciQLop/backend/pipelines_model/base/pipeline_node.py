@@ -4,9 +4,9 @@ from typing import List, Protocol, runtime_checkable
 from PySide6.QtCore import QObject
 from PySide6.QtWidgets import QWidget
 
-from ... import logging
+from ... import sciqlop_logging
 
-log = logging.getLogger(__name__)
+log = sciqlop_logging.getLogger(__name__)
 
 
 @runtime_checkable

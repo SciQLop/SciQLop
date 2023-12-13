@@ -10,10 +10,10 @@ from SciQLop.backend.pipelines_model.base.pipeline_node import PipelineModelItem
 from SciQLop.backend.models import pipelines
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from .data_pipeline import DataPipeline
-from .. import logging
+from .. import sciqlop_logging
 from ..products_model.product_node import ProductNode
 
-log = logging.getLogger(__name__)
+log = sciqlop_logging.getLogger(__name__)
 
 
 @auto_register

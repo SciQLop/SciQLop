@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QChe
     QDoubleSpinBox, QLabel
 
 from SciQLop.backend import TimeRange
-from SciQLop.backend.logging import getLogger
+from SciQLop.backend.sciqlop_logging import getLogger
 from SciQLop.widgets.mainwindow import SciQLopMainWindow
 from SciQLop.widgets.plots.time_span import TimeSpan
 from SciQLop.widgets.plots.time_span_controller import TimeSpanController

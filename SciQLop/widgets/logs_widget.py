@@ -5,21 +5,8 @@ from PySide6.QtCore import Signal, QMimeData, Qt, QObject, QThread, QSize, QStri
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QListView, QWidget, QVBoxLayout
 from datetime import datetime
-
+from ..backend.sciqlop_logging import _stdout
 import sys
-
-
-class Logger(QObject):
-    def __init__(self, parent=None):
-        QObject.__init__(self, parent)
-
-    def write(self, msg):
-        self.new_line.emit(f"{datetime.now().isoformat()}: {msg}")
-
-    def flush(self):
-        pass
-
-    new_line = Signal(str)
 
 
 class LogsWidget(QWidget):
@@ -28,18 +15,8 @@ class LogsWidget(QWidget):
         self.setWindowTitle("Logs")
         self._model = QStringListModel()
         self._list_view = QListView(self)
-        self._logger_thread = QThread(self)
-        self._logger = Logger()
-        self._logger.moveToThread(self._logger_thread)
-        self._logger_thread.start()
-        self._logger.new_line.connect(self._new_line)
-        if hasattr(sys.stdout, "get"):
-            tmp = sys.stdout
-            sys.stdout = self._logger
-            for line in tmp.get().splitlines():
-                self._new_line(line)
-        else:
-            sys.stdout = self._logger
+        _stdout.new_line.connect(self._new_line)
+
         self._list_view.setModel(self._model)
         self._list_view.setEditTriggers(QListView.NoEditTriggers)
         self._list_view.setUniformItemSizes(True)

@@ -3,7 +3,7 @@ from typing import List
 import PySide6QtAds as QtAds
 from PySide6.QtCore import Signal, QMimeData, Qt
 from PySide6.QtGui import QCloseEvent
-from PySide6.QtWidgets import QMainWindow
+from PySide6.QtWidgets import QMainWindow, QWidget
 
 from .drag_and_drop import DropHandler, DropHelper
 from .plots.abstract_plot_panel import PlotPanel
@@ -88,6 +88,12 @@ class CentralWidget(QMainWindow):
         self.panels_list_changed.emit(self.panels())
         pipelines.add_add_panel(tsp)
         return tsp
+
+    def add_docked_widget(self, widget: QWidget, area: QtAds.DockWidgetArea = QtAds.DockWidgetArea.TopDockWidgetArea):
+        dw = QtAds.CDockWidget(widget.windowTitle())
+        dw.setWidget(widget)
+        self.dock_manager.addDockWidget(area, dw)
+        self.dock_widget_added.emit(dw)
 
     def set_default_time_range(self, time_range: TimeRange):
         self._default_time_range = time_range

@@ -4,12 +4,13 @@ from typing import Optional
 
 import PySide6QtAds as QtAds
 from PySide6 import QtCore, QtWidgets, QtGui
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtGui import QCloseEvent, Qt
 from PySide6.QtWidgets import QWidget, QSizePolicy, QMenu
 
 from SciQLop.backend.models import pipelines
 from .central_widget import CentralWidget
-from .console import Console
+from .IPythonManager import IPythonKernelManager
+from .JupyterLabView import JupyterLabView
 from .logs_widget import LogsWidget
 from .datetime_range import DateTimeRangeWidgetAction
 from .pipelines import PipelineTree
@@ -20,12 +21,13 @@ from ..backend import TimeRange
 
 
 class SciQLopMainWindow(QtWidgets.QMainWindow):
-    def __init__(self):
+    def __init__(self, app):
 
         QtWidgets.QMainWindow.__init__(self)
-        self._setup_ui()
+        self.app = app
+        self._setup_ui(app)
 
-    def _setup_ui(self):
+    def _setup_ui(self, app):
         QtAds.CDockManager.setAutoHideConfigFlag(QtAds.CDockManager.DefaultAutoHideConfig)
         if "WAYLAND_DISPLAY" in os.environ:
             QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerForceQWidgetTitleBar, True)
@@ -50,9 +52,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.add_side_pan(self.productTree)
         self.pipelinesTree = PipelineTree(self)
         self.add_side_pan(self.pipelinesTree)
-        self.console = Console(parent=self, available_vars={"main_window": self},
-                               custom_banner="SciQLop IPython Console ")
-        bottom_area = self.addWidgetIntoDock(QtAds.BottomDockWidgetArea, self.console)
+        self.ipython_kernel_manager = IPythonKernelManager(parent=self, app=app, available_vars={"main_window": self})
+        self.ipython_kernel_manager.jupyterlab_started.connect(
+            lambda url: self.central_widget.add_docked_widget(JupyterLabView(None,url)))
+        bottom_area = self.addWidgetIntoDock(QtAds.BottomDockWidgetArea, self.ipython_kernel_manager)
         self.logs = LogsWidget(self)
         self.addWidgetIntoDock(QtAds.BottomDockWidgetArea, self.logs, bottom_area)
 
@@ -112,8 +115,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 self.showFullScreen()
 
     def closeEvent(self, event: QCloseEvent):
-        event.accept()
         pipelines.close()
+        self.ipython_kernel_manager.quit()
+        super().closeEvent(event)
 
     def push_variables_to_console(self, variables: dict):
-        self.console.pushVariables(variable_dict=variables)
+        self.ipython_kernel_manager.pushVariables(variable_dict=variables)
+
+    def start(self):
+        self.ipython_kernel_manager.start()

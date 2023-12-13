@@ -67,6 +67,7 @@ def load_module(name):
     except Exception as e:
         print(f"Oups can't load {name} , {e}")
         traceback.print_exc()
+        return "", None
 
 
 def background_load(plugin, main_window):
