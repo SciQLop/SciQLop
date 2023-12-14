@@ -7,7 +7,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--debug", action="store_true")
 options = parser.parse_args()
 
-
 from PyInstaller.utils.hooks import collect_all
 block_cipher = None
 
@@ -42,12 +41,13 @@ a = Analysis(['SciQLop/app.py', 'SciQLop/widgets/__init__.py', 'SciQLop/plugins/
              datas=datas,
              hookspath=[],
              runtime_hooks=[],
-             excludes=['PySide6.QtQuick', 'libQt6WebEngineCore.so.6', 'libQt6Quick.so.6'],
+             excludes=['PySide6.QtQuick', 'libQt6Quick.so.6', 'libstdc++.so.6'],
              hiddenimports=hiddenimports,
              win_no_prefer_redirects=False,
              win_private_assemblies=False,
              cipher=block_cipher,
              noarchive=False)
+
 
 pyz = PYZ(a.pure, a.zipped_data,
              cipher=block_cipher)
