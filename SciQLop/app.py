@@ -1,7 +1,6 @@
 import os
 import platform
 import sys
-from io import StringIO
 
 os.environ['QT_API'] = 'PySide6'
 print("Forcing TZ to UTC")
@@ -13,9 +12,11 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)) + '/.
 
 
 def main():
+    os.environ['INSIDE_SCIQLOP'] = '1'
     from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml, QtCore, QtGui
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
     import PySide6QtAds
+    #from qt_material import apply_stylesheet
     from SciQLop.resources import icons
     from SciQLop.backend.sciqlop_application import SciQLopApp
 
@@ -33,6 +34,7 @@ def main():
     from SciQLop.plugins import load_all, loaded_plugins
     app.processEvents()
     main_windows = SciQLopMainWindow(app)
+    #apply_stylesheet(app, theme='light_teal.xml', extra={'density_scale': '-2'})
     main_windows.show()
     app.processEvents()
     load_all(main_windows)
@@ -44,3 +46,13 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+if os.environ.get("INSIDE_SCIQLOP", None) is None:
+    # faking imports to make pyinstaller happy
+    from markupsafe import Markup  # noqa: F401
+    from jupyterlab import labapp  # noqa: F401
+    from qtconsole import qtconsoleapp  # noqa: F401
+    import jinja2  # noqa: F401
+    import markupsafe  # noqa: F401
+    from markupsafe import Markup  # noqa: F401
+    import jupyter_events  # noqa: F401

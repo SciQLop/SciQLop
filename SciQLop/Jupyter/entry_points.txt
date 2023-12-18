@@ -1,0 +1,5 @@
+[gui_scripts]
+sciqlop=SciQLop.app:main
+
+[jupyter_client.kernel_provisioners]
+sciqlop-kernel-provisioner=SciQLop.Jupyter:SciQLopProvisioner

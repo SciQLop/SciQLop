@@ -1,4 +1,5 @@
 # taken here https://github.com/ipython/ipykernel/blob/main/examples/embedding/internal_ipkernel.py
+import os.path
 import sys
 from typing import List, Mapping, Optional
 from contextlib import closing
@@ -14,6 +15,30 @@ from enum import Enum
 from SciQLop.backend import sciqlop_logging
 
 log = sciqlop_logging.getLogger(__name__)
+
+
+def is_pyinstaller_exe() -> bool:
+    return getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
+
+
+def pyinstaller_exe_path() -> str:
+    assert is_pyinstaller_exe()
+    return sys._MEIPASS
+
+
+def get_python() -> str:
+    if 'python' not in os.path.basename(sys.executable):
+        def _find_python() -> str:
+            return next(filter(lambda p: os.path.exists(p),
+                               map(lambda p: os.path.join(p, 'python'),
+                                   [sys.prefix, os.path.join(sys.prefix, 'bin'), sys.base_prefix, sys.base_exec_prefix,
+                                    os.path.join(sys.base_prefix, 'bin')])))
+
+        if (python_path := _find_python()) in (None, "") or not os.path.exists(python_path):
+            raise RuntimeError("Could not find python executable")
+        else:
+            return python_path
+    return sys.executable
 
 
 def mpl_kernel(gui="qt"):
@@ -57,11 +82,26 @@ class SciQLopJupyterClient:
         if extra_env:
             for key, value in extra_env.items():
                 env.insert(key, value)
+
+        env.insert("PYTHONPATH", ':'.join(sys.path))
         self.process.setProcessEnvironment(env)
+        self.process.readyReadStandardOutput.connect(self._forward_stdout)
+        self.process.readyReadStandardError.connect(self._forward_stderr)
+        self.process.stateChanged.connect(self._process_state_changed)
         self.process.start(cmd, args)
+        print(f"\n{self.process.program()}  {' '.join(self.process.arguments())}\n")
 
     def state(self) -> QProcess.ProcessState:
         return self.process.state()
+
+    def _process_state_changed(self, state: QProcess.ProcessState):
+        print(state)
+
+    def _forward_stdout(self):
+        print(str(self.process.readAllStandardOutput(), encoding="utf-8"))
+
+    def _forward_stderr(self):
+        print(str(self.process.readAllStandardError(), encoding="utf-8"))
 
     def kill(self):
         self.process.kill()
@@ -74,7 +114,7 @@ class QtConsoleClient(SciQLopJupyterClient):
     def __init__(self, connection_file: str):
         super().__init__(ClientType.QTCONSOLE)
         args = ["-c", "from qtconsole import qtconsoleapp;qtconsoleapp.main()", "--existing", connection_file]
-        self._start_process(cmd=sys.executable, args=args, connection_file=connection_file)
+        self._start_process(cmd=get_python(), args=args, connection_file=connection_file)
 
 
 class JupyterLabClient(SciQLopJupyterClient):
@@ -83,16 +123,28 @@ class JupyterLabClient(SciQLopJupyterClient):
         self.port = find_available_port()
         self.token = secrets.token_hex(16)
         self.url = f"http://localhost:{self.port}/?token={self.token}"
-        args = ["lab",
-                "--debug",
-                "--log-level=DEBUG",
-                "--ServerApp.kernel_manager_class=SciQLop.Jupyter.lab_kernel_manager.ExternalMappingKernelManager",
-                "--KernelProvisionerFactory.default_provisioner_name=sciqlop-kernel-provisioner",
-                f"--port={self.port}",
-                "--no-browser",
-                f"--NotebookApp.token={self.token}",
-                ]
-        self._start_process(cmd="jupyter", args=args, connection_file=connection_file)
+        # JUPYTER_CONFIG_PATH=/tmp/_MEI4oIyQF/etc/jupyter/ JUPYTER_CONFIG_DIR=/tmp/_MEI4oIyQF/etc/jupyter/ JUPYTERLAB_DIR=/tmp/_MEI4oIyQF/share/jupyter/lab
+        if is_pyinstaller_exe():
+            path = pyinstaller_exe_path()
+            extra_env = {
+                "JUPYTER_CONFIG_PATH": f"{path}/etc/jupyter/",
+                "JUPYTER_CONFIG_DIR": f"{path}/etc/jupyter/",
+                "JUPYTERLAB_DIR": f"{path}/share/jupyter/lab",
+            }
+        else:
+            extra_env = None
+        args = [
+            "-m"
+            "jupyterlab",
+            "--debug",
+            "--log-level=DEBUG",
+            "--ServerApp.kernel_manager_class=SciQLop.Jupyter.lab_kernel_manager.ExternalMappingKernelManager",
+            "--KernelProvisionerFactory.default_provisioner_name=sciqlop-kernel-provisioner",
+            f"--port={self.port}",
+            "--no-browser",
+            f"--NotebookApp.token={self.token}",
+        ]
+        self._start_process(cmd=get_python(), args=args, connection_file=connection_file, extra_env=extra_env)
         log.info(f"JupyterLab started at {self.url}")
 
 

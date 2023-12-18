@@ -4,12 +4,14 @@ from datetime import datetime
 
 class Logger(QObject):
     new_line = Signal(str)
+    got_text = Signal(str)
 
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
         self.buffer = ""
 
     def write(self, msg):
+        self.got_text.emit(msg)
         self.buffer += msg
         lines = self.buffer.splitlines()
         if len(lines) > 1:
