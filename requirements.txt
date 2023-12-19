@@ -9,3 +9,4 @@ PySide6-QtAds==4.1.0.2
 IPython
 ipykernel
 jupyterlab
+notebook

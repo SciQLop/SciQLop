@@ -84,7 +84,14 @@ class SciQLopJupyterClient:
             for key, value in extra_env.items():
                 env.insert(key, value)
 
-        env.insert("PYTHONPATH", ':'.join(sys.path))
+        if os.name == 'nt':
+            sep = ';'
+        else:
+            sep = ':'
+        PYTHONPATH = sep.join(sys.path)
+        if is_pyinstaller_exe():
+            PYTHONPATH += sep.join([f"{pyinstaller_exe_path()}", f"{pyinstaller_exe_path()}/base_library.zip"])
+        env.insert("PYTHONPATH", PYTHONPATH)
         self.process.setProcessEnvironment(env)
         self.process.readyReadStandardOutput.connect(self._forward_stdout)
         self.process.readyReadStandardError.connect(self._forward_stderr)

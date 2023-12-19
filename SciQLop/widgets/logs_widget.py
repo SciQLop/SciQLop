@@ -23,5 +23,11 @@ class LogsWidget(QWidget):
         self.layout().addWidget(self._view)
 
     def _new_text(self, msg):
-        self._view.insertPlainText(msg)
+        prev_cursor = self._view.textCursor()
+        follow = self._view.verticalScrollBar().value() >= (self._view.verticalScrollBar().maximum() - 4)
         self._view.moveCursor(QTextCursor.MoveOperation.End)
+        self._view.insertPlainText(msg)
+        if follow:
+            self._view.moveCursor(QTextCursor.MoveOperation.End)
+        else:
+            self._view.setTextCursor(prev_cursor)

@@ -30,8 +30,9 @@ jobs:
           export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PYENV_ROOT/versions/$(pyenv version-name)/bin:$PATH" 
           python3.10 -m ensurepip
           python3.10 -m pip install --upgrade pip
-          python3.10 -m pip install --upgrade pyinstaller pyinstaller-hooks-contrib 'numpy' .
-          pyinstaller SciQLop.spec
+          python3.10 -m pip install --upgrade pyinstaller pyinstaller-hooks-contrib 'numpy'
+          python3.10 -m pip install -e .
+          PYTHONPATH=. pyinstaller SciQLop.spec
       - name: Save packages as artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -55,7 +56,8 @@ jobs:
       - name: Build for Python ${{ matrix.python-version }}
         run: |
           git config --global --add safe.directory '*'
-          pip install --upgrade pyinstaller pyinstaller-hooks-contrib 'numpy' .
+          pip install --upgrade pyinstaller pyinstaller-hooks-contrib 'numpy' 
+          pip install -e .
           pyinstaller SciQLop.spec -- --debug 
 
       - name: Save packages as artifacts

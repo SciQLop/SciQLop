@@ -12,6 +12,8 @@ import re
 import pandocfilters
 import SciQLop
 
+from PyInstaller.utils.hooks import collect_all, copy_metadata, collect_submodules
+
 def top_packages(package):
     try:
         fname = f"{pkg_resources.get_distribution(package).egg_info}/RECORD"
@@ -58,7 +60,7 @@ parser.add_argument("--debug", action="store_true")
 options = parser.parse_args()
 
 
-from PyInstaller.utils.hooks import collect_all, copy_metadata
+
 block_cipher = None
 
 icon = None
@@ -68,7 +70,7 @@ binaries = [(sys.executable, '.')]
 if os.path.exists('/lib/x86_64-linux-gnu/libcrypt.so.1'):
     binaries.append( ('/lib/x86_64-linux-gnu/libcrypt.so.1', '.') )
 
-hiddenimports = ['markupsafe', 'tscat_gui', 'SciQLop', 'SciQLop.widgets.plots.time_span', 'SciQLop.widgets.plots.time_span_controller', 'SciQLop.plugins.catalogs.lightweight_manager', 'SciQLop.backend.pipelines_model.easy_provider']
+hiddenimports = ['site', 'notebook','markupsafe', 'tscat_gui', 'SciQLop.widgets.plots.time_span', 'SciQLop.widgets.plots.time_span_controller', 'SciQLop.plugins.catalogs.lightweight_manager', 'SciQLop.backend.pipelines_model.easy_provider']
 
 distributions = importlib_metadata.packages_distributions()
 
@@ -94,10 +96,15 @@ add_all_from_module("qtconsole")
 add_all_from_module("jupyter_server/extension")
 add_all_from_module("notebook_shim")
 
-datas += [ (f"{sys.prefix}/share/jupyter", 'share/jupyter'), (f"{sys.prefix}/etc/jupyter", 'etc/jupyter'), (pandocfilters.__file__, os.path.basename(pandocfilters.__file__))]
+datas += [ (f"{sys.prefix}/share/jupyter", 'share/jupyter'), (f"{sys.prefix}/etc/jupyter", 'etc/jupyter'), (pandocfilters.__file__, '.')]
 
-if not os.path.exists(f"{pkg_resources.get_distribution('SciQLop').egg_info}/RECORD"):
-    datas += [('SciQLop/Jupyter/entry_points.txt', f"SciQLop-{SciQLop.__version__}.dist-info/entry_points.txt")]
+hiddenimports += collect_submodules('encodings')
+
+
+if not os.path.exists(f"{pkg_resources.get_distribution('SciQLop').egg_info}/entry_points.txt"):
+    datas += [('SciQLop/Jupyter/entry_points.txt', f"SciQLop-{SciQLop.__version__}.dist-info")]
+else:
+    datas += [(f"{pkg_resources.get_distribution('SciQLop').egg_info}/entry_points.txt", f"SciQLop-{SciQLop.__version__}.dist-info")]
 
 if platform.startswith("darwin"):
     icon = 'SciQLop/resources/icons/SciQLop.png'
@@ -155,6 +162,8 @@ if platform.startswith("darwin"):
       })
 
 else:
+    a.binaries = [x for x in a.binaries if 'libstdc++.so.6' not in x[0]]
+    a.datas = [x for x in a.datas if 'libstdc++.so.6' not in x[0]]
     exe = EXE(pyz,
           a.scripts,
           a.binaries,
