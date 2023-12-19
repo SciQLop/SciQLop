@@ -94,7 +94,10 @@ add_all_from_module("qtconsole")
 add_all_from_module("jupyter_server/extension")
 add_all_from_module("notebook_shim")
 
-datas += [ ('SciQLop/Jupyter/entry_points.txt', f"SciQLop-{SciQLop.__version__}.dist-info/entry_points.txt"), (f"{sys.prefix}/share/jupyter", 'share/jupyter'), (f"{sys.prefix}/etc/jupyter", 'etc/jupyter'), (pandocfilters.__file__, os.path.basename(pandocfilters.__file__))]
+datas += [ (f"{sys.prefix}/share/jupyter", 'share/jupyter'), (f"{sys.prefix}/etc/jupyter", 'etc/jupyter'), (pandocfilters.__file__, os.path.basename(pandocfilters.__file__))]
+
+if not os.path.exists(f"{pkg_resources.get_distribution('SciQLop').egg_info}/RECORD"):
+    datas += [('SciQLop/Jupyter/entry_points.txt', f"SciQLop-{SciQLop.__version__}.dist-info/entry_points.txt")]
 
 if platform.startswith("darwin"):
     icon = 'SciQLop/resources/icons/SciQLop.png'
