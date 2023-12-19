@@ -27,10 +27,11 @@ def pyinstaller_exe_path() -> str:
 
 
 def get_python() -> str:
-    if 'python' not in os.path.basename(sys.executable):
+    python_exe = 'python.exe' if os.name == 'nt' else 'python'
+    if python_exe not in os.path.basename(sys.executable):
         def _find_python() -> str:
             return next(filter(lambda p: os.path.exists(p),
-                               map(lambda p: os.path.join(p, 'python'),
+                               map(lambda p: os.path.join(p, python_exe),
                                    [sys.prefix, os.path.join(sys.prefix, 'bin'), sys.base_prefix, sys.base_exec_prefix,
                                     os.path.join(sys.base_prefix, 'bin')])))
 
