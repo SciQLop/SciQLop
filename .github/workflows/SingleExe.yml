@@ -1,4 +1,4 @@
-name: Pyinstaller
+name: SingleExe
 
 on:
   release:
@@ -10,34 +10,17 @@ on:
 jobs:
   build_linux:
     runs-on: ubuntu-latest
-    container: debian:10
     steps:
       - uses: actions/checkout@v3
-      - name: install python
-        run: |
-          export PYENV_ROOT="$HOME/.pyenv"
-          export PATH="$PYENV_ROOT/bin:$PATH"
-          apt-get update && apt-get upgrade -y 
-          apt-get install -y curl git gcc make zlib1g-dev libffi-dev libssl-dev libbz2-dev libreadline-dev libsqlite3-dev wget llvm libncurses5-dev xz-utils tk-dev libxcb-cursor0 libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
-          curl https://pyenv.run | bash
-          pyenv install 3.10
       - name: bundle SciQLop
         run: |
-          export PYENV_ROOT="$HOME/.pyenv"
-          export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$HOME/.local/bin:$PATH"
-          git config --global --add safe.directory '*'
-          pyenv local 3.10
-          export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PYENV_ROOT/versions/$(pyenv version-name)/bin:$PATH" 
-          python3.10 -m ensurepip
-          python3.10 -m pip install --upgrade pip
-          python3.10 -m pip install --upgrade pyinstaller pyinstaller-hooks-contrib 'numpy'
-          python3.10 -m pip install -e .
-          PYTHONPATH=. pyinstaller SciQLop.spec
+          sudo apt install -y libfuse2 wget file
+          sh ./appimage/build.sh
       - name: Save packages as artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: SciQLop_Linux
-          path: dist/SciQLop
+          name: SciQLop-x86_64.AppImage
+          path: dist/SciQLop-x86_64.AppImage
 
   build_osx_windows:
     strategy:

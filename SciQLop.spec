@@ -53,6 +53,11 @@ def get_all_dependencies(*packages):
     return [dep for subdep in dependencies for dep in subdep ]
 
 
+def filter_libs(analysis,libs):
+    for lib in libs:
+        analysis.binaries = [x for x in analysis.binaries if lib not in x[0]]
+        analysis.datas = [x for x in analysis.datas if lib not in x[0]]
+    return analysis
 
 
 parser = argparse.ArgumentParser()
@@ -67,8 +72,6 @@ icon = None
 
 datas = [('SciQLop/resources/*','SciQLop/resources'),('SciQLop/plugins/*','SciQLop/plugins')]
 binaries = [(sys.executable, '.')]
-if os.path.exists('/lib/x86_64-linux-gnu/libcrypt.so.1'):
-    binaries.append( ('/lib/x86_64-linux-gnu/libcrypt.so.1', '.') )
 
 hiddenimports = ['site', 'notebook','markupsafe', 'tscat_gui', 'SciQLop.widgets.plots.time_span', 'SciQLop.widgets.plots.time_span_controller', 'SciQLop.plugins.catalogs.lightweight_manager', 'SciQLop.backend.pipelines_model.easy_provider']
 
@@ -99,6 +102,7 @@ add_all_from_module("notebook_shim")
 datas += [ (f"{sys.prefix}/share/jupyter", 'share/jupyter'), (f"{sys.prefix}/etc/jupyter", 'etc/jupyter'), (pandocfilters.__file__, '.')]
 
 hiddenimports += collect_submodules('encodings')
+hiddenimports += collect_submodules('platform')
 
 
 if not os.path.exists(f"{pkg_resources.get_distribution('SciQLop').egg_info}/entry_points.txt"):
@@ -116,7 +120,7 @@ a = Analysis(sciqlop_files,
              datas=datas,
              hookspath=[],
              runtime_hooks=[],
-             excludes=['PySide6.QtQuick', 'libQt6Quick.so.6', 'libstdc++.so.6'],
+             excludes=[],
              hiddenimports=hiddenimports,
              win_no_prefer_redirects=False,
              win_private_assemblies=False,
@@ -162,8 +166,6 @@ if platform.startswith("darwin"):
       })
 
 else:
-    a.binaries = [x for x in a.binaries if 'libstdc++.so.6' not in x[0]]
-    a.datas = [x for x in a.datas if 'libstdc++.so.6' not in x[0]]
     exe = EXE(pyz,
           a.scripts,
           a.binaries,
@@ -176,4 +178,7 @@ else:
           runtime_tmpdir=None,
           console=False,
           icon="SciQLop/resources/icons/SciQLop.ico")
+
+
+
 

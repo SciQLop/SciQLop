@@ -27,6 +27,8 @@ def pyinstaller_exe_path() -> str:
 
 
 def get_python() -> str:
+    if "APPIMAGE" in os.environ:
+        return os.path.join(os.environ["APPDIR"], "usr/bin/python3")
     python_exe = 'python.exe' if os.name == 'nt' else 'python'
     if python_exe not in os.path.basename(sys.executable):
         def _find_python() -> str:

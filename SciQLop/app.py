@@ -2,6 +2,7 @@ import os
 import platform
 import sys
 
+
 os.environ['QT_API'] = 'PySide6'
 print("Forcing TZ to UTC")
 os.environ['TZ'] = 'UTC'
@@ -16,7 +17,7 @@ def main():
     from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml, QtCore, QtGui
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
     import PySide6QtAds
-    #from qt_material import apply_stylesheet
+    # from qt_material import apply_stylesheet
     from SciQLop.resources import icons
     from SciQLop.backend.sciqlop_application import SciQLopApp
 
@@ -34,7 +35,7 @@ def main():
     from SciQLop.plugins import load_all, loaded_plugins
     app.processEvents()
     main_windows = SciQLopMainWindow(app)
-    #apply_stylesheet(app, theme='light_teal.xml', extra={'density_scale': '-2'})
+    # apply_stylesheet(app, theme='light_teal.xml', extra={'density_scale': '-2'})
     main_windows.show()
     app.processEvents()
     load_all(main_windows)
