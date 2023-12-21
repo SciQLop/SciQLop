@@ -11,6 +11,8 @@ import pkg_resources
 import re
 import pandocfilters
 import SciQLop
+from glob import glob
+import sysconfig
 
 from PyInstaller.utils.hooks import collect_all, copy_metadata, collect_submodules
 
@@ -75,6 +77,16 @@ binaries = [(sys.executable, '.')]
 
 hiddenimports = ['site', 'notebook','markupsafe', 'tscat_gui', 'SciQLop.widgets.plots.time_span', 'SciQLop.widgets.plots.time_span_controller', 'SciQLop.plugins.catalogs.lightweight_manager', 'SciQLop.backend.pipelines_model.easy_provider']
 
+for lib in glob(f"{sysconfig.get_paths()['stdlib']}/*"):
+    if os.path.isdir(lib) and not lib.startswith('_') and 'site-packages' not in lib and not lib.startswith('config-'):
+        name = os.path.basename(lib)
+        if name not in ('test',):
+            hiddenimports += collect_submodules(os.path.basename(lib))
+            hiddenimports.append(name)
+    elif not lib.startswith('_') and lib.endswith('.py'):
+        datas.append((lib, '.'))
+
+
 distributions = importlib_metadata.packages_distributions()
 
 def add_all_from_module(name):
@@ -99,10 +111,18 @@ add_all_from_module("qtconsole")
 add_all_from_module("jupyter_server/extension")
 add_all_from_module("notebook_shim")
 
-datas += [ (f"{sys.prefix}/share/jupyter", 'share/jupyter'), (f"{sys.prefix}/etc/jupyter", 'etc/jupyter'), (pandocfilters.__file__, '.')]
+datas += [ (f"{sys.prefix}/share/jupyter", 'share/jupyter'),
+           (f"{sys.prefix}/etc/jupyter", 'etc/jupyter'),
+           (pandocfilters.__file__, '.')
+           ]
 
-hiddenimports += collect_submodules('encodings')
-hiddenimports += collect_submodules('platform')
+for lib in glob(f"{sysconfig.get_paths()['purelib']}/*.py"):
+    if not lib.startswith('_'):
+        datas.append((lib, '.'))
+
+for lib in glob(f"{sysconfig.get_paths()['platlib']}/*.py"):
+    if not lib.startswith('_'):
+        datas.append((lib, '.'))
 
 
 if not os.path.exists(f"{pkg_resources.get_distribution('SciQLop').egg_info}/entry_points.txt"):

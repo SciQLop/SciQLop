@@ -11,12 +11,12 @@ jobs:
   build_linux:
     runs-on: ubuntu-latest
     container:
-      image: ubuntu:latest
+      image: fedora:39
     steps:
       - uses: actions/checkout@v3
       - name: bundle SciQLop
         run: |
-          apt update -y && apt install -y libfuse2 wget file
+          dnf update -y && dnf install -y wget file
           sh ./appimage/build.sh
       - name: Save packages as artifacts
         uses: actions/upload-artifact@v3
