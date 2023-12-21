@@ -125,7 +125,7 @@ class SciQLopJupyterClient:
 class QtConsoleClient(SciQLopJupyterClient):
     def __init__(self, connection_file: str):
         super().__init__(ClientType.QTCONSOLE)
-        args = ["-c", "from qtconsole import qtconsoleapp;qtconsoleapp.main()", "--existing", connection_file]
+        args = ["-S", "-c", "from qtconsole import qtconsoleapp;qtconsoleapp.main()", "--existing", connection_file]
         self._start_process(cmd=get_python(), args=args, connection_file=connection_file)
 
 
@@ -148,7 +148,8 @@ class JupyterLabClient(SciQLopJupyterClient):
         else:
             extra_env = None
         args = [
-            "-m"
+            "-S",
+            "-m",
             "jupyterlab",
             "--debug",
             "--log-level=DEBUG",

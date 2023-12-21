@@ -10,11 +10,13 @@ on:
 jobs:
   build_linux:
     runs-on: ubuntu-latest
+    container:
+      image: ubuntu:latest
     steps:
       - uses: actions/checkout@v3
       - name: bundle SciQLop
         run: |
-          sudo apt install -y libfuse2 wget file
+          apt update -y && apt install -y libfuse2 wget file
           sh ./appimage/build.sh
       - name: Save packages as artifacts
         uses: actions/upload-artifact@v3
