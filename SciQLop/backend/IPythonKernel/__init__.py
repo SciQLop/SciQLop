@@ -5,6 +5,8 @@ from typing import List, Mapping, Optional
 from contextlib import closing
 import socket
 import secrets
+from pathlib import Path
+
 
 import jupyter_client
 from PySide6.QtCore import QProcess, QProcessEnvironment, QObject, Signal
@@ -128,8 +130,10 @@ class QtConsoleClient(SciQLopJupyterClient):
 
 
 class JupyterLabClient(SciQLopJupyterClient):
-    def __init__(self, connection_file: str):
+    def __init__(self, connection_file: str, workdir: Optional[str] = None):
         super().__init__(ClientType.JUPYTERLAB)
+        if workdir is None:
+            workdir = Path.home()
         self.port = find_available_port()
         self.token = secrets.token_hex(16)
         self.url = f"http://localhost:{self.port}/?token={self.token}"
@@ -153,6 +157,7 @@ class JupyterLabClient(SciQLopJupyterClient):
             f"--port={self.port}",
             "--no-browser",
             f"--NotebookApp.token={self.token}",
+            f"--NotebookApp.notebook_dir={workdir}",
         ]
         self._start_process(cmd=get_python(), args=args, connection_file=connection_file, extra_env=extra_env)
         log.info(f"JupyterLab started at {self.url}")
