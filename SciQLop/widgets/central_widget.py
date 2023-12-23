@@ -43,7 +43,7 @@ class PanelDockWidgetWrapper(QtAds.CDockWidget):
 
 class CentralWidget(QMainWindow):
     panels_list_changed = Signal(list)
-    dock_widget_added = Signal(PanelDockWidgetWrapper)
+    dock_widget_added = Signal(QtAds.CDockWidget)
 
     def __init__(self, parent, time_range: TimeRange):
         QMainWindow.__init__(self, parent)
@@ -93,6 +93,7 @@ class CentralWidget(QMainWindow):
         dw = QtAds.CDockWidget(widget.windowTitle())
         dw.setWidget(widget)
         self.dock_manager.addDockWidget(area, dw)
+        self.dock_widget_added.emit(dw)
 
     def set_default_time_range(self, time_range: TimeRange):
         self._default_time_range = time_range
@@ -111,4 +112,6 @@ class CentralWidget(QMainWindow):
         event.accept()
 
     def panels(self) -> List[str]:
-        return list(self.dock_manager.dockWidgetsMap().keys())
+        return list(
+            map(lambda dw: dw.name,
+                filter(lambda dw: isinstance(dw, PanelDockWidgetWrapper), self.dock_manager.dockWidgets())))
