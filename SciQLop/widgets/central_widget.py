@@ -93,7 +93,6 @@ class CentralWidget(QMainWindow):
         dw = QtAds.CDockWidget(widget.windowTitle())
         dw.setWidget(widget)
         self.dock_manager.addDockWidget(area, dw)
-        self.dock_widget_added.emit(dw)
 
     def set_default_time_range(self, time_range: TimeRange):
         self._default_time_range = time_range

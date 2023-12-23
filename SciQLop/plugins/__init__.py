@@ -2,12 +2,15 @@ import importlib
 import os
 import traceback
 from types import SimpleNamespace
+from SciQLop.backend.sciqlop_logging import getLogger
 
 from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject, QThread
 
 here = os.path.dirname(os.path.realpath(__file__))
 
 loaded_plugins = SimpleNamespace()
+
+log = getLogger(__name__)
 
 
 class WorkerSignals(QObject):
@@ -77,8 +80,19 @@ def background_load(plugin, main_window):
     return QThreadPool.globalInstance().start(w)
 
 
+def list_plugins_as_modules(plugin_path):
+    return [f[:-3] for f in os.listdir(plugin_path) if f[-3:] == '.py' and f != '__init__.py']
+
+
+def list_plugins_as_packages(plugin_path):
+    return [f for f in os.listdir(plugin_path) if os.path.isdir(f"{plugin_path}/{f}") and not f.startswith('_')]
+
+
+def list_plugins(plugin_path):
+    return list_plugins_as_modules(plugin_path) + list_plugins_as_packages(plugin_path)
+
+
 def load_all(main_window):
-    plugin_list = [f[:-3] for f in os.listdir(here) if f[-3:] == '.py' and f != '__init__.py'] + \
-                  [f for f in os.listdir(here) if os.path.isdir(f"{here}/{f}") and not f.startswith('_')]
-    print(plugin_list)
+    plugin_list = list_plugins(here)
+    log.info(f"Plugins found: {plugin_list}")
     return {plugin: load_plugin(*load_module(plugin), main_window) for plugin in plugin_list}
