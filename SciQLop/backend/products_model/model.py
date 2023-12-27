@@ -33,15 +33,18 @@ class _FilterNode:
     def update(self, filter_regex: Optional[str] = None):
         self._filter_regex = filter_regex or self._filter_regex
         self._matched = self._filter_regex in self._node.str
-        for child in self._node.children:
-            f_child = self.get(child.name)
-            if f_child is None:
-                self._children.append(_FilterNode(self, child, self._filter_regex))
-            elif f_child._node is not child:
+        filtered_set = set(map(lambda n: n.node.name, filter(lambda n: n.active, self._children)))
+        node_set = set(map(lambda n: n.name, self._node.children))
+        for child in node_set - filtered_set:
+            self._children.append(_FilterNode(self, self._node[child], self._filter_regex))
+        for child in filtered_set - node_set:
+            self._children.remove(self[child])
+        for child in filtered_set.union(node_set):
+            f_child = self.get(child)
+            n_child = self._node[child]
+            if f_child is not n_child:
                 self._children.remove(f_child)
-                self._children.append(_FilterNode(self, child, self._filter_regex))
-            else:
-                f_child.update(self._filter_regex)
+                self._children.append(_FilterNode(self, n_child, self._filter_regex))
 
     def get(self, item: str):
         return next(iter(filter(lambda n: n.node.name == item, self._children)), None)
@@ -96,6 +99,18 @@ class ProductsModel(QAbstractItemModel):
             self._filtered_root.update(filter_regex=self._filter)
         self.endResetModel()
 
+    def delete_indexes(self, indexes: Sequence[QModelIndex]):
+        dirty = False
+        for index in indexes:
+            node: ProductNode = index.internalPointer().node
+            if node.is_deletable:
+                node.parent.remove_child(node.name)
+                dirty = True
+        if dirty:
+            self.beginResetModel()
+            self._filtered_root.update(filter_regex=self._filter)
+            self.endResetModel()
+
     @property
     def completion_model(self):
         return self._completion_model
@@ -115,13 +130,14 @@ class ProductsModel(QAbstractItemModel):
         self.endResetModel()
         self._update_completion(products)
 
-    def add_product(self, path: str, product: ProductNode):
+    def add_product(self, path: str, product: ProductNode, deletable_parent_nodes: bool = False):
         nodes_names = path.split('/')
         node = self._root
         for node_name in nodes_names:
             if node_name != '':
                 if node_name not in node:
-                    node = node.append_child(child=ProductNode(name=node_name, metadata={}, uid=node_name, provider=""))
+                    node = node.append_child(child=ProductNode(name=node_name, metadata={}, uid=node_name, provider="",
+                                                               deletable=deletable_parent_nodes))
                 else:
                     node = node[node_name]
         node.merge(child=product)

@@ -12,25 +12,6 @@ from SciQLop.backend.icons import register_icon
 register_icon("Python-logo-notext", QIcon(":/icons/Python-logo-notext.svg"))
 
 
-def build_product_hierarchy(path: str, provider: DataProvider, parameter_type: ParameterType, metadata: dict):
-    if path.startswith('/'):
-        path = path[1:]
-    elements = path.split('/')
-    root_node = Product(name=f"{elements[0]}", metadata={}, provider=provider.name, uid=provider.name)
-    current_node = root_node
-    for e in elements[1:-1]:
-        new_node = Product(name=f"{e}", metadata={}, provider=provider.name, uid=provider.name)
-        current_node.merge(new_node)
-        current_node = new_node
-
-    current_node.merge(Product(name=elements[-1], metadata=metadata,
-                               provider=provider.name,
-                               uid=elements[-1],
-                               is_parameter=True,
-                               parameter_type=parameter_type))
-    return root_node
-
-
 def ensure_dt64(x_data):
     if type(x_data) is np.ndarray:
         if x_data.dtype == np.dtype("datetime64[ns]"):
@@ -50,7 +31,8 @@ class EasyProvider(DataProvider):
         products.add_product(
             path=product_path,
             product=Product(name=product_name, is_parameter=True, uid=product_name, provider=self.name,
-                            parameter_type=parameter_type, metadata=metadata, icon="Python-logo-notext"))
+                            parameter_type=parameter_type, metadata=metadata, icon="Python-logo-notext",
+                            deletable=True), deletable_parent_nodes=True)
         self._user_get_data = callback
 
     def get_data(self, product, start, stop):

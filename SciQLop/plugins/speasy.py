@@ -86,7 +86,12 @@ def explore_nodes(inventory_node, product_node: Product, provider):
             if isinstance(child, ParameterIndex):
                 product_node.merge(make_product(name, child, provider=provider))
             elif hasattr(child, "__dict__"):
-                cur_prod = Product(name, metadata={}, uid=name, provider=provider)
+                meta = {}
+                if hasattr(child, "desc"):
+                    meta = {"description": child.desc}
+                elif hasattr(child, "description"):
+                    meta = {"description": child.description}
+                cur_prod = Product(name, metadata=meta, uid=name, provider=provider)
                 product_node.merge(cur_prod)
                 explore_nodes(child, cur_prod, provider=provider)
 

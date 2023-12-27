@@ -6,11 +6,11 @@ from ..enums import ParameterType
 
 class ProductNode:
     __slots__ = ["_children", "_parent", "_metadata", "_name", "_is_param", "_str_content", "_provider", "_uid",
-                 "_parameter_type", "_icon"]
+                 "_parameter_type", "_icon", "_deletable"]
 
     def __init__(self, name: str, uid: str, provider: str, metadata: Dict[str, str], is_parameter=False,
                  parameter_type: ParameterType = ParameterType.NONE, parent: Optional['ProductNode'] = None,
-                 icon: Optional[str] = None):
+                 icon: Optional[str] = None, deletable: bool = False):
         self._parent = parent
         self._children = []
         self._metadata = metadata
@@ -21,6 +21,7 @@ class ProductNode:
         self._parameter_type = parameter_type
         self._str_content = f"name: {name}" + "\n".join([f"{key}: {value}" for key, value in metadata.items()])
         self._icon = icon or ""
+        self._deletable = deletable
 
     def copy(self):
         return ProductNode(name=self.name, uid=self.uid, provider=self.provider, metadata=self.metadata,
@@ -80,6 +81,10 @@ class ProductNode:
     @property
     def parent(self) -> 'ProductNode' or None:
         return self._parent
+
+    @property
+    def is_deletable(self) -> bool:
+        return self._deletable
 
     def index_of(self, child: 'ProductNode'):
         return self._children.index(child)
