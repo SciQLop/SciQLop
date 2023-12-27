@@ -7,6 +7,7 @@ from PySide6.QtGui import QIcon
 
 from SciQLop.mime import register_mime, encode_mime
 from SciQLop.mime.types import PRODUCT_LIST_MIME_TYPE
+from SciQLop.backend.icons import icons as _icons
 from .product_node import ProductNode
 
 
@@ -25,8 +26,31 @@ class _FilterNode:
         self._parent = parent
         self._node = node
         self._matched = filter_regex in node.str
+        self._filter_regex = filter_regex
         self._children = list(
             filter(lambda n: n.active, map(lambda n: _FilterNode(self, n, filter_regex), node.children)))
+
+    def update(self, filter_regex: Optional[str] = None):
+        self._filter_regex = filter_regex or self._filter_regex
+        self._matched = self._filter_regex in self._node.str
+        for child in self._node.children:
+            f_child = self.get(child.name)
+            if f_child is None:
+                self._children.append(_FilterNode(self, child, self._filter_regex))
+            elif f_child._node is not child:
+                self._children.remove(f_child)
+                self._children.append(_FilterNode(self, child, self._filter_regex))
+            else:
+                f_child.update(self._filter_regex)
+
+    def get(self, item: str):
+        return next(iter(filter(lambda n: n.node.name == item, self._children)), None)
+
+    def __getitem__(self, item):
+        return next(iter(filter(lambda n: n.node.name == item, self._children)), None)
+
+    def __contains__(self, item):
+        return any(map(lambda n: n.node.name == item, self._children))
 
     @property
     def parent(self):
@@ -57,16 +81,19 @@ class ProductsModel(QAbstractItemModel):
 
     def __init__(self, parent=None):
         super(ProductsModel, self).__init__(parent)
-        self._icons: Dict[str, QIcon] = {}
         self._mime_data = None
         self._completion_model = QStringListModel(self)
         self._root = ProductNode(name="", metadata={}, uid='root', provider="")
+        self._filtered_root = None
         self.set_filter("")
 
     def set_filter(self, filter_regex: str):
         self._filter = filter_regex
         self.beginResetModel()
-        self._filtered_root = _FilterNode(None, self._root, self._filter)
+        if self._filtered_root is None:
+            self._filtered_root = _FilterNode(None, self._root, self._filter)
+        else:
+            self._filtered_root.update(filter_regex=self._filter)
         self.endResetModel()
 
     @property
@@ -82,15 +109,14 @@ class ProductsModel(QAbstractItemModel):
             return p
 
     def add_products(self, products: ProductNode):
-        self.beginResetModel()
         self._root.merge(child=products)
-        self._filtered_root = _FilterNode(None, self._root, self._filter)
+        self.beginResetModel()
+        self._filtered_root.update(filter_regex=self._filter)
         self.endResetModel()
         self._update_completion(products)
 
     def add_product(self, path: str, product: ProductNode):
         nodes_names = path.split('/')
-        self.beginResetModel()
         node = self._root
         for node_name in nodes_names:
             if node_name != '':
@@ -99,7 +125,8 @@ class ProductsModel(QAbstractItemModel):
                 else:
                     node = node[node_name]
         node.merge(child=product)
-        self._filtered_root = _FilterNode(None, self._root, self._filter)
+        self.beginResetModel()
+        self._filtered_root.update(filter_regex=self._filter)
         self.endResetModel()
         self._update_completion(product)
 
@@ -153,7 +180,7 @@ class ProductsModel(QAbstractItemModel):
         if role == Qt.UserRole:
             return item.str
         if role == Qt.DecorationRole:
-            return self._icons.get(item.icon, None)
+            return _icons.get(item.icon, None)
         if role == Qt.ToolTipRole:
             return "<br/>".join(
                 [f"<b>{key}:</b> {value}" for key, value in item.metadata.items() if not key.startswith('__')])

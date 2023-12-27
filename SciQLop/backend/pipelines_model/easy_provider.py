@@ -1,11 +1,15 @@
 import numpy as np
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis, VariableAxis
+from PySide6.QtGui import QIcon
 from typing import List
 from SciQLop.backend import Product
 from SciQLop.backend.unique_names import make_simple_incr_name
 from SciQLop.backend.models import products
 from SciQLop.backend.enums import ParameterType
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
+from SciQLop.backend.icons import register_icon
+
+register_icon("Python-logo-notext", QIcon(":/icons/Python-logo-notext.svg"))
 
 
 def build_product_hierarchy(path: str, provider: DataProvider, parameter_type: ParameterType, metadata: dict):
@@ -41,10 +45,12 @@ class EasyProvider(DataProvider):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(callback.__name__), data_order=data_order)
         product_name = path.split('/')[-1]
         product_path = path[:-len(product_name)]
+        metadata.update(
+            {"description": f"Virtual {parameter_type.name} product built from Python function: {callback.__name__}"})
         products.add_product(
             path=product_path,
             product=Product(name=product_name, is_parameter=True, uid=product_name, provider=self.name,
-                            parameter_type=parameter_type, metadata=metadata))
+                            parameter_type=parameter_type, metadata=metadata, icon="Python-logo-notext"))
         self._user_get_data = callback
 
     def get_data(self, product, start, stop):

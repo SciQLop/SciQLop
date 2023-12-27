@@ -6,6 +6,7 @@ from PySide6.QtCore import QModelIndex, QMimeData, QAbstractItemModel, QStringLi
 from PySide6.QtGui import QIcon
 
 from SciQLop.backend.pipelines_model.base.pipeline_node import PipelineModelItem
+from SciQLop.backend.icons import icons as _icons
 
 
 class RootNodeItemMeta(type(QObject), type(PipelineModelItem)):
@@ -96,14 +97,10 @@ class _model_change_ctx(ContextDecorator):
 class PipelinesModel(QAbstractItemModel):
     def __init__(self, parent=None):
         super(PipelinesModel, self).__init__(parent)
-        self._icons: Dict[str, QIcon] = {}
         self._mime_data = None
         self._completion_model = QStringListModel(self)
         self._root = RootNode()
         self._last_selected: List[PipelineModelItem] = []
-
-    def register_icon(self, name: str, icon: QIcon):
-        self._icons[name] = icon
 
     def model_update_ctx(self):
         return _model_change_ctx(self)
@@ -168,7 +165,7 @@ class PipelinesModel(QAbstractItemModel):
             if role == Qt.UserRole:
                 return item.name
             if role == Qt.DecorationRole:
-                return self._icons.get(item.icon, None)
+                return _icons.get(item.icon, None)
             if role == Qt.ToolTipRole:
                 return ""
 

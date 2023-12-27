@@ -7,6 +7,8 @@ from PySide6.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
 from SciQLop.backend.pipelines_model.auto_register import auto_register
 from SciQLop.backend.pipelines_model.base import PipelineModelItem
 from SciQLop.backend.pipelines_model.base import model as pipelines_model
+from SciQLop.backend.icons import register_icon
+
 from .abstract_plot_panel import MetaPlotPanel, PlotPanel, PanelContainer
 from ...backend import sciqlop_logging
 from ...backend.unique_names import make_simple_incr_name
@@ -85,7 +87,7 @@ class MPLFigure(QFrame, PipelineModelItem, metaclass=MetaMPLPlot):
         self.mpl_figure.canvas.draw()
 
 
-pipelines_model.register_icon("MPL", QIcon("://icons/MPL.png"))
+register_icon("MPL", QIcon("://icons/MPL.png"))
 
 
 @auto_register

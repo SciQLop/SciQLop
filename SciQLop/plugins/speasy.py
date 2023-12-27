@@ -1,13 +1,15 @@
 from typing import List
-
+from PySide6.QtGui import QIcon
 import speasy as spz
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
 from speasy.products import SpeasyVariable
 
-from SciQLop.backend import Product
+from SciQLop.backend import Product, register_icon
 from SciQLop.backend.enums import ParameterType
 from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
+
+register_icon("speasy", QIcon(":/icons/logo_speasy.svg"))
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:
@@ -93,7 +95,7 @@ class SpeasyPlugin(DataProvider):
     def __init__(self):
         super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST)
         print("Loading Speasy plugin...")
-        root_node = Product(name="speasy", metadata={}, provider=self.name, uid=self.name)
+        root_node = Product(name="speasy", metadata={}, provider=self.name, uid=self.name, icon="speasy")
         explore_nodes(spz.inventories.tree, root_node, provider=self.name)
         products.add_products(root_node)
         print("Speasy plugin loaded")

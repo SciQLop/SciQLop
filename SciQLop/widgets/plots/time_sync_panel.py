@@ -10,6 +10,7 @@ from SciQLopPlots import QCustomPlot, QCPMarginGroup, QCPAxisRect, QCP
 from SciQLop.backend.pipelines_model.auto_register import auto_register
 from SciQLop.backend.pipelines_model.base import PipelineModelItem
 from SciQLop.backend.pipelines_model.base import model as pipelines_model
+from SciQLop.backend.icons import register_icon
 from .abstract_plot_panel import MetaPlotPanel, PlotPanel, PanelContainer
 from .time_series_plot import TimeSeriesPlot
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
@@ -54,7 +55,7 @@ class TSPanelContainer(PanelContainer):
                                               ar.calculateAutoMargin(QCP.MarginSide.msTop)))
 
 
-pipelines_model.register_icon("QCP", QIcon("://icons/QCP.png"))
+register_icon("QCP", QIcon("://icons/QCP.png"))
 
 
 @auto_register

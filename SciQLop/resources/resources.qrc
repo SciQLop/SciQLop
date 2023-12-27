@@ -32,6 +32,10 @@
         <file>icons/SciQLop.png</file>
         <file>icons/MPL.png</file>
         <file>icons/QCP.png</file>
+        <file>icons/Python-logo-notext.svg</file>
+        <file>icons/Jupyter_logo.svg</file>
+        <file>icons/JupyterConsole.svg</file>
+        <file>icons/logo_speasy.svg</file>
         <file>splash.png</file>
     </qresource>
 </RCC>

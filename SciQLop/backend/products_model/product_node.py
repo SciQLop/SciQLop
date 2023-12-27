@@ -1,15 +1,16 @@
 import bisect
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 from ..enums import ParameterType
 
 
 class ProductNode:
     __slots__ = ["_children", "_parent", "_metadata", "_name", "_is_param", "_str_content", "_provider", "_uid",
-                 "_parameter_type"]
+                 "_parameter_type", "_icon"]
 
     def __init__(self, name: str, uid: str, provider: str, metadata: Dict[str, str], is_parameter=False,
-                 parameter_type: ParameterType = ParameterType.NONE, parent: 'ProductNode' = None):
+                 parameter_type: ParameterType = ParameterType.NONE, parent: Optional['ProductNode'] = None,
+                 icon: Optional[str] = None):
         self._parent = parent
         self._children = []
         self._metadata = metadata
@@ -19,7 +20,7 @@ class ProductNode:
         self._uid = uid
         self._parameter_type = parameter_type
         self._str_content = f"name: {name}" + "\n".join([f"{key}: {value}" for key, value in metadata.items()])
-        # self._product = Product(name, uid, provider, metadata, is_parameter, parameter_type)
+        self._icon = icon or ""
 
     def copy(self):
         return ProductNode(name=self.name, uid=self.uid, provider=self.provider, metadata=self.metadata,
@@ -85,7 +86,7 @@ class ProductNode:
 
     @property
     def icon(self):
-        return ""
+        return self._icon
 
     @property
     def row(self) -> int:
