@@ -83,10 +83,25 @@ class ProductsModel(QAbstractItemModel):
 
     def add_products(self, products: ProductNode):
         self.beginResetModel()
-        self._root.append_child(child=products)
+        self._root.merge(child=products)
         self._filtered_root = _FilterNode(None, self._root, self._filter)
         self.endResetModel()
         self._update_completion(products)
+
+    def add_product(self, path: str, product: ProductNode):
+        nodes_names = path.split('/')
+        self.beginResetModel()
+        node = self._root
+        for node_name in nodes_names:
+            if node_name != '':
+                if node_name not in node:
+                    node = node.append_child(child=ProductNode(name=node_name, metadata={}, uid=node_name, provider=""))
+                else:
+                    node = node[node_name]
+        node.merge(child=product)
+        self._filtered_root = _FilterNode(None, self._root, self._filter)
+        self.endResetModel()
+        self._update_completion(product)
 
     def _update_completion(self, products: ProductNode):
         strings = set()

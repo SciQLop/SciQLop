@@ -11,7 +11,7 @@ class TestPlugin(DataProvider):
     def __init__(self, parent=None):
         super(TestPlugin, self).__init__(name="TestPlugin", data_order=DataOrder.Y_FIRST)
         root_node = Product(name="TestPlugin", metadata={}, provider=self.name, uid=self.name)
-        root_node.append_child(
+        root_node.merge(
             Product(name="TestMultiComponent", metadata={'components': "x;y;z"},
                     provider=self.name,
                     uid="TestMultiComponent",

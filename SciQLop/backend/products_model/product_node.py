@@ -25,9 +25,40 @@ class ProductNode:
         return ProductNode(name=self.name, uid=self.uid, provider=self.provider, metadata=self.metadata,
                            is_parameter=self.is_parameter, parameter_type=self.parameter_type, parent=None)
 
-    def append_child(self, child: 'ProductNode'):
+    def merge(self, child: 'ProductNode', overwrite_leaves=False) -> "ProductNode":
+        """Merge a child node into this one, if the child is a leaf and already exists in this node's children plus
+        overwrite_leaves is True, it is overwritten, otherwise it is ignored. If the child is not a leaf, it is merged.
+
+        Parameters
+        ----------
+        child: ProductNode
+            The node to merge into this one
+        overwrite_leaves: bool
+            If True, when the child is a leaf and already exists in this node's children, it is overwritten, otherwise it
+            is ignored
+
+        """
+        if child.name in self:
+            if len(child.children) == 0 and overwrite_leaves and child is not self[child.name]:
+                self.remove_child(child.name)
+                self.append_child(child)
+            else:
+                for sub_child in child.children:
+                    self[child.name].merge(sub_child)
+        else:
+            self.append_child(child)
+        return child
+
+    def append_child(self, child: 'ProductNode') -> "ProductNode":
         child.set_parent(self)
         bisect.insort(self._children, child, key=lambda c: c.name)
+        return child
+
+    def remove_child(self, name: str):
+        child = self[name]
+        if child is not None:
+            self._children.remove(child)
+            child._parent = None
 
     def set_parent(self, parent: 'ProductNode'):
         if self._parent is None:
@@ -37,6 +68,9 @@ class ProductNode:
 
     def __getitem__(self, item: str) -> "ProductNode" or None:
         return next(iter(filter(lambda n: n.name == item, self._children)), None)
+
+    def __contains__(self, item: str) -> bool:
+        return any(map(lambda n: n.name == item, self._children))
 
     @property
     def children(self) -> List['ProductNode']:

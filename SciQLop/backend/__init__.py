@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from PySide6 import QtPrintSupport, QtOpenGL
 from SciQLopPlots import QCPRange
 
 from .products_model.product_node import ProductNode as Product

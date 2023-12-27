@@ -82,10 +82,10 @@ def explore_nodes(inventory_node, product_node: Product, provider):
     for name, child in inventory_node.__dict__.items():
         if name and child:
             if isinstance(child, ParameterIndex):
-                product_node.append_child(make_product(name, child, provider=provider))
+                product_node.merge(make_product(name, child, provider=provider))
             elif hasattr(child, "__dict__"):
                 cur_prod = Product(name, metadata={}, uid=name, provider=provider)
-                product_node.append_child(cur_prod)
+                product_node.merge(cur_prod)
                 explore_nodes(child, cur_prod, provider=provider)
 
 

@@ -16,14 +16,14 @@ def build_product_hierarchy(path: str, provider: DataProvider, parameter_type: P
     current_node = root_node
     for e in elements[1:-1]:
         new_node = Product(name=f"{e}", metadata={}, provider=provider.name, uid=provider.name)
-        current_node.append_child(new_node)
+        current_node.merge(new_node)
         current_node = new_node
 
-    current_node.append_child(Product(name=elements[-1], metadata=metadata,
-                                      provider=provider.name,
-                                      uid=elements[-1],
-                                      is_parameter=True,
-                                      parameter_type=parameter_type))
+    current_node.merge(Product(name=elements[-1], metadata=metadata,
+                               provider=provider.name,
+                               uid=elements[-1],
+                               is_parameter=True,
+                               parameter_type=parameter_type))
     return root_node
 
 
@@ -39,8 +39,12 @@ def ensure_dt64(x_data):
 class EasyProvider(DataProvider):
     def __init__(self, path, callback, parameter_type: ParameterType, metadata: dict, data_order=DataOrder.Y_FIRST):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(callback.__name__), data_order=data_order)
-        products.add_products(
-            build_product_hierarchy(path=path, provider=self, parameter_type=parameter_type, metadata=metadata))
+        product_name = path.split('/')[-1]
+        product_path = path[:-len(product_name)]
+        products.add_product(
+            path=product_path,
+            product=Product(name=product_name, is_parameter=True, uid=product_name, provider=self.name,
+                            parameter_type=parameter_type, metadata=metadata))
         self._user_get_data = callback
 
     def get_data(self, product, start, stop):
