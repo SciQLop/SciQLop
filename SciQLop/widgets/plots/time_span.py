@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtGui import QColor
@@ -14,9 +14,10 @@ class TimeSpan(QObject):
     selection_changed = Signal(bool)
 
     def __init__(self, time_range: TimeRange, plot_panel: TimeSyncPanel, parent=None, visible=True, read_only=False,
-                 color=None):
+                 color=None, tooltip: Optional[str] = None):
         QObject.__init__(self, parent)
         self._spans = []
+        self._tooltip = tooltip
         self._selected = False
         self._time_range = time_range
         self._plot_panel = plot_panel
@@ -30,6 +31,8 @@ class TimeSpan(QObject):
             self._spans = []
             for plot in self._plot_panel.plots:
                 span = SciQLopVerticalSpan(plot.plot_instance, QCPRange(self._time_range.start, self._time_range.stop))
+                if self._tooltip is not None:
+                    span.set_tool_tip(self._tooltip)
                 span.range_changed.connect(self.set_range)
                 span.selectionChanged.connect(self.change_selection)
                 self._spans.append(span)
@@ -95,3 +98,13 @@ class TimeSpan(QObject):
     @property
     def selected(self):
         return self._selected
+
+    @property
+    def tooltip(self):
+        return self._tooltip
+
+    @tooltip.setter
+    def tooltip(self, new_tooltip: str):
+        self._tooltip = new_tooltip
+        for s in self._spans:
+            s.set_tool_tip(new_tooltip)

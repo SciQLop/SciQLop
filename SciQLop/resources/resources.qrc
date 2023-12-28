@@ -36,6 +36,9 @@
         <file>icons/Jupyter_logo.svg</file>
         <file>icons/JupyterConsole.svg</file>
         <file>icons/logo_speasy.svg</file>
+        <file>icons/NASA.jpg</file>
+        <file>icons/amda.png</file>
+        <file>icons/Cluster_mission_logo_pillars.jpg</file>
         <file>splash.png</file>
     </qresource>
 </RCC>

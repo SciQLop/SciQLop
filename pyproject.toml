@@ -29,7 +29,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
 ]
-dependencies = ['numpy', 'SciQLopPlots>=0.5.0', 'speasy>=1.2.2', 'qtconsole', 'tscat_gui>=0.2.0',
+dependencies = ['numpy', 'SciQLopPlots>=0.6.0', 'speasy>=1.2.2', 'qtconsole', 'tscat_gui>=0.2.0', "humanize",
     'seaborn', "scipy", "PySide6-QtAds==4.1.0.2", "IPython", "ipykernel", "jupyterlab", "notebook"]
 [project.urls]
 homepage = "https://github.com/SciQLop/SciQLop"

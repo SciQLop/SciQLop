@@ -10,7 +10,10 @@ from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
 
 register_icon("speasy", QIcon(":/icons/logo_speasy.svg"))
-
+register_icon("nasa", QIcon(":/icons/NASA.jpg"))
+register_icon("amda", QIcon(":/icons/amda.png"))
+register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
+register_icon("archive", QIcon(":/icons/dataSourceRoot.png"))
 
 def get_components(param: ParameterIndex) -> List[str] or None:
     if param.spz_provider() == 'amda':
@@ -96,12 +99,28 @@ def explore_nodes(inventory_node, product_node: Product, provider):
                 explore_nodes(child, cur_prod, provider=provider)
 
 
+def build_product_tree(root_node: Product, provider):
+    ws_icons = {
+        "amda": "amda",
+        "ssc": "nasa",
+        "cdaweb": "nasa",
+        "cda": "nasa",
+        "csa": "cluster",
+        "archive": "archive"
+    }
+    for name, child in spz.inventories.tree.__dict__.items():
+        node = root_node.merge(Product(name=name, metadata={}, provider=name, uid=name, icon=ws_icons.get(name)))
+        explore_nodes(child, node, provider=provider)
+
+    return root_node
+
+
 class SpeasyPlugin(DataProvider):
     def __init__(self):
         super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST)
         print("Loading Speasy plugin...")
         root_node = Product(name="speasy", metadata={}, provider=self.name, uid=self.name, icon="speasy")
-        explore_nodes(spz.inventories.tree, root_node, provider=self.name)
+        build_product_tree(root_node, provider=self.name)
         products.add_products(root_node)
         print("Speasy plugin loaded")
 

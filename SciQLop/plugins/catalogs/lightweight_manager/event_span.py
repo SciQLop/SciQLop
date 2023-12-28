@@ -11,10 +11,10 @@ class EventSpan(TimeSpan):
 
     def __init__(self, event: Event, plot_panel: TimeSyncPanel, parent=None, visible=True, read_only=False, color=None):
         TimeSpan.__init__(self, time_range=event.range, plot_panel=plot_panel, parent=parent, visible=visible,
-                          read_only=read_only, color=color)
+                          read_only=read_only, color=color, tooltip=event.tooltip)
 
         self._event = event
-        self.range_changed.connect(event.set_range)
+        self.range_changed.connect(self._range_changed)
         event.color_changed.connect(self.set_color)
         event.selection_changed.connect(self._selection_changed)
         self.selection_changed.connect(self._notify_selected)
@@ -22,6 +22,11 @@ class EventSpan(TimeSpan):
     @Slot()
     def _selection_changed(self, selected: bool):
         self.change_selection(selected)
+
+    @Slot()
+    def _range_changed(self, new_range: TimeRange):
+        self._event.set_range(new_range)
+        self.tooltip = self._event.tooltip
 
     def _notify_selected(self, selected: bool):
         if selected:

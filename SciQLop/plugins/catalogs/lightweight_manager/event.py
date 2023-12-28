@@ -1,6 +1,7 @@
 import tscat
 from PySide6.QtCore import Signal, QObject
 from PySide6.QtGui import QColor
+from humanize.time import precisedelta
 
 from SciQLop.backend import TimeRange
 
@@ -34,6 +35,13 @@ class Event(QObject):
     @property
     def uuid(self):
         return self._event.uuid
+
+    @property
+    def tooltip(self):
+        return f"""<b>Author: </b>{self._event.author} <br><hr>
+<b>Tags: </b>{' '.join(self._event.tags)} <br><hr>
+<b>Duration: </b>{precisedelta(self._event.stop - self._event.start)} <br>
+        """
 
     def set_range(self, time_range: TimeRange):
         self._event.start = time_range.datetime_start
