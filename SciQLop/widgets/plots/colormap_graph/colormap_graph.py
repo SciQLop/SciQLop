@@ -6,9 +6,10 @@ from speasy.products import SpeasyVariable
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.graph import Graph
 from SciQLop.backend.products_model.product_node import ProductNode
-from ...backend.enums import GraphType
-from ...backend.resampling.spectro_regrid import regrid
-from PySide6.QtCore import QObject, Signal, QThread, Qt, QMutex
+from SciQLop.backend.enums import GraphType
+from SciQLop.backend.resampling.spectro_regrid import regrid
+from PySide6.QtCore import QObject, Signal, QThread, Qt, QMutex, Slot
+from shiboken6 import isValid
 
 
 class PythonResampler(QObject):
@@ -71,6 +72,12 @@ class ColorMapGraph(Graph):
         # hack to get plot refresh TODO: investigate this
         self.pipeline.get_data(parent.time_range)
 
+    def set_gradient(self, gradient: QCPColorGradient):
+        self.scale = gradient
+        self.scale.setNanHandling(QCPColorGradient.nhTransparent)
+        self._graph.colorMap().setGradient(self.scale)
+        self.replot()
+
     def plot(self, v: SpeasyVariable):
         if self._graph.colorMap().name() != v.name:
             self._graph.colorMap().setName(v.name)
@@ -87,8 +94,13 @@ class ColorMapGraph(Graph):
     def show_color_scale(self):
         self.scale.show()
 
+    @Slot()
+    def replot(self):
+        self.parent().replot()
+
     def __del__(self):
-        self._resampler_thread.finished.connect(self._resampler_thread.deleteLater)
-        self._resampler.plot_sig.disconnect()
-        self._resampler_thread.quit()
-        self._resampler_thread.wait()
+        if isValid(self._resampler_thread):
+            self._resampler_thread.finished.connect(self._resampler_thread.deleteLater)
+            self._resampler.plot_sig.disconnect()
+            self._resampler_thread.quit()
+            self._resampler_thread.wait()

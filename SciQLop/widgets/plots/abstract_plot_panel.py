@@ -1,18 +1,25 @@
-from typing import List, Type
+from typing import List, Type, Any
 from typing import Protocol, runtime_checkable
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget, QScrollArea, QVBoxLayout
 
-from SciQLop.backend.pipelines_model.base import PipelineModelItem
 from ...backend import sciqlop_logging
+from ...backend.property import SciQLopProperty
 
 log = sciqlop_logging.getLogger(__name__)
 
 
 @runtime_checkable
-class PlotPanel(PipelineModelItem, Protocol):
-    pass
+class PlotPanel(Protocol):
+
+    @property
+    def graphs(self) -> List[Any]:
+        ...
+
+    @property
+    def has_colormap(self) -> bool:
+        ...
 
 
 class MetaPlotPanel(type(QScrollArea), type(PlotPanel)):
@@ -44,7 +51,7 @@ class PanelContainer(QWidget):
     def remove_plot(self, plot: QWidget):
         self.layout().removeWidget(plot)
 
-    @property
+    @SciQLopProperty(list)
     def plots(self) -> List[PlotPanel]:
         return list(filter(lambda w: isinstance(w, self._plot_type),
                            map(lambda i: self.layout().itemAt(i).widget(), range(self.layout().count()))))

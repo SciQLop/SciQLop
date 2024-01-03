@@ -26,11 +26,10 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.10"
 ]
-dependencies = ['numpy', 'SciQLopPlots>=0.6.0', 'speasy>=1.2.2', 'qtconsole', 'tscat_gui>=0.2.0', "humanize",
-    'seaborn', "scipy", "PySide6-QtAds==4.1.0.2", "IPython", "ipykernel", "jupyterlab", "notebook"]
+dependencies = ['numpy', 'SciQLopPlots>=0.6.1', 'speasy>=1.2.2', 'qtconsole', 'tscat_gui>=0.2.0', "humanize", 'platformdirs',
+    'seaborn', "scipy", "pyside6==6.6.1", "shiboken6==6.6.1", "PySide6-QtAds==4.1.0.3", "IPython", "ipykernel", "jupyterlab", "notebook"]
 [project.urls]
 homepage = "https://github.com/SciQLop/SciQLop"
 bug_tracker = "https://github.com/SciQLop/SciQLop/issues"

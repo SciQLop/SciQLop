@@ -1,15 +1,11 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any
 
 import numpy as np
 from PySide6.QtCore import QMimeData, Signal, QMargins
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QWidget, QScrollArea
 from SciQLopPlots import QCustomPlot, QCPMarginGroup, QCPAxisRect, QCP
-
-from SciQLop.backend.pipelines_model.auto_register import auto_register
-from SciQLop.backend.pipelines_model.base import PipelineModelItem
-from SciQLop.backend.pipelines_model.base import model as pipelines_model
 from SciQLop.backend.icons import register_icon
 from .abstract_plot_panel import MetaPlotPanel, PlotPanel, PanelContainer
 from .time_series_plot import TimeSeriesPlot
@@ -18,8 +14,11 @@ from ...backend import Product
 from ...backend import TimeRange
 from ...backend import listify
 from ...backend import sciqlop_logging
+from ...backend.property import SciQLopProperty
 from ...mime import decode_mime
 from ...mime.types import PRODUCT_LIST_MIME_TYPE
+from ...inspector.inspector import register_inspector, Inspector
+from ...inspector.node import Node
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -36,38 +35,48 @@ class TSPanelContainer(PanelContainer):
         PanelContainer.add_widget(self, widget, index)
 
     def update_margins(self):
-        axis_rects: List[QCPAxisRect] = [w.plot_instance.axisRect() for w in self.plots]
-        if len(axis_rects):
-            max_left_margin = 0
-            min_right_pos = 1e9
-            for ar in axis_rects:
-                left_margin = ar.calculateAutoMargin(QCP.MarginSide.msLeft)
-                max_left_margin = max(max_left_margin, left_margin)
-                w = ar.width()
-                min_right_pos = min(min_right_pos, ar.margins().left() + w)
+        max_left_margin = 0
+        max_right_pos = 1e9
+        for p in self.plots:
+            p: TimeSeriesPlot = p
+            ar = p.plot_instance.axisRect()
+            left_margin = ar.calculateAutoMargin(QCP.MarginSide.msLeft)
+            if p.has_colormap:
+                cmw = p.colorBar.outerRect().width()
+                cmw += ar.calculateAutoMargin(QCP.MarginSide.msRight)
+            else:
+                cmw = 0
+            max_left_margin = max(max_left_margin, left_margin)
+            max_right_pos = min(max_right_pos, p.width() - cmw)
 
-            for ar in axis_rects:
-                margins = ar.margins()
-                total_w = ar.width() + margins.left() + margins.right()
-                new_right_margin = total_w - min_right_pos
+        for p in self.plots:
+            p: TimeSeriesPlot = p
+            ar = p.plot_instance.axisRect()
+            new_right_margin = p.width() - max_right_pos
+            if p.has_colormap:
+                new_right_margin -= p.colorBar.outerRect().width()
+            new_margins = QMargins(max_left_margin, ar.calculateAutoMargin(QCP.MarginSide.msTop), new_right_margin,
+                                   ar.calculateAutoMargin(QCP.MarginSide.msTop))
+            if ar.minimumMargins() != new_margins:
                 ar.setMinimumMargins(QMargins(max_left_margin, ar.calculateAutoMargin(QCP.MarginSide.msTop),
                                               new_right_margin,
                                               ar.calculateAutoMargin(QCP.MarginSide.msTop)))
+                p.replot()
 
 
 register_icon("QCP", QIcon("://icons/QCP.png"))
 
 
-@auto_register
 class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
     time_range_changed = Signal(TimeRange)
     _time_range: TimeRange = TimeRange(0., 0.)
-    delete_me = Signal(object)
     plot_list_changed = Signal()
+    delete_me = Signal()
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None):
         QScrollArea.__init__(self, parent)
         self.setObjectName(name)
+        self.setWindowTitle(name)
         self.setContentsMargins(0, 0, 0, 0)
         self._name = name
         self._plot_container = TSPanelContainer(parent=self)
@@ -96,7 +105,7 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
     def set_time_range(self, time_range: TimeRange):
         self.time_range = time_range
 
-    @property
+    @SciQLopProperty(TimeRange)
     def time_range(self) -> TimeRange:
         return self._time_range
 
@@ -109,14 +118,13 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
             self.time_range_changed.emit(time_range)
             self._plot_container.update_margins()
 
-    @property
-    def name(self):
+    @SciQLopProperty(str)
+    def name(self) -> str:
         return self.objectName()
 
     @name.setter
-    def name(self, new_name):
-        with pipelines_model.model_update_ctx():
-            self.setObjectName(new_name)
+    def name(self, new_name: str):
+        self.setObjectName(new_name)
 
     def __repr__(self):
         return f"TimeSyncPanel: {self._name}"
@@ -156,6 +164,7 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
         if product is not None:
             p = TimeSeriesPlot(parent=self)
             p.time_range_changed.connect(lambda time_range: TimeSyncPanel.time_range.fset(self, time_range))
+            p.vertical_axis_range_changed.connect(lambda l, h: self._plot_container.update_margins())
             p.time_range = self.time_range
             self._plot_container.add_widget(p, index)
             p.parent_node = self
@@ -195,36 +204,28 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
     def __del__(self):
         log.debug("deleting TimeSyncPanel")
 
-    def __eq__(self, other: 'PipelineModelItem') -> bool:
-        return self is other
-
-    @property
+    @SciQLopProperty(str)
     def icon(self) -> str:
         return "QCP"
 
-    @property
-    def parent_node(self) -> 'PipelineModelItem':
-        return self._parent_node
+    def delete(self):
+        self.delete_me.emit()
 
-    @parent_node.setter
-    def parent_node(self, parent: 'PipelineModelItem'):
-        with pipelines_model.model_update_ctx():
-            if self._parent_node is not None:
-                self._parent_node.remove_children_node(self)
-            self._parent_node = parent
-            if parent is not None:
-                parent.add_children_node(self)
 
-    @property
-    def children_nodes(self) -> List['PipelineModelItem']:
-        return self._plot_container.plots
+@register_inspector(TimeSyncPanel)
+class TimeSyncPanelInspector(Inspector):
 
-    def remove_children_node(self, node: 'PipelineModelItem'):
-        self._plot_container.remove_plot(node)
+    @staticmethod
+    def build_node(obj: Any, parent: Optional[Node] = None, children: Optional[List[Node]] = None) -> Optional[Node]:
+        assert isinstance(obj, TimeSyncPanel)
+        node = Node(name=obj.name, bound_object=obj, icon=obj.icon, children=children, parent=parent)
+        obj.plot_list_changed.connect(node.changed)
+        return node
 
-    def add_children_node(self, node: 'PipelineModelItem'):
-        pass
+    @staticmethod
+    def list_children(obj: Any) -> List[Any]:
+        return obj.plots
 
-    def delete_node(self):
-        self._plot_container.close()
-        self.delete_me.emit(self)
+    @staticmethod
+    def child(obj: Any, name: str) -> Optional[Any]:
+        return next(filter(lambda p: p.name == name, obj.plots), None)

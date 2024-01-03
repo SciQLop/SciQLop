@@ -40,8 +40,5 @@ class LineGraph(Graph):
     def graphAt(self, index: int):
         return self.graph.graphAt(index)
 
-    def close(self):
-        super().close()
-
     def __del__(self):
         log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")

@@ -1,23 +1,21 @@
 from PySide6.QtCore import QObject, Signal, Slot
 from speasy.products import SpeasyVariable
 from abc import ABC, abstractmethod, ABCMeta
-from typing import List, Protocol, runtime_checkable
+from typing import List, Protocol, runtime_checkable, Optional, Any, Dict
 
 from SciQLop.backend import TimeRange
 from SciQLop.backend.enums import GraphType, graph_type_repr
-from SciQLop.backend.pipelines_model.auto_register import auto_register
-from SciQLop.backend.pipelines_model.base.pipeline_node import PipelineModelItem, MetaPipelineModelItem
-from SciQLop.backend.models import pipelines
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from .data_pipeline import DataPipeline
 from .. import sciqlop_logging
 from ..products_model.product_node import ProductNode
+from ...inspector.inspector import register_inspector, Inspector
+from ...inspector.node import Node
 
 log = sciqlop_logging.getLogger(__name__)
 
 
-@auto_register
-class Graph(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
+class Graph(QObject):
     xRangeChanged = Signal(TimeRange)
     _graph = None
     please_delete_me = Signal(object)
@@ -27,8 +25,7 @@ class Graph(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
         QObject.__init__(self, parent=parent)
         self.setObjectName(graph_type_repr(graph_type))
         self.pipeline = DataPipeline(parent=self, provider=provider, product=product, time_range=parent.time_range)
-        self.pipeline.please_delete_me.connect(self._close_pipeline)
-        # pipeline.destroyed.connect(self.delete_node)
+        self.pipeline.please_delete_me.connect(self.delete)
         self.xRangeChanged.connect(self.pipeline.get_data)
         self._graph_type = graph_type
         self._data_order = provider.data_order
@@ -65,12 +62,12 @@ class Graph(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
         if self.pipeline:
             self.xRangeChanged.disconnect()
             self.pipeline.please_delete_me.disconnect()
-            self.pipeline.close()
+            self.pipeline.deleteLater()
             self.pipeline = None
 
     def _close_graph(self):
         if self._graph:
-            self._graph.destroyed.disconnect()
+            # self._graph.destroyed.disconnect()
             self._graph.deleteLater()
         self._graph = None
 
@@ -80,13 +77,9 @@ class Graph(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
         self.please_delete_me.emit(self)
 
     def close(self):
-        with pipelines.model_update_ctx():
-            self._close_pipeline()
-            self._close_graph()
-            self.setParent(None)
-
-    def __eq__(self, other: 'PipelineModelItem') -> bool:
-        return self is other
+        self._close_pipeline()
+        self._close_graph()
+        self.setParent(None)
 
     @property
     def icon(self) -> str:
@@ -98,32 +91,28 @@ class Graph(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
 
     @name.setter
     def name(self, new_name: str):
-        with pipelines.model_update_ctx():
-            self.setObjectName(new_name)
+        self.setObjectName(new_name)
 
-    @property
-    def parent_node(self) -> 'PipelineModelItem':
-        return self.parent()
-
-    @parent_node.setter
-    def parent_node(self, parent: 'PipelineModelItem'):
-        raise ValueError("Can't reset Graph parent!")
-
-    @property
-    def children_nodes(self) -> List['PipelineModelItem']:
-        return [self.pipeline]
-
-    def remove_children_node(self, node: 'PipelineModelItem'):
-        raise RuntimeError("This method should not be called")
-
-    def add_children_node(self, node: 'PipelineModelItem'):
-        pass
-
-    def select(self):
-        pass
-
-    def unselect(self):
-        pass
-
-    def delete_node(self):
+    def delete(self):
         self.close()
+        self.deleteLater()
+
+    def __del__(self):
+        log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
+
+
+@register_inspector(Graph)
+class GraphInspector(Inspector):
+    @staticmethod
+    def build_node(obj: Graph, parent: Optional[Node] = None, children: Optional[List[Node]] = None) -> Optional[Node]:
+        return Node(name=obj.name, bound_object=obj, icon=obj.icon, children=children, parent=parent)
+
+    @staticmethod
+    def list_children(obj: Graph) -> List[Any]:
+        return [obj.pipeline]
+
+    @staticmethod
+    def child(obj: Graph, name: str) -> Optional[Any]:
+        if name == obj.pipeline.name:
+            return obj.pipeline
+        return None

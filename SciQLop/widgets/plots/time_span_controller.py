@@ -5,6 +5,7 @@ from PySide6.QtCore import QObject
 from .time_span import TimeSpan
 from .time_sync_panel import TimeSyncPanel
 from ...backend import TimeRange
+from ...backend.property import SciQLopProperty
 
 
 class TimeSpanController(QObject):
@@ -21,7 +22,7 @@ class TimeSpanController(QObject):
         list(map(lambda r: r.show(), list(set(visible_ranges) - set(self._visible_ranges))))
         self._visible_ranges = visible_ranges
 
-    @property
+    @SciQLopProperty(list)
     def spans(self) -> List[TimeSpan]:
         return self._ranges
 

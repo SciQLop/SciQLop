@@ -2,7 +2,9 @@ from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QWidget, QApplication, QFormLayout, QTextBrowser, QLabel, QPushButton
 from ..backend.IPythonKernel import InternalIPKernel
+from ..backend.jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 from ..backend.icons import register_icon, icons
+from ..backend.sciqlop_application import sciqlop_app
 
 register_icon("Jupyter", QIcon("://icons/Jupyter_logo.svg"))
 register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.svg"))
@@ -28,19 +30,25 @@ class IPythonKernelManager(QWidget):
         QWidget.__init__(self, parent)
         self.setWindowTitle("IPython Kernel Manager")
         self.ipykernel = InternalIPKernel()
-        self.ipykernel.jupyterlab_started.connect(self.jupyterlab_started)
         self.app = app
         self.ipykernel.init_ipkernel("qt")
+        self.ipykernel_clients_manager = IPythonKernelClientsManager(self.ipykernel.connection_file)
+        self.ipykernel_clients_manager.jupyterlab_started.connect(self.jupyterlab_started)
         self.setup_ui()
-        self.app.aboutToQuit.connect(self.ipykernel.cleanup_consoles)
+        self.app.aboutToQuit.connect(self.ipykernel_clients_manager.cleanup)
         if available_vars is not None:
             self.ipykernel.pushVariables(available_vars)
+
+        sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console", icons.get("JupyterConsole"),
+                                              self.ipykernel_clients_manager.new_qt_console)
+        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab", icons.get("Jupyter"),
+                                              self.ipykernel_clients_manager.start_jupyterlab)
 
     def pushVariables(self, variable_dict):
         self.ipykernel.pushVariables(variable_dict)
 
     def quit(self):
-        self.ipykernel.cleanup_consoles()
+        self.ipykernel_clients_manager.cleanup()
         self.ipykernel.ipkernel.shell.run_cell("quit()")
 
     def setup_ui(self):
@@ -48,10 +56,10 @@ class IPythonKernelManager(QWidget):
         self.layout().addWidget(KernelInfoWidget(self))
         new_qt_console = QPushButton("New QtConsole")
         new_qt_console.setIcon(icons.get("JupyterConsole"))
-        new_qt_console.clicked.connect(self.ipykernel.new_qt_console)
+        new_qt_console.clicked.connect(self.ipykernel_clients_manager.new_qt_console)
         start_jupyterlab = QPushButton("Start JupyterLab")
         start_jupyterlab.setIcon(icons.get("Jupyter"))
-        start_jupyterlab.clicked.connect(self.ipykernel.start_jupyterlab)
+        start_jupyterlab.clicked.connect(self.ipykernel_clients_manager.start_jupyterlab)
         self.layout().addWidget(new_qt_console)
         self.layout().addWidget(start_jupyterlab)
 

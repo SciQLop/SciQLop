@@ -1,5 +1,5 @@
 from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml, QtCore, QtGui
-
+from typing import Dict, List, Optional, Tuple, Union, Any
 import sys
 from io import StringIO
 
@@ -9,6 +9,9 @@ QWidget:focus { border: 1px dashed light blue }
 
 
 class SciQLopApp(QtWidgets.QApplication):
+    quickstart_shortcuts_added = QtCore.Signal(str)
+    panels_list_changed = QtCore.Signal(list)
+
     def __init__(self, args):
         from . import sciqlop_logging
         super(SciQLopApp, self).__init__(args)
@@ -16,4 +19,22 @@ class SciQLopApp(QtWidgets.QApplication):
         self.setOrganizationDomain("lpp.fr")
         self.setApplicationName("SciQLop")
         self.setStyleSheet(_STYLE_SHEET_)
-        sciqlop_logging.setup()
+        #sciqlop_logging.setup()
+        self._quickstart_shortcuts: Dict[str, Dict[str, Any]] = {}
+
+    def add_quickstart_shortcut(self, name: str, description: str, icon: QtGui.QPixmap or QtGui.QIcon,
+                                callback: callable):
+        self._quickstart_shortcuts[name] = (
+            {"name": name, "description": description, "icon": icon, "callback": callback})
+        self.quickstart_shortcuts_added.emit(name)
+
+    @QtCore.Property(list)
+    def quickstart_shortcuts(self) -> List[str]:
+        return list(self._quickstart_shortcuts.keys())
+
+    def quickstart_shortcut(self, name: str) -> Optional[Dict[str, Any]]:
+        return self._quickstart_shortcuts.get(name, None)
+
+
+def sciqlop_app() -> SciQLopApp:
+    return QtWidgets.QApplication.instance()

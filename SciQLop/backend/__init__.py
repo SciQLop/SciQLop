@@ -13,6 +13,10 @@ def listify(a):
     return [a]
 
 
+def filter_none(a):
+    return list(filter(None.__ne__, a))
+
+
 class TimeRange:
     __slots__ = ["_start", "_stop"]
 

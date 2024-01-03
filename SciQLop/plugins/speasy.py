@@ -86,6 +86,8 @@ def make_product(name, node: ParameterIndex, provider):
 def explore_nodes(inventory_node, product_node: Product, provider):
     for name, child in inventory_node.__dict__.items():
         if name and child:
+            if hasattr(child, "name") and child.name != "AMDA":
+                name = child.name
             if isinstance(child, ParameterIndex):
                 product_node.merge(make_product(name, child, provider=provider))
             elif hasattr(child, "__dict__"):

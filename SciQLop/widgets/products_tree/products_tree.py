@@ -28,7 +28,7 @@ class ProductTree(QWidget):
     def __init__(self, parent=None):
         super(ProductTree, self).__init__(parent)
         self._view = ProductTreeView(self)
-        self._view.setSizeAdjustPolicy(QAbstractScrollArea.AdjustIgnored)
+        #self._view.setSizeAdjustPolicy(QAbstractScrollArea.AdjustIgnored)
         self._view.setModel(products)
         self._view.setSortingEnabled(False)
         self._filter = QLineEdit(self)
@@ -46,4 +46,4 @@ class ProductTree(QWidget):
         self.layout().addWidget(self._view)
         self._filter.textChanged.connect(lambda: products.set_filter(self._filter.text()))
         self.setWindowTitle("Products")
-        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
+        #self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)

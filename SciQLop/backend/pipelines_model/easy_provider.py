@@ -26,6 +26,7 @@ class EasyProvider(DataProvider):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(callback.__name__), data_order=data_order)
         product_name = path.split('/')[-1]
         product_path = path[:-len(product_name)]
+        self._path = path
         metadata.update(
             {"description": f"Virtual {parameter_type.name} product built from Python function: {callback.__name__}"})
         products.add_product(
@@ -37,6 +38,10 @@ class EasyProvider(DataProvider):
 
     def get_data(self, product, start, stop):
         return self._user_get_data(start, stop)
+
+    @property
+    def path(self):
+        return self._path
 
 
 class EasyScalar(EasyProvider):

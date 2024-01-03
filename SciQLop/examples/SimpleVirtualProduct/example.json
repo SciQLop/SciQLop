@@ -1,0 +1,10 @@
+{
+  "image": "image.png",
+  "notebook": "simple_virtual_product.ipynb",
+  "description": "A simple virtual product that can plotted in SciQLop",
+  "name": "Simple Virtual Product",
+  "tags": [
+    "virtual-product",
+    "basic"
+  ]
+}

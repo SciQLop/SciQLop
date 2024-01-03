@@ -6,6 +6,7 @@ from SciQLopPlots import SciQLopVerticalSpan, QCPRange
 
 from .time_sync_panel import TimeSyncPanel
 from ...backend import TimeRange
+from ...backend.property import SciQLopProperty
 
 
 class TimeSpan(QObject):
@@ -71,7 +72,7 @@ class TimeSpan(QObject):
         self._visible = False
         self.update_spans()
 
-    @property
+    @SciQLopProperty(bool)
     def read_only(self):
         return self._read_only
 
@@ -81,11 +82,11 @@ class TimeSpan(QObject):
         for s in self._spans:
             s.set_read_only(read_only)
 
-    @property
-    def time_range(self):
+    @SciQLopProperty(TimeRange)
+    def time_range(self) -> TimeRange:
         return self._time_range
 
-    @property
+    @SciQLopProperty(QColor)
     def color(self) -> QColor:
         return self._color
 
@@ -95,12 +96,12 @@ class TimeSpan(QObject):
         for s in self._spans:
             s.set_color(new_color)
 
-    @property
-    def selected(self):
+    @SciQLopProperty(bool)
+    def selected(self) -> bool:
         return self._selected
 
-    @property
-    def tooltip(self):
+    @SciQLopProperty(str)
+    def tooltip(self) -> Optional[str]:
         return self._tooltip
 
     @tooltip.setter

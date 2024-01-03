@@ -1,18 +1,17 @@
 from copy import deepcopy
 from datetime import datetime
-from typing import Optional, Callable, List
+from typing import Optional, Callable, List, Any, Dict, Protocol, runtime_checkable
 from abc import ABC, abstractmethod, ABCMeta
 
 from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex, Signal
 from speasy.products import SpeasyVariable
 
 from SciQLop.backend import TimeRange
-from SciQLop.backend.pipelines_model.auto_register import auto_register
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
-from SciQLop.backend.pipelines_model.base import PipelineModelItem, MetaPipelineModelItem
-from SciQLop.backend.pipelines_model.base import model as pipelines_model
 from SciQLop.backend.products_model.product_node import ProductNode
 from .. import sciqlop_logging
+from ...inspector.inspector import register_inspector, Inspector
+from ...inspector.node import Node
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -56,8 +55,7 @@ class _DataPipelineWorker(QObject):
         log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")
 
 
-@auto_register
-class DataPipeline(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
+class DataPipeline(QObject):
     please_delete_me = Signal(object)
     plot = Signal(object)
 
@@ -78,9 +76,9 @@ class DataPipeline(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
 
     def close(self):
         if self._worker_thread:
+            self._worker_thread.finished.connect(self._worker_thread.deleteLater)
             self._worker_thread.quit()
             self._worker_thread.wait()
-            self._worker_thread.deleteLater()
             self._worker_thread = None
 
     def __del__(self):
@@ -90,9 +88,6 @@ class DataPipeline(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
     def get_data(self, new_range: TimeRange):
         if self._worker_thread:
             self._worker.get_data(new_range)
-
-    def __eq__(self, other: 'PipelineModelItem') -> bool:
-        return self is other
 
     @property
     def icon(self) -> str:
@@ -104,32 +99,22 @@ class DataPipeline(QObject, PipelineModelItem, metaclass=MetaPipelineModelItem):
 
     @name.setter
     def name(self, new_name: str):
-        with pipelines_model.model_update_ctx():
-            self.setObjectName(new_name)
+        self.setObjectName(new_name)
 
-    @property
-    def parent_node(self) -> 'PipelineModelItem':
-        return self.parent()
+    def delete(self):
+        self.please_delete_me.emit(self)
 
-    @parent_node.setter
-    def parent_node(self, parent: 'PipelineModelItem'):
-        raise ValueError("Can't reset DataPipeline parent!")
 
-    @property
-    def children_nodes(self) -> List['PipelineModelItem']:
+@register_inspector(DataPipeline)
+class DataPipelineInspector(Inspector):
+    @staticmethod
+    def build_node(obj: Any, parent: Optional[Node] = None, children: Optional[List[Node]] = None) -> Optional[Node]:
+        return Node(name=obj.name, bound_object=obj, icon=obj.icon, children=children, parent=parent)
+
+    @staticmethod
+    def list_children(obj: Any) -> List[Any]:
         return []
 
-    def remove_children_node(self, node: 'PipelineModelItem'):
-        pass
-
-    def add_children_node(self, node: 'PipelineModelItem'):
-        pass
-
-    def select(self):
-        pass
-
-    def unselect(self):
-        pass
-
-    def delete_node(self):
-        self.close()
+    @staticmethod
+    def child(obj: Any, name: str) -> Optional[Any]:
+        return None

@@ -1,12 +1,14 @@
 numpy
-SciQLopPlots>=0.6.0
+SciQLopPlots>=0.6.1
+PySide6-QtAds==4.1.0.3
+PySide6==6.6.1
 speasy>=1.2.2
 qtconsole
 tscat_gui>=0.2.0
 humanize
+platformdirs
 seaborn
 scipy
-PySide6-QtAds==4.1.0.2
 IPython
 ipykernel
 jupyterlab

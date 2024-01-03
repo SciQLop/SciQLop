@@ -1,6 +1,6 @@
 import pickle
 
-from PySide6.QtCore import Qt, QMimeData, Signal
+from PySide6.QtCore import Qt, QMimeData, Signal, Property
 from PySide6.QtGui import QMouseEvent, QDrag, QPixmap
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QDateTimeEdit, QWidgetAction
 
@@ -32,10 +32,8 @@ class DateTimeRangeWidget(QWidget):
         if default_time_range is not None:
             self._start_date.setDateTime(default_time_range.datetime_start)
             self._stop_date.setDateTime(default_time_range.datetime_stop)
-        self._start_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(
-            TimeRange(self._start_date.dateTime().toSecsSinceEpoch(), self._stop_date.dateTime().toSecsSinceEpoch())))
-        self._stop_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(
-            TimeRange(self._start_date.dateTime().toSecsSinceEpoch(), self._stop_date.dateTime().toSecsSinceEpoch())))
+        self._start_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(self.range))
+        self._stop_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(self.range))
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
@@ -46,6 +44,11 @@ class DateTimeRangeWidget(QWidget):
             drag.setPixmap(QPixmap("://icons/time.png").scaledToHeight(32))
             drag.exec()
 
+    @Property(TimeRange, notify=range_changed)
+    def range(self) -> TimeRange:
+        return TimeRange(self._start_date.dateTime().toSecsSinceEpoch(),
+                         self._stop_date.dateTime().toSecsSinceEpoch())
+
 
 class DateTimeRangeWidgetAction(QWidgetAction):
     range_changed = Signal(TimeRange)
@@ -55,6 +58,10 @@ class DateTimeRangeWidgetAction(QWidgetAction):
         self._widget = DateTimeRangeWidget(default_time_range=default_time_range)
         self.setDefaultWidget(self._widget)
         self._widget.range_changed.connect(self.range_changed)
+
+    @property
+    def range(self) -> TimeRange:
+        return self._widget.range
 
 
 def _mime_encode_time_range(time_range: TimeRange) -> QMimeData:

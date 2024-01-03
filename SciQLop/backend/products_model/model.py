@@ -140,7 +140,7 @@ class ProductsModel(QAbstractItemModel):
                                                                deletable=deletable_parent_nodes))
                 else:
                     node = node[node_name]
-        node.merge(child=product)
+        node.merge(child=product, overwrite_leaves=True)
         self.beginResetModel()
         self._filtered_root.update(filter_regex=self._filter)
         self.endResetModel()
