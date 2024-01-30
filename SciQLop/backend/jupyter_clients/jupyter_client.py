@@ -4,7 +4,6 @@ from typing import List, Mapping, Optional
 
 from PySide6.QtCore import QProcess, QProcessEnvironment
 
-
 from enum import Enum
 from SciQLop.backend import sciqlop_logging
 
@@ -31,7 +30,7 @@ class SciQLopJupyterClient:
         self.client_type = client_type
 
     def _start_process(self, cmd: str, args: List[str], connection_file: str,
-                       extra_env: Optional[Mapping[str, str]] = None):
+                       extra_env: Optional[Mapping[str, str]] = None, cwd: Optional[str] = None):
         env = QProcessEnvironment.systemEnvironment()
         env.insert("SCIQLOP_IPYTHON_CONNECTION_FILE", connection_file)
         if extra_env:
@@ -50,6 +49,8 @@ class SciQLopJupyterClient:
         self.process.readyReadStandardOutput.connect(self._forward_stdout)
         self.process.readyReadStandardError.connect(self._forward_stderr)
         self.process.stateChanged.connect(self._process_state_changed)
+        if cwd:
+            self.process.setWorkingDirectory(cwd)
         self.process.start(cmd, args)
         print(f"\n{self.process.program()}  {' '.join(self.process.arguments())}\n")
 

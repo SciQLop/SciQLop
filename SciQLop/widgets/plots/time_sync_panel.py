@@ -26,12 +26,8 @@ log = sciqlop_logging.getLogger(__name__)
 class TSPanelContainer(PanelContainer):
     def __init__(self, parent=None):
         PanelContainer.__init__(self, TimeSeriesPlot, parent=parent)
-        # self._margin_group = QCPMarginGroup(None)
 
     def add_widget(self, widget: QWidget, index: int):
-        # if isinstance(widget, TimeSeriesPlot):
-        #    widget.set_margin_group(self._margin_group)
-
         PanelContainer.add_widget(self, widget, index)
 
     def update_margins(self):

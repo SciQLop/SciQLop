@@ -14,13 +14,13 @@ class ClientsManager(QObject):
         self._connection_file = connection_file
         self._jupyter_processes: List[SciQLopJupyterClient] = []
 
-    def new_qt_console(self):
+    def new_qt_console(self,cwd=None):
         """start a new qtconsole connected to our kernel"""
-        self._jupyter_processes.append(QtConsoleClient(connection_file=self._connection_file))
+        self._jupyter_processes.append(QtConsoleClient(connection_file=self._connection_file, cwd=cwd))
 
-    def start_jupyterlab(self):
+    def start_jupyterlab(self,cwd=None):
         """start a new jupyterlab connected to our kernel"""
-        self._jupyter_processes.append(JupyterLabClient(connection_file=self._connection_file))
+        self._jupyter_processes.append(JupyterLabClient(connection_file=self._connection_file, cwd=cwd))
         self.jupyterlab_started.emit(self._jupyter_processes[-1].url)
 
     def cleanup(self):

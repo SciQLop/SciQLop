@@ -1,5 +1,5 @@
 import os, sys
-from typing import Optional
+from typing import Optional, AnyStr
 from contextlib import closing
 import socket
 
@@ -29,3 +29,8 @@ def find_available_port(start_port: int = 8000, end_port: int = 9000) -> Optiona
             if res != 0:
                 return port
     return None
+
+
+def ensure_dir_exists(path: AnyStr):
+    if not os.path.exists(path):
+        os.makedirs(path)

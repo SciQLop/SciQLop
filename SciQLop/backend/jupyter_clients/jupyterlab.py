@@ -11,10 +11,10 @@ log = sciqlop_logging.getLogger(__name__)
 
 
 class JupyterLabClient(SciQLopJupyterClient):
-    def __init__(self, connection_file: str, workdir: Optional[str] = None):
+    def __init__(self, connection_file: str, cwd: Optional[str] = None):
         super().__init__(ClientType.JUPYTERLAB)
-        if workdir is None:
-            workdir = Path.home()
+        if cwd is None:
+            cwd = Path.home()
         self.port = find_available_port()
         self.token = secrets.token_hex(16)
         self.url = f"http://localhost:{self.port}/?token={self.token}"
@@ -39,7 +39,7 @@ class JupyterLabClient(SciQLopJupyterClient):
             f"--port={self.port}",
             "--no-browser",
             f"--NotebookApp.token={self.token}",
-            f"--NotebookApp.notebook_dir={workdir}",
+            f"--NotebookApp.notebook_dir={cwd}",
         ]
         self._start_process(cmd=get_python(), args=args, connection_file=connection_file, extra_env=extra_env)
         log.info(f"JupyterLab started at {self.url}")

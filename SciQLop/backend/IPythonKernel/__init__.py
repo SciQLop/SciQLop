@@ -10,17 +10,17 @@ from SciQLop.backend import sciqlop_logging
 log = sciqlop_logging.getLogger(__name__)
 
 
-def mpl_kernel(gui="qt"):
+def qt_kernel(mpl_backend=None):
     """Launch and return an IPython kernel with matplotlib support for the desired gui"""
-    kernel = IPKernelApp.instance(kernel_name="SciQlop", log=sciqlop_logging.getLogger("SciQlop"))
+    kernel = IPKernelApp.instance(kernel_name="SciQLop", log=sciqlop_logging.getLogger("SciQLop"))
     kernel.capture_fd_output = False
-    kernel.initialize(
-        [
-            "python",
-            f"--matplotlib={gui}",
-            # '--log-level=10'
-        ]
-    )
+    args = ["--gui=qt6", "--colors=linux"]
+    if mpl_backend is not None:
+        args.append(f"--matplotlib={gui}")
+    if len(args) > 0:
+        kernel.initialize(["python", ] + args)
+    else:
+        kernel.initialize()
     sciqlop_logging.replace_stdios()
     return kernel
 
@@ -30,23 +30,27 @@ class InternalIPKernel(QObject):
 
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
-        self.ipkernel = None
+        self.ipykernel = None
 
-    def init_ipkernel(self, backend):
-        self.ipkernel = mpl_kernel(backend)
+    def init_ipkernel(self, mpl_backend=None):
+        self.ipykernel = qt_kernel(mpl_backend)
 
-    def pushVariables(self, variable_dict):
+    def push_variables(self, variable_dict):
         """ Given a dictionary containing name / value pairs, push those
         variables to the IPython console widget.
 
         :param variable_dict: Dictionary of variables to be pushed to the
             console's interactive namespace (```{variable_name: object, …}```)
         """
-        self.ipkernel.shell.push(variable_dict)
+        self.ipykernel.shell.push(variable_dict)
+
+    def do_one_iteration(self):
+        self.ipykernel.kernel.process_one(wait=True)
+
+    def start(self):
+        self.ipykernel.start()
+        print("IPython kernel started")
 
     @property
     def connection_file(self) -> str:
-        return jupyter_client.find_connection_file(self.ipkernel.abs_connection_file)
-
-    def start(self):
-        self.ipkernel.start()
+        return jupyter_client.find_connection_file(self.ipykernel.abs_connection_file)

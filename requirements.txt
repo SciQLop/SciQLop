@@ -13,3 +13,5 @@ IPython
 ipykernel
 jupyterlab
 notebook
+ipympl
+qasync

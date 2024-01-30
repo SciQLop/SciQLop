@@ -31,25 +31,25 @@ class IPythonKernelManager(QWidget):
         self.setWindowTitle("IPython Kernel Manager")
         self.ipykernel = InternalIPKernel()
         self.app = app
-        self.ipykernel.init_ipkernel("qt")
+        self.ipykernel.init_ipkernel('qt')
         self.ipykernel_clients_manager = IPythonKernelClientsManager(self.ipykernel.connection_file)
         self.ipykernel_clients_manager.jupyterlab_started.connect(self.jupyterlab_started)
         self.setup_ui()
         self.app.aboutToQuit.connect(self.ipykernel_clients_manager.cleanup)
         if available_vars is not None:
-            self.ipykernel.pushVariables(available_vars)
+            self.ipykernel.push_variables(available_vars)
 
-        sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console", icons.get("JupyterConsole"),
-                                              self.ipykernel_clients_manager.new_qt_console)
-        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab", icons.get("Jupyter"),
-                                              self.ipykernel_clients_manager.start_jupyterlab)
+        # sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console", icons.get("JupyterConsole"),
+        #                                      self.ipykernel_clients_manager.new_qt_console)
+        # sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab", icons.get("Jupyter"),
+        #                                      self.ipykernel_clients_manager.start_jupyterlab)
 
     def pushVariables(self, variable_dict):
-        self.ipykernel.pushVariables(variable_dict)
+        self.ipykernel.push_variables(variable_dict)
 
     def quit(self):
         self.ipykernel_clients_manager.cleanup()
-        self.ipykernel.ipkernel.shell.run_cell("quit()")
+        self.ipykernel.ipykernel.shell.run_cell("quit()")
 
     def setup_ui(self):
         self.setLayout(QFormLayout())

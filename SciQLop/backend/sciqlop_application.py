@@ -1,5 +1,7 @@
 from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml, QtCore, QtGui
 from typing import Dict, List, Optional, Tuple, Union, Any
+from qasync import QEventLoop, QApplication
+import asyncio
 import sys
 from io import StringIO
 
@@ -8,7 +10,7 @@ QWidget:focus { border: 1px dashed light blue }
 """
 
 
-class SciQLopApp(QtWidgets.QApplication):
+class SciQLopApp(QApplication):
     quickstart_shortcuts_added = QtCore.Signal(str)
     panels_list_changed = QtCore.Signal(list)
 
@@ -19,7 +21,7 @@ class SciQLopApp(QtWidgets.QApplication):
         self.setOrganizationDomain("lpp.fr")
         self.setApplicationName("SciQLop")
         self.setStyleSheet(_STYLE_SHEET_)
-        #sciqlop_logging.setup()
+        # sciqlop_logging.setup()
         self._quickstart_shortcuts: Dict[str, Dict[str, Any]] = {}
 
     def add_quickstart_shortcut(self, name: str, description: str, icon: QtGui.QPixmap or QtGui.QIcon,
@@ -38,3 +40,13 @@ class SciQLopApp(QtWidgets.QApplication):
 
 def sciqlop_app() -> SciQLopApp:
     return QtWidgets.QApplication.instance()
+
+
+class SciQLopEventLoop(QEventLoop):
+    def __init__(self):
+        super().__init__(sciqlop_app())
+        asyncio.set_event_loop(self)
+        app = sciqlop_app()
+        app_close_event = asyncio.Event()
+        app.aboutToQuit.connect(app_close_event.set)
+

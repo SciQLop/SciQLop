@@ -8,6 +8,7 @@ from PySide6.QtGui import QCloseEvent, Qt
 from PySide6.QtWidgets import QWidget, QSizePolicy, QMenu
 
 from .IPythonManager import IPythonKernelManager
+from .workspaces import WorkspaceManagerUI
 from .JupyterLabView import JupyterLabView
 from .logs_widget import LogsWidget
 from .datetime_range import DateTimeRangeWidgetAction
@@ -18,23 +19,26 @@ from .plots.time_sync_panel import TimeSyncPanel
 from .products_tree import ProductTree as PyProductTree
 from .welcome import WelcomePage
 from ..backend import TimeRange
-from ..backend.sciqlop_application import sciqlop_app
+from ..backend.sciqlop_application import sciqlop_app, SciQLopApp
 from ..backend.unique_names import make_simple_incr_name
 from ..inspector.model import Model as InspectorModel
 from ..inspector.inspector import register_inspector, Inspector
 from ..inspector.node import Node, RootNode
+from ..backend.workspace import Workspace
 
 
 class SciQLopMainWindow(QtWidgets.QMainWindow):
     panels_list_changed = QtCore.Signal(list)
+    workspace: Workspace = None
+    app: SciQLopApp = None
 
-    def __init__(self, app):
+    def __init__(self):
 
         QtWidgets.QMainWindow.__init__(self)
         self.setObjectName("SciQLopMainWindow")
-        self.app = app
-        self._setup_ui(app)
-        sciqlop_app().panels_list_changed.connect(self.panels_list_changed)
+        self.app = sciqlop_app()
+        self._setup_ui(self.app)
+        self.app.panels_list_changed.connect(self.panels_list_changed)
 
     def _setup_ui(self, app):
         QtAds.CDockManager.setAutoHideConfigFlag(QtAds.CDockManager.DefaultAutoHideConfig)
@@ -58,10 +62,13 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.productTree = PyProductTree(self)
         self.add_side_pan(self.productTree)
 
-        self.ipython_kernel_manager = IPythonKernelManager(parent=self, app=app, available_vars={"main_window": self})
-        self.ipython_kernel_manager.jupyterlab_started.connect(
-            lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url)))
-        self.add_side_pan(self.ipython_kernel_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
+        self.workspace_manager = WorkspaceManagerUI(self)
+        self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
+
+        # self.ipython_kernel_manager = IPythonKernelManager(parent=self, app=app, available_vars={"main_window": self})
+        # self.ipython_kernel_manager.jupyterlab_started.connect(
+        #    lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url)))
+        # self.add_side_pan(self.ipython_kernel_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
         self.logs = LogsWidget(self)
         self.add_side_pan(self.logs, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
@@ -160,14 +167,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 self.showFullScreen()
 
     def closeEvent(self, event: QCloseEvent):
-        self.ipython_kernel_manager.quit()
+        self.workspace_manager.quit()
         super().closeEvent(event)
 
     def push_variables_to_console(self, variables: dict):
-        self.ipython_kernel_manager.pushVariables(variable_dict=variables)
+        self.workspace_manager.pushVariables(variable_dict=variables)
 
     def start(self):
-        self.ipython_kernel_manager.start()
+        self.workspace_manager.start()
 
     def _notify_panels_list_changed(self):
         self.panels_list_changed.emit(self.plot_panels())

@@ -2,7 +2,6 @@ import os
 import platform
 import sys
 
-
 os.environ['QT_API'] = 'PySide6'
 print("Forcing TZ to UTC")
 os.environ['TZ'] = 'UTC'
@@ -19,11 +18,12 @@ def main():
     import PySide6QtAds
     # from qt_material import apply_stylesheet
     from SciQLop.resources import icons
-    from SciQLop.backend.sciqlop_application import SciQLopApp
+    from SciQLop.backend.sciqlop_application import SciQLopApp, SciQLopEventLoop
 
     print(str(icons) + str(QtPrintSupport) + str(QtOpenGL) + str(QtQml) + str(PySide6QtAds))
 
     app = SciQLopApp(sys.argv)
+    event_loop = SciQLopEventLoop()
     pixmap = QtGui.QPixmap(":/splash.png")
     splash = QtWidgets.QSplashScreen(pixmap)
     splash.show()
@@ -34,7 +34,7 @@ def main():
     from SciQLop.widgets.mainwindow import SciQLopMainWindow
     from SciQLop.plugins import load_all, loaded_plugins
     app.processEvents()
-    main_windows = SciQLopMainWindow(app)
+    main_windows = SciQLopMainWindow()
     # apply_stylesheet(app, theme='light_teal.xml', extra={'density_scale': '-2'})
     main_windows.show()
     app.processEvents()

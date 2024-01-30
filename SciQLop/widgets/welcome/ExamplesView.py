@@ -2,8 +2,10 @@ from PySide6.QtWidgets import QFrame, QVBoxLayout, QWidget, QLabel, QSizePolicy
 from PySide6.QtCore import Slot, Signal
 from .card import Card, ImageWidget
 from ..common.flow_layout import FlowLayout
+from ...backend.common.dataclasses import from_json, to_json
 from ..common import HLine
 from .section import WelcomeSection
+from dataclasses import dataclass, field
 from typing import List
 import os
 import json
@@ -13,25 +15,38 @@ __HERE__ = os.path.dirname(__file__)
 
 
 class Example:
+    @dataclass
+    class ExampleSpec:
+        name: str = field(default_factory=str)
+        description: str = field(default_factory=str)
+        image: str = field(default_factory=str)
+        tags: List[str] = field(default_factory=list)
+        notebook: str = field(default_factory=str)
+        valid: bool = False
+
+        def __init__(self, json_file: str):
+            from_json(self, open(json_file, 'r').read())
+            if self.name is None:
+                self.valid = False
+            else:
+                self.valid = True
+
     def __init__(self, json_file: str):
+        self._example_spec = Example.ExampleSpec(json_file)
         self._json_file = json_file
         self._path = os.path.dirname(json_file)
-        if os.path.exists(json_file):
-            self._desc = json.load(open(json_file))
-        else:
-            self._desc = None
 
     @property
     def name(self):
-        return self._desc["name"]
+        return self._example_spec.name
 
     @property
     def description(self):
-        return self._desc["description"]
+        return self._example_spec.description
 
     @property
     def image(self):
-        return os.path.join(self._path, self._desc["image"])
+        return os.path.join(self._path, self._example_spec.image)
 
     @property
     def path(self):
@@ -43,15 +58,15 @@ class Example:
 
     @property
     def tags(self):
-        return self._desc["tags"]
+        return self._example_spec.tags
 
     @property
     def is_valid(self):
-        return self._desc is not None
+        return self._example_spec.valid
 
     @property
     def notebook(self):
-        return os.path.join(self._path, self._desc["notebook"])
+        return os.path.join(self._path, self._example_spec.notebook)
 
 
 class ExampleCard(Card):
