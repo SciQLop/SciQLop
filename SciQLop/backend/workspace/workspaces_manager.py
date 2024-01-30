@@ -2,6 +2,8 @@ import os
 from typing import List, Optional
 from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtGui import QIcon
+from mypy.plugins import functools
+
 from .workspace import WORKSPACES_DIR_CONFIG_ENTRY
 from .workspace_spec import WorkspaceSpecFile
 from .workspace import Workspace
@@ -9,6 +11,7 @@ from ..icons import register_icon, icons
 from ..examples import Example
 from ..sciqlop_application import sciqlop_app, QEventLoop
 from ..IPythonKernel import InternalIPKernel
+from ..common import background_run
 from ..jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 import uuid
 
@@ -53,6 +56,7 @@ class WorkspaceManager(QObject):
             return
         self._ipykernel = InternalIPKernel()
         self._ipykernel.init_ipkernel()
+        self.push_variables({"app": sciqlop_app(), "background_run": background_run})
         self._ipykernel_clients_manager = IPythonKernelClientsManager(self._ipykernel.connection_file)
         self._ipykernel_clients_manager.jupyterlab_started.connect(self.jupyterlab_started)
 

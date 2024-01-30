@@ -3,6 +3,10 @@ from typing import Optional, AnyStr
 from contextlib import closing
 import socket
 
+import asyncio
+from qasync import QThreadExecutor
+import functools
+
 
 def find_available_port(start_port: int = 8000, end_port: int = 9000) -> Optional[int]:
     for port in range(start_port, end_port):
@@ -16,3 +20,10 @@ def find_available_port(start_port: int = 8000, end_port: int = 9000) -> Optiona
 def ensure_dir_exists(path: AnyStr):
     if not os.path.exists(path):
         os.makedirs(path)
+
+
+async def background_run(function, *args, **kwargs):
+    loop = asyncio.get_running_loop()
+    with QThreadExecutor(1) as ex:
+        r = await loop.run_in_executor(ex, functools.partial(function, **kwargs), *args)
+    return r
