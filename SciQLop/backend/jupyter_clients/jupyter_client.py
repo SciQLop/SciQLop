@@ -1,8 +1,8 @@
 import os.path
 import sys
-from typing import List, Mapping, Optional
+from typing import List, Mapping, Optional, Callable
 
-from PySide6.QtCore import QProcess, QProcessEnvironment
+from PySide6.QtCore import QProcess, QProcessEnvironment, QObject
 
 from enum import Enum
 from SciQLop.backend import sciqlop_logging
@@ -24,10 +24,14 @@ class ClientType(Enum):
     JUPYTERLAB = "jupyterlab"
 
 
-class SciQLopJupyterClient:
-    def __init__(self, client_type: ClientType):
+class SciQLopJupyterClient(QObject):
+    def __init__(self, client_type: ClientType, parent=None, stdout_parser: Optional[Callable] = None,
+                 stderr_parser: Optional[Callable] = None):
+        super().__init__(parent)
         self.process = QProcess()
         self.client_type = client_type
+        self._stdout_parser = stdout_parser or (lambda x: x)
+        self._stderr_parser = stderr_parser or (lambda x: x)
 
     def _start_process(self, cmd: str, args: List[str], connection_file: str,
                        extra_env: Optional[Mapping[str, str]] = None, cwd: Optional[str] = None):
@@ -61,10 +65,10 @@ class SciQLopJupyterClient:
         print(state)
 
     def _forward_stdout(self):
-        print(str(self.process.readAllStandardOutput(), encoding="utf-8"))
+        print(self._stdout_parser(str(self.process.readAllStandardOutput(), encoding="utf-8")))
 
     def _forward_stderr(self):
-        print(str(self.process.readAllStandardError(), encoding="utf-8"))
+        print(self._stderr_parser(str(self.process.readAllStandardError(), encoding="utf-8")))
 
     def kill(self):
         self.process.kill()

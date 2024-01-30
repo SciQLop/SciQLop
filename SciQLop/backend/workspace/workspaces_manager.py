@@ -6,6 +6,7 @@ from .workspace import WORKSPACES_DIR_CONFIG_ENTRY
 from .workspace_spec import WorkspaceSpecFile
 from .workspace import Workspace
 from ..icons import register_icon, icons
+from ..examples import Example
 from ..sciqlop_application import sciqlop_app, QEventLoop
 from ..IPythonKernel import InternalIPKernel
 from ..jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
@@ -30,15 +31,18 @@ def list_existing_workspaces() -> List[WorkspaceSpecFile]:
 class WorkspaceManager(QObject):
     workspace_created = Signal(Workspace)
     workspace_deleted = Signal(Workspace)
+    jupyterlab_started = Signal(str)
 
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
         self._quit = False
         self._workspace: Optional[Workspace] = None
 
-        sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console", icons.get("JupyterConsole"),
+        sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console in current workspace or a new one",
+                                              icons.get("JupyterConsole"),
                                               self.new_qt_console)
-        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab", icons.get("Jupyter"),
+        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab in current workspace or a new one",
+                                              icons.get("Jupyter"),
                                               self.start_jupyterlab)
 
         self._ipykernel: Optional[InternalIPKernel] = None
@@ -50,6 +54,7 @@ class WorkspaceManager(QObject):
         self._ipykernel = InternalIPKernel()
         self._ipykernel.init_ipkernel()
         self._ipykernel_clients_manager = IPythonKernelClientsManager(self._ipykernel.connection_file)
+        self._ipykernel_clients_manager.jupyterlab_started.connect(self.jupyterlab_started)
 
     def start_jupyterlab(self):
         self._init_kernel()
@@ -75,6 +80,19 @@ class WorkspaceManager(QObject):
         self._workspace = Workspace(workspace_spec=spec)
         self.workspace_created.emit(self._workspace)
         self.push_variables({"workspace": self._workspace})
+        return self._workspace
+
+    def load_example(self, example_path: str) -> Workspace:
+        print(f"Loading example from {example_path}")
+        example = Example(example_path)
+        if self._workspace is None:
+            self.create_workspace(example.name)
+        assert self._workspace is not None
+        self._workspace.install_dependencies(example.dependencies)
+        self._workspace.add_files([example.notebook])
+        assert self._ipykernel_clients_manager is not None
+        if not self._ipykernel_clients_manager.has_running_jupyterlab:
+            self.start_jupyterlab()
         return self._workspace
 
     @Slot(str)
@@ -112,3 +130,10 @@ class WorkspaceManager(QObject):
         self._ipykernel_clients_manager.cleanup()
         self._ipykernel.ipykernel.shell.run_cell("quit()")
         self._quit = True
+
+
+def workspaces_manager_instance():
+    app = sciqlop_app()
+    if not hasattr(app, "workspaces_manager"):
+        app.workspaces_manager = WorkspaceManager(app)
+    return app.workspaces_manager

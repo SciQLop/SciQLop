@@ -5,10 +5,12 @@ from ..IPythonKernel import InternalIPKernel
 from ..jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 from .workspace_spec import WorkspaceSpec, WorkspaceSpecFile
 from ..common.process import Process
-from ..common import ensure_dir_exists, get_python
+from ..common.pip_process import pip_install_requirements
+from ..common import ensure_dir_exists
 from PySide6.QtCore import QObject, Signal, Slot
 from platformdirs import *
 from typing import List, Optional, AnyStr
+import shutil
 import os
 import sys
 
@@ -79,6 +81,14 @@ class Workspace(QObject):
         self._workspace_spec.dependencies.append(dependency)
         self._ensure_all_dependencies_installed()
 
+    def install_dependencies(self, dependencies: List[str]):
+        self._workspace_spec.dependencies.extend(dependencies)
+        self._ensure_all_dependencies_installed()
+
+    def add_files(self, files: List[str], destination: str = ""):
+        for file in files:
+            shutil.copy(file, os.path.join(self._workspace_dir, destination))
+
     @property
     def name(self):
         return self._workspace_spec.name
@@ -92,9 +102,9 @@ class Workspace(QObject):
             with open(os.path.join(self._workspace_dir, "requirements.txt"), 'w') as f:
                 f.write('\n'.join(self.dependencies))
 
-            self._install_proc = Process(cmd=get_python(),
-                                         args=["-mpip", "install", "-r", "requirements.txt", "--target",
-                                               self._dependencies_dir], cwd=self._workspace_dir)
+            self._install_proc = pip_install_requirements(
+                requirements_file=os.path.join(self._workspace_dir, "requirements.txt"),
+                install_dir=self._dependencies_dir, cwd=self._workspace_dir)
             self._install_proc.finished.connect(self.dependencies_installed)
             self._install_proc.start()
         else:

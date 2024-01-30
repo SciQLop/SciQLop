@@ -1,5 +1,5 @@
 from .workspace import Workspace
-from .workspaces_manager import WorkspaceManager
+from .workspaces_manager import WorkspaceManager, workspaces_manager_instance
 
 
 def existing_workspaces():

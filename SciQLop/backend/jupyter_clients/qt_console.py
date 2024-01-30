@@ -1,6 +1,6 @@
 from typing import Optional
 from .jupyter_client import SciQLopJupyterClient, ClientType
-from ..common import get_python
+from ..common.python import get_python
 
 
 class QtConsoleClient(SciQLopJupyterClient):

@@ -63,6 +63,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.add_side_pan(self.productTree)
 
         self.workspace_manager = WorkspaceManagerUI(self)
+        self.workspace_manager.pushVariables({"main_window": self})
+        self.workspace_manager.jupyterlab_started.connect(
+            lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url)))
         self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
         # self.ipython_kernel_manager = IPythonKernelManager(parent=self, app=app, available_vars={"main_window": self})

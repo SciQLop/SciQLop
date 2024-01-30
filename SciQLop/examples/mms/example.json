@@ -7,5 +7,6 @@
     "mms",
     "virtual-product",
     "spectro"
-  ]
+  ],
+  "dependencies": []
 }

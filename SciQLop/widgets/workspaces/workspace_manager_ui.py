@@ -2,14 +2,16 @@ from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QWidget, QApplication, QFormLayout, QTextBrowser, QLabel, QPushButton
 
-from SciQLop.backend.workspace import WorkspaceManager as BackendWorkspaceManager
+from SciQLop.backend.workspace import WorkspaceManager, workspaces_manager_instance
 
 
 class WorkspaceManagerUI(QWidget):
+    jupyterlab_started = Signal(str)
 
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)
-        self._workspace_manager = BackendWorkspaceManager()
+        wm = workspaces_manager_instance()
+        wm.jupyterlab_started.connect(self.jupyterlab_started)
         self.setWindowTitle("Workspace Manager")
         self.setup_ui()
 
@@ -17,10 +19,10 @@ class WorkspaceManagerUI(QWidget):
         pass
 
     def pushVariables(self, variable_dict):
-        self._workspace_manager.push_variables(variable_dict)
+        workspaces_manager_instance().push_variables(variable_dict)
 
     def start(self):
-        self._workspace_manager.start()
+        workspaces_manager_instance().start()
 
     def quit(self):
-        self._workspace_manager.quit()
+        workspaces_manager_instance().quit()
