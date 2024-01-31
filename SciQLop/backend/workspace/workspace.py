@@ -3,7 +3,8 @@ import datetime
 from ..settings import ConfigEntry
 from ..IPythonKernel import InternalIPKernel
 from ..jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
-from .workspace_spec import WorkspaceSpec, WorkspaceSpecFile
+# from .workspace_spec import WorkspaceSpecFile
+from ..data_models.models import WorkspaceSpec, WorkspaceSpecFile
 from ..common.process import Process
 from ..common.pip_process import pip_install_requirements
 from ..common import ensure_dir_exists
@@ -40,7 +41,7 @@ class Workspace(QObject):
         if workspace_spec is None:
             self._workspace_dir = str(os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), workspace_dir or "default"))
         else:
-            self._workspace_dir = os.path.dirname(workspace_spec.workspace_spec_path)
+            self._workspace_dir = workspace_spec.directory
         self._dependencies_dir = str(os.path.join(self._workspace_dir, "dependencies"))
         self._ipykernel: Optional[InternalIPKernel] = None
 
@@ -87,6 +88,7 @@ class Workspace(QObject):
 
     def add_files(self, files: List[str], destination: str = ""):
         for file in files:
+            print(f"Copying {file} to {os.path.join(self._workspace_dir, destination)}")
             shutil.copy(file, os.path.join(self._workspace_dir, destination))
 
     @property

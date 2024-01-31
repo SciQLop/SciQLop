@@ -6,4 +6,4 @@ class JupyterLabView(QWebEngineView):
     def __init__(self, parent=None, url=None):
         super().__init__()
         self.setWindowTitle("SciQLop JupyterLab")
-        QTimer.singleShot(2000, lambda : self.setUrl(url))
+        QTimer.singleShot(100, lambda: self.setUrl(url))

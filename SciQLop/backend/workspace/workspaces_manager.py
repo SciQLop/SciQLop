@@ -5,7 +5,7 @@ from PySide6.QtGui import QIcon
 from mypy.plugins import functools
 
 from .workspace import WORKSPACES_DIR_CONFIG_ENTRY
-from .workspace_spec import WorkspaceSpecFile
+from ..data_models import WorkspaceSpecFile
 from .workspace import Workspace
 from ..icons import register_icon, icons
 from ..examples import Example
@@ -92,8 +92,8 @@ class WorkspaceManager(QObject):
         if self._workspace is None:
             self.create_workspace(example.name)
         assert self._workspace is not None
-        self._workspace.install_dependencies(example.dependencies)
         self._workspace.add_files([example.notebook])
+        self._workspace.install_dependencies(example.dependencies)
         assert self._ipykernel_clients_manager is not None
         if not self._ipykernel_clients_manager.has_running_jupyterlab:
             self.start_jupyterlab()

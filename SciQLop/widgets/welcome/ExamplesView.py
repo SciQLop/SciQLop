@@ -20,24 +20,21 @@ class ExampleCard(Card):
     def __init__(self, json_file: str, parent=None):
         super().__init__(parent)
         self._example = Example(json_file)
-        self.clicked.connect(lambda: self.open_example.emit(self._example.path))
+        self.clicked.connect(lambda: self.open_example.emit(self._example.directory))
         self._refresh_ui()
 
     def _refresh_ui(self):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
-        if not self._example.is_valid:
-            self._layout.addWidget(QLabel(f"Error: {self._example.json_file} not found"))
-        else:
-            self._layout.addWidget(ImageWidget(self._example.image))
-            self._layout.addWidget(HLine())
-            self._layout.addWidget(QLabel(self._example.name))
-            tags = QLabel(
-                f"<font color=\"black\">Tags:</font> <font color=\"blue\">{' '.join(self._example.tags)}</font>")
-            font = tags.font()
-            font.setPointSize(int(font.pointSize() * 0.8))
-            tags.setFont(font)
-            self._layout.addWidget(tags)
+        self._layout.addWidget(ImageWidget(self._example.image))
+        self._layout.addWidget(HLine())
+        self._layout.addWidget(QLabel(self._example.name))
+        tags = QLabel(
+            f"<font color=\"black\">Tags:</font> <font color=\"blue\">{' '.join(self._example.tags)}</font>")
+        font = tags.font()
+        font.setPointSize(int(font.pointSize() * 0.8))
+        tags.setFont(font)
+        self._layout.addWidget(tags)
 
 
 class ExamplesList(QFrame):
