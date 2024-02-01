@@ -6,7 +6,7 @@ from .card import Card, ImageWidget
 from ..common.flow_layout import FlowLayout
 from ..common import HLine
 from SciQLop.backend.sciqlop_application import sciqlop_app
-from .section import WelcomeSection
+from .section import WelcomeSection, CardsCollection
 
 
 class ShortcutCard(Card):
@@ -41,7 +41,7 @@ class Shortcuts(QFrame):
 class QuickStartSection(WelcomeSection):
     def __init__(self, parent=None):
         super().__init__("Quick start", parent)
-        self._shortcuts = Shortcuts()
+        self._shortcuts = CardsCollection()
         self._shortcuts.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._layout.addWidget(self._shortcuts)
         list(map(self._add_shortcut, sciqlop_app().quickstart_shortcuts))

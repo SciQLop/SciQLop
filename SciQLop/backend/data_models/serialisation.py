@@ -3,11 +3,14 @@ from datetime import datetime
 import functools
 from ..common import ensure_dir_exists
 from ..common.dataclasses import from_json, to_json
+from ..sciqlop_logging import getLogger
+
+log = getLogger(__name__)
 
 
-def _ensure_fname(path, fname):
+def _ensure_fname(path, fname) -> str:
     if not path.endswith(".json"):
-        return os.path.join(path, fname)
+        return str(os.path.join(path, fname))
     return path
 
 
@@ -17,7 +20,7 @@ class ReadOnlySpecFile:
         self._path = _ensure_fname(path, spec_filename)
         assert os.path.exists(path)
         with open(self._path, 'r') as f:
-            self._spec = from_json(spec_class(), f.read())
+            self._spec = from_json(spec_class(**kwargs), f.read())
 
     @property
     def path(self):
@@ -40,7 +43,8 @@ class SpecFile(ReadOnlySpecFile):
         ensure_dir_exists(os.path.dirname(path))
         if not os.path.exists(path):
             with open(path, 'w') as f:
-                f.write(to_json(spec_class()))
+                log.info(f"Saving spec file {path}")
+                f.write(to_json(spec_class(**kwargs)))
         super().__init__(path, spec_class=spec_class, spec_filename=spec_filename, **kwargs)
 
     def _save(self):
@@ -48,6 +52,7 @@ class SpecFile(ReadOnlySpecFile):
         if hasattr(self._spec, "last_modified"):
             self._spec.last_modified = datetime.now().isoformat()
         with open(self._path, 'w') as f:
+            log.info(f"Saving spec file {self._path}")
             f.write(to_json(self._spec))
 
     def __setattr__(self, key, value):

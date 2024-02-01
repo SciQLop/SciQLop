@@ -15,7 +15,7 @@ class WorkspaceSpec:
     name: str = "default"
     description: str = ""
     image: str = ""
-    notebook: str = ""
+    notebooks: List[str] = field(default_factory=list)
 
 
 WorkspaceSpecFile = register_spec_file(WorkspaceSpec, "workspace.json")

@@ -1,0 +1,14 @@
+{
+  "image": "image.png",
+  "notebook": "pyspedas.ipynb",
+  "description": "A basic example of how to integrate PySPEDAS into SciQLop",
+  "name": "PySPEDAS",
+  "tags": [
+    "pyspedas",
+    "virtual-product",
+    "spectro"
+  ],
+  "dependencies": [
+    "pyspedas"
+  ]
+}

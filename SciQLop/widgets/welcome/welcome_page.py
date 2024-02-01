@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QSizePolicy
 from .ExamplesView import ExamplesView
 from .quickstart import QuickStartSection
+from .recent_workspaces import RecentWorkspaces
 from ..common import apply_size_policy
 import os
 
@@ -16,5 +17,7 @@ class WelcomePage(QFrame):
         self.setLayout(self._layout)
         self._layout.addWidget(
             apply_size_policy(QuickStartSection(), QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum))
+        self._layout.addWidget(apply_size_policy(RecentWorkspaces(), QSizePolicy.Policy.Expanding,
+                                                 QSizePolicy.Policy.Maximum))
         self._layout.addWidget(apply_size_policy(ExamplesView(), QSizePolicy.Policy.Expanding,
                                                  QSizePolicy.Policy.Expanding))
