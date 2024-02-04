@@ -4,17 +4,26 @@ import jupyter_client
 from PySide6.QtCore import QObject
 
 from ipykernel.kernelapp import IPKernelApp
+from ipykernel.ipkernel import IPythonKernel
 
-from SciQLop.backend import sciqlop_logging
+from SciQLop.backend import sciqlop_logging, sciqlop_application
 
 log = sciqlop_logging.getLogger(__name__)
 
 
+class SciQLopKernel(IPythonKernel):
+    def __init__(self, **kwargs):
+        self._event_loop = sciqlop_application.sciqlop_event_loop()
+        self.io_loop = self._event_loop
+        super().__init__(**kwargs)
+
+
 def qt_kernel(mpl_backend=None):
     """Launch and return an IPython kernel with matplotlib support for the desired gui"""
-    kernel = IPKernelApp.instance(kernel_name="SciQLop", log=sciqlop_logging.getLogger("SciQLop"))
+    kernel = IPKernelApp.instance(kernel_name="SciQLop", log=sciqlop_logging.getLogger("SciQLop"),
+                                  kernel_class=SciQLopKernel)
     kernel.capture_fd_output = False
-    args = ["--gui=qt6", "--colors=linux"]
+    args = ["--gui=asyncio", "--colors=linux"]
     if mpl_backend is not None:
         args.append(f"--matplotlib={gui}")
     if len(args) > 0:

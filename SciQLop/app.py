@@ -18,12 +18,12 @@ def main():
     import PySide6QtAds
     # from qt_material import apply_stylesheet
     from SciQLop.resources import icons
-    from SciQLop.backend.sciqlop_application import SciQLopApp, SciQLopEventLoop
+    from SciQLop.backend.sciqlop_application import sciqlop_event_loop, sciqlop_app
 
     print(str(icons) + str(QtPrintSupport) + str(QtOpenGL) + str(QtQml) + str(PySide6QtAds))
 
-    app = SciQLopApp(sys.argv)
-    event_loop = SciQLopEventLoop()
+    app = sciqlop_app()
+    envent_loop = sciqlop_event_loop()
     pixmap = QtGui.QPixmap(":/splash.png")
     splash = QtWidgets.QSplashScreen(pixmap)
     splash.show()

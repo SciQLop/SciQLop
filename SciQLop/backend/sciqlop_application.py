@@ -39,10 +39,14 @@ class SciQLopApp(QApplication):
 
 
 def sciqlop_app() -> SciQLopApp:
-    return QtWidgets.QApplication.instance()
+    if QtWidgets.QApplication.instance() is None:
+        app = SciQLopApp(sys.argv)
+    else:
+        app = QtWidgets.QApplication.instance()
+    return app
 
 
-class SciQLopEventLoop(QEventLoop):
+class _SciQLopEventLoop(QEventLoop):
     def __init__(self):
         super().__init__(sciqlop_app())
         asyncio.set_event_loop(self)
@@ -50,3 +54,12 @@ class SciQLopEventLoop(QEventLoop):
         app_close_event = asyncio.Event()
         app.aboutToQuit.connect(app_close_event.set)
 
+
+_event_loop = None
+
+
+def sciqlop_event_loop() -> _SciQLopEventLoop:
+    global _event_loop
+    if _event_loop is None:
+        _event_loop = _SciQLopEventLoop()
+    return _event_loop
