@@ -2,11 +2,11 @@ from PySide6.QtWidgets import QFrame, QVBoxLayout, QWidget, QLabel, QSizePolicy
 from PySide6.QtCore import Slot
 from PySide6.QtGui import QPixmap, QIcon
 from typing import List, Callable, Union
-from .card import Card, ImageWidget
-from ..common.flow_layout import FlowLayout
-from ..common import HLine
+from SciQLop.widgets.welcome.card import Card, FixedSizeImageWidget
+from SciQLop.widgets.common.flow_layout import FlowLayout
+from SciQLop.widgets.common import HLine
 from SciQLop.backend.sciqlop_application import sciqlop_app
-from .section import WelcomeSection, CardsCollection
+from SciQLop.widgets.welcome.section import WelcomeSection, CardsCollection
 
 
 class ShortcutCard(Card):
@@ -14,7 +14,7 @@ class ShortcutCard(Card):
         super().__init__(parent, width=100, height=120, tooltip=description)
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
-        self._layout.addWidget(ImageWidget(icon=icon, width=80, height=80))
+        self._layout.addWidget(FixedSizeImageWidget(icon=icon, width=80, height=80))
         self._layout.addWidget(QLabel(name))
         self.clicked.connect(lambda: callback())
 
@@ -42,7 +42,7 @@ class QuickStartSection(WelcomeSection):
     def __init__(self, parent=None):
         super().__init__("Quick start", parent)
         self._shortcuts = CardsCollection()
-        self._shortcuts.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        #self._shortcuts.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._layout.addWidget(self._shortcuts)
         list(map(self._add_shortcut, sciqlop_app().quickstart_shortcuts))
         sciqlop_app().quickstart_shortcuts_added.connect(self._add_shortcut)

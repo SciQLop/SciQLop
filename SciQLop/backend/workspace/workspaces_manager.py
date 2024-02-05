@@ -1,5 +1,5 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtGui import QIcon
 from mypy.plugins import functools
@@ -20,6 +20,9 @@ register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.svg"))
 
 
 def list_existing_workspaces() -> List[WorkspaceSpecFile]:
+    workspaces_dir = WORKSPACES_DIR_CONFIG_ENTRY.get()
+    if not os.path.exists(workspaces_dir):
+        return []
     return list(
         map(
             lambda workspace_dir: WorkspaceSpecFile(workspace_dir),
@@ -40,6 +43,7 @@ class WorkspaceManager(QObject):
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
         self._quit = False
+        self._deferred_variables = {}
         self._workspace: Optional[Workspace] = None
 
         sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console in current workspace or a new one",
@@ -58,6 +62,7 @@ class WorkspaceManager(QObject):
         self._ipykernel = InternalIPKernel()
         self._ipykernel.init_ipkernel()
         self.push_variables({"app": sciqlop_app(), "background_run": background_run})
+        self.push_variables(self._deferred_variables)
         self._ipykernel_clients_manager = IPythonKernelClientsManager(self._ipykernel.connection_file)
         self._ipykernel_clients_manager.jupyterlab_started.connect(self.jupyterlab_started)
 
@@ -90,18 +95,19 @@ class WorkspaceManager(QObject):
         example = Example(example_path)
         if self._workspace is None:
             self.create_workspace(example.name, description=example.description, image=os.path.basename(example.image),
-                                  notebooks=[os.path.basename(example.notebook)])
+                                  notebooks=[os.path.basename(example.notebook)], dependencies=example.dependencies)
         assert self._workspace is not None
         self._workspace.add_files([example.notebook, example.image])
-        self._workspace.install_dependencies(example.dependencies)
         assert self._ipykernel_clients_manager is not None
         if not self._ipykernel_clients_manager.has_running_jupyterlab:
             self.start_jupyterlab()
         return self._workspace
 
-    def load_workspace(self, workspace_spec: WorkspaceSpecFile) -> Workspace:
+    def load_workspace(self, workspace_spec: Union[WorkspaceSpecFile, str]) -> Workspace:
         if self._workspace is not None:
             raise Exception("Workspace already created")
+        if isinstance(workspace_spec, str):
+            workspace_spec = WorkspaceSpecFile(workspace_spec)
         self._workspace = Workspace(workspace_spec=workspace_spec)
         self.workspace_loaded.emit(self._workspace)
         self.push_variables({"workspace": self._workspace})
@@ -130,8 +136,9 @@ class WorkspaceManager(QObject):
 
     def push_variables(self, variable_dict):
         if self._ipykernel is None:
-            self._init_kernel()
-        self._ipykernel.push_variables(variable_dict)
+            self._deferred_variables.update(variable_dict)
+        else:
+            self._ipykernel.push_variables(variable_dict)
 
     def start(self):
         if self._ipykernel is None:

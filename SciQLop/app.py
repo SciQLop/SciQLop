@@ -2,7 +2,14 @@ import os
 import platform
 import sys
 
-os.environ['QT_API'] = 'PySide6'
+if platform.system() == 'Windows':
+    import matplotlib.pyplot as plt
+
+    plt.ion()
+
+else:
+    os.environ['QT_API'] = 'PySide6'  # breaks ipython kernel event loop on windows
+
 print("Forcing TZ to UTC")
 os.environ['TZ'] = 'UTC'
 if platform.system() == 'Linux':
@@ -42,7 +49,8 @@ def main():
     main_windows.push_variables_to_console({"plugins": loaded_plugins})
     app.processEvents()
     splash.finish(main_windows)
-    main_windows.start()
+    QtCore.QTimer.singleShot(100, main_windows.start)
+    envent_loop.exec()
 
 
 if __name__ == '__main__':

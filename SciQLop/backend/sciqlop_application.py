@@ -51,8 +51,12 @@ class _SciQLopEventLoop(QEventLoop):
         super().__init__(sciqlop_app())
         asyncio.set_event_loop(self)
         app = sciqlop_app()
-        app_close_event = asyncio.Event()
-        app.aboutToQuit.connect(app_close_event.set)
+        self.app_close_event = asyncio.Event()
+        app.aboutToQuit.connect(self.app_close_event.set)
+
+    def exec(self):
+        with self:
+            self.run_until_complete(self.app_close_event.wait())
 
 
 _event_loop = None
