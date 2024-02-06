@@ -53,7 +53,10 @@ class ProductNode:
 
     def append_child(self, child: 'ProductNode') -> "ProductNode":
         child.set_parent(self)
-        bisect.insort(self._children, child, key=lambda c: c.name)
+        index = 0
+        while self._children[index].name < child.name:
+            index += 1
+        self._children.insert(index, child)
         return child
 
     def remove_child(self, name: str):
