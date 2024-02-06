@@ -1,9 +1,8 @@
 import pickle
-from typing import Dict, List, Any, Optional
+from typing import Union, List, Any, Optional
 from typing import Sequence
 
 from PySide6.QtCore import QModelIndex, QMimeData, QAbstractItemModel, QStringListModel, QPersistentModelIndex, Qt
-from PySide6.QtGui import QIcon
 
 from SciQLop.mime import register_mime, encode_mime
 from SciQLop.mime.types import PRODUCT_LIST_MIME_TYPE
@@ -152,7 +151,7 @@ class ProductsModel(QAbstractItemModel):
         strings.update(set(self._completion_model.stringList()))
         self._completion_model.setStringList(sorted(list(strings)))
 
-    def index(self, row: int, column: int, parent: QModelIndex | QPersistentModelIndex = ...) -> QModelIndex:
+    def index(self, row: int, column: int, parent: Union[QModelIndex, QPersistentModelIndex] = ...) -> QModelIndex:
         if self.hasIndex(row, column, parent):
             if not parent.isValid():
                 parent_item = self._filtered_root
@@ -163,7 +162,7 @@ class ProductsModel(QAbstractItemModel):
                 return self.createIndex(row, column, child_item)
         return QModelIndex()
 
-    def parent(self, index: QModelIndex | QPersistentModelIndex = ...) -> QModelIndex:
+    def parent(self, index: Union[QModelIndex, QPersistentModelIndex] = ...) -> QModelIndex:
         if not index.isValid():
             return QModelIndex()
         child_item: _FilterNode = index.internalPointer()
@@ -174,7 +173,7 @@ class ProductsModel(QAbstractItemModel):
 
         return self.createIndex(parent_item.row, 0, parent_item)
 
-    def rowCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:
+    def rowCount(self, parent: Union[QModelIndex, QPersistentModelIndex] = ...) -> int:
         if parent.column() > 0:
             return 0
         if not parent.isValid():
@@ -184,10 +183,10 @@ class ProductsModel(QAbstractItemModel):
 
         return len(parent_item.children)
 
-    def columnCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:
+    def columnCount(self, parent: Union[QModelIndex, QPersistentModelIndex] = ...) -> int:
         return 1
 
-    def data(self, index: QModelIndex | QPersistentModelIndex, role: int = ...) -> Any:
+    def data(self, index: Union[QModelIndex, QPersistentModelIndex], role: int = ...) -> Any:
         if not index.isValid():
             return None
         item: ProductNode = index.internalPointer().node
@@ -201,13 +200,13 @@ class ProductsModel(QAbstractItemModel):
             return "<br/>".join(
                 [f"<b>{key}:</b> {value}" for key, value in item.metadata.items() if not key.startswith('__')])
 
-    def canFetchMore(self, parent: QModelIndex | QPersistentModelIndex) -> bool:
+    def canFetchMore(self, parent: Union[QModelIndex, QPersistentModelIndex]) -> bool:
         if not parent.isValid():
             return False
         parent_item: _FilterNode = parent.internalPointer()
         return len(parent_item.children) > 0
 
-    def fetchMore(self, parent: QModelIndex | QPersistentModelIndex) -> None:
+    def fetchMore(self, parent: Union[QModelIndex, QPersistentModelIndex]) -> None:
         pass
 
     def mimeData(self, indexes: Sequence[QModelIndex]) -> QMimeData:
@@ -216,7 +215,7 @@ class ProductsModel(QAbstractItemModel):
         self._mime_data = encode_mime(products)
         return self._mime_data
 
-    def flags(self, index: QModelIndex | QPersistentModelIndex) -> int:
+    def flags(self, index: Union[QModelIndex, QPersistentModelIndex]) -> int:
         if index.isValid():
             flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
             item: ProductNode = index.internalPointer().node

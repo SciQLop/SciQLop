@@ -2,7 +2,7 @@ from PySide6.QtCore import QObject, Signal, Slot, Property, QModelIndex, QPersis
 from PySide6.QtWidgets import QWidget, QFormLayout, QLabel, QFrame, QComboBox, QStyledItemDelegate, \
     QStyleOptionViewItem, QStyle
 from PySide6.QtGui import QPainter
-from typing import Dict, Callable, Any, Optional, Protocol, List, Type, Mapping
+from typing import Dict, Callable, Any, Optional, Union
 from SciQLop.widgets.settings_delegates import register_delegate
 from SciQLopPlots import QCPColorGradient, QCPRange
 from .colormap_graph import ColorMapGraph
@@ -15,7 +15,7 @@ class ColorGradientPreview(QStyledItemDelegate):
         self._h_margin = 5
         self._v_margin = 5
 
-    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex):
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index: Union[QModelIndex, QPersistentModelIndex]):
         if index.isValid():
             data = index.data(Qt.UserRole)
             if isinstance(data, QCPColorGradient.GradientPreset):
@@ -51,7 +51,7 @@ class ColorGradientPreview(QStyledItemDelegate):
     def _gradient_size_hint(self) -> QSize:
         return expand_size(self._text_size_hint("00000000"), self._h_margin, self._v_margin)
 
-    def sizeHint(self, option: QStyleOptionViewItem, index: QModelIndex | QPersistentModelIndex) -> QSize:
+    def sizeHint(self, option: QStyleOptionViewItem, index: Union[QModelIndex, QPersistentModelIndex]) -> QSize:
         text = self._text_size_hint(index.data())
         return QSize(text.width() + self._gradient_size_hint().width(), self._gradient_size_hint().height())
 

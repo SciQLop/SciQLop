@@ -1,5 +1,5 @@
 from contextlib import ContextDecorator
-from typing import Dict, Any, Sequence, List, Optional
+from typing import Union, Any, Sequence, List, Optional
 
 from PySide6.QtCore import QModelIndex, QMimeData, QAbstractItemModel, QStringListModel, QPersistentModelIndex, Qt, \
     QObject, Slot, Signal
@@ -55,7 +55,7 @@ class Model(QAbstractItemModel):
         return self._completion_model
 
     def index(self, row: int, column: int,
-              parent: QModelIndex | QPersistentModelIndex = ...) -> QModelIndex:  # type: ignore
+              parent: Union[QModelIndex, QPersistentModelIndex] = ...) -> QModelIndex:  # type: ignore
         if self.hasIndex(row, column, parent):
             if not parent.isValid():
                 parent_item = self._root
@@ -66,7 +66,7 @@ class Model(QAbstractItemModel):
                 return self.createIndex(row, column, child_item)
         return QModelIndex()
 
-    def parent(self, index: QModelIndex | QPersistentModelIndex = ...) -> QModelIndex:  # type: ignore
+    def parent(self, index: Union[QModelIndex, QPersistentModelIndex] = ...) -> QModelIndex:  # type: ignore
         if not index.isValid():
             return QModelIndex()
         child_item: Node = index.internalPointer()  # type: ignore
@@ -79,7 +79,7 @@ class Model(QAbstractItemModel):
                 return self.createIndex(0, 0, parent_item)
         return QModelIndex()
 
-    def rowCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:  # type: ignore
+    def rowCount(self, parent: Union[QModelIndex, QPersistentModelIndex] = ...) -> int:  # type: ignore
         if parent.column() > 0:
             return 0
 
@@ -87,10 +87,10 @@ class Model(QAbstractItemModel):
 
         return parent_item.children_count
 
-    def columnCount(self, parent: QModelIndex | QPersistentModelIndex = ...) -> int:  # type: ignore
+    def columnCount(self, parent: Union[QModelIndex, QPersistentModelIndex] = ...) -> int:  # type: ignore
         return 1  # type: ignore
 
-    def data(self, index: QModelIndex | QPersistentModelIndex, role: int = ...) -> Any:  # type: ignore
+    def data(self, index: Union[QModelIndex, QPersistentModelIndex], role: int = ...) -> Any:  # type: ignore
         if index.isValid():
             item: Node = index.internalPointer()
             if role == Qt.DisplayRole:
@@ -102,7 +102,7 @@ class Model(QAbstractItemModel):
             if role == Qt.ToolTipRole:
                 return ""
 
-    def select(self, indexes: List[QModelIndex | QPersistentModelIndex]):
+    def select(self, indexes: List[Union[QModelIndex, QPersistentModelIndex]]):
         if len(self._last_selected):
             for i in self._last_selected:
                 obj = self._retrieve_object(i)
@@ -122,7 +122,7 @@ class Model(QAbstractItemModel):
         self._last_selected = list(filter(None.__ne__, self._last_selected))
         self.objects_selected.emit(objects)
 
-    def delete(self, indexes: List[QModelIndex | QPersistentModelIndex]):
+    def delete(self, indexes: List[Union[QModelIndex, QPersistentModelIndex]]):
         self._last_selected = []
         for index in indexes:
             if index.isValid():
@@ -140,7 +140,7 @@ class Model(QAbstractItemModel):
     def mimeData(self, indexes: Sequence[QModelIndex]) -> QMimeData:
         return None
 
-    def flags(self, index: QModelIndex | QPersistentModelIndex) -> int:
+    def flags(self, index: Union[QModelIndex, QPersistentModelIndex]) -> int:
         if index.isValid():
             flags = Qt.ItemIsSelectable | Qt.ItemIsEnabled
             item: Node = index.internalPointer()
