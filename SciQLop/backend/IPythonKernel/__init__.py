@@ -25,7 +25,7 @@ def qt_kernel(mpl_backend=None):
     kernel.capture_fd_output = False
     args = ["--gui=asyncio", "--colors=linux"]
     if mpl_backend is not None:
-        args.append(f"--matplotlib={gui}")
+        args.append(f"--matplotlib={mpl_backend}")
     if len(args) > 0:
         kernel.initialize(["python", ] + args)
     else:

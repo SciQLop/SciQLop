@@ -63,5 +63,4 @@ if os.environ.get("INSIDE_SCIQLOP", None) is None:
     from qtconsole import qtconsoleapp  # noqa: F401
     import jinja2  # noqa: F401
     import markupsafe  # noqa: F401
-    from markupsafe import Markup  # noqa: F401
     import jupyter_events  # noqa: F401

@@ -58,4 +58,3 @@ class SciQLopProvisioner(KernelProvisionerBase):  # type: ignore
 
     async def cleanup(self, restart):
         pass
-

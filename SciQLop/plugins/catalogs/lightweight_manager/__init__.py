@@ -130,7 +130,7 @@ class LightweightManager(QWidget):
     def event_selected(self, e: Event):
         if self.current_panel is not None:
             if self.follow_selected_event.isChecked():
-                log.debug(f"event selected {event}, setting panel: {self.current_panel}")
+                log.debug(f"event selected {e}, setting panel: {self.current_panel}")
                 if e.start == e.stop:
                     self.current_panel.time_range = TimeRange(e.start - 3600, e.stop + 3600)
                 else:

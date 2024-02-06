@@ -60,7 +60,7 @@ class Model(QAbstractItemModel):
             if not parent.isValid():
                 parent_item = self._root
             else:
-                parent_item: PipelineModelItem = parent.internalPointer()  # type: ignore
+                parent_item = parent.internalPointer()  # type: ignore
             child_item: Node = parent_item.child(row) if row < parent_item.children_count else None
             if child_item is not None:
                 return self.createIndex(row, column, child_item)

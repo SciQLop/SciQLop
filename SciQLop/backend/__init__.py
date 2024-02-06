@@ -1,10 +1,7 @@
 from datetime import datetime
-from typing import Dict
-from PySide6 import QtPrintSupport, QtOpenGL
-from .icons import icons, register_icon
 from SciQLopPlots import QCPRange
-
-from .products_model.product_node import ProductNode as Product
+from .icons import icons, register_icon  # noqa: F401
+from .products_model.product_node import ProductNode as Product  # noqa: F401
 
 
 def listify(a):

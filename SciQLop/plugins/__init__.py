@@ -45,7 +45,7 @@ class Worker(QRunnable):
             print(f"Loading {self.fn.__name__}")
             self.signals.result.emit(*self.fn(*self.args, **self.kwargs))
         except Exception as e:
-            print(f"Oups can't load {name} , {e}")
+            print(f"Oups can't load {self.fn.__name__} , {e}")
             traceback.print_exc()
 
 
