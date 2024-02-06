@@ -1,3 +1,4 @@
 pytest-runner
 pytest
 pytest-cov
+pytest-qt
