@@ -27,3 +27,45 @@ async def background_run(function, *args, **kwargs):
     with QThreadExecutor(1) as ex:
         r = await loop.run_in_executor(ex, functools.partial(function, **kwargs), *args)
     return r
+
+
+class Maybe:
+    class Nothing:
+
+        def __call__(self, *args, **kwargs):
+            return self
+
+        def __getattr__(self, item):
+            return self
+
+        def __getitem__(self, item):
+            return self
+
+        def __contains__(self, item):
+            return False
+
+        def __bool__(self):
+            return False
+
+        def __eq__(self, other):
+            return type(other) is Maybe.Nothing
+
+        def __repr__(self):
+            return "Nothing"
+
+    def __init__(self, value):
+        if value is None:
+            self._value = Maybe.Nothing()
+        else:
+            self._value = value
+
+    def __getattr__(self, item):
+        if self._value == Maybe.Nothing():
+            return Maybe.Nothing()
+        return getattr(self._value, item)
+
+    def __bool__(self):
+        return bool(self._value)
+
+    def __repr__(self):
+        return f"Maybe({self._value})"

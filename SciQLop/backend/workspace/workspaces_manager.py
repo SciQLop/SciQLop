@@ -1,8 +1,8 @@
 import os
+import shutil
 from typing import List, Optional, Union
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal, Slot, QFile, QTimer, QDir
 from PySide6.QtGui import QIcon
-from mypy.plugins import functools
 
 from .workspace import WORKSPACES_DIR_CONFIG_ENTRY
 from ..data_models import WorkspaceSpecFile
@@ -27,9 +27,12 @@ def list_existing_workspaces() -> List[WorkspaceSpecFile]:
         map(
             lambda workspace_dir: WorkspaceSpecFile(workspace_dir),
             filter(
-                os.path.isdir,
-                map(lambda workspace_dir: os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), workspace_dir),
-                    os.listdir(WORKSPACES_DIR_CONFIG_ENTRY.get()))
+                lambda workspace_dir: os.path.exists(os.path.join(workspace_dir, "workspace.json")),
+                filter(
+                    os.path.isdir,
+                    map(lambda workspace_dir: os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), workspace_dir),
+                        os.listdir(WORKSPACES_DIR_CONFIG_ENTRY.get()))
+                )
             )
         )
     )
@@ -37,7 +40,6 @@ def list_existing_workspaces() -> List[WorkspaceSpecFile]:
 
 class WorkspaceManager(QObject):
     workspace_loaded = Signal(Workspace)
-    workspace_deleted = Signal(Workspace)
     jupyterlab_started = Signal(str)
 
     def __init__(self, parent=None):
@@ -88,6 +90,9 @@ class WorkspaceManager(QObject):
         # update python path at runtime
         directory = os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), uuid.uuid4().hex)
         spec = WorkspaceSpecFile(directory, name=name, **kwargs)
+        if spec.image == "":
+            QFile.copy(":/splash.png", os.path.join(directory, "image.png"))
+            spec.image = "image.png"
         return self.load_workspace(spec)
 
     def load_example(self, example_path: str) -> Workspace:
@@ -117,8 +122,20 @@ class WorkspaceManager(QObject):
 
     @Slot(str)
     def delete_workspace(self, workspace: str):
-        os.rmdir(workspace)
-        self.workspace_deleted.emit(workspace)
+        shutil.rmtree(workspace, ignore_errors=True)
+
+    @Slot(str)
+    def duplicate_workspace(self, workspace: str, background: bool = False):
+        def duplicate(directory: str):
+            shutil.copytree(directory, directory + "_copy")
+            spec = WorkspaceSpecFile(directory + "_copy")
+            spec.name = f"Copy of {spec.name}"
+
+        if background:
+            print("Backgrounding duplicate not implemented yet.")
+            duplicate(workspace)
+        else:
+            duplicate(workspace)
 
     @property
     def workspace(self) -> Workspace:

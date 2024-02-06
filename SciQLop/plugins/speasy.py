@@ -120,11 +120,9 @@ def build_product_tree(root_node: Product, provider):
 class SpeasyPlugin(DataProvider):
     def __init__(self):
         super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST)
-        print("Loading Speasy plugin...")
         root_node = Product(name="speasy", metadata={}, provider=self.name, uid=self.name, icon="speasy")
         build_product_tree(root_node, provider=self.name)
         products.add_products(root_node)
-        print("Speasy plugin loaded")
 
     def get_data(self, product: Product, start, stop):
         try:
@@ -138,5 +136,4 @@ class SpeasyPlugin(DataProvider):
 
 
 def load(*args):
-    print("Loading Speasy plugin...")
     return SpeasyPlugin()

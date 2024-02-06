@@ -5,6 +5,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QLabel, QSizePolicy, QWidget, QGridLayout, QBoxLayout, QSpacerItem
 from ..common import HLine, apply_size_policy, increase_font_size
 from ..common.flow_layout import FlowLayout
+from SciQLop.backend.common import Maybe
 from .card import Card
 
 
@@ -18,7 +19,7 @@ class CardsCollection(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._cards = []
-        self._layout = QGridLayout()  # , hspacing=10, vspacing=10)
+        self._layout = QGridLayout()
         self._layout.setContentsMargins(10, 10, 10, 10)
         self.setLayout(self._layout)
         self.refresh_ui()
@@ -30,27 +31,33 @@ class CardsCollection(QFrame):
             self._last_col = 0
             self._last_row += 1
 
-    def _clear_layout(self):
+    def _reset_layout(self):
+        print(f"Resetting layout")
         self._last_row = 0
         self._last_col = 0
-        count = self._layout.count()
-        for i in range(count):
-            self._layout.takeAt(0)
+        item = self._layout.takeAt(0)
+        while item is not None:
+            Maybe(item.widget()).deleteLater()
+            del item
+            item = self._layout.takeAt(0)
         self._layout.addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum), 0,
                              self._columns, -1, 1)
 
     def add_card(self, card: Card):
+        print(f"Adding card {card}")
         self._cards.append(card)
         self._place_card(card)
         card.clicked.connect(lambda: self.show_detailed_description.emit(card))
 
     def refresh_ui(self):
-        self._clear_layout()
+        print(f"Refreshing UI")
+        self._reset_layout()
         for card in self._cards:
             self._place_card(card)
 
     def clear(self):
-        self._cards.clear()
+        print(f"Clearing cards")
+        self._cards = []
         self.refresh_ui()
 
     def mousePressEvent(self, event):

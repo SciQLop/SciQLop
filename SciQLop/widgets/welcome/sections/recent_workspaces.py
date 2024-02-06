@@ -1,11 +1,13 @@
 from PySide6.QtWidgets import QVBoxLayout, QLabel, QSizePolicy, QWidget, QFrame, QPushButton, QFormLayout, QLineEdit, \
-    QTextEdit
-from PySide6.QtCore import QFileSystemWatcher, Slot, Signal, Property
+    QTextEdit, QMessageBox
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import QFileSystemWatcher, Slot, Signal, Property, QTimer, Qt
 from SciQLop.widgets.welcome.card import Card, FixedSizeImageWidget, ImageSelector
 from SciQLop.backend.workspace import workspaces_manager_instance, WorkspaceSpecFile, WORKSPACES_DIR_CONFIG_ENTRY
 from SciQLop.backend.common import ensure_dir_exists
 from SciQLop.widgets.welcome.section import WelcomeSection, CardsCollection
 from SciQLop.widgets.welcome.detailed_description.delegate import register_delegate
+from typing import Optional
 import os
 import shutil
 
@@ -75,7 +77,7 @@ class WorkspaceDescriptionWidget(QFrame):
 
     def __init__(self, workspace: WorkSpaceCard, parent=None):
         super().__init__(parent)
-        self._workspace = workspace
+        self._workspace: Optional[WorkSpaceCard] = workspace
         self._layout = QFormLayout()
         self.setLayout(self._layout)
         self._name = QLineEdit(workspace.workspace.name)
@@ -95,6 +97,41 @@ class WorkspaceDescriptionWidget(QFrame):
         self._open_button.clicked.connect(
             lambda: workspaces_manager_instance().load_workspace(workspace.workspace))
         self._layout.addWidget(self._open_button)
+        self._duplicate_button = QPushButton("Duplicate workspace")
+        self._layout.addWidget(self._duplicate_button)
+        self._duplicate_button.clicked.connect(self._duplicate_workspace)
+        self._delete_button = QPushButton("Delete workspace")
+        self._delete_button.setIcon(QIcon(":/trash.png"))
+        self._layout.addWidget(self._delete_button)
+        self._delete_button.clicked.connect(self._delete_workspace)
+        self._dialog = None
+
+    def _delete_workspace(self):
+        if self._dialog:
+            self._dialog.deleteLater()
+            self._dialog = None
+        dialog = QMessageBox()
+        dialog.setOption(QMessageBox.Option.DontUseNativeDialog, True)
+        dialog.setText(f"Are you sure you want to delete the workspace {self._workspace.workspace.name}?")
+        dialog.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+        dialog.setDefaultButton(QMessageBox.StandardButton.No)
+        dialog.finished.connect(self._do_delete)
+        self._dialog = dialog
+        dialog.open()
+
+    def _duplicate_workspace(self):
+        workspaces_manager_instance().duplicate_workspace(self._workspace.workspace.directory, background=True)
+
+    @Slot(object)
+    def _do_delete(self, button: QMessageBox.StandardButton = QMessageBox.StandardButton.No):
+        if button == QMessageBox.StandardButton.Yes:
+            directory = self._workspace.workspace.directory
+            self._workspace = None
+            workspaces_manager_instance().delete_workspace(directory)
+        if self._dialog:
+            self._dialog.close()
+            self._dialog.deleteLater()
+            self._dialog = None
 
 
 class RecentWorkspaces(WelcomeSection):
@@ -112,6 +149,8 @@ class RecentWorkspaces(WelcomeSection):
 
     @Slot()
     def refresh_workspaces(self):
+        print("Refreshing workspaces")
+        self.show_detailed_description.emit(None)
         self._workspaces.clear()
         wm = workspaces_manager_instance()
         list(map(self._add_workspace, sorted(wm.list_workspaces(), key=lambda x: x.last_used, reverse=True)))
