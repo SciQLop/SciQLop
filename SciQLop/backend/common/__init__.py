@@ -8,6 +8,32 @@ from qasync import QThreadExecutor
 import functools
 
 
+def insort(a, x, lo=0, hi=None, key=None):
+    """Insert item x in list a, and keep it sorted assuming a is sorted.
+
+    If x is already in a, insert it to the right of the rightmost x.
+
+    Optional args lo (default 0) and hi (default len(a)) bound the
+    slice of a to be searched.
+
+    Optional arg key is a key-function to be passed to list.sort().
+
+    """
+    if key is None:
+        key = lambda x: x
+    if lo < 0:
+        raise ValueError('lo must be non-negative')
+    if hi is None:
+        hi = len(a)
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if key(x) < key(a[mid]):
+            hi = mid
+        else:
+            lo = mid + 1
+    a.insert(lo, x)
+
+
 def find_available_port(start_port: int = 8000, end_port: int = 9000) -> Optional[int]:
     for port in range(start_port, end_port):
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:

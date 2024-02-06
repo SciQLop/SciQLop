@@ -1,4 +1,4 @@
-import bisect
+from ..common import insort
 from typing import List, Dict, Optional
 
 from ..enums import ParameterType
@@ -53,10 +53,7 @@ class ProductNode:
 
     def append_child(self, child: 'ProductNode') -> "ProductNode":
         child.set_parent(self)
-        index = 0
-        while self._children[index].name < child.name:
-            index += 1
-        self._children.insert(index, child)
+        insort(self._children, child, key=lambda n: n.name)
         return child
 
     def remove_child(self, name: str):
