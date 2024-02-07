@@ -28,5 +28,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run:
-          rename dist/SciQLop-x86_64.AppImage dist/SciQLop-x86_64-${{ github.event.release.tag_name }}.AppImage
+          mv dist/SciQLop-x86_64.AppImage dist/SciQLop-x86_64-${{ github.event.release.tag_name }}.AppImage
           gh release upload ${{ github.event.release.tag_name }} dist/SciQLop-x86_64-${{ github.event.release.tag_name }}.AppImage
