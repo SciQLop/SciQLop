@@ -23,38 +23,10 @@ jobs:
         with:
           name: SciQLop-x86_64.AppImage
           path: dist/SciQLop-x86_64.AppImage
-
-  build_osx_windows:
-    strategy:
-      matrix:
-        #os: [ macos-11,  windows-latest ]
-        os: [ windows-latest ]
-        python-version: [ '3.10' ]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          architecture: x64
-      - name: Build for Python ${{ matrix.python-version }}
-        run: |
-          git config --global --add safe.directory '*'
-          pip install --upgrade pyinstaller pyinstaller-hooks-contrib 'numpy' 
-          pip install -e .
-          pyinstaller SciQLop.spec -- --debug 
-
-      - name: Save packages as artifacts
-        if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v3
-        with:
-          name: SciQLop.exe
-          path: dist/SciQLop*
-
-      - name: Save packages as artifacts
-        if: runner.os != 'Windows'
-        uses: actions/upload-artifact@v3
-        with:
-          name: SciQLop.app
-          path: dist/SciQLop*
+      - name: Publish to GitHub Releases
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run:
+          rename dist/SciQLop-x86_64.AppImage dist/SciQLop-x86_64-${{ github.event.release.tag_name }}.AppImage
+          gh release upload ${{ github.event.release.tag_name }} dist/SciQLop-x86_64-${{ github.event.release.tag_name }}.AppImage
