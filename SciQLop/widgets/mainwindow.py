@@ -4,10 +4,9 @@ from typing import Optional, Union, List, Any
 
 import PySide6QtAds as QtAds
 from PySide6 import QtCore, QtWidgets, QtGui
-from PySide6.QtGui import QCloseEvent, Qt
-from PySide6.QtWidgets import QWidget, QSizePolicy, QMenu
+from PySide6.QtGui import QCloseEvent
+from PySide6.QtWidgets import QWidget, QMenu
 
-from .IPythonManager import IPythonKernelManager
 from .workspaces import WorkspaceManagerUI
 from .JupyterLabView import JupyterLabView
 from .logs_widget import LogsWidget
@@ -30,17 +29,16 @@ from ..backend.workspace import Workspace
 class SciQLopMainWindow(QtWidgets.QMainWindow):
     panels_list_changed = QtCore.Signal(list)
     workspace: Workspace = None
-    app: SciQLopApp = None
 
     def __init__(self):
 
         QtWidgets.QMainWindow.__init__(self)
         self.setObjectName("SciQLopMainWindow")
-        self.app = sciqlop_app()
-        self._setup_ui(self.app)
-        self.app.panels_list_changed.connect(self.panels_list_changed)
+        self._setup_ui()
+        sciqlop_app().panels_list_changed.connect(self.panels_list_changed)
 
-    def _setup_ui(self, app):
+    def _setup_ui(self):
+        QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FocusHighlighting, True)
         QtAds.CDockManager.setAutoHideConfigFlag(QtAds.CDockManager.DefaultAutoHideConfig)
         QtAds.CDockManager.setAutoHideConfigFlag(QtAds.CDockManager.AutoHideShowOnMouseOver, True)
 
@@ -98,15 +96,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def add_side_pan(self, widget: QWidget, location=QtAds.PySide6QtAds.ads.SideBarLocation.SideBarLeft):
         if widget is not None:
-            widget.setMinimumWidth(100)
-            widget.setMinimumHeight(100)
-            widget.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
             doc = QtAds.CDockWidget(widget.windowTitle())
-            doc.setWidget(widget)
+            doc.setWidget(widget, QtAds.CDockWidget.ForceNoScrollArea)
             doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
-            doc.setMinimumWidth(300)
-            doc.setMinimumHeight(300)
-            self.dock_manager.addAutoHideDockWidget(location, doc)
+            container = self.dock_manager.addAutoHideDockWidget(location, doc)
+            if location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom or location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarTop:
+                container.setSize(widget.sizeHint().height())
+            else:
+                container.setSize(widget.sizeHint().width())
             self.viewMenu.addAction(doc.toggleViewAction())
 
     def addWidgetIntoDock(self, allowed_area, widget, area=None, delete_on_close: bool = False) -> Optional[
@@ -114,6 +111,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if widget is not None:
             doc = QtAds.CDockWidget(widget.windowTitle())
             doc.setWidget(widget)
+            doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
             dock_aera = self.dock_manager.addDockWidget(allowed_area, doc)
             if area:
                 self.dock_manager.addDockWidgetTabToArea(doc, area)

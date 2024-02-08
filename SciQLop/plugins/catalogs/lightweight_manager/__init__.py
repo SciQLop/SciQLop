@@ -29,6 +29,7 @@ class PanelSelector(QComboBox):
         self.addItems(["None"])
         self.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
         self.currentTextChanged.connect(self.panel_selection_changed)
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
 
     def update_list(self, panels):
         selected = self.currentText()
@@ -78,13 +79,14 @@ class LightweightManager(QWidget):
         self.catalog_selector.create_event.connect(self.create_event)
         self.catalog_selector.change_color.connect(self.update_colors)
         self.panel_selector.panel_selection_changed.connect(self.panel_selected)
-        self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
         self.event_selector.event_selected.connect(self.event_selected)
         self.event_selector.delete_events.connect(self.delete_events)
         self.allow_edition.stateChanged.connect(self._allow_edition_state_change)
 
         self._time_span_ctrlr: Optional[TimeSpanController] = None
         self._last_selected_event: Optional[Event] = None
+        self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        self.setMinimumWidth(200)
 
     @Slot()
     def save(self):

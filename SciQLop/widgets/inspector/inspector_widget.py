@@ -1,6 +1,6 @@
 from typing import Dict, Any, Sequence, List, Optional
 from PySide6.QtCore import QObject, Signal, Slot, Property
-from PySide6.QtWidgets import QWidget, QVBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy
 from .inspector_tree import InspectorTree
 from .properties_editor import PropertyEditor
 from SciQLop.inspector.model import Model
@@ -18,3 +18,5 @@ class InspectorWidget(QWidget):
         model.object_deleted.connect(self._property_editor.node_destroyed)
         self._layout.addWidget(self._inspector_tree)
         self._layout.addWidget(self._property_editor)
+        self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding))
+        self.setMinimumWidth(200)

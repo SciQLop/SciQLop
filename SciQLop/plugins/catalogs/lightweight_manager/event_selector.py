@@ -2,7 +2,7 @@ from typing import List, Mapping
 
 from PySide6.QtCore import Signal, QItemSelection, Slot, QItemSelectionModel
 from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QKeyEvent
-from PySide6.QtWidgets import QComboBox, QListView
+from PySide6.QtWidgets import QComboBox, QListView, QSizePolicy
 
 from SciQLop.backend import TimeRange
 from .event import Event
@@ -27,6 +27,7 @@ class EventSelector(QListView):
         self._events: Mapping[str, Event] = {}
         self._items: Mapping[str, EventItem] = {}
         self.selectionModel().selectionChanged.connect(self._event_selected)
+        self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
     def update_list(self, events: List[Event]):
         self._events = {}

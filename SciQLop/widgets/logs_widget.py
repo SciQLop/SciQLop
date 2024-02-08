@@ -1,12 +1,7 @@
-from typing import List
+from PySide6.QtGui import QTextCursor
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QSizePolicy
 
-import PySide6QtAds as QtAds
-from PySide6.QtCore import Signal, QMimeData, Qt, QObject, QThread, QSize, QStringListModel
-from PySide6.QtGui import QCloseEvent, QTextCursor
-from PySide6.QtWidgets import QListView, QWidget, QVBoxLayout, QTextEdit
-from datetime import datetime
 from ..backend.sciqlop_logging import _stdout, _stderr
-import sys
 
 
 class LogsWidget(QWidget):
@@ -18,9 +13,10 @@ class LogsWidget(QWidget):
         _stderr.got_text.connect(self._new_text)
         self._view.setReadOnly(True)
         self._view.setLineWrapMode(QTextEdit.NoWrap)
-
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(self._view)
+        self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding))
+        self.setMinimumHeight(100)
 
     def _new_text(self, msg):
         prev_cursor = self._view.textCursor()

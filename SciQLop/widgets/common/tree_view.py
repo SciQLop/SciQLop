@@ -17,5 +17,4 @@ class TreeView(QTreeView):
         self.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
         self._expend_all_action.triggered.connect(self.expandAll)
         self._collapse_all_action.triggered.connect(self.collapseAll)
-        self.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
