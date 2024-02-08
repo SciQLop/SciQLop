@@ -44,6 +44,7 @@ class ButtonDelegate(QStyledItemDelegate):
         elif self._is_column(index, 2):
             d = QColorDialog(index.data(Qt.ItemDataRole.BackgroundRole))
             d.setOption(QColorDialog.ColorDialogOption.ShowAlphaChannel)
+            d.setOption(QColorDialog.ColorDialogOption.DontUseNativeDialog)
             return d
         else:
             return QStyledItemDelegate.createEditor(self, parent, option, index)
