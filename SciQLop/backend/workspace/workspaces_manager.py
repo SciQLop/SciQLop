@@ -173,5 +173,5 @@ class WorkspaceManager(QObject):
 def workspaces_manager_instance():
     app = sciqlop_app()
     if not hasattr(app, "workspaces_manager"):
-        app.workspaces_manager = WorkspaceManager(app)
+        app.workspaces_manager = WorkspaceManager(parent=app)
     return app.workspaces_manager

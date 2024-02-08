@@ -39,10 +39,6 @@ class IPythonKernelManager(QWidget):
         if available_vars is not None:
             self.ipykernel.push_variables(available_vars)
 
-        # sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console", icons.get("JupyterConsole"),
-        #                                      self.ipykernel_clients_manager.new_qt_console)
-        # sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab", icons.get("Jupyter"),
-        #                                      self.ipykernel_clients_manager.start_jupyterlab)
 
     def pushVariables(self, variable_dict):
         self.ipykernel.push_variables(variable_dict)

@@ -49,8 +49,9 @@ def main():
     main_windows.push_variables_to_console({"plugins": loaded_plugins})
     app.processEvents()
     splash.finish(main_windows)
-    QtCore.QTimer.singleShot(100, main_windows.start)
-    envent_loop.exec()
+    main_windows.start()
+    #QtCore.QTimer.singleShot(100, main_windows.start)
+    #envent_loop.exec()
 
 
 if __name__ == '__main__':
