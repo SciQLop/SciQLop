@@ -1,47 +1,50 @@
 <div style="text-align:center">
 <img src="SciQLop/resources/icons/SciQLop.png" alt="sciqlop_logo" style="width: 200px;"/>
+</div>
 <br /><br />
+
+# What Is SciQLop?
+
+**SciQLop** (**SCI**entific **Q**t application for **L**earning from **O**bservations of **P**lasmas) is a powerful and
+user-friendly tool designed for the visualization and analysis of in-situ space plasma data.
+
+Using SciQLop will let you:
+
+- have a super easy access to tens of thousands of products from the top main data archives in the world,
+- explore multivariate time series effortlessly, with lightning-fast and transparent downloads as you scroll, zoom in, and zoom out,
+- visualize custom products with simple python code executed on-the-fly,
+- easily label time intervals and make or edit catalog of events graphically and rapidely,
+- analyze your data in jupyter notebooks,
+
+<div style="text-align:center">
 <img src="pictures/sciqlop_screenshot.png" alt="sciqlop_logo" style="width: 80%;"/>
 </div>
 
-# Overview
+Heliophysicists now benefit from decades of space exploration through many spacecraft missions.
+Exploring this massive amount of data to find events of interest, build catalogs, and conduct statistical multi-mission data analysis
+can be a daunting task if not having the right tool.
 
-**SciQLop** (**SCI**entific **Q**t application for **L**earning from **O**bservations of **P**lasmas) is a powerful and
-user-friendly tool designed for the visualization and analysis of in-situ space plasma data. The software has been
-developed to address the technical challenges that arise from the high time resolution required by modern plasma
-measurements.
-It is capable of plotting millions of data points without compromising on interactivity, ensuring that users can scroll,
-zoom,
-move, and export plots with ease.
+SciQLop aims at being this tool! A simple lightweight yet powerful graphical interface coupled to the limitless options brought by the Jupyter Notebook integration,
+that focuses on providing users with the easiest possible way to explore, label and analyze huge amounts of data.
+SciQLop is also the right tool for teaching space physics and in situ spacecraft data handling to students effortlessly.
 
-One of the key features of SciQLop is its ability to abstract the manipulation of physics data, making it accessible to
-users with different levels of expertise. The software also provides contextual features such as coordinate transforms
-and physical quantity extraction from data.
 
-Keeping SciQLop lightweight and intuitive has been a top priority during the software's development, making it both
-usable a
-nd competitive. By balancing advanced graphical features with a simple and streamlined GUI, SciQLop delivers an
-exceptional
-user experience that sets it apart from other software tools in the field.
 
-If you are looking for a reliable and powerful tool for analyzing space plasma data, SciQLop is an excellent choice.
-With its intuitive interface and advanced features, it offers a seamless workflow that can save you time and effort.
-Download SciQLop today and experience the benefits for yourself!
-
-## Features
+# Main Features
 
 - **Interactive and responsive**: SciQLop can handle millions of data points without compromising on interactivity.
   Users can scroll, zoom, move, and export plots with ease.
 
   <img src="https://github.com/SciQLop/SciQLopMedia/blob/main/screencasts/SciQLop_MMS.gif" alt="SciQLop smooth navigation" style="width: 80%;"/>
 
-- **User-friendly**: SciQLop abstracts the manipulation of physics data, making it accessible to users with different
-  levels of expertise.
+- **User-friendly**: Accessing data in SciQLop is as simple as a drag and drop from the tens of thousands of products readily available.
+Custom user products defined in Python behave exactly the same way and bring infinite possibilities.
+
 
   <img src="https://github.com/SciQLop/SciQLopMedia/blob/main/screencasts/SciQLop_DragAndDrop.gif" alt="SciQLop drag and drop" style="width: 80%;"/>
 
 - **Jupyter notebook integration**: SciQLop can be used as a backend for Jupyter notebooks, allowing users to create and
-  manipulate plots from within their notebooks.
+  manipulate plots from within their notebooks, define new products and much more.
 
   <img src="pictures/sciqlop_jupyterlab_plot_side_by_side.png" alt="SciQLop Jupyter integration" style="width: 80%;"/>
 
@@ -59,8 +62,8 @@ Download SciQLop today and experience the benefits for yourself!
 
 - **community-driven plugins repository**: SciQLop will soon have a plugin system that will allow users to extend the
   software's capabilities by installing community-driven plugins.
-- **catalogs coediting**: SciQLop will soon allow users to coedit catalogs, making it easier to collaborate on event
-  labeling and visualization.
+- **catalogs coediting**: SciQLop will allow users to coedit catalogs, making it easier to collaborate on event
+  labeling and visualization, thereby also improving reproducibility of space physics studies.
 
 # How to install SciQLop
 
@@ -172,4 +175,5 @@ Reports of bugs and feature requests are also welcome.
 
 # Credits
 
-The development of SciQLop is supported by the [CDPP](http://www.cdpp.eu/).
+The development of SciQLop is supported by the [CDPP](http://www.cdpp.eu/).<br />
+We acknowledge support from the federation [Plas@Par](https://www.plasapar.sorbonne-universite.fr)
