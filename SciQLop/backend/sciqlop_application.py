@@ -67,3 +67,4 @@ def sciqlop_event_loop() -> _SciQLopEventLoop:
     if _event_loop is None:
         _event_loop = _SciQLopEventLoop()
     return _event_loop
+
