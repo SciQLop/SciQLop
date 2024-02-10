@@ -19,6 +19,7 @@ log = sciqlop_logging.getLogger(__name__)
 class _DataPipelineWorker(QObject):
     plot = Signal(object)
     _get_data_sig = Signal()
+    _last_data: Optional[SpeasyVariable] = None
 
     def __init__(self, provider: DataProvider, product: ProductNode,
                  time_range: TimeRange):
@@ -37,11 +38,14 @@ class _DataPipelineWorker(QObject):
             next_range = deepcopy(self.next_range)
             self.range_mutex.unlock()
             if next_range != self.current_range:
-                data = self.provider.get_data(self.product, datetime.utcfromtimestamp(next_range.start),
-                                              datetime.utcfromtimestamp(next_range.stop))
-                self.current_range = next_range
-                if data is not None:
-                    self.plot.emit(data)
+                if self.provider.cacheable and self._last_data is not None and self.current_range.contains(next_range):
+                    self.plot.emit(self._last_data[next_range.start: next_range.stop])
+                else:
+                    self._last_data = self.provider.get_data(self.product, datetime.utcfromtimestamp(next_range.start),
+                                                             datetime.utcfromtimestamp(next_range.stop))
+                    self.current_range = next_range
+                    if self._last_data is not None:
+                        self.plot.emit(self._last_data)
         except Exception as e:
             print(e)
 

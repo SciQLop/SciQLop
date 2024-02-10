@@ -15,6 +15,7 @@ register_icon("amda", QIcon(":/icons/amda.png"))
 register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
 register_icon("archive", QIcon(":/icons/dataSourceRoot.png"))
 
+
 def get_components(param: ParameterIndex) -> List[str] or None:
     if param.spz_provider() == 'amda':
         components = list(
@@ -119,7 +120,7 @@ def build_product_tree(root_node: Product, provider):
 
 class SpeasyPlugin(DataProvider):
     def __init__(self):
-        super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST)
+        super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST, cacheable=True)
         root_node = Product(name="speasy", metadata={}, provider=self.name, uid=self.name, icon="speasy")
         build_product_tree(root_node, provider=self.name)
         products.add_products(root_node)

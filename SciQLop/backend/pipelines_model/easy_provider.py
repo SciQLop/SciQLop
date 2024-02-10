@@ -22,8 +22,10 @@ def ensure_dt64(x_data):
 
 
 class EasyProvider(DataProvider):
-    def __init__(self, path, callback, parameter_type: ParameterType, metadata: dict, data_order=DataOrder.Y_FIRST):
-        super(EasyProvider, self).__init__(name=make_simple_incr_name(callback.__name__), data_order=data_order)
+    def __init__(self, path, callback, parameter_type: ParameterType, metadata: dict, data_order=DataOrder.Y_FIRST,
+                 cacheable=False):
+        super(EasyProvider, self).__init__(name=make_simple_incr_name(callback.__name__), data_order=data_order,
+                                           cacheable=cacheable)
         product_name = path.split('/')[-1]
         product_path = path[:-len(product_name)]
         self._path = path
@@ -46,9 +48,10 @@ class EasyProvider(DataProvider):
 
 class EasyScalar(EasyProvider):
     def __init__(self, path, get_data_callback, component_name: str, metadata: dict,
-                 data_order: DataOrder = DataOrder.Y_FIRST):
+                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False):
         super(EasyScalar, self).__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.SCALAR,
-                                         metadata={**metadata, "components": component_name}, data_order=data_order)
+                                         metadata={**metadata, "components": component_name}, data_order=data_order,
+                                         cacheable=cacheable)
         self._columns = [component_name]
 
     def get_data(self, product, start, stop):
@@ -66,10 +69,10 @@ class EasyScalar(EasyProvider):
 
 class EasyVector(EasyProvider):
     def __init__(self, path, get_data_callback, components_names: List[str], metadata: dict,
-                 data_order: DataOrder = DataOrder.Y_FIRST):
+                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False):
         super(EasyVector, self).__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.VECTOR,
                                          metadata={**metadata, "components": ';'.join(components_names)},
-                                         data_order=data_order)
+                                         data_order=data_order, cacheable=cacheable)
         self._columns = components_names
 
     def get_data(self, product, start, stop):
@@ -87,21 +90,22 @@ class EasyVector(EasyProvider):
 
 class EasyMultiComponent(EasyVector):
     def __init__(self, path, get_data_callback, components_names: List[str], metadata: dict,
-                 data_order: DataOrder = DataOrder.Y_FIRST):
+                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False):
         super(EasyVector, self).__init__(path=path, callback=get_data_callback,
                                          parameter_type=ParameterType.MULTICOMPONENT,
                                          metadata={**metadata, "components": ';'.join(components_names)},
-                                         data_order=data_order)
+                                         data_order=data_order, cacheable=cacheable)
         self._columns = components_names
 
 
 class EasySpectrogram(EasyProvider):
     def __init__(self, path, get_data_callback, metadata: dict,
-                 data_order: DataOrder = DataOrder.Y_FIRST):
+                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False):
         super(EasySpectrogram, self).__init__(path=path, callback=get_data_callback,
                                               parameter_type=ParameterType.SPECTROGRAM,
                                               metadata={**metadata},
-                                              data_order=data_order)
+                                              data_order=data_order,
+                                              cacheable=cacheable)
 
     def get_data(self, product, start, stop):
         res = self._user_get_data(start, stop)

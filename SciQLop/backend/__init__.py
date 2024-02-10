@@ -58,6 +58,9 @@ class TimeRange:
     def overlaps(self, other: "TimeRange"):
         return max(self._start, other._start) <= min(self._stop, other._stop)
 
+    def contains(self, other: "TimeRange"):
+        return self._start <= other._start and self._stop >= other._stop
+
     def __repr__(self):
         return f"""TimeRange: {self._start}, {self._stop}
 \t{self.datetime_start}, {self.datetime_stop}
