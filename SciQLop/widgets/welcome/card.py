@@ -40,7 +40,6 @@ class ImageSelector(QPushButton):
     def _select_image(self):
         dialog = QFileDialog()
         dialog.setFileMode(QFileDialog.ExistingFile)
-        dialog.setOption(QFileDialog.DontUseNativeDialog, True)
         dialog.setNameFilter("Images (*.png *.jpg *.svg *.jpeg)")
         dialog.setViewMode(QFileDialog.Detail)
         dialog.finished.connect(lambda: self.load_image(next(iter(dialog.selectedFiles()), "")))

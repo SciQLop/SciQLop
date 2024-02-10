@@ -111,7 +111,6 @@ class WorkspaceDescriptionWidget(QFrame):
             self._dialog.deleteLater()
             self._dialog = None
         dialog = QMessageBox()
-        dialog.setOption(QMessageBox.Option.DontUseNativeDialog, True)
         dialog.setText(f"Are you sure you want to delete the workspace {self._workspace.workspace.name}?")
         dialog.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
         dialog.setDefaultButton(QMessageBox.StandardButton.No)
