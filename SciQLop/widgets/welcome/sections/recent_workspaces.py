@@ -92,11 +92,11 @@ class WorkspaceDescriptionWidget(QFrame):
         self._description = QTextEdit(workspace.workspace.description)
         self._description.textChanged.connect(lambda x: setattr(self._workspace, "description", x))
         self._layout.addRow(QLabel("Description"), self._description)
-        self._open_button = QPushButton("Open workspace")
-        self._open_button.setMinimumHeight(40)
-        self._open_button.clicked.connect(
-            lambda: workspaces_manager_instance().load_workspace(workspace.workspace))
-        self._layout.addWidget(self._open_button)
+        if not workspaces_manager_instance().has_workspace:
+            self._open_button = QPushButton("Open workspace")
+            self._open_button.setMinimumHeight(40)
+            self._open_button.clicked.connect(self._open_workspace)
+            self._layout.addWidget(self._open_button)
         self._duplicate_button = QPushButton("Duplicate workspace")
         self._layout.addWidget(self._duplicate_button)
         self._duplicate_button.clicked.connect(self._duplicate_workspace)
@@ -105,6 +105,10 @@ class WorkspaceDescriptionWidget(QFrame):
         self._layout.addWidget(self._delete_button)
         self._delete_button.clicked.connect(self._delete_workspace)
         self._dialog = None
+
+    def _open_workspace(self):
+        workspaces_manager_instance().load_workspace(self._workspace.workspace)
+        self._open_button.setEnabled(False)
 
     def _delete_workspace(self):
         if self._dialog:

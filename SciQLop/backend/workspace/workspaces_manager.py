@@ -139,9 +139,13 @@ class WorkspaceManager(QObject):
 
     @property
     def workspace(self) -> Workspace:
-        if self._workspace is None:
+        if not self.has_workspace:
             return self.create_workspace()
         return self._workspace
+
+    @property
+    def has_workspace(self) -> bool:
+        return self._workspace is not None
 
     @staticmethod
     def workspace_spec(name) -> WorkspaceSpecFile:
