@@ -33,7 +33,7 @@ class ProductTree(QWidget):
         self._view.setSortingEnabled(False)
         self._filter = QLineEdit(self)
         self._filter.setClearButtonEnabled(True)
-        self._filter.addAction(QtGui.QIcon(":/icons/zoom.png"), QLineEdit.LeadingPosition)
+        self._filter.addAction(QtGui.QIcon(":/icons/search.png"), QLineEdit.LeadingPosition)
         self._filter.setPlaceholderText("Search...")
         self._completer = QCompleter(self)
         self._completer.setModel(products.completion_model)

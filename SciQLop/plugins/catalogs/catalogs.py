@@ -24,6 +24,7 @@ class CatalogGUISpawner(QAction):
         self.catalog_gui = catalog_gui
         self.setIcon(QIcon("://icons/catalogue.png"))
         self.triggered.connect(self.show_catalogue_gui)
+        self.setText("Open Catalogue Explorer")
 
     def show_catalogue_gui(self):
         self.catalog_gui.show()

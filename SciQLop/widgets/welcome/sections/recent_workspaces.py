@@ -94,14 +94,16 @@ class WorkspaceDescriptionWidget(QFrame):
         self._layout.addRow(QLabel("Description"), self._description)
         if not workspaces_manager_instance().has_workspace:
             self._open_button = QPushButton("Open workspace")
+            self._open_button.setIcon(QIcon("://icons/folder_open.png"))
             self._open_button.setMinimumHeight(40)
             self._open_button.clicked.connect(self._open_workspace)
             self._layout.addWidget(self._open_button)
         self._duplicate_button = QPushButton("Duplicate workspace")
+        self._duplicate_button.setIcon(QIcon("://icons/folder_copy.png"))
         self._layout.addWidget(self._duplicate_button)
         self._duplicate_button.clicked.connect(self._duplicate_workspace)
         self._delete_button = QPushButton("Delete workspace")
-        self._delete_button.setIcon(QIcon(":/trash.png"))
+        self._delete_button.setIcon(QIcon("://icons/delete.png"))
         self._layout.addWidget(self._delete_button)
         self._delete_button.clicked.connect(self._delete_workspace)
         self._dialog = None
