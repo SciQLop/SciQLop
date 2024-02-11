@@ -166,6 +166,10 @@ class LightweightManager(QWidget):
 
             self._time_span_ctrlr.spans = spans
             self.current_panel.replot()
+        else:
+            if self._time_span_ctrlr is not None:
+                self._time_span_ctrlr.spans = []
+            self._time_span_ctrlr = None
 
     @Slot()
     def update_colors(self, color: QColor, catalog_uid: str):
