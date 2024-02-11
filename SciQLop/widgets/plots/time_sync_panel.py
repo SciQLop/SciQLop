@@ -24,8 +24,8 @@ log = sciqlop_logging.getLogger(__name__)
 
 
 class TSPanelContainer(PanelContainer):
-    def __init__(self, parent=None):
-        PanelContainer.__init__(self, TimeSeriesPlot, parent=parent)
+    def __init__(self, parent=None, shared_x_axis=False):
+        PanelContainer.__init__(self, TimeSeriesPlot, parent=parent, shared_x_axis=shared_x_axis)
 
     def add_widget(self, widget: QWidget, index: int):
         PanelContainer.add_widget(self, widget, index)
@@ -75,7 +75,7 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
         self.setWindowTitle(name)
         self.setContentsMargins(0, 0, 0, 0)
         self._name = name
-        self._plot_container = TSPanelContainer(parent=self)
+        self._plot_container = TSPanelContainer(parent=self, shared_x_axis=True)
         self.setWidget(self._plot_container)
         self.setWidgetResizable(True)
         self.time_range = time_range or TimeRange(datetime.utcnow().timestamp(), datetime.utcnow().timestamp())
@@ -89,6 +89,7 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
 
         self._plot_container.plot_list_changed.connect(self.plot_list_changed)
         self._parent_node = None
+        self._share_x_axis = True
 
     def link_panel(self, panel: 'TimeSyncPanel'):
         panel.time_range_changed.connect(self.set_time_range)
@@ -100,6 +101,16 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
 
     def set_time_range(self, time_range: TimeRange):
         self.time_range = time_range
+
+    @SciQLopProperty(bool)
+    def share_x_axis(self) -> bool:
+        return self._plot_container._shared_x_axis
+
+    @share_x_axis.setter
+    def share_x_axis(self, value: bool):
+        if self._share_x_axis != value:
+            self._share_x_axis = value
+            self._plot_container.share_x_axis = value
 
     @SciQLopProperty(TimeRange)
     def time_range(self) -> TimeRange:

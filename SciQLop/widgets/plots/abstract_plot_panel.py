@@ -29,9 +29,10 @@ class MetaPlotPanel(type(QScrollArea), type(PlotPanel)):
 class PanelContainer(QWidget):
     plot_list_changed = Signal()
 
-    def __init__(self, plot_type: Type, parent=None):
+    def __init__(self, plot_type: Type, parent=None, shared_x_axis=False):
         QWidget.__init__(self, parent=parent)
         self._plot_type = plot_type
+        self._shared_x_axis = shared_x_axis
         self.setLayout(QVBoxLayout(self))
         self.setContentsMargins(0, 0, 0, 0)
         self.layout().setContentsMargins(0, 0, 0, 0)
@@ -43,6 +44,12 @@ class PanelContainer(QWidget):
         self.layout().insertWidget(index, widget)
         if isinstance(widget, self._plot_type):
             widget.destroyed.connect(self.plot_list_changed)
+            plots_count = len(self.plots)
+            if self._shared_x_axis and plots_count > 1 and hasattr(self._plot_type, "hide_x_axis"):
+                if index < plots_count - 1:
+                    widget.hide_x_axis()
+                else:
+                    self.plots[-2].hide_x_axis()
             self.plot_list_changed.emit()
 
     def count(self) -> int:
@@ -55,3 +62,23 @@ class PanelContainer(QWidget):
     def plots(self) -> List[PlotPanel]:
         return list(filter(lambda w: isinstance(w, self._plot_type),
                            map(lambda i: self.layout().itemAt(i).widget(), range(self.layout().count()))))
+
+    @SciQLopProperty(bool)
+    def shared_x_axis(self) -> bool:
+        return self._shared_x_axis
+
+    @shared_x_axis.setter
+    def shared_x_axis(self, value: bool):
+        self._shared_x_axis = value
+        plots_count = len(self.plots)
+        if value and plots_count > 1:
+            for i, p in enumerate(self.plots):
+                if hasattr(p, "hide_x_axis") and hasattr(p, "show_x_axis"):
+                    if i < plots_count - 1:
+                        p.hide_x_axis()
+                    else:
+                        p.show_x_axis()
+        else:
+            for p in self.plots:
+                if hasattr(p, "show_x_axis"):
+                    p.show_x_axis()

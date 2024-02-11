@@ -119,6 +119,12 @@ class TimeSeriesPlot(QFrame):
     def xAxis(self) -> QCPAxis:
         return self._plot.xAxis
 
+    def hide_x_axis(self):
+        self._plot.xAxis.setVisible(False)
+
+    def show_x_axis(self):
+        self._plot.xAxis.setVisible(True)
+
     @SciQLopProperty(QCPAxis)
     def xAxis2(self) -> QCPAxis:
         return self._plot.xAxis2
