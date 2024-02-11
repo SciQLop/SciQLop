@@ -70,7 +70,7 @@ class TimeSeriesPlot(QFrame):
         self._plot = SciQLopPlot(self)
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(self._plot)
-        self.setMinimumHeight(300)
+        self.setMinimumHeight(80)
         self._drop_helper = DropHelper(widget=self,
                                        handlers=[
                                            DropHandler(mime_type=PRODUCT_LIST_MIME_TYPE,
