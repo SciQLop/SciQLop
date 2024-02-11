@@ -40,16 +40,22 @@ class PanelContainer(QWidget):
     def indexOf(self, widget: QWidget):
         return self.layout().indexOf(widget)
 
+    def _ensure_shared_x_axis(self):
+        plots = self.plots
+        if len(plots):
+            for p in plots[:-1]:
+                p: PlotPanel = p
+                if hasattr(p, "hide_x_axis"):
+                    p.hide_x_axis()
+            if hasattr(plots[-1], "show_x_axis"):
+                plots[-1].show_x_axis()
+
     def add_widget(self, widget: QWidget, index: int):
         self.layout().insertWidget(index, widget)
         if isinstance(widget, self._plot_type):
             widget.destroyed.connect(self.plot_list_changed)
-            plots_count = len(self.plots)
-            if self._shared_x_axis and plots_count > 1 and hasattr(self._plot_type, "hide_x_axis"):
-                if index < plots_count - 1:
-                    widget.hide_x_axis()
-                else:
-                    self.plots[-2].hide_x_axis()
+            if self._shared_x_axis:
+                self._ensure_shared_x_axis()
             self.plot_list_changed.emit()
 
     def count(self) -> int:
@@ -70,14 +76,8 @@ class PanelContainer(QWidget):
     @shared_x_axis.setter
     def shared_x_axis(self, value: bool):
         self._shared_x_axis = value
-        plots_count = len(self.plots)
-        if value and plots_count > 1:
-            for i, p in enumerate(self.plots):
-                if hasattr(p, "hide_x_axis") and hasattr(p, "show_x_axis"):
-                    if i < plots_count - 1:
-                        p.hide_x_axis()
-                    else:
-                        p.show_x_axis()
+        if value:
+            self._ensure_shared_x_axis()
         else:
             for p in self.plots:
                 if hasattr(p, "show_x_axis"):
