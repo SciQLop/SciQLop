@@ -49,6 +49,8 @@ class TimeRange:
             new_dt = (self._stop - self._start) * other / 2.
             center = (self._start + self._stop) / 2.
             return TimeRange(center - new_dt, center + new_dt)
+        elif type(other) is int:
+            return self.__mul__(float(other))
         else:
             return NotImplemented
 
