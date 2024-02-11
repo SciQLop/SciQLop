@@ -62,6 +62,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         self.workspace_manager = WorkspaceManagerUI(self)
         self.workspace_manager.pushVariables({"main_window": self})
+        self.workspace_manager.workspace_loaded.connect(lambda ws: self.setWindowTitle(f"SciQLop - {ws}"))
         self.workspace_manager.jupyterlab_started.connect(
             lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url)))
         self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)

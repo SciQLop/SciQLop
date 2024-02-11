@@ -7,11 +7,13 @@ from SciQLop.backend.workspace import WorkspaceManager, workspaces_manager_insta
 
 class WorkspaceManagerUI(QWidget):
     jupyterlab_started = Signal(str)
+    workspace_loaded = Signal(str)
 
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         wm = workspaces_manager_instance()
         wm.jupyterlab_started.connect(self.jupyterlab_started)
+        wm.workspace_loaded.connect(lambda w: self.workspace_loaded.emit(w.name))
         self.setWindowTitle("Workspace Manager")
         self.setup_ui()
 
