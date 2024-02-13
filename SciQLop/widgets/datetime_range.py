@@ -32,22 +32,33 @@ class DateTimeRangeWidget(QWidget):
         if default_time_range is not None:
             self._start_date.setDateTime(default_time_range.datetime_start)
             self._stop_date.setDateTime(default_time_range.datetime_stop)
-        self._start_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(self.range))
-        self._stop_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(self.range))
+        self._start_date.dateTimeChanged.connect(
+            lambda dtr: self.range_changed.emit(self.range)
+        )
+        self._stop_date.dateTimeChanged.connect(
+            lambda dtr: self.range_changed.emit(self.range)
+        )
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
             drag = QDrag(self)
             drag.setMimeData(
-                encode_mime(TimeRange(self._start_date.dateTime().toSecsSinceEpoch(),
-                                      self._stop_date.dateTime().toSecsSinceEpoch())))
+                encode_mime(
+                    TimeRange(
+                        self._start_date.dateTime().toSecsSinceEpoch(),
+                        self._stop_date.dateTime().toSecsSinceEpoch(),
+                    )
+                )
+            )
             drag.setPixmap(QPixmap("://icons/time.png").scaledToHeight(32))
             drag.exec()
 
     @Property(TimeRange, notify=range_changed)
     def range(self) -> TimeRange:
-        return TimeRange(self._start_date.dateTime().toSecsSinceEpoch(),
-                         self._stop_date.dateTime().toSecsSinceEpoch())
+        return TimeRange(
+            self._start_date.dateTime().toSecsSinceEpoch(),
+            self._stop_date.dateTime().toSecsSinceEpoch(),
+        )
 
 
 class DateTimeRangeWidgetAction(QWidgetAction):
@@ -77,6 +88,9 @@ def _mime_decode_time_range(mime_data: QMimeData) -> TimeRange or None:
     return None
 
 
-register_mime(obj_type=TimeRange, mime_type=TIME_RANGE_MIME_TYPE,
-              encoder=_mime_encode_time_range,
-              decoder=_mime_decode_time_range)
+register_mime(
+    obj_type=TimeRange,
+    mime_type=TIME_RANGE_MIME_TYPE,
+    encoder=_mime_encode_time_range,
+    decoder=_mime_decode_time_range,
+)
