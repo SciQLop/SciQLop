@@ -72,9 +72,9 @@ class WelcomeSection(QFrame):
 
     def __init__(self, name: str, parent=None):
         super().__init__(parent)
-        self.setStyleSheet(f".{self.__class__.__name__}{{border: 1px solid black; border-radius: 2px;}}")
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
-        self._layout.addWidget(apply_size_policy(increase_font_size(QLabel(name), 1.2, ), QSizePolicy.Policy.Expanding,
-                                                 QSizePolicy.Policy.Maximum))
-        self._layout.addWidget(apply_size_policy(HLine(), QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum))
+        self._name_lbl = apply_size_policy(increase_font_size(QLabel(name), 1.2), QSizePolicy.Policy.Expanding,
+                                           QSizePolicy.Policy.Maximum)
+        self._layout.addWidget(self._name_lbl)
+        #self._layout.addWidget(apply_size_policy(HLine(), QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum))

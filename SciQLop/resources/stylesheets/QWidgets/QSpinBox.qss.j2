@@ -1,0 +1,57 @@
+QDoubleSpinBox,
+QSpinBox {
+    background-color: palette(base);
+    margin: 0px;
+    border: 1px solid #eef2f7;
+    border-radius: 2px;
+    padding: 0px;
+}
+
+QDoubleSpinBox:focus,
+QSpinBox:focus {
+    background-color: palette(base);
+    margin: 0px;
+    border: 2px solid #eef2f7;
+    border-radius: 2px;
+    padding: 0px;
+}
+
+QDoubleSpinBox::up-button,
+QSpinBox::up-button {
+    subcontrol-origin: border;
+    subcontrol-position: top right;
+    width: 20px;
+    image: url(:/icons/theme/arrow_drop_up.png);
+    border-width: 0px;
+    margin-right: 5px;
+}
+
+QDoubleSpinBox::up-button:hover,
+QSpinBox::up-button:hover {
+    image: url(:/icons/theme/arrow_drop_up.png);
+}
+
+QDoubleSpinBox::up-button:pressed,
+QSpinBox::up-button:pressed {
+    border: url(:/icons/theme/arrow_drop_up.png);
+}
+
+QDoubleSpinBox::down-button,
+QSpinBox::down-button {
+    subcontrol-origin: border;
+    subcontrol-position: bottom right;
+    width: 20px;
+    image: url(:/icons/theme/arrow_drop_down.png);
+    border-width: 0px;
+    margin-right: 5px;
+}
+
+QDoubleSpinBox::down-button:hover,
+QSpinBox::down-button:hover {
+    image: url(:/icons/theme/arrow_drop_down.png);
+}
+
+QDoubleSpinBox::down-button:pressed,
+QSpinBox::down-button:pressed {
+   image: url(:/icons/theme/arrow_drop_down.png);
+}

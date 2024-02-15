@@ -1,0 +1,47 @@
+QRadioButton {
+    background-color: palette(base);
+    margin: 0px;
+    border: 0px;
+    padding: 0px;
+}
+
+QRadioButton:focus {
+    background-color: palette(base);
+    margin: 0px;
+    border: 0px;
+    padding: 0px;
+}
+
+QRadioButton::indicator {
+    background-color: palette(base);
+    width: 20px;
+    height: 20px;
+}
+
+QRadioButton::indicator:focus {
+    background-color: palette(mid);
+    border: 1px solid palette(highlight);
+    border-radius: 4px;
+}
+
+QRadioButton::indicator:hover {
+    background-color: palette(mid);
+    border: 1px solid palette(highlight);
+    border-radius: 4px;
+}
+
+QRadioButton::indicator:checked {
+    image: url(:/icons/theme/radio_button_checked.png);
+}
+
+QRadioButton::indicator:unchecked {
+    image: url(:/icons/theme/radio_button_unchecked.png);
+}
+
+QRadioButton::indicator:checked:disabled {
+    image: url(:/icons/theme/radio_button_checked.png);
+}
+
+QRadioButton::indicator:unchecked:disabled {
+    image: url(:/icons/theme/radio_button_unchecked.png);
+}

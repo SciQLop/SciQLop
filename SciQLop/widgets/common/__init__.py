@@ -9,13 +9,13 @@ class HLine(QFrame):
         super().__init__(parent)
         self.setFrameShape(QFrame.HLine)
         self.setFrameShadow(QFrame.Sunken)
-        self.setStyleSheet("background-color: #ccc;")
+        #self.setStyleSheet("background-color: #ccc;")
 
 
 class Container(QFrame):
     def __init__(self, label: str, widget: QWidget):
         super().__init__()
-        self.setStyleSheet("Container { border: 1px solid black; border-radius: 2px; }")
+        #self.setStyleSheet("Container { border: 1px solid black; border-radius: 2px; }")
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
         self._layout.addWidget(QLabel(label))

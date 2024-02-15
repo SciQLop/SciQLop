@@ -16,3 +16,4 @@ jupyterlab>=4,!=4.1.0
 notebook
 ipympl
 qasync
+jinja2

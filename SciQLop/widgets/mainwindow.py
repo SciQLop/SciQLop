@@ -1,6 +1,7 @@
 import os
 from datetime import datetime, timedelta
 from typing import Optional, Union, List, Any
+import psutil
 
 import PySide6QtAds as QtAds
 from PySide6 import QtCore, QtWidgets, QtGui
@@ -24,6 +25,13 @@ from ..inspector.model import Model as InspectorModel
 from ..inspector.inspector import register_inspector, Inspector
 from ..inspector.node import Node, RootNode
 from ..backend.workspace import Workspace
+from ..backend.icons import register_icon, icons
+
+register_icon("plot_panel", QtGui.QIcon("://icons/plot_panel_128.png"))
+
+
+def _surface(size: QtCore.QSize):
+    return size.width() * size.height()
 
 
 class SciQLopMainWindow(QtWidgets.QMainWindow):
@@ -45,12 +53,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if "WAYLAND_DISPLAY" in os.environ:
             QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerForceQWidgetTitleBar, True)
         self.dock_manager = QtAds.CDockManager(self)
+        self.dock_manager.setStyleSheet("")
         self._menubar = QtWidgets.QMenuBar(self)
         self.setMenuBar(self._menubar)
         self._menubar.setGeometry(QtCore.QRect(0, 0, 615, 23))
         self._menubar.setDefaultUp(True)
         self.viewMenu = QMenu("View")
         self._menubar.addMenu(self.viewMenu)
+        self.viewMenu.addAction("Reload stylesheets", sciqlop_app().load_stylesheet)
 
         default_time_range = TimeRange((datetime.utcnow() - timedelta(days=361)).timestamp(),
                                        (datetime.utcnow() - timedelta(days=360)).timestamp())
@@ -67,10 +77,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url)))
         self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
-        # self.ipython_kernel_manager = IPythonKernelManager(parent=self, app=app, available_vars={"main_window": self})
-        # self.ipython_kernel_manager.jupyterlab_started.connect(
-        #    lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url)))
-        # self.add_side_pan(self.ipython_kernel_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
         self.logs = LogsWidget(self)
         self.add_side_pan(self.logs, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
@@ -81,20 +87,65 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._dt_range_action = DateTimeRangeWidgetAction(self, default_time_range=default_time_range)
         self.toolBar.addAction(self._dt_range_action)
         self.addTSPanel = QtGui.QAction(self)
-        self.addTSPanel.setIcon(QtGui.QIcon("://icons/add_graph.png"))
+        self.addTSPanel.setIcon(QtGui.QIcon("://icons/theme/add_graph.png"))
         self.addTSPanel.setText("Add new plot panel")
         self.addTSPanel.triggered.connect(lambda: self.new_plot_panel())
         self.toolBar.addAction(self.addTSPanel)
+        sciqlop_app().add_quickstart_shortcut(name="Plot panel", description="Add a new plot panel",
+                                              icon=icons.get("plot_panel"), callback=self.new_plot_panel)
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
         self.resize(1024, 768)
 
         self._statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._statusbar)
+        self._statusbar.setMaximumHeight(28)
 
         self._inspector_model = InspectorModel(parent=self, root_object=self)
         self.inspector_ui = InspectorWidget(model=self._inspector_model, parent=self)
         self.add_side_pan(self.inspector_ui)
         self.panels_list_changed.connect(self._inspector_model.root_node.changed)
+
+        self._mem_usage = QtWidgets.QProgressBar(self._statusbar)
+        self._sys_mem = psutil.virtual_memory().total // 1024 ** 2
+        self._mem_usage.setMaximum(self._sys_mem)
+        self._statusbar.addPermanentWidget(self._mem_usage)
+        self._mem_usage.setFormat(f"System memory usage: %v / {self._sys_mem:.2f} MB")
+        self._refresh_mem_timer = QtCore.QTimer(self)
+        self._refresh_mem_timer.timeout.connect(self._update_mem_usage)
+        self._refresh_mem_timer.start(1000)
+
+        self._center_and_maximise_on_screen()
+
+    def _update_mem_usage(self):
+        self._mem_usage.setValue(psutil.virtual_memory().used // 1024 ** 2)
+
+    def _find_biggest_area(self) -> QtAds.CDockAreaWidget:
+        biggest_area = None
+        biggest_surface = 0
+        for area in self.dock_manager.openedDockAreas():
+            surface = _surface(area.size())
+            if surface > biggest_surface and surface > 0 and area.isVisible():
+                biggest_surface = surface
+                biggest_area = area
+        return biggest_area
+
+    def _find_biggest_dock_widget(self) -> QtAds.CDockWidget:
+        biggest_doc = None
+        biggest_surface = 0
+        for doc in self.dock_manager.openedDockWidgets():
+            surface = _surface(doc.size())
+            if surface > biggest_surface:
+                biggest_surface = surface
+                biggest_doc = doc
+        return biggest_doc
+
+    def _center_and_maximise_on_screen(self):
+        frame = self.frameGeometry()
+        center = sciqlop_app().primaryScreen().availableGeometry().center()
+        frame.moveCenter(center)
+        self.move(frame.topLeft())
+        self.setGeometry(
+            sciqlop_app().primaryScreen().availableGeometry().marginsRemoved(QtCore.QMargins(50, 50, 50, 50)))
 
     def add_side_pan(self, widget: QWidget, location=QtAds.PySide6QtAds.ads.SideBarLocation.SideBarLeft):
         if widget is not None:
@@ -115,6 +166,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             doc.setWidget(widget)
             doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
             dock_aera = self.dock_manager.addDockWidget(allowed_area, doc)
+            area = area or self._find_biggest_area()
             if area:
                 self.dock_manager.addDockWidgetTabToArea(doc, area)
             if delete_on_close:

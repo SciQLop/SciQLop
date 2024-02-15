@@ -19,7 +19,7 @@ class InspectorTree(QtWidgets.QWidget):
         self._model_proxy.setAutoAcceptChildRows(True)
         self._filter = QtWidgets.QLineEdit(self)
         self._filter.setClearButtonEnabled(True)
-        self._filter.addAction(QtGui.QIcon(":/icons/search.png"), QtWidgets.QLineEdit.LeadingPosition)
+        self._filter.addAction(QtGui.QIcon(":/icons/theme/search.png"), QtWidgets.QLineEdit.LeadingPosition)
         self._filter.setPlaceholderText("Search...")
         self._completer = QtWidgets.QCompleter(self)
         self._completer.setModel(model.completion_model)

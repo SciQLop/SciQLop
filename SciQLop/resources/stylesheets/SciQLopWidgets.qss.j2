@@ -1,0 +1,62 @@
+HLine {
+    background-color: #ccc
+}
+
+Container {
+    background-color: palette(base);
+    border: 1px solid black;
+    border-radius: 2px;
+}
+
+TimeSeriesPlot {
+    background-color: palette(base);
+    margin: 0px;
+    border-top-width: 1px;
+    border-top-style: solid;
+    border-top-color: black;
+    padding: 0px;
+}
+
+CardsCollection {
+    background-color: {{ palette('WelcomeBackground') }};
+}
+
+WelcomeSection {
+    background-color: {{ palette('WelcomeBackground') }};
+}
+
+DetailedDescription {
+    background-color: palette(base);
+    border-left: 4px solid{{ palette('WelcomeBackground') }};
+}
+
+
+WelcomeSection QLabel {
+    background-color: {{ palette('WelcomeBackground') }};
+}
+
+Card[selected=false] QLabel {
+    background-color: palette(base);
+    border: 0px;
+}
+
+Card[selected=true] QLabel {
+    background-color: palette(base);
+    border: 0px;
+}
+
+Card[selected=false] {
+    background-color: palette(base);
+    border: 0px;
+    border-radius: 5px;
+}
+
+Card[selected=true] {
+    border: 2px solid palette(highlight);
+    border-radius: 5px;
+}
+
+Card:hover[selected=false] {
+    border: 1px solid palette(highlight);
+    border-radius: 5px;
+}

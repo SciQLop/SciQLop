@@ -13,7 +13,7 @@ register_icon("speasy", QIcon(":/icons/logo_speasy.svg"))
 register_icon("nasa", QIcon(":/icons/NASA.jpg"))
 register_icon("amda", QIcon(":/icons/amda.png"))
 register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
-register_icon("archive", QIcon(":/icons/dataSourceRoot.png"))
+register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:

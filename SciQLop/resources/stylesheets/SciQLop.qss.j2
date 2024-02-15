@@ -1,0 +1,5 @@
+{% for file_name in sciqlop_list_templates() %}
+    {% include file_name %}
+{% endfor %}
+
+{% include 'SciQLopWidgets.qss.j2' %}

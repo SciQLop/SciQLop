@@ -11,7 +11,6 @@ from .delegate import make_delegate_for
 class DetailedDescription(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet(f".{self.__class__.__name__}{{border: 1px solid black; border-radius: 2px;}}")
         self._layout = QVBoxLayout()
         self._description_widget = None
         self.setLayout(self._layout)

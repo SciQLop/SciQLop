@@ -1,0 +1,49 @@
+QCheckBox {
+    background-color: palette(base);
+    margin: 0px;
+    border: 0px;
+    padding: 0px;
+}
+
+QCheckBox:focus {
+    background-color: palette(base);
+    margin: 0px;
+    border: 0px;
+    padding: 0px;
+}
+
+
+
+QCheckBox::indicator {
+    background-color: palette(base);
+    width: 20px;
+    height: 20px;
+}
+
+QCheckBox::indicator:focus {
+    background-color: palette(mid);
+    border: 1px solid palette(highlight);
+    border-radius: 4px;
+}
+
+QCheckBox::indicator:hover {
+    background-color: palette(mid);
+    border: 1px solid palette(highlight);
+    border-radius: 4px;
+}
+
+QCheckBox::indicator:checked {
+    image: url(:/icons/theme/check_box_checked.png);
+}
+
+QCheckBox::indicator:unchecked {
+    image: url(:/icons/theme/check_box_unchecked.png);
+}
+
+QCheckBox::indicator:checked:disabled {
+    image: url(:/icons/theme/check_box_checked.png);
+}
+
+QCheckBox::indicator:unchecked:disabled {
+    image: url(:/icons/theme/check_box_unchecked.png);
+}

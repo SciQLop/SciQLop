@@ -23,7 +23,7 @@ def main():
     from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml, QtCore, QtGui
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
     import PySide6QtAds
-    # from qt_material import apply_stylesheet
+
     from SciQLop.resources import icons
     from SciQLop.backend.sciqlop_application import sciqlop_event_loop, sciqlop_app
 
@@ -42,7 +42,7 @@ def main():
     from SciQLop.plugins import load_all, loaded_plugins
     app.processEvents()
     main_windows = SciQLopMainWindow()
-    # apply_stylesheet(app, theme='light_teal.xml', extra={'density_scale': '-2'})
+
     main_windows.show()
     app.processEvents()
     load_all(main_windows)
@@ -50,8 +50,6 @@ def main():
     app.processEvents()
     splash.finish(main_windows)
     main_windows.start()
-    #QtCore.QTimer.singleShot(100, main_windows.start)
-    #envent_loop.exec()
 
 
 if __name__ == '__main__':

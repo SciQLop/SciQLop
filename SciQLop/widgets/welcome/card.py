@@ -66,7 +66,7 @@ class Card(QFrame):
         super().__init__(parent)
         # Style must be applied to the actual class not the base class, like this all derived classes will have the
         # same style
-        self.setStyleSheet(f".{self.__class__.__name__}{{background-color: white; border-radius: 5px;}}")
+        self.setProperty("selected", False)
         self.setFrameShape(QFrame.Shape.Panel)
         self._shadow = QGraphicsDropShadowEffect()
         self._shadow.setBlurRadius(5)
@@ -115,7 +115,9 @@ class Card(QFrame):
         super().leaveEvent(event)
 
     def set_selected(self, selected: bool):
-        self.setStyleSheet(f".{self.__class__.__name__} {{background-color: {'lightblue' if selected else 'white'}}}")
+        self.setProperty("selected", selected)
+        self.style().polish(self)
+
 
     def mousePressEvent(self, event):
         super().mousePressEvent(event)

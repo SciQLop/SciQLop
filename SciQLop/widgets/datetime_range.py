@@ -41,7 +41,7 @@ class DateTimeRangeWidget(QWidget):
             drag.setMimeData(
                 encode_mime(TimeRange(self._start_date.dateTime().toSecsSinceEpoch(),
                                       self._stop_date.dateTime().toSecsSinceEpoch())))
-            drag.setPixmap(QPixmap("://icons/time.png").scaledToHeight(32))
+            drag.setPixmap(QPixmap("://icons/theme/time.png").scaledToHeight(32))
             drag.exec()
 
     @Property(TimeRange, notify=range_changed)

@@ -1,0 +1,33 @@
+
+QPushButton {
+    background-color: palette(button);
+    border: 2px solid #6c757d;
+    border-radius: 5px;
+    height: 24px;
+}
+
+QPushButton:focus {
+    background-color: #f0faff;
+    border: 2px solid #6c757d;
+    border-radius: 5px;
+}
+
+QPushButton:hover {
+    background-color: QColor(QColor(palette(button)).lighter(100));
+    border: 2px solid #6c757d;
+    border-radius: 5px;
+}
+
+QPushButton:hover:focus {
+    background-color: QColor(QColor(palette(button)).lighter(100));
+    border: 2px solid #6c757d;
+    border-radius: 5px;
+}
+
+
+QPushButton:pressed,
+QPushButton:pressed:focus {
+    background-color: QColor(QColor(palette(button)).darker(100));
+    border: 2px solid #6c757d;
+    border-radius: 5px;
+}

@@ -1,0 +1,12 @@
+QProgressBar {
+    background: palette(mid);
+    color: {{ palette('text') | alpha(0.8) }};
+    border: 0px;
+    border-radius: 2px;
+    text-align: center;
+}
+
+QProgressBar::chunk {
+    background-color: {{ palette('highlight') | lighten(150) }};
+    width: 20px;
+}

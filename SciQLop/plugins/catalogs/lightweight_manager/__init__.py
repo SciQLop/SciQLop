@@ -66,7 +66,7 @@ class LightweightManager(QWidget):
         self.panel_selector = PanelSelector(self)
         self.event_selector = EventSelector(self)
         self.save_button = QPushButton(self)
-        self.save_button.setIcon(QIcon(":/icons/save.png"))
+        self.save_button.setIcon(QIcon(":/icons/theme/save.png"))
         self.refresh_button = QPushButton(self)
         self.refresh_button.setText("Refresh")
         self.layout().addWidget(self.save_button, 0, 0, 1, 1)

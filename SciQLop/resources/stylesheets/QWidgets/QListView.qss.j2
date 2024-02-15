@@ -1,0 +1,28 @@
+QListView {
+    alternate-background-color: palette(mid)
+}
+
+QListView {
+    show-decoration-selected: 1; /* make the selection span the entire width of the view */
+}
+
+QListView::item:alternate {
+
+}
+
+QListView::item:selected {
+    border: 1px solid {{ palette('Selection') }};
+}
+
+QListView::item:selected:!active {
+    background: {{ palette('Selection') | lighter(150) }};
+}
+
+QListView::item:selected:active {
+    background: {{ palette('Selection') }};
+}
+
+QListView::item:hover {
+    background: palette(mid);
+    border: 1px solid {{ palette('Selection') }};
+}

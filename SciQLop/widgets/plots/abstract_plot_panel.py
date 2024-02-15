@@ -36,6 +36,7 @@ class PanelContainer(QWidget):
         self.setLayout(QVBoxLayout(self))
         self.setContentsMargins(0, 0, 0, 0)
         self.layout().setContentsMargins(0, 0, 0, 0)
+        self.layout().setSpacing(0)
 
     def indexOf(self, widget: QWidget):
         return self.layout().indexOf(widget)

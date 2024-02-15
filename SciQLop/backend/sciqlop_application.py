@@ -1,13 +1,11 @@
 from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml, QtCore, QtGui
 from typing import Dict, List, Optional, Tuple, Union, Any
+from SciQLop.backend.theming.loader import load_stylesheets, build_palette
 from qasync import QEventLoop, QApplication
 import asyncio
-import sys
+import sys, os
+from glob import glob
 from io import StringIO
-
-_STYLE_SHEET_ = """
-QWidget:focus { border: 1px dashed light blue }
-"""
 
 
 class SciQLopApp(QApplication):
@@ -20,7 +18,10 @@ class SciQLopApp(QApplication):
         self.setOrganizationName("LPP")
         self.setOrganizationDomain("lpp.fr")
         self.setApplicationName("SciQLop")
-        self.setStyleSheet(_STYLE_SHEET_)
+        # self.setAttribute(QtCore.Qt.AA_UseStyleSheetPropagationInWidgetStyles, True)
+        self._palette = build_palette("white", self.palette())
+        self.setPalette(self._palette)
+        self.load_stylesheet()
         # sciqlop_logging.setup()
         self._quickstart_shortcuts: Dict[str, Dict[str, Any]] = {}
 
@@ -36,6 +37,9 @@ class SciQLopApp(QApplication):
 
     def quickstart_shortcut(self, name: str) -> Optional[Dict[str, Any]]:
         return self._quickstart_shortcuts.get(name, None)
+
+    def load_stylesheet(self, path=None):
+        self.setStyleSheet(load_stylesheets(self._palette))
 
 
 def sciqlop_app() -> SciQLopApp:
@@ -67,4 +71,3 @@ def sciqlop_event_loop() -> _SciQLopEventLoop:
     if _event_loop is None:
         _event_loop = _SciQLopEventLoop()
     return _event_loop
-

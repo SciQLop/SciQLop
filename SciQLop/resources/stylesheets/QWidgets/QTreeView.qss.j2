@@ -1,0 +1,47 @@
+QTreeView {
+    alternate-background-color: yellow;
+}
+
+QTreeView {
+    show-decoration-selected: 1;
+}
+
+QTreeView::item {
+     border: 1px solid #d9d9d9;
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+}
+
+QTreeView::item:hover {
+    background: palette(mid);
+    border: 1px solid {{ palette('Selection') }};
+}
+
+QTreeView::item:selected {
+    border: 1px solid {{ palette('Selection') }};
+}
+
+QTreeView::item:selected:active{
+    background: {{ palette('Selection') }};
+}
+
+QTreeView::item:selected:!active {
+    background: {{ palette('Selection') | lighter(150) }};
+}
+
+QTreeView::branch {
+        background: palette(base);
+}
+
+
+QTreeView::branch:has-children:!has-siblings:closed,
+QTreeView::branch:closed:has-children:has-siblings {
+        border-image: none;
+        image: url(:/icons/theme/arrow_right.png);
+}
+
+QTreeView::branch:open:has-children:!has-siblings,
+QTreeView::branch:open:has-children:has-siblings  {
+        border-image: none;
+        image: url(:/icons/theme/arrow_drop_down.png);
+}

@@ -10,6 +10,7 @@ from SciQLop.widgets.welcome.detailed_description.delegate import register_deleg
 from typing import Optional
 import os
 import shutil
+import humanize
 
 
 class WorkSpaceCard(Card):
@@ -32,7 +33,7 @@ class WorkSpaceCard(Card):
 <br>
 {self._workspace.description}
 <br>
-<i>Last used: {self._workspace.last_used}</i>
+<i>Last used: {humanize.naturaldate(self._workspace.last_used)}</i>
         """
 
     @property
@@ -83,8 +84,8 @@ class WorkspaceDescriptionWidget(QFrame):
         self._name = QLineEdit(workspace.workspace.name)
         self._name.textChanged.connect(lambda x: setattr(self._workspace, "name", x))
         self._layout.addRow(QLabel("Name"), self._name)
-        self._layout.addRow(QLabel("Last used"), QLabel(workspace.workspace.last_used))
-        self._layout.addRow(QLabel("Last modified"), QLabel(workspace.workspace.last_modified))
+        self._layout.addRow(QLabel("Last used"), QLabel(humanize.naturaldate(workspace.workspace.last_used)))
+        self._layout.addRow(QLabel("Last modified"), QLabel(humanize.naturaldate(workspace.workspace.last_modified)))
         self._image = ImageSelector(
             current_image=str(os.path.join(workspace.workspace.directory, workspace.workspace.image)))
         self._image.image_selected.connect(lambda x: setattr(self._workspace, "image", x))
@@ -94,16 +95,16 @@ class WorkspaceDescriptionWidget(QFrame):
         self._layout.addRow(QLabel("Description"), self._description)
         if not workspaces_manager_instance().has_workspace:
             self._open_button = QPushButton("Open workspace")
-            self._open_button.setIcon(QIcon("://icons/folder_open.png"))
+            self._open_button.setIcon(QIcon("://icons/theme/folder_open.png"))
             self._open_button.setMinimumHeight(40)
             self._open_button.clicked.connect(self._open_workspace)
             self._layout.addWidget(self._open_button)
         self._duplicate_button = QPushButton("Duplicate workspace")
-        self._duplicate_button.setIcon(QIcon("://icons/folder_copy.png"))
+        self._duplicate_button.setIcon(QIcon("://icons/theme/folder_copy.png"))
         self._layout.addWidget(self._duplicate_button)
         self._duplicate_button.clicked.connect(self._duplicate_workspace)
         self._delete_button = QPushButton("Delete workspace")
-        self._delete_button.setIcon(QIcon("://icons/delete.png"))
+        self._delete_button.setIcon(QIcon("://icons/theme/delete.png"))
         self._layout.addWidget(self._delete_button)
         self._delete_button.clicked.connect(self._delete_workspace)
         self._dialog = None

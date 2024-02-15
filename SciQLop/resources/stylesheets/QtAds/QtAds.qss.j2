@@ -1,0 +1,188 @@
+#tabsMenuButton {
+    qproperty-icon: url(:/icons/theme/arrow_drop_down.png);
+    qproperty-iconSize: 16px;
+}
+
+
+#dockAreaCloseButton {
+    qproperty-icon: url(:/icons/theme/close.png), url(:/icons/theme/close.png) disabled;
+    qproperty-iconSize: 16px;
+}
+
+
+#detachGroupButton {
+    qproperty-icon: url(:/icons/theme/detach_tab.png), url(:/icons/theme/detach_tab.png) disabled;
+    qproperty-iconSize: 16px;
+}
+
+#tabCloseButton {
+    margin-top: 2px;
+    background: none;
+    border: none;
+    padding: 0px -2px;
+    qproperty-icon: url(:/icons/theme/close.png), url(:/icons/theme/close.png) disabled;
+    qproperty-iconSize: 16px;
+}
+
+/*****************************************************************************
+ * CDockWidgetTab
+ *****************************************************************************/
+ads--CDockWidgetTab {
+	background: palette(base);
+    min-width: 8ex;
+    padding: 2px;
+    margin: 0 5px 0 5px;
+    border-right: 1px solid palette(Mid);
+    border-bottom: 1px solid palette(Mid);
+}
+
+
+ads--CDockWidgetTab[activeTab="true"] {
+	background: palette(base);
+}
+
+
+ads--CDockWidgetTab QLabel {
+   color: {{ palette('UnselectedText') }};
+}
+
+
+ads--CDockWidgetTab[activeTab="true"] QLabel {
+	color: palette(text);
+}
+
+
+/*
+ Auto hide containers
+ */
+#dockAreaAutoHideButton {
+    qproperty-icon: url(:/icons/theme/push_pin.png), url(:/icons/theme/push_pin.png) disabled;
+    qproperty-iconSize: 16px;
+}
+
+ads--CAutoHideDockContainer #dockAreaAutoHideButton {
+    qproperty-icon: url(:/icons/theme/push_pin_filled.png);
+    qproperty-iconSize: 16px;
+}
+
+
+ads--CAutoHideDockContainer[sideBarLocation="0"] ads--CResizeHandle {
+    border-top: 3px solid palette(mid);
+}
+
+ads--CAutoHideDockContainer[sideBarLocation="1"] ads--CResizeHandle {
+    border-left: 3px solid palette(mid);
+}
+
+ads--CAutoHideDockContainer[sideBarLocation="2"] ads--CResizeHandle {
+    border-right: 3px solid palette(mid);;
+}
+
+ads--CAutoHideDockContainer[sideBarLocation="3"] ads--CResizeHandle {
+    border-top: 3px solid palette(mid);
+}
+
+
+ads--CAutoHideDockContainer ads--CTitleBarButton:hover {
+    background: palette(mid);
+    border: none;
+}
+
+ads--CAutoHideDockContainer ads--CTitleBarButton:pressed {
+    background: rgba(255, 255, 255, 96);
+    border: none;
+}
+
+
+#autoHideTitleLabel {
+    padding-left: 16px;
+    color: palette(text);
+}
+
+
+/*****************************************************************************
+ * CAutoHideSideBar
+ *****************************************************************************/
+ads--CAutoHideSideBar {
+    background: palette(base);
+    border: none;
+    qproperty-spacing: 12;
+}
+
+#sideTabsContainerWidget {
+    background: transparent;
+}
+
+
+ads--CAutoHideSideBar[sideBarLocation="0"] {
+    border-bottom: 1px solid{{ palette('mid') }};
+}
+
+ads--CAutoHideSideBar[sideBarLocation="1"] {
+    border-right: 1px solid{{ palette('mid') }};
+}
+
+ads--CAutoHideSideBar[sideBarLocation="2"] {
+    border-left: 1px solid{{ palette('mid') }};
+}
+
+ads--CAutoHideSideBar[sideBarLocation="3"] {
+    border-top: 1px solid{{ palette('mid') }};
+}
+
+
+/*****************************************************************************
+ * CAutoHideTab
+ *****************************************************************************/
+ads--CAutoHideTab:hover,
+ads--CAutoHideTab:hover:focus,
+ads--CAutoHideTab:pressed,
+ads--CAutoHideTab:pressed:focus,
+ads--CAutoHideTab {
+    qproperty-iconSize: 16px 16px; /* this is optional in case you would like to change icon size*/
+    background: none;
+    border: none;
+    padding-left: 8px;
+    padding-right: 8px;
+    text-align: center;
+    min-height: 20px;
+    padding-bottom: 0px;
+    margin: 0px;
+}
+
+ads--CAutoHideTab:hover {
+    color: palette(highlight);
+}
+
+ads--CAutoHideTab:hover:focus {
+    color: palette(highlight);
+}
+
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="0"],
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="2"] {
+    border-top: 2px solid rgba(0, 0, 0, 48);
+}
+
+
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="1"],
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"] {
+    border-bottom: 2px solid rgba(0, 0, 0, 48);
+    border-right: 2px solid rgba(0, 0, 0, 48);
+    border-radius: 2px;
+}
+
+
+ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="0"],
+ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="2"],
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="0"][activeTab="true"],
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="2"][activeTab="true"] {
+    border-top: 2px solid palette(highlight);
+}
+
+
+ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="1"],
+ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="3"],
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="1"][activeTab="true"],
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"][activeTab="true"] {
+    border-bottom: 2px solid palette(highlight);
+}

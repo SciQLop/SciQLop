@@ -1,0 +1,27 @@
+QTabWidget::pane {
+    border-top: 2px solid {{ palette('Borders') | alpha(0.5) }};
+}
+
+QTabWidget::tab-bar {
+    left: 10px;
+}
+
+QTabBar::tab {
+    background: palette(base);
+    min-width: 8ex;
+    padding: 2px;
+    margin: 0 5px 0 5px;
+    border-right: 1px solid palette(Mid);
+}
+
+QTabBar::tab:selected, QTabBar::tab:hover {
+    background: palette(base);
+}
+
+QTabBar::tab:selected {
+    border-bottom: 2px solid{{ palette('Selection') }};
+}
+
+QTabBar::tab:!selected {
+    margin-top: 2px;
+}

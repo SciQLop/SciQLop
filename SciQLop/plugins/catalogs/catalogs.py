@@ -22,7 +22,7 @@ class CatalogGUISpawner(QAction):
     def __init__(self, catalog_gui, parent=None):
         super(CatalogGUISpawner, self).__init__(parent)
         self.catalog_gui = catalog_gui
-        self.setIcon(QIcon("://icons/catalogue.png"))
+        self.setIcon(QIcon("://icons/theme/catalogue.png"))
         self.triggered.connect(self.show_catalogue_gui)
         self.setText("Open Catalogue Explorer")
 
