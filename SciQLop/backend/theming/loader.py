@@ -46,7 +46,7 @@ def _list_stylesheets(folders: Optional[List[str]] = None) -> List[str]:
         folders = ["QWidgets", "QtAds"]
     style_sheets = []
     for folder in folders:
-        style_sheets.extend(sorted(map(lambda f: os.path.join(folder, os.path.basename(f)),
+        style_sheets.extend(sorted(map(lambda f: f"{folder}/{os.path.basename(f)}",
                                        glob(os.path.join(style_sheets_path, f"{folder}/*.qss.j2")))))
     return style_sheets
 
