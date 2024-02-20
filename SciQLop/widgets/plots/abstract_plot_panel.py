@@ -38,6 +38,7 @@ class PanelContainer(QSplitter):
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.layout().setSpacing(0)
         self.setOrientation(Qt.Orientation.Vertical)
+        self.setChildrenCollapsible(False)
 
     def _ensure_shared_x_axis(self):
         plots = self.plots
