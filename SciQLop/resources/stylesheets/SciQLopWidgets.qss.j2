@@ -8,12 +8,21 @@ Container {
     border-radius: 2px;
 }
 
+PanelContainer {
+    margin: 0px;
+    border-top-width: 0px;
+    padding: 0px;
+}
+
+PanelContainer::handle:vertical {
+    height: 1px;
+    background-color: black;
+}
+
 TimeSeriesPlot {
     background-color: palette(base);
     margin: 0px;
-    border-top-width: 1px;
-    border-top-style: solid;
-    border-top-color: black;
+    border-top-width: 0px;
     padding: 0px;
 }
 
