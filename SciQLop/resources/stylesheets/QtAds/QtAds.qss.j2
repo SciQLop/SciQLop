@@ -28,7 +28,7 @@
  * CDockWidgetTab
  *****************************************************************************/
 ads--CDockWidgetTab {
-	background: palette(base);
+    background: palette(base);
     min-width: 8ex;
     padding: 2px;
     margin: 0 5px 0 5px;
@@ -38,17 +38,30 @@ ads--CDockWidgetTab {
 
 
 ads--CDockWidgetTab[activeTab="true"] {
-	background: palette(base);
+    background: palette(base);
 }
 
 
 ads--CDockWidgetTab QLabel {
-   color: {{ palette('UnselectedText') }};
+    color: {{ palette('UnselectedText') }};
 }
 
 
 ads--CDockWidgetTab[activeTab="true"] QLabel {
-	color: palette(text);
+    color: palette(text);
+}
+
+/*****************************************************************************
+ * CDockSplitter
+ *****************************************************************************/
+ads--CDockContainerWidget > QSplitter {
+    padding: 1 0 1 0;
+}
+
+
+ads--CDockSplitter::handle {
+    background-color: palette(mid);
+    height: 3px;
 }
 
 
@@ -186,3 +199,5 @@ ads--CAutoHideTab[iconOnly="false"][sideBarLocation="1"][activeTab="true"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"][activeTab="true"] {
     border-bottom: 2px solid palette(highlight);
 }
+
+
