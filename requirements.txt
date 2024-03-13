@@ -1,5 +1,5 @@
 numpy
-SciQLopPlots>=0.6.3
+SciQLopPlots>=0.6.4
 PySide6-QtAds==4.2.1
 PySide6==6.6.2
 speasy>=1.2.2
