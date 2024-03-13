@@ -13,13 +13,13 @@ QPushButton:focus {
 }
 
 QPushButton:hover {
-    background-color: QColor(QColor(palette(button)).lighter(100));
+    background-color: {{ palette('button') |  lighter(120) }};
     border: 2px solid #6c757d;
     border-radius: 5px;
 }
 
 QPushButton:hover:focus {
-    background-color: QColor(QColor(palette(button)).lighter(100));
+    background-color: {{ palette('button') |  lighter(120) }};
     border: 2px solid #6c757d;
     border-radius: 5px;
 }
@@ -27,7 +27,7 @@ QPushButton:hover:focus {
 
 QPushButton:pressed,
 QPushButton:pressed:focus {
-    background-color: QColor(QColor(palette(button)).darker(100));
+    background-color: {{ palette('button') |  darker(120) }};
     border: 2px solid #6c757d;
     border-radius: 5px;
 }
