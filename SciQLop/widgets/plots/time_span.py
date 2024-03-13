@@ -26,21 +26,20 @@ class TimeSpan(QObject):
         self.read_only = read_only
         self._plot_panel.plot_list_changed.connect(self.update_spans)
         self._color = color or QColor(100, 100, 100, 100)
+        self.update_spans()
 
     def update_spans(self):
-        if self._visible:
-            self._spans = []
-            for plot in self._plot_panel.plots:
-                span = SciQLopVerticalSpan(plot.plot_instance, QCPRange(self._time_range.start, self._time_range.stop))
-                if self._tooltip is not None:
-                    span.set_tool_tip(self._tooltip)
-                span.range_changed.connect(self.set_range)
-                span.selectionChanged.connect(self.change_selection)
-                self._spans.append(span)
-                span.set_read_only(self.read_only)
-                span.set_color(self._color)
-        else:
-            self._spans = []
+        self._spans = []
+        for plot in self._plot_panel.plots:
+            span = SciQLopVerticalSpan(plot.plot_instance, QCPRange(self._time_range.start, self._time_range.stop))
+            if self._tooltip is not None:
+                span.set_tool_tip(self._tooltip)
+            span.range_changed.connect(self.set_range)
+            span.selectionChanged.connect(self.change_selection)
+            self._spans.append(span)
+            span.set_read_only(self.read_only)
+            span.set_color(self._color)
+            span.set_visible(self._visible)
 
     @Slot()
     def change_selection(self, selected: bool):
@@ -65,12 +64,10 @@ class TimeSpan(QObject):
             self.range_changed.emit(new_range_tr)
 
     def show(self):
-        self._visible = True
-        self.update_spans()
+        list(map(lambda s: s.set_visible(True), self._spans))
 
     def hide(self):
-        self._visible = False
-        self.update_spans()
+        list(map(lambda s: s.set_visible(False), self._spans))
 
     @SciQLopProperty(bool)
     def read_only(self):
