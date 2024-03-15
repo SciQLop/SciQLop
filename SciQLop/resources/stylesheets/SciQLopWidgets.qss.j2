@@ -69,3 +69,15 @@ Card:hover[selected=false] {
     border: 1px solid palette(highlight);
     border-radius: 5px;
 }
+
+WorkSpaceCard[default_workspace=true] QLabel
+{
+    background-color: {{ palette('base') | darker(105)}};
+    border: 0px;
+}
+
+WorkSpaceCard[default_workspace=true]
+{
+    background-color: {{ palette('base') | darker(105)}};
+    border: 0px;
+}

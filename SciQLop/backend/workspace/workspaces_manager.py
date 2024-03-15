@@ -1,5 +1,6 @@
 import os
 import shutil
+from datetime import datetime
 from typing import List, Optional, Union
 from PySide6.QtCore import QObject, Signal, Slot, QFile, QTimer, QDir
 from PySide6.QtGui import QIcon
@@ -29,7 +30,7 @@ def list_existing_workspaces() -> List[WorkspaceSpecFile]:
             filter(
                 lambda workspace_dir: os.path.exists(os.path.join(workspace_dir, "workspace.json")),
                 filter(
-                    os.path.isdir,
+                    lambda d: os.path.isdir(d) and d != 'default',
                     map(lambda workspace_dir: os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), workspace_dir),
                         os.listdir(WORKSPACES_DIR_CONFIG_ENTRY.get()))
                 )
@@ -57,6 +58,7 @@ class WorkspaceManager(QObject):
 
         self._ipykernel: Optional[InternalIPKernel] = None
         self._ipykernel_clients_manager: Optional[IPythonKernelClientsManager] = None
+        self._default_workspace: WorkspaceSpecFile = self._ensure_default_workspace_exists()
 
     def _init_kernel(self):
         if self._ipykernel is not None:
@@ -68,31 +70,41 @@ class WorkspaceManager(QObject):
         self._ipykernel_clients_manager = IPythonKernelClientsManager(self._ipykernel.connection_file)
         self._ipykernel_clients_manager.jupyterlab_started.connect(self.jupyterlab_started)
 
+    def _ensure_default_workspace_exists(self) -> WorkspaceSpecFile:
+        default_workspace = os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), "default")
+        if not os.path.exists(default_workspace):
+            return self._create_workspace("default", default_workspace, description="Default workspace",
+                                          default_workspace=True)
+        return WorkspaceSpecFile(default_workspace)
+
     def start_jupyterlab(self):
         self._init_kernel()
-        if self._workspace is None:
-            self.create_workspace()
-        self._ipykernel_clients_manager.start_jupyterlab(cwd=self._workspace.workspace_dir)
+        w = self.workspace
+        self._ipykernel_clients_manager.start_jupyterlab(cwd=w.workspace_dir)
 
     def new_qt_console(self):
         self._init_kernel()
-        if self._workspace is None:
-            self.create_workspace()
-        self._ipykernel_clients_manager.new_qt_console(cwd=self._workspace.workspace_dir)
+        w = self.workspace
+        self._ipykernel_clients_manager.new_qt_console(cwd=w.workspace_dir)
+
+    @staticmethod
+    def _create_workspace(name: str, path: str, **kwargs) -> WorkspaceSpecFile:
+        spec = WorkspaceSpecFile(path, name=name, **kwargs)
+        if spec.image == "":
+            QFile.copy(":/splash.png", os.path.join(path, "image.png"))
+            spec.image = "image.png"
+        return spec
 
     def create_workspace(self, name: Optional[str] = None, **kwargs) -> Workspace:
         self._init_kernel()
         if self._workspace is not None:
             raise Exception("Workspace already created")
-        name = name or "default"
+        name = name or f"New workspace from {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         print(f"Creating workspace {name}")
         # using uuid4 to avoid name collision and simplify workspace renaming without having to move the directory and
         # update python path at runtime
         directory = os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), uuid.uuid4().hex)
-        spec = WorkspaceSpecFile(directory, name=name, **kwargs)
-        if spec.image == "":
-            QFile.copy(":/splash.png", os.path.join(directory, "image.png"))
-            spec.image = "image.png"
+        spec = self._create_workspace(name, directory, **kwargs)
         return self.load_workspace(spec)
 
     def load_example(self, example_path: str) -> Workspace:
@@ -108,11 +120,13 @@ class WorkspaceManager(QObject):
             self.start_jupyterlab()
         return self._workspace
 
-    def load_workspace(self, workspace_spec: Union[WorkspaceSpecFile, str]) -> Workspace:
+    def load_workspace(self, workspace_spec: Union[WorkspaceSpecFile, str, None]) -> Workspace:
         if self._workspace is not None:
             raise Exception("Workspace already created")
         if isinstance(workspace_spec, str):
             workspace_spec = WorkspaceSpecFile(workspace_spec)
+        if workspace_spec is None:
+            workspace_spec = self._default_workspace
         self._workspace = Workspace(workspace_spec=workspace_spec)
         self.workspace_loaded.emit(self._workspace)
         self.push_variables({"workspace": self._workspace})
@@ -140,7 +154,7 @@ class WorkspaceManager(QObject):
     @property
     def workspace(self) -> Workspace:
         if not self.has_workspace:
-            return self.create_workspace()
+            self.load_workspace(None)
         return self._workspace
 
     @property

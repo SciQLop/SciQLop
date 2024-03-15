@@ -26,6 +26,7 @@ class WorkSpaceCard(Card):
         self._layout.addWidget(self._name)
         self._workspace = workspace
         self._refresh_tooltip()
+        self.setProperty("default_workspace", workspace.default_workspace)
 
     def _refresh_tooltip(self):
         self.tooltip = f"""
@@ -82,15 +83,18 @@ class WorkspaceDescriptionWidget(QFrame):
         self._layout = QFormLayout()
         self.setLayout(self._layout)
         self._name = QLineEdit(workspace.workspace.name)
+        self._name.setEnabled(not workspace.workspace.default_workspace)
         self._name.textChanged.connect(lambda x: setattr(self._workspace, "name", x))
         self._layout.addRow(QLabel("Name"), self._name)
         self._layout.addRow(QLabel("Last used"), QLabel(humanize.naturaldate(workspace.workspace.last_used)))
         self._layout.addRow(QLabel("Last modified"), QLabel(humanize.naturaldate(workspace.workspace.last_modified)))
         self._image = ImageSelector(
             current_image=str(os.path.join(workspace.workspace.directory, workspace.workspace.image)))
+        self._image.setEnabled(not workspace.workspace.default_workspace)
         self._image.image_selected.connect(lambda x: setattr(self._workspace, "image", x))
         self._layout.addRow(QLabel("Image"), self._image)
         self._description = QTextEdit(workspace.workspace.description)
+        self._description.setEnabled(not workspace.workspace.default_workspace)
         self._description.textChanged.connect(lambda x: setattr(self._workspace, "description", x))
         self._layout.addRow(QLabel("Description"), self._description)
         if not workspaces_manager_instance().has_workspace:
@@ -103,11 +107,12 @@ class WorkspaceDescriptionWidget(QFrame):
         self._duplicate_button.setIcon(QIcon("://icons/theme/folder_copy.png"))
         self._layout.addWidget(self._duplicate_button)
         self._duplicate_button.clicked.connect(self._duplicate_workspace)
-        self._delete_button = QPushButton("Delete workspace")
-        self._delete_button.setIcon(QIcon("://icons/theme/delete.png"))
-        self._layout.addWidget(self._delete_button)
-        self._delete_button.clicked.connect(self._delete_workspace)
-        self._dialog = None
+        if not workspace.workspace.default_workspace:
+            self._delete_button = QPushButton("Delete workspace")
+            self._delete_button.setIcon(QIcon("://icons/theme/delete.png"))
+            self._layout.addWidget(self._delete_button)
+            self._delete_button.clicked.connect(self._delete_workspace)
+            self._dialog = None
 
     def _open_workspace(self):
         workspaces_manager_instance().load_workspace(self._workspace.workspace)
