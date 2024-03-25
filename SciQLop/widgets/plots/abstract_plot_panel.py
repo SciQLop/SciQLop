@@ -39,6 +39,8 @@ class PanelContainer(QSplitter):
         self.layout().setSpacing(0)
         self.setOrientation(Qt.Orientation.Vertical)
         self.setChildrenCollapsible(False)
+        self.setProperty("empty", True)
+
 
     def _ensure_shared_x_axis(self):
         plots = self.plots
@@ -53,6 +55,7 @@ class PanelContainer(QSplitter):
     def add_widget(self, widget: QWidget, index: int):
         self.insertWidget(index, widget)
         if isinstance(widget, self._plot_type):
+            self.setProperty("empty", False)
             widget.destroyed.connect(self.plot_list_changed)
             if self._shared_x_axis:
                 self._ensure_shared_x_axis()
@@ -60,6 +63,7 @@ class PanelContainer(QSplitter):
 
     def remove_plot(self, plot: QWidget):
         plot.setParent(None)
+        self.setProperty("empty", len(self.plots) == 0)
 
     @SciQLopProperty(list)
     def plots(self) -> List[PlotPanel]:

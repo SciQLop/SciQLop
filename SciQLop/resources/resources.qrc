@@ -40,5 +40,6 @@
         <file>icons/Cluster_mission_logo_pillars.jpg</file>
         <file>icons/plot_panel_128.png</file>
         <file>splash.png</file>
+        <file>plot_panel_dd_background.png</file>
     </qresource>
 </RCC>

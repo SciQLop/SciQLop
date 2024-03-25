@@ -8,10 +8,18 @@ Container {
     border-radius: 2px;
 }
 
-PanelContainer {
+PanelContainer[empty=false]{
     margin: 0px;
     border-top-width: 0px;
     padding: 0px;
+    border-image: none ;
+}
+
+PanelContainer[empty=true] {
+    margin: 0px;
+    border-top-width: 0px;
+    padding: 0px;
+    border-image: url(:/plot_panel_dd_background.png) 0 0 0 0 stretch stretch;
 }
 
 PanelContainer::handle:vertical {
