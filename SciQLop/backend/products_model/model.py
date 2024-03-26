@@ -116,7 +116,11 @@ class ProductsModel(QAbstractItemModel):
 
     def product(self, path: str) -> ProductNode or None:
         p = self._root
-        for element in path.split('/'):
+        if '//' in path:
+            sep = '//'
+        else:
+            sep = '/'
+        for element in path.split(sep):
             if p is not None:
                 p = p[element]
         if p is not None:

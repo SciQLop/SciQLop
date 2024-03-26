@@ -145,5 +145,5 @@ class ProductNode:
         if self._parent:
             parent_path = self._parent.path
             if parent_path != "":
-                return self.parent.path + "/" + self.name
+                return self.parent.path + "//" + self.name
         return self.name
