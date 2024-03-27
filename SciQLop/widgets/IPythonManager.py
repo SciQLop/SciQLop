@@ -6,8 +6,8 @@ from ..backend.jupyter_clients.clients_manager import ClientsManager as IPythonK
 from ..backend.icons import register_icon, icons
 from ..backend.sciqlop_application import sciqlop_app
 
-register_icon("Jupyter", QIcon("://icons/Jupyter_logo.svg"))
-register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.svg"))
+register_icon("Jupyter", QIcon("://icons/Jupyter_logo.png"))
+register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.png"))
 
 
 class KernelInfoWidget(QWidget):

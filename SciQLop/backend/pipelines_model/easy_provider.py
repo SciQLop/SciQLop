@@ -9,7 +9,7 @@ from SciQLop.backend.enums import ParameterType
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
 from SciQLop.backend.icons import register_icon
 
-register_icon("Python-logo-notext", QIcon(":/icons/Python-logo-notext.svg"))
+register_icon("Python-logo-notext", QIcon(":/icons/Python-logo-notext.png"))
 
 
 def ensure_dt64(x_data):

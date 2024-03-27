@@ -9,7 +9,7 @@ from SciQLop.backend.enums import ParameterType
 from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
 
-register_icon("speasy", QIcon(":/icons/logo_speasy.svg"))
+register_icon("speasy", QIcon(":/icons/logo_speasy.png"))
 register_icon("nasa", QIcon(":/icons/NASA.jpg"))
 register_icon("amda", QIcon(":/icons/amda.png"))
 register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))

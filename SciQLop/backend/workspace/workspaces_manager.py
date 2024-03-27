@@ -16,8 +16,8 @@ from ..common import background_run
 from ..jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 import uuid
 
-register_icon("Jupyter", QIcon("://icons/Jupyter_logo.svg"))
-register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.svg"))
+register_icon("Jupyter", QIcon("://icons/Jupyter_logo.png"))
+register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.png"))
 
 
 def list_existing_workspaces() -> List[WorkspaceSpecFile]:
