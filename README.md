@@ -11,7 +11,8 @@ user-friendly tool designed for the visualization and analysis of in-situ space 
 Using SciQLop will let you:
 
 - have a super easy access to tens of thousands of products from the top main data archives in the world,
-- explore multivariate time series effortlessly, with lightning-fast and transparent downloads as you scroll, zoom in, and zoom out,
+- explore multivariate time series effortlessly, with lightning-fast and transparent downloads as you scroll, zoom in,
+  and zoom out,
 - visualize custom products with simple python code executed on-the-fly,
 - easily label time intervals and make or edit catalog of events graphically and rapidely,
 - analyze your data in jupyter notebooks,
@@ -21,14 +22,14 @@ Using SciQLop will let you:
 </div>
 
 Heliophysicists now benefit from decades of space exploration through many spacecraft missions.
-Exploring this massive amount of data to find events of interest, build catalogs, and conduct statistical multi-mission data analysis
+Exploring this massive amount of data to find events of interest, build catalogs, and conduct statistical multi-mission
+data analysis
 can be a daunting task if not having the right tool.
 
-SciQLop aims at being this tool! A simple lightweight yet powerful graphical interface coupled to the limitless options brought by the Jupyter Notebook integration,
+SciQLop aims at being this tool! A simple lightweight yet powerful graphical interface coupled to the limitless options
+brought by the Jupyter Notebook integration,
 that focuses on providing users with the easiest possible way to explore, label and analyze huge amounts of data.
 SciQLop is also the right tool for teaching space physics and in situ spacecraft data handling to students effortlessly.
-
-
 
 # Main Features
 
@@ -37,9 +38,9 @@ SciQLop is also the right tool for teaching space physics and in situ spacecraft
 
   <img src="https://github.com/SciQLop/SciQLopMedia/blob/main/screencasts/SciQLop_MMS.gif" alt="SciQLop smooth navigation" style="width: 80%;"/>
 
-- **User-friendly**: Accessing data in SciQLop is as simple as a drag and drop from the tens of thousands of products readily available.
-Custom user products defined in Python behave exactly the same way and bring infinite possibilities.
-
+- **User-friendly**: Accessing data in SciQLop is as simple as a drag and drop from the tens of thousands of products
+  readily available.
+  Custom user products defined in Python behave exactly the same way and bring infinite possibilities.
 
   <img src="https://github.com/SciQLop/SciQLopMedia/blob/main/screencasts/SciQLop_DragAndDrop.gif" alt="SciQLop drag and drop" style="width: 80%;"/>
 
@@ -97,6 +98,18 @@ or
 ```Bash
 python -m SciQLop.app
 ```
+
+## Mac Users
+
+The easiest way to install SciQLop now is to install [homebrew](https://brew.sh/) and then run:
+
+```Bash
+brew install python@3.10 node
+/opt/homebrew/bin/jupyter-lab build
+/opt/homebrew/bin/pip3.10 install sciqlop
+```
+
+```Bash
 
 ## Linux Users
 
