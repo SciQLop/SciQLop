@@ -109,8 +109,6 @@ brew install python@3.10 node
 /opt/homebrew/bin/pip3.10 install sciqlop
 ```
 
-```Bash
-
 ## Linux Users
 
 If you are using a Linux distribution, you may not need to install anything, you can just download the AppImage from the
