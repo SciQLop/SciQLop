@@ -6,7 +6,7 @@ import tscat
 from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QCheckBox, QGridLayout, QPushButton, \
-    QDoubleSpinBox, QLabel
+    QDoubleSpinBox, QLabel, QSplitter
 
 from SciQLop.backend import TimeRange
 from SciQLop.backend.sciqlop_logging import getLogger
@@ -55,6 +55,7 @@ class LightweightManager(QWidget):
         self._current_interaction_mode = InteractionMode.Nothing
         self.setLayout(QGridLayout())
         self.main_window = main_window
+        self.vertical_splitter = QSplitter(Qt.Orientation.Vertical, self)
         self.catalog_selector = CatalogSelector(self)
         self.zoom_factor = QDoubleSpinBox(self)
         self.zoom_factor.setMinimum(0.01)
@@ -76,8 +77,9 @@ class LightweightManager(QWidget):
         self.layout().addWidget(self.interaction_mode, 2, 1, 1, -1)
         self.layout().addWidget(QLabel("Zoom factor", self), 3, 0, 1, 1)
         self.layout().addWidget(self.zoom_factor, 3, 1, 1, -1)
-        self.layout().addWidget(self.catalog_selector, 5, 0, 1, -1)
-        self.layout().addWidget(self.event_selector, 6, 0, 1, -1)
+        self.layout().addWidget(self.vertical_splitter, 5, 0, 1, -1)
+        self.vertical_splitter.addWidget(self.catalog_selector)
+        self.vertical_splitter.addWidget(self.event_selector)
 
         self.setWindowTitle("Catalogs")
 

@@ -200,9 +200,8 @@ class CatalogSelector(QTableView):
         self.setModel(self.model)
         self.update_list()
         self.clicked.connect(self._catalog_selected)
-        self.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
-        # self.setShowGrid(False)
+
         self.horizontalHeader().hide()
         self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self.verticalHeader().hide()
