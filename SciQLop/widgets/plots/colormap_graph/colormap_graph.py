@@ -28,7 +28,8 @@ class PythonResampler(QObject):
         latest = self._v is v
         self.data_mutex.unlock()
         if latest:
-            self.plot_sig.emit(*regrid(v))
+            if len(v):
+                self.plot_sig.emit(*regrid(v))
 
     def plot(self, v: SpeasyVariable):
         self.data_mutex.lock()
