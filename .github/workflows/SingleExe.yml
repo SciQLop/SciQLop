@@ -13,13 +13,13 @@ jobs:
     container:
       image: fedora:39
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: bundle SciQLop
         run: |
           dnf update -y && dnf install -y wget file
           sh scripts/appimage/build.sh
       - name: Save packages as artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: SciQLop-x86_64.AppImage
           path: dist/SciQLop-x86_64.AppImage
@@ -27,14 +27,14 @@ jobs:
   build_arm64_dmg:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: bundle SciQLop
         run: |
           brew install graphicsmagick imagemagick
           npm install --global create-dmg
           sh scripts/macos/make_dmg.sh
       - name: Save packages as artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: SciQLop-arm64.dmg
           path: dist/SciQLop-*.dmg
@@ -43,14 +43,14 @@ jobs:
   build_x86_64_dmg:
     runs-on: macos-13
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: bundle SciQLop
         run: |
           brew install graphicsmagick imagemagick
           npm install --global create-dmg
           sh scripts/macos/make_dmg.sh
       - name: Save packages as artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: SciQLop-x86_64.dmg
           path: dist/SciQLop-*.dmg
@@ -59,12 +59,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build_appimage, build_arm64_dmg, build_x86_64_dmg]
     steps:
-      - uses: actions/checkout@v3
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: SciQLop*
+          pattern: SciQLop*
           path: dist
+          merge-multiple: true
       - name: Publish to GitHub Releases
         if: github.event_name == 'release'
         env:
