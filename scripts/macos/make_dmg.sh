@@ -87,7 +87,7 @@ for e_file in $exec_files; do
   fi
 done
 
-codesign --force --deep --verbose -s - $DIST/SciQLop.app
+#codesign --force --deep --verbose -s - $DIST/SciQLop.app
 
 cd $DIST
 create-dmg --overwrite --dmg-title=SciQLop SciQLop.app .
