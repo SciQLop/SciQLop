@@ -29,16 +29,18 @@ cat <<'EOT' >> $DIST/SciQLop.app/Contents/Info.plist
 <dict>
 	<key>CFBundleExecutable</key>
 	<string>SciQLop</string>
+  <key>CFBundleIdentifier</key>
+	<string>com.LPP.SciQLop</string>
 	<key>CFBundleName</key>
 	<string>SciQLop</string>
 	<key>CFBundleVersion</key>
 	<string>0.6</string>
-        <key>CFBundleIconFile</key>
-        <string>SciQLop.icns</string>
-        <key>NSSupportsAutomaticGraphicsSwitching</key>
-        <true/>
-        <key>NSHighResolutionCapable</key>
-        <true/>
+  <key>CFBundleIconFile</key>
+  <string>SciQLop.icns</string>
+  <key>NSSupportsAutomaticGraphicsSwitching</key>
+  <true/>
+  <key>NSHighResolutionCapable</key>
+  <true/>
 </dict>
 </plist>
 EOT
@@ -46,9 +48,13 @@ EOT
 cat <<'EOT' >> $DIST/SciQLop.app/Contents/MacOS/SciQLop
 #! /usr/bin/env bash
 export HERE=$(dirname $BASH_SOURCE)
-export PATH=$HERE/usr/local/bin/
-export LD_LIBRARY_PATH=$HERE/usr/local/lib
-$HERE/usr/local/bin/python3 -m SciQLop.app
+export PATH=$HERE/../Resources/usr/local/bin/
+export QT_PATH=$($HERE/../Resources/usr/local/bin/python3 -c "import PySide6,os;print(os.path.dirname(PySide6.__file__));")/Qt
+export LD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib
+export DYLD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib:$HERE/usr/local/bin/:$QT_PATH/lib
+export QT_PLUGIN_PATH=$QT_PATH/plugins
+export QTWEBENGINE_CHROMIUM_FLAGS="--single-process"
+$HERE/../Resources/usr/local/bin/python3 -m SciQLop.app
 EOT
 
 chmod +x $DIST/SciQLop.app/Contents/MacOS/SciQLop
@@ -59,12 +65,31 @@ curl https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tar.xz | tar xvz -
 cd $SCIQLOP_ROOT/dist/Python-3.10.14
 ./configure --enable-optimizations
 make -j
-make install DESTDIR=../SciQLop.app/Contents/MacOS 
+make install DESTDIR=../SciQLop.app/Contents/Resources
+cd -
 
 
-$DIST/SciQLop.app/Contents/MacOS/usr/local/bin/python3 -m pip install $SCIQLOP_ROOT/
+$DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install $SCIQLOP_ROOT/
 
 curl https://nodejs.org/dist/v20.12.1/node-v20.12.1-darwin-$ARCH.tar.gz | tar xvz -C $DIST
-rsync -avhu $DIST/node-v20.12.1-darwin-$ARCH/* $DIST/SciQLop.app/Contents/MacOS/usr/local/
+rsync -avhu $DIST/node-v20.12.1-darwin-$ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/
 
-create-dmg --overwrite --dmg-title=SciQLop-$ARCH $DIST/SciQLop.app $DIST
+exec_files=$(find $DIST/SciQLop.app -type f -perm +a=x)
+if [[ $ARCH == "arm64" ]]; then
+  export arch_to_remove="x86_64"
+else
+  export arch_to_remove="arm64"
+fi
+
+for e_file in $exec_files; do
+  if [[ $(file $e_file) == *Mach-O* ]]; then
+    lipo -remove $arch_to_remove -output $e_file $e_file
+  fi
+done
+
+codesign --force --deep --verbose -s - $DIST/SciQLop.app
+
+cd $DIST
+create-dmg --overwrite --dmg-title=SciQLop SciQLop.app .
+mv SciQLop*.dmg SciQLop-$ARCH.dmg
+cd -
