@@ -87,7 +87,11 @@ for e_file in $exec_files; do
   fi
 done
 
-#codesign --force --deep --verbose -s - $DIST/SciQLop.app
+if [[ -f /usr/local/lib/libintl.8.dylib ]]; then
+  cp /usr/local/lib/libintl.8.dylib $DIST/SciQLop.app/Contents/Resources/usr/local/lib/
+fi
+
+codesign --force --deep --verbose -s - $DIST/SciQLop.app
 
 cd $DIST
 create-dmg --overwrite --dmg-title=SciQLop SciQLop.app .
