@@ -59,6 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build_appimage, build_arm64_dmg, build_x86_64_dmg]
     steps:
+      - uses: actions/checkout@v4
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
