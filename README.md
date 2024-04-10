@@ -3,6 +3,8 @@
 </div>
 <br /><br />
 
+# [**Latest release**](https://github.com/SciQLop/SciQLop/releases/latest)
+
 # What Is SciQLop?
 
 **SciQLop** (**SCI**entific **Q**t application for **L**earning from **O**bservations of **P**lasmas) is a powerful and
@@ -68,6 +70,18 @@ SciQLop is also the right tool for teaching space physics and in situ spacecraft
 
 # How to install SciQLop
 
+## Mac Users
+
+Since SciQLop 0.7.1 we produce a Mac App Bundle that you can download from the [latest release](https://github.com/SciQLop/SciQLop/releases/latest) page just pick the 
+right architecture for your Mac (ARM64 for Apple M1/2/3 chips and x86_64 for intel ones).
+
+## Linux Users
+
+If you are using a Linux distribution, you may not need to install anything, you can just download the AppImage from the
+[latest release](https://github.com/SciQLop/SciQLop/releases/latest) and run it (after making it executable).
+
+## From sources
+
 **Warning**: Due to [this issue](https://github.com/grantjenks/python-diskcache/issues/295) you should not use any *
 *Python**
 version higher than **3.10.x**.
@@ -99,20 +113,6 @@ or
 python -m SciQLop.app
 ```
 
-## Mac Users
-
-The easiest way to install SciQLop now is to install [homebrew](https://brew.sh/) and then run:
-
-```Bash
-brew install python@3.10 node
-/opt/homebrew/bin/jupyter-lab build
-/opt/homebrew/bin/pip3.10 install sciqlop
-```
-
-## Linux Users
-
-If you are using a Linux distribution, you may not need to install anything, you can just download the AppImage from the
-[latest release](https://github.com/SciQLop/SciQLop/releases/latest) and run it (after making it executable).
 
 # Experimental Python API Examples:
 
