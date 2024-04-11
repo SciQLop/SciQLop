@@ -122,10 +122,11 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         biggest_area = None
         biggest_surface = 0
         for area in self.dock_manager.openedDockAreas():
-            surface = _surface(area.size())
-            if surface > biggest_surface and surface > 0 and area.isVisible():
-                biggest_surface = surface
-                biggest_area = area
+            if area is not None:
+                surface = _surface(area.size())
+                if surface > biggest_surface and surface > 0 and area.isVisible():
+                    biggest_surface = surface
+                    biggest_area = area
         return biggest_area
 
     def _find_biggest_dock_widget(self) -> QtAds.CDockWidget:
@@ -164,17 +165,19 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             doc = QtAds.CDockWidget(widget.windowTitle())
             doc.setWidget(widget)
             doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
-            dock_aera = self.dock_manager.addDockWidget(allowed_area, doc)
+            dock_area = None
             area = area or self._find_biggest_area()
             if area:
                 self.dock_manager.addDockWidgetTabToArea(doc, area)
+            else:
+                dock_area = self.dock_manager.addDockWidget(allowed_area, doc)
             if delete_on_close:
                 doc.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
                 if hasattr(widget, "delete_me"):
                     widget.delete_me.connect(doc.closeDockWidget)
             else:
                 self.viewMenu.addAction(doc.toggleViewAction())
-            return dock_aera
+            return dock_area
         return None
 
     def new_plot_panel(self, backend: str = "native") -> Union[TimeSyncPanel, MPLPanel, None]:
