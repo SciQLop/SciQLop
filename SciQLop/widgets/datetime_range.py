@@ -25,9 +25,9 @@ class DateTimeRangeWidget(QWidget):
         self.setLayout(QHBoxLayout())
         self._start_date = _QDateTimeEdit(self)
         self._stop_date = _QDateTimeEdit(self)
-        self.layout().addWidget(QLabel("TStart:"))
+        self.layout().addWidget(QLabel("From:"))
         self.layout().addWidget(self._start_date)
-        self.layout().addWidget(QLabel("TStop:"))
+        self.layout().addWidget(QLabel("To:"))
         self.layout().addWidget(self._stop_date)
         if default_time_range is not None:
             self._start_date.setDateTime(default_time_range.datetime_start)
