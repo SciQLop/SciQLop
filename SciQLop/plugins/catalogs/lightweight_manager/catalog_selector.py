@@ -207,11 +207,16 @@ class CatalogSelector(QTableView):
         self.verticalHeader().hide()
         self._createEventBtnDelegate = ButtonDelegate(self)
         self.setItemDelegate(self._createEventBtnDelegate)
-        self._createEventBtnDelegate.create_event.connect(self.create_event)
+        self._createEventBtnDelegate.create_event.connect(self._create_event)
         self._createEventBtnDelegate.change_color.connect(self.change_color)
 
     def minimumSizeHint(self):
         return QSize(0, 0)
+
+    def _create_event(self, catalog_uuid: str):
+        catalog = self.catalogs[catalog_uuid]
+        if catalog in self._selected_catalogs:
+            self.create_event.emit(catalog_uuid)
 
     def _catalog_selected(self, index: QModelIndex):
         item = self.model.itemFromIndex(index)
