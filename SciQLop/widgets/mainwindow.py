@@ -47,7 +47,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _setup_ui(self):
         QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FocusHighlighting, True)
-        QtAds.CDockManager.setAutoHideConfigFlags(QtAds.CDockManager.DefaultAutoHideConfig|QtAds.CDockManager.AutoHideShowOnMouseOver)
+        QtAds.CDockManager.setAutoHideConfigFlags(
+            QtAds.CDockManager.DefaultAutoHideConfig | QtAds.CDockManager.AutoHideShowOnMouseOver)
 
         if "WAYLAND_DISPLAY" in os.environ:
             QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerForceQWidgetTitleBar, True)
@@ -64,7 +65,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         default_time_range = TimeRange((datetime.utcnow() - timedelta(days=361)).timestamp(),
                                        (datetime.utcnow() - timedelta(days=360)).timestamp())
 
-        self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, WelcomePage())
+        self.welcome = WelcomePage()
+
+        self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self.welcome)
 
         self.productTree = PyProductTree(self)
         self.add_side_pan(self.productTree)
@@ -73,7 +76,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.workspace_manager.pushVariables({"main_window": self})
         self.workspace_manager.workspace_loaded.connect(lambda ws: self.setWindowTitle(f"SciQLop - {ws}"))
         self.workspace_manager.jupyterlab_started.connect(
-            lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url)))
+            lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url),
+                                               size_hint_from_content=False))
         self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
         self.logs = LogsWidget(self)
@@ -159,12 +163,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 container.setSize(widget.sizeHint().width())
             self.viewMenu.addAction(doc.toggleViewAction())
 
-    def addWidgetIntoDock(self, allowed_area, widget, area=None, delete_on_close: bool = False) -> Optional[
+    def addWidgetIntoDock(self, allowed_area, widget, area=None, delete_on_close: bool = False,
+                          size_hint_from_content: bool = True) -> Optional[
         QtAds.CDockAreaWidget]:
         if widget is not None:
             doc = QtAds.CDockWidget(widget.windowTitle())
             doc.setWidget(widget)
-            doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
+            if size_hint_from_content:
+                doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
             dock_area = None
             area = area or self._find_biggest_area()
             if area:
