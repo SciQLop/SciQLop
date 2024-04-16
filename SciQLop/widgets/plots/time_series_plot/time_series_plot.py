@@ -2,7 +2,7 @@ from typing import List, Optional, Any
 
 from PySide6.QtCore import QMimeData, Qt, QMargins, Signal
 from PySide6.QtGui import QColorConstants, QColor, QMouseEvent
-from PySide6.QtWidgets import QVBoxLayout, QFrame, QWidget, QLabel
+from PySide6.QtWidgets import QVBoxLayout, QFrame
 from SciQLopPlots import SciQLopPlot, QCustomPlot, QCP, QCPAxisTickerDateTime, QCPAxis, QCPLegend, \
     QCPAbstractLegendItem, \
     QCPMarginGroup, \
@@ -15,7 +15,7 @@ from SciQLop.backend.pipelines_model.data_provider import providers
 from SciQLop.backend.pipelines_model.graph import Graph
 from SciQLop.backend.products_model.product_node import ProductNode
 from SciQLop.widgets.plots.colormap_graph import ColorMapGraph
-from SciQLop.widgets.plots.line_graph import LineGraph
+from SciQLop.widgets.plots.time_series_plot.line_graph import LineGraph
 from SciQLop.widgets.drag_and_drop import DropHandler, DropHelper
 from SciQLop.backend import Product
 from SciQLop.backend import TimeRange
@@ -27,7 +27,6 @@ from SciQLop.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
 from SciQLop.backend import sciqlop_logging
 from SciQLop.inspector.inspector import register_inspector, Inspector
 from SciQLop.inspector.node import Node
-from SciQLop.widgets.settings_delegates import register_delegate
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -217,7 +216,7 @@ class TimeSeriesPlot(QFrame):
             self.graph_list_changed.emit()
 
     def _register_new_graph(self, graph: Graph):
-        self.time_range_changed.connect(graph.xRangeChanged)
+        self.time_range_changed.connect(graph.time_range_changed)
         graph.destroyed.connect(self.graph_list_changed)
 
     def _add_multi_line_graph(self, provider: DataProvider, product: ProductNode, components: List[str]):

@@ -6,8 +6,8 @@ from speasy.products import SpeasyVariable
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
 from SciQLop.backend.pipelines_model.graph import Graph
 from SciQLop.backend.products_model.product_node import ProductNode
-from ...backend import sciqlop_logging
-from ...backend.enums import GraphType
+from SciQLop.backend import sciqlop_logging
+from SciQLop.backend.enums import GraphType
 
 log = sciqlop_logging.getLogger(__name__)
 

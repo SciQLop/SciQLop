@@ -1,3 +1,4 @@
+import numpy as np
 from PySide6.QtCore import QObject, Signal, Slot
 from speasy.products import SpeasyVariable
 from abc import ABC, abstractmethod, ABCMeta
@@ -6,17 +7,17 @@ from typing import List, Protocol, runtime_checkable, Optional, Any, Dict
 from SciQLop.backend import TimeRange
 from SciQLop.backend.enums import GraphType, graph_type_repr
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
-from .data_pipeline import DataPipeline
-from .. import sciqlop_logging
-from ..products_model.product_node import ProductNode
-from ...inspector.inspector import register_inspector, Inspector
-from ...inspector.node import Node
+from SciQLop.backend.pipelines_model.data_pipeline import DataPipeline
+from SciQLop.backend import sciqlop_logging
+from SciQLop.backend.products_model.product_node import ProductNode
+from SciQLop.inspector.inspector import register_inspector, Inspector
+from SciQLop.inspector.node import Node
 
 log = sciqlop_logging.getLogger(__name__)
 
 
 class Graph(QObject):
-    xRangeChanged = Signal(TimeRange)
+    time_range_changed = Signal(TimeRange)
     _graph = None
     please_delete_me = Signal(object)
 
@@ -26,7 +27,7 @@ class Graph(QObject):
         self.setObjectName(graph_type_repr(graph_type))
         self.pipeline = DataPipeline(parent=self, provider=provider, product=product, time_range=parent.time_range)
         self.pipeline.please_delete_me.connect(self.delete)
-        self.xRangeChanged.connect(self.pipeline.get_data)
+        self.time_range_changed.connect(self.pipeline.get_data)
         self._graph_type = graph_type
         self._data_order = provider.data_order
         self._product = product
@@ -44,7 +45,10 @@ class Graph(QObject):
         if self._graph:
             raise ValueError("Graph object already set")
         self._graph = graph
-        self._graph.destroyed.connect(self._graph_destroyed)
+        if hasattr(self._graph, "destroyed"):
+            self._graph.destroyed.connect(self._graph_destroyed)
+        if hasattr(self._graph, "please_delete_me"):
+            self._graph.please_delete_me.connect(lambda x: x.deleteLater())
 
     @property
     def parent_plot(self):
@@ -57,10 +61,13 @@ class Graph(QObject):
     def plot(self, data: SpeasyVariable):
         pass
 
+    def plot_xy(self, x: np.ndarray, y: np.ndarray):
+        pass
+
     @Slot()
     def _close_pipeline(self):
         if self.pipeline:
-            self.xRangeChanged.disconnect()
+            self.time_range_changed.disconnect()
             self.pipeline.please_delete_me.disconnect()
             self.pipeline.deleteLater()
             self.pipeline = None
@@ -68,7 +75,8 @@ class Graph(QObject):
     def _close_graph(self):
         if self._graph:
             # self._graph.destroyed.disconnect()
-            self._graph.deleteLater()
+            if hasattr(self._graph, "deleteLater"):
+                self._graph.deleteLater()
         self._graph = None
 
     @Slot()

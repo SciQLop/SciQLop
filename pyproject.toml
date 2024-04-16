@@ -28,7 +28,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10"
 ]
-dependencies = ['numpy', 'SciQLopPlots>=0.6.5', 'speasy>=1.2.2', 'qtconsole', 'tscat_gui==0.2.0', 'tscat==0.2.0', "humanize", 'platformdirs',
+dependencies = ['numpy', 'SciQLopPlots==0.7.0', 'speasy>=1.2.2', 'qtconsole', 'tscat_gui==0.2.0', 'tscat==0.2.0', "humanize", 'platformdirs',
     'seaborn', "scipy", "pyside6==6.6.2", "shiboken6==6.6.2", "PySide6-QtAds==4.2.1", "IPython", "ipykernel", "jupyterlab>=4,!=4.1.0",
     "notebook", "ipympl", "qasync", "jinja2"]
 [project.urls]
