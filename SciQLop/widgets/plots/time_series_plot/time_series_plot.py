@@ -7,7 +7,6 @@ from SciQLopPlots import SciQLopPlot, QCustomPlot, QCP, QCPAxisTickerDateTime, Q
     QCPAbstractLegendItem, \
     QCPMarginGroup, \
     QCPColorScale, SciQLopGraph
-from seaborn import color_palette
 
 from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
@@ -27,6 +26,8 @@ from SciQLop.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
 from SciQLop.backend import sciqlop_logging
 from SciQLop.inspector.inspector import register_inspector, Inspector
 from SciQLop.inspector.node import Node
+from SciQLop.widgets.plots.palette import Palette
+from SciQLop.widgets.plots.abstract_plot import Plot, MetaPlot
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -58,7 +59,7 @@ def _configure_plot(plot: SciQLopPlot):
     plot.setAutoAddPlottableToLegend(False)
 
 
-class TimeSeriesPlot(QFrame):
+class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
     time_range_changed = Signal(TimeRange)
     vertical_axis_range_changed = Signal(float, float)
     graph_list_changed = Signal()
@@ -77,8 +78,7 @@ class TimeSeriesPlot(QFrame):
                                            DropHandler(mime_type=TIME_RANGE_MIME_TYPE,
                                                        callback=self._set_time_range)])
 
-        self._palette = color_palette()
-        self._palette_index = 0
+        self._palette = Palette()
         _configure_plot(self._plot)
         self.setContentsMargins(0, 0, 0, 0)
         self.layout().setContentsMargins(0, 0, 0, 0)
@@ -176,11 +176,7 @@ class TimeSeriesPlot(QFrame):
         return self._plot.graphAt(index)
 
     def generate_colors(self, count: int) -> List[QColor]:
-        index = self._palette_index
-        self._palette_index += count
-        return [
-            _to_qcolor(*self._palette[(index + i) % len(self._palette)]) for i in range(count)
-        ]
+        return [self._palette.next() for i in range(count)]
 
     def _plot_from_mime_data(self, mime_data: QMimeData) -> bool:
         products: List[Product] = decode_mime(mime_data)

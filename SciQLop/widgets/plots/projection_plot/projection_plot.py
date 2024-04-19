@@ -19,6 +19,7 @@ from SciQLop.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
 from .trajectory_graph import TrajectoryGraph, ModelGraph
 from SciQLop.inspector.inspector import register_inspector, Inspector
 from SciQLop.inspector.node import Node
+from SciQLop.widgets.plots.abstract_plot import Plot, MetaPlot
 
 
 def _to_qcolor(r: float, g: float, b: float):
@@ -44,7 +45,7 @@ def _configure_plot(plot: SciQLopPlot):
     plot.setAutoAddPlottableToLegend(False)
 
 
-class ProjectionPlot(QFrame):
+class ProjectionPlot(QFrame, Plot, metaclass=MetaPlot):
     time_range_changed = Signal(TimeRange)
     graph_list_changed = Signal()
 
