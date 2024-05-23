@@ -43,7 +43,7 @@ def _configure_plot(plot: SciQLopPlot):
     plot.legend.setVisible(True)
     plot.legend.setSelectableParts(QCPLegend.SelectablePart.spItems)
     date_ticker = QCPAxisTickerDateTime()
-    date_ticker.setDateTimeFormat("yyyy/MM/dd \nhh:mm:ss")
+    date_ticker.setDateTimeFormat("yyyy/MM/dd \nhh:mm:ss.zzz")
     date_ticker.setDateTimeSpec(Qt.UTC)
     plot.xAxis.setTicker(date_ticker)
     plot.plotLayout().setMargins(QMargins(0, 0, 0, 0))
