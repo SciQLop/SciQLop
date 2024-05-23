@@ -1,6 +1,8 @@
 import os
 from datetime import datetime, timedelta
 from typing import Optional, Union, List, Any
+
+import humanize
 import psutil
 
 import PySide6QtAds as QtAds
@@ -108,19 +110,48 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.add_side_pan(self.inspector_ui)
         self.panels_list_changed.connect(self._inspector_model.root_node.changed)
 
-        self._mem_usage = QtWidgets.QProgressBar(self._statusbar)
+        self._mem_usage = QtWidgets.QProgressBar()
         self._sys_mem = psutil.virtual_memory().total // 1024 ** 2
         self._mem_usage.setMaximum(self._sys_mem)
-        self._statusbar.addPermanentWidget(self._mem_usage)
         self._mem_usage.setFormat(f"System memory usage: %v / {self._sys_mem:.2f} MB")
+
+        self._cpu_usage = QtWidgets.QProgressBar()
+        self._cpu_usage.setFormat("CPU usage: %v%")
+
+        self._network_usage_send_speed = QtWidgets.QLabel()
+        self._network_usage_bytes_sent = psutil.net_io_counters().bytes_sent
+        self._network_usage_recv_speed = QtWidgets.QLabel()
+        self._network_usage_bytes_recv = psutil.net_io_counters().bytes_recv
+
+        self._statusbar.addPermanentWidget(self._network_usage_recv_speed)
+        self._statusbar.addPermanentWidget(self._network_usage_send_speed)
+        self._statusbar.addPermanentWidget(self._cpu_usage)
+        self._statusbar.addPermanentWidget(self._mem_usage)
+
         self._refresh_mem_timer = QtCore.QTimer(self)
-        self._refresh_mem_timer.timeout.connect(self._update_mem_usage)
+        self._refresh_mem_timer.timeout.connect(self._update_usage)
         self._refresh_mem_timer.start(1000)
 
         self._center_and_maximise_on_screen()
 
+    def _update_usage(self):
+        self._update_cpu_usage()
+        self._update_mem_usage()
+        self._update_network_usage()
+
+    def _update_cpu_usage(self):
+        self._cpu_usage.setValue(psutil.cpu_percent())
+
     def _update_mem_usage(self):
         self._mem_usage.setValue(psutil.virtual_memory().used // 1024 ** 2)
+
+    def _update_network_usage(self):
+        self._network_usage_send_speed.setText(
+            f"Network TX: {humanize.naturalsize(psutil.net_io_counters().bytes_sent - self._network_usage_bytes_sent)}/s")
+        self._network_usage_recv_speed.setText(
+            f"Network RX: {humanize.naturalsize(psutil.net_io_counters().bytes_recv - self._network_usage_bytes_recv)}/s")
+        self._network_usage_bytes_sent = psutil.net_io_counters().bytes_sent
+        self._network_usage_bytes_recv = psutil.net_io_counters().bytes_recv
 
     def _find_biggest_area(self) -> QtAds.CDockAreaWidget:
         biggest_area = None
