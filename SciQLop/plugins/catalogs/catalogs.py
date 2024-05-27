@@ -6,7 +6,6 @@ from PySide6.QtWidgets import QToolBar
 from tscat_gui import TSCatGUI
 
 from SciQLop.widgets.mainwindow import SciQLopMainWindow
-from .lightweight_manager import LightweightManager
 
 
 def zoom_out(start: datetime, stop: datetime, factor: float):
@@ -34,7 +33,8 @@ class Plugin(QObject):
     def __init__(self, main_window: SciQLopMainWindow):
         super(Plugin, self).__init__(main_window)
         self.manager_ui = TSCatGUI()
-        self.lightweight_manager = LightweightManager(main_window=main_window)
+        from .lightweight_manager import LightweightManager
+        self.lightweight_manager = LightweightManager(main_window=main_window, manager_ui=self.manager_ui)
         self.show_catalog = CatalogGUISpawner(self.manager_ui)
         self.main_window = main_window
         self.last_event = None

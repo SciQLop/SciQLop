@@ -2,7 +2,8 @@ import os
 from typing import List, Optional
 from enum import Enum
 
-import tscat
+# import tscat
+from tscat_gui import TSCatGUI
 from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QCheckBox, QGridLayout, QPushButton, \
@@ -14,7 +15,7 @@ from SciQLop.widgets.mainwindow import SciQLopMainWindow
 from SciQLop.widgets.plots.time_span import TimeSpan
 from SciQLop.widgets.plots.time_span_controller import TimeSpanController
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel
-from .catalog_selector import CatalogItem, CatalogSelector
+from .catalog_selector import CatalogSelector
 from .event import Event
 from .event_selector import EventSelector
 from .event_span import EventSpan
@@ -50,8 +51,9 @@ class LightweightManager(QWidget):
     main_window: SciQLopMainWindow = None
     spans: List[TimeSpan] = []
 
-    def __init__(self, main_window: SciQLopMainWindow, parent=None):
+    def __init__(self, main_window: SciQLopMainWindow, manager_ui: TSCatGUI, parent=None):
         super().__init__(parent=parent)
+        self.manager_ui = manager_ui
         self._current_interaction_mode = InteractionMode.Nothing
         self.setLayout(QGridLayout())
         self.main_window = main_window
@@ -68,10 +70,7 @@ class LightweightManager(QWidget):
         self.event_selector = EventSelector(self)
         self.save_button = QPushButton(self)
         self.save_button.setIcon(QIcon(":/icons/theme/save.png"))
-        self.refresh_button = QPushButton(self)
-        self.refresh_button.setText("Refresh")
         self.layout().addWidget(self.save_button, 0, 0, 1, 1)
-        self.layout().addWidget(self.refresh_button, 0, 1, 1, 1)
         self.layout().addWidget(self.panel_selector, 1, 0, 1, -1)
         self.layout().addWidget(QLabel("Interaction mode", self), 2, 0, 1, 1)
         self.layout().addWidget(self.interaction_mode, 2, 1, 1, -1)
@@ -84,8 +83,7 @@ class LightweightManager(QWidget):
         self.setWindowTitle("Catalogs")
 
         self.save_button.clicked.connect(self.save)
-        self.refresh_button.clicked.connect(self.refresh)
-        self.catalog_selector.catalog_selected.connect(self.catalog_selected)
+        self.catalog_selector.catalog_selection_changed.connect(self.catalog_selection_changed)
         self.catalog_selector.create_event.connect(self.create_event)
         self.catalog_selector.change_color.connect(self.update_colors)
         self.panel_selector.panel_selection_changed.connect(self.panel_selected)
@@ -100,12 +98,7 @@ class LightweightManager(QWidget):
 
     @Slot()
     def save(self):
-        tscat.save()
-
-    @Slot()
-    def refresh(self):
-        self.event_selector.update_list([])
-        self.catalog_selector.update_list()
+        self.manager_ui.save()
 
     @Slot()
     def update_panels_list(self, panels):
@@ -113,12 +106,13 @@ class LightweightManager(QWidget):
                                                                           map(self.main_window.plot_panel, panels)))))
 
     @Slot()
-    def catalog_selected(self, catalogs: List[CatalogItem]):
-        events = []
-        for c in catalogs:
-            events += [Event(e, c.uuid) for e in c.events]
-        self.event_selector.update_list(events)
-        self.update_spans()
+    def catalog_selection_changed(self, catalogs: List[str]):
+        print(catalogs)
+        # events = []
+        # for c in catalogs:
+        #    events += [Event(e, c.uuid) for e in c.events]
+        # self.event_selector.update_list(events)
+        # self.update_spans()
 
     @Slot()
     def create_event(self, catalog_uid: str):

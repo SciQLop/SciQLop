@@ -1,10 +1,16 @@
-from typing import Mapping, Union, List
+from typing import Mapping, Union, List, Any
 
-import tscat
-from PySide6.QtCore import Signal, QModelIndex, QSize, QPersistentModelIndex, QAbstractItemModel, Slot
-from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QPainter, QColor
-from PySide6.QtWidgets import QTableView, QAbstractScrollArea, QSizePolicy, QPushButton, QHeaderView, \
+from PySide6.QtCore import Signal, QModelIndex, QSize, QPersistentModelIndex, QAbstractItemModel, Slot, \
+    QAbstractProxyModel, QSortFilterProxyModel, QIdentityProxyModel
+from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QPainter, QColor, QBrush, QPen
+from PySide6.QtWidgets import QTreeView, QAbstractScrollArea, QSizePolicy, QPushButton, QHeaderView, \
     QStyledItemDelegate, QWidget, QStyleOptionViewItem, QAbstractItemView, QStyle, QColorDialog
+
+from SciQLop.backend.common.ExtraColumnsProxyModel import ExtraColumnsProxyModel
+
+from tscat_gui.tscat_driver.model import tscat_model
+from tscat_gui.model_base.constants import EntityRole, UUIDDataRole
+from tscat_gui.tscat_driver.actions import SetAttributeAction
 
 
 # stolen from https://qtadventures.wordpress.com/2012/02/04/adding-button-to-qviewtable/
@@ -28,7 +34,11 @@ class ButtonDelegate(QStyledItemDelegate):
 
     @Slot()
     def _handle_btn_pressed(self):
-        self.create_event.emit(self._currentEditedCellIndex.data(Qt.ItemDataRole.UserRole))
+        uuid = self._currentEditedCellIndex.data(UUIDDataRole)
+        checked = Qt.CheckState(
+            self._currentEditedCellIndex.sibling(self._currentEditedCellIndex.row(), 0).data(Qt.CheckStateRole))
+        if checked == Qt.CheckState.Checked and uuid is not None:
+            self.create_event.emit(uuid)
 
     @staticmethod
     def _is_column(index: Union[QModelIndex, QPersistentModelIndex], col_number: int):
@@ -36,22 +46,28 @@ class ButtonDelegate(QStyledItemDelegate):
 
     def createEditor(self, parent: QWidget, option: QStyleOptionViewItem,
                      index: Union[QModelIndex, QPersistentModelIndex]) -> QWidget:
+        uuid = index.data(UUIDDataRole)
         if self._is_column(index, 1):
-            btn = QPushButton(parent)
-            self._update_button(index, btn)
-            btn.pressed.connect(self._handle_btn_pressed)
-            return btn
+            if uuid is not None:
+                btn = QPushButton(parent)
+                btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+                self._update_button(index, btn)
+                btn.pressed.connect(self._handle_btn_pressed)
+                return btn
+            return None
         elif self._is_column(index, 2):
-            d = QColorDialog(index.data(Qt.ItemDataRole.BackgroundRole))
-            d.setOption(QColorDialog.ColorDialogOption.ShowAlphaChannel)
-            return d
+            if uuid is not None:
+                d = QColorDialog(index.data(Qt.ItemDataRole.BackgroundRole))
+                d.setOption(QColorDialog.ColorDialogOption.ShowAlphaChannel)
+                return d
+            else:
+                return None
         else:
             return QStyledItemDelegate.createEditor(self, parent, option, index)
 
     def setEditorData(self, editor: QWidget, index: Union[QModelIndex, QPersistentModelIndex]) -> None:
         if self._is_column(index, 1):
             btn: QPushButton = editor
-            btn.setProperty("data_value", index.data())
         elif self._is_column(index, 2):
             dial: QColorDialog = editor
         else:
@@ -61,7 +77,6 @@ class ButtonDelegate(QStyledItemDelegate):
                      index: Union[QModelIndex, QPersistentModelIndex]) -> None:
         if self._is_column(index, 1):
             btn: QPushButton = editor
-            model.setData(index, btn.property("data_value"))
         elif self._is_column(index, 2):
             dial: QColorDialog = editor
             model.setData(index, editor.currentColor(), Qt.ItemDataRole.BackgroundRole)
@@ -71,13 +86,21 @@ class ButtonDelegate(QStyledItemDelegate):
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem,
               index: Union[QModelIndex, QPersistentModelIndex]) -> None:
-        if self._is_column(index, 1):
+        if self._is_column(index, 1) and index.data(Qt.DisplayRole) == "Add event":
             self._btn.setGeometry(option.rect)
             self._update_button(index, self._btn)
-            if option.state == QStyle.StateFlag.State_Selected:
-                painter.fillRect(option.rect, option.palette.hignlight)
+            if option.state & QStyle.StateFlag.State_Selected == QStyle.StateFlag.State_Selected:
+                painter.fillRect(option.rect, option.palette.highlight())
             px = self._btn.grab()
             painter.drawPixmap(option.rect.x(), option.rect.y(), px)
+        elif self._is_column(index, 2):
+            color = index.data(Qt.ItemDataRole.BackgroundRole)
+            if color is not None:
+                painter.save()
+                painter.fillRect(option.rect, QBrush(color))
+                painter.setPen(QPen(option.palette.mid().color(), 2))
+                painter.drawRect(option.rect)
+                painter.restore()
         else:
             QStyledItemDelegate.paint(self, painter, option, index)
 
@@ -87,7 +110,7 @@ class ButtonDelegate(QStyledItemDelegate):
 
     @Slot()
     def cellEntered(self, index: QModelIndex):
-        if self._is_column(index, 1):
+        if self._is_column(index, 1) and index.data(Qt.DisplayRole) == "Add event":
             if self._edit_mode:
                 self.parent().closePersistentEditor(self._currentEditedCellIndex)
             self.parent().openPersistentEditor(index)
@@ -98,161 +121,82 @@ class ButtonDelegate(QStyledItemDelegate):
                 self.parent().closePersistentEditor(self._currentEditedCellIndex)
 
 
-class CreateEventItem(QStandardItem):
-    def __init__(self, *args, **kwargs):
-        QStandardItem.__init__(self, *args, **kwargs)
-        self.setText("Add event")
+class CatalogsModelWithExtraColumns(ExtraColumnsProxyModel):
+
+    def __init__(self, source_model, parent=None):
+        super().__init__(parent=parent, columns=["Add event", "Color"], first_column_item_checkable=True)
+        self.setSourceModel(source_model)
+
+    def extra_column_flags(self, index: QModelIndex) -> Qt.ItemFlag:
+        return Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable
+
+    def extra_column_data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> Any:
+        if index.isValid():
+            source_item = self.mapToSource(self.sibling(index.row(), 0, index))
+            if source_item is not None:
+                source_catalog = source_item.data(EntityRole)
+                if source_catalog is not None:
+                    if index.column() == 1 and role == Qt.DisplayRole:
+                        return "Add event"
+                    elif index.column() == 2 and role == Qt.DisplayRole:
+                        if 'color' not in source_catalog.variable_attributes():
+                            source_catalog.color = QColor(100, 100, 100, 50).name(QColor.NameFormat.HexArgb)
+                    elif index.column() == 2 and role == Qt.BackgroundRole:
+                        return QColor.fromString(source_catalog.color)
+                    elif role == UUIDDataRole:
+                        return source_catalog.uuid
+                    elif role == EntityRole:
+                        return source_catalog
+
+    def set_extra_column_data(self, index: QModelIndex, value: Any, role: int = Qt.ItemDataRole.EditRole) -> bool:
+        if index.isValid():
+            source_item = self.mapToSource(self.sibling(index.row(), 0, index))
+            if source_item is not None:
+                if index.column() == 2:
+                    source_catalog = source_item.data(UUIDDataRole)
+                    if source_catalog is not None:
+                        tscat_model.do(
+                            SetAttributeAction(user_callback=None, uuids=[source_catalog], name="color",
+                                               values=[value.name(QColor.NameFormat.HexArgb)]))
+
+    def set_extra_column_flags(self, index: QModelIndex, flags: Qt.ItemFlag) -> bool:
+        return False
 
 
-class CatalogColorItem(QStandardItem):
-    _tscat_obj: tscat._Catalogue
-
-    def __init__(self, catalog: tscat._Catalogue):
-        QStandardItem.__init__(self)
-        self.tscat_instance = catalog
-
-    def setData(self, value, role=Qt.ItemDataRole.UserRole + 1) -> None:
-        QStandardItem.setData(self, value, role)
-        if role == Qt.ItemDataRole.BackgroundRole:
-            self.tscat_instance.color = value.name(QColor.NameFormat.HexArgb)
-
-    @property
-    def tscat_instance(self):
-        return self._tscat_obj
-
-    @tscat_instance.setter
-    def tscat_instance(self, tscat_obj):
-        self._tscat_obj = tscat_obj
-        self.setData(tscat_obj.uuid, Qt.UserRole)
-        if 'color' not in tscat_obj.variable_attributes():
-            tscat_obj.color = QColor(100, 100, 100, 50).name(QColor.NameFormat.HexArgb)
-        self.setData(QColor.fromString(tscat_obj.color), Qt.ItemDataRole.BackgroundRole)
-
-
-class CatalogItem(QStandardItem):
-    _tscat_obj: tscat._Catalogue
-    _events: List[tscat._Event]
-
-    def __init__(self, catalog: tscat._Catalogue):
-        QStandardItem.__init__(self)
-        self._add_event = CreateEventItem()
-        self._color_item = CatalogColorItem(catalog)
-        self.tscat_instance = catalog
-        self.setCheckable(True)
-        self.setCheckState(Qt.Unchecked)
-
-    def setData(self, value, role=Qt.ItemDataRole.UserRole + 1) -> None:
-        QStandardItem.setData(self, value, role)
-        if self.text() != self.tscat_instance.name:
-            self.tscat_instance.name = self.text()
-
-    @property
-    def tscat_instance(self):
-        return self._tscat_obj
-
-    @tscat_instance.setter
-    def tscat_instance(self, tscat_obj):
-        self._tscat_obj = tscat_obj
-        self._events = tscat.get_events(tscat_obj)
-        self.setText(tscat_obj.name)
-        self.setData(tscat_obj.uuid, Qt.UserRole)
-        self._add_event.setData(tscat_obj.uuid, Qt.UserRole)
-        self._color_item.tscat_instance = tscat_obj
-
-    @property
-    def uuid(self):
-        return self._tscat_obj.uuid
-
-    @property
-    def name(self):
-        return self._tscat_obj.name
-
-    @property
-    def events(self):
-        return self._events
-
-    @property
-    def create_event_item(self):
-        return self._add_event
-
-    @property
-    def color_item(self):
-        return self._color_item
-
-    @property
-    def color(self) -> QColor:
-        return self._color_item.data(Qt.ItemDataRole.BackgroundRole)
-
-    def __str__(self):
-        return self.name
-
-
-class CatalogSelector(QTableView):
-    catalog_selected = Signal(list)
+class CatalogSelector(QTreeView):
+    catalog_selection_changed = Signal(list)
     create_event = Signal(str)
     change_color = Signal(QColor, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.model = QStandardItemModel()
-        self.catalogs: Mapping[str, CatalogItem] = {}
+        self._root = tscat_model.tscat_root()
+        self._model = CatalogsModelWithExtraColumns(self._root, self)
         self._selected_catalogs = []
-        self.setModel(self.model)
-        self.update_list()
-        self.clicked.connect(self._catalog_selected)
+        self.setModel(self._model)
+        self.setHeaderHidden(True)
+        self.setWordWrap(False)
+        self.header().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.setSizePolicy(QSizePolicy.Minimum, QSizePolicy.Minimum)
 
-        self.horizontalHeader().hide()
-        self.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-        self.verticalHeader().hide()
         self._createEventBtnDelegate = ButtonDelegate(self)
         self.setItemDelegate(self._createEventBtnDelegate)
-        self._createEventBtnDelegate.create_event.connect(self._create_event)
-        self._createEventBtnDelegate.change_color.connect(self.change_color)
+        self._createEventBtnDelegate.create_event.connect(self.create_event)
+
+        self.model().dataChanged.connect(self._resize_columns)
+        self._model.checkStateChanged.connect(self._check_state_changed)
 
     def minimumSizeHint(self):
         return QSize(0, 0)
 
-    def _create_event(self, catalog_uuid: str):
-        catalog = self.catalogs[catalog_uuid]
-        if catalog in self._selected_catalogs:
-            self.create_event.emit(catalog_uuid)
+    def _resize_columns(self):
+        for i in range(3):
+            self.resizeColumnToContents(i)
 
-    def _catalog_selected(self, index: QModelIndex):
-        item = self.model.itemFromIndex(index)
-        if item.column() == 0:
-            selected_catalog = self.catalogs[item.data(Qt.UserRole)]
-            if selected_catalog:
-                if item.checkState() == Qt.CheckState.Checked:
-                    if selected_catalog not in self._selected_catalogs:
-                        self._selected_catalogs.append(selected_catalog)
-                        self.catalog_selected.emit(self._selected_catalogs)
-                else:
-                    if selected_catalog in self._selected_catalogs:
-                        self._selected_catalogs.remove(selected_catalog)
-                        self.catalog_selected.emit(self._selected_catalogs)
-
-    def reload_catalog(self, catalog_uuid):
-        c = tscat.get_catalogues(tscat.filtering.UUID(catalog_uuid))[0]
-        self.catalogs[catalog_uuid].tscat_instance = c
-        print("reload !")
-        if self.catalogs[catalog_uuid] in self._selected_catalogs:
-            print("Update !")
-            self.catalog_selected.emit(self._selected_catalogs)
-
-    def update_list(self):
-        self.model.clear()
-        self.catalogs = {c.uuid: CatalogItem(c) for c in tscat.get_catalogues()}
-        selected_catalogs = []
-        for index, catalog in enumerate(self.catalogs.values()):
-            if any(filter(lambda c: c.uuid == catalog.uuid, self._selected_catalogs)):
-                catalog.setCheckState(Qt.CheckState.Checked)
-                selected_catalogs.append(catalog)
-            self.model.setItem(index, 0, catalog)
-            self.model.setItem(index, 1, catalog.create_event_item)
-            self.model.setItem(index, 2, catalog.color_item)
-        self._selected_catalogs = selected_catalogs
-        self.catalog_selected.emit(self._selected_catalogs)
-
-    def color(self, catalog_uid):
-        return self.catalogs[catalog_uid].color
+    @Slot()
+    def _check_state_changed(self, index: QModelIndex, state: Qt.CheckState):
+        if Qt.CheckState(state) == Qt.CheckState.Checked:
+            self._selected_catalogs.append(index.data(UUIDDataRole))
+        else:
+            self._selected_catalogs.remove(index.data(UUIDDataRole))
+        self.catalog_selection_changed.emit(self._selected_catalogs)
