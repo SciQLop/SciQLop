@@ -1,11 +1,14 @@
 from typing import List, Mapping
 
-from PySide6.QtCore import Signal, QItemSelection, Slot, QItemSelectionModel
+from PySide6.QtCore import Signal, QItemSelection, Slot, QItemSelectionModel, QConcatenateTablesProxyModel, \
+    QAbstractItemModel, QSortFilterProxyModel
 from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QKeyEvent
-from PySide6.QtWidgets import QComboBox, QListView, QSizePolicy
+from PySide6.QtWidgets import QComboBox, QListView, QSizePolicy, QTableView, QAbstractItemView
 
 from SciQLop.backend import TimeRange
 from .event import Event
+
+from tscat_gui.tscat_driver.model import tscat_model
 
 
 class EventItem(QStandardItem):
@@ -16,41 +19,45 @@ class EventItem(QStandardItem):
         self.setText(f"{new_range.datetime_start} -> {new_range.datetime_stop} ")
 
 
-class EventSelector(QListView):
+class EventsModel(QConcatenateTablesProxyModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+    @Slot()
+    def catalog_selection_changed(self, catalogs: List[str]):
+        models = set(map(tscat_model.catalog, catalogs))
+        sources = set(self.sourceModels())
+        for model in sources - models:
+            self.removeSourceModel(model)
+        for model in models - sources:
+            self.addSourceModel(model)
+
+
+class EventSelector(QTableView):
     event_selected = Signal(object)
     delete_events = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._model = QStandardItemModel()
-        self.setModel(self._model)
-        self._events: Mapping[str, Event] = {}
-        self._items: Mapping[str, EventItem] = {}
-        self.selectionModel().selectionChanged.connect(self._event_selected)
+        self._model = EventsModel(parent=self)
+        self._sort_model = QSortFilterProxyModel(parent=self)
+        self._sort_model.setSourceModel(self._model)
+        self.setModel(self._sort_model)
+        self.setSortingEnabled(True)
+        self.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+
+        # self.selectionModel().selectionChanged.connect(self._event_selected)
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
 
-    def update_list(self, events: List[Event]):
-        self._events = {}
-        self._items = {}
-        self._model.clear()
-        for index, e in enumerate(sorted(events, key=lambda ev: ev.start + (ev.stop - ev.start))):
-            item = EventItem()
-            item.setData(e.uuid, Qt.ItemDataRole.UserRole)
-            item.set_range(e.range)
-            e.range_changed.connect(item.set_range)
-            self._model.setItem(index, item)
-            self._events[e.uuid] = e
-            self._items[e.uuid] = item
+    @Slot()
+    def catalog_selection_changed(self, catalogs: List[str]):
+        self._model.catalog_selection_changed(catalogs)
 
     def _selected_uuids(self) -> List[str]:
         return list(map(lambda idx: self._model.itemFromIndex(idx).data(Qt.ItemDataRole.UserRole)
                         , self.selectionModel().selectedIndexes()))
-
-    def _event_selected(self, selected: QItemSelection, deselected: QItemSelection):
-        indexes = selected.indexes()
-        if len(indexes) and len(self._events):
-            item = self._model.itemFromIndex(indexes[0])
-            self.event_selected.emit(self._events[item.data(Qt.ItemDataRole.UserRole)])
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Delete:
@@ -60,10 +67,6 @@ class EventSelector(QListView):
             event.accept()
         else:
             QListView.keyPressEvent(self, event)
-
-    @property
-    def events(self):
-        return self._events.values()
 
     @Slot()
     def select_event(self, uuid: str):

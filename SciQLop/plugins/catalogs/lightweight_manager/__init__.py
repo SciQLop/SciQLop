@@ -89,6 +89,7 @@ class LightweightManager(QWidget):
         self.panel_selector.panel_selection_changed.connect(self.panel_selected)
         self.event_selector.event_selected.connect(self.event_selected)
         self.event_selector.delete_events.connect(self.delete_events)
+        self.catalog_selector.catalog_selection_changed.connect(self.event_selector.catalog_selection_changed)
         self.interaction_mode.currentTextChanged.connect(self._interactions_mode_change)
 
         self._time_span_ctrlr: Optional[TimeSpanController] = None
