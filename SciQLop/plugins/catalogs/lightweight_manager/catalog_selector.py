@@ -44,11 +44,14 @@ class ButtonDelegate(QStyledItemDelegate):
     def _is_column(index: Union[QModelIndex, QPersistentModelIndex], col_number: int):
         return index.column() == col_number
 
+    def checked(self, index: Union[QModelIndex, QPersistentModelIndex]):
+        return Qt.CheckState(index.sibling(index.row(), 0).data(Qt.CheckStateRole)) == Qt.CheckState.Checked
+
     def createEditor(self, parent: QWidget, option: QStyleOptionViewItem,
                      index: Union[QModelIndex, QPersistentModelIndex]) -> QWidget:
         uuid = index.data(UUIDDataRole)
         if self._is_column(index, 1):
-            if uuid is not None:
+            if uuid is not None and self.checked(index):
                 btn = QPushButton(parent)
                 btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
                 self._update_button(index, btn)
@@ -87,6 +90,10 @@ class ButtonDelegate(QStyledItemDelegate):
     def paint(self, painter: QPainter, option: QStyleOptionViewItem,
               index: Union[QModelIndex, QPersistentModelIndex]) -> None:
         if self._is_column(index, 1) and index.data(Qt.DisplayRole) == "Add event":
+            if self.checked(index):
+                self._btn.setEnabled(True)
+            else:
+                self._btn.setEnabled(False)
             self._btn.setGeometry(option.rect)
             self._update_button(index, self._btn)
             if option.state & QStyle.StateFlag.State_Selected == QStyle.StateFlag.State_Selected:
@@ -110,7 +117,7 @@ class ButtonDelegate(QStyledItemDelegate):
 
     @Slot()
     def cellEntered(self, index: QModelIndex):
-        if self._is_column(index, 1) and index.data(Qt.DisplayRole) == "Add event":
+        if self._is_column(index, 1) and index.data(Qt.DisplayRole) == "Add event" and self.checked(index):
             if self._edit_mode:
                 self.parent().closePersistentEditor(self._currentEditedCellIndex)
             self.parent().openPersistentEditor(index)
@@ -119,6 +126,25 @@ class ButtonDelegate(QStyledItemDelegate):
         else:
             if self._edit_mode:
                 self.parent().closePersistentEditor(self._currentEditedCellIndex)
+
+
+class TrashAlwaysTopOrBottomSortFilterModel(QSortFilterProxyModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setRecursiveFilteringEnabled(True)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
+    def lessThan(self, source_left: Union[QModelIndex, QPersistentModelIndex],
+                 source_right: Union[QModelIndex, QPersistentModelIndex]) -> bool:
+        left = self.sourceModel().data(source_left)
+        right = self.sourceModel().data(source_right)
+        print(left, right)
+        if left == 'Trash':
+            return False
+        elif right == 'Trash':
+            return True
+        else:
+            return left.lower() < right.lower()
 
 
 class CatalogsModelWithExtraColumns(ExtraColumnsProxyModel):
@@ -172,8 +198,13 @@ class CatalogSelector(QTreeView):
         super().__init__(parent)
         self._root = tscat_model.tscat_root()
         self._model = CatalogsModelWithExtraColumns(self._root, self)
+        self._sort_model = TrashAlwaysTopOrBottomSortFilterModel(self)
+        self._sort_model.setSourceModel(self._model)
         self._selected_catalogs = []
-        self.setModel(self._model)
+        self.setModel(self._sort_model)
+        self.setSortingEnabled(True)
+        self.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+
         self.setHeaderHidden(True)
         self.setWordWrap(False)
         self.header().setSectionResizeMode(QHeaderView.ResizeToContents)
