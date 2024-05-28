@@ -30,8 +30,12 @@ class ControlsPan(QWidget):
         self.button = QPushButton("This is a button")
         grid.addWidget(self.button, 1, 0)
 
+        self.disabled_button = QPushButton("This is a disabled button")
+        self.disabled_button.setEnabled(False)
+        grid.addWidget(self.disabled_button, 1, 1)
+
         self.edit = QLineEdit("This is a line edit")
-        grid.addWidget(self.edit, 1, 1)
+        grid.addWidget(self.edit, 1, 2)
 
         self.checkbox = QCheckBox("This is a checkbox")
         grid.addWidget(self.checkbox, 2, 0)

@@ -6,27 +6,39 @@ QPushButton {
     height: 24px;
 }
 
-QPushButton:focus {
+QPushButton:disabled {
+    background-color: {{ palette('button') |  lighter(120) }};
+    color: #6c757d;
+    border: 1px solid #6c757d;
+}
+
+QPushButton:enabled:focus {
     background-color: #f0faff;
     border: 2px solid #6c757d;
     border-radius: 5px;
 }
 
-QPushButton:hover {
+QPushButton:disabled:hover {
+    background-color: {{ palette('button') |  lighter(150) }};
+    border: 1px solid #6c757d;
+}
+
+QPushButton:enabled:hover {
     background-color: {{ palette('button') |  lighter(120) }};
     border: 2px solid #6c757d;
     border-radius: 5px;
 }
 
-QPushButton:hover:focus {
+
+QPushButton:enabled:hover:focus {
     background-color: {{ palette('button') |  lighter(120) }};
     border: 2px solid #6c757d;
     border-radius: 5px;
 }
 
 
-QPushButton:pressed,
-QPushButton:pressed:focus {
+QPushButton:enabled:pressed,
+QPushButton:enabled:pressed:focus {
     background-color: {{ palette('button') |  darker(120) }};
     border: 2px solid #6c757d;
     border-radius: 5px;
