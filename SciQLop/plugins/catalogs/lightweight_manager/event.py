@@ -1,9 +1,11 @@
-import tscat
-from PySide6.QtCore import Signal, QObject
+from PySide6.QtCore import Signal, QObject, QTimer, Slot
 from PySide6.QtGui import QColor
 from humanize.time import precisedelta
 
 from SciQLop.backend import TimeRange
+
+from tscat_gui.tscat_driver.model import tscat_model
+from tscat_gui.tscat_driver.actions import SetAttributeAction
 
 
 class Event(QObject):
@@ -11,10 +13,29 @@ class Event(QObject):
     color_changed = Signal(QColor)
     selection_changed = Signal(bool)
 
-    def __init__(self, event: tscat._Event, catalog_uid: str):
+    def __init__(self, uuid: str, catalog_uid: str):
         QObject.__init__(self)
-        self._event = event
+        self._uuid = uuid
         self._catalog_uid = catalog_uid
+        self._current_range = self.range
+        self._range_to_apply = self._current_range
+        self._deferred_apply = QTimer(self)
+        self._deferred_apply.setSingleShot(True)
+        self._deferred_apply.timeout.connect(self._apply_changes)
+
+    @Slot()
+    def _apply_changes(self):
+        if self._current_range.start != self._range_to_apply.start:
+            tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="start",
+                                              values=[self._range_to_apply.datetime_start]))
+        if self._current_range.stop != self._range_to_apply.stop:
+            tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="stop",
+                                              values=[self._range_to_apply.datetime_stop]))
+        self._current_range = self._range_to_apply
+
+    @property
+    def _event(self):
+        return tscat_model.entities_from_uuids([self._uuid])[0]
 
     @property
     def range(self):
@@ -34,7 +55,7 @@ class Event(QObject):
 
     @property
     def uuid(self):
-        return self._event.uuid
+        return self._uuid
 
     @property
     def tooltip(self):
@@ -44,6 +65,7 @@ class Event(QObject):
         """
 
     def set_range(self, time_range: TimeRange):
-        self._event.start = time_range.datetime_start
-        self._event.stop = time_range.datetime_stop
-        self.range_changed.emit(self.range)
+        if self._range_to_apply != time_range:
+            self._range_to_apply = time_range
+            self._deferred_apply.start(10)
+            self.range_changed.emit(time_range)

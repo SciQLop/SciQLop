@@ -12,6 +12,8 @@ from tscat_gui.tscat_driver.model import tscat_model
 from tscat_gui.model_base.constants import EntityRole, UUIDDataRole
 from tscat_gui.tscat_driver.actions import SetAttributeAction
 
+__DEFAULT_COLOR__ = QColor(100, 100, 100, 50)
+
 
 # stolen from https://qtadventures.wordpress.com/2012/02/04/adding-button-to-qviewtable/
 class ButtonDelegate(QStyledItemDelegate):
@@ -166,7 +168,7 @@ class CatalogsModelWithExtraColumns(ExtraColumnsProxyModel):
                         return "Add event"
                     elif index.column() == 2 and role == Qt.DisplayRole:
                         if 'color' not in source_catalog.variable_attributes():
-                            source_catalog.color = QColor(100, 100, 100, 50).name(QColor.NameFormat.HexArgb)
+                            source_catalog.color = __DEFAULT_COLOR__.name(QColor.NameFormat.HexArgb)
                     elif index.column() == 2 and role == Qt.BackgroundRole:
                         return QColor.fromString(source_catalog.color)
                     elif role == UUIDDataRole:
@@ -231,3 +233,9 @@ class CatalogSelector(QTreeView):
         else:
             self._selected_catalogs.remove(index.data(UUIDDataRole))
         self.catalog_selection_changed.emit(self._selected_catalogs)
+
+    def color(self, uuid: str) -> QColor:
+        c = tscat_model.tscat_root().index_from_uuid(uuid).data(EntityRole)
+        if 'color' not in c.variable_attributes():
+            return __DEFAULT_COLOR__
+        return QColor.fromString(c.color)

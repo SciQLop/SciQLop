@@ -31,15 +31,16 @@ class TimeSpan(QObject):
     def update_spans(self):
         self._spans = []
         for plot in self._plot_panel.plots:
-            span = SciQLopVerticalSpan(plot.plot_instance, QCPRange(self._time_range.start, self._time_range.stop))
-            if self._tooltip is not None:
-                span.set_tool_tip(self._tooltip)
-            span.range_changed.connect(self.set_range)
-            span.selectionChanged.connect(self.change_selection)
-            self._spans.append(span)
-            span.set_read_only(self.read_only)
-            span.set_color(self._color)
-            span.set_visible(self._visible)
+            if hasattr(plot, "plot_instance"):
+                span = SciQLopVerticalSpan(plot.plot_instance, QCPRange(self._time_range.start, self._time_range.stop))
+                if self._tooltip is not None:
+                    span.set_tool_tip(self._tooltip)
+                span.range_changed.connect(self.set_range)
+                span.selectionChanged.connect(self.change_selection)
+                self._spans.append(span)
+                span.set_read_only(self.read_only)
+                span.set_color(self._color)
+                span.set_visible(self._visible)
 
     @Slot()
     def change_selection(self, selected: bool):

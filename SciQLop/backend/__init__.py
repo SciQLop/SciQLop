@@ -18,8 +18,8 @@ class TimeRange:
     __slots__ = ["_start", "_stop"]
 
     def __init__(self, start: float, stop: float):
-        self._start = start
-        self._stop = stop
+        self._start = min(start, stop)
+        self._stop = max(stop, start)
 
     @staticmethod
     def from_qcprange(qcprange: QCPRange):
@@ -32,6 +32,11 @@ class TimeRange:
     def start(self):
         return self._start
 
+    @start.setter
+    def start(self, value: float):
+        assert value <= self._stop and type(value) is float
+        self._start = value
+
     @property
     def datetime_start(self):
         return datetime.utcfromtimestamp(self._start)
@@ -39,6 +44,11 @@ class TimeRange:
     @property
     def stop(self):
         return self._stop
+
+    @stop.setter
+    def stop(self, value: float):
+        assert value >= self._start and type(value) is float
+        self._stop = value
 
     @property
     def datetime_stop(self):

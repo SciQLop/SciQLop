@@ -68,6 +68,7 @@ class LightweightManager(QWidget):
         self.interaction_mode.addItems(InteractionMode.__members__.keys())
         self.panel_selector = PanelSelector(self)
         self.event_selector = EventSelector(parent=self, manager_ui=manager_ui)
+        self.event_selector.event_list_changed.connect(self.update_spans)
         self.save_button = QPushButton(self)
         self.save_button.setIcon(QIcon(":/icons/theme/save.png"))
         self.layout().addWidget(self.save_button, 0, 0, 1, 1)
@@ -83,12 +84,7 @@ class LightweightManager(QWidget):
         self.setWindowTitle("Catalogs")
 
         self.save_button.clicked.connect(self.save)
-        self.catalog_selector.catalog_selection_changed.connect(self.catalog_selection_changed)
-        self.catalog_selector.create_event.connect(self.create_event)
-        self.catalog_selector.change_color.connect(self.update_colors)
         self.panel_selector.panel_selection_changed.connect(self.panel_selected)
-        #self.event_selector.event_selected.connect(self.event_selected)
-        #self.event_selector.delete_events.connect(self.delete_events)
         self.catalog_selector.catalog_selection_changed.connect(self.event_selector.catalog_selection_changed)
         self.interaction_mode.currentTextChanged.connect(self._interactions_mode_change)
 
@@ -107,33 +103,6 @@ class LightweightManager(QWidget):
                                                                           map(self.main_window.plot_panel, panels)))))
 
     @Slot()
-    def catalog_selection_changed(self, catalogs: List[str]):
-        print(catalogs)
-        # events = []
-        # for c in catalogs:
-        #    events += [Event(e, c.uuid) for e in c.events]
-        # self.event_selector.update_list(events)
-        # self.update_spans()
-
-    @Slot()
-    def create_event(self, catalog_uid: str):
-        if self.current_panel is not None:
-            erange = self.current_panel.time_range * 0.5
-            e = tscat.create_event(erange.datetime_start,
-                                   erange.datetime_stop,
-                                   author=os.getlogin())
-            tscat.add_events_to_catalogue(catalogue=self.catalog_selector.catalogs[catalog_uid].tscat_instance,
-                                          events=e)
-            self.catalog_selector.reload_catalog(catalog_uid)
-
-    @Slot()
-    def delete_events(self, events: List[str]):
-        if len(events):
-            for uuid in events:
-                tscat.get_events(tscat.filtering.UUID(uuid))[0].remove(permanently=True)
-            self.refresh()
-
-    @Slot()
     def event_selected(self, e: Event):
         if self.current_panel is not None:
             if self._current_interaction_mode == InteractionMode.Jump:
@@ -149,11 +118,20 @@ class LightweightManager(QWidget):
                     self._last_selected_event.selection_changed.emit(False)
                 self._last_selected_event = e
 
+    @property
+    def time_span_ctrlr(self):
+        if self._time_span_ctrlr is None and self.current_panel is not None:
+            self._time_span_ctrlr = TimeSpanController(parent=self, plot_panel=self.current_panel)
+        return self._time_span_ctrlr
+
+    @property
+    def has_selected_panel(self):
+        return self.current_panel is not None
+
     def update_spans(self):
         self._last_selected_event = None
-        if self.current_panel is not None:
-            if self._time_span_ctrlr is None:
-                self._time_span_ctrlr = TimeSpanController(parent=self, plot_panel=self.current_panel)
+        time_span_ctrlr = self.time_span_ctrlr
+        if self.has_selected_panel:
             ro = self._current_interaction_mode != InteractionMode.Edit
             spans = []
             for e in self.event_selector.events:
@@ -161,11 +139,11 @@ class LightweightManager(QWidget):
                                        color=self.catalog_selector.color(e.catalog_uid)))
                 spans[-1].selected_sig.connect(self.event_selector.select_event)
 
-            self._time_span_ctrlr.spans = spans
+            time_span_ctrlr.spans = spans
             self.current_panel.replot()
         else:
-            if self._time_span_ctrlr is not None:
-                self._time_span_ctrlr.spans = []
+            if time_span_ctrlr is not None:
+                time_span_ctrlr.spans = []
             self._time_span_ctrlr = None
 
     @Slot()
@@ -179,6 +157,7 @@ class LightweightManager(QWidget):
     @Slot()
     def panel_selected(self, panel):
         log.debug(f"New panel selected: {panel}")
+        print(f"New panel selected: {panel}")
         self.current_panel = self.main_window.plot_panel(panel)
         self.update_spans()
 
