@@ -1,7 +1,7 @@
 numpy
-SciQLopPlots==0.7.0
-PySide6-QtAds==4.2.1
-PySide6==6.6.2
+SciQLopPlots==0.7.1
+PySide6-QtAds==4.3.0.1
+PySide6==6.7.1
 speasy>=1.2.2
 qtconsole
 tscat_gui==0.3.2
@@ -18,3 +18,4 @@ notebook
 ipympl
 qasync
 jinja2
+zstd
