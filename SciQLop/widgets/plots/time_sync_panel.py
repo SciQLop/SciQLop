@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QWidget, QScrollArea
 from SciQLopPlots import QCustomPlot, QCPMarginGroup, QCPAxisRect, QCP
 from SciQLop.backend.icons import register_icon
 from .abstract_plot_panel import MetaPlotPanel, PlotPanel, PanelContainer
+from .abstract_plot import Plot
 from .time_series_plot import TimeSeriesPlot
 from ..drag_and_drop import DropHandler, DropHelper, PlaceHolderManager
 from ...backend import Product
@@ -25,7 +26,7 @@ log = sciqlop_logging.getLogger(__name__)
 
 class TSPanelContainer(PanelContainer):
     def __init__(self, parent=None, shared_x_axis=False):
-        PanelContainer.__init__(self, TimeSeriesPlot, parent=parent, shared_x_axis=shared_x_axis)
+        PanelContainer.__init__(self, Plot, parent=parent, shared_x_axis=shared_x_axis)
 
     def add_widget(self, widget: QWidget, index: int):
         PanelContainer.add_widget(self, widget, index)
@@ -34,30 +35,33 @@ class TSPanelContainer(PanelContainer):
         max_left_margin = 0
         max_right_pos = 1e9
         for p in self.plots:
-            p: TimeSeriesPlot = p
-            ar = p.plot_instance.axisRect()
-            left_margin = ar.calculateAutoMargin(QCP.MarginSide.msLeft)
-            if p.has_colormap:
-                cmw = p.colorBar.outerRect().width()
-                cmw += ar.calculateAutoMargin(QCP.MarginSide.msRight)
-            else:
-                cmw = 0
-            max_left_margin = max(max_left_margin, left_margin)
-            max_right_pos = min(max_right_pos, p.width() - cmw)
+            if isinstance(p, TimeSeriesPlot):
+                p: TimeSeriesPlot = p
+                ar = p.plot_instance.axisRect()
+                left_margin = ar.calculateAutoMargin(QCP.MarginSide.msLeft)
+                if p.has_colormap:
+                    cmw = p.colorBar.outerRect().width()
+                    cmw += ar.calculateAutoMargin(QCP.MarginSide.msRight)
+                else:
+                    cmw = 0
+                max_left_margin = max(max_left_margin, left_margin)
+                max_right_pos = min(max_right_pos, p.width() - cmw)
 
         for p in self.plots:
-            p: TimeSeriesPlot = p
-            ar = p.plot_instance.axisRect()
-            new_right_margin = p.width() - max_right_pos
-            if p.has_colormap:
-                new_right_margin -= p.colorBar.outerRect().width()
-            new_margins = QMargins(max_left_margin, ar.calculateAutoMargin(QCP.MarginSide.msTop), new_right_margin,
-                                   ar.calculateAutoMargin(QCP.MarginSide.msTop))
-            if ar.minimumMargins() != new_margins:
-                ar.setMinimumMargins(QMargins(max_left_margin, ar.calculateAutoMargin(QCP.MarginSide.msTop),
-                                              new_right_margin,
-                                              ar.calculateAutoMargin(QCP.MarginSide.msTop)))
-                p.replot()
+            if isinstance(p, TimeSeriesPlot):
+                p: TimeSeriesPlot = p
+
+                ar = p.plot_instance.axisRect()
+                new_right_margin = p.width() - max_right_pos
+                if p.has_colormap:
+                    new_right_margin -= p.colorBar.outerRect().width()
+                new_margins = QMargins(max_left_margin, ar.calculateAutoMargin(QCP.MarginSide.msTop), new_right_margin,
+                                       ar.calculateAutoMargin(QCP.MarginSide.msTop))
+                if ar.minimumMargins() != new_margins:
+                    ar.setMinimumMargins(QMargins(max_left_margin, ar.calculateAutoMargin(QCP.MarginSide.msTop),
+                                                  new_right_margin,
+                                                  ar.calculateAutoMargin(QCP.MarginSide.msTop)))
+                    p.replot()
 
 
 register_icon("QCP", QIcon("://icons/QCP.png"))

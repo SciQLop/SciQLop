@@ -10,6 +10,7 @@ from SciQLopPlots import SciQLopPlot, QCustomPlot, QCP, QCPAxisTickerDateTime, Q
     QCPColorScale, SciQLopCurve, SciQLopGraph
 from seaborn import color_palette
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, providers
+from SciQLop.backend.pipelines_model.graph import Graph
 from SciQLop.backend.enums import ParameterType, DataOrder
 from SciQLop.backend.property import SciQLopProperty
 from SciQLop.backend import TimeRange, Product
@@ -161,9 +162,13 @@ class ProjectionPlot(QFrame, Plot, metaclass=MetaPlot):
             _to_qcolor(*self._palette[(index + i) % len(self._palette)]) for i in range(count)
         ]
 
+    @property
+    def graphs(self) -> List[Graph]:
+        return list(filter(lambda n: isinstance(n, Graph), self.children()))
+
 
 @register_inspector(ProjectionPlot)
-class TimeSeriesPlotInspector(Inspector):
+class ProjectionPlotInspector(Inspector):
 
     @staticmethod
     def build_node(obj: Any, parent: Optional[Node] = None, children: Optional[List[Node]] = None) -> Optional[Node]:
