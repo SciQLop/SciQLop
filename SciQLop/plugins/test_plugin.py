@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis
 
@@ -30,4 +32,5 @@ class TestPlugin(DataProvider):
 
 
 def load(main_window):
-    return TestPlugin(main_window)
+    if os.environ.get("SCIQLOP_DEBUG", False):
+        return TestPlugin(main_window)
