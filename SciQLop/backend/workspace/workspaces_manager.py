@@ -49,9 +49,9 @@ class WorkspaceManager(QObject):
         self._deferred_variables = {}
         self._workspace: Optional[Workspace] = None
 
-        sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console in current workspace or a new one",
-                                              icons.get("JupyterConsole"),
-                                              self.new_qt_console)
+        # sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console in current workspace or a new one",
+        #                                      icons.get("JupyterConsole"),
+        #                                      self.new_qt_console)
         sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab in current workspace or a new one",
                                               icons.get("Jupyter"),
                                               self.start_jupyterlab)
