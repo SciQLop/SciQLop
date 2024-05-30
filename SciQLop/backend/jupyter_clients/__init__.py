@@ -1,3 +1,3 @@
-from .jupyter_client import ClientType
+from .jupyter_client_process import ClientType
 from .qt_console import QtConsoleClient
-from .jupyterlab import JupyterLabClient
+from .jupyterlab_launcher import JupyterLabClient

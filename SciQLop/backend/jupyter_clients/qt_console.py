@@ -1,5 +1,5 @@
 from typing import Optional
-from .jupyter_client import SciQLopJupyterClient, ClientType
+from .jupyter_client_process import SciQLopJupyterClient, ClientType
 from ..common.python import get_python
 
 

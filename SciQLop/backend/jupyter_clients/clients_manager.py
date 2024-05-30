@@ -1,8 +1,8 @@
 from PySide6.QtCore import QProcess, QProcessEnvironment, QObject, Signal
 from typing import List
-from .jupyter_client import SciQLopJupyterClient, ClientType
+from .jupyter_client_process import SciQLopJupyterClient, ClientType
 from .qt_console import QtConsoleClient
-from .jupyterlab import JupyterLabClient
+from .jupyterlab_launcher import JupyterLabClient
 
 
 class ClientsManager(QObject):
