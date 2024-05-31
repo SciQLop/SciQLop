@@ -66,12 +66,13 @@ class WorkSpaceCard(Card):
 
     @image.setter
     def image(self, value: str):
-        if os.path.isfile(os.path.join(self._workspace.directory, self._workspace.image)):
-            os.remove(os.path.join(self._workspace.directory, self._workspace.image))
-        destination = str(os.path.join(self._workspace.directory, os.path.basename(value)))
-        shutil.copy(value, destination)
-        self._workspace.image = os.path.basename(value)
-        self._thumbnail.set_image(destination)
+        if os.path.isfile(os.path.join(self._workspace.directory, value)):
+            if os.path.isfile(os.path.join(self._workspace.directory, self._workspace.image)):
+                os.remove(os.path.join(self._workspace.directory, self._workspace.image))
+            destination = str(os.path.join(self._workspace.directory, os.path.basename(value)))
+            shutil.copy(value, destination)
+            self._workspace.image = os.path.basename(value)
+            self._thumbnail.set_image(destination)
 
 
 @register_delegate(WorkSpaceCard)
