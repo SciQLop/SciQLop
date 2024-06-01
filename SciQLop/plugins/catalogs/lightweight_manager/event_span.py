@@ -19,6 +19,10 @@ class EventSpan(TimeSpan):
         event.selection_changed.connect(self._selection_changed)
         self.selection_changed.connect(self._notify_selected)
 
+    @property
+    def uuid(self):
+        return self._event.uuid
+
     @Slot()
     def _selection_changed(self, selected: bool):
         self.change_selection(selected)

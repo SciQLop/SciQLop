@@ -116,7 +116,11 @@ class EventSelector(QTableView):
         for row in range(self._sort_model.rowCount()):
             idx = self._sort_model.index(row, 0)
             if idx.data(UUIDDataRole) == uuid:
-                self.selectionModel().select(idx, QItemSelectionModel.SelectionFlag.SelectCurrent)
+                self.selectionModel().blockSignals(True)
+                self.selectionModel().select(idx,
+                                             QItemSelectionModel.SelectionFlag.Rows | QItemSelectionModel.SelectionFlag.SelectCurrent)
+                self.scrollTo(idx, QAbstractItemView.ScrollHint.PositionAtCenter)
+                self.selectionModel().blockSignals(False)
                 break
 
 

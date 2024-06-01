@@ -2,8 +2,9 @@ import os
 from typing import List, Optional
 from enum import Enum
 
-# import tscat
 from tscat_gui import TSCatGUI
+from tscat_gui.tscat_driver.model import tscat_model
+from tscat_gui.tscat_driver.actions import CreateEntityAction
 from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import QWidget, QComboBox, QVBoxLayout, QSizePolicy, QCheckBox, QGridLayout, QPushButton, \
@@ -69,6 +70,7 @@ class LightweightManager(QWidget):
         self.panel_selector = PanelSelector(self)
         self.event_selector = EventSelector(parent=self, manager_ui=manager_ui)
         self.event_selector.event_list_changed.connect(self.update_spans)
+        self.event_selector.event_selected.connect(self.event_selected)
         self.save_button = QPushButton(self)
         self.save_button.setIcon(QIcon(":/icons/theme/save.png"))
         self.layout().addWidget(self.save_button, 0, 0, 1, 1)
@@ -103,20 +105,37 @@ class LightweightManager(QWidget):
                                                                           map(self.main_window.plot_panel, panels)))))
 
     @Slot()
-    def event_selected(self, e: Event):
+    def create_event(self, catalog_uid: str):
         if self.current_panel is not None:
-            if self._current_interaction_mode == InteractionMode.Jump:
-                log.debug(f"event selected {e}, setting panel: {self.current_panel}")
-                if e.start == e.stop:
-                    self.current_panel.time_range = TimeRange(e.start - 3600, e.stop + 3600)
-                else:
-                    self.current_panel.time_range = TimeRange(e.start, e.stop) * (1. / self.zoom_factor.value())
-                self._last_selected_event = None
-            elif self._last_selected_event is None or e.uuid != self._last_selected_event.uuid:
-                e.selection_changed.emit(True)
-                if self._last_selected_event is not None:
-                    self._last_selected_event.selection_changed.emit(False)
-                self._last_selected_event = e
+            time_range = self.current_panel.time_range
+            tscat_model.do(CreateEntityAction(catalog_uid, time_range.start, time_range.stop))
+
+    def _event_span(self, uuid: str):
+        if self._time_span_ctrlr is not None:
+            for s in self._time_span_ctrlr.spans:
+                if isinstance(s, EventSpan):
+                    if s.uuid == uuid:
+                        return s
+        return None
+
+    @Slot()
+    def event_selected(self, uuid: str):
+        if self.current_panel is not None:
+            e = self._event_span(uuid)
+            if e is not None:
+                if self._current_interaction_mode == InteractionMode.Jump:
+                    log.debug(f"event selected {e}, setting panel: {self.current_panel}")
+                    time_range = e.time_range
+                    if time_range.start == time_range.stop:
+                        self.current_panel.time_range = TimeRange(time_range.start - 3600, time_range.stop + 3600)
+                    else:
+                        self.current_panel.time_range = time_range / self.zoom_factor.value()
+                    self._last_selected_event = None
+                elif self._last_selected_event is None or e.uuid != self._last_selected_event.uuid:
+                    e.selection_changed.emit(True)
+                    if self._last_selected_event is not None:
+                        self._last_selected_event.selection_changed.emit(False)
+                    self._last_selected_event = e
 
     @property
     def time_span_ctrlr(self):
