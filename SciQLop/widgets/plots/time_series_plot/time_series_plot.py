@@ -48,6 +48,7 @@ def _configure_plot(plot: SciQLopPlot):
     plot.xAxis.setTicker(date_ticker)
     plot.plotLayout().setMargins(QMargins(0, 0, 0, 0))
     plot.plotLayout().setRowSpacing(0)
+    plot.plotLayout().setColumnSpacing(0)
     for rect in plot.axisRects():
         rect.setMargins(QMargins(0, 0, 0, 0))
 

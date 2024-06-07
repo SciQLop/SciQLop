@@ -55,6 +55,8 @@ class TSPanelContainer(PanelContainer):
                 new_right_margin = p.width() - max_right_pos
                 if p.has_colormap:
                     new_right_margin -= p.colorBar.outerRect().width()
+                else:
+                    new_right_margin += p.plot_instance.plotLayout().columnSpacing()
                 new_margins = QMargins(max_left_margin, ar.calculateAutoMargin(QCP.MarginSide.msTop), new_right_margin,
                                        ar.calculateAutoMargin(QCP.MarginSide.msTop))
                 if ar.minimumMargins() != new_margins:
