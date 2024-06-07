@@ -24,35 +24,38 @@ class _FilterNode:
     def __init__(self, parent: Optional["_FilterNode"], node: ProductNode, filter_regex: str):
         self._parent = parent
         self._node = node
-        self._matched = filter_regex in node.str
+        self._matched = filter_regex in node.str or filter_regex == ""
         self._filter_regex = filter_regex
-        self._children = list(
-            filter(lambda n: n.active, map(lambda n: _FilterNode(self, n, filter_regex), node.children)))
+        self._children = {n.name: _FilterNode(self, n, filter_regex) for n in node.children}
+        self._active_children = list(filter(lambda n: n.active, self._children.values()))
 
     def update(self, filter_regex: Optional[str] = None):
-        self._filter_regex = filter_regex or self._filter_regex
-        self._matched = self._filter_regex in self._node.str
-        filtered_set = set(map(lambda n: n.node.name, filter(lambda n: n.active, self._children)))
-        node_set = set(map(lambda n: n.name, self._node.children))
-        for child in node_set - filtered_set:
-            self._children.append(_FilterNode(self, self._node[child], self._filter_regex))
-        for child in filtered_set - node_set:
-            self._children.remove(self[child])
-        for child in filtered_set.union(node_set):
-            f_child = self.get(child)
-            n_child = self._node[child]
-            if f_child is not n_child:
-                self._children.remove(f_child)
-                self._children.append(_FilterNode(self, n_child, self._filter_regex))
+        self._filter_regex = filter_regex or ""
+        for child in self._node.children:
+            if child.name not in self._children:
+                self._children[child.name] = _FilterNode(self, child, self._filter_regex)
+            else:
+                self._children[child.name].update(filter_regex)
+
+        for child in self._children.values():
+            if child._node not in self._node.children:
+                self._children.pop(child.name)
+
+        self._active_children = list(filter(lambda n: n.active, self._children.values()))
+        self._matched = self._filter_regex in self._node.str or self._filter_regex == ""
 
     def get(self, item: str):
-        return next(iter(filter(lambda n: n.node.name == item, self._children)), None)
+        return next(iter(filter(lambda n: n.node.name == item, self._active_children)), None)
 
     def __getitem__(self, item):
-        return next(iter(filter(lambda n: n.node.name == item, self._children)), None)
+        return next(iter(filter(lambda n: n.node.name == item, self._active_children)), None)
 
     def __contains__(self, item):
-        return any(map(lambda n: n.node.name == item, self._children))
+        return any(map(lambda n: n.node.name == item, self._active_children))
+
+    @property
+    def name(self):
+        return self._node.name
 
     @property
     def parent(self):
@@ -60,11 +63,11 @@ class _FilterNode:
 
     @property
     def children(self):
-        return self._children
+        return self._active_children
 
     @property
     def active(self):
-        return self._matched or len(self._children)
+        return self._matched or len(self._active_children)
 
     @property
     def node(self):
@@ -73,7 +76,7 @@ class _FilterNode:
     @property
     def row(self):
         if self._parent is not None:
-            return self._parent.children.index(self)
+            return self._parent._active_children.index(self)
         return -1
 
 
