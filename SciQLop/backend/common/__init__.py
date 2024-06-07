@@ -7,6 +7,8 @@ import asyncio
 from qasync import QThreadExecutor
 import functools
 
+from PySide6.QtGui import QColor
+
 
 def insort(a, x, lo=0, hi=None, key=None):
     """Insert item x in list a, and keep it sorted assuming a is sorted.
@@ -95,3 +97,11 @@ class Maybe:
 
     def __repr__(self):
         return f"Maybe({self._value})"
+
+
+def combine_colors(color1: QColor, color2: QColor) -> QColor:
+    r = (color1.red() + color2.red()) // 2
+    g = (color1.green() + color2.green()) // 2
+    b = (color1.blue() + color2.blue()) // 2
+    a = (color1.alpha() + color2.alpha()) // 2
+    return QColor(r, g, b, a)

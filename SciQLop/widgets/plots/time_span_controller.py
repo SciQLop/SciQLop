@@ -13,8 +13,7 @@ class TimeSpanController(QObject):
         QObject.__init__(self, parent)
         self._ranges: List[TimeSpan] = []
         self._visible_ranges: List[TimeSpan] = []
-        self._plot_panel = plot_panel
-        self._plot_panel.time_range_changed.connect(self._range_changed)
+        self.plot_panel = plot_panel
         self._last_update_range: Optional[TimeRange] = None
         self._preload_factor = 10
 
@@ -29,6 +28,22 @@ class TimeSpanController(QObject):
         self._visible_ranges = visible_ranges
         self._last_update_range = time_range
 
+    @property
+    def plot_panel(self) -> TimeSyncPanel:
+        return self._plot_panel
+
+    @plot_panel.setter
+    def plot_panel(self, plot_panel: Optional[TimeSyncPanel]):
+        self._plot_panel = plot_panel
+        if self._plot_panel is not None:
+            self._plot_panel.time_range_changed.connect(self._range_changed)
+            self._plot_panel.destroyed.connect(self._clear_panel)
+
+    def _clear_panel(self):
+        if self._plot_panel is not None:
+            self._plot_panel.time_range_changed.disconnect(self._range_changed)
+            self._plot_panel.destroyed.disconnect(self._clear_panel)
+
     @SciQLopProperty(list)
     def spans(self) -> List[TimeSpan]:
         return self._ranges
@@ -37,6 +52,8 @@ class TimeSpanController(QObject):
     def spans(self, ranges: List[TimeSpan]):
         self._ranges = ranges
         self._update_visible_ranges(self._plot_panel.time_range * self._preload_factor)
+        for s in self._ranges:
+            s.destroyed.connect(lambda: self._ranges.remove(s))
 
     def visible_spans(self, time_range: TimeRange = None) -> List[TimeSpan]:
         time_range = time_range or self._plot_panel.time_range

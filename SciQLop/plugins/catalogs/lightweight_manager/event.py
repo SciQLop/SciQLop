@@ -23,16 +23,26 @@ class Event(QObject):
         self._deferred_apply.setSingleShot(True)
         self._deferred_apply.timeout.connect(self._apply_changes)
 
+
+    def _apply_start(self):
+        tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="start",
+                                          values=[self._range_to_apply.datetime_start]))
+        self._current_range.start = self._range_to_apply.start
+
+    def _apply_stop(self):
+        tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="stop",
+                                          values=[self._range_to_apply.datetime_stop]))
+        self._current_range.stop = self._range_to_apply.stop
     @Slot()
     def _apply_changes(self):
         if self._current_range.start != self._range_to_apply.start:
-            tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="start",
-                                              values=[self._range_to_apply.datetime_start]))
+            if self._range_to_apply.start > self._current_range.stop:
+                self._apply_stop()
+                self._apply_start()
+            else:
+                self._apply_start()
         if self._current_range.stop != self._range_to_apply.stop:
-            tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="stop",
-                                              values=[self._range_to_apply.datetime_stop]))
-        self._current_range = self._range_to_apply
-
+            self._apply_stop()
     @property
     def _event(self):
         return tscat_model.entities_from_uuids([self._uuid])[0]

@@ -1,16 +1,17 @@
-from typing import List, Mapping
+from typing import List
+from datetime import datetime
 
 from PySide6.QtCore import Signal, QItemSelection, Slot, QItemSelectionModel, QConcatenateTablesProxyModel, \
-    QAbstractItemModel, QSortFilterProxyModel, QTimer
-from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QKeyEvent
+    QSortFilterProxyModel, QTimer
+from PySide6.QtGui import Qt, QKeyEvent
 from PySide6.QtWidgets import QComboBox, QListView, QSizePolicy, QTableView, QAbstractItemView
 
-from SciQLop.backend import TimeRange
 from .event import Event
 
-from tscat_gui.tscat_driver.model import tscat_model
-from tscat_gui.model_base.constants import EntityRole, UUIDDataRole
-from tscat_gui.tscat_driver.actions import DeletePermanentlyAction, RestorePermanentlyDeletedAction
+from tscat_gui.tscat_driver.model import tscat_model, Action
+from tscat_gui.model_base.constants import UUIDDataRole
+from tscat_gui.tscat_driver.actions import DeletePermanentlyAction, RestorePermanentlyDeletedAction, SetAttributeAction, \
+    _Event
 from tscat_gui.undo import _EntityBased
 from tscat_gui.state import AppState
 
@@ -48,8 +49,9 @@ class EventsModel(QConcatenateTablesProxyModel):
 
 class EventSelector(QTableView):
     event_selected = Signal(object)
-    delete_events = Signal(object)
     event_list_changed = Signal()
+    event_start_date_changed = Signal(str, datetime)
+    event_stop_date_changed = Signal(str, datetime)
 
     def __init__(self, manager_ui, parent=None):
         super().__init__(parent)
@@ -68,9 +70,10 @@ class EventSelector(QTableView):
         self.setSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding)
         self.selectionModel().selectionChanged.connect(self.event_selection_changed)
         self._notification_timer.timeout.connect(self.event_list_changed)
-        self.model().rowsInserted.connect(self._data_changed)
-        self.model().rowsRemoved.connect(self._data_changed)
-        self.model().modelReset.connect(self._data_changed)
+        self.model().rowsInserted.connect(self._model_changed)
+        self.model().rowsRemoved.connect(self._model_changed)
+        self.model().modelReset.connect(self._model_changed)
+        tscat_model.action_done.connect(self._filter_actions_from_model)
 
     @Slot()
     def catalog_selection_changed(self, catalogs: List[str]):
@@ -78,8 +81,18 @@ class EventSelector(QTableView):
         self._model.catalog_selection_changed(catalogs)
 
     @Slot()
-    def _data_changed(self):
+    def _model_changed(self):
         self._notification_timer.start(100)
+
+    @Slot()
+    def _filter_actions_from_model(self, action: Action):
+        if isinstance(action, SetAttributeAction) and action.name in ('start', 'stop'):
+            for value, entity in zip(action.values, action.entities):
+                if isinstance(entity, _Event):
+                    if action.name == 'start':
+                        self.event_start_date_changed.emit(entity.uuid, value)
+                    else:
+                        self.event_stop_date_changed.emit(entity.uuid, value)
 
     def _selected_uuids(self) -> List[str]:
         return list(map(lambda idx: idx.data(UUIDDataRole)
@@ -95,12 +108,15 @@ class EventSelector(QTableView):
                 events.append(Event(idx.data(UUIDDataRole), catalog))
         return events
 
+    def delete_events(self, uuids: List[str]):
+        self.selectionModel().clear()
+        self._manager_ui.state.push_undo_command(DeleteEventsPermanently, uuids)
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Delete:
             selected_uuids = self._selected_uuids()
             if len(selected_uuids):
-                self.selectionModel().clear()
-                self._manager_ui.state.push_undo_command(DeleteEventsPermanently, selected_uuids)
+                self.delete_events(selected_uuids)
             event.accept()
         else:
             QListView.keyPressEvent(self, event)
