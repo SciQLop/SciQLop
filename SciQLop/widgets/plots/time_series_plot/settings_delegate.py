@@ -44,6 +44,22 @@ class QCPAxisSettings(QWidget):
             self.refresh_plot.emit()
 
 
+class YAxisSettings(QCPAxisSettings):
+    def __init__(self, axis: QCPAxis, plot: TimeSeriesPlot, allow_scale_type: bool = True):
+        super().__init__(axis, allow_scale_type)
+        self._plot = plot
+        self._auto_scale = QCheckBox()
+        self._auto_scale.setChecked(self._plot.auto_scale_y)
+        self._layout.addRow("Auto scale", self._auto_scale)
+        self._auto_scale.toggled.connect(self._toggle_auto_scale)
+
+    @Slot(bool)
+    def _toggle_auto_scale(self, checked: bool):
+        self._plot.auto_scale_y = checked
+        if checked:
+            self._axis.rescale(True)
+
+
 @register_delegate(TimeSeriesPlot)
 class TimeSeriesPlotSettings(QWidget):
     def __init__(self, plot: TimeSeriesPlot):
@@ -54,6 +70,6 @@ class TimeSeriesPlotSettings(QWidget):
         x_axis_settings = QCPAxisSettings(plot.xAxis, allow_scale_type=False)
         self._layout.addWidget(Container("X axis", x_axis_settings))
         x_axis_settings.refresh_plot.connect(self._plot.replot)
-        y_axis_settings = QCPAxisSettings(plot.yAxis)
+        y_axis_settings = YAxisSettings(plot.yAxis, plot)
         self._layout.addWidget(Container("Y axis", y_axis_settings))
         y_axis_settings.refresh_plot.connect(self._plot.replot)
