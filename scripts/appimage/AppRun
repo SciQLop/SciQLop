@@ -19,6 +19,8 @@ export TKPATH="${TK_LIBRARY}"
 # Export SSL certificate
 export SSL_CERT_FILE="${APPDIR}/opt/_internal/certs.pem"
 
+export PATH="${APPDIR}/usr/local/bin:${APPDIR}/usr/bin:${APPDIR}/bin:${PATH}"
+
 # Call Python
 "$APPDIR/usr/bin/python" -I -m SciQLop.app "$@"
 

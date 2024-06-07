@@ -18,6 +18,9 @@ rm -rf ./squashfs-root
 rm -f ./squashfs-root/AppRun
 cp $ABSOLUTE_SCRIPT_DIR/AppRun ./squashfs-root/
 
+curl https://nodejs.org/dist/v20.14.0/node-v20.14.0-linux-x64.tar.xz | tar -xJ -C /tmp/sciqlop
+rsync -avhu /tmp/sciqlop/node-v20.14.0-linux-x64/* ./squashfs-root/usr/local/
+
 if [ ! -f ./appimagetool-x86_64.AppImage ]; then
     wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
     chmod +x appimagetool-x86_64.AppImage
