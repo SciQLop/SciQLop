@@ -68,6 +68,7 @@ class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
     def __init__(self, parent=None):
         QFrame.__init__(self, parent=parent)
         self.setObjectName(make_simple_incr_name(base="Plot"))
+        self._auto_scale_y = False
         self._plot = SciQLopPlot(self)
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(self._plot)
@@ -88,6 +89,7 @@ class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
         self._plot.selectionChangedByUser.connect(self._update_selection)
         self._plot.legendDoubleClick.connect(self._hide_graph)
         self._parent_node = None
+        self.auto_scale_y = True
 
     def _hide_graph(self, legend: QCPLegend, item: QCPAbstractLegendItem, event: QMouseEvent):
         if item:
@@ -148,14 +150,19 @@ class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
     def replot(self, refresh_priority=QCustomPlot.rpQueuedReplot):
         return self._plot.replot(refresh_priority)
 
-    def autoscale_y_axis(self):
-        self.yAxis.rescale()
+    def rescale_y_axis(self):
+        self.yAxis.rescale(True)
 
-    def enable_y_autoscale(self):
-        self.time_range_changed.connect(self.autoscale_y_axis)
+    @SciQLopProperty(bool)
+    def auto_scale_y(self):
+        return self._auto_scale_y
 
-    def disable_y_autoscale(self):
-        self.time_range_changed.disconnect(self.autoscale_y_axis)
+    @auto_scale_y.setter
+    def auto_scale_y(self, value: bool):
+        self._auto_scale_y = value
+        for graph in self.graphs:
+            if type(graph) is LineGraph:
+                graph.auto_scale_y = value
 
     def addSciQLopGraph(self, x_axis, y_axis, data_order, labels=None):
         if labels is not None:
@@ -215,6 +222,8 @@ class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
     def _register_new_graph(self, graph: Graph):
         self.time_range_changed.connect(graph.time_range_changed)
         graph.destroyed.connect(self.graph_list_changed)
+        if hasattr(graph, "auto_scale_y"):
+            graph.auto_scale_y = self.auto_scale_y
 
     def _add_multi_line_graph(self, provider: DataProvider, product: ProductNode, components: List[str]):
         graph = LineGraph(parent=self, sciqlop_graph=self.addSciQLopGraph(self.xAxis, self.yAxis,

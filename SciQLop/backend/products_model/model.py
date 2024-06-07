@@ -37,9 +37,9 @@ class _FilterNode:
             else:
                 self._children[child.name].update(filter_regex)
 
-        for child in self._children.values():
-            if child._node not in self._node.children:
-                self._children.pop(child.name)
+        childs_to_remove = set(map(lambda n: n._node, self._children.values())) - set(self._node.children)
+        for child in childs_to_remove:
+            del self._children[child.name]
 
         self._active_children = list(filter(lambda n: n.active, self._children.values()))
         self._matched = self._filter_regex in self._node.str or self._filter_regex == ""

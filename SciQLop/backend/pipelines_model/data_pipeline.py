@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, Callable, List, Any, Dict, Protocol, runtime_checkable
 from abc import ABC, abstractmethod, ABCMeta
 
-from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex, Signal
+from PySide6.QtCore import QObject, QThread, QWaitCondition, QMutex, Signal, QTimer
 from speasy.products import SpeasyVariable
 
 from SciQLop.backend import TimeRange
@@ -25,6 +25,9 @@ class _DataPipelineWorker(QObject):
                  time_range: TimeRange):
         QObject.__init__(self)
         self.range_mutex = QMutex()
+        self._deferred_get_data_timer = QTimer()
+        self._deferred_get_data_timer.setSingleShot(True)
+        self._deferred_get_data_timer.timeout.connect(self._get_data)
         self.next_range: Optional[TimeRange] = time_range
         self.current_range: Optional[TimeRange] = None
         self.product = product
@@ -53,7 +56,7 @@ class _DataPipelineWorker(QObject):
         self.range_mutex.lock()
         self.next_range = new_range
         self.range_mutex.unlock()
-        self._get_data_sig.emit()
+        self._deferred_get_data_timer.start(100)
 
     def __del__(self):
         log.debug(f"Dtor {self.__class__.__name__}: {id(self):08x}")

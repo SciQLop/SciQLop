@@ -51,7 +51,7 @@ class PanelSelector(QComboBox):
 class LightweightManager(QWidget):
     current_panel: Optional[TimeSyncPanel] = None
     main_window: SciQLopMainWindow = None
-    spans: Dict[str, TimeSpan] = {}
+    spans: Dict[str, EventSpan] = {}
 
     def __init__(self, main_window: SciQLopMainWindow, manager_ui: TSCatGUI, parent=None):
         super().__init__(parent=parent)
@@ -198,6 +198,7 @@ class LightweightManager(QWidget):
         log.debug(f"New panel selected: {panel}")
         self.current_panel = self.main_window.plot_panel(panel)
         self.update_spans()
+
 
     @Slot()
     def _interactions_mode_change(self, mode: str):

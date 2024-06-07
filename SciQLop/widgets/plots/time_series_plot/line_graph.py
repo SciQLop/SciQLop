@@ -37,6 +37,20 @@ class LineGraph(Graph):
             else:
                 self.graph.setData(t, v.values)
 
+    @property
+    def auto_scale_y(self):
+        try:
+            return self.graph.auto_scale_y()
+        except AttributeError:
+            return False
+
+    @auto_scale_y.setter
+    def auto_scale_y(self, value: bool):
+        try:
+            self.graph.set_auto_scale_y(value)
+        except AttributeError:
+            pass
+
     def graphAt(self, index: int):
         return self.graph.graphAt(index)
 
