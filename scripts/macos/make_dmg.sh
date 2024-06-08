@@ -48,10 +48,10 @@ EOT
 cat <<'EOT' >> $DIST/SciQLop.app/Contents/MacOS/SciQLop
 #! /usr/bin/env bash
 export HERE=$(dirname $BASH_SOURCE)
-export PATH=$HERE/../Resources/usr/local/bin/
+export PATH=$HERE/../Resources/usr/local/bin/:/usr/bin:/bin:/usr/sbin:/sbin
 export QT_PATH=$($HERE/../Resources/usr/local/bin/python3 -c "import PySide6,os;print(os.path.dirname(PySide6.__file__));")/Qt
-export LD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib
-export DYLD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib:$HERE/usr/local/bin/:$QT_PATH/lib
+export LD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib:$HERE/../Resources/usr/local/extra-lib
+export DYLD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib:$HERE/usr/local/bin/:$QT_PATH/lib:$HERE/../Resources/usr/local/extra-lib
 export QT_PLUGIN_PATH=$QT_PATH/plugins
 export QTWEBENGINE_CHROMIUM_FLAGS="--single-process"
 $HERE/../Resources/usr/local/bin/python3 -m SciQLop.app
@@ -74,6 +74,16 @@ $DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install $SCIQL
 curl https://nodejs.org/dist/v20.12.1/node-v20.12.1-darwin-$ARCH.tar.gz | tar xvz -C $DIST
 rsync -avhu $DIST/node-v20.12.1-darwin-$ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/
 
+if [[ -f /usr/local/lib/libintl.8.dylib ]]; then
+  cp /usr/local/lib/libintl.8.dylib $DIST/SciQLop.app/Contents/Resources/usr/local/lib/
+fi
+
+cd $DIST
+for lib in $(find ./SciQLop.app -type f -perm +a=x | grep -vi 'SciQLopPlots\|pyside\|shiboken' | grep '\.so'); do
+  dylibbundler -cd -b -x $lib -d ./SciQLop.app/Contents/Resources/usr/local/extra-lib
+done
+cd -
+
 exec_files=$(find $DIST/SciQLop.app -type f -perm +a=x)
 if [[ $ARCH == "arm64" ]]; then
   export arch_to_remove="x86_64"
@@ -87,9 +97,7 @@ for e_file in $exec_files; do
   fi
 done
 
-if [[ -f /usr/local/lib/libintl.8.dylib ]]; then
-  cp /usr/local/lib/libintl.8.dylib $DIST/SciQLop.app/Contents/Resources/usr/local/lib/
-fi
+
 
 codesign --force --deep --verbose -s - $DIST/SciQLop.app
 
