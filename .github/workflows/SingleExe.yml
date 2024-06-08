@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: bundle SciQLop
         run: |
-          dnf update -y && dnf install -y wget file
+          dnf update -y && dnf install -y wget file xz
           sh scripts/appimage/build.sh
       - name: Save packages as artifacts
         uses: actions/upload-artifact@v4
