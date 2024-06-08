@@ -85,7 +85,7 @@ class ButtonDelegate(QStyledItemDelegate):
         elif self._is_column(index, 2):
             dial: QColorDialog = editor
             model.setData(index, editor.currentColor(), Qt.ItemDataRole.BackgroundRole)
-            self.change_color.emit(editor.currentColor(), model.data(index, Qt.ItemDataRole.UserRole))
+            self.change_color.emit(editor.currentColor(), index.sibling(index.row(), 0).data(UUIDDataRole))
         else:
             QStyledItemDelegate.setModelData(self, editor, model, index)
 
@@ -215,6 +215,7 @@ class CatalogSelector(QTreeView):
         self._createEventBtnDelegate = ButtonDelegate(self)
         self.setItemDelegate(self._createEventBtnDelegate)
         self._createEventBtnDelegate.create_event.connect(self.create_event)
+        self._createEventBtnDelegate.change_color.connect(self.change_color)
 
         self.model().dataChanged.connect(self._resize_columns)
         self._model.checkStateChanged.connect(self._check_state_changed)

@@ -1,11 +1,11 @@
 numpy
-SciQLopPlots==0.7.3
+SciQLopPlots==0.7.5
 PySide6-QtAds==4.3.0.1
 PySide6==6.7.1
-speasy>=1.2.2
+speasy>=1.3.1
 qtconsole
-tscat_gui==0.4.0
-tscat==0.4.0
+tscat_gui==0.4.*
+tscat==0.4.*
 humanize
 platformdirs
 seaborn

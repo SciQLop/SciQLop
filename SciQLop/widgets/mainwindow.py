@@ -99,7 +99,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         sciqlop_app().add_quickstart_shortcut(name="Plot panel", description="Add a new plot panel",
                                               icon=icons.get("plot_panel"), callback=self.new_plot_panel)
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
-        self.resize(1024, 768)
 
         self._statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._statusbar)
@@ -182,6 +181,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.setGeometry(
             sciqlop_app().primaryScreen().availableGeometry().marginsRemoved(QtCore.QMargins(50, 50, 50, 50)))
 
+    @property
+    def defaul_range(self):
+        return self._dt_range_action.range
+
     def add_side_pan(self, widget: QWidget, location=QtAds.PySide6QtAds.ads.SideBarLocation.SideBarLeft):
         if widget is not None:
             doc = QtAds.CDockWidget(widget.windowTitle())
@@ -223,6 +226,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         elif backend == "mpl":
             return self.new_mpl_plot_panel()
         return None
+
 
     def new_native_plot_panel(self) -> TimeSyncPanel:
         panel = TimeSyncPanel(parent=None, name=make_simple_incr_name(base="Panel"),

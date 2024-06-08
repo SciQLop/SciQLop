@@ -1,4 +1,5 @@
-from typing import List
+from typing import List, Optional
+import os
 from datetime import datetime
 
 from PySide6.QtCore import Signal, QItemSelection, Slot, QItemSelectionModel, QConcatenateTablesProxyModel, \
@@ -8,12 +9,37 @@ from PySide6.QtWidgets import QComboBox, QListView, QSizePolicy, QTableView, QAb
 
 from .event import Event
 
-from tscat_gui.tscat_driver.model import tscat_model, Action
+from tscat_gui.tscat_driver.model import tscat_model, Action, _Event
 from tscat_gui.model_base.constants import UUIDDataRole
 from tscat_gui.tscat_driver.actions import DeletePermanentlyAction, RestorePermanentlyDeletedAction, SetAttributeAction, \
-    _Event
+    _Event, AddEventsToCatalogueAction, CreateEntityAction
 from tscat_gui.undo import _EntityBased
 from tscat_gui.state import AppState
+
+
+class CreateEvent(_EntityBased):
+    def __init__(self, state: AppState, start, stop, parent=None):
+        super().__init__(state, parent)
+        self.start = start
+        self.stop = stop
+        self.setText('Create new Event')
+
+        self.uuid: Optional[str] = None
+
+    def _redo(self):
+        def creation_callback(action: CreateEntityAction) -> None:
+            self.uuid = action.entity.uuid
+            assert self.uuid is not None  # satisfy mypy
+            tscat_model.do(AddEventsToCatalogueAction(None,
+                                                      [self.uuid], self._select_state.selected_catalogues[0]))
+
+        tscat_model.do(CreateEntityAction(creation_callback, _Event,
+                                          {
+                                              'start': self.start,
+                                              'stop': self.stop,
+                                              'author': os.getlogin(),
+                                              'uuid': self.uuid
+                                          }))
 
 
 class DeleteEventsPermanently(_EntityBased):
@@ -111,6 +137,9 @@ class EventSelector(QTableView):
     def delete_events(self, uuids: List[str]):
         self.selectionModel().clear()
         self._manager_ui.state.push_undo_command(DeleteEventsPermanently, uuids)
+
+    def create_event(self, catalog_uuid: str, start, stop):
+        self._manager_ui.state.push_undo_command(CreateEvent, start, stop, catalog_uuid)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:
         if event.key() == Qt.Key.Key_Delete:

@@ -21,9 +21,18 @@ class EventSpan(TimeSpan):
         self.delete_requested.connect(self._delete_requested)
         self.selection_changed.connect(self._notify_selected)
 
+    @Slot()
+    def set_color(self, color):
+        print('Setting color', color)
+        self.color = color
+
     @property
     def uuid(self):
         return self._event.uuid
+
+    @property
+    def catalog_uid(self):
+        return self._event.catalog_uid
 
     @Slot()
     def _selection_changed(self, selected: bool):

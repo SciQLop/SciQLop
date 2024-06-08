@@ -2,7 +2,7 @@ from typing import Dict, Optional, List
 from enum import Enum
 from datetime import datetime
 
-from tscat_gui import TSCatGUI
+from tscat_gui import TSCatGUI, NewCatalogue
 from tscat_gui.tscat_driver.model import tscat_model
 from tscat_gui.tscat_driver.actions import CreateEntityAction
 from PySide6.QtCore import Slot, Signal, Qt
@@ -14,7 +14,7 @@ from SciQLop.backend import TimeRange
 from SciQLop.backend.common import combine_colors
 from SciQLop.backend.sciqlop_logging import getLogger
 from SciQLop.widgets.mainwindow import SciQLopMainWindow
-from SciQLop.widgets.plots.time_span import TimeSpan
+from SciQLop.backend.sciqlop_application import sciqlop_app
 from SciQLop.widgets.plots.time_span_controller import TimeSpanController
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel
 from .catalog_selector import CatalogSelector
@@ -76,7 +76,12 @@ class LightweightManager(QWidget):
         # self.event_selector.event_stop_date_changed.connect(self._event_stop_date_changed)
         self.save_button = QPushButton(self)
         self.save_button.setIcon(QIcon(":/icons/theme/save.png"))
+        self.save_button.setToolTip("Save changes to disk")
+        self.add_catalog_button = QPushButton(self)
+        self.add_catalog_button.setIcon(QIcon(":/icons/theme/add.png"))
+        self.add_catalog_button.setToolTip("Add new catalogue")
         self.layout().addWidget(self.save_button, 0, 0, 1, 1)
+        self.layout().addWidget(self.add_catalog_button, 0, 1, 1, 1)
         self.layout().addWidget(self.panel_selector, 1, 0, 1, -1)
         self.layout().addWidget(QLabel("Interaction mode", self), 2, 0, 1, 1)
         self.layout().addWidget(self.interaction_mode, 2, 1, 1, -1)
@@ -89,8 +94,11 @@ class LightweightManager(QWidget):
         self.setWindowTitle("Catalogs")
 
         self.save_button.clicked.connect(self.save)
+        self.add_catalog_button.clicked.connect(self.add_catalog)
         self.panel_selector.panel_selection_changed.connect(self.panel_selected)
         self.catalog_selector.catalog_selection_changed.connect(self.event_selector.catalog_selection_changed)
+        self.catalog_selector.create_event.connect(self.create_event)
+        self.catalog_selector.change_color.connect(self.update_colors)
         self.interaction_mode.currentTextChanged.connect(self._interactions_mode_change)
 
         self._time_span_ctrlr: Optional[TimeSpanController] = None
@@ -103,6 +111,10 @@ class LightweightManager(QWidget):
         self.manager_ui.save()
 
     @Slot()
+    def add_catalog(self):
+        self.manager_ui.state.push_undo_command(NewCatalogue)
+
+    @Slot()
     def update_panels_list(self, panels):
         self.panel_selector.update_list(list(map(lambda p: p.name, filter(lambda p: isinstance(p, TimeSyncPanel),
                                                                           map(self.main_window.plot_panel, panels)))))
@@ -110,8 +122,10 @@ class LightweightManager(QWidget):
     @Slot()
     def create_event(self, catalog_uid: str):
         if self.current_panel is not None:
-            time_range = self.current_panel.time_range
-            tscat_model.do(CreateEntityAction(catalog_uid, time_range.start, time_range.stop))
+            time_range: TimeRange = self.current_panel.time_range
+        else:
+            time_range: TimeRange = self.main_window.defaul_range
+        self.event_selector.create_event(catalog_uid, time_range.datetime_start, time_range.datetime_stop)
 
     def _event_span(self, uuid: str) -> EventSpan or None:
         return self.spans.get(uuid)
@@ -187,10 +201,11 @@ class LightweightManager(QWidget):
 
     @Slot()
     def update_colors(self, color: QColor, catalog_uid: str):
+        print(f"Color changed: {color}, {catalog_uid}")
         if self.current_panel is not None:
-            for e in self.event_selector.events:
-                if e.catalog_uid == catalog_uid:
-                    e.color_changed.emit(color)
+            for span in self.spans.values():
+                if span.catalog_uid == catalog_uid:
+                    span.color = color
             self.current_panel.replot()
 
     @Slot()
@@ -198,7 +213,6 @@ class LightweightManager(QWidget):
         log.debug(f"New panel selected: {panel}")
         self.current_panel = self.main_window.plot_panel(panel)
         self.update_spans()
-
 
     @Slot()
     def _interactions_mode_change(self, mode: str):
