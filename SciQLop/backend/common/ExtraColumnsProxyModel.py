@@ -1,7 +1,7 @@
 from typing import Mapping, Union, List, Any
 
 from PySide6.QtCore import Signal, QModelIndex, QSize, QPersistentModelIndex, QAbstractItemModel, Slot, \
-    QAbstractProxyModel, QSortFilterProxyModel, QIdentityProxyModel
+    QAbstractProxyModel, QSortFilterProxyModel, QIdentityProxyModel, QItemSelection
 from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QPainter, QColor, QBrush
 from PySide6.QtWidgets import QTreeView, QAbstractScrollArea, QSizePolicy, QPushButton, QHeaderView, \
     QStyledItemDelegate, QWidget, QStyleOptionViewItem, QAbstractItemView, QStyle, QColorDialog
