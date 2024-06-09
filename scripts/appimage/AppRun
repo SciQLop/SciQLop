@@ -15,6 +15,7 @@ export APPIMAGE_COMMAND=$(command -v -- "$ARGV0")
 export TCL_LIBRARY="${APPDIR}/usr/share/tcltk/tcl8.6"
 export TK_LIBRARY="${APPDIR}/usr/share/tcltk/tk8.6"
 export TKPATH="${TK_LIBRARY}"
+export SCIQLOP_BUNDLED="1"
 
 # Export SSL certificate
 export SSL_CERT_FILE="${APPDIR}/opt/_internal/certs.pem"

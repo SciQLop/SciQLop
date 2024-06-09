@@ -54,6 +54,7 @@ export LD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib:$HERE/../Resources/usr/l
 export DYLD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib:$HERE/usr/local/bin/:$QT_PATH/lib:$HERE/../Resources/usr/local/extra-lib
 export QT_PLUGIN_PATH=$QT_PATH/plugins
 export QTWEBENGINE_CHROMIUM_FLAGS="--single-process"
+export SCIQLOP_BUNDLED="1"
 $HERE/../Resources/usr/local/bin/python3 -m SciQLop.app
 EOT
 
