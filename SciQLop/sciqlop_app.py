@@ -57,19 +57,6 @@ def main():
 
 if __name__ == '__main__':
     main()
-    print("Leaving main event loop")
-    open("/tmp/sciqlop.log", "w").write("Leaving main event loop\n")
     if os.environ.get("RESTART_SCIQLOP", None) is not None:
-        print("Restarting SciQLop...")
-        open("/tmp/sciqlop.log", "w").write("Restarting SciQLop...\n")
         sys.exit(64)
     sys.exit(1)
-
-if os.environ.get("INSIDE_SCIQLOP", None) is None:
-    # faking imports to make pyinstaller happy
-    from markupsafe import Markup  # noqa: F401
-    from jupyterlab import labapp  # noqa: F401
-    from qtconsole import qtconsoleapp  # noqa: F401
-    import jinja2  # noqa: F401
-    import markupsafe  # noqa: F401
-    import jupyter_events  # noqa: F401
