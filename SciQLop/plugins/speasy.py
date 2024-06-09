@@ -17,8 +17,6 @@ register_icon("amda", QIcon(":/icons/amda.png"))
 register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
 register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
 
-_pid = os.getgid()
-
 
 def _current_thread_id():
     return id(QThread.currentThread())
@@ -38,16 +36,6 @@ class ThreadStorage:
         if tid not in self._storage:
             self._storage[tid] = {}
         self._storage[tid][key] = value
-
-
-def _makes_os_getpid_return_main_thread_pid():
-    import os
-    import threading
-
-    def getpid():
-        return _pid
-
-    os.getpid = getpid
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:
