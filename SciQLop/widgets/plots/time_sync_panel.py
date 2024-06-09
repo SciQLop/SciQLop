@@ -35,8 +35,7 @@ class TSPanelContainer(PanelContainer):
         max_left_margin = 0
         max_right_pos = 1e9
         for p in self.plots:
-            if isinstance(p, TimeSeriesPlot):
-                p: TimeSeriesPlot = p
+            if hasattr(p, 'plot_instance'):
                 ar = p.plot_instance.axisRect()
                 left_margin = ar.calculateAutoMargin(QCP.MarginSide.msLeft)
                 if p.has_colormap:
@@ -48,7 +47,7 @@ class TSPanelContainer(PanelContainer):
                 max_right_pos = min(max_right_pos, p.width() - cmw)
 
         for p in self.plots:
-            if isinstance(p, TimeSeriesPlot):
+            if hasattr(p, 'plot_instance'):
                 p: TimeSeriesPlot = p
 
                 ar = p.plot_instance.axisRect()
