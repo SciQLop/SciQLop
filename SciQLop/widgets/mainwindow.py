@@ -46,6 +46,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.setObjectName("SciQLopMainWindow")
         self._setup_ui()
         sciqlop_app().panels_list_changed.connect(self.panels_list_changed)
+        sciqlop_app().main_window = self
 
     def _setup_ui(self):
         QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FocusHighlighting, True)
@@ -226,7 +227,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         elif backend == "mpl":
             return self.new_mpl_plot_panel()
         return None
-
 
     def new_native_plot_panel(self) -> TimeSyncPanel:
         panel = TimeSyncPanel(parent=None, name=make_simple_incr_name(base="Panel"),
