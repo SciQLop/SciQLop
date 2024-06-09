@@ -1,5 +1,7 @@
-from typing import List
+import os
+from typing import List, Dict, Any
 from PySide6.QtGui import QIcon
+from PySide6.QtCore import QThread
 import speasy as spz
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
 from speasy.products import SpeasyVariable
@@ -14,6 +16,38 @@ register_icon("nasa", QIcon(":/icons/NASA.jpg"))
 register_icon("amda", QIcon(":/icons/amda.png"))
 register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
 register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
+
+_pid = os.getgid()
+
+
+def _current_thread_id():
+    return id(QThread.currentThread())
+
+
+class ThreadStorage:
+    _storage: Dict[int, Dict[str, Any]] = {}
+
+    def __init__(self):
+        self._storage = {}
+
+    def __getattr__(self, item):
+        return self._storage.get(_current_thread_id(), {}).get(item, None)
+
+    def __setattr__(self, key, value):
+        tid = _current_thread_id()
+        if tid not in self._storage:
+            self._storage[tid] = {}
+        self._storage[tid][key] = value
+
+
+def _makes_os_getpid_return_main_thread_pid():
+    import os
+    import threading
+
+    def getpid():
+        return _pid
+
+    os.getpid = getpid
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:
@@ -137,4 +171,6 @@ class SpeasyPlugin(DataProvider):
 
 
 def load(*args):
+    from speasy.core.cache import _cache
+    _cache._data._local = ThreadStorage()
     return SpeasyPlugin()
