@@ -42,9 +42,7 @@ class JupyterLabClient(SciQLopJupyterClient):
             extra_env = None
 
         args = [
-            "-S",
             f"{__here__}/jupyterlab_auto_build.py",
-            "-S",
             "-m",
             "jupyterlab",
             "--ServerApp.kernel_manager_class=SciQLop.Jupyter.lab_kernel_manager.ExternalMappingKernelManager",
@@ -54,6 +52,9 @@ class JupyterLabClient(SciQLopJupyterClient):
             f"--NotebookApp.token={self.token}",
             f"--NotebookApp.notebook_dir={cwd}"
         ]
+        if 'SCIQLOP_BUNDLED' in os.environ:
+            args.insert(1, '-I')
+            args.insert(0, '-I')
         if 'SCIQLOP_DEBUG' in os.environ:
             args += ["--debug", "--log-level=DEBUG"]
         self._start_process(cmd=get_python(), args=args, connection_file=connection_file, extra_env=extra_env,

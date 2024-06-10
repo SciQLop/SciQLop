@@ -9,15 +9,14 @@ class _PipProcess(Process):
         super().__init__(get_python(), ["-m", "pip"] + args, cwd=cwd)
 
 
-def pip_install_packages(packages: List[str], install_dir: Optional[str] = None, cwd: Optional[str] = None):
+def pip_install_packages(packages: List[str], install_dir: Optional[str] = None, cwd: Optional[str] = None,
+                         upgrade: bool = False):
     args = ["install"] + packages
+    if upgrade:
+        args += ["--upgrade"]
     if install_dir is not None:
         args += ["--target", install_dir]
     return _PipProcess(args, cwd=cwd)
-
-
-def install_pip_package(package: str, install_dir: Optional[str] = None, cwd: Optional[str] = None):
-    return pip_install_packages([package], install_dir, cwd=cwd)
 
 
 def pip_install_requirements(requirements_file: str, install_dir: Optional[str] = None, cwd: Optional[str] = None):

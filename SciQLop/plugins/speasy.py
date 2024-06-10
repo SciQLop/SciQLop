@@ -1,7 +1,7 @@
 import os
 from typing import List, Dict, Any
 from PySide6.QtGui import QIcon
-from PySide6.QtCore import QThread
+import threading
 import speasy as spz
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
 from speasy.products import SpeasyVariable
@@ -19,7 +19,7 @@ register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
 
 
 def _current_thread_id():
-    return id(QThread.currentThread())
+    return threading.get_native_id()
 
 
 class ThreadStorage:
@@ -33,9 +33,10 @@ class ThreadStorage:
 
     def __setattr__(self, key, value):
         tid = _current_thread_id()
-        if tid not in self._storage:
-            self._storage[tid] = {}
-        self._storage[tid][key] = value
+        storage = self._storage
+        if tid not in storage:
+            storage[tid] = {}
+        storage[tid][key] = value
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:

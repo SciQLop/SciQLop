@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import List
 
 
 def get_python() -> str:
@@ -18,3 +19,10 @@ def get_python() -> str:
         else:
             return python_path
     return sys.executable
+
+
+def run_python_module_cmd(module: str, *args: str) -> List[str]:
+    if 'SCIQLOP_BUNDLED' in os.environ:
+        return [get_python(), '-I', '-m', module, *args]
+    else:
+        return [get_python(), '-m', module, *args]

@@ -5,6 +5,7 @@ from itertools import filterfalse
 from typing import Optional, List
 from packaging.version import Version
 from SciQLop import sciqlop_dependencies
+from SciQLop.backend.common.python import run_python_module_cmd
 from subprocess import run, PIPE
 
 _requirements_rx = re.compile(r"^(?P<package>[\w\d_\-]+)(?P<operator>[=<>]+)?(?P<version>[\d\.\*]+)?")
@@ -16,10 +17,6 @@ def installed_version(package: str) -> Optional[str]:
         return version(package)
     except ModuleNotFoundError:
         return None
-
-
-def is_python_3_10():
-    return sys.version_info == (3, 10)
 
 
 def check_dependency(dependency: str) -> bool:
@@ -54,8 +51,9 @@ def missing_dependencies() -> List[str]:
 
 
 def install_missing_dependencies():
-    return run([sys.executable, '-m', "pip", "install", "--upgrade", *missing_dependencies()], stdout=PIPE,
-               stderr=PIPE).returncode == 0
+    return run(
+        run_python_module_cmd("pip", "install", "--upgrade", *missing_dependencies()),
+        stdout=PIPE, stderr=PIPE).returncode == 0
 
 
 def ask_for_installation(missing_dependencies: List[str]):
@@ -72,7 +70,7 @@ def run_sciqlop():
                     from tkinter import messagebox
                     if not messagebox.askyesno("SciQLop", "Failed to install missing dependencies. Continue anyway?"):
                         return 1
-    return run([sys.executable, "-m", "SciQLop.sciqlop_app"]).returncode
+    return run(run_python_module_cmd("SciQLop.sciqlop_app")).returncode
 
 
 def main():

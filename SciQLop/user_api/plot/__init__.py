@@ -1,4 +1,5 @@
-"""Plotting API. This module provides the public API for plotting data and managing plot panels."""
+"""Plotting API. This module provides the public API for plotting data and managing plot panels.
+"""
 
 from enum import Enum
 from typing import Optional, Union
@@ -7,6 +8,11 @@ from SciQLop.backend import TimeRange
 
 PlotType = Enum('PlotType', ['TimeSeries', 'Projection'])
 ScaleType = Enum('ScaleType', ['Linear', 'Logarithmic'])
+
+
+class Graph:
+    def __init__(self, impl):
+        self._impl = impl
 
 
 class TimeSeriesPlot:
@@ -41,7 +47,7 @@ class PlotPanel:
     def __init__(self, impl):
         self._impl = impl
 
-    def plot(self, product, plot_index=-1, plot_type=PlotType.TimeSeries) -> Optional[
+    def plot(self, product, plot_index=-1, plot_type=PlotType.TimeSeries, colors=None) -> Optional[
         Union[TimeSeriesPlot, ProjectionPlot]]:
         if plot_type == PlotType.TimeSeries:
             self._impl.plot(product, plot_index)

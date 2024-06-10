@@ -8,13 +8,13 @@ SCIQLOP_ROOT=$ABSOLUTE_SCRIPT_DIR/../../
 mkdir -p /tmp/sciqlop
 cd /tmp/sciqlop
 
-if [ ! -f ./python3.10.14-cp310-cp310-manylinux2014_x86_64.AppImage ]; then
-    wget https://github.com/niess/python-appimage/releases/download/python3.10/python3.10.14-cp310-cp310-manylinux2014_x86_64.AppImage
-    chmod +x python3.10.14-cp310-cp310-manylinux2014_x86_64.AppImage
+if [ ! -f ./python3.12.3-cp312-cp312-manylinux2014_x86_64.AppImage ]; then
+    wget https://github.com/niess/python-appimage/releases/download/python3.12/python3.12.3-cp312-cp312-manylinux2014_x86_64.AppImage
+    chmod +x python3.12.3-cp312-cp312-manylinux2014_x86_64.AppImage
 fi
 rm -rf ./squashfs-root
-./python3.10.14-cp310-cp310-manylinux2014_x86_64.AppImage --appimage-extract
-./squashfs-root/usr/bin/python3.10 -I -m pip install $SCIQLOP_ROOT
+./python3.12.3-cp312-cp312-manylinux2014_x86_64.AppImage --appimage-extract
+./squashfs-root/usr/bin/python3.12 -I -m pip install $SCIQLOP_ROOT
 rm -f ./squashfs-root/AppRun
 cp $ABSOLUTE_SCRIPT_DIR/AppRun ./squashfs-root/
 
