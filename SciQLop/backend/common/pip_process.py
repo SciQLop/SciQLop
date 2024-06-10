@@ -1,12 +1,13 @@
 import os
 from typing import List, Optional
-from .python import get_python
+from .python import get_python, run_python_module_cmd
 from .process import Process
 
 
 class _PipProcess(Process):
     def __init__(self, args: List[str], cwd: Optional[str] = None):
-        super().__init__(get_python(), ["-m", "pip"] + args, cwd=cwd)
+        cmd = run_python_module_cmd("pip", *args)
+        super().__init__(cmd[0], cmd[1:], cwd=cwd)
 
 
 def pip_install_packages(packages: List[str], install_dir: Optional[str] = None, cwd: Optional[str] = None,

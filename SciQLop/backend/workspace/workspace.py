@@ -8,6 +8,7 @@ from ..data_models.models import WorkspaceSpec, WorkspaceSpecFile
 from ..common.process import Process
 from ..common.pip_process import pip_install_requirements
 from ..common import ensure_dir_exists
+from ..sciqlop_logging import getLogger
 from PySide6.QtCore import QObject, Signal, Slot
 from platformdirs import *
 from typing import List, Optional, AnyStr
@@ -18,6 +19,8 @@ import sys
 WORKSPACES_DIR_CONFIG_ENTRY = ConfigEntry(section="CORE", key2="WORKSPACE_DIR", default=str(
     os.path.join(user_data_dir(appname="sciqlop", appauthor="LPP", ensure_exists=True), "workspaces")),
                                           description="Directory where SciQLop will store its data")
+
+log = getLogger(__name__)
 
 
 def create_workspace_dir(workspace_dir: str):
@@ -99,15 +102,32 @@ class Workspace(QObject):
     def name(self, value):
         self._workspace_spec.name = value
 
+    @Slot()
+    def _dependencies_installed(self):
+        log.info("Dependencies installed")
+        log.info(self._install_proc.stdout)
+        log.info(self._install_proc.stderr)
+
     def _ensure_all_dependencies_installed(self):
         if len(self.dependencies):
+            if 'SCIQLOP_BUNDLED' in os.environ:
+                git_dependencies = list(filter(lambda x: x.startswith("git+"), self.dependencies))
+                if len(git_dependencies):
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.warning(None, "SciQLop", "The following dependencies are git repositories:\n\n"
+                                                         f"{', '.join(git_dependencies)}\n\n"
+                                                         "These dependencies are not supported in the bundled version of SciQLop because git is not provided.")
+                    return
+
+            log.info(f"Installing dependencies: {self.dependencies}")
             with open(os.path.join(self._workspace_dir, "requirements.txt"), 'w') as f:
                 f.write('\n'.join(self.dependencies))
-
             self._install_proc = pip_install_requirements(
                 requirements_file=os.path.join(self._workspace_dir, "requirements.txt"),
                 install_dir=self._dependencies_dir, cwd=self._workspace_dir)
             self._install_proc.finished.connect(self.dependencies_installed)
+            self._install_proc.finished.connect(self._dependencies_installed)
             self._install_proc.start()
         else:
+            log.info("No dependencies to install")
             self.dependencies_installed.emit()
