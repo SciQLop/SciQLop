@@ -18,10 +18,11 @@ from tscat_gui.state import AppState
 
 
 class CreateEvent(_EntityBased):
-    def __init__(self, state: AppState, start, stop, parent=None):
+    def __init__(self, state: AppState, start, stop, catalog_uuid, parent=None):
         super().__init__(state, parent)
         self.start = start
         self.stop = stop
+        self.catalog_uuid = catalog_uuid
         self.setText('Create new Event')
 
         self.uuid: Optional[str] = None
@@ -31,7 +32,7 @@ class CreateEvent(_EntityBased):
             self.uuid = action.entity.uuid
             assert self.uuid is not None  # satisfy mypy
             tscat_model.do(AddEventsToCatalogueAction(None,
-                                                      [self.uuid], self._select_state.selected_catalogues[0]))
+                                                      [self.uuid], self.catalog_uuid))
 
         tscat_model.do(CreateEntityAction(creation_callback, _Event,
                                           {
@@ -40,6 +41,9 @@ class CreateEvent(_EntityBased):
                                               'author': os.getlogin(),
                                               'uuid': self.uuid
                                           }))
+
+    def _undo(self):
+        tscat_model.do(DeletePermanentlyAction(None, [self.uuid]))
 
 
 class DeleteEventsPermanently(_EntityBased):
