@@ -13,11 +13,14 @@ from ..examples import Example
 from ..sciqlop_application import sciqlop_app, QEventLoop
 from ..IPythonKernel import InternalIPKernel
 from ..common import background_run
+from ..sciqlop_logging import getLogger
 from ..jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 import uuid
 
 register_icon("Jupyter", QIcon("://icons/Jupyter_logo.png"))
 register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.png"))
+
+log = getLogger(__name__)
 
 
 def list_existing_workspaces() -> List[WorkspaceSpecFile]:
@@ -100,7 +103,7 @@ class WorkspaceManager(QObject):
         if self._workspace is not None:
             raise Exception("Workspace already created")
         name = name or f"New workspace from {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
-        print(f"Creating workspace {name}")
+        log.info(f"Creating workspace {name}")
         # using uuid4 to avoid name collision and simplify workspace renaming without having to move the directory and
         # update python path at runtime
         directory = os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), uuid.uuid4().hex)
@@ -115,6 +118,8 @@ class WorkspaceManager(QObject):
                                   notebooks=[os.path.basename(example.notebook)], dependencies=example.dependencies)
         assert self._workspace is not None
         self._workspace.add_files([example.notebook, example.image])
+        for directory in filter(lambda d: os.path.isdir(os.path.join(example_path, d)), os.listdir(example_path)):
+            self._workspace.add_directory(os.path.join(example_path, directory), directory)
         assert self._ipykernel_clients_manager is not None
         if not self._ipykernel_clients_manager.has_running_jupyterlab:
             self.start_jupyterlab()

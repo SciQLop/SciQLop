@@ -122,7 +122,7 @@ class LightweightManager(QWidget):
     @Slot()
     def create_event(self, catalog_uid: str):
         if self.current_panel is not None:
-            time_range: TimeRange = self.current_panel.time_range
+            time_range: TimeRange = self.current_panel.time_range * 0.5
         else:
             time_range: TimeRange = self.main_window.defaul_range
         self.event_selector.create_event(catalog_uid, time_range.datetime_start, time_range.datetime_stop)

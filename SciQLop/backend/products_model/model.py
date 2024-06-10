@@ -118,6 +118,8 @@ class ProductsModel(QAbstractItemModel):
         return self._completion_model
 
     def product(self, path: str) -> ProductNode or None:
+        while path.startswith('/'):
+            path = path[1:]
         p = self._root
         if '//' in path:
             sep = '//'

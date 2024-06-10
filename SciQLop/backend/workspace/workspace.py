@@ -91,8 +91,12 @@ class Workspace(QObject):
 
     def add_files(self, files: List[str], destination: str = ""):
         for file in files:
-            print(f"Copying {file} to {os.path.join(self._workspace_dir, destination)}")
+            log.info(f"Copying {file} to {os.path.join(self._workspace_dir, destination)}")
             shutil.copy(file, os.path.join(self._workspace_dir, destination))
+
+    def add_directory(self, directory: str, destination: str = ""):
+        log.info(f"Coping {directory} to {os.path.join(self._workspace_dir, destination)}")
+        shutil.copytree(directory, os.path.join(self._workspace_dir, destination))
 
     @property
     def name(self):

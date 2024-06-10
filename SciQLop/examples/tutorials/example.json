@@ -1,0 +1,12 @@
+{
+  "image": "image.png",
+  "notebook": "Tutorials.ipynb",
+  "description": "Speasy and SciQLop step-by-step tutorials",
+  "name": "Tutorials",
+  "tags": [
+    "tutorial",
+    "virtual-product",
+    "spectro"
+  ],
+  "dependencies": []
+}
