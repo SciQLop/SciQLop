@@ -9,7 +9,7 @@ from SciQLop.backend.common.terminal_messages import spawn_message_dialog, close
 
 def main():
     try:
-        if len(build_check()) != 0:
+        if 'win' not in sys.platform and len(build_check()) != 0:
             widget_id = str(uuid4())
             print(spawn_message_dialog(widget_id, "Building JupyterLab..."))
             try:

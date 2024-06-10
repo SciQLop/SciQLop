@@ -1,4 +1,5 @@
 import os.path
+import sys
 from typing import Optional
 
 from PySide6.QtCore import Signal
@@ -33,9 +34,12 @@ class JupyterLabClient(SciQLopJupyterClient):
         self.token = secrets.token_hex(16)
         self.url = f"http://localhost:{self.port}/?token={self.token}"
         # JUPYTER_CONFIG_PATH=/tmp/_MEI4oIyQF/etc/jupyter/ JUPYTER_CONFIG_DIR=/tmp/_MEI4oIyQF/etc/jupyter/ JUPYTERLAB_DIR=/tmp/_MEI4oIyQF/share/jupyter/lab
-        extra_env = {
-            "JUPYTERLAB_DIR": SCIQLOP_JUPYTERLAB_DIR
-        }
+        if 'win' not in sys.platform:  # On Windows it is not easy to build JupyterLab artifacts
+            extra_env = {
+                "JUPYTERLAB_DIR": SCIQLOP_JUPYTERLAB_DIR
+            }
+        else:
+            extra_env = None
 
         args = [
             "-S",
