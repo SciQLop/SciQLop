@@ -14,7 +14,7 @@ Using SciQLop will let you:
 
 - have a super easy access to tens of thousands of products from the top main data archives in the world,
 - explore multivariate time series effortlessly, with lightning-fast and transparent downloads as you scroll, zoom in,
-  and zoom out,
+  and zoom out,should
 - visualize custom products with simple python code executed on-the-fly,
 - easily label time intervals and make or edit catalog of events graphically and rapidely,
 - analyze your data in jupyter notebooks,
@@ -72,7 +72,8 @@ SciQLop is also the right tool for teaching space physics and in situ spacecraft
 
 ## Mac Users
 
-Since SciQLop 0.7.1 we produce a Mac App Bundle that you can download from the [latest release](https://github.com/SciQLop/SciQLop/releases/latest) page just pick the 
+Since SciQLop 0.7.1 we produce a Mac App Bundle that you can download from
+the [latest release](https://github.com/SciQLop/SciQLop/releases/latest) page just pick the
 right architecture for your Mac (ARM64 for Apple M1/2/3 chips and x86_64 for intel ones).
 
 ## Linux Users
@@ -82,12 +83,8 @@ If you are using a Linux distribution, you may not need to install anything, you
 
 ## From sources
 
-**Warning**: Due to [this issue](https://github.com/grantjenks/python-diskcache/issues/295) you should not use any *
-*Python**
-version higher than **3.10.x**.
-
-Since SciQLop depends on specific versions of PySide6 you should use a dedicated virtualenv for SciQLop to avoid any
-conflict with any other Python package already installed in your system.
+Since SciQLop depends on specific versions of PySide6 you might prefer to use a dedicated virtualenv for SciQLop to
+avoid any conflict with any other Python package already installed in your system.
 
 - Using releases from PyPi
 
@@ -113,26 +110,26 @@ or
 python -m SciQLop.app
 ```
 
+# Python user API Examples:
 
-# Experimental Python API Examples:
-
-The following API examples are for early adopters and will likely change a bit in the future!
+SciQLop has a public API that allows users to create custom products and plots. Here are some examples:
 
 - Creating plot panels:
 
 ```python
-from SciQLop.backend import TimeRange
+from SciQLop.user_api import TimeRange
+from SciQLop.user_api.plot import create_plot_panel
 from datetime import datetime
 
 # all plots are stacked
-p = main_window.new_plot_panel()
-p.time_range = TimeRange(datetime(2015, 10, 22, 6, 4, 30).timestamp(), datetime(2015, 10, 22, 6, 6, 0).timestamp())
+p = create_plot_panel()
+p.time_range = TimeRange(datetime(2015, 10, 22, 6, 4, 30), datetime(2015, 10, 22, 6, 6, 0))
 p.plot("speasy/cda/MMS/MMS1/FGM/MMS1_FGM_BRST_L2/mms1_fgm_b_gsm_brst_l2")
 p.plot("speasy/cda/MMS/MMS1/DIS/MMS1_FPI_BRST_L2_DIS_MOMS/mms1_dis_bulkv_gse_brst")
 p.plot("speasy/cda/MMS/MMS1/DIS/MMS1_FPI_BRST_L2_DIS_MOMS/mms1_dis_energyspectr_omni_brst")
 
 # tha_peif_sc_pot and tha_peif_en_eflux will share the same plot 
-p2 = main_window.new_plot_panel()
+p2 = create_plot_panel()
 p2.plot("speasy/cda/THEMIS/THA/L2/THA_L2_ESA/tha_peif_en_eflux")
 p2.plots[0].plot("speasy/cda/THEMIS/THA/L2/THA_L2_ESA/tha_peif_sc_pot")
 p2.plot("speasy/cda/THEMIS/THA/L2/THA_L2_ESA/tha_peif_velocity_dsl")
@@ -141,39 +138,30 @@ p2.plot("speasy/cda/THEMIS/THA/L2/THA_L2_ESA/tha_peif_velocity_dsl")
 > **_NOTE:_**  An easy way to get product paths, is to drag a product from Products Tree to any text zone or even your
 > Python terminal.
 
-- Custom products:
+- Custom products AKA virtual products:
 
 ```python
-from datetime import datetime
 
 import numpy as np
-
-from SciQLop.backend.pipelines_model.easy_provider import EasyVector, EasyScalar
-
-
-# The following functions can do anything from loading data from a file to any complex computation, they should not 
-# block the GUI since they will be run in background.
-
-def my_vect(start: datetime, stop: datetime) -> (np.ndarray, np.ndarray):
-    x = np.arange(start.timestamp(), stop.timestamp(), 0.1) * 1.
-    y = np.empty((len(x), 3))
-    y[:, 0] = np.cos(x / 100.) * 10.
-    y[:, 1] = np.cos((x + 100) / 100.) * 10.
-    y[:, 2] = np.cos((x + 200) / 100.) * 10.
-    return x, y
+from SciQLop.user_api.virtual_products import create_virtual_product, VirtualProductType
+from SciQLop.user_api.plot import create_plot_panel
+import speasy as spz
 
 
-def my_scalar(start: datetime, stop: datetime) -> (np.ndarray, np.ndarray):
-    x = np.arange(start.timestamp(), stop.timestamp(), 0.1) * 1.
-    y = np.empty((len(x), 1))
-    y[:, 0] = np.cos(x / 100.) * 10.
-    return x, y
+# define a custom product that calculates the magnitude of the magnetic field measured by ACE
+
+def ace_b_magnitude(start: float, stop: float) -> spz.SpeasyVariable:
+  b_gse = spz.get_data(spz.inventories.tree.amda.Parameters.ACE.MFI.ace_imf_all.imf, start, stop)
+  return np.sqrt(b_gse["bx"] ** 2 + b_gse["by"] ** 2 + b_gse["bz"] ** 2)
 
 
-my_vector_provider = EasyVector(path='some_root_folder/my_hello_world_vector', get_data_callback=my_vect,
-                                components_names=["x", "y", "z"], metadata={})
-my_scalar_provider = EasyScalar(path='some_other_root_folder/my_hello_world_scalar', get_data_callback=my_scalar,
-                                component_name="x", metadata={})
+ace_b_magnitude_virtual_prod = create_virtual_product(path='my_virtual_products/ace_b_magnitude',
+                                                      product_type=VirtualProductType.Scalar, callback=ace_b_magnitude,
+                                                      labels=["|b|"])
+
+# plot the virtual product
+p = create_plot_panel()
+p.plot(ace_b_magnitude_virtual_prod)
 ```
 
 More examples can be found in the [examples](SciQLop/examples) folder, they are also available from the welcome screen.
@@ -182,9 +170,20 @@ More examples can be found in the [examples](SciQLop/examples) folder, they are 
 
 Just fork the repository, make your changes and submit a pull request. We will be happy to review and merge your
 changes.
-Reports of bugs and feature requests are also welcome.
+Reports of bugs and feature requests are also welcome. Do not forget to star the project if you like it!
 
 # Credits
 
 The development of SciQLop is supported by the [CDPP](http://www.cdpp.eu/).<br />
 We acknowledge support from the federation [Plas@Par](https://www.plasapar.sorbonne-universite.fr)
+
+# Thanks
+
+We would like to thank the developers of the following libraries that SciQLop depends on:
+
+- [PySide6](https://doc.qt.io/qtforpython-6/index.html) for the GUI framework and Qt bindings.
+- [QCustomPlot](https://www.qcustomplot.com/) for providing the plotting library.
+- [DiskCache](https://pypi.org/project/diskcache/) for providing a simple and efficient caching system used
+  in [Speasy](https://github.com/SciQLop/speasy).
+- [The Jupyter project](https://jupyter.org/) for providing the Jupyter notebook integration.
+- [Numpy](https://numpy.org/) for providing fast Python array library.

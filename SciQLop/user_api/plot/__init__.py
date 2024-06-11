@@ -8,6 +8,7 @@ from ..virtual_products import VirtualProduct
 from SciQLop.backend import TimeRange
 from SciQLop.widgets.plots.projection_plot import ProjectionPlot as _ImplProjectionPlot
 from SciQLop.widgets.plots.time_series_plot import TimeSeriesPlot as _ImplTimeSeriesPlot
+from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel as _ImplTimeSyncPanel
 from SciQLopPlots import QCPAxis as _QCPAxis
 from speasy.core import AnyDateTimeType
 
@@ -61,6 +62,12 @@ class TimeSeriesPlot:
 
     def _on_destroyed(self):
         self._impl = None
+
+    def plot(self, product: Union[str, VirtualProduct], colors=None):
+        if isinstance(product, VirtualProduct):
+            self.plot(product.path, colors)
+        else:
+            self._get_impl_or_raise().plot(product)
 
     def _get_impl_or_raise(self) -> _ImplTimeSeriesPlot:
         if self._impl is None:
@@ -146,31 +153,39 @@ class ProjectionPlot:
 
 
 class PlotPanel:
-    def __init__(self, impl):
-        self._impl = impl
+    def __init__(self, impl: _ImplTimeSyncPanel):
+        self._impl: _ImplTimeSyncPanel = impl
+        self._impl.destroyed.connect(self._on_destroyed)
+
+    def _on_destroyed(self):
+        self._impl = None
+
+    def _get_impl_or_raise(self) -> _ImplTimeSyncPanel:
+        if self._impl is None:
+            raise ValueError("The plot panel does not exist anymore.")
+        return self._impl
 
     def plot(self, product: Union[str, VirtualProduct], plot_index: int = -1, plot_type: PlotType = PlotType.TimeSeries,
              colors=None) -> Optional[Union[TimeSeriesPlot, ProjectionPlot]]:
         if isinstance(product, VirtualProduct):
-            print(f"VirtualProduct path: {product.path}")
             self.plot(product.path, plot_index, PlotType.TimeSeries, colors)
         elif plot_type == PlotType.TimeSeries:
-            self._impl.plot(product, plot_index)
+            self._get_impl_or_raise().plot(product, plot_index)
             return TimeSeriesPlot(self._impl.plots[plot_index])
         else:
-            self._impl.plot(product, plot_index)
-            return ProjectionPlot(self._impl.plots[plot_index])
+            self._get_impl_or_raise().plot(product, plot_index)
+            return ProjectionPlot(self._get_impl_or_raise().plots[plot_index])
 
     def remove_plot(self, plot_index):
         pass
 
     @property
     def time_range(self) -> TimeRange:
-        return self._impl.time_range
+        return self._get_impl_or_raise().time_range
 
     @time_range.setter
     def time_range(self, time_range: TimeRange):
-        self._impl.time_range = time_range
+        self._get_impl_or_raise().time_range = time_range
 
     @property
     def plots(self):
