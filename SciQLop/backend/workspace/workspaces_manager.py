@@ -23,19 +23,30 @@ register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.png"))
 log = getLogger(__name__)
 
 
+def _try_load_workspace(workspace_dir):
+    try:
+        return WorkspaceSpecFile(workspace_dir)
+    except Exception as e:
+        log.error(f"Error loading workspace {workspace_dir}: {e}")
+        return None
+
+
 def list_existing_workspaces() -> List[WorkspaceSpecFile]:
     workspaces_dir = WORKSPACES_DIR_CONFIG_ENTRY.get()
     if not os.path.exists(workspaces_dir):
         return []
     return list(
-        map(
-            lambda workspace_dir: WorkspaceSpecFile(workspace_dir),
-            filter(
-                lambda workspace_dir: os.path.exists(os.path.join(workspace_dir, "workspace.json")),
+        filter(
+            lambda w: w is not None,
+            map(
+                _try_load_workspace,
                 filter(
-                    lambda d: os.path.isdir(d) and d != 'default',
-                    map(lambda workspace_dir: os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), workspace_dir),
-                        os.listdir(WORKSPACES_DIR_CONFIG_ENTRY.get()))
+                    lambda workspace_dir: os.path.exists(os.path.join(workspace_dir, "workspace.json")),
+                    filter(
+                        lambda d: os.path.isdir(d) and d != 'default',
+                        map(lambda workspace_dir: os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), workspace_dir),
+                            os.listdir(WORKSPACES_DIR_CONFIG_ENTRY.get()))
+                    )
                 )
             )
         )
