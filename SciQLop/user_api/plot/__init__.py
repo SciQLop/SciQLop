@@ -9,7 +9,7 @@ from SciQLop.backend import TimeRange
 from SciQLop.widgets.plots.projection_plot import ProjectionPlot as _ImplProjectionPlot
 from SciQLop.widgets.plots.time_series_plot import TimeSeriesPlot as _ImplTimeSeriesPlot
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel as _ImplTimeSyncPanel
-from SciQLopPlots import QCPAxis as _QCPAxis
+from SciQLopPlots import QCPAxis as _QCPAxis, QCPAxisTickerLog as _QCPAxisTickerLog, QCPAxisTicker as _QCPAxisTicker
 from speasy.core import AnyDateTimeType
 
 
@@ -43,8 +43,10 @@ def _get_qcpaxis_scale_type(axis: _QCPAxis):
 def _set_qcpaxis_scale_type(scale_type: ScaleType, axis: _QCPAxis):
     if scale_type == ScaleType.Linear:
         axis.setScaleType(_QCPAxis.stLinear)
+        axis.setTicker(_QCPAxisTicker())
     elif scale_type == ScaleType.Logarithmic:
         axis.setScaleType(_QCPAxis.stLogarithmic)
+        axis.setTicker(_QCPAxisTickerLog())
     else:
         raise ValueError(f"Unknown scale type {scale_type}")
 
