@@ -51,7 +51,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def _setup_ui(self):
         QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FocusHighlighting, True)
         QtAds.CDockManager.setAutoHideConfigFlags(
-            QtAds.CDockManager.DefaultAutoHideConfig | QtAds.CDockManager.AutoHideShowOnMouseOver)
+            QtAds.CDockManager.AutoHideFeatureEnabled |
+            QtAds.CDockManager.AutoHideCloseButtonCollapsesDock |
+            QtAds.CDockManager.AutoHideHasMinimizeButton |
+            QtAds.CDockManager.AutoHideSideBarsIconOnly)  # | QtAds.CDockManager.AutoHideShowOnMouseOver)
 
         if "WAYLAND_DISPLAY" in os.environ:
             QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerForceQWidgetTitleBar, True)
