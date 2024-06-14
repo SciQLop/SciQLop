@@ -51,7 +51,8 @@ class TimeSpanController(QObject):
     @spans.setter
     def spans(self, ranges: List[TimeSpan]):
         self._ranges = ranges
-        self._update_visible_ranges(self._plot_panel.time_range * self._preload_factor)
+        if len(ranges):
+            self._update_visible_ranges(self._plot_panel.time_range * self._preload_factor)
         for s in self._ranges:
             s.destroyed.connect(lambda: self._ranges.remove(s))
 

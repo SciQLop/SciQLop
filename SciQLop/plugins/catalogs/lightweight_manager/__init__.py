@@ -146,7 +146,7 @@ class LightweightManager(QWidget):
     def event_selected(self, uuid: str):
         e = self._event_span(uuid)
         if e is not None:
-            if self._current_interaction_mode == InteractionMode.Jump:
+            if self._current_interaction_mode == InteractionMode.Jump and self.has_selected_panel:
                 log.debug(f"event selected {e}, setting panel: {self.current_panel}")
                 time_range = e.time_range
                 if time_range.start == time_range.stop:
@@ -209,9 +209,15 @@ class LightweightManager(QWidget):
             self.current_panel.replot()
 
     @Slot()
+    def panel_destroyed(self):
+        self.current_panel = None
+
+    @Slot()
     def panel_selected(self, panel):
         log.debug(f"New panel selected: {panel}")
         self.current_panel = self.main_window.plot_panel(panel)
+        if self.current_panel is not None:
+            self.current_panel.destroyed.connect(self.panel_destroyed)
         self.update_spans()
 
     @Slot()
