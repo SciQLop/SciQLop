@@ -70,6 +70,7 @@ def run_sciqlop():
                     from tkinter import messagebox
                     if not messagebox.askyesno("SciQLop", "Failed to install missing dependencies. Continue anyway?"):
                         return 1
+    os.environ['SPEASY_SKIP_INIT_PROVIDERS'] = '1'
     return run(run_python_module_cmd("SciQLop.sciqlop_app")).returncode
 
 

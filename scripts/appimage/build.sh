@@ -15,6 +15,10 @@ fi
 rm -rf ./squashfs-root
 ./python3.12.3-cp312-cp312-manylinux2014_x86_64.AppImage --appimage-extract
 ./squashfs-root/usr/bin/python3.12 -I -m pip install $SCIQLOP_ROOT
+if [ -z $RELEASE ]; then
+  ./squashfs-root/usr/bin/python3.12 -I -m pip install --upgrade git+https://github.com/SciQLop/speasy
+fi
+
 rm -f ./squashfs-root/AppRun
 cp $ABSOLUTE_SCRIPT_DIR/AppRun ./squashfs-root/
 

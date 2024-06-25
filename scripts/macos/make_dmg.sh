@@ -62,8 +62,8 @@ chmod +x $DIST/SciQLop.app/Contents/MacOS/SciQLop
 
 
 export MACOSX_DEPLOYMENT_TARGET=11.0
-curl https://www.python.org/ftp/python/3.10.14/Python-3.10.14.tar.xz | tar xvz -C $DIST
-cd $SCIQLOP_ROOT/dist/Python-3.10.14
+curl https://www.python.org/ftp/python/3.12.4/Python-3.12.4.tar.xz | tar xvz -C $DIST
+cd $SCIQLOP_ROOT/dist/Python-3.12.4
 ./configure --enable-optimizations
 make -j
 make install DESTDIR=../SciQLop.app/Contents/Resources
@@ -71,6 +71,10 @@ cd -
 
 
 $DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install $SCIQLOP_ROOT/
+
+if [[ -z $RELEASE ]]; then
+  $DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install --upgrade git+https://github.com/SciQLop/speasy
+fi
 
 curl https://nodejs.org/dist/v20.12.1/node-v20.12.1-darwin-$ARCH.tar.gz | tar xvz -C $DIST
 rsync -avhu $DIST/node-v20.12.1-darwin-$ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/

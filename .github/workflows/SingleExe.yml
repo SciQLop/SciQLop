@@ -14,9 +14,13 @@ jobs:
       image: fedora:39
     steps:
       - uses: actions/checkout@v4
+      - name: setenv
+        if: github.event_name == 'release'
+        run: |
+          echo "RELEASE=1" >> $GITHUB_ENV
       - name: bundle SciQLop
         run: |
-          dnf update -y && dnf install -y wget file xz rsync gcc
+          dnf update -y && dnf install -y wget file xz rsync gcc git
           sh scripts/appimage/build.sh
       - name: Save packages as artifacts
         uses: actions/upload-artifact@v4
@@ -28,6 +32,10 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
+      - name: setenv
+        if : github.event_name == 'release'
+        run: |
+          echo "RELEASE=1" >> $GITHUB_ENV
       - name: bundle SciQLop
         run: |
           brew install graphicsmagick imagemagick dylibbundler
@@ -44,6 +52,10 @@ jobs:
     runs-on: macos-12
     steps:
       - uses: actions/checkout@v4
+      - name: setenv
+        if: github.event_name == 'release'
+        run: |
+          echo "RELEASE=1" >> $GITHUB_ENV
       - name: bundle SciQLop
         run: |
           brew install graphicsmagick imagemagick dylibbundler
