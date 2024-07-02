@@ -50,7 +50,8 @@ class JupyterLabClient(SciQLopJupyterClient):
             f"--port={self.port}",
             "--no-browser",
             f"--NotebookApp.token={self.token}",
-            f"--NotebookApp.notebook_dir={cwd}"
+            f"--NotebookApp.notebook_dir={cwd}",
+            "--NotebookApp.terminals_enabled=False"
         ]
         if 'SCIQLOP_BUNDLED' in os.environ:
             args.insert(1, '-I')
