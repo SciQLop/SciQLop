@@ -40,25 +40,25 @@ class PanelContainer(QSplitter):
         self.setOrientation(Qt.Orientation.Vertical)
         self.setChildrenCollapsible(False)
         self.setProperty("empty", True)
+        self.plot_list_changed.connect(self._ensure_shared_x_axis)
 
 
     def _ensure_shared_x_axis(self):
-        plots = self.plots
-        if len(plots):
-            for p in plots[:-1]:
-                p: PlotPanel = p
-                if hasattr(p, "hide_x_axis"):
-                    p.hide_x_axis()
-            if hasattr(plots[-1], "show_x_axis"):
-                plots[-1].show_x_axis()
+        if self._shared_x_axis:
+            plots = self.plots
+            if len(plots):
+                for p in plots[:-1]:
+                    p: PlotPanel = p
+                    if hasattr(p, "hide_x_axis"):
+                        p.hide_x_axis()
+                if hasattr(plots[-1], "show_x_axis"):
+                    plots[-1].show_x_axis()
 
     def add_widget(self, widget: QWidget, index: int):
         self.insertWidget(index, widget)
         if isinstance(widget, self._plot_type):
             self.setProperty("empty", False)
             widget.destroyed.connect(self.plot_list_changed)
-            if self._shared_x_axis:
-                self._ensure_shared_x_axis()
             self.plot_list_changed.emit()
 
     def remove_plot(self, plot: QWidget):
