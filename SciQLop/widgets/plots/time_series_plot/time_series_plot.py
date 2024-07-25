@@ -40,24 +40,13 @@ def _configure_plot(plot: SciQLopPlot):
     plot.setPlottingHint(QCP.phFastPolylines, True)
     plot.setInteractions(
         QCP.iRangeDrag | QCP.iRangeZoom | QCP.iSelectPlottables | QCP.iSelectAxes | QCP.iSelectLegend | QCP.iSelectItems)
-    plot.legend.setVisible(True)
-    plot.legend.setSelectableParts(QCPLegend.SelectablePart.spItems)
+    plot.enable_legend(True)
     date_ticker = QCPAxisTickerDateTime()
     date_ticker.setDateTimeFormat("yyyy/MM/dd \nhh:mm:ss.zzz")
     date_ticker.setDateTimeSpec(Qt.UTC)
     plot.xAxis.setTicker(date_ticker)
-    plot.plotLayout().setMargins(QMargins(0, 0, 0, 0))
-    plot.plotLayout().setRowSpacing(0)
-    plot.plotLayout().setColumnSpacing(0)
-    for rect in plot.axisRects():
-        rect.setMargins(QMargins(0, 0, 0, 0))
-
-    plot.setContentsMargins(0, 0, 0, 0)
-    layout = plot.layout()
-    if layout:
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
-    plot.setAutoAddPlottableToLegend(False)
+    plot.minimize_margins()
+    #plot.setAutoAddPlottableToLegend(False)
 
 
 class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
@@ -86,29 +75,8 @@ class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
         self.layout().setContentsMargins(0, 0, 0, 0)
         self.xAxis.rangeChanged.connect(lambda range: self.time_range_changed.emit(TimeRange(range.lower, range.upper)))
         self.yAxis.rangeChanged.connect(lambda range: self.vertical_axis_range_changed.emit(range.lower, range.upper))
-        self._plot.selectionChangedByUser.connect(self._update_selection)
-        self._plot.legendDoubleClick.connect(self._hide_graph)
         self._parent_node = None
         self.auto_scale_y = True
-
-    def _hide_graph(self, legend: QCPLegend, item: QCPAbstractLegendItem, event: QMouseEvent):
-        if item:
-            item.plottable().setVisible(not item.plottable().visible())
-            if item.plottable().visible():
-                item.setTextColor(QColorConstants.Black)
-                item.setSelectedTextColor(QColorConstants.Black)
-            else:
-                item.setTextColor(QColorConstants.Gray)
-                item.setSelectedTextColor(QColorConstants.Gray)
-            self.replot(QCustomPlot.rpQueuedReplot)
-
-    def _update_selection(self):
-        for i in range(self._plot.graphCount()):
-            graph = self._plot.graph(i)
-            item = self._plot.legend.itemWithPlottable(graph)
-            if item.selected() or graph.selected():
-                item.setSelected(True)
-                graph.setSelected(True)
 
     def set_margin_group(self, margin_group: QCPMarginGroup):
         self._plot.axisRect(0).setMarginGroup(QCP.msLeft, margin_group)
@@ -166,9 +134,9 @@ class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
 
     def addSciQLopGraph(self, x_axis, y_axis, data_order, labels=None):
         if labels is not None:
-            return SciQLopGraph(self._plot, x_axis, y_axis, labels, data_order)
+            return self._plot.addSciQLopGraph( x_axis, y_axis, labels, data_order)
         else:
-            return SciQLopGraph(self._plot, x_axis, y_axis, data_order)
+            return self._plot.addSciQLopGraph( x_axis, y_axis, data_order)
 
     def addSciQLopColorMap(self, x_axis, y_axis, label, with_color_scale=True):
         colormap = self._plot.addSciQLopColorMap(x_axis, y_axis, label)

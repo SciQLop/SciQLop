@@ -31,19 +31,8 @@ def _configure_plot(plot: SciQLopPlot):
     plot.setPlottingHint(QCP.phFastPolylines, True)
     plot.setInteractions(
         QCP.iRangeDrag | QCP.iRangeZoom | QCP.iSelectPlottables | QCP.iSelectAxes | QCP.iSelectLegend | QCP.iSelectItems)
-    plot.legend.setVisible(True)
-    plot.legend.setSelectableParts(QCPLegend.SelectablePart.spItems)
-    plot.plotLayout().setMargins(QMargins(0, 0, 0, 0))
-    plot.plotLayout().setRowSpacing(0)
-    for rect in plot.axisRects():
-        rect.setMargins(QMargins(0, 0, 0, 0))
-
-    plot.setContentsMargins(0, 0, 0, 0)
-    layout = plot.layout()
-    if layout:
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
-    plot.setAutoAddPlottableToLegend(False)
+    plot.minimize_margins()
+    plot.enable_legend(True)
 
 
 class ProjectionPlot(QFrame, Plot, metaclass=MetaPlot):

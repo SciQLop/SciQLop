@@ -2,7 +2,7 @@ import numpy as np
 from typing import List, Optional
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QPen
-from SciQLopPlots import SciQLopGraph, QCPSelectionDecorator
+from SciQLopPlots import SciQLopCurve, QCPSelectionDecorator
 from speasy.products import SpeasyVariable
 
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
@@ -17,7 +17,7 @@ log = sciqlop_logging.getLogger(__name__)
 class _MultiGraph(QObject):
     please_delete_me = Signal(object)
 
-    def __init__(self, parent, graphs: List[SciQLopGraph]):
+    def __init__(self, parent, graphs: List[SciQLopCurve]):
         super().__init__(parent)
         self._graphs = graphs
         for g in graphs:
@@ -26,12 +26,12 @@ class _MultiGraph(QObject):
         self.setup = False
 
     @property
-    def graphs(self) -> List[SciQLopGraph]:
+    def graphs(self) -> List[SciQLopCurve]:
         return self._graphs
 
 
 class TrajectoryGraph(Graph):
-    def __init__(self, parent, sciqlop_graphs: List[SciQLopGraph], provider: DataProvider, product: ProductNode,
+    def __init__(self, parent, sciqlop_graphs: List[SciQLopCurve], provider: DataProvider, product: ProductNode,
                  label: Optional[str] = None):
         Graph.__init__(self, parent=parent, graph_type=GraphType.MultiLines, provider=provider, product=product)
         assert len(sciqlop_graphs) == 3
@@ -51,7 +51,7 @@ class TrajectoryGraph(Graph):
             g.setPen(QPen(color))
             selection_decorator = g.selectionDecorator()
             selection_decorator.setPen(QPen(color, selection_decorator.pen().width()))
-            g.addToLegend()
+            #g.addToLegend()
         self.graph.setup = True
 
     def plot(self, v: SpeasyVariable):
@@ -76,7 +76,7 @@ class TrajectoryGraph(Graph):
 
 
 class ModelGraph(TrajectoryGraph):
-    def __init__(self, parent, sciqlop_graphs: List[SciQLopGraph], provider: DataProvider, product: ProductNode,
+    def __init__(self, parent, sciqlop_graphs: List[SciQLopCurve], provider: DataProvider, product: ProductNode,
                  label: Optional[str] = None):
         super().__init__(parent, sciqlop_graphs, provider, product, label=label)
 
