@@ -13,8 +13,8 @@ sciqlop_root = os.path.dirname(os.path.abspath(__file__))
 
 
 def sciqlop_dependencies() -> List[str]:
-    return ['numpy', 'SciQLopPlots==0.8.0', 'speasy>=1.3.2', 'qtconsole', 'tscat_gui==0.4.*',
+    return ['SciQLopPlots==0.8.0', 'speasy>=1.3.2', 'qtconsole', 'tscat_gui==0.4.*',
             'tscat==0.4.*', "humanize", 'platformdirs',
             'seaborn', "scipy", "pyside6==6.7.1", "shiboken6==6.7.1", "PySide6-QtAds==4.3.0.1", "IPython",
             "ipykernel", "jupyterlab>=4,!=4.1.0",
-            "notebook", "ipympl", "qasync", "jinja2", "pyzstd", "PyGitHub"]
+            "notebook", "ipympl", "qasync", "jinja2", "pyzstd", "PyGitHub", 'numpy>=1.25.0, <2.0.0']
