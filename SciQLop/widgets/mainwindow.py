@@ -71,6 +71,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         default_time_range = TimeRange((datetime.utcnow() - timedelta(days=361)).timestamp(),
                                        (datetime.utcnow() - timedelta(days=360)).timestamp())
 
+        self.toolsMenu = QMenu("Tools")
+        self._menubar.addMenu(self.toolsMenu)
         self.welcome = WelcomePage()
 
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self.welcome)
@@ -85,6 +87,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url),
                                                size_hint_from_content=False))
         self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
+        self.toolsMenu.addAction("Start jupyter console", self.workspace_manager.new_qt_console)
 
         self.logs = LogsWidget(self)
         self.add_side_pan(self.logs, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)

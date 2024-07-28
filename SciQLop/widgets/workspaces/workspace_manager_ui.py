@@ -28,3 +28,6 @@ class WorkspaceManagerUI(QWidget):
 
     def quit(self):
         workspaces_manager_instance().quit()
+
+    def new_qt_console(self):
+        workspaces_manager_instance().new_qt_console()
