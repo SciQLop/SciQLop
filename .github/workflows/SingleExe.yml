@@ -58,7 +58,7 @@ jobs:
           echo "RELEASE=1" >> $GITHUB_ENV
       - name: bundle SciQLop
         run: |
-          brew install graphicsmagick imagemagick dylibbundler
+          brew install graphicsmagick imagemagick dylibbundler coreutils
           npm install --global create-dmg
           sh scripts/macos/make_dmg.sh
       - name: Save packages as artifacts
