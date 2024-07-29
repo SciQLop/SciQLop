@@ -204,8 +204,17 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 container.setSize(widget.sizeHint().width())
             self.viewMenu.addAction(doc.toggleViewAction())
 
+    def remove_native_plot_panel(self, panel: TimeSyncPanel):
+        dw=self.dock_manager.findDockWidget(panel.name)
+        if dw:
+            dw.takeWidget()
+            dw.closeDockWidget()
+            panel.delete(notify=False)
+            panel.deleteLater()
+
+
     def addWidgetIntoDock(self, allowed_area, widget, area=None, delete_on_close: bool = False,
-                          size_hint_from_content: bool = True) -> Optional[
+                          size_hint_from_content: bool = True, custom_close_callback=None) -> Optional[
         QtAds.CDockAreaWidget]:
         if widget is not None:
             doc = QtAds.CDockWidget(widget.windowTitle())
@@ -219,9 +228,13 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             else:
                 dock_area = self.dock_manager.addDockWidget(allowed_area, doc)
             if delete_on_close:
-                doc.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
-                if hasattr(widget, "delete_me"):
-                    widget.delete_me.connect(doc.closeDockWidget)
+                if custom_close_callback is not None:
+                    doc.setFeature(QtAds.CDockWidget.CustomCloseHandling, True)
+                    doc.closeRequested.connect(custom_close_callback)
+                else:
+                    doc.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
+                    if hasattr(widget, "delete_me"):
+                        widget.delete_me.connect(doc.closeDockWidget)
             else:
                 self.viewMenu.addAction(doc.toggleViewAction())
             return dock_area
@@ -237,8 +250,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def new_native_plot_panel(self) -> TimeSyncPanel:
         panel = TimeSyncPanel(parent=None, name=make_simple_incr_name(base="Panel"),
                               time_range=self._dt_range_action.range)
-        self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True)
+        self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True, custom_close_callback=lambda : self.remove_native_plot_panel(panel))
         panel.destroyed.connect(self._notify_panels_list_changed)
+        panel.delete_me.connect(lambda: self.remove_native_plot_panel(panel))
         self._notify_panels_list_changed()
         # self._inspector_model.new_top_level_object(panel)
         return panel

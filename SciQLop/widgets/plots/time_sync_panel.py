@@ -220,8 +220,13 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
     def icon(self) -> str:
         return "QCP"
 
-    def delete(self):
-        self.delete_me.emit()
+    def delete(self, notify=True):
+        print("Deleting TimeSyncPanel")
+        for p in self.plots:
+            if hasattr(p, "delete"):
+                p.delete()
+        if notify:
+            self.delete_me.emit()
 
 
 @register_inspector(TimeSyncPanel)

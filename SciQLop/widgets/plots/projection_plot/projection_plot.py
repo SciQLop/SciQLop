@@ -155,6 +155,11 @@ class ProjectionPlot(QFrame, Plot, metaclass=MetaPlot):
     def graphs(self) -> List[Graph]:
         return list(filter(lambda n: isinstance(n, Graph), self.children()))
 
+    def delete(self):
+        for g in self.graphs:
+            g.delete()
+        self.deleteLater()
+
 
 @register_inspector(ProjectionPlot)
 class ProjectionPlotInspector(Inspector):

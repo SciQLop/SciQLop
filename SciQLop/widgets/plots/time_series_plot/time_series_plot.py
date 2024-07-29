@@ -46,7 +46,6 @@ def _configure_plot(plot: SciQLopPlot):
     date_ticker.setDateTimeSpec(Qt.UTC)
     plot.xAxis.setTicker(date_ticker)
     plot.minimize_margins()
-    #plot.setAutoAddPlottableToLegend(False)
 
 
 class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
@@ -234,6 +233,11 @@ class TimeSeriesPlot(QFrame, Plot, metaclass=MetaPlot):
     @property
     def graphs(self) -> List[Graph]:
         return list(filter(lambda n: isinstance(n, Graph), self.children()))
+
+    def delete(self):
+        for graph in self.graphs:
+            graph.delete()
+        self.deleteLater()
 
 
 @register_inspector(TimeSeriesPlot)

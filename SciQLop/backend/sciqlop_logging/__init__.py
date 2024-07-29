@@ -27,8 +27,9 @@ def replace_stdios():
     sys.stderr = _stderr
 
 
-def setup(log_filename=None, log_level=None):
-    replace_stdios()
+def setup(log_filename=None, log_level=None, capture_stdout=True):
+    if capture_stdout:
+        replace_stdios()
     if log_level is not None:
         getLogger().setLevel(log_level)
     else:

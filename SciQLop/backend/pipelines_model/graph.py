@@ -1,8 +1,8 @@
 import numpy as np
+import sys
 from PySide6.QtCore import QObject, Signal, Slot
 from speasy.products import SpeasyVariable
-from abc import ABC, abstractmethod, ABCMeta
-from typing import List, Protocol, runtime_checkable, Optional, Any, Dict
+from typing import List,  Optional, Any
 
 from SciQLop.backend import TimeRange
 from SciQLop.backend.enums import GraphType, graph_type_repr
@@ -76,12 +76,16 @@ class Graph(QObject):
         if self._graph:
             # self._graph.destroyed.disconnect()
             if hasattr(self._graph, "deleteLater"):
+                print("Graph deleteLater")
+                sys.stdout.flush()
                 self._graph.deleteLater()
         self._graph = None
 
     @Slot()
     def _graph_destroyed(self):
         self._graph = None
+        print("Graph destroyed")
+        sys.stdout.flush()
         self.please_delete_me.emit(self)
 
     def close(self):
@@ -102,6 +106,8 @@ class Graph(QObject):
         self.setObjectName(new_name)
 
     def delete(self):
+        print("Deleting graph")
+        sys.stdout.flush()
         self.close()
         self.deleteLater()
 

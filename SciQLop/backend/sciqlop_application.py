@@ -3,9 +3,7 @@ from typing import Dict, List, Optional, Tuple, Union, Any
 from SciQLop.backend.theming.loader import load_stylesheets, build_palette
 from qasync import QEventLoop, QApplication
 import asyncio
-import sys, os
-from glob import glob
-from io import StringIO
+import sys
 
 
 class SciQLopApp(QApplication):
