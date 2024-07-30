@@ -46,6 +46,11 @@ jobs:
         with:
           name: SciQLop-arm64.dmg
           path: dist/SciQLop-*.dmg
+      - name: save logs as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-macOS-arm64
+          path: dist/*.log
 
 
   build_x86_64_dmg:
@@ -66,6 +71,11 @@ jobs:
         with:
           name: SciQLop-x86_64.dmg
           path: dist/SciQLop-*.dmg
+      - name: save logs as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-macOS-x86_64
+          path: dist/*.log
 
   Publish:
     runs-on: ubuntu-latest

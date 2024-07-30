@@ -9,7 +9,12 @@ ARCH=$(uname -m)
 mkdir $DIST
 
 mkdir -p $DIST/SciQLop.app/Contents/MacOS
+mkdir -p $DIST/SciQLop.app/Contents/Resources/usr/local
 mkdir -p $ICONDIR
+
+export MACOSX_DEPLOYMENT_TARGET=11.0
+export PREFIX_ABS=$(realpath $DIST/SciQLop.app/Contents/Resources/usr/local)
+export PATH=$PREFIX_ABS/bin:$PATH
 
 for SIZE in 16 32 64 128 256 512; do
 sips -z $SIZE $SIZE $SCIQLOP_ROOT/SciQLop/resources/icons/SciQLop.png --out $ICONDIR/icon_${SIZE}x${SIZE}.png ;
@@ -42,8 +47,6 @@ EOT
 chmod +x $DIST/SciQLop.app/Contents/MacOS/SciQLop
 
 
-export MACOSX_DEPLOYMENT_TARGET=11.0
-export PREFIX_ABS=$(realpath $DIST/SciQLop.app/Contents/Resources/usr/local)
 
 function download_and_extract() {
   EXTENSION="${1##*.}"
@@ -63,8 +66,6 @@ function download_and_extract() {
 }
 
 download_and_extract  https://github.com/openssl/openssl/releases/download/openssl-3.3.1/openssl-3.3.1.tar.gz
-mkdir -p $DIST/SciQLop.app/Contents/Resources/usr/local
-export PREFIX_ABS=$(realpath $DIST/SciQLop.app/Contents/Resources/usr/local)
 
 cd $DIST/openssl-3.3.1
 if [[ $ARCH == "arm64" ]]; then
@@ -75,7 +76,7 @@ fi
 make -j > ../openssl-make.log
 make install install_sw > ../openssl-install.log # skip install_docs
 cd -
-export PATH=$DIST/SciQLop.app/Contents/Resources/usr/local/bin:$PATH
+
 export PKG_CONFIG_PATH=$(realpath $DIST/SciQLop.app/Contents/Resources/usr/local/lib/pkgconfig)
 
 download_and_extract https://www.python.org/ftp/python/3.12.4/Python-3.12.4.tar.xz
