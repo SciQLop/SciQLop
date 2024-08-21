@@ -3,10 +3,7 @@ from typing import List, Optional, Any
 from PySide6.QtCore import QMimeData, Qt, QMargins, Signal
 from PySide6.QtGui import QColorConstants, QColor, QMouseEvent
 from PySide6.QtWidgets import QVBoxLayout, QFrame
-from SciQLopPlots import SciQLopPlot, QCustomPlot, QCP, QCPAxisTickerDateTime, QCPAxis, QCPLegend, \
-    QCPAbstractLegendItem, \
-    QCPMarginGroup, \
-    QCPColorScale, SciQLopGraph
+from SciQLopPlots import SciQLopPlot
 
 from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider

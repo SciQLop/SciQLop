@@ -5,7 +5,7 @@ import numpy as np
 from PySide6.QtCore import QMimeData, Signal, QMargins
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QWidget, QScrollArea
-from SciQLopPlots import QCustomPlot, QCPMarginGroup, QCPAxisRect, QCP
+from SciQLopPlots import SciQLopMultiPlotPanel
 from SciQLop.backend.icons import register_icon
 from .abstract_plot_panel import MetaPlotPanel, PlotPanel, PanelContainer
 from .abstract_plot import Plot
@@ -68,10 +68,7 @@ class TSPanelContainer(PanelContainer):
 register_icon("QCP", QIcon("://icons/QCP.png"))
 
 
-class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
-    time_range_changed = Signal(TimeRange)
-    _time_range: TimeRange = TimeRange(0., 0.)
-    plot_list_changed = Signal()
+class TimeSyncPanel(SciQLopMultiPlotPanel, PlotPanel, metaclass=MetaPlotPanel):
     delete_me = Signal()
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None):
@@ -79,8 +76,6 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
         self.setObjectName(name)
         self.setWindowTitle(name)
         self.setContentsMargins(0, 0, 0, 0)
-        self._name = name
-        self._plot_container = TSPanelContainer(parent=self, shared_x_axis=True)
         self.setWidget(self._plot_container)
         self.setWidgetResizable(True)
         self.time_range = time_range or TimeRange(datetime.utcnow().timestamp(), datetime.utcnow().timestamp())
@@ -92,43 +87,15 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
                                                         handlers=[DropHandler(mime_type=PRODUCT_LIST_MIME_TYPE,
                                                                               callback=self._insert_plots)])
 
-        self._plot_container.plot_list_changed.connect(self.plot_list_changed)
         self._parent_node = None
-        self._share_x_axis = True
-
-    def link_panel(self, panel: 'TimeSyncPanel'):
-        panel.time_range_changed.connect(self.set_time_range)
-        self.time_range_changed.connect(panel.set_time_range)
-
-    def unlink_panel(self, panel: 'TimeSyncPanel'):
-        panel.time_range_changed.disconnect(self.set_time_range)
-        self.time_range_changed.disconnect(panel.set_time_range)
-
-    def set_time_range(self, time_range: TimeRange):
-        self.time_range = time_range
-
-    @SciQLopProperty(bool)
-    def share_x_axis(self) -> bool:
-        return self._plot_container._shared_x_axis
-
-    @share_x_axis.setter
-    def share_x_axis(self, value: bool):
-        if self._share_x_axis != value:
-            self._share_x_axis = value
-            self._plot_container.share_x_axis = value
 
     @SciQLopProperty(TimeRange)
     def time_range(self) -> TimeRange:
-        return self._time_range
+        return TimeRange(*self.time_axis.range())
 
     @time_range.setter
     def time_range(self, time_range: TimeRange):
-        if self._time_range != time_range:
-            self._time_range = time_range
-            for p in self.plots:
-                p.time_range = time_range
-            self.time_range_changed.emit(time_range)
-            self._plot_container.update_margins()
+        self.set_time_axis_range(time_range.start, time_range.stop)
 
     @SciQLopProperty(str)
     def name(self) -> str:
@@ -145,20 +112,10 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
     def place_holder_manager(self):
         return self._place_holder_manager
 
-    def indexOf(self, widget: QWidget):
-        return self._plot_container.indexOf(widget)
-
-    def index_of(self, child):
-        return self._plot_container.indexOf(child)
-
     def child_at(self, row: int):
         if 0 <= row < len(self._plot_container.plots):
             return self._plot_container.plots[row]
         return None
-
-    @property
-    def plots(self) -> List[TimeSeriesPlot]:
-        return self._plot_container.plots
 
     def _insert_plots(self, mime_data: QMimeData, placeholder: QWidget) -> bool:
         assert mime_data.hasFormat(PRODUCT_LIST_MIME_TYPE)
@@ -189,13 +146,6 @@ class TimeSyncPanel(QScrollArea, PlotPanel, metaclass=MetaPlotPanel):
         products = listify(products)
         indexes = [-1] * len(products) if index is None else range(index, index + len(products))
         list(map(lambda p_i: self._plot(*p_i), zip(products, indexes)))
-
-    def update_margins(self):
-        self._plot_container.update_margins()
-
-    def replot(self, refresh_priority=QCustomPlot.rpQueuedReplot):
-        for p in self.plots:
-            p.replot(refresh_priority)
 
     def insertWidget(self, index: int, widget: QWidget or TimeSeriesPlot):
         self._plot_container.add_widget(widget, index)

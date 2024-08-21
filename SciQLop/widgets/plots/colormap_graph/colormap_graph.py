@@ -1,6 +1,5 @@
 import numpy as np
-from SciQLopPlots import QCPAxis, QCPColorGradient, \
-    QCPAxisTickerLog, QCPRange, QCPColorScale, SciQLopColorMap
+from SciQLopPlots import  SciQLopColorMap
 from speasy.products import SpeasyVariable
 
 from SciQLop.backend.pipelines_model.data_provider import DataProvider
