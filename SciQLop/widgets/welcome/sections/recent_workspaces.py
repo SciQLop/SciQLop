@@ -5,6 +5,7 @@ from PySide6.QtCore import QFileSystemWatcher, Slot, Signal, Property, QTimer, Q
 from SciQLop.widgets.welcome.card import Card, FixedSizeImageWidget, ImageSelector
 from SciQLop.backend.workspace import workspaces_manager_instance, WorkspaceSpecFile, WORKSPACES_DIR_CONFIG_ENTRY
 from SciQLop.backend.common import ensure_dir_exists
+from SciQLop.backend import sciqlop_logging
 from SciQLop.widgets.welcome.section import WelcomeSection, CardsCollection
 from SciQLop.widgets.welcome.detailed_description.delegate import register_delegate
 from typing import Optional
@@ -12,6 +13,7 @@ import os
 import shutil
 import humanize
 
+log = sciqlop_logging.getLogger(__name__)
 
 class WorkSpaceCard(Card):
     def __init__(self, workspace: WorkspaceSpecFile, parent=None):
@@ -151,7 +153,6 @@ class RecentWorkspaces(WelcomeSection):
         super().__init__("Recent workspaces", parent)
         self._workspaces = CardsCollection()
         self._workspaces.show_detailed_description.connect(self.show_detailed_description)
-        # self._workspaces.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._layout.addWidget(self._workspaces)
         self.refresh_workspaces()
         self._watcher = QFileSystemWatcher()
@@ -161,7 +162,7 @@ class RecentWorkspaces(WelcomeSection):
 
     @Slot()
     def refresh_workspaces(self):
-        print("Refreshing workspaces")
+        log.debug("Refreshing workspaces")
         self.show_detailed_description.emit(None)
         self._workspaces.clear()
         wm = workspaces_manager_instance()
@@ -169,5 +170,4 @@ class RecentWorkspaces(WelcomeSection):
 
     def _add_workspace(self, workspace: WorkspaceSpecFile):
         card = WorkSpaceCard(workspace)
-        # card.clicked.connect(lambda: workspaces_manager_instance().load_workspace(workspace))
         self._workspaces.add_card(card)

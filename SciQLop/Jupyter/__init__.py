@@ -23,7 +23,7 @@ class SciQLopProvisioner(KernelProvisionerBase):  # type: ignore
         if not os.path.exists(connection_file):
             log.warning(f"Jupyter connection file '{connection_file}' does not exist.")
 
-        print(f'SciQLop IPython kernel = {connection_file}')
+        log.info(f'SciQLop IPython kernel = {connection_file}')
         with open(connection_file) as f:
             file_info = json.load(f)
 

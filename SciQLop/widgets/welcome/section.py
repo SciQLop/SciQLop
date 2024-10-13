@@ -3,11 +3,12 @@ import os
 from typing import List
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QLabel, QSizePolicy, QWidget, QGridLayout, QBoxLayout, QSpacerItem
-from ..common import HLine, apply_size_policy, increase_font_size
-from ..common.flow_layout import FlowLayout
+from ..common import apply_size_policy, increase_font_size
 from SciQLop.backend.common import Maybe
+from SciQLop.backend import sciqlop_logging
 from .card import Card
 
+log = sciqlop_logging.getLogger(__name__)
 
 class CardsCollection(QFrame):
     _cards: List[Card]
@@ -32,7 +33,7 @@ class CardsCollection(QFrame):
             self._last_row += 1
 
     def _reset_layout(self):
-        print(f"Resetting layout")
+        log.debug(f"Resetting layout")
         self._last_row = 0
         self._last_col = 0
         item = self._layout.takeAt(0)
@@ -44,19 +45,19 @@ class CardsCollection(QFrame):
                              self._columns, -1, 1)
 
     def add_card(self, card: Card):
-        print(f"Adding card {card}")
+        log.debug(f"Adding card {card}")
         self._cards.append(card)
         self._place_card(card)
         card.clicked.connect(lambda: self.show_detailed_description.emit(card))
 
     def refresh_ui(self):
-        print(f"Refreshing UI")
+        log.debug(f"Refreshing UI")
         self._reset_layout()
         for card in self._cards:
             self._place_card(card)
 
     def clear(self):
-        print(f"Clearing cards")
+        log.debug(f"Clearing cards")
         self._cards = []
         self.refresh_ui()
 

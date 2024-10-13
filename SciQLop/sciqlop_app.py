@@ -24,13 +24,15 @@ def main():
     from PySide6.QtGui import QPixmap
     from PySide6.QtWidgets import QSplashScreen
     from shiboken6 import isValid
-    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts)
     # import PySide6QtAds
 
-    from SciQLop.resources import icons
+    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_UseDesktopOpenGL, True)
+    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts, True)
+
+    from SciQLop.resources import qInitResources
     from SciQLop.backend.sciqlop_application import sciqlop_event_loop, sciqlop_app
 
-    print(str(icons) + str(QtPrintSupport) + str(QtOpenGL) + str(QtQml))
+    print( str(QtPrintSupport) + str(QtOpenGL) + str(QtQml))
 
     app = sciqlop_app()
     envent_loop = sciqlop_event_loop()

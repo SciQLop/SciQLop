@@ -8,30 +8,37 @@ Container {
     border-radius: 2px;
 }
 
-PanelContainer[empty=false]{
+SciQLopPlotContainer[empty=false]{
     margin: 0px;
     border-top-width: 0px;
     padding: 0px;
     border-image: none ;
 }
 
-PanelContainer[empty=true] {
+SciQLopPlotContainer[empty=true] {
     margin: 0px;
     border-top-width: 0px;
     padding: 0px;
     border-image: url(:/plot_panel_dd_background.png) 0 0 0 0 stretch stretch;
 }
 
-PanelContainer::handle:vertical {
+SciQLopPlotContainer::handle:vertical {
     height: 1px;
     background-color: black;
 }
 
-TimeSeriesPlot {
-    background-color: palette(base);
+SciQLopTimeSeriesPlot{
     margin: 0px;
-    border-top-width: 0px;
     padding: 0px;
+}
+
+SciQLopTimeSeriesPlot[selected=false] {
+    border: 0px;
+}
+
+SciQLopTimeSeriesPlot[selected=true] {
+    border: 3px solid black;
+    border-style: dashed;
 }
 
 CardsCollection {
@@ -88,4 +95,12 @@ WorkSpaceCard[default_workspace=true]
 {
     background-color: {{ palette('base') | darker(105)}};
     border: 0px;
+}
+
+ColorDelegate
+{
+    background-color: palette(Button);
+    border: 2px solid #6c757d;
+    border-radius: 5px;
+    height: 24px;
 }

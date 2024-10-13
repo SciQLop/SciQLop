@@ -7,10 +7,13 @@ from PySide6.QtWidgets import QTreeView, QAbstractScrollArea, QSizePolicy, QPush
     QStyledItemDelegate, QWidget, QStyleOptionViewItem, QAbstractItemView, QStyle, QColorDialog
 
 from SciQLop.backend.common.ExtraColumnsProxyModel import ExtraColumnsProxyModel
+from SciQLop.backend import sciqlop_logging
 
 from tscat_gui.tscat_driver.model import tscat_model
 from tscat_gui.model_base.constants import EntityRole, UUIDDataRole
 from tscat_gui.tscat_driver.actions import SetAttributeAction
+
+log = sciqlop_logging.getLogger(__name__)
 
 __DEFAULT_COLOR__ = QColor(100, 100, 100, 50)
 
@@ -140,7 +143,6 @@ class TrashAlwaysTopOrBottomSortFilterModel(QSortFilterProxyModel):
                  source_right: Union[QModelIndex, QPersistentModelIndex]) -> bool:
         left = self.sourceModel().data(source_left)
         right = self.sourceModel().data(source_right)
-        print(left, right)
         if left == 'Trash':
             return False
         elif right == 'Trash':
@@ -229,6 +231,7 @@ class CatalogSelector(QTreeView):
 
     @Slot()
     def _check_state_changed(self, index: QModelIndex, state: Qt.CheckState):
+        log.debug(f"Check state changed {index.data(UUIDDataRole)} {state}")
         if Qt.CheckState(state) == Qt.CheckState.Checked:
             self._selected_catalogs.append(index.data(UUIDDataRole))
         else:

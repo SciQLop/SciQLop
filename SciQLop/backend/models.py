@@ -1,3 +1,3 @@
-from .products_model.model import ProductsModel as _ProductsModel
+from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
 
-products = _ProductsModel()
+products = ProductsModel.instance()

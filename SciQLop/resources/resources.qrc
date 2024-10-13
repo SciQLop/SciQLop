@@ -1,44 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>icons/theme/dataSourceRoot.png</file>
-        <file>icons/theme/delete.png</file>
-        <file>icons/theme/time.png</file>
-        <file>icons/theme/zoom.png</file>
-        <file>icons/theme/search.png</file>
-        <file>icons/theme/catalogue.png</file>
-        <file>icons/theme/add.png</file>
-        <file>icons/theme/add_graph.png</file>
-        <file>icons/theme/remove.png</file>
-        <file>icons/theme/save.png</file>
-        <file>icons/theme/folder_open.png</file>
-        <file>icons/theme/folder_copy.png</file>
-        <file>icons/theme/close.png</file>
-        <file>icons/theme/close_small.png</file>
-        <file>icons/theme/push_pin.png</file>
-        <file>icons/theme/push_pin_filled.png</file>
-        <file>icons/theme/push_pin_grad.png</file>
-        <file>icons/theme/detach_tab.png</file>
-        <file>icons/theme/arrow_drop_down.png</file>
-        <file>icons/theme/arrow_drop_up.png</file>
-        <file>icons/theme/arrow_right.png</file>
-        <file>icons/theme/expand_more.png</file>
-        <file>icons/theme/fullscreen.png</file>
-        <file>icons/theme/fullscreen_exit.png</file>
-        <file>icons/theme/radio_button_checked.png</file>
-        <file>icons/theme/radio_button_unchecked.png</file>
-        <file>icons/theme/check_box_checked.png</file>
-        <file>icons/theme/check_box_unchecked.png</file>
-        <file>icons/SciQLop.png</file>
-        <file>icons/MPL.png</file>
-        <file>icons/QCP.png</file>
-        <file>icons/Python-logo-notext.png</file>
-        <file>icons/Jupyter_logo.png</file>
-        <file>icons/JupyterConsole.png</file>
-        <file>icons/logo_speasy.png</file>
-        <file>icons/NASA.jpg</file>
-        <file>icons/amda.png</file>
-        <file>icons/Cluster_mission_logo_pillars.jpg</file>
-        <file>icons/plot_panel_128.png</file>
         <file>splash.png</file>
         <file>plot_panel_dd_background.png</file>
     </qresource>

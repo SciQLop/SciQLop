@@ -20,7 +20,7 @@ class SciQLopApp(QApplication):
         self._palette = build_palette("white", self.palette())
         self.setPalette(self._palette)
         self.load_stylesheet()
-        # sciqlop_logging.setup()
+        sciqlop_logging.setup(capture_stdout=False)
         self._quickstart_shortcuts: Dict[str, Dict[str, Any]] = {}
 
     def add_quickstart_shortcut(self, name: str, description: str, icon: QtGui.QPixmap or QtGui.QIcon,
