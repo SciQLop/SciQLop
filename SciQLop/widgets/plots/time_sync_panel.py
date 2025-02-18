@@ -8,7 +8,7 @@ from PySide6.QtCore import QMimeData, Signal, QMargins
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QWidget, QScrollArea
 from SciQLopPlots import SciQLopMultiPlotPanel, PlotDragNDropCallback, SciQLopPlotInterface, ProductsModel, SciQLopPlot, \
-    ParameterType, GraphType
+    ParameterType, GraphType, SciQLopNDProjectionPlot
 
 from SciQLop.backend.icons import register_icon
 from ...backend import TimeRange
@@ -26,7 +26,7 @@ register_icon("QCP", QIcon("://icons/QCP.png"))
 
 
 class _plot_product_callback:
-    def __init__(self, provider:DataProvider, node):
+    def __init__(self, provider: DataProvider, node):
         self.provider = provider
         self.node = node
 
@@ -37,6 +37,7 @@ class _plot_product_callback:
             log.error(f"Error getting data for {self.node}: {e}")
             return []
 
+
 def _y_is_descending(y):
     if len(y.shape) == 1 and len(y) > 1:
         return np.nanargmin(y) > np.nanargmax(y)
@@ -45,8 +46,9 @@ def _y_is_descending(y):
     else:
         return None
 
+
 class _specgram_callback:
-    def __init__(self, provider:DataProvider, node):
+    def __init__(self, provider: DataProvider, node):
         self.provider = provider
         self.node = node
         self._y_is_descending_ = None
@@ -59,28 +61,31 @@ class _specgram_callback:
 
     def __call__(self, start, stop):
         try:
-            x,y,z =  self.provider._get_data(self.node, start, stop)
+            x, y, z = self.provider._get_data(self.node, start, stop)
             if self._y_is_descending(y):
                 if len(y.shape) == 1:
                     y = y[::-1].copy()
                 else:
-                    y = y[:,::-1].copy()
-                z = z[:,::-1].copy()
-            return x,y,z
+                    y = y[:, ::-1].copy()
+                z = z[:, ::-1].copy()
+            return x, y, z
         except Exception as e:
             log.error(f"Error getting data for {self.node}: {e}")
             return []
 
 
-def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel], product: Any, **kwargs):
+def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):
     if isinstance(product, list):
         node = ProductsModel.node(product)
         if node is not None:
             provider = providers.get(node.provider())
+            log.debug(f"Provider: {provider}")
             if provider is not None:
+                log.debug(f"Parameter type: {node.parameter_type()}")
                 if node.parameter_type() in (ParameterType.Scalar, ParameterType.Vector, ParameterType.Multicomponents):
                     callback = _plot_product_callback(provider, node)
                     labels = listify(provider.labels(node))
+                    log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
                     r = p.plot(callback, labels=labels, **kwargs)
                     if hasattr(r, '__iter__'):
                         r[1].set_name(node.name())
@@ -89,8 +94,11 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel], product: Any, **k
                     return r
                 elif node.parameter_type() == ParameterType.Spectrogram:
                     callback = _specgram_callback(provider, node)
+                    log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
                     return p.plot(callback, name=node.name(), graph_type=GraphType.ColorMap, y_log_scale=True,
                                   z_log_scale=True, **kwargs)
+    log.debug(f"Product not found: {product}")
+    return None
 
 
 class ProductDnDCallback(PlotDragNDropCallback):

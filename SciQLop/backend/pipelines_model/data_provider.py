@@ -1,5 +1,6 @@
 from typing import Tuple, List, Union
 
+import traceback
 import numpy as np
 
 from SciQLop.backend.enums import DataOrder
@@ -9,7 +10,7 @@ from speasy.core import datetime64_to_epoch
 
 log = sciqlop_logging.getLogger(__name__)
 
-DataProviderReturnType = Union[SpeasyVariable, Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]
+DataProviderReturnType = Union[SpeasyVariable, Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray], List[np.ndarray]]
 
 providers = {}
 
@@ -64,7 +65,7 @@ class DataProvider:
     def labels(self, node) -> List[str]:
         pass
 
-    def _get_data(self, node, start, stop) -> List[np.ndarray]:
+    def _get_data(self, node, start, stop) -> Union[List[np.ndarray],Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         try:
             v = self.get_data(node, start, stop)
             if v is None:
@@ -77,8 +78,8 @@ class DataProvider:
             if len(v.axes) == 1:
                 return [time, _ensure_float64_and_C(v.values)]
             return [time, _ensure_float64_and_C(v.axes[1].values), _ensure_float64_and_C(v.values)]
-        except Exception as e:
-            log.error(f"Error getting data for {node} between {start} and {stop}: {e}")
+        except: # pylint: disable=broad-except
+            log.error(f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")
             return []
 
     def get_data(self, node, start: float, stop: float) -> DataProviderReturnType:

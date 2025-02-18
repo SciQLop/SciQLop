@@ -130,15 +130,17 @@ class EasyVector(EasyProvider):
                                          data_order=data_order, cacheable=cacheable, debug=debug)
         self._columns = components_names
 
-    def get_data(self, product, start: float, stop: float) -> DataProviderReturnType:
+    def get_data(self, product, start: float, stop: float) -> Optional[DataProviderReturnType]:
         res = self._user_get_data(start, stop)
         if type(res) is SpeasyVariable:
             return res
-        elif type(res) is tuple:
+        elif type(res) in (tuple, list) and len(res) == 2:
             x, y = res
             return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x))],
                                   values=DataContainer(np.ascontiguousarray(y)),
                                   columns=self._columns)
+        elif type(res) in (tuple, list) and len(res) >= 3:
+            return res
         else:
             return None
 
@@ -163,7 +165,7 @@ class EasySpectrogram(EasyProvider):
                                               cacheable=cacheable,
                                               debug=debug)
 
-    def get_data(self, product, start: float, stop: float) -> DataProviderReturnType:
+    def get_data(self, product, start: float, stop: float) -> Optional[DataProviderReturnType]:
         res = self._user_get_data(start, stop)
         if type(res) is SpeasyVariable:
             return res

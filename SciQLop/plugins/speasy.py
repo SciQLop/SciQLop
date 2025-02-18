@@ -43,12 +43,14 @@ class ThreadStorage:
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:
-    import  ast
+    import ast
     if param.spz_provider() == 'amda':
         components = list(
             map(lambda p: p.spz_name(), filter(lambda n: type(n) is ComponentIndex, param.__dict__.values())))
         if len(components) > 0:
             return components
+        elif hasattr(param, 'display_type') and param.display_type.lower() == 'timeseries':
+            return [param.spz_name()]
     if hasattr(param, 'LABL_PTR_1') and type(param.LABL_PTR_1) is str:
         try:
             return ast.literal_eval(param.LABL_PTR_1)
@@ -146,7 +148,6 @@ def build_product_tree(root_node: ProductsModelNode, provider):
         node = ProductsModelNode(name, icon=ws_icons.get(name))
         root_node.add_child(node)
         explore_nodes(child, node, provider=provider)
-
     return root_node
 
 
