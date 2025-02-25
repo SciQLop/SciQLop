@@ -2,24 +2,34 @@
 """
 
 from enum import Enum
-from typing import Optional, Union
+from typing import Optional, Union, List
 from ..gui import get_main_window as _get_main_window
 from ..virtual_products import VirtualProduct
 from SciQLop.backend import TimeRange
-from SciQLop.widgets.plots.projection_plot import ProjectionPlot as _ImplProjectionPlot
-from SciQLop.widgets.plots.time_series_plot import TimeSeriesPlot as _ImplTimeSeriesPlot
-from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel as _ImplTimeSyncPanel
-from SciQLopPlots import QCPAxis as _QCPAxis, QCPAxisTickerLog as _QCPAxisTickerLog, QCPAxisTicker as _QCPAxisTicker
+from SciQLop.backend.sciqlop_logging import getLogger as _getLogger
+from SciQLopPlots import SciQLopPlot as _SciQLopPlot
+from SciQLopPlots import SciQLopTimeSeriesPlot as _SciQLopTimeSeriesPlot
+from SciQLopPlots import SciQLopPlotAxis as _SciQLopPlotAxis
+from SciQLopPlots import SciQLopNDProjectionPlot as _SciQLopNDProjectionPlot
+from SciQLopPlots import PlotType as _PlotType, GraphType as _GraphType
+from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel as _ImplTimeSyncPanel, plot_product as _plot_product
+
+# from SciQLopPlots import QCPAxis as _QCPAxis, QCPAxisTickerLog as _QCPAxisTickerLog, QCPAxisTicker as _QCPAxisTicker
 from speasy.core import AnyDateTimeType
 
+log = _getLogger(__name__)
 
 def _is_projection_plot(impl):
-    return isinstance(impl, _ImplProjectionPlot)
+   return isinstance(impl, _SciQLopNDProjectionPlot)
 
 
 def _is_time_series_plot(impl):
-    return isinstance(impl, _ImplTimeSeriesPlot)
+    return isinstance(impl, _SciQLopTimeSeriesPlot)
 
+def _split_path(path:str)-> List[str]:
+    if '//' in path:
+        return path.split('//')
+    return path.split('/')
 
 class PlotType(Enum):
     TimeSeries = 0
@@ -31,25 +41,25 @@ class ScaleType(Enum):
     Logarithmic = 1
 
 
-def _get_qcpaxis_scale_type(axis: _QCPAxis):
-    if axis.scaleType() == _QCPAxis.stLinear:
-        return ScaleType.Linear
-    elif axis.scaleType() == _QCPAxis.stLogarithmic:
-        return ScaleType.Logarithmic
-    else:
-        raise ValueError(f"Unknown scale type {axis.scale_type}")
+def _get_axis_scale_type(axis: _SciQLopPlotAxis):
+    return ScaleType.Logarithmic if axis.log() else ScaleType.Linear
 
 
-def _set_qcpaxis_scale_type(scale_type: ScaleType, axis: _QCPAxis):
+def _set_axis_scale_type(scale_type: ScaleType, axis: _SciQLopPlotAxis):
     if scale_type == ScaleType.Linear:
-        axis.setScaleType(_QCPAxis.stLinear)
-        axis.setTicker(_QCPAxisTicker())
+        axis.set_log(False)
     elif scale_type == ScaleType.Logarithmic:
-        axis.setScaleType(_QCPAxis.stLogarithmic)
-        axis.setTicker(_QCPAxisTickerLog())
+        axis.set_log(True)
     else:
         raise ValueError(f"Unknown scale type {scale_type}")
 
+
+def _to_product_path(product: Union[str, VirtualProduct,List[str]]) -> List[str]:
+    if isinstance(product, VirtualProduct):
+        return _split_path(product.path)
+    elif isinstance(product, str):
+        return _split_path(product)
+    return product
 
 class Graph:
     def __init__(self, impl):
@@ -59,19 +69,17 @@ class Graph:
 class TimeSeriesPlot:
     def __init__(self, impl):
         assert _is_time_series_plot(impl)
-        self._impl: Optional[_ImplTimeSeriesPlot] = impl
+        self._impl: Optional[_SciQLopTimeSeriesPlot] = impl
         self._impl.destroyed.connect(self._on_destroyed)
 
     def _on_destroyed(self):
         self._impl = None
 
     def plot(self, product: Union[str, VirtualProduct], colors=None):
-        if isinstance(product, VirtualProduct):
-            self.plot(product.path, colors)
-        else:
-            self._get_impl_or_raise().plot(product)
+        product = _to_product_path(product)
+        _plot_product(self._get_impl_or_raise(), product)
 
-    def _get_impl_or_raise(self) -> _ImplTimeSeriesPlot:
+    def _get_impl_or_raise(self) -> _SciQLopTimeSeriesPlot:
         if self._impl is None:
             raise ValueError("The plot does not exist anymore.")
         return self._impl
@@ -105,7 +113,7 @@ class TimeSeriesPlot:
         """
         s_y_min = min(ymin, ymax)
         s_y_max = max(ymin, ymax)
-        self._get_impl_or_raise().yAxis.setRange(s_y_min, s_y_max)
+        self._get_impl_or_raise().y_axis().set_range(s_y_min, s_y_max)
 
     def set_y_scale_type(self, scale: ScaleType):
         """Set the scale type of the main y-axis.
@@ -117,19 +125,19 @@ class TimeSeriesPlot:
 
     @property
     def time_range(self) -> TimeRange:
-        return self._get_impl_or_raise().time_range
+        return self._get_impl_or_raise().time_axis().range()
 
     @time_range.setter
     def time_range(self, time_range: TimeRange):
-        self._impl.time_range = time_range
+        self._impl.set_time_range(time_range)
 
     @property
     def y_scale_type(self) -> ScaleType:
-        return _get_qcpaxis_scale_type(self._get_impl_or_raise().yAxis)
+        return _get_axis_scale_type(self._get_impl_or_raise().y_axis())
 
     @y_scale_type.setter
     def y_scale_type(self, scale_type: ScaleType):
-        _set_qcpaxis_scale_type(scale_type, self._get_impl_or_raise().yAxis)
+        _set_axis_scale_type(scale_type, self._get_impl_or_raise().y_axis())
         self.replot()
 
     def replot(self):
@@ -140,6 +148,11 @@ class ProjectionPlot:
     def __init__(self, impl):
         assert _is_projection_plot(impl)
         self._impl = impl
+
+    def _get_impl_or_raise(self) -> _SciQLopNDProjectionPlot:
+        if self._impl is None:
+            raise ValueError("The plot does not exist anymore.")
+        return self._impl
 
     def set_x_range(self, min: float, max: float):
         pass
@@ -152,6 +165,10 @@ class ProjectionPlot:
 
     def set_y_scale_type(self, scale: ScaleType):
         pass
+
+    def plot(self, product: Union[str, VirtualProduct], colors=None):
+        product = _to_product_path(product)
+        return _plot_product(self._get_impl_or_raise(), product, graph_type=_GraphType.ParametricCurve)
 
 
 class PlotPanel:
@@ -167,27 +184,30 @@ class PlotPanel:
             raise ValueError("The plot panel does not exist anymore.")
         return self._impl
 
-    def plot(self, product: Union[str, VirtualProduct], plot_index: int = -1, plot_type: PlotType = PlotType.TimeSeries,
+
+    def plot(self, product: Union[str, VirtualProduct, List[str]], plot_index: int = -1, plot_type: PlotType = PlotType.TimeSeries,
              colors=None) -> Optional[Union[TimeSeriesPlot, ProjectionPlot]]:
-        if isinstance(product, VirtualProduct):
-            self.plot(product.path, plot_index, PlotType.TimeSeries, colors)
-        elif plot_type == PlotType.TimeSeries:
-            self._get_impl_or_raise().plot(product, plot_index)
-            return TimeSeriesPlot(self._impl.plots[plot_index])
-        else:
-            self._get_impl_or_raise().plot(product, plot_index)
-            return ProjectionPlot(self._get_impl_or_raise().plots[plot_index])
+        product = _to_product_path(product)
+        if plot_type == PlotType.TimeSeries:
+            log.debug(f"Plotting time series {product}")
+            p, g = _plot_product(self._get_impl_or_raise(), product, index=plot_index, plot_type=_PlotType.TimeSeries)
+            return TimeSeriesPlot(p)
+        elif plot_type == PlotType.Projection:
+            log.debug(f"Plotting projection {product}")
+            p, g = _plot_product(self._get_impl_or_raise(), product, index=plot_index, plot_type=_PlotType.Projections, graph_type=_GraphType.ParametricCurve)
+            return ProjectionPlot(p)
+
 
     def remove_plot(self, plot_index):
         pass
 
     @property
     def time_range(self) -> TimeRange:
-        return self._get_impl_or_raise().time_range
+        return self._get_impl_or_raise().time_axis_range()
 
     @time_range.setter
     def time_range(self, time_range: TimeRange):
-        self._get_impl_or_raise().time_range = time_range
+        self._get_impl_or_raise().set_time_axis_range(time_range)
 
     @property
     def plots(self):
@@ -199,7 +219,7 @@ class PlotPanel:
             else:
                 return None
 
-        return list(filter(lambda p: p is not None, map(wrap_plot, self._impl.plots)))
+        return list(filter(lambda p: p is not None, map(wrap_plot, self._impl.plots())))
 
 
 def plot_panel(name: str) -> Optional[PlotPanel]:

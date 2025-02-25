@@ -5,12 +5,10 @@ from PySide6.QtCore import QObject, QTimer
 
 from ipykernel.kernelapp import IPKernelApp
 from ipykernel.ipkernel import IPythonKernel
-from ipykernel.eventloops import register_integration, enable_gui
 
 from SciQLop.backend import sciqlop_logging, sciqlop_application
 
 log = sciqlop_logging.getLogger(__name__)
-
 
 class SciQLopKernel(IPythonKernel):
     def __init__(self, **kwargs):
@@ -43,11 +41,10 @@ class InternalIPKernel(QObject):
         self.ipykernel = None
 
     def init_ipkernel(self, mpl_backend=None):
-        self.ipykernel = SciQLopKernelApp.instance(kernel_name="SciQLop", log=sciqlop_logging.getLogger("SciQLop"),
+        self.ipykernel = SciQLopKernelApp.instance(kernel_name="SciQLop",
                                                    kernel_class=SciQLopKernel)
         self.ipykernel.capture_fd_output = False
         self.ipykernel.initialize()
-        sciqlop_logging.replace_stdios()
 
     def push_variables(self, variable_dict):
         """ Given a dictionary containing name / value pairs, push those
@@ -63,7 +60,7 @@ class InternalIPKernel(QObject):
 
     def start(self):
         self.ipykernel.start()
-        print("IPython kernel started")
+        log.info("IPython kernel started")
 
     @property
     def connection_file(self) -> str:

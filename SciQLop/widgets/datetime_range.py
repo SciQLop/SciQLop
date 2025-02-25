@@ -30,17 +30,17 @@ class DateTimeRangeWidget(QWidget):
         self.layout().addWidget(QLabel("To:"))
         self.layout().addWidget(self._stop_date)
         if default_time_range is not None:
-            self._start_date.setDateTime(default_time_range.datetime_start)
-            self._stop_date.setDateTime(default_time_range.datetime_stop)
+            self._start_date.setDateTime(default_time_range.datetime_start())
+            self._stop_date.setDateTime(default_time_range.datetime_stop())
         self._start_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(self.range))
         self._stop_date.dateTimeChanged.connect(lambda dtr: self.range_changed.emit(self.range))
 
     def mousePressEvent(self, event: QMouseEvent):
         if event.button() == Qt.LeftButton:
             drag = QDrag(self)
-            drag.setMimeData(
-                encode_mime(TimeRange(self._start_date.dateTime().toSecsSinceEpoch(),
-                                      self._stop_date.dateTime().toSecsSinceEpoch())))
+            self._drag_trange = TimeRange(float(self._start_date.dateTime().toSecsSinceEpoch()), float(self._stop_date.dateTime().toSecsSinceEpoch()))
+            self._mime_data = encode_mime(self._drag_trange)
+            drag.setMimeData(self._mime_data)
             drag.setPixmap(QPixmap("://icons/theme/time.png").scaledToHeight(32))
             drag.exec()
 

@@ -45,3 +45,10 @@ def decode_mime(mime_data: QMimeData, preferred_formats: List[str] = None) -> An
         if f in _MIME_DECODERS_:
             return _MIME_DECODERS_[f](mime_data)
     return None
+
+def _register_product_list_decoder():
+    from .types import PRODUCT_LIST_MIME_TYPE
+    from  SciQLopPlots import ProductsModel
+    _MIME_DECODERS_[PRODUCT_LIST_MIME_TYPE] = ProductsModel.decode_mime_data
+
+_register_product_list_decoder()

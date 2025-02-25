@@ -1,8 +1,6 @@
 QTreeView {
-    alternate-background-color: yellow;
-}
-
-QTreeView {
+    background-color: {{ palette('base') }};
+    alternate-background-color: {{ palette('base') | darker(105)}};
     show-decoration-selected: 1;
 }
 

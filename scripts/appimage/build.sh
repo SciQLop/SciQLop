@@ -8,22 +8,22 @@ SCIQLOP_ROOT=$ABSOLUTE_SCRIPT_DIR/../../
 mkdir -p /tmp/sciqlop
 cd /tmp/sciqlop
 
-if [ ! -f ./python3.12.3-cp312-cp312-manylinux2014_x86_64.AppImage ]; then
-    wget https://github.com/niess/python-appimage/releases/download/python3.12/python3.12.3-cp312-cp312-manylinux2014_x86_64.AppImage
-    chmod +x python3.12.3-cp312-cp312-manylinux2014_x86_64.AppImage
+if [ ! -f ./python3.13.2-cp313-cp313-manylinux2014_x86_64.AppImage ]; then
+    wget https://github.com/niess/python-appimage/releases/download/python3.13/python3.13.2-cp313-cp313-manylinux2014_x86_64.AppImage
+    chmod +x python3.13.2-cp313-cp313-manylinux2014_x86_64.AppImage
 fi
 rm -rf ./squashfs-root
-./python3.12.3-cp312-cp312-manylinux2014_x86_64.AppImage --appimage-extract
-./squashfs-root/usr/bin/python3.12 -I -m pip install $SCIQLOP_ROOT
+./python3.13.2-cp313-cp313-manylinux2014_x86_64.AppImage --appimage-extract
+./squashfs-root/usr/bin/python3.13 -I -m pip install $SCIQLOP_ROOT
 if [ -z $RELEASE ]; then
-  ./squashfs-root/usr/bin/python3.12 -I -m pip install --upgrade git+https://github.com/SciQLop/speasy
+  ./squashfs-root/usr/bin/python3.13 -I -m pip install --upgrade git+https://github.com/SciQLop/speasy
 fi
 
 rm -f ./squashfs-root/AppRun
 cp $ABSOLUTE_SCRIPT_DIR/AppRun ./squashfs-root/
 
-curl https://nodejs.org/dist/v20.14.0/node-v20.14.0-linux-x64.tar.xz | tar -xJ -C /tmp/sciqlop
-rsync -avhu /tmp/sciqlop/node-v20.14.0-linux-x64/* ./squashfs-root/usr/local/
+curl https://nodejs.org/dist/latest/node-v23.8.0-linux-x64.tar.xz | tar -xJ -C /tmp/sciqlop
+rsync -avhu /tmp/sciqlop/node-v23.8.0-linux-x64/* ./squashfs-root/usr/local/
 
 if [ ! -f ./appimagetool-x86_64.AppImage ]; then
     wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage

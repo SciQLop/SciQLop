@@ -1,10 +1,9 @@
 from speasy import SpeasyVariable
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Union, Tuple
 from enum import Enum
-from SciQLop.backend.pipelines_model.easy_provider import EasyVector as _EasyVector, EasyScalar as _EasyScalar, \
-    EasySpectrogram as _EasySpectrogram, EasyMultiComponent as _EasyMultiComponent
 
-VirtualProductCallback = Callable[[float, float], Optional[SpeasyVariable]]
+from SciQLop.backend.pipelines_model.easy_provider import EasyVector as _EasyVector, EasyScalar as _EasyScalar, \
+    EasySpectrogram as _EasySpectrogram, EasyMultiComponent as _EasyMultiComponent, VirtualProductCallback
 
 
 class VirtualProductType(Enum):
@@ -15,11 +14,10 @@ class VirtualProductType(Enum):
 
 
 class VirtualProduct:
-    def __init__(self, path: str, callback: Callable[[float, float], SpeasyVariable], product_type: VirtualProductType):
+    def __init__(self, path: str, callback: VirtualProductCallback, product_type: VirtualProductType):
         self._path = path
         self._callback = callback
         self._product_type = product_type
-
     @property
     def path(self) -> str:
         return self._path
@@ -27,6 +25,7 @@ class VirtualProduct:
     @property
     def product_type(self) -> VirtualProductType:
         return self._product_type
+
 
 
 class VirtualScalar(VirtualProduct):

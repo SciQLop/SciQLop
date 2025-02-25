@@ -1,21 +1,22 @@
 from SciQLop.widgets.plots.time_span import TimeSpan
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel
-from SciQLop.backend import TimeRange
+from SciQLop.backend import TimeRange, sciqlop_logging
 from .event import Event
 
 from PySide6.QtCore import Slot, Signal
 
+log = sciqlop_logging.getLogger(__name__)
 
 class EventSpan(TimeSpan):
     selected_sig = Signal(str)
     delete_me = Signal(str)
 
     def __init__(self, event: Event, plot_panel: TimeSyncPanel, parent=None, visible=True, read_only=False, color=None):
-        TimeSpan.__init__(self, time_range=event.range, plot_panel=plot_panel, parent=parent, visible=visible,
-                          read_only=read_only, color=color, tooltip=event.tooltip)
+        super().__init__(plot_panel, event.range, visible=visible,
+                         read_only=read_only, color=color, tool_tip=event.tooltip)
 
         self._event = event
-        self.time_range_changed.connect(self._range_changed)
+        self.range_changed.connect(self._range_changed)
         event.color_changed.connect(self.set_color)
         event.selection_changed.connect(self._selection_changed)
         self.delete_requested.connect(self._delete_requested)
@@ -23,7 +24,7 @@ class EventSpan(TimeSpan):
 
     @Slot()
     def set_color(self, color):
-        print('Setting color', color)
+        log.debug(f"Setting color {color}")
         self.color = color
 
     @property

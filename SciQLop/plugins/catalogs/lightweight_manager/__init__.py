@@ -14,7 +14,6 @@ from SciQLop.backend import TimeRange
 from SciQLop.backend.common import combine_colors
 from SciQLop.backend.sciqlop_logging import getLogger
 from SciQLop.widgets.mainwindow import SciQLopMainWindow
-from SciQLop.backend.sciqlop_application import sciqlop_app
 from SciQLop.widgets.plots.time_span_controller import TimeSpanController
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel
 from .catalog_selector import CatalogSelector
@@ -125,7 +124,7 @@ class LightweightManager(QWidget):
             time_range: TimeRange = self.current_panel.time_range * 0.5
         else:
             time_range: TimeRange = self.main_window.defaul_range
-        self.event_selector.create_event(catalog_uid, time_range.datetime_start, time_range.datetime_stop)
+        self.event_selector.create_event(catalog_uid, time_range.datetime_start(), time_range.datetime_stop())
 
     def _event_span(self, uuid: str) -> EventSpan or None:
         return self.spans.get(uuid)
@@ -148,9 +147,9 @@ class LightweightManager(QWidget):
         if e is not None:
             if self._current_interaction_mode == InteractionMode.Jump and self.has_selected_panel:
                 log.debug(f"event selected {e}, setting panel: {self.current_panel}")
-                time_range = e.time_range
-                if time_range.start == time_range.stop:
-                    self.current_panel.time_range = TimeRange(time_range.start - 3600, time_range.stop + 3600)
+                time_range = e.range
+                if time_range.is_empty():
+                    self.current_panel.time_range = TimeRange(time_range.start() - 3600, time_range.stop() + 3600)
                 else:
                     self.current_panel.time_range = time_range / self.zoom_factor.value()
                 self._last_selected_event = None
@@ -201,7 +200,7 @@ class LightweightManager(QWidget):
 
     @Slot()
     def update_colors(self, color: QColor, catalog_uid: str):
-        print(f"Color changed: {color}, {catalog_uid}")
+        log.debug(f"Color changed: {color}, {catalog_uid}")
         if self.current_panel is not None:
             for span in self.spans.values():
                 if span.catalog_uid == catalog_uid:

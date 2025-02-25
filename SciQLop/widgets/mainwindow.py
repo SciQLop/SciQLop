@@ -14,20 +14,16 @@ from .workspaces import WorkspaceManagerUI
 from .JupyterLabView import JupyterLabView
 from .logs_widget import LogsWidget
 from .datetime_range import DateTimeRangeWidgetAction
-from .inspector import InspectorWidget
-from .plots.abstract_plot_panel import PlotPanel
-from .plots.mpl_panel import MPLPanel
+from SciQLopPlots import PropertiesPanel, ProductsView
 from .plots.time_sync_panel import TimeSyncPanel
-from .products_tree import ProductTree as PyProductTree
 from .welcome import WelcomePage
 from ..backend import TimeRange
 from ..backend.sciqlop_application import sciqlop_app, SciQLopApp
 from ..backend.unique_names import make_simple_incr_name
-from ..inspector.model import Model as InspectorModel
-from ..inspector.inspector import register_inspector, Inspector
-from ..inspector.node import Node, RootNode
 from ..backend.workspace import Workspace
-from ..backend.icons import register_icon, icons
+from ..backend.icons import register_icon
+
+from SciQLopPlots import SciQLopMultiPlotPanel, Icons
 
 register_icon("plot_panel", QtGui.QIcon("://icons/plot_panel_128.png"))
 
@@ -37,8 +33,8 @@ def _surface(size: QtCore.QSize):
 
 
 class SciQLopMainWindow(QtWidgets.QMainWindow):
-    panels_list_changed = QtCore.Signal(list)
     workspace: Workspace = None
+    panels_list_changed = QtCore.Signal(list)
 
     def __init__(self):
 
@@ -77,7 +73,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self.welcome)
 
-        self.productTree = PyProductTree(self)
+        self.productTree = ProductsView(self)
         self.add_side_pan(self.productTree)
 
         self.workspace_manager = WorkspaceManagerUI(self)
@@ -104,17 +100,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.addTSPanel.triggered.connect(lambda: self.new_plot_panel())
         self.toolBar.addAction(self.addTSPanel)
         sciqlop_app().add_quickstart_shortcut(name="Plot panel", description="Add a new plot panel",
-                                              icon=icons.get("plot_panel"), callback=self.new_plot_panel)
+                                              icon=Icons.get_icon("plot_panel"), callback=self.new_plot_panel)
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
 
         self._statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._statusbar)
         self._statusbar.setMaximumHeight(28)
 
-        self._inspector_model = InspectorModel(parent=self, root_object=self)
-        self.inspector_ui = InspectorWidget(model=self._inspector_model, parent=self)
-        self.add_side_pan(self.inspector_ui)
-        self.panels_list_changed.connect(self._inspector_model.root_node.changed)
+        self.properties_panel = PropertiesPanel(self)
+        self.add_side_pan(self.properties_panel)
 
         self._mem_usage = QtWidgets.QProgressBar()
         self._sys_mem = psutil.virtual_memory().total // 1024 ** 2
@@ -240,38 +234,35 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             return dock_area
         return None
 
-    def new_plot_panel(self, backend: str = "native") -> Union[TimeSyncPanel, MPLPanel, None]:
+    def new_plot_panel(self, backend: str = "native") -> Union[TimeSyncPanel, None]:
         if backend == "native":
             return self.new_native_plot_panel()
-        elif backend == "mpl":
-            return self.new_mpl_plot_panel()
+        #elif backend == "mpl":
+        #    return self.new_mpl_plot_panel()
         return None
 
     def new_native_plot_panel(self) -> TimeSyncPanel:
         panel = TimeSyncPanel(parent=None, name=make_simple_incr_name(base="Panel"),
                               time_range=self._dt_range_action.range)
-        self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True, custom_close_callback=lambda : self.remove_native_plot_panel(panel))
-        panel.destroyed.connect(self._notify_panels_list_changed)
-        panel.delete_me.connect(lambda: self.remove_native_plot_panel(panel))
+        self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True)
         self._notify_panels_list_changed()
-        # self._inspector_model.new_top_level_object(panel)
         return panel
 
-    def new_mpl_plot_panel(self) -> MPLPanel:
-        panel = MPLPanel(parent=None, name=make_simple_incr_name(base="Panel"),
-                         time_range=self._dt_range_action.range)
-        self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True)
-        panel.destroyed.connect(self._notify_panels_list_changed)
-        self._notify_panels_list_changed()
-        # self._inspector_model.new_top_level_object(panel)
-        return panel
+    #def new_mpl_plot_panel(self) -> MPLPanel:
+    #    panel = MPLPanel(parent=None, name=make_simple_incr_name(base="Panel"),
+    #                     time_range=self._dt_range_action.range)
+    #    self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True)
+    #    panel.destroyed.connect(self._notify_panels_list_changed)
+    #    self._notify_panels_list_changed()
+    #    # self._inspector_model.new_top_level_object(panel)
+    #    return panel
 
     def plot_panels(self) -> List[str]:
         return list(
             map(lambda dw: dw.widget().name,
-                filter(lambda dw: isinstance(dw.widget(), PlotPanel), self.dock_manager.dockWidgets())))
+                filter(lambda dw: isinstance(dw.widget(), SciQLopMultiPlotPanel), self.dock_manager.dockWidgets())))
 
-    def plot_panel(self, name: str) -> Union[TimeSyncPanel, MPLPanel, None]:
+    def plot_panel(self, name: str) -> Union[TimeSyncPanel, None]:
         widget: QtAds.CDockWidget = self.dock_manager.findDockWidget(name)
         if widget:
             return widget.widget()
@@ -300,20 +291,3 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     @property
     def name(self):
         return self.objectName()
-
-
-@register_inspector(SciQLopMainWindow)
-class SciQLopMainWindowInspector(Inspector):
-
-    @staticmethod
-    def build_node(obj: Any, parent: Optional[Node] = None, children: Optional[List[Node]] = None) -> Optional[Node]:
-        return RootNode(top_obj=obj)
-
-    @staticmethod
-    def list_children(obj: Any) -> List[Any]:
-        return list(map(obj.plot_panel, obj.plot_panels()))
-
-    @staticmethod
-    def child(obj: Any, name: str) -> Optional[Any]:
-        assert (isinstance(obj, SciQLopMainWindow))
-        return obj.plot_panel(name)

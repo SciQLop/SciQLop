@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from PySide6.QtCore import QObject
+from shiboken6 import isValid
 
 from .time_span import TimeSpan
 from .time_sync_panel import TimeSyncPanel
@@ -40,7 +41,7 @@ class TimeSpanController(QObject):
             self._plot_panel.destroyed.connect(self._clear_panel)
 
     def _clear_panel(self):
-        if self._plot_panel is not None:
+        if self._plot_panel is not None and isValid(self._plot_panel):
             self._plot_panel.time_range_changed.disconnect(self._range_changed)
             self._plot_panel.destroyed.disconnect(self._clear_panel)
 
@@ -50,12 +51,18 @@ class TimeSpanController(QObject):
 
     @spans.setter
     def spans(self, ranges: List[TimeSpan]):
+        if type(ranges) not in  (list, tuple):
+            ranges = list(ranges)
         self._ranges = ranges
         if len(ranges):
             self._update_visible_ranges(self._plot_panel.time_range * self._preload_factor)
+        def remove(s):
+            if s in self._ranges:
+                self._ranges.remove(s)
         for s in self._ranges:
-            s.destroyed.connect(lambda: self._ranges.remove(s))
+            s.destroyed.connect(lambda: remove(s))
+        
 
     def visible_spans(self, time_range: TimeRange = None) -> List[TimeSpan]:
         time_range = time_range or self._plot_panel.time_range
-        return [r for r in self._ranges if r.time_range.overlaps(time_range)]
+        return [r for r in self._ranges if r.range.intersects(time_range)]

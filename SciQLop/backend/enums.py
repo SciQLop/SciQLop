@@ -1,5 +1,5 @@
 from enum import Enum
-
+from SciQLopPlots import ParameterType
 
 class GraphType(Enum):
     SingleLine = 0
@@ -20,9 +20,3 @@ class DataOrder(Enum):
     Y_FIRST = 1
 
 
-class ParameterType(Enum):
-    NONE = 0
-    SCALAR = 1
-    VECTOR = 2
-    MULTICOMPONENT = 3
-    SPECTROGRAM = 4

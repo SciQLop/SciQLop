@@ -56,19 +56,19 @@ class SciQLopJupyterClient(QObject):
         if cwd:
             self.process.setWorkingDirectory(cwd)
         self.process.start(cmd, args)
-        print(f"\n{self.process.program()}  {' '.join(self.process.arguments())}\n")
+        log.info(f"\n{self.process.program()}  {' '.join(self.process.arguments())}\n")
 
     def state(self) -> QProcess.ProcessState:
         return self.process.state()
 
     def _process_state_changed(self, state: QProcess.ProcessState):
-        print(state)
+        log.info(f"Process state changed to {state}")
 
     def _forward_stdout(self):
-        print(self._stdout_parser(str(self.process.readAllStandardOutput(), encoding="utf-8")))
+        log.info(self._stdout_parser(str(self.process.readAllStandardOutput(), encoding="utf-8")))
 
     def _forward_stderr(self):
-        print(self._stderr_parser(str(self.process.readAllStandardError(), encoding="utf-8")))
+        log.error(self._stderr_parser(str(self.process.readAllStandardError(), encoding="utf-8")))
 
     def kill(self):
         self.process.kill()

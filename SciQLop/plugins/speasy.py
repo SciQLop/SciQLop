@@ -6,10 +6,13 @@ import speasy as spz
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
 from speasy.products import SpeasyVariable
 
-from SciQLop.backend import Product, register_icon
+from SciQLop.backend import register_icon
+from SciQLop.backend import sciqlop_logging
 from SciQLop.backend.enums import ParameterType
-from SciQLop.backend.models import products
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
+from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
+
+log = sciqlop_logging.getLogger(__name__)
 
 register_icon("speasy", QIcon(":/icons/logo_speasy.png"))
 register_icon("nasa", QIcon(":/icons/NASA.jpg"))
@@ -40,13 +43,22 @@ class ThreadStorage:
 
 
 def get_components(param: ParameterIndex) -> List[str] or None:
+    import ast
     if param.spz_provider() == 'amda':
         components = list(
             map(lambda p: p.spz_name(), filter(lambda n: type(n) is ComponentIndex, param.__dict__.values())))
         if len(components) > 0:
             return components
-    if hasattr(param, 'LABL_PTR_1') and type(param.LABL_PTR_1) is str:
-        return param.LABL_PTR_1.split(',')
+        elif hasattr(param, 'display_type') and param.display_type.lower() == 'timeseries':
+            return [param.spz_name()]
+    if hasattr(param, 'LABL_PTR_1'):
+        if type(param.LABL_PTR_1) is str:
+            try:
+                return ast.literal_eval(param.LABL_PTR_1)
+            except:
+                return param.LABL_PTR_1.split(',')
+        elif type(param.LABL_PTR_1) is list:
+            return param.LABL_PTR_1
     if hasattr(param, 'LABLAXIS') and type(param.LABLAXIS) is str:
         return param.LABLAXIS.split(',')
     if param.spz_provider() == 'ssc':
@@ -76,24 +88,25 @@ def data_serie_type(param: ParameterIndex):
         display_type = None
     components_cnt = count_components(param)
     if display_type is not None or components_cnt != 0:
-        if (display_type or '').lower().strip() == 'spectrogram':
-            return ParameterType.SPECTROGRAM
+        if (display_type or '').lower().strip().startswith('spectrogram'):
+            return ParameterType.Spectrogram
         else:
             if components_cnt == 0 or components_cnt == 1:
-                return ParameterType.SCALAR
+                return ParameterType.Scalar
             if components_cnt == 3:
-                return ParameterType.VECTOR
-            return ParameterType.MULTICOMPONENT
+                return ParameterType.Vector
+            return ParameterType.Multicomponents
     if 'amda' in param.spz_provider().lower():
-        return ParameterType.MULTICOMPONENT  # should be a safe backup
-    return ParameterType.NONE
+        return ParameterType.Multicomponents  # should be a safe backup
+    return ParameterType.NotAParameter
 
 
 def get_node_meta(node):
     meta = {}
     for name, child in node.__dict__.items():
         if isinstance(child, str):
-            meta[name] = child
+            if not name.startswith("_"):
+                meta[name] = child
     return meta
 
 
@@ -103,29 +116,29 @@ def make_product(name, node: ParameterIndex, provider):
     meta["uid"] = node.spz_uid()
     meta["components"] = get_components(node)
     meta["provider"] = node.spz_provider()
-    return Product(name, metadata=meta, is_parameter=True, provider=provider,
-                   uid=f"{node.spz_provider()}/{node.spz_uid()}", parameter_type=p_type)
+    meta["speasy_id"] = f"{node.spz_provider()}/{node.spz_uid()}"
+    return ProductsModelNode(name, provider, meta, ProductsModelNodeType.PARAMETER, p_type)
 
 
-def explore_nodes(inventory_node, product_node: Product, provider):
+def explore_nodes(inventory_node, product_node: ProductsModelNode, provider):
     for name, child in inventory_node.__dict__.items():
         if name and child:
             if hasattr(child, "name") and child.name != "AMDA":
                 name = child.name
             if isinstance(child, ParameterIndex):
-                product_node.merge(make_product(name, child, provider=provider))
+                product_node.add_child(make_product(name, child, provider=provider))
             elif hasattr(child, "__dict__"):
                 meta = {}
                 if hasattr(child, "desc"):
                     meta = {"description": child.desc}
                 elif hasattr(child, "description"):
                     meta = {"description": child.description}
-                cur_prod = Product(name, metadata=meta, uid=name, provider=provider)
-                product_node.merge(cur_prod)
+                cur_prod = ProductsModelNode(name, meta)
+                product_node.add_child(cur_prod)
                 explore_nodes(child, cur_prod, provider=provider)
 
 
-def build_product_tree(root_node: Product, provider):
+def build_product_tree(root_node: ProductsModelNode, provider):
     ws_icons = {
         "amda": "amda",
         "ssc": "nasa",
@@ -135,9 +148,9 @@ def build_product_tree(root_node: Product, provider):
         "archive": "archive"
     }
     for name, child in spz.inventories.tree.__dict__.items():
-        node = root_node.merge(Product(name=name, metadata={}, provider=name, uid=name, icon=ws_icons.get(name)))
+        node = ProductsModelNode(name, icon=ws_icons.get(name))
+        root_node.add_child(node)
         explore_nodes(child, node, provider=provider)
-
     return root_node
 
 
@@ -146,19 +159,23 @@ class SpeasyPlugin(DataProvider):
         super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST, cacheable=True)
         from speasy.core.requests_scheduling.request_dispatch import init_providers
         init_providers()
-        root_node = Product(name="speasy", metadata={}, provider=self.name, uid=self.name, icon="speasy")
+        root_node = ProductsModelNode("speasy", icon="speasy")
         build_product_tree(root_node, provider=self.name)
-        products.add_products(root_node)
+        ProductsModel.instance().add_node([], root_node)
 
-    def get_data(self, product: Product, start, stop):
+    def get_data(self, product: ProductsModelNode, start, stop):
         try:
-            v: SpeasyVariable = spz.get_data(product.uid, start, stop)
+            speasy_id = product.metadata("speasy_id")
+            v: SpeasyVariable = spz.get_data(speasy_id, start, stop)
             if v:
                 v.replace_fillval_by_nan(inplace=True)
                 return v
         except Exception as e:
-            print(e)
+            log.error(f"Error getting data for {product}: {e} between {start} and {stop}")
             return None
+
+    def labels(self, node) -> List[str]:
+        return node.metadata("components")
 
 
 def load(*args):

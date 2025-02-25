@@ -8,7 +8,7 @@ from PySide6.QtGui import QIcon
 from .workspace import WORKSPACES_DIR_CONFIG_ENTRY
 from ..data_models import WorkspaceSpecFile
 from .workspace import Workspace
-from ..icons import register_icon, icons
+from ..icons import register_icon
 from ..examples import Example
 from ..sciqlop_application import sciqlop_app, QEventLoop
 from ..IPythonKernel import InternalIPKernel
@@ -16,6 +16,8 @@ from ..common import background_run
 from ..sciqlop_logging import getLogger
 from ..jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 import uuid
+from SciQLopPlots import  Icons
+
 
 register_icon("Jupyter", QIcon("://icons/Jupyter_logo.png"))
 register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.png"))
@@ -67,7 +69,7 @@ class WorkspaceManager(QObject):
         #                                      icons.get("JupyterConsole"),
         #                                      self.new_qt_console)
         sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab in current workspace or a new one",
-                                              icons.get("Jupyter"),
+                                              Icons.get_icon("Jupyter"),
                                               self.start_jupyterlab)
 
         self._ipykernel: Optional[InternalIPKernel] = None
@@ -122,7 +124,7 @@ class WorkspaceManager(QObject):
         return self.load_workspace(spec)
 
     def load_example(self, example_path: str) -> Workspace:
-        print(f"Loading example from {example_path}")
+        log.info(f"Loading example from {example_path}")
         example = Example(example_path)
         if self._workspace is None:
             self.create_workspace(example.name, description=example.description, image=os.path.basename(example.image),
@@ -162,7 +164,7 @@ class WorkspaceManager(QObject):
             spec.name = f"Copy of {spec.name}"
 
         if background:
-            print("Backgrounding duplicate not implemented yet.")
+            log.info("Backgrounding duplicate")
             duplicate(workspace)
         else:
             duplicate(workspace)

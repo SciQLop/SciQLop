@@ -1,12 +1,14 @@
 import os
 
 from SciQLop.backend.data_models.models import ExampleSpecROFile
+from SciQLop.backend import sciqlop_logging
 
+log = sciqlop_logging.getLogger(__name__)
 
 class Example:
 
     def __init__(self, json_file: str):
-        print(f"Loading example from {json_file}")
+        log.info(f"Loading example from {json_file}")
         self._example_spec = ExampleSpecROFile(json_file)
 
     @property

@@ -1,3 +1,4 @@
+import logging
 from typing import Mapping, Union, List, Any
 
 from PySide6.QtCore import Signal, QModelIndex, QSize, QPersistentModelIndex, QAbstractItemModel, Slot, \
@@ -48,9 +49,9 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         if self.is_extra_column(index):
             return self.set_extra_column_data(index, value, role)
         if index.column() == 0 and role == Qt.ItemDataRole.CheckStateRole:
-            print('setData', index, value, role)
+            logging.debug('setData', index, value, role)
             self._first_column_item_check_state[index.internalPointer()] = value
-            self.checkStateChanged.emit(index, value)
+            self.checkStateChanged.emit(index, Qt.CheckState(value))
             return True
         return self.sourceModel().setData(self.mapToSource(index), value, role)
 

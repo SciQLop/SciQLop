@@ -26,22 +26,23 @@ class Event(QObject):
 
     def _apply_start(self):
         tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="start",
-                                          values=[self._range_to_apply.datetime_start]))
-        self._current_range.start = self._range_to_apply.start
+                                          values=[self._range_to_apply.datetime_start()]))
+        self._current_range[0] = self._range_to_apply.start()
 
     def _apply_stop(self):
         tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="stop",
-                                          values=[self._range_to_apply.datetime_stop]))
-        self._current_range.stop = self._range_to_apply.stop
+                                          values=[self._range_to_apply.datetime_stop()]))
+        self._current_range[1] = self._range_to_apply.stop()
+
     @Slot()
     def _apply_changes(self):
-        if self._current_range.start != self._range_to_apply.start:
-            if self._range_to_apply.start > self._current_range.stop:
+        if self._current_range.start() != self._range_to_apply.start():
+            if self._range_to_apply.start() > self._current_range.stop():
                 self._apply_stop()
                 self._apply_start()
             else:
                 self._apply_start()
-        if self._current_range.stop != self._range_to_apply.stop:
+        if self._current_range.stop() != self._range_to_apply.stop():
             self._apply_stop()
     @property
     def _event(self):
@@ -53,11 +54,11 @@ class Event(QObject):
 
     @property
     def start(self):
-        return self._event.start.timestamp()
+        return self._event.start()
 
     @property
     def stop(self):
-        return self._event.stop.timestamp()
+        return self._event.stop()
 
     @property
     def catalog_uid(self):

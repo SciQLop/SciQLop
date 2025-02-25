@@ -33,7 +33,7 @@ class Worker(QRunnable):
 
     def __init__(self, fn, *args, **kwargs):
         super(Worker, self).__init__()
-        print(f"Loading {fn.__name__} args={args} kwargs={kwargs}")
+        log.info(f"Loading {fn.__name__} args={args} kwargs={kwargs}")
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
@@ -42,25 +42,25 @@ class Worker(QRunnable):
     @Slot()
     def run(self):
         try:
-            print(f"Loading {self.fn.__name__}")
+            log.info(f"Loading {self.fn.__name__}")
             self.signals.result.emit(*self.fn(*self.args, **self.kwargs))
         except Exception as e:
-            print(f"Oups can't load {self.fn.__name__} , {e}")
-            traceback.print_exc()
+            log.error(f"Oups can't load {self.fn.__name__} , {e}")
+            log.error(f"Traceback: {traceback.format_exc()}")
 
 
 def load_plugin(name, mod, main_window):
     if mod:
         try:
-            print(f"Loading {name}")
+            log.info(f"Loading {name}")
             r = mod.load(main_window)
             loaded_plugins.__dict__[name] = r
             return r
         except Exception as e:
-            print(f"Oups can't load {mod} , {e}")
-            traceback.print_exc()
+            log.error(f"Oups can't load {name} from {mod} , {e}")
+            log.error(f"Traceback: {traceback.format_exc()}")
     else:
-        print(f"Oups can't load {name} , {mod}")
+        log.error(f"Oups can't load {name} , {mod}")
 
 
 def load_module(name):
@@ -68,13 +68,13 @@ def load_module(name):
         mod = importlib.import_module(f"SciQLop.plugins.{name}", "*")
         return name, mod
     except Exception as e:
-        print(f"Oups can't load {name} , {e}")
-        traceback.print_exc()
+        log.error(f"Oups can't load {name} , {e}")
+        log.error(f"Traceback: {traceback.format_exc()}")
         return "", None
 
 
 def background_load(plugin, main_window):
-    print(f"Loading {plugin}")
+    log.info(f"Loading {plugin}")
     w = Worker(load_module, plugin)
     w.signals.result.connect(lambda name, mod: load_plugin(name, mod, main_window))
     return QThreadPool.globalInstance().start(w)
