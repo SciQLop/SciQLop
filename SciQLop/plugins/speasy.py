@@ -51,11 +51,14 @@ def get_components(param: ParameterIndex) -> List[str] or None:
             return components
         elif hasattr(param, 'display_type') and param.display_type.lower() == 'timeseries':
             return [param.spz_name()]
-    if hasattr(param, 'LABL_PTR_1') and type(param.LABL_PTR_1) is str:
-        try:
-            return ast.literal_eval(param.LABL_PTR_1)
-        except:
-            return param.LABL_PTR_1.split(',')
+    if hasattr(param, 'LABL_PTR_1'):
+        if type(param.LABL_PTR_1) is str:
+            try:
+                return ast.literal_eval(param.LABL_PTR_1)
+            except:
+                return param.LABL_PTR_1.split(',')
+        elif type(param.LABL_PTR_1) is list:
+            return param.LABL_PTR_1
     if hasattr(param, 'LABLAXIS') and type(param.LABLAXIS) is str:
         return param.LABLAXIS.split(',')
     if param.spz_provider() == 'ssc':
