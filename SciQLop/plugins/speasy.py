@@ -2,6 +2,7 @@ import os
 from typing import List, Dict, Any
 from PySide6.QtGui import QIcon
 import threading
+import traceback
 import speasy as spz
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
 from speasy.products import SpeasyVariable
@@ -60,7 +61,9 @@ def get_components(param: ParameterIndex) -> List[str] or None:
         elif type(param.LABL_PTR_1) is list:
             return param.LABL_PTR_1
     if hasattr(param, 'LABLAXIS') and type(param.LABLAXIS) is str:
-        return param.LABLAXIS.split(',')
+        if param.LABLAXIS.startswith('['):
+            return param.LABLAXIS.split(',')
+        return [param.LABLAXIS]
     if param.spz_provider() == 'ssc':
         return ['x', 'y', 'z']
     return None
@@ -168,10 +171,9 @@ class SpeasyPlugin(DataProvider):
             speasy_id = product.metadata("speasy_id")
             v: SpeasyVariable = spz.get_data(speasy_id, start, stop)
             if v:
-                v.replace_fillval_by_nan(inplace=True)
-                return v
+                return v.replace_fillval_by_nan(inplace=True)
         except Exception as e:
-            log.error(f"Error getting data for {product}: {e} between {start} and {stop}")
+            log.error(f"Error getting data for {product} between {start} and {stop}: {traceback.format_exc()}")
             return None
 
     def labels(self, node) -> List[str]:

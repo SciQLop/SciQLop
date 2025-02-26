@@ -22,11 +22,16 @@ def _ensure_float64_and_C(v):
         v = np.ascontiguousarray(v)
     return v
 
+def _filter_axis_numeric_axes(axes: List[VariableAxis]) -> List[VariableAxis]:
+    return [
+        axis for axis in axes if np.issubdtype(axis.values.dtype, np.number)
+    ]
+
 
 def _sort_axis_by_time(axis: VariableAxis, sorted_indices) -> VariableAxis:
     if axis.is_time_dependent:
         axis.values[:] = axis.values[sorted_indices]
-        return axis
+    return axis
 
 
 def _sort_variable_by_time(variable: SpeasyVariable) -> SpeasyVariable:
@@ -75,9 +80,10 @@ class DataProvider:
             if not np.all(np.diff(v.time) >= 0):
                 v = _sort_variable_by_time(v)
             time = datetime64_to_epoch(v.time)
-            if len(v.axes) == 1:
+            axes = _filter_axis_numeric_axes(v.axes[1:])
+            if len(axes) == 0:
                 return [time, _ensure_float64_and_C(v.values)]
-            return [time, _ensure_float64_and_C(v.axes[1].values), _ensure_float64_and_C(v.values)]
+            return [time, _ensure_float64_and_C(axes[0].values), _ensure_float64_and_C(v.values)]
         except: # pylint: disable=broad-except
             log.error(f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")
             return []
