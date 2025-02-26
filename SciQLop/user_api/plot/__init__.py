@@ -19,17 +19,26 @@ from speasy.core import AnyDateTimeType
 
 log = _getLogger(__name__)
 
+
+def _is_meta_object_instance(obj, meta_type: str):
+    if hasattr(obj, "metaObject"):
+        return obj.metaObject().className() == meta_type
+    return False
+
+
 def _is_projection_plot(impl):
-   return isinstance(impl, _SciQLopNDProjectionPlot)
+    return isinstance(impl, _SciQLopNDProjectionPlot) or _is_meta_object_instance(impl, "SciQLopNDProjectionPlot")
 
 
 def _is_time_series_plot(impl):
-    return isinstance(impl, _SciQLopTimeSeriesPlot)
+    return isinstance(impl, _SciQLopTimeSeriesPlot) or _is_meta_object_instance(impl, "SciQLopTimeSeriesPlot")
 
-def _split_path(path:str)-> List[str]:
+
+def _split_path(path: str) -> List[str]:
     if '//' in path:
         return path.split('//')
     return path.split('/')
+
 
 class PlotType(Enum):
     TimeSeries = 0
@@ -54,12 +63,13 @@ def _set_axis_scale_type(scale_type: ScaleType, axis: _SciQLopPlotAxis):
         raise ValueError(f"Unknown scale type {scale_type}")
 
 
-def _to_product_path(product: Union[str, VirtualProduct,List[str]]) -> List[str]:
+def _to_product_path(product: Union[str, VirtualProduct, List[str]]) -> List[str]:
     if isinstance(product, VirtualProduct):
         return _split_path(product.path)
     elif isinstance(product, str):
         return _split_path(product)
     return product
+
 
 class Graph:
     def __init__(self, impl):
@@ -184,8 +194,8 @@ class PlotPanel:
             raise ValueError("The plot panel does not exist anymore.")
         return self._impl
 
-
-    def plot(self, product: Union[str, VirtualProduct, List[str]], plot_index: int = -1, plot_type: PlotType = PlotType.TimeSeries,
+    def plot(self, product: Union[str, VirtualProduct, List[str]], plot_index: int = -1,
+             plot_type: PlotType = PlotType.TimeSeries,
              colors=None) -> Optional[Union[TimeSeriesPlot, ProjectionPlot]]:
         product = _to_product_path(product)
         if plot_type == PlotType.TimeSeries:
@@ -194,9 +204,9 @@ class PlotPanel:
             return TimeSeriesPlot(p)
         elif plot_type == PlotType.Projection:
             log.debug(f"Plotting projection {product}")
-            p, g = _plot_product(self._get_impl_or_raise(), product, index=plot_index, plot_type=_PlotType.Projections, graph_type=_GraphType.ParametricCurve)
+            p, g = _plot_product(self._get_impl_or_raise(), product, index=plot_index, plot_type=_PlotType.Projections,
+                                 graph_type=_GraphType.ParametricCurve)
             return ProjectionPlot(p)
-
 
     def remove_plot(self, plot_index):
         pass
