@@ -11,7 +11,7 @@ jobs:
   build_appimage:
     runs-on: ubuntu-latest
     container:
-      image: fedora:39
+      image: fedora:41
     steps:
       - uses: actions/checkout@v4
       - name: setenv
@@ -54,7 +54,7 @@ jobs:
 
 
   build_x86_64_dmg:
-    runs-on: macos-12
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
       - name: setenv
