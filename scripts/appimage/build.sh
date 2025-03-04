@@ -8,15 +8,19 @@ SCIQLOP_ROOT=$ABSOLUTE_SCRIPT_DIR/../../
 mkdir -p /tmp/sciqlop
 cd /tmp/sciqlop
 
-if [ ! -f ./python3.13.2-cp313-cp313-manylinux2014_x86_64.AppImage ]; then
-    wget https://github.com/niess/python-appimage/releases/download/python3.13/python3.13.2-cp313-cp313-manylinux2014_x86_64.AppImage
-    chmod +x python3.13.2-cp313-cp313-manylinux2014_x86_64.AppImage
+PYTHON_APPIMAGE=python3.12.9-cp312-cp312-manylinux2014_x86_64.AppImage
+PYTHON_VERSION=3.12
+
+
+if [ ! -f ./$PYTHON_APPIMAGE ]; then
+    wget https://github.com/niess/python-appimage/releases/download/python$PYTHON_VERSION/$PYTHON_APPIMAGE
+    chmod +x $PYTHON_APPIMAGE
 fi
 rm -rf ./squashfs-root
-./python3.13.2-cp313-cp313-manylinux2014_x86_64.AppImage --appimage-extract
-./squashfs-root/usr/bin/python3.13 -I -m pip install $SCIQLOP_ROOT
+./$PYTHON_APPIMAGE --appimage-extract
+./squashfs-root/usr/bin/python$PYTHON_VERSION -I -m pip install $SCIQLOP_ROOT
 if [ -z $RELEASE ]; then
-  ./squashfs-root/usr/bin/python3.13 -I -m pip install --upgrade git+https://github.com/SciQLop/speasy
+  ./squashfs-root/usr/bin/python$PYTHON_VERSION -I -m pip install --upgrade git+https://github.com/SciQLop/speasy
 fi
 
 rm -f ./squashfs-root/AppRun
