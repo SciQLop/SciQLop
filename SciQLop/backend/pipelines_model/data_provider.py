@@ -3,7 +3,7 @@ from typing import Tuple, List, Union
 import traceback
 import numpy as np
 
-from SciQLop.backend.enums import DataOrder
+from SciQLop.backend.enums import DataOrder, GraphType
 from SciQLop.backend import sciqlop_logging
 from speasy.products import SpeasyVariable, VariableAxis
 from speasy.core import datetime64_to_epoch
@@ -70,6 +70,9 @@ class DataProvider:
     def labels(self, node) -> List[str]:
         pass
 
+    def graph_type(self, node)-> GraphType:
+        pass
+
     def _get_data(self, node, start, stop) -> Union[List[np.ndarray],Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         try:
             v = self.get_data(node, start, stop)
@@ -81,7 +84,7 @@ class DataProvider:
                 v = _sort_variable_by_time(v)
             time = datetime64_to_epoch(v.time)
             axes = _filter_axis_numeric_axes(v.axes[1:])
-            if len(axes) == 0:
+            if len(axes) == 0 or self.graph_type(node) in (GraphType.MultiLines, GraphType.SingleLine):
                 return [time, _ensure_float64_and_C(v.values)]
             return [time, _ensure_float64_and_C(axes[0].values), _ensure_float64_and_C(v.values)]
         except: # pylint: disable=broad-except

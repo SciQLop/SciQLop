@@ -9,7 +9,7 @@ from speasy.products import SpeasyVariable
 
 from SciQLop.backend import register_icon
 from SciQLop.backend import sciqlop_logging
-from SciQLop.backend.enums import ParameterType
+from SciQLop.backend.enums import ParameterType, GraphType
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
 from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
 
@@ -176,8 +176,18 @@ class SpeasyPlugin(DataProvider):
             log.error(f"Error getting data for {product} between {start} and {stop}: {traceback.format_exc()}")
             return None
 
-    def labels(self, node) -> List[str]:
+    def labels(self, node:ProductsModelNode) -> List[str]:
         return node.metadata("components")
+
+    def graph_type(self, node:ProductsModelNode) -> GraphType:
+        param_type:ParameterType = node.parameter_type()
+        if param_type == ParameterType.Scalar:
+            return GraphType.SingleLine
+        if param_type == ParameterType.Vector:
+            return GraphType.MultiLines
+        if param_type == ParameterType.Spectrogram:
+            return GraphType.ColorMap
+        return GraphType.Unknown
 
 
 def load(*args):
