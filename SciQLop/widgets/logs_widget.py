@@ -2,7 +2,7 @@ from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QSizePolicy, QMessageBox, QErrorMessage
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
-from ..backend.sciqlop_logging import _stdout, _stderr
+from ..backend.sciqlop_logging import listen_sciqlop_logger
 from ..backend.common.terminal_messages import parse_all_sciqlop_message
 
 
@@ -12,9 +12,7 @@ class LogsWidget(RichJupyterWidget):
         RichJupyterWidget.__init__(self, parent)
         self.setWindowTitle("Logs")
         self._dialogs = {}
-
-        _stdout.got_text.connect(self._new_text)
-        _stderr.got_text.connect(self._new_text)
+        listen_sciqlop_logger(self._new_text)
 
         self.setSizePolicy(QSizePolicy(QSizePolicy.Policy.MinimumExpanding, QSizePolicy.Policy.MinimumExpanding))
         self.setMinimumHeight(100)
