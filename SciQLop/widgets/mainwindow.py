@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from datetime import datetime, timedelta
 from typing import Optional, Union, List, Any
@@ -6,6 +8,7 @@ import humanize
 import psutil
 
 import PySide6QtAds as QtAds
+from pycrdt import Map
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QWidget, QMenu
@@ -19,9 +22,10 @@ from .plots.time_sync_panel import TimeSyncPanel
 from .welcome import WelcomePage
 from ..backend import TimeRange
 from ..backend.sciqlop_application import sciqlop_app, SciQLopApp
-from ..backend.unique_names import make_simple_incr_name
+from ..backend.unique_names import make_simple_incr_name, set_name
 from ..backend.workspace import Workspace
 from ..backend.icons import register_icon
+from ..backend.sciqlop_application import shared_doc
 
 from SciQLopPlots import SciQLopMultiPlotPanel, Icons
 
@@ -35,6 +39,7 @@ def _surface(size: QtCore.QSize):
 class SciQLopMainWindow(QtWidgets.QMainWindow):
     workspace: Workspace = None
     panels_list_changed = QtCore.Signal(list)
+    panel_added = QtCore.Signal(TimeSyncPanel)
 
     def __init__(self):
 
@@ -43,6 +48,17 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._setup_ui()
         sciqlop_app().panels_list_changed.connect(self.panels_list_changed)
         sciqlop_app().main_window = self
+        self._shared_panels = shared_doc.get("panels", type=Map)
+        self._shared_panels.observe(self._shared_panels_changed)
+
+    def _shared_panels_changed(self, event, txn):
+        if txn.origin == "local":
+            # we are at the origin of the panel creation, do nothing
+            return
+
+        for key, value in event.keys.items():
+            if key not in self.plot_panels():
+                self.new_native_plot_panel(name=key)
 
     def _setup_ui(self):
         QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FocusHighlighting, True)
@@ -103,6 +119,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                                               icon=Icons.get_icon("plot_panel"), callback=self.new_plot_panel)
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
 
+        self.panel_added.connect(self._panel_added)
+
         self._statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._statusbar)
         self._statusbar.setMaximumHeight(28)
@@ -133,6 +151,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._refresh_mem_timer.start(1000)
 
         self._center_and_maximise_on_screen()
+
+    def _panel_added(self, new_panel):
+        try:
+            with shared_doc.transaction(origin="local"):
+                self._shared_panels[new_panel.name] = Map()
+                # we are at the origin of the panel creation
+        except Exception:
+            # the panel was added remotely and we reacted to a change, do nothing
+            pass
 
     def _update_usage(self):
         self._update_cpu_usage()
@@ -241,11 +268,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         #    return self.new_mpl_plot_panel()
         return None
 
-    def new_native_plot_panel(self) -> TimeSyncPanel:
-        panel = TimeSyncPanel(parent=None, name=make_simple_incr_name(base="Panel"),
-                              time_range=self._dt_range_action.range)
+    def new_native_plot_panel(self, name: str | None = None) -> TimeSyncPanel:
+        if name is None:
+            name = make_simple_incr_name(base="Panel")
+        else:
+            set_name(name)
+        panel = TimeSyncPanel(parent=None, name=name, time_range=self._dt_range_action.range, shared_panels=self._shared_panels)
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True)
         self._notify_panels_list_changed()
+        self.panel_added.emit(panel)
         return panel
 
     #def new_mpl_plot_panel(self) -> MPLPanel:

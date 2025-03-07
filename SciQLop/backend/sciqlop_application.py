@@ -5,6 +5,11 @@ from qasync import QEventLoop, QApplication
 import asyncio
 import sys
 
+from httpx_ws import aconnect_ws
+from pycrdt import Doc
+from pycrdt_websocket import WebsocketProvider
+from pycrdt_websocket.websocket import HttpxWebsocket
+
 
 class SciQLopApp(QApplication):
     quickstart_shortcuts_added = QtCore.Signal(str)
@@ -58,10 +63,24 @@ class _SciQLopEventLoop(QEventLoop):
 
     def exec(self):
         with self:
-            self.run_until_complete(self.app_close_event.wait())
+            self.run_until_complete(self._start_provider())
+
+    async def _start_provider(self):
+        try:
+            # try to connect to the server
+            room_name = "my_room"
+            async with (
+                aconnect_ws(f"http://localhost:1234/{room_name}") as websocket,
+                    WebsocketProvider(shared_doc, HttpxWebsocket(websocket, room_name)),
+                ):
+                    await self.app_close_event.wait()
+        except Exception:
+            # no server running
+            await self.app_close_event.wait()
 
 
 _event_loop = None
+shared_doc = Doc()
 
 
 def sciqlop_event_loop() -> _SciQLopEventLoop:
