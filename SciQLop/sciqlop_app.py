@@ -52,6 +52,7 @@ def main():
     app.processEvents()
     load_all(main_windows)
     main_windows.push_variables_to_console({"plugins": loaded_plugins})
+
     app.processEvents()
     splash.finish(main_windows)
     try:

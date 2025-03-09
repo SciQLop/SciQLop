@@ -1,44 +1,37 @@
 import os
 from functools import partial
-from typing import List, Optional
+from typing import List, Optional, Dict
 from glob import glob
 from PySide6 import QtGui, QtCore
 from jinja2 import Template, Environment, FileSystemLoader
 import SciQLop
+from SciQLop.backend.sciqlop_logging import getLogger
+import yaml
+
+log = getLogger(__name__)
 
 __background_color__ = '#ffffff'
 
 style_sheets_path = os.path.join(SciQLop.sciqlop_root, "resources", "stylesheets")
+palettes_path = os.path.join(SciQLop.sciqlop_root, "resources", "palettes")
 env = Environment(loader=FileSystemLoader(style_sheets_path))
 
-__light_palette__ = {
-    "Window": "#ffffff",
-    "WindowText": "#000000",
-    "Base": "#ffffff",
-    "AlternateBase": "#eef2f7",
-    "ToolTipBase": "#ffffff",
-    "ToolTipText": "#000000",
-    "Text": "#000000",
-    "Button": "#eef2f7",
-    "ButtonText": "#000000",
-    "BrightText": "#ffffff",
-    "Light": "#ffffff",
-    "Midlight": "#ffffff",
-    "Mid": "#eef2f7",
-    "Dark": "#eef2f7",
-    "Shadow": "#eef2f7",
-    "Highlight": "#6a68d4",
-    "HighlightedText": "#ffffff",
-    "Link": "#0000ff",
-    "LinkVisited": "#ff00ff",
 
-    "WelcomeBackground": "#eef2f7",
-    "Borders": "#6c757d",
-    "Selection": "#6a68d4",
-    "UnselectedText": "#9eadb2",
-}
+def _make_palette_case_insensitive(palette: Dict[str, str]) -> Dict[str, str]:
+    palette.update({k.lower(): v for k, v in palette.items()})
+    return palette
 
-__light_palette_case_insensitive__ = {k.lower(): v for k, v in __light_palette__.items()}
+
+def _load_palette(palette: str) -> Dict[str, str]:
+    with open(f"{palettes_path}/{palette}.yaml", 'r') as stream:
+        try:
+            return _make_palette_case_insensitive(yaml.safe_load(stream))
+        except yaml.YAMLError as exc:
+            log.error(exc)
+            return {}
+
+
+_sciqlop_palette = _load_palette("light")
 
 
 def _list_stylesheets(folders: Optional[List[str]] = None) -> List[str]:
@@ -56,10 +49,10 @@ def _palette(palette: QtGui.QPalette, name: str):
         b = getattr(palette, name)()
         if isinstance(b, QtGui.QBrush):
             return b.color().name()
-    if name in __light_palette__:
-        return __light_palette__[name]
-    if name.lower() in __light_palette_case_insensitive__:
-        return __light_palette_case_insensitive__[name.lower()]
+    if name in _sciqlop_palette:
+        return _sciqlop_palette[name]
+    if name.lower() in _sciqlop_palette:
+        return _sciqlop_palette[name.lower()]
     return palette.base().color().name()
 
 
@@ -85,7 +78,7 @@ def load_stylesheets(palette: QtGui.QPalette) -> str:
 
 
 def build_palette(background_color: str, palette: QtGui.QPalette) -> QtGui.QPalette:
-    for role, color in __light_palette__.items():
+    for role, color in _sciqlop_palette.items():
         if role in QtGui.QPalette.ColorRole.__members__:
             palette.setColor(QtGui.QPalette.ColorRole[role], QtGui.QColor(color))
     return palette

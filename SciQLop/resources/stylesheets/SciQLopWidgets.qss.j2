@@ -11,6 +11,7 @@ Container {
 SciQLopPlotContainer[empty=false]{
     margin: 0px;
     border-top-width: 0px;
+    border-bottom-width: 0px;
     padding: 0px;
     border-image: none ;
 }
@@ -23,8 +24,8 @@ SciQLopPlotContainer[empty=true] {
 }
 
 SciQLopPlotContainer::handle:vertical {
-    height: 1px;
-    background-color: black;
+    height: 2px;
+    background: {{ palette('border') | lighter(250) }};
 }
 
 SciQLopPlotInterface{
@@ -91,7 +92,7 @@ WorkSpaceCard[default_workspace=true]
 ColorDelegate
 {
     background-color: palette(Button);
-    border: 2px solid #6c757d;
+    border: 2px solid {{ palette('border') }};
     border-radius: 5px;
     height: 24px;
 }
