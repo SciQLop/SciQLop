@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple, Union, Any
 from SciQLop.backend.theming.loader import load_stylesheets, build_palette
 from qasync import QEventLoop, QApplication
 import asyncio
+import os
 import sys
 
 from httpx_ws import aconnect_ws
@@ -67,10 +68,11 @@ class _SciQLopEventLoop(QEventLoop):
 
     async def _start_provider(self):
         try:
-            # try to connect to the server
-            room_name = "my_room"
+            # try to connect to the collaboration server
+            room_name = "collaboration"
+            collaboration_url = os.environ.get("SCIQLOP_COLLAB_SERVER", "https://sciqlop.lpp.polytechnique.fr/cache")
             async with (
-                aconnect_ws(f"http://localhost:1234/{room_name}") as websocket,
+                aconnect_ws(f"{collaboration_url}/{room_name}") as websocket,
                     WebsocketProvider(shared_doc, HttpxWebsocket(websocket, room_name)),
                 ):
                     await self.app_close_event.wait()
