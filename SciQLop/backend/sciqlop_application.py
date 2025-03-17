@@ -69,7 +69,7 @@ class _SciQLopEventLoop(QEventLoop):
     async def _start_provider(self):
         try:
             # try to connect to the collaboration server
-            room_name = "collaboration"
+            room_name = os.environ.get("SCIQLOP_COLLAB_ROOM", "global")
             collaboration_url = os.environ.get("SCIQLOP_COLLAB_SERVER", "https://sciqlop.lpp.polytechnique.fr/cache")
             async with (
                 aconnect_ws(f"{collaboration_url}/{room_name}") as websocket,
