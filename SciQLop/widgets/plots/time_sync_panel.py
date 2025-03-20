@@ -101,6 +101,17 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
     return None
 
 
+def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], x, y, z=None, **kwargs):
+    if z is not None:
+        return p.plot(x, y, z, **kwargs)
+    else:
+        return p.plot(x, y, **kwargs)
+
+
+def plot_function(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], f, **kwargs):
+    return p.plot(f, **kwargs)
+
+
 class ProductDnDCallback(PlotDragNDropCallback):
     def __init__(self, parent):
         super().__init__(PRODUCT_LIST_MIME_TYPE, True, parent)

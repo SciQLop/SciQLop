@@ -4,6 +4,7 @@ import numpy as np
 from enum import Enum
 from typing import Callable, List, Optional, Union, Tuple
 from datetime import datetime, timezone
+from expression import compose
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis, VariableAxis
 from PySide6.QtGui import QIcon
 from SciQLop.backend.unique_names import make_simple_incr_name
@@ -28,14 +29,22 @@ def ensure_dt64(x_data):
             return (x_data * 1e9).astype("datetime64[ns]")
     raise ValueError(f"can't handle x axis type {type(x_data)}")
 
-ArgumentsType = Enum("ArgumentsType",["Float", "Datetime","Unknown"])
 
-def _arguments_type(callback: VirtualProductCallback)->ArgumentsType:
-    if len(callback.__annotations__) >=2:
+class ArgumentsType(Enum):
+    Float = 0
+    Datetime = 1
+    Datetime64 = 2
+    Unknown = 3
+
+
+def _arguments_type(callback: VirtualProductCallback) -> ArgumentsType:
+    if len(callback.__annotations__) >= 2:
         if all(map(lambda x: x is float, list(callback.__annotations__.values())[:2])):
             return ArgumentsType.Float
         if all(map(lambda x: x is datetime, list(callback.__annotations__.values())[:2])):
             return ArgumentsType.Datetime
+        if all(map(lambda x: x is np.datetime64, list(callback.__annotations__.values())[:2])):
+            return ArgumentsType.Datetime64
     return ArgumentsType.Unknown
 
 
@@ -45,6 +54,10 @@ def _returns_speasy_variable(callback: VirtualProductCallback):
 
 def _to_datetime(start: float, stop: float) -> Tuple[datetime, datetime]:
     return datetime.fromtimestamp(start, tz=timezone.utc), datetime.fromtimestamp(stop, tz=timezone.utc)
+
+
+def _to_datetime64(start: float, stop: float) -> Tuple[np.datetime64, np.datetime64]:
+    return np.datetime64(int(start * 1e9), "ns"), np.datetime64(int(stop * 1e9), "ns")
 
 
 class EasyProvider(DataProvider):
@@ -63,14 +76,16 @@ class EasyProvider(DataProvider):
             ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER, parameter_type, "",
                               None)
         )
+        stack = []
         arguments_type = _arguments_type(callback)
-        if arguments_type == ArgumentsType.Datetime:
-            if debug:
-                self._user_get_data = lambda start, stop: self._debug_get_data(callback, *_to_datetime(start, stop))
-            else:
-                self._user_get_data = lambda start, stop: callback(*_to_datetime(start, stop))
-        else:
-            if arguments_type == ArgumentsType.Unknown:
+        match arguments_type:
+            case ArgumentsType.Datetime:
+                stack.append(lambda rng: _to_datetime(*rng))
+            case ArgumentsType.Datetime64:
+                stack.append(lambda rng: _to_datetime64(*rng))
+            case ArgumentsType.Float:
+                pass
+            case ArgumentsType.Unknown:
                 warnings.warn(f"""Can't determine arguments type for {callback.__name__}, missing type hints, assuming float by default.
 Please add type hints to the callback function to avoid this warning:
 def {callback.__name__}(start: float, stop: float) -> Optional[SpeasyVariable]:
@@ -78,11 +93,15 @@ def {callback.__name__}(start: float, stop: float) -> Optional[SpeasyVariable]:
 Or:
 def {callback.__name__}(start: datetime, stop: datetime) -> Optional[SpeasyVariable]:
     ...
-""")
-            if debug:
-                self._user_get_data = lambda start, stop: self._debug_get_data(callback, start, stop)
-            else:
-                self._user_get_data = callback
+Or:
+def {callback.__name__}(start: np.datetime64, stop: np.datetime64) -> Optional[SpeasyVariable]:
+    ...
+            """)
+        if debug:
+            stack.append(lambda rng: self._debug_get_data(callback, *rng))
+        else:
+            stack.append(lambda rng: callback(*rng))
+        self._user_get_data = lambda start, stop: compose(*stack)((start, stop))
 
     def get_data(self, product, start: float, stop: float) -> DataProviderReturnType:
         return self._user_get_data(start, stop)
