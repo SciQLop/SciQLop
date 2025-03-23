@@ -1,6 +1,7 @@
 from typing import Optional
 
-from PySide6.QtCore import QObject, Signal, QProcess, QProcessEnvironment
+from PySide6.QtCore import QObject, Signal, QProcess, QProcessEnvironment, Slot
+from shiboken6 import isValid
 from SciQLop.backend import sciqlop_logging
 
 log = sciqlop_logging.getLogger(__name__)
@@ -29,25 +30,33 @@ class Process(QObject):
         self.process.setProcessEnvironment(env)
         if self.cwd:
             self.process.setWorkingDirectory(self.cwd)
-        self.process.finished.connect(lambda code, status: self.finished.emit(code))
-        self.process.readyReadStandardOutput.connect(self._capture_stdout)
-        self.process.readyReadStandardError.connect(self._capture_stderr)
+        self.process.finished.connect(self, lambda code, status: self.finished.emit(code))
+        self.process.readyReadStandardOutput.connect(self, self._capture_stdout)
+        self.process.readyReadStandardError.connect(self, self._capture_stderr)
         self.process.start(self.cmd, self.args)
         self._started = True
 
+    @Slot()
     def _capture_stdout(self):
-        self._stdout = str(self.process.readAllStandardOutput(), encoding="utf-8")
+        if isValid(self.process):
+            self._stdout += str(self.process.readAllStandardOutput(), encoding="utf-8")
 
+    @Slot()
     def _capture_stderr(self):
-        self._stderr = str(self.process.readAllStandardError(), encoding="utf-8")
+        if isValid(self.process):
+            self._stderr += str(self.process.readAllStandardError(), encoding="utf-8")
 
     def complete(self):
         return self.process.state() == QProcess.ProcessState.NotRunning and self._started
 
     @property
     def stdout(self):
-        return self.process.readAllStandardOutput().data().decode()
+        if isValid(self.process):
+            return self.process.readAllStandardOutput().data().decode()
+        return self._stdout
 
     @property
     def stderr(self):
-        return self.process.readAllStandardError().data().decode()
+        if isValid(self.process):
+            return self.process.readAllStandardError().data().decode()
+        return self._stderr
