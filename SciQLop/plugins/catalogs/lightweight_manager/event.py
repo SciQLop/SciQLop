@@ -23,7 +23,6 @@ class Event(QObject):
         self._deferred_apply.setSingleShot(True)
         self._deferred_apply.timeout.connect(self._apply_changes)
 
-
     def _apply_start(self):
         tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="start",
                                           values=[self._range_to_apply.datetime_start()]))
@@ -44,6 +43,7 @@ class Event(QObject):
                 self._apply_start()
         if self._current_range.stop() != self._range_to_apply.stop():
             self._apply_stop()
+
     @property
     def _event(self):
         return tscat_model.entities_from_uuids([self._uuid])[0]
@@ -72,7 +72,12 @@ class Event(QObject):
     def tooltip(self):
         return f"""<b>Author: </b>{self._event.author} <br><hr>
 <b>Tags: </b>{' '.join(self._event.tags)} <br><hr>
-<b>Duration: </b>{precisedelta(self._event.stop - self._event.start)} <br>
+<b>Duration: </b>{precisedelta(self._event.stop - self._event.start)} <br><hr>
+<b>Rating: </b>{self._event.rating} <br><hr>
+<b>Attributes:</b>
+<table>
+    {''.join([f'<tr><td>{key}</td><td>{value}</td></tr>' for key, value in self._event.variable_attributes().items()])}
+</table>
         """
 
     def set_range(self, time_range: TimeRange):
