@@ -65,9 +65,6 @@ class WorkspaceManager(QObject):
         self._deferred_variables = {}
         self._workspace: Optional[Workspace] = None
 
-        # sciqlop_app().add_quickstart_shortcut("IPython", "Start an IPython console in current workspace or a new one",
-        #                                      icons.get("JupyterConsole"),
-        #                                      self.new_qt_console)
         sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab in current workspace or a new one",
                                               Icons.get_icon("Jupyter"),
                                               self.start_jupyterlab)
@@ -83,7 +80,7 @@ class WorkspaceManager(QObject):
         self._ipykernel.init_ipkernel()
         self.push_variables({"app": sciqlop_app(), "background_run": background_run})
         self.push_variables(self._deferred_variables)
-        self._ipykernel_clients_manager = IPythonKernelClientsManager(self._ipykernel.connection_file)
+        self._ipykernel_clients_manager = IPythonKernelClientsManager(self._ipykernel.connection_file, parent=self)
         self._ipykernel_clients_manager.jupyterlab_started.connect(self.jupyterlab_started)
 
     def _ensure_default_workspace_exists(self) -> WorkspaceSpecFile:

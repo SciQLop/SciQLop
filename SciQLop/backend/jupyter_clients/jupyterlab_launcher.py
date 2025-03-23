@@ -26,8 +26,8 @@ __here__ = Path(__file__).parent
 class JupyterLabClient(SciQLopJupyterClient):
     jupyterlab_ready = Signal(str)
 
-    def __init__(self, connection_file: str, cwd: Optional[str] = None):
-        super().__init__(ClientType.JUPYTERLAB, stdout_parser=self._parse_stdout, stderr_parser=self._parse_stdout)
+    def __init__(self, connection_file: str, cwd: Optional[str] = None, parent=None):
+        super().__init__(ClientType.JUPYTERLAB, stdout_parser=self._parse_stdout, stderr_parser=self._parse_stdout, parent=parent)
         if cwd is None:
             cwd = Path.home()
         self.port = find_available_port()

@@ -28,7 +28,7 @@ class SciQLopJupyterClient(QObject):
     def __init__(self, client_type: ClientType, parent=None, stdout_parser: Optional[Callable] = None,
                  stderr_parser: Optional[Callable] = None):
         super().__init__(parent)
-        self.process = QProcess()
+        self.process = QProcess(self)
         self.client_type = client_type
         self._stdout_parser = stdout_parser or (lambda x: x)
         self._stderr_parser = stderr_parser or (lambda x: x)

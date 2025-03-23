@@ -10,7 +10,7 @@ class ClientsManager(QObject):
     jupyterlab_started = Signal(str)
 
     def __init__(self, connection_file, parent=None):
-        QObject.__init__(self, parent)
+        super().__init__(parent)
         self._connection_file = connection_file
         self._jupyter_processes: List[SciQLopJupyterClient] = []
         self._running_jupyterlab = False
@@ -21,7 +21,7 @@ class ClientsManager(QObject):
 
     def start_jupyterlab(self, cwd=None):
         """start a new jupyterlab connected to our kernel"""
-        client = JupyterLabClient(connection_file=self._connection_file, cwd=cwd)
+        client = JupyterLabClient(connection_file=self._connection_file, cwd=cwd, parent=self)
         self._jupyter_processes.append(client)
         client.jupyterlab_ready.connect(self.jupyterlab_started)
         self._running_jupyterlab = True
