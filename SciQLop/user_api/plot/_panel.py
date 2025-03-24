@@ -11,6 +11,7 @@ from SciQLopPlots import PlotType as _PlotType, GraphType as _GraphType, SciQLop
 from SciQLop.widgets.plots.time_sync_panel import (TimeSyncPanel as _ImplTimeSyncPanel, plot_product as _plot_product,
                                                    plot_static_data as _plot_static_data,
                                                    plot_function as _plot_function)
+from SciQLop.widgets.plots.palette import Palette as _Palette, make_color_list as _make_color_list
 from ._plots import to_product_path, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
     is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product
 
@@ -59,6 +60,7 @@ class PlotPanel:
     def __init__(self, impl: _ImplTimeSyncPanel):
         self._impl: _ImplTimeSyncPanel = impl
         self._impl.destroyed.connect(self._on_destroyed)
+        self._impl.set_color_palette(_make_color_list(_Palette()))
 
     def _on_destroyed(self):
         self._impl = None
