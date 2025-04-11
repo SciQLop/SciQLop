@@ -14,11 +14,12 @@ print("Forcing TZ to UTC")
 os.environ['TZ'] = 'UTC'
 if platform.system() == 'Linux':
     os.environ['QT_QPA_PLATFORM'] = os.environ.get("SCIQLOP_QT_QPA_PLATFORM", 'xcb')
+    print(f"Setting QT_QPA_PLATFORM to {os.environ['QT_QPA_PLATFORM']}")
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)) + '/..'))
 
 
-def main():
+def start_sciqlop():
     os.environ['INSIDE_SCIQLOP'] = '1'
     from PySide6 import QtWidgets, QtPrintSupport, QtOpenGL, QtQml, QtCore, QtGui
     from PySide6.QtGui import QPixmap
@@ -32,7 +33,7 @@ def main():
     from SciQLop.resources import qInitResources
     from SciQLop.backend.sciqlop_application import sciqlop_event_loop, sciqlop_app
 
-    print( str(QtPrintSupport) + str(QtOpenGL) + str(QtQml))
+    print(str(QtPrintSupport) + str(QtOpenGL) + str(QtQml))
 
     app = sciqlop_app()
     envent_loop = sciqlop_event_loop()
@@ -55,6 +56,10 @@ def main():
 
     app.processEvents()
     splash.finish(main_windows)
+    return main_windows
+
+def main():
+    main_windows = start_sciqlop()
     try:
         main_windows.start()
     except Exception as e:

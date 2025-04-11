@@ -60,6 +60,12 @@ def _to_datetime64(start: float, stop: float) -> Tuple[np.datetime64, np.datetim
     return np.datetime64(int(start * 1e9), "ns"), np.datetime64(int(stop * 1e9), "ns")
 
 
+"""
+TODO
+
+- drop the need of callback.__name__
+- support callable objects
+"""
 class EasyProvider(DataProvider):
     def __init__(self, path, callback: VirtualProductCallback, parameter_type: ParameterType, metadata: dict,
                  data_order=DataOrder.Y_FIRST,

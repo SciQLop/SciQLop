@@ -9,8 +9,6 @@ from SciQLop.backend.sciqlop_application import sciqlop_app, sciqlop_event_loop
 from SciQLop import resources
 import platform, os
 
-if platform.system() == 'Linux':
-    os.environ['QT_QPA_PLATFORM'] = os.environ.get("SCIQLOP_QT_QPA_PLATFORM", 'xcb')
 
 
 class ControlsPan(QWidget):
@@ -99,6 +97,8 @@ class WidgetGallery(QMainWindow):
 
 
 def main():
+    if platform.system() == 'Linux':
+        os.environ['QT_QPA_PLATFORM'] = os.environ.get("SCIQLOP_QT_QPA_PLATFORM", 'xcb')
     app = sciqlop_app()
     loop = sciqlop_event_loop()
     main_window = WidgetGallery()
