@@ -74,6 +74,7 @@ class PlotPanel:
     def add_sub_panel(self, orientation: Orientation = Orientation.Horizontal) -> "PlotPanel":
         _panel = _SciQLopMultiPlotPanel(self._impl, synchronize_x=False,
                                         synchronize_time=True, orientation=_to_sqp_orientation(orientation))
+        self._impl.add_panel(_panel)
         return PlotPanel(_panel)
 
     def plot_product(self, product: AnyProductType, plot_index=-1, **kwargs) -> Tuple[

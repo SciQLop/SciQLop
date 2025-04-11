@@ -1,5 +1,5 @@
 from .enums import ScaleType
-from .protocol import Plot, Plottable
+from .protocol import Plot
 from ._graphs import Graph, ColorMap, to_plottable, ensure_arrays_of_double
 from typing import Optional, Union, List, Any
 from ..virtual_products import VirtualProduct
