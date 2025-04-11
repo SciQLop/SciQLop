@@ -44,14 +44,14 @@ def _sort_variable_by_time(variable: SpeasyVariable) -> SpeasyVariable:
 
 class DataProvider:
     def __init__(self, name: str, data_order: DataOrder = DataOrder.X_FIRST, cacheable: bool = False):
-        global providers
+        global providers # noqa: F824
         providers[name] = self
         self._name = name
         self._data_order = data_order
         self._cacheable = cacheable
 
     def __del__(self):
-        global providers
+        global providers # noqa: F824
         if providers is not None:
             providers.pop(self._name)
 

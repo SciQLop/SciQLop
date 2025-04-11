@@ -143,8 +143,8 @@ def set_log_level(logger: SciQLopLogger, level: Union[AnyStr, int]):
 
 
 def getLogger(name="SciQLop"):
-    global __default_log_level__
-    global __Loggers__
+    global __default_log_level__  # noqa: F824
+    global __Loggers__  # noqa: F824
     if name in __Loggers__:
         return __Loggers__[name]
     logger = SciQLopLogger(name)
