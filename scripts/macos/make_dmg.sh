@@ -6,6 +6,10 @@ DIST=$SCIQLOP_ROOT/dist
 ICONDIR=$DIST/SciQLop.app/Contents/Resources/SciQLop.iconset
 ARCH=$(uname -m)
 
+OPENSSL_VERSION=3.5.0
+PYTHON_VERSION=3.12.10
+NODE_VERSION=23.11.0
+
 mkdir $DIST
 
 mkdir -p $DIST/SciQLop.app/Contents/MacOS
@@ -47,7 +51,6 @@ EOT
 chmod +x $DIST/SciQLop.app/Contents/MacOS/SciQLop
 
 
-
 function download_and_extract() {
   EXTENSION="${1##*.}"
   DESTFILE=$DIST/$(basename $1)
@@ -65,9 +68,9 @@ function download_and_extract() {
   fi
 }
 
-download_and_extract  https://github.com/openssl/openssl/releases/download/openssl-3.3.1/openssl-3.3.1.tar.gz
+download_and_extract  https://github.com/openssl/openssl/releases/download/openssl-$OPENSSL_VERSION/openssl-$OPENSSL_VERSION.tar.gz
 
-cd $DIST/openssl-3.3.1
+cd $DIST/openssl-$OPENSSL_VERSION
 if [[ $ARCH == "arm64" ]]; then
   ./Configure darwin64-arm64-cc --prefix=$PREFIX_ABS > ../openssl-configure.log
 else
@@ -79,8 +82,9 @@ cd -
 
 export PKG_CONFIG_PATH=$(realpath $DIST/SciQLop.app/Contents/Resources/usr/local/lib/pkgconfig)
 
-download_and_extract https://www.python.org/ftp/python/3.12.4/Python-3.12.4.tar.xz
-cd $SCIQLOP_ROOT/dist/Python-3.12.4
+
+download_and_extract https://www.python.org/ftp/python/$PYTHON_VERSION/Python-$PYTHON_VERSION.tar.xz
+cd $SCIQLOP_ROOT/dist/Python-$PYTHON_VERSION
 ./configure --enable-optimizations --with-openssl=$PREFIX_ABS --prefix=$PREFIX_ABS > ../python-configure.log
 make -j > ../python-make.log
 make install  > ../python-install.log
@@ -93,8 +97,9 @@ if [[ -z $RELEASE ]]; then
   $DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install --upgrade git+https://github.com/SciQLop/speasy
 fi
 
-download_and_extract https://nodejs.org/dist/v20.12.1/node-v20.12.1-darwin-$ARCH.tar.gz
-rsync -avhu $DIST/node-v20.12.1-darwin-$ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/
+
+download_and_extract https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-darwin-$ARCH.tar.gz
+rsync -avhu $DIST/node-v$NODE_VERSION-darwin-$ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/
 
 python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 

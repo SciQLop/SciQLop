@@ -8,9 +8,10 @@ SCIQLOP_ROOT=$ABSOLUTE_SCRIPT_DIR/../../
 mkdir -p /tmp/sciqlop
 cd /tmp/sciqlop
 
-PYTHON_APPIMAGE=python3.12.9-cp312-cp312-manylinux2014_x86_64.AppImage
+PYTHON_APPIMAGE=python3.12.10-cp312-cp312-manylinux2014_x86_64.AppImage
 PYTHON_VERSION=3.12
 
+NODE_VERSION=23.11.0
 
 if [ ! -f ./$PYTHON_APPIMAGE ]; then
     wget https://github.com/niess/python-appimage/releases/download/python$PYTHON_VERSION/$PYTHON_APPIMAGE
@@ -26,8 +27,10 @@ fi
 rm -f ./squashfs-root/AppRun
 cp $ABSOLUTE_SCRIPT_DIR/AppRun ./squashfs-root/
 
-curl https://nodejs.org/dist/v23.9.0/node-v23.9.0-linux-x64.tar.xz | tar -xJ -C /tmp/sciqlop
-rsync -avhu /tmp/sciqlop/node-v23.9.0-linux-x64/* ./squashfs-root/usr/local/
+
+
+curl https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz | tar -xJ -C /tmp/sciqlop
+rsync -avhu /tmp/sciqlop/node-v$NODE_VERSION-linux-x64/* ./squashfs-root/usr/local/
 
 if [ ! -f ./appimagetool-x86_64.AppImage ]; then
     wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
