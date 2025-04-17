@@ -22,7 +22,7 @@ def main_window(qtbot, qapp):
 
 
 @pytest.fixture(scope="function")
-def simple_vp_callback(qapp, main_window):
+def simple_vp_callback():
     import numpy as np
     def callback(start:float, end:float)-> Tuple[np.ndarray, np.ndarray]:
         x = np.linspace(start, end, int(end-start))
