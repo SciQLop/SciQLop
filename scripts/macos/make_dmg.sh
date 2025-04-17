@@ -18,6 +18,7 @@ mkdir -p $ICONDIR
 
 export MACOSX_DEPLOYMENT_TARGET=11.0
 export PREFIX_ABS=$(realpath $DIST/SciQLop.app/Contents/Resources/usr/local)
+export SAVED_PATH=$PATH
 export PATH=$PREFIX_ABS/bin:$PATH
 
 for SIZE in 16 32 64 128 256 512; do
@@ -97,6 +98,7 @@ if [[ -z $RELEASE ]]; then
   $DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install --upgrade git+https://github.com/SciQLop/speasy
 fi
 
+export PATH=$SAVED_PATH
 
 download_and_extract https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-darwin-$ARCH.tar.gz
 rsync -avhu $DIST/node-v$NODE_VERSION-darwin-$ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/
