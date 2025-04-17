@@ -55,4 +55,3 @@ sciqlop-kernel-provisioner = "SciQLop.Jupyter:SciQLopProvisioner"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 qt_api = "pyside6"
-xvfb_xauth = true

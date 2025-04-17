@@ -13,18 +13,19 @@ def show_product_tree(qtbot, main_window):
     from PySide6QtAds import ads
     b = main_window.dock_manager.autoHideSideBar(ads.SideBarLocation.SideBarLeft).tab(0)
     qtbot.mouseClick(b, Qt.MouseButton.LeftButton, Qt.NoModifier, b.rect().center())
-    qtbot.wait(1)
+    qtbot.wait(100)
 
 
+@pytest.mark.skipif("GITHUB_ACTIONS" in os.environ, reason="Drag and drop does not work in GitHub Actions")
 def test_drag_and_drop(qtbot, qapp, main_window, plot_panel):
     show_product_tree(qtbot, main_window)
     tree: QTreeView = next(filter(lambda c: isinstance(c, QTreeView), main_window.productTree.children()))
     tree.expandAll()
-    qtbot.wait(1)
+    qtbot.wait(100)
     model = tree.model()
     index = model.index(0, 0, model.index(0, 0))
     rect = tree.visualRect(index)
     drag_and_drop(qapp, qtbot, tree, index, plot_panel._impl)
     for i in range(10):
-        qtbot.wait(1000)
+        qtbot.wait(10)
     assert len(plot_panel.plots) > 0
