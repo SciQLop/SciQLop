@@ -13,7 +13,7 @@ from SciQLop.backend.enums import ParameterType
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder, DataProviderReturnType
 from SciQLop.backend.icons import register_icon
 from SciQLop.backend import sciqlop_logging
-from inspect import get_annotations
+from inspect import signature
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -39,29 +39,28 @@ class ArgumentsType(Enum):
     Unknown = 3
 
 
-def _annotations(callback: VirtualProductCallback) -> dict:
+def _positional_args_types(callback: VirtualProductCallback) -> List[type]:
     """
     Get the annotations of the callback function.
     :param callback: The callback function
     :return: A dictionary of annotations
     """
 
-    if hasattr(callback, "__annotations__"):
-        return get_annotations(callback, eval_str=True)
-    if hasattr(callback, "__call__") and hasattr(callback.__call__, "__annotations__"):
-        return get_annotations(callback.__call__, eval_str=True)
-    return {}
+    sig = signature(callback, eval_str=True)
+    return [
+        v.annotation for v in sig.parameters.values() if v.default == v.empty
+    ]
 
 
 def _arguments_type(callback: VirtualProductCallback) -> ArgumentsType:
-    annotations = _annotations(callback)
-    all_are = lambda types, expected: all(map(lambda x: x is expected, types))
-    if len(annotations) >= 2:
-        if all_are(list(annotations.values())[:2], float):
+    pos_arg_types = _positional_args_types(callback)
+    all_are = lambda types, expected: all(map(lambda x: x is expected, pos_arg_types))
+    if len(pos_arg_types) >= 2:
+        if all_are(pos_arg_types[:2], float):
             return ArgumentsType.Float
-        if all_are(list(annotations.values())[:2], datetime):
+        if all_are(pos_arg_types[:2], datetime):
             return ArgumentsType.Datetime
-        if all_are(list(annotations.values())[:2], np.datetime64):
+        if all_are(pos_arg_types[:2], np.datetime64):
             return ArgumentsType.Datetime64
     return ArgumentsType.Unknown
 
