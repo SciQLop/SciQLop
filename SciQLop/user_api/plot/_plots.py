@@ -20,6 +20,7 @@ AnyProductType = Union[str, VirtualProduct, List[str]]
 
 __all__ = ['XYPlot', 'TimeSeriesPlot', 'ProjectionPlot']
 
+
 def is_product(product: Any) -> bool:
     if isinstance(product, (str, VirtualProduct)):
         return True
@@ -75,7 +76,6 @@ def to_product_path(product: AnyProductType) -> List[str]:
     return []
 
 
-
 class _BasePlot(Plot):
     def __init__(self, impl):
         self._impl: Optional[_SciQLopPlot] = impl
@@ -89,7 +89,18 @@ class _BasePlot(Plot):
     def _on_destroyed(self):
         self._impl = None
 
+
 class XYPlot(_BasePlot):
+    """A class representing a 2D XY plot where the x-axis and y-axis can represent any type of data.
+    The plot can be used to visualize data in a Cartesian coordinate system.
+    Usually users won't directly create an XYPlot, but rather use the PlotPanel plot method to create one.
+
+    See Also
+    --------
+    TimeSeriesPlot : A class representing a time series plot where the x-axis always represents time.
+    ProjectionPlot : A class representing a projection plot.
+    """
+
     def __init__(self, impl):
         super().__init__(impl)
         assert is_xy_plot(impl)
@@ -103,15 +114,34 @@ class XYPlot(_BasePlot):
             else:
                 raise ValueError("Invalid arguments")
         elif len(args) == 2:
-            Graph(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
+            return Graph(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
         elif len(args) == 3:
-            ColorMap(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
+            return ColorMap(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
+        return None
 
     def set_x_range(self, xmin: float, xmax: float):
+        """Set the x-axis range of the plot and replot.
+
+        Parameters
+        ----------
+        xmin : float
+            The minimum value of the x-axis range.
+        xmax : float
+            The maximum value of the x-axis range.
+        """
         xmin, xmax = min(xmin, xmax), max(xmin, xmax)
         self._impl.set_x_range(xmin, xmax)
 
     def set_y_range(self, ymin: float, ymax: float):
+        """Set the y-axis range of the plot and replot.
+
+        Parameters
+        ----------
+        ymin : float
+            The minimum value of the y-axis range.
+        ymax : float
+            The maximum value of the y-axis range.
+        """
         ymin, ymax = min(ymin, ymax), max(ymin, ymax)
         self._impl.set_y_range(ymin, ymax)
 
@@ -134,6 +164,8 @@ class XYPlot(_BasePlot):
         self.replot()
 
     def replot(self):
+        """Replot the plot. This method is used to force a redraw of the plot.
+        """
         self._impl.replot()
 
     def _repr_pretty_(self, p, cycle):
@@ -144,11 +176,41 @@ class XYPlot(_BasePlot):
 
 
 class TimeSeriesPlot(_BasePlot):
+    """A class representing a time series plot. The x-axis always represents time, while the y-axis can represent any type of data.
+    Usually users won't directly create a TimeSeriesPlot, but rather use the PlotPanel plot method to create one.
+
+    See Also
+    --------
+    XYPlot : A class representing a 2D XY plot where the x-axis and y-axis can represent any type of data.
+    ProjectionPlot : A class representing a projection plot.
+    """
+
     def __init__(self, impl):
         super().__init__(impl)
         assert is_time_series_plot(impl)
 
     def plot(self, *args, **kwargs):
+        """Plot data on the plot, either two vectors or a product path or a function.
+        If only one argument is passed, it is assumed to be a function that behaves like a callback and returns two vectors (x, y) or a product path from the product tree.
+        If two or three arguments are passed, they are assumed to be the x and y vectors (and optionally z for a color map). They can be of any collection of numbers (list, tuple, numpy array, etc.) and will be converted to numpy arrays of double.
+
+
+        Parameters
+        ----------
+        args : Any
+            The arguments to pass to the plot method. Can be a function or two vectors.
+        kwargs : Any
+            Additional arguments to pass to the plot method. Actually unused.
+        Returns
+        -------
+        Optional[Graph]
+            The graph object representing the plot.
+        Raises
+        ------
+        ValueError
+            If the arguments are not valid.
+
+        """
         if len(args) == 1:
             if callable(args[0]):
                 return to_plottable(self._impl.plot(*args, **kwargs))
@@ -215,6 +277,8 @@ class TimeSeriesPlot(_BasePlot):
         self.replot()
 
     def replot(self):
+        """Replot the plot. This method is used to force a redraw of the plot.
+        """
         self._get_impl_or_raise().replot()
 
     def _repr_pretty_(self, p, cycle):
@@ -225,6 +289,16 @@ class TimeSeriesPlot(_BasePlot):
 
 
 class ProjectionPlot:
+    """A class representing a projection plot. The x-axis and y-axis can represent any type of data.
+    The plot can be used to visualize data in a Cartesian coordinate system.
+    Usually users won't directly create a ProjectionPlot, but rather use the PlotPanel plot method to create one.
+
+    See Also
+    --------
+    XYPlot : A class representing a 2D XY plot where the x-axis and y-axis can represent any type of data.
+    TimeSeriesPlot : A class representing a time series plot where the x-axis always represents time.
+    """
+
     def __init__(self, impl):
         assert is_projection_plot(impl)
         self._impl = impl
@@ -247,6 +321,18 @@ class ProjectionPlot:
         pass
 
     def plot(self, product: Union[str, VirtualProduct], **kwargs) -> Optional[Graph]:
+        """Plot a product on the plot.
+        Parameters
+        ----------
+        product : Union[str, VirtualProduct]
+            The product to plot. Can be a string or a VirtualProduct.
+        **kwargs : Any
+            Additional arguments to pass to the plot method. Actually unused.
+        Returns
+        -------
+        Optional[Graph]
+            The graph object representing the plot.
+        """
         return to_plottable(
             _plot_product(self._get_impl_or_raise(), to_product_path(product), graph_type=_GraphType.ParametricCurve))
 

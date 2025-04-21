@@ -50,11 +50,6 @@ class DataProvider:
         self._data_order = data_order
         self._cacheable = cacheable
 
-    def __del__(self):
-        global providers # noqa: F824
-        if providers is not None:
-            providers.pop(self._name)
-
     @property
     def name(self) -> str:
         return self._name

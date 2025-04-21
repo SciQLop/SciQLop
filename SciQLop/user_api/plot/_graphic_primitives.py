@@ -25,8 +25,30 @@ def _coordinate_system_to_sqp(coordinate_system: CoordinateSystem) -> _Coordinat
 
 
 class Pixmap(Item):
+    """A class representing a pixmap in a plot.
+    """
     def __init__(self, plot: Plot, x: float, y: float, width: float, height: float, image: Union[str, bytes],
                  coordinate_system: CoordinateSystem = CoordinateSystem.Data, tool_tip: str = ""):
+        """Initialize a Pixmap object.
+        Parameters
+        ----------
+        plot : Plot
+            The plot to which the pixmap belongs.
+        x : float
+            The x-coordinate of the pixmap.
+        y : float
+            The y-coordinate of the pixmap.
+        width : float
+            The width of the pixmap.
+        height : float
+            The height of the pixmap.
+        image : Union[str, bytes]
+            The image to display. Can be a file path or raw bytes.
+        coordinate_system : CoordinateSystem
+            The coordinate system to use. Defaults to CoordinateSystem.Data.
+        tool_tip : str
+            The tooltip text for the pixmap. Defaults to an empty string.
+        """
         bounding_box = QRectF(QPointF(x, y), QPointF(x + width, y + height))
 
         self._impl: _SciQLopPixmapItem = _SciQLopPixmapItem(plot._get_impl_or_raise(), image, bounding_box,
@@ -52,8 +74,31 @@ class Pixmap(Item):
 
 
 class Ellipse(Item):
+    """A class representing an ellipse in a plot.
+    """
+
     def __init__(self, plot: Plot, x: float, y: float, width: float, height: float,
                  coordinate_system: CoordinateSystem = CoordinateSystem.Data, tool_tip: str = ""):
+        """Initialize an Ellipse object.
+
+        Parameters
+        ----------
+        plot : Plot
+            The plot to which the ellipse belongs.
+        x : float
+            The x-coordinate of the ellipse.
+        y : float
+            The y-coordinate of the ellipse.
+        width : float
+            The width of the ellipse.
+        height : float
+            The height of the ellipse.
+        coordinate_system : CoordinateSystem
+            The coordinate system to use. Defaults to CoordinateSystem.Data.
+        tool_tip : str
+            The tooltip text for the ellipse. Defaults to an empty string.
+
+        """
 
         bounding_box = QRectF(QPointF(x, y), QPointF(x + width, y + height))
 
@@ -115,8 +160,26 @@ class Ellipse(Item):
 
 
 class Text(Item):
+    """A class representing a text item in a plot.
+    """
+
     def __init__(self, plot: Plot, text: str, x: float, y: float,
                  coordinate_system: CoordinateSystem = CoordinateSystem.Data, ):
+        """Initialize a Text object.
+        Parameters
+        ----------
+        plot : Plot
+            The plot to which the text belongs.
+        text : str
+            The text to display.
+        x : float
+            The x-coordinate of the text.
+        y : float
+            The y-coordinate of the text.
+        coordinate_system : CoordinateSystem
+            The coordinate system to use. Defaults to CoordinateSystem.Data.
+        """
+
         self._impl: _SciQLopTextItem = _SciQLopTextItem(plot._get_impl_or_raise(), text, QPointF(x, y), False,
                                                         _coordinate_system_to_sqp(coordinate_system))
 
@@ -139,8 +202,24 @@ class Text(Item):
 
 
 class CurvedLine(Item):
+    """A class representing a curved line with arrow termination.
+    """
+
     def __init__(self, plot: Plot, start: Tuple[float, float], stop: Tuple[float, float],
                  coordinate_system: CoordinateSystem = CoordinateSystem.Data):
+        """Initialize a CurvedLine object.
+
+        Parameters
+        ----------
+        plot : Plot
+            The plot to which the curved line belongs.
+        start : Tuple[float, float]
+            The starting point of the curved line.
+        stop : Tuple[float, float]
+            The ending point of the curved line.
+        coordinate_system : CoordinateSystem
+            The coordinate system to use. Defaults to CoordinateSystem.Data.
+        """
         self._impl: _SciQLopCurvedLineItem = _SciQLopCurvedLineItem(plot._get_impl_or_raise(), QPointF(*start),
                                                                     QPointF(*stop),
                                                                     _LineTermination.NoneTermination,

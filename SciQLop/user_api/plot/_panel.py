@@ -1,5 +1,5 @@
 from expression import Nothing, Option, Some
-from .enums import PlotType, Orientation
+from .enums import PlotType, Orientation, GraphType
 from .protocol import Plottable
 from typing import Optional, Tuple, Union, List
 from ..gui import get_main_window as _get_main_window
@@ -14,13 +14,16 @@ from SciQLop.widgets.plots.time_sync_panel import (TimeSyncPanel as _ImplTimeSyn
 from SciQLop.widgets.plots.palette import Palette as _Palette, make_color_list as _make_color_list
 from ._plots import to_product_path, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
     is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product
+from ._graphs import ensure_arrays_of_double
 
 __all__ = ['PlotPanel', 'plot_panel', 'create_plot_panel']
 
 log = _getLogger(__name__)
 
 
-def _to_sqp_plot_type(plot_type: PlotType) -> _PlotType:
+def _to_sqp_plot_type(plot_type: Union[PlotType, _PlotType]) -> _PlotType:
+    if isinstance(plot_type, _PlotType):
+        return plot_type
     if plot_type == PlotType.TimeSeries:
         return _PlotType.TimeSeries
     elif plot_type == PlotType.Projection:
@@ -29,6 +32,21 @@ def _to_sqp_plot_type(plot_type: PlotType) -> _PlotType:
         return _PlotType.BasicXY
     else:
         raise ValueError(f"Unknown plot type {plot_type}")
+
+
+def _to_sqp_graph_type(graph_type: [GraphType, _GraphType]) -> _GraphType:
+    if isinstance(graph_type, _GraphType):
+        return graph_type
+    if graph_type == GraphType.Line:
+        return _GraphType.Line
+    elif graph_type == GraphType.Curve:
+        return _GraphType.ParametricCurve
+    elif graph_type == GraphType.ColorMap:
+        return _GraphType.ColorMap
+    elif graph_type == GraphType.Scatter:
+        return _GraphType.Scatter
+    else:
+        raise ValueError(f"Unknown graph type {graph_type}")
 
 
 def _to_sqp_orientation(orientation: Orientation) -> _Qt.Orientation:
@@ -57,6 +75,10 @@ def _maybe_callable(*args, **kwargs) -> Option[callable]:
 
 
 class PlotPanel:
+    """A class representing a plot panel in the SciQLop application.
+    This class provides methods to create and manage plots within the panel.
+    """
+
     def __init__(self, impl: _ImplTimeSyncPanel):
         self._impl: _ImplTimeSyncPanel = impl
         self._impl.destroyed.connect(self._on_destroyed)
@@ -79,17 +101,60 @@ class PlotPanel:
 
     def plot_product(self, product: AnyProductType, plot_index=-1, **kwargs) -> Tuple[
         ProjectionPlot | TimeSeriesPlot, Plottable]:
+        """Plot a product in the panel.
+        Parameters
+        ----------
+        product : AnyProductType
+            The product to plot. This can be a string, a VirtualProduct or a list of strings.
+        plot_index : int
+            The index of the plot in the panel. Defaults to -1, which means the last plot.
+        kwargs : dict
+            extra arguments to pass to the plot function.
+            - plot_type: PlotType
+                The type of plot to create. Can be TimeSeries, Projection or XY. Defaults to TimeSeries.
+            - graph_type: GraphType
+                The type of graph to create. Can be Line, Curve, ColorMap or Scatter. Defaults to Line.
+        Returns
+        -------
+        Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]
+            A tuple containing the plot and the graph object.
+        """
         kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
         if kwargs["plot_type"] != _PlotType.TimeSeries:
             kwargs["graph_type"] = _GraphType.ParametricCurve
+        elif "graph_type" in kwargs:
+            kwargs["graph_type"] = _to_sqp_graph_type(kwargs["graph_type"])
         _p, _g = _plot_product(self._get_impl_or_raise(), to_product_path(product), index=plot_index, **kwargs)
         return to_plot(_p), to_plottable(_g)
 
     def plot_data(self, x, y, z=None, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
+        """Plot static data in the panel.
+        Parameters
+        ----------
+        x : array-like
+            The X data to plot.
+        y : array-like
+            The Y data to plot.
+        z : array-like, optional
+            The Z data to plot. If not provided, a 2D plot will be created.
+        plot_index : int
+            The index of the plot in the panel. Defaults to -1, which means the last plot.
+        kwargs : dict
+            extra arguments to pass to the plot function.
+            - plot_type: PlotType
+                The type of plot to create. Can be TimeSeries, Projection or XY. Defaults to TimeSeries.
+            - graph_type: GraphType
+                The type of graph to create. Can be Line, Curve, ColorMap or Scatter. Defaults to Line.
+        Returns
+        -------
+        Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]
+            A tuple containing the plot and the graph object.
+        """
+
         kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
         if kwargs["plot_type"] != _PlotType.TimeSeries:
             kwargs["graph_type"] = _GraphType.ParametricCurve
-        _p, _g = _plot_static_data(self._get_impl_or_raise(), x, y, z, index=plot_index, **kwargs)
+        _p, _g = _plot_static_data(self._get_impl_or_raise(), *ensure_arrays_of_double(x, y, z), index=plot_index, **kwargs)
         return to_plot(_p), to_plottable(_g)
 
     def plot_function(self, f, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:

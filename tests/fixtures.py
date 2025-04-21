@@ -3,8 +3,7 @@ from typing import Tuple
 from pytestqt import qt_compat
 from pytestqt.qt_compat import qt_api
 import os
-os.environ["SCIQLOP_DEBUG"] = "1"
-
+from SciQLop.sciqlop_app import start_sciqlop
 
 @pytest.fixture(scope="session")
 def qapp_cls():
@@ -14,8 +13,10 @@ def qapp_cls():
 
 @pytest.fixture(scope="function")
 def main_window(qtbot, qapp):
-    from SciQLop.sciqlop_app import start_sciqlop
+    os.environ["SCIQLOP_DEBUG"] = "1"
+    qtbot.wait(1)
     main_window=start_sciqlop()
+    qtbot.wait(1)
     qtbot.addWidget(main_window)
     return main_window
 

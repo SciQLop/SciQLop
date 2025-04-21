@@ -18,6 +18,7 @@ class VirtualProduct:
         self._path = path
         self._callback = callback
         self._product_type = product_type
+
     @property
     def path(self) -> str:
         return self._path
@@ -25,7 +26,6 @@ class VirtualProduct:
     @property
     def product_type(self) -> VirtualProductType:
         return self._product_type
-
 
 
 class VirtualScalar(VirtualProduct):
@@ -59,16 +59,38 @@ class VirtualSpectrogram(VirtualProduct):
 
 def create_virtual_product(path: str, callback: VirtualProductCallback,
                            product_type: VirtualProductType, labels: Optional[List[str]] = None,
-                           debug: Optional[bool] = False, cachable: Optional[bool] = False) -> VirtualProduct:
-    """ Create a virtual product.
+                           debug: Optional[bool] = False, cachable: Optional[bool] = False) -> Optional[VirtualProduct]:
+    """
+    Create a new virtual product that will be listed in the product tree.
 
-    Args:
-        path (str): The path of the virtual product in the product tree.
-        callback (VirtualProductCallback): The callback function that computes the virtual product. The callback function takes two arguments, the start and stop times, and returns a SpeasyVariable or None.
-        product_type (VirtualProductType): The type of the virtual product, either Scalar, Vector, MultiComponent or Spectrogram.
-        labels (Optional[List[str]]): The labels of the virtual product, either one for Scalar, three for Vector, or any number for MultiComponent. The labels are the names of the components of the virtual product.
-        debug (Optional[bool]): The debug flag, prints stack traces of exceptions if True. Handy for debugging the callback function.
-        cachable (Optional[bool]): The cachable flag, when True, SciQLop will assume the callback function is deterministic and always return the same result for the same input.
+    Parameters
+    ----------
+    path : str
+        The path of the virtual product in the product tree.
+    callback : VirtualProductCallback
+        The callback function that computes the virtual product. The callback function takes two arguments, the start and stop times, and returns a SpeasyVariable or None.
+    product_type : VirtualProductType
+        The type of the virtual product, either Scalar, Vector, MultiComponent or Spectrogram.
+    labels : Optional[List[str]]
+        The labels of the virtual product, either one for Scalar, three for Vector, or any number for MultiComponent. The labels are the names of the components of the virtual product.
+    debug : Optional[bool]
+        The debug flag, prints stack traces of exceptions if True. Handy for debugging the callback function.
+    cachable : Optional[bool]
+        The cachable flag, when True, SciQLop will assume the callback function is deterministic and always return the same result for the same input.
+    Returns
+    -------
+    Optional[VirtualProduct]
+        The virtual product object. If the product type is not recognized, None is returned.
+    Raises
+    ------
+    AssertionError
+        If the labels are not provided or do not match the product type.
+    Notes
+    -----
+        - The callback can be a function, a partial function, a lambda, or a callable object. It must take two arguments, the start and stop times with type annotations. It can return a SpeasyVariable, a tuple of numpy arrays, or None.
+        - SciQLop will inspect the callback function to determine the input and output types to ensure it is called with the correct arguments.
+        - The callback function must be deterministic if the cachable flag is set to True. This means that it must always return the same result for the same input.
+        - If a virtual product already exists at the given path, it will be replaced with the new one.
     """
     if product_type == VirtualProductType.Scalar:
         assert labels is not None and len(labels) == 1
@@ -81,3 +103,4 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
         return VirtualMultiComponent(path, callback, labels=labels, debug=debug, cachable=cachable)
     elif product_type == VirtualProductType.Spectrogram:
         return VirtualSpectrogram(path, callback, debug=debug, cachable=cachable)
+    return None

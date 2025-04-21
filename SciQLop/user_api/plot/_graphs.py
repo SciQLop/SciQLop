@@ -17,7 +17,7 @@ def is_array_of_double(a):
 
 
 def ensure_arrays_of_double(*args):
-    return (np.array(a, dtype=np.float64) if not is_array_of_double(a) else a for a in args)
+    return (np.array(a, dtype=np.float64) if not (is_array_of_double(a) or a is None) else a for a in args)
 
 class Graph(Plottable):
     def __init__(self, impl):
