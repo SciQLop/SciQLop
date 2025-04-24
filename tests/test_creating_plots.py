@@ -21,7 +21,10 @@ def test_create_panel(qtbot, qapp, main_window):
     "plot_args,plot_kwargs",
     [
         pytest.param([[1, 2, 3], [1, 2, 3]], {}, id="simple static data plot"),
+        pytest.param([[1, 2, 3], [1, 2, 3], [[1, 2, 3], [1, 2, 3], [1, 2, 3]]], {},
+                     id="simple static spectro data plot"),
         pytest.param(["TestPlugin//TestMultiComponent"], {}, id="simple product plot"),
+        pytest.param(["speasy//amda//Parameters//ACE//MFI//final / prelim//b_gse"], {}, id="ACE MFI plot"),
     ]
 )
 def test_create_plot(qtbot, qapp, main_window, plot_panel, plot_args, plot_kwargs):
@@ -30,6 +33,11 @@ def test_create_plot(qtbot, qapp, main_window, plot_panel, plot_args, plot_kwarg
     plot, graph = plot_panel.plot(*plot_args, **plot_kwargs)
     assert plot is not None
     assert graph is not None
-    for i in range(3):
+    for i in range(10000):
+        if graph.data is not None and graph.data[0] is not None:
+            break
         qtbot.wait(1)
     assert len(graph.data[0])
+    if type(plot_args[0]) is list and type(plot_args[0][0]) in [float, int]:
+        for i in range(len(graph.data)):
+            assert np.allclose(graph.data[i], plot_args[i])

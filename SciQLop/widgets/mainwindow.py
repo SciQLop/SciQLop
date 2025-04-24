@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta
-from typing import Optional, Union, List, Any
+from typing import Optional, Union, List
 
 import humanize
 import psutil
@@ -18,14 +18,16 @@ from SciQLopPlots import PropertiesPanel, ProductsView
 from .plots.time_sync_panel import TimeSyncPanel
 from .welcome import WelcomePage
 from ..backend import TimeRange
-from ..backend.sciqlop_application import sciqlop_app, SciQLopApp
-from ..backend.unique_names import make_simple_incr_name
+from ..backend.sciqlop_application import sciqlop_app
+from ..backend.unique_names import auto_name
 from ..backend.workspace import Workspace
 from ..backend.icons import register_icon
-
+from ..backend.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel, Icons
 
 register_icon("plot_panel", QtGui.QIcon("://icons/plot_panel_128.png"))
+
+log = getLogger(__name__)
 
 
 def _surface(size: QtCore.QSize):
@@ -35,6 +37,7 @@ def _surface(size: QtCore.QSize):
 class SciQLopMainWindow(QtWidgets.QMainWindow):
     workspace: Workspace = None
     panels_list_changed = QtCore.Signal(list)
+    panel_added = QtCore.Signal(TimeSyncPanel)
 
     def __init__(self):
 
@@ -199,13 +202,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             self.viewMenu.addAction(doc.toggleViewAction())
 
     def remove_native_plot_panel(self, panel: TimeSyncPanel):
-        dw=self.dock_manager.findDockWidget(panel.name)
+        dw = self.dock_manager.findDockWidget(panel.name)
         if dw:
             dw.takeWidget()
             dw.closeDockWidget()
             panel.delete(notify=False)
             panel.deleteLater()
-
 
     def addWidgetIntoDock(self, allowed_area, widget, area=None, delete_on_close: bool = False,
                           size_hint_from_content: bool = True, custom_close_callback=None) -> Optional[
@@ -234,21 +236,22 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             return dock_area
         return None
 
-    def new_plot_panel(self, backend: str = "native") -> Union[TimeSyncPanel, None]:
+    def new_plot_panel(self, backend: str = "native", name: Optional[str] = None) -> Union[TimeSyncPanel, None]:
         if backend == "native":
-            return self.new_native_plot_panel()
-        #elif backend == "mpl":
+            return self.new_native_plot_panel(name=name)
+        # elif backend == "mpl":
         #    return self.new_mpl_plot_panel()
         return None
 
-    def new_native_plot_panel(self) -> TimeSyncPanel:
-        panel = TimeSyncPanel(parent=None, name=make_simple_incr_name(base="Panel"),
+    def new_native_plot_panel(self, name: Optional[str] = None) -> TimeSyncPanel:
+        panel = TimeSyncPanel(parent=None, name=auto_name(base="Panel", name=name),
                               time_range=self._dt_range_action.range)
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True)
+        self.panel_added.emit(panel)
         self._notify_panels_list_changed()
         return panel
 
-    #def new_mpl_plot_panel(self) -> MPLPanel:
+    # def new_mpl_plot_panel(self) -> MPLPanel:
     #    panel = MPLPanel(parent=None, name=make_simple_incr_name(base="Panel"),
     #                     time_range=self._dt_range_action.range)
     #    self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True)
@@ -278,6 +281,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def closeEvent(self, event: QCloseEvent):
         self.workspace_manager.quit()
         super().closeEvent(event)
+        from SciQLop.plugins import loaded_plugins
+        for plugin in loaded_plugins.__dict__.values():
+            if hasattr(plugin, "close"):
+                plugin.close()
 
     def push_variables_to_console(self, variables: dict):
         self.workspace_manager.pushVariables(variable_dict=variables)
