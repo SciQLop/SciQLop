@@ -24,6 +24,7 @@ class PanelsSync(QObject):
         self._panels: Map = doc.get("panels", type=Map)
         self._doc = doc
         self._panels.observe(self._remote_panels_changed)
+        self._new_remote_panels = []
 
     def _remote_panels_changed(self, event: MapEvent, txn: Transaction):
         log.debug(f"even type: {event}, txn origin: {txn.origin}")
@@ -32,6 +33,7 @@ class PanelsSync(QObject):
             return
         for name, desc in event.keys.items():
             if desc['action'] == 'add':
+                self._new_remote_panels.append(name)
                 self.create_panel.emit(name)
             elif desc['action'] == 'delete':
                 self.remove_panel.emit(name)
@@ -45,6 +47,10 @@ class PanelsSync(QObject):
                     self._panels[name] = Map()
                     log.debug(f"Panel {name} added")
                     plot_panel.destroyed.connect(lambda: self.plot_panel_removed(name))
+            elif plot_panel.name in self._new_remote_panels:
+                name = plot_panel.name
+                plot_panel.destroyed.connect(lambda: self.plot_panel_removed(name))
+                self._new_remote_panels.remove(plot_panel.name)
         except Exception as e:
             log.error(f"Error adding panel {plot_panel.name}: {e}, traceback: {traceback.format_exc()}")
 

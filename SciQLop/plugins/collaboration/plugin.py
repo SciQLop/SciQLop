@@ -25,6 +25,7 @@ class Plugin(QObject):
         self._doc = Doc()
         self._panels = PanelsSync(self._doc, self)
         main_window.panel_added.connect(self._panels.plot_panel_added)
+        self._panels.remove_panel.connect(main_window.remove_panel)
         self._panels.create_panel.connect(lambda name: main_window.new_plot_panel(name=name))
 
         self._collab_wizard = CollabWizard(main_window)
@@ -80,7 +81,7 @@ class Plugin(QObject):
             await self.close_event.wait()
 
     def start(self):
-        asyncio.get_event_loop().create_task(self._start())
+        self._task = asyncio.create_task(self._start())
 
     def stop(self):
         self.close_event.set()

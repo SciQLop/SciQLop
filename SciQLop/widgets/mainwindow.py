@@ -206,8 +206,19 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if dw:
             dw.takeWidget()
             dw.closeDockWidget()
-            panel.delete(notify=False)
             panel.deleteLater()
+
+    def remove_panel(self, panel: Union[TimeSyncPanel, str]):
+        log.debug(f"Removing panel {panel}")
+        if isinstance(panel, str):
+            panel = self.plot_panel(panel)
+        if panel:
+            dw = self.dock_manager.findDockWidget(panel.name)
+            if dw:
+                dw.takeWidget()
+                dw.closeDockWidget()
+                panel.deleteLater()
+                self._notify_panels_list_changed()
 
     def addWidgetIntoDock(self, allowed_area, widget, area=None, delete_on_close: bool = False,
                           size_hint_from_content: bool = True, custom_close_callback=None) -> Optional[
