@@ -35,7 +35,7 @@ class Plugin(QObject):
         self.start_collab = QAction(self)
         self.start_collab.setIcon(QIcon("://icons/theme/collab.png"))
         self.start_collab.setText("Start collaborative mode")
-        self.start_collab.triggered.connect(self._start_collab_wizard)
+        self.start_collab.triggered.connect(self.toggle_collab)
         main_window.toolBar.addAction(self.start_collab)
 
         self._server_url = "https://sciqlop.lpp.polytechnique.fr/cache-dev"
@@ -55,6 +55,12 @@ class Plugin(QObject):
     @property
     def join_url(self) -> str:
         return f"{self._server_url}/{self._room_id}"
+
+    def toggle_collab(self):
+        if self._ws is None:
+            self._start_collab_wizard()
+        else:
+            self.stop()
 
     def _start_collab_wizard(self):
         self._collab_wizard.restart()
@@ -82,6 +88,10 @@ class Plugin(QObject):
 
     def start(self):
         self._task = asyncio.create_task(self._start())
+        self.start_collab.setText("Stop collaborative mode")
 
     def stop(self):
         self.close_event.set()
+        self._ws = None
+        self._provider = None
+        self.start_collab.setText("Start collaborative mode")
