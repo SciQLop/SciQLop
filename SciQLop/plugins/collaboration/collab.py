@@ -9,6 +9,7 @@ from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel, TimeRange
 import traceback
 import asyncio
 from SciQLop.backend.sciqlop_logging import getLogger
+from SciQLop.backend.common import SignalRateLimiter
 from SciQLop.backend.sciqlop_application import sciqlop_app
 from PySide6.QtCore import QObject, Signal, Slot
 
@@ -52,6 +53,7 @@ class PanelSync(QObject):
     def __init__(self, panels_map: Map, panel: TimeSyncPanel):
         super().__init__(panel)
         self._panel = panel
+        self._time_range_rate_limiter = SignalRateLimiter(panel.time_range_changed, 20, self._time_range_changed, 100)
         if panel.name not in panels_map:
             with panels_map.doc.transaction(origin="local"):
                 self._panel_crdt = Map()
@@ -60,7 +62,6 @@ class PanelSync(QObject):
         else:
             self._panel_crdt = panels_map[panel.name]
             panel.time_range = crdt_to_time_range(self.time_range_crdt)
-        self._panel.time_range_changed.connect(self._time_range_changed)
         self._sub = self.time_range_crdt.observe(self._remote_time_range_changed)
 
     @property

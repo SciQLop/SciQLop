@@ -9,6 +9,8 @@ import functools
 
 from PySide6.QtGui import QColor
 
+from .signal_rate_limiter import SignalRateLimiter
+
 
 def insort(a, x, lo=0, hi=None, key=None):
     """Insert item x in list a, and keep it sorted assuming a is sorted.
