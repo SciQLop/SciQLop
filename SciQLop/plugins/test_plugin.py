@@ -41,3 +41,4 @@ class TestPlugin(DataProvider):
 def load(main_window):
     if os.environ.get("SCIQLOP_DEBUG", False):
         return TestPlugin(main_window)
+    return None
