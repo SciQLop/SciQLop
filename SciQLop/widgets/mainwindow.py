@@ -49,11 +49,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _setup_ui(self):
         QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FocusHighlighting, True)
+
         QtAds.CDockManager.setAutoHideConfigFlags(
             QtAds.CDockManager.AutoHideFeatureEnabled |
             QtAds.CDockManager.AutoHideCloseButtonCollapsesDock |
             QtAds.CDockManager.AutoHideHasMinimizeButton |
-            QtAds.CDockManager.AutoHideSideBarsIconOnly)  # | QtAds.CDockManager.AutoHideShowOnMouseOver)
+            QtAds.CDockManager.AutoHideSideBarsIconOnly |
+            #QtAds.CDockManager.AutoHideShowOnMouseOver |
+            QtAds.CDockManager.AutoHideOpenOnDragHover
+        )
 
         if "WAYLAND_DISPLAY" in os.environ:
             QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerForceQWidgetTitleBar, True)
@@ -260,6 +264,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, panel, delete_on_close=True)
         self.panel_added.emit(panel)
         self._notify_panels_list_changed()
+        panel.destroyed.connect(self._notify_panels_list_changed)
         return panel
 
     # def new_mpl_plot_panel(self) -> MPLPanel:

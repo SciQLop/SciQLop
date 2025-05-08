@@ -44,6 +44,8 @@ class TimeSpanController(QObject):
         if self._plot_panel is not None and isValid(self._plot_panel):
             self._plot_panel.time_range_changed.disconnect(self._range_changed)
             self._plot_panel.destroyed.disconnect(self._clear_panel)
+            self._ranges = []
+            self._visible_ranges = []
 
     @SciQLopProperty(list)
     def spans(self) -> List[TimeSpan]:

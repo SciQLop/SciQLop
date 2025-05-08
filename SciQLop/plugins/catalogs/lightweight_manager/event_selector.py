@@ -16,6 +16,10 @@ from tscat_gui.tscat_driver.actions import DeletePermanentlyAction, RestorePerma
 from tscat_gui.undo import _EntityBased
 from tscat_gui.state import AppState
 
+from SciQLop.backend.sciqlop_logging import getLogger
+
+log = getLogger(__name__)
+
 
 class CreateEvent(_EntityBased):
     def __init__(self, state: AppState, start, stop, catalog_uuid, parent=None):
@@ -107,8 +111,10 @@ class EventSelector(QTableView):
 
     @Slot()
     def catalog_selection_changed(self, catalogs: List[str]):
+        log.debug(f"Catalogs changed: {catalogs}")
         self._selected_catalogs = catalogs
         self._model.catalog_selection_changed(catalogs)
+        self.event_list_changed.emit()
 
     @Slot()
     def _model_changed(self):

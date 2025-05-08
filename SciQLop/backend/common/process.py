@@ -30,11 +30,18 @@ class Process(QObject):
         self.process.setProcessEnvironment(env)
         if self.cwd:
             self.process.setWorkingDirectory(self.cwd)
-        self.process.finished.connect(self, lambda code, status: self.finished.emit(code))
-        self.process.readyReadStandardOutput.connect(self, self._capture_stdout)
-        self.process.readyReadStandardError.connect(self, self._capture_stderr)
+        self.process.finished.connect(self._notify_finished)
+        self.process.readyReadStandardOutput.connect(self._capture_stdout)
+        self.process.readyReadStandardError.connect(self._capture_stderr)
         self.process.start(self.cmd, self.args)
         self._started = True
+
+    def _notify_finished(self, code: int, status: QProcess.ExitStatus):
+        if status == QProcess.ExitStatus.NormalExit:
+            log.debug(f"Process {self.cmd} finished with code {code}")
+        else:
+            log.error(f"Process {self.cmd} crashed with code {code}")
+        self.finished.emit(code)
 
     @Slot()
     def _capture_stdout(self):

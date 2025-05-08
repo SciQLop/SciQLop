@@ -44,7 +44,8 @@ class PanelSelector(QComboBox):
         selected = self.currentText()
         self.clear()
         self.addItems(["None"] + panels)
-        self.setCurrentText(selected)
+        if selected in panels:
+            self.setCurrentText(selected)
 
 
 class LightweightManager(QWidget):
@@ -115,6 +116,7 @@ class LightweightManager(QWidget):
 
     @Slot()
     def update_panels_list(self, panels):
+        log.debug(f"Panels list changed: {panels}")
         self.panel_selector.update_list(list(map(lambda p: p.name, filter(lambda p: isinstance(p, TimeSyncPanel),
                                                                           map(self.main_window.plot_panel, panels)))))
 
@@ -210,13 +212,20 @@ class LightweightManager(QWidget):
     @Slot()
     def panel_destroyed(self):
         self.current_panel = None
+        self._time_span_ctrlr = None
 
     @Slot()
     def panel_selected(self, panel):
         log.debug(f"New panel selected: {panel}")
+        if self.current_panel is not None:
+            self.current_panel.destroyed.disconnect(self.panel_destroyed)
+        if self._time_span_ctrlr is not None:
+            self._time_span_ctrlr.plot_panel = None
+            self._time_span_ctrlr.spans = []
         self.current_panel = self.main_window.plot_panel(panel)
         if self.current_panel is not None:
             self.current_panel.destroyed.connect(self.panel_destroyed)
+            self.time_span_ctrlr.plot_panel = self.current_panel
         self.update_spans()
 
     @Slot()

@@ -13,9 +13,9 @@ sciqlop_root = os.path.dirname(os.path.abspath(__file__))
 
 
 def sciqlop_dependencies() -> List[str]:
-    return ['SciQLopPlots==0.14.3', 'speasy>=1.5.1', 'qtconsole', 'tscat_gui==0.4.*',
+    return ['SciQLopPlots==0.15.0', 'speasy>=1.5.1', 'qtconsole', 'tscat_gui==0.4.*',
             'tscat==0.4.*', "humanize", 'platformdirs',
-            'seaborn', "scipy", "pyside6==6.8.2.1", "shiboken6==6.8.2.1", "PySide6-QtAds==4.3.1.4", "IPython",
+            'seaborn', "scipy", "pyside6==6.9.0", "shiboken6==6.9.0", "PySide6-QtAds==4.4.0", "IPython",
             "ipykernel", "jupyterlab>=4,!=4.1.0",
             "notebook", "ipympl", "qasync", "jinja2", "pyzstd", "PyGitHub", 'numpy>=2.0.0', 'expression',
             'httpx_ws>=0.7.1,<0.8.0', 'pycrdt-websocket>=0.15.4,<0.16.0', 'pycrdt']
