@@ -5,7 +5,7 @@ from httpx_ws import aconnect_ws
 from pycrdt import Doc, Map, Array, MapEvent, Transaction, ArrayEvent
 from pycrdt_websocket import WebsocketProvider
 from pycrdt_websocket.websocket import HttpxWebsocket
-from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel, TimeRange
+from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel, TimeRange, SciQLopPlot
 import traceback
 import asyncio
 from SciQLop.backend.sciqlop_logging import getLogger
@@ -45,6 +45,18 @@ def update_time_range(crdt_timerange: Map, trange: TimeRange):
     return crdt_timerange
 
 
+class PlotSync(QObject):
+    graph_added = Signal()
+    graph_removed = Signal()
+
+    def __init__(self, plot: SciQLopPlot, panel_map: Map):
+        super().__init__(plot)
+        self._plot = plot
+        self._plot_crdt = None
+        self._sub = None
+        self._panel_map = panel_map
+
+
 class PanelSync(QObject):
     plot_product = Signal(str)
     remove_graph = Signal(str)
@@ -52,6 +64,7 @@ class PanelSync(QObject):
 
     def __init__(self, panels_map: Map, panel: TimeSyncPanel):
         super().__init__(panel)
+        self._plots = []
         self._panel = panel
         self._time_range_rate_limiter = SignalRateLimiter(panel.time_range_changed, 20, self._time_range_changed, 100)
         if panel.name not in panels_map:
@@ -98,6 +111,12 @@ class PanelSync(QObject):
     def _time_range_changed(self, time_range: TimeRange):
         log.debug(f"Time range changed to {time_range}")
         self.time_range_crdt = time_range
+
+    def _plot_added(self, plot: SciQLopPlot):
+        pass
+
+    def _plot_removed(self, plot: SciQLopPlot):
+        pass
 
 
 class PanelsSync(QObject):
