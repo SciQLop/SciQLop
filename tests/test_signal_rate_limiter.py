@@ -16,7 +16,7 @@ def test_signal_rate_limiter(qtbot, qapp):
     obj = TestObject()
 
     def callback(value):
-        global values
+        global values # noqa: F824
         print(value)
         values.append(value)
 
