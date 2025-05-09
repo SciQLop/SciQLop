@@ -1,4 +1,4 @@
-from typing import Mapping, Union, List, Any
+from typing import Mapping, Union, List, Any, Optional
 
 from PySide6.QtCore import Signal, QModelIndex, QSize, QPersistentModelIndex, QAbstractItemModel, Slot, \
     QAbstractProxyModel, QSortFilterProxyModel, QIdentityProxyModel
@@ -243,3 +243,20 @@ class CatalogSelector(QTreeView):
         if 'color' not in c.variable_attributes():
             return __DEFAULT_COLOR__
         return QColor.fromString(c.color)
+
+    def catalogs(self) -> List[str]:
+        catalogs = []
+        for row in range(self._model.rowCount()):
+            index = self._model.index(row, 0)
+            catalog = index.data(EntityRole)
+            if catalog is not None:
+                catalogs.append(catalog.name)
+        return catalogs
+
+    def catalog_uuid(self, catalog: str) -> Optional[str]:
+        for row in range(self._model.rowCount()):
+            index = self._model.index(row, 0)
+            _catalog = index.data(EntityRole)
+            if _catalog is not None and _catalog.name == catalog:
+                return _catalog.uuid
+        return None

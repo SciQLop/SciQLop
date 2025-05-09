@@ -27,7 +27,6 @@ def test_signal_rate_limiter(qtbot, qapp):
     for i in range(100):
         qtbot.wait(1)
         qapp.processEvents()
-    global values
     assert len(values) > 0  # at least one value should be emitted
     assert len(values) < 1000  # only a few values should be emitted
     assert values[-1] == 999  # the last value should not be discarded

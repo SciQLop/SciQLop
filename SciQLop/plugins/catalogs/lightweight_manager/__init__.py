@@ -1,4 +1,4 @@
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Tuple
 from enum import Enum
 from datetime import datetime
 
@@ -105,6 +105,36 @@ class LightweightManager(QWidget):
         self._last_selected_event: Optional[Event] = None
         self.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
         self.setMinimumWidth(200)
+
+    def catalogs(self) -> List[str]:
+        return self.catalog_selector.catalogs()
+
+    def events(self, catalog: str) -> List[Tuple[datetime, datetime]]:
+        from tscat_gui.tscat_driver.model import tscat_model
+        from tscat_gui.tscat_driver.catalog_model import CatalogModel
+        from tscat_gui.model_base.constants import EntityRole
+        from SciQLop.backend.sciqlop_application import sciqlop_app
+        from PySide6.QtCore import QThread
+        uuid = self.catalog_selector.catalog_uuid(catalog)
+        if uuid is not None:
+            catalog_model: CatalogModel = tscat_model.catalog(uuid)
+            events = []
+            # big hack to wait for the model to be loaded
+            # the current implementation of the catalog model
+            # does not provide a signal or flag to indicate when
+            # the model is ready
+            for _ in range(5000):
+                if catalog_model.rowCount() == 0:
+                    sciqlop_app().processEvents()
+                    QThread.sleep(1)
+                else:
+                    break
+            for row in range(catalog_model.rowCount()):
+                idx = catalog_model.index(row, 0)
+                if _event := idx.data(EntityRole):
+                    events.append((_event.start, _event.stop))
+            return events
+        return []
 
     @Slot()
     def save(self):

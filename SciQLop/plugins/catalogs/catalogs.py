@@ -1,3 +1,4 @@
+from typing import List, Tuple
 from datetime import datetime
 
 from PySide6.QtCore import QObject
@@ -43,3 +44,10 @@ class Plugin(QObject):
 
         main_window.panels_list_changed.connect(self.lightweight_manager.update_panels_list)
         main_window.add_side_pan(self.lightweight_manager)
+
+
+    def catalogs(self)-> List[str]:
+        return self.lightweight_manager.catalogs()
+
+    def events(self, catalog: str)-> List[Tuple[datetime, datetime]]:
+        return self.lightweight_manager.events(catalog)
