@@ -36,6 +36,7 @@ class Plugin(QObject):
         self.manager_ui = TSCatGUI()
         from .lightweight_manager import LightweightManager
         self.lightweight_manager = LightweightManager(main_window=main_window, manager_ui=self.manager_ui)
+        self.lightweight_manager.setWindowIcon(QIcon("://icons/theme/catalogue.png"))
         self.show_catalog = CatalogGUISpawner(self.manager_ui)
         self.main_window = main_window
         self.last_event = None

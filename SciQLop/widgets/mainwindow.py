@@ -7,7 +7,7 @@ import psutil
 
 import PySide6QtAds as QtAds
 from PySide6 import QtCore, QtWidgets, QtGui
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWidgets import QWidget, QMenu
 
 from .workspaces import WorkspaceManagerUI
@@ -21,11 +21,15 @@ from ..backend import TimeRange
 from ..backend.sciqlop_application import sciqlop_app
 from ..backend.unique_names import auto_name
 from ..backend.workspace import Workspace
-from ..backend.icons import register_icon
+from ..backend.icons import register_icon, Icons
 from ..backend.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel, Icons
 
+__here__ = os.path.dirname(__file__)
+
 register_icon("plot_panel", QtGui.QIcon("://icons/plot_panel_128.png"))
+register_icon("tree", QtGui.QIcon(f"{__here__}/../resources/icons/tree.svg"))
+register_icon("plot_properties", QtGui.QIcon(f"{__here__}/../resources/icons/plot_properties.svg"))
 
 log = getLogger(__name__)
 
@@ -49,13 +53,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _setup_ui(self):
         QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FocusHighlighting, True)
+        QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerHasWidgetIcon, True)
+
 
         QtAds.CDockManager.setAutoHideConfigFlags(
             QtAds.CDockManager.AutoHideFeatureEnabled |
             QtAds.CDockManager.AutoHideCloseButtonCollapsesDock |
             QtAds.CDockManager.AutoHideHasMinimizeButton |
-            QtAds.CDockManager.AutoHideSideBarsIconOnly |
-            #QtAds.CDockManager.AutoHideShowOnMouseOver |
+            QtAds.CDockManager.AutoHideShowOnMouseOver |
             QtAds.CDockManager.AutoHideOpenOnDragHover
         )
 
@@ -81,6 +86,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self.welcome)
 
         self.productTree = ProductsView(self)
+        self.productTree.setWindowIcon(Icons.get_icon("tree"))
         self.add_side_pan(self.productTree)
 
         self.workspace_manager = WorkspaceManagerUI(self)
@@ -115,6 +121,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._statusbar.setMaximumHeight(28)
 
         self.properties_panel = PropertiesPanel(self)
+        self.properties_panel.setWindowIcon(Icons.get_icon("plot_properties"))
         self.add_side_pan(self.properties_panel)
 
         self._mem_usage = QtWidgets.QProgressBar()
@@ -193,11 +200,18 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def defaul_range(self):
         return self._dt_range_action.range
 
-    def add_side_pan(self, widget: QWidget, location=QtAds.PySide6QtAds.ads.SideBarLocation.SideBarLeft):
+    def add_side_pan(self, widget: QWidget, location=QtAds.PySide6QtAds.ads.SideBarLocation.SideBarLeft, icon=None):
         if widget is not None:
             doc = QtAds.CDockWidget(widget.windowTitle())
             doc.setWidget(widget, QtAds.CDockWidget.ForceNoScrollArea)
             doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
+            if icon is not None:
+                if os.path.exists(icon):
+                    doc.setIcon(QIcon(icon))
+                else:
+                    doc.setIcon(Icons.get_icon(icon))
+            elif widget.windowIcon() is not None:
+                doc.setIcon(widget.windowIcon())
             container = self.dock_manager.addAutoHideDockWidget(location, doc)
             if location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom or location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarTop:
                 container.setSize(widget.sizeHint().height())
