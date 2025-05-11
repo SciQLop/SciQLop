@@ -54,7 +54,6 @@ class JupyterLabClient(SciQLopJupyterClient):
             "--NotebookApp.terminals_enabled=False"
         ]
         if 'SCIQLOP_BUNDLED' in os.environ:
-            args.insert(1, '-I')
             args.insert(0, '-I')
         if 'SCIQLOP_DEBUG' in os.environ:
             args += ["--debug", "--log-level=DEBUG"]
