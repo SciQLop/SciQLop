@@ -17,5 +17,5 @@ def sciqlop_dependencies() -> List[str]:
             'tscat==0.4.*', "humanize", 'platformdirs',
             'seaborn', "scipy", "pyside6==6.9.0", "shiboken6==6.9.0", "PySide6-QtAds==4.4.0", "IPython",
             "ipykernel", "jupyterlab>=4,!=4.1.0",
-            "notebook", "ipympl", "qasync", "jinja2", "pyzstd", "PyGitHub", 'numpy>=2.0.0', 'expression',
+            "notebook", "ipympl", "qasync", "jinja2", "pyzstd", "PyGitHub", 'numpy', 'expression',
             'httpx_ws>=0.7.1,<0.8.0', 'pycrdt-websocket>=0.15.4,<0.16.0', 'pycrdt']

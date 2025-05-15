@@ -20,7 +20,7 @@ qasync
 jinja2
 pyzstd
 PyGitHub
-numpy>=2.0.0
+numpy
 expression
 httpx_ws>=0.7.1,<0.8.0
 pycrdt-websocket>=0.15.4,<0.16.0
