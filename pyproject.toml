@@ -31,7 +31,7 @@ classifiers = [
     "Programming Language :: Python :: 3.13"
 ]
 dependencies = [
-    'SciQLopPlots==0.15.0',
+    'SciQLopPlots==0.15.1',
     'speasy>=1.5.1',
     'qtconsole',
     'tscat_gui==0.4.*',
