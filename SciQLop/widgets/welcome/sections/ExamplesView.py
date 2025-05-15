@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QFrame, QVBoxLayout, QLabel, QSizePolicy, QPushButton, QWidget, QSpacerItem
+from PySide6.QtWidgets import QFrame, QVBoxLayout, QLabel, QSizePolicy, QPushButton, QWidget, QSpacerItem, QTextEdit
 from PySide6.QtCore import Signal, Property
 from SciQLop.widgets.welcome.card import Card, FixedSizeImageWidget
 from SciQLop.widgets.common.flow_layout import FlowLayout
@@ -47,6 +47,10 @@ class ExampleDescriptionWidget(QFrame):
         self._layout = QVBoxLayout()
         self.setLayout(self._layout)
         self._layout.addWidget(QLabel(f"Example: {example.example.name}"))
+        self._description = QTextEdit()
+        self._description.setReadOnly(True)
+        self._description.setText(example.example.description)
+        self._layout.addWidget(self._description)
         self._open_button = QPushButton("Open")
         self._open_button.clicked.connect(lambda: workspaces_manager_instance().load_example(example.example.directory))
         self._layout.addWidget(self._open_button)
