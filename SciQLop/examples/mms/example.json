@@ -1,12 +1,12 @@
 {
   "image": "image.png",
-  "notebook": "mms.ipynb",
-  "description": "MMS",
+  "notebook": "index.ipynb",
+  "description": "Example demonstrating the use of virtual products and plotting capabilities in SciQLop for the MMS mission",
   "name": "MMS",
   "tags": [
     "mms",
     "virtual-product",
     "spectro"
   ],
-  "dependencies": []
+  "dependencies": ["https://github.com/LaboratoryOfPlasmaPhysics/spok/archive/refs/heads/main.zip"]
 }
