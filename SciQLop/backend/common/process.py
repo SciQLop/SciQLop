@@ -1,10 +1,21 @@
-from typing import Optional
-
+from typing import Optional, Dict
+import os
 from PySide6.QtCore import QObject, Signal, QProcess, QProcessEnvironment, Slot
 from shiboken6 import isValid
 from SciQLop.backend import sciqlop_logging
 
 log = sciqlop_logging.getLogger(__name__)
+
+
+def fix_environment(env: Dict) -> Dict:
+    return env
+
+
+def to_qt_environment(env: Dict) -> QProcessEnvironment:
+    qt_env = QProcessEnvironment()
+    for k, v in env.items():
+        qt_env.insert(k, v)
+    return qt_env
 
 
 class Process(QObject):
@@ -22,12 +33,14 @@ class Process(QObject):
         self._stdout = ""
         self._stderr = ""
 
+    @property
+    def full_cmd(self):
+        return f"{self.cmd} {' '.join(self.args)}"
+
     def start(self):
-        log.debug(f"Starting process {self.cmd} {' '.join(self.args)} in {self.cwd}")
-        env = QProcessEnvironment.systemEnvironment()
-        for key, value in self.extra_env.items():
-            env.insert(key, value)
-        self.process.setProcessEnvironment(env)
+        log.debug(f"Starting process {self.full_cmd} in {self.cwd}")
+        self.process.setProcessEnvironment(to_qt_environment(fix_environment(os.environ | self.extra_env)))
+        log.debug(f"Process environment: {'\n'.join(self.process.processEnvironment().toStringList())}")
         if self.cwd:
             self.process.setWorkingDirectory(self.cwd)
         self.process.finished.connect(self._notify_finished)
@@ -38,9 +51,12 @@ class Process(QObject):
 
     def _notify_finished(self, code: int, status: QProcess.ExitStatus):
         if status == QProcess.ExitStatus.NormalExit:
-            log.debug(f"Process {self.cmd} finished with code {code}")
+            log.debug(f"Process {self.full_cmd} finished with code {code}")
+            if code != 0:
+                log.error(f"Process {self.full_cmd} finished with error code {code}")
+                log.error(f"Process {self.full_cmd} stderr: {self.stderr}")
         else:
-            log.error(f"Process {self.cmd} crashed with code {code}")
+            log.error(f"Process {self.full_cmd} crashed with code {code}")
         self.finished.emit(code)
 
     @Slot()
