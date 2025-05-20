@@ -25,9 +25,16 @@ if [ -z $RELEASE ]; then
 fi
 
 rm -f ./squashfs-root/AppRun
-cp $ABSOLUTE_SCRIPT_DIR/AppRun ./squashfs-root/
 
+APP_RUN_SRC="$ABSOLUTE_SCRIPT_DIR/AppRun"
+APP_RUN_DST="./squashfs-root/AppRun"
 
+if [ -n "$SCIQLOP_DEBUG" ]; then
+  sed '/^#export SCIQLOP_DEBUG="1"/s/^#//' "$APP_RUN_SRC" > "$APP_RUN_DST"
+  chmod +x "$APP_RUN_DST"
+else
+  cp "$APP_RUN_SRC" "$APP_RUN_DST"
+fi
 
 curl https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-x64.tar.xz | tar -xJ -C /tmp/sciqlop
 rsync -avhu /tmp/sciqlop/node-v$NODE_VERSION-linux-x64/* ./squashfs-root/usr/local/

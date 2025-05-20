@@ -22,6 +22,8 @@ export SSL_CERT_FILE="${APPDIR}/opt/_internal/certs.pem"
 
 export PATH="${APPDIR}/usr/local/bin:${APPDIR}/usr/bin:${APPDIR}/bin"
 
+#export SCIQLOP_DEBUG="1"
+
 # Call Python
 "$APPDIR/usr/bin/python" -I -m SciQLop.app "$@"
 
