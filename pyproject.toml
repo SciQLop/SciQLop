@@ -32,7 +32,7 @@ classifiers = [
 ]
 dependencies = [
     'SciQLopPlots==0.15.1',
-    'speasy>=1.5.1',
+    'speasy>=1.5.2',
     'qtconsole',
     'tscat_gui==0.4.*',
     'tscat==0.4.*',
