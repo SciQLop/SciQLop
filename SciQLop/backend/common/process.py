@@ -40,7 +40,7 @@ class Process(QObject):
     def start(self):
         log.debug(f"Starting process {self.full_cmd} in {self.cwd}")
         self.process.setProcessEnvironment(to_qt_environment(fix_environment(os.environ | self.extra_env)))
-        log.debug(f"Process environment: {'\n'.join(self.process.processEnvironment().toStringList())}")
+        log.debug("Process environment: {}".format('\n'.join(self.process.processEnvironment().toStringList())))
         if self.cwd:
             self.process.setWorkingDirectory(self.cwd)
         self.process.finished.connect(self._notify_finished)
