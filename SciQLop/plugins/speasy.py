@@ -171,16 +171,16 @@ class SpeasyPlugin(DataProvider):
             speasy_id = product.metadata("speasy_id")
             v: SpeasyVariable = spz.get_data(speasy_id, start, stop)
             if v:
-                return v.replace_fillval_by_nan(inplace=True)
+                return v.replace_fillval_by_nan(inplace=True, convert_to_float=True)
         except Exception as e:
             log.error(f"Error getting data for {product} between {start} and {stop}: {traceback.format_exc()}")
             return None
 
-    def labels(self, node:ProductsModelNode) -> List[str]:
+    def labels(self, node: ProductsModelNode) -> List[str]:
         return node.metadata("components")
 
-    def graph_type(self, node:ProductsModelNode) -> GraphType:
-        param_type:ParameterType = node.parameter_type()
+    def graph_type(self, node: ProductsModelNode) -> GraphType:
+        param_type: ParameterType = node.parameter_type()
         if param_type == ParameterType.Scalar:
             return GraphType.SingleLine
         if param_type == ParameterType.Vector:
