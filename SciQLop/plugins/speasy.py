@@ -11,6 +11,7 @@ from SciQLop.backend import register_icon
 from SciQLop.backend import sciqlop_logging
 from SciQLop.backend.enums import ParameterType, GraphType
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
+from SciQLop import __version__ as  sciqlop_version
 from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
 
 log = sciqlop_logging.getLogger(__name__)
@@ -161,10 +162,13 @@ class SpeasyPlugin(DataProvider):
     def __init__(self):
         super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST, cacheable=True)
         from speasy.core.requests_scheduling.request_dispatch import init_providers
+        import speasy.core.http as http
+        http.USER_AGENT = f"SciQLop/{sciqlop_version}/{http.USER_AGENT}"
         init_providers()
         root_node = ProductsModelNode("speasy", icon="speasy")
         build_product_tree(root_node, provider=self.name)
         ProductsModel.instance().add_node([], root_node)
+
 
     def get_data(self, product: ProductsModelNode, start, stop):
         try:
