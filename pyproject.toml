@@ -34,7 +34,7 @@ dependencies = [
     'SciQLopPlots==0.16.1',
     'speasy>=1.5.2',
     'qtconsole',
-    'tscat_gui==0.4.*',
+    'tscat_gui==0.5.*',
     'tscat==0.4.*',
     "humanize",
     'platformdirs',
