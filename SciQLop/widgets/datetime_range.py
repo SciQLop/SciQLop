@@ -11,7 +11,7 @@ from ..mime.types import TIME_RANGE_MIME_TYPE
 
 def _QDateTimeEdit(parent):
     widget = QDateTimeEdit(parent)
-    widget.setDisplayFormat("dd/MM/yyyy HH:mm:ss:zzz")
+    widget.setDisplayFormat("yyyy-MM-dd HH:mm:ss:zzz")
     widget.setCalendarPopup(True)
     widget.setTimeSpec(Qt.TimeSpec.UTC)
     return widget
