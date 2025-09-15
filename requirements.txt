@@ -1,11 +1,11 @@
 SciQLopPlots==0.16.1
-PySide6-QtAds==4.4.0
-PySide6==6.9.0
-shiboken6==6.9.0
+PySide6-QtAds==4.4.0.3
+PySide6==6.9.2
+shiboken6==6.9.2
 speasy>=1.5.2
 qtconsole
-tscat_gui==0.4.*
-tscat==0.5.*
+tscat_gui==0.5.*
+tscat==0.4.*
 humanize
 platformdirs
 seaborn

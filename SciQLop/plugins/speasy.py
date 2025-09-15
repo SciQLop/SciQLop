@@ -16,12 +16,14 @@ from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
 
 log = sciqlop_logging.getLogger(__name__)
 
+__here__ = os.path.dirname(__file__)
+
 register_icon("speasy", QIcon(":/icons/logo_speasy.png"))
 register_icon("nasa", QIcon(":/icons/NASA.jpg"))
 register_icon("amda", QIcon(":/icons/amda.png"))
 register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
 register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
-
+register_icon("uiowaephtool", QIcon(f"{__here__}/../resources/icons/Iowa_Hawkeyes_logo.svg"))
 
 def _current_thread_id():
     return threading.get_native_id()
@@ -65,9 +67,9 @@ def get_components(param: ParameterIndex) -> List[str] or None:
         if param.LABLAXIS.startswith('['):
             return param.LABLAXIS.split(',')
         return [param.LABLAXIS]
-    if param.spz_provider() == 'ssc':
+    if param.spz_provider() in ('ssc', 'UiowaEphTool'):
         return ['x', 'y', 'z']
-    return None
+    return [param.spz_name()]
 
 
 def count_components(param: ParameterIndex):
@@ -86,7 +88,7 @@ def data_serie_type(param: ParameterIndex):
         display_type = param.display_type
     elif hasattr(param, "DISPLAY_TYPE"):
         display_type = param.DISPLAY_TYPE
-    elif param.spz_provider() == 'ssc':
+    elif param.spz_provider() in ('ssc', 'UiowaEphTool'):
         display_type = 'timeseries'
     else:
         display_type = None
@@ -149,7 +151,8 @@ def build_product_tree(root_node: ProductsModelNode, provider):
         "cdaweb": "nasa",
         "cda": "nasa",
         "csa": "cluster",
-        "archive": "archive"
+        "archive": "archive",
+        "uiowaephtool": "uiowaephtool",
     }
     for name, child in spz.inventories.tree.__dict__.items():
         node = ProductsModelNode(name, icon=ws_icons.get(name))
