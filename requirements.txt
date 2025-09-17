@@ -4,7 +4,7 @@ PySide6==6.9.2
 shiboken6==6.9.2
 speasy>=1.5.2
 qtconsole
-tscat_gui==0.5.*
+tscat_gui==0.6.*
 tscat==0.4.*
 humanize
 platformdirs
