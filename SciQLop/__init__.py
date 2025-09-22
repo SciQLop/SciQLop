@@ -1,4 +1,4 @@
-__version__ = '0.9.4'
+__version__ = '0.10.0'
 __author__ = 'Alexis Jeandet'
 __author_email__ = 'alexis.jeandet@member.fsf.org'
 __url__ = 'https://github.com/SciQLop/SciQLop'
