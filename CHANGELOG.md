@@ -1,8 +1,8 @@
 # Changelog
 
-## [Unreleased](https://github.com/SciQlop/SciQLop/tree/HEAD)
+## [v0.10.0](https://github.com/SciQlop/SciQLop/tree/v0.10.0) (2025-09-22)
 
-[Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.9.4...HEAD)
+[Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.9.4...v0.10.0)
 
 **Implemented enhancements:**
 
