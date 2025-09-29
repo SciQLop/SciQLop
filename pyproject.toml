@@ -45,7 +45,7 @@ dependencies = [
     "scipy",
     "pyside6==6.9.2",
     "shiboken6==6.9.2",
-    "PySide6-QtAds==4.4.0.3",
+    "PySide6-QtAds==4.4.1",
     "IPython",
     "ipykernel",
     "jupyterlab>=4,!=4.1.0",
