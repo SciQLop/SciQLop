@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QWidget, QComboBox, QSizePolicy, QGridLayout, QPus
 
 from SciQLop.backend import TimeRange
 from SciQLop.backend.common import combine_colors
-from SciQLop.backend.sciqlop_logging import getLogger
+from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.widgets.mainwindow import SciQLopMainWindow
 from SciQLop.widgets.plots.time_span_controller import TimeSpanController
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel

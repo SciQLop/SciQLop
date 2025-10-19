@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QTreeView, QAbstractScrollArea, QSizePolicy, QPush
     QStyledItemDelegate, QWidget, QStyleOptionViewItem, QAbstractItemView, QStyle, QColorDialog
 
 from SciQLop.backend.common.ExtraColumnsProxyModel import ExtraColumnsProxyModel
-from SciQLop.backend import sciqlop_logging
+from SciQLop.components import sciqlop_logging
 
 from tscat_gui.tscat_driver.model import tscat_model
 from tscat_gui.model_base.constants import EntityRole, UUIDDataRole

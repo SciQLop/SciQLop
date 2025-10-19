@@ -6,7 +6,7 @@ from ..gui import get_main_window as _get_main_window
 from .._annotations import experimental_api, unstable_api
 from PySide6.QtCore import Qt as _Qt
 from SciQLop.backend import TimeRange
-from SciQLop.backend.sciqlop_logging import getLogger as _getLogger
+from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from SciQLopPlots import PlotType as _PlotType, GraphType as _GraphType, SciQLopMultiPlotPanel as _SciQLopMultiPlotPanel
 from SciQLop.widgets.plots.time_sync_panel import (TimeSyncPanel as _ImplTimeSyncPanel, plot_product as _plot_product,
                                                    plot_static_data as _plot_static_data,

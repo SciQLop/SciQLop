@@ -5,7 +5,7 @@ from glob import glob
 from PySide6 import QtGui, QtCore
 from jinja2 import Template, Environment, FileSystemLoader
 import SciQLop
-from SciQLop.backend.sciqlop_logging import getLogger
+from SciQLop.components.sciqlop_logging import getLogger
 import yaml
 
 log = getLogger(__name__)

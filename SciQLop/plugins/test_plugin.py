@@ -4,7 +4,7 @@ import numpy as np
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis
 
 from SciQLop.backend.enums import ParameterType
-from SciQLop.backend import sciqlop_logging
+from SciQLop.components import sciqlop_logging
 from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
 

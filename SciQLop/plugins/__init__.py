@@ -2,7 +2,7 @@ import importlib
 import os
 import traceback
 from types import SimpleNamespace
-from SciQLop.backend.sciqlop_logging import getLogger
+from SciQLop.components.sciqlop_logging import getLogger
 
 from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject, QThread
 

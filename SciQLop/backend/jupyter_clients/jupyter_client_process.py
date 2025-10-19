@@ -5,7 +5,7 @@ from typing import List, Mapping, Optional, Callable
 from PySide6.QtCore import QProcess, QProcessEnvironment, QObject
 
 from enum import Enum
-from SciQLop.backend import sciqlop_logging
+from SciQLop.components import sciqlop_logging
 
 log = sciqlop_logging.getLogger(__name__)
 

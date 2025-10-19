@@ -8,7 +8,7 @@ from ..data_models.models import WorkspaceSpec, WorkspaceSpecFile
 from ..common.process import Process
 from ..common.pip_process import pip_install_requirements
 from ..common import ensure_dir_exists
-from ..sciqlop_logging import getLogger
+from ...components.sciqlop_logging import getLogger
 from PySide6.QtCore import QObject, Signal, Slot
 from platformdirs import *
 from typing import List, Optional, AnyStr

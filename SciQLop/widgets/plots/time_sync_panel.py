@@ -13,7 +13,7 @@ from SciQLopPlots import SciQLopMultiPlotPanel, PlotDragNDropCallback, SciQLopPl
 from SciQLop.backend.icons import register_icon
 from ...backend import TimeRange
 from ...backend import listify
-from ...backend import sciqlop_logging
+from ...components import sciqlop_logging
 from ...backend.pipelines_model.data_provider import providers, DataProvider
 from ...backend.property import SciQLopProperty
 from ...mime import decode_mime

@@ -5,10 +5,11 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QLabel, QSizePolicy, QWidget, QGridLayout, QBoxLayout, QSpacerItem
 from ..common import apply_size_policy, increase_font_size
 from SciQLop.backend.common import Maybe
-from SciQLop.backend import sciqlop_logging
+from SciQLop.components import sciqlop_logging
 from .card import Card
 
 log = sciqlop_logging.getLogger(__name__)
+
 
 class CardsCollection(QFrame):
     _cards: List[Card]
@@ -78,4 +79,4 @@ class WelcomeSection(QFrame):
         self._name_lbl = apply_size_policy(increase_font_size(QLabel(name), 1.2), QSizePolicy.Policy.Expanding,
                                            QSizePolicy.Policy.Maximum)
         self._layout.addWidget(self._name_lbl)
-        #self._layout.addWidget(apply_size_policy(HLine(), QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum))
+        # self._layout.addWidget(apply_size_policy(HLine(), QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Maximum))

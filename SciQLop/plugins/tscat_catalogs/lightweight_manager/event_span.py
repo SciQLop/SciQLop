@@ -1,11 +1,13 @@
 from SciQLop.widgets.plots.time_span import TimeSpan
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel
-from SciQLop.backend import TimeRange, sciqlop_logging
+from SciQLop.backend import TimeRange
+from SciQLop.components import sciqlop_logging
 from .event import Event
 
 from PySide6.QtCore import Slot, Signal
 
 log = sciqlop_logging.getLogger(__name__)
+
 
 class EventSpan(TimeSpan):
     selected_sig = Signal(str)

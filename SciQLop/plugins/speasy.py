@@ -8,10 +8,10 @@ from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
 from speasy.products import SpeasyVariable
 
 from SciQLop.backend import register_icon
-from SciQLop.backend import sciqlop_logging
+from SciQLop.components import sciqlop_logging
 from SciQLop.backend.enums import ParameterType, GraphType
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
-from SciQLop import __version__ as  sciqlop_version
+from SciQLop import __version__ as sciqlop_version
 from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
 
 log = sciqlop_logging.getLogger(__name__)
@@ -24,6 +24,7 @@ register_icon("amda", QIcon(":/icons/amda.png"))
 register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
 register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
 register_icon("uiowaephtool", QIcon(f"{__here__}/../resources/icons/Iowa_Hawkeyes_logo.svg"))
+
 
 def _current_thread_id():
     return threading.get_native_id()
@@ -171,7 +172,6 @@ class SpeasyPlugin(DataProvider):
         root_node = ProductsModelNode("speasy", icon="speasy")
         build_product_tree(root_node, provider=self.name)
         ProductsModel.instance().add_node([], root_node)
-
 
     def get_data(self, product: ProductsModelNode, start, stop):
         try:

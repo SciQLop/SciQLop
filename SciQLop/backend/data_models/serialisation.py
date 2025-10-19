@@ -3,7 +3,7 @@ from datetime import datetime
 import functools
 from ..common import ensure_dir_exists
 from ..common.dataclasses import from_json, to_json
-from ..sciqlop_logging import getLogger
+from ...components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
 

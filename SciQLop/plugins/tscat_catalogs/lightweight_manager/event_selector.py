@@ -16,7 +16,7 @@ from tscat_gui.tscat_driver.actions import DeletePermanentlyAction, RestorePerma
 from tscat_gui.undo import _EntityBased
 from tscat_gui.state import AppState
 
-from SciQLop.backend.sciqlop_logging import getLogger
+from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
 

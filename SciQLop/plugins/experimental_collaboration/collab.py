@@ -8,7 +8,7 @@ from pycrdt_websocket.websocket import HttpxWebsocket
 from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel, TimeRange, SciQLopPlot
 import traceback
 import asyncio
-from SciQLop.backend.sciqlop_logging import getLogger
+from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.backend.common import SignalRateLimiter
 from SciQLop.backend.sciqlop_application import sciqlop_app
 from PySide6.QtCore import QObject, Signal, Slot

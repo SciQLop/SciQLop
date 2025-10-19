@@ -9,7 +9,7 @@ from pathlib import Path
 from .jupyter_client_process import SciQLopJupyterClient, ClientType, is_pyinstaller_exe, pyinstaller_exe_path
 from ..common import find_available_port
 from ..common.python import get_python
-from SciQLop.backend import sciqlop_logging
+from SciQLop.components import sciqlop_logging
 import re
 from platformdirs import *
 
@@ -27,7 +27,8 @@ class JupyterLabClient(SciQLopJupyterClient):
     jupyterlab_ready = Signal(str)
 
     def __init__(self, connection_file: str, cwd: Optional[str] = None, parent=None):
-        super().__init__(ClientType.JUPYTERLAB, stdout_parser=self._parse_stdout, stderr_parser=self._parse_stdout, parent=parent)
+        super().__init__(ClientType.JUPYTERLAB, stdout_parser=self._parse_stdout, stderr_parser=self._parse_stdout,
+                         parent=parent)
         if cwd is None:
             cwd = Path.home()
         self.port = find_available_port()

@@ -6,9 +6,11 @@ from PySide6.QtCore import QObject, QTimer
 from ipykernel.kernelapp import IPKernelApp
 from ipykernel.ipkernel import IPythonKernel
 
-from SciQLop.backend import sciqlop_logging, sciqlop_application
+from SciQLop.backend import sciqlop_application
+from SciQLop.components import sciqlop_logging
 
 log = sciqlop_logging.getLogger(__name__)
+
 
 class SciQLopKernel(IPythonKernel):
     def __init__(self, **kwargs):

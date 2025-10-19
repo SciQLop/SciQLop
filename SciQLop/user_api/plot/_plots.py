@@ -4,7 +4,7 @@ from ._graphs import Graph, ColorMap, to_plottable, ensure_arrays_of_double
 from typing import Optional, Union, List, Any
 from ..virtual_products import VirtualProduct
 from SciQLop.backend import TimeRange
-from SciQLop.backend.sciqlop_logging import getLogger as _getLogger
+from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from SciQLopPlots import SciQLopPlot as _SciQLopPlot
 from SciQLopPlots import SciQLopTimeSeriesPlot as _SciQLopTimeSeriesPlot
 from SciQLopPlots import SciQLopPlotAxis as _SciQLopPlotAxis

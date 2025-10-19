@@ -2,9 +2,8 @@ from PySide6.QtGui import QTextCursor
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QTextEdit, QSizePolicy, QMessageBox, QErrorMessage
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
-from ..backend.sciqlop_logging import listen_sciqlop_logger
-from ..backend.common.terminal_messages import parse_all_sciqlop_message
-
+from SciQLop.components.sciqlop_logging import listen_sciqlop_logger
+from SciQLop.backend.common.terminal_messages import parse_all_sciqlop_message
 
 
 class LogsWidget(RichJupyterWidget):

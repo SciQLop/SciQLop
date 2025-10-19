@@ -13,7 +13,7 @@ from ..examples import Example
 from ..sciqlop_application import sciqlop_app, QEventLoop
 from ..IPythonKernel import InternalIPKernel
 from ..common import background_run
-from ..sciqlop_logging import getLogger
+from ...components.sciqlop_logging import getLogger
 from ..jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 import uuid
 from SciQLopPlots import  Icons

@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QWidget, QMenu
 
 from .workspaces import WorkspaceManagerUI
 from .JupyterLabView import JupyterLabView
-from .logs_widget import LogsWidget
+from SciQLop.components.sciqlop_logging.logs_widget import LogsWidget
 from .datetime_range import DateTimeRangeWidgetAction
 from SciQLopPlots import PropertiesPanel, ProductsView
 from .plots.time_sync_panel import TimeSyncPanel
@@ -21,8 +21,8 @@ from ..backend import TimeRange
 from ..backend.sciqlop_application import sciqlop_app
 from ..backend.unique_names import auto_name
 from ..backend.workspace import Workspace
-from ..backend.icons import register_icon, Icons
-from ..backend.sciqlop_logging import getLogger
+from ..backend.icons import register_icon
+from ..components.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel, Icons
 
 __here__ = os.path.dirname(__file__)

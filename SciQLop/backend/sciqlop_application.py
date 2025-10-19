@@ -11,7 +11,7 @@ class SciQLopApp(QApplication):
     panels_list_changed = QtCore.Signal(list)
 
     def __init__(self, args):
-        from . import sciqlop_logging
+        from SciQLop.components import sciqlop_logging
         super(SciQLopApp, self).__init__(args)
         self.setOrganizationName("LPP")
         self.setOrganizationDomain("lpp.fr")

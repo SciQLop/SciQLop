@@ -5,7 +5,7 @@ from PySide6.QtCore import QFileSystemWatcher, Slot, Signal, Property, QTimer, Q
 from SciQLop.widgets.welcome.card import Card, FixedSizeImageWidget, ImageSelector
 from SciQLop.backend.workspace import workspaces_manager_instance, WorkspaceSpecFile, WORKSPACES_DIR_CONFIG_ENTRY
 from SciQLop.backend.common import ensure_dir_exists
-from SciQLop.backend import sciqlop_logging
+from SciQLop.components import sciqlop_logging
 from SciQLop.widgets.welcome.section import WelcomeSection, CardsCollection
 from SciQLop.widgets.welcome.detailed_description.delegate import register_delegate
 from typing import Optional
@@ -14,6 +14,7 @@ import shutil
 import humanize
 
 log = sciqlop_logging.getLogger(__name__)
+
 
 class WorkSpaceCard(Card):
     def __init__(self, workspace: WorkspaceSpecFile, parent=None):

@@ -2,7 +2,7 @@ from typing import Optional, Dict
 import os
 from PySide6.QtCore import QObject, Signal, QProcess, QProcessEnvironment, Slot
 from shiboken6 import isValid
-from SciQLop.backend import sciqlop_logging
+from SciQLop.components import sciqlop_logging
 
 log = sciqlop_logging.getLogger(__name__)
 

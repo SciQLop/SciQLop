@@ -3,7 +3,7 @@ from .protocol import Plot, Plottable
 from typing import Optional, Union, List
 from ..virtual_products import VirtualProduct
 
-from SciQLop.backend.sciqlop_logging import getLogger as _getLogger
+from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 
 __all__ = ['Graph', 'ColorMap']
 

@@ -12,7 +12,7 @@ from SciQLop.backend.models import products, ProductsModelNode, ProductsModelNod
 from SciQLop.backend.enums import ParameterType
 from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder, DataProviderReturnType
 from SciQLop.backend.icons import register_icon
-from SciQLop.backend import sciqlop_logging
+from SciQLop.components import sciqlop_logging
 from inspect import signature
 
 log = sciqlop_logging.getLogger(__name__)
