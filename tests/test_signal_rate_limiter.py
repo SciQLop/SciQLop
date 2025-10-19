@@ -1,8 +1,4 @@
-from .fixtures import *
-import pytest
-from pytestqt import qt_compat
-from pytestqt.qt_compat import qt_api
-from SciQLop.backend.common import SignalRateLimiter
+from SciQLop.core.common import SignalRateLimiter
 
 values = []
 

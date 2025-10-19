@@ -1,12 +1,12 @@
-from typing import Mapping, Union, List, Any, Optional
+from typing import Union, List, Any, Optional
 
 from PySide6.QtCore import Signal, QModelIndex, QSize, QPersistentModelIndex, QAbstractItemModel, Slot, \
-    QAbstractProxyModel, QSortFilterProxyModel, QIdentityProxyModel
-from PySide6.QtGui import Qt, QStandardItem, QStandardItemModel, QPainter, QColor, QBrush, QPen
-from PySide6.QtWidgets import QTreeView, QAbstractScrollArea, QSizePolicy, QPushButton, QHeaderView, \
+    QSortFilterProxyModel
+from PySide6.QtGui import Qt, QPainter, QColor, QBrush, QPen
+from PySide6.QtWidgets import QTreeView, QSizePolicy, QPushButton, QHeaderView, \
     QStyledItemDelegate, QWidget, QStyleOptionViewItem, QAbstractItemView, QStyle, QColorDialog
 
-from SciQLop.backend.common.ExtraColumnsProxyModel import ExtraColumnsProxyModel
+from SciQLop.core.common.ExtraColumnsProxyModel import ExtraColumnsProxyModel
 from SciQLop.components import sciqlop_logging
 
 from tscat_gui.tscat_driver.model import tscat_model

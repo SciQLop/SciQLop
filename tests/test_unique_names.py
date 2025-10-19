@@ -1,4 +1,4 @@
-from SciQLop.backend.unique_names import make_simple_incr_name
+from SciQLop.core.unique_names import make_simple_incr_name
 
 
 def test_simple_incr_name():

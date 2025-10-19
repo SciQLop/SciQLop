@@ -1,6 +1,6 @@
-from SciQLop.widgets.plots.time_span import TimeSpan
-from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel
-from SciQLop.backend import TimeRange
+from SciQLop.components.plotting.ui.time_span import TimeSpan
+from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+from SciQLop.core import TimeRange
 from SciQLop.components import sciqlop_logging
 from .event import Event
 

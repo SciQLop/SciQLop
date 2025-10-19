@@ -3,19 +3,17 @@ from enum import Enum
 from datetime import datetime
 
 from tscat_gui import TSCatGUI, NewCatalogue
-from tscat_gui.tscat_driver.model import tscat_model
-from tscat_gui.tscat_driver.actions import CreateEntityAction
 from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import QWidget, QComboBox, QSizePolicy, QGridLayout, QPushButton, \
     QDoubleSpinBox, QLabel, QSplitter
 
-from SciQLop.backend import TimeRange
-from SciQLop.backend.common import combine_colors
+from SciQLop.core import TimeRange
+from SciQLop.core.common import combine_colors
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.widgets.mainwindow import SciQLopMainWindow
-from SciQLop.widgets.plots.time_span_controller import TimeSpanController
-from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel
+from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+from SciQLop.components.plotting.backend.time_span_controller import TimeSpanController
+from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
 from .catalog_selector import CatalogSelector
 from .event import Event
 from .event_selector import EventSelector
@@ -113,7 +111,7 @@ class LightweightManager(QWidget):
         from tscat_gui.tscat_driver.model import tscat_model
         from tscat_gui.tscat_driver.catalog_model import CatalogModel
         from tscat_gui.model_base.constants import EntityRole
-        from SciQLop.backend.sciqlop_application import sciqlop_app
+        from SciQLop.core.sciqlop_application import sciqlop_app
         from PySide6.QtCore import QThread
         uuid = self.catalog_selector.catalog_uuid(catalog)
         if uuid is not None:

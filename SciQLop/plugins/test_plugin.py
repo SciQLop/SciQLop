@@ -3,10 +3,10 @@ import os
 import numpy as np
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis
 
-from SciQLop.backend.enums import ParameterType
+from SciQLop.core.enums import ParameterType
 from SciQLop.components import sciqlop_logging
 from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
-from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
+from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder
 
 log = sciqlop_logging.getLogger(__name__)
 

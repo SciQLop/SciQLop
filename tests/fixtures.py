@@ -1,13 +1,11 @@
 import pytest
 from typing import Tuple
-from pytestqt import qt_compat
-from pytestqt.qt_compat import qt_api
 import os
 from SciQLop.sciqlop_app import start_sciqlop
 
 @pytest.fixture(scope="session")
 def qapp_cls():
-    from SciQLop.backend.sciqlop_application import SciQLopApp
+    from SciQLop.core.sciqlop_application import SciQLopApp
     return SciQLopApp
 
 

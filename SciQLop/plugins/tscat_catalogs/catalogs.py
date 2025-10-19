@@ -6,7 +6,7 @@ from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QToolBar
 from tscat_gui import TSCatGUI
 
-from SciQLop.widgets.mainwindow import SciQLopMainWindow
+from SciQLop.core.ui.mainwindow import SciQLopMainWindow
 
 
 def zoom_out(start: datetime, stop: datetime, factor: float):

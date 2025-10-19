@@ -5,7 +5,7 @@ from itertools import filterfalse
 from typing import Optional, List
 from packaging.version import Version
 from SciQLop import sciqlop_dependencies
-from SciQLop.backend.common.python import run_python_module_cmd
+from SciQLop.core.common.python import run_python_module_cmd
 from subprocess import run, PIPE
 
 _requirements_rx = re.compile(r"^(?P<package>[\w\d_\-]+)(?P<operator>[=<>]+)?(?P<version>[\d\.\*]+)?")

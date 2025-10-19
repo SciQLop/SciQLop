@@ -7,10 +7,10 @@ import speasy as spz
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
 from speasy.products import SpeasyVariable
 
-from SciQLop.backend import register_icon
+from SciQLop.core import register_icon
 from SciQLop.components import sciqlop_logging
-from SciQLop.backend.enums import ParameterType, GraphType
-from SciQLop.backend.pipelines_model.data_provider import DataProvider, DataOrder
+from SciQLop.core.enums import ParameterType, GraphType
+from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder
 from SciQLop import __version__ as sciqlop_version
 from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
 

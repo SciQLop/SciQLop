@@ -1,5 +1,5 @@
 import os
-from SciQLop.widgets.mainwindow import SciQLopMainWindow
+from SciQLop.core.ui.mainwindow import SciQLopMainWindow
 from .plugin import Plugin
 
 __all__ = ["load"]

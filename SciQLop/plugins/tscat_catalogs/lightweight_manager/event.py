@@ -2,7 +2,7 @@ from PySide6.QtCore import Signal, QObject, QTimer, Slot
 from PySide6.QtGui import QColor
 from humanize.time import precisedelta
 
-from SciQLop.backend import TimeRange
+from SciQLop.core import TimeRange
 
 from tscat_gui.tscat_driver.model import tscat_model
 from tscat_gui.tscat_driver.actions import SetAttributeAction

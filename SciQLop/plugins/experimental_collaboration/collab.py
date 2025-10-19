@@ -1,16 +1,11 @@
-import sys
-import uuid
-from typing import Optional, List, Any, Union
-from httpx_ws import aconnect_ws
-from pycrdt import Doc, Map, Array, MapEvent, Transaction, ArrayEvent
+from typing import Optional
+from pycrdt import Doc, Map, MapEvent, Transaction
 from pycrdt_websocket import WebsocketProvider
 from pycrdt_websocket.websocket import HttpxWebsocket
-from SciQLop.widgets.plots.time_sync_panel import TimeSyncPanel, TimeRange, SciQLopPlot
+from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel, TimeRange, SciQLopPlot
 import traceback
-import asyncio
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.backend.common import SignalRateLimiter
-from SciQLop.backend.sciqlop_application import sciqlop_app
+from SciQLop.core.common import SignalRateLimiter
 from PySide6.QtCore import QObject, Signal, Slot
 
 log = getLogger(__name__)

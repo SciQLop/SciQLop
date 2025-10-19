@@ -1,4 +1,4 @@
-from SciQLop.backend.common import insort, pipeline, Maybe, Thunk, Something, Nothing, lift
+from SciQLop.core.common import insort, pipeline, Thunk, Something, Nothing, lift
 from functools import partial
 
 

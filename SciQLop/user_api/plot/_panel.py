@@ -3,15 +3,16 @@ from .enums import PlotType, Orientation, GraphType
 from .protocol import Plottable
 from typing import Optional, Tuple, Union, List
 from ..gui import get_main_window as _get_main_window
-from .._annotations import experimental_api, unstable_api
+from .._annotations import experimental_api
 from PySide6.QtCore import Qt as _Qt
-from SciQLop.backend import TimeRange
+from SciQLop.core import TimeRange
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from SciQLopPlots import PlotType as _PlotType, GraphType as _GraphType, SciQLopMultiPlotPanel as _SciQLopMultiPlotPanel
-from SciQLop.widgets.plots.time_sync_panel import (TimeSyncPanel as _ImplTimeSyncPanel, plot_product as _plot_product,
-                                                   plot_static_data as _plot_static_data,
-                                                   plot_function as _plot_function)
-from SciQLop.widgets.plots.palette import Palette as _Palette, make_color_list as _make_color_list
+from SciQLop.components.plotting.ui.time_sync_panel import (TimeSyncPanel as _ImplTimeSyncPanel,
+                                                            plot_product as _plot_product,
+                                                            plot_static_data as _plot_static_data,
+                                                            plot_function as _plot_function)
+from SciQLop.components.plotting.backend.palette import Palette as _Palette, make_color_list as _make_color_list
 from ._plots import to_product_path, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
     is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product
 from ._graphs import ensure_arrays_of_double
@@ -154,7 +155,8 @@ class PlotPanel:
         kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
         if kwargs["plot_type"] != _PlotType.TimeSeries:
             kwargs["graph_type"] = _GraphType.ParametricCurve
-        _p, _g = _plot_static_data(self._get_impl_or_raise(), *ensure_arrays_of_double(x, y, z), index=plot_index, **kwargs)
+        _p, _g = _plot_static_data(self._get_impl_or_raise(), *ensure_arrays_of_double(x, y, z), index=plot_index,
+                                   **kwargs)
         return to_plot(_p), to_plottable(_g)
 
     def plot_function(self, f, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:

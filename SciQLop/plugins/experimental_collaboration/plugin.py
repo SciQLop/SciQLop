@@ -1,19 +1,15 @@
-from typing import Optional
 import uuid
 import asyncio
 from httpx_ws import aconnect_ws
 from pycrdt_websocket import WebsocketProvider
 from pycrdt_websocket.websocket import HttpxWebsocket
-from PySide6.QtCore import QObject, Slot
+from PySide6.QtCore import QObject
 from PySide6.QtGui import QAction, QIcon
-from PySide6.QtWidgets import QToolBar
-from SciQLop.widgets.mainwindow import SciQLopMainWindow
+from SciQLop.core.ui.mainwindow import SciQLopMainWindow
 from .collab_wizard import CollabWizard, Result as CollabResult
 from .collab import PanelsSync
 from pycrdt import Doc
-from SciQLop.backend.sciqlop_logging import getLogger
-
-from ...widgets.plots.time_sync_panel import TimeSyncPanel
+from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
 

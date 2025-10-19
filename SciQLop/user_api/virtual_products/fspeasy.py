@@ -1,6 +1,6 @@
 import speasy as _spz
 
-from SciQLop.backend.common import lift, pipeline, Maybe, Thunk, Something, Nothing
+from SciQLop.core.common import lift, pipeline, Thunk, Something, Nothing
 
 __all__ = ['get_data', 'lift', 'pipeline', 'Thunk', 'Something', 'Nothing']
 

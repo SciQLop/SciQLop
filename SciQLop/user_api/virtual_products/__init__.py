@@ -1,8 +1,7 @@
-from speasy import SpeasyVariable
-from typing import Callable, List, Optional, Union, Tuple
+from typing import List, Optional
 from enum import Enum
 
-from SciQLop.backend.pipelines_model.easy_provider import EasyVector as _EasyVector, EasyScalar as _EasyScalar, \
+from SciQLop.components.plotting.backend.easy_provider import EasyVector as _EasyVector, EasyScalar as _EasyScalar, \
     EasySpectrogram as _EasySpectrogram, EasyMultiComponent as _EasyMultiComponent, VirtualProductCallback
 
 

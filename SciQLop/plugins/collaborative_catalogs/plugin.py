@@ -1,6 +1,6 @@
 from PySide6.QtCore import QObject
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.widgets.mainwindow import SciQLopMainWindow
+from SciQLop.core.ui.mainwindow import SciQLopMainWindow
 
 log = getLogger(__name__)
 

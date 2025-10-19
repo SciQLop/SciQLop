@@ -1,4 +1,4 @@
-from SciQLop.widgets.mainwindow import SciQLopMainWindow
+from SciQLop.core.ui.mainwindow import SciQLopMainWindow
 from .catalogs import Plugin
 
 __all__ = ["load"]
