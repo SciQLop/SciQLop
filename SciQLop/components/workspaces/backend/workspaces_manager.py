@@ -5,7 +5,7 @@ from typing import List, Optional, Union
 from PySide6.QtCore import QObject, Signal, Slot, QFile
 from PySide6.QtGui import QIcon
 
-from SciQLop.components.workspaces.backend.workspace import WORKSPACES_DIR_CONFIG_ENTRY
+from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
 from SciQLop.core.data_models import WorkspaceSpecFile
 from SciQLop.components.workspaces.backend.workspace import Workspace
 from SciQLop.core.icons import register_icon
@@ -16,8 +16,7 @@ from SciQLop.core.common import background_run
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.components.jupyter.jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 import uuid
-from SciQLopPlots import  Icons
-
+from SciQLopPlots import Icons
 
 register_icon("Jupyter", QIcon("://icons/Jupyter_logo.png"))
 register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.png"))
@@ -34,7 +33,7 @@ def _try_load_workspace(workspace_dir):
 
 
 def list_existing_workspaces() -> List[WorkspaceSpecFile]:
-    workspaces_dir = WORKSPACES_DIR_CONFIG_ENTRY.get()
+    workspaces_dir = SciQLopWorkspacesSettings().workspaces_dir
     if not os.path.exists(workspaces_dir):
         return []
     return list(
@@ -46,8 +45,8 @@ def list_existing_workspaces() -> List[WorkspaceSpecFile]:
                     lambda workspace_dir: os.path.exists(os.path.join(workspace_dir, "workspace.json")),
                     filter(
                         lambda d: os.path.isdir(d) and d != 'default',
-                        map(lambda workspace_dir: os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), workspace_dir),
-                            os.listdir(WORKSPACES_DIR_CONFIG_ENTRY.get()))
+                        map(lambda workspace_dir: os.path.join(workspaces_dir, workspace_dir),
+                            os.listdir(workspaces_dir))
                     )
                 )
             )
@@ -84,7 +83,7 @@ class WorkspaceManager(QObject):
         self._ipykernel_clients_manager.jupyterlab_started.connect(self.jupyterlab_started)
 
     def _ensure_default_workspace_exists(self) -> WorkspaceSpecFile:
-        default_workspace = os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), "default")
+        default_workspace = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, "default")
         if not os.path.exists(default_workspace):
             return self._create_workspace("default", default_workspace, description="Default workspace",
                                           default_workspace=True)
@@ -116,7 +115,7 @@ class WorkspaceManager(QObject):
         log.info(f"Creating workspace {name}")
         # using uuid4 to avoid name collision and simplify workspace renaming without having to move the directory and
         # update python path at runtime
-        directory = os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), uuid.uuid4().hex)
+        directory = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, uuid.uuid4().hex)
         spec = self._create_workspace(name, directory, **kwargs)
         return self.load_workspace(spec)
 
@@ -178,7 +177,7 @@ class WorkspaceManager(QObject):
 
     @staticmethod
     def workspace_spec(name) -> WorkspaceSpecFile:
-        return WorkspaceSpecFile(str(os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), name)))
+        return WorkspaceSpecFile(str(os.path.join(SciQLopWorkspacesSettings().workspaces_dir, name)))
 
     @staticmethod
     def list_workspaces() -> List[WorkspaceSpecFile]:

@@ -1,0 +1,15 @@
+{
+  "name": "Test",
+  "version": "1.0.0",
+  "description": "A simple demo plugin to show how to add a new data source to SciQLop",
+  "authors": [
+    {
+      "name": "Alexis Jeandet",
+      "email": "alexis.jeandet@member.fsf.org"
+    }
+  ],
+  "license": "MIT",
+  "dependencies": {
+  },
+  "disabled": true
+}

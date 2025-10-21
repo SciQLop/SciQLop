@@ -60,6 +60,7 @@ dependencies = [
     "httpx_ws>=0.7.1,<0.8.0",
     "pycrdt-websocket>=0.15.4,<0.16.0",
     "pycrdt",
+    "pydantic"
 ]
 [project.urls]
 homepage = "https://github.com/SciQLop/SciQLop"

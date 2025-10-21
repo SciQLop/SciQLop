@@ -5,8 +5,8 @@ from PySide6.QtGui import QMouseEvent, QDrag, QPixmap
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QLabel, QDateTimeEdit, QWidgetAction
 
 from SciQLop.core import TimeRange
-from SciQLop.mime import register_mime, encode_mime
-from SciQLop.mime.types import TIME_RANGE_MIME_TYPE
+from SciQLop.core.mime import register_mime, encode_mime
+from SciQLop.core.mime.types import TIME_RANGE_MIME_TYPE
 
 
 def _QDateTimeEdit(parent):

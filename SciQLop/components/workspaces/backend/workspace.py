@@ -1,23 +1,19 @@
 import datetime
 
-from SciQLop.components.settings import ConfigEntry
 from SciQLop.components.jupyter.IPythonKernel import InternalIPKernel
 from SciQLop.components.jupyter.jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 # from .workspace_spec import WorkspaceSpecFile
+from .settings import SciQLopWorkspacesSettings
 from SciQLop.core.data_models.models import WorkspaceSpecFile
 from SciQLop.core.common.pip_process import pip_install_requirements
 from SciQLop.core.common import ensure_dir_exists
 from SciQLop.components.sciqlop_logging import getLogger
 from PySide6.QtCore import QObject, Signal, Slot
-from platformdirs import *
 from typing import List, Optional
 import shutil
 import os
 import sys
 
-WORKSPACES_DIR_CONFIG_ENTRY = ConfigEntry(section="CORE", key2="WORKSPACE_DIR", default=str(
-    os.path.join(user_data_dir(appname="sciqlop", appauthor="LPP", ensure_exists=True), "workspaces")),
-                                          description="Directory where SciQLop will store its data")
 
 log = getLogger(__name__)
 
@@ -41,7 +37,7 @@ class Workspace(QObject):
         QObject.__init__(self, parent)
         self._mpl_backend = None
         if workspace_spec is None:
-            self._workspace_dir = str(os.path.join(WORKSPACES_DIR_CONFIG_ENTRY.get(), workspace_dir or "default"))
+            self._workspace_dir = str(os.path.join(SciQLopWorkspacesSettings().workspaces_dir, workspace_dir or "default"))
         else:
             self._workspace_dir = workspace_spec.directory
         self._dependencies_dir = str(os.path.join(self._workspace_dir, "dependencies"))

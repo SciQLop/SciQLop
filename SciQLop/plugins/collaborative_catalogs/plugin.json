@@ -1,0 +1,16 @@
+{
+  "name": "Collaborative Catalogs",
+  "version": "0.1.0",
+  "description": "A plugin that provides access to collaborative catalogs using the cocat library",
+  "authors": [
+    {
+      "name": "Alexis Jeandet",
+      "email": "alexis.jeandet@member.fsf.org"
+    }
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cocat": ">=0.1.0"
+  },
+  "disabled": true
+}

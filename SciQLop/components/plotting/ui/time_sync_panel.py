@@ -12,8 +12,8 @@ from SciQLop.core import listify
 from SciQLop.components import sciqlop_logging
 from SciQLop.components.plotting.backend.data_provider import providers, DataProvider
 from SciQLop.core.property import SciQLopProperty
-from SciQLop.mime import decode_mime
-from SciQLop.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
+from SciQLop.core.mime import decode_mime
+from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
 from SciQLop.components.plotting.backend.palette import Palette, make_color_list
 
 log = sciqlop_logging.getLogger(__name__)

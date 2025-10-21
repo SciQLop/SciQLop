@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QVBoxLayout, QLabel, QFrame, QPushButton, QFormLay
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import QFileSystemWatcher, Slot, Property
 from SciQLop.components.welcome.card import Card, FixedSizeImageWidget, ImageSelector
-from SciQLop.components.workspaces import workspaces_manager_instance, WorkspaceSpecFile, WORKSPACES_DIR_CONFIG_ENTRY
+from SciQLop.components.workspaces import workspaces_manager_instance, WorkspaceSpecFile, SciQLopWorkspacesSettings
 from SciQLop.core.common import ensure_dir_exists
 from SciQLop.components import sciqlop_logging
 from SciQLop.components.welcome.section import WelcomeSection, CardsCollection
@@ -157,8 +157,8 @@ class RecentWorkspaces(WelcomeSection):
         self._layout.addWidget(self._workspaces)
         self.refresh_workspaces()
         self._watcher = QFileSystemWatcher()
-        ensure_dir_exists(WORKSPACES_DIR_CONFIG_ENTRY.get())
-        self._watcher.addPath(WORKSPACES_DIR_CONFIG_ENTRY.get())
+        ensure_dir_exists(SciQLopWorkspacesSettings().workspaces_dir)
+        self._watcher.addPath(SciQLopWorkspacesSettings().workspaces_dir)
         self._watcher.directoryChanged.connect(self.refresh_workspaces)
 
     @Slot()

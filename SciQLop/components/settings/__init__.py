@@ -1,1 +1,1 @@
-from .backend import ConfigEntry, remove_entry
+from .backend import ConfigEntry

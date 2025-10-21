@@ -1,0 +1,15 @@
+{
+  "name": "speasy",
+  "version": "1.0.0",
+  "description": "A plugin that provides access to many Space Plasma Physics related measurements",
+  "authors": [
+    {
+      "name": "Alexis Jeandet",
+      "email": "alexis.jeandet@member.fsf.org"
+    }
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "speasy": ">=1.6.1"
+  }
+}

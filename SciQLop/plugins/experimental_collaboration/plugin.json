@@ -1,0 +1,14 @@
+{
+  "name": "Collaborative SciQLop plugin",
+  "version": "0.1.0",
+  "description": "A plugin that provides access to collaborative features inside SciQLop",
+  "authors": [
+    {
+      "name": "Alexis Jeandet",
+      "email": "alexis.jeandet@member.fsf.org"
+    }
+  ],
+  "license": "MIT",
+  "dependencies": {},
+  "disabled": true
+}

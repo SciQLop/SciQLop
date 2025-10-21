@@ -1,0 +1,16 @@
+{
+  "name": "Local TSCat Catalogs",
+  "version": "1.0.0",
+  "description": "A plugin that provides access to local TSCat catalogs",
+  "authors": [
+    {
+      "name": "Alexis Jeandet",
+      "email": "alexis.jeandet@member.fsf.org"
+    }
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "tscat": ">=0.4.0",
+    "tscat_gui": ">=0.6.0"
+  }
+}

@@ -1,4 +1,4 @@
-from SciQLop.mime import encode, decode
+from SciQLop.core.mime import encode, decode
 
 
 def test_can_encode_and_decode():

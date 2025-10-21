@@ -310,7 +310,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def closeEvent(self, event: QCloseEvent):
         self.workspace_manager.quit()
         super().closeEvent(event)
-        from SciQLop.plugins import loaded_plugins
+        from SciQLop.components.plugins import loaded_plugins
         for plugin in loaded_plugins.__dict__.values():
             if hasattr(plugin, "close"):
                 plugin.close()

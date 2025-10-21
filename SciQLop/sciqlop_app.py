@@ -43,7 +43,7 @@ def start_sciqlop():
     app.processEvents()
 
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
-    from SciQLop.plugins import load_all, loaded_plugins
+    from SciQLop.components.plugins import load_all, loaded_plugins
     app.processEvents()
     main_windows = SciQLopMainWindow()
 
