@@ -1,11 +1,17 @@
 from SciQLop.components.settings.backend import ConfigEntry
+from pydantic import BaseModel
 from platformdirs import user_data_dir
-from typing import List
+from typing import List, Dict
 import os
+
+
+class PluginConfig(BaseModel):
+    enabled: bool = True
 
 
 class SciQLopPluginsSettings(ConfigEntry):
     extra_plugins_folders: List[str] = []
+    plugins: Dict[str, PluginConfig] = {}
 
 
 USER_PLUGINS_FOLDERS = os.path.join(user_data_dir(appname="sciqlop", appauthor="LPP", ensure_exists=True), "plugins")

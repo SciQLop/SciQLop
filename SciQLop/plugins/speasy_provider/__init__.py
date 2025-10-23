@@ -1,1 +1,1 @@
-from .speasy import load
+from .speasy_provider import load
