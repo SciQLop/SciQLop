@@ -17,16 +17,18 @@ class ConfigEntry(BaseModel):
     def _get_file_path(self) -> str:
         return os.path.join(SCIQLOP_CONFIG_DIR, self.__class__.__name__.lower() + ".yaml")
 
-    def __init__(self):
+    def __init__(self, **data):
+        save = True
         if os.path.exists(self._get_file_path()):
             try:
                 with open(self._get_file_path(), 'r') as file:
                     data: Dict = yaml.safe_load(file)
-                    super().__init__(**data)
+                    save = False
             except Exception as e:
                 log.error(f"Error loading settings from {self._get_file_path()}: {e}")
-        super().__init__()
-        self.save()
+        super().__init__(**data)
+        if save:
+            self.save()
 
     def save(self):
         try:

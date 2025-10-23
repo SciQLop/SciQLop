@@ -5,7 +5,8 @@
   "authors": [
     {
       "name": "Alexis Jeandet",
-      "email": "alexis.jeandet@member.fsf.org"
+      "email": "alexis.jeandet@member.fsf.org",
+      "organization": "LPP"
     }
   ],
   "license": "MIT",
