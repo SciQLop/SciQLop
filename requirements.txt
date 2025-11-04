@@ -11,7 +11,7 @@ platformdirs
 seaborn
 scipy
 IPython
-ipykernel
+ipykernel<7.1.0
 #https://github.com/jupyterlab/jupyterlab/issues/15461
 jupyterlab>=4,!=4.1.0
 notebook
