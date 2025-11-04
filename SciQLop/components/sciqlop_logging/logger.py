@@ -46,12 +46,12 @@ def listen_sciqlop_logger(callback):
 
 # taken from https://stackoverflow.com/questions/384076/how-can-i-color-python-logging-output
 class SciQlopFormatter(logging.Formatter):
-    blue = "\x1b[34;20m"
-    grey = "\x1b[38;20m"
-    yellow = "\x1b[33;20m"
-    orange = "\x1b[33;21m"
-    red = "\x1b[31;20m"
-    bold_red = "\x1b[31;1m"
+    blue = "\x1b[38;5;33;48;5;236m"
+    grey = "\x1b[38;5;245;48;5;236m"
+    yellow = "\x1b[38;5;220;48;5;236m"
+    orange = "\x1b[38;5;208;48;5;236m"
+    red = "\x1b[38;5;196;48;5;236m"
+    bold_red = "\x1b[1;38;5;196;48;5;236m"
     reset = "\x1b[0m"
     format = "%(asctime)s %(module)-25s %(levelname)-8s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
 
@@ -114,7 +114,10 @@ class SciQLopLogger(QObject):
             self.log(logging.CRITICAL, msg, *args, **kwargs)
 
     def log(self, level, msg, *args, **kwargs):
-        caller = getframeinfo(stack()[1][0])
+        for i in range(3):
+            caller = getframeinfo(stack()[i][0])
+            if caller.filename != __file__:
+                break
         lineno = caller.lineno
         filename = caller.filename
         self.push_log.emit(

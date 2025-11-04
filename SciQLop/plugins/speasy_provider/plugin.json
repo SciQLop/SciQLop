@@ -10,7 +10,7 @@
     }
   ],
   "license": "MIT",
-  "dependencies": {
-    "speasy": ">=1.6.1"
-  }
+  "python_dependencies": [
+    "speasy>=1.6.1"
+  ]
 }

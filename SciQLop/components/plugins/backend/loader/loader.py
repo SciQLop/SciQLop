@@ -55,21 +55,6 @@ class Worker(QRunnable):
             log.error(f"Traceback: {traceback.format_exc()}")
 
 
-def load_plugin(name, mod, main_window):
-    if mod:
-        try:
-            log.info(f"Loading {name}")
-            r = mod.load(main_window)
-            if r:
-                loaded_plugins.__dict__[name] = r
-            return r
-        except Exception as e:
-            log.error(f"Oups can't load {name} from {mod} , {e}")
-            log.error(f"Traceback: {traceback.format_exc()}")
-    else:
-        log.error(f"Oups can't load {name} , {mod}")
-
-
 def import_from_path(module_name, file_path):
     import sys
     spec = importlib.util.spec_from_file_location(module_name, file_path)
@@ -85,12 +70,28 @@ def load_module(path, name):
         # if path not in sys.path:
         #    sys.path.insert(0, path)
         # mod = importlib.import_module(name, "*")
-        mod = import_from_path(name, os.path.join(path, name ,  "__init__.py"))
-        return name, mod
+        mod = import_from_path(name, os.path.join(path, name, "__init__.py"))
+        return mod
     except Exception as e:
         log.error(f"Oups can't load {name} , {e}")
         log.error(f"Traceback: {traceback.format_exc()}")
-        return "", None
+        return None
+
+
+def load_plugin(path, name, main_window):
+    mod = load_module(path, name)
+    if mod:
+        try:
+            log.info(f"Loading {name}")
+            r = mod.load(main_window)
+            if r:
+                loaded_plugins.__dict__[name] = r
+            return r
+        except Exception as e:
+            log.error(f"Oups can't load {name} from {mod} , {e}")
+            log.error(f"Traceback: {traceback.format_exc()}")
+    else:
+        log.error(f"Oups can't load {name} , {mod}")
 
 
 def background_load(plugin, main_window):
@@ -131,4 +132,4 @@ def load_all(main_window):
                 if settings.plugins[plugin].enabled:
                     plugin_list.append((folder, plugin))
 
-    return {plugin: load_plugin(*load_module(folder, plugin), main_window) for folder, plugin in plugin_list}
+    return {plugin: load_plugin(folder, plugin, main_window) for folder, plugin in plugin_list}

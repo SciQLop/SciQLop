@@ -34,11 +34,9 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
 ]
 dependencies = [
-    'SciQLopPlots==0.17.1',
-    'speasy>=1.5.2',
+    'SciQLopPlots==0.18.0',
+    'speasy>=1.6.1',
     'qtconsole',
-    'tscat_gui==0.6.*',
-    'tscat==0.4.*',
     "humanize",
     'platformdirs',
     'seaborn',
@@ -47,7 +45,7 @@ dependencies = [
     "shiboken6==6.9.2",
     "PySide6-QtAds==4.4.1",
     "IPython",
-    "ipykernel<7.1.0",
+    "ipykernel<7.0.0",
     "jupyterlab>=4,!=4.1.0",
     "notebook",
     "ipympl",
@@ -57,9 +55,6 @@ dependencies = [
     "PyGitHub",
     "numpy",
     "expression",
-    "httpx_ws>=0.7.1,<0.8.0",
-    "pycrdt-websocket>=0.15.4,<0.16.0",
-    "pycrdt",
     "pydantic"
 ]
 [project.urls]

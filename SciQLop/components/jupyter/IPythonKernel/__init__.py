@@ -2,6 +2,7 @@
 from qasync import asyncSlot
 import jupyter_client
 from PySide6.QtCore import QObject, QTimer
+from typing import Optional
 
 from ipykernel.kernelapp import IPKernelApp
 from ipykernel.ipkernel import IPythonKernel
@@ -17,7 +18,37 @@ class SciQLopKernel(IPythonKernel):
         super().__init__(**kwargs)
 
 
+class _KernelPoller(QObject):
+    def __init__(self, kernel: IPythonKernel, poll_interval: float = 0.1):
+        super().__init__()
+        assert kernel is not None
+        self.kernel = kernel
+        self._poll_interval = poll_interval
+        self.timer = QTimer()
+        if hasattr(self.kernel, "do_one_iteration"):
+            self.timer.timeout.connect(self._poll_kernel_do_one_iteration)
+        else:
+            self.timer.timeout.connect(self._poll_kernel_flush)
+
+    def start(self):
+        self.timer.start(int(1000 * self._poll_interval))
+
+    @asyncSlot()
+    async def _poll_kernel_do_one_iteration(self):
+        await self.kernel.do_one_iteration()
+
+    @asyncSlot()
+    async def _poll_kernel_flush(self):
+        from ipykernel.eventloops import get_shell_stream
+        get_shell_stream(self.kernel).flush(limit=1)
+
+
 class SciQLopKernelApp(IPKernelApp):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._kernel_poller: Optional[_KernelPoller] = None
+
     def start(self):
         """Start the application."""
         if self.subapp is not None:
@@ -25,14 +56,9 @@ class SciQLopKernelApp(IPKernelApp):
         if self.poller is not None:
             self.poller.start()
         self.kernel.start()
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.do_one_iteration)
-        self.timer.start(int(1000 * self.kernel._poll_interval))
+        self._kernel_poller = _KernelPoller(kernel=self.kernel, poll_interval=0.01)
+        self._kernel_poller.start()
         sciqlop_application.sciqlop_event_loop().exec()
-
-    @asyncSlot()
-    async def do_one_iteration(self):
-        await self.kernel.do_one_iteration()
 
 
 class InternalIPKernel(QObject):

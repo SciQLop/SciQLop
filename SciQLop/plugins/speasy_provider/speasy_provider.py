@@ -23,7 +23,7 @@ register_icon("nasa", QIcon(":/icons/NASA.jpg"))
 register_icon("amda", QIcon(":/icons/amda.png"))
 register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
 register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
-register_icon("uiowaephtool", QIcon(f"{__here__}/../resources/icons/Iowa_Hawkeyes_logo.svg"))
+register_icon("uiowaephtool", QIcon(f"{__here__}/../../resources/icons/Iowa_Hawkeyes_logo.svg"))
 
 
 def _current_thread_id():

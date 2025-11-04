@@ -8,7 +8,7 @@ SCIQLOP_ROOT=$ABSOLUTE_SCRIPT_DIR/../../
 mkdir -p /tmp/sciqlop
 cd /tmp/sciqlop
 
-PYTHON_APPIMAGE=python3.12.11-cp312-cp312-manylinux2014_x86_64.AppImage
+PYTHON_APPIMAGE=python3.12.12-cp312-cp312-manylinux2014_x86_64.AppImage
 PYTHON_VERSION=3.12
 
 NODE_VERSION=23.11.0
@@ -20,6 +20,8 @@ fi
 rm -rf ./squashfs-root
 ./$PYTHON_APPIMAGE --appimage-extract
 ./squashfs-root/usr/bin/python$PYTHON_VERSION -I -m pip install $SCIQLOP_ROOT
+PLUGIN_DEPENDENCIES=$(./squashfs-root/usr/bin/python$PYTHON_VERSION -I $SCIQLOP_ROOT/scripts/list_plugins_dependencies.py $SCIQLOP_ROOT/SciQLop/plugins)
+./squashfs-root/usr/bin/python$PYTHON_VERSION -I -m pip install $PLUGIN_DEPENDENCIES
 if [ -z $RELEASE ]; then
   ./squashfs-root/usr/bin/python$PYTHON_VERSION -I -m pip install --upgrade git+https://github.com/SciQLop/speasy
 fi

@@ -28,8 +28,8 @@ from SciQLopPlots import SciQLopMultiPlotPanel, Icons
 __here__ = os.path.dirname(__file__)
 
 register_icon("plot_panel", QtGui.QIcon("://icons/plot_panel_128.png"))
-register_icon("tree", QtGui.QIcon(f"{__here__}/../resources/icons/tree.svg"))
-register_icon("plot_properties", QtGui.QIcon(f"{__here__}/../resources/icons/plot_properties.svg"))
+register_icon("tree", QtGui.QIcon(f"{__here__}/../../resources/icons/tree.svg"))
+register_icon("plot_properties", QtGui.QIcon(f"{__here__}/../../resources/icons/plot_properties.svg"))
 
 log = getLogger(__name__)
 

@@ -30,10 +30,12 @@ def start_sciqlop():
     QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts, True)
 
     from SciQLop.core.sciqlop_application import sciqlop_event_loop, sciqlop_app
+    from SciQLop.resources import qInitResources
 
     print(str(QtPrintSupport) + str(QtOpenGL) + str(QtQml))
 
     app = sciqlop_app()
+    qInitResources()
     envent_loop = sciqlop_event_loop()
     pixmap = QPixmap(":/splash.png")
     splash = QSplashScreen(pixmap)

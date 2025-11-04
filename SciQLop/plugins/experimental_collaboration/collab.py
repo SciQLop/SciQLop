@@ -1,7 +1,5 @@
 from typing import Optional
 from pycrdt import Doc, Map, MapEvent, Transaction
-from pycrdt_websocket import WebsocketProvider
-from pycrdt_websocket.websocket import HttpxWebsocket
 from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel, TimeRange, SciQLopPlot
 import traceback
 from SciQLop.components.sciqlop_logging import getLogger

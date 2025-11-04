@@ -93,6 +93,8 @@ cd -
 
 
 $DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install $SCIQLOP_ROOT/
+PLUGIN_DEPENDENCIES=$($DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -I $SCIQLOP_ROOT/scripts/list_plugins_dependencies.py $SCIQLOP_ROOT/SciQLop/plugins)
+$DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install $PLUGIN_DEPENDENCIES
 
 if [[ $ARCH == "x86_64" ]]; then
   cp $(brew --prefix gettext)/lib/libintl.8.dylib $DIST/SciQLop.app/Contents/Resources/usr/local/lib/

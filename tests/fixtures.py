@@ -3,6 +3,7 @@ from typing import Tuple
 import os
 from SciQLop.sciqlop_app import start_sciqlop
 
+
 @pytest.fixture(scope="session")
 def qapp_cls():
     from SciQLop.core.sciqlop_application import SciQLopApp
@@ -13,21 +14,32 @@ def qapp_cls():
 def main_window(qtbot, qapp):
     os.environ["SCIQLOP_DEBUG"] = "1"
     qtbot.wait(1)
-    main_window=start_sciqlop()
+    main_window = start_sciqlop()
     qtbot.wait(1)
     qtbot.addWidget(main_window)
     return main_window
 
 
+@pytest.fixture(scope="function")
+def test_plugin(qtbot, qapp, main_window):
+    from SciQLop.components.plugins.backend.loader import load_plugin, plugins_folders
+    print("Loading test_plugin")
+    p=load_plugin(plugins_folders()[0], "test_plugin", main_window)
+    print(f"Loaded test_plugin: {p}")
+    qtbot.wait(1)
+    return p
+
 
 @pytest.fixture(scope="function")
 def simple_vp_callback():
     import numpy as np
-    def callback(start:float, end:float)-> Tuple[np.ndarray, np.ndarray]:
-        x = np.linspace(start, end, int(end-start))
+    def callback(start: float, end: float) -> Tuple[np.ndarray, np.ndarray]:
+        x = np.linspace(start, end, int(end - start))
         y = np.sin(x)
         return x, y
+
     return callback
+
 
 @pytest.fixture(scope="function")
 def plot_panel(qtbot, main_window):

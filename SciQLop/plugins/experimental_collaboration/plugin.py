@@ -1,8 +1,6 @@
 import uuid
 import asyncio
-from httpx_ws import aconnect_ws
-from pycrdt_websocket import WebsocketProvider
-from pycrdt_websocket.websocket import HttpxWebsocket
+from wire_websocket import AsyncWebSocketClient
 from PySide6.QtCore import QObject
 from PySide6.QtGui import QAction, QIcon
 from SciQLop.core.ui.mainwindow import SciQLopMainWindow
@@ -10,6 +8,7 @@ from .collab_wizard import CollabWizard, Result as CollabResult
 from .collab import PanelsSync
 from pycrdt import Doc
 from SciQLop.components.sciqlop_logging import getLogger
+from urllib.parse import urlparse
 
 log = getLogger(__name__)
 
@@ -74,12 +73,13 @@ class Plugin(QObject):
         self.close_event.set()
 
     async def _start(self):
-        async with (
-            aconnect_ws(f"{self._server_url}/{self._room_id}") as websocket,
-            WebsocketProvider(self._doc, HttpxWebsocket(websocket, self._room_id), log) as provider,
-        ):
-            self._ws = websocket
-            self._provider = provider
+        p = urlparse(self._server_url)
+        host = f"{p.scheme}://{p.hostname}"
+        port = p.port if p.port is not None else (443 if p.scheme == "https" else 80)
+        path = p.path
+        async with (AsyncWebSocketClient(f"{path}/{self._room_id}", doc=self._doc,
+                                         host=host, port=port,
+                                         cookies=None) as self._client):  # ,
             await self.close_event.wait()
 
     def start(self):
