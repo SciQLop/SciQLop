@@ -47,7 +47,7 @@ dependencies = [
     "shiboken6==6.9.2",
     "PySide6-QtAds==4.4.0.3",
     "IPython",
-    "ipykernel",
+    "ipykernel<7.0.0",
     "jupyterlab>=4,!=4.1.0",
     "notebook",
     "ipympl",
