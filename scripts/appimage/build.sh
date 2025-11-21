@@ -8,10 +8,10 @@ SCIQLOP_ROOT=$ABSOLUTE_SCRIPT_DIR/../../
 mkdir -p /tmp/sciqlop
 cd /tmp/sciqlop
 
-PYTHON_APPIMAGE=python3.12.11-cp312-cp312-manylinux2014_x86_64.AppImage
+PYTHON_APPIMAGE=python3.12.12-cp312-cp312-manylinux2014_x86_64.AppImage
 PYTHON_VERSION=3.12
 
-NODE_VERSION=23.11.0
+NODE_VERSION=25.2.1
 
 if [ ! -f ./$PYTHON_APPIMAGE ]; then
     wget https://github.com/niess/python-appimage/releases/download/python$PYTHON_VERSION/$PYTHON_APPIMAGE
