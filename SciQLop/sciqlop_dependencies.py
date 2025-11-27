@@ -13,6 +13,7 @@ RUNTIME_DEPENDENCIES = [
     "ipympl",
     "jinja2",
     "jupyterlab>=4,!=4.1.0",
+    "keyring",
     "notebook",
     "numpy",
     "platformdirs",

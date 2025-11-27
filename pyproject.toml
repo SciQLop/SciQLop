@@ -55,7 +55,8 @@ dependencies = [
     "PyGitHub",
     "numpy",
     "expression",
-    "pydantic"
+    "pydantic",
+    "keyring"
 ]
 [project.urls]
 homepage = "https://github.com/SciQLop/SciQLop"
