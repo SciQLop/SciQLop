@@ -13,7 +13,5 @@ sciqlop_root = os.path.dirname(os.path.abspath(__file__))
 
 
 def sciqlop_dependencies() -> List[str]:
-    return ['SciQLopPlots==0.18.0', 'speasy>=1.6.1', 'qtconsole', "humanize", 'platformdirs',
-            'seaborn', "scipy", "pyside6==6.9.2", "shiboken6==6.9.2", "PySide6-QtAds==4.4.1", "IPython",
-            "ipykernel<7.0.0", "jupyterlab>=4,!=4.1.0", "notebook", "ipympl", "qasync", "jinja2", "pyzstd", "PyGitHub",
-            'numpy', 'expression', "pydantic"]
+    from .sciqlop_dependencies import RUNTIME_DEPENDENCIES
+    return RUNTIME_DEPENDENCIES
