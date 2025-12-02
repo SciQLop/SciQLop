@@ -24,6 +24,7 @@ class _KernelPoller(QObject):
         assert kernel is not None
         self.kernel = kernel
         self._poll_interval = poll_interval
+        self._is_iterating = False
         self.timer = QTimer()
         if hasattr(self.kernel, "do_one_iteration"):
             self.timer.timeout.connect(self._poll_kernel_do_one_iteration)
@@ -35,7 +36,14 @@ class _KernelPoller(QObject):
 
     @asyncSlot()
     async def _poll_kernel_do_one_iteration(self):
-        await self.kernel.do_one_iteration()
+        if not self._is_iterating:
+            self._is_iterating = True
+            try:
+                await self.kernel.do_one_iteration()
+            except:
+                log.exception("Error while polling IPython kernel")
+            finally:
+                self._is_iterating = False
 
     @asyncSlot()
     async def _poll_kernel_flush(self):

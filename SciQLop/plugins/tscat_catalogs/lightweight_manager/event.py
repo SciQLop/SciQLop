@@ -1,6 +1,7 @@
 from PySide6.QtCore import Signal, QObject, QTimer, Slot
 from PySide6.QtGui import QColor
 from humanize.time import precisedelta
+from datetime import timedelta
 
 from SciQLop.core import TimeRange
 
@@ -70,9 +71,16 @@ class Event(QObject):
 
     @property
     def tooltip(self):
+        deltat = self._event.stop - self._event.start
+        if deltat < timedelta(milliseconds=1):
+            min_unit = 'microseconds'
+        elif deltat < timedelta(seconds=1):
+            min_unit = 'milliseconds'
+        else:
+            min_unit = 'seconds'
         return f"""<b>Author: </b>{self._event.author} <br><hr>
 <b>Tags: </b>{' '.join(self._event.tags)} <br><hr>
-<b>Duration: </b>{precisedelta(self._event.stop - self._event.start)} <br><hr>
+<b>Duration: </b>{precisedelta(deltat, minimum_unit=min_unit)} <br><hr>
 <b>Rating: </b>{self._event.rating} <br><hr>
 <b>Attributes:</b>
 <table>

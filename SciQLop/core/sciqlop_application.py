@@ -1,9 +1,10 @@
 from PySide6 import QtWidgets, QtCore, QtGui
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Callable
 from SciQLop.components.theming.loader import load_stylesheets, build_palette
 from qasync import QEventLoop, QApplication
 import asyncio
 import sys
+import time
 
 
 class SciQLopApp(QApplication):
@@ -59,6 +60,18 @@ class _SciQLopEventLoop(QEventLoop):
     def exec(self):
         with self:
             self.run_until_complete(self.app_close_event.wait())
+
+    def active_sleep(self, delay: float):
+        start = time.time()
+        while time.time() - start < delay:
+            sciqlop_app().processEvents()
+
+    def active_sleep_for(self, delay: float, predicate: Callable[[], bool]):
+        start = time.time()
+        while time.time() - start < delay:
+            if predicate():
+                break
+            sciqlop_app().processEvents()
 
 
 _event_loop = None
