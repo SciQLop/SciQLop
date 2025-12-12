@@ -8,8 +8,8 @@ SCIQLOP_ROOT=$ABSOLUTE_SCRIPT_DIR/../../
 mkdir -p /tmp/sciqlop
 cd /tmp/sciqlop
 
-PYTHON_APPIMAGE=python3.12.12-cp312-cp312-manylinux2014_x86_64.AppImage
-PYTHON_VERSION=3.12
+PYTHON_APPIMAGE=python3.13.9-cp313-cp313-manylinux_2_28_x86_64.AppImage
+PYTHON_VERSION=3.13
 
 NODE_VERSION=25.2.1
 
