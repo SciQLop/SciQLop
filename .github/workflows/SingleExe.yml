@@ -54,7 +54,7 @@ jobs:
 
 
   build_x86_64_dmg:
-    runs-on: macos-13
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - name: setenv

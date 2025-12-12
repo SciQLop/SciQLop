@@ -16,7 +16,7 @@ mkdir -p $DIST/SciQLop.app/Contents/MacOS
 mkdir -p $DIST/SciQLop.app/Contents/Resources/usr/local
 mkdir -p $ICONDIR
 
-export MACOSX_DEPLOYMENT_TARGET=11.0
+export MACOSX_DEPLOYMENT_TARGET=13.0
 export PREFIX_ABS=$(realpath $DIST/SciQLop.app/Contents/Resources/usr/local)
 export SAVED_PATH=$PATH
 export PATH=$PREFIX_ABS/bin:$PATH
