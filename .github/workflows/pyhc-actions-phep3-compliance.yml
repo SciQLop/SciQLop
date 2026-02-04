@@ -1,0 +1,17 @@
+name: pyhc-actions-phep3-compliance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 15 1 1,4,7,10 *'  # Quarterly: Jan/Apr/Jul/Oct 1 at 15:00 UTC
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  phep3-compliance-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PHEP 3 Compliance Checker
+        uses: heliophysicsPy/pyhc-actions/phep3-compliance@v1
