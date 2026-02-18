@@ -1,29 +1,59 @@
-#! /bin/bash
+#!/usr/bin/env bash
 
-# If running from an extracted image, then export ARGV0 and APPDIR
+set -e
+
 if [ -z "${APPIMAGE}" ]; then
     export ARGV0="$0"
-
-    self=$(readlink -f -- "$0") # Protect spaces (issue 55)
+    self=$(readlink -f -- "$0")
     export APPDIR="${self%/*}"
 fi
 
-# Resolve the calling command (preserving symbolic links).
-export APPIMAGE_COMMAND=$(command -v -- "$ARGV0")
-
-# Export TCl/Tk
 export TCL_LIBRARY="${APPDIR}/usr/share/tcltk/tcl8.6"
 export TK_LIBRARY="${APPDIR}/usr/share/tcltk/tk8.6"
 export TKPATH="${TK_LIBRARY}"
 export SCIQLOP_BUNDLED="1"
-
-# Export SSL certificate
 export SSL_CERT_FILE="${APPDIR}/opt/_internal/certs.pem"
 
-export PATH="${APPDIR}/usr/local/bin:${APPDIR}/usr/bin:${APPDIR}/bin"
+export PATH="${APPDIR}/opt/uv:${APPDIR}/usr/local/bin:${APPDIR}/usr/bin:${APPDIR}/bin"
 
-#export SCIQLOP_DEBUG="1"
+############################################
+# Handle AppImage built-in commands first
+############################################
 
-# Call Python
-"$APPDIR/usr/bin/python" -I -m SciQLop.app "$@"
+case "$1" in
+    --appimage-extract|--appimage-mount|--appimage-version)
+        exec "$APPIMAGE" "$@"
+        ;;
+esac
 
+############################################
+# Allow direct uv access
+############################################
+
+if [ "$1" = "uv" ]; then
+    shift
+    exec "${APPDIR}/opt/uv/uv" "$@"
+fi
+
+############################################
+# Allow direct python access (optional)
+############################################
+
+if [ "$1" = "python" ]; then
+    shift
+    exec "${APPDIR}/usr/bin/python" "$@"
+fi
+
+#############################################
+# Allow direct shell access (optional)
+#############################################
+
+if [ "$1" = "shell" ]; then
+    exec /bin/bash
+fi
+
+############################################
+# Default: launch SciQLop
+############################################
+
+exec "${APPDIR}/usr/bin/python" -I -m SciQLop.app "$@"
