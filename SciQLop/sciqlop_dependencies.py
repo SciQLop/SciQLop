@@ -5,7 +5,7 @@
 RUNTIME_DEPENDENCIES = [
     "PyGitHub",
     "PySide6-QtAds==4.5.0.2",
-    "SciQLopPlots==0.18.1",
+    "SciQLopPlots==0.18.2",
     "expression",
     "humanize",
     "ipykernel==6.29.5",

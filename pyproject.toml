@@ -15,7 +15,7 @@ maintainers = [
     { name = "Alexis Jeandet", email = "alexis.jeandet@member.fsf.org" }
 ]
 
-requires-python = ">=3.8"
+requires-python = ">=3.10,<3.15"
 license = { file = "COPYING" }
 readme = "README.md"
 classifiers = [
@@ -34,7 +34,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
 ]
 dependencies = [
-    "SciQLopPlots==0.18.1",
+    "SciQLopPlots==0.18.2",
     "speasy>=1.6.1",
     "qtconsole",
     "humanize",
