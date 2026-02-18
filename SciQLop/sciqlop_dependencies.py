@@ -4,8 +4,8 @@
 # This list is used at runtime for dependency checks or dynamic installation
 RUNTIME_DEPENDENCIES = [
     "PyGitHub",
-    "PySide6-QtAds==4.4.1",
-    "SciQLopPlots==0.18.0",
+    "PySide6-QtAds==4.5.0.2",
+    "SciQLopPlots==0.18.1",
     "expression",
     "humanize",
     "ipykernel==6.29.5",
@@ -31,14 +31,14 @@ RUNTIME_DEPENDENCIES = [
     "numpy",
     "platformdirs",
     "pydantic",
-    "pyside6==6.9.2",
+    "pyside6==6.10.2",
     "pyzmq==27.0.0",
     "pyzstd",
     "qasync",
     "qtconsole",
     "scipy",
     "seaborn",
-    "shiboken6==6.9.2",
+    "shiboken6==6.10.2",
     "speasy>=1.6.1",
     "tornado==6.5.1"
 ]
