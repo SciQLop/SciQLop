@@ -173,14 +173,14 @@ ads--CAutoHideTab:hover:focus {
 
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="0"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="2"] {
-    border-top: 2px solid rgba(0, 0, 0, 48);
+    border-top: 2px solid {{ palette('mid') | alpha(48) }};
 }
 
 
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="1"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"] {
-    border-bottom: 2px solid rgba(0, 0, 0, 48);
-    border-right: 2px solid rgba(0, 0, 0, 48);
+    border-bottom: 2px solid {{ palette('mid') | alpha(48) }};
+    border-right: 2px solid {{ palette('mid') | alpha(48) }};
     border-radius: 2px;
 }
 

@@ -4,9 +4,15 @@ from typing import List, Optional, Dict
 from glob import glob
 from PySide6 import QtGui, QtCore
 from jinja2 import Template, Environment, FileSystemLoader
+from seaborn import color_palette
+
 import SciQLop
 from SciQLop.components.sciqlop_logging import getLogger
+from SciQLop.components.settings import ConfigEntry
 import yaml
+
+class SciQLopStyle(ConfigEntry):
+    color_palette: str = "light"
 
 log = getLogger(__name__)
 
@@ -31,7 +37,7 @@ def _load_palette(palette: str) -> Dict[str, str]:
             return {}
 
 
-_sciqlop_palette = _load_palette("light")
+_sciqlop_palette = _load_palette(SciQLopStyle().color_palette)
 
 
 def _list_stylesheets(folders: Optional[List[str]] = None) -> List[str]:

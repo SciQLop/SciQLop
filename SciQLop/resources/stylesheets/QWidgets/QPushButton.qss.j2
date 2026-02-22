@@ -8,12 +8,12 @@ QPushButton {
 
 QPushButton:disabled {
     background-color: {{ palette('button') |  lighter(120) }};
-    color: #6c757d;
+    color: {{ palette('border') }};
     border: 1px solid {{ palette('border') }};
 }
 
 QPushButton:enabled:focus {
-    background-color: #f0faff;
+    background-color: {{ palette('highlight') | alpha(50) }};
     border: 2px solid {{ palette('border') }};
     border-radius: 5px;
 }
