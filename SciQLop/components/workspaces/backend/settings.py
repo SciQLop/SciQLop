@@ -1,4 +1,4 @@
-from SciQLop.components.settings.backend import ConfigEntry
+from SciQLop.components.settings.backend import ConfigEntry, SettingsCategory
 from platformdirs import user_data_dir
 import os
 
@@ -7,4 +7,5 @@ DEFAULT_WORKSPACE_DIR = str(
 
 
 class SciQLopWorkspacesSettings(ConfigEntry):
+    category = SettingsCategory.WORKSPACES
     workspaces_dir: str = DEFAULT_WORKSPACE_DIR

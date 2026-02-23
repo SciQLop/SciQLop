@@ -1,3 +1,5 @@
+from SciQLop.components.settings import SettingsCategory
+
 from SciQLop.components.settings.backend import ConfigEntry
 from pydantic import BaseModel
 from platformdirs import user_data_dir
@@ -10,6 +12,7 @@ class PluginConfig(BaseModel):
 
 
 class SciQLopPluginsSettings(ConfigEntry):
+    category = SettingsCategory.PLUGINS
     extra_plugins_folders: List[str] = []
     plugins: Dict[str, PluginConfig] = {}
 

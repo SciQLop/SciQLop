@@ -8,10 +8,11 @@ from seaborn import color_palette
 
 import SciQLop
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.components.settings import ConfigEntry
+from SciQLop.components.settings import ConfigEntry, SettingsCategory
 import yaml
 
 class SciQLopStyle(ConfigEntry):
+    category = SettingsCategory.APPEARANCE
     color_palette: str = "light"
 
 log = getLogger(__name__)
