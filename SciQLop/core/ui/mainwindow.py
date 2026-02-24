@@ -24,11 +24,16 @@ from SciQLop.components.workspaces import Workspace
 from SciQLop.core.icons import register_icon
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel, Icons
+from SciQLop.components.settings.ui import SettingsPanel
 
 __here__ = os.path.dirname(__file__)
 
 register_icon("plot_panel", QtGui.QIcon("://icons/plot_panel_128.png"))
-register_icon("tree", QtGui.QIcon(f"{__here__}/../../resources/icons/tree.svg"))
+register_icon("tree", QtGui.QIcon(f"{__here__}/../../resources/icons/tree.png"))
+register_icon("settings", QtGui.QIcon(f"{__here__}/../../resources/icons/settings.png"))
+register_icon("view_list", QtGui.QIcon(f"{__here__}/../../resources/icons/view_list.png"))
+register_icon("home", QtGui.QIcon(f"{__here__}/../../resources/icons/home.png"))
+
 register_icon("plot_properties", QtGui.QIcon(f"{__here__}/../../resources/icons/plot_properties.svg"))
 
 log = getLogger(__name__)
@@ -98,6 +103,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolsMenu.addAction("Start jupyter console", self.workspace_manager.new_qt_console)
 
         self.logs = LogsWidget(self)
+        self.logs.setWindowIcon(Icons.get_icon("view_list"))
         self.add_side_pan(self.logs, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
         self.setWindowTitle("SciQLop")
@@ -114,6 +120,11 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         sciqlop_app().add_quickstart_shortcut(name="Plot panel", description="Add a new plot panel",
                                               icon=Icons.get_icon("plot_panel"), callback=self.new_plot_panel)
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
+
+        self.settings_panel = SettingsPanel(self)
+        self.settings_panel.setWindowIcon(Icons.get_icon("settings"))
+        self.settings_panel.setWindowTitle("Settings")
+        self.add_side_pan(self.settings_panel, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
         self._statusbar = QtWidgets.QStatusBar(self)
         self.setStatusBar(self._statusbar)
