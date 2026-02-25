@@ -21,9 +21,9 @@ from SciQLop.core import TimeRange
 from SciQLop.core.sciqlop_application import sciqlop_app
 from SciQLop.core.unique_names import auto_name
 from SciQLop.components.workspaces import Workspace
-from SciQLop.core.icons import register_icon
+from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLopPlots import SciQLopMultiPlotPanel, Icons
+from SciQLopPlots import SciQLopMultiPlotPanel
 from SciQLop.components.settings.ui import SettingsPanel
 
 __here__ = os.path.dirname(__file__)
@@ -90,7 +90,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self.welcome)
 
         self.productTree = ProductsView(self)
-        self.productTree.setWindowIcon(Icons.get_icon("tree"))
+        self.productTree.setWindowIcon(get_icon("tree"))
         self.add_side_pan(self.productTree)
 
         self.workspace_manager = WorkspaceManagerUI(self)
@@ -103,7 +103,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolsMenu.addAction("Start jupyter console", self.workspace_manager.new_qt_console)
 
         self.logs = LogsWidget(self)
-        self.logs.setWindowIcon(Icons.get_icon("view_list"))
+        self.logs.setWindowIcon(get_icon("view_list"))
         self.add_side_pan(self.logs, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
         self.setWindowTitle("SciQLop")
@@ -113,16 +113,16 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._dt_range_action = DateTimeRangeWidgetAction(self, default_time_range=default_time_range)
         self.toolBar.addAction(self._dt_range_action)
         self.addTSPanel = QtGui.QAction(self)
-        self.addTSPanel.setIcon(QtGui.QIcon("://icons/theme/add_graph.png"))
+        self.addTSPanel.setIcon(get_current_style_icon("add_graph"))
         self.addTSPanel.setText("Add new plot panel")
         self.addTSPanel.triggered.connect(lambda: self.new_plot_panel())
         self.toolBar.addAction(self.addTSPanel)
         sciqlop_app().add_quickstart_shortcut(name="Plot panel", description="Add a new plot panel",
-                                              icon=Icons.get_icon("plot_panel"), callback=self.new_plot_panel)
+                                              icon=get_icon("plot_panel"), callback=self.new_plot_panel)
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
 
         self.settings_panel = SettingsPanel(self)
-        self.settings_panel.setWindowIcon(Icons.get_icon("settings"))
+        self.settings_panel.setWindowIcon(get_icon("settings"))
         self.settings_panel.setWindowTitle("Settings")
         self.add_side_pan(self.settings_panel, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
@@ -131,7 +131,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._statusbar.setMaximumHeight(28)
 
         self.properties_panel = PropertiesPanel(self)
-        self.properties_panel.setWindowIcon(Icons.get_icon("plot_properties"))
+        self.properties_panel.setWindowIcon(get_icon("plot_properties"))
         self.add_side_pan(self.properties_panel)
 
         self._mem_usage = QtWidgets.QProgressBar()
@@ -219,7 +219,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 if os.path.exists(icon):
                     doc.setIcon(QIcon(icon))
                 else:
-                    doc.setIcon(Icons.get_icon(icon))
+                    doc.setIcon(get_icon(icon))
             elif widget.windowIcon() is not None:
                 doc.setIcon(widget.windowIcon())
             container = self.dock_manager.addAutoHideDockWidget(location, doc)

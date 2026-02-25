@@ -33,17 +33,17 @@ QCheckBox::indicator:hover {
 }
 
 QCheckBox::indicator:checked {
-    image: url(:/icons/theme/check_box_checked.png);
+    image: {{ icon('check_box_checked') }};
 }
 
 QCheckBox::indicator:unchecked {
-    image: url(:/icons/theme/check_box_unchecked.png);
+    image: {{ icon('check_box_unchecked') }};
 }
 
 QCheckBox::indicator:checked:disabled {
-    image: url(:/icons/theme/check_box_checked.png);
+    image: {{ icon('check_box_checked') }};
 }
 
 QCheckBox::indicator:unchecked:disabled {
-    image: url(:/icons/theme/check_box_unchecked.png);
+    image: {{ icon('check_box_unchecked') }};
 }

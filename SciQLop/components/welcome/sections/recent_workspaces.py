@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QVBoxLayout, QLabel, QFrame, QPushButton, QFormLay
     QTextEdit, QMessageBox
 from PySide6.QtGui import QIcon
 from PySide6.QtCore import QFileSystemWatcher, Slot, Property
+from SciQLop.components.theming import get_current_style_icon
 from SciQLop.components.welcome.card import Card, FixedSizeImageWidget, ImageSelector
 from SciQLop.components.workspaces import workspaces_manager_instance, WorkspaceSpecFile, SciQLopWorkspacesSettings
 from SciQLop.core.common import ensure_dir_exists
@@ -103,17 +104,17 @@ class WorkspaceDescriptionWidget(QFrame):
         self._layout.addRow(QLabel("Description"), self._description)
         if not workspaces_manager_instance().has_workspace:
             self._open_button = QPushButton("Open workspace")
-            self._open_button.setIcon(QIcon("://icons/theme/folder_open.png"))
+            self._open_button.setIcon(get_current_style_icon("folder_open"))
             self._open_button.setMinimumHeight(40)
             self._open_button.clicked.connect(self._open_workspace)
             self._layout.addWidget(self._open_button)
         self._duplicate_button = QPushButton("Duplicate workspace")
-        self._duplicate_button.setIcon(QIcon("://icons/theme/folder_copy.png"))
+        self._duplicate_button.setIcon(get_current_style_icon("folder_copy"))
         self._layout.addWidget(self._duplicate_button)
         self._duplicate_button.clicked.connect(self._duplicate_workspace)
         if not workspace.workspace.default_workspace:
             self._delete_button = QPushButton("Delete workspace")
-            self._delete_button.setIcon(QIcon("://icons/theme/delete.png"))
+            self._delete_button.setIcon(get_current_style_icon("delete"))
             self._layout.addWidget(self._delete_button)
             self._delete_button.clicked.connect(self._delete_workspace)
             self._dialog = None

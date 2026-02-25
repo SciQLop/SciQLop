@@ -22,19 +22,19 @@ QSpinBox::up-button {
     subcontrol-origin: border;
     subcontrol-position: top right;
     width: 20px;
-    image: url(:/icons/theme/arrow_drop_up.png);
+    image: {{ icon('arrow_drop_up') }};
     border-width: 0px;
     margin-right: 5px;
 }
 
 QDoubleSpinBox::up-button:hover,
 QSpinBox::up-button:hover {
-    image: url(:/icons/theme/arrow_drop_up.png);
+    image: {{ icon('arrow_drop_up') }};
 }
 
 QDoubleSpinBox::up-button:pressed,
 QSpinBox::up-button:pressed {
-    border: url(:/icons/theme/arrow_drop_up.png);
+    border: {{ icon('arrow_drop_up') }};
 }
 
 QDoubleSpinBox::down-button,
@@ -42,17 +42,17 @@ QSpinBox::down-button {
     subcontrol-origin: border;
     subcontrol-position: bottom right;
     width: 20px;
-    image: url(:/icons/theme/arrow_drop_down.png);
+    image: {{ icon('arrow_drop_down') }};
     border-width: 0px;
     margin-right: 5px;
 }
 
 QDoubleSpinBox::down-button:hover,
 QSpinBox::down-button:hover {
-    image: url(:/icons/theme/arrow_drop_down.png);
+    image: {{ icon('arrow_drop_down') }};
 }
 
 QDoubleSpinBox::down-button:pressed,
 QSpinBox::down-button:pressed {
-   image: url(:/icons/theme/arrow_drop_down.png);
+   image: {{ icon('arrow_drop_down') }};
 }

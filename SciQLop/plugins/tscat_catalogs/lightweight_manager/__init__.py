@@ -8,6 +8,7 @@ from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import QWidget, QComboBox, QSizePolicy, QGridLayout, QPushButton, \
     QDoubleSpinBox, QLabel, QSplitter
 
+from SciQLop.components.theming import get_current_style_icon
 from SciQLop.core import TimeRange
 from SciQLop.core.common import combine_colors
 from SciQLop.components.sciqlop_logging import getLogger
@@ -73,10 +74,10 @@ class LightweightManager(QWidget):
         # self.event_selector.event_start_date_changed.connect(self._event_start_date_changed)
         # self.event_selector.event_stop_date_changed.connect(self._event_stop_date_changed)
         self.save_button = QPushButton(self)
-        self.save_button.setIcon(QIcon(":/icons/theme/save.png"))
+        self.save_button.setIcon(get_current_style_icon("save"))
         self.save_button.setToolTip("Save changes to disk")
         self.add_catalog_button = QPushButton(self)
-        self.add_catalog_button.setIcon(QIcon(":/icons/theme/add.png"))
+        self.add_catalog_button.setIcon(get_current_style_icon("add"))
         self.add_catalog_button.setToolTip("Add new catalogue")
         self.layout().addWidget(self.save_button, 0, 0, 1, 1)
         self.layout().addWidget(self.add_catalog_button, 0, 1, 1, 1)

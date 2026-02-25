@@ -1,17 +1,17 @@
 #tabsMenuButton {
-    qproperty-icon: url(:/icons/theme/arrow_drop_down.png);
+    qproperty-icon: {{ icon('arrow_drop_down') }};
     qproperty-iconSize: 16px;
 }
 
 
 #dockAreaCloseButton {
-    qproperty-icon: url(:/icons/theme/close.png), url(:/icons/theme/close.png) disabled;
+    qproperty-icon: {{ icon('close') }}, {{ icon('close') }} disabled;
     qproperty-iconSize: 16px;
 }
 
 
 #detachGroupButton {
-    qproperty-icon: url(:/icons/theme/detach_tab.png), url(:/icons/theme/detach_tab.png) disabled;
+    qproperty-icon: {{ icon('detach_tab') }}, {{ icon('detach_tab') }} disabled;
     qproperty-iconSize: 16px;
 }
 
@@ -20,7 +20,7 @@
     background: none;
     border: none;
     padding: 0px -2px;
-    qproperty-icon: url(:/icons/theme/close.png), url(:/icons/theme/close.png) disabled;
+    qproperty-icon: {{ icon('close') }}, {{ icon('close') }} disabled;
     qproperty-iconSize: 16px;
 }
 
@@ -69,12 +69,12 @@ ads--CDockSplitter::handle {
  Auto hide containers
  */
 #dockAreaAutoHideButton {
-    qproperty-icon: url(:/icons/theme/push_pin.png), url(:/icons/theme/push_pin.png) disabled;
+    qproperty-icon: {{ icon('push_pin') }}, {{ icon('push_pin') }} disabled;
     qproperty-iconSize: 16px;
 }
 
 ads--CAutoHideDockContainer #dockAreaAutoHideButton {
-    qproperty-icon: url(:/icons/theme/push_pin_filled.png);
+    qproperty-icon: {{ icon('push_pin_filled') }};
     qproperty-iconSize: 16px;
 }
 

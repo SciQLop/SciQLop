@@ -8,7 +8,7 @@ from PySide6.QtGui import QIcon
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
 from SciQLop.core.data_models import WorkspaceSpecFile
 from SciQLop.components.workspaces.backend.workspace import Workspace
-from SciQLop.core.icons import register_icon
+from SciQLop.components.theming.icons import register_icon
 from SciQLop.core.examples import Example
 from SciQLop.core.sciqlop_application import sciqlop_app
 from SciQLop.components.jupyter.IPythonKernel import InternalIPKernel

@@ -1,6 +1,6 @@
 from PySide6 import QtWidgets, QtCore, QtGui
 from typing import Dict, List, Optional, Any, Callable
-from SciQLop.components.theming.loader import load_stylesheets, build_palette
+from SciQLop.components.theming import load_stylesheets, setup_palette, SciQLopStyle
 from qasync import QEventLoop, QApplication
 import asyncio
 import sys
@@ -17,11 +17,12 @@ class SciQLopApp(QApplication):
         self.setOrganizationName("LPP")
         self.setOrganizationDomain("lpp.fr")
         self.setApplicationName("SciQLop")
-        # self.setAttribute(QtCore.Qt.AA_UseStyleSheetPropagationInWidgetStyles, True)
-        self._palette = build_palette("white", self.palette())
-        self.setPalette(self._palette)
-        self.load_stylesheet()
         sciqlop_logging.setup(capture_stdout=False)
+        # self.setAttribute(QtCore.Qt.AA_UseStyleSheetPropagationInWidgetStyles, True)
+        self._current_palette_name = SciQLopStyle().color_palette
+        self._current_palette = setup_palette(palette_name=self._current_palette_name)
+        self.setPalette(self._current_palette)
+        self.load_stylesheet()
         self._quickstart_shortcuts: Dict[str, Dict[str, Any]] = {}
 
     def add_quickstart_shortcut(self, name: str, description: str, icon: QtGui.QPixmap or QtGui.QIcon,
@@ -38,7 +39,7 @@ class SciQLopApp(QApplication):
         return self._quickstart_shortcuts.get(name, None)
 
     def load_stylesheet(self, path=None):
-        self.setStyleSheet(load_stylesheets(self._palette))
+        self.setStyleSheet(load_stylesheets(self._current_palette, self._current_palette_name))
 
 
 def sciqlop_app() -> SciQLopApp:

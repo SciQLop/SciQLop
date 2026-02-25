@@ -1,7 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime as datetime, timezone as timezone
 from SciQLopPlots import SciQLopPlotRange as TimeRange
-from .icons import register_icon  # noqa: F401
-from speasy.core import make_utc_datetime, AnyDateTimeType
+from speasy.core import make_utc_datetime as make_utc_datetime, AnyDateTimeType as AnyDateTimeType
 
 
 def listify(a):

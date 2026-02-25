@@ -35,11 +35,11 @@ QTreeView::branch {
 QTreeView::branch:has-children:!has-siblings:closed,
 QTreeView::branch:closed:has-children:has-siblings {
         border-image: none;
-        image: url(:/icons/theme/arrow_right.png);
+        image: {{ icon('arrow_right') }};
 }
 
 QTreeView::branch:open:has-children:!has-siblings,
 QTreeView::branch:open:has-children:has-siblings  {
         border-image: none;
-        image: url(:/icons/theme/arrow_drop_down.png);
+        image: {{ icon('arrow_drop_down') }};
 }

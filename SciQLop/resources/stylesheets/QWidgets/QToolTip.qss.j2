@@ -1,6 +1,8 @@
 
 QToolTip {
-    background-color: palette(base);
+    background-color: {{ palette('ToolTipBase') }};
+    color: {{ palette('ToolTipText') }};
     border: 1px solid{{ palette('Borders') }};
     border-radius: 3px;
+    opacity: 230;
 }

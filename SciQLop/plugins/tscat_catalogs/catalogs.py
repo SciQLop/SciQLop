@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QToolBar
 from tscat_gui import TSCatGUI
 
 from SciQLop.core.ui.mainwindow import SciQLopMainWindow
-
+from SciQLop.components.theming import get_current_style_icon
 
 def zoom_out(start: datetime, stop: datetime, factor: float):
     delta = ((stop - start) / 2.) * factor
@@ -22,7 +22,7 @@ class CatalogGUISpawner(QAction):
     def __init__(self, catalog_gui, parent=None):
         super(CatalogGUISpawner, self).__init__(parent)
         self.catalog_gui = catalog_gui
-        self.setIcon(QIcon("://icons/theme/catalogue.png"))
+        self.setIcon(get_current_style_icon("catalogue"))
         self.triggered.connect(self.show_catalogue_gui)
         self.setText("Open Catalogue Explorer")
 
@@ -36,7 +36,7 @@ class Plugin(QObject):
         self.manager_ui = TSCatGUI()
         from .lightweight_manager import LightweightManager
         self.lightweight_manager = LightweightManager(main_window=main_window, manager_ui=self.manager_ui)
-        self.lightweight_manager.setWindowIcon(QIcon("://icons/theme/catalogue.png"))
+        self.lightweight_manager.setWindowIcon(get_current_style_icon("catalogue"))
         self.show_catalog = CatalogGUISpawner(self.manager_ui)
         self.main_window = main_window
         self.last_event = None

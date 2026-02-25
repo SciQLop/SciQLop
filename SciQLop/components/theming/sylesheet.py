@@ -8,37 +8,14 @@ from seaborn import color_palette
 
 import SciQLop
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.components.settings import ConfigEntry, SettingsCategory
-import yaml
-
-class SciQLopStyle(ConfigEntry):
-    category = SettingsCategory.APPEARANCE
-    color_palette: str = "light"
+from .palette import SCIQLOP_PALETTE
 
 log = getLogger(__name__)
 
 __background_color__ = '#ffffff'
 
 style_sheets_path = os.path.join(SciQLop.sciqlop_root, "resources", "stylesheets")
-palettes_path = os.path.join(SciQLop.sciqlop_root, "resources", "palettes")
 env = Environment(loader=FileSystemLoader(style_sheets_path))
-
-
-def _make_palette_case_insensitive(palette: Dict[str, str]) -> Dict[str, str]:
-    palette.update({k.lower(): v for k, v in palette.items()})
-    return palette
-
-
-def _load_palette(palette: str) -> Dict[str, str]:
-    with open(f"{palettes_path}/{palette}.yaml", 'r') as stream:
-        try:
-            return _make_palette_case_insensitive(yaml.safe_load(stream))
-        except yaml.YAMLError as exc:
-            log.error(exc)
-            return {}
-
-
-_sciqlop_palette = _load_palette(SciQLopStyle().color_palette)
 
 
 def _list_stylesheets(folders: Optional[List[str]] = None) -> List[str]:
@@ -51,24 +28,29 @@ def _list_stylesheets(folders: Optional[List[str]] = None) -> List[str]:
     return style_sheets
 
 
-def _palette(palette: QtGui.QPalette, name: str):
-    if hasattr(palette, name):
-        b = getattr(palette, name)()
-        if isinstance(b, QtGui.QBrush):
-            return b.color().name()
-    if name in _sciqlop_palette:
-        return _sciqlop_palette[name]
-    if name.lower() in _sciqlop_palette:
-        return _sciqlop_palette[name.lower()]
-    return palette.base().color().name()
-
-
 def _alpha(color: str, alpha: int) -> str:
     c = QtGui.QColor(color)
     return f"rgba({c.red()}, {c.green()}, {c.blue()}, {alpha})"
 
 
-def load_stylesheets(palette: QtGui.QPalette) -> str:
+def _palette(palette: QtGui.QPalette, name: str):
+    if hasattr(palette, name):
+        b = getattr(palette, name)()
+        if isinstance(b, QtGui.QBrush):
+            return b.color().name()
+    if name in SCIQLOP_PALETTE:
+        return SCIQLOP_PALETTE[name]
+    if name.lower() in SCIQLOP_PALETTE:
+        return SCIQLOP_PALETTE[name.lower()]
+    return palette.base().color().name()
+
+
+def _icon(palette_name: str, name: str) -> str:
+    from .icons import per_palette_icon_dir
+    return f"url({per_palette_icon_dir(palette_name)}/{name}.png)"
+
+
+def load_stylesheets(palette: QtGui.QPalette, palette_name: str) -> str:
     env.globals['sciqlop_list_templates'] = _list_stylesheets
     env.globals['controls_height'] = '24px'
     env.globals['palette'] = partial(_palette, palette)
@@ -76,16 +58,11 @@ def load_stylesheets(palette: QtGui.QPalette) -> str:
     env.globals['lighten'] = lambda color, factor: QtGui.QColor(color).lighter(factor).name()
     env.globals['darker'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()
     env.globals['darken'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()
+    env.globals['icon'] = partial(_icon, palette_name)
     env.filters['alpha'] = _alpha
     env.filters['lighter'] = lambda color, factor: QtGui.QColor(color).lighter(factor).name()
     env.filters['lighten'] = lambda color, factor: QtGui.QColor(color).lighter(factor).name()
     env.filters['darker'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()
     env.filters['darken'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()
+    env.filters['icon'] = partial(_icon, palette_name)
     return env.get_template("SciQLop.qss.j2").render()
-
-
-def build_palette(background_color: str, palette: QtGui.QPalette) -> QtGui.QPalette:
-    for role, color in _sciqlop_palette.items():
-        if role in QtGui.QPalette.ColorRole.__members__:
-            palette.setColor(QtGui.QPalette.ColorRole[role], QtGui.QColor(color))
-    return palette

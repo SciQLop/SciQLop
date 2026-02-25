@@ -6,7 +6,7 @@ from PySide6.QtGui import QIcon
 from SciQLopPlots import SciQLopMultiPlotPanel, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
     ParameterType, GraphType, SciQLopNDProjectionPlot
 
-from SciQLop.core.icons import register_icon
+from SciQLop.components.theming import register_icon
 from SciQLop.core import TimeRange
 from SciQLop.core import listify
 from SciQLop.components import sciqlop_logging
