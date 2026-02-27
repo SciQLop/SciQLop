@@ -1,0 +1,24 @@
+/* QSplitter base style for SciQLop - improved handle visibility */
+
+QSplitter {
+    background: {{ palette('base') }};
+}
+
+QSplitter::handle {
+    background: {{ palette('Base') }};
+    border: 1px solid {{ palette('Borders') }};
+    border-radius: 3px;
+}
+
+QSplitter::handle:horizontal {
+    min-width: 8px;
+}
+
+QSplitter::handle:vertical {
+    min-height: 8px;
+}
+
+QSplitter::handle:hover {
+    background: {{ palette('Link') }};
+    border: 2px solid {{ palette('Highlight') }};
+}
