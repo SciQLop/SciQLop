@@ -11,15 +11,18 @@ class DummyProvider(CatalogProvider):
     """Full-capability in-memory provider for testing and as reference."""
 
     def __init__(self, num_catalogs: int = 1, events_per_catalog: int = 100,
+                 paths: list[list[str]] | None = None,
                  parent: QObject | None = None):
         super().__init__(name="DummyProvider", parent=parent)
         self._catalogs: list[Catalog] = []
         base = datetime(2020, 1, 1, tzinfo=timezone.utc)
         for c in range(num_catalogs):
+            path = paths[c] if paths and c < len(paths) else []
             cat = Catalog(
                 uuid=str(_uuid.uuid4()),
                 name=f"Catalog-{c}",
                 provider=self,
+                path=path,
             )
             self._catalogs.append(cat)
             events = []
@@ -46,11 +49,12 @@ class DummyProvider(CatalogProvider):
             Capability.IMPORT_EVENTS,
         }
 
-    def import_events(self, catalog_name: str, events: list[CatalogEvent]) -> Catalog:
+    def import_events(self, catalog_name: str, events: list[CatalogEvent], path: list[str] | None = None) -> Catalog:
         cat = Catalog(
             uuid=str(_uuid.uuid4()),
             name=catalog_name,
             provider=self,
+            path=path or [],
         )
         self._catalogs.append(cat)
         self._set_events(cat, events)
