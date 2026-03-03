@@ -106,11 +106,30 @@ class CatalogTreeModel(QAbstractItemModel):
         self.endRemoveRows()
 
     def _on_catalog_added(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
-        parent_index = self.createIndex(pnode.row(), 0, pnode)
-        row = len(pnode.children)
-        self.beginInsertRows(parent_index, row, row)
-        child = _Node(name=catalog.name, parent=pnode, provider=provider, catalog=catalog)
-        pnode.children.append(child)
+        target = pnode
+        target_index = self.createIndex(pnode.row(), 0, pnode)
+        for segment in catalog.path:
+            existing = None
+            for child in target.children:
+                if child.catalog is None and child.name == segment:
+                    existing = child
+                    break
+            if existing is not None:
+                target = existing
+                target_index = self.createIndex(existing.row(), 0, existing)
+            else:
+                row = len(target.children)
+                self.beginInsertRows(target_index, row, row)
+                folder = _Node(name=segment, parent=target, provider=provider)
+                target.children.append(folder)
+                self.endInsertRows()
+                target = folder
+                target_index = self.createIndex(folder.row(), 0, folder)
+
+        row = len(target.children)
+        self.beginInsertRows(target_index, row, row)
+        child = _Node(name=catalog.name, parent=target, provider=provider, catalog=catalog)
+        target.children.append(child)
         self.endInsertRows()
 
     def _on_catalog_removed(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:

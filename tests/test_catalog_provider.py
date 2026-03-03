@@ -352,6 +352,59 @@ def test_catalog_tree_model_node_from_index(qtbot, qapp):
     assert found, "Our DummyProvider not found in tree"
 
 
+def test_tree_model_dynamic_add_with_path(qtbot, qapp):
+    """Dynamically added catalogs with paths should create folder nodes."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, CatalogEvent
+    import uuid as _uuid
+
+    class DynProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="DynProvider")
+            self._catalogs = []
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def add_catalog(self, cat):
+            self._catalogs.append(cat)
+            self._set_events(cat, [])
+            self.catalog_added.emit(cat)
+
+    provider = DynProvider()
+    model = CatalogTreeModel()
+
+    # Find provider node
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+    assert model.rowCount(provider_idx) == 0
+
+    # Add a catalog with path
+    cat = Catalog(uuid=str(_uuid.uuid4()), name="New Cat", provider=provider, path=["X", "Y"])
+    provider.add_catalog(cat)
+
+    # Provider should now have folder "X"
+    assert model.rowCount(provider_idx) == 1
+    x_idx = model.index(0, 0, provider_idx)
+    assert model.data(x_idx) == "X"
+
+    # "X" should have folder "Y"
+    assert model.rowCount(x_idx) == 1
+    y_idx = model.index(0, 0, x_idx)
+    assert model.data(y_idx) == "Y"
+
+    # "Y" should have "New Cat"
+    assert model.rowCount(y_idx) == 1
+    cat_idx = model.index(0, 0, y_idx)
+    assert model.data(cat_idx) == "New Cat"
+
+
 def test_catalog_tree_model_dynamic_add(qtbot, qapp):
     """Test that creating a provider after the model populates the tree."""
     from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
