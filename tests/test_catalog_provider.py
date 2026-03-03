@@ -378,3 +378,42 @@ def test_catalog_browser_has_splitter(qtbot, qapp):
     qtbot.addWidget(browser)
     assert browser._splitter is not None
     assert isinstance(browser._splitter, QSplitter)
+
+
+# --- Task 9: Toolbar visibility based on capabilities ---
+
+def test_catalog_browser_toolbar_visibility(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability
+
+    class ReadOnlyProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="ReadOnly")
+            cat = Catalog(uuid="ro-1", name="ReadOnly Cat", provider=self)
+            self._cats = [cat]
+            self._set_events(cat, [])
+
+        def catalogs(self):
+            return self._cats
+
+        def capabilities(self, catalog=None):
+            return set()  # no capabilities — read-only
+
+    provider = ReadOnlyProvider()
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    browser.show()
+
+    # Find the ReadOnly provider in the tree and select its catalog
+    tree = browser._catalog_tree
+    model = tree.model()
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.data(idx) == "ReadOnly":
+            cat_idx = model.index(0, 0, idx)
+            tree.setCurrentIndex(cat_idx)
+            break
+
+    # Toolbar buttons should be hidden for read-only provider
+    assert not browser._add_event_btn.isVisible()
+    assert not browser._delete_btn.isVisible()
