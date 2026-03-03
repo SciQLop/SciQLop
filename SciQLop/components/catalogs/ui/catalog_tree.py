@@ -133,13 +133,40 @@ class CatalogTreeModel(QAbstractItemModel):
         self.endInsertRows()
 
     def _on_catalog_removed(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
-        for i, child in enumerate(pnode.children):
+        self._remove_catalog_recursive(pnode, catalog)
+
+    def _remove_catalog_recursive(self, node: _Node, catalog: object) -> bool:
+        """Find and remove catalog node, then prune empty folders. Returns True if found."""
+        for i, child in enumerate(node.children):
             if child.catalog is catalog:
-                parent_index = self.createIndex(pnode.row(), 0, pnode)
+                parent_index = self.createIndex(node.row(), 0, node) if node.parent is not None else QModelIndex()
                 self.beginRemoveRows(parent_index, i, i)
-                pnode.children.pop(i)
+                node.children.pop(i)
                 self.endRemoveRows()
-                return
+                # Prune empty folder ancestors
+                self._prune_if_empty(node)
+                return True
+            if child.catalog is None and self._remove_catalog_recursive(child, catalog):
+                return True
+        return False
+
+    def _prune_if_empty(self, node: _Node) -> None:
+        """Remove node if it's an empty folder (not provider, not root)."""
+        if node.parent is None:
+            return
+        if node.catalog is not None:
+            return  # not a folder
+        if node.parent.parent is None:
+            return  # node is a provider node, don't prune
+        if len(node.children) > 0:
+            return  # not empty
+        parent = node.parent
+        i = parent.children.index(node)
+        parent_index = self.createIndex(parent.row(), 0, parent) if parent.parent is not None else QModelIndex()
+        self.beginRemoveRows(parent_index, i, i)
+        parent.children.pop(i)
+        self.endRemoveRows()
+        self._prune_if_empty(parent)
 
     # ---- QAbstractItemModel interface ----
 

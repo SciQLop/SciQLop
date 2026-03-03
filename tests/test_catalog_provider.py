@@ -579,6 +579,52 @@ def test_catalog_browser_toolbar_visibility(qtbot, qapp):
     assert not browser._delete_btn.isVisible()
 
 
+# --- Task 4: Prune empty folders on catalog removal ---
+
+def test_tree_model_prune_empty_folders(qtbot, qapp):
+    """Removing the last catalog in a folder should prune empty ancestor folders."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog
+    import uuid as _uuid
+
+    class PruneProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="PruneProvider")
+            self._cat = Catalog(
+                uuid=str(_uuid.uuid4()), name="Only Cat",
+                provider=self, path=["X", "Y"],
+            )
+            self._catalogs = [self._cat]
+            self._set_events(self._cat, [])
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def remove_catalog(self, cat):
+            self._catalogs.remove(cat)
+            self.catalog_removed.emit(cat)
+
+    provider = PruneProvider()
+    model = CatalogTreeModel()
+
+    # Find provider node
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+    assert model.rowCount(provider_idx) == 1  # folder "X"
+
+    # Remove the only catalog
+    provider.remove_catalog(provider._cat)
+
+    # Provider should now have 0 children (folders pruned)
+    assert model.rowCount(provider_idx) == 0
+
+
 # --- Task 10: Public API exports ---
 
 def test_public_api_imports(qtbot, qapp):
