@@ -1,6 +1,6 @@
 from __future__ import annotations
 import bisect
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Callable
@@ -65,6 +65,7 @@ class Catalog:
     uuid: str
     name: str
     provider: CatalogProvider | None = None
+    path: list[str] = field(default_factory=list)
 
 
 @dataclass

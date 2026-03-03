@@ -49,6 +49,18 @@ def test_catalog_descriptor(qtbot, qapp):
     assert cat.provider is None
 
 
+def test_catalog_path_default(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.provider import Catalog
+    cat = Catalog(uuid="cat-1", name="My Catalog")
+    assert cat.path == []
+
+
+def test_catalog_path_explicit(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.provider import Catalog
+    cat = Catalog(uuid="cat-1", name="My Catalog", path=["MMS", "Magnetosheath"])
+    assert cat.path == ["MMS", "Magnetosheath"]
+
+
 def test_capability_enum(qtbot, qapp):
     from SciQLop.components.catalogs.backend.provider import Capability
     assert Capability.EDIT_EVENTS == "edit_events"
