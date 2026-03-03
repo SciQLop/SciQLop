@@ -95,9 +95,9 @@ class TscatCatalogProvider(CatalogProvider):
     def __init__(self, parent: QObject | None = None):
         self._catalog_cache: list[Catalog] | None = None
         self._known_uuids: set[str] = set()
+        self._root_model = tscat_model.tscat_root()
         super().__init__(name="TSCat Local", parent=parent)
         tscat_model.action_done.connect(self._on_action_done)
-        self._root_model = tscat_model.tscat_root()
         self._root_model.rowsInserted.connect(self._on_root_rows_changed)
         self._root_model.rowsRemoved.connect(self._on_root_rows_changed)
         self._root_model.modelReset.connect(self._on_root_rows_changed)
