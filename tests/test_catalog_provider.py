@@ -262,3 +262,83 @@ def test_catalog_tree_model_dynamic_add(qtbot, qapp):
     # Force a refresh by checking that at least we can find it via the init path.
     model2 = CatalogTreeModel()
     assert model2.rowCount() >= initial_rows + 1
+
+
+# --- Task 7: EventTableModel tests ---
+
+def test_event_table_model(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.event_table import EventTableModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=10)
+    cat = provider.catalogs()[0]
+    events = provider.events(cat)
+
+    model = EventTableModel()
+    model.set_events(events)
+
+    assert model.rowCount() == 10
+    assert model.columnCount() >= 2  # at least start and stop
+
+    from PySide6.QtCore import Qt
+    index = model.index(0, 0)
+    assert index.isValid()
+    value = model.data(index, Qt.ItemDataRole.DisplayRole)
+    assert value is not None
+
+
+def test_event_table_model_clear(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.event_table import EventTableModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=5)
+    cat = provider.catalogs()[0]
+    events = provider.events(cat)
+
+    model = EventTableModel()
+    model.set_events(events)
+    assert model.rowCount() == 5
+
+    model.clear()
+    assert model.rowCount() == 0
+
+
+def test_event_table_model_event_at(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.event_table import EventTableModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=5)
+    cat = provider.catalogs()[0]
+    events = provider.events(cat)
+
+    model = EventTableModel()
+    model.set_events(events)
+
+    evt = model.event_at(0)
+    assert evt is not None
+    assert evt.uuid == events[0].uuid
+
+    assert model.event_at(999) is None
+
+
+def test_event_table_model_meta_columns(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.event_table import EventTableModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    events = provider.events(cat)
+
+    model = EventTableModel()
+    model.set_events(events)
+
+    # DummyProvider events have meta keys "index" and "catalog"
+    assert model.columnCount() == 4  # start, stop, catalog, index
+    headers = []
+    for c in range(model.columnCount()):
+        headers.append(model.headerData(c, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole))
+    assert "start" in headers
+    assert "stop" in headers
+    assert "index" in headers
+    assert "catalog" in headers
