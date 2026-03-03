@@ -1,7 +1,10 @@
 from __future__ import annotations
+from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from enum import Enum
+from typing import Any, Callable
 from PySide6.QtCore import QObject, Signal
+from PySide6.QtGui import QIcon
 
 
 class CatalogEvent(QObject):
@@ -43,3 +46,28 @@ class CatalogEvent(QObject):
     @property
     def meta(self) -> dict[str, Any]:
         return self._meta
+
+
+class Capability(str, Enum):
+    EDIT_EVENTS = "edit_events"
+    CREATE_EVENTS = "create_events"
+    DELETE_EVENTS = "delete_events"
+    CREATE_CATALOGS = "create_catalogs"
+    DELETE_CATALOGS = "delete_catalogs"
+    EXPORT_EVENTS = "export_events"
+    IMPORT_EVENTS = "import_events"
+    IMPORT_FILES = "import_files"
+
+
+@dataclass
+class Catalog:
+    uuid: str
+    name: str
+    provider: CatalogProvider | None = None
+
+
+@dataclass
+class ProviderAction:
+    name: str
+    callback: Callable[[Catalog], None]
+    icon: QIcon | None = None
