@@ -417,3 +417,15 @@ def test_catalog_browser_toolbar_visibility(qtbot, qapp):
     # Toolbar buttons should be hidden for read-only provider
     assert not browser._add_event_btn.isVisible()
     assert not browser._delete_btn.isVisible()
+
+
+# --- Task 10: Public API exports ---
+
+def test_public_api_imports(qtbot, qapp):
+    from SciQLop.components.catalogs import (
+        CatalogEvent, Catalog, CatalogProvider,
+        Capability, ProviderAction,
+        CatalogRegistry,
+    )
+    assert CatalogEvent is not None
+    assert CatalogRegistry is not None
