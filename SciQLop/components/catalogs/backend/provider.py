@@ -86,6 +86,8 @@ class CatalogProvider(QObject):
         super().__init__(parent)
         self._name = name
         self._events: dict[str, list[CatalogEvent]] = {}
+        from .registry import CatalogRegistry
+        CatalogRegistry.instance().register(self)
 
     @property
     def name(self) -> str:

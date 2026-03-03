@@ -135,3 +135,60 @@ def test_provider_remove_event(qtbot, qapp):
     with qtbot.waitSignal(provider.events_changed, timeout=1000):
         provider._remove_event(cat, to_remove)
     assert len(provider.events(cat)) == 99
+
+
+def test_registry_singleton(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    r1 = CatalogRegistry.instance()
+    r2 = CatalogRegistry.instance()
+    assert r1 is r2
+
+
+def test_auto_registration(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    registry = CatalogRegistry.instance()
+    initial_count = len(registry.providers())
+    provider = _make_dummy_provider(qapp)
+    assert len(registry.providers()) == initial_count + 1
+    assert provider in registry.providers()
+
+
+def test_auto_unregistration_on_destroy(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    registry = CatalogRegistry.instance()
+    provider = _make_dummy_provider(qapp)
+    initial_count = len(registry.providers())
+    provider.deleteLater()
+    qtbot.waitUntil(lambda: len(registry.providers()) == initial_count - 1, timeout=1000)
+
+
+def test_registry_provider_registered_signal(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    registry = CatalogRegistry.instance()
+    with qtbot.waitSignal(registry.provider_registered, timeout=1000):
+        provider = _make_dummy_provider(qapp)
+
+
+def test_registry_all_catalogs(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    registry = CatalogRegistry.instance()
+    provider = _make_dummy_provider(qapp)
+    all_cats = registry.all_catalogs()
+    assert any(c.name == "Test Catalog" for c in all_cats)
+
+
+def test_dummy_provider_full_capabilities(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.provider import Capability
+    provider = DummyProvider(num_catalogs=2, events_per_catalog=50)
+    assert len(provider.catalogs()) == 2
+    cat = provider.catalogs()[0]
+    assert len(provider.events(cat)) == 50
+    caps = provider.capabilities(cat)
+    assert Capability.EDIT_EVENTS in caps
+    assert Capability.CREATE_EVENTS in caps
+    assert Capability.DELETE_EVENTS in caps
+    assert Capability.CREATE_CATALOGS in caps
+    assert Capability.DELETE_CATALOGS in caps
+    assert Capability.EXPORT_EVENTS in caps
+    assert Capability.IMPORT_EVENTS in caps
