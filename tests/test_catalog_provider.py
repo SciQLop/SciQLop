@@ -206,6 +206,101 @@ def test_dummy_provider_full_capabilities(qtbot, qapp):
     assert Capability.IMPORT_EVENTS in caps
 
 
+# --- Task 2: Folder nodes from paths ---
+
+def _make_provider_with_paths(qapp):
+    """Helper: provider with catalogs at various path depths."""
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, CatalogEvent
+    import uuid as _uuid
+
+    class PathProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="PathProvider")
+            self._catalogs = [
+                Catalog(uuid=str(_uuid.uuid4()), name="Root Cat", provider=self, path=[]),
+                Catalog(uuid=str(_uuid.uuid4()), name="Deep Cat", provider=self, path=["A", "B"]),
+                Catalog(uuid=str(_uuid.uuid4()), name="Sibling Cat", provider=self, path=["A", "B"]),
+                Catalog(uuid=str(_uuid.uuid4()), name="Other Cat", provider=self, path=["A", "C"]),
+            ]
+            for cat in self._catalogs:
+                self._set_events(cat, [])
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+    return PathProvider()
+
+
+def test_tree_model_folder_nodes(qtbot, qapp):
+    """Catalogs with path segments should create intermediate folder nodes."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+
+    provider = _make_provider_with_paths(qapp)
+    model = CatalogTreeModel()
+
+    # Find our provider node
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+
+    # Provider should have 2 direct children: "Root Cat" (catalog) and "A" (folder)
+    assert model.rowCount(provider_idx) == 2
+
+    # Find folder "A"
+    folder_a_idx = None
+    root_cat_idx = None
+    for i in range(model.rowCount(provider_idx)):
+        child_idx = model.index(i, 0, provider_idx)
+        node = model.node_from_index(child_idx)
+        if node.name == "A" and node.catalog is None:
+            folder_a_idx = child_idx
+        elif node.name == "Root Cat" and node.catalog is not None:
+            root_cat_idx = child_idx
+    assert folder_a_idx is not None, "Folder 'A' not found"
+    assert root_cat_idx is not None, "Root Cat not found"
+
+    # Folder A should have 2 children: "B" (folder) and "C" (folder)
+    assert model.rowCount(folder_a_idx) == 2
+
+    # Find folder "B" under "A"
+    folder_b_idx = None
+    for i in range(model.rowCount(folder_a_idx)):
+        child_idx = model.index(i, 0, folder_a_idx)
+        node = model.node_from_index(child_idx)
+        if node.name == "B" and node.catalog is None:
+            folder_b_idx = child_idx
+    assert folder_b_idx is not None, "Folder 'B' not found under 'A'"
+
+    # Folder B should have 2 catalogs: "Deep Cat" and "Sibling Cat"
+    assert model.rowCount(folder_b_idx) == 2
+
+
+def test_tree_model_folder_not_selectable_for_events(qtbot, qapp):
+    """Folder nodes should have catalog=None."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+
+    provider = _make_provider_with_paths(qapp)
+    model = CatalogTreeModel()
+
+    # Find folder "A" under our provider
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            for j in range(model.rowCount(idx)):
+                child_idx = model.index(j, 0, idx)
+                child = model.node_from_index(child_idx)
+                if child.name == "A":
+                    assert child.catalog is None
+                    return
+    pytest.fail("Folder 'A' not found")
+
+
 # --- Task 6: CatalogTreeModel tests ---
 
 def test_catalog_tree_model_structure(qtbot, qapp):

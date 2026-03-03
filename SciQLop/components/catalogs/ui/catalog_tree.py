@@ -53,11 +53,23 @@ class CatalogTreeModel(QAbstractItemModel):
 
     # ---- internal helpers ----
 
+    def _find_or_create_folder(self, parent: _Node, name: str, provider: CatalogProvider) -> _Node:
+        """Find existing folder child or create a new one."""
+        for child in parent.children:
+            if child.catalog is None and child.name == name:
+                return child
+        folder = _Node(name=name, parent=parent, provider=provider)
+        parent.children.append(folder)
+        return folder
+
     def _add_provider_node(self, provider: CatalogProvider) -> _Node:
         node = _Node(name=provider.name, parent=self._root, provider=provider)
         for cat in provider.catalogs():
-            child = _Node(name=cat.name, parent=node, provider=provider, catalog=cat)
-            node.children.append(child)
+            target = node
+            for segment in cat.path:
+                target = self._find_or_create_folder(target, segment, provider)
+            child = _Node(name=cat.name, parent=target, provider=provider, catalog=cat)
+            target.children.append(child)
         self._root.children.append(node)
 
         # Connect to provider signals for dynamic updates
