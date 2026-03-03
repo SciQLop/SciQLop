@@ -25,6 +25,7 @@ from SciQLop.components.theming import register_icon, get_icon, get_current_styl
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel
 from SciQLop.components.settings.ui import SettingsPanel
+from SciQLop.components.catalogs.ui import CatalogBrowser
 
 __here__ = os.path.dirname(__file__)
 
@@ -90,8 +91,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self.welcome)
 
         self.productTree = ProductsView(self)
-        self.productTree.setWindowIcon(get_icon("tree"))
+        self.productTree.setWindowIcon(get_current_style_icon("tree"))
         self.add_side_pan(self.productTree)
+
+        self.catalogs_browser = CatalogBrowser(self)
+        self.catalogs_browser.setWindowIcon(get_current_style_icon("catalogue"))
+        self.add_side_pan(self.catalogs_browser)
 
         self.workspace_manager = WorkspaceManagerUI(self)
         self.workspace_manager.pushVariables({"main_window": self})
@@ -103,7 +108,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolsMenu.addAction("Start jupyter console", self.workspace_manager.new_qt_console)
 
         self.logs = LogsWidget(self)
-        self.logs.setWindowIcon(get_icon("view_list"))
+        self.logs.setWindowIcon(get_current_style_icon("view_list"))
         self.add_side_pan(self.logs, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
 
         self.setWindowTitle("SciQLop")
