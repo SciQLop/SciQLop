@@ -12,15 +12,17 @@ SCIQLOP_CONFIG_DIR = str(user_config_dir(appname="sciqlop", appauthor="LPP", ens
 
 T = TypeVar('T', bound='ConfigEntry')
 
+
 class SettingsCategory(str, Enum):
-     PLUGINS = "plugins"
-     WORKSPACES = "workspaces"
-     APPLICATION = "application"
-     APPEARANCE = "appearance"
+    PLUGINS = "plugins"
+    WORKSPACES = "workspaces"
+    APPLICATION = "application"
+    APPEARANCE = "appearance"
 
 
 class ConfigEntry(BaseModel):
     category: ClassVar[str]
+    subcategory: ClassVar[str]
 
     _entries_: ClassVar[dict[str, Type["ConfigEntry"]]] = {}
 
@@ -30,18 +32,20 @@ class ConfigEntry(BaseModel):
             raise ValueError(f"Duplicate entry name: {cls.__name__}")
         if not hasattr(cls, 'category') or not isinstance(cls.category, str) or cls.category == "":
             raise ValueError(f"Entry class {cls.__name__} must have a string 'category' attribute")
+        if not hasattr(cls, 'subcategory') or not isinstance(cls.subcategory, str) or cls.subcategory == "":
+            raise ValueError(f"Entry class {cls.__name__} must have a string 'subcategory' attribute")
         cls._entries_[cls.__name__] = cls
 
     @classmethod
     def list_entries(cls) -> dict[str, Type["ConfigEntry"]]:
         return cls._entries_
-    
+
     @classmethod
     def get_entry(cls, name: str) -> 'ConfigEntry':
         if name not in cls._entries_:
             raise ValueError(f"Entry not found: {name}")
         return cls._entries_[name]()
-    
+
     @classmethod
     def config_file(cls) -> str:
         return os.path.join(SCIQLOP_CONFIG_DIR, cls.__name__.lower() + ".yaml")
@@ -73,4 +77,3 @@ class ConfigEntry(BaseModel):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.save()
-
