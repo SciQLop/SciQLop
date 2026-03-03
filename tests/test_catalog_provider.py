@@ -342,3 +342,39 @@ def test_event_table_model_meta_columns(qtbot, qapp):
     assert "stop" in headers
     assert "index" in headers
     assert "catalog" in headers
+
+
+# --- Task 8: CatalogBrowser tests ---
+
+def test_catalog_browser_widget(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=2, events_per_catalog=10)
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    browser.show()
+
+    tree = browser._catalog_tree
+    model = tree.model()
+    assert model.rowCount() >= 1
+
+
+def test_catalog_browser_has_filter_bar(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from PySide6.QtWidgets import QLineEdit
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    assert browser._filter_bar is not None
+    assert isinstance(browser._filter_bar, QLineEdit)
+
+
+def test_catalog_browser_has_splitter(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from PySide6.QtWidgets import QSplitter
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    assert browser._splitter is not None
+    assert isinstance(browser._splitter, QSplitter)
