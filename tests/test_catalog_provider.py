@@ -662,6 +662,18 @@ def test_catalog_removed_emits_actual_catalog(qtbot, qapp):
     assert received[0] is cat  # Must be the actual catalog, not None
 
 
+# --- Task 2: No busy-wait in _load_events ---
+
+def test_tscat_provider_load_events_no_busy_wait():
+    """Verify _load_events does not use a busy-wait loop."""
+    import inspect
+    from SciQLop.plugins.tscat_catalogs.tscat_provider import TscatCatalogProvider
+    source = inspect.getsource(TscatCatalogProvider._load_events)
+    assert "for _ in range" not in source, "Busy-wait loop should be removed"
+    assert "QThread.sleep" not in source, "QThread.sleep should be removed"
+    assert "processEvents" not in source, "processEvents loop should be removed"
+
+
 # --- Task 10: Public API exports ---
 
 def test_public_api_imports(qtbot, qapp):
