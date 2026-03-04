@@ -27,6 +27,11 @@ class CatalogOverlay(QObject):
         for event in events:
             self._add_span(event)
 
+    def clear(self) -> None:
+        for span in self._span_collection.spans():
+            self._span_collection.delete_span(span)
+        self._event_by_span_id.clear()
+
     @property
     def catalog(self) -> Catalog:
         return self._catalog

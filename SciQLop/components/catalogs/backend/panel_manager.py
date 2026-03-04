@@ -65,6 +65,7 @@ class PanelCatalogManager(QObject):
     def remove_catalog(self, catalog: Catalog) -> None:
         overlay = self._overlays.pop(catalog.uuid, None)
         if overlay is not None:
+            overlay.clear()
             overlay.deleteLater()
 
     def overlay(self, catalog_uuid: str) -> CatalogOverlay | None:
