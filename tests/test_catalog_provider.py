@@ -771,3 +771,20 @@ def test_provider_remove_event_public_api(qtbot, qapp):
     assert len(provider.events(catalog)) == 4
     assert event_to_remove.uuid not in [e.uuid for e in provider.events(catalog)]
     assert len(signals) == 1
+
+
+# --- Task 6: CocatCatalogProvider is a CatalogProvider ---
+
+def test_cocat_provider_is_catalog_provider(qtbot, qapp):
+    """CocatCatalogProvider should be a CatalogProvider subclass."""
+    import importlib
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider
+    # Import the module directly to avoid the package __init__ chain
+    # which pulls in cocat/wire_websocket dependencies via client.py
+    spec = importlib.util.spec_from_file_location(
+        "cocat_provider",
+        "SciQLop/plugins/collaborative_catalogs/cocat_provider.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert issubclass(mod.CocatCatalogProvider, CatalogProvider)
