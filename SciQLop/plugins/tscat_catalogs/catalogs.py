@@ -36,6 +36,8 @@ class Plugin(QObject):
         self.manager_ui = TSCatGUI()
         from .lightweight_manager import LightweightManager
         self.lightweight_manager = LightweightManager(main_window=main_window, manager_ui=self.manager_ui)
+        from .tscat_provider import TscatCatalogProvider
+        self._catalog_provider = TscatCatalogProvider(parent=self)
         self.lightweight_manager.setWindowIcon(get_current_style_icon("catalogue"))
         self.show_catalog = CatalogGUISpawner(self.manager_ui)
         self.main_window = main_window
@@ -45,6 +47,20 @@ class Plugin(QObject):
 
         main_window.panels_list_changed.connect(self.lightweight_manager.update_panels_list)
         main_window.add_side_pan(self.lightweight_manager)
+
+        from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+        self._catalog_browser = CatalogBrowser()
+        self._catalog_browser.setWindowTitle("Catalog Browser")
+        main_window.add_side_pan(self._catalog_browser)
+
+        # Connect to existing panels
+        for panel_name in main_window.plot_panels():
+            panel = main_window.plot_panel(panel_name)
+            if panel is not None:
+                self._catalog_browser.connect_to_panel(panel)
+
+        # Connect to future panels
+        main_window.panel_added.connect(self._catalog_browser.connect_to_panel)
 
 
     def catalogs(self)-> List[str]:
