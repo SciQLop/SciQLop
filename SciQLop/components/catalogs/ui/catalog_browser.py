@@ -126,6 +126,28 @@ class CatalogBrowser(QWidget):
             cat = self._current_catalog
             menu_action.triggered.connect(lambda checked, cb=action.callback, c=cat: cb(c))
 
+    def highlight_event(self, event) -> None:
+        """Select the row in the event table matching the given event."""
+        row = self._event_model.row_for_event(event)
+        if row >= 0:
+            index = self._event_model.index(row, 0)
+            from PySide6.QtCore import QItemSelectionModel
+            self._event_table.selectionModel().setCurrentIndex(
+                index, QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
+            )
+
+    def connect_to_panel(self, panel) -> None:
+        """Wire bidirectional event selection between this browser and a panel."""
+        manager = panel.catalog_manager
+        self.event_selected.connect(manager.select_event)
+        manager.event_clicked.connect(self.highlight_event)
+
+    def disconnect_from_panel(self, panel) -> None:
+        """Remove bidirectional event selection wiring for a panel."""
+        manager = panel.catalog_manager
+        self.event_selected.disconnect(manager.select_event)
+        manager.event_clicked.disconnect(self.highlight_event)
+
     def _on_add_event(self) -> None:
         pass  # To be implemented by higher-level code
 

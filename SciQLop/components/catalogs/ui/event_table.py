@@ -38,6 +38,13 @@ class EventTableModel(QAbstractTableModel):
             return self._events[row]
         return None
 
+    def row_for_event(self, event) -> int:
+        """Return the row index of the event matching by uuid, or -1 if not found."""
+        for i, e in enumerate(self._events):
+            if e.uuid == event.uuid:
+                return i
+        return -1
+
     # ---- QAbstractTableModel interface ----
 
     def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
