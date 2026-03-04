@@ -146,6 +146,19 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         if time_range is not None:
             self.time_range = time_range
 
+        from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager
+        self._catalog_manager = PanelCatalogManager(self)
+
+    @property
+    def catalog_manager(self):
+        return self._catalog_manager
+
+    def contextMenuEvent(self, event):
+        from PySide6.QtWidgets import QMenu
+        menu = QMenu(self)
+        self._catalog_manager.build_catalogs_menu(menu)
+        menu.exec(event.globalPos())
+
     @SciQLopProperty(TimeRange)
     def time_range(self) -> TimeRange:
         return self.time_axis_range()

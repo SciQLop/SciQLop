@@ -55,6 +55,15 @@ def test_manager_interaction_mode(qtbot, qapp):
     assert manager.mode == InteractionMode.EDIT
 
 
+def test_panel_has_catalog_manager(qtbot, qapp):
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+
+    panel = TimeSyncPanel("test-panel")
+    assert hasattr(panel, 'catalog_manager')
+    from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager
+    assert isinstance(panel.catalog_manager, PanelCatalogManager)
+
+
 def test_manager_edit_mode_sets_spans_writable(qtbot, qapp):
     from SciQLop.components.catalogs.backend.panel_manager import (
         PanelCatalogManager, InteractionMode,
