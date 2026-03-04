@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QObject, Signal, Qt
+from PySide6.QtCore import QObject, Signal, Qt, QTimer
+from datetime import datetime, timezone
 
 from SciQLopPlots import MultiPlotsVSpanCollection
 from SciQLop.core import TimeRange
@@ -19,16 +20,29 @@ class CatalogOverlay(QObject):
         self._panel = panel
         self._color = color_for_catalog(catalog.uuid)
         self._read_only = True
+        self._lazy = False
 
         self._span_collection = MultiPlotsVSpanCollection(panel)
         self._event_by_span_id: dict[str, CatalogEvent] = {}
 
-        events = catalog.provider.events(catalog)
-        for event in events:
-            self._add_span(event)
-
         # React to event list changes
         catalog.provider.events_changed.connect(self._on_events_changed)
+
+        # Decide: lazy or eager
+        all_events = catalog.provider.events(catalog)
+        if len(all_events) >= 5000:
+            self._lazy = True
+            self._debounce = QTimer(self)
+            self._debounce.setSingleShot(True)
+            self._debounce.setInterval(200)
+            self._debounce.timeout.connect(self._refresh_visible)
+            # Connect to panel time range changes
+            if hasattr(panel, 'time_range_changed'):
+                panel.time_range_changed.connect(self._on_time_range_changed)
+            self._refresh_visible()
+        else:
+            for event in all_events:
+                self._add_span(event)
 
     def clear(self) -> None:
         for span in self._span_collection.spans():
@@ -91,8 +105,42 @@ class CatalogOverlay(QObject):
         event.start = datetime.fromtimestamp(new_range.start, tz=timezone.utc)
         event.stop = datetime.fromtimestamp(new_range.stop, tz=timezone.utc)
 
+    def _on_time_range_changed(self, *args) -> None:
+        if self._lazy:
+            self._debounce.start()
+
+    def _refresh_visible(self) -> None:
+        """Load events visible in the current panel time range (with 2x margin)."""
+        try:
+            tr = self._panel.time_range
+            duration = tr.stop - tr.start
+            margin = duration  # 1x margin on each side
+            start = datetime.fromtimestamp(tr.start - margin, tz=timezone.utc)
+            stop = datetime.fromtimestamp(tr.stop + margin, tz=timezone.utc)
+        except Exception:
+            return
+
+        new_events = self._catalog.provider.events(self._catalog, start, stop)
+        new_uuids = {e.uuid for e in new_events}
+        current_uuids = set(self._event_by_span_id.keys())
+
+        # Remove out-of-range spans
+        for uuid in current_uuids - new_uuids:
+            span = self._span_collection.span(uuid)
+            if span is not None:
+                self._span_collection.delete_span(span)
+            self._event_by_span_id.pop(uuid, None)
+
+        # Add new visible spans
+        for event in new_events:
+            if event.uuid not in current_uuids:
+                self._add_span(event)
+
     def _on_events_changed(self, changed_catalog: Catalog) -> None:
         if changed_catalog.uuid != self._catalog.uuid:
+            return
+        if self._lazy:
+            self._refresh_visible()
             return
         current_uuids = set(self._event_by_span_id.keys())
         new_events = self._catalog.provider.events(self._catalog)
