@@ -4,7 +4,6 @@ from PySide6.QtCore import QObject, Signal, Qt
 
 from SciQLopPlots import MultiPlotsVSpanCollection
 from SciQLop.core import TimeRange
-from SciQLop.components.plotting.backend.time_span_controller import TimeSpanController
 from SciQLop.components.catalogs.backend.provider import CatalogEvent, Catalog
 from SciQLop.components.catalogs.backend.color_palette import color_for_catalog
 
@@ -22,15 +21,11 @@ class CatalogOverlay(QObject):
         self._read_only = True
 
         self._span_collection = MultiPlotsVSpanCollection(panel)
-        self._controller = TimeSpanController(panel, parent=self)
         self._event_by_span_id: dict[str, CatalogEvent] = {}
 
         events = catalog.provider.events(catalog)
-        spans = []
         for event in events:
-            span = self._add_span(event)
-            spans.append(span)
-        self._controller.spans = spans
+            self._add_span(event)
 
     @property
     def catalog(self) -> Catalog:

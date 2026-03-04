@@ -3,6 +3,7 @@ from typing import Optional, List, Union
 import numpy as np
 from PySide6.QtCore import QMimeData
 from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QWidget
 from SciQLopPlots import SciQLopMultiPlotPanel, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
     ParameterType, GraphType, SciQLopNDProjectionPlot
 
@@ -148,16 +149,30 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
         from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager
         self._catalog_manager = PanelCatalogManager(self)
+        self.installEventFilter(self)
+        self.plot_added.connect(self._install_filter_on_plot)
 
     @property
     def catalog_manager(self):
         return self._catalog_manager
 
-    def contextMenuEvent(self, event):
+    def _install_filter_on_plot(self, plot):
+        plot.installEventFilter(self)
+        for child in plot.findChildren(QWidget):
+            child.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        from PySide6.QtCore import QEvent
+        if event.type() == QEvent.Type.ContextMenu:
+            self._show_catalog_menu(event.globalPos())
+            return True
+        return super().eventFilter(obj, event)
+
+    def _show_catalog_menu(self, global_pos):
         from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
         self._catalog_manager.build_catalogs_menu(menu)
-        menu.exec(event.globalPos())
+        menu.exec(global_pos)
 
     @SciQLopProperty(TimeRange)
     def time_range(self) -> TimeRange:
