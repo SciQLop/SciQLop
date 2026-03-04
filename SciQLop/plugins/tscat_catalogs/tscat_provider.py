@@ -13,7 +13,8 @@ from SciQLop.components.catalogs import (
 )
 
 from tscat_gui.tscat_driver.model import tscat_model
-from tscat_gui.tscat_driver.actions import SetAttributeAction
+from tscat_gui.tscat_driver.actions import SetAttributeAction, CreateEntityAction, RemoveEntitiesAction, AddEventsToCatalogueAction
+import tscat
 from tscat_gui.model_base.constants import EntityRole
 
 
@@ -136,6 +137,22 @@ class TscatCatalogProvider(CatalogProvider):
             Capability.DELETE_EVENTS,
             Capability.CREATE_CATALOGS,
         }
+
+    def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
+        tscat_model.do(CreateEntityAction(
+            user_callback=None,
+            cls=tscat._Event,
+            args=dict(start=event.start, stop=event.stop, author="SciQLop"),
+        ))
+        super().add_event(catalog, event)
+
+    def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
+        tscat_model.do(RemoveEntitiesAction(
+            user_callback=None,
+            uuids=[event.uuid],
+            permanently=False,
+        ))
+        super().remove_event(catalog, event)
 
     def _load_events(self, catalog: Catalog) -> None:
         catalog_model = tscat_model.catalog(catalog.uuid)

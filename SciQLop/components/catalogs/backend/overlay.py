@@ -27,6 +27,9 @@ class CatalogOverlay(QObject):
         for event in events:
             self._add_span(event)
 
+        # React to event list changes
+        catalog.provider.events_changed.connect(self._on_events_changed)
+
     def clear(self) -> None:
         for span in self._span_collection.spans():
             self._span_collection.delete_span(span)
@@ -87,6 +90,25 @@ class CatalogOverlay(QObject):
         from datetime import datetime, timezone
         event.start = datetime.fromtimestamp(new_range.start, tz=timezone.utc)
         event.stop = datetime.fromtimestamp(new_range.stop, tz=timezone.utc)
+
+    def _on_events_changed(self, changed_catalog: Catalog) -> None:
+        if changed_catalog.uuid != self._catalog.uuid:
+            return
+        current_uuids = set(self._event_by_span_id.keys())
+        new_events = self._catalog.provider.events(self._catalog)
+        new_uuids = {e.uuid for e in new_events}
+
+        # Remove stale spans
+        for uuid in current_uuids - new_uuids:
+            span = self._span_collection.span(uuid)
+            if span is not None:
+                self._span_collection.delete_span(span)
+            self._event_by_span_id.pop(uuid, None)
+
+        # Add new spans
+        for event in new_events:
+            if event.uuid not in current_uuids:
+                self._add_span(event)
 
     def _on_span_selected(self, selected: bool, event: CatalogEvent) -> None:
         if selected:

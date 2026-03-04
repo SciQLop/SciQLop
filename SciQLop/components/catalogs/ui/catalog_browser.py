@@ -15,7 +15,9 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
-from ..backend.provider import Capability, CatalogProvider, Catalog
+from datetime import datetime, timezone, timedelta
+import uuid as _uuid
+from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent
 from .catalog_tree import CatalogTreeModel
 from .event_table import EventTableModel
 
@@ -176,7 +178,32 @@ class CatalogBrowser(QWidget):
         manager.event_clicked.disconnect(self.highlight_event)
 
     def _on_add_event(self) -> None:
-        pass  # To be implemented by higher-level code
+        if self._current_provider is None or self._current_catalog is None:
+            return
+        caps = self._current_provider.capabilities(self._current_catalog)
+        if Capability.CREATE_EVENTS not in caps:
+            return
+        now = datetime.now(tz=timezone.utc)
+        event = CatalogEvent(
+            uuid=str(_uuid.uuid4()),
+            start=now - timedelta(minutes=30),
+            stop=now + timedelta(minutes=30),
+        )
+        self._current_provider.add_event(self._current_catalog, event)
+        # Refresh event table
+        events = self._current_provider.events(self._current_catalog)
+        self._event_model.set_events(events)
 
     def _on_delete(self) -> None:
-        pass  # To be implemented by higher-level code
+        if self._current_provider is None:
+            return
+        selected = self._event_table.selectionModel().currentIndex()
+        if selected.isValid() and self._current_catalog is not None:
+            event = self._event_model.event_at(selected.row())
+            if event is not None:
+                caps = self._current_provider.capabilities(self._current_catalog)
+                if Capability.DELETE_EVENTS in caps:
+                    self._current_provider.remove_event(self._current_catalog, event)
+                    events = self._current_provider.events(self._current_catalog)
+                    self._event_model.set_events(events)
+                    return

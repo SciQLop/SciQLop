@@ -731,3 +731,43 @@ def test_catalog_browser_filter_hides_non_matching(qtbot, qapp):
     provider_idx = find_provider_idx()
     assert provider_idx is not None
     assert proxy.rowCount(provider_idx) == 3
+
+
+# --- Task 4: Public mutation API ---
+
+def test_provider_add_event_public_api(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+    from datetime import datetime, timezone
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=0)
+    catalog = provider.catalogs()[0]
+
+    signals = []
+    provider.events_changed.connect(lambda c: signals.append(c))
+
+    event = CatalogEvent(
+        uuid="new-1",
+        start=datetime(2020, 6, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 6, 1, 1, tzinfo=timezone.utc),
+    )
+    provider.add_event(catalog, event)
+
+    assert len(provider.events(catalog)) == 1
+    assert len(signals) == 1
+
+def test_provider_remove_event_public_api(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=5)
+    catalog = provider.catalogs()[0]
+    events = provider.events(catalog)
+    event_to_remove = events[2]
+
+    signals = []
+    provider.events_changed.connect(lambda c: signals.append(c))
+    provider.remove_event(catalog, event_to_remove)
+
+    assert len(provider.events(catalog)) == 4
+    assert event_to_remove.uuid not in [e.uuid for e in provider.events(catalog)]
+    assert len(signals) == 1

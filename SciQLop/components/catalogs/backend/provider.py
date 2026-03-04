@@ -129,3 +129,16 @@ class CatalogProvider(QObject):
         except ValueError:
             pass
         self.events_changed.emit(catalog)
+
+    def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
+        """Public API: add an event to a catalog. Override for backend persistence."""
+        self._add_event(catalog, event)
+
+    def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
+        """Public API: remove an event from a catalog. Override for backend persistence."""
+        self._remove_event(catalog, event)
+
+    def remove_catalog(self, catalog: Catalog) -> None:
+        """Public API: remove a catalog. Override for backend persistence."""
+        self._events.pop(catalog.uuid, None)
+        self.catalog_removed.emit(catalog)
