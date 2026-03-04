@@ -79,8 +79,10 @@ class PanelCatalogManager(QObject):
         menu = parent_menu.addMenu("Catalogs")
         registry = CatalogRegistry.instance()
         for provider in registry.providers():
+            provider_menu = menu.addMenu(provider.name)
             for catalog in provider.catalogs():
-                action = menu.addAction(f"{provider.name} / {catalog.name}")
+                target_menu = self._get_or_create_submenu(provider_menu, catalog.path)
+                action = target_menu.addAction(catalog.name)
                 action.setCheckable(True)
                 action.setChecked(catalog.uuid in self._overlays)
                 action.toggled.connect(
@@ -95,6 +97,21 @@ class PanelCatalogManager(QObject):
             action.setChecked(m == self._mode)
             action.triggered.connect(lambda checked, mode=m: setattr(self, 'mode', mode))
         return menu
+
+    @staticmethod
+    def _get_or_create_submenu(menu: QMenu, path: list[str]) -> QMenu:
+        current = menu
+        for segment in path:
+            existing = None
+            for action in current.actions():
+                if action.menu() and action.text() == segment:
+                    existing = action.menu()
+                    break
+            if existing is not None:
+                current = existing
+            else:
+                current = current.addMenu(segment)
+        return current
 
     def _on_event_clicked(self, event: CatalogEvent) -> None:
         if self._mode == InteractionMode.JUMP:
