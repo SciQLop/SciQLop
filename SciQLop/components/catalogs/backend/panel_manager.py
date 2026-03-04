@@ -79,7 +79,8 @@ class PanelCatalogManager(QObject):
         menu = parent_menu.addMenu("Catalogs")
         registry = CatalogRegistry.instance()
         for provider in registry.providers():
-            provider_menu = menu.addMenu(provider.name)
+            provider_menu = QMenu(provider.name, menu)
+            menu.addMenu(provider_menu)
             for catalog in provider.catalogs():
                 target_menu = self._get_or_create_submenu(provider_menu, catalog.path)
                 action = target_menu.addAction(catalog.name)
@@ -90,7 +91,8 @@ class PanelCatalogManager(QObject):
                 )
 
         menu.addSeparator()
-        mode_menu = menu.addMenu("Mode")
+        mode_menu = QMenu("Mode", menu)
+        menu.addMenu(mode_menu)
         for m in InteractionMode:
             action = mode_menu.addAction(m.value.capitalize())
             action.setCheckable(True)
@@ -110,7 +112,9 @@ class PanelCatalogManager(QObject):
             if existing is not None:
                 current = existing
             else:
-                current = current.addMenu(segment)
+                submenu = QMenu(segment, current)
+                current.addMenu(submenu)
+                current = submenu
         return current
 
     def _on_event_clicked(self, event: CatalogEvent) -> None:
