@@ -312,7 +312,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def plot_panel(self, name: str) -> Union[TimeSyncPanel, None]:
         widget: QtAds.CDockWidget = self.dock_manager.findDockWidget(name)
-        if widget:
+        if widget and isinstance(widget.widget(), SciQLopMultiPlotPanel):
             return widget.widget()
         return None
 
