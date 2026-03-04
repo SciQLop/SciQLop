@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from PySide6.QtCore import QObject, QTimer, Slot
+from PySide6.QtCore import QObject, QThread, QTimer, Slot
 
 from SciQLop.components.catalogs import (
     Capability,
@@ -138,7 +138,16 @@ class TscatCatalogProvider(CatalogProvider):
         }
 
     def _load_events(self, catalog: Catalog) -> None:
+        from SciQLop.core.sciqlop_application import sciqlop_app
         catalog_model = tscat_model.catalog(catalog.uuid)
+        # tscat catalog models load events asynchronously;
+        # busy-wait until rowCount becomes non-zero (matches LightweightManager approach)
+        for _ in range(5000):
+            if catalog_model.rowCount() == 0:
+                sciqlop_app().processEvents()
+                QThread.sleep(1)
+            else:
+                break
         events: list[CatalogEvent] = []
         for row in range(catalog_model.rowCount()):
             idx = catalog_model.index(row, 0)
