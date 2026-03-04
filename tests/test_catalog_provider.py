@@ -625,6 +625,43 @@ def test_tree_model_prune_empty_folders(qtbot, qapp):
     assert model.rowCount(provider_idx) == 0
 
 
+# --- Task 1: catalog_removed must emit actual Catalog, not None ---
+
+def test_catalog_removed_emits_actual_catalog(qtbot, qapp):
+    """catalog_removed must emit the actual Catalog object, not None."""
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability
+
+    class RemovableProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="Removable")
+            self._cats = []
+
+        def catalogs(self):
+            return list(self._cats)
+
+        def capabilities(self, catalog=None):
+            return {Capability.DELETE_CATALOGS}
+
+        def add_test_catalog(self, cat):
+            self._cats.append(cat)
+            self.catalog_added.emit(cat)
+
+        def remove_test_catalog(self, cat):
+            self._cats.remove(cat)
+            self.catalog_removed.emit(cat)
+
+    provider = RemovableProvider()
+    cat = Catalog(uuid="cat-1", name="C1", provider=provider, path=[])
+    provider.add_test_catalog(cat)
+
+    received = []
+    provider.catalog_removed.connect(lambda c: received.append(c))
+    provider.remove_test_catalog(cat)
+
+    assert len(received) == 1
+    assert received[0] is cat  # Must be the actual catalog, not None
+
+
 # --- Task 10: Public API exports ---
 
 def test_public_api_imports(qtbot, qapp):

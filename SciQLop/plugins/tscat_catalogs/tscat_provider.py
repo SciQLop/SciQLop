@@ -159,6 +159,7 @@ class TscatCatalogProvider(CatalogProvider):
     @Slot()
     def _on_root_rows_changed(self, *args) -> None:
         old_uuids = set(self._known_uuids)
+        old_catalogs = {c.uuid: c for c in (self._catalog_cache or [])}
         self._catalog_cache = None
         new_catalogs = self.catalogs()
         new_uuids = self._known_uuids
@@ -168,8 +169,12 @@ class TscatCatalogProvider(CatalogProvider):
                 self.catalog_added.emit(cat)
 
         removed_uuids = old_uuids - new_uuids
-        if removed_uuids:
-            self.catalog_removed.emit(None)
+        for uuid in removed_uuids:
+            removed_cat = old_catalogs.get(uuid)
+            if removed_cat is not None:
+                self.catalog_removed.emit(removed_cat)
+                # Clean up cached events for removed catalog
+                self._events.pop(uuid, None)
 
     @Slot()
     def _on_action_done(self, action) -> None:
