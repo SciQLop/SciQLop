@@ -684,3 +684,50 @@ def test_public_api_imports(qtbot, qapp):
     )
     assert CatalogEvent is not None
     assert CatalogRegistry is not None
+
+
+# --- Task 3: Filter bar wiring ---
+
+def test_catalog_browser_filter_hides_non_matching(qtbot, qapp):
+    """Filter bar should hide catalogs that don't match the filter text."""
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    # Create provider first so browser's tree model picks it up during __init__
+    provider = DummyProvider(num_catalogs=3)
+    provider._catalogs[0].name = "Alpha"
+    provider._catalogs[1].name = "Beta"
+    provider._catalogs[2].name = "Gamma"
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+
+    assert hasattr(browser, '_proxy_model')
+    proxy = browser._proxy_model
+
+    # Find our provider's index in the proxy model
+    def find_provider_idx():
+        for i in range(proxy.rowCount()):
+            idx = proxy.index(i, 0)
+            src = proxy.mapToSource(idx)
+            node = browser._tree_model.node_from_index(src)
+            if node.provider is provider:
+                return idx
+        return None
+
+    # All visible initially
+    provider_idx = find_provider_idx()
+    assert provider_idx is not None
+    assert proxy.rowCount(provider_idx) == 3
+
+    # Filter to "alp"
+    browser._filter_bar.setText("alp")
+    provider_idx = find_provider_idx()
+    assert provider_idx is not None
+    assert proxy.rowCount(provider_idx) == 1
+
+    # Clear filter
+    browser._filter_bar.setText("")
+    provider_idx = find_provider_idx()
+    assert provider_idx is not None
+    assert proxy.rowCount(provider_idx) == 3

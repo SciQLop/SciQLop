@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QModelIndex, Signal
+from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
@@ -20,6 +20,24 @@ from .catalog_tree import CatalogTreeModel
 from .event_table import EventTableModel
 
 
+class _CatalogFilterProxy(QSortFilterProxyModel):
+    """Case-insensitive substring filter that keeps ancestors of matching nodes."""
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
+        pattern = self.filterRegularExpression().pattern()
+        if not pattern:
+            return True
+        idx = self.sourceModel().index(source_row, 0, source_parent)
+        name = self.sourceModel().data(idx, Qt.ItemDataRole.DisplayRole) or ""
+        if pattern.lower() in name.lower():
+            return True
+        # Accept if any child matches (recursive)
+        for row in range(self.sourceModel().rowCount(idx)):
+            if self.filterAcceptsRow(row, idx):
+                return True
+        return False
+
+
 class CatalogBrowser(QWidget):
     """Dock-ready widget: tree of providers/catalogs + event table."""
 
@@ -37,10 +55,13 @@ class CatalogBrowser(QWidget):
 
         # --- tree view (left) ---
         self._tree_model = CatalogTreeModel()
+        self._proxy_model = _CatalogFilterProxy()
+        self._proxy_model.setSourceModel(self._tree_model)
         self._catalog_tree = QTreeView()
-        self._catalog_tree.setModel(self._tree_model)
+        self._catalog_tree.setModel(self._proxy_model)
         self._catalog_tree.setHeaderHidden(True)
         self._catalog_tree.selectionModel().currentChanged.connect(self._on_catalog_selected)
+        self._filter_bar.textChanged.connect(self._on_filter_changed)
 
         # --- event table (right) ---
         self._event_model = EventTableModel()
@@ -85,8 +106,14 @@ class CatalogBrowser(QWidget):
 
     # ---- slots ----
 
+    def _on_filter_changed(self, text: str) -> None:
+        self._proxy_model.setFilterFixedString(text)
+        if text:
+            self._catalog_tree.expandAll()
+
     def _on_catalog_selected(self, current: QModelIndex, previous: QModelIndex) -> None:
-        node = self._tree_model.node_from_index(current)
+        source_index = self._proxy_model.mapToSource(current)
+        node = self._tree_model.node_from_index(source_index)
         if node.catalog is not None:
             self._current_provider = node.provider
             self._current_catalog = node.catalog
