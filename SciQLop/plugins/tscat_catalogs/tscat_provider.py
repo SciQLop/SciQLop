@@ -167,22 +167,20 @@ class TscatCatalogProvider(CatalogProvider):
         if catalog_model.rowCount() > 0:
             self._read_events_from_model(catalog, catalog_model)
         else:
-            timeout = QTimer(self)
-            timeout.setSingleShot(True)
+            # tscat loads events asynchronously via GetCatalogueAction;
+            # the CatalogModel emits modelReset (not rowsInserted) when done.
+            # Poll with a non-blocking QTimer instead of busy-waiting.
+            self._deferred_load(catalog, catalog_model, retries=50)
 
-            def on_rows_inserted(*args):
-                timeout.stop()
-                catalog_model.rowsInserted.disconnect(on_rows_inserted)
-                self._read_events_from_model(catalog, catalog_model)
-
-            def on_timeout():
-                catalog_model.rowsInserted.disconnect(on_rows_inserted)
-                self.error_occurred.emit(f"Timeout loading events for {catalog.name}")
-                self._set_events(catalog, [])
-
-            catalog_model.rowsInserted.connect(on_rows_inserted)
-            timeout.timeout.connect(on_timeout)
-            timeout.start(5000)
+    def _deferred_load(self, catalog: Catalog, catalog_model, retries: int) -> None:
+        if catalog_model.rowCount() > 0:
+            self._read_events_from_model(catalog, catalog_model)
+        elif retries > 0:
+            QTimer.singleShot(100, lambda: self._deferred_load(catalog, catalog_model, retries - 1))
+        else:
+            self.error_occurred.emit(f"Timeout loading events for {catalog.name}")
+            self._set_events(catalog, [])
+            self.events_changed.emit(catalog)
 
     def _read_events_from_model(self, catalog: Catalog, catalog_model) -> None:
         events: list[CatalogEvent] = []
