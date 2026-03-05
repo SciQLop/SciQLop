@@ -48,11 +48,6 @@ class Plugin(QObject):
         main_window.panels_list_changed.connect(self.lightweight_manager.update_panels_list)
         main_window.add_side_pan(self.lightweight_manager)
 
-        from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
-        self._catalog_browser = CatalogBrowser()
-        self._catalog_browser.setWindowTitle("Catalog Browser")
-        main_window.add_side_pan(self._catalog_browser)
-
         # Connect to existing panels
         for panel_name in main_window.plot_panels():
             panel = main_window.plot_panel(panel_name)

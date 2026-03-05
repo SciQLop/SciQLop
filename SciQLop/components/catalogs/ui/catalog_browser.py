@@ -47,7 +47,8 @@ class CatalogBrowser(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-
+        self.setWindowTitle("Catalog Browser")
+        
         self._current_provider: CatalogProvider | None = None
         self._current_catalog: Catalog | None = None
 
