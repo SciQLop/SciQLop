@@ -72,7 +72,8 @@ dependencies = [
     "expression",
     "pydantic",
     "keyring",
-    "uv"
+    "uv",
+    "tomli_w"
 ]
 [project.urls]
 homepage = "https://github.com/SciQLop/SciQLop"
