@@ -5,10 +5,9 @@ from SciQLop.components.jupyter.jupyter_clients.clients_manager import ClientsMa
 # from .workspace_spec import WorkspaceSpecFile
 from .settings import SciQLopWorkspacesSettings
 from SciQLop.core.data_models.models import WorkspaceSpecFile
-from SciQLop.core.common.pip_process import pip_install_requirements
 from SciQLop.core.common import ensure_dir_exists
 from SciQLop.components.sciqlop_logging import getLogger
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import QObject, Signal
 from typing import List, Optional
 import shutil
 import os
@@ -20,7 +19,6 @@ log = getLogger(__name__)
 
 def create_workspace_dir(workspace_dir: str):
     ensure_dir_exists(workspace_dir)
-    ensure_dir_exists(os.path.join(workspace_dir, "dependencies"))
     ensure_dir_exists(os.path.join(workspace_dir, "scripts"))
 
 
@@ -40,7 +38,6 @@ class Workspace(QObject):
             self._workspace_dir = str(os.path.join(SciQLopWorkspacesSettings().workspaces_dir, workspace_dir or "default"))
         else:
             self._workspace_dir = workspace_spec.directory
-        self._dependencies_dir = str(os.path.join(self._workspace_dir, "dependencies"))
         self._ipykernel: Optional[InternalIPKernel] = None
 
         create_workspace_dir(self._workspace_dir)
@@ -48,9 +45,8 @@ class Workspace(QObject):
         self._workspace_spec = workspace_spec or WorkspaceSpecFile(
             os.path.join(self._workspace_dir, "workspace_spec.json"))
         self._workspace_spec.last_used = datetime.datetime.now().isoformat()
-        self.add_to_python_path(self._dependencies_dir, prepend=True, permanent=False)
         os.chdir(self._workspace_dir)
-        self._ensure_all_dependencies_installed()
+        self.dependencies_installed.emit()
 
     @property
     def workspace_dir(self):
@@ -78,11 +74,11 @@ class Workspace(QObject):
 
     def install_dependency(self, dependency):
         self._workspace_spec.dependencies.append(dependency)
-        self._ensure_all_dependencies_installed()
+        self._workspace_spec.save()
 
     def install_dependencies(self, dependencies: List[str]):
         self._workspace_spec.dependencies.extend(dependencies)
-        self._ensure_all_dependencies_installed()
+        self._workspace_spec.save()
 
     def add_files(self, files: List[str], destination: str = ""):
         for file in files:
@@ -101,32 +97,3 @@ class Workspace(QObject):
     def name(self, value):
         self._workspace_spec.name = value
 
-    @Slot()
-    def _dependencies_installed(self):
-        log.info("Dependencies installed")
-        log.info(self._install_proc.stdout)
-        log.info(self._install_proc.stderr)
-
-    def _ensure_all_dependencies_installed(self):
-        if len(self.dependencies):
-            if 'SCIQLOP_BUNDLED' in os.environ:
-                git_dependencies = list(filter(lambda x: x.startswith("git+"), self.dependencies))
-                if len(git_dependencies):
-                    from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.warning(None, "SciQLop", "The following dependencies are git repositories:\n\n"
-                                                         f"{', '.join(git_dependencies)}\n\n"
-                                                         "These dependencies are not supported in the bundled version of SciQLop because git is not provided.")
-                    return
-
-            log.info(f"Installing dependencies: {self.dependencies}")
-            with open(os.path.join(self._workspace_dir, "requirements.txt"), 'w') as f:
-                f.write('\n'.join(self.dependencies))
-            self._install_proc = pip_install_requirements(
-                requirements_file=os.path.join(self._workspace_dir, "requirements.txt"),
-                install_dir=self._dependencies_dir, cwd=self._workspace_dir)
-            self._install_proc.finished.connect(self.dependencies_installed)
-            self._install_proc.finished.connect(self._dependencies_installed)
-            self._install_proc.start()
-        else:
-            log.info("No dependencies to install")
-            self.dependencies_installed.emit()
