@@ -1,4 +1,12 @@
-"""SciQLop launcher — workspace-aware supervisor process."""
+"""SciQLop launcher — workspace-aware supervisor process.
+
+In production (PyPI, AppImage, DMG, MSIX), the launcher creates a workspace
+venv with --system-site-packages and spawns the Qt app as a subprocess.
+
+In development mode (editable install), the launcher skips venv creation
+and runs the Qt app directly using the current Python, since the dev venv
+already has all dependencies.
+"""
 
 from __future__ import annotations
 
@@ -11,6 +19,22 @@ from pathlib import Path
 EXIT_RESTART = 64
 EXIT_SWITCH_WORKSPACE = 65
 SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"
+
+
+def _is_editable_install() -> bool:
+    """Detect if SciQLop is installed as an editable package (development mode)."""
+    try:
+        from importlib.metadata import distribution
+        dist = distribution("SciQLop")
+        # Check for direct_url.json which indicates a direct/editable install
+        direct_url = dist.read_text("direct_url.json")
+        if direct_url:
+            import json
+            info = json.loads(direct_url)
+            return info.get("dir_info", {}).get("editable", False)
+    except Exception:
+        pass
+    return False
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -61,6 +85,7 @@ def _read_switch_target(workspace_dir: Path) -> str | None:
 
 
 def run_sciqlop_app(python_path: Path, workspace_dir: Path) -> int:
+    """Launch the SciQLop Qt app as a subprocess using the workspace venv Python."""
     env = os.environ.copy()
     env["SCIQLOP_WORKSPACE_DIR"] = str(workspace_dir)
     env["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
@@ -71,15 +96,37 @@ def run_sciqlop_app(python_path: Path, workspace_dir: Path) -> int:
     return result.returncode
 
 
-def main(argv: list[str] | None = None) -> int:
-    from SciQLop.core.workspace_setup import prepare_workspace
+def run_sciqlop_app_inprocess(workspace_dir: Path) -> int:
+    """Run the SciQLop Qt app in the current process (development mode).
 
+    Used when SciQLop is installed as editable — no subprocess needed since
+    the current Python already has all dependencies.
+    """
+    os.environ["SCIQLOP_WORKSPACE_DIR"] = str(workspace_dir)
+    os.environ["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
+    from SciQLop.sciqlop_app import main as app_main
+    app_main()
+    # Check for restart/switch signals
+    if os.environ.get("RESTART_SCIQLOP") is not None:
+        return EXIT_RESTART
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     workspace_dir = resolve_workspace_dir(args.workspace, args.sciqlop_file)
+    dev_mode = _is_editable_install()
 
     while True:
-        python_path = prepare_workspace(workspace_dir)
-        exit_code = run_sciqlop_app(python_path, workspace_dir)
+        if dev_mode:
+            # Development mode: skip venv, run in-process
+            workspace_dir.mkdir(parents=True, exist_ok=True)
+            exit_code = run_sciqlop_app_inprocess(workspace_dir)
+        else:
+            # Production mode: prepare workspace venv and spawn subprocess
+            from SciQLop.core.workspace_setup import prepare_workspace
+            python_path = prepare_workspace(workspace_dir)
+            exit_code = run_sciqlop_app(python_path, workspace_dir)
 
         if exit_code == EXIT_RESTART:
             continue
