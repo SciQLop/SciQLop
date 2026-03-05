@@ -1,85 +1,93 @@
+"""SciQLop launcher — workspace-aware supervisor process."""
+
+from __future__ import annotations
+
+import argparse
 import os
+import subprocess
 import sys
-import re
-from itertools import filterfalse
-from typing import Optional, List
-from packaging.version import Version
-from SciQLop import sciqlop_dependencies
-from SciQLop.core.common.python import run_python_module_cmd
-from subprocess import run, PIPE
+from pathlib import Path
 
-_requirements_rx = re.compile(r"^(?P<package>[\w\d_\-]+)(?P<operator>[=<>]+)?(?P<version>[\d\.\*]+)?")
+EXIT_RESTART = 64
+EXIT_SWITCH_WORKSPACE = 65
+SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"
 
 
-def installed_version(package: str) -> Optional[str]:
-    from importlib.metadata import version
-    try:
-        return version(package)
-    except ModuleNotFoundError:
-        return None
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="SciQLop launcher")
+    parser.add_argument("--workspace", "-w", type=str, default=None,
+                        help="Workspace name or path")
+    parser.add_argument("sciqlop_file", nargs="?", default=None,
+                        help="Path to a .sciqlop or .sciqlop-archive file")
+    return parser.parse_args(argv if argv is not None else sys.argv[1:])
 
 
-def check_dependency(dependency: str) -> bool:
-    operators = {
-        "==": lambda a, b: a == b,
-        ">": lambda a, b: a > b,
-        "<": lambda a, b: a < b,
-        ">=": lambda a, b: a >= b,
-        "<=": lambda a, b: a <= b
-    }
-    if matched := _requirements_rx.match(dependency):
-        package, operator, version = matched.groups()
-        if _installed_version := installed_version(package):
-            if version is None:
-                return True
-            if operator is None:
-                return _installed_version is not None
-            if operator not in operators:
-                raise ValueError(f"Invalid operator: {operator}")
-            if '*' in version:
-                if matched := re.compile(re.escape(version).replace(r'\*', '.*')).match(_installed_version):
-                    version = matched.string
-                else:
-                    return False
-            return operators[operator](Version(_installed_version), Version(version.replace('.*', '')))
-    return False
+def resolve_workspace_dir(
+    workspace_name: str | None,
+    sciqlop_file: str | None,
+) -> Path:
+    from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
+
+    settings = SciQLopWorkspacesSettings()
+    workspaces_root = Path(settings.workspaces_dir)
+
+    if sciqlop_file:
+        sciqlop_path = Path(sciqlop_file)
+        if sciqlop_path.suffix == ".sciqlop":
+            return sciqlop_path.parent
+        # .sciqlop-archive handling added in Task 10
+
+    if workspace_name:
+        candidate = Path(workspace_name)
+        if candidate.is_absolute():
+            return candidate
+        return workspaces_root / workspace_name
+
+    return workspaces_root / "default"
 
 
-def missing_dependencies() -> List[str]:
-    dependencies = sciqlop_dependencies()
-    return list(filterfalse(check_dependency, dependencies))
+def _read_switch_target(workspace_dir: Path) -> str | None:
+    switch_file = workspace_dir / SWITCH_WORKSPACE_FILE
+    if switch_file.exists():
+        target = switch_file.read_text().strip()
+        switch_file.unlink()
+        return target
+    return None
 
 
-def install_missing_dependencies():
-    return run(
-        run_python_module_cmd("pip", "install", "--upgrade", *missing_dependencies()),
-        stdout=PIPE, stderr=PIPE).returncode == 0
+def run_sciqlop_app(python_path: Path, workspace_dir: Path) -> int:
+    env = os.environ.copy()
+    env["SCIQLOP_WORKSPACE_DIR"] = str(workspace_dir)
+    env["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
+    result = subprocess.run(
+        [str(python_path), "-m", "SciQLop.sciqlop_app"],
+        env=env,
+    )
+    return result.returncode
 
 
-def ask_for_installation(missing_dependencies: List[str]):
-    from tkinter import messagebox
-    return messagebox.askyesno("SciQLop", "Would you like to install the following missing dependencies?\n\n"
-                                          f"{', '.join(missing_dependencies)}")
+def main(argv: list[str] | None = None) -> int:
+    from SciQLop.core.workspace_setup import prepare_workspace
+
+    args = parse_args(argv)
+    workspace_dir = resolve_workspace_dir(args.workspace, args.sciqlop_file)
+
+    while True:
+        python_path = prepare_workspace(workspace_dir)
+        exit_code = run_sciqlop_app(python_path, workspace_dir)
+
+        if exit_code == EXIT_RESTART:
+            continue
+        elif exit_code == EXIT_SWITCH_WORKSPACE:
+            target = _read_switch_target(workspace_dir)
+            if target:
+                workspace_dir = resolve_workspace_dir(
+                    workspace_name=target, sciqlop_file=None
+                )
+            continue
+        else:
+            return exit_code
 
 
-def run_sciqlop():
-    if not os.environ.get('SCIQLOP_BUNDLED', False):
-        if missing := missing_dependencies():
-            if ask_for_installation(missing):
-                if not install_missing_dependencies():
-                    from tkinter import messagebox
-                    if not messagebox.askyesno("SciQLop", "Failed to install missing dependencies. Continue anyway?"):
-                        return 1
-    os.environ['SPEASY_SKIP_INIT_PROVIDERS'] = '1'
-    return run(run_python_module_cmd("SciQLop.sciqlop_app")).returncode
-
-
-def main():
-    # return code 64 means restart
-    while (return_code := run_sciqlop()) == 64:
-        pass
-    return return_code
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
