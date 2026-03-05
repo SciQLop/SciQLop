@@ -14,6 +14,7 @@ from SciQLop.components.plugins.backend.loader.loader import plugins_folders
 from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.core.plugin_deps import collect_plugin_dependencies
 from SciQLop.core.workspace_manifest import WorkspaceManifest
+from SciQLop.core.workspace_migration import migrate_workspace
 from SciQLop.core.workspace_project import generate_pyproject_toml
 from SciQLop.core.workspace_venv import WorkspaceVenv
 
@@ -58,6 +59,10 @@ def prepare_workspace(
     """
     workspace_dir = Path(workspace_dir)
     workspace_dir.mkdir(parents=True, exist_ok=True)
+
+    # Migrate from old workspace.json format if needed
+    if migrate_workspace(workspace_dir):
+        log.info("Workspace migrated from old format in %s", workspace_dir)
 
     manifest_path = workspace_dir / MANIFEST_FILENAME
 
