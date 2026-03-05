@@ -86,6 +86,32 @@ def test_resolve_sciqlop_file():
     assert d == Path("/path/to")
 
 
+def test_resolve_sciqlop_archive(tmp_path):
+    """Opening a .sciqlop-archive extracts and returns the workspace dir."""
+    from SciQLop.core.workspace_manifest import WorkspaceManifest
+    from SciQLop.core.workspace_archive import export_workspace
+
+    # Create a source workspace and archive it
+    src = tmp_path / "src"
+    src.mkdir()
+    WorkspaceManifest(name="Archived").save(src / "workspace.sciqlop")
+    archive = tmp_path / "test.sciqlop-archive"
+    export_workspace(src, archive)
+
+    mock_settings_cls = MagicMock()
+    mock_settings_cls.return_value.workspaces_dir = str(tmp_path / "workspaces")
+    with patch.dict("sys.modules", {
+        "SciQLop.components.workspaces": MagicMock(),
+        "SciQLop.components.workspaces.backend": MagicMock(),
+        "SciQLop.components.workspaces.backend.settings": MagicMock(
+            SciQLopWorkspacesSettings=mock_settings_cls
+        ),
+    }):
+        d = resolve_workspace_dir(workspace_name=None, sciqlop_file=str(archive))
+    assert d.name == "test"
+    assert (d / "workspace.sciqlop").exists()
+
+
 def test_read_switch_target(tmp_path):
     (tmp_path / ".sciqlop_switch_target").write_text("other-workspace\n")
     target = _read_switch_target(tmp_path)

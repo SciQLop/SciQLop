@@ -35,7 +35,12 @@ def resolve_workspace_dir(
         sciqlop_path = Path(sciqlop_file)
         if sciqlop_path.suffix == ".sciqlop":
             return sciqlop_path.parent
-        # .sciqlop-archive handling added in Task 10
+        elif sciqlop_path.suffix == ".sciqlop-archive":
+            from SciQLop.core.workspace_archive import import_workspace
+            target_dir = workspaces_root / sciqlop_path.stem
+            if not (target_dir / "workspace.sciqlop").exists():
+                import_workspace(sciqlop_path, target_dir)
+            return target_dir
 
     if workspace_name:
         candidate = Path(workspace_name)
