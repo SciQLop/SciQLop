@@ -1,6 +1,7 @@
 import os
 import platform
 import sys
+from pathlib import Path
 
 if platform.system() == 'Windows':
     import matplotlib.pyplot as plt
@@ -17,6 +18,22 @@ if platform.system() == 'Linux':
     print(f"Setting QT_QPA_PLATFORM to {os.environ['QT_QPA_PLATFORM']}")
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)) + '/..'))
+
+
+EXIT_SWITCH_WORKSPACE = 65
+SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"
+
+
+def switch_workspace(workspace_name: str) -> None:
+    """Signal the launcher to restart with a different workspace.
+
+    Writes the target workspace name to a file in the current workspace dir,
+    then tells Qt to exit with the switch workspace exit code.
+    """
+    workspace_dir = Path(os.environ.get("SCIQLOP_WORKSPACE_DIR", "."))
+    (workspace_dir / SWITCH_WORKSPACE_FILE).write_text(workspace_name)
+    from PySide6.QtWidgets import QApplication
+    QApplication.exit(EXIT_SWITCH_WORKSPACE)
 
 
 def start_sciqlop():
@@ -70,4 +87,4 @@ if __name__ == '__main__':
     main()
     if os.environ.get("RESTART_SCIQLOP", None) is not None:
         sys.exit(64)
-    sys.exit(1)
+    sys.exit(0)
