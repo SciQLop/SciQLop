@@ -116,11 +116,19 @@ class CatalogBrowser(QWidget):
     def _on_catalog_selected(self, current: QModelIndex, previous: QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(current)
         node = self._tree_model.node_from_index(source_index)
+        # Disconnect from previous provider's events_changed
+        if self._current_provider is not None:
+            try:
+                self._current_provider.events_changed.disconnect(self._on_events_changed)
+            except RuntimeError:
+                pass
         if node.catalog is not None:
             self._current_provider = node.provider
             self._current_catalog = node.catalog
             events = node.provider.events(node.catalog)
             self._event_model.set_events(events)
+            # Listen for async event loading
+            node.provider.events_changed.connect(self._on_events_changed)
         else:
             self._current_provider = node.provider
             self._current_catalog = None
@@ -132,6 +140,12 @@ class CatalogBrowser(QWidget):
             event = self._event_model.event_at(current.row())
             if event is not None:
                 self.event_selected.emit(event)
+
+    def _on_events_changed(self, catalog: Catalog) -> None:
+        """Refresh event table when async loading completes for the selected catalog."""
+        if self._current_catalog is not None and catalog.uuid == self._current_catalog.uuid:
+            events = self._current_provider.events(self._current_catalog)
+            self._event_model.set_events(events)
 
     def _update_toolbar(self) -> None:
         if self._current_provider is None:

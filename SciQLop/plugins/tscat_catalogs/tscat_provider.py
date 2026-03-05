@@ -192,6 +192,7 @@ class TscatCatalogProvider(CatalogProvider):
             if entity is not None:
                 events.append(TscatEvent(entity, parent=self))
         self._set_events(catalog, events)
+        self.events_changed.emit(catalog)
 
     @Slot()
     def _on_root_rows_changed(self, *args) -> None:
