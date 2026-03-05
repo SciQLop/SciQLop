@@ -3,9 +3,9 @@
 In production (PyPI, AppImage, DMG, MSIX), the launcher creates a workspace
 venv with --system-site-packages and spawns the Qt app as a subprocess.
 
-In development mode (editable install), the launcher skips venv creation
-and runs the Qt app directly using the current Python, since the dev venv
-already has all dependencies.
+In development mode (editable install), the launcher still sets up the
+workspace directory and metadata but uses the current Python (sys.executable)
+instead of a workspace venv, since the dev venv already has all dependencies.
 """
 
 from __future__ import annotations
@@ -96,20 +96,17 @@ def run_sciqlop_app(python_path: Path, workspace_dir: Path) -> int:
     return result.returncode
 
 
-def run_sciqlop_app_inprocess(workspace_dir: Path) -> int:
-    """Run the SciQLop Qt app in the current process (development mode).
+def _prepare_workspace_dev(workspace_dir: Path) -> None:
+    """Set up workspace directory and metadata in dev mode (no venv)."""
+    from SciQLop.core.workspace_migration import migrate_workspace
+    from SciQLop.core.workspace_manifest import WorkspaceManifest
 
-    Used when SciQLop is installed as editable — no subprocess needed since
-    the current Python already has all dependencies.
-    """
-    os.environ["SCIQLOP_WORKSPACE_DIR"] = str(workspace_dir)
-    os.environ["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
-    from SciQLop.sciqlop_app import main as app_main
-    app_main()
-    # Check for restart/switch signals
-    if os.environ.get("RESTART_SCIQLOP") is not None:
-        return EXIT_RESTART
-    return 0
+    workspace_dir.mkdir(parents=True, exist_ok=True)
+    migrate_workspace(workspace_dir)
+
+    manifest_path = workspace_dir / "workspace.sciqlop"
+    if not manifest_path.exists():
+        WorkspaceManifest.default(workspace_dir.name).save(manifest_path)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -119,9 +116,9 @@ def main(argv: list[str] | None = None) -> int:
 
     while True:
         if dev_mode:
-            # Development mode: skip venv, run in-process
-            workspace_dir.mkdir(parents=True, exist_ok=True)
-            exit_code = run_sciqlop_app_inprocess(workspace_dir)
+            # Dev mode: set up workspace metadata, use current Python
+            _prepare_workspace_dev(workspace_dir)
+            exit_code = run_sciqlop_app(Path(sys.executable), workspace_dir)
         else:
             # Production mode: prepare workspace venv and spawn subprocess
             from SciQLop.core.workspace_setup import prepare_workspace
