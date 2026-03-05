@@ -74,6 +74,18 @@ class PanelCatalogManager(QObject):
     def select_event(self, event: CatalogEvent) -> None:
         for overlay in self._overlays.values():
             overlay.select_event(event)
+        if self._mode == InteractionMode.JUMP:
+            from SciQLop.core import TimeRange
+            duration = event.stop.timestamp() - event.start.timestamp()
+            if duration <= 0:
+                margin = 3600.0  # 1 hour fallback for zero-duration events
+            else:
+                margin = duration * 4.5
+            tr = TimeRange(
+                event.start.timestamp() - margin,
+                event.stop.timestamp() + margin,
+            )
+            self._panel.time_range = tr
 
     def build_catalogs_menu(self, parent_menu: QMenu) -> QMenu:
         menu = parent_menu.addMenu("Catalogs")
