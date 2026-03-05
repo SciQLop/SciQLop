@@ -139,10 +139,18 @@ class TscatCatalogProvider(CatalogProvider):
         }
 
     def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
+        def _link_to_catalog(action):
+            tscat_model.do(AddEventsToCatalogueAction(
+                user_callback=None,
+                uuids=[action.entity.uuid],
+                catalogue_uuid=catalog.uuid,
+            ))
+
         tscat_model.do(CreateEntityAction(
-            user_callback=None,
+            user_callback=_link_to_catalog,
             cls=tscat._Event,
-            args=dict(start=event.start, stop=event.stop, author="SciQLop"),
+            args=dict(start=event.start, stop=event.stop, author="SciQLop",
+                      uuid=event.uuid),
         ))
         super().add_event(catalog, event)
 

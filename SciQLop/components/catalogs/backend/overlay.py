@@ -7,6 +7,9 @@ from SciQLopPlots import MultiPlotsVSpanCollection
 from SciQLop.core import TimeRange
 from SciQLop.components.catalogs.backend.provider import CatalogEvent, Catalog
 from SciQLop.components.catalogs.backend.color_palette import color_for_catalog
+from SciQLop.components.sciqlop_logging import getLogger
+
+log = getLogger(__name__)
 
 
 class CatalogOverlay(QObject):
@@ -45,6 +48,15 @@ class CatalogOverlay(QObject):
                 self._add_span(event)
 
     def clear(self) -> None:
+        try:
+            self._catalog.provider.events_changed.disconnect(self._on_events_changed)
+        except RuntimeError:
+            pass
+        if self._lazy and hasattr(self._panel, 'time_range_changed'):
+            try:
+                self._panel.time_range_changed.disconnect(self._on_time_range_changed)
+            except RuntimeError:
+                pass
         for span in self._span_collection.spans():
             self._span_collection.delete_span(span)
         self._event_by_span_id.clear()
@@ -101,7 +113,6 @@ class CatalogOverlay(QObject):
         return span
 
     def _on_span_range_changed(self, new_range: TimeRange, event: CatalogEvent) -> None:
-        from datetime import datetime, timezone
         event.start = datetime.fromtimestamp(new_range.start, tz=timezone.utc)
         event.stop = datetime.fromtimestamp(new_range.stop, tz=timezone.utc)
 
@@ -118,6 +129,7 @@ class CatalogOverlay(QObject):
             start = datetime.fromtimestamp(tr.start - margin, tz=timezone.utc)
             stop = datetime.fromtimestamp(tr.stop + margin, tz=timezone.utc)
         except Exception:
+            log.debug("Could not get panel time range for lazy refresh", exc_info=True)
             return
 
         new_events = self._catalog.provider.events(self._catalog, start, stop)
