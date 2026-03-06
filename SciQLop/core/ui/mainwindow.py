@@ -97,6 +97,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.catalogs_browser = CatalogBrowser(self)
         self.catalogs_browser.setWindowIcon(get_current_style_icon("catalogue"))
         self.add_side_pan(self.catalogs_browser)
+        self.panel_added.connect(self.catalogs_browser.connect_to_panel)
 
         self.workspace_manager = WorkspaceManagerUI(self)
         self.workspace_manager.pushVariables({"main_window": self})

@@ -48,14 +48,6 @@ class Plugin(QObject):
         main_window.panels_list_changed.connect(self.lightweight_manager.update_panels_list)
         main_window.add_side_pan(self.lightweight_manager)
 
-        # Connect to existing panels
-        for panel_name in main_window.plot_panels():
-            panel = main_window.plot_panel(panel_name)
-            if panel is not None:
-                self._catalog_browser.connect_to_panel(panel)
-
-        # Connect to future panels
-        main_window.panel_added.connect(self._catalog_browser.connect_to_panel)
 
 
     def catalogs(self)-> List[str]:
