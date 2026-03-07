@@ -59,6 +59,8 @@ class Capability(str, Enum):
     EXPORT_EVENTS = "export_events"
     IMPORT_EVENTS = "import_events"
     IMPORT_FILES = "import_files"
+    SAVE = "save"
+    SAVE_CATALOG = "save_catalog"
 
 
 @dataclass
@@ -83,11 +85,13 @@ class CatalogProvider(QObject):
     catalog_removed = Signal(object)
     events_changed = Signal(object)
     error_occurred = Signal(str)
+    dirty_changed = Signal(object, bool)  # (catalog, is_dirty)
 
     def __init__(self, name: str, parent: QObject | None = None):
         super().__init__(parent)
         self._name = name
         self._events: dict[str, list[CatalogEvent]] = {}
+        self._dirty_catalogs: set[str] = set()
         from .registry import CatalogRegistry
         CatalogRegistry.instance().register(self)
 
@@ -116,11 +120,14 @@ class CatalogProvider(QObject):
 
     def _set_events(self, catalog: Catalog, events: list[CatalogEvent]) -> None:
         self._events[catalog.uuid] = sorted(events, key=lambda e: e.start)
+        for event in events:
+            event.range_changed.connect(lambda cat=catalog: self.mark_dirty(cat))
 
     def _add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         if catalog.uuid not in self._events:
             self._events[catalog.uuid] = []
         bisect.insort(self._events[catalog.uuid], event, key=lambda e: e.start)
+        event.range_changed.connect(lambda cat=catalog: self.mark_dirty(cat))
         self.events_changed.emit(catalog)
 
     def _remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
@@ -134,12 +141,44 @@ class CatalogProvider(QObject):
     def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         """Public API: add an event to a catalog. Override for backend persistence."""
         self._add_event(catalog, event)
+        self.mark_dirty(catalog)
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         """Public API: remove an event from a catalog. Override for backend persistence."""
         self._remove_event(catalog, event)
+        self.mark_dirty(catalog)
 
     def remove_catalog(self, catalog: Catalog) -> None:
         """Public API: remove a catalog. Override for backend persistence."""
         self._events.pop(catalog.uuid, None)
         self.catalog_removed.emit(catalog)
+
+    def mark_dirty(self, catalog: Catalog) -> None:
+        if catalog.uuid not in self._dirty_catalogs:
+            self._dirty_catalogs.add(catalog.uuid)
+            self.dirty_changed.emit(catalog, True)
+
+    def is_dirty(self, catalog: Catalog | None = None) -> bool:
+        if catalog is None:
+            return len(self._dirty_catalogs) > 0
+        return catalog.uuid in self._dirty_catalogs
+
+    def save(self) -> None:
+        self._do_save()
+        dirty_uuids = set(self._dirty_catalogs)
+        self._dirty_catalogs.clear()
+        for cat in self.catalogs():
+            if cat.uuid in dirty_uuids:
+                self.dirty_changed.emit(cat, False)
+
+    def save_catalog(self, catalog: Catalog) -> None:
+        self._do_save_catalog(catalog)
+        if catalog.uuid in self._dirty_catalogs:
+            self._dirty_catalogs.discard(catalog.uuid)
+            self.dirty_changed.emit(catalog, False)
+
+    def _do_save(self) -> None:
+        pass
+
+    def _do_save_catalog(self, catalog: Catalog) -> None:
+        pass
