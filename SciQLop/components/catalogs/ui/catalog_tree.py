@@ -7,6 +7,8 @@ from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
 from ..backend.provider import Catalog, CatalogProvider
 from ..backend.registry import CatalogRegistry
 
+DIRTY_PROVIDER_ROLE = Qt.ItemDataRole.UserRole + 1
+
 
 class _Node:
     """Internal tree node: root -> provider -> catalog."""
@@ -75,6 +77,7 @@ class CatalogTreeModel(QAbstractItemModel):
         # Connect to provider signals for dynamic updates
         provider.catalog_added.connect(lambda cat, p=provider, n=node: self._on_catalog_added(p, n, cat))
         provider.catalog_removed.connect(lambda cat, p=provider, n=node: self._on_catalog_removed(p, n, cat))
+        provider.dirty_changed.connect(lambda cat, dirty, p=provider, n=node: self._on_dirty_changed(p, n, cat, dirty))
         return node
 
     def _provider_node(self, provider: CatalogProvider) -> _Node | None:
@@ -104,6 +107,23 @@ class CatalogTreeModel(QAbstractItemModel):
         self.beginRemoveRows(QModelIndex(), row, row)
         self._root.children.remove(node)
         self.endRemoveRows()
+
+    def _on_dirty_changed(self, provider: CatalogProvider, pnode: _Node, catalog: object, is_dirty: bool) -> None:
+        cat_node = self._find_catalog_node(pnode, catalog)
+        if cat_node is not None:
+            idx = self.createIndex(cat_node.row(), 0, cat_node)
+            self.dataChanged.emit(idx, idx, [Qt.ItemDataRole.DisplayRole])
+        pnode_idx = self.createIndex(pnode.row(), 0, pnode)
+        self.dataChanged.emit(pnode_idx, pnode_idx, [Qt.ItemDataRole.DisplayRole])
+
+    def _find_catalog_node(self, node: _Node, catalog: object) -> _Node | None:
+        for child in node.children:
+            if child.catalog is not None and child.catalog.uuid == catalog.uuid:
+                return child
+            found = self._find_catalog_node(child, catalog)
+            if found is not None:
+                return found
+        return None
 
     def _on_catalog_added(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
         target = pnode
@@ -203,7 +223,22 @@ class CatalogTreeModel(QAbstractItemModel):
             return None
         if role == Qt.ItemDataRole.DisplayRole:
             node = index.internalPointer()
-            return node.name
+            name = node.name
+            if node.provider is not None:
+                if node.catalog is not None:
+                    if node.provider.is_dirty(node.catalog):
+                        name += " *"
+                elif node.parent is self._root:
+                    if node.provider.is_dirty():
+                        name += " *"
+            return name
+        if role == DIRTY_PROVIDER_ROLE:
+            node = index.internalPointer()
+            if node.provider is not None and node.parent is self._root:
+                from ..backend.provider import Capability
+                has_save = Capability.SAVE in node.provider.capabilities()
+                return has_save and node.provider.is_dirty()
+            return False
         return None
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:

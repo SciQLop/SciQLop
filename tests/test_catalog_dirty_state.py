@@ -98,3 +98,53 @@ def test_save_clears_dirty(qtbot, qapp):
     # Should have emitted dirty_changed(cat, False) for each dirty catalog
     false_signals = [(uuid, d) for uuid, d in signals if not d]
     assert len(false_signals) == 2
+
+
+def test_tree_shows_dirty_indicator(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = CatalogTreeModel()
+
+    # Find the catalog node
+    provider_idx = model.index(model.rowCount() - 1, 0)  # last provider added
+    cat_idx = model.index(0, 0, provider_idx)
+
+    # Before marking dirty
+    name_before = model.data(cat_idx, Qt.ItemDataRole.DisplayRole)
+    assert not name_before.endswith(" *")
+
+    # Mark dirty
+    provider.mark_dirty(cat)
+
+    name_after = model.data(cat_idx, Qt.ItemDataRole.DisplayRole)
+    assert name_after.endswith(" *")
+
+    # Provider node should also show dirty
+    provider_name = model.data(provider_idx, Qt.ItemDataRole.DisplayRole)
+    assert provider_name.endswith(" *")
+
+
+def test_tree_clears_dirty_on_save(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = CatalogTreeModel()
+
+    provider_idx = model.index(model.rowCount() - 1, 0)
+    cat_idx = model.index(0, 0, provider_idx)
+
+    provider.mark_dirty(cat)
+    provider.save()
+
+    name_after_save = model.data(cat_idx, Qt.ItemDataRole.DisplayRole)
+    assert not name_after_save.endswith(" *")
+
+    provider_name = model.data(provider_idx, Qt.ItemDataRole.DisplayRole)
+    assert not provider_name.endswith(" *")

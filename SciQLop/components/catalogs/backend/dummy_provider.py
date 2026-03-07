@@ -47,6 +47,8 @@ class DummyProvider(CatalogProvider):
             Capability.DELETE_CATALOGS,
             Capability.EXPORT_EVENTS,
             Capability.IMPORT_EVENTS,
+            Capability.SAVE,
+            Capability.SAVE_CATALOG,
         }
 
     def import_events(self, catalog_name: str, events: list[CatalogEvent], path: list[str] | None = None) -> Catalog:
