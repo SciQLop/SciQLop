@@ -121,13 +121,13 @@ class CatalogProvider(QObject):
     def _set_events(self, catalog: Catalog, events: list[CatalogEvent]) -> None:
         self._events[catalog.uuid] = sorted(events, key=lambda e: e.start)
         for event in events:
-            event.range_changed.connect(lambda cat=catalog: self.mark_dirty(cat))
+            event.range_changed.connect(lambda ev=event, cat=catalog: self._on_event_range_changed(ev, cat))
 
     def _add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         if catalog.uuid not in self._events:
             self._events[catalog.uuid] = []
         bisect.insort(self._events[catalog.uuid], event, key=lambda e: e.start)
-        event.range_changed.connect(lambda cat=catalog: self.mark_dirty(cat))
+        event.range_changed.connect(lambda ev=event, cat=catalog: self._on_event_range_changed(ev, cat))
         self.events_changed.emit(catalog)
 
     def _remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
@@ -151,7 +151,12 @@ class CatalogProvider(QObject):
     def remove_catalog(self, catalog: Catalog) -> None:
         """Public API: remove a catalog. Override for backend persistence."""
         self._events.pop(catalog.uuid, None)
+        self._dirty_catalogs.discard(catalog.uuid)
         self.catalog_removed.emit(catalog)
+
+    def _on_event_range_changed(self, event: CatalogEvent, catalog: Catalog) -> None:
+        if event in self._events.get(catalog.uuid, []):
+            self.mark_dirty(catalog)
 
     def mark_dirty(self, catalog: Catalog) -> None:
         if catalog.uuid not in self._dirty_catalogs:
