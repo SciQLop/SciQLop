@@ -148,3 +148,35 @@ def test_tree_clears_dirty_on_save(qtbot, qapp):
 
     provider_name = model.data(provider_idx, Qt.ItemDataRole.DisplayRole)
     assert not provider_name.endswith(" *")
+
+
+def test_full_dirty_save_cycle(qtbot, qapp):
+    """End-to-end: edit event -> dirty -> save -> clean."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    event = provider.events(cat)[0]
+
+    # Initially clean
+    assert not provider.is_dirty()
+
+    # Edit event -> dirty
+    event.start = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    assert provider.is_dirty(cat)
+
+    # Add event -> still dirty
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+    import uuid as _uuid
+    new_event = CatalogEvent(
+        uuid=str(_uuid.uuid4()),
+        start=datetime(2025, 2, 1, tzinfo=timezone.utc),
+        stop=datetime(2025, 2, 2, tzinfo=timezone.utc),
+    )
+    provider.add_event(cat, new_event)
+    assert provider.is_dirty(cat)
+
+    # Save -> clean
+    provider.save()
+    assert not provider.is_dirty()
+    assert not provider.is_dirty(cat)
