@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent
+from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent, QItemSelectionModel
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
@@ -99,6 +99,7 @@ class CatalogBrowser(QWidget):
         self.setWindowTitle("Catalog Browser")
 
         self._current_provider: CatalogProvider | None = None
+        self._events_changed_provider: CatalogProvider | None = None
         self._current_catalog: Catalog | None = None
         self._panels: list = []
 
@@ -182,19 +183,22 @@ class CatalogBrowser(QWidget):
     def _on_catalog_selected(self, current: QModelIndex, previous: QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(current)
         node = self._tree_model.node_from_index(source_index)
-        # Disconnect from previous provider's events_changed
-        if self._current_provider is not None:
+        if node is self._tree_model._root:
+            return
+        # Disconnect from previously connected provider
+        if self._events_changed_provider is not None:
             try:
-                self._current_provider.events_changed.disconnect(self._on_events_changed)
+                self._events_changed_provider.events_changed.disconnect(self._on_events_changed)
             except RuntimeError:
                 pass
+            self._events_changed_provider = None
         if node.catalog is not None:
             self._current_provider = node.provider
             self._current_catalog = node.catalog
             events = node.provider.events(node.catalog)
             self._event_model.set_events(events)
-            # Listen for async event loading
             node.provider.events_changed.connect(self._on_events_changed)
+            self._events_changed_provider = node.provider
         else:
             self._current_provider = node.provider
             self._current_catalog = None
@@ -240,25 +244,38 @@ class CatalogBrowser(QWidget):
         row = self._event_model.row_for_event(event)
         if row >= 0:
             index = self._event_model.index(row, 0)
-            from PySide6.QtCore import QItemSelectionModel
             self._event_table.selectionModel().setCurrentIndex(
                 index, QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
             )
 
     def connect_to_panel(self, panel) -> None:
         """Wire bidirectional event selection between this browser and a panel."""
+        if panel in self._panels:
+            return
         self._panels.append(panel)
         manager = panel.catalog_manager
         self.event_selected.connect(manager.select_event)
         manager.event_clicked.connect(self.highlight_event)
+        panel.destroyed.connect(lambda: self._on_panel_destroyed(panel))
+
+    def _on_panel_destroyed(self, panel) -> None:
+        if panel in self._panels:
+            self._panels.remove(panel)
 
     def disconnect_from_panel(self, panel) -> None:
         """Remove bidirectional event selection wiring for a panel."""
-        if panel in self._panels:
-            self._panels.remove(panel)
+        if panel not in self._panels:
+            return
+        self._panels.remove(panel)
         manager = panel.catalog_manager
-        self.event_selected.disconnect(manager.select_event)
-        manager.event_clicked.disconnect(self.highlight_event)
+        try:
+            self.event_selected.disconnect(manager.select_event)
+        except RuntimeError:
+            pass
+        try:
+            manager.event_clicked.disconnect(self.highlight_event)
+        except RuntimeError:
+            pass
 
     def _on_add_event(self) -> None:
         if self._current_provider is None or self._current_catalog is None:
