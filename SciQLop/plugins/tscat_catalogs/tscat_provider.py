@@ -136,7 +136,12 @@ class TscatCatalogProvider(CatalogProvider):
             Capability.CREATE_EVENTS,
             Capability.DELETE_EVENTS,
             Capability.CREATE_CATALOGS,
+            Capability.SAVE,
         }
+
+    def _do_save(self) -> None:
+        import tscat
+        tscat.save()
 
     def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         def _link_to_catalog(action):
@@ -152,6 +157,7 @@ class TscatCatalogProvider(CatalogProvider):
             args=dict(start=event.start, stop=event.stop, author="SciQLop",
                       uuid=event.uuid),
         ))
+        self.mark_dirty(catalog)
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         tscat_model.do(RemoveEntitiesAction(
