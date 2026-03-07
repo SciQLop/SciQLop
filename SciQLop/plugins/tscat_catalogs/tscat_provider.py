@@ -96,6 +96,7 @@ class TscatCatalogProvider(CatalogProvider):
     def __init__(self, parent: QObject | None = None):
         self._catalog_cache: list[Catalog] | None = None
         self._known_uuids: set[str] = set()
+        self._stale_events: dict[str, list[CatalogEvent]] = {}
         self._root_model = tscat_model.tscat_root()
         super().__init__(name="TSCat Local", parent=parent)
         tscat_model.action_done.connect(self._on_action_done)
@@ -188,12 +189,18 @@ class TscatCatalogProvider(CatalogProvider):
             self.events_changed.emit(catalog)
 
     def _read_events_from_model(self, catalog: Catalog, catalog_model, emit: bool = True) -> None:
+        old_by_uuid = {e.uuid: e for e in self._stale_events.pop(catalog.uuid, [])}
         events: list[CatalogEvent] = []
         for row in range(catalog_model.rowCount()):
             idx = catalog_model.index(row, 0)
             entity = idx.data(EntityRole)
             if entity is not None:
-                events.append(TscatEvent(entity, parent=self))
+                existing = old_by_uuid.get(entity.uuid)
+                if existing is not None:
+                    existing._entity = entity
+                    events.append(existing)
+                else:
+                    events.append(TscatEvent(entity, parent=self))
         self._set_events(catalog, events)
         if emit:
             self.events_changed.emit(catalog)
@@ -223,5 +230,5 @@ class TscatCatalogProvider(CatalogProvider):
         self._catalog_cache = None
         for catalog in self.catalogs():
             if catalog.uuid in self._events:
-                del self._events[catalog.uuid]
+                self._stale_events[catalog.uuid] = self._events.pop(catalog.uuid)
                 self.events_changed.emit(catalog)

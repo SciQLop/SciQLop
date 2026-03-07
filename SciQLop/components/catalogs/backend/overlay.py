@@ -29,6 +29,7 @@ class CatalogOverlay(QObject):
 
         self._span_collection = MultiPlotsVSpanCollection(panel)
         self._event_by_span_id: dict[str, CatalogEvent] = {}
+        self._event_connections: dict[str, list[tuple]] = {}  # uuid -> [(signal, slot), ...]
 
         # React to event list changes
         catalog.provider.events_changed.connect(self._on_events_changed)
@@ -59,6 +60,8 @@ class CatalogOverlay(QObject):
                 self._panel.time_range_changed.disconnect(self._on_time_range_changed)
             except RuntimeError:
                 pass
+        for uuid in list(self._event_connections):
+            self._disconnect_event(uuid)
         for span in self._span_collection.spans():
             self._span_collection.delete_span(span)
         self._event_by_span_id.clear()
@@ -124,10 +127,21 @@ class CatalogOverlay(QObject):
 
         event.range_changed.connect(_on_event_changed)
         span.range_changed.connect(_on_span_changed)
-        span.selection_changed.connect(
-            lambda selected, e=event: self._on_span_selected(selected, e),
-        )
+        _on_selection = lambda selected, e=event: self._on_span_selected(selected, e)
+        span.selection_changed.connect(_on_selection)
+        self._event_connections[event.uuid] = [
+            (event.range_changed, _on_event_changed),
+            (span.range_changed, _on_span_changed),
+            (span.selection_changed, _on_selection),
+        ]
         return span
+
+    def _disconnect_event(self, uuid: str) -> None:
+        for signal, slot in self._event_connections.pop(uuid, []):
+            try:
+                signal.disconnect(slot)
+            except RuntimeError:
+                pass
 
     def _on_span_range_changed(self, new_range: TimeRange, event: CatalogEvent) -> None:
         event._start = make_utc_datetime(new_range.datetime_start())
@@ -156,6 +170,7 @@ class CatalogOverlay(QObject):
 
         # Remove out-of-range spans
         for uuid in current_uuids - new_uuids:
+            self._disconnect_event(uuid)
             span = self._span_collection.span(uuid)
             if span is not None:
                 self._span_collection.delete_span(span)
@@ -178,6 +193,7 @@ class CatalogOverlay(QObject):
 
         # Remove stale spans
         for uuid in current_uuids - new_uuids:
+            self._disconnect_event(uuid)
             span = self._span_collection.span(uuid)
             if span is not None:
                 self._span_collection.delete_span(span)
