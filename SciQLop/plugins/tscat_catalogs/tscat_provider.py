@@ -96,6 +96,7 @@ class TscatCatalogProvider(CatalogProvider):
     def __init__(self, parent: QObject | None = None):
         self._catalog_cache: list[Catalog] | None = None
         self._known_uuids: set[str] = set()
+        self._loading_uuids: set[str] = set()
         self._stale_events: dict[str, list[CatalogEvent]] = {}
         self._root_model = tscat_model.tscat_root()
         super().__init__(name="TSCat Local", parent=parent)
@@ -176,14 +177,18 @@ class TscatCatalogProvider(CatalogProvider):
             # tscat loads events asynchronously via GetCatalogueAction;
             # the CatalogModel emits modelReset (not rowsInserted) when done.
             # Poll with a non-blocking QTimer instead of busy-waiting.
-            self._deferred_load(catalog, catalog_model, retries=50)
+            if catalog.uuid not in self._loading_uuids:
+                self._loading_uuids.add(catalog.uuid)
+                self._deferred_load(catalog, catalog_model, retries=50)
 
     def _deferred_load(self, catalog: Catalog, catalog_model, retries: int) -> None:
         if catalog_model.rowCount() > 0:
+            self._loading_uuids.discard(catalog.uuid)
             self._read_events_from_model(catalog, catalog_model)
         elif retries > 0:
             QTimer.singleShot(100, lambda: self._deferred_load(catalog, catalog_model, retries - 1))
         else:
+            self._loading_uuids.discard(catalog.uuid)
             self.error_occurred.emit(f"Timeout loading events for {catalog.name}")
             self._set_events(catalog, [])
             self.events_changed.emit(catalog)
@@ -227,6 +232,10 @@ class TscatCatalogProvider(CatalogProvider):
 
     @Slot()
     def _on_action_done(self, action) -> None:
+        # SetAttributeAction only updates existing event fields (start/stop);
+        # the TscatEvent objects already reflect those changes locally.
+        if isinstance(action, SetAttributeAction):
+            return
         self._catalog_cache = None
         for catalog in self.catalogs():
             if catalog.uuid in self._events:
