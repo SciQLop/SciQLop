@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal
+from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
     QPushButton,
     QSplitter,
+    QStyledItemDelegate,
     QTableView,
     QToolButton,
     QTreeView,
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
     QMenu,
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 
 from datetime import datetime, timezone, timedelta
 import uuid as _uuid
@@ -40,6 +42,48 @@ class _CatalogFilterProxy(QSortFilterProxyModel):
         return False
 
 
+class _SaveButtonDelegate(QStyledItemDelegate):
+    """Renders a clickable save icon next to dirty provider nodes."""
+
+    save_clicked = Signal(QModelIndex)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._icon = QIcon.fromTheme("document-save")
+        self._icon_size = 16
+
+    def paint(self, painter, option, index):
+        super().paint(painter, option, index)
+        from .catalog_tree import DIRTY_PROVIDER_ROLE
+        if index.data(DIRTY_PROVIDER_ROLE):
+            icon_rect = self._icon_rect(option)
+            self._icon.paint(painter, icon_rect)
+
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        from .catalog_tree import DIRTY_PROVIDER_ROLE
+        if index.data(DIRTY_PROVIDER_ROLE):
+            size.setWidth(size.width() + self._icon_size + 4)
+        return size
+
+    def _icon_rect(self, option):
+        return QRect(
+            option.rect.right() - self._icon_size - 2,
+            option.rect.top() + (option.rect.height() - self._icon_size) // 2,
+            self._icon_size,
+            self._icon_size,
+        )
+
+    def editorEvent(self, event, model, option, index):
+        from .catalog_tree import DIRTY_PROVIDER_ROLE
+        if index.data(DIRTY_PROVIDER_ROLE):
+            if event.type() == QEvent.Type.MouseButtonRelease:
+                if self._icon_rect(option).contains(event.pos()):
+                    self.save_clicked.emit(index)
+                    return True
+        return super().editorEvent(event, model, option, index)
+
+
 class CatalogBrowser(QWidget):
     """Dock-ready widget: tree of providers/catalogs + event table."""
 
@@ -64,6 +108,11 @@ class CatalogBrowser(QWidget):
         self._catalog_tree = QTreeView()
         self._catalog_tree.setModel(self._proxy_model)
         self._catalog_tree.setHeaderHidden(True)
+        self._save_delegate = _SaveButtonDelegate(self._catalog_tree)
+        self._save_delegate.save_clicked.connect(self._on_save_clicked)
+        self._catalog_tree.setItemDelegate(self._save_delegate)
+        self._catalog_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._catalog_tree.customContextMenuRequested.connect(self._on_tree_context_menu)
         self._catalog_tree.selectionModel().currentChanged.connect(self._on_catalog_selected)
         self._filter_bar.textChanged.connect(self._on_filter_changed)
 
@@ -246,3 +295,36 @@ class CatalogBrowser(QWidget):
                     events = self._current_provider.events(self._current_catalog)
                     self._event_model.set_events(events)
                     return
+
+    def _on_save_clicked(self, proxy_index: QModelIndex) -> None:
+        source_index = self._proxy_model.mapToSource(proxy_index)
+        node = self._tree_model.node_from_index(source_index)
+        if node.provider is not None:
+            node.provider.save()
+
+    def _on_tree_context_menu(self, pos) -> None:
+        proxy_index = self._catalog_tree.indexAt(pos)
+        if not proxy_index.isValid():
+            return
+        source_index = self._proxy_model.mapToSource(proxy_index)
+        node = self._tree_model.node_from_index(source_index)
+        if node.provider is None:
+            return
+
+        has_save = Capability.SAVE in node.provider.capabilities()
+
+        menu = QMenu(self)
+
+        if has_save and node.provider.is_dirty():
+            if (node.catalog is not None
+                    and Capability.SAVE_CATALOG in node.provider.capabilities()
+                    and node.provider.is_dirty(node.catalog)):
+                save_action = menu.addAction("Save Catalog")
+                save_action.triggered.connect(lambda: node.provider.save_catalog(node.catalog))
+            else:
+                save_action = menu.addAction("Save")
+                save_action.triggered.connect(lambda: node.provider.save())
+
+        if menu.isEmpty():
+            return
+        menu.exec(self._catalog_tree.viewport().mapToGlobal(pos))
