@@ -45,7 +45,6 @@ class Plugin(QObject):
         self.toolbar: QToolBar = main_window.addToolBar("Catalogs")
         self.toolbar.addAction(self.show_catalog)
 
-        main_window.panels_list_changed.connect(self.lightweight_manager.update_panels_list)
         main_window.add_side_pan(self.lightweight_manager)
 
 

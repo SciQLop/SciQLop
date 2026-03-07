@@ -3,6 +3,7 @@ import bisect
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from speasy.core import make_utc_datetime
 from typing import Any, Callable
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon
@@ -16,8 +17,8 @@ class CatalogEvent(QObject):
                  meta: dict[str, Any] | None = None, parent: QObject | None = None):
         super().__init__(parent)
         self._uuid = uuid
-        self._start = start
-        self._stop = stop
+        self._start = make_utc_datetime(start)
+        self._stop = make_utc_datetime(stop)
         self._meta = meta or {}
 
     @property

@@ -48,9 +48,10 @@ class CatalogBrowser(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Catalog Browser")
-        
+
         self._current_provider: CatalogProvider | None = None
         self._current_catalog: Catalog | None = None
+        self._panels: list = []
 
         # --- filter bar ---
         self._filter_bar = QLineEdit()
@@ -72,14 +73,7 @@ class CatalogBrowser(QWidget):
         self._event_table.setModel(self._event_model)
         self._event_table.selectionModel().currentChanged.connect(self._on_event_selected)
 
-        # --- splitter ---
-        self._splitter = QSplitter(Qt.Orientation.Horizontal)
-        self._splitter.addWidget(self._catalog_tree)
-        self._splitter.addWidget(self._event_table)
-        self._splitter.setStretchFactor(0, 1)
-        self._splitter.setStretchFactor(1, 3)
-
-        # --- toolbar ---
+        # --- event toolbar (above table) ---
         self._add_event_btn = QPushButton("Add Event")
         self._add_event_btn.setVisible(False)
         self._add_event_btn.clicked.connect(self._on_add_event)
@@ -88,6 +82,25 @@ class CatalogBrowser(QWidget):
         self._delete_btn.setVisible(False)
         self._delete_btn.clicked.connect(self._on_delete)
 
+        event_toolbar = QHBoxLayout()
+        event_toolbar.addWidget(self._add_event_btn)
+        event_toolbar.addWidget(self._delete_btn)
+        event_toolbar.addStretch()
+
+        event_panel = QWidget()
+        event_layout = QVBoxLayout(event_panel)
+        event_layout.setContentsMargins(0, 0, 0, 0)
+        event_layout.addLayout(event_toolbar)
+        event_layout.addWidget(self._event_table, 1)
+
+        # --- splitter ---
+        self._splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._splitter.addWidget(self._catalog_tree)
+        self._splitter.addWidget(event_panel)
+        self._splitter.setStretchFactor(0, 1)
+        self._splitter.setStretchFactor(1, 3)
+
+        # --- actions toolbar (bottom) ---
         self._actions_btn = QToolButton()
         self._actions_btn.setText("Actions")
         self._actions_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
@@ -95,17 +108,15 @@ class CatalogBrowser(QWidget):
         self._actions_btn.setMenu(self._actions_menu)
         self._actions_btn.setVisible(False)
 
-        toolbar = QHBoxLayout()
-        toolbar.addWidget(self._add_event_btn)
-        toolbar.addWidget(self._delete_btn)
-        toolbar.addStretch()
-        toolbar.addWidget(self._actions_btn)
+        actions_toolbar = QHBoxLayout()
+        actions_toolbar.addStretch()
+        actions_toolbar.addWidget(self._actions_btn)
 
         # --- layout ---
         layout = QVBoxLayout(self)
         layout.addWidget(self._filter_bar)
         layout.addWidget(self._splitter, 1)
-        layout.addLayout(toolbar)
+        layout.addLayout(actions_toolbar)
 
     # ---- slots ----
 
@@ -182,12 +193,15 @@ class CatalogBrowser(QWidget):
 
     def connect_to_panel(self, panel) -> None:
         """Wire bidirectional event selection between this browser and a panel."""
+        self._panels.append(panel)
         manager = panel.catalog_manager
         self.event_selected.connect(manager.select_event)
         manager.event_clicked.connect(self.highlight_event)
 
     def disconnect_from_panel(self, panel) -> None:
         """Remove bidirectional event selection wiring for a panel."""
+        if panel in self._panels:
+            self._panels.remove(panel)
         manager = panel.catalog_manager
         self.event_selected.disconnect(manager.select_event)
         manager.event_clicked.disconnect(self.highlight_event)
@@ -198,11 +212,21 @@ class CatalogBrowser(QWidget):
         caps = self._current_provider.capabilities(self._current_catalog)
         if Capability.CREATE_EVENTS not in caps:
             return
-        now = datetime.now(tz=timezone.utc)
+        # Use the first connected panel's visible range to place the new event
+        if self._panels:
+            tr = self._panels[0].time_range
+            center = (tr.start() + tr.stop()) / 2.0
+            half_span = (tr.stop() - tr.start()) * 0.05  # 10% of visible range
+            start = datetime.fromtimestamp(center - half_span, tz=timezone.utc)
+            stop = datetime.fromtimestamp(center + half_span, tz=timezone.utc)
+        else:
+            now = datetime.now(tz=timezone.utc)
+            start = now - timedelta(minutes=30)
+            stop = now + timedelta(minutes=30)
         event = CatalogEvent(
             uuid=str(_uuid.uuid4()),
-            start=now - timedelta(minutes=30),
-            stop=now + timedelta(minutes=30),
+            start=start,
+            stop=stop,
         )
         self._current_provider.add_event(self._current_catalog, event)
         # Refresh event table

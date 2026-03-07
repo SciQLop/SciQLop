@@ -152,7 +152,6 @@ class TscatCatalogProvider(CatalogProvider):
             args=dict(start=event.start, stop=event.stop, author="SciQLop",
                       uuid=event.uuid),
         ))
-        super().add_event(catalog, event)
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         tscat_model.do(RemoveEntitiesAction(

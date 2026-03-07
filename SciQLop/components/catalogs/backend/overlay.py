@@ -9,6 +9,8 @@ from SciQLop.components.catalogs.backend.provider import CatalogEvent, Catalog
 from SciQLop.components.catalogs.backend.color_palette import color_for_catalog
 from SciQLop.components.sciqlop_logging import getLogger
 
+from speasy.core import make_utc_datetime
+
 log = getLogger(__name__)
 
 
@@ -96,25 +98,41 @@ class CatalogOverlay(QObject):
         self._event_by_span_id[event.uuid] = event
 
         # Bidirectional sync: event range <-> span range
-        # CatalogEvent.range_changed is Signal() with no args, so we read from event
-        event.range_changed.connect(
-            lambda e=event, s=span: s.set_range(
-                TimeRange(e.start.timestamp(), e.stop.timestamp())
-            ),
-            Qt.ConnectionType.QueuedConnection,
-        )
-        span.range_changed.connect(
-            lambda r, e=event: self._on_span_range_changed(r, e),
-            Qt.ConnectionType.QueuedConnection,
-        )
+        # A shared list (mutable) tracks the sync source to break feedback loops.
+        sync_source = [None]  # 'span' or 'event'
+
+        span_debounce = QTimer(self)
+        span_debounce.setSingleShot(True)
+        span_debounce.setInterval(50)
+
+        def _apply_event_to_span(e=event, s=span):
+            sync_source[0] = 'event'
+            s.set_range(TimeRange(e.start.timestamp(), e.stop.timestamp()))
+            sync_source[0] = None
+
+        span_debounce.timeout.connect(_apply_event_to_span)
+
+        def _on_event_changed(t=span_debounce, src=sync_source):
+            if src[0] != 'span':
+                t.start()
+
+        def _on_span_changed(r, e=event, src=sync_source):
+            if src[0] != 'event':
+                src[0] = 'span'
+                self._on_span_range_changed(r, e)
+                src[0] = None
+
+        event.range_changed.connect(_on_event_changed)
+        span.range_changed.connect(_on_span_changed)
         span.selection_changed.connect(
             lambda selected, e=event: self._on_span_selected(selected, e),
         )
         return span
 
     def _on_span_range_changed(self, new_range: TimeRange, event: CatalogEvent) -> None:
-        event.start = datetime.fromtimestamp(new_range.start, tz=timezone.utc)
-        event.stop = datetime.fromtimestamp(new_range.stop, tz=timezone.utc)
+        event._start = make_utc_datetime(new_range.datetime_start())
+        event._stop = make_utc_datetime(new_range.datetime_stop())
+        event.range_changed.emit()
 
     def _on_time_range_changed(self, *args) -> None:
         if self._lazy:

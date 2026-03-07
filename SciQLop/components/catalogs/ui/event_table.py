@@ -19,16 +19,39 @@ class EventTableModel(QAbstractTableModel):
 
     def set_events(self, events: list[CatalogEvent]) -> None:
         self.beginResetModel()
+        self._disconnect_events()
         self._events = list(events)
         # Collect all meta keys across events, sorted for stable column order
         keys: set[str] = set()
         for e in self._events:
             keys.update(e.meta.keys())
         self._meta_keys = sorted(keys)
+        self._connect_events()
         self.endResetModel()
+
+    def _connect_events(self) -> None:
+        self._event_connections = []
+        for i, e in enumerate(self._events):
+            fn = lambda row=i: self._on_event_range_changed(row)
+            e.range_changed.connect(fn)
+            self._event_connections.append((e, fn))
+
+    def _disconnect_events(self) -> None:
+        for e, fn in getattr(self, '_event_connections', []):
+            try:
+                e.range_changed.disconnect(fn)
+            except RuntimeError:
+                pass
+        self._event_connections = []
+
+    def _on_event_range_changed(self, row: int) -> None:
+        left = self.index(row, 0)
+        right = self.index(row, 1)
+        self.dataChanged.emit(left, right, [Qt.ItemDataRole.DisplayRole])
 
     def clear(self) -> None:
         self.beginResetModel()
+        self._disconnect_events()
         self._events = []
         self._meta_keys = []
         self.endResetModel()
