@@ -92,6 +92,7 @@ class CatalogProvider(QObject):
         self._name = name
         self._events: dict[str, list[CatalogEvent]] = {}
         self._dirty_catalogs: set[str] = set()
+        self._range_connections: dict[str, list[tuple]] = {}
         from .registry import CatalogRegistry
         CatalogRegistry.instance().register(self)
 
@@ -118,16 +119,33 @@ class CatalogProvider(QObject):
     def actions(self, catalog: Catalog | None = None) -> list[ProviderAction]:
         return []
 
+    def _disconnect_range_connections(self, catalog_uuid: str) -> None:
+        for event, slot in self._range_connections.get(catalog_uuid, []):
+            try:
+                event.range_changed.disconnect(slot)
+            except RuntimeError:
+                pass
+        self._range_connections[catalog_uuid] = []
+
     def _set_events(self, catalog: Catalog, events: list[CatalogEvent]) -> None:
+        self._disconnect_range_connections(catalog.uuid)
         self._events[catalog.uuid] = sorted(events, key=lambda e: e.start)
+        connections = []
         for event in events:
-            event.range_changed.connect(lambda ev=event, cat=catalog: self._on_event_range_changed(ev, cat))
+            slot = lambda ev=event, cat=catalog: self._on_event_range_changed(ev, cat)
+            event.range_changed.connect(slot)
+            connections.append((event, slot))
+        self._range_connections[catalog.uuid] = connections
 
     def _add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         if catalog.uuid not in self._events:
             self._events[catalog.uuid] = []
         bisect.insort(self._events[catalog.uuid], event, key=lambda e: e.start)
-        event.range_changed.connect(lambda ev=event, cat=catalog: self._on_event_range_changed(ev, cat))
+        slot = lambda ev=event, cat=catalog: self._on_event_range_changed(ev, cat)
+        event.range_changed.connect(slot)
+        if catalog.uuid not in self._range_connections:
+            self._range_connections[catalog.uuid] = []
+        self._range_connections[catalog.uuid].append((event, slot))
         self.events_changed.emit(catalog)
 
     def _remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
@@ -136,6 +154,15 @@ class CatalogProvider(QObject):
             event_list.remove(event)
         except ValueError:
             pass
+        conns = self._range_connections.get(catalog.uuid, [])
+        for i, (ev, slot) in enumerate(conns):
+            if ev is event:
+                try:
+                    event.range_changed.disconnect(slot)
+                except RuntimeError:
+                    pass
+                conns.pop(i)
+                break
         self.events_changed.emit(catalog)
 
     def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
@@ -150,6 +177,8 @@ class CatalogProvider(QObject):
 
     def remove_catalog(self, catalog: Catalog) -> None:
         """Public API: remove a catalog. Override for backend persistence."""
+        self._disconnect_range_connections(catalog.uuid)
+        self._range_connections.pop(catalog.uuid, None)
         self._events.pop(catalog.uuid, None)
         self._dirty_catalogs.discard(catalog.uuid)
         self.catalog_removed.emit(catalog)
