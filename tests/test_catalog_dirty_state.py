@@ -71,3 +71,30 @@ def test_event_range_change_marks_dirty(qtbot, qapp):
         event.start = datetime(2025, 6, 1, tzinfo=timezone.utc)
 
     assert provider.is_dirty(cat)
+
+
+def test_save_clears_dirty(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=2, events_per_catalog=3)
+    cats = provider.catalogs()
+    event0 = provider.events(cats[0])[0]
+    event1 = provider.events(cats[1])[0]
+
+    event0.start = datetime(2025, 6, 1, tzinfo=timezone.utc)
+    event1.start = datetime(2025, 6, 1, tzinfo=timezone.utc)
+
+    assert provider.is_dirty(cats[0])
+    assert provider.is_dirty(cats[1])
+
+    signals = []
+    provider.dirty_changed.connect(lambda cat, dirty: signals.append((cat.uuid, dirty)))
+
+    provider.save()
+
+    assert not provider.is_dirty(cats[0])
+    assert not provider.is_dirty(cats[1])
+    assert not provider.is_dirty()
+    # Should have emitted dirty_changed(cat, False) for each dirty catalog
+    false_signals = [(uuid, d) for uuid, d in signals if not d]
+    assert len(false_signals) == 2
