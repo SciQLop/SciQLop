@@ -53,6 +53,8 @@ def start_sciqlop():
 
     app = sciqlop_app()
     qInitResources()
+    from SciQLop.components.theming.icons import flush_deferred_icons
+    flush_deferred_icons()
     envent_loop = sciqlop_event_loop()
     pixmap = QPixmap(":/splash.png")
     splash = QSplashScreen(pixmap)

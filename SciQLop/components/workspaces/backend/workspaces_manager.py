@@ -18,8 +18,8 @@ from SciQLop.components.jupyter.jupyter_clients.clients_manager import ClientsMa
 import uuid
 from SciQLopPlots import Icons
 
-register_icon("Jupyter", QIcon("://icons/Jupyter_logo.png"))
-register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.png"))
+register_icon("Jupyter", lambda: QIcon("://icons/Jupyter_logo.png"))
+register_icon("JupyterConsole", lambda: QIcon("://icons/JupyterConsole.png"))
 
 log = getLogger(__name__)
 

@@ -19,8 +19,34 @@ def per_palette_icon_name(name: str, palette_name: str) -> str:
     return f"{name}_{palette_name}"
 
 
-def register_icon(name: str, icon: QIcon):
-    Icons.add_icon(name, icon)
+_deferred_icons: list[tuple[str, callable]] = []
+
+
+def register_icon(name: str, icon_or_factory):
+    """Register a named icon. If QApplication doesn't exist yet, defers
+    registration until flush_deferred_icons() is called.
+
+    icon_or_factory can be a QIcon or a callable returning a QIcon.
+    When called at module level before QApp, pass a lambda to avoid
+    constructing QIcon/QPixmap too early, or pass a QIcon directly
+    and this function will defer the add_icon call.
+    """
+    if QApplication.instance() is not None:
+        icon = icon_or_factory() if callable(icon_or_factory) else icon_or_factory
+        Icons.add_icon(name, icon)
+    else:
+        if callable(icon_or_factory):
+            _deferred_icons.append((name, icon_or_factory))
+        else:
+            # icon is already a QIcon constructed (somehow) before QApp — wrap it
+            _deferred_icons.append((name, lambda i=icon_or_factory: i))
+
+
+def flush_deferred_icons():
+    """Register all icons that were deferred because QApplication didn't exist."""
+    while _deferred_icons:
+        name, factory = _deferred_icons.pop(0)
+        Icons.add_icon(name, factory())
 
 
 def _mutate_icon_color(icon: QIcon, color: QColor) -> QIcon:
