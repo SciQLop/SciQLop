@@ -1,4 +1,5 @@
-from typing import List, Tuple
+from __future__ import annotations
+
 from datetime import datetime
 
 from PySide6.QtCore import QObject
@@ -49,8 +50,8 @@ class Plugin(QObject):
 
 
 
-    def catalogs(self)-> List[str]:
+    def catalogs(self)-> list[str]:
         return self.lightweight_manager.catalogs()
 
-    def events(self, catalog: str)-> List[Tuple[datetime, datetime]]:
+    def events(self, catalog: str)-> list[tuple[datetime, datetime]]:
         return self.lightweight_manager.events(catalog)

@@ -144,9 +144,8 @@ class CatalogOverlay(QObject):
                 pass
 
     def _on_span_range_changed(self, new_range: TimeRange, event: CatalogEvent) -> None:
-        event._start = make_utc_datetime(new_range.datetime_start())
-        event._stop = make_utc_datetime(new_range.datetime_stop())
-        event.range_changed.emit()
+        event.start = make_utc_datetime(new_range.datetime_start())
+        event.stop = make_utc_datetime(new_range.datetime_stop())
 
     def _on_time_range_changed(self, *args) -> None:
         if self._lazy:
