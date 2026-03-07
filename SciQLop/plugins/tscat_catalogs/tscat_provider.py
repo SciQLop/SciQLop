@@ -127,7 +127,7 @@ class TscatCatalogProvider(CatalogProvider):
     def events(self, catalog: Catalog, start: datetime | None = None,
                stop: datetime | None = None) -> list[CatalogEvent]:
         if catalog.uuid not in self._events:
-            self._load_events(catalog)
+            self._load_events(catalog, emit=False)
         return super().events(catalog, start, stop)
 
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
@@ -167,10 +167,10 @@ class TscatCatalogProvider(CatalogProvider):
         ))
         super().remove_event(catalog, event)
 
-    def _load_events(self, catalog: Catalog) -> None:
+    def _load_events(self, catalog: Catalog, emit: bool = True) -> None:
         catalog_model = tscat_model.catalog(catalog.uuid)
         if catalog_model.rowCount() > 0:
-            self._read_events_from_model(catalog, catalog_model)
+            self._read_events_from_model(catalog, catalog_model, emit=emit)
         else:
             # tscat loads events asynchronously via GetCatalogueAction;
             # the CatalogModel emits modelReset (not rowsInserted) when done.
@@ -187,7 +187,7 @@ class TscatCatalogProvider(CatalogProvider):
             self._set_events(catalog, [])
             self.events_changed.emit(catalog)
 
-    def _read_events_from_model(self, catalog: Catalog, catalog_model) -> None:
+    def _read_events_from_model(self, catalog: Catalog, catalog_model, emit: bool = True) -> None:
         events: list[CatalogEvent] = []
         for row in range(catalog_model.rowCount()):
             idx = catalog_model.index(row, 0)
@@ -195,7 +195,8 @@ class TscatCatalogProvider(CatalogProvider):
             if entity is not None:
                 events.append(TscatEvent(entity, parent=self))
         self._set_events(catalog, events)
-        self.events_changed.emit(catalog)
+        if emit:
+            self.events_changed.emit(catalog)
 
     @Slot()
     def _on_root_rows_changed(self, *args) -> None:
