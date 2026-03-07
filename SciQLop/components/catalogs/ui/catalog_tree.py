@@ -40,6 +40,7 @@ class CatalogTreeModel(QAbstractItemModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._root = _Node(name="root")
+        self._provider_connections: dict[int, list[tuple]] = {}
         self._registry = CatalogRegistry.instance()
 
         # Populate with existing providers (skip dead ones)
@@ -75,9 +76,17 @@ class CatalogTreeModel(QAbstractItemModel):
         self._root.children.append(node)
 
         # Connect to provider signals for dynamic updates
-        provider.catalog_added.connect(lambda cat, p=provider, n=node: self._on_catalog_added(p, n, cat))
-        provider.catalog_removed.connect(lambda cat, p=provider, n=node: self._on_catalog_removed(p, n, cat))
-        provider.dirty_changed.connect(lambda cat, dirty, p=provider, n=node: self._on_dirty_changed(p, n, cat, dirty))
+        on_added = lambda cat, p=provider, n=node: self._on_catalog_added(p, n, cat)
+        on_removed = lambda cat, p=provider, n=node: self._on_catalog_removed(p, n, cat)
+        on_dirty = lambda cat, dirty, p=provider, n=node: self._on_dirty_changed(p, n, cat, dirty)
+        provider.catalog_added.connect(on_added)
+        provider.catalog_removed.connect(on_removed)
+        provider.dirty_changed.connect(on_dirty)
+        self._provider_connections[id(provider)] = [
+            (provider.catalog_added, on_added),
+            (provider.catalog_removed, on_removed),
+            (provider.dirty_changed, on_dirty),
+        ]
         return node
 
     def _provider_node(self, provider: CatalogProvider) -> _Node | None:
@@ -100,6 +109,12 @@ class CatalogTreeModel(QAbstractItemModel):
         self.endInsertRows()
 
     def _on_provider_unregistered(self, provider: object) -> None:
+        # Disconnect provider signals before removing the node
+        for signal, slot in self._provider_connections.pop(id(provider), []):
+            try:
+                signal.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
         node = self._provider_node(provider)
         if node is None:
             return
@@ -114,7 +129,7 @@ class CatalogTreeModel(QAbstractItemModel):
             idx = self.createIndex(cat_node.row(), 0, cat_node)
             self.dataChanged.emit(idx, idx, [Qt.ItemDataRole.DisplayRole])
         pnode_idx = self.createIndex(pnode.row(), 0, pnode)
-        self.dataChanged.emit(pnode_idx, pnode_idx, [Qt.ItemDataRole.DisplayRole])
+        self.dataChanged.emit(pnode_idx, pnode_idx, [Qt.ItemDataRole.DisplayRole, DIRTY_PROVIDER_ROLE])
 
     def _find_catalog_node(self, node: _Node, catalog: object) -> _Node | None:
         for child in node.children:
