@@ -49,15 +49,20 @@ class _SaveButtonDelegate(QStyledItemDelegate):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._icon = QIcon.fromTheme("document-save")
+        self._icon = None
         self._icon_size = 16
+
+    def _get_icon(self):
+        if self._icon is None:
+            self._icon = QIcon.fromTheme("document-save")
+        return self._icon
 
     def paint(self, painter, option, index):
         super().paint(painter, option, index)
         from .catalog_tree import DIRTY_PROVIDER_ROLE
         if index.data(DIRTY_PROVIDER_ROLE):
             icon_rect = self._icon_rect(option)
-            self._icon.paint(painter, icon_rect)
+            self._get_icon().paint(painter, icon_rect)
 
     def sizeHint(self, option, index):
         size = super().sizeHint(option, index)
