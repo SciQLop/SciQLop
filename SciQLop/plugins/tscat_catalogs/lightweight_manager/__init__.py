@@ -2,6 +2,8 @@ from typing import Dict, Optional, List, Tuple
 from enum import Enum
 from datetime import datetime
 
+from speasy.core import make_utc_datetime
+
 from tscat_gui import TSCatGUI, NewCatalogue
 from PySide6.QtCore import Slot, Signal, Qt
 from PySide6.QtGui import QColor, QIcon
@@ -155,7 +157,7 @@ class LightweightManager(QWidget):
             time_range: TimeRange = self.current_panel.time_range * 0.5
         else:
             time_range: TimeRange = self.main_window.defaul_range
-        self.event_selector.create_event(catalog_uid, time_range.datetime_start(), time_range.datetime_stop())
+        self.event_selector.create_event(catalog_uid, make_utc_datetime(time_range.datetime_start()), make_utc_datetime(time_range.datetime_stop()))
 
     def _event_span(self, uuid: str) -> EventSpan or None:
         return self.spans.get(uuid)

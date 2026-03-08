@@ -3,6 +3,7 @@ from PySide6.QtGui import QColor
 from humanize.time import precisedelta
 from datetime import timedelta
 
+from speasy.core import make_utc_datetime
 from SciQLop.core import TimeRange
 
 from tscat_gui.tscat_driver.model import tscat_model
@@ -26,12 +27,12 @@ class Event(QObject):
 
     def _apply_start(self):
         tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="start",
-                                          values=[self._range_to_apply.datetime_start()]))
+                                          values=[make_utc_datetime(self._range_to_apply.datetime_start())]))
         self._current_range[0] = self._range_to_apply.start()
 
     def _apply_stop(self):
         tscat_model.do(SetAttributeAction(user_callback=None, uuids=[self.uuid], name="stop",
-                                          values=[self._range_to_apply.datetime_stop()]))
+                                          values=[make_utc_datetime(self._range_to_apply.datetime_stop())]))
         self._current_range[1] = self._range_to_apply.stop()
 
     @Slot()

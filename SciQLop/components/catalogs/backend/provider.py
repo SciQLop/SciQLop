@@ -31,6 +31,7 @@ class CatalogEvent(QObject):
 
     @start.setter
     def start(self, value: datetime) -> None:
+        value = make_utc_datetime(value)
         if value != self._start:
             self._start = value
             self.range_changed.emit()
@@ -41,6 +42,7 @@ class CatalogEvent(QObject):
 
     @stop.setter
     def stop(self, value: datetime) -> None:
+        value = make_utc_datetime(value)
         if value != self._stop:
             self._stop = value
             self.range_changed.emit()
