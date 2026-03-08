@@ -29,6 +29,18 @@ pytest -k test_virtual_products
 
 No linter is enforced beyond flake8 (configured in `setup.cfg`, excludes `docs/`).
 
+## Code Style
+
+- **KISS** — prefer the simplest solution that works; avoid over-engineering.
+- **Functional over imperative** — favor pure functions and transformations over mutation and side effects.
+- **Data over code** — prefer declarative approaches; drive behavior with data structures and configuration, not sprawling logic. Pydantic models are encouraged.
+- **Uniform abstraction levels** — a function should operate at one level of abstraction. Never mix high-level orchestration with low-level details in the same function.
+- **Small units** — keep files, classes, and functions short. Avoid deep folder hierarchies with many files.
+- **Locality of reasoning** — code should be understandable from what you can see, without chasing references across the codebase.
+- **No comment-decorated code blocks** — if a block of code needs a comment to explain what it does, extract it into a well-named function instead.
+- **Self-explanatory code** — comments are only for: (1) links to algorithm documentation, (2) justifying non-obvious decisions ("why Y instead of X").
+- **Pragmatic factorization** — DRY is good until it makes the code too abstract for no real benefit. Three similar lines are better than a premature abstraction.
+
 ## Architecture
 
 ### Startup sequence
