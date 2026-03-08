@@ -7,7 +7,7 @@ import logging
 import shutil
 from pathlib import Path
 
-from SciQLop.core.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 
 log = logging.getLogger(__name__)
 

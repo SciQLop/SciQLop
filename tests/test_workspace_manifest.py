@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from SciQLop.core.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 
 
 class TestDefaultManifest:

@@ -7,7 +7,7 @@ from glob import glob
 
 __HERE__ = os.path.dirname(__file__)
 
-from SciQLop.core.examples.example import Example
+from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.components.workspaces import workspaces_manager_instance
 from SciQLop.components.welcome.detailed_description.delegate import register_delegate
 

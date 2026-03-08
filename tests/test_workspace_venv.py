@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from SciQLop.core.workspace_venv import WorkspaceVenv
+from SciQLop.components.workspaces.backend.workspace_venv import WorkspaceVenv
 
 
 @pytest.fixture
@@ -40,8 +40,8 @@ class TestExists:
 
 
 class TestCreate:
-    @patch("SciQLop.core.workspace_venv.subprocess.run")
-    @patch("SciQLop.core.workspace_venv.uv_command")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command")
     def test_calls_uv_venv_with_system_site_packages(self, mock_uv_cmd, mock_run, venv, workspace_dir):
         mock_uv_cmd.return_value = ["uv", "venv", str(workspace_dir / ".venv"),
                                      "--system-site-packages", "--python", sys.executable]
@@ -58,8 +58,8 @@ class TestCreate:
 
 
 class TestSync:
-    @patch("SciQLop.core.workspace_venv.subprocess.run")
-    @patch("SciQLop.core.workspace_venv.uv_command")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command")
     def test_calls_uv_sync(self, mock_uv_cmd, mock_run, venv, workspace_dir):
         mock_uv_cmd.return_value = ["uv", "sync"]
         venv.sync()
@@ -69,8 +69,8 @@ class TestSync:
             mock_uv_cmd.return_value, check=True, cwd=str(workspace_dir)
         )
 
-    @patch("SciQLop.core.workspace_venv.subprocess.run")
-    @patch("SciQLop.core.workspace_venv.uv_command")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command")
     def test_calls_uv_sync_locked(self, mock_uv_cmd, mock_run, venv, workspace_dir):
         mock_uv_cmd.return_value = ["uv", "sync", "--locked"]
         venv.sync(locked=True)

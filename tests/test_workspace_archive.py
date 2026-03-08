@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from SciQLop.core.workspace_archive import (
+from SciQLop.components.workspaces.backend.workspace_archive import (
     EXCLUDE_PATTERNS,
     export_workspace,
     import_workspace,

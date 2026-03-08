@@ -5,10 +5,10 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-from SciQLop.core.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 
 
-MODULE = "SciQLop.core.workspace_setup"
+MODULE = "SciQLop.components.workspaces.backend.workspace_setup"
 
 
 @pytest.fixture
@@ -42,7 +42,7 @@ def patches(mock_venv):
 
 class TestPrepareWorkspaceCreatesDir:
     def test_creates_workspace_dir_if_missing(self, workspace_dir, patches):
-        from SciQLop.core.workspace_setup import prepare_workspace
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         assert not workspace_dir.exists()
         prepare_workspace(workspace_dir, workspace_name="Test WS")
@@ -51,7 +51,7 @@ class TestPrepareWorkspaceCreatesDir:
 
 class TestPrepareWorkspaceManifest:
     def test_creates_default_manifest_when_none_exists(self, workspace_dir, patches):
-        from SciQLop.core.workspace_setup import prepare_workspace
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         prepare_workspace(workspace_dir, workspace_name="Test WS")
 
@@ -60,7 +60,7 @@ class TestPrepareWorkspaceManifest:
         assert manifest_path.exists()
 
     def test_loads_existing_manifest(self, workspace_dir, patches):
-        from SciQLop.core.workspace_setup import prepare_workspace
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         workspace_dir.mkdir(parents=True)
         manifest = WorkspaceManifest(
@@ -84,7 +84,7 @@ class TestPrepareWorkspaceManifest:
         assert used_manifest.requires == ["scipy"]
 
     def test_default_manifest_uses_dir_name_when_no_name_given(self, workspace_dir, patches):
-        from SciQLop.core.workspace_setup import prepare_workspace
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         prepare_workspace(workspace_dir)
 
@@ -95,7 +95,7 @@ class TestPrepareWorkspaceManifest:
 
 class TestPrepareWorkspaceGeneratesPyproject:
     def test_calls_generate_pyproject_with_correct_args(self, workspace_dir, patches):
-        from SciQLop.core.workspace_setup import prepare_workspace
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         prepare_workspace(workspace_dir, workspace_name="Test")
 
@@ -110,7 +110,7 @@ class TestPrepareWorkspaceGeneratesPyproject:
 
 class TestPrepareWorkspaceVenv:
     def test_calls_venv_ensure_and_sync(self, workspace_dir, patches):
-        from SciQLop.core.workspace_setup import prepare_workspace
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         prepare_workspace(workspace_dir, workspace_name="Test")
 
@@ -119,14 +119,14 @@ class TestPrepareWorkspaceVenv:
         patches["venv"].sync.assert_called_once_with(locked=False)
 
     def test_locked_sync(self, workspace_dir, patches):
-        from SciQLop.core.workspace_setup import prepare_workspace
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         prepare_workspace(workspace_dir, workspace_name="Test", locked=True)
 
         patches["venv"].sync.assert_called_once_with(locked=True)
 
     def test_returns_python_path(self, workspace_dir, patches):
-        from SciQLop.core.workspace_setup import prepare_workspace
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         result = prepare_workspace(workspace_dir, workspace_name="Test")
         assert result == Path("/fake/.venv/bin/python")
@@ -153,7 +153,7 @@ class TestCollectPluginDepsArgs:
             patch(f"{MODULE}.generate_pyproject_toml"),
             patch(f"{MODULE}.WorkspaceVenv", return_value=mock_venv),
         ):
-            from SciQLop.core.workspace_setup import prepare_workspace
+            from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
             prepare_workspace(workspace_dir)
 
@@ -177,13 +177,13 @@ class TestHelperFunctions:
         }
 
         with patch(f"{MODULE}.SciQLopPluginsSettings", return_value=mock_settings):
-            from SciQLop.core.workspace_setup import get_globally_enabled_plugins
+            from SciQLop.components.workspaces.backend.workspace_setup import get_globally_enabled_plugins
 
             result = get_globally_enabled_plugins()
             assert sorted(result) == ["enabled_one", "enabled_two"]
 
     def test_get_plugin_folders(self):
         with patch(f"{MODULE}.plugins_folders", return_value=["/a", "/b"]):
-            from SciQLop.core.workspace_setup import get_plugin_folders
+            from SciQLop.components.workspaces.backend.workspace_setup import get_plugin_folders
 
             assert get_plugin_folders() == ["/a", "/b"]

@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 import pytest
 
-from SciQLop.core.common.uv import find_uv, uv_command
+from SciQLop.components.workspaces.backend.uv import find_uv, uv_command
 
 
 class TestFindUv:
@@ -52,18 +52,18 @@ class TestFindUv:
 class TestUvCommand:
     def test_uv_command_builds_list(self):
         """uv_command should build a command list with args."""
-        with patch("SciQLop.core.common.uv.find_uv", return_value="/usr/bin/uv"):
+        with patch("SciQLop.components.workspaces.backend.uv.find_uv", return_value="/usr/bin/uv"):
             result = uv_command("venv", "--python", "3.12")
         assert result == ["/usr/bin/uv", "venv", "--python", "3.12"]
 
     def test_uv_command_no_args(self):
         """uv_command with no args should return just the uv path."""
-        with patch("SciQLop.core.common.uv.find_uv", return_value="/usr/bin/uv"):
+        with patch("SciQLop.components.workspaces.backend.uv.find_uv", return_value="/usr/bin/uv"):
             result = uv_command()
         assert result == ["/usr/bin/uv"]
 
     def test_uv_command_raises_when_not_found(self):
         """uv_command should raise RuntimeError when uv is not found."""
-        with patch("SciQLop.core.common.uv.find_uv", return_value=None):
+        with patch("SciQLop.components.workspaces.backend.uv.find_uv", return_value=None):
             with pytest.raises(RuntimeError, match="Could not find uv"):
                 uv_command("sync")

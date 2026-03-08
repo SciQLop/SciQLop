@@ -4,7 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from SciQLop.core.common.uv import uv_command
+from SciQLop.components.workspaces.backend.uv import uv_command
 
 
 class WorkspaceVenv:

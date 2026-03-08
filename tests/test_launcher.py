@@ -88,8 +88,8 @@ def test_resolve_sciqlop_file():
 
 def test_resolve_sciqlop_archive(tmp_path):
     """Opening a .sciqlop-archive extracts and returns the workspace dir."""
-    from SciQLop.core.workspace_manifest import WorkspaceManifest
-    from SciQLop.core.workspace_archive import export_workspace
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+    from SciQLop.components.workspaces.backend.workspace_archive import export_workspace
 
     # Create a source workspace and archive it
     src = tmp_path / "src"

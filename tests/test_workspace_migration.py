@@ -2,8 +2,8 @@
 
 import json
 
-from SciQLop.core.workspace_manifest import WorkspaceManifest
-from SciQLop.core.workspace_migration import migrate_workspace
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
 
 
 def test_migrate_old_workspace(tmp_path):

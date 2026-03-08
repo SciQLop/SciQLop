@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import List, Sequence, Union
 
-from SciQLop.core.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 
 # PEP 508 package name: letters, digits, hyphens, underscores, dots.
 # We capture the base name (before any extras bracket or version specifier).

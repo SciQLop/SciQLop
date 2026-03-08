@@ -1,4 +1,4 @@
-"""Tests for SciQLop.core.workspace_project — pyproject.toml generator."""
+"""Tests for SciQLop.components.workspaces.backend.workspace_project — pyproject.toml generator."""
 
 import os
 import tempfile
@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from SciQLop.core.workspace_manifest import WorkspaceManifest
-from SciQLop.core.workspace_project import (
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_project import (
     _deduplicate_requirements,
     _slugify,
     generate_pyproject_toml,

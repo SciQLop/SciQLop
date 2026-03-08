@@ -60,7 +60,7 @@ def resolve_workspace_dir(
         if sciqlop_path.suffix == ".sciqlop":
             return sciqlop_path.parent
         elif sciqlop_path.suffix == ".sciqlop-archive":
-            from SciQLop.core.workspace_archive import import_workspace
+            from SciQLop.components.workspaces.backend.workspace_archive import import_workspace
             target_dir = workspaces_root / sciqlop_path.stem
             if not (target_dir / "workspace.sciqlop").exists():
                 import_workspace(sciqlop_path, target_dir)
@@ -98,11 +98,11 @@ def run_sciqlop_app(python_path: Path, workspace_dir: Path) -> int:
 
 def _prepare_workspace_dev(workspace_dir: Path) -> None:
     """Set up workspace directory, metadata, and install plugin deps in dev mode."""
-    from SciQLop.core.workspace_migration import migrate_workspace
-    from SciQLop.core.workspace_manifest import WorkspaceManifest
+    from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
     from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
-    from SciQLop.core.workspace_setup import get_globally_enabled_plugins, get_plugin_folders
-    from SciQLop.core.common.uv import uv_command
+    from SciQLop.components.workspaces.backend.workspace_setup import get_globally_enabled_plugins, get_plugin_folders
+    from SciQLop.components.workspaces.backend.uv import uv_command
 
     workspace_dir.mkdir(parents=True, exist_ok=True)
     migrate_workspace(workspace_dir)
@@ -142,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
             exit_code = run_sciqlop_app(Path(sys.executable), workspace_dir)
         else:
             # Production mode: prepare workspace venv and spawn subprocess
-            from SciQLop.core.workspace_setup import prepare_workspace
+            from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
             python_path = prepare_workspace(workspace_dir)
             exit_code = run_sciqlop_app(python_path, workspace_dir)
 
