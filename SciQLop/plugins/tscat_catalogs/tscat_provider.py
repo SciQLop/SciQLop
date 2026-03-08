@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Any
 
 from PySide6.QtCore import QObject, QTimer, Slot
-
 from SciQLop.components.catalogs import (
     Capability,
     Catalog,
@@ -63,18 +62,19 @@ class TscatEvent(CatalogEvent):
 
     @Slot()
     def _apply_changes(self) -> None:
-        if self._pending_start is not None:
-            tscat_model.do(SetAttributeAction(
-                user_callback=None, uuids=[self._uuid],
-                name="start", values=[self._pending_start],
-            ))
-            self._pending_start = None
-        if self._pending_stop is not None:
-            tscat_model.do(SetAttributeAction(
-                user_callback=None, uuids=[self._uuid],
-                name="stop", values=[self._pending_stop],
-            ))
-            self._pending_stop = None
+        if self._pending_start is None and self._pending_stop is None:
+            return
+        self._pending_start = self._pending_stop = None
+        if self._start > self._stop:
+            return
+        tscat_model.do(SetAttributeAction(
+            user_callback=None, uuids=[self._uuid],
+            name="start", values=[self._start],
+        ))
+        tscat_model.do(SetAttributeAction(
+            user_callback=None, uuids=[self._uuid],
+            name="stop", values=[self._stop],
+        ))
 
 
 def _extract_meta(entity) -> dict[str, Any]:
