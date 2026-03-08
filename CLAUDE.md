@@ -49,13 +49,13 @@ No linter is enforced beyond flake8 (configured in `setup.cfg`, excludes `docs/`
 
 ### Key layers
 
-**`SciQLop/core/`** — Qt infrastructure: `SciQLopApp` (QApplication subclass with palette/stylesheet management), `SciQLopMainWindow` (dock manager host using PySide6-QtAds), drag-and-drop base classes, Qt data models.
+**`SciQLop/core/`** — Shared infrastructure: `SciQLopApp` (QApplication subclass), `SciQLopMainWindow` (dock manager host using PySide6-QtAds), shared data types/enums, MIME types, generic UI widgets, and small utilities.
 
 **`SciQLop/components/`** — Self-contained feature modules. Each typically has `backend/` (logic) and `ui/` (widgets) subdirs. Key components:
 - `theming/` — palette loading, auto-invert icons, stylesheet generation
 - `settings/` — Pydantic-based config persisted to YAML in `~/.config/sciqlop/`
-- `plugins/` — dynamic plugin loader
-- `workspaces/` — Jupyter workspace management
+- `plugins/` — dynamic plugin loader, plugin dependency resolution
+- `workspaces/` — workspace management, environment setup (manifest, venv, migration, archive), examples
 - `jupyter/` — embedded IPython kernel + JupyterLab server
 
 **`SciQLop/plugins/`** — Built-in plugins (speasy data provider, catalogs, collaborative features). Each plugin exposes a `load(main_window)` function and optionally a `plugin.json` descriptor.
