@@ -11,7 +11,7 @@ from SciQLop.core.unique_names import make_simple_incr_name
 from SciQLop.core.models import products, ProductsModelNode, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder, DataProviderReturnType
-from SciQLop.core.icons import register_icon
+from SciQLop.components.theming import register_icon
 from SciQLop.components import sciqlop_logging
 from inspect import signature
 

@@ -4,7 +4,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QFrame, QScrollArea, QVBoxLayout, QWidget
 
-from SciQLop.core.icons import register_icon
+from SciQLop.components.theming import register_icon
 
 from .abstract_plot_panel import MetaPlotPanel, PlotPanel, PanelContainer
 from SciQLop.components import sciqlop_logging
