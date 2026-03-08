@@ -3,7 +3,7 @@ import os
 import pytest
 from pathlib import Path
 
-from SciQLop.core.plugin_deps import collect_plugin_dependencies
+from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
 
 
 @pytest.fixture

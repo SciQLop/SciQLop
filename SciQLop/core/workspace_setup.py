@@ -12,7 +12,7 @@ from pathlib import Path
 
 from SciQLop.components.plugins.backend.loader.loader import plugins_folders
 from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
-from SciQLop.core.plugin_deps import collect_plugin_dependencies
+from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
 from SciQLop.core.workspace_manifest import WorkspaceManifest
 from SciQLop.core.workspace_migration import migrate_workspace
 from SciQLop.core.workspace_project import generate_pyproject_toml

@@ -100,7 +100,7 @@ def _prepare_workspace_dev(workspace_dir: Path) -> None:
     """Set up workspace directory, metadata, and install plugin deps in dev mode."""
     from SciQLop.core.workspace_migration import migrate_workspace
     from SciQLop.core.workspace_manifest import WorkspaceManifest
-    from SciQLop.core.plugin_deps import collect_plugin_dependencies
+    from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
     from SciQLop.core.workspace_setup import get_globally_enabled_plugins, get_plugin_folders
     from SciQLop.core.common.uv import uv_command
 
