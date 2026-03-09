@@ -31,8 +31,10 @@ class ClientsManager(QObject):
         return self._running_jupyterlab
 
     def cleanup(self):
-        """Clean up the consoles."""
+        """Clean up the consoles. Terminate gracefully, escalate to kill."""
         for c in self._jupyter_processes:
             if c.state() is QProcess.ProcessState.Running:
-                c.kill()
-                c.waitForFinished()
+                c.terminate()
+                if not c.waitForFinished(3000):
+                    c.kill()
+                    c.waitForFinished(1000)

@@ -70,8 +70,11 @@ class SciQLopJupyterClient(QObject):
     def _forward_stderr(self):
         log.error(self._stderr_parser(str(self.process.readAllStandardError(), encoding="utf-8")))
 
+    def terminate(self):
+        self.process.terminate()
+
     def kill(self):
         self.process.kill()
 
-    def waitForFinished(self):
-        self.process.waitForFinished()
+    def waitForFinished(self, msecs: int = -1) -> bool:
+        return self.process.waitForFinished(msecs)
