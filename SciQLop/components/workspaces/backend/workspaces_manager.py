@@ -11,7 +11,7 @@ from SciQLop.components.workspaces.backend.workspace import Workspace
 from SciQLop.components.theming.icons import register_icon
 from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.core.sciqlop_application import sciqlop_app
-from SciQLop.components.jupyter.IPythonKernel import InternalIPKernel
+from SciQLop.components.jupyter.kernel import InternalIPKernel
 from SciQLop.core.common import background_run
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.components.jupyter.jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager

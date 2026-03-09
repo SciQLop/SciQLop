@@ -1,6 +1,6 @@
 import datetime
 
-from SciQLop.components.jupyter.IPythonKernel import InternalIPKernel
+from SciQLop.components.jupyter.kernel import InternalIPKernel
 from SciQLop.components.jupyter.jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 # from .workspace_spec import WorkspaceSpecFile
 from .settings import SciQLopWorkspacesSettings
