@@ -71,27 +71,14 @@ class InternalIPKernel(QObject):
         QObject.__init__(self, parent)
         self.ipykernel = None
 
-    def init_ipkernel(self, mpl_backend=None):
+    def init_ipkernel(self):
         self.ipykernel = SciQLopKernelApp.instance(kernel_name="SciQLop",
                                                    kernel_class=SciQLopKernel)
         self.ipykernel.capture_fd_output = False
         self.ipykernel.initialize()
 
     def push_variables(self, variable_dict):
-        """ Given a dictionary containing name / value pairs, push those
-        variables to the IPython console widget.
-
-        :param variable_dict: Dictionary of variables to be pushed to the
-            console's interactive namespace (```{variable_name: object, …}```)
-        """
         self.ipykernel.shell.push(variable_dict)
-
-    # def do_one_iteration(self):
-    #    self.ipykernel.kernel.process_one(wait=True)
-
-    def start(self):
-        self.ipykernel.start()
-        log.info("IPython kernel started")
 
     @property
     def connection_file(self) -> str:
