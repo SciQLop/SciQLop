@@ -18,32 +18,39 @@ class SciQLopKernel(IPythonKernel):
         super().__init__(**kwargs)
 
 
+POLL_FAST_MS = 5
+POLL_SLOW_MS = 50
+
+
 class _KernelPoller(QObject):
-    def __init__(self, kernel: IPythonKernel, poll_interval: float = 0.1):
+    def __init__(self, kernel: IPythonKernel):
         super().__init__()
         assert kernel is not None
         self.kernel = kernel
-        self._poll_interval = poll_interval
-        self._is_iterating = False
-        self.timer = QTimer()
+        self._timer = QTimer()
         if hasattr(self.kernel, "do_one_iteration"):
-            self.timer.timeout.connect(self._poll_kernel_do_one_iteration)
+            self._timer.timeout.connect(self._poll_kernel_do_one_iteration)
         else:
-            self.timer.timeout.connect(self._poll_kernel_flush)
+            self._timer.timeout.connect(self._poll_kernel_flush)
 
     def start(self):
-        self.timer.start(int(1000 * self._poll_interval))
+        self._timer.start(POLL_FAST_MS)
+
+    def stop(self):
+        self._timer.stop()
+
+    def _set_interval(self, ms: int):
+        if self._timer.isActive():
+            self._timer.setInterval(ms)
 
     @asyncSlot()
     async def _poll_kernel_do_one_iteration(self):
-        if not self._is_iterating:
-            self._is_iterating = True
-            try:
-                await self.kernel.do_one_iteration()
-            except:
-                log.exception("Error while polling IPython kernel")
-            finally:
-                self._is_iterating = False
+        try:
+            await self.kernel.do_one_iteration()
+            self._set_interval(POLL_FAST_MS)
+        except Exception as e:
+            log.error(f"Error while polling IPython kernel: {e}")
+            self._set_interval(POLL_SLOW_MS)
 
     @asyncSlot()
     async def _poll_kernel_flush(self):
@@ -64,7 +71,7 @@ class SciQLopKernelApp(IPKernelApp):
         if self.poller is not None:
             self.poller.start()
         self.kernel.start()
-        self._kernel_poller = _KernelPoller(kernel=self.kernel, poll_interval=0.01)
+        self._kernel_poller = _KernelPoller(kernel=self.kernel)
         self._kernel_poller.start()
         sciqlop_application.sciqlop_event_loop().exec()
 
