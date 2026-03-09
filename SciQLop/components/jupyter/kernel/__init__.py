@@ -2,12 +2,9 @@
 from qasync import asyncSlot
 import jupyter_client
 from PySide6.QtCore import QObject, QTimer
-from typing import Optional
-
 from ipykernel.kernelapp import IPKernelApp
 from ipykernel.ipkernel import IPythonKernel
 
-from SciQLop.core import sciqlop_application
 from SciQLop.components import sciqlop_logging
 
 log = sciqlop_logging.getLogger(__name__)
@@ -60,20 +57,11 @@ class _KernelPoller(QObject):
 
 class SciQLopKernelApp(IPKernelApp):
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._kernel_poller: Optional[_KernelPoller] = None
-
     def start(self):
-        """Start the application."""
         if self.subapp is not None:
             return self.subapp.start()
         if self.poller is not None:
             self.poller.start()
-        self.kernel.start()
-        self._kernel_poller = _KernelPoller(kernel=self.kernel)
-        self._kernel_poller.start()
-        sciqlop_application.sciqlop_event_loop().exec()
 
 
 class InternalIPKernel(QObject):
