@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QFrame, QLabel, QGraphicsDropShadowEffect, QPushButton, QFileDialog
-from PySide6.QtGui import QPixmap, QIcon
+from PySide6.QtGui import QPixmap, QIcon, QKeyEvent
 from PySide6.QtCore import QPropertyAnimation, Signal, Qt, QSize
 from SciQLop.core.sciqlop_application import sciqlop_app
 import os
@@ -61,6 +61,7 @@ class ImageSelector(QPushButton):
 
 class Card(QFrame):
     clicked = Signal()
+    double_clicked = Signal()
 
     def __init__(self, parent=None, width=200, height=220, tooltip=None):
         super().__init__(parent)
@@ -77,6 +78,7 @@ class Card(QFrame):
         self.setMinimumSize(width, height)
         self._initial_geometry = None
         self._destination_geometry = None
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         if tooltip is not None:
             self.setToolTip(tooltip)
 
@@ -87,6 +89,10 @@ class Card(QFrame):
     @tooltip.setter
     def tooltip(self, value):
         self.setToolTip(value)
+
+    def invalidate_animation_cache(self):
+        self._initial_geometry = None
+        self._destination_geometry = None
 
     def enterEvent(self, event):
         self._shadow.setOffset(5)
@@ -114,6 +120,9 @@ class Card(QFrame):
         self._animation.start()
         super().leaveEvent(event)
 
+    def filter_text(self) -> str:
+        return ""
+
     def set_selected(self, selected: bool):
         self.setProperty("selected", selected)
         self.style().polish(self)
@@ -123,3 +132,17 @@ class Card(QFrame):
         super().mousePressEvent(event)
         if event.button() == Qt.LeftButton:
             self.clicked.emit()
+
+    def mouseDoubleClickEvent(self, event):
+        super().mouseDoubleClickEvent(event)
+        if event.button() == Qt.LeftButton:
+            self.double_clicked.emit()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                self.double_clicked.emit()
+            else:
+                self.clicked.emit()
+        else:
+            super().keyPressEvent(event)

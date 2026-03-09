@@ -1,7 +1,7 @@
-from PySide6.QtWidgets import QVBoxLayout, QLabel, QFrame, QPushButton, QFormLayout, QLineEdit, \
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QFrame, QPushButton, QFormLayout, QLineEdit, \
     QTextEdit, QMessageBox
 from PySide6.QtGui import QIcon
-from PySide6.QtCore import QFileSystemWatcher, Slot, Property
+from PySide6.QtCore import QFileSystemWatcher, Slot, Property, Qt
 from SciQLop.components.theming import get_current_style_icon
 from SciQLop.components.welcome.card import Card, FixedSizeImageWidget, ImageSelector
 from SciQLop.components.workspaces import workspaces_manager_instance, WorkspaceSpecFile, SciQLopWorkspacesSettings
@@ -17,20 +17,59 @@ import humanize
 log = sciqlop_logging.getLogger(__name__)
 
 
+class NewWorkspaceCard(Card):
+    def __init__(self, parent=None):
+        super().__init__(parent, width=160, height=180, tooltip="Create a new workspace")
+        self._layout = QVBoxLayout()
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setLayout(self._layout)
+        self._icon = FixedSizeImageWidget(icon=get_current_style_icon("add"), width=80, height=80)
+        self._layout.addWidget(self._icon, alignment=Qt.AlignmentFlag.AlignCenter)
+        self._layout.addWidget(QLabel("New workspace"))
+        self.clicked.connect(self._create_workspace)
+
+    @staticmethod
+    def _create_workspace():
+        workspaces_manager_instance().create_workspace()
+
+
+def _badge_label(text: str) -> QLabel:
+    label = QLabel(text)
+    label.setStyleSheet("background-color: palette(highlight); color: palette(highlighted-text); "
+                        "border-radius: 3px; padding: 1px 4px; font-size: 10px;")
+    label.setMaximumHeight(18)
+    return label
+
+
 class WorkSpaceCard(Card):
-    def __init__(self, workspace: WorkspaceSpecFile, parent=None):
+    def __init__(self, workspace: WorkspaceSpecFile, is_active: bool = False, parent=None):
         super().__init__(parent, width=160, height=180)
         self._layout = QVBoxLayout()
+        self._layout.setContentsMargins(4, 4, 4, 4)
+        self._layout.setSpacing(2)
         self.setLayout(self._layout)
+        badges = QHBoxLayout()
+        if is_active:
+            badges.addWidget(_badge_label("Active"))
+        if workspace.default_workspace:
+            badges.addWidget(_badge_label("Default"))
+        badges.addStretch()
+        self._layout.addLayout(badges)
         self._thumbnail = FixedSizeImageWidget(image_path=str(os.path.join(workspace.directory, workspace.image)),
-                                               width=140,
-                                               height=140)
+                                               width=130,
+                                               height=130)
         self._layout.addWidget(self._thumbnail)
         self._name = QLabel(workspace.name)
         self._layout.addWidget(self._name)
         self._workspace = workspace
         self._refresh_tooltip()
         self.setProperty("default_workspace", workspace.default_workspace)
+        if not is_active:
+            self.double_clicked.connect(self._open_workspace)
+
+    def _open_workspace(self):
+        if not workspaces_manager_instance().has_workspace:
+            workspaces_manager_instance().load_workspace(self._workspace)
 
     def _refresh_tooltip(self):
         self.tooltip = f"""
@@ -40,6 +79,9 @@ class WorkSpaceCard(Card):
 <br>
 <i>Last used: {humanize.naturaldate(self._workspace.last_used)}</i>
         """
+
+    def filter_text(self) -> str:
+        return f"{self._workspace.name} {self._workspace.description}"
 
     @property
     def workspace(self) -> WorkspaceSpecFile:
@@ -79,7 +121,7 @@ class WorkSpaceCard(Card):
             self._thumbnail.set_image(destination)
 
 
-@register_delegate(WorkSpaceCard)
+@register_delegate(WorkSpaceCard, title="Workspace details")
 class WorkspaceDescriptionWidget(QFrame):
 
     def __init__(self, workspace: WorkSpaceCard, parent=None):
@@ -100,7 +142,7 @@ class WorkspaceDescriptionWidget(QFrame):
         self._layout.addRow(QLabel("Image"), self._image)
         self._description = QTextEdit(workspace.workspace.description)
         self._description.setEnabled(not workspace.workspace.default_workspace)
-        self._description.textChanged.connect(lambda x: setattr(self._workspace, "description", x))
+        self._description.textChanged.connect(lambda: setattr(self._workspace, "description", self._description.toPlainText()))
         self._layout.addRow(QLabel("Description"), self._description)
         if not workspaces_manager_instance().has_workspace:
             self._open_button = QPushButton("Open workspace")
@@ -152,9 +194,10 @@ class WorkspaceDescriptionWidget(QFrame):
 
 class RecentWorkspaces(WelcomeSection):
     def __init__(self, parent=None):
-        super().__init__("Recent workspaces", parent)
+        super().__init__("Recent workspaces", filterable=True, parent=parent)
         self._workspaces = CardsCollection()
         self._workspaces.show_detailed_description.connect(self.show_detailed_description)
+        self.add_filterable_collection(self._workspaces)
         self._layout.addWidget(self._workspaces)
         self.refresh_workspaces()
         self._watcher = QFileSystemWatcher()
@@ -167,9 +210,12 @@ class RecentWorkspaces(WelcomeSection):
         log.debug("Refreshing workspaces")
         self.show_detailed_description.emit(None)
         self._workspaces.clear()
+        self._workspaces.add_card(NewWorkspaceCard(), connect_detail=False)
         wm = workspaces_manager_instance()
         list(map(self._add_workspace, sorted(wm.list_workspaces(), key=lambda x: x.last_used, reverse=True)))
 
     def _add_workspace(self, workspace: WorkspaceSpecFile):
-        card = WorkSpaceCard(workspace)
+        wm = workspaces_manager_instance()
+        is_active = wm.has_workspace and wm.workspace.workspace_dir == workspace.directory
+        card = WorkSpaceCard(workspace, is_active=is_active)
         self._workspaces.add_card(card)

@@ -39,7 +39,7 @@ class Shortcuts(QFrame):
 
 class QuickStartSection(WelcomeSection):
     def __init__(self, parent=None):
-        super().__init__("Quick start", parent)
+        super().__init__("Quick start", parent=parent)
         self._shortcuts = CardsCollection()
         #self._shortcuts.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._layout.addWidget(self._shortcuts)

@@ -1,4 +1,5 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout, QScrollArea, QFrame
+from PySide6.QtCore import Qt
 from SciQLop.components.welcome.sections.ExamplesView import ExamplesView
 from SciQLop.components.welcome.sections.quickstart import QuickStartSection
 from SciQLop.components.welcome.sections.recent_workspaces import RecentWorkspaces
@@ -17,7 +18,10 @@ class WelcomePage(QWidget):
         super().__init__(parent)
         self._selected_card = None
         self.setWindowTitle("Welcome")
+
+        sections_widget = QWidget()
         self._sections_layout = QVBoxLayout()
+        sections_widget.setLayout(self._sections_layout)
         self._quick_start = apply_size_policy(QuickStartSection(), QSizePolicy.Policy.Expanding,
                                               QSizePolicy.Policy.Maximum)
         self._sections_layout.addWidget(self._quick_start)
@@ -26,14 +30,20 @@ class WelcomePage(QWidget):
         self._sections_layout.addWidget(self._recent_workspaces)
         self._examples = apply_size_policy(ExamplesView(), QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._sections_layout.addWidget(self._examples)
+
+        self._scroll = QScrollArea()
+        self._scroll.setWidget(sections_widget)
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+
         self._layout = QHBoxLayout()
-        self._layout.addLayout(self._sections_layout)
+        self._layout.addWidget(self._scroll)
         self._detailed_description = DetailedDescription(self)
         self._detailed_description.hide()
         self._layout.addWidget(self._detailed_description)
         self.setLayout(self._layout)
 
-        self._quick_start.show_detailed_description.connect(self._show_detailed_description)
         self._recent_workspaces.show_detailed_description.connect(self._show_detailed_description)
         self._examples.show_detailed_description.connect(self._show_detailed_description)
 

@@ -5,12 +5,26 @@ from PySide6.QtWidgets import QWidget
 __delegate_classes__: Mapping[str, Type[QWidget]] = {}
 
 
-def register_delegate(cls: type):
+__delegate_titles__: Mapping[str, str] = {}
+
+
+def register_delegate(cls: type, title: str = "Details"):
     def _(delegate: Type[QWidget]):
         __delegate_classes__[cls.__name__] = delegate
+        __delegate_titles__[cls.__name__] = title
         return delegate
 
     return _
+
+
+def title_for(obj: QObject) -> str:
+    def inner(cls: type) -> str:
+        t = __delegate_titles__.get(cls.__name__, None)
+        if t is None and cls.__base__ is not None:
+            return inner(cls.__base__)
+        return t or "Details"
+
+    return inner(type(obj))
 
 
 def delegate_for(obj: QObject) -> Optional[Type[QWidget]]:

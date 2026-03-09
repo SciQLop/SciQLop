@@ -17,6 +17,10 @@ class ExampleCard(Card):
         super().__init__(parent)
         self._example = Example(json_file)
         self._refresh_ui()
+        self.double_clicked.connect(self._open_example)
+
+    def _open_example(self):
+        workspaces_manager_instance().load_example(self._example.directory)
 
     def _refresh_ui(self):
         self._layout = QVBoxLayout()
@@ -25,18 +29,21 @@ class ExampleCard(Card):
         self._layout.addWidget(HLine())
         self._layout.addWidget(QLabel(self._example.name))
         tags = QLabel(
-            f"<font color=\"black\">Tags:</font> <font color=\"blue\">{' '.join(self._example.tags)}</font>")
+            f"Tags: <a style=\"text-decoration:none\">{' '.join(self._example.tags)}</a>")
         font = tags.font()
         font.setPointSize(int(font.pointSize() * 0.8))
         tags.setFont(font)
         self._layout.addWidget(tags)
+
+    def filter_text(self) -> str:
+        return f"{self._example.name} {' '.join(self._example.tags)}"
 
     @property
     def example(self) -> Example:
         return self._example
 
 
-@register_delegate(ExampleCard)
+@register_delegate(ExampleCard, title="Example details")
 class ExampleDescriptionWidget(QFrame):
 
     def __init__(self, example: ExampleCard, parent=None):
@@ -56,9 +63,10 @@ class ExampleDescriptionWidget(QFrame):
 class ExamplesView(WelcomeSection):
 
     def __init__(self, parent=None):
-        super().__init__("Examples", parent)
+        super().__init__("Examples", filterable=True, parent=parent)
         self._examples_list = CardsCollection()
         self._examples_list.show_detailed_description.connect(self.show_detailed_description)
+        self.add_filterable_collection(self._examples_list)
         # self._examples_list.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._layout.addWidget(self._examples_list)
         self._layout.addItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding))
