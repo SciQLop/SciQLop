@@ -108,3 +108,6 @@ class InternalIPKernel(QObject):
     @property
     def connection_file(self) -> str:
         return jupyter_client.find_connection_file(self.ipykernel.abs_connection_file)
+
+
+from .manager import KernelManager
