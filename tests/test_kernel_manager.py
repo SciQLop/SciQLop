@@ -21,7 +21,7 @@ def test_kernel_manager_shutdown_stops_poller():
 
     km._clients.cleanup.assert_called_once()
     km._poller.stop.assert_called_once()
-    km._kernel_app.kernel.do_shutdown.assert_called_once()
+    km._kernel_app.kernel.do_shutdown.assert_called_once_with(restart=False)
 
 
 def test_kernel_manager_shutdown_noop_when_not_initialized():

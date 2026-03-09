@@ -60,7 +60,7 @@ class KernelManager(QObject):
         if self._poller:
             self._poller.stop()
         if self._kernel_app and self._kernel_app.kernel:
-            self._kernel_app.kernel.do_shutdown()
+            self._kernel_app.kernel.do_shutdown(restart=False)
 
     @property
     def connection_file(self) -> Optional[str]:
