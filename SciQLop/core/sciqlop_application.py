@@ -3,8 +3,28 @@ from typing import Dict, List, Optional, Any, Callable
 from SciQLop.components.theming import load_stylesheets, setup_palette, SciQLopStyle
 from qasync import QEventLoop, QApplication
 import asyncio
+import math
 import sys
 import time
+
+
+# qasync's _SimpleTimer.add_callback crashes on infinite delays (e.g. anyio.sleep_forever())
+# because QTimer can't handle int(inf * 1000). Cap at ~24 days which is effectively forever.
+# See: https://github.com/CabbageDevelopment/qasync/issues/
+def _patch_qasync_infinite_timer():
+    from qasync import _SimpleTimer
+    _original_add_callback = _SimpleTimer.add_callback
+    _MAX_DELAY = (2**31 - 1) / 1000  # ~24.8 days in seconds, fits in signed 32-bit ms
+
+    def _safe_add_callback(self, handle, delay=0):
+        if math.isinf(delay):
+            delay = _MAX_DELAY
+        return _original_add_callback(self, handle, delay)
+
+    _SimpleTimer.add_callback = _safe_add_callback
+
+
+_patch_qasync_infinite_timer()
 
 
 class SciQLopApp(QApplication):
