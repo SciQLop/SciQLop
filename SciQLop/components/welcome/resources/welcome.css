@@ -10,22 +10,75 @@ body {
     color: var(--Text);
     overflow-y: auto;
     overflow-x: hidden;
-}
-
-#main {
-    display: flex;
-    min-height: 100vh;
-}
-
-#sections {
-    flex: 1;
     padding: 16px;
-    overflow-y: auto;
-    transition: margin-right 0.2s ease;
 }
 
-#sections.with-details {
-    margin-right: 420px;
+/* --- Hero bar --- */
+
+#hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--Highlight) 12%, var(--Window));
+    border: 1px solid color-mix(in srgb, var(--Highlight) 30%, var(--Borders));
+}
+
+#hero.hidden {
+    display: none;
+}
+
+#hero .hero-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+#hero .hero-name {
+    font-weight: 600;
+    font-size: 1em;
+}
+
+#hero .hero-sub {
+    font-size: 0.85em;
+    color: var(--UnselectedText);
+}
+
+#hero button {
+    padding: 6px 20px;
+    border: 1px solid var(--Highlight);
+    border-radius: 4px;
+    background: var(--Highlight);
+    color: var(--HighlightedText);
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+}
+
+#hero button:hover {
+    opacity: 0.9;
+}
+
+/* --- Two-column layout --- */
+
+#columns {
+    display: flex;
+    gap: 24px;
+    min-height: calc(100vh - 80px);
+}
+
+#left-column {
+    flex: 6;
+    min-width: 0;
+}
+
+#right-column {
+    flex: 4;
+    min-width: 200px;
+    border-left: 1px solid var(--Borders);
+    padding-left: 24px;
 }
 
 /* --- Sections --- */
@@ -69,6 +122,10 @@ h2 {
     gap: 12px;
 }
 
+.cards-grid-small {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
 .cards-row {
     display: flex;
     flex-wrap: wrap;
@@ -78,7 +135,6 @@ h2 {
 /* --- Cards --- */
 
 .card {
-    width: 200px;
     border: 1px solid var(--Borders);
     border-radius: 6px;
     background: var(--Window);
@@ -146,6 +202,12 @@ h2 {
     margin-right: 4px;
 }
 
+.card-stars {
+    font-size: 0.75em;
+    color: var(--UnselectedText);
+    margin-top: 2px;
+}
+
 /* --- Shortcut cards (quickstart) --- */
 
 .shortcut-card {
@@ -177,7 +239,50 @@ h2 {
     font-size: 3em;
 }
 
-/* --- Details panel --- */
+/* --- News items --- */
+
+.news-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    background: var(--Window);
+    border: 1px solid var(--Borders);
+}
+
+.news-item .news-icon {
+    font-size: 1.2em;
+    flex-shrink: 0;
+}
+
+.news-item .news-text {
+    flex: 1;
+}
+
+.news-item .news-date {
+    font-size: 0.8em;
+    color: var(--UnselectedText);
+    flex-shrink: 0;
+}
+
+/* --- Browse link --- */
+
+.browse-link {
+    font-size: 0.9em;
+    color: var(--Highlight);
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.browse-link:hover {
+    text-decoration: underline;
+}
+
+/* --- Details panel (overlay) --- */
 
 #details-panel {
     position: fixed;
