@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SciQLop Welcome</title>
+    <style>
+        :root {
+            {% for name, color in palette.items() %}
+            --{{ name }}: {{ color }};
+            {% endfor %}
+        }
+    </style>
+    <link rel="stylesheet" href="welcome.css">
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+</head>
+<body>
+    <div id="main">
+        <div id="sections">
+            <section id="quickstart">
+                <h2>Quick start</h2>
+                <div class="cards-row" id="quickstart-cards"></div>
+            </section>
+
+            <section id="recent-workspaces">
+                <div class="section-header">
+                    <h2>Recent workspaces</h2>
+                    <input type="text" id="workspace-filter" placeholder="Filter...">
+                </div>
+                <div class="cards-grid" id="workspace-cards"></div>
+            </section>
+
+            <section id="examples">
+                <div class="section-header">
+                    <h2>Examples</h2>
+                    <input type="text" id="example-filter" placeholder="Filter...">
+                </div>
+                <div class="cards-grid" id="example-cards"></div>
+            </section>
+        </div>
+
+        <aside id="details-panel" class="hidden">
+            <h2 id="details-title">Details</h2>
+            <hr>
+            <div id="details-content"></div>
+        </aside>
+    </div>
+
+    <script src="welcome.js"></script>
+</body>
+</html>

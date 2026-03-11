@@ -1,0 +1,270 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: var(--WelcomeBackground, var(--Base));
+    color: var(--Text);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#main {
+    display: flex;
+    min-height: 100vh;
+}
+
+#sections {
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    transition: margin-right 0.2s ease;
+}
+
+#sections.with-details {
+    margin-right: 420px;
+}
+
+/* --- Sections --- */
+
+section {
+    margin-bottom: 24px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+.section-header h2 {
+    flex: 1;
+}
+
+.section-header input {
+    max-width: 200px;
+    padding: 4px 8px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Base);
+    color: var(--Text);
+}
+
+h2 {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--Text);
+}
+
+/* --- Card grid --- */
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 200px));
+    gap: 12px;
+}
+
+.cards-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+/* --- Cards --- */
+
+.card {
+    width: 200px;
+    border: 1px solid var(--Borders);
+    border-radius: 6px;
+    background: var(--Window);
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    user-select: none;
+}
+
+.card:hover {
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.4);
+    transform: scale(1.05);
+}
+
+.card.selected {
+    border-color: var(--Highlight);
+    box-shadow: 0 0 0 2px var(--Highlight);
+}
+
+.card-image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    background: var(--AlternateBase);
+    display: block;
+}
+
+.card-image.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2em;
+    color: var(--UnselectedText);
+}
+
+.card-body {
+    padding: 8px;
+}
+
+.card-name {
+    font-size: 0.9em;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-tags {
+    font-size: 0.75em;
+    color: var(--UnselectedText);
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-badge {
+    display: inline-block;
+    font-size: 0.7em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--Highlight);
+    color: var(--HighlightedText);
+    margin-right: 4px;
+}
+
+/* --- Shortcut cards (quickstart) --- */
+
+.shortcut-card {
+    width: 100px;
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid var(--Borders);
+    border-radius: 6px;
+    background: var(--Window);
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.25);
+    font-size: 0.85em;
+    text-align: center;
+}
+
+.shortcut-card:hover {
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.4);
+    transform: scale(1.05);
+}
+
+/* --- New workspace card --- */
+
+.card.new-workspace .card-image.placeholder {
+    font-size: 3em;
+}
+
+/* --- Details panel --- */
+
+#details-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 420px;
+    height: 100vh;
+    background: var(--Window);
+    border-left: 1px solid var(--Borders);
+    padding: 16px;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    z-index: 10;
+}
+
+#details-panel.visible {
+    transform: translateX(0);
+}
+
+#details-panel.hidden {
+    transform: translateX(100%);
+}
+
+#details-panel h2 {
+    margin-bottom: 8px;
+}
+
+#details-panel hr {
+    border: none;
+    border-top: 1px solid var(--Borders);
+    margin-bottom: 12px;
+}
+
+.details-field {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+    align-items: baseline;
+}
+
+.details-field label {
+    min-width: 100px;
+    font-weight: 500;
+    font-size: 0.9em;
+    color: var(--UnselectedText);
+}
+
+.details-field span,
+.details-field input,
+.details-field textarea {
+    flex: 1;
+    font-size: 0.9em;
+}
+
+.details-field input,
+.details-field textarea {
+    padding: 4px 8px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Base);
+    color: var(--Text);
+}
+
+.details-actions {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.details-actions button {
+    padding: 8px 16px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Button);
+    color: var(--ButtonText);
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.details-actions button:hover {
+    background: var(--Highlight);
+    color: var(--HighlightedText);
+}
+
+.details-actions button.danger:hover {
+    background: #c0392b;
+    color: white;
+}
