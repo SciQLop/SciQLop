@@ -60,11 +60,26 @@ def _discover_examples() -> list[Example]:
     return results
 
 
+_MOCK_NEWS = [
+    {"icon": "\U0001f389", "title": "SciQLop 0.8 released", "date": "2026-03-10"},
+    {"icon": "\U0001f4e6", "title": "New MMS data products available", "date": "2026-03-08"},
+    {"icon": "\U0001f4a1", "title": "Tip: Use virtual products for derived quantities", "date": "2026-03-05"},
+]
+
+_MOCK_FEATURED = [
+    {"name": "AMDA Provider", "type": "plugin", "description": "Access AMDA data directly in SciQLop", "author": "IRAP", "tags": ["data-provider", "amda"], "stars": 42},
+    {"name": "Wavelet Analysis", "type": "plugin", "description": "Continuous wavelet transform for time series", "author": "LPP", "tags": ["analysis", "wavelets"], "stars": 28},
+    {"name": "MMS Mission Study", "type": "workspace", "description": "Pre-configured workspace for MMS data analysis", "author": "IRAP", "tags": ["mms", "magnetosphere"], "stars": 15},
+    {"name": "Solar Wind Tutorial", "type": "example", "description": "Introduction to solar wind data analysis with SciQLop", "author": "Community", "tags": ["tutorial", "solar-wind"], "stars": 33},
+]
+
+
 class WelcomeBackend(QObject):
     """Python backend exposed to the welcome page via QWebChannel."""
 
     workspace_list_changed = Signal()
     quickstart_changed = Signal()
+    appstore_requested = Signal()
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -104,6 +119,23 @@ class WelcomeBackend(QObject):
             })
         return json.dumps(result)
 
+    @Slot(result=str)
+    def get_hero_workspace(self) -> str:
+        workspaces = workspaces_manager_instance().list_workspaces()
+        non_default = [ws for ws in workspaces if not ws.default_workspace]
+        if not non_default:
+            return "null"
+        non_default.sort(key=lambda ws: ws.last_used, reverse=True)
+        return json.dumps(_workspace_to_dict(non_default[0]))
+
+    @Slot(result=str)
+    def list_news(self) -> str:
+        return json.dumps(_MOCK_NEWS)
+
+    @Slot(result=str)
+    def list_featured_packages(self) -> str:
+        return json.dumps(_MOCK_FEATURED)
+
     # --- Action slots ---
 
     @Slot(str)
@@ -131,6 +163,10 @@ class WelcomeBackend(QObject):
     @Slot(str)
     def open_example(self, directory: str) -> None:
         workspaces_manager_instance().load_example(directory)
+
+    @Slot()
+    def open_appstore(self) -> None:
+        self.appstore_requested.emit()
 
     @Slot(str)
     def run_quickstart(self, name: str) -> None:
