@@ -25,6 +25,9 @@ class Room(QObject):
     def get_catalogue(self, name: str):
         return self._client.db.get_catalogue(name)
 
+    async def close(self):
+        await self._client.leave_room()
+
     @property
     def db(self):
         return self._client.db

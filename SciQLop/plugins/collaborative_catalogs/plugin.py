@@ -45,3 +45,7 @@ class Plugin(QObject):
         self.show_catalog = CatalogGUISpawner()
         self.toolbar: QToolBar = main_window.addToolBar("Collaborative Catalogs")
         self.toolbar.addAction(self.show_catalog)
+
+    async def close(self):
+        if self.show_catalog._room is not None:
+            await self.show_catalog._room.close()

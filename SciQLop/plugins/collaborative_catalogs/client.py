@@ -159,9 +159,13 @@ class Client(QObject):
             return False
         return True
 
-    def leave_room(self):
+    async def leave_room(self):
         if self._task:
             self._close_event.set()
+            try:
+                await asyncio.wait_for(self._task, timeout=5.0)
+            except (asyncio.TimeoutError, asyncio.CancelledError, Exception):
+                pass
             self._task = None
             self._close_event = asyncio.Event()
 

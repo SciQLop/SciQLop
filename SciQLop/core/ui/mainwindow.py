@@ -325,12 +325,28 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 self.showFullScreen()
 
     def closeEvent(self, event: QCloseEvent):
+        if not getattr(self, '_closing', False):
+            event.ignore()
+            self._closing = True
+            import asyncio
+            asyncio.ensure_future(self._async_close())
+            return
         self.workspace_manager.quit()
         super().closeEvent(event)
+
+    async def _async_close(self):
+        import asyncio
+        import inspect
         from SciQLop.components.plugins import loaded_plugins
+        tasks = []
         for plugin in loaded_plugins.__dict__.values():
             if hasattr(plugin, "close"):
-                plugin.close()
+                result = plugin.close()
+                if inspect.isawaitable(result):
+                    tasks.append(asyncio.ensure_future(result))
+        if tasks:
+            await asyncio.wait(tasks, timeout=5.0)
+        self.close()
 
     def push_variables_to_console(self, variables: dict):
         self.workspace_manager.pushVariables(variable_dict=variables)
