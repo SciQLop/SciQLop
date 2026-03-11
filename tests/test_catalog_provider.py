@@ -718,7 +718,7 @@ def test_catalog_browser_filter_hides_non_matching(qtbot, qapp):
     # All visible initially
     provider_idx = find_provider_idx()
     assert provider_idx is not None
-    assert proxy.rowCount(provider_idx) == 3
+    assert proxy.rowCount(provider_idx) == 4  # 3 catalogs + 1 placeholder
 
     # Filter to "alp"
     browser._filter_bar.setText("alp")
@@ -730,7 +730,7 @@ def test_catalog_browser_filter_hides_non_matching(qtbot, qapp):
     browser._filter_bar.setText("")
     provider_idx = find_provider_idx()
     assert provider_idx is not None
-    assert proxy.rowCount(provider_idx) == 3
+    assert proxy.rowCount(provider_idx) == 4  # 3 catalogs + 1 placeholder
 
 
 # --- Task 4: Public mutation API ---
@@ -788,3 +788,234 @@ def test_cocat_provider_is_catalog_provider(qtbot, qapp):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert issubclass(mod.CocatCatalogProvider, CatalogProvider)
+
+
+# --- Inline catalog editing ---
+
+def test_rename_catalog_capability_exists(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.provider import Capability
+    assert Capability.RENAME_CATALOG == "rename_catalog"
+
+
+def test_provider_rename_catalog(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability
+
+    class RenamableProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="Renamable")
+            self._cat = Catalog(uuid="cat-1", name="OldName", provider=self)
+            self._catalogs = [self._cat]
+            self._set_events(self._cat, [])
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def capabilities(self, catalog=None):
+            return {Capability.RENAME_CATALOG}
+
+        def rename_catalog(self, catalog, new_name):
+            catalog.name = new_name
+            self.catalog_renamed.emit(catalog)
+
+    provider = RenamableProvider()
+    cat = provider.catalogs()[0]
+    assert cat.name == "OldName"
+
+    received = []
+    provider.catalog_renamed.connect(lambda c: received.append(c))
+    provider.rename_catalog(cat, "NewName")
+
+    assert cat.name == "NewName"
+    assert len(received) == 1
+    assert received[0] is cat
+
+
+def test_tree_model_placeholder_node(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1)
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            assert model.rowCount(idx) == 2
+            last_idx = model.index(model.rowCount(idx) - 1, 0, idx)
+            assert model.data(last_idx) == "New Catalog..."
+            return
+    pytest.fail("Provider not found")
+
+
+def test_tree_model_placeholder_is_editable(qtbot, qapp):
+    from PySide6.QtCore import Qt
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=0)
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            placeholder_idx = model.index(0, 0, idx)
+            flags = model.flags(placeholder_idx)
+            assert flags & Qt.ItemFlag.ItemIsEditable
+            return
+    pytest.fail("Provider not found")
+
+
+def test_tree_model_setdata_placeholder_creates_catalog(qtbot, qapp):
+    from PySide6.QtCore import Qt
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=0)
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            assert model.rowCount(idx) == 1
+            placeholder_idx = model.index(0, 0, idx)
+
+            result = model.setData(placeholder_idx, "My Catalog", Qt.ItemDataRole.EditRole)
+            assert result is True
+
+            assert len(provider.catalogs()) == 1
+            assert provider.catalogs()[0].name == "My Catalog"
+
+            assert model.rowCount(idx) == 2
+            return
+    pytest.fail("Provider not found")
+
+
+def test_tree_model_setdata_renames_catalog(qtbot, qapp):
+    from PySide6.QtCore import Qt
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability
+
+    class RenamableProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="Renamable2")
+            self._cat = Catalog(uuid="cat-r", name="OldName", provider=self)
+            self._catalogs = [self._cat]
+            self._set_events(self._cat, [])
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def capabilities(self, catalog=None):
+            return {Capability.RENAME_CATALOG}
+
+        def rename_catalog(self, catalog, new_name):
+            catalog.name = new_name
+            self.catalog_renamed.emit(catalog)
+
+    provider = RenamableProvider()
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            cat_idx = model.index(0, 0, idx)
+            assert model.data(cat_idx) == "OldName"
+
+            result = model.setData(cat_idx, "NewName", Qt.ItemDataRole.EditRole)
+            assert result is True
+            assert model.data(cat_idx) == "NewName"
+            assert provider.catalogs()[0].name == "NewName"
+            return
+    pytest.fail("Provider not found")
+
+
+def test_tree_model_setdata_rejects_empty_name(qtbot, qapp):
+    from PySide6.QtCore import Qt
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=0)
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            placeholder_idx = model.index(0, 0, idx)
+            assert model.setData(placeholder_idx, "", Qt.ItemDataRole.EditRole) is False
+            assert model.setData(placeholder_idx, "   ", Qt.ItemDataRole.EditRole) is False
+            assert len(provider.catalogs()) == 0
+            return
+    pytest.fail("Provider not found")
+
+
+def test_dummy_provider_remove_catalog(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=3, events_per_catalog=5)
+    assert len(provider.catalogs()) == 3
+
+    cat = provider.catalogs()[1]
+    with qtbot.waitSignal(provider.catalog_removed, timeout=1000):
+        provider.remove_catalog(cat)
+
+    assert len(provider.catalogs()) == 2
+    assert cat not in provider.catalogs()
+    assert len(provider.events(cat)) == 0
+
+
+def test_tree_model_no_placeholder_for_readonly_provider(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog
+
+    class ReadOnlyProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="ReadOnlyNoPH")
+            self._cat = Catalog(uuid="ro-1", name="Cat", provider=self)
+            self._catalogs = [self._cat]
+            self._set_events(self._cat, [])
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def capabilities(self, catalog=None):
+            return set()
+
+    provider = ReadOnlyProvider()
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            # Should have only the catalog, no placeholder
+            assert model.rowCount(idx) == 1
+            child = model.node_from_index(model.index(0, 0, idx))
+            assert not child.is_placeholder
+            assert child.catalog is not None
+            return
+    pytest.fail("Provider not found")
+
+
+def test_tree_model_placeholder_italic(qtbot, qapp):
+    from PySide6.QtCore import Qt
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=0)
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            placeholder_idx = model.index(0, 0, idx)
+            font = model.data(placeholder_idx, Qt.ItemDataRole.FontRole)
+            assert font is not None
+            assert font.italic()
+            return
+    pytest.fail("Provider not found")

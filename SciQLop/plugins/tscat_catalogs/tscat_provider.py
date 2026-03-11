@@ -138,8 +138,30 @@ class TscatCatalogProvider(CatalogProvider):
             Capability.CREATE_EVENTS,
             Capability.DELETE_EVENTS,
             Capability.CREATE_CATALOGS,
+            Capability.DELETE_CATALOGS,
             Capability.SAVE,
         }
+
+    def create_catalog(self, name: str) -> Catalog | None:
+        import uuid as _uuid
+        catalog_uuid = str(_uuid.uuid4())
+        tscat_model.do(CreateEntityAction(
+            user_callback=None,
+            cls=tscat._Catalogue,
+            args=dict(name=name, author="SciQLop", uuid=catalog_uuid),
+        ))
+        return None
+
+    def remove_catalog(self, catalog: Catalog) -> None:
+        tscat_model.do(RemoveEntitiesAction(
+            user_callback=None,
+            uuids=[catalog.uuid],
+            permanently=False,
+        ))
+        if self._catalog_cache is not None:
+            self._catalog_cache = [c for c in self._catalog_cache if c.uuid != catalog.uuid]
+            self._known_uuids.discard(catalog.uuid)
+        super().remove_catalog(catalog)
 
     def _do_save(self) -> None:
         import tscat

@@ -13,7 +13,7 @@ DIRTY_PROVIDER_ROLE = Qt.ItemDataRole.UserRole + 1
 class _Node:
     """Internal tree node: root -> provider -> catalog."""
 
-    __slots__ = ("name", "parent", "children", "provider", "catalog")
+    __slots__ = ("name", "parent", "children", "provider", "catalog", "is_placeholder")
 
     def __init__(
         self,
@@ -21,12 +21,14 @@ class _Node:
         parent: _Node | None = None,
         provider: CatalogProvider | None = None,
         catalog: Catalog | None = None,
+        is_placeholder: bool = False,
     ):
         self.name = name
         self.parent = parent
         self.children: list[_Node] = []
         self.provider = provider
         self.catalog = catalog
+        self.is_placeholder = is_placeholder
 
     def row(self) -> int:
         if self.parent is not None:
@@ -65,6 +67,10 @@ class CatalogTreeModel(QAbstractItemModel):
         parent.children.append(folder)
         return folder
 
+    def _supports_create(self, provider: CatalogProvider) -> bool:
+        from ..backend.provider import Capability
+        return Capability.CREATE_CATALOGS in provider.capabilities()
+
     def _add_provider_node(self, provider: CatalogProvider) -> _Node:
         node = _Node(name=provider.name, parent=self._root, provider=provider)
         for cat in provider.catalogs():
@@ -73,19 +79,28 @@ class CatalogTreeModel(QAbstractItemModel):
                 target = self._find_or_create_folder(target, segment, provider)
             child = _Node(name=cat.name, parent=target, provider=provider, catalog=cat)
             target.children.append(child)
+        if self._supports_create(provider):
+            placeholder = _Node(
+                name="New Catalog...", parent=node, provider=provider,
+                is_placeholder=True,
+            )
+            node.children.append(placeholder)
         self._root.children.append(node)
 
         # Connect to provider signals for dynamic updates
         on_added = lambda cat, p=provider, n=node: self._on_catalog_added(p, n, cat)
         on_removed = lambda cat, p=provider, n=node: self._on_catalog_removed(p, n, cat)
         on_dirty = lambda cat, dirty, p=provider, n=node: self._on_dirty_changed(p, n, cat, dirty)
+        on_renamed = lambda cat, p=provider, n=node: self._on_catalog_renamed(p, n, cat)
         provider.catalog_added.connect(on_added)
         provider.catalog_removed.connect(on_removed)
         provider.dirty_changed.connect(on_dirty)
+        provider.catalog_renamed.connect(on_renamed)
         self._provider_connections[id(provider)] = [
             (provider.catalog_added, on_added),
             (provider.catalog_removed, on_removed),
             (provider.dirty_changed, on_dirty),
+            (provider.catalog_renamed, on_renamed),
         ]
         return node
 
@@ -139,6 +154,13 @@ class CatalogTreeModel(QAbstractItemModel):
             if found is not None:
                 return found
         return None
+
+    def _on_catalog_renamed(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
+        cat_node = self._find_catalog_node(pnode, catalog)
+        if cat_node is not None:
+            cat_node.name = catalog.name
+            idx = self.createIndex(cat_node.row(), 0, cat_node)
+            self.dataChanged.emit(idx, idx, [Qt.ItemDataRole.DisplayRole])
 
     def _on_catalog_added(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
         target = pnode
@@ -247,6 +269,20 @@ class CatalogTreeModel(QAbstractItemModel):
                     if node.provider.is_dirty():
                         name += " *"
             return name
+        if role == Qt.ItemDataRole.FontRole:
+            node = index.internalPointer()
+            if node.is_placeholder:
+                from PySide6.QtGui import QFont
+                font = QFont()
+                font.setItalic(True)
+                return font
+            return None
+        if role == Qt.ItemDataRole.ForegroundRole:
+            node = index.internalPointer()
+            if node.is_placeholder:
+                from PySide6.QtGui import QColor
+                return QColor(128, 128, 128)
+            return None
         if role == DIRTY_PROVIDER_ROLE:
             node = index.internalPointer()
             if node.provider is not None and node.parent is self._root:
@@ -256,7 +292,35 @@ class CatalogTreeModel(QAbstractItemModel):
             return False
         return None
 
+    def setData(self, index: QModelIndex, value, role: int = Qt.ItemDataRole.EditRole) -> bool:
+        if not index.isValid() or role != Qt.ItemDataRole.EditRole:
+            return False
+        node = index.internalPointer()
+        name = value.strip() if isinstance(value, str) else str(value).strip()
+        if not name:
+            return False
+        if node.is_placeholder:
+            node.provider.create_catalog(name)
+            return True
+        if node.catalog is not None and node.provider is not None:
+            from ..backend.provider import Capability
+            if Capability.RENAME_CATALOG in node.provider.capabilities():
+                node.provider.rename_catalog(node.catalog, name)
+                node.name = name
+                self.dataChanged.emit(index, index, [Qt.ItemDataRole.DisplayRole])
+                return True
+        return False
+
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         if not index.isValid():
             return Qt.ItemFlag.NoItemFlags
-        return Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+        node = index.internalPointer()
+        base = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
+        if node.is_placeholder:
+            return base | Qt.ItemFlag.ItemIsEditable
+        if node.catalog is not None:
+            from ..backend.provider import Capability
+            if (node.provider is not None
+                    and Capability.RENAME_CATALOG in node.provider.capabilities()):
+                return base | Qt.ItemFlag.ItemIsEditable
+        return base

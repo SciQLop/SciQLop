@@ -63,6 +63,7 @@ class Capability(str, Enum):
     IMPORT_FILES = "import_files"
     SAVE = "save"
     SAVE_CATALOG = "save_catalog"
+    RENAME_CATALOG = "rename_catalog"
 
 
 @dataclass
@@ -85,6 +86,7 @@ class CatalogProvider(QObject):
 
     catalog_added = Signal(object)
     catalog_removed = Signal(object)
+    catalog_renamed = Signal(object)
     events_changed = Signal(object)
     error_occurred = Signal(str)
     dirty_changed = Signal(object, bool)  # (catalog, is_dirty)
@@ -176,6 +178,14 @@ class CatalogProvider(QObject):
         """Public API: remove an event from a catalog. Override for backend persistence."""
         self._remove_event(catalog, event)
         self.mark_dirty(catalog)
+
+    def create_catalog(self, name: str) -> Catalog | None:
+        """Public API: create a new catalog. Override for backend persistence."""
+        return None
+
+    def rename_catalog(self, catalog: Catalog, new_name: str) -> None:
+        """Public API: rename a catalog. Override for backend persistence."""
+        pass
 
     def remove_catalog(self, catalog: Catalog) -> None:
         """Public API: remove a catalog. Override for backend persistence."""

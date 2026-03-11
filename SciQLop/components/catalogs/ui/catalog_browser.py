@@ -119,6 +119,7 @@ class CatalogBrowser(QWidget):
         self._catalog_tree.setItemDelegate(self._save_delegate)
         self._catalog_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._catalog_tree.customContextMenuRequested.connect(self._on_tree_context_menu)
+        self._catalog_tree.doubleClicked.connect(self._on_tree_double_clicked)
         self._catalog_tree.selectionModel().currentChanged.connect(self._on_catalog_selected)
         self._filter_bar.textChanged.connect(self._on_filter_changed)
 
@@ -180,10 +181,17 @@ class CatalogBrowser(QWidget):
         if text:
             self._catalog_tree.expandAll()
 
+    def _on_tree_double_clicked(self, proxy_index: QModelIndex) -> None:
+        source_index = self._proxy_model.mapToSource(proxy_index)
+        node = self._tree_model.node_from_index(source_index)
+        if node.is_placeholder or (node.catalog is not None and
+                self._tree_model.flags(source_index) & Qt.ItemFlag.ItemIsEditable):
+            self._catalog_tree.edit(proxy_index)
+
     def _on_catalog_selected(self, current: QModelIndex, previous: QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(current)
         node = self._tree_model.node_from_index(source_index)
-        if node is self._tree_model._root:
+        if node is self._tree_model._root or node.is_placeholder:
             return
         # Disconnect from previously connected provider
         if self._events_changed_provider is not None:
@@ -333,13 +341,12 @@ class CatalogBrowser(QWidget):
         if node.provider is None:
             return
 
-        has_save = Capability.SAVE in node.provider.capabilities()
-
+        caps = node.provider.capabilities()
         menu = QMenu(self)
 
-        if has_save and node.provider.is_dirty():
+        if Capability.SAVE in caps and node.provider.is_dirty():
             if (node.catalog is not None
-                    and Capability.SAVE_CATALOG in node.provider.capabilities()
+                    and Capability.SAVE_CATALOG in caps
                     and node.provider.is_dirty(node.catalog)):
                 save_action = menu.addAction("Save Catalog")
                 save_action.triggered.connect(lambda: node.provider.save_catalog(node.catalog))
@@ -347,6 +354,25 @@ class CatalogBrowser(QWidget):
                 save_action = menu.addAction("Save")
                 save_action.triggered.connect(lambda: node.provider.save())
 
+        if node.catalog is not None and Capability.DELETE_CATALOGS in caps:
+            delete_action = menu.addAction("Delete Catalog")
+            delete_action.triggered.connect(lambda: self._delete_catalog(node))
+
         if menu.isEmpty():
             return
         menu.exec(self._catalog_tree.viewport().mapToGlobal(pos))
+
+    def _delete_catalog(self, node) -> None:
+        from PySide6.QtWidgets import QMessageBox
+        reply = QMessageBox.question(
+            self, "Delete Catalog",
+            f"Delete catalog '{node.name}'?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            if self._current_catalog is not None and self._current_catalog.uuid == node.catalog.uuid:
+                self._current_catalog = None
+                self._event_model.clear()
+                self._update_toolbar()
+            node.provider.remove_catalog(node.catalog)
+

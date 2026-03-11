@@ -49,7 +49,28 @@ class DummyProvider(CatalogProvider):
             Capability.IMPORT_EVENTS,
             Capability.SAVE,
             Capability.SAVE_CATALOG,
+            Capability.RENAME_CATALOG,
         }
+
+    def create_catalog(self, name: str) -> Catalog | None:
+        cat = Catalog(
+            uuid=str(_uuid.uuid4()),
+            name=name,
+            provider=self,
+            path=[],
+        )
+        self._catalogs.append(cat)
+        self._set_events(cat, [])
+        self.catalog_added.emit(cat)
+        return cat
+
+    def rename_catalog(self, catalog: Catalog, new_name: str) -> None:
+        catalog.name = new_name
+        self.catalog_renamed.emit(catalog)
+
+    def remove_catalog(self, catalog: Catalog) -> None:
+        self._catalogs = [c for c in self._catalogs if c.uuid != catalog.uuid]
+        super().remove_catalog(catalog)
 
     def import_events(self, catalog_name: str, events: list[CatalogEvent], path: list[str] | None = None) -> Catalog:
         cat = Catalog(

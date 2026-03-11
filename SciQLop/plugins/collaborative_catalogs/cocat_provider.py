@@ -80,13 +80,45 @@ class CocatCatalogProvider(CatalogProvider):
             for cocat_event in cocat_cat.events:
                 events.append(CocatEvent(cocat_event, parent=self))
             self._set_events(cat, events)
+            self.catalog_added.emit(cat)
 
     def catalogs(self) -> list[Catalog]:
         return list(self._catalog_map.values())
+
+    def create_catalog(self, name: str) -> Catalog | None:
+        cocat_cat = self._room.db.create_catalogue(name=name, author="SciQLop")
+        cat = Catalog(
+            uuid=str(cocat_cat.uuid),
+            name=name,
+            provider=self,
+            path=[],
+        )
+        self._catalog_map[cat.uuid] = cat
+        self._set_events(cat, [])
+        self.catalog_added.emit(cat)
+        return cat
+
+    def rename_catalog(self, catalog: Catalog, new_name: str) -> None:
+        cocat_cat = self._room.get_catalogue(catalog.uuid)
+        cocat_cat.name = new_name
+        catalog.name = new_name
+        self.catalog_renamed.emit(catalog)
+
+    def remove_catalog(self, catalog: Catalog) -> None:
+        cocat_cat = self._room.get_catalogue(catalog.uuid)
+        try:
+            cocat_cat.delete()
+        except ExceptionGroup:
+            pass  # cocat observer bug: KeyError on _catalogue_change_callbacks cleanup
+        self._catalog_map.pop(catalog.uuid, None)
+        super().remove_catalog(catalog)
 
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
         return {
             Capability.EDIT_EVENTS,
             Capability.CREATE_EVENTS,
             Capability.DELETE_EVENTS,
+            Capability.CREATE_CATALOGS,
+            Capability.DELETE_CATALOGS,
+            Capability.RENAME_CATALOG,
         }
