@@ -8,7 +8,7 @@ from glob import glob
 __HERE__ = os.path.dirname(__file__)
 
 from SciQLop.components.workspaces.backend.example import Example
-from SciQLop.components.workspaces import workspaces_manager_instance
+from SciQLop.components.workspaces.backend.workspaces_manager import WorkspaceManager, workspaces_manager_instance
 from SciQLop.components.welcome.detailed_description.delegate import register_delegate
 
 
@@ -20,7 +20,9 @@ class ExampleCard(Card):
         self.double_clicked.connect(self._open_example)
 
     def _open_example(self):
-        workspaces_manager_instance().load_example(self._example.directory)
+        manager = workspaces_manager_instance()
+        ws_dir = manager.workspace.workspace_dir
+        WorkspaceManager.add_example_to_workspace(self._example.directory, ws_dir)
 
     def _refresh_ui(self):
         self._layout = QVBoxLayout()
@@ -56,7 +58,12 @@ class ExampleDescriptionWidget(QFrame):
         self._description.setText(example.example.description)
         self._layout.addWidget(self._description)
         self._open_button = QPushButton("Open")
-        self._open_button.clicked.connect(lambda: workspaces_manager_instance().load_example(example.example.directory))
+        self._open_button.clicked.connect(
+            lambda: WorkspaceManager.add_example_to_workspace(
+                example.example.directory,
+                workspaces_manager_instance().workspace.workspace_dir,
+            )
+        )
         self._layout.addWidget(self._open_button)
 
 

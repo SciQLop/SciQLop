@@ -45,7 +45,7 @@ function loadHero() {
             '</div>' +
             '<button id="hero-open">Open</button>';
         document.getElementById("hero-open").addEventListener("click", function() {
-            backend.open_workspace(ws.directory);
+            tryOpenWorkspace(ws.directory);
         });
     });
 }
@@ -174,7 +174,7 @@ function createWorkspaceCard(ws) {
         showWorkspaceDetails(ws);
     });
     card.addEventListener("dblclick", function() {
-        backend.open_workspace(ws.directory);
+        tryOpenWorkspace(ws.directory);
     });
     return card;
 }
@@ -208,7 +208,7 @@ function createExampleCard(ex) {
         showExampleDetails(ex);
     });
     card.addEventListener("dblclick", function() {
-        backend.open_example(ex.directory);
+        openExample(ex.directory);
     });
     return card;
 }
@@ -250,7 +250,7 @@ function showWorkspaceDetails(ws) {
         '<div class="details-field"><label>Last modified</label><span>' + escapeHtml(ws.last_modified) + '</span></div>' +
         '<div class="details-field"><label>Description</label><span>' + escapeHtml(ws.description || "") + '</span></div>' +
         '<div class="details-actions">' +
-            '<button onclick="backend.open_workspace(\'' + escapeAttr(ws.directory) + '\')">Open workspace</button>' +
+            '<button onclick="tryOpenWorkspace(\'' + escapeAttr(ws.directory) + '\')">Open workspace</button>' +
             '<button onclick="backend.duplicate_workspace(\'' + escapeAttr(ws.directory) + '\')">Duplicate workspace</button>' +
             (ws.is_default ? '' :
                 '<button class="danger" onclick="confirmDelete(\'' + escapeAttr(ws.directory) + '\', \'' + escapeAttr(ws.name) + '\')">Delete workspace</button>') +
@@ -269,7 +269,7 @@ function showExampleDetails(ex) {
         '<div class="details-field"><label>Name</label><span>' + escapeHtml(ex.name) + '</span></div>' +
         '<div class="details-field"><label>Description</label><span>' + escapeHtml(ex.description || "") + '</span></div>' +
         '<div class="details-actions">' +
-            '<button onclick="backend.open_example(\'' + escapeAttr(ex.directory) + '\')">Open example</button>' +
+            '<button onclick="openExample(\'' + escapeAttr(ex.directory) + '\')">Add to workspace</button>' +
         '</div>';
 
     panel.classList.remove("hidden");
@@ -346,6 +346,10 @@ document.addEventListener("DOMContentLoaded", function() {
             hideDetails();
         }
     });
+
+    document.getElementById("modal-overlay").addEventListener("click", function(e) {
+        if (e.target === this) hideModal();
+    });
 });
 
 function filterCards(containerId, query) {
@@ -358,6 +362,123 @@ function filterCards(containerId, query) {
         var match = !query || name.includes(query) || tags.includes(query);
         card.style.display = match ? "" : "none";
     });
+}
+
+// --- Modal helpers ---
+
+function showModal(title, bodyHtml, actionsHtml) {
+    document.getElementById("modal-title").textContent = title;
+    document.getElementById("modal-body").innerHTML = bodyHtml;
+    document.getElementById("modal-actions").innerHTML = actionsHtml || "";
+    document.getElementById("modal-overlay").classList.remove("hidden");
+}
+
+function hideModal() {
+    document.getElementById("modal-overlay").classList.add("hidden");
+}
+
+// --- Example flow ---
+
+function openExample(exampleDir) {
+    backend.get_active_workspace_dir(function(json_str) {
+        var wsDir = JSON.parse(json_str);
+        if (wsDir) {
+            addExampleAndPromptDeps(exampleDir, wsDir);
+        } else {
+            showWorkspacePicker(function(pickedDir) {
+                addExampleAndPromptDeps(exampleDir, pickedDir);
+            });
+        }
+    });
+}
+
+function addExampleAndPromptDeps(exampleDir, wsDir) {
+    backend.add_example_to_workspace(exampleDir, wsDir, function(json_str) {
+        var result = JSON.parse(json_str);
+        if (result.missing_dependencies && result.missing_dependencies.length > 0) {
+            confirmDependencies(wsDir, result.missing_dependencies);
+        }
+    });
+}
+
+function showWorkspacePicker(onPicked) {
+    backend.list_workspaces(function(json_str) {
+        var workspaces = JSON.parse(json_str);
+        var listHtml = '<div class="modal-ws-list">';
+        listHtml += '<div class="modal-ws-item" data-action="new">' +
+            '<span class="ws-name">+ Create new workspace</span></div>';
+        workspaces.forEach(function(ws) {
+            listHtml += '<div class="modal-ws-item" data-dir="' + escapeAttr(ws.directory) + '">' +
+                '<span class="ws-name">' + escapeHtml(ws.name) + '</span>' +
+                '<span class="ws-sub">' + escapeHtml(ws.last_used) + '</span>' +
+                '</div>';
+        });
+        listHtml += '</div>';
+        showModal("Choose a workspace", listHtml, "");
+
+        var actions = document.getElementById("modal-actions");
+        var cancelBtn = document.createElement("button");
+        cancelBtn.textContent = "Cancel";
+        cancelBtn.addEventListener("click", hideModal);
+        actions.appendChild(cancelBtn);
+
+        document.querySelectorAll(".modal-ws-item").forEach(function(item) {
+            item.addEventListener("click", function() {
+                hideModal();
+                if (item.dataset.action === "new") {
+                    backend.create_workspace();
+                    backend.list_workspaces(function(json2) {
+                        var wsList = JSON.parse(json2);
+                        if (wsList.length > 0) {
+                            wsList.sort(function(a, b) {
+                                return b.last_modified.localeCompare(a.last_modified);
+                            });
+                            onPicked(wsList[0].directory);
+                        }
+                    });
+                } else {
+                    onPicked(item.dataset.dir);
+                }
+            });
+        });
+    });
+}
+
+var _pendingDeps = null;
+
+function confirmDependencies(wsDir, deps) {
+    if (!deps || deps.length === 0) return;
+    _pendingDeps = { wsDir: wsDir, deps: deps };
+    var listHtml = '<p>This example needs additional packages:</p><ul class="modal-dep-list">';
+    deps.forEach(function(d) { listHtml += '<li>' + escapeHtml(d) + '</li>'; });
+    listHtml += '</ul>';
+    showModal("Install dependencies?", listHtml, "");
+
+    var actions = document.getElementById("modal-actions");
+    var skipBtn = document.createElement("button");
+    skipBtn.textContent = "Skip";
+    skipBtn.addEventListener("click", hideModal);
+
+    var installBtn = document.createElement("button");
+    installBtn.textContent = "Install";
+    installBtn.className = "primary";
+    installBtn.addEventListener("click", function() {
+        hideModal();
+        backend.add_dependencies_to_workspace(
+            _pendingDeps.wsDir, JSON.stringify(_pendingDeps.deps));
+        _pendingDeps = null;
+    });
+
+    actions.appendChild(skipBtn);
+    actions.appendChild(installBtn);
+}
+
+// --- Workspace opening ---
+
+function tryOpenWorkspace(directory) {
+    if (confirm("SciQLop will restart to open this workspace.")) {
+        backend.open_workspace(directory);
+    }
 }
 
 // --- Utilities ---
