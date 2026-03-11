@@ -15,8 +15,10 @@
     <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
 </head>
 <body>
-    <div id="main">
-        <div id="sections">
+    <div id="hero" class="hidden"></div>
+
+    <div id="columns">
+        <div id="left-column">
             <section id="quickstart">
                 <h2>Quick start</h2>
                 <div class="cards-row" id="quickstart-cards"></div>
@@ -39,12 +41,27 @@
             </section>
         </div>
 
-        <aside id="details-panel" class="hidden">
-            <h2 id="details-title">Details</h2>
-            <hr>
-            <div id="details-content"></div>
-        </aside>
+        <div id="right-column">
+            <section id="news">
+                <h2>What's New</h2>
+                <div id="news-list"></div>
+            </section>
+
+            <section id="featured">
+                <div class="section-header">
+                    <h2>Featured</h2>
+                    <a href="#" id="browse-all-link" class="browse-link">Browse all &rarr;</a>
+                </div>
+                <div class="cards-grid cards-grid-small" id="featured-cards"></div>
+            </section>
+        </div>
     </div>
+
+    <aside id="details-panel" class="hidden">
+        <h2 id="details-title">Details</h2>
+        <hr>
+        <div id="details-content"></div>
+    </aside>
 
     <script src="welcome.js"></script>
 </body>
