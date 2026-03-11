@@ -4,12 +4,17 @@ import base64
 import glob
 import json
 import os
+import subprocess
 
 from PySide6.QtCore import QBuffer, QFileSystemWatcher, QIODevice, QObject, Signal, Slot
 
 from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
-from SciQLop.components.workspaces.backend.workspaces_manager import workspaces_manager_instance
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspaces_manager import workspaces_manager_instance, WorkspaceManager
+from SciQLop.components.sciqlop_logging import getLogger
+
+log = getLogger(__name__)
 
 _EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "examples")
 
@@ -27,16 +32,17 @@ def _icon_to_data_uri(icon) -> str:
     return "data:image/png;base64," + base64.b64encode(buf.data().data()).decode()
 
 
-def _workspace_to_dict(ws) -> dict:
-    image_path = os.path.join(str(ws.directory), ws.image) if ws.image else ""
+def _workspace_to_dict(ws: WorkspaceManifest) -> dict:
+    ws_dir = ws.directory
+    image_path = os.path.join(ws_dir, ws.image) if ws.image else ""
     return {
         "name": ws.name,
-        "directory": str(ws.directory),
+        "directory": ws_dir,
         "description": ws.description,
-        "last_used": ws.last_used,
-        "last_modified": ws.last_modified,
+        "last_used": WorkspaceManifest.last_used(ws_dir),
+        "last_modified": WorkspaceManifest.last_modified(ws_dir),
         "image": image_path if image_path and os.path.exists(image_path) else "",
-        "is_default": ws.default_workspace,
+        "is_default": ws.default,
     }
 
 
@@ -83,17 +89,36 @@ class WelcomeBackend(QObject):
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
-        self._watcher = QFileSystemWatcher([SciQLopWorkspacesSettings().workspaces_dir], self)
-        self._watcher.directoryChanged.connect(lambda: self.workspace_list_changed.emit())
+        workspaces_dir = SciQLopWorkspacesSettings().workspaces_dir
+        self._watcher = QFileSystemWatcher([workspaces_dir], self)
+        self._watch_workspace_subdirs(workspaces_dir)
+        self._watcher.directoryChanged.connect(self._on_directory_changed)
         from SciQLop.core.sciqlop_application import sciqlop_app
         sciqlop_app().quickstart_shortcuts_added.connect(lambda _: self.quickstart_changed.emit())
+
+    def _watch_workspace_subdirs(self, workspaces_dir: str):
+        if not os.path.exists(workspaces_dir):
+            return
+        subdirs = [
+            os.path.join(workspaces_dir, d)
+            for d in os.listdir(workspaces_dir)
+            if os.path.isdir(os.path.join(workspaces_dir, d))
+        ]
+        if subdirs:
+            self._watcher.addPaths(subdirs)
+
+    def _on_directory_changed(self, path: str):
+        workspaces_dir = SciQLopWorkspacesSettings().workspaces_dir
+        if path == workspaces_dir:
+            self._watch_workspace_subdirs(workspaces_dir)
+        self.workspace_list_changed.emit()
 
     # --- Data slots ---
 
     @Slot(result=str)
     def list_workspaces(self) -> str:
         workspaces = workspaces_manager_instance().list_workspaces()
-        workspaces.sort(key=lambda ws: ws.last_used, reverse=True)
+        workspaces.sort(key=lambda ws: WorkspaceManifest.last_used(ws.directory), reverse=True)
         return json.dumps([_workspace_to_dict(ws) for ws in workspaces])
 
     @Slot(result=str)
@@ -122,10 +147,10 @@ class WelcomeBackend(QObject):
     @Slot(result=str)
     def get_hero_workspace(self) -> str:
         workspaces = workspaces_manager_instance().list_workspaces()
-        non_default = [ws for ws in workspaces if not ws.default_workspace]
+        non_default = [ws for ws in workspaces if not ws.default]
         if not non_default:
             return "null"
-        non_default.sort(key=lambda ws: ws.last_used, reverse=True)
+        non_default.sort(key=lambda ws: WorkspaceManifest.last_used(ws.directory), reverse=True)
         return json.dumps(_workspace_to_dict(non_default[0]))
 
     @Slot(result=str)
@@ -140,11 +165,8 @@ class WelcomeBackend(QObject):
 
     @Slot(str)
     def open_workspace(self, directory: str) -> None:
-        manager = workspaces_manager_instance()
-        for ws in manager.list_workspaces():
-            if str(ws.directory) == directory:
-                manager.load_workspace(ws)
-                return
+        from SciQLop.sciqlop_app import switch_workspace
+        switch_workspace(directory)
 
     @Slot()
     def create_workspace(self) -> None:
@@ -160,9 +182,33 @@ class WelcomeBackend(QObject):
         workspaces_manager_instance().duplicate_workspace(directory)
         self.workspace_list_changed.emit()
 
-    @Slot(str)
-    def open_example(self, directory: str) -> None:
-        workspaces_manager_instance().load_example(directory)
+    @Slot(result=str)
+    def get_active_workspace_dir(self) -> str:
+        manager = workspaces_manager_instance()
+        if manager.has_workspace:
+            return json.dumps(manager.workspace.workspace_dir)
+        return json.dumps(None)
+
+    @Slot(str, str, result=str)
+    def add_example_to_workspace(self, example_dir: str, workspace_dir: str) -> str:
+        missing = WorkspaceManager.add_example_to_workspace(example_dir, workspace_dir)
+        return json.dumps({"missing_dependencies": missing})
+
+    @Slot(str, str)
+    def add_dependencies_to_workspace(self, workspace_dir: str, dependencies_json: str) -> None:
+        from SciQLop.components.workspaces.backend.uv import uv_command
+        deps = json.loads(dependencies_json)
+        manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
+        manifest = WorkspaceManifest.load(manifest_path)
+        new_deps = [d for d in deps if d not in manifest.requires]
+        if new_deps:
+            manifest.requires.extend(new_deps)
+            manifest.save(manifest_path)
+            try:
+                cmd = uv_command("pip", "install", *new_deps)
+                subprocess.run(cmd, check=True)
+            except Exception as e:
+                log.error(f"Failed to install dependencies: {e}")
 
     @Slot()
     def open_appstore(self) -> None:
@@ -177,11 +223,13 @@ class WelcomeBackend(QObject):
 
     @Slot(str, str)
     def update_workspace_field(self, directory: str, field_json: str) -> None:
-        manager = workspaces_manager_instance()
         update = json.loads(field_json)
-        for ws in manager.list_workspaces():
-            if str(ws.directory) == directory:
-                field, value = update["field"], update["value"]
-                if hasattr(ws, field):
-                    setattr(ws, field, value)
-                break
+        manifest_path = os.path.join(directory, "workspace.sciqlop")
+        try:
+            manifest = WorkspaceManifest.load(manifest_path)
+            field, value = update["field"], update["value"]
+            if hasattr(manifest, field):
+                setattr(manifest, field, value)
+                manifest.save(manifest_path)
+        except Exception as e:
+            log.error(f"Failed to update workspace field: {e}")

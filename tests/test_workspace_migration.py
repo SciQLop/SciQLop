@@ -47,3 +47,25 @@ def test_skip_no_old_format(tmp_path):
     """Skip migration when no workspace.json exists."""
     migrated = migrate_workspace(tmp_path)
     assert migrated is False
+
+
+def test_migrate_carries_image_and_default(tmp_path):
+    old_spec = {
+        "name": "My Study",
+        "description": "desc",
+        "dependencies": ["scipy"],
+        "image": "image.png",
+        "default_workspace": True,
+    }
+    (tmp_path / "workspace.json").write_text(json.dumps(old_spec))
+    migrate_workspace(tmp_path)
+    m = WorkspaceManifest.load(tmp_path / "workspace.sciqlop")
+    assert m.image == "image.png"
+    assert m.default is True
+
+
+def test_migrate_touches_last_used(tmp_path):
+    old_spec = {"name": "Used", "dependencies": []}
+    (tmp_path / "workspace.json").write_text(json.dumps(old_spec))
+    migrate_workspace(tmp_path)
+    assert WorkspaceManifest.last_used(tmp_path) != ""

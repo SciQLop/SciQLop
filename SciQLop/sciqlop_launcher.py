@@ -111,7 +111,7 @@ def _prepare_workspace_dev(workspace_dir: Path) -> None:
     if manifest_path.exists():
         manifest = WorkspaceManifest.load(manifest_path)
     else:
-        manifest = WorkspaceManifest.default(workspace_dir.name)
+        manifest = WorkspaceManifest.default_manifest(workspace_dir.name)
         manifest.save(manifest_path)
 
     # Collect and install plugin + workspace deps into the current dev env

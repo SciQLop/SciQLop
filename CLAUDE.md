@@ -12,19 +12,19 @@ All commands should be run with `uv run` (e.g., `uv run pytest`, `uv run python`
 
 ```bash
 # Install in editable mode with dev dependencies
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 
 # Run the application
-sciqlop
+uv run sciqlop
 # or
-python -m SciQLop.app
+uv run python -m SciQLop.app
 
 # Run all tests (Linux: requires Xvfb, auto-used via pytest-xvfb)
-pytest
+uv run pytest
 
-# Run a specific test
-pytest tests/test_creating_plots.py
-pytest -k test_virtual_products
+# Run a specific test file or test by name
+uv run pytest tests/test_creating_plots.py
+uv run pytest -k test_virtual_products
 ```
 
 No linter is enforced beyond flake8 (configured in `setup.cfg`, excludes `docs/`).
@@ -45,24 +45,32 @@ No linter is enforced beyond flake8 (configured in `setup.cfg`, excludes `docs/`
 
 ### Startup sequence
 
-`app.py` → `sciqlop_launcher.py` (checks deps, restarts on exit code 64) → `sciqlop_app.py` (creates Qt app, loads theming, creates `SciQLopMainWindow`, loads plugins, starts async event loop via `qasync`).
+`app.py` → `sciqlop_launcher.py` (prepares workspace venv, migrates workspace.json→workspace.sciqlop, installs deps, spawns subprocess with `SCIQLOP_WORKSPACE_DIR` env var) → `sciqlop_app.py` (creates Qt app, loads theming, creates `SciQLopMainWindow`, auto-loads workspace from env var, loads plugins, starts async event loop via `qasync`). Exit code 64 = restart same workspace, 65 = switch workspace (reads target from `.sciqlop_switch_target` file). Non-default workspaces auto-start JupyterLab.
 
 ### Key layers
 
 **`SciQLop/core/`** — Shared infrastructure: `SciQLopApp` (QApplication subclass), `SciQLopMainWindow` (dock manager host using PySide6-QtAds), shared data types/enums, MIME types, generic UI widgets, and small utilities.
 
 **`SciQLop/components/`** — Self-contained feature modules. Each typically has `backend/` (logic) and `ui/` (widgets) subdirs. Key components:
+- `catalogs/` — catalog browsing, creation, editing, and overlay on plots
+- `plotting/` — plot panel management, axes configuration, data rendering
 - `theming/` — palette loading, auto-invert icons, stylesheet generation
 - `settings/` — Pydantic-based config persisted to YAML in `~/.config/sciqlop/`
 - `plugins/` — dynamic plugin loader, plugin dependency resolution
-- `workspaces/` — workspace management, environment setup (manifest, venv, migration, archive), examples
+- `workspaces/` — workspace management via `WorkspaceManifest` (TOML `.sciqlop` files), environment setup (venv, migration from old JSON format, archive), examples
 - `jupyter/` — embedded IPython kernel + JupyterLab server
+- `welcome/` — welcome page (QWebEngineView + QWebChannel + Jinja2)
+- `appstore/` — plugin app store (same QWebEngine pattern as welcome)
 
 **`SciQLop/plugins/`** — Built-in plugins (speasy data provider, catalogs, collaborative features). Each plugin exposes a `load(main_window)` function and optionally a `plugin.json` descriptor.
 
 **`SciQLop/user_api/`** — Public Python API surface (plot creation, virtual products, GUI helpers) intended for use from the embedded Jupyter console.
 
 **`SciQLop/Jupyter/`** — Custom Jupyter kernel provisioner (`SciQLopProvisioner`) that connects notebooks to SciQLop's running IPython kernel via `SCIQLOP_IPYTHON_CONNECTION_FILE`.
+
+### Resources convention
+
+Shared resources (icons, palettes, splash) live in `SciQLop/resources/`. Component-specific assets (templates, CSS, JS) go in `SciQLop/components/<name>/resources/` next to their owning component.
 
 ### Settings system
 
@@ -96,3 +104,7 @@ Plugins are Python packages/modules discovered in:
 3. Paths from `SciQLopPluginsSettings.extra_plugins_folders`
 
 Each plugin's `load(main_window)` is called at startup. Enabled/disabled state is stored in `SciQLopPluginsSettings.plugins`.
+
+### Testing
+
+Tests use `pytest-qt` for Qt widget testing and `pytest-xvfb` on Linux (auto-configured in `conftest.py` at 2560x1440). Test helpers and fixtures are in `tests/fixtures.py` and `tests/helpers.py`.

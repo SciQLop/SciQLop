@@ -37,9 +37,12 @@ def migrate_workspace(workspace_dir: Path | str) -> bool:
     manifest = WorkspaceManifest(
         name=old_data.get("name", workspace_dir.name),
         description=old_data.get("description", ""),
+        image=old_data.get("image", ""),
+        default=old_data.get("default_workspace", False),
         requires=old_data.get("dependencies", []),
     )
     manifest.save(manifest_path)
+    WorkspaceManifest.touch_last_used(workspace_dir)
 
     # Backup old file
     old_path.rename(workspace_dir / "workspace.json.bak")

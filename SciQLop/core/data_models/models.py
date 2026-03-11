@@ -2,25 +2,7 @@ from dataclasses import dataclass, field
 from typing import List
 from .serialisation import register_spec_file_readonly, register_spec_file
 
-__all__ = ["WorkspaceSpec", "ExampleSpec", "WorkspaceSpecFile", "WorkspaceSpecROFile", "ExampleSpecFile",
-           "ExampleSpecROFile"]
-
-
-@dataclass
-class WorkspaceSpec:
-    last_used: str = ""
-    last_modified: str = ""
-    python_path: List[str] = field(default_factory=list)
-    dependencies: List[str] = field(default_factory=list)
-    name: str = "default"
-    description: str = ""
-    image: str = ""
-    notebooks: List[str] = field(default_factory=list)
-    default_workspace: bool = False
-
-
-WorkspaceSpecFile = register_spec_file(WorkspaceSpec, "workspace.json")
-WorkspaceSpecROFile = register_spec_file_readonly(WorkspaceSpec, "workspace.json")
+__all__ = ["ExampleSpec", "ExampleSpecFile", "ExampleSpecROFile"]
 
 
 @dataclass

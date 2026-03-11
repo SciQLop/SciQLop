@@ -27,12 +27,15 @@ SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"
 def switch_workspace(workspace_name: str) -> None:
     """Signal the launcher to restart with a different workspace.
 
-    Writes the target workspace name to a file in the current workspace dir,
-    then tells Qt to exit with the switch workspace exit code.
+    Writes the target workspace name to a file in the current workspace dir
+    (from SCIQLOP_WORKSPACE_DIR env var), then exits with code 65 so the
+    launcher restarts into the target workspace.
     """
-    workspace_dir = Path(os.environ.get("SCIQLOP_WORKSPACE_DIR", "."))
-    (workspace_dir / SWITCH_WORKSPACE_FILE).write_text(workspace_name)
+    ws_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", ".")
+    (Path(ws_dir) / SWITCH_WORKSPACE_FILE).write_text(workspace_name)
     from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    app._sciqlop_exit_code = EXIT_SWITCH_WORKSPACE
     QApplication.exit(EXIT_SWITCH_WORKSPACE)
 
 
@@ -87,6 +90,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    exit_code = getattr(app, '_sciqlop_exit_code', 0) if app else 0
     if os.environ.get("RESTART_SCIQLOP", None) is not None:
-        sys.exit(64)
-    sys.exit(0)
+        exit_code = 64
+    sys.exit(exit_code)

@@ -73,7 +73,7 @@ def prepare_workspace(
     else:
         name = workspace_name or workspace_dir.name
         log.info("Creating default manifest for workspace %r", name)
-        manifest = WorkspaceManifest.default(name)
+        manifest = WorkspaceManifest.default_manifest(name)
         manifest.save(manifest_path)
 
     # Step 2: Gather plugin information
