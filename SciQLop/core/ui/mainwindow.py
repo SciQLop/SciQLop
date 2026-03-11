@@ -162,7 +162,22 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._refresh_mem_timer.timeout.connect(self._update_usage)
         self._refresh_mem_timer.start(1000)
 
+        self._appstore = None
+        self.toolsMenu.addAction("Plugin Store", self._show_appstore)
+        self.welcome.backend.appstore_requested.connect(self._show_appstore)
+
         self._center_and_maximise_on_screen()
+
+    def _show_appstore(self):
+        if self._appstore is None:
+            from SciQLop.components.appstore import AppStorePage
+            self._appstore = AppStorePage()
+            self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self._appstore)
+        else:
+            dw = self.dock_manager.findDockWidget(self._appstore.windowTitle())
+            if dw:
+                dw.toggleView(True)
+                dw.raise_()
 
     def _update_usage(self):
         self._update_cpu_usage()
