@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout, QScrollArea, QFrame
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QSizePolicy, QHBoxLayout, QScrollArea, QFrame, QSplitter
 from PySide6.QtCore import Qt
 from SciQLop.components.welcome.sections.ExamplesView import ExamplesView
 from SciQLop.components.welcome.sections.quickstart import QuickStartSection
@@ -37,11 +37,17 @@ class WelcomePage(QWidget):
         self._scroll.setFrameShape(QFrame.Shape.NoFrame)
         self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
 
-        self._layout = QHBoxLayout()
-        self._layout.addWidget(self._scroll)
+        self._splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._splitter.addWidget(self._scroll)
         self._detailed_description = DetailedDescription(self)
         self._detailed_description.hide()
-        self._layout.addWidget(self._detailed_description)
+        self._splitter.addWidget(self._detailed_description)
+        self._splitter.setStretchFactor(0, 1)
+        self._splitter.setStretchFactor(1, 0)
+
+        self._layout = QHBoxLayout()
+        self._layout.setContentsMargins(0, 0, 0, 0)
+        self._layout.addWidget(self._splitter)
         self.setLayout(self._layout)
 
         self._recent_workspaces.show_detailed_description.connect(self._show_detailed_description)

@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QFrame, QLabel, QGraphicsDropShadowEffect, QPushButton, QFileDialog
 from PySide6.QtGui import QPixmap, QIcon, QKeyEvent
-from PySide6.QtCore import QPropertyAnimation, Signal, Qt, QSize
+from PySide6.QtCore import Signal, Qt, QSize
 from SciQLop.core.sciqlop_application import sciqlop_app
 import os
 from typing import Optional
@@ -76,8 +76,6 @@ class Card(QFrame):
         self.setGraphicsEffect(self._shadow)
         self.setMaximumSize(width, height)
         self.setMinimumSize(width, height)
-        self._initial_geometry = None
-        self._destination_geometry = None
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         if tooltip is not None:
             self.setToolTip(tooltip)
@@ -91,33 +89,18 @@ class Card(QFrame):
         self.setToolTip(value)
 
     def invalidate_animation_cache(self):
-        self._initial_geometry = None
-        self._destination_geometry = None
+        pass
 
     def enterEvent(self, event):
+        self._shadow.setBlurRadius(15)
         self._shadow.setOffset(5)
         self._shadow.setColor(Qt.darkGray)
-        self.setGraphicsEffect(self._shadow)
-        self._animation = QPropertyAnimation(self, b"geometry")
-        if self._initial_geometry is None:
-            self._initial_geometry = self.geometry()
-            factor = 5
-            self._destination_geometry = self.geometry().adjusted(-factor, -factor, factor, factor)
-        self._animation.setStartValue(self._initial_geometry)
-        self._animation.setDuration(100)
-        self._animation.setEndValue(self._destination_geometry)
-        self._animation.start()
         super().enterEvent(event)
 
     def leaveEvent(self, event):
+        self._shadow.setBlurRadius(5)
         self._shadow.setOffset(2)
         self._shadow.setColor(Qt.gray)
-        self.setGraphicsEffect(self._shadow)
-        self._animation = QPropertyAnimation(self, b"geometry")
-        self._animation.setDuration(100)
-        self._animation.setStartValue(self._destination_geometry)
-        self._animation.setEndValue(self._initial_geometry)
-        self._animation.start()
         super().leaveEvent(event)
 
     def filter_text(self) -> str:
