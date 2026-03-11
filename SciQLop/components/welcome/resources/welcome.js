@@ -6,12 +6,47 @@ let selectedCard = null;
 function init() {
     new QWebChannel(qt.webChannelTransport, function(channel) {
         backend = channel.objects.backend;
+        loadHero();
         loadQuickstart();
         loadWorkspaces();
         loadExamples();
+        loadNews();
+        loadFeatured();
 
-        backend.workspace_list_changed.connect(loadWorkspaces);
+        backend.workspace_list_changed.connect(function() {
+            loadWorkspaces();
+            loadHero();
+        });
         backend.quickstart_changed.connect(loadQuickstart);
+
+        document.getElementById("browse-all-link").addEventListener("click", function(e) {
+            e.preventDefault();
+            backend.open_appstore();
+        });
+    });
+}
+
+// --- Hero ---
+
+function loadHero() {
+    backend.get_hero_workspace(function(json_str) {
+        const hero = document.getElementById("hero");
+        const ws = JSON.parse(json_str);
+        if (!ws) {
+            hero.classList.add("hidden");
+            hero.innerHTML = '';
+            return;
+        }
+        hero.classList.remove("hidden");
+        hero.innerHTML =
+            '<div class="hero-info">' +
+                '<span class="hero-name">\u26A1 Resume: ' + escapeHtml(ws.name) + '</span>' +
+                '<span class="hero-sub">Last used: ' + escapeHtml(ws.last_used) + '</span>' +
+            '</div>' +
+            '<button id="hero-open">Open</button>';
+        document.getElementById("hero-open").addEventListener("click", function() {
+            backend.open_workspace(ws.directory);
+        });
     });
 }
 
@@ -65,6 +100,34 @@ function loadExamples() {
         container.innerHTML = "";
         examples.forEach(function(ex) {
             container.appendChild(createExampleCard(ex));
+        });
+    });
+}
+
+function loadNews() {
+    backend.list_news(function(json_str) {
+        const news = JSON.parse(json_str);
+        const container = document.getElementById("news-list");
+        container.innerHTML = "";
+        news.forEach(function(item) {
+            const row = document.createElement("div");
+            row.className = "news-item";
+            row.innerHTML =
+                '<span class="news-icon">' + item.icon + '</span>' +
+                '<span class="news-text">' + escapeHtml(item.title) + '</span>' +
+                '<span class="news-date">' + escapeHtml(item.date || "") + '</span>';
+            container.appendChild(row);
+        });
+    });
+}
+
+function loadFeatured() {
+    backend.list_featured_packages(function(json_str) {
+        const packages = JSON.parse(json_str);
+        const container = document.getElementById("featured-cards");
+        container.innerHTML = "";
+        packages.forEach(function(pkg) {
+            container.appendChild(createFeaturedCard(pkg));
         });
     });
 }
@@ -150,6 +213,30 @@ function createExampleCard(ex) {
     return card;
 }
 
+var TYPE_ICONS = {plugin: "\uD83D\uDD0C", workspace: "\uD83D\uDCC1", example: "\uD83D\uDCD6"};
+
+function createFeaturedCard(pkg) {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.dataset.name = pkg.name.toLowerCase();
+    card.dataset.tags = (pkg.tags || []).join(" ").toLowerCase();
+
+    const icon = TYPE_ICONS[pkg.type] || "\uD83D\uDCE6";
+    card.innerHTML =
+        '<div class="card-image placeholder">' + icon + '</div>' +
+        '<div class="card-body">' +
+            '<span class="card-badge">' + escapeHtml(pkg.type) + '</span>' +
+            '<span class="card-name">' + escapeHtml(pkg.name) + '</span>' +
+            '<div class="card-stars">\u2B50 ' + pkg.stars + '</div>' +
+        '</div>';
+
+    card.addEventListener("click", function() {
+        selectCard(card);
+        showFeaturedDetails(pkg);
+    });
+    return card;
+}
+
 // --- Details panel ---
 
 function showWorkspaceDetails(ws) {
@@ -171,7 +258,6 @@ function showWorkspaceDetails(ws) {
 
     panel.classList.remove("hidden");
     panel.classList.add("visible");
-    document.getElementById("sections").classList.add("with-details");
 }
 
 function showExampleDetails(ex) {
@@ -188,14 +274,36 @@ function showExampleDetails(ex) {
 
     panel.classList.remove("hidden");
     panel.classList.add("visible");
-    document.getElementById("sections").classList.add("with-details");
+}
+
+function showFeaturedDetails(pkg) {
+    const panel = document.getElementById("details-panel");
+    document.getElementById("details-title").textContent = pkg.type.charAt(0).toUpperCase() + pkg.type.slice(1) + " details";
+
+    const tagsHtml = (pkg.tags || []).map(function(t) {
+        return '<span class="card-badge">' + escapeHtml(t) + '</span>';
+    }).join(" ");
+
+    const content = document.getElementById("details-content");
+    content.innerHTML =
+        '<div class="details-field"><label>Name</label><span>' + escapeHtml(pkg.name) + '</span></div>' +
+        '<div class="details-field"><label>Type</label><span>' + escapeHtml(pkg.type) + '</span></div>' +
+        '<div class="details-field"><label>Author</label><span>' + escapeHtml(pkg.author) + '</span></div>' +
+        '<div class="details-field"><label>Description</label><span>' + escapeHtml(pkg.description || "") + '</span></div>' +
+        '<div class="details-field"><label>Tags</label><span>' + tagsHtml + '</span></div>' +
+        '<div class="details-field"><label>Stars</label><span>\u2B50 ' + pkg.stars + '</span></div>' +
+        '<div class="details-actions">' +
+            '<button onclick="backend.open_appstore()">View in Store</button>' +
+        '</div>';
+
+    panel.classList.remove("hidden");
+    panel.classList.add("visible");
 }
 
 function hideDetails() {
     const panel = document.getElementById("details-panel");
     panel.classList.remove("visible");
     panel.classList.add("hidden");
-    document.getElementById("sections").classList.remove("with-details");
     if (selectedCard) {
         selectedCard.classList.remove("selected");
         selectedCard = null;
@@ -220,21 +328,21 @@ function selectCard(card) {
 // --- Filtering ---
 
 document.addEventListener("DOMContentLoaded", function() {
-    const wsFilter = document.getElementById("workspace-filter");
+    var wsFilter = document.getElementById("workspace-filter");
     if (wsFilter) {
         wsFilter.addEventListener("input", function() {
             filterCards("workspace-cards", this.value);
         });
     }
-    const exFilter = document.getElementById("example-filter");
+    var exFilter = document.getElementById("example-filter");
     if (exFilter) {
         exFilter.addEventListener("input", function() {
             filterCards("example-cards", this.value);
         });
     }
 
-    document.getElementById("sections").addEventListener("click", function(e) {
-        if (!e.target.closest(".card, .shortcut-card")) {
+    document.body.addEventListener("click", function(e) {
+        if (!e.target.closest(".card, .shortcut-card, #details-panel, #hero")) {
             hideDetails();
         }
     });
@@ -242,12 +350,12 @@ document.addEventListener("DOMContentLoaded", function() {
 
 function filterCards(containerId, query) {
     query = query.toLowerCase();
-    const container = document.getElementById(containerId);
-    const cards = container.querySelectorAll(".card");
+    var container = document.getElementById(containerId);
+    var cards = container.querySelectorAll(".card");
     cards.forEach(function(card) {
-        const name = card.dataset.name || "";
-        const tags = card.dataset.tags || "";
-        const match = !query || name.includes(query) || tags.includes(query);
+        var name = card.dataset.name || "";
+        var tags = card.dataset.tags || "";
+        var match = !query || name.includes(query) || tags.includes(query);
         card.style.display = match ? "" : "none";
     });
 }
@@ -255,7 +363,7 @@ function filterCards(containerId, query) {
 // --- Utilities ---
 
 function escapeHtml(str) {
-    const div = document.createElement("div");
+    var div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
 }
