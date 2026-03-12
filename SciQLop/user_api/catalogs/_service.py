@@ -109,3 +109,44 @@ class CatalogService:
         events = provider.events(catalog)
         speasy_events = [_event_to_speasy(e) for e in events]
         return SpeasyCatalog(name=catalog.name, events=speasy_events)
+
+    def save(self, path: str, data) -> None:
+        speasy_cat = _normalize_input(data)
+        new_events = [_event_to_internal(e) for e in speasy_cat]
+        provider_name, segments, name = _parse_path(path)
+        provider = self._find_provider(provider_name)
+
+        existing = self._find_catalog(provider, segments, name)
+        if existing is None:
+            if Capability.CREATE_CATALOGS not in provider.capabilities():
+                raise PermissionError(f"Provider {provider_name!r} cannot create catalogs")
+            existing = provider.create_catalog(name, path=segments)
+
+        provider._set_events(existing, new_events)
+        provider.events_changed.emit(existing)
+        provider.mark_dirty(existing)
+        if Capability.SAVE_CATALOG in provider.capabilities():
+            provider.save_catalog(existing)
+        elif Capability.SAVE in provider.capabilities():
+            provider.save()
+
+    def create(self, path: str, data) -> None:
+        provider_name, segments, name = _parse_path(path)
+        provider = self._find_provider(provider_name)
+
+        if self._find_catalog(provider, segments, name) is not None:
+            raise ValueError(f"Catalog already exists: {path!r}")
+        if Capability.CREATE_CATALOGS not in provider.capabilities():
+            raise PermissionError(f"Provider {provider_name!r} cannot create catalogs")
+
+        catalog = provider.create_catalog(name, path=segments)
+        speasy_cat = _normalize_input(data)
+        new_events = [_event_to_internal(e) for e in speasy_cat]
+        if new_events:
+            provider._set_events(catalog, new_events)
+            provider.events_changed.emit(catalog)
+            provider.mark_dirty(catalog)
+            if Capability.SAVE_CATALOG in provider.capabilities():
+                provider.save_catalog(catalog)
+            elif Capability.SAVE in provider.capabilities():
+                provider.save()

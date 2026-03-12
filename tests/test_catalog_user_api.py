@@ -186,3 +186,57 @@ def test_get_not_found(catalog_service, dummy_provider):
 def test_get_bad_provider(catalog_service, dummy_provider):
     with pytest.raises(KeyError):
         catalog_service.get("NoSuchProvider//Catalog-0")
+
+
+def test_save_existing_catalog(catalog_service, dummy_provider):
+    cat = catalog_service.get("DummyProvider//room1//Catalog-0")
+    assert len(cat) == 3
+
+    from speasy.products.catalog import Catalog as SpeasyCatalog, Event as SpeasyEvent
+    modified = SpeasyCatalog(name="Catalog-0", events=[
+        cat[0],
+        SpeasyEvent("2025-01-01", "2025-01-02", meta={"new": True}),
+    ])
+    catalog_service.save("DummyProvider//room1//Catalog-0", modified)
+
+    reloaded = catalog_service.get("DummyProvider//room1//Catalog-0")
+    assert len(reloaded) == 2
+    assert reloaded[0].meta["__sciqlop_uuid__"] == cat[0].meta["__sciqlop_uuid__"]
+
+
+def test_save_creates_if_missing(catalog_service, dummy_provider):
+    catalog_service.save("DummyProvider//room1//Brand New", [
+        ("2020-01-01", "2020-01-02"),
+    ])
+    cat = catalog_service.get("DummyProvider//room1//Brand New")
+    assert len(cat) == 1
+
+
+def test_save_bad_provider(catalog_service, dummy_provider):
+    with pytest.raises(KeyError):
+        catalog_service.save("NoSuchProvider//room//Cat", [("2020-01-01", "2020-01-02")])
+
+
+def test_create_new_catalog(catalog_service, dummy_provider):
+    catalog_service.create("DummyProvider//room3//New Cat", [
+        ("2020-01-01", "2020-01-02"),
+        ("2020-06-01", "2020-06-02", {"tag": "storm"}),
+    ])
+    cat = catalog_service.get("DummyProvider//room3//New Cat")
+    assert len(cat) == 2
+    assert cat[1].meta["tag"] == "storm"
+
+
+def test_create_already_exists(catalog_service, dummy_provider):
+    with pytest.raises(ValueError):
+        catalog_service.create("DummyProvider//room1//Catalog-0", [])
+
+
+def test_create_with_speasy_catalog(catalog_service, dummy_provider):
+    from speasy.products.catalog import Catalog as SpeasyCatalog, Event as SpeasyEvent
+    speasy_cat = SpeasyCatalog(name="FromSpeasy", events=[
+        SpeasyEvent("2021-03-01", "2021-03-02"),
+    ])
+    catalog_service.create("DummyProvider//FromSpeasy", speasy_cat)
+    result = catalog_service.get("DummyProvider//FromSpeasy")
+    assert len(result) == 1
