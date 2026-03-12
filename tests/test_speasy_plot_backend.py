@@ -103,3 +103,9 @@ def test_speasy_variable_plot_with_sciqlop_backend(qtbot, qapp, main_window):
     plot, graph = result
     assert plot is not None
     assert graph is not None
+
+
+def test_sciqlop_backend_registered_after_plugin_load(qtbot, qapp, main_window):
+    """After the speasy plugin loads (via start_sciqlop), 'sciqlop' should be in __backends__"""
+    import speasy.plotting as splt
+    assert "sciqlop" in splt.__backends__

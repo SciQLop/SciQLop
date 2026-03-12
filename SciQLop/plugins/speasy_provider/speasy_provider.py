@@ -206,4 +206,19 @@ def load(*args):
     _cache._data._local = ThreadStorage()
     plugin = SpeasyPlugin()
     plugin._catalog_provider = SpeasyCatalogProvider()
+    _register_plot_backend()
     return plugin
+
+
+def _register_plot_backend():
+    try:
+        import speasy.plotting as splt
+        from SciQLop.user_api.plot._speasy_backend import SciQLopBackend
+        from SciQLop.components.settings.backend.plot_backend_settings import PlotBackendSettings
+
+        splt.__backends__["sciqlop"] = SciQLopBackend
+        if PlotBackendSettings().default_speasy_backend == "sciqlop":
+            splt.__backends__[None] = SciQLopBackend
+    except Exception as e:
+        from SciQLop.components.sciqlop_logging import getLogger
+        getLogger(__name__).debug(f"Could not register SciQLop plot backend: {e}")
