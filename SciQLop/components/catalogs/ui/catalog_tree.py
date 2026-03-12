@@ -329,6 +329,14 @@ class CatalogTreeModel(QAbstractItemModel):
         segments.reverse()
         return segments
 
+    def _node_type(self, node: _Node) -> "NodeType":
+        from ..backend.provider import NodeType
+        if node.catalog is not None:
+            return NodeType.CATALOG
+        if node.parent is self._root:
+            return NodeType.PROVIDER
+        return NodeType.FOLDER
+
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
             return None
@@ -361,6 +369,24 @@ class CatalogTreeModel(QAbstractItemModel):
                 from PySide6.QtGui import QColor
                 return QColor(128, 128, 128)
             return None
+        if role == Qt.ItemDataRole.DecorationRole:
+            node = index.internalPointer()
+            if node.is_placeholder:
+                return None
+            from ..backend.provider import NodeType
+            from ...theming.icons import get_icon
+            node_type = self._node_type(node)
+            if node.provider is not None:
+                custom = node.provider.node_icon(node_type, self._folder_path(node) if node_type == NodeType.FOLDER else None)
+                if custom is not None:
+                    return custom
+            icon_map = {
+                NodeType.PROVIDER: "dataSourceRoot",
+                NodeType.FOLDER: "folder_open",
+                NodeType.CATALOG: "catalogue",
+            }
+            icon_name = icon_map.get(node_type)
+            return get_icon(icon_name) if icon_name else None
         if role == DIRTY_PROVIDER_ROLE:
             node = index.internalPointer()
             if node.provider is not None and node.parent is self._root:

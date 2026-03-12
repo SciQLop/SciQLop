@@ -1284,3 +1284,127 @@ def test_node_placeholder_property(qtbot, qapp):
     assert cat_ph.is_placeholder
     folder_ph = _Node(name="New Folder...", placeholder_type=_PlaceholderType.FOLDER)
     assert folder_ph.is_placeholder
+
+
+def test_tree_icon_provider_node(qtbot, qapp):
+    """Provider nodes should have a DecorationRole icon."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QIcon
+
+    provider = DummyProvider(num_catalogs=1)
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            icon = model.data(idx, Qt.ItemDataRole.DecorationRole)
+            assert isinstance(icon, QIcon)
+            return
+    pytest.fail("Provider node not found")
+
+
+def test_tree_icon_catalog_node(qtbot, qapp):
+    """Catalog nodes should have a DecorationRole icon."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QIcon
+
+    provider = DummyProvider(num_catalogs=1)
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            cat_idx = model.index(0, 0, idx)
+            icon = model.data(cat_idx, Qt.ItemDataRole.DecorationRole)
+            assert isinstance(icon, QIcon)
+            return
+    pytest.fail("Provider node not found")
+
+
+def test_tree_icon_folder_node(qtbot, qapp):
+    """Folder nodes should have a DecorationRole icon."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QIcon
+
+    provider = DummyProvider(num_catalogs=1, paths=[["FolderA"]])
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            folder_idx = model.index(0, 0, idx)
+            assert model.data(folder_idx) == "FolderA"
+            icon = model.data(folder_idx, Qt.ItemDataRole.DecorationRole)
+            assert isinstance(icon, QIcon)
+            return
+    pytest.fail("Provider node not found")
+
+
+def test_tree_icon_placeholder_none(qtbot, qapp):
+    """Placeholder nodes should NOT have a DecorationRole icon."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+
+    provider = DummyProvider(num_catalogs=0)
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            last_row = model.rowCount(idx) - 1
+            assert last_row >= 0
+            ph_idx = model.index(last_row, 0, idx)
+            ph_node = model.node_from_index(ph_idx)
+            assert ph_node.is_placeholder
+            icon = model.data(ph_idx, Qt.ItemDataRole.DecorationRole)
+            assert icon is None
+            return
+    pytest.fail("Provider node not found")
+
+
+def test_tree_icon_provider_override(qtbot, qapp):
+    """Provider's node_icon() should take precedence over defaults."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability, NodeType
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QIcon, QPixmap
+
+    custom_icon = QIcon(QPixmap(16, 16))
+
+    class IconProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="IconProvider")
+
+        def catalogs(self):
+            return []
+
+        def capabilities(self, catalog=None):
+            return set()
+
+        def node_icon(self, node_type, path=None):
+            if node_type == NodeType.PROVIDER:
+                return custom_icon
+            return None
+
+    provider = IconProvider()
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            icon = model.data(idx, Qt.ItemDataRole.DecorationRole)
+            assert icon is custom_icon
+            return
+    pytest.fail("IconProvider not found")
