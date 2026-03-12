@@ -343,6 +343,14 @@ class CatalogBrowser(QWidget):
         segments.reverse()
         return segments
 
+    def _trigger_placeholder_edit(self, placeholder_node) -> None:
+        """Clear filter and trigger inline edit on a placeholder node."""
+        self._filter_bar.clear()
+        source_index = self._tree_model.createIndex(placeholder_node.row(), 0, placeholder_node)
+        proxy_index = self._proxy_model.mapFromSource(source_index)
+        if proxy_index.isValid():
+            self._catalog_tree.edit(proxy_index)
+
     def _on_tree_context_menu(self, pos) -> None:
         proxy_index = self._catalog_tree.indexAt(pos)
         if not proxy_index.isValid():
@@ -371,6 +379,19 @@ class CatalogBrowser(QWidget):
                 if action.icon is not None:
                     a.setIcon(action.icon)
                 a.triggered.connect(lambda checked, cb=action.callback, p=path: cb(p))
+
+        # Creation actions (folder or provider node, gated on CREATE_CATALOGS)
+        if node.catalog is None and not node.is_placeholder:
+            if Capability.CREATE_CATALOGS in caps:
+                from .catalog_tree import _PlaceholderType
+                cat_ph = next((c for c in node.children if c.placeholder_type == _PlaceholderType.CATALOG), None)
+                folder_ph = next((c for c in node.children if c.placeholder_type == _PlaceholderType.FOLDER), None)
+                if cat_ph is not None:
+                    new_cat_action = menu.addAction("New Catalog")
+                    new_cat_action.triggered.connect(lambda checked, ph=cat_ph: self._trigger_placeholder_edit(ph))
+                if folder_ph is not None:
+                    new_folder_action = menu.addAction("New Folder")
+                    new_folder_action.triggered.connect(lambda checked, ph=folder_ph: self._trigger_placeholder_edit(ph))
 
         if Capability.SAVE in caps and node.provider.is_dirty():
             if (node.catalog is not None
