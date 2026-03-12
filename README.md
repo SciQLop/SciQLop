@@ -33,6 +33,35 @@ brought by the Jupyter Notebook integration,
 that focuses on providing users with the easiest possible way to explore, label and analyze huge amounts of data.
 SciQLop is also the right tool for teaching space physics and in situ spacecraft data handling to students effortlessly.
 
+# SciQLop Ecosystem
+
+SciQLop is built on top of several libraries developed within the [SciQLop GitHub organization](https://github.com/SciQLop):
+
+```
+SciQLop
+├── SciQLopPlots      — Scientific plotting widgets with Python bindings
+│   └── NeoQCP        — C++ Qt6 rendering engine (QCustomPlot fork)
+├── Speasy            — Space physics data access (AMDA, CDA, SSC)
+│   ├── CDFpp         — High-performance CDF file reader (C++)
+│   ├── SciQLop-cache — Caching backend (planned replacement for diskcache)
+│   └── speasy_proxy  — Caching proxy server for shared Speasy data access
+├── cocat             — Collaborative catalogs via CRDT
+├── tscat             — Time series catalog Python library
+└── tscat_gui         — Qt GUI components for tscat catalogs
+```
+
+| Repository | Description | Language |
+|------------|-------------|----------|
+| [SciQLopPlots](https://github.com/SciQLop/SciQLopPlots) | High-level plotting widgets with Shiboken6/PySide6 bindings | C++/Python |
+| [NeoQCP](https://github.com/SciQLop/NeoQCP) | Low-level rendering engine, QCustomPlot fork with QRhi GPU backend | C++ |
+| [Speasy](https://github.com/SciQLop/speasy) | Unified access to space physics data archives | Python |
+| [CDFpp](https://github.com/SciQLop/CDFpp) | Fast CDF (Common Data Format) reader/writer | C++ |
+| [SciQLop-cache](https://github.com/SciQLop/SciQLop-cache) | High-performance caching layer for data requests | C++/Python |
+| [speasy_proxy](https://github.com/SciQLop/speasy_proxy) | Caching proxy server for shared Speasy data access | Python |
+| [cocat](https://github.com/SciQLop/cocat) | Collaborative catalog editing via CRDT/WebSocket | Python |
+| [tscat](https://github.com/SciQLop/tscat) | Time series catalog library (events, catalogs, attributes) | Python |
+| [tscat_gui](https://github.com/SciQLop/tscat_gui) | Qt GUI components for browsing and editing tscat catalogs | Python |
+
 # Main Features
 
 - **Interactive and responsive**: SciQLop can handle millions of data points without compromising on interactivity.
