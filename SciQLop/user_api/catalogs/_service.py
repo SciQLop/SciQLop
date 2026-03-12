@@ -130,6 +130,12 @@ class CatalogService:
         elif Capability.SAVE in provider.capabilities():
             provider.save()
 
+    def remove(self, path: str) -> None:
+        provider, catalog = self._resolve(path)
+        if Capability.DELETE_CATALOGS not in provider.capabilities():
+            raise PermissionError(f"Provider {provider.name!r} cannot delete catalogs")
+        provider.remove_catalog(catalog)
+
     def create(self, path: str, data) -> None:
         provider_name, segments, name = _parse_path(path)
         provider = self._find_provider(provider_name)
