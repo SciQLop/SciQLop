@@ -62,3 +62,50 @@ def _normalize_input(data) -> SpeasyCatalog:
         else:
             raise ValueError(f"Expected (start, stop) or (start, stop, meta), got {len(item)} elements")
     return SpeasyCatalog(name="", events=events)
+
+
+class CatalogService:
+
+    def _registry(self) -> CatalogRegistry:
+        return CatalogRegistry.instance()
+
+    def _find_provider(self, provider_name: str) -> CatalogProvider:
+        for p in self._registry().providers():
+            if p.name == provider_name:
+                return p
+        raise KeyError(f"Provider not found: {provider_name!r}")
+
+    def _find_catalog(self, provider: CatalogProvider, path: list[str], name: str) -> Catalog | None:
+        for cat in provider.catalogs():
+            if cat.name == name and cat.path == path:
+                return cat
+        return None
+
+    def _resolve(self, path: str) -> tuple[CatalogProvider, Catalog]:
+        provider_name, segments, name = _parse_path(path)
+        provider = self._find_provider(provider_name)
+        catalog = self._find_catalog(provider, segments, name)
+        if catalog is None:
+            raise KeyError(f"Catalog not found: {path!r}")
+        return provider, catalog
+
+    def list(self, prefix: str | None = None) -> list[str]:
+        if prefix is None:
+            return [
+                _build_path_string(p.name, cat.path, cat.name)
+                for p in self._registry().providers()
+                for cat in p.catalogs()
+            ]
+        provider_name, path_prefix = _parse_prefix(prefix)
+        provider = self._find_provider(provider_name)
+        return [
+            _build_path_string(provider.name, cat.path, cat.name)
+            for cat in provider.catalogs()
+            if cat.path[:len(path_prefix)] == path_prefix
+        ]
+
+    def get(self, path: str) -> SpeasyCatalog:
+        provider, catalog = self._resolve(path)
+        events = provider.events(catalog)
+        speasy_events = [_event_to_speasy(e) for e in events]
+        return SpeasyCatalog(name=catalog.name, events=speasy_events)

@@ -128,3 +128,61 @@ def test_normalize_input_triples(qtbot, qapp):
     assert isinstance(result, SpeasyCatalog)
     assert len(result) == 1
     assert result[0].meta["tag"] == "a"
+
+
+@pytest.fixture
+def dummy_provider(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    registry = CatalogRegistry.instance()
+    old_providers = list(registry._providers)
+    provider = DummyProvider(
+        num_catalogs=2, events_per_catalog=3,
+        paths=[["room1"], ["room2"]],
+    )
+    registry.register(provider)
+    yield provider
+    registry._providers = old_providers
+
+
+@pytest.fixture
+def catalog_service(dummy_provider):
+    from SciQLop.user_api.catalogs._service import CatalogService
+    return CatalogService()
+
+
+def test_list_all(catalog_service, dummy_provider):
+    paths = catalog_service.list()
+    assert len(paths) == 2
+    assert all("//" in p for p in paths)
+    assert any("Catalog-0" in p for p in paths)
+    assert any("Catalog-1" in p for p in paths)
+
+
+def test_list_with_prefix(catalog_service, dummy_provider):
+    paths = catalog_service.list("DummyProvider//room1")
+    assert len(paths) == 1
+    assert "Catalog-0" in paths[0]
+
+
+def test_list_provider_only(catalog_service, dummy_provider):
+    paths = catalog_service.list("DummyProvider")
+    assert len(paths) == 2
+
+
+def test_get_catalog(catalog_service, dummy_provider):
+    from speasy.products.catalog import Catalog as SpeasyCatalog
+    cat = catalog_service.get("DummyProvider//room1//Catalog-0")
+    assert isinstance(cat, SpeasyCatalog)
+    assert len(cat) == 3
+    assert cat[0].meta["__sciqlop_uuid__"]
+
+
+def test_get_not_found(catalog_service, dummy_provider):
+    with pytest.raises(KeyError):
+        catalog_service.get("DummyProvider//room1//NoSuchCatalog")
+
+
+def test_get_bad_provider(catalog_service, dummy_provider):
+    with pytest.raises(KeyError):
+        catalog_service.get("NoSuchProvider//Catalog-0")
