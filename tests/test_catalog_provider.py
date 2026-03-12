@@ -1708,3 +1708,179 @@ def test_setdata_nested_folder_creation(qtbot, qapp):
             assert model.rowCount(child_idx) == 2
             break
     assert found
+
+
+def test_trigger_placeholder_edit_clears_filter(qtbot, qapp):
+    """_trigger_placeholder_edit should clear the filter bar and attempt to edit."""
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from SciQLop.components.catalogs.ui.catalog_tree import _PlaceholderType
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1, paths=[["FolderA"]])
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+
+    model = browser._tree_model
+
+    browser._filter_bar.setText("something")
+    assert browser._filter_bar.text() == "something"
+
+    provider_node = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        n = model.node_from_index(idx)
+        if n.provider is provider:
+            provider_node = n
+            break
+    assert provider_node is not None
+
+    folder_node = next(c for c in provider_node.children if c.name == "FolderA" and not c.is_placeholder)
+    cat_ph = next(c for c in folder_node.children if c.placeholder_type == _PlaceholderType.CATALOG)
+
+    browser._trigger_placeholder_edit(cat_ph)
+    assert browser._filter_bar.text() == ""
+
+
+def test_full_folder_catalog_creation_workflow(qtbot, qapp):
+    """End-to-end: create folder, create catalog inside it, verify path, remove, verify pruned."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability
+    from PySide6.QtCore import Qt
+    import uuid as _uuid
+
+    class WorkflowProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="WorkflowProvider")
+            self._catalogs = []
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def capabilities(self, catalog=None):
+            return {Capability.CREATE_CATALOGS, Capability.DELETE_CATALOGS}
+
+        def create_catalog(self, name, path=None):
+            cat = Catalog(uuid=str(_uuid.uuid4()), name=name, provider=self, path=path or [])
+            self._catalogs.append(cat)
+            self._set_events(cat, [])
+            self.catalog_added.emit(cat)
+            return cat
+
+        def remove_catalog(self, catalog):
+            self._catalogs = [c for c in self._catalogs if c.uuid != catalog.uuid]
+            super().remove_catalog(catalog)
+
+    provider = WorkflowProvider()
+    model = CatalogTreeModel()
+
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.node_from_index(idx).provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+
+    # Step 1: Create folder via placeholder
+    folder_ph_idx = None
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.placeholder_type == _PlaceholderType.FOLDER:
+            folder_ph_idx = child_idx
+            break
+    assert folder_ph_idx is not None
+    model.setData(folder_ph_idx, "MyProject", Qt.ItemDataRole.EditRole)
+
+    folder_idx = None
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.name == "MyProject" and not child.is_placeholder:
+            folder_idx = child_idx
+            break
+    assert folder_idx is not None
+
+    # Step 2: Create catalog inside folder via placeholder
+    cat_ph_idx = None
+    for r in range(model.rowCount(folder_idx)):
+        child_idx = model.index(r, 0, folder_idx)
+        child = model.node_from_index(child_idx)
+        if child.placeholder_type == _PlaceholderType.CATALOG:
+            cat_ph_idx = child_idx
+            break
+    assert cat_ph_idx is not None
+    model.setData(cat_ph_idx, "MyCatalog", Qt.ItemDataRole.EditRole)
+
+    created = [c for c in provider.catalogs() if c.name == "MyCatalog"]
+    assert len(created) == 1
+    assert created[0].path == ["MyProject"]
+
+    # Step 3: Remove catalog — folder should be pruned
+    provider.remove_catalog(created[0])
+    non_ph_children = [
+        model.node_from_index(model.index(r, 0, provider_idx))
+        for r in range(model.rowCount(provider_idx))
+        if not model.node_from_index(model.index(r, 0, provider_idx)).is_placeholder
+    ]
+    assert not any(c.name == "MyProject" for c in non_ph_children), "Folder should be pruned"
+
+
+def test_explicit_folder_gets_placeholders(qtbot, qapp):
+    """Explicit folders (like cocat rooms) should get placeholders when provider supports creation."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability
+    import uuid as _uuid
+
+    class RoomProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="RoomProvider")
+            self._catalogs = []
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def capabilities(self, catalog=None):
+            return {Capability.CREATE_CATALOGS}
+
+        def create_catalog(self, name, path=None):
+            cat = Catalog(uuid=str(_uuid.uuid4()), name=name, provider=self, path=path or [])
+            self._catalogs.append(cat)
+            self._set_events(cat, [])
+            self.catalog_added.emit(cat)
+            return cat
+
+    provider = RoomProvider()
+    model = CatalogTreeModel()
+
+    provider.folder_added.emit(["room-1"])
+
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.node_from_index(idx).provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+
+    room_idx = None
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.name == "room-1" and child.is_explicit_folder:
+            room_idx = child_idx
+            break
+    assert room_idx is not None
+
+    count = model.rowCount(room_idx)
+    assert count == 2
+    ph0 = model.node_from_index(model.index(0, 0, room_idx))
+    ph1 = model.node_from_index(model.index(1, 0, room_idx))
+    assert ph0.placeholder_type == _PlaceholderType.CATALOG
+    assert ph1.placeholder_type == _PlaceholderType.FOLDER
+
+    from PySide6.QtCore import Qt
+    model.setData(model.index(0, 0, room_idx), "RoomCatalog", Qt.ItemDataRole.EditRole)
+    created = [c for c in provider.catalogs() if c.name == "RoomCatalog"]
+    assert len(created) == 1
+    assert created[0].path == ["room-1"]
