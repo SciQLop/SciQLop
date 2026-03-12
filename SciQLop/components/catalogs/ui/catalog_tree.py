@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any
 
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
@@ -10,10 +11,17 @@ from ..backend.registry import CatalogRegistry
 DIRTY_PROVIDER_ROLE = Qt.ItemDataRole.UserRole + 1
 
 
-class _Node:
-    """Internal tree node: root -> provider -> catalog."""
+class _PlaceholderType(str, Enum):
+    NONE = "none"
+    CATALOG = "catalog"
+    FOLDER = "folder"
 
-    __slots__ = ("name", "parent", "children", "provider", "catalog", "is_placeholder", "is_explicit_folder")
+
+class _Node:
+    """Internal tree node: root -> provider -> folder -> catalog."""
+
+    __slots__ = ("name", "parent", "children", "provider", "catalog",
+                 "placeholder_type", "is_explicit_folder")
 
     def __init__(
         self,
@@ -21,7 +29,7 @@ class _Node:
         parent: _Node | None = None,
         provider: CatalogProvider | None = None,
         catalog: Catalog | None = None,
-        is_placeholder: bool = False,
+        placeholder_type: _PlaceholderType = _PlaceholderType.NONE,
         is_explicit_folder: bool = False,
     ):
         self.name = name
@@ -29,8 +37,12 @@ class _Node:
         self.children: list[_Node] = []
         self.provider = provider
         self.catalog = catalog
-        self.is_placeholder = is_placeholder
+        self.placeholder_type = placeholder_type
         self.is_explicit_folder = is_explicit_folder
+
+    @property
+    def is_placeholder(self) -> bool:
+        return self.placeholder_type != _PlaceholderType.NONE
 
     def row(self) -> int:
         if self.parent is not None:
@@ -84,7 +96,7 @@ class CatalogTreeModel(QAbstractItemModel):
         if self._supports_create(provider):
             placeholder = _Node(
                 name="New Catalog...", parent=node, provider=provider,
-                is_placeholder=True,
+                placeholder_type=_PlaceholderType.CATALOG,
             )
             node.children.append(placeholder)
         self._root.children.append(node)

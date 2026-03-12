@@ -1267,3 +1267,20 @@ def test_provider_node_icon_default_returns_none(qtbot, qapp):
     assert provider.node_icon(NodeType.PROVIDER) is None
     assert provider.node_icon(NodeType.FOLDER, path=["X"]) is None
     assert provider.node_icon(NodeType.CATALOG) is None
+
+
+def test_placeholder_type_enum(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import _PlaceholderType
+    assert _PlaceholderType.NONE == "none"
+    assert _PlaceholderType.CATALOG == "catalog"
+    assert _PlaceholderType.FOLDER == "folder"
+
+
+def test_node_placeholder_property(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import _Node, _PlaceholderType
+    regular = _Node(name="test")
+    assert not regular.is_placeholder
+    cat_ph = _Node(name="New Catalog...", placeholder_type=_PlaceholderType.CATALOG)
+    assert cat_ph.is_placeholder
+    folder_ph = _Node(name="New Folder...", placeholder_type=_PlaceholderType.FOLDER)
+    assert folder_ph.is_placeholder
