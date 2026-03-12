@@ -240,3 +240,24 @@ def test_create_with_speasy_catalog(catalog_service, dummy_provider):
     catalog_service.create("DummyProvider//FromSpeasy", speasy_cat)
     result = catalog_service.get("DummyProvider//FromSpeasy")
     assert len(result) == 1
+
+
+def test_remove_catalog(catalog_service, dummy_provider):
+    catalog_service.remove("DummyProvider//room1//Catalog-0")
+    with pytest.raises(KeyError):
+        catalog_service.get("DummyProvider//room1//Catalog-0")
+    assert len(catalog_service.list()) == 1
+
+
+def test_remove_not_found(catalog_service, dummy_provider):
+    with pytest.raises(KeyError):
+        catalog_service.remove("DummyProvider//room1//NoSuchCatalog")
+
+
+def test_import_catalogs_singleton():
+    from SciQLop.user_api.catalogs import catalogs
+    assert hasattr(catalogs, 'list')
+    assert hasattr(catalogs, 'get')
+    assert hasattr(catalogs, 'save')
+    assert hasattr(catalogs, 'create')
+    assert hasattr(catalogs, 'remove')
