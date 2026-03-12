@@ -98,6 +98,7 @@ class TscatCatalogProvider(CatalogProvider):
         self._known_uuids: set[str] = set()
         self._loading_uuids: set[str] = set()
         self._stale_events: dict[str, list[CatalogEvent]] = {}
+        self._pending_paths: dict[str, list[str]] = {}
         self._root_model = tscat_model.tscat_root()
         super().__init__(name="TSCat Local", parent=parent)
         tscat_model.action_done.connect(self._on_action_done)
@@ -112,9 +113,11 @@ class TscatCatalogProvider(CatalogProvider):
         self._known_uuids = set()
         for cat_node in self._root_model.catalogue_nodes(in_trash=False):
             entity = cat_node.node
-            path = getattr(entity, "path__", None)
-            if not isinstance(path, list) or not all(isinstance(s, str) for s in path):
-                path = []
+            path = self._pending_paths.get(entity.uuid)
+            if path is None:
+                path = getattr(entity, "path__", None)
+                if not isinstance(path, list) or not all(isinstance(s, str) for s in path):
+                    path = []
             name = getattr(entity, "name", entity.uuid)
             cat = Catalog(
                 uuid=entity.uuid,
@@ -145,21 +148,36 @@ class TscatCatalogProvider(CatalogProvider):
     def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
         import uuid as _uuid
         catalog_uuid = str(_uuid.uuid4())
+        effective_path = path or []
+
+        # Store path before the action so _on_root_rows_changed → catalogs()
+        # picks it up (path__ isn't persisted on the entity yet at that point).
+        if effective_path:
+            self._pending_paths[catalog_uuid] = effective_path
+
+        def _persist_path(action):
+            if effective_path:
+                tscat_model.do(SetAttributeAction(
+                    user_callback=None,
+                    uuids=[catalog_uuid],
+                    name="path__",
+                    values=[effective_path],
+                ))
+
+        # _on_root_rows_changed fires synchronously during do() and emits
+        # catalog_added with the correct path (via _pending_paths).
         tscat_model.do(CreateEntityAction(
-            user_callback=None,
+            user_callback=_persist_path if effective_path else None,
             cls=tscat._Catalogue,
             args=dict(name=name, author="SciQLop", uuid=catalog_uuid),
         ))
-        cat = Catalog(
-            uuid=catalog_uuid,
-            name=name,
-            provider=self,
-            path=path or [],
-        )
-        if self._catalog_cache is not None:
-            self._catalog_cache.append(cat)
-        self._known_uuids.add(catalog_uuid)
+
+        # Return the catalog from cache (built by signal handlers during do()).
+        cat = next((c for c in (self._catalog_cache or []) if c.uuid == catalog_uuid), None)
+        if cat is None:
+            cat = Catalog(uuid=catalog_uuid, name=name, provider=self, path=effective_path)
         self._set_events(cat, [])
+        self.mark_dirty(cat)
         return cat
 
     def remove_catalog(self, catalog: Catalog) -> None:

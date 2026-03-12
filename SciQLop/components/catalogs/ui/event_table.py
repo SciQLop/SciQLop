@@ -47,7 +47,7 @@ class EventTableModel(QAbstractTableModel):
     def _on_event_range_changed(self, row: int) -> None:
         left = self.index(row, 0)
         right = self.index(row, 1)
-        self.dataChanged.emit(left, right, [Qt.ItemDataRole.DisplayRole])
+        self.dataChanged.emit(left, right, [int(Qt.ItemDataRole.DisplayRole)])
 
     def clear(self) -> None:
         self.beginResetModel()

@@ -195,9 +195,9 @@ class CatalogTreeModel(QAbstractItemModel):
         cat_node = self._find_catalog_node(pnode, catalog)
         if cat_node is not None:
             idx = self.createIndex(cat_node.row(), 0, cat_node)
-            self.dataChanged.emit(idx, idx, [Qt.ItemDataRole.DisplayRole])
+            self.dataChanged.emit(idx, idx, [int(Qt.ItemDataRole.DisplayRole)])
         pnode_idx = self.createIndex(pnode.row(), 0, pnode)
-        self.dataChanged.emit(pnode_idx, pnode_idx, [Qt.ItemDataRole.DisplayRole, DIRTY_PROVIDER_ROLE])
+        self.dataChanged.emit(pnode_idx, pnode_idx, [int(Qt.ItemDataRole.DisplayRole), DIRTY_PROVIDER_ROLE])
 
     def _find_catalog_node(self, node: _Node, catalog: object) -> _Node | None:
         for child in node.children:
@@ -213,9 +213,11 @@ class CatalogTreeModel(QAbstractItemModel):
         if cat_node is not None:
             cat_node.name = catalog.name
             idx = self.createIndex(cat_node.row(), 0, cat_node)
-            self.dataChanged.emit(idx, idx, [Qt.ItemDataRole.DisplayRole])
+            self.dataChanged.emit(idx, idx, [int(Qt.ItemDataRole.DisplayRole)])
 
     def _on_catalog_added(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
+        if self._find_catalog_node(pnode, catalog) is not None:
+            return  # already in tree, avoid duplicate
         target = pnode
         target_index = self.createIndex(pnode.row(), 0, pnode)
         for segment in catalog.path:
@@ -467,7 +469,7 @@ class CatalogTreeModel(QAbstractItemModel):
             if Capability.RENAME_CATALOG in node.provider.capabilities():
                 node.provider.rename_catalog(node.catalog, name)
                 node.name = name
-                self.dataChanged.emit(index, index, [Qt.ItemDataRole.DisplayRole])
+                self.dataChanged.emit(index, index, [int(Qt.ItemDataRole.DisplayRole)])
                 return True
         return False
 

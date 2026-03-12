@@ -1884,3 +1884,93 @@ def test_explicit_folder_gets_placeholders(qtbot, qapp):
     created = [c for c in provider.catalogs() if c.name == "RoomCatalog"]
     assert len(created) == 1
     assert created[0].path == ["room-1"]
+
+
+# --- Bug reproducer: create_catalog must emit catalog_added for tree to update ---
+
+
+def test_create_catalog_without_signal_does_not_update_tree(qtbot, qapp):
+    """Reproducer: if create_catalog doesn't emit catalog_added, the tree won't show the new catalog.
+
+    This was the root cause of TSCat catalogs created in folders appearing at root level.
+    """
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability
+    from PySide6.QtCore import Qt
+    import uuid as _uuid
+
+    class BuggyProvider(CatalogProvider):
+        """Provider that does NOT emit catalog_added — reproduces the tscat bug."""
+
+        def __init__(self):
+            super().__init__(name="BuggyProvider")
+            self._catalogs = []
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def capabilities(self, catalog=None):
+            return {Capability.CREATE_CATALOGS}
+
+        def create_catalog(self, name, path=None):
+            cat = Catalog(uuid=str(_uuid.uuid4()), name=name, provider=self, path=path or [])
+            self._catalogs.append(cat)
+            self._set_events(cat, [])
+            # BUG: missing self.catalog_added.emit(cat)
+            return cat
+
+    provider = BuggyProvider()
+    model = CatalogTreeModel()
+
+    # Find provider in tree
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.node_from_index(idx).provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+
+    # Create folder via placeholder
+    folder_ph_idx = None
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.placeholder_type == _PlaceholderType.FOLDER:
+            folder_ph_idx = child_idx
+            break
+    assert folder_ph_idx is not None
+    model.setData(folder_ph_idx, "TestFolder", Qt.ItemDataRole.EditRole)
+
+    # Find folder
+    folder_idx = None
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.name == "TestFolder" and not child.is_placeholder:
+            folder_idx = child_idx
+            break
+    assert folder_idx is not None
+
+    # Create catalog inside folder via placeholder
+    cat_ph_idx = None
+    for r in range(model.rowCount(folder_idx)):
+        child_idx = model.index(r, 0, folder_idx)
+        child = model.node_from_index(child_idx)
+        if child.placeholder_type == _PlaceholderType.CATALOG:
+            cat_ph_idx = child_idx
+            break
+    assert cat_ph_idx is not None
+    model.setData(cat_ph_idx, "BuggyCatalog", Qt.ItemDataRole.EditRole)
+
+    # The catalog was created in the provider...
+    assert len(provider.catalogs()) == 1
+    assert provider.catalogs()[0].path == ["TestFolder"]
+
+    # ...but the tree does NOT show it (because catalog_added was never emitted)
+    folder_children = [
+        model.node_from_index(model.index(r, 0, folder_idx))
+        for r in range(model.rowCount(folder_idx))
+        if not model.node_from_index(model.index(r, 0, folder_idx)).is_placeholder
+    ]
+    assert len(folder_children) == 0, "Bug confirmed: tree missing catalog node because catalog_added not emitted"
