@@ -1507,3 +1507,204 @@ def test_tree_icon_provider_override(qtbot, qapp):
             assert icon is custom_icon
             return
     pytest.fail("IconProvider not found")
+
+
+# --- Task 5: prune folders with only placeholders ---
+
+
+def test_prune_folder_with_only_placeholders(qtbot, qapp):
+    """Folder with only placeholder children should be pruned when catalog is removed."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability
+    import uuid as _uuid
+
+    class PruneProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="PruneProvider")
+            self._catalogs = []
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def capabilities(self, catalog=None):
+            return {Capability.CREATE_CATALOGS, Capability.DELETE_CATALOGS}
+
+        def add_catalog(self, cat):
+            self._catalogs.append(cat)
+            self._set_events(cat, [])
+            self.catalog_added.emit(cat)
+
+        def remove_catalog(self, catalog):
+            self._catalogs = [c for c in self._catalogs if c.uuid != catalog.uuid]
+            super().remove_catalog(catalog)
+
+    provider = PruneProvider()
+    model = CatalogTreeModel()
+
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.node_from_index(idx).provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+
+    cat = Catalog(uuid=str(_uuid.uuid4()), name="TempCat", provider=provider, path=["TempFolder"])
+    provider.add_catalog(cat)
+
+    non_placeholder_children = [
+        model.node_from_index(model.index(r, 0, provider_idx))
+        for r in range(model.rowCount(provider_idx))
+        if not model.node_from_index(model.index(r, 0, provider_idx)).is_placeholder
+    ]
+    assert any(c.name == "TempFolder" for c in non_placeholder_children)
+
+    provider.remove_catalog(cat)
+
+    non_placeholder_children = [
+        model.node_from_index(model.index(r, 0, provider_idx))
+        for r in range(model.rowCount(provider_idx))
+        if not model.node_from_index(model.index(r, 0, provider_idx)).is_placeholder
+    ]
+    assert not any(c.name == "TempFolder" for c in non_placeholder_children)
+
+
+# --- Task 6: catalog placeholder setData builds path ---
+
+
+def test_setdata_catalog_placeholder_builds_path(qtbot, qapp):
+    """Creating a catalog via placeholder in a subfolder should pass the correct path."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+
+    provider = DummyProvider(num_catalogs=1, paths=[["ProjectA"]])
+    model = CatalogTreeModel()
+
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.node_from_index(idx).provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+
+    folder_idx = None
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.name == "ProjectA" and not child.is_placeholder:
+            folder_idx = child_idx
+            break
+    assert folder_idx is not None
+
+    ph_idx = None
+    for r in range(model.rowCount(folder_idx)):
+        child_idx = model.index(r, 0, folder_idx)
+        child = model.node_from_index(child_idx)
+        if child.placeholder_type == _PlaceholderType.CATALOG:
+            ph_idx = child_idx
+            break
+    assert ph_idx is not None
+
+    result = model.setData(ph_idx, "NewCatalog", Qt.ItemDataRole.EditRole)
+    assert result is True
+
+    created = [c for c in provider.catalogs() if c.name == "NewCatalog"]
+    assert len(created) == 1
+    assert created[0].path == ["ProjectA"]
+
+
+# --- Task 7: folder placeholder setData ---
+
+
+def test_setdata_folder_placeholder_creates_folder(qtbot, qapp):
+    """Editing a folder placeholder should create a new folder node with its own placeholders."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+
+    provider = DummyProvider(num_catalogs=0)
+    model = CatalogTreeModel()
+
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.node_from_index(idx).provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+
+    folder_ph_idx = None
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.placeholder_type == _PlaceholderType.FOLDER:
+            folder_ph_idx = child_idx
+            break
+    assert folder_ph_idx is not None
+
+    result = model.setData(folder_ph_idx, "MyFolder", Qt.ItemDataRole.EditRole)
+    assert result is True
+
+    found_folder = False
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.name == "MyFolder" and not child.is_placeholder:
+            found_folder = True
+            assert model.rowCount(child_idx) == 2
+            ph0 = model.node_from_index(model.index(0, 0, child_idx))
+            ph1 = model.node_from_index(model.index(1, 0, child_idx))
+            assert ph0.placeholder_type == _PlaceholderType.CATALOG
+            assert ph1.placeholder_type == _PlaceholderType.FOLDER
+            break
+    assert found_folder
+
+
+def test_setdata_nested_folder_creation(qtbot, qapp):
+    """Creating a folder inside another folder should work."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+
+    provider = DummyProvider(num_catalogs=1, paths=[["OuterFolder"]])
+    model = CatalogTreeModel()
+
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.node_from_index(idx).provider is provider:
+            provider_idx = idx
+            break
+
+    outer_idx = None
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.name == "OuterFolder" and not child.is_placeholder:
+            outer_idx = child_idx
+            break
+    assert outer_idx is not None
+
+    folder_ph_idx = None
+    for r in range(model.rowCount(outer_idx)):
+        child_idx = model.index(r, 0, outer_idx)
+        child = model.node_from_index(child_idx)
+        if child.placeholder_type == _PlaceholderType.FOLDER:
+            folder_ph_idx = child_idx
+            break
+    assert folder_ph_idx is not None
+
+    result = model.setData(folder_ph_idx, "InnerFolder", Qt.ItemDataRole.EditRole)
+    assert result is True
+
+    found = False
+    for r in range(model.rowCount(outer_idx)):
+        child_idx = model.index(r, 0, outer_idx)
+        child = model.node_from_index(child_idx)
+        if child.name == "InnerFolder" and not child.is_placeholder:
+            found = True
+            assert model.rowCount(child_idx) == 2
+            break
+    assert found

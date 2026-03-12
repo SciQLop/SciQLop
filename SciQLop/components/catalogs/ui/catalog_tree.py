@@ -314,8 +314,14 @@ class CatalogTreeModel(QAbstractItemModel):
             return  # node is a provider node, don't prune
         if node.is_explicit_folder:
             return  # explicit folders persist even when empty
-        if len(node.children) > 0:
-            return  # not empty
+        if any(not c.is_placeholder for c in node.children):
+            return  # has real children
+        # Remove placeholder children first
+        node_index = self.createIndex(node.row(), 0, node)
+        if node.children:
+            self.beginRemoveRows(node_index, 0, len(node.children) - 1)
+            node.children.clear()
+            self.endRemoveRows()
         parent = node.parent
         i = parent.children.index(node)
         parent_index = self.createIndex(parent.row(), 0, parent) if parent.parent is not None else QModelIndex()
@@ -438,8 +444,23 @@ class CatalogTreeModel(QAbstractItemModel):
         name = value.strip() if isinstance(value, str) else str(value).strip()
         if not name:
             return False
-        if node.is_placeholder:
-            node.provider.create_catalog(name)
+        if node.placeholder_type == _PlaceholderType.CATALOG:
+            path = self._folder_path(node.parent)
+            node.provider.create_catalog(name, path=path if path else None)
+            return True
+        if node.placeholder_type == _PlaceholderType.FOLDER:
+            parent = node.parent
+            parent_index = self.createIndex(parent.row(), 0, parent) if parent.parent is not None else QModelIndex()
+            insert_row = next(
+                (i for i, c in enumerate(parent.children) if c.is_placeholder),
+                len(parent.children)
+            )
+            folder = _Node(name=name, parent=parent, provider=node.provider)
+            self.beginInsertRows(parent_index, insert_row, insert_row)
+            parent.children.insert(insert_row, folder)
+            self.endInsertRows()
+            folder_index = self.createIndex(insert_row, 0, folder)
+            self._ensure_placeholders(folder, folder_index)
             return True
         if node.catalog is not None and node.provider is not None:
             from ..backend.provider import Capability
