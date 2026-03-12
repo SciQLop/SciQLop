@@ -34,6 +34,7 @@ Not covered: async/networked plugins (too specialized), app store publishing (fu
 | `has_ui` | bool | false | Include toolbar action and side panel scaffold |
 | `author_name` | str | required | Author name for plugin.json |
 | `author_email` | str | required | Author email for plugin.json |
+| `author_organization` | str | "" | Author organization for plugin.json |
 | `python_dependencies` | str | "" | Comma-separated pip dependencies |
 | `output_dir` | path | `~/.local/share/sciqlop/plugins/` | Where to generate the plugin |
 
@@ -55,7 +56,7 @@ Not covered: async/networked plugins (too specialized), app store publishing (fu
   "name": "{{plugin_name}}",
   "version": "0.1.0",
   "description": "",
-  "authors": [{"name": "{{author_name}}", "email": "{{author_email}}"}],
+  "authors": [{"name": "{{author_name}}", "email": "{{author_email}}", "organization": "{{author_organization}}"}],
   "license": "MIT",
   "python_dependencies": [{{python_dependencies}}],
   "dependencies": [],
@@ -94,10 +95,10 @@ Single class that inherits from `DataProvider` and includes UI setup in `load()`
 
 ```python
 def load(main_window):
-    return PluginClass(main_window)  # or PluginClass() for data-only
+    return PluginClass(main_window)
 ```
 
-Returns the plugin instance so SciQLop can call `close()` on shutdown.
+`load()` **must** always accept `main_window` even for data-only plugins (the loader always passes it). Data-only plugins can simply ignore it. Returns the plugin instance so SciQLop can call `close()` on shutdown.
 
 ## Component 2: Claude Code Skill
 
@@ -124,17 +125,18 @@ The skill provides Claude with reference knowledge about the plugin system (patt
 
 **DataProvider API:**
 - Base class: `SciQLop.components.plotting.backend.data_provider.DataProvider`
-- Constructor: `name`, `data_order` (Y_FIRST or X_FIRST), `cacheable`
-- Methods: `get_data(product, start, stop)`, `labels(product)`, `graph_type(product)`
+- Constructor: `name`, `data_order` (Y_FIRST or X_FIRST, default is X_FIRST), `cacheable`
+- Methods: `get_data(node, start, stop)`, `labels(node)`, `graph_type(node)` — the `node` argument is a `ProductsModelNode` (access metadata via `node.metadata("key")`)
 - Return types: `SpeasyVariable`, or tuple of numpy arrays
 - Product tree: `ProductsModel.instance().add_node(path, node)` with `ProductsModelNode` hierarchy
+- `ProductsModelNode` constructors: `(name)` for group nodes, `(name, provider_name, metadata_dict, node_type, parameter_type)` for leaf nodes
 - Node types: `ProductsModelNodeType.PARAMETER`, parameter types: `ParameterType.Vector`, `Scalar`, `Spectrogram`
 
 **Main window integration:**
 - `main_window.addToolBar(title)` → QToolBar
 - `main_window.toolBar` — default toolbar
 - `main_window.toolsMenu`, `main_window.viewMenu` — menus
-- `main_window.add_side_pan(widget, location, icon)` — side panels
+- `main_window.add_side_pan(widget, location, icon)` — side panels (`location` is a `QtAds.PySide6QtAds.ads.SideBarLocation` enum, defaults to `SideBarLeft`)
 - `main_window.addWidgetIntoDock(area, widget)` — dock widgets
 - Signals: `panel_added(TimeSyncPanel)`, `panels_list_changed(list)`
 - `main_window.new_plot_panel(name=...)` → `TimeSyncPanel`
@@ -155,6 +157,14 @@ The skill provides Claude with reference knowledge about the plugin system (patt
 - **New plugin requests:** invoke copier template to scaffold, then customize the generated code
 - **Existing plugin work:** use reference knowledge to assist with modifications, debugging, adding features
 - **Validation:** ensure `load()` signature is correct, `plugin.json` is valid, data provider return types match expected formats
+
+### Prerequisites
+
+- `copier` must be available in the environment. If not installed, the skill falls back to generating files directly.
+
+### Known Limitations
+
+- The `dependencies` field in `plugin.json` is not yet used for load ordering — plugins load in discovery order regardless.
 
 ### Skill Does NOT Cover
 
