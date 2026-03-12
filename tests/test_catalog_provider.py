@@ -310,11 +310,11 @@ def test_catalog_tree_model_structure(qtbot, qapp):
     provider = DummyProvider(num_catalogs=3)
     model = CatalogTreeModel()
 
-    # Find the provider node that has exactly 3 catalogs (our provider)
+    # Find the provider node that has exactly 3 catalogs + 2 placeholders (our provider)
     found = False
     for i in range(model.rowCount()):
         provider_index = model.index(i, 0)
-        if model.data(provider_index) == "DummyProvider" and model.rowCount(provider_index) == 3:
+        if model.data(provider_index) == "DummyProvider" and model.rowCount(provider_index) == 5:
             found = True
             cat_index = model.index(0, 0, provider_index)
             assert model.data(cat_index) == "Catalog-0"
@@ -718,7 +718,7 @@ def test_catalog_browser_filter_hides_non_matching(qtbot, qapp):
     # All visible initially
     provider_idx = find_provider_idx()
     assert provider_idx is not None
-    assert proxy.rowCount(provider_idx) == 4  # 3 catalogs + 1 placeholder
+    assert proxy.rowCount(provider_idx) == 5  # 3 catalogs + 2 placeholders
 
     # Filter to "alp"
     browser._filter_bar.setText("alp")
@@ -730,7 +730,7 @@ def test_catalog_browser_filter_hides_non_matching(qtbot, qapp):
     browser._filter_bar.setText("")
     provider_idx = find_provider_idx()
     assert provider_idx is not None
-    assert proxy.rowCount(provider_idx) == 4  # 3 catalogs + 1 placeholder
+    assert proxy.rowCount(provider_idx) == 5  # 3 catalogs + 2 placeholders
 
 
 # --- Task 4: Public mutation API ---
@@ -841,9 +841,11 @@ def test_tree_model_placeholder_node(qtbot, qapp):
         idx = model.index(i, 0)
         node = model.node_from_index(idx)
         if node.provider is provider:
-            assert model.rowCount(idx) == 2
+            assert model.rowCount(idx) == 3  # 1 catalog + 2 placeholders
+            second_last_idx = model.index(model.rowCount(idx) - 2, 0, idx)
+            assert model.data(second_last_idx) == "New Catalog..."
             last_idx = model.index(model.rowCount(idx) - 1, 0, idx)
-            assert model.data(last_idx) == "New Catalog..."
+            assert model.data(last_idx) == "New Folder..."
             return
     pytest.fail("Provider not found")
 
@@ -879,7 +881,7 @@ def test_tree_model_setdata_placeholder_creates_catalog(qtbot, qapp):
         idx = model.index(i, 0)
         node = model.node_from_index(idx)
         if node.provider is provider:
-            assert model.rowCount(idx) == 1
+            assert model.rowCount(idx) == 2  # 2 placeholders
             placeholder_idx = model.index(0, 0, idx)
 
             result = model.setData(placeholder_idx, "My Catalog", Qt.ItemDataRole.EditRole)
@@ -888,7 +890,7 @@ def test_tree_model_setdata_placeholder_creates_catalog(qtbot, qapp):
             assert len(provider.catalogs()) == 1
             assert provider.catalogs()[0].name == "My Catalog"
 
-            assert model.rowCount(idx) == 2
+            assert model.rowCount(idx) == 3  # 1 catalog + 2 placeholders
             return
     pytest.fail("Provider not found")
 
@@ -1371,6 +1373,103 @@ def test_tree_icon_placeholder_none(qtbot, qapp):
             assert icon is None
             return
     pytest.fail("Provider node not found")
+
+
+def test_provider_has_two_placeholders(qtbot, qapp):
+    """Provider node with CREATE_CATALOGS should have both catalog and folder placeholders."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=0)
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            assert model.rowCount(idx) == 2
+            ph0 = model.node_from_index(model.index(0, 0, idx))
+            ph1 = model.node_from_index(model.index(1, 0, idx))
+            assert ph0.placeholder_type == _PlaceholderType.CATALOG
+            assert ph1.placeholder_type == _PlaceholderType.FOLDER
+            return
+    pytest.fail("Provider not found")
+
+
+def test_folder_has_two_placeholders(qtbot, qapp):
+    """Folder nodes under a CREATE_CATALOGS provider should have both placeholders."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1, paths=[["FolderA"]])
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            folder_idx = model.index(0, 0, idx)
+            folder_node = model.node_from_index(folder_idx)
+            assert folder_node.name == "FolderA"
+            row_count = model.rowCount(folder_idx)
+            assert row_count == 3  # Catalog-0 + 2 placeholders
+            last = model.node_from_index(model.index(row_count - 1, 0, folder_idx))
+            second_last = model.node_from_index(model.index(row_count - 2, 0, folder_idx))
+            assert second_last.placeholder_type == _PlaceholderType.CATALOG
+            assert last.placeholder_type == _PlaceholderType.FOLDER
+            return
+    pytest.fail("Provider not found")
+
+
+def test_dynamic_folder_gets_placeholders(qtbot, qapp):
+    """Dynamically created folders (via catalog_added with path) should get placeholders."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, Capability
+    import uuid as _uuid
+
+    class CreateProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="CreateProvider")
+            self._catalogs = []
+
+        def catalogs(self):
+            return list(self._catalogs)
+
+        def capabilities(self, catalog=None):
+            return {Capability.CREATE_CATALOGS}
+
+        def add_catalog(self, cat):
+            self._catalogs.append(cat)
+            self._set_events(cat, [])
+            self.catalog_added.emit(cat)
+
+    provider = CreateProvider()
+    model = CatalogTreeModel()
+
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.node_from_index(idx).provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+
+    cat = Catalog(uuid=str(_uuid.uuid4()), name="Cat1", provider=provider, path=["NewFolder"])
+    provider.add_catalog(cat)
+
+    folder_idx = None
+    for r in range(model.rowCount(provider_idx)):
+        child_idx = model.index(r, 0, provider_idx)
+        child = model.node_from_index(child_idx)
+        if child.name == "NewFolder" and not child.is_placeholder:
+            folder_idx = child_idx
+            break
+    assert folder_idx is not None
+
+    count = model.rowCount(folder_idx)
+    assert count == 3  # Cat1 + 2 placeholders
+    last = model.node_from_index(model.index(count - 1, 0, folder_idx))
+    assert last.placeholder_type == _PlaceholderType.FOLDER
 
 
 def test_tree_icon_provider_override(qtbot, qapp):

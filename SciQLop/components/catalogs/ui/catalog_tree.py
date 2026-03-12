@@ -75,15 +75,52 @@ class CatalogTreeModel(QAbstractItemModel):
     def _find_or_create_folder(self, parent: _Node, name: str, provider: CatalogProvider) -> _Node:
         """Find existing folder child or create a new one."""
         for child in parent.children:
-            if child.catalog is None and child.name == name:
+            if child.catalog is None and child.name == name and not child.is_placeholder:
                 return child
         folder = _Node(name=name, parent=parent, provider=provider)
         parent.children.append(folder)
         return folder
 
+    @staticmethod
+    def _insert_pos_before_placeholders(node: _Node) -> int:
+        """Return the index of the first placeholder child, or len(children) if none."""
+        for i, child in enumerate(node.children):
+            if child.is_placeholder:
+                return i
+        return len(node.children)
+
+    def _ensure_placeholders(self, node: _Node, node_index: QModelIndex) -> None:
+        """Add catalog and folder placeholder children if not already present and provider supports creation."""
+        if node.provider is None or not self._supports_create(node.provider):
+            return
+        has_cat_ph = any(c.placeholder_type == _PlaceholderType.CATALOG for c in node.children)
+        has_folder_ph = any(c.placeholder_type == _PlaceholderType.FOLDER for c in node.children)
+        to_add = []
+        if not has_cat_ph:
+            to_add.append(_Node(name="New Catalog...", parent=node, provider=node.provider,
+                                placeholder_type=_PlaceholderType.CATALOG))
+        if not has_folder_ph:
+            to_add.append(_Node(name="New Folder...", parent=node, provider=node.provider,
+                                placeholder_type=_PlaceholderType.FOLDER))
+        if to_add:
+            start = len(node.children)
+            self.beginInsertRows(node_index, start, start + len(to_add) - 1)
+            node.children.extend(to_add)
+            self.endInsertRows()
+
     def _supports_create(self, provider: CatalogProvider) -> bool:
         from ..backend.provider import Capability
         return Capability.CREATE_CATALOGS in provider.capabilities()
+
+    def _add_placeholders_recursive(self, node: _Node, provider: CatalogProvider) -> None:
+        """Add placeholder pairs to node and all folder descendants (initial population only)."""
+        for child in node.children:
+            if child.catalog is None and not child.is_placeholder:
+                self._add_placeholders_recursive(child, provider)
+        node.children.append(_Node(name="New Catalog...", parent=node, provider=provider,
+                                    placeholder_type=_PlaceholderType.CATALOG))
+        node.children.append(_Node(name="New Folder...", parent=node, provider=provider,
+                                    placeholder_type=_PlaceholderType.FOLDER))
 
     def _add_provider_node(self, provider: CatalogProvider) -> _Node:
         node = _Node(name=provider.name, parent=self._root, provider=provider)
@@ -94,11 +131,7 @@ class CatalogTreeModel(QAbstractItemModel):
             child = _Node(name=cat.name, parent=target, provider=provider, catalog=cat)
             target.children.append(child)
         if self._supports_create(provider):
-            placeholder = _Node(
-                name="New Catalog...", parent=node, provider=provider,
-                placeholder_type=_PlaceholderType.CATALOG,
-            )
-            node.children.append(placeholder)
+            self._add_placeholders_recursive(node, provider)
         self._root.children.append(node)
 
         # Connect to provider signals for dynamic updates
@@ -188,25 +221,26 @@ class CatalogTreeModel(QAbstractItemModel):
         for segment in catalog.path:
             existing = None
             for child in target.children:
-                if child.catalog is None and child.name == segment:
+                if child.catalog is None and child.name == segment and not child.is_placeholder:
                     existing = child
                     break
             if existing is not None:
                 target = existing
                 target_index = self.createIndex(existing.row(), 0, existing)
             else:
-                row = len(target.children)
+                row = self._insert_pos_before_placeholders(target)
                 self.beginInsertRows(target_index, row, row)
                 folder = _Node(name=segment, parent=target, provider=provider)
-                target.children.append(folder)
+                target.children.insert(row, folder)
                 self.endInsertRows()
                 target = folder
                 target_index = self.createIndex(folder.row(), 0, folder)
+                self._ensure_placeholders(folder, target_index)
 
-        row = len(target.children)
+        row = self._insert_pos_before_placeholders(target)
         self.beginInsertRows(target_index, row, row)
         child = _Node(name=catalog.name, parent=target, provider=provider, catalog=catalog)
-        target.children.append(child)
+        target.children.insert(row, child)
         self.endInsertRows()
 
     def _on_catalog_removed(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
@@ -226,13 +260,14 @@ class CatalogTreeModel(QAbstractItemModel):
                 target = existing
                 target_index = self.createIndex(existing.row(), 0, existing)
             else:
-                row = len(target.children)
+                row = self._insert_pos_before_placeholders(target)
                 self.beginInsertRows(target_index, row, row)
                 folder = _Node(name=segment, parent=target, provider=provider, is_explicit_folder=True)
-                target.children.append(folder)
+                target.children.insert(row, folder)
                 self.endInsertRows()
                 target = folder
                 target_index = self.createIndex(folder.row(), 0, folder)
+                self._ensure_placeholders(folder, target_index)
 
     def _on_folder_removed(self, provider: CatalogProvider, pnode: _Node, path: list) -> None:
         target = pnode
