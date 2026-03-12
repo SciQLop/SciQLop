@@ -332,6 +332,17 @@ class CatalogBrowser(QWidget):
         if node.provider is not None:
             node.provider.save()
 
+    def _folder_path(self, node) -> list[str]:
+        """Build the path segments from provider node down to this folder node."""
+        segments = []
+        n = node
+        while n.parent is not None and n.parent.parent is not None:
+            # stop at provider node (whose parent is root)
+            segments.append(n.name)
+            n = n.parent
+        segments.reverse()
+        return segments
+
     def _on_tree_context_menu(self, pos) -> None:
         proxy_index = self._catalog_tree.indexAt(pos)
         if not proxy_index.isValid():
@@ -343,6 +354,23 @@ class CatalogBrowser(QWidget):
 
         caps = node.provider.capabilities()
         menu = QMenu(self)
+
+        # Provider-level actions (provider node = parent is root)
+        if node.parent is self._tree_model._root:
+            for action in node.provider.actions(None):
+                a = menu.addAction(action.name)
+                if action.icon is not None:
+                    a.setIcon(action.icon)
+                a.triggered.connect(lambda checked, cb=action.callback: cb(None))
+
+        # Explicit folder actions (room nodes)
+        if node.is_explicit_folder:
+            path = self._folder_path(node)
+            for action in node.provider.folder_actions(path):
+                a = menu.addAction(action.name)
+                if action.icon is not None:
+                    a.setIcon(action.icon)
+                a.triggered.connect(lambda checked, cb=action.callback, p=path: cb(p))
 
         if Capability.SAVE in caps and node.provider.is_dirty():
             if (node.catalog is not None

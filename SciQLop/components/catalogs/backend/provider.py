@@ -90,6 +90,8 @@ class CatalogProvider(QObject):
     events_changed = Signal(object)
     error_occurred = Signal(str)
     dirty_changed = Signal(object, bool)  # (catalog, is_dirty)
+    folder_added = Signal(list)    # path segments for an explicit folder
+    folder_removed = Signal(list)  # path segments for an explicit folder
 
     def __init__(self, name: str, parent: QObject | None = None):
         super().__init__(parent)
@@ -122,6 +124,14 @@ class CatalogProvider(QObject):
 
     def actions(self, catalog: Catalog | None = None) -> list[ProviderAction]:
         return []
+
+    def folder_actions(self, path: list[str]) -> list[ProviderAction]:
+        """Actions available on an explicit folder node (e.g. room join/leave)."""
+        return []
+
+    def folder_display_name(self, path: list[str]) -> str | None:
+        """Custom display name for an explicit folder. Return None to use the default."""
+        return None
 
     def _disconnect_range_connections(self, catalog_uuid: str) -> None:
         for event, slot in self._range_connections.get(catalog_uuid, []):

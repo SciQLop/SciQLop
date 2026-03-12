@@ -13,7 +13,7 @@ DIRTY_PROVIDER_ROLE = Qt.ItemDataRole.UserRole + 1
 class _Node:
     """Internal tree node: root -> provider -> catalog."""
 
-    __slots__ = ("name", "parent", "children", "provider", "catalog", "is_placeholder")
+    __slots__ = ("name", "parent", "children", "provider", "catalog", "is_placeholder", "is_explicit_folder")
 
     def __init__(
         self,
@@ -22,6 +22,7 @@ class _Node:
         provider: CatalogProvider | None = None,
         catalog: Catalog | None = None,
         is_placeholder: bool = False,
+        is_explicit_folder: bool = False,
     ):
         self.name = name
         self.parent = parent
@@ -29,6 +30,7 @@ class _Node:
         self.provider = provider
         self.catalog = catalog
         self.is_placeholder = is_placeholder
+        self.is_explicit_folder = is_explicit_folder
 
     def row(self) -> int:
         if self.parent is not None:
@@ -92,15 +94,21 @@ class CatalogTreeModel(QAbstractItemModel):
         on_removed = lambda cat, p=provider, n=node: self._on_catalog_removed(p, n, cat)
         on_dirty = lambda cat, dirty, p=provider, n=node: self._on_dirty_changed(p, n, cat, dirty)
         on_renamed = lambda cat, p=provider, n=node: self._on_catalog_renamed(p, n, cat)
+        on_folder_added = lambda path, p=provider, n=node: self._on_folder_added(p, n, path)
+        on_folder_removed = lambda path, p=provider, n=node: self._on_folder_removed(p, n, path)
         provider.catalog_added.connect(on_added)
         provider.catalog_removed.connect(on_removed)
         provider.dirty_changed.connect(on_dirty)
         provider.catalog_renamed.connect(on_renamed)
+        provider.folder_added.connect(on_folder_added)
+        provider.folder_removed.connect(on_folder_removed)
         self._provider_connections[id(provider)] = [
             (provider.catalog_added, on_added),
             (provider.catalog_removed, on_removed),
             (provider.dirty_changed, on_dirty),
             (provider.catalog_renamed, on_renamed),
+            (provider.folder_added, on_folder_added),
+            (provider.folder_removed, on_folder_removed),
         ]
         return node
 
@@ -192,6 +200,48 @@ class CatalogTreeModel(QAbstractItemModel):
     def _on_catalog_removed(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
         self._remove_catalog_recursive(pnode, catalog)
 
+    def _on_folder_added(self, provider: CatalogProvider, pnode: _Node, path: list) -> None:
+        target = pnode
+        target_index = self.createIndex(pnode.row(), 0, pnode)
+        for segment in path:
+            existing = None
+            for child in target.children:
+                if child.catalog is None and child.name == segment and not child.is_placeholder:
+                    existing = child
+                    break
+            if existing is not None:
+                existing.is_explicit_folder = True
+                target = existing
+                target_index = self.createIndex(existing.row(), 0, existing)
+            else:
+                row = len(target.children)
+                self.beginInsertRows(target_index, row, row)
+                folder = _Node(name=segment, parent=target, provider=provider, is_explicit_folder=True)
+                target.children.append(folder)
+                self.endInsertRows()
+                target = folder
+                target_index = self.createIndex(folder.row(), 0, folder)
+
+    def _on_folder_removed(self, provider: CatalogProvider, pnode: _Node, path: list) -> None:
+        target = pnode
+        for segment in path:
+            found = None
+            for child in target.children:
+                if child.catalog is None and child.name == segment:
+                    found = child
+                    break
+            if found is None:
+                return
+            target = found
+        parent = target.parent
+        if parent is None:
+            return
+        i = parent.children.index(target)
+        parent_index = self.createIndex(parent.row(), 0, parent) if parent.parent is not None else QModelIndex()
+        self.beginRemoveRows(parent_index, i, i)
+        parent.children.pop(i)
+        self.endRemoveRows()
+
     def _remove_catalog_recursive(self, node: _Node, catalog: object) -> bool:
         """Find and remove catalog node, then prune empty folders. Returns True if found."""
         for i, child in enumerate(node.children):
@@ -208,13 +258,15 @@ class CatalogTreeModel(QAbstractItemModel):
         return False
 
     def _prune_if_empty(self, node: _Node) -> None:
-        """Remove node if it's an empty folder (not provider, not root)."""
+        """Remove node if it's an empty folder (not provider, not root, not explicit)."""
         if node.parent is None:
             return
         if node.catalog is not None:
             return  # not a folder
         if node.parent.parent is None:
             return  # node is a provider node, don't prune
+        if node.is_explicit_folder:
+            return  # explicit folders persist even when empty
         if len(node.children) > 0:
             return  # not empty
         parent = node.parent
@@ -255,11 +307,25 @@ class CatalogTreeModel(QAbstractItemModel):
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return 1
 
+    def _folder_path(self, node: _Node) -> list[str]:
+        """Build the path from provider node down to this folder node."""
+        segments = []
+        n = node
+        while n.parent is not None and n.parent.parent is not None:
+            segments.append(n.name)
+            n = n.parent
+        segments.reverse()
+        return segments
+
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
             return None
         if role == Qt.ItemDataRole.DisplayRole:
             node = index.internalPointer()
+            if node.is_explicit_folder and node.provider is not None:
+                custom = node.provider.folder_display_name(self._folder_path(node))
+                if custom is not None:
+                    return custom
             name = node.name
             if node.provider is not None:
                 if node.catalog is not None:

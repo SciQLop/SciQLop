@@ -1019,3 +1019,225 @@ def test_tree_model_placeholder_italic(qtbot, qapp):
             assert font.italic()
             return
     pytest.fail("Provider not found")
+
+
+# --- Explicit folder nodes (room support) ---
+
+
+def test_folder_added_creates_explicit_folder(qtbot, qapp):
+    """folder_added signal should create a persistent folder node in the tree."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog
+
+    class FolderProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="FolderProv")
+
+        def catalogs(self):
+            return []
+
+    provider = FolderProvider()
+    model = CatalogTreeModel()
+
+    pnode = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            pnode = node
+            break
+    assert pnode is not None
+    assert model.rowCount(model.index(pnode.row(), 0)) == 0
+
+    # Emit folder_added
+    provider.folder_added.emit(["room-1"])
+
+    pidx = model.index(pnode.row(), 0)
+    assert model.rowCount(pidx) == 1
+    folder_idx = model.index(0, 0, pidx)
+    folder_node = model.node_from_index(folder_idx)
+    assert folder_node.name == "room-1"
+    assert folder_node.is_explicit_folder is True
+    assert folder_node.catalog is None
+
+
+def test_explicit_folder_not_pruned(qtbot, qapp):
+    """Explicit folders should persist even when their last catalog is removed."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog
+    import uuid as _uuid
+
+    class PersistProvider(CatalogProvider):
+        def __init__(self):
+            self._cats = []
+            super().__init__(name="PersistProv")
+
+        def catalogs(self):
+            return list(self._cats)
+
+    provider = PersistProvider()
+    model = CatalogTreeModel()
+
+    # Add an explicit folder
+    provider.folder_added.emit(["room-1"])
+
+    # Add a catalog inside that folder
+    cat = Catalog(uuid=str(_uuid.uuid4()), name="Cat1", provider=provider, path=["room-1"])
+    provider._cats.append(cat)
+    provider.catalog_added.emit(cat)
+
+    pnode = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            pnode = node
+            break
+    pidx = model.index(pnode.row(), 0)
+
+    # Folder should have 1 child (the catalog)
+    folder_idx = model.index(0, 0, pidx)
+    assert model.rowCount(folder_idx) == 1
+
+    # Remove the catalog
+    provider._cats.remove(cat)
+    provider.catalog_removed.emit(cat)
+
+    # Folder should still exist (not pruned) but be empty
+    assert model.rowCount(pidx) == 1
+    folder_node = model.node_from_index(model.index(0, 0, pidx))
+    assert folder_node.name == "room-1"
+    assert folder_node.is_explicit_folder is True
+    assert model.rowCount(model.index(0, 0, pidx)) == 0
+
+
+def test_folder_removed_removes_folder(qtbot, qapp):
+    """folder_removed signal should remove the explicit folder node."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider
+
+    class FolderProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="RemFolderProv")
+
+        def catalogs(self):
+            return []
+
+    provider = FolderProvider()
+    model = CatalogTreeModel()
+
+    provider.folder_added.emit(["room-A"])
+    provider.folder_added.emit(["room-B"])
+
+    pnode = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            pnode = node
+            break
+    pidx = model.index(pnode.row(), 0)
+    assert model.rowCount(pidx) == 2
+
+    # Remove room-A
+    provider.folder_removed.emit(["room-A"])
+    assert model.rowCount(pidx) == 1
+    remaining = model.node_from_index(model.index(0, 0, pidx))
+    assert remaining.name == "room-B"
+
+
+def test_folder_display_name(qtbot, qapp):
+    """Provider.folder_display_name should override display text for explicit folders."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider
+    from PySide6.QtCore import Qt
+
+    class NamedFolderProvider(CatalogProvider):
+        def __init__(self):
+            super().__init__(name="NamedFolderProv")
+
+        def catalogs(self):
+            return []
+
+        def folder_display_name(self, path):
+            if path == ["default-room"]:
+                return "default-room (default)"
+            return None
+
+    provider = NamedFolderProvider()
+    model = CatalogTreeModel()
+
+    provider.folder_added.emit(["default-room"])
+    provider.folder_added.emit(["other-room"])
+
+    pnode = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            pnode = node
+            break
+    pidx = model.index(pnode.row(), 0)
+
+    # default-room should show custom display name
+    default_idx = model.index(0, 0, pidx)
+    assert model.data(default_idx, Qt.ItemDataRole.DisplayRole) == "default-room (default)"
+
+    # other-room should show plain name
+    other_idx = model.index(1, 0, pidx)
+    assert model.data(other_idx, Qt.ItemDataRole.DisplayRole) == "other-room"
+
+
+def test_provider_actions_on_provider_node(qtbot, qapp):
+    """Provider.actions(None) should return provider-level actions."""
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, ProviderAction
+
+    class ActionProvider(CatalogProvider):
+        def __init__(self):
+            self.action_called = False
+            super().__init__(name="ActionProv")
+
+        def catalogs(self):
+            return []
+
+        def actions(self, catalog=None):
+            if catalog is None:
+                return [ProviderAction(name="Connect", callback=lambda _: None)]
+            return []
+
+    provider = ActionProvider()
+    actions = provider.actions(None)
+    assert len(actions) == 1
+    assert actions[0].name == "Connect"
+
+
+def test_folder_actions(qtbot, qapp):
+    """Provider.folder_actions should return actions for explicit folder nodes."""
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, ProviderAction
+
+    class RoomProvider(CatalogProvider):
+        def __init__(self):
+            self._joined = set()
+            super().__init__(name="RoomProv")
+
+        def catalogs(self):
+            return []
+
+        def folder_actions(self, path):
+            if len(path) == 1 and path[0] not in self._joined:
+                return [ProviderAction(name="Join", callback=lambda p: self._joined.add(p[0]))]
+            return [ProviderAction(name="Leave", callback=lambda p: self._joined.discard(p[0]))]
+
+    provider = RoomProvider()
+
+    actions = provider.folder_actions(["room-1"])
+    assert len(actions) == 1
+    assert actions[0].name == "Join"
+
+    # Simulate joining
+    actions[0].callback(["room-1"])
+    assert "room-1" in provider._joined
+
+    # Now should get Leave action
+    actions = provider.folder_actions(["room-1"])
+    assert actions[0].name == "Leave"
