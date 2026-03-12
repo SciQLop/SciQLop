@@ -4,7 +4,7 @@ from PySide6.QtGui import QIcon
 import threading
 import traceback
 import speasy as spz
-from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
+from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex, CatalogIndex, TimetableIndex
 from speasy.products import SpeasyVariable
 
 from SciQLop.components.theming import register_icon, get_icon
@@ -132,7 +132,9 @@ def explore_nodes(inventory_node, product_node: ProductsModelNode, provider):
         if name and child:
             if hasattr(child, "name") and child.name != "AMDA":
                 name = child.name
-            if isinstance(child, ParameterIndex):
+            if isinstance(child, (CatalogIndex, TimetableIndex)):
+                continue
+            elif isinstance(child, ParameterIndex):
                 product_node.add_child(make_product(name, child, provider=provider))
             elif hasattr(child, "__dict__"):
                 meta = {}
@@ -141,8 +143,9 @@ def explore_nodes(inventory_node, product_node: ProductsModelNode, provider):
                 elif hasattr(child, "description"):
                     meta = {"description": child.description}
                 cur_prod = ProductsModelNode(name, meta)
-                product_node.add_child(cur_prod)
                 explore_nodes(child, cur_prod, provider=provider)
+                if cur_prod.children_count() > 0:
+                    product_node.add_child(cur_prod)
 
 
 def build_product_tree(root_node: ProductsModelNode, provider):
