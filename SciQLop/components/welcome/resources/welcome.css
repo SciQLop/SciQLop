@@ -155,6 +155,23 @@ h2 {
     box-shadow: 0 0 0 2px var(--Highlight);
 }
 
+.card-image-wrapper {
+    position: relative;
+    height: 120px;
+    overflow: hidden;
+}
+
+.card-image-wrapper::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 32px;
+    background: linear-gradient(to bottom, transparent, var(--Window));
+    pointer-events: none;
+}
+
 .card-image {
     width: 100%;
     height: 120px;
@@ -391,14 +408,15 @@ h2 {
 }
 
 .modal {
-    background: var(--base, #2b2b2b);
-    border: 1px solid var(--surface0, #444);
-    border-radius: 12px;
+    background: var(--Base);
+    border: 1px solid var(--Borders);
+    border-radius: 8px;
     padding: 24px;
     min-width: 360px;
     max-width: 500px;
     max-height: 70vh;
     overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .modal h2 {
@@ -415,14 +433,14 @@ h2 {
 
 .modal-ws-item {
     padding: 10px 14px;
-    border: 1px solid var(--surface0, #444);
-    border-radius: 8px;
+    border: 1px solid var(--Borders);
+    border-radius: 6px;
     cursor: pointer;
     transition: background 0.15s;
 }
 
 .modal-ws-item:hover {
-    background: var(--surface0, #333);
+    background: color-mix(in srgb, var(--Highlight) 10%, var(--Window));
 }
 
 .modal-ws-item .ws-name {
@@ -450,15 +468,23 @@ h2 {
 
 #modal-actions button {
     padding: 8px 18px;
-    border-radius: 6px;
-    border: 1px solid var(--surface0, #444);
-    background: var(--surface0, #333);
-    color: var(--text, #ccc);
+    border-radius: 4px;
+    border: 1px solid var(--Borders);
+    background: var(--Button, var(--Window));
+    color: var(--Text);
     cursor: pointer;
 }
 
+#modal-actions button:hover {
+    background: color-mix(in srgb, var(--Highlight) 10%, var(--Window));
+}
+
 #modal-actions button.primary {
-    background: var(--blue, #6791c9);
-    border-color: var(--blue, #6791c9);
-    color: #fff;
+    background: var(--Highlight);
+    border-color: var(--Highlight);
+    color: var(--HighlightedText, #fff);
+}
+
+#modal-actions button.primary:hover {
+    opacity: 0.9;
 }

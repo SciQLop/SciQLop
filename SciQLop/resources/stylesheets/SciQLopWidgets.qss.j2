@@ -3,7 +3,7 @@ HLine { background-color: palette(mid); }
 Container {
     background-color: palette(base);
     border: 1px solid {{ palette('border') }};
-    border-radius: 2px;
+    border-radius: 4px;
 }
 
 SciQLopPlotContainer[empty=false]{
@@ -23,7 +23,7 @@ SciQLopPlotContainer[empty=true] {
 
 SciQLopPlotContainer::handle:vertical {
     height: 2px;
-    background: {{ palette('border') | lighter(250) }};
+    background: {{ palette('mid') }};
 }
 
 SciQLopPlotInterface{
@@ -41,9 +41,9 @@ WelcomeSection {
 
 DetailedDescription {
     background-color: palette(base);
-    border-left: 4px solid{{ palette('WelcomeBackground') }};
+    border-left: 3px solid {{ palette('Selection') }};
+    border-radius: 0px;
 }
-
 
 WelcomeSection QLabel {
     background-color: {{ palette('WelcomeBackground') }};
@@ -51,46 +51,47 @@ WelcomeSection QLabel {
 
 Card[selected=false] QLabel {
     background-color: palette(base);
-    border: 0px;
+    border: none;
 }
 
 Card[selected=true] QLabel {
     background-color: palette(base);
-    border: 0px;
+    border: none;
 }
 
 Card[selected=false] {
     background-color: palette(base);
-    border: 0px;
-    border-radius: 5px;
+    border: 1px solid {{ palette('border') }};
+    border-radius: 6px;
 }
 
 Card[selected=true] {
     border: 2px solid palette(highlight);
-    border-radius: 5px;
+    border-radius: 6px;
 }
 
 Card:hover[selected=false] {
     border: 1px solid palette(highlight);
-    border-radius: 5px;
+    border-radius: 6px;
 }
 
 WorkSpaceCard[default_workspace=true] QLabel
 {
-    background-color: {{ palette('base') | darker(105)}};
-    border: 0px;
+    background-color: {{ palette('base') | darker(103)}};
+    border: none;
 }
 
 WorkSpaceCard[default_workspace=true]
 {
-    background-color: {{ palette('base') | darker(105)}};
-    border: 0px;
+    background-color: {{ palette('base') | darker(103)}};
+    border: 1px solid {{ palette('border') }};
+    border-radius: 6px;
 }
 
 ColorDelegate
 {
     background-color: palette(Button);
-    border: 2px solid {{ palette('border') }};
-    border-radius: 5px;
+    border: 1px solid {{ palette('border') }};
+    border-radius: 4px;
     height: 24px;
 }

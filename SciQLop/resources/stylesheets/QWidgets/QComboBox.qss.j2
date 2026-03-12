@@ -2,21 +2,18 @@
 QDateEdit,
 QComboBox {
   color: palette(text);
-  border: 2px solid {{ palette('border') }};
+  border: 1px solid {{ palette('border') }};
   padding-left: 5px;
-  border-radius: 0px;
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
+  border-radius: 4px;
   height: {{ controls_height }};
   background-color: palette(button);
 }
 
-
 QDateEdit:disabled,
 QComboBox:disabled {
-  color: palette(mid);
+  color: {{ palette('UnselectedText') }};
   background-color: palette(base);
-  border-bottom: 2px solid {{ palette('border') }};
+  border: 1px solid {{ palette('border') }};
 }
 
 QDateEdit::drop-down,
@@ -31,7 +28,6 @@ QComboBox::down-arrow {
   image: {{ icon('arrow_drop_down') }};
   margin-right: 12px;
 }
-
 
 QDateEdit::down-arrow:focus,
 QComboBox::down-arrow:focus {
@@ -48,8 +44,8 @@ QComboBox::down-arrow:disabled {
 QDateEdit QAbstractItemView,
 QComboBox QAbstractItemView {
   background-color: palette(base);
-  border: 2px solid {{ palette('border') }};
-  border-radius: 5px;
+  border: 1px solid {{ palette('border') }};
+  border-radius: 4px;
 }
 
 QDateEdit[frame='false'],
@@ -61,5 +57,5 @@ QComboBox[frame='false'] {
 
 QDateEdit[frame='false']:disabled,
 QComboBox[frame='false']:disabled {
-  color: palette(mid);
+  color: {{ palette('UnselectedText') }};
 }

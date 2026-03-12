@@ -1,24 +1,21 @@
-/* QSplitter base style for SciQLop - improved handle visibility */
-
 QSplitter {
     background: {{ palette('base') }};
 }
 
 QSplitter::handle {
-    background: {{ palette('Base') }};
-    border: 1px solid {{ palette('Borders') }};
-    border-radius: 3px;
+    background: {{ palette('mid') }};
+    border: none;
+    border-radius: 1px;
 }
 
 QSplitter::handle:horizontal {
-    min-width: 8px;
+    min-width: 3px;
 }
 
 QSplitter::handle:vertical {
-    min-height: 8px;
+    min-height: 3px;
 }
 
 QSplitter::handle:hover {
-    background: {{ palette('Link') }};
-    border: 2px solid {{ palette('Highlight') }};
+    background: {{ palette('Highlight') | alpha(120) }};
 }

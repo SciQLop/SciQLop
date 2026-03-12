@@ -12,22 +12,15 @@ QCheckBox:focus {
     padding: 0px;
 }
 
-
-
 QCheckBox::indicator {
     background-color: palette(base);
     width: 20px;
     height: 20px;
 }
 
-QCheckBox::indicator:focus {
-    background-color: palette(mid);
-    border: 1px solid palette(highlight);
-    border-radius: 4px;
-}
-
+QCheckBox::indicator:focus,
 QCheckBox::indicator:hover {
-    background-color: palette(mid);
+    background-color: {{ palette('highlight') | alpha(25) }};
     border: 1px solid palette(highlight);
     border-radius: 4px;
 }

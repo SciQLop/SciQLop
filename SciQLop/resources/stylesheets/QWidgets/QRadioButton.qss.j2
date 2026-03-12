@@ -19,14 +19,9 @@ QRadioButton::indicator {
     height: 20px;
 }
 
-QRadioButton::indicator:focus {
-    background-color: palette(mid);
-    border: 1px solid palette(highlight);
-    border-radius: 4px;
-}
-
+QRadioButton::indicator:focus,
 QRadioButton::indicator:hover {
-    background-color: palette(mid);
+    background-color: {{ palette('highlight') | alpha(25) }};
     border: 1px solid palette(highlight);
     border-radius: 4px;
 }

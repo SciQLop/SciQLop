@@ -99,7 +99,7 @@ function createPackageCard(pkg) {
 
     var icon = TYPE_ICONS[pkg.type] || "\uD83D\uDCE6";
     card.innerHTML =
-        '<div class="card-image placeholder">' + icon + '</div>' +
+        '<div class="card-image-wrapper"><div class="card-image placeholder">' + icon + '</div></div>' +
         '<div class="card-body">' +
             '<span class="card-badge">' + escapeHtml(pkg.type) + '</span>' +
             '<span class="card-name">' + escapeHtml(pkg.name) + '</span>' +

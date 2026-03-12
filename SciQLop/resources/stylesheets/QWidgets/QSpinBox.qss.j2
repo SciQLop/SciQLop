@@ -2,8 +2,8 @@ QDoubleSpinBox,
 QSpinBox {
     background-color: palette(base);
     margin: 0px;
-    border: 1px solid palette(mid);
-    border-radius: 2px;
+    border: 1px solid {{ palette('border') }};
+    border-radius: 4px;
     padding: 0px;
     height: {{ controls_height }};
 }
@@ -12,8 +12,8 @@ QDoubleSpinBox:focus,
 QSpinBox:focus {
     background-color: palette(base);
     margin: 0px;
-    border: 2px solid palette(mid);
-    border-radius: 2px;
+    border: 1px solid {{ palette('Selection') }};
+    border-radius: 4px;
     padding: 0px;
 }
 
@@ -34,7 +34,7 @@ QSpinBox::up-button:hover {
 
 QDoubleSpinBox::up-button:pressed,
 QSpinBox::up-button:pressed {
-    border: {{ icon('arrow_drop_up') }};
+    image: {{ icon('arrow_drop_up') }};
 }
 
 QDoubleSpinBox::down-button,

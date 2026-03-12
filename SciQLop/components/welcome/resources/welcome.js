@@ -138,7 +138,7 @@ function createNewWorkspaceCard() {
     const card = document.createElement("div");
     card.className = "card new-workspace";
     card.innerHTML =
-        '<div class="card-image placeholder">+</div>' +
+        '<div class="card-image-wrapper"><div class="card-image placeholder">+</div></div>' +
         '<div class="card-body"><span class="card-name">New workspace</span></div>';
     card.addEventListener("click", function() {
         backend.create_workspace();
@@ -163,7 +163,7 @@ function createWorkspaceCard(ws) {
     if (ws.is_default) badges += '<span class="card-badge">Default</span>';
 
     card.innerHTML =
-        imageHtml +
+        '<div class="card-image-wrapper">' + imageHtml + '</div>' +
         '<div class="card-body">' +
             badges +
             '<span class="card-name">' + escapeHtml(ws.name) + '</span>' +
@@ -197,7 +197,7 @@ function createExampleCard(ex) {
         : '';
 
     card.innerHTML =
-        imageHtml +
+        '<div class="card-image-wrapper">' + imageHtml + '</div>' +
         '<div class="card-body">' +
             '<span class="card-name">' + escapeHtml(ex.name) + '</span>' +
             tagsHtml +
@@ -223,7 +223,7 @@ function createFeaturedCard(pkg) {
 
     const icon = TYPE_ICONS[pkg.type] || "\uD83D\uDCE6";
     card.innerHTML =
-        '<div class="card-image placeholder">' + icon + '</div>' +
+        '<div class="card-image-wrapper"><div class="card-image placeholder">' + icon + '</div></div>' +
         '<div class="card-body">' +
             '<span class="card-badge">' + escapeHtml(pkg.type) + '</span>' +
             '<span class="card-name">' + escapeHtml(pkg.name) + '</span>' +
