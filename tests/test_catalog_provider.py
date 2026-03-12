@@ -1251,3 +1251,19 @@ def test_create_catalog_with_path(qtbot, qapp):
     assert cat.name == "PathCat"
     assert cat.path == ["room1"]
     assert cat.provider is provider
+
+
+def test_node_type_enum(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.provider import NodeType
+    assert NodeType.PROVIDER == "provider"
+    assert NodeType.FOLDER == "folder"
+    assert NodeType.CATALOG == "catalog"
+    assert isinstance(NodeType.PROVIDER, str)
+
+
+def test_provider_node_icon_default_returns_none(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.provider import NodeType
+    provider = _make_dummy_provider(qapp)
+    assert provider.node_icon(NodeType.PROVIDER) is None
+    assert provider.node_icon(NodeType.FOLDER, path=["X"]) is None
+    assert provider.node_icon(NodeType.CATALOG) is None

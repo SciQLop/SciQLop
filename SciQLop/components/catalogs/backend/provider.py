@@ -66,6 +66,12 @@ class Capability(str, Enum):
     RENAME_CATALOG = "rename_catalog"
 
 
+class NodeType(str, Enum):
+    PROVIDER = "provider"
+    FOLDER = "folder"
+    CATALOG = "catalog"
+
+
 @dataclass
 class Catalog:
     uuid: str
@@ -131,6 +137,10 @@ class CatalogProvider(QObject):
 
     def folder_display_name(self, path: list[str]) -> str | None:
         """Custom display name for an explicit folder. Return None to use the default."""
+        return None
+
+    def node_icon(self, node_type: NodeType, path: list[str] | None = None) -> QIcon | None:
+        """Return a custom icon for a node type, or None for default."""
         return None
 
     def _disconnect_range_connections(self, catalog_uuid: str) -> None:
