@@ -20,24 +20,32 @@ SciQLop/components/settings/entries/       # PlotBackendSettings ConfigEntry
 
 ## Backend Class
 
-`SciQLopBackend` implements speasy's two-method backend contract:
+`SciQLopBackend` is registered as a **class** in `__backends__`. Speasy instantiates it on each `Plot` access. The "current panel" state lives as a **module-level variable** (not on the instance), so it persists across instantiations.
+
+Implements speasy's two-method backend contract:
 
 ### `.line(x, y, ax=None, labels=None, units=None, xaxis_label=None, yaxis_label=None, *args, **kwargs)`
 
 - Plots each column of `y` as a separate `Graph` on the target plot
+- `labels` and `units` are applied to axis labels where the SciQLop plot API supports it; otherwise silently ignored in v1
 - Returns `(TimeSeriesPlot, Graph)` — the plot and the last graph added
 
 ### `.colormap(x, y, z, ax=None, logy=True, logz=True, xaxis_label=None, yaxis_label=None, yaxis_units=None, zaxis_label=None, zaxis_units=None, cmap=None, vmin=None, vmax=None, *args, **kwargs)`
 
 - Plots a spectrogram/colormap into the target plot
+- Speasy passes already-transposed `y` and `z` arrays; the backend passes them through as-is (SciQLop expects the same layout)
 - Returns `(TimeSeriesPlot, ColorMap)`
+
+**Return type note:** The matplotlib backend returns a single `Axes` object. This backend intentionally returns a `(Plot, Graph/ColorMap)` tuple to match SciQLop's existing `PlotPanel.plot()` convention. Since speasy passes the return value through unmodified, callers must be aware of which backend they are using.
 
 ### `ax` Parameter Resolution
 
 - `ax=None` → get or create a default panel (module-level "current panel"), add a new plot to it
 - `ax=TimeSeriesPlot` → add a graph to that existing plot
-- `ax=PlotPanel` → add a new plot to that panel
+- `ax=PlotPanel` → create a new plot in that panel
 - Other types → `TypeError`
+
+When `ax=PlotPanel`, each call creates a **new plot** in the panel (not appending to the last plot). This matches the matplotlib convention where passing a Figure creates new axes.
 
 The "current panel" is tracked as a module-level variable — last panel created or used. No state machine.
 
@@ -45,7 +53,7 @@ The "current panel" is tracked as a module-level variable — last panel created
 
 ```python
 class PlotBackendSettings(ConfigEntry):
-    category: ClassVar[str] = SettingsCategory.General
+    category: ClassVar[str] = SettingsCategory.APPLICATION
     subcategory: ClassVar[str] = "Plotting"
 
     default_speasy_backend: Literal["matplotlib", "sciqlop"] = "matplotlib"
@@ -53,11 +61,13 @@ class PlotBackendSettings(ConfigEntry):
 
 Default is `"matplotlib"`. When set to `"sciqlop"`, the backend is also registered as the default (`__backends__[None]`).
 
+Changing the setting requires a restart to take effect.
+
 The `Literal` type gives a dropdown in the settings UI via the existing delegate system.
 
 ## Registration
 
-During the speasy plugin's `load()` at startup:
+During the speasy plugin's `load()` at startup (alongside existing speasy setup — acceptable coupling since the backend depends on speasy being available):
 
 ```python
 import speasy.plotting as splt
@@ -91,6 +101,7 @@ data2.plot['sciqlop'].line(ax=plot)  # add to same plot
 ## Error Handling
 
 - speasy not installed: registration silently skipped
+- Backend called outside SciQLop (no `SciQLopMainWindow`): raises `RuntimeError` with a clear message
 - Invalid `ax` type: `TypeError`
 - Multi-column `.line()`: one `Graph` per column on the same plot, returns plot + last graph
 
