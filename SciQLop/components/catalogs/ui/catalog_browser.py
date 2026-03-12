@@ -333,15 +333,7 @@ class CatalogBrowser(QWidget):
             node.provider.save()
 
     def _folder_path(self, node) -> list[str]:
-        """Build the path segments from provider node down to this folder node."""
-        segments = []
-        n = node
-        while n.parent is not None and n.parent.parent is not None:
-            # stop at provider node (whose parent is root)
-            segments.append(n.name)
-            n = n.parent
-        segments.reverse()
-        return segments
+        return self._tree_model._folder_path(node)
 
     def _trigger_placeholder_edit(self, placeholder_node) -> None:
         """Clear filter and trigger inline edit on a placeholder node."""
@@ -349,6 +341,7 @@ class CatalogBrowser(QWidget):
         source_index = self._tree_model.createIndex(placeholder_node.row(), 0, placeholder_node)
         proxy_index = self._proxy_model.mapFromSource(source_index)
         if proxy_index.isValid():
+            self._catalog_tree.expand(proxy_index.parent())
             self._catalog_tree.edit(proxy_index)
 
     def _on_tree_context_menu(self, pos) -> None:
