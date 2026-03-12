@@ -1,4 +1,6 @@
 from __future__ import annotations
+import numpy as np
+from speasy.core import datetime64_to_epoch
 from SciQLop.user_api.plot._panel import PlotPanel, create_plot_panel
 from SciQLop.user_api.plot._plots import TimeSeriesPlot
 from SciQLop.components.sciqlop_logging import getLogger
@@ -15,12 +17,20 @@ def _get_or_create_panel() -> PlotPanel:
     return _current_panel
 
 
+def _ensure_epoch_seconds(x):
+    """Convert datetime64 arrays to epoch seconds (float64), pass through numeric arrays."""
+    if hasattr(x, 'dtype') and np.issubdtype(x.dtype, np.datetime64):
+        return datetime64_to_epoch(x)
+    return x
+
+
 def _plot_into(ax, x, y, z=None):
     """Dispatch plot call based on ax type.
 
     Returns (TimeSeriesPlot | ProjectionPlot, Graph | ColorMap).
     """
     global _current_panel
+    x = _ensure_epoch_seconds(x)
     if ax is None:
         panel = _get_or_create_panel()
         return panel.plot_data(x, y, z) if z is not None else panel.plot_data(x, y)

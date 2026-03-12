@@ -103,6 +103,12 @@ def test_speasy_variable_plot_with_sciqlop_backend(qtbot, qapp, main_window):
     plot, graph = result
     assert plot is not None
     assert graph is not None
+    # Verify data actually made it to the graph
+    for _ in range(1000):
+        if graph.data is not None and graph.data[0] is not None:
+            break
+        qtbot.wait(1)
+    assert len(graph.data[0]) > 0
 
 
 def test_sciqlop_backend_registered_after_plugin_load(qtbot, qapp, main_window):
