@@ -1241,3 +1241,13 @@ def test_folder_actions(qtbot, qapp):
     # Now should get Leave action
     actions = provider.folder_actions(["room-1"])
     assert actions[0].name == "Leave"
+
+
+def test_create_catalog_with_path(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    provider = DummyProvider(num_catalogs=0, events_per_catalog=0)
+    cat = provider.create_catalog("PathCat", path=["room1"])
+    assert cat is not None
+    assert cat.name == "PathCat"
+    assert cat.path == ["room1"]
+    assert cat.provider is provider

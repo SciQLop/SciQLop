@@ -189,9 +189,9 @@ class CatalogProvider(QObject):
         self._remove_event(catalog, event)
         self.mark_dirty(catalog)
 
-    def create_catalog(self, name: str) -> Catalog | None:
+    def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
         """Public API: create a new catalog. Override for backend persistence."""
-        return None
+        raise NotImplementedError
 
     def rename_catalog(self, catalog: Catalog, new_name: str) -> None:
         """Public API: rename a catalog. Override for backend persistence."""

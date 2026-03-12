@@ -52,12 +52,12 @@ class DummyProvider(CatalogProvider):
             Capability.RENAME_CATALOG,
         }
 
-    def create_catalog(self, name: str) -> Catalog | None:
+    def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
         cat = Catalog(
             uuid=str(_uuid.uuid4()),
             name=name,
             provider=self,
-            path=[],
+            path=path or [],
         )
         self._catalogs.append(cat)
         self._set_events(cat, [])
