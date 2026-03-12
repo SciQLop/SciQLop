@@ -173,14 +173,14 @@ class CocatCatalogProvider(CatalogProvider):
     def catalogs(self) -> list[Catalog]:
         return list(self._catalog_map.values())
 
-    def create_catalog(self, name: str) -> Catalog | None:
-        # Create in whichever room... we need to know which room.
-        # For now, create in default room if joined, else first joined room.
-        room_id = self._default_room_id
+    def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
+        room_id = path[0] if path else self._default_room_id
         if room_id not in self._rooms:
+            if path:
+                raise KeyError(f"Room '{room_id}' is not joined")
             room_id = next(iter(self._rooms), None)
         if room_id is None:
-            return None
+            raise RuntimeError("No rooms joined")
         room = self._rooms[room_id]
         cocat_cat = room.db.create_catalogue(name=name, author="SciQLop")
         cat = Catalog(
