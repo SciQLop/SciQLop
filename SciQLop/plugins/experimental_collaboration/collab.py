@@ -88,7 +88,7 @@ class PanelSync(QObject):
         try:
             with self.doc.transaction(origin="local"):
                 update_time_range(self.time_range_crdt, trange)
-        except Exception as e:
+        except BaseException as e:
             log.error(f"Error changing time range: {e}, traceback: {traceback.format_exc()}")
 
     def _remote_time_range_changed(self, event, txn):
