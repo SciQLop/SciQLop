@@ -1,5 +1,49 @@
 # Changelog
 
+## [v0.11.0](https://github.com/SciQlop/SciQLop/tree/v0.11.0) (2026-03-12)
+
+[Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.10.4...v0.11.0)
+
+### New features
+
+- **Catalog system rewrite**: New provider-based catalog architecture with capability-gated UI (create, rename, delete catalogs and events), tree/table split view browser, per-catalog color-coded overlays on plot panels, folder-based catalog paths, dirty tracking with deferred save, and jump-to-event navigation
+- **Collaborative catalogs**: Real-time catalog co-editing via cocat (CRDT/WebSocket), ported to new provider API
+- **Welcome page redesign**: Migrated to QWebEngineView + QWebChannel + Jinja2, two-column layout with hero workspace, news feed, featured packages, quickstart shortcuts, example browser with workspace picker modal
+- **App Store panel**: New dock panel for browsing community plugins with tab bar, search, tag filtering, sort, and detail panel (mock data, UI ready)
+- **Workspace management overhaul**: Migrated workspace metadata from `workspace.json` (JSON) to `workspace.sciqlop` (TOML) with `WorkspaceManifest`, filesystem-based timestamps, auto-migration of old workspaces, auto-start JupyterLab for non-default workspaces
+- **Workspace launcher**: Rewritten as workspace-aware supervisor process with venv isolation, plugin dependency resolution via uv, workspace switching (exit code 65), `.sciqlop`/`.sciqlop-archive` file associations, freedesktop MIME type and desktop entry
+- **Jupyter integration improvements**: Extracted `KernelManager` for kernel lifecycle, adaptive kernel poller, hardened subprocess cleanup with graceful termination escalation
+- **Settings system**: New Pydantic-based settings with category/subcategory organization, YAML persistence, and type-based UI delegate registry
+- **Theming**: Dark palette support with automatic icon inversion based on current palette, styled QSplitter
+
+### Bug fixes
+
+- Fixed async plugin shutdown — cleanup now happens in `closeEvent` while event loop is alive, not in `aboutToQuit`
+- Patched qasync to handle infinite timer delays (`anyio.sleep_forever()`)
+- Fixed qasync exit code propagation — store on app instance since `exec()` doesn't return Qt's code
+- Fixed workspace switching always landing on default workspace (double-import and env var issues)
+- Fixed `list_existing_workspaces` default-dir comparison bug
+- Fixed catalog event editing loop, table refresh, and double span creation
+- Fixed catalog provider signal disconnection on unregister
+- Fixed tscat datetime handling for naive/aware mismatches and ordering validation
+- Fixed lazy event loading for large catalogs (>=5000 events)
+- Fixed JupyterLab file download support
+
+### Refactoring
+
+- Reorganized codebase from layer-based to component-based structure (`core/` → `components/`)
+- Moved workspace infrastructure and examples from `core/` to `components/workspaces/backend/`
+- Moved plugin dependency resolution from `core/` to `components/plugins/`
+- Removed dead code: old Qt widget welcome page, `WorkspaceSpec`/`WorkspaceSpecFile`, unused core modules
+- Renamed Jupyter `IPythonKernel/` to `kernel/`
+
+### Dependencies
+
+- Bumped PySide6 to 6.10.2
+- Added uv as a dependency
+- Frozen Jupyter packages for stability
+- Added keyring for credential storage
+
 ## [v0.10.0](https://github.com/SciQlop/SciQLop/tree/v0.10.0) (2025-09-22)
 
 [Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.9.4...v0.10.0)
