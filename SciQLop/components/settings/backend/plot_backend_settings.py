@@ -1,0 +1,9 @@
+from typing import ClassVar, Literal
+from .entry import ConfigEntry, SettingsCategory
+
+
+class PlotBackendSettings(ConfigEntry):
+    category: ClassVar[str] = SettingsCategory.APPLICATION
+    subcategory: ClassVar[str] = "Plotting"
+
+    default_speasy_backend: Literal["matplotlib", "sciqlop"] = "matplotlib"
