@@ -78,3 +78,28 @@ def test_sciqlop_backend_invalid_ax_raises(qtbot, qapp, main_window):
     y = np.array([4.0, 5.0, 6.0])
     with pytest.raises(TypeError):
         backend.line(x=x, y=y, ax="not_a_plot")
+
+
+def test_speasy_variable_plot_with_sciqlop_backend(qtbot, qapp, main_window):
+    """End-to-end: register backend, create a SpeasyVariable, call .plot['sciqlop'].line()"""
+    import speasy.plotting as splt
+    from SciQLop.user_api.plot._speasy_backend import SciQLopBackend
+    from speasy.products.variable import SpeasyVariable
+    from speasy.core.data_containers import DataContainer, VariableTimeAxis
+
+    splt.__backends__["sciqlop"] = SciQLopBackend
+
+    x = np.arange('2020-01-01', '2020-01-02', dtype='datetime64[h]').astype('datetime64[ns]')
+    y = np.sin(np.arange(len(x), dtype=float))
+
+    time_axis = VariableTimeAxis(values=x, meta={})
+    values = DataContainer(values=y.reshape(-1, 1), meta={}, name='sin', is_time_dependent=True)
+    var = SpeasyVariable(values=values, columns=['sin'], axes=[time_axis])
+
+    # Note: var.plot["sciqlop"].line() doesn't work because speasy's Plot.line(backend=None)
+    # resets the backend to matplotlib. Use backend= parameter directly instead.
+    result = var.plot.line(backend="sciqlop")
+    assert result is not None
+    plot, graph = result
+    assert plot is not None
+    assert graph is not None
