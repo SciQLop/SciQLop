@@ -199,5 +199,8 @@ class SpeasyPlugin(DataProvider):
 
 def load(*args):
     from speasy.core.cache import _cache
+    from .speasy_catalog_provider import SpeasyCatalogProvider
     _cache._data._local = ThreadStorage()
-    return SpeasyPlugin()
+    plugin = SpeasyPlugin()
+    plugin._catalog_provider = SpeasyCatalogProvider()
+    return plugin
