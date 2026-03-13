@@ -1,17 +1,25 @@
 # Changelog
 
-## [v0.11.0](https://github.com/SciQlop/SciQLop/tree/v0.11.0) (2026-03-12)
+## [v0.11.0](https://github.com/SciQlop/SciQLop/tree/v0.11.0) (unreleased)
 
 [Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.10.4...v0.11.0)
 
 ### New features
 
 - **Catalog system rewrite**: New provider-based catalog architecture with capability-gated UI (create, rename, delete catalogs and events), tree/table split view browser, per-catalog color-coded overlays on plot panels, folder-based catalog paths, dirty tracking with deferred save, and jump-to-event navigation
+- **Catalog browser improvements**: Context menu with New Catalog/New Folder, folder creation via placeholders, node type icons, placeholder type enum
+- **Catalog user API**: Full CRUD API for catalogs from the Jupyter console — `catalogs.list()`, `catalogs.get()`, `catalogs.create()`, `catalogs.save()`, `catalogs.remove()`
 - **Collaborative catalogs**: Real-time catalog co-editing via cocat (CRDT/WebSocket), ported to new provider API
+- **Cocat multi-room provider**: Collaborative catalog provider now supports multiple rooms with on-demand joining and path-based catalog creation
 - **Welcome page redesign**: Migrated to QWebEngineView + QWebChannel + Jinja2, two-column layout with hero workspace, news feed, featured packages, quickstart shortcuts, example browser with workspace picker modal
+- **Welcome page workspace editing**: Workspace name and description editable from the details panel; package management with add/remove controls (installs immediately for active workspace, saves to manifest for inactive ones); resizable details panel; active workspace badge; latest GitHub release banner with update-available alert
 - **App Store panel**: New dock panel for browsing community plugins with tab bar, search, tag filtering, sort, and detail panel (mock data, UI ready)
 - **Workspace management overhaul**: Migrated workspace metadata from `workspace.json` (JSON) to `workspace.sciqlop` (TOML) with `WorkspaceManifest`, filesystem-based timestamps, auto-migration of old workspaces, auto-start JupyterLab for non-default workspaces
 - **Workspace launcher**: Rewritten as workspace-aware supervisor process with venv isolation, plugin dependency resolution via uv, workspace switching (exit code 65), `.sciqlop`/`.sciqlop-archive` file associations, freedesktop MIME type and desktop entry
+- **Product tree context menu**: Right-click on products in the tree to plot them ([\#70](https://github.com/SciQLop/SciQLop/issues/70))
+- **Fluent plot panel API**: New declarative API for constructing plot panels from the Jupyter console (`user_api`)
+- **Speasy plot backend**: SciQLop registers as a `speasy` plot backend — `speasy.plot()` renders directly into SciQLop panels
+- **Speasy catalog integration**: Speasy inventory catalogs and timetables exposed as read-only catalog providers
 - **Jupyter integration improvements**: Extracted `KernelManager` for kernel lifecycle, adaptive kernel poller, hardened subprocess cleanup with graceful termination escalation
 - **Settings system**: New Pydantic-based settings with category/subcategory organization, YAML persistence, and type-based UI delegate registry
 - **Theming**: Dark palette support with automatic icon inversion based on current palette, styled QSplitter
@@ -26,8 +34,13 @@
 - Fixed catalog event editing loop, table refresh, and double span creation
 - Fixed catalog provider signal disconnection on unregister
 - Fixed tscat datetime handling for naive/aware mismatches and ordering validation
+- Fixed tscat catalog creation in folders and PySide6 enum deprecation warnings
+- Fixed catalog `_folder_path` deduplication and parent expansion before inline edit
 - Fixed lazy event loading for large catalogs (>=5000 events)
 - Fixed JupyterLab file download support
+- Fixed time range forwarding and label propagation in speasy plot backend
+- Fixed `datetime64` conversion to epoch seconds in speasy backend
+- Clear error message when speasy backend is used outside SciQLop
 
 ### Refactoring
 
@@ -36,6 +49,8 @@
 - Moved plugin dependency resolution from `core/` to `components/plugins/`
 - Removed dead code: old Qt widget welcome page, `WorkspaceSpec`/`WorkspaceSpecFile`, unused core modules
 - Renamed Jupyter `IPythonKernel/` to `kernel/`
+- Modernized QSS theme to match welcome page design language
+- Excluded speasy catalogs and timetables from the product tree (moved to catalog providers)
 
 ### Dependencies
 
