@@ -31,3 +31,22 @@ class PaletteCommand:
     icon: QIcon | None = None
     keywords: list[str] = field(default_factory=list)
     replaces_qaction: str | None = None
+
+
+class CommandRegistry:
+    def __init__(self):
+        self._commands: dict[str, PaletteCommand] = {}
+
+    def register(self, command: PaletteCommand) -> None:
+        if command.id in self._commands:
+            raise ValueError(f"Command already registered: {command.id}")
+        self._commands[command.id] = command
+
+    def unregister(self, command_id: str) -> None:
+        self._commands.pop(command_id, None)
+
+    def commands(self) -> list[PaletteCommand]:
+        return list(self._commands.values())
+
+    def get(self, command_id: str) -> PaletteCommand | None:
+        return self._commands.get(command_id)

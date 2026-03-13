@@ -27,3 +27,45 @@ def test_completion_creation():
     assert c.display == "Value 1"
     assert c.description == "desc"
     assert c.icon is None
+
+
+def test_registry_register_and_list():
+    from SciQLop.components.command_palette.backend.registry import (
+        CommandRegistry, PaletteCommand,
+    )
+    registry = CommandRegistry()
+    cmd = PaletteCommand(
+        id="test.hello", name="Hello", description="Say hello",
+        callback=lambda: None, args=[],
+    )
+    registry.register(cmd)
+    assert "test.hello" in [c.id for c in registry.commands()]
+
+
+def test_registry_unregister():
+    from SciQLop.components.command_palette.backend.registry import (
+        CommandRegistry, PaletteCommand,
+    )
+    registry = CommandRegistry()
+    cmd = PaletteCommand(
+        id="test.bye", name="Bye", description="Say bye",
+        callback=lambda: None, args=[],
+    )
+    registry.register(cmd)
+    registry.unregister("test.bye")
+    assert "test.bye" not in [c.id for c in registry.commands()]
+
+
+def test_registry_duplicate_id_raises():
+    from SciQLop.components.command_palette.backend.registry import (
+        CommandRegistry, PaletteCommand,
+    )
+    registry = CommandRegistry()
+    cmd = PaletteCommand(
+        id="test.dup", name="Dup", description="dup",
+        callback=lambda: None,
+    )
+    registry.register(cmd)
+    import pytest
+    with pytest.raises(ValueError):
+        registry.register(cmd)
