@@ -70,6 +70,7 @@ def _discover_examples() -> list[Example]:
 
 
 _MOCK_NEWS = [
+    {"icon": "\u2318", "title": "Command Palette \u2014 Press Ctrl+K to search and execute any action", "date": "2026-03-13"},
     {"icon": "\U0001f389", "title": "SciQLop 0.8 released", "date": "2026-03-10"},
     {"icon": "\U0001f4e6", "title": "New MMS data products available", "date": "2026-03-08"},
     {"icon": "\U0001f4a1", "title": "Tip: Use virtual products for derived quantities", "date": "2026-03-05"},
