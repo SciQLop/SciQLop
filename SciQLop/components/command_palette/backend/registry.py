@@ -38,8 +38,6 @@ class CommandRegistry:
         self._commands: dict[str, PaletteCommand] = {}
 
     def register(self, command: PaletteCommand) -> None:
-        if command.id in self._commands:
-            raise ValueError(f"Command already registered: {command.id}")
         self._commands[command.id] = command
 
     def unregister(self, command_id: str) -> None:

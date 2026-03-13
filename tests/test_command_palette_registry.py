@@ -56,16 +56,20 @@ def test_registry_unregister():
     assert "test.bye" not in [c.id for c in registry.commands()]
 
 
-def test_registry_duplicate_id_raises():
+def test_registry_reregister_overwrites():
     from SciQLop.components.command_palette.backend.registry import (
         CommandRegistry, PaletteCommand,
     )
     registry = CommandRegistry()
-    cmd = PaletteCommand(
-        id="test.dup", name="Dup", description="dup",
+    cmd1 = PaletteCommand(
+        id="test.dup", name="Dup", description="original",
         callback=lambda: None,
     )
-    registry.register(cmd)
-    import pytest
-    with pytest.raises(ValueError):
-        registry.register(cmd)
+    cmd2 = PaletteCommand(
+        id="test.dup", name="Dup", description="updated",
+        callback=lambda: None,
+    )
+    registry.register(cmd1)
+    registry.register(cmd2)
+    assert registry.get("test.dup").description == "updated"
+    assert len([c for c in registry.commands() if c.id == "test.dup"]) == 1
