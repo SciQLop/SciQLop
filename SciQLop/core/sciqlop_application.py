@@ -44,6 +44,8 @@ class SciQLopApp(QApplication):
         self.setPalette(self._current_palette)
         self.load_stylesheet()
         self._quickstart_shortcuts: Dict[str, Dict[str, Any]] = {}
+        from SciQLop.components.command_palette.backend.registry import CommandRegistry
+        self._command_registry = CommandRegistry()
 
     def add_quickstart_shortcut(self, name: str, description: str, icon: QtGui.QPixmap or QtGui.QIcon,
                                 callback: callable):
@@ -57,6 +59,10 @@ class SciQLopApp(QApplication):
 
     def quickstart_shortcut(self, name: str) -> Optional[Dict[str, Any]]:
         return self._quickstart_shortcuts.get(name, None)
+
+    @property
+    def command_registry(self) -> "CommandRegistry":
+        return self._command_registry
 
     def load_stylesheet(self, path=None):
         self.setStyleSheet(load_stylesheets(self._current_palette, self._current_palette_name))

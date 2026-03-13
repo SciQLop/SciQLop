@@ -169,6 +169,19 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolsMenu.addAction("Plugin Store", self._show_appstore)
         self.welcome.backend.appstore_requested.connect(self._show_appstore)
 
+        from SciQLop.components.command_palette.ui.palette_widget import CommandPalette
+        from SciQLop.components.command_palette.backend.history import LRUHistory
+        from SciQLop.components.command_palette.settings import CommandPaletteSettings
+        from SciQLop.components.settings.backend.entry import SCIQLOP_CONFIG_DIR
+
+        palette_settings = CommandPaletteSettings()
+        history_path = os.path.join(SCIQLOP_CONFIG_DIR, "command_palette_history.json")
+        self._palette_history = LRUHistory(path=history_path, max_size=palette_settings.max_history_size)
+        self._command_palette = CommandPalette(self, sciqlop_app().command_registry, self._palette_history)
+
+        shortcut = QtGui.QShortcut(QtGui.QKeySequence(palette_settings.keybinding), self)
+        shortcut.activated.connect(self._command_palette.toggle)
+
         self._center_and_maximise_on_screen()
 
     def _show_appstore(self):
