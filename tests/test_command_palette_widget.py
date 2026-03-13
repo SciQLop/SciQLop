@@ -33,7 +33,7 @@ def test_palette_filters_commands(qtbot, qapp):
     palette = CommandPalette(win, registry, history)
     palette.toggle()
     qtbot.keyClicks(palette._input, "plot")
-    qtbot.wait(50)
+    qtbot.wait(200)
     assert palette._list.model().rowCount() >= 1
     first_name = palette._list.model().index(0, 0).data(QtCore.Qt.ItemDataRole.DisplayRole)
     assert "plot" in first_name.lower()

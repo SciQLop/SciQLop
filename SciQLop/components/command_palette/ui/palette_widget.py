@@ -1,12 +1,14 @@
 from __future__ import annotations
 from enum import Enum, auto
 from PySide6 import QtCore, QtGui, QtWidgets
-from SciQLop.components.command_palette.backend.fuzzy import fuzzy_match
+from SciQLop.components.command_palette.backend.fuzzy import fuzzy_match, fuzzy_score
 from SciQLop.components.command_palette.backend.history import LRUHistory
-from SciQLop.components.command_palette.backend.registry import CommandRegistry, PaletteCommand
+from SciQLop.components.command_palette.backend.registry import CommandRegistry, Completion, PaletteCommand
 from SciQLop.components.command_palette.ui.delegate import PaletteItemDelegate
 
 HISTORY_SCORE_BONUS = 10
+MAX_VISIBLE_RESULTS = 50
+DEBOUNCE_MS = 150
 
 
 class _State(Enum):
@@ -23,6 +25,7 @@ class CommandPalette(QtWidgets.QWidget):
         self._selected_command: PaletteCommand | None = None
         self._arg_step = 0
         self._resolved_args: dict[str, str] = {}
+        self._cached_completions: list[Completion] | None = None
         self.setWindowFlags(QtCore.Qt.WindowType.Widget)
         self.setFocusPolicy(QtCore.Qt.FocusPolicy.StrongFocus)
         self.hide()
@@ -52,6 +55,11 @@ class CommandPalette(QtWidgets.QWidget):
         self.setStyleSheet("CommandPalette { border: 1px solid palette(mid); border-radius: 6px; }")
         parent.installEventFilter(self)
 
+        self._debounce_timer = QtCore.QTimer(self)
+        self._debounce_timer.setSingleShot(True)
+        self._debounce_timer.setInterval(DEBOUNCE_MS)
+        self._debounce_timer.timeout.connect(self._refresh_list)
+
     def toggle(self):
         if self.isVisible():
             self._close()
@@ -61,7 +69,6 @@ class CommandPalette(QtWidgets.QWidget):
     def _open(self):
         self._reset_state()
         self._reposition()
-        # Qt child widgets cannot be visible unless their parent is visible
         parent = self.parentWidget()
         if parent is not None and not parent.isVisible():
             parent.show()
@@ -71,6 +78,7 @@ class CommandPalette(QtWidgets.QWidget):
         self._refresh_list()
 
     def _close(self):
+        self._debounce_timer.stop()
         self.hide()
         self._input.clear()
 
@@ -79,6 +87,7 @@ class CommandPalette(QtWidgets.QWidget):
         self._selected_command = None
         self._arg_step = 0
         self._resolved_args = {}
+        self._cached_completions = None
         self._input.clear()
         self._input.setPlaceholderText("Search commands...")
 
@@ -126,7 +135,7 @@ class CommandPalette(QtWidgets.QWidget):
                     "category": "Command", "command_id": cmd.id,
                 }))
         scored_items.sort(key=lambda t: t[0], reverse=True)
-        for _, display, data in scored_items:
+        for _, display, data in scored_items[:MAX_VISIBLE_RESULTS]:
             item = QtGui.QStandardItem(display)
             item.setData(data, QtCore.Qt.ItemDataRole.UserRole)
             cmd = self._registry.get(data["command_id"])
@@ -139,14 +148,17 @@ class CommandPalette(QtWidgets.QWidget):
         if self._selected_command is None:
             return
         arg = self._selected_command.args[self._arg_step]
-        completions = arg.completions(self._resolved_args)
+        if self._cached_completions is None:
+            self._cached_completions = arg.completions(self._resolved_args)
+        # Two-pass: fast score-only filter, then full match only for top results
         scored = []
-        for c in completions:
-            score, positions = fuzzy_match(query, c.display)
-            if score > 0:
-                scored.append((score, c, positions))
+        for c in self._cached_completions:
+            s = fuzzy_score(query, c.display)
+            if s > 0:
+                scored.append((s, c))
         scored.sort(key=lambda t: t[0], reverse=True)
-        for _, c, positions in scored:
+        for _, c in scored[:MAX_VISIBLE_RESULTS]:
+            _, positions = fuzzy_match(query, c.display)
             item = QtGui.QStandardItem(c.display)
             item.setData({
                 "description": c.description or "", "match_positions": positions,
@@ -158,7 +170,7 @@ class CommandPalette(QtWidgets.QWidget):
             self._model.appendRow(item)
 
     def _on_text_changed(self, _text: str):
-        self._refresh_list()
+        self._debounce_timer.start()
 
     def _select_current(self):
         index = self._list.currentIndex()
@@ -191,6 +203,7 @@ class CommandPalette(QtWidgets.QWidget):
             self._selected_command = cmd
             self._arg_step = 0
             self._resolved_args = {}
+            self._cached_completions = None
             self._state = _State.ARG_SELECT
             self._input.clear()
             self._input.setPlaceholderText(f"Select {cmd.args[0].name}...")
@@ -204,6 +217,7 @@ class CommandPalette(QtWidgets.QWidget):
 
     def _advance_arg_step(self):
         self._arg_step += 1
+        self._cached_completions = None
         if self._arg_step >= len(self._selected_command.args):
             self._execute(self._selected_command, self._resolved_args)
         else:
@@ -214,6 +228,7 @@ class CommandPalette(QtWidgets.QWidget):
 
     def _go_back(self):
         if self._state == _State.ARG_SELECT:
+            self._cached_completions = None
             if self._arg_step > 0:
                 prev_arg = self._selected_command.args[self._arg_step - 1]
                 self._resolved_args.pop(prev_arg.name, None)
@@ -246,6 +261,8 @@ class CommandPalette(QtWidgets.QWidget):
                 self._go_back()
                 return True
             if key == QtCore.Qt.Key.Key_Return:
+                self._debounce_timer.stop()
+                self._refresh_list()
                 self._select_current()
                 return True
             if key == QtCore.Qt.Key.Key_Down:

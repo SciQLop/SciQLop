@@ -23,7 +23,7 @@ def test_palette_new_plot_panel(qtbot, main_window):
     palette.toggle()
 
     qtbot.keyClicks(palette._input, "new plot")
-    qtbot.wait(50)
+    qtbot.wait(200)
     palette._list.setCurrentIndex(palette._list.model().index(0, 0))
     qtbot.keyClick(palette._input, QtCore.Qt.Key.Key_Return)
 
