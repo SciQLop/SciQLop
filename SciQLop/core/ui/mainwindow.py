@@ -94,6 +94,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.productTree.setWindowIcon(get_current_style_icon("tree"))
         self.add_side_pan(self.productTree)
 
+        from SciQLop.components.products.product_context_menu import setup_product_context_menu
+        setup_product_context_menu(self.productTree, self)
+
         self.catalogs_browser = CatalogBrowser(self)
         self.catalogs_browser.setWindowIcon(get_current_style_icon("catalogue"))
         self.add_side_pan(self.catalogs_browser)
