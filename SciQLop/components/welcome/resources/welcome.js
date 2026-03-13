@@ -80,15 +80,18 @@ function loadQuickstart() {
 }
 
 function loadWorkspaces() {
-    backend.list_workspaces(function(json_str) {
-        const workspaces = JSON.parse(json_str);
-        const container = document.getElementById("workspace-cards");
-        container.innerHTML = "";
+    backend.get_active_workspace_dir(function(activeJson) {
+        var activeDir = JSON.parse(activeJson);
+        backend.list_workspaces(function(json_str) {
+            const workspaces = JSON.parse(json_str);
+            const container = document.getElementById("workspace-cards");
+            container.innerHTML = "";
 
-        container.appendChild(createNewWorkspaceCard());
+            container.appendChild(createNewWorkspaceCard());
 
-        workspaces.forEach(function(ws) {
-            container.appendChild(createWorkspaceCard(ws));
+            workspaces.forEach(function(ws) {
+                container.appendChild(createWorkspaceCard(ws, activeDir));
+            });
         });
     });
 }
@@ -146,7 +149,7 @@ function createNewWorkspaceCard() {
     return card;
 }
 
-function createWorkspaceCard(ws) {
+function createWorkspaceCard(ws, activeDir) {
     const card = document.createElement("div");
     card.className = "card";
     card.dataset.name = ws.name.toLowerCase();
@@ -159,7 +162,9 @@ function createWorkspaceCard(ws) {
         imageHtml = '<div class="card-image placeholder">\uD83D\uDCC1</div>';
     }
 
+    const isActive = activeDir && ws.directory === activeDir;
     let badges = "";
+    if (isActive) badges += '<span class="card-badge badge-active">Active</span>';
     if (ws.is_default) badges += '<span class="card-badge">Default</span>';
 
     card.innerHTML =
@@ -171,7 +176,7 @@ function createWorkspaceCard(ws) {
 
     card.addEventListener("click", function(e) {
         selectCard(card);
-        showWorkspaceDetails(ws);
+        showWorkspaceDetails(ws, isActive);
     });
     card.addEventListener("dblclick", function() {
         tryOpenWorkspace(ws.directory);
@@ -239,25 +244,122 @@ function createFeaturedCard(pkg) {
 
 // --- Details panel ---
 
-function showWorkspaceDetails(ws) {
+function showWorkspaceDetails(ws, isActive) {
     const panel = document.getElementById("details-panel");
     document.getElementById("details-title").textContent = "Workspace details";
 
+    const editable = !ws.is_default;
     const content = document.getElementById("details-content");
+
+    var nameHtml = editable
+        ? '<input id="ws-name-input" type="text" value="' + escapeAttr(ws.name) + '">'
+        : '<span>' + escapeHtml(ws.name) + '</span>';
+
+    var descHtml = editable
+        ? '<textarea id="ws-desc-input" rows="2">' + escapeHtml(ws.description || "") + '</textarea>'
+        : '<span>' + escapeHtml(ws.description || "") + '</span>';
+
+    var pkgHtml = buildPackageList(ws, isActive, editable);
+
     content.innerHTML =
-        '<div class="details-field"><label>Name</label><span>' + escapeHtml(ws.name) + '</span></div>' +
+        '<div class="details-field"><label>Name</label>' + nameHtml + '</div>' +
         '<div class="details-field"><label>Last used</label><span>' + escapeHtml(ws.last_used) + '</span></div>' +
         '<div class="details-field"><label>Last modified</label><span>' + escapeHtml(ws.last_modified) + '</span></div>' +
-        '<div class="details-field"><label>Description</label><span>' + escapeHtml(ws.description || "") + '</span></div>' +
+        '<div class="details-field"><label>Description</label>' + descHtml + '</div>' +
+        '<div class="details-section"><label>Packages</label>' + pkgHtml + '</div>' +
         '<div class="details-actions">' +
-            '<button onclick="tryOpenWorkspace(\'' + escapeAttr(ws.directory) + '\')">Open workspace</button>' +
-            '<button onclick="backend.duplicate_workspace(\'' + escapeAttr(ws.directory) + '\')">Duplicate workspace</button>' +
-            (ws.is_default ? '' :
-                '<button class="danger" onclick="confirmDelete(\'' + escapeAttr(ws.directory) + '\', \'' + escapeAttr(ws.name) + '\')">Delete workspace</button>') +
+            '<button class="primary" onclick="tryOpenWorkspace(\'' + escapeAttr(ws.directory) + '\')">Open workspace</button>' +
+            '<div class="details-actions-row">' +
+                '<button class="secondary" onclick="backend.duplicate_workspace(\'' + escapeAttr(ws.directory) + '\')">Clone</button>' +
+                (ws.is_default ? '' :
+                    '<button class="secondary danger" onclick="confirmDelete(\'' + escapeAttr(ws.directory) + '\', \'' + escapeAttr(ws.name) + '\')">Delete</button>') +
+            '</div>' +
         '</div>';
+
+    if (editable) {
+        bindFieldEditor("ws-name-input", ws.directory, "name", ws, isActive);
+        bindFieldEditor("ws-desc-input", ws.directory, "description", ws, isActive);
+    }
 
     panel.classList.remove("hidden");
     panel.classList.add("visible");
+}
+
+function bindFieldEditor(inputId, directory, field, ws, isActive) {
+    var el = document.getElementById(inputId);
+    if (!el) return;
+    var save = function() {
+        var value = el.value.trim();
+        if (value !== ws[field]) {
+            ws[field] = value;
+            backend.update_workspace_field(directory,
+                JSON.stringify({field: field, value: value}));
+        }
+    };
+    el.addEventListener("blur", save);
+    el.addEventListener("keydown", function(e) {
+        if (e.key === "Enter" && el.tagName === "INPUT") {
+            e.preventDefault();
+            el.blur();
+        }
+    });
+}
+
+function buildPackageList(ws, isActive, editable) {
+    var requires = ws.requires || [];
+    var html = '<ul class="pkg-list">';
+    requires.forEach(function(dep) {
+        html += '<li><span class="pkg-name">' + escapeHtml(dep) + '</span>';
+        if (editable) {
+            html += '<button class="pkg-remove" data-dep="' + escapeAttr(dep) +
+                '" data-dir="' + escapeAttr(ws.directory) + '">&times;</button>';
+        }
+        html += '</li>';
+    });
+    if (requires.length === 0) {
+        html += '<li class="pkg-empty">No packages</li>';
+    }
+    html += '</ul>';
+    if (editable) {
+        html += '<div class="pkg-add-row">' +
+            '<input id="pkg-add-input" type="text" placeholder="package name...">' +
+            '<button id="pkg-add-btn">Add</button></div>';
+    }
+
+    setTimeout(function() {
+        document.querySelectorAll(".pkg-remove").forEach(function(btn) {
+            btn.addEventListener("click", function() {
+                var dep = btn.dataset.dep;
+                var dir = btn.dataset.dir;
+                backend.remove_dependency_from_workspace(dir, dep);
+                ws.requires = ws.requires.filter(function(d) { return d !== dep; });
+                showWorkspaceDetails(ws, isActive);
+            });
+        });
+        var addBtn = document.getElementById("pkg-add-btn");
+        var addInput = document.getElementById("pkg-add-input");
+        if (addBtn && addInput) {
+            var doAdd = function() {
+                var dep = addInput.value.trim();
+                if (!dep) return;
+                ws.requires = (ws.requires || []).concat([dep]);
+                if (isActive) {
+                    backend.add_dependencies_to_workspace(
+                        ws.directory, JSON.stringify([dep]));
+                } else {
+                    backend.update_workspace_field(ws.directory,
+                        JSON.stringify({field: "requires", value: ws.requires}));
+                }
+                showWorkspaceDetails(ws, isActive);
+            };
+            addBtn.addEventListener("click", doAdd);
+            addInput.addEventListener("keydown", function(e) {
+                if (e.key === "Enter") { e.preventDefault(); doAdd(); }
+            });
+        }
+    }, 0);
+
+    return html;
 }
 
 function showExampleDetails(ex) {
@@ -492,6 +594,42 @@ function escapeHtml(str) {
 function escapeAttr(str) {
     return str.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
 }
+
+// --- Details panel resize ---
+
+(function() {
+    var handle = document.getElementById("details-resize-handle");
+    var panel = document.getElementById("details-panel");
+    var dragging = false;
+
+    handle.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        dragging = true;
+        handle.classList.add("dragging");
+        panel.style.transition = "none";
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+    });
+
+    document.addEventListener("mousemove", function(e) {
+        if (!dragging) return;
+        var newWidth = window.innerWidth - e.clientX;
+        var min = 280;
+        var max = window.innerWidth * 0.8;
+        if (newWidth < min) newWidth = min;
+        if (newWidth > max) newWidth = max;
+        panel.style.width = newWidth + "px";
+    });
+
+    document.addEventListener("mouseup", function() {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove("dragging");
+        panel.style.transition = "";
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+    });
+})();
 
 // --- Start ---
 init();

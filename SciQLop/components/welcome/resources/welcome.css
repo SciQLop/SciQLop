@@ -219,6 +219,10 @@ h2 {
     margin-right: 4px;
 }
 
+.card-badge.badge-active {
+    background: #27ae60;
+}
+
 .card-stars {
     font-size: 0.75em;
     color: var(--UnselectedText);
@@ -306,6 +310,8 @@ h2 {
     top: 0;
     right: 0;
     width: 420px;
+    min-width: 280px;
+    max-width: 80vw;
     height: 100vh;
     background: var(--Window);
     border-left: 1px solid var(--Borders);
@@ -314,6 +320,24 @@ h2 {
     transform: translateX(100%);
     transition: transform 0.2s ease;
     z-index: 10;
+    display: flex;
+    flex-direction: column;
+}
+
+#details-resize-handle {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 5px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 11;
+    transition: background 0.15s;
+}
+
+#details-resize-handle:hover,
+#details-resize-handle.dragging {
+    background: var(--Highlight);
 }
 
 #details-panel.visible {
@@ -322,6 +346,12 @@ h2 {
 
 #details-panel.hidden {
     transform: translateX(100%);
+}
+
+#details-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
 }
 
 #details-panel h2 {
@@ -364,8 +394,96 @@ h2 {
     color: var(--Text);
 }
 
+.details-section {
+    margin-bottom: 12px;
+}
+
+.details-section > label {
+    display: block;
+    font-weight: 500;
+    font-size: 0.9em;
+    color: var(--UnselectedText);
+    margin-bottom: 6px;
+}
+
+.pkg-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.pkg-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 8px;
+    font-size: 0.9em;
+    border-radius: 4px;
+    background: var(--Base);
+    margin-bottom: 4px;
+}
+
+.pkg-list li.pkg-empty {
+    color: var(--UnselectedText);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-style: italic;
+}
+
+.pkg-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pkg-remove {
+    background: none;
+    border: none;
+    color: var(--UnselectedText);
+    cursor: pointer;
+    font-size: 1.1em;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.pkg-remove:hover {
+    color: #c0392b;
+}
+
+.pkg-add-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.pkg-add-row input {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Base);
+    color: var(--Text);
+    font-size: 0.9em;
+}
+
+.pkg-add-row button {
+    padding: 4px 12px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Button);
+    color: var(--ButtonText);
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.pkg-add-row button:hover {
+    background: var(--Highlight);
+    color: var(--HighlightedText);
+}
+
 .details-actions {
-    margin-top: 24px;
+    margin-top: auto;
+    padding-top: 24px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -381,9 +499,39 @@ h2 {
     font-size: 0.9em;
 }
 
-.details-actions button:hover {
+.details-actions button.primary {
     background: var(--Highlight);
+    border-color: var(--Highlight);
     color: var(--HighlightedText);
+    font-weight: 500;
+}
+
+.details-actions button.primary:hover {
+    opacity: 0.9;
+}
+
+.details-actions-row {
+    display: flex;
+    gap: 8px;
+}
+
+.details-actions-row button {
+    flex: 1;
+}
+
+.details-actions button.secondary {
+    background: transparent;
+    border-color: var(--Borders);
+    color: var(--Text);
+}
+
+.details-actions button.secondary:hover {
+    background: color-mix(in srgb, var(--Highlight) 10%, var(--Window));
+}
+
+.details-actions button.danger {
+    color: #c0392b;
+    border-color: #c0392b;
 }
 
 .details-actions button.danger:hover {

@@ -43,6 +43,7 @@ def _workspace_to_dict(ws: WorkspaceManifest) -> dict:
         "last_modified": WorkspaceManifest.last_modified(ws_dir),
         "image": image_path if image_path and os.path.exists(image_path) else "",
         "is_default": ws.default,
+        "requires": ws.requires,
     }
 
 
@@ -220,6 +221,16 @@ class WelcomeBackend(QObject):
         shortcut = sciqlop_app().quickstart_shortcut(name)
         if shortcut:
             shortcut["callback"]()
+
+    @Slot(str, str)
+    def remove_dependency_from_workspace(self, workspace_dir: str, dependency: str) -> None:
+        manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
+        try:
+            manifest = WorkspaceManifest.load(manifest_path)
+            manifest.requires = [d for d in manifest.requires if d != dependency]
+            manifest.save(manifest_path)
+        except Exception as e:
+            log.error(f"Failed to remove dependency: {e}")
 
     @Slot(str, str)
     def update_workspace_field(self, directory: str, field_json: str) -> None:
