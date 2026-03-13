@@ -261,11 +261,14 @@ class CommandPalette(QtWidgets.QWidget):
 
     def _execute(self, cmd: PaletteCommand, args: dict[str, str]):
         self._close()
-        self._history.add(cmd.id, args)
-        if args:
-            cmd.callback(**args)
-        else:
-            cmd.callback()
+        try:
+            if args:
+                cmd.callback(**args)
+            else:
+                cmd.callback()
+            self._history.add(cmd.id, args)
+        except Exception:
+            pass
 
     def eventFilter(self, obj, event):
         if obj is self.parentWidget() and event.type() == QtCore.QEvent.Type.Resize:

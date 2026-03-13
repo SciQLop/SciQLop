@@ -41,9 +41,13 @@ class ProductArg(CommandArg):
         flat = self._ensure_flat_model()
         flat.set_query(QueryParser.parse(query))
 
+        # Process events until batch processing completes or we have enough results
         app = QApplication.instance()
         if app:
-            app.processEvents()
+            for _ in range(100):
+                app.processEvents()
+                if flat.rowCount() >= max_results:
+                    break
 
         items = []
         count = min(flat.rowCount(), max_results)
@@ -52,8 +56,8 @@ class ProductArg(CommandArg):
             mime = flat.mimeData(indexes)
             paths = mime.text().strip().split("\n") if mime else []
             for i, idx in enumerate(indexes):
-                display_name = flat.data(idx)
-                path = paths[i] if i < len(paths) else display_name
+                path = paths[i] if i < len(paths) else ""
+                display = flat.data(idx) or path
                 items.append(Completion(value=path, display=path))
         return items
 
