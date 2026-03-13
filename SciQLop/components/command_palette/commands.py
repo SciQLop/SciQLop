@@ -21,7 +21,7 @@ def _do_plot_product(product: str = "", panel: str = ""):
         from SciQLop.components.plotting.ui.time_sync_panel import plot_product
         from SciQLopPlots import PlotType
         product_path = product.split("/")
-        plot_product(target.default_plot, product_path, plot_type=PlotType.TimeSeries)
+        plot_product(target, product_path, plot_type=PlotType.TimeSeries)
 
 
 def _do_remove_panel(panel: str = ""):
