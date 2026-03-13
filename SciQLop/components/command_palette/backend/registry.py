@@ -20,6 +20,10 @@ class CommandArg(ABC):
     @abstractmethod
     def completions(self, context: dict) -> list[Completion]: ...
 
+    def filtered_completions(self, query: str, context: dict, max_results: int) -> list[Completion] | None:
+        """Return pre-filtered completions, or None to use default Python fuzzy matching."""
+        return None
+
 
 @dataclass
 class PaletteCommand:

@@ -148,9 +148,26 @@ class CommandPalette(QtWidgets.QWidget):
         if self._selected_command is None:
             return
         arg = self._selected_command.args[self._arg_step]
+
+        # Try native filtering first (C++ backed args like ProductArg)
+        native = arg.filtered_completions(query, self._resolved_args, MAX_VISIBLE_RESULTS)
+        if native is not None:
+            for c in native:
+                _, positions = fuzzy_match(query, c.display)
+                item = QtGui.QStandardItem(c.display)
+                item.setData({
+                    "description": c.description or "", "match_positions": positions,
+                    "category": arg.name, "completion_value": c.value,
+                }, QtCore.Qt.ItemDataRole.UserRole)
+                if c.icon:
+                    item.setIcon(c.icon)
+                item.setEditable(False)
+                self._model.appendRow(item)
+            return
+
+        # Fallback: Python fuzzy matching with caching
         if self._cached_completions is None:
             self._cached_completions = arg.completions(self._resolved_args)
-        # Two-pass: fast score-only filter, then full match only for top results
         scored = []
         for c in self._cached_completions:
             s = fuzzy_score(query, c.display)

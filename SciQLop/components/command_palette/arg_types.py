@@ -22,27 +22,40 @@ class PanelArg(CommandArg):
 class ProductArg(CommandArg):
     name: str = "product"
 
+    def __post_init__(self):
+        self._flat_model = None
+
+    def _ensure_flat_model(self):
+        if self._flat_model is None:
+            from SciQLopPlots import ProductsModel, ProductsFlatFilterModel
+            self._flat_model = ProductsFlatFilterModel(ProductsModel.instance())
+        return self._flat_model
+
     def completions(self, context: dict) -> list[Completion]:
-        from SciQLopPlots import ProductsModel, ProductsModelNodeType
-        model = ProductsModel.instance()
+        return self.filtered_completions("", context, 50) or []
+
+    def filtered_completions(self, query: str, context: dict, max_results: int) -> list[Completion]:
+        from SciQLopPlots import QueryParser
+        from PySide6.QtWidgets import QApplication
+
+        flat = self._ensure_flat_model()
+        flat.set_query(QueryParser.parse(query))
+
+        app = QApplication.instance()
+        if app:
+            app.processEvents()
+
         items = []
-        _collect_products(model, model.index(0, 0).parent(), items, [])
+        count = min(flat.rowCount(), max_results)
+        if count > 0:
+            indexes = [flat.index(i, 0) for i in range(count)]
+            mime = flat.mimeData(indexes)
+            paths = mime.text().strip().split("\n") if mime else []
+            for i, idx in enumerate(indexes):
+                display_name = flat.data(idx)
+                path = paths[i] if i < len(paths) else display_name
+                items.append(Completion(value=path, display=path))
         return items
-
-
-def _collect_products(model, parent_index, items, path_parts):
-    for row in range(model.rowCount(parent_index)):
-        idx = model.index(row, 0, parent_index)
-        name = model.data(idx)
-        if name is None:
-            continue
-        current_path = path_parts + [name]
-        if model.rowCount(idx) == 0:
-            display = "/".join(current_path)
-            # Store path as slash-joined; commands.py splits it back
-            items.append(Completion(value=display, display=display))
-        else:
-            _collect_products(model, idx, items, current_path)
 
 
 @dataclass
