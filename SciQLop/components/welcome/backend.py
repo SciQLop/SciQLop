@@ -5,6 +5,8 @@ import glob
 import json
 import os
 import subprocess
+import threading
+import urllib.request
 
 from PySide6.QtCore import QBuffer, QFileSystemWatcher, QIODevice, QObject, Signal, Slot
 
@@ -87,6 +89,7 @@ class WelcomeBackend(QObject):
     workspace_list_changed = Signal()
     quickstart_changed = Signal()
     appstore_requested = Signal()
+    latest_release_ready = Signal(str)
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -162,6 +165,36 @@ class WelcomeBackend(QObject):
     def list_featured_packages(self) -> str:
         return json.dumps(_MOCK_FEATURED)
 
+    @Slot(result=str)
+    def get_current_version(self) -> str:
+        from SciQLop import __version__
+        return __version__
+
+    _GITHUB_RELEASE_URL = "https://api.github.com/repos/SciQLop/SciQLop/releases/latest"
+
+    @Slot()
+    def fetch_latest_release(self) -> None:
+        def _fetch():
+            try:
+                req = urllib.request.Request(
+                    self._GITHUB_RELEASE_URL,
+                    headers={"Accept": "application/vnd.github.v3+json"},
+                )
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = json.loads(resp.read())
+                result = json.dumps({
+                    "tag": data["tag_name"],
+                    "name": data.get("name", data["tag_name"]),
+                    "url": data["html_url"],
+                    "published": data.get("published_at", ""),
+                })
+            except Exception as e:
+                log.debug(f"Could not fetch latest release: {e}")
+                result = "null"
+            self.latest_release_ready.emit(result)
+
+        threading.Thread(target=_fetch, daemon=True).start()
+
     # --- Action slots ---
 
     @Slot(str)
@@ -231,6 +264,12 @@ class WelcomeBackend(QObject):
             manifest.save(manifest_path)
         except Exception as e:
             log.error(f"Failed to remove dependency: {e}")
+
+    @Slot(str)
+    def open_url(self, url: str) -> None:
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtCore import QUrl
+        QDesktopServices.openUrl(QUrl(url))
 
     @Slot(str, str)
     def update_workspace_field(self, directory: str, field_json: str) -> None:

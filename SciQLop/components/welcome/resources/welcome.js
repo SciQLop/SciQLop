@@ -18,6 +18,8 @@ function init() {
             loadHero();
         });
         backend.quickstart_changed.connect(loadQuickstart);
+        backend.latest_release_ready.connect(showLatestRelease);
+        backend.fetch_latest_release();
 
         document.getElementById("browse-all-link").addEventListener("click", function(e) {
             e.preventDefault();
@@ -132,6 +134,48 @@ function loadFeatured() {
         packages.forEach(function(pkg) {
             container.appendChild(createFeaturedCard(pkg));
         });
+    });
+}
+
+function compareVersions(a, b) {
+    var pa = a.replace(/^v/, "").split(".").map(Number);
+    var pb = b.replace(/^v/, "").split(".").map(Number);
+    for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
+        var na = pa[i] || 0;
+        var nb = pb[i] || 0;
+        if (na !== nb) return na - nb;
+    }
+    return 0;
+}
+
+function showLatestRelease(json_str) {
+    var container = document.getElementById("latest-release");
+    var release = JSON.parse(json_str);
+    if (!release) {
+        container.classList.add("hidden");
+        return;
+    }
+
+    backend.get_current_version(function(currentVersion) {
+        var isNewer = compareVersions(release.tag, currentVersion) > 0;
+        container.classList.remove("hidden");
+        container.className = isNewer ? "release-update" : "release-current";
+        container.innerHTML = isNewer
+            ? '<span class="release-label">\u2B06\uFE0F Update available!</span>' +
+              '<a class="release-link" href="' + escapeAttr(release.url) + '">' +
+                  escapeHtml(release.name || release.tag) +
+              '</a>' +
+              '<span class="release-current-version">Current: ' + escapeHtml(currentVersion) + '</span>'
+            : '<span class="release-label">\u2705 Up to date</span>' +
+              '<span class="release-version">' + escapeHtml(currentVersion) + '</span>';
+
+        var link = container.querySelector(".release-link");
+        if (link) {
+            link.addEventListener("click", function(e) {
+                e.preventDefault();
+                backend.open_url(release.url);
+            });
+        }
     });
 }
 
