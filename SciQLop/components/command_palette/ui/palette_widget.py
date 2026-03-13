@@ -50,6 +50,7 @@ class CommandPalette(QtWidgets.QWidget):
         shadow.setColor(QtGui.QColor(0, 0, 0, 80))
         self.setGraphicsEffect(shadow)
         self.setStyleSheet("CommandPalette { border: 1px solid palette(mid); border-radius: 6px; }")
+        parent.installEventFilter(self)
 
     def toggle(self):
         if self.isVisible():
@@ -235,6 +236,10 @@ class CommandPalette(QtWidgets.QWidget):
             cmd.callback()
 
     def eventFilter(self, obj, event):
+        if obj is self.parentWidget() and event.type() == QtCore.QEvent.Type.Resize:
+            if self.isVisible():
+                self._reposition()
+            return False
         if obj is self._input and event.type() == QtCore.QEvent.Type.KeyPress:
             key = event.key()
             if key == QtCore.Qt.Key.Key_Escape:
