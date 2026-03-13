@@ -23,23 +23,26 @@ class ProductArg(CommandArg):
     name: str = "product"
 
     def completions(self, context: dict) -> list[Completion]:
-        from SciQLop.core.sciqlop_application import sciqlop_app
-        win = sciqlop_app().main_window
-        tree = win.productTree
+        from SciQLopPlots import ProductsModel, ProductsModelNodeType
+        model = ProductsModel.instance()
         items = []
-        for i in range(tree.model().rowCount()):
-            _collect_products(tree.model(), tree.model().index(i, 0), items, "")
+        _collect_products(model, model.index(0, 0).parent(), items, [])
         return items
 
 
-def _collect_products(model, parent_index, items, prefix):
-    text = model.data(parent_index)
-    path = f"{prefix}/{text}" if prefix else text
-    if model.rowCount(parent_index) == 0:
-        items.append(Completion(value=path, display=path))
-    else:
-        for row in range(model.rowCount(parent_index)):
-            _collect_products(model, model.index(row, 0, parent_index), items, path)
+def _collect_products(model, parent_index, items, path_parts):
+    for row in range(model.rowCount(parent_index)):
+        idx = model.index(row, 0, parent_index)
+        name = model.data(idx)
+        if name is None:
+            continue
+        current_path = path_parts + [name]
+        if model.rowCount(idx) == 0:
+            display = "/".join(current_path)
+            # Store path as slash-joined; commands.py splits it back
+            items.append(Completion(value=display, display=display))
+        else:
+            _collect_products(model, idx, items, current_path)
 
 
 @dataclass
