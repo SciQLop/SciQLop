@@ -78,6 +78,7 @@ class DiagnosticOverlay(QWidget):
         else:
             self._apply_style("rgba(180, 140, 20, 200)", "#ffffff")
         self._is_status_bar = False
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
         self._resize_to_parent()
         self.show()
         self.raise_()
@@ -86,6 +87,7 @@ class DiagnosticOverlay(QWidget):
         self._label.setText(f"[ok] {n_points} pts, {shape} {dtype}, {elapsed:.2f}s")
         self._apply_style("rgba(40, 140, 40, 180)", "#ffffff")
         self._is_status_bar = True
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self._resize_to_parent()
         self.show()
         self.raise_()
