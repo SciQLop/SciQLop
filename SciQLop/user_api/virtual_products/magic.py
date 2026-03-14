@@ -329,8 +329,36 @@ def _panel_is_alive(panel) -> bool:
 def _create_debug_panel(func_name: str, start: float, stop: float):
     from SciQLop.user_api.gui import get_main_window
     from SciQLop.core import TimeRange
+    from SciQLop.core.ui.mainwindow import auto_name
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    import PySide6QtAds as QtAds
+
     panel_name = f"VP Debug: {func_name}"
     mw = get_main_window()
-    panel = mw.new_plot_panel(name=panel_name)
-    panel.time_range = TimeRange(start, stop)
+
+    panel = TimeSyncPanel(parent=None, name=auto_name(base="Panel", name=panel_name),
+                          time_range=TimeRange(start, stop))
+
+    doc = QtAds.CDockWidget(panel.windowTitle())
+    doc.setWidget(panel)
+    doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
+    doc.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
+
+    # Find the current active dock area and split to the right
+    current_area = mw.dock_manager.lastAddedDockAreaWidget()
+    if current_area:
+        mw.dock_manager.addDockWidget(QtAds.DockWidgetArea.RightDockWidgetArea, doc, current_area)
+    else:
+        mw.dock_manager.addDockWidget(QtAds.DockWidgetArea.RightDockWidgetArea, doc)
+
+    # Set splitter ratio to ~70/30
+    splitter = mw.dock_manager.rootSplitter()
+    if splitter:
+        total = splitter.width()
+        mw.dock_manager.setSplitterSizes(splitter, [int(total * 0.7), int(total * 0.3)])
+
+    mw.panel_added.emit(panel)
+    mw._notify_panels_list_changed()
+    panel.destroyed.connect(mw._notify_panels_list_changed)
+
     return panel
