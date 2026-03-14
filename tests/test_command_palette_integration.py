@@ -11,7 +11,10 @@ def test_palette_opens_in_main_window(qtbot, main_window):
     assert not palette.isVisible()
 
 
-def test_palette_ctrl_k_shortcut(qtbot, main_window):
+def test_palette_ctrl_k_shortcut(qtbot, qapp, main_window):
+    main_window.activateWindow()
+    main_window.raise_()
+    qapp.processEvents()
     qtbot.keyClick(main_window, QtCore.Qt.Key.Key_K, QtCore.Qt.KeyboardModifier.ControlModifier)
     assert main_window._command_palette.isVisible()
     qtbot.keyClick(main_window._command_palette._input, QtCore.Qt.Key.Key_Escape)

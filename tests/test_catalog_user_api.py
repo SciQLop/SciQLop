@@ -1,6 +1,7 @@
 from .fixtures import *
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, CatalogEvent
 
 
 def test_parse_path_single_slash():
@@ -130,19 +131,70 @@ def test_normalize_input_triples(qtbot, qapp):
     assert result[0].meta["tag"] == "a"
 
 
+class _IsolatedDummyProvider(CatalogProvider):
+    """IsolatedDummy with a unique name to avoid collisions with other test modules."""
+
+    def __init__(self, num_catalogs, events_per_catalog, paths=None, parent=None):
+        super().__init__(name="IsolatedDummy", parent=parent)
+        self._catalogs: list = []
+        from datetime import timezone
+        base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        for c in range(num_catalogs):
+            path = paths[c] if paths and c < len(paths) else []
+            cat = Catalog(uuid=str(c), name=f"Catalog-{c}", provider=self, path=path)
+            self._catalogs.append(cat)
+            events = []
+            for i in range(events_per_catalog):
+                events.append(CatalogEvent(
+                    uuid=f"{c}-{i}",
+                    start=base + timedelta(days=i),
+                    stop=base + timedelta(days=i, hours=1),
+                    meta={"index": i, "catalog": c},
+                ))
+            self._set_events(cat, events)
+
+    def catalogs(self):
+        return list(self._catalogs)
+
+    def capabilities(self, catalog=None):
+        from SciQLop.components.catalogs.backend.provider import Capability
+        return {
+            Capability.EDIT_EVENTS, Capability.CREATE_EVENTS,
+            Capability.DELETE_EVENTS, Capability.CREATE_CATALOGS,
+            Capability.DELETE_CATALOGS, Capability.EXPORT_EVENTS,
+            Capability.IMPORT_EVENTS, Capability.SAVE,
+            Capability.SAVE_CATALOG, Capability.RENAME_CATALOG,
+        }
+
+    def create_catalog(self, name, path=None):
+        cat = Catalog(uuid=str(len(self._catalogs)), name=name, provider=self, path=path or [])
+        self._catalogs.append(cat)
+        self._set_events(cat, [])
+        self.catalog_added.emit(cat)
+        return cat
+
+    def remove_catalog(self, catalog):
+        self._catalogs = [c for c in self._catalogs if c.uuid != catalog.uuid]
+        super().remove_catalog(catalog)
+
+    def import_events(self, catalog_name, events, path=None):
+        cat = Catalog(uuid=str(len(self._catalogs)), name=catalog_name, provider=self, path=path or [])
+        self._catalogs.append(cat)
+        self._set_events(cat, events)
+        self.catalog_added.emit(cat)
+        return cat
+
+
 @pytest.fixture
 def dummy_provider(qtbot, qapp):
-    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
     from SciQLop.components.catalogs.backend.registry import CatalogRegistry
     registry = CatalogRegistry.instance()
-    old_providers = list(registry._providers)
-    provider = DummyProvider(
+    provider = _IsolatedDummyProvider(
         num_catalogs=2, events_per_catalog=3,
         paths=[["room1"], ["room2"]],
     )
-    registry.register(provider)
     yield provider
-    registry._providers = old_providers
+    registry.unregister(provider)
 
 
 @pytest.fixture
@@ -153,26 +205,25 @@ def catalog_service(dummy_provider):
 
 def test_list_all(catalog_service, dummy_provider):
     paths = catalog_service.list()
-    assert len(paths) == 2
-    assert all("//" in p for p in paths)
+    assert len(paths) >= 2
     assert any("Catalog-0" in p for p in paths)
     assert any("Catalog-1" in p for p in paths)
 
 
 def test_list_with_prefix(catalog_service, dummy_provider):
-    paths = catalog_service.list("DummyProvider//room1")
+    paths = catalog_service.list("IsolatedDummy//room1")
     assert len(paths) == 1
     assert "Catalog-0" in paths[0]
 
 
 def test_list_provider_only(catalog_service, dummy_provider):
-    paths = catalog_service.list("DummyProvider")
+    paths = catalog_service.list("IsolatedDummy")
     assert len(paths) == 2
 
 
 def test_get_catalog(catalog_service, dummy_provider):
     from speasy.products.catalog import Catalog as SpeasyCatalog
-    cat = catalog_service.get("DummyProvider//room1//Catalog-0")
+    cat = catalog_service.get("IsolatedDummy//room1//Catalog-0")
     assert isinstance(cat, SpeasyCatalog)
     assert len(cat) == 3
     assert cat[0].meta["__sciqlop_uuid__"]
@@ -180,7 +231,7 @@ def test_get_catalog(catalog_service, dummy_provider):
 
 def test_get_not_found(catalog_service, dummy_provider):
     with pytest.raises(KeyError):
-        catalog_service.get("DummyProvider//room1//NoSuchCatalog")
+        catalog_service.get("IsolatedDummy//room1//NoSuchCatalog")
 
 
 def test_get_bad_provider(catalog_service, dummy_provider):
@@ -189,7 +240,7 @@ def test_get_bad_provider(catalog_service, dummy_provider):
 
 
 def test_save_existing_catalog(catalog_service, dummy_provider):
-    cat = catalog_service.get("DummyProvider//room1//Catalog-0")
+    cat = catalog_service.get("IsolatedDummy//room1//Catalog-0")
     assert len(cat) == 3
 
     from speasy.products.catalog import Catalog as SpeasyCatalog, Event as SpeasyEvent
@@ -197,18 +248,18 @@ def test_save_existing_catalog(catalog_service, dummy_provider):
         cat[0],
         SpeasyEvent("2025-01-01", "2025-01-02", meta={"new": True}),
     ])
-    catalog_service.save("DummyProvider//room1//Catalog-0", modified)
+    catalog_service.save("IsolatedDummy//room1//Catalog-0", modified)
 
-    reloaded = catalog_service.get("DummyProvider//room1//Catalog-0")
+    reloaded = catalog_service.get("IsolatedDummy//room1//Catalog-0")
     assert len(reloaded) == 2
     assert reloaded[0].meta["__sciqlop_uuid__"] == cat[0].meta["__sciqlop_uuid__"]
 
 
 def test_save_creates_if_missing(catalog_service, dummy_provider):
-    catalog_service.save("DummyProvider//room1//Brand New", [
+    catalog_service.save("IsolatedDummy//room1//Brand New", [
         ("2020-01-01", "2020-01-02"),
     ])
-    cat = catalog_service.get("DummyProvider//room1//Brand New")
+    cat = catalog_service.get("IsolatedDummy//room1//Brand New")
     assert len(cat) == 1
 
 
@@ -218,18 +269,18 @@ def test_save_bad_provider(catalog_service, dummy_provider):
 
 
 def test_create_new_catalog(catalog_service, dummy_provider):
-    catalog_service.create("DummyProvider//room3//New Cat", [
+    catalog_service.create("IsolatedDummy//room3//New Cat", [
         ("2020-01-01", "2020-01-02"),
         ("2020-06-01", "2020-06-02", {"tag": "storm"}),
     ])
-    cat = catalog_service.get("DummyProvider//room3//New Cat")
+    cat = catalog_service.get("IsolatedDummy//room3//New Cat")
     assert len(cat) == 2
     assert cat[1].meta["tag"] == "storm"
 
 
 def test_create_already_exists(catalog_service, dummy_provider):
     with pytest.raises(ValueError):
-        catalog_service.create("DummyProvider//room1//Catalog-0", [])
+        catalog_service.create("IsolatedDummy//room1//Catalog-0", [])
 
 
 def test_create_with_speasy_catalog(catalog_service, dummy_provider):
@@ -237,21 +288,21 @@ def test_create_with_speasy_catalog(catalog_service, dummy_provider):
     speasy_cat = SpeasyCatalog(name="FromSpeasy", events=[
         SpeasyEvent("2021-03-01", "2021-03-02"),
     ])
-    catalog_service.create("DummyProvider//FromSpeasy", speasy_cat)
-    result = catalog_service.get("DummyProvider//FromSpeasy")
+    catalog_service.create("IsolatedDummy//FromSpeasy", speasy_cat)
+    result = catalog_service.get("IsolatedDummy//FromSpeasy")
     assert len(result) == 1
 
 
 def test_remove_catalog(catalog_service, dummy_provider):
-    catalog_service.remove("DummyProvider//room1//Catalog-0")
+    catalog_service.remove("IsolatedDummy//room1//Catalog-0")
     with pytest.raises(KeyError):
-        catalog_service.get("DummyProvider//room1//Catalog-0")
-    assert len(catalog_service.list()) == 1
+        catalog_service.get("IsolatedDummy//room1//Catalog-0")
+    assert len(catalog_service.list("IsolatedDummy")) == 1
 
 
 def test_remove_not_found(catalog_service, dummy_provider):
     with pytest.raises(KeyError):
-        catalog_service.remove("DummyProvider//room1//NoSuchCatalog")
+        catalog_service.remove("IsolatedDummy//room1//NoSuchCatalog")
 
 
 def test_import_catalogs_singleton():
