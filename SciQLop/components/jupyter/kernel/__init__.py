@@ -76,6 +76,11 @@ class InternalIPKernel(QObject):
                                                    kernel_class=SciQLopKernel)
         self.ipykernel.capture_fd_output = False
         self.ipykernel.initialize()
+        self._register_magics()
+
+    def _register_magics(self):
+        from SciQLop.user_api.virtual_products import register_vp_magic
+        register_vp_magic(self.ipykernel.shell)
 
     def push_variables(self, variable_dict):
         self.ipykernel.shell.push(variable_dict)
