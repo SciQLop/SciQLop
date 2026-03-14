@@ -35,13 +35,13 @@ class ProductArg(CommandArg):
         return self.filtered_completions("", context, 50) or []
 
     def filtered_completions(self, query: str, context: dict, max_results: int) -> list[Completion]:
-        from SciQLopPlots import QueryParser
+        from SciQLopPlots import QueryParser, ProductsModel
         from PySide6.QtWidgets import QApplication
+        from SciQLop.core.mime import decode_mime
 
         flat = self._ensure_flat_model()
         flat.set_query(QueryParser.parse(query))
 
-        # Process events until batch processing completes or we have enough results
         app = QApplication.instance()
         if app:
             for _ in range(100):
@@ -54,11 +54,16 @@ class ProductArg(CommandArg):
         if count > 0:
             indexes = [flat.index(i, 0) for i in range(count)]
             mime = flat.mimeData(indexes)
-            paths = mime.text().strip().split("\n") if mime else []
-            for i, idx in enumerate(indexes):
-                path = paths[i] if i < len(paths) else ""
-                display = flat.data(idx) or path
-                items.append(Completion(value=path, display=path))
+            if mime:
+                paths = mime.text().strip().split("\n")
+                for path_text in paths:
+                    # Strip "root/" prefix — ProductsModel.node() doesn't expect it
+                    parts = path_text.split("/")
+                    if parts and parts[0] == "root":
+                        parts = parts[1:]
+                    display = "/".join(parts)
+                    import json
+                    items.append(Completion(value=json.dumps(parts), display=display))
         return items
 
 

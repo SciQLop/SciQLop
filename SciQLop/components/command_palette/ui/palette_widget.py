@@ -45,6 +45,7 @@ class CommandPalette(QtWidgets.QWidget):
         self._list.setModel(self._model)
         self._list.setItemDelegate(PaletteItemDelegate())
         self._list.setFocusPolicy(QtCore.Qt.FocusPolicy.NoFocus)
+        self._list.clicked.connect(self._on_item_clicked)
         layout.addWidget(self._list)
 
         shadow = QtWidgets.QGraphicsDropShadowEffect(self)
@@ -103,6 +104,16 @@ class CommandPalette(QtWidgets.QWidget):
         self.setGeometry(x, y, w, max_h)
 
     def _refresh_list(self):
+        if getattr(self, '_refreshing', False):
+            return
+        self._refreshing = True
+        self._debounce_timer.stop()
+        try:
+            self._do_refresh_list()
+        finally:
+            self._refreshing = False
+
+    def _do_refresh_list(self):
         query = self._input.text()
         self._model.clear()
         if self._state == _State.COMMAND_SELECT:
@@ -189,6 +200,10 @@ class CommandPalette(QtWidgets.QWidget):
     def _on_text_changed(self, _text: str):
         self._debounce_timer.start()
 
+    def _on_item_clicked(self, index):
+        self._list.setCurrentIndex(index)
+        self._select_current()
+
     def _select_current(self):
         index = self._list.currentIndex()
         if not index.isValid():
@@ -267,8 +282,9 @@ class CommandPalette(QtWidgets.QWidget):
             else:
                 cmd.callback()
             self._history.add(cmd.id, args)
-        except Exception:
-            pass
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
 
     def eventFilter(self, obj, event):
         if obj is self.parentWidget() and event.type() == QtCore.QEvent.Type.Resize:
@@ -281,8 +297,9 @@ class CommandPalette(QtWidgets.QWidget):
                 self._go_back()
                 return True
             if key == QtCore.Qt.Key.Key_Return:
-                self._debounce_timer.stop()
-                self._refresh_list()
+                if self._debounce_timer.isActive():
+                    self._debounce_timer.stop()
+                    self._refresh_list()
                 self._select_current()
                 return True
             if key == QtCore.Qt.Key.Key_Down:

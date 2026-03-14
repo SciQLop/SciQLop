@@ -12,6 +12,7 @@ def _get_win():
 
 
 def _do_plot_product(product: str = "", panel: str = ""):
+    import json
     win = _get_win()
     if panel == "__new__":
         target = win.new_plot_panel()
@@ -20,7 +21,7 @@ def _do_plot_product(product: str = "", panel: str = ""):
     if target and product:
         from SciQLop.components.plotting.ui.time_sync_panel import plot_product
         from SciQLopPlots import PlotType
-        product_path = product.split("/")
+        product_path = json.loads(product)
         plot_product(target, product_path, plot_type=PlotType.TimeSeries)
 
 
