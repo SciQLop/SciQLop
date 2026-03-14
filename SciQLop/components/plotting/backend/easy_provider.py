@@ -138,10 +138,14 @@ def {self.name}(start: np.datetime64, stop: np.datetime64) -> Optional[SpeasyVar
         return self._user_get_data(start, stop)
 
     def _debug_get_data(self, callback, start, stop):
-        try:
-            return callback(start, stop)
-        except Exception as e:
-            log.error(f"Error in {self.name}: {e}")
+        from SciQLop.user_api.virtual_products.validation import validate_and_call
+        result = validate_and_call(callback, start, stop, None, None)
+        for d in result.diagnostics:
+            if d.level == "error":
+                log.error(f"{self.name}: {d.message}")
+            elif d.level == "warning":
+                log.warning(f"{self.name}: {d.message}")
+        return result.data
 
     @property
     def path(self):
