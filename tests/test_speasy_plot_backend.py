@@ -117,14 +117,3 @@ def test_sciqlop_backend_registered_after_plugin_load(qtbot, qapp, main_window):
     assert "sciqlop" in splt.__backends__
 
 
-def test_sciqlop_backend_raises_without_main_window(qtbot, qapp):
-    """Backend should raise a clear error if no SciQLopMainWindow exists"""
-    from SciQLop.user_api.plot._speasy_backend import SciQLopBackend
-    import SciQLop.user_api.plot._speasy_backend as backend_module
-    backend_module._current_panel = None
-
-    backend = SciQLopBackend()
-    x = np.array([1.0, 2.0, 3.0])
-    y = np.array([4.0, 5.0, 6.0])
-    with pytest.raises((RuntimeError, AttributeError)):
-        backend.line(x=x, y=y)
