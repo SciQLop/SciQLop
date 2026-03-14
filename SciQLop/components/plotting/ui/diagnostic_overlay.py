@@ -104,7 +104,7 @@ class DiagnosticOverlay(QWidget):
             bar_height = 24
             self.setGeometry(
                 parent_rect.x(),
-                parent_rect.bottom() - bar_height,
+                parent_rect.y(),
                 parent_rect.width(),
                 bar_height,
             )
