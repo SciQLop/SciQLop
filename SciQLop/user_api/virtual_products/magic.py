@@ -234,5 +234,61 @@ def vp_magic(line: str, cell: str, local_ns=None):
 
 
 def _handle_debug(args, func, func_name, entry, type_info):
-    """Placeholder for debug workbench — implemented in Task 6."""
-    pass
+    """Open/reuse a scratch pad panel and run callback with validation."""
+    from SciQLop.user_api.virtual_products.validation import validate_and_call
+    from SciQLop.components.plotting.ui.diagnostic_overlay import DiagnosticOverlay
+
+    start, stop = _resolve_time_range(args, func)
+
+    # Get or create the debug panel
+    panel = entry.panel
+    if panel is None or not _panel_is_alive(panel):
+        panel = _create_debug_panel(func_name, start, stop)
+        entry.panel = panel
+
+    # Attach overlay if not already present
+    overlay = getattr(panel, '_vp_overlay', None)
+    if overlay is None:
+        overlay = DiagnosticOverlay(panel)
+        panel._vp_overlay = overlay
+
+    # Run validation
+    result = validate_and_call(func, start, stop, type_info.product_type, type_info.labels)
+
+    if result.data is not None and not any(d.level == "error" for d in result.diagnostics):
+        # Show success + any warnings
+        if result.diagnostics:
+            overlay.show_diagnostics(result.diagnostics)
+        else:
+            data = result.data
+            if isinstance(data, (tuple, list)) and len(data) >= 2:
+                y = data[1]
+                n_pts = len(y) if hasattr(y, '__len__') else 0
+                shape = y.shape if hasattr(y, 'shape') else '?'
+                dtype = str(y.dtype) if hasattr(y, 'dtype') else '?'
+            else:
+                n_pts, shape, dtype = 0, '?', '?'
+            overlay.show_success(n_pts, shape, dtype, result.elapsed)
+        # Trigger a replot
+        from SciQLop.core import TimeRange
+        panel.time_range = TimeRange(start, stop)
+    else:
+        overlay.show_diagnostics(result.diagnostics)
+
+
+def _panel_is_alive(panel) -> bool:
+    try:
+        panel.objectName()
+        return True
+    except RuntimeError:
+        return False
+
+
+def _create_debug_panel(func_name: str, start: float, stop: float):
+    from SciQLop.user_api.gui import get_main_window
+    from SciQLop.core import TimeRange
+    panel_name = f"VP Debug: {func_name}"
+    mw = get_main_window()
+    panel = mw.new_plot_panel(name=panel_name)
+    panel.time_range = TimeRange(start, stop)
+    return panel
