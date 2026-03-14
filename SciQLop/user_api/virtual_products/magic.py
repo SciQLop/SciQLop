@@ -1,6 +1,13 @@
 # SciQLop/user_api/virtual_products/magic.py
+import argparse
+import ast
+import inspect
+import shlex
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Callable, Dict, List, Optional
+
+import numpy as np
 
 
 class MutableCallback:
@@ -44,3 +51,188 @@ class VPRegistry:
 
     def get(self, name: str) -> Optional[RegistryEntry]:
         return self._entries.get(name)
+
+
+_registry = VPRegistry()
+
+
+def _parse_args(line: str) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(prog="%%vp", add_help=False)
+    parser.add_argument("--path", type=str, default=None)
+    parser.add_argument("--debug", action="store_true", default=False)
+    parser.add_argument("--start", type=str, default=None)
+    parser.add_argument("--stop", type=str, default=None)
+    return parser.parse_args(shlex.split(line))
+
+
+def _extract_function(cell: str, user_ns: dict) -> callable:
+    """Execute the cell to define the function, return it."""
+    exec(cell, user_ns)
+    # Find the first top-level function defined in the cell
+    tree = ast.parse(cell)
+    for node in tree.body:
+        if isinstance(node, ast.FunctionDef):
+            return user_ns[node.name]
+    raise ValueError("No function definition found in cell")
+
+
+def _parse_time_arg(value: str) -> float:
+    """Parse a time argument as either a float or an ISO 8601 date string."""
+    try:
+        return float(value)
+    except ValueError:
+        return datetime.fromisoformat(value).replace(tzinfo=timezone.utc).timestamp()
+
+
+def _resolve_time_range(args, func):
+    """Resolve debug/inference time range from flags, defaults, view, or fallback."""
+    # 1. Explicit flags
+    if args.start is not None and args.stop is not None:
+        return _parse_time_arg(args.start), _parse_time_arg(args.stop)
+
+    # 2. Function default arguments
+    sig = inspect.signature(func)
+    params = list(sig.parameters.values())
+    if len(params) >= 2 and params[0].default != inspect.Parameter.empty and params[1].default != inspect.Parameter.empty:
+        start, stop = params[0].default, params[1].default
+        if isinstance(start, datetime):
+            return start.timestamp(), stop.timestamp()
+        if isinstance(start, np.datetime64):
+            return start.astype("datetime64[ns]").astype(np.int64) / 1e9, stop.astype("datetime64[ns]").astype(np.int64) / 1e9
+        return float(start), float(stop)
+
+    # 3. Current view range from existing panels
+    try:
+        from SciQLop.user_api.gui import get_main_window
+        mw = get_main_window()
+        panels = mw.plot_panels()
+        if panels:
+            panel = mw.plot_panel(panels[0])
+            if panel is not None:
+                tr = panel.time_range
+                return tr.start(), tr.stop()
+    except Exception:
+        pass
+
+    # 4. Fallback: last 24 hours
+    now = datetime.now(tz=timezone.utc).timestamp()
+    return now - 86400, now
+
+
+def _get_log():
+    from SciQLop.components import sciqlop_logging
+    return sciqlop_logging.getLogger(__name__)
+
+
+def _infer_type_from_data(data):
+    """Infer product type from callback return value shape."""
+    from SciQLop.user_api.virtual_products.types import VPTypeInfo
+    if isinstance(data, (tuple, list)) and len(data) >= 2:
+        y = data[1]
+        if isinstance(y, np.ndarray):
+            if y.ndim == 1:
+                return VPTypeInfo(product_type="scalar", labels=None)
+            elif y.ndim == 2:
+                if y.shape[1] == 3:
+                    return VPTypeInfo(product_type="vector", labels=None)
+                else:
+                    return VPTypeInfo(product_type="multicomponent", labels=None)
+    return VPTypeInfo(product_type="scalar", labels=None)
+
+
+def _product_type_to_enum(product_type: str):
+    from SciQLop.user_api.virtual_products import VirtualProductType
+    return {
+        "scalar": VirtualProductType.Scalar,
+        "vector": VirtualProductType.Vector,
+        "multicomponent": VirtualProductType.MultiComponent,
+        "spectrogram": VirtualProductType.Spectrogram,
+    }[product_type]
+
+
+def _register_virtual_product(name: str, wrapper: MutableCallback, product_type: str,
+                               labels: Optional[List[str]], path: Optional[str]):
+    """Register a virtual product using the existing create_virtual_product API."""
+    from SciQLop.user_api.virtual_products import create_virtual_product, VirtualProductType
+
+    vp_path = path or name
+    vp_type = _product_type_to_enum(product_type)
+
+    if vp_type == VirtualProductType.Scalar:
+        effective_labels = labels or [name]
+    elif vp_type == VirtualProductType.Vector:
+        effective_labels = labels or ["X", "Y", "Z"]
+    elif vp_type == VirtualProductType.MultiComponent:
+        if labels:
+            effective_labels = labels
+        else:
+            # Run callback once to determine component count for default labels
+            try:
+                data = wrapper(0.0, 1.0)
+                n = data[1].shape[1] if isinstance(data, (tuple, list)) and hasattr(data[1], 'shape') and data[1].ndim == 2 else 1
+            except Exception:
+                n = 1
+            effective_labels = [f"C{i}" for i in range(n)]
+    else:
+        effective_labels = None
+
+    if vp_type == VirtualProductType.Spectrogram:
+        create_virtual_product(vp_path, wrapper, vp_type)
+    else:
+        create_virtual_product(vp_path, wrapper, vp_type, labels=effective_labels)
+
+
+def vp_magic(line: str, cell: str, local_ns=None):
+    """Implementation of the %%vp cell magic."""
+    user_ns = local_ns if local_ns is not None else {}
+    # Make type annotation classes available in the cell's namespace
+    from SciQLop.user_api.virtual_products.types import Scalar, Vector, MultiComponent, Spectrogram
+    user_ns.setdefault("Scalar", Scalar)
+    user_ns.setdefault("Vector", Vector)
+    user_ns.setdefault("MultiComponent", MultiComponent)
+    user_ns.setdefault("Spectrogram", Spectrogram)
+
+    args = _parse_args(line)
+    func = _extract_function(cell, user_ns)
+    func_name = func.__name__
+
+    from SciQLop.user_api.virtual_products.types import extract_vp_type_info
+
+    # Extract type info from annotation
+    # Use __annotations__ directly (not get_type_hints) because Vector["Bx", "By", "Bz"]
+    # is eagerly evaluated by __class_getitem__ into a _VPTypeWithLabels instance.
+    # get_type_hints() would try to re-evaluate string annotations and may fail.
+    try:
+        return_ann = func.__annotations__.get("return")
+        type_info = extract_vp_type_info(return_ann)
+    except Exception:
+        type_info = None
+
+    # Inference mode if no annotation
+    if type_info is None:
+        start, stop = _resolve_time_range(args, func)
+        try:
+            data = func(start, stop)
+            type_info = _infer_type_from_data(data)
+            _get_log().info(f"Inferred type: {type_info.product_type} — add return annotation to make explicit")
+        except Exception as e:
+            _get_log().error(f"Cannot infer type for {func_name}: {e}")
+            return
+
+    # Register in the registry (check if new BEFORE registering)
+    is_new = func_name not in _registry._entries
+    entry = _registry.register(func_name, func, type_info.product_type, type_info.labels)
+
+    # Register virtual product only on first creation or signature change
+    if is_new or entry.signature_changed:
+        _register_virtual_product(func_name, entry.wrapper, type_info.product_type,
+                                   type_info.labels, args.path)
+
+    # Debug mode handled in Task 6
+    if args.debug:
+        _handle_debug(args, func, func_name, entry, type_info)
+
+
+def _handle_debug(args, func, func_name, entry, type_info):
+    """Placeholder for debug workbench — implemented in Task 6."""
+    pass
