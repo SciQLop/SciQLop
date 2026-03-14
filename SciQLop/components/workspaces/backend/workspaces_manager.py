@@ -108,12 +108,18 @@ class WorkspaceManager(QObject):
         manifest_path = os.path.join(default_dir, "workspace.sciqlop")
         if not os.path.exists(manifest_path):
             return self._create_workspace("default", default_dir, description="Default workspace", default=True)
-        return WorkspaceManifest.load(manifest_path)
+        manifest = WorkspaceManifest.load(manifest_path)
+        if not manifest.default:
+            manifest.default = True
+            manifest.save(manifest_path)
+        return manifest
 
     def start_jupyterlab(self):
-        self._kernel_manager.init()
-        w = self.workspace
-        self._kernel_manager.clients.start_jupyterlab(cwd=w.workspace_dir)
+        if not self.has_workspace:
+            self.load_workspace(None)
+        url = self._kernel_manager.start_jupyterlab(cwd=self._workspace.workspace_dir)
+        if url:
+            self.jupyterlab_started.emit(url)
 
     def new_qt_console(self):
         self._kernel_manager.init()

@@ -21,6 +21,7 @@ class KernelManager(QObject):
         self._clients: Optional[ClientsManager] = None
         self._deferred_variables: dict = {}
         self._initialized = False
+        self._jupyterlab_starting = False
 
     def init(self):
         if self._initialized:
@@ -66,6 +67,15 @@ class KernelManager(QObject):
     def connection_file(self) -> Optional[str]:
         if self._kernel:
             return self._kernel.connection_file
+        return None
+
+    def start_jupyterlab(self, cwd: str) -> str | None:
+        """Start JupyterLab, or return existing URL if already running/starting."""
+        if self._jupyterlab_starting:
+            return self._clients.jupyterlab_url if self._clients else None
+        self._jupyterlab_starting = True
+        self.init()
+        self._clients.start_jupyterlab(cwd=cwd)
         return None
 
     @property

@@ -30,6 +30,13 @@ class ClientsManager(QObject):
     def has_running_jupyterlab(self):
         return self._running_jupyterlab
 
+    @property
+    def jupyterlab_url(self) -> str | None:
+        for p in self._jupyter_processes:
+            if isinstance(p, JupyterLabClient):
+                return p.url
+        return None
+
     def cleanup(self):
         """Clean up the consoles. Terminate gracefully, escalate to kill."""
         for c in self._jupyter_processes:

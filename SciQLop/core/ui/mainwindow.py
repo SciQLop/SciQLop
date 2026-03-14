@@ -105,9 +105,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.workspace_manager = WorkspaceManagerUI(self)
         self.workspace_manager.pushVariables({"main_window": self})
         self.workspace_manager.workspace_loaded.connect(lambda ws: self.setWindowTitle(f"SciQLop - {ws}"))
-        self.workspace_manager.jupyterlab_started.connect(
-            lambda url: self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, JupyterLabView(None, url),
-                                               size_hint_from_content=False))
+        self._jupyterlab_view: Optional[JupyterLabView] = None
+        self.workspace_manager.jupyterlab_started.connect(self._on_jupyterlab_started)
         self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
         self.toolsMenu.addAction("Start jupyter console", self.workspace_manager.new_qt_console)
 
@@ -183,6 +182,17 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         shortcut.activated.connect(self._command_palette.toggle)
 
         self._center_and_maximise_on_screen()
+
+    def _on_jupyterlab_started(self, url):
+        if self._jupyterlab_view is not None:
+            dw = self.dock_manager.findDockWidget(self._jupyterlab_view.windowTitle())
+            if dw:
+                dw.toggleView(True)
+                dw.raise_()
+                return
+        self._jupyterlab_view = JupyterLabView(None, url)
+        self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self._jupyterlab_view,
+                               size_hint_from_content=False)
 
     def _show_appstore(self):
         if self._appstore is None:

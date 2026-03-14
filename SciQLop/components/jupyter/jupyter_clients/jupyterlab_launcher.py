@@ -65,4 +65,6 @@ class JupyterLabClient(SciQLopJupyterClient):
     def _parse_stdout(self, txt: str) -> str:
         if next(_server_ready_regex.finditer(txt), None):
             self.jupyterlab_ready.emit(self.url)
+            self._stdout_parser = lambda x: x
+            self._stderr_parser = lambda x: x
         return txt
