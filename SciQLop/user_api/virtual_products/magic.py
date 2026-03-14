@@ -260,20 +260,26 @@ def _handle_debug(args, func, func_name, entry, type_info):
         if result.diagnostics:
             overlay.show_diagnostics(result.diagnostics)
         else:
-            data = result.data
-            if isinstance(data, (tuple, list)) and len(data) >= 2:
-                y = data[1]
-                n_pts = len(y) if hasattr(y, '__len__') else 0
-                shape = y.shape if hasattr(y, 'shape') else '?'
-                dtype = str(y.dtype) if hasattr(y, 'dtype') else '?'
-            else:
-                n_pts, shape, dtype = 0, '?', '?'
+            n_pts, shape, dtype = _extract_data_info(result.data)
             overlay.show_success(n_pts, shape, dtype, result.elapsed)
         # Trigger a replot
         from SciQLop.core import TimeRange
         panel.time_range = TimeRange(start, stop)
     else:
         overlay.show_diagnostics(result.diagnostics)
+
+
+def _extract_data_info(data):
+    """Extract (n_points, shape, dtype) from callback return data."""
+    from speasy.products import SpeasyVariable
+    if isinstance(data, SpeasyVariable):
+        values = data.values
+        return len(values), values.shape, str(values.dtype)
+    if isinstance(data, (tuple, list)) and len(data) >= 2:
+        y = data[1]
+        if hasattr(y, 'shape'):
+            return len(y), y.shape, str(y.dtype)
+    return 0, '?', '?'
 
 
 def _panel_is_alive(panel) -> bool:
