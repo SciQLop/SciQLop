@@ -124,6 +124,7 @@ def make_product(name, node: ParameterIndex, provider):
     meta["components"] = get_components(node)
     meta["provider"] = node.spz_provider()
     meta["speasy_id"] = f"{node.spz_provider()}/{node.spz_uid()}"
+    meta["stable_id"] = meta["speasy_id"]
     return ProductsModelNode(name, provider, meta, ProductsModelNodeType.PARAMETER, p_type)
 
 

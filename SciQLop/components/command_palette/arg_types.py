@@ -18,6 +18,23 @@ class PanelArg(CommandArg):
         return items
 
 
+def _strip_root_prefix(path: str) -> str:
+    if path.startswith("root//"):
+        return path[6:]
+    return path
+
+
+def _node_stable_id(products_model, path: str) -> str | None:
+    from SciQLop.user_api.plot._plots import to_product_path
+    node = products_model.node(to_product_path(path))
+    if node is None:
+        return None
+    stable_id = node.metadata("stable_id")
+    if stable_id:
+        return str(stable_id)
+    return None
+
+
 @dataclass
 class ProductArg(CommandArg):
     name: str = "product"
@@ -37,7 +54,6 @@ class ProductArg(CommandArg):
     def filtered_completions(self, query: str, context: dict, max_results: int) -> list[Completion]:
         from SciQLopPlots import QueryParser, ProductsModel
         from PySide6.QtWidgets import QApplication
-        from SciQLop.core.mime import decode_mime
 
         flat = self._ensure_flat_model()
         flat.set_query(QueryParser.parse(query))
@@ -54,16 +70,11 @@ class ProductArg(CommandArg):
         if count > 0:
             indexes = [flat.index(i, 0) for i in range(count)]
             mime = flat.mimeData(indexes)
-            if mime:
-                paths = mime.text().strip().split("\n")
-                for path_text in paths:
-                    # Strip "root/" prefix — ProductsModel.node() doesn't expect it
-                    parts = path_text.split("/")
-                    if parts and parts[0] == "root":
-                        parts = parts[1:]
-                    display = "/".join(parts)
-                    import json
-                    items.append(Completion(value=json.dumps(parts), display=display))
+            if mime and mime.text():
+                for path_text in mime.text().strip().split("\n"):
+                    product_path = _strip_root_prefix(path_text)
+                    description = _node_stable_id(ProductsModel, product_path)
+                    items.append(Completion(value=product_path, display=product_path, description=description))
         return items
 
 

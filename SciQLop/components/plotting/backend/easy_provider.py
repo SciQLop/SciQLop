@@ -101,7 +101,8 @@ class EasyProvider(DataProvider):
         product_name = self._path[-1]
         product_path = self._path[:-1]
         metadata.update(
-            {"description": f"Virtual {parameter_type.name} product built from Python function: {self.name}"})
+            {"description": f"Virtual {parameter_type.name} product built from Python function: {self.name}",
+             "stable_id": path})
         products.add_node(
             product_path,
             ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER, parameter_type, "",

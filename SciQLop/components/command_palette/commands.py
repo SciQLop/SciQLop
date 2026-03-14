@@ -12,17 +12,16 @@ def _get_win():
 
 
 def _do_plot_product(product: str = "", panel: str = ""):
-    import json
+    if not product:
+        return
+    from SciQLop.user_api.plot._plots import to_product_path
+    from SciQLop.components.plotting.ui.time_sync_panel import plot_product
+    from SciQLopPlots import PlotType
     win = _get_win()
-    if panel == "__new__":
-        target = win.new_plot_panel()
-    else:
-        target = win.plot_panel(panel)
-    if target and product:
-        from SciQLop.components.plotting.ui.time_sync_panel import plot_product
-        from SciQLopPlots import PlotType
-        product_path = json.loads(product)
-        plot_product(target, product_path, plot_type=PlotType.TimeSeries)
+    target = win.new_plot_panel() if panel == "__new__" else win.plot_panel(panel)
+    if target is None:
+        return
+    plot_product(target, to_product_path(product), plot_type=PlotType.TimeSeries)
 
 
 def _do_remove_panel(panel: str = ""):
