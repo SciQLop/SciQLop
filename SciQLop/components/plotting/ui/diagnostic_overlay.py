@@ -35,7 +35,18 @@ class DiagnosticOverlay(QWidget):
         self._dispatcher.success_ready.connect(self._on_success)
         self._dispatcher.clear_requested.connect(self._on_clear)
 
+        self._is_status_bar = False  # True for success (bottom bar), False for error (full overlay)
+
+        if parent:
+            parent.installEventFilter(self)
+
         self.hide()
+
+    def eventFilter(self, obj, event):
+        from PySide6.QtCore import QEvent
+        if obj is self.parent() and event.type() == QEvent.Type.Resize:
+            self._resize_to_parent()
+        return False
 
     def _apply_style(self, bg_color: str, text_color: str):
         self.setStyleSheet(
@@ -66,6 +77,7 @@ class DiagnosticOverlay(QWidget):
             self._apply_style("rgba(180, 40, 40, 200)", "#ffffff")
         else:
             self._apply_style("rgba(180, 140, 20, 200)", "#ffffff")
+        self._is_status_bar = False
         self._resize_to_parent()
         self.show()
         self.raise_()
@@ -73,6 +85,7 @@ class DiagnosticOverlay(QWidget):
     def _on_success(self, n_points: int, shape: str, dtype: str, elapsed: float):
         self._label.setText(f"[ok] {n_points} pts, {shape} {dtype}, {elapsed:.2f}s")
         self._apply_style("rgba(40, 140, 40, 180)", "#ffffff")
+        self._is_status_bar = True
         self._resize_to_parent()
         self.show()
         self.raise_()
@@ -82,5 +95,16 @@ class DiagnosticOverlay(QWidget):
         self.hide()
 
     def _resize_to_parent(self):
-        if self.parent():
-            self.setGeometry(self.parent().rect())
+        if not self.parent():
+            return
+        parent_rect = self.parent().rect()
+        if self._is_status_bar:
+            bar_height = 24
+            self.setGeometry(
+                parent_rect.x(),
+                parent_rect.bottom() - bar_height,
+                parent_rect.width(),
+                bar_height,
+            )
+        else:
+            self.setGeometry(parent_rect)
