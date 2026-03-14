@@ -13,9 +13,24 @@ import numpy as np
 class MutableCallback:
     def __init__(self, callback: Callable):
         self.callback = callback
+        self._update_metadata(callback)
+
+    def _update_metadata(self, callback: Callable):
+        """Forward signature/annotations so EasyProvider can inspect argument types."""
+        import functools
+        functools.update_wrapper(self, callback)
+
+    @property
+    def callback(self):
+        return self._callback
+
+    @callback.setter
+    def callback(self, value):
+        self._callback = value
+        self._update_metadata(value)
 
     def __call__(self, start, stop):
-        return self.callback(start, stop)
+        return self._callback(start, stop)
 
 
 @dataclass
@@ -262,11 +277,27 @@ def _handle_debug(args, func, func_name, entry, type_info):
         else:
             n_pts, shape, dtype = _extract_data_info(result.data)
             overlay.show_success(n_pts, shape, dtype, result.elapsed)
-        # Trigger a replot
+        # Plot the product on the debug panel and set time range
         from SciQLop.core import TimeRange
+        _plot_on_debug_panel(panel, entry, func_name, type_info)
         panel.time_range = TimeRange(start, stop)
     else:
         overlay.show_diagnostics(result.diagnostics)
+
+
+def _plot_on_debug_panel(panel, entry, func_name, type_info):
+    """Plot the virtual product on the debug panel (only on first run or signature change)."""
+    if getattr(panel, '_vp_plotted', False) and not entry.signature_changed:
+        return
+    from SciQLop.components.plotting.ui.time_sync_panel import plot_product
+    from SciQLopPlots import PlotType
+    # Clear existing plots if signature changed
+    if entry.signature_changed:
+        while panel.plot_count() > 0:
+            panel.remove_plot(0)
+    path = func_name.split('/')
+    plot_product(panel, path, plot_type=PlotType.TimeSeries)
+    panel._vp_plotted = True
 
 
 def _extract_data_info(data):
