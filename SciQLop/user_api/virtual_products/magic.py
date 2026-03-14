@@ -277,10 +277,11 @@ def _handle_debug(args, func, func_name, entry, type_info):
         else:
             n_pts, shape, dtype = _extract_data_info(result.data)
             overlay.show_success(n_pts, shape, dtype, result.elapsed)
-        # Plot the product on the debug panel and set time range
+        # Plot the product on the debug panel and force refresh
         from SciQLop.core import TimeRange
         _plot_on_debug_panel(panel, entry, func_name, type_info)
         panel.time_range = TimeRange(start, stop)
+        panel.replot()
     else:
         overlay.show_diagnostics(result.diagnostics)
 
