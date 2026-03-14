@@ -344,18 +344,14 @@ def _create_debug_panel(func_name: str, start: float, stop: float):
     doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
     doc.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
 
-    # Find the current active dock area and split to the right
-    current_area = mw.dock_manager.lastAddedDockAreaWidget()
-    if current_area:
-        mw.dock_manager.addDockWidget(QtAds.DockWidgetArea.RightDockWidgetArea, doc, current_area)
-    else:
-        mw.dock_manager.addDockWidget(QtAds.DockWidgetArea.RightDockWidgetArea, doc)
+    mw.dock_manager.addDockWidget(QtAds.DockWidgetArea.RightDockWidgetArea, doc)
 
     # Set splitter ratio to ~70/30
     splitter = mw.dock_manager.rootSplitter()
-    if splitter:
+    if splitter and splitter.count() >= 2:
         total = splitter.width()
-        mw.dock_manager.setSplitterSizes(splitter, [int(total * 0.7), int(total * 0.3)])
+        sizes = [int(total * 0.7)] + [int(total * 0.3 / (splitter.count() - 1))] * (splitter.count() - 1)
+        splitter.setSizes(sizes)
 
     mw.panel_added.emit(panel)
     mw._notify_panels_list_changed()
