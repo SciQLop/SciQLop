@@ -69,8 +69,8 @@ def _plot_in_new_panel(product_path: list[str], main_window):
 def setup_product_context_menu(product_tree_view, main_window):
     """Connect a right-click context menu on the product tree that lets users
     pick which panel/plot to add the selected product to."""
-    tree: QTreeView = next(
-        (c for c in product_tree_view.children() if isinstance(c, QTreeView)), None)
+    trees = product_tree_view.findChildren(QTreeView)
+    tree: QTreeView = trees[0] if trees else None
     if tree is None:
         log.warning("Could not find QTreeView inside ProductsView")
         return
