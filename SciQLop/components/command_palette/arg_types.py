@@ -54,16 +54,18 @@ class ProductArg(CommandArg):
     def filtered_completions(self, query: str, context: dict, max_results: int) -> list[Completion]:
         from SciQLopPlots import QueryParser, ProductsModel
         from PySide6.QtWidgets import QApplication
+        from PySide6.QtCore import QEventLoop
 
         flat = self._ensure_flat_model()
         flat.set_query(QueryParser.parse(query))
 
         app = QApplication.instance()
         if app:
+            flags = QEventLoop.ProcessEventsFlag.ExcludeSocketNotifiers
             prev_count = -1
             stable_rounds = 0
             for _ in range(500):
-                app.processEvents()
+                app.processEvents(flags)
                 cur = flat.rowCount()
                 if cur == prev_count:
                     stable_rounds += 1

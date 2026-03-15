@@ -23,6 +23,7 @@ def _complete_products(prefix: str, max_results: int = 20) -> list[str]:
     """
     from SciQLopPlots import ProductsModel, ProductsFlatFilterModel, QueryParser
     from PySide6.QtWidgets import QApplication
+    from PySide6.QtCore import QEventLoop
 
     flat = ProductsFlatFilterModel(ProductsModel.instance())
     flat.set_query(QueryParser.parse(prefix))
@@ -30,12 +31,15 @@ def _complete_products(prefix: str, max_results: int = 20) -> list[str]:
     # Pump the event loop until the model finishes processing all batches.
     # The model sorts by score only after all batches complete, so breaking
     # early would return unsorted (effectively random-order) results.
+    # ExcludeSocketNotifiers avoids re-entering qasync's kernel poller
+    # when called from within ipykernel's dispatch_queue.
     app = QApplication.instance()
     if app:
+        flags = QEventLoop.ProcessEventsFlag.ExcludeSocketNotifiers
         prev_count = -1
         stable_rounds = 0
         for _ in range(500):
-            app.processEvents()
+            app.processEvents(flags)
             cur = flat.rowCount()
             if cur == prev_count:
                 stable_rounds += 1
