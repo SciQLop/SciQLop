@@ -49,3 +49,17 @@ def _complete_panels() -> list[str]:
     if mw is None:
         return []
     return list(reversed(mw.plot_panels()))
+
+
+_VP_FLAGS = ["--path", "--debug", "--start", "--stop"]
+
+
+def complete_vp(completer, event):
+    """Tab completer for %%vp: --path → product, -- → flags."""
+    parts = event.line.split()
+    prev = parts[-2] if len(parts) >= 2 else ""
+    if prev == "--path":
+        return _complete_products(event.symbol)
+    if event.symbol.startswith("-"):
+        return [f for f in _VP_FLAGS if f.startswith(event.symbol)]
+    return []

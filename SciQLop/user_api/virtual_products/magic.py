@@ -91,12 +91,7 @@ def _extract_function(cell: str, user_ns: dict) -> callable:
     raise ValueError("No function definition found in cell")
 
 
-def _parse_time_arg(value: str) -> float:
-    """Parse a time argument as either a float or an ISO 8601 date string."""
-    try:
-        return float(value)
-    except ValueError:
-        return datetime.fromisoformat(value).replace(tzinfo=timezone.utc).timestamp()
+from SciQLop.user_api.magics.completions import _parse_time as _parse_time_arg
 
 
 def _resolve_time_range(args, func):

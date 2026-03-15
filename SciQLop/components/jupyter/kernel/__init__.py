@@ -79,8 +79,8 @@ class InternalIPKernel(QObject):
         self._register_magics()
 
     def _register_magics(self):
-        from SciQLop.user_api.virtual_products import register_vp_magic
-        register_vp_magic(self.ipykernel.shell)
+        from SciQLop.user_api.magics import register_all_magics
+        register_all_magics(self.ipykernel.shell)
 
     def push_variables(self, variable_dict):
         self.ipykernel.shell.push(variable_dict)

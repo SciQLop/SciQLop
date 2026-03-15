@@ -106,3 +106,37 @@ class TestCompletePanels:
             assert _complete_panels() == []
         finally:
             self._restore_gui_module()
+
+
+class TestCompleteVp:
+    @patch("SciQLop.user_api.magics.completions._complete_products")
+    def test_completes_product_after_path_flag(self, mock_cp):
+        from SciQLop.user_api.magics.completions import complete_vp
+        mock_cp.return_value = ["speasy/amda/imf"]
+        event = MagicMock()
+        event.line = "%%vp --path im"
+        event.symbol = "im"
+
+        result = complete_vp(None, event)
+        assert result == ["speasy/amda/imf"]
+
+    def test_completes_flags(self):
+        from SciQLop.user_api.magics.completions import complete_vp
+        event = MagicMock()
+        event.line = "%%vp --"
+        event.symbol = "--"
+
+        result = complete_vp(None, event)
+        assert "--path" in result
+        assert "--debug" in result
+        assert "--start" in result
+        assert "--stop" in result
+
+    def test_no_completion_for_bare_text(self):
+        from SciQLop.user_api.magics.completions import complete_vp
+        event = MagicMock()
+        event.line = "%%vp foo"
+        event.symbol = "foo"
+
+        result = complete_vp(None, event)
+        assert result == []
