@@ -1,10 +1,9 @@
-"""Implementation of %plot line magic and its tab completer."""
+"""Implementation of %plot line magic."""
 import shlex
-import types
 
 from IPython.core.error import UsageError
 
-from SciQLop.user_api.magics.completions import _complete_products, _complete_panels
+from SciQLop.user_api.magics.completions import _complete_products
 
 
 def _resolve_product(query: str) -> str:
@@ -37,14 +36,6 @@ def plot_magic(line: str):
         panel = create_plot_panel()
 
     panel.plot_product(product_path, plot_type=PlotType.TimeSeries)
-
-
-def complete_plot(completer, event):
-    """Tab completer for %plot: product (1st arg), panel (2nd arg)."""
-    parts = event.line.split()
-    if len(parts) <= 2:
-        return _complete_products(event.symbol)
-    return [p for p in _complete_panels() if p.startswith(event.symbol)]
 
 
 def plot_panel(name):

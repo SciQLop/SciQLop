@@ -50,27 +50,3 @@ class TestPlotMagic:
         from SciQLop.user_api.magics.plot_magic import plot_magic
         with pytest.raises(Exception, match="Usage"):
             plot_magic("")
-
-
-class TestCompletePlot:
-    @patch("SciQLop.user_api.magics.plot_magic._complete_products")
-    def test_completes_product_on_first_arg(self, mock_cp):
-        from SciQLop.user_api.magics.plot_magic import complete_plot
-        mock_cp.return_value = ["speasy/amda/imf"]
-        event = MagicMock()
-        event.line = "%plot im"
-        event.symbol = "im"
-
-        result = complete_plot(None, event)
-        assert result == ["speasy/amda/imf"]
-
-    @patch("SciQLop.user_api.magics.plot_magic._complete_panels")
-    def test_completes_panel_on_second_arg(self, mock_panels):
-        from SciQLop.user_api.magics.plot_magic import complete_plot
-        mock_panels.return_value = ["Panel-1", "Panel-0"]
-        event = MagicMock()
-        event.line = "%plot imf Pan"
-        event.symbol = "Pan"
-
-        result = complete_plot(None, event)
-        assert result == ["Panel-1", "Panel-0"]

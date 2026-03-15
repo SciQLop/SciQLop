@@ -65,15 +65,55 @@ def _complete_panels() -> list[str]:
     return list(reversed(mw.plot_panels()))
 
 
+# --- Matcher API v2 completers (work across JupyterLab + QtConsole) ---
+
 _VP_FLAGS = ["--path", "--debug", "--start", "--stop"]
 
 
-def complete_vp(completer, event):
-    """Tab completer for %%vp: --path → product, -- → flags."""
-    parts = event.line.split()
+def _make_result(matches, suppress=True):
+    """Build a SimpleMatcherResult dict from a list of strings."""
+    from IPython.core.completer import SimpleCompletion
+    return {
+        "completions": [SimpleCompletion(text=m) for m in matches],
+        "suppress": suppress if matches else False,
+        "ordered": True,
+    }
+
+
+def _match_plot(context):
+    """Matcher for %plot: product (1st arg), panel (2nd arg)."""
+    line = context.line_with_cursor
+    if not line.lstrip().startswith("%plot "):
+        return _make_result([])
+    parts = line.split()
+    token = context.token
+    if len(parts) <= 2:
+        return _make_result(_complete_products(token))
+    return _make_result([p for p in _complete_panels() if p.startswith(token)])
+
+
+def _match_timerange(context):
+    """Matcher for %timerange: panel name on 1st arg or 4th token."""
+    line = context.line_with_cursor
+    if not line.lstrip().startswith("%timerange"):
+        return _make_result([])
+    parts = line.split()
+    token = context.token
+    if len(parts) <= 2 or len(parts) == 4:
+        return _make_result([p for p in _complete_panels() if p.startswith(token)])
+    return _make_result([])
+
+
+def _match_vp(context):
+    """Matcher for %%vp: --path -> product, -- -> flags."""
+    line = context.line_with_cursor
+    if not line.lstrip().startswith("%%vp"):
+        return _make_result([])
+    parts = line.split()
+    token = context.token
     prev = parts[-2] if len(parts) >= 2 else ""
     if prev == "--path":
-        return _complete_products(event.symbol)
-    if event.symbol.startswith("-"):
-        return [f for f in _VP_FLAGS if f.startswith(event.symbol)]
-    return []
+        return _make_result(_complete_products(token))
+    if token.startswith("-"):
+        return _make_result([f for f in _VP_FLAGS if f.startswith(token)])
+    return _make_result([])

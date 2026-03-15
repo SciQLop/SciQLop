@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from IPython.core.error import UsageError
 
-from SciQLop.user_api.magics.completions import _parse_time, _complete_panels
+from SciQLop.user_api.magics.completions import _parse_time
 
 
 def _panel_names():
@@ -54,9 +54,3 @@ def timerange_magic(line: str):
         raise UsageError("Usage: %timerange [panel] or %timerange <start> <stop> <panel>")
 
 
-def complete_timerange(completer, event):
-    """Tab completer for %timerange: panel name on 1st arg or 4th token."""
-    parts = event.line.split()
-    if len(parts) <= 2 or len(parts) == 4:
-        return [p for p in _complete_panels() if p.startswith(event.symbol)]
-    return []
