@@ -37,9 +37,16 @@ jobs:
         env:
           SCIQLOP_DEBUG: 1
           GITHUB_ACTIONS: 1
+          SCIQLOP_TEST_REPORTS: test-reports
         run: |
           pip install pytest pytest-cov
           pytest --cov=./ --cov-report=xml
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: fuzzer-stories-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: test-reports/
+          if-no-files-found: ignore
       - name: Check that release process is not broken
         if: matrix.python-version == '3.8' && matrix.os == 'ubuntu-latest'
         env:
