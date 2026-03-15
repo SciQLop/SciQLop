@@ -60,10 +60,18 @@ class ProductArg(CommandArg):
 
         app = QApplication.instance()
         if app:
-            for _ in range(100):
+            prev_count = -1
+            stable_rounds = 0
+            for _ in range(500):
                 app.processEvents()
-                if flat.rowCount() >= max_results:
-                    break
+                cur = flat.rowCount()
+                if cur == prev_count:
+                    stable_rounds += 1
+                    if stable_rounds >= 3:
+                        break
+                else:
+                    stable_rounds = 0
+                    prev_count = cur
 
         items = []
         count = min(flat.rowCount(), max_results)
