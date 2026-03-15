@@ -21,6 +21,8 @@
 - **Speasy plot backend**: SciQLop registers as a `speasy` plot backend — `speasy.plot()` renders directly into SciQLop panels
 - **Speasy catalog integration**: Speasy inventory catalogs and timetables exposed as read-only catalog providers
 - **Jupyter integration improvements**: Extracted `KernelManager` for kernel lifecycle, adaptive kernel poller, hardened subprocess cleanup with graceful termination escalation
+- **Command palette**: Ctrl+K fuzzy command palette with QAction harvesting, multi-step argument chains, LRU history, and product plotting integration
+- **Virtual product `%%vp` magic**: Cell magic for defining virtual products with type annotations (`Scalar`, `Vector["Bx","By","Bz"]`), `--debug` workbench mode with diagnostic overlays, hot-reload via `MutableCallback`
 - **Settings system**: New Pydantic-based settings with category/subcategory organization, YAML persistence, and type-based UI delegate registry
 - **Theming**: Dark palette support with automatic icon inversion based on current palette, styled QSplitter
 
@@ -52,10 +54,17 @@
 - Modernized QSS theme to match welcome page design language
 - Excluded speasy catalogs and timetables from the product tree (moved to catalog providers)
 
+### Testing
+
+- **Story-driven UI testing framework**: Declarative `@ui_action` decorator with narrative templates, `StoryRunner` for scripted tests and Hypothesis `RuleBasedStateMachine` for fuzzing — produces human-readable failure stories and pseudo-code reproducers
+- Migrated plot and command palette workflow tests to story-driven API
+- CI uploads fuzzer story artifacts on test failure
+
 ### Dependencies
 
 - Bumped PySide6 to 6.10.2
 - Added uv as a dependency
+- Added hypothesis for stateful UI testing
 - Frozen Jupyter packages for stability
 - Added keyring for credential storage
 
