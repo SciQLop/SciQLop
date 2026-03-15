@@ -1,6 +1,7 @@
 import inspect
+import pytest
 
-from tests.fuzzing.actions import ui_action, ActionRegistry, settle
+from tests.fuzzing.actions import ui_action, ActionRegistry, StoryRunner, settle
 from tests.fuzzing.model import AppModel
 
 
@@ -87,3 +88,51 @@ def test_callback_binding_introspects_signature():
     meta.model_update(model=AppModel(), **bound)
     assert received["result"] == "val"
     assert "extra" not in received
+
+
+class _FakeMainWindow:
+    """Minimal stub for StoryRunner tests (no Qt needed)."""
+    _panels: list[str] = []
+
+    def plot_panels(self):
+        return list(self._panels)
+
+    def remove_panel(self, name):
+        self._panels.remove(name)
+
+
+def test_story_runner_records_steps():
+    @ui_action(
+        target="panels",
+        narrate="Created panel '{result}'",
+        model_update=lambda model, result: model.panels.append(result),
+        verify=lambda main_window, model: True,
+    )
+    def create(main_window, model):
+        return "P1"
+
+    mw = _FakeMainWindow()
+    runner = StoryRunner(mw)
+    result = runner.run(create)
+
+    assert result == "P1"
+    assert runner.model.panels == ["P1"]
+    assert len(runner.story.steps) == 1
+    assert "P1" in runner.story.steps[0].narrative
+
+
+def test_story_runner_dumps_on_failure():
+    @ui_action(
+        narrate="Boom",
+        model_update=lambda model: None,
+        verify=lambda main_window, model: False,
+    )
+    def failing(main_window, model):
+        return None
+
+    runner = StoryRunner(_FakeMainWindow())
+    with pytest.raises(AssertionError, match="Verification failed"):
+        runner.run(failing)
+
+    assert len(runner.story.steps) == 1
+    assert runner.story.steps[0].error is not None

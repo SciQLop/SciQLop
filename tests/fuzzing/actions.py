@@ -76,6 +76,79 @@ def _bind_kwargs(fn: Callable, kwargs: dict[str, Any]) -> dict[str, Any]:
     return {k: v for k, v in kwargs.items() if k in params}
 
 
+def run_action(fn: Callable, main_window, model: AppModel, story: Story, **kwargs) -> Any:
+    """Execute a single @ui_action-decorated function with story recording and verification."""
+    meta: ActionMeta = fn._ui_meta
+
+    try:
+        result = fn(main_window, model, **kwargs)
+    except Exception as e:
+        narrate_args = {k: str(v) for k, v in kwargs.items()}
+        step = Step(
+            action_name=fn.__name__,
+            args=narrate_args,
+            narrate_template=meta.narrate,
+            error=e,
+        )
+        story.record(step)
+        _dump_story(story)
+        raise
+
+    if isinstance(result, dict):
+        cb_kwargs = {**kwargs, **result, "result": result}
+        narrate_args = {k: str(v) for k, v in result.items()}
+    else:
+        cb_kwargs = {**kwargs, "result": result}
+        narrate_args = {k: str(v) for k, v in kwargs.items()}
+        if result is not None:
+            narrate_args["result"] = str(result)
+
+    step = Step(
+        action_name=fn.__name__,
+        args=narrate_args,
+        narrate_template=meta.narrate,
+        result=result if not isinstance(result, dict) else None,
+    )
+    story.record(step)
+
+    settle(meta.settle_timeout_ms)
+
+    model_kwargs = _bind_kwargs(meta.model_update, cb_kwargs)
+    meta.model_update(model, **model_kwargs)
+
+    verify_kwargs = _bind_kwargs(meta.verify, cb_kwargs)
+    try:
+        ok = meta.verify(main_window, model, **verify_kwargs)
+        if ok is False:
+            raise AssertionError(f"Verification failed after {fn.__name__}")
+    except Exception as e:
+        story.steps[-1].error = e
+        _dump_story(story)
+        raise
+
+    return result
+
+
+class StoryRunner:
+    """Run @ui_action functions as a scripted sequence with narrative output on failure."""
+
+    def __init__(self, main_window):
+        self.main_window = main_window
+        self.model = AppModel()
+        self.story = Story()
+
+    def run(self, action_fn: Callable, **kwargs) -> Any:
+        return run_action(action_fn, self.main_window, self.model, self.story, **kwargs)
+
+    def cleanup(self):
+        for panel_name in list(self.model.panels):
+            try:
+                self.main_window.remove_panel(panel_name)
+            except Exception:
+                pass
+        settle()
+
+
 class ActionRegistry:
     def __init__(self):
         self.actions: list[Callable] = []
@@ -141,57 +214,10 @@ class ActionRegistry:
 
             def make_rule_method(fn, fn_meta):
                 def rule_method(self, **kwargs):
-                    mw = self.__class__.main_window
-
-                    try:
-                        result = fn(mw, self._model, **kwargs)
-                    except Exception as e:
-                        narrate_args = {k: str(v) for k, v in kwargs.items()}
-                        step = Step(
-                            action_name=fn.__name__,
-                            args=narrate_args,
-                            narrate_template=fn_meta.narrate,
-                            error=e,
-                        )
-                        self._story.record(step)
-                        _dump_story(self._story)
-                        raise
-
-                    if isinstance(result, dict):
-                        cb_kwargs = {**kwargs, **result, "result": result}
-                        narrate_args = {k: str(v) for k, v in result.items()}
-                    else:
-                        cb_kwargs = {**kwargs, "result": result}
-                        narrate_args = {k: str(v) for k, v in kwargs.items()}
-                        if result is not None:
-                            narrate_args["result"] = str(result)
-
-                    step = Step(
-                        action_name=fn.__name__,
-                        args=narrate_args,
-                        narrate_template=fn_meta.narrate,
-                        result=result if not isinstance(result, dict) else None,
+                    return run_action(
+                        fn, self.__class__.main_window,
+                        self._model, self._story, **kwargs,
                     )
-                    self._story.record(step)
-
-                    settle(fn_meta.settle_timeout_ms)
-
-                    model_kwargs = _bind_kwargs(fn_meta.model_update, cb_kwargs)
-                    fn_meta.model_update(self._model, **model_kwargs)
-
-                    verify_kwargs = _bind_kwargs(fn_meta.verify, cb_kwargs)
-                    try:
-                        ok = fn_meta.verify(mw, self._model, **verify_kwargs)
-                        if ok is False:
-                            raise AssertionError(
-                                f"Verification failed after {fn.__name__}"
-                            )
-                    except Exception as e:
-                        self._story.steps[-1].error = e
-                        _dump_story(self._story)
-                        raise
-
-                    return result
 
                 return rule_method
 

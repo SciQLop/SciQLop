@@ -15,7 +15,10 @@ class Step:
 
     @property
     def narrative(self) -> str:
-        return self.narrate_template.format(**self.args, result=self.result)
+        fmt_kwargs = {**self.args}
+        if self.result is not None:
+            fmt_kwargs["result"] = self.result
+        return self.narrate_template.format(**fmt_kwargs)
 
     def as_code(self) -> str:
         args_str = ", ".join(f"{k}={v!r}" for k, v in self.args.items())
