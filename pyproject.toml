@@ -85,6 +85,7 @@ dev = [
     "pytest",
     "pytest-cov",
     "pytest-qt",
+    "hypothesis",
     'pytest-xvfb; platform_system == "Linux"',
 ]
 
