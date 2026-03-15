@@ -1,31 +1,42 @@
-# UI Fuzzing Framework
+# Story-Driven UI Testing & Fuzzing
 
-Declarative, story-driven UI fuzzing for SciQLop using Hypothesis stateful testing.
+Declarative, story-driven UI testing for SciQLop. Two modes of use:
 
-## How It Works
+1. **Scripted stories** — hand-written sequences of actions that produce human-readable narratives on failure
+2. **Fuzzing** — Hypothesis explores random action sequences and shrinks failures automatically
 
-The fuzzer explores random sequences of user actions (create panel, zoom, remove panel, etc.) and checks that the app state matches expectations after each step. When something fails, it produces:
+Both modes share the same `@ui_action` vocabulary, so every action you define benefits both.
 
-1. A **human-readable story** of what the user did
-2. A **pseudo-code reproducer** you can adapt into a regression test
+## Quick Start: Scripted Stories
 
-Hypothesis automatically **shrinks** failing sequences to the minimal steps needed to reproduce the bug.
+Write UI tests as a sequence of declared actions. If any step fails, you get the full narrative of what happened plus a pseudo-code reproducer.
 
-## Running
+```python
+from tests.fuzzing.panel_actions import create_panel, remove_panel, zoom_panel
+
+def test_create_and_navigate(story_runner):
+    panel = story_runner.run(create_panel)
+    story_runner.run(zoom_panel, panel=panel, t_start=0.0, t_stop=100.0)
+    story_runner.run(remove_panel, panel=panel)
+```
+
+The `story_runner` fixture (from `conftest.py`) handles model tracking, verification after each step, and cleanup.
+
+## Quick Start: Fuzzing
+
+The fuzzer explores random sequences of actions and checks that the app state matches expectations after each step.
 
 ```bash
 # Run the fuzzer
 uv run pytest tests/fuzzing/test_ui_fuzzing.py -v -s
 
-# Run with more examples (slower, better coverage)
+# Run with more examples
 uv run pytest tests/fuzzing/test_ui_fuzzing.py -v -s --hypothesis-seed=0
 ```
 
-Failure stories are saved to `test-reports/` as `.txt` (narrative) and `.py` (reproducer).
-
 ## Reading Failure Output
 
-When the fuzzer finds a bug, you'll see output like:
+When a test fails (scripted or fuzzed), you see:
 
 ```
 === FAILURE STORY ===
@@ -44,6 +55,8 @@ def test_reproducer(main_window, qtbot):
     actions.remove_panel(panel='Panel-0')
 === END ===
 ```
+
+Stories are also saved to `test-reports/` as `.txt` (narrative) and `.py` (reproducer).
 
 ## Adding a New Action
 
@@ -64,18 +77,51 @@ def my_action(main_window, model, panel):
 
 2. If the action introduces new state, add a field to `AppModel` in `model.py`
 3. If you need to query new app state, add a helper to `introspect.py`
-4. Register the function with `@registry.register`
+4. Register with `@registry.register` — this wires it into the Hypothesis fuzzer
+5. Use in scripted tests via `story_runner.run(my_action, panel=...)`
 
-That's it — the framework handles wiring it into the Hypothesis state machine.
+## Two Usage Modes
+
+### StoryRunner (scripted tests)
+
+```python
+from tests.fuzzing.actions import StoryRunner
+
+def test_my_workflow(story_runner):
+    # story_runner is a fixture, or create manually:
+    # runner = StoryRunner(main_window)
+    result = story_runner.run(some_action, arg="value")
+    story_runner.run(another_action, thing=result)
+```
+
+- Each `run()` call: executes the action → settles Qt events → updates model → verifies app state → records step
+- On failure: dumps the full narrative up to the failing step
+- Cleanup is automatic (via fixture teardown)
+
+### Hypothesis Fuzzer (exploratory testing)
+
+```python
+from tests.fuzzing.panel_actions import registry
+
+SciQLopUIFuzzer = registry.build_state_machine(
+    name="SciQLopUIFuzzer",
+    max_examples=10,       # number of independent runs
+    stateful_step_count=10, # max steps per run
+)
+```
+
+- Hypothesis picks random valid action sequences based on preconditions and bundles
+- Automatically shrinks failures to minimal reproducing sequence
+- Same actions, same verification, same narrative output
 
 ## Architecture
 
 ```
-actions.py      — @ui_action decorator, ActionRegistry, build_state_machine()
+actions.py      — @ui_action decorator, run_action(), StoryRunner, ActionRegistry, build_state_machine()
 model.py        — AppModel dataclass (expected state)
 story.py        — Step + Story (narrative rendering)
 introspect.py   — pure queries against real app state
 *_actions.py    — action definitions grouped by domain
-conftest.py     — test-reports directory setup
+conftest.py     — story_runner fixture, test-reports directory setup
 test_*.py       — pytest entry points
 ```
