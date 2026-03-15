@@ -326,6 +326,15 @@ def _panel_is_alive(panel) -> bool:
         return False
 
 
+def _find_existing_debug_dock(mw):
+    """Find an existing VP Debug dock widget to stack below."""
+    import PySide6QtAds as QtAds
+    for doc in mw.dock_manager.dockWidgetsMap().values():
+        if doc.windowTitle().startswith("VP Debug:") and not doc.isClosed():
+            return doc
+    return None
+
+
 def _create_debug_panel(func_name: str, start: float, stop: float):
     from SciQLop.user_api.gui import get_main_window
     from SciQLop.core import TimeRange
@@ -344,14 +353,26 @@ def _create_debug_panel(func_name: str, start: float, stop: float):
     doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
     doc.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
 
-    mw.dock_manager.addDockWidget(QtAds.DockWidgetArea.RightDockWidgetArea, doc)
+    existing_debug = _find_existing_debug_dock(mw)
+    if existing_debug is not None:
+        # Stack vertically below existing debug panel
+        area = existing_debug.dockAreaWidget()
+        mw.dock_manager.addDockWidget(QtAds.DockWidgetArea.BottomDockWidgetArea, doc, area)
+        # Equalize vertical space among debug panels
+        splitter = area.parentSplitter()
+        if splitter and splitter.count() >= 2:
+            equal = splitter.height() // splitter.count()
+            splitter.setSizes([equal] * splitter.count())
+    else:
+        # First debug panel: add to the right
+        mw.dock_manager.addDockWidget(QtAds.DockWidgetArea.RightDockWidgetArea, doc)
 
-    # Set splitter ratio to ~70/30
-    splitter = mw.dock_manager.rootSplitter()
-    if splitter and splitter.count() >= 2:
-        total = splitter.width()
-        sizes = [int(total * 0.7)] + [int(total * 0.3 / (splitter.count() - 1))] * (splitter.count() - 1)
-        splitter.setSizes(sizes)
+    # Always enforce 60/40 horizontal split
+    root = mw.dock_manager.rootSplitter()
+    if root and root.count() >= 2:
+        total = root.width()
+        sizes = [int(total * 0.6)] + [int(total * 0.4 / (root.count() - 1))] * (root.count() - 1)
+        root.setSizes(sizes)
 
     mw.panel_added.emit(panel)
     mw._notify_panels_list_changed()
