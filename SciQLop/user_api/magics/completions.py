@@ -67,6 +67,12 @@ def _complete_panels() -> list[str]:
 
 # --- Matcher API v2 completers (work across JupyterLab + QtConsole) ---
 
+def _v2(func):
+    """Mark a function as a Matcher API v2 completer (receives CompletionContext)."""
+    func.matcher_api_version = 2
+    return func
+
+
 _VP_FLAGS = ["--path", "--debug", "--start", "--stop"]
 
 
@@ -80,6 +86,7 @@ def _make_result(matches, suppress=True):
     }
 
 
+@_v2
 def _match_plot(context):
     """Matcher for %plot: product (1st arg), panel (2nd arg)."""
     line = context.line_with_cursor
@@ -92,6 +99,7 @@ def _match_plot(context):
     return _make_result([p for p in _complete_panels() if p.startswith(token)])
 
 
+@_v2
 def _match_timerange(context):
     """Matcher for %timerange: panel name on 1st arg or 4th token."""
     line = context.line_with_cursor
@@ -104,6 +112,7 @@ def _match_timerange(context):
     return _make_result([])
 
 
+@_v2
 def _match_vp(context):
     """Matcher for %%vp: --path -> product, -- -> flags."""
     line = context.line_with_cursor
