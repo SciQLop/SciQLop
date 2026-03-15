@@ -5,9 +5,6 @@ from hypothesis import strategies as st
 from tests.fuzzing.actions import ui_action, ActionRegistry
 from tests.fuzzing.introspect import count_panels, panel_time_range
 
-from SciQLop.user_api.plot import create_plot_panel
-
-
 registry = ActionRegistry()
 
 
@@ -19,6 +16,8 @@ registry = ActionRegistry()
     verify=lambda main_window, model: count_panels(main_window) == len(model.panels),
 )
 def create_panel(main_window, model):
+    from SciQLop.user_api.plot import create_plot_panel
+
     panel = create_plot_panel()
     # Use ._impl.name to match what main_window.plot_panels() returns
     return panel._impl.name
