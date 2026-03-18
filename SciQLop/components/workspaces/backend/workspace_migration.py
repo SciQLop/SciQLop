@@ -44,8 +44,8 @@ def migrate_workspace(workspace_dir: Path | str) -> bool:
     manifest.save(manifest_path)
     WorkspaceManifest.touch_last_used(workspace_dir)
 
-    # Backup old file
-    old_path.rename(workspace_dir / "workspace.json.bak")
+    # Keep old workspace.json for backward compatibility with older SciQLop versions
+    # old_path.rename(workspace_dir / "workspace.json.bak")
 
     # Remove old dependencies directory
     deps_dir = workspace_dir / "dependencies"
@@ -53,4 +53,41 @@ def migrate_workspace(workspace_dir: Path | str) -> bool:
         shutil.rmtree(deps_dir)
 
     log.info("Migration complete: %s", manifest_path)
+    return True
+
+
+def _manifest_to_legacy_json(manifest: WorkspaceManifest) -> dict:
+    return {
+        "name": manifest.name,
+        "description": manifest.description,
+        "image": manifest.image,
+        "default_workspace": manifest.default,
+        "dependencies": manifest.requires,
+    }
+
+
+def restore_legacy_json(workspace_dir: Path | str) -> bool:
+    """Re-create workspace.json from workspace.sciqlop for backward compatibility.
+
+    Useful for workspaces that were already migrated (workspace.json was renamed
+    to .bak or deleted). No-op if workspace.json already exists.
+
+    Returns True if workspace.json was (re)created, False if skipped.
+    """
+    workspace_dir = Path(workspace_dir)
+    old_path = workspace_dir / "workspace.json"
+    bak_path = workspace_dir / "workspace.json.bak"
+    manifest_path = workspace_dir / "workspace.sciqlop"
+
+    if old_path.exists() or not manifest_path.exists():
+        return False
+
+    if bak_path.exists():
+        bak_path.rename(old_path)
+        log.info("Restored workspace.json from .bak in %s", workspace_dir)
+        return True
+
+    manifest = WorkspaceManifest.load(manifest_path)
+    old_path.write_text(json.dumps(_manifest_to_legacy_json(manifest), indent=2))
+    log.info("Re-created workspace.json for backward compatibility in %s", workspace_dir)
     return True

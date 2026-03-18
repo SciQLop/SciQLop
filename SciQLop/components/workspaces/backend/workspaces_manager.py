@@ -26,11 +26,12 @@ log = getLogger(__name__)
 
 def _ensure_migrated(ws_dir: str) -> bool:
     """Migrate workspace.json → workspace.sciqlop if needed. Returns True if manifest exists."""
+    from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace, restore_legacy_json
     manifest_path = os.path.join(ws_dir, "workspace.sciqlop")
     if os.path.exists(manifest_path):
+        restore_legacy_json(ws_dir)
         return True
     if os.path.exists(os.path.join(ws_dir, "workspace.json")):
-        from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
         migrate_workspace(ws_dir)
         return os.path.exists(manifest_path)
     return False
