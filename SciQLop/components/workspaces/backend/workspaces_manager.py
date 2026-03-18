@@ -19,7 +19,6 @@ import uuid
 from SciQLopPlots import Icons
 
 register_icon("Jupyter", lambda: QIcon("://icons/Jupyter_logo.png"))
-register_icon("JupyterConsole", lambda: QIcon("://icons/JupyterConsole.png"))
 
 log = getLogger(__name__)
 
@@ -73,24 +72,19 @@ def _copy_example_tree(src: str, dest: str):
 
 class WorkspaceManager(QObject):
     workspace_loaded = Signal(Workspace)
-    jupyterlab_started = Signal(str)
 
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
         self._quit = False
         self._workspace: Optional[Workspace] = None
 
-        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab in current workspace or a new one",
+        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Open JupyterLab in browser",
                                               Icons.get_icon("Jupyter"),
-                                              self.start_jupyterlab)
+                                              self.open_in_browser)
 
         self._kernel_manager = KernelManager(parent=self)
-        self._kernel_manager.jupyterlab_started.connect(self.jupyterlab_started)
         self._default_workspace: WorkspaceManifest = self._ensure_default_workspace_exists()
         self._auto_load_workspace()
-
-    def _init_kernel(self):
-        self._kernel_manager.init()
 
     def _auto_load_workspace(self):
         target = os.environ.get("SCIQLOP_WORKSPACE_DIR")
@@ -115,17 +109,11 @@ class WorkspaceManager(QObject):
             manifest.save(manifest_path)
         return manifest
 
-    def start_jupyterlab(self):
-        if not self.has_workspace:
-            self.load_workspace(None)
-        url = self._kernel_manager.start_jupyterlab(cwd=self._workspace.workspace_dir)
-        if url:
-            self.jupyterlab_started.emit(url)
+    def open_in_browser(self):
+        self._kernel_manager.open_in_browser()
 
-    def new_qt_console(self):
-        self._kernel_manager.init()
-        w = self.workspace
-        self._kernel_manager.clients.new_qt_console(cwd=w.workspace_dir)
+    def widget(self):
+        return self._kernel_manager.widget()
 
     @staticmethod
     def _create_workspace(name: str, path: str, **kwargs) -> WorkspaceManifest:
@@ -165,8 +153,6 @@ class WorkspaceManager(QObject):
         self._workspace = Workspace(manifest=manifest)
         self.workspace_loaded.emit(self._workspace)
         self.push_variables({"workspace": self._workspace})
-        if not manifest.default:
-            self.start_jupyterlab()
         return self._workspace
 
     @Slot(str)
@@ -202,7 +188,10 @@ class WorkspaceManager(QObject):
         self._kernel_manager.push_variables(variable_dict)
 
     def start(self):
-        self.push_variables({"app": sciqlop_app(), "background_run": background_run})
+        self.push_variables({
+            "app": self._kernel_manager.wrap_qt(sciqlop_app()),
+            "background_run": background_run,
+        })
         self._kernel_manager.start()
 
     def quit(self):

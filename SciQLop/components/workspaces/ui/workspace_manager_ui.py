@@ -6,13 +6,11 @@ from SciQLop.components.workspaces import WorkspaceManager, workspaces_manager_i
 
 
 class WorkspaceManagerUI(QWidget):
-    jupyterlab_started = Signal(str)
     workspace_loaded = Signal(str)
 
     def __init__(self, parent=None):
         QWidget.__init__(self, parent)
         wm = workspaces_manager_instance()
-        wm.jupyterlab_started.connect(self.jupyterlab_started)
         wm.workspace_loaded.connect(lambda w: self.workspace_loaded.emit(w.name))
         self.setWindowTitle("Workspace Manager")
         self.setup_ui()
@@ -29,5 +27,11 @@ class WorkspaceManagerUI(QWidget):
     def quit(self):
         workspaces_manager_instance().quit()
 
-    def new_qt_console(self):
-        workspaces_manager_instance().new_qt_console()
+    def widget(self):
+        return workspaces_manager_instance().widget()
+
+    def open_in_browser(self):
+        workspaces_manager_instance().open_in_browser()
+
+    def wrap_qt(self, obj):
+        return workspaces_manager_instance()._kernel_manager.wrap_qt(obj)
