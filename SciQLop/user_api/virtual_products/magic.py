@@ -5,9 +5,10 @@ import inspect
 import shlex
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
+from IPython.core.magic import needs_local_scope
 
 
 class MutableCallback:
@@ -69,6 +70,7 @@ class VPRegistry:
 
 
 _registry = VPRegistry()
+_SENTINEL = object()
 
 
 def _parse_args(line: str) -> argparse.Namespace:
@@ -160,8 +162,21 @@ def _product_type_to_enum(product_type: str):
     }[product_type]
 
 
+def _infer_multicomponent_labels(cached_data: Any) -> List[str]:
+    """Infer default labels from cached evaluation data."""
+    try:
+        if isinstance(cached_data, (tuple, list)) and len(cached_data) >= 2:
+            y = cached_data[1]
+            if hasattr(y, 'shape') and y.ndim == 2:
+                return [f"C{i}" for i in range(y.shape[1])]
+    except Exception:
+        pass
+    return ["C0"]
+
+
 def _register_virtual_product(name: str, wrapper: MutableCallback, product_type: str,
-                               labels: Optional[List[str]], path: Optional[str]):
+                               labels: Optional[List[str]], path: Optional[str],
+                               cached_data: Any = None):
     """Register a virtual product using the existing create_virtual_product API."""
     from SciQLop.user_api.virtual_products import create_virtual_product, VirtualProductType
 
@@ -173,16 +188,7 @@ def _register_virtual_product(name: str, wrapper: MutableCallback, product_type:
     elif vp_type == VirtualProductType.Vector:
         effective_labels = labels or ["X", "Y", "Z"]
     elif vp_type == VirtualProductType.MultiComponent:
-        if labels:
-            effective_labels = labels
-        else:
-            # Run callback once to determine component count for default labels
-            try:
-                data = wrapper(0.0, 1.0)
-                n = data[1].shape[1] if isinstance(data, (tuple, list)) and hasattr(data[1], 'shape') and data[1].ndim == 2 else 1
-            except Exception:
-                n = 1
-            effective_labels = [f"C{i}" for i in range(n)]
+        effective_labels = labels or _infer_multicomponent_labels(cached_data)
     else:
         effective_labels = None
 
@@ -192,11 +198,13 @@ def _register_virtual_product(name: str, wrapper: MutableCallback, product_type:
         create_virtual_product(vp_path, wrapper, vp_type, labels=effective_labels)
 
 
-def vp_magic(line: str, cell: str, local_ns=None):
-    """Implementation of the %%vp cell magic."""
+def _vp_magic_impl(line: str, cell: str, local_ns=None, cached_data=_SENTINEL, eval_error=None):
+    """Core %%vp logic. If cached_data is provided, skip evaluation."""
+    from SciQLop.user_api.virtual_products.types import (
+        Scalar, Vector, MultiComponent, Spectrogram, extract_vp_type_info,
+    )
+
     user_ns = local_ns if local_ns is not None else {}
-    # Make type annotation classes available in the cell's namespace
-    from SciQLop.user_api.virtual_products.types import Scalar, Vector, MultiComponent, Spectrogram
     user_ns.setdefault("Scalar", Scalar)
     user_ns.setdefault("Vector", Vector)
     user_ns.setdefault("MultiComponent", MultiComponent)
@@ -206,46 +214,118 @@ def vp_magic(line: str, cell: str, local_ns=None):
     func = _extract_function(cell, user_ns)
     func_name = func.__name__
 
-    from SciQLop.user_api.virtual_products.types import extract_vp_type_info
-
-    # Extract type info from annotation
     # Use __annotations__ directly (not get_type_hints) because Vector["Bx", "By", "Bz"]
     # is eagerly evaluated by __class_getitem__ into a _VPTypeWithLabels instance.
-    # get_type_hints() would try to re-evaluate string annotations and may fail.
     try:
         return_ann = func.__annotations__.get("return")
         type_info = extract_vp_type_info(return_ann)
     except Exception:
         type_info = None
 
-    # Inference mode if no annotation
-    if type_info is None:
+    needs_eval = type_info is None or args.debug
+    if needs_eval and cached_data is _SENTINEL:
         start, stop = _resolve_time_range(args, func)
         try:
-            data = func(start, stop)
-            type_info = _infer_type_from_data(data)
-            _get_log().info(f"Inferred type: {type_info.product_type} — add return annotation to make explicit")
+            cached_data = func(start, stop)
         except Exception as e:
-            _get_log().error(f"Cannot infer type for {func_name}: {e}")
-            return
+            eval_error = e
+            cached_data = None
+            if not args.debug:
+                _get_log().error(f"Cannot evaluate {func_name}: {e}")
+                return
+    elif not needs_eval:
+        cached_data = None
 
-    # Register in the registry (check if new BEFORE registering)
+    # If evaluation failed and we're not in debug mode, bail out
+    if eval_error is not None and not args.debug:
+        _get_log().error(f"Cannot evaluate {func_name}: {eval_error}")
+        return
+
+    if eval_error is None and type_info is None:
+        type_info = _infer_type_from_data(cached_data)
+        _get_log().info(f"Inferred type: {type_info.product_type} — add return annotation to make explicit")
+
+    # In debug mode with an error, we still need a type_info for the panel
+    if type_info is None:
+        from SciQLop.user_api.virtual_products.types import VPTypeInfo
+        type_info = VPTypeInfo(product_type="scalar", labels=None)
+
     is_new = func_name not in _registry._entries
     entry = _registry.register(func_name, func, type_info.product_type, type_info.labels)
 
-    # Register virtual product only on first creation or signature change
     if is_new or entry.signature_changed:
         _register_virtual_product(func_name, entry.wrapper, type_info.product_type,
-                                   type_info.labels, args.path)
+                                   type_info.labels, args.path, cached_data=cached_data)
 
-    # Debug mode handled in Task 6
     if args.debug:
-        _handle_debug(args, func, func_name, entry, type_info)
+        _handle_debug(args, func, func_name, entry, type_info,
+                      cached_data=cached_data, eval_error=eval_error)
+
+    return func, args, type_info
 
 
-def _handle_debug(args, func, func_name, entry, type_info):
+def _run_in_thread_blocking(func, *args):
+    """Run func(*args) in a thread, pumping Qt events until done.
+
+    Uses a plain ThreadPoolExecutor to avoid qasync reentrancy —
+    processEvents() inside an asyncio task would cause "Cannot enter
+    into task" errors from the kernel poller.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from SciQLop.components.jupyter.kernel.manager import pause_kernel_poller
+    from SciQLop.core.sciqlop_application import sciqlop_app
+
+    app = sciqlop_app()
+    with pause_kernel_poller():
+        with ThreadPoolExecutor(1) as pool:
+            future = pool.submit(func, *args)
+            while not future.done():
+                app.processEvents()
+            return future.result()
+
+
+@needs_local_scope
+def vp_magic(line: str, cell: str, local_ns=None):
+    """%%vp cell magic — runs user function in a thread to avoid freezing the UI."""
+    from SciQLop.user_api.virtual_products.types import (
+        Scalar, Vector, MultiComponent, Spectrogram, extract_vp_type_info,
+    )
+
+    user_ns = local_ns if local_ns is not None else {}
+    user_ns.setdefault("Scalar", Scalar)
+    user_ns.setdefault("Vector", Vector)
+    user_ns.setdefault("MultiComponent", MultiComponent)
+    user_ns.setdefault("Spectrogram", Spectrogram)
+
+    args = _parse_args(line)
+    func = _extract_function(cell, user_ns)
+
+    try:
+        return_ann = func.__annotations__.get("return")
+        type_info = extract_vp_type_info(return_ann)
+    except Exception:
+        type_info = None
+
+    cached_data = _SENTINEL
+    eval_error = None
+    if type_info is None or args.debug:
+        start, stop = _resolve_time_range(args, func)
+        try:
+            cached_data = _run_in_thread_blocking(func, start, stop)
+        except Exception as e:
+            eval_error = e
+            cached_data = None
+            if not args.debug:
+                _get_log().error(f"Cannot evaluate {func.__name__}: {e}")
+                return
+
+    _vp_magic_impl(line, cell, local_ns, cached_data=cached_data, eval_error=eval_error)
+
+
+def _handle_debug(args, func, func_name, entry, type_info, cached_data=None, eval_error=None):
     """Open/reuse a scratch pad panel and run callback with validation."""
-    from SciQLop.user_api.virtual_products.validation import validate_and_call
+    import traceback
+    from SciQLop.user_api.virtual_products.validation import validate_with_data, Diagnostic
     from SciQLop.components.plotting.ui.diagnostic_overlay import DiagnosticOverlay
 
     start, stop = _resolve_time_range(args, func)
@@ -262,17 +342,20 @@ def _handle_debug(args, func, func_name, entry, type_info):
         overlay = DiagnosticOverlay(panel)
         panel._vp_overlay = overlay
 
-    # Run validation
-    result = validate_and_call(func, start, stop, type_info.product_type, type_info.labels)
+    if eval_error is not None:
+        tb = "".join(traceback.format_exception(eval_error))
+        overlay.show_diagnostics([Diagnostic("error", tb)])
+        return
+
+    # Validate using cached data (no re-evaluation)
+    result = validate_with_data(cached_data, type_info.product_type, type_info.labels)
 
     if result.data is not None and not any(d.level == "error" for d in result.diagnostics):
-        # Show success + any warnings
         if result.diagnostics:
             overlay.show_diagnostics(result.diagnostics)
         else:
             n_pts, shape, dtype = _extract_data_info(result.data)
             overlay.show_success(n_pts, shape, dtype, result.elapsed)
-        # Clear and re-plot to force fresh data fetch, then auto-scale
         from SciQLop.core import TimeRange
         _plot_on_debug_panel(panel, func_name)
         panel.time_range = TimeRange(start, stop)

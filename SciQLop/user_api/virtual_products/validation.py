@@ -76,20 +76,15 @@ def _check_shape(data, declared_type: str, labels: Optional[List[str]]) -> List[
     return diagnostics
 
 
-def _check_dtype(data) -> Tuple[Any, List[Diagnostic]]:
+def _check_contiguity(data) -> Tuple[Any, List[Diagnostic]]:
     if isinstance(data, SpeasyVariable) or not isinstance(data, (tuple, list)):
         return data, []
 
-    diagnostics = []
     converted = list(data)
     for i, arr in enumerate(converted):
-        if isinstance(arr, np.ndarray) and arr.dtype != np.float64 and np.issubdtype(arr.dtype, np.number):
-            diagnostics.append(Diagnostic(
-                "warning",
-                f"Array {i} dtype is {arr.dtype} — converting to float64"
-            ))
-            converted[i] = arr.astype(np.float64)
-    return tuple(converted), diagnostics
+        if isinstance(arr, np.ndarray) and not arr.flags.c_contiguous:
+            converted[i] = np.ascontiguousarray(arr)
+    return tuple(converted), []
 
 
 def validate_and_call(callback, start: float, stop: float,
@@ -107,11 +102,16 @@ def validate_and_call(callback, start: float, stop: float,
         )
 
     elapsed = time.monotonic() - t0
+    return validate_with_data(data, declared_type, labels, elapsed)
 
+
+def validate_with_data(data, declared_type: str, labels: Optional[List[str]],
+                       elapsed: float = 0.0) -> ValidationResult:
+    """Validate pre-computed data without re-calling the callback."""
     if data is None:
         return ValidationResult(
             data=None,
-            diagnostics=[Diagnostic("warning", f"No data returned for [{start}, {stop}]")],
+            diagnostics=[Diagnostic("warning", "No data returned")],
             elapsed=elapsed,
         )
 
@@ -119,7 +119,7 @@ def validate_and_call(callback, start: float, stop: float,
     if any(d.level == "error" for d in diagnostics):
         return ValidationResult(data=None, diagnostics=diagnostics, elapsed=elapsed)
 
-    data, dtype_diags = _check_dtype(data)
-    diagnostics.extend(dtype_diags)
+    data, contiguity_diags = _check_contiguity(data)
+    diagnostics.extend(contiguity_diags)
 
     return ValidationResult(data=data, diagnostics=diagnostics, elapsed=elapsed)
