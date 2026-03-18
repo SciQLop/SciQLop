@@ -13,8 +13,8 @@ class KernelManager(QObject):
     def shell(self):
         return self._jupyter.shell
 
-    def start(self, port=0):
-        self._jupyter.start(port=port)
+    def start(self, port=0, cwd=None):
+        self._jupyter.start(port=port, cwd=cwd)
 
     def push_variables(self, variables: dict):
         self._jupyter.push(variables)

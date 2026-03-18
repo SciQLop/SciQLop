@@ -191,7 +191,8 @@ class WorkspaceManager(QObject):
             "app": self.wrap_qt(sciqlop_app()),
             "background_run": background_run,
         })
-        self._kernel_manager.start()
+        cwd = self._workspace.workspace_dir if self._workspace else None
+        self._kernel_manager.start(cwd=cwd)
 
     def quit(self):
         self._kernel_manager.shutdown()
