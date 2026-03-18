@@ -105,6 +105,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.workspace_manager.pushVariables({"main_window": self.workspace_manager.wrap_qt(self)})
         self.workspace_manager.workspace_loaded.connect(lambda ws: self.setWindowTitle(f"SciQLop - {ws}"))
         self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
+        self.toolsMenu.addAction("Open JupyterLab", self.open_jupyterlab_widget)
         self.toolsMenu.addAction("Open JupyterLab in browser", self.workspace_manager.open_in_browser)
 
         self.logs = LogsWidget(self)
@@ -380,6 +381,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def start(self):
         self.workspace_manager.start()
+
+    def open_jupyterlab_widget(self):
         jupyter_widget = self.workspace_manager.widget()
         if jupyter_widget is not None:
             jupyter_widget.setWindowTitle("SciQLop JupyterLab")
