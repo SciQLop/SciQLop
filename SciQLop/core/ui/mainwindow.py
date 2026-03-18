@@ -11,7 +11,6 @@ from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWidgets import QWidget, QMenu
 
 from SciQLop.components.workspaces.ui import WorkspaceManagerUI
-from SciQLop.components.jupyter.ui.JupyterLabView import JupyterLabView
 from SciQLop.components.sciqlop_logging.logs_widget import LogsWidget
 from SciQLop.core.ui.datetime_range import DateTimeRangeWidgetAction
 from SciQLopPlots import PropertiesPanel, ProductsView
@@ -103,12 +102,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.panel_added.connect(self.catalogs_browser.connect_to_panel)
 
         self.workspace_manager = WorkspaceManagerUI(self)
-        self.workspace_manager.pushVariables({"main_window": self})
+        self.workspace_manager.pushVariables({"main_window": self.workspace_manager.wrap_qt(self)})
         self.workspace_manager.workspace_loaded.connect(lambda ws: self.setWindowTitle(f"SciQLop - {ws}"))
-        self._jupyterlab_view: Optional[JupyterLabView] = None
-        self.workspace_manager.jupyterlab_started.connect(self._on_jupyterlab_started)
         self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
-        self.toolsMenu.addAction("Start jupyter console", self.workspace_manager.new_qt_console)
+        self.toolsMenu.addAction("Open JupyterLab in browser", self.workspace_manager.open_in_browser)
 
         self.logs = LogsWidget(self)
         self.logs.setWindowIcon(get_current_style_icon("view_list"))
@@ -182,17 +179,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         shortcut.activated.connect(self._command_palette.toggle)
 
         self._center_and_maximise_on_screen()
-
-    def _on_jupyterlab_started(self, url):
-        if self._jupyterlab_view is not None:
-            dw = self.dock_manager.findDockWidget(self._jupyterlab_view.windowTitle())
-            if dw:
-                dw.toggleView(True)
-                dw.raise_()
-                return
-        self._jupyterlab_view = JupyterLabView(None, url)
-        self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self._jupyterlab_view,
-                               size_hint_from_content=False)
 
     def _show_appstore(self):
         if self._appstore is None:
@@ -394,6 +380,11 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def start(self):
         self.workspace_manager.start()
+        jupyter_widget = self.workspace_manager.widget()
+        if jupyter_widget is not None:
+            jupyter_widget.setWindowTitle("SciQLop JupyterLab")
+            self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, jupyter_widget,
+                                   size_hint_from_content=False)
 
     def _notify_panels_list_changed(self):
         self.panels_list_changed.emit(self.plot_panels())

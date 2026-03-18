@@ -93,6 +93,8 @@ def main():
         main_windows.start()
     except Exception as e:
         print(e)
+    from SciQLop.core.sciqlop_application import sciqlop_event_loop
+    sciqlop_event_loop().exec()
 
 
 if __name__ == '__main__':
