@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from SciQLop.components.command_palette.backend.registry import CommandArg, Completion
+from SciQLop.user_api.magics.completions import _normalize_product_path
 
 
 @dataclass
@@ -16,12 +17,6 @@ class PanelArg(CommandArg):
         items = [Completion(value="__new__", display="New panel")]
         items += [Completion(value=name, display=name) for name in panels]
         return items
-
-
-def _strip_root_prefix(path: str) -> str:
-    if path.startswith("root//"):
-        return path[6:]
-    return path
 
 
 def _node_stable_id(products_model, path: str) -> str | None:
@@ -54,18 +49,16 @@ class ProductArg(CommandArg):
     def filtered_completions(self, query: str, context: dict, max_results: int) -> list[Completion]:
         from SciQLopPlots import QueryParser, ProductsModel
         from PySide6.QtWidgets import QApplication
-        from PySide6.QtCore import QEventLoop
 
         flat = self._ensure_flat_model()
         flat.set_query(QueryParser.parse(query))
 
         app = QApplication.instance()
         if app:
-            flags = QEventLoop.ProcessEventsFlag.ExcludeSocketNotifiers
             prev_count = -1
             stable_rounds = 0
             for _ in range(500):
-                app.processEvents(flags)
+                app.processEvents()
                 cur = flat.rowCount()
                 if cur == prev_count:
                     stable_rounds += 1
@@ -82,7 +75,7 @@ class ProductArg(CommandArg):
             mime = flat.mimeData(indexes)
             if mime and mime.text():
                 for path_text in mime.text().strip().split("\n"):
-                    product_path = _strip_root_prefix(path_text)
+                    product_path = _normalize_product_path(path_text)
                     description = _node_stable_id(ProductsModel, product_path)
                     items.append(Completion(value=product_path, display=product_path, description=description))
         return items

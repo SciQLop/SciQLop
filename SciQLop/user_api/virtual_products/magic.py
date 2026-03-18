@@ -198,7 +198,8 @@ def _register_virtual_product(name: str, wrapper: MutableCallback, product_type:
         create_virtual_product(vp_path, wrapper, vp_type, labels=effective_labels)
 
 
-def _vp_magic_impl(line: str, cell: str, local_ns=None, cached_data=_SENTINEL, eval_error=None):
+def _vp_magic_impl(line: str, cell: str, local_ns=None, cached_data=_SENTINEL,
+                    eval_error=None, eval_elapsed=0.0):
     """Core %%vp logic. If cached_data is provided, skip evaluation."""
     from SciQLop.user_api.virtual_products.types import (
         Scalar, Vector, MultiComponent, Spectrogram, extract_vp_type_info,
@@ -259,29 +260,23 @@ def _vp_magic_impl(line: str, cell: str, local_ns=None, cached_data=_SENTINEL, e
 
     if args.debug:
         _handle_debug(args, func, func_name, entry, type_info,
-                      cached_data=cached_data, eval_error=eval_error)
+                      cached_data=cached_data, eval_error=eval_error,
+                      eval_elapsed=eval_elapsed)
 
     return func, args, type_info
 
 
 def _run_in_thread_blocking(func, *args):
-    """Run func(*args) in a thread, pumping Qt events until done.
-
-    Uses a plain ThreadPoolExecutor to avoid qasync reentrancy —
-    processEvents() inside an asyncio task would cause "Cannot enter
-    into task" errors from the kernel poller.
-    """
+    """Run func(*args) in a thread, pumping Qt events until done."""
     from concurrent.futures import ThreadPoolExecutor
-    from SciQLop.components.jupyter.kernel.manager import pause_kernel_poller
     from SciQLop.core.sciqlop_application import sciqlop_app
 
     app = sciqlop_app()
-    with pause_kernel_poller():
-        with ThreadPoolExecutor(1) as pool:
-            future = pool.submit(func, *args)
-            while not future.done():
-                app.processEvents()
-            return future.result()
+    with ThreadPoolExecutor(1) as pool:
+        future = pool.submit(func, *args)
+        while not future.done():
+            app.processEvents()
+        return future.result()
 
 
 @needs_local_scope
@@ -306,10 +301,14 @@ def vp_magic(line: str, cell: str, local_ns=None):
     except Exception:
         type_info = None
 
+    import time as _time
+
     cached_data = _SENTINEL
     eval_error = None
+    eval_elapsed = 0.0
     if type_info is None or args.debug:
         start, stop = _resolve_time_range(args, func)
+        t0 = _time.monotonic()
         try:
             cached_data = _run_in_thread_blocking(func, start, stop)
         except Exception as e:
@@ -318,11 +317,14 @@ def vp_magic(line: str, cell: str, local_ns=None):
             if not args.debug:
                 _get_log().error(f"Cannot evaluate {func.__name__}: {e}")
                 return
+        eval_elapsed = _time.monotonic() - t0
 
-    _vp_magic_impl(line, cell, local_ns, cached_data=cached_data, eval_error=eval_error)
+    _vp_magic_impl(line, cell, local_ns, cached_data=cached_data,
+                    eval_error=eval_error, eval_elapsed=eval_elapsed)
 
 
-def _handle_debug(args, func, func_name, entry, type_info, cached_data=None, eval_error=None):
+def _handle_debug(args, func, func_name, entry, type_info,
+                   cached_data=None, eval_error=None, eval_elapsed=0.0):
     """Open/reuse a scratch pad panel and run callback with validation."""
     import traceback
     from SciQLop.user_api.virtual_products.validation import validate_with_data, Diagnostic
@@ -351,15 +353,16 @@ def _handle_debug(args, func, func_name, entry, type_info, cached_data=None, eva
     result = validate_with_data(cached_data, type_info.product_type, type_info.labels)
 
     if result.data is not None and not any(d.level == "error" for d in result.diagnostics):
-        if result.diagnostics:
-            overlay.show_diagnostics(result.diagnostics)
-        else:
-            n_pts, shape, dtype = _extract_data_info(result.data)
-            overlay.show_success(n_pts, shape, dtype, result.elapsed)
         from SciQLop.core import TimeRange
         _plot_on_debug_panel(panel, func_name)
         panel.time_range = TimeRange(start, stop)
         _auto_scale_plots(panel)
+        # Show overlay after plotting so it isn't covered by new plot widgets
+        if result.diagnostics:
+            overlay.show_diagnostics(result.diagnostics)
+        else:
+            n_pts, shape, dtype = _extract_data_info(result.data)
+            overlay.show_success(n_pts, shape, dtype, eval_elapsed)
     else:
         overlay.show_diagnostics(result.diagnostics)
 
