@@ -99,11 +99,11 @@ def register_builtin_commands(registry):
 
     registry.register(PaletteCommand(
         id="jupyter.lab",
-        name="Start JupyterLab",
-        description="Start JupyterLab in current workspace",
+        name="Open JupyterLab in browser",
+        description="Open JupyterLab in browser",
         callback=lambda: __import__(
             "SciQLop.components.workspaces", fromlist=["workspaces_manager_instance"]
-        ).workspaces_manager_instance().start_jupyterlab(),
+        ).workspaces_manager_instance().open_in_browser(),
     ))
 
     registry.register(PaletteCommand(

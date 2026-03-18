@@ -34,4 +34,4 @@ class WorkspaceManagerUI(QWidget):
         workspaces_manager_instance().open_in_browser()
 
     def wrap_qt(self, obj):
-        return workspaces_manager_instance()._kernel_manager.wrap_qt(obj)
+        return workspaces_manager_instance().wrap_qt(obj)

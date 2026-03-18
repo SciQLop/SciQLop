@@ -115,6 +115,9 @@ class WorkspaceManager(QObject):
     def widget(self):
         return self._kernel_manager.widget()
 
+    def wrap_qt(self, obj):
+        return self._kernel_manager.wrap_qt(obj)
+
     @staticmethod
     def _create_workspace(name: str, path: str, **kwargs) -> WorkspaceManifest:
         os.makedirs(path, exist_ok=True)
@@ -189,7 +192,7 @@ class WorkspaceManager(QObject):
 
     def start(self):
         self.push_variables({
-            "app": self._kernel_manager.wrap_qt(sciqlop_app()),
+            "app": self.wrap_qt(sciqlop_app()),
             "background_run": background_run,
         })
         self._kernel_manager.start()
