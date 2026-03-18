@@ -42,13 +42,13 @@ def test_harvest_skips_replaces_qaction(qtbot, qapp):
     win = QMainWindow()
     menu = QMenu("Tools", win)
     win.menuBar().addMenu(menu)
-    action = QAction("Start jupyter console", win)
+    action = QAction("Open JupyterLab in browser", win)
     menu.addAction(action)
     registry = CommandRegistry()
     registry.register(PaletteCommand(
         id="jupyter.console", name="Jupyter Console", description="Start console",
-        callback=lambda: None, replaces_qaction="Start jupyter console",
+        callback=lambda: None, replaces_qaction="Open JupyterLab in browser",
     ))
     harvest_qactions(registry, win)
     names = [c.name for c in registry.commands()]
-    assert "Start jupyter console" not in names
+    assert "Open JupyterLab in browser" not in names
