@@ -78,10 +78,6 @@ class WorkspaceManager(QObject):
         self._quit = False
         self._workspace: Optional[Workspace] = None
 
-        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Open JupyterLab in browser",
-                                              Icons.get_icon("Jupyter"),
-                                              self.open_in_browser)
-
         self._kernel_manager = KernelManager(parent=self)
         self._default_workspace: WorkspaceManifest = self._ensure_default_workspace_exists()
         self._auto_load_workspace()

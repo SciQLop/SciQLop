@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QWidget, QMenu
 from SciQLop.components.workspaces.ui import WorkspaceManagerUI
 from SciQLop.components.sciqlop_logging.logs_widget import LogsWidget
 from SciQLop.core.ui.datetime_range import DateTimeRangeWidgetAction
-from SciQLopPlots import PropertiesPanel, ProductsView
+from SciQLopPlots import PropertiesPanel, ProductsView, Icons
 from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
 from SciQLop.components.welcome import WelcomePage
 from SciQLop.core import TimeRange
@@ -105,6 +105,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.workspace_manager.pushVariables({"main_window": self.workspace_manager.wrap_qt(self)})
         self.workspace_manager.workspace_loaded.connect(lambda ws: self.setWindowTitle(f"SciQLop - {ws}"))
         self.add_side_pan(self.workspace_manager, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
+        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Open JupyterLab",
+                                              Icons.get_icon("Jupyter"),
+                                              self.open_jupyterlab_widget)
         self.toolsMenu.addAction("Open JupyterLab", self.open_jupyterlab_widget)
         self.toolsMenu.addAction("Open JupyterLab in browser", self.workspace_manager.open_in_browser)
 
