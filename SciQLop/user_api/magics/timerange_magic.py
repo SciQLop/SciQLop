@@ -43,7 +43,7 @@ def timerange_magic(line: str):
 
     Print or set panel time ranges.
     """
-    from jupyqt.qt.proxy import MainThreadInvoker
+    from SciQLop.components.jupyter.kernel.manager import invoke_on_main_thread
 
     args = shlex.split(line)
 
@@ -57,4 +57,4 @@ def timerange_magic(line: str):
         else:
             raise UsageError("Usage: %timerange [panel] or %timerange <start> <stop> <panel>")
 
-    MainThreadInvoker()(_do)
+    invoke_on_main_thread(_do)

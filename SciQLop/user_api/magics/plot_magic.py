@@ -20,7 +20,7 @@ def plot_magic(line: str):
     Plot a product in an existing or new panel.
     Product is fuzzy-matched. Panel names with spaces must be quoted.
     """
-    from jupyqt.qt.proxy import MainThreadInvoker
+    from SciQLop.components.jupyter.kernel.manager import invoke_on_main_thread
 
     args = shlex.split(line)
     if not args:
@@ -38,7 +38,7 @@ def plot_magic(line: str):
             p = create_plot_panel()
         p.plot_product(product_path, plot_type=PlotType.TimeSeries)
 
-    MainThreadInvoker()(_do_plot)
+    invoke_on_main_thread(_do_plot)
 
 
 def plot_panel(name):

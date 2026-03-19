@@ -29,7 +29,7 @@ def _complete_products(prefix: str, max_results: int = 20) -> list[str]:
 
     Dispatches to the Qt main thread since it creates Qt objects and pumps events.
     """
-    from jupyqt.qt.proxy import MainThreadInvoker
+    from SciQLop.components.jupyter.kernel.manager import invoke_on_main_thread
 
     def _do_complete():
         from SciQLopPlots import ProductsModel, ProductsFlatFilterModel, QueryParser
@@ -62,12 +62,12 @@ def _complete_products(prefix: str, max_results: int = 20) -> list[str]:
             return [_normalize_product_path(path.strip()) for path in mime.text().strip().split("\n") if path.strip()]
         return []
 
-    return MainThreadInvoker()(_do_complete)
+    return invoke_on_main_thread(_do_complete)
 
 
 def _complete_panels() -> list[str]:
     """Return panel names, most recent first."""
-    from jupyqt.qt.proxy import MainThreadInvoker
+    from SciQLop.components.jupyter.kernel.manager import invoke_on_main_thread
 
     def _do_complete():
         from SciQLop.user_api.gui import get_main_window
@@ -76,7 +76,7 @@ def _complete_panels() -> list[str]:
             return []
         return list(reversed(mw.plot_panels()))
 
-    return MainThreadInvoker()(_do_complete)
+    return invoke_on_main_thread(_do_complete)
 
 
 # --- Matcher API v2 completers (work across JupyterLab + QtConsole) ---

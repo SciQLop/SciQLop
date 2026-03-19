@@ -180,14 +180,9 @@ def _infer_multicomponent_labels(cached_data: Any) -> List[str]:
 
 
 def _invoke_on_main_thread(func, *args, **kwargs):
-    """Run func on the Qt main thread, blocking until done.
-
-    Uses jupyqt's MainThreadInvoker which is safe to call from the kernel
-    background thread. No-op if already on the main thread.
-    """
-    from jupyqt.qt.proxy import MainThreadInvoker
-    _invoker = MainThreadInvoker()
-    return _invoker(func, *args, **kwargs)
+    """Run func on the Qt main thread, blocking until done."""
+    from SciQLop.components.jupyter.kernel.manager import invoke_on_main_thread
+    return invoke_on_main_thread(func, *args, **kwargs)
 
 
 def _register_virtual_product(name: str, wrapper: MutableCallback, product_type: str,
