@@ -27,47 +27,56 @@ def _parse_time(value: str) -> float:
 def _complete_products(prefix: str, max_results: int = 20) -> list[str]:
     """Fuzzy-match product paths using ProductsFlatFilterModel.
 
-    Waits for all batches to finish so results are sorted by relevance score.
+    Dispatches to the Qt main thread since it creates Qt objects and pumps events.
     """
-    from SciQLopPlots import ProductsModel, ProductsFlatFilterModel, QueryParser
-    from PySide6.QtWidgets import QApplication
+    from jupyqt.qt.proxy import MainThreadInvoker
 
-    flat = ProductsFlatFilterModel(ProductsModel.instance())
-    flat.set_query(QueryParser.parse(prefix))
+    def _do_complete():
+        from SciQLopPlots import ProductsModel, ProductsFlatFilterModel, QueryParser
+        from PySide6.QtWidgets import QApplication
 
-    app = QApplication.instance()
-    if app:
-        prev_count = -1
-        stable_rounds = 0
-        for _ in range(500):
-            app.processEvents()
-            cur = flat.rowCount()
-            if cur == prev_count:
-                stable_rounds += 1
-                if stable_rounds >= 3:
-                    break
-            else:
-                stable_rounds = 0
-                prev_count = cur
+        flat = ProductsFlatFilterModel(ProductsModel.instance())
+        flat.set_query(QueryParser.parse(prefix))
 
-    count = min(flat.rowCount(), max_results)
-    if count == 0:
+        app = QApplication.instance()
+        if app:
+            prev_count = -1
+            stable_rounds = 0
+            for _ in range(500):
+                app.processEvents()
+                cur = flat.rowCount()
+                if cur == prev_count:
+                    stable_rounds += 1
+                    if stable_rounds >= 3:
+                        break
+                else:
+                    stable_rounds = 0
+                    prev_count = cur
+
+        count = min(flat.rowCount(), max_results)
+        if count == 0:
+            return []
+        indexes = [flat.index(i, 0) for i in range(count)]
+        mime = flat.mimeData(indexes)
+        if mime and mime.text():
+            return [_normalize_product_path(path.strip()) for path in mime.text().strip().split("\n") if path.strip()]
         return []
-    indexes = [flat.index(i, 0) for i in range(count)]
-    mime = flat.mimeData(indexes)
-    if mime and mime.text():
-        return [_normalize_product_path(path.strip()) for path in mime.text().strip().split("\n") if path.strip()]
-    return []
+
+    return MainThreadInvoker()(_do_complete)
 
 
 def _complete_panels() -> list[str]:
     """Return panel names, most recent first."""
-    from SciQLop.user_api.gui import get_main_window
+    from jupyqt.qt.proxy import MainThreadInvoker
 
-    mw = get_main_window()
-    if mw is None:
-        return []
-    return list(reversed(mw.plot_panels()))
+    def _do_complete():
+        from SciQLop.user_api.gui import get_main_window
+        mw = get_main_window()
+        if mw is None:
+            return []
+        return list(reversed(mw.plot_panels()))
+
+    return MainThreadInvoker()(_do_complete)
 
 
 # --- Matcher API v2 completers (work across JupyterLab + QtConsole) ---

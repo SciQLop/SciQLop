@@ -43,14 +43,18 @@ def timerange_magic(line: str):
 
     Print or set panel time ranges.
     """
+    from jupyqt.qt.proxy import MainThreadInvoker
+
     args = shlex.split(line)
-    if len(args) == 0:
-        _print_all_time_ranges()
-    elif len(args) == 1:
-        _print_time_range(args[0])
-    elif len(args) == 3:
-        _set_time_range(_parse_time(args[0]), _parse_time(args[1]), panel_name=args[2])
-    else:
-        raise UsageError("Usage: %timerange [panel] or %timerange <start> <stop> <panel>")
 
+    def _do():
+        if len(args) == 0:
+            _print_all_time_ranges()
+        elif len(args) == 1:
+            _print_time_range(args[0])
+        elif len(args) == 3:
+            _set_time_range(_parse_time(args[0]), _parse_time(args[1]), panel_name=args[2])
+        else:
+            raise UsageError("Usage: %timerange [panel] or %timerange <start> <stop> <panel>")
 
+    MainThreadInvoker()(_do)

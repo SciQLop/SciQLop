@@ -20,22 +20,25 @@ def plot_magic(line: str):
     Plot a product in an existing or new panel.
     Product is fuzzy-matched. Panel names with spaces must be quoted.
     """
+    from jupyqt.qt.proxy import MainThreadInvoker
+
     args = shlex.split(line)
     if not args:
         raise UsageError("Usage: %plot <product> [panel]")
 
-    from SciQLopPlots import PlotType
-
     product_path = _resolve_product(args[0])
 
-    if len(args) > 1:
-        panel = plot_panel(args[1])
-        if panel is None:
-            raise UsageError(f"Panel '{args[1]}' not found")
-    else:
-        panel = create_plot_panel()
+    def _do_plot():
+        from SciQLopPlots import PlotType
+        if len(args) > 1:
+            p = plot_panel(args[1])
+            if p is None:
+                raise UsageError(f"Panel '{args[1]}' not found")
+        else:
+            p = create_plot_panel()
+        p.plot_product(product_path, plot_type=PlotType.TimeSeries)
 
-    panel.plot_product(product_path, plot_type=PlotType.TimeSeries)
+    MainThreadInvoker()(_do_plot)
 
 
 def plot_panel(name):

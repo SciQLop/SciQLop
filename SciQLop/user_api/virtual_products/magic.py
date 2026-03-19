@@ -115,14 +115,19 @@ def _resolve_time_range(args, func):
 
     # 3. Current view range from existing panels
     try:
-        from SciQLop.user_api.gui import get_main_window
-        mw = get_main_window()
-        panels = mw.plot_panels()
-        if panels:
-            panel = mw.plot_panel(panels[0])
-            if panel is not None:
-                tr = panel.time_range
-                return tr.start(), tr.stop()
+        def _get_panel_time_range():
+            from SciQLop.user_api.gui import get_main_window
+            mw = get_main_window()
+            panels = mw.plot_panels()
+            if panels:
+                panel = mw.plot_panel(panels[0])
+                if panel is not None:
+                    tr = panel.time_range
+                    return tr.start(), tr.stop()
+            return None
+        result = _invoke_on_main_thread(_get_panel_time_range)
+        if result is not None:
+            return result
     except Exception:
         pass
 
@@ -174,6 +179,17 @@ def _infer_multicomponent_labels(cached_data: Any) -> List[str]:
     return ["C0"]
 
 
+def _invoke_on_main_thread(func, *args, **kwargs):
+    """Run func on the Qt main thread, blocking until done.
+
+    Uses jupyqt's MainThreadInvoker which is safe to call from the kernel
+    background thread. No-op if already on the main thread.
+    """
+    from jupyqt.qt.proxy import MainThreadInvoker
+    _invoker = MainThreadInvoker()
+    return _invoker(func, *args, **kwargs)
+
+
 def _register_virtual_product(name: str, wrapper: MutableCallback, product_type: str,
                                labels: Optional[List[str]], path: Optional[str],
                                cached_data: Any = None):
@@ -192,10 +208,13 @@ def _register_virtual_product(name: str, wrapper: MutableCallback, product_type:
     else:
         effective_labels = None
 
-    if vp_type == VirtualProductType.Spectrogram:
-        create_virtual_product(vp_path, wrapper, vp_type)
-    else:
-        create_virtual_product(vp_path, wrapper, vp_type, labels=effective_labels)
+    def _do_register():
+        if vp_type == VirtualProductType.Spectrogram:
+            create_virtual_product(vp_path, wrapper, vp_type)
+        else:
+            create_virtual_product(vp_path, wrapper, vp_type, labels=effective_labels)
+
+    _invoke_on_main_thread(_do_register)
 
 
 def _vp_magic_impl(line: str, cell: str, local_ns=None, cached_data=_SENTINEL,
@@ -267,16 +286,8 @@ def _vp_magic_impl(line: str, cell: str, local_ns=None, cached_data=_SENTINEL,
 
 
 def _run_in_thread_blocking(func, *args):
-    """Run func(*args) in a thread, pumping Qt events until done."""
-    from concurrent.futures import ThreadPoolExecutor
-    from SciQLop.core.sciqlop_application import sciqlop_app
-
-    app = sciqlop_app()
-    with ThreadPoolExecutor(1) as pool:
-        future = pool.submit(func, *args)
-        while not future.done():
-            app.processEvents()
-        return future.result()
+    """Run func(*args) directly — kernel already runs on a background thread."""
+    return func(*args)
 
 
 @needs_local_scope
@@ -328,43 +339,47 @@ def _handle_debug(args, func, func_name, entry, type_info,
     """Open/reuse a scratch pad panel and run callback with validation."""
     import traceback
     from SciQLop.user_api.virtual_products.validation import validate_with_data, Diagnostic
-    from SciQLop.components.plotting.ui.diagnostic_overlay import DiagnosticOverlay
 
     start, stop = _resolve_time_range(args, func)
 
-    # Get or create the debug panel
-    panel = entry.panel
-    if panel is None or not _panel_is_alive(panel):
-        panel = _create_debug_panel(func_name, start, stop)
-        entry.panel = panel
+    # Validate using cached data (no re-evaluation) — pure logic, no Qt
+    result = None
+    if eval_error is None:
+        result = validate_with_data(cached_data, type_info.product_type, type_info.labels)
 
-    # Attach overlay if not already present
-    overlay = getattr(panel, '_vp_overlay', None)
-    if overlay is None:
-        overlay = DiagnosticOverlay(panel)
-        panel._vp_overlay = overlay
+    # All Qt operations dispatched to main thread
+    def _do_debug_ui():
+        from SciQLop.components.plotting.ui.diagnostic_overlay import DiagnosticOverlay
 
-    if eval_error is not None:
-        tb = "".join(traceback.format_exception(eval_error))
-        overlay.show_diagnostics([Diagnostic("error", tb)])
-        return
+        panel = entry.panel
+        if panel is None or not _panel_is_alive(panel):
+            panel = _create_debug_panel(func_name, start, stop)
+            entry.panel = panel
 
-    # Validate using cached data (no re-evaluation)
-    result = validate_with_data(cached_data, type_info.product_type, type_info.labels)
+        overlay = getattr(panel, '_vp_overlay', None)
+        if overlay is None:
+            overlay = DiagnosticOverlay(panel)
+            panel._vp_overlay = overlay
 
-    if result.data is not None and not any(d.level == "error" for d in result.diagnostics):
-        from SciQLop.core import TimeRange
-        _plot_on_debug_panel(panel, func_name)
-        panel.time_range = TimeRange(start, stop)
-        _auto_scale_plots(panel)
-        # Show overlay after plotting so it isn't covered by new plot widgets
-        if result.diagnostics:
-            overlay.show_diagnostics(result.diagnostics)
+        if eval_error is not None:
+            tb = "".join(traceback.format_exception(eval_error))
+            overlay.show_diagnostics([Diagnostic("error", tb)])
+            return
+
+        if result.data is not None and not any(d.level == "error" for d in result.diagnostics):
+            from SciQLop.core import TimeRange
+            _plot_on_debug_panel(panel, func_name)
+            panel.time_range = TimeRange(start, stop)
+            _auto_scale_plots(panel)
+            if result.diagnostics:
+                overlay.show_diagnostics(result.diagnostics)
+            else:
+                n_pts, shape, dtype = _extract_data_info(result.data)
+                overlay.show_success(n_pts, shape, dtype, eval_elapsed)
         else:
-            n_pts, shape, dtype = _extract_data_info(result.data)
-            overlay.show_success(n_pts, shape, dtype, eval_elapsed)
-    else:
-        overlay.show_diagnostics(result.diagnostics)
+            overlay.show_diagnostics(result.diagnostics)
+
+    _invoke_on_main_thread(_do_debug_ui)
 
 
 def _plot_on_debug_panel(panel, func_name):
