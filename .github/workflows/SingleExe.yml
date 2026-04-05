@@ -36,7 +36,26 @@ jobs:
         if : github.event_name == 'release'
         run: |
           echo "RELEASE=1" >> $GITHUB_ENV
+      - name: Install signing certificate
+        if: github.event_name == 'release'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          KEYCHAIN_PWD=$(openssl rand -base64 24)
+          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" build.keychain
+          rm certificate.p12
       - name: bundle SciQLop
+        env:
+          CODESIGN_IDENTITY: ${{ github.event_name == 'release' && secrets.CODESIGN_IDENTITY || '' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           brew install graphicsmagick imagemagick dylibbundler
           npm install --global create-dmg
@@ -61,7 +80,26 @@ jobs:
         if: github.event_name == 'release'
         run: |
           echo "RELEASE=1" >> $GITHUB_ENV
+      - name: Install signing certificate
+        if: github.event_name == 'release'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+        run: |
+          KEYCHAIN_PWD=$(openssl rand -base64 24)
+          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PWD" build.keychain
+          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" build.keychain
+          rm certificate.p12
       - name: bundle SciQLop
+        env:
+          CODESIGN_IDENTITY: ${{ github.event_name == 'release' && secrets.CODESIGN_IDENTITY || '' }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           brew install graphicsmagick imagemagick dylibbundler coreutils
           npm install --global create-dmg

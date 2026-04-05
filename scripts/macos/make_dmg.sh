@@ -152,9 +152,28 @@ rsync -avhu $DIST/node-v$NODE_VERSION-darwin-$ARCH/* $DIST/SciQLop.app/Contents/
 
 python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 
-codesign --force --deep --verbose -s - $DIST/SciQLop.app
+if [[ -n "$CODESIGN_IDENTITY" ]]; then
+  codesign --force --deep --verbose --options runtime -s "$CODESIGN_IDENTITY" $DIST/SciQLop.app
+else
+  echo "WARNING: No CODESIGN_IDENTITY set, using ad-hoc signing"
+  codesign --force --deep --verbose -s - $DIST/SciQLop.app
+fi
 
 cd $DIST
 create-dmg --overwrite --dmg-title=SciQLop SciQLop.app .
 mv SciQLop*.dmg SciQLop-$ARCH.dmg
+
+if [[ -n "$CODESIGN_IDENTITY" ]]; then
+  codesign --force --verbose --options runtime -s "$CODESIGN_IDENTITY" SciQLop-$ARCH.dmg
+fi
+
+if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
+  xcrun notarytool submit SciQLop-$ARCH.dmg \
+    --apple-id "$APPLE_ID" \
+    --password "$APPLE_ID_PWD" \
+    --team-id "$APPLE_TEAM_ID" \
+    --wait
+  xcrun stapler staple SciQLop-$ARCH.dmg
+fi
+
 cd -
