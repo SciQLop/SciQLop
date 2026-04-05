@@ -16,10 +16,10 @@
 }
 
 #tabCloseButton {
-    margin-top: 2px;
+    margin-top: 0.2ex;
     background: none;
     border: none;
-    padding: 0px -2px;
+    padding: 0 -0.2ex;
     qproperty-icon: {{ icon('close') }}, {{ icon('close') }} disabled;
     qproperty-iconSize: 16px;
 }
@@ -50,8 +50,8 @@ ads--CDockWidget {
 ads--CDockWidgetTab {
     background: palette(base);
     min-width: 8ex;
-    padding: 4px 8px;
-    margin: 0 2px;
+    padding: 0.4ex 0.8ex;
+    margin: 0 0.2ex;
     border: none;
     border-bottom: 1px solid palette(Mid);
 }
@@ -81,7 +81,7 @@ ads--CDockContainerWidget > QSplitter {
 
 ads--CDockSplitter::handle {
     background-color: palette(mid);
-    height: 2px;
+    height: 0.2ex;
 }
 
 
@@ -100,19 +100,19 @@ ads--CAutoHideDockContainer #dockAreaAutoHideButton {
 
 
 ads--CAutoHideDockContainer[sideBarLocation="0"] ads--CResizeHandle {
-    border-top: 3px solid palette(mid);
+    border-top: 0.3ex solid palette(mid);
 }
 
 ads--CAutoHideDockContainer[sideBarLocation="1"] ads--CResizeHandle {
-    border-left: 3px solid palette(mid);
+    border-left: 0.3ex solid palette(mid);
 }
 
 ads--CAutoHideDockContainer[sideBarLocation="2"] ads--CResizeHandle {
-    border-right: 3px solid palette(mid);;
+    border-right: 0.3ex solid palette(mid);
 }
 
 ads--CAutoHideDockContainer[sideBarLocation="3"] ads--CResizeHandle {
-    border-top: 3px solid palette(mid);
+    border-top: 0.3ex solid palette(mid);
 }
 
 
@@ -128,7 +128,7 @@ ads--CAutoHideDockContainer ads--CTitleBarButton:pressed {
 
 
 #autoHideTitleLabel {
-    padding-left: 16px;
+    padding-left: 1.6ex;
     color: palette(text);
 }
 
@@ -172,15 +172,15 @@ ads--CAutoHideTab:hover:focus,
 ads--CAutoHideTab:pressed,
 ads--CAutoHideTab:pressed:focus,
 ads--CAutoHideTab {
-    qproperty-iconSize: 24px 24px; /* this is optional in case you would like to change icon size*/
+    qproperty-iconSize: 24px 24px; /* qproperty requires px */
     background: none;
     border: none;
-    padding-left: 8px;
-    padding-right: 8px;
+    padding-left: 0.8ex;
+    padding-right: 0.8ex;
     text-align: center;
-    min-height: 20px;
-    padding-bottom: 0px;
-    margin: 0px;
+    min-height: 2ex;
+    padding-bottom: 0;
+    margin: 0;
 }
 
 ads--CAutoHideTab:hover {
@@ -193,15 +193,15 @@ ads--CAutoHideTab:hover:focus {
 
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="0"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="2"] {
-    border-top: 2px solid {{ palette('mid') | alpha(48) }};
+    border-top: 0.2ex solid {{ palette('mid') | alpha(48) }};
 }
 
 
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="1"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"] {
-    border-bottom: 2px solid {{ palette('mid') | alpha(48) }};
-    border-right: 2px solid {{ palette('mid') | alpha(48) }};
-    border-radius: 2px;
+    border-bottom: 0.2ex solid {{ palette('mid') | alpha(48) }};
+    border-right: 0.2ex solid {{ palette('mid') | alpha(48) }};
+    border-radius: 0.2ex;
 }
 
 
@@ -209,7 +209,7 @@ ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="0"],
 ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="2"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="0"][activeTab="true"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="2"][activeTab="true"] {
-    border-top: 2px solid palette(highlight);
+    border-top: 0.2ex solid palette(highlight);
 }
 
 
@@ -217,13 +217,13 @@ ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="1"],
 ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="3"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="1"][activeTab="true"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"][activeTab="true"] {
-    border-bottom: 2px solid palette(highlight);
+    border-bottom: 0.2ex solid palette(highlight);
 }
 
 ads--CAutoHideTab[iconOnly="true"] {
-    padding: 6px;
-    margin: 2px;
-    border-radius: 4px;
+    padding: 0.6ex;
+    margin: 0.2ex;
+    border-radius: 0.4ex;
 }
 
 ads--CAutoHideTab[iconOnly="true"]:hover {
@@ -233,4 +233,3 @@ ads--CAutoHideTab[iconOnly="true"]:hover {
 ads--CAutoHideTab[iconOnly="true"][activeTab="true"] {
     background: {{ palette('highlight') | alpha(50) }};
 }
-

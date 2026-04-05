@@ -2,13 +2,13 @@ QMenuBar {
     background-color: palette(base);
     border: none;
     border-bottom: 1px solid {{ palette('border') }};
-    spacing: 3px;
+    spacing: 0.3ex;
 }
 
 QMenuBar::item {
-    padding: 4px 8px;
+    padding: 0.4ex 0.8ex;
     background: transparent;
-    border-radius: 4px;
+    border-radius: 0.4ex;
 }
 
 QMenuBar::item:selected {
@@ -22,12 +22,12 @@ QMenuBar::item:pressed {
 QMenu {
     background-color: palette(base);
     border: 1px solid {{ palette('border') }};
-    border-radius: 4px;
-    padding: 4px 0;
+    border-radius: 0.4ex;
+    padding: 0.4ex 0;
 }
 
 QMenu::item {
-    padding: 4px 24px 4px 8px;
+    padding: 0.4ex 2.4ex 0.4ex 0.8ex;
 }
 
 QMenu::item:selected {
@@ -37,5 +37,5 @@ QMenu::item:selected {
 QMenu::separator {
     height: 1px;
     background: {{ palette('border') }};
-    margin: 4px 8px;
+    margin: 0.4ex 0.8ex;
 }

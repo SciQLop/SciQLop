@@ -3,14 +3,14 @@ QTabWidget::pane {
 }
 
 QTabWidget::tab-bar {
-    left: 10px;
+    left: 1ex;
 }
 
 QTabBar::tab {
     background: palette(base);
     min-width: 8ex;
-    padding: 4px 8px;
-    margin: 0 2px;
+    padding: 0.4ex 0.8ex;
+    margin: 0 0.2ex;
     border: none;
 }
 
@@ -19,10 +19,10 @@ QTabBar::tab:selected, QTabBar::tab:hover {
 }
 
 QTabBar::tab:selected {
-    border-bottom: 2px solid {{ palette('Selection') }};
+    border-bottom: 0.2ex solid {{ palette('Selection') }};
 }
 
 QTabBar::tab:!selected {
-    margin-top: 2px;
+    margin-top: 0.2ex;
     color: {{ palette('UnselectedText') }};
 }

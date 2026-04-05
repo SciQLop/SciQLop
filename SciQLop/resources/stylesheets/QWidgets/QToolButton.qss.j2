@@ -3,8 +3,8 @@ QToolButton {
     background-color: palette(button);
     color: palette(text);
     border: 1px solid {{ palette('border') }};
-    border-radius: 4px;
-    padding: 2px 6px;
+    border-radius: 0.4ex;
+    padding: 0.2ex 0.6ex;
 }
 
 QToolButton:hover {
@@ -22,6 +22,14 @@ QToolButton:disabled {
     border: 1px solid {{ palette('border') }};
 }
 
+QToolButton::menu-indicator {
+    image: {{ icon('arrow_drop_down') }};
+    subcontrol-position: right center;
+    subcontrol-origin: padding;
+    width: 1.2ex;
+    height: 1.2ex;
+}
+
 QToolButton[autoRaise="true"] {
     background-color: transparent;
     border: none;
@@ -30,7 +38,7 @@ QToolButton[autoRaise="true"] {
 QToolButton[autoRaise="true"]:hover {
     background-color: {{ palette('highlight') | alpha(30) }};
     border: none;
-    border-radius: 4px;
+    border-radius: 0.4ex;
 }
 
 QToolButton[autoRaise="true"]:pressed {

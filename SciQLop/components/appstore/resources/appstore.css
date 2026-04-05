@@ -213,8 +213,8 @@ body {
 }
 
 .status-badge.installed {
-    background: #2ea04370;
-    color: #6fdd8b;
+    background: #2ea043;
+    color: #ffffff;
 }
 
 .status-badge.update {
@@ -309,9 +309,9 @@ body {
 }
 
 .details-actions button.installed {
-    background: #2ea04370;
-    color: #6fdd8b;
-    border-color: #2ea04370;
+    background: #2ea043;
+    color: #ffffff;
+    border-color: #2ea043;
     cursor: default;
 }
 
