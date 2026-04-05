@@ -53,7 +53,7 @@ def _icon(palette_name: str, name: str) -> str:
 
 def load_stylesheets(palette: QtGui.QPalette, palette_name: str) -> str:
     env.globals['sciqlop_list_templates'] = _list_stylesheets
-    env.globals['controls_height'] = '24px'
+    env.globals['controls_height'] = '2.4ex'
     env.globals['palette'] = partial(_palette, palette)
     env.globals['lighter'] = lambda color, factor: QtGui.QColor(color).lighter(factor).name()
     env.globals['lighten'] = lambda color, factor: QtGui.QColor(color).lighter(factor).name()

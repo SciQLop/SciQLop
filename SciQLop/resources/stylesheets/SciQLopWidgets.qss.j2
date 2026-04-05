@@ -3,7 +3,7 @@ HLine { background-color: palette(mid); }
 Container {
     background-color: palette(base);
     border: 1px solid {{ palette('border') }};
-    border-radius: 4px;
+    border-radius: 0.4ex;
 }
 
 /* --- Settings panel --- */
@@ -19,14 +19,14 @@ Container {
 #SettingsCategories {
     background-color: transparent;
     border: none;
-    font-size: 13px;
+    font-size: 1.3ex;
     outline: none;
 }
 
 #SettingsCategories::item {
-    padding: 8px 14px;
-    border-radius: 6px;
-    margin: 2px 4px;
+    padding: 0.8ex 1.4ex;
+    border-radius: 0.6ex;
+    margin: 0.2ex 0.4ex;
 }
 
 #SettingsCategories::item:selected {
@@ -49,7 +49,7 @@ Container {
 #SettingRow {
     background-color: palette(base);
     border: 1px solid {{ palette('border') }};
-    border-radius: 6px;
+    border-radius: 0.6ex;
 }
 
 #SettingRow:hover {
@@ -68,28 +68,28 @@ Container {
 }
 
 SciQLopPlotContainer[empty=false]{
-    margin: 0px;
-    border-top-width: 0px;
-    border-bottom-width: 0px;
-    padding: 0px;
+    margin: 0;
+    border-top-width: 0;
+    border-bottom-width: 0;
+    padding: 0;
     border-image: none ;
 }
 
 SciQLopPlotContainer[empty=true] {
-    margin: 0px;
-    border-top-width: 0px;
-    padding: 0px;
+    margin: 0;
+    border-top-width: 0;
+    padding: 0;
     border-image: url(:/plot_panel_dd_background.png) 0 0 0 0 stretch stretch;
 }
 
 SciQLopPlotContainer::handle:vertical {
-    height: 2px;
+    height: 0.2ex;
     background: {{ palette('mid') }};
 }
 
 SciQLopPlotInterface{
-    margin: 0px;
-    padding: 0px;
+    margin: 0;
+    padding: 0;
 }
 
 CardsCollection {
@@ -102,8 +102,8 @@ WelcomeSection {
 
 DetailedDescription {
     background-color: palette(base);
-    border-left: 3px solid {{ palette('Selection') }};
-    border-radius: 0px;
+    border-left: 0.3ex solid {{ palette('Selection') }};
+    border-radius: 0;
 }
 
 WelcomeSection QLabel {
@@ -123,17 +123,17 @@ Card[selected=true] QLabel {
 Card[selected=false] {
     background-color: palette(base);
     border: 1px solid {{ palette('border') }};
-    border-radius: 6px;
+    border-radius: 0.6ex;
 }
 
 Card[selected=true] {
-    border: 2px solid palette(highlight);
-    border-radius: 6px;
+    border: 0.2ex solid palette(highlight);
+    border-radius: 0.6ex;
 }
 
 Card:hover[selected=false] {
     border: 1px solid palette(highlight);
-    border-radius: 6px;
+    border-radius: 0.6ex;
 }
 
 WorkSpaceCard[default_workspace=true] QLabel
@@ -146,13 +146,13 @@ WorkSpaceCard[default_workspace=true]
 {
     background-color: {{ palette('base') | darker(103)}};
     border: 1px solid {{ palette('border') }};
-    border-radius: 6px;
+    border-radius: 0.6ex;
 }
 
 ColorDelegate
 {
     background-color: palette(Button);
     border: 1px solid {{ palette('border') }};
-    border-radius: 4px;
-    height: 24px;
+    border-radius: 0.4ex;
+    height: 2.4ex;
 }

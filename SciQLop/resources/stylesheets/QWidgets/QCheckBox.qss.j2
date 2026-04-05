@@ -1,28 +1,28 @@
 QCheckBox {
     background-color: palette(base);
-    margin: 0px;
-    border: 0px;
-    padding: 0px;
+    margin: 0;
+    border: 0;
+    padding: 0;
 }
 
 QCheckBox:focus {
     background-color: palette(base);
-    margin: 0px;
-    border: 0px;
-    padding: 0px;
+    margin: 0;
+    border: 0;
+    padding: 0;
 }
 
 QCheckBox::indicator {
     background-color: palette(base);
-    width: 20px;
-    height: 20px;
+    width: 2ex;
+    height: 2ex;
 }
 
 QCheckBox::indicator:focus,
 QCheckBox::indicator:hover {
     background-color: {{ palette('highlight') | alpha(25) }};
     border: 1px solid palette(highlight);
-    border-radius: 4px;
+    border-radius: 0.4ex;
 }
 
 QCheckBox::indicator:checked {
