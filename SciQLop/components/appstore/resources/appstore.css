@@ -1,0 +1,333 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background-color: var(--WelcomeBackground, var(--Base));
+    color: var(--Text);
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 16px;
+}
+
+/* --- Tab bar --- */
+
+#tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid var(--Borders);
+    margin-bottom: 12px;
+}
+
+.tab {
+    padding: 8px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    color: var(--UnselectedText);
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 500;
+}
+
+.tab:hover {
+    color: var(--Text);
+}
+
+.tab.active {
+    color: var(--Highlight);
+    border-bottom-color: var(--Highlight);
+}
+
+/* --- Toolbar --- */
+
+#toolbar {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    align-items: center;
+}
+
+#search-input {
+    flex: 1;
+    padding: 6px 12px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Base);
+    color: var(--Text);
+    font-size: 0.9em;
+}
+
+#sort-select {
+    padding: 6px 12px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Base);
+    color: var(--Text);
+    font-size: 0.9em;
+}
+
+/* --- Loading --- */
+
+#loading {
+    text-align: center;
+    padding: 32px;
+    color: var(--UnselectedText);
+    font-size: 0.95em;
+}
+
+/* --- Tag chips --- */
+
+#tag-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+}
+
+.tag-chip {
+    padding: 3px 12px;
+    border-radius: 12px;
+    border: 1px solid var(--Borders);
+    background: var(--Window);
+    color: var(--Text);
+    font-size: 0.82em;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.tag-chip:hover {
+    background: var(--AlternateBase);
+}
+
+.tag-chip.active {
+    background: var(--Highlight);
+    color: var(--HighlightedText);
+    border-color: var(--Highlight);
+}
+
+/* --- Card grid --- */
+
+.cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 200px));
+    gap: 12px;
+}
+
+/* --- Cards --- */
+
+.card {
+    border: 1px solid var(--Borders);
+    border-radius: 6px;
+    background: var(--Window);
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.25);
+    overflow: hidden;
+    user-select: none;
+}
+
+.card:hover {
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.4);
+    transform: scale(1.05);
+}
+
+.card.selected {
+    border-color: var(--Highlight);
+    box-shadow: 0 0 0 2px var(--Highlight);
+}
+
+.card-image-wrapper {
+    position: relative;
+    height: 100px;
+    overflow: hidden;
+}
+
+.card-image-wrapper::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 28px;
+    background: linear-gradient(to bottom, transparent, var(--Window));
+    pointer-events: none;
+}
+
+.card-image {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    background: var(--AlternateBase);
+    display: block;
+}
+
+.card-image.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2em;
+    color: var(--UnselectedText);
+}
+
+.card-body {
+    padding: 8px;
+}
+
+.card-name {
+    font-size: 0.9em;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-badge {
+    display: inline-block;
+    font-size: 0.7em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: var(--Highlight);
+    color: var(--HighlightedText);
+    margin-right: 4px;
+}
+
+.card-meta {
+    font-size: 0.75em;
+    color: var(--UnselectedText);
+    margin-top: 2px;
+}
+
+.status-badge {
+    display: inline-block;
+    font-size: 0.65em;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.status-badge.installed {
+    background: #2ea04370;
+    color: #6fdd8b;
+}
+
+.status-badge.update {
+    background: #d29b0070;
+    color: #f0d050;
+}
+
+/* --- Details panel --- */
+
+#details-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 420px;
+    height: 100vh;
+    background: var(--Window);
+    border-left: 1px solid var(--Borders);
+    padding: 16px;
+    overflow-y: auto;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    z-index: 10;
+}
+
+#details-panel.visible {
+    transform: translateX(0);
+}
+
+#details-panel.hidden {
+    transform: translateX(100%);
+}
+
+#details-panel h2 {
+    margin-bottom: 8px;
+}
+
+#details-panel hr {
+    border: none;
+    border-top: 1px solid var(--Borders);
+    margin-bottom: 12px;
+}
+
+.details-field {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 8px;
+    align-items: baseline;
+}
+
+.details-field label {
+    min-width: 100px;
+    font-weight: 500;
+    font-size: 0.9em;
+    color: var(--UnselectedText);
+}
+
+.details-field span {
+    flex: 1;
+    font-size: 0.9em;
+}
+
+.details-actions {
+    margin-top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.details-actions button {
+    padding: 8px 16px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Button);
+    color: var(--ButtonText);
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+.details-actions button:hover {
+    background: var(--Highlight);
+    color: var(--HighlightedText);
+}
+
+.details-actions button.install {
+    background: var(--Highlight);
+    color: var(--HighlightedText);
+    border-color: var(--Highlight);
+}
+
+.details-actions button.install:hover {
+    opacity: 0.9;
+}
+
+.details-actions button.installed {
+    background: #2ea04370;
+    color: #6fdd8b;
+    border-color: #2ea04370;
+    cursor: default;
+}
+
+.details-actions button.update {
+    background: #d29b0090;
+    color: #fff;
+    border-color: #d29b00;
+}
+
+.details-actions button.uninstall {
+    background: #da363490;
+    color: #fff;
+    border-color: #da3634;
+}
+
+.details-actions button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
