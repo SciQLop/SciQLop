@@ -1,17 +1,17 @@
 #tabsMenuButton {
-    qproperty-icon: url(:/icons/theme/arrow_drop_down.png);
+    qproperty-icon: {{ icon('arrow_drop_down') }};
     qproperty-iconSize: 16px;
 }
 
 
 #dockAreaCloseButton {
-    qproperty-icon: url(:/icons/theme/close.png), url(:/icons/theme/close.png) disabled;
+    qproperty-icon: {{ icon('close') }}, {{ icon('close') }} disabled;
     qproperty-iconSize: 16px;
 }
 
 
 #detachGroupButton {
-    qproperty-icon: url(:/icons/theme/detach_tab.png), url(:/icons/theme/detach_tab.png) disabled;
+    qproperty-icon: {{ icon('detach_tab') }}, {{ icon('detach_tab') }} disabled;
     qproperty-iconSize: 16px;
 }
 
@@ -20,8 +20,28 @@
     background: none;
     border: none;
     padding: 0px -2px;
-    qproperty-icon: url(:/icons/theme/close.png), url(:/icons/theme/close.png) disabled;
+    qproperty-icon: {{ icon('close') }}, {{ icon('close') }} disabled;
     qproperty-iconSize: 16px;
+}
+
+/*****************************************************************************
+ * CDockAreaWidget / CDockAreaTitleBar
+ *****************************************************************************/
+ads--CDockAreaWidget {
+    background: palette(base);
+}
+
+ads--CDockAreaTitleBar {
+    background: palette(base);
+    border-bottom: 1px solid palette(mid);
+    padding: 0;
+}
+
+/*****************************************************************************
+ * CDockWidget
+ *****************************************************************************/
+ads--CDockWidget {
+    background: palette(base);
 }
 
 /*****************************************************************************
@@ -30,9 +50,9 @@
 ads--CDockWidgetTab {
     background: palette(base);
     min-width: 8ex;
-    padding: 2px;
-    margin: 0 5px 0 5px;
-    border-right: 1px solid palette(Mid);
+    padding: 4px 8px;
+    margin: 0 2px;
+    border: none;
     border-bottom: 1px solid palette(Mid);
 }
 
@@ -61,7 +81,7 @@ ads--CDockContainerWidget > QSplitter {
 
 ads--CDockSplitter::handle {
     background-color: palette(mid);
-    height: 3px;
+    height: 2px;
 }
 
 
@@ -69,12 +89,12 @@ ads--CDockSplitter::handle {
  Auto hide containers
  */
 #dockAreaAutoHideButton {
-    qproperty-icon: url(:/icons/theme/push_pin.png), url(:/icons/theme/push_pin.png) disabled;
+    qproperty-icon: {{ icon('push_pin') }}, {{ icon('push_pin') }} disabled;
     qproperty-iconSize: 16px;
 }
 
 ads--CAutoHideDockContainer #dockAreaAutoHideButton {
-    qproperty-icon: url(:/icons/theme/push_pin_filled.png);
+    qproperty-icon: {{ icon('push_pin_filled') }};
     qproperty-iconSize: 16px;
 }
 
@@ -173,14 +193,14 @@ ads--CAutoHideTab:hover:focus {
 
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="0"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="2"] {
-    border-top: 2px solid rgba(0, 0, 0, 48);
+    border-top: 2px solid {{ palette('mid') | alpha(48) }};
 }
 
 
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="1"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"] {
-    border-bottom: 2px solid rgba(0, 0, 0, 48);
-    border-right: 2px solid rgba(0, 0, 0, 48);
+    border-bottom: 2px solid {{ palette('mid') | alpha(48) }};
+    border-right: 2px solid {{ palette('mid') | alpha(48) }};
     border-radius: 2px;
 }
 
@@ -200,4 +220,17 @@ ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"][activeTab="true"] {
     border-bottom: 2px solid palette(highlight);
 }
 
+ads--CAutoHideTab[iconOnly="true"] {
+    padding: 6px;
+    margin: 2px;
+    border-radius: 4px;
+}
+
+ads--CAutoHideTab[iconOnly="true"]:hover {
+    background: {{ palette('highlight') | alpha(30) }};
+}
+
+ads--CAutoHideTab[iconOnly="true"][activeTab="true"] {
+    background: {{ palette('highlight') | alpha(50) }};
+}
 

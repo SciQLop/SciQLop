@@ -9,6 +9,7 @@ ARCH=$(uname -m)
 OPENSSL_VERSION=3.5.0
 PYTHON_VERSION=3.12.10
 NODE_VERSION=23.11.0
+UV_VERSION=0.11.2
 
 mkdir $DIST
 
@@ -37,16 +38,17 @@ python3 $HERE/make_info_dot_plist.py > $DIST/SciQLop.app/Contents/Info.plist
 cat <<'EOT' >> $DIST/SciQLop.app/Contents/MacOS/SciQLop
 #! /usr/bin/env bash
 export HERE=$(dirname $BASH_SOURCE)
-export PATH=$HERE/../Resources/usr/local/bin/:/usr/bin:/bin:/usr/sbin:/sbin
-export QT_PATH=$($HERE/../Resources/usr/local/bin/python3 -c "import PySide6,os;print(os.path.dirname(PySide6.__file__));")/Qt
-export LD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib
-export DYLD_LIBRARY_PATH=$HERE/../Resources/usr/local/lib:$HERE/usr/local/bin/:$QT_PATH/lib
+export RESOURCES=$HERE/../Resources
+export PATH=$RESOURCES/opt/uv:$RESOURCES/usr/local/bin/:/usr/bin:/bin:/usr/sbin:/sbin
+export QT_PATH=$($RESOURCES/usr/local/bin/python3 -c "import PySide6,os;print(os.path.dirname(PySide6.__file__));")/Qt
+export LD_LIBRARY_PATH=$RESOURCES/usr/local/lib
+export DYLD_LIBRARY_PATH=$RESOURCES/usr/local/lib:$RESOURCES/usr/local/bin/:$QT_PATH/lib
 export QT_PLUGIN_PATH=$QT_PATH/plugins
 export QTWEBENGINE_CHROMIUM_FLAGS="--single-process"
-export SSL_CERT_FILE=$($HERE/../Resources/usr/local/bin/python3 -m certifi)
+export SSL_CERT_FILE=$($RESOURCES/usr/local/bin/python3 -m certifi)
 export REQUESTS_CA_BUNDLE=${SSL_CERT_FILE}
 export SCIQLOP_BUNDLED="1"
-$HERE/../Resources/usr/local/bin/python3 -m SciQLop.app
+$RESOURCES/usr/local/bin/python3 -m SciQLop.app
 EOT
 
 chmod +x $DIST/SciQLop.app/Contents/MacOS/SciQLop
@@ -91,16 +93,56 @@ make -j > ../python-make.log
 make install  > ../python-install.log
 cd -
 
+########################################
+# Fetch uv standalone
+########################################
 
-$DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install $SCIQLOP_ROOT/
+PYTHON_BIN=$DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3
+
+mkdir -p $DIST/SciQLop.app/Contents/Resources/opt/uv
+
+if [[ $ARCH == "arm64" ]]; then
+  UV_URL="https://github.com/astral-sh/uv/releases/download/$UV_VERSION/uv-aarch64-apple-darwin.tar.gz"
+else
+  UV_URL="https://github.com/astral-sh/uv/releases/download/$UV_VERSION/uv-x86_64-apple-darwin.tar.gz"
+fi
+
+if [[ ! -f $DIST/uv.tar.gz ]]; then
+  curl -L -o $DIST/uv.tar.gz "$UV_URL"
+fi
+
+tar -xzf $DIST/uv.tar.gz -C $DIST
+cp $DIST/uv-*/uv $DIST/SciQLop.app/Contents/Resources/opt/uv/
+chmod +x $DIST/SciQLop.app/Contents/Resources/opt/uv/uv
+
+UV_BIN=$DIST/SciQLop.app/Contents/Resources/opt/uv/uv
+
+########################################
+# Install SciQLop using uv
+########################################
+
+$UV_BIN pip install --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROOT/"
+
+########################################
+# Plugin dependencies
+########################################
+
+PLUGIN_DEPENDENCIES=$($PYTHON_BIN -I $SCIQLOP_ROOT/scripts/list_plugins_dependencies.py $SCIQLOP_ROOT/SciQLop/plugins)
+if [[ -n "$PLUGIN_DEPENDENCIES" ]]; then
+  $UV_BIN pip install --python $PYTHON_BIN $PLUGIN_DEPENDENCIES
+fi
 
 if [[ $ARCH == "x86_64" ]]; then
   cp $(brew --prefix gettext)/lib/libintl.8.dylib $DIST/SciQLop.app/Contents/Resources/usr/local/lib/
   install_name_tool -change /usr/local/opt/gettext/lib/libintl.8.dylib @loader_path/lib/libintl.8.dylib $DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3
 fi
 
+########################################
+# Dev speasy override
+########################################
+
 if [[ -z $RELEASE ]]; then
-  $DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3 -m pip install --upgrade git+https://github.com/SciQLop/speasy
+  $UV_BIN pip install --python $PYTHON_BIN --upgrade git+https://github.com/SciQLop/speasy
 fi
 
 export PATH=$SAVED_PATH

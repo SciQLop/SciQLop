@@ -134,6 +134,14 @@ def add_rpath_to_executable(executable: str, rpath: str):
     subprocess.run(['install_name_tool', '-add_rpath', rpath, executable])
 
 
+def copy_shiboken_libs(bundle: str, bundle_lib_path: str):
+    for root, _, files in os.walk(os.path.join(bundle, 'Contents', 'Resources')):
+        if os.path.basename(root) == 'shiboken6':
+            for f in files:
+                if f.startswith('libshiboken6') and is_library(f):
+                    copy(os.path.join(root, f), os.path.join(bundle_lib_path, f))
+
+
 def main():
     bundle = args.bundle
     bundle_lib_path = os.path.join(bundle, 'Contents', 'Resources', 'usr', 'local', 'lib')
@@ -143,6 +151,7 @@ def main():
     for library in libraries:
         print(f'Fixing {library}')
         fix_library(library, bundle_lib_path)
+    copy_shiboken_libs(bundle, bundle_lib_path)
     for file in os.listdir(bundle_bin_path):
         if is_macos_binary(file):
             add_rpath_to_executable(file, '@executable_path/../lib')

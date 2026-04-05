@@ -3,10 +3,12 @@ from typing import Optional, List, Union
 import numpy as np
 from PySide6.QtCore import QMimeData
 from PySide6.QtGui import QIcon
-from SciQLopPlots import SciQLopMultiPlotPanel, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
+from PySide6.QtWidgets import QWidget
+from PySide6.QtGui import QColor
+from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
     ParameterType, GraphType, SciQLopNDProjectionPlot
 
-from SciQLop.core.icons import register_icon
+from SciQLop.components.theming import register_icon
 from SciQLop.core import TimeRange
 from SciQLop.core import listify
 from SciQLop.components import sciqlop_logging
@@ -70,6 +72,32 @@ class _specgram_callback:
             return []
 
 
+def _theme_from_palette(palette: dict[str, str], parent=None) -> SciQLopTheme:
+    is_dark = QColor(palette.get("Window", "#ffffff")).lightnessF() < 0.5
+    theme = SciQLopTheme.dark(parent) if is_dark else SciQLopTheme.light(parent)
+    _MAP = {
+        "set_background": "Base",
+        "set_foreground": "Text",
+        "set_grid": "Mid",
+        "set_sub_grid": "Midlight",
+        "set_selection": "Highlight",
+        "set_legend_border": "Border",
+    }
+    for setter, key in _MAP.items():
+        if key in palette:
+            getattr(theme, setter)(QColor(palette[key]))
+    if "Base" in palette:
+        c = QColor(palette["Base"])
+        c.setAlpha(200)
+        theme.set_legend_background(c)
+    return theme
+
+
+def _set_product_path(r, product_path_str):
+    graph = r[1] if hasattr(r, '__iter__') else r
+    graph.setProperty("sqp_product_path", product_path_str)
+
+
 def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):
     if isinstance(product, list):
         node = ProductsModel.node(product)
@@ -77,6 +105,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
             provider = providers.get(node.provider())
             log.debug(f"Provider: {provider}")
             if provider is not None:
+                product_path_str = "//".join(product)
                 log.debug(f"Parameter type: {node.parameter_type()}")
                 if node.parameter_type() in (ParameterType.Scalar, ParameterType.Vector, ParameterType.Multicomponents):
                     callback = _plot_product_callback(provider, node)
@@ -87,12 +116,15 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
                         r[1].set_name(node.name())
                     else:
                         r.set_name(node.name())
+                    _set_product_path(r, product_path_str)
                     return r
                 elif node.parameter_type() == ParameterType.Spectrogram:
                     callback = _specgram_callback(provider, node)
                     log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
-                    return p.plot(callback, name=node.name(), graph_type=GraphType.ColorMap, y_log_scale=True,
-                                  z_log_scale=True, **kwargs)
+                    r = p.plot(callback, name=node.name(), graph_type=GraphType.ColorMap, y_log_scale=True,
+                               z_log_scale=True, **kwargs)
+                    _set_product_path(r, product_path_str)
+                    return r
     log.debug(f"Product not found: {product}")
     return None
 
@@ -138,13 +170,107 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self.setObjectName(name)
         self.setWindowTitle(name)
         self._parent_node = None
+        self._template_source_path: str | None = None
         self._product_plot_callback = ProductDnDCallback(self)
         self._time_range_plot_callback = TimeRangeDnDCallback(self)
         self.add_accepted_mime_type(self._product_plot_callback)
         self.add_accepted_mime_type(self._time_range_plot_callback)
         self.set_color_palette(make_color_list(Palette()))
+        self.update_theme()
         if time_range is not None:
             self.time_range = time_range
+
+        from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager
+        self._catalog_manager = PanelCatalogManager(self)
+        self.installEventFilter(self)
+        self.plot_added.connect(self._install_filter_on_plot)
+
+    def update_theme(self):
+        from SciQLop.components.theming.palette import SCIQLOP_PALETTE
+        self.set_theme(_theme_from_palette(SCIQLOP_PALETTE, self))
+
+    @property
+    def catalog_manager(self):
+        return self._catalog_manager
+
+    def _install_filter_on_plot(self, plot):
+        plot.installEventFilter(self)
+        for child in plot.findChildren(QWidget):
+            child.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        from PySide6.QtCore import QEvent
+        if event.type() == QEvent.Type.ContextMenu:
+            self._show_context_menu(event.globalPos())
+            return True
+        return super().eventFilter(obj, event)
+
+    def _show_context_menu(self, global_pos):
+        from PySide6.QtWidgets import QMenu
+        menu = QMenu(self)
+        self._catalog_manager.build_catalogs_menu(menu)
+        menu.addSeparator()
+        menu.addAction("Export as PNG\u2026", self._export_png)
+        menu.addAction("Export as PDF\u2026", self._export_pdf)
+        menu.addSeparator()
+        if self._template_source_path:
+            menu.addAction("Update template", self._update_template)
+        menu.addAction("Save as template\u2026", self._quick_save_template)
+        menu.addAction("Export template\u2026", self._export_template)
+        menu.exec(global_pos)
+
+    def _export_png(self):
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export as PNG",
+            f"{self.windowTitle()}.png",
+            "PNG (*.png)",
+        )
+        if path:
+            self.save_png(path)
+
+    def _export_pdf(self):
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export as PDF",
+            f"{self.windowTitle()}.pdf",
+            "PDF (*.pdf)",
+        )
+        if path:
+            self.save_pdf(path)
+
+    def _update_template(self):
+        self._save_template_with_preview(self._template_source_path)
+
+    def _save_template_with_preview(self, path, name=None):
+        from SciQLop.components.plotting.panel_template import PanelTemplate, save_preview
+        t = PanelTemplate.from_panel(self)
+        if name:
+            t.name = name
+        t.to_file(path)
+        save_preview(self, path)
+
+    def _quick_save_template(self):
+        from PySide6.QtWidgets import QInputDialog
+        from SciQLop.components.plotting.panel_template import templates_dir
+        name, ok = QInputDialog.getText(
+            self, "Save as template", "Template name:",
+            text=self.windowTitle(),
+        )
+        if ok and name.strip():
+            path = str(templates_dir() / f"{name.strip()}.json")
+            self._save_template_with_preview(path, name.strip())
+            self._template_source_path = path
+
+    def _export_template(self):
+        from PySide6.QtWidgets import QFileDialog
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export panel template",
+            f"{self.windowTitle()}.json",
+            "JSON (*.json);;YAML (*.yaml *.yml)",
+        )
+        if path:
+            self._save_template_with_preview(path)
 
     @SciQLopProperty(TimeRange)
     def time_range(self) -> TimeRange:

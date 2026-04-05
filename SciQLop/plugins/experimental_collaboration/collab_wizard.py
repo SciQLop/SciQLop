@@ -102,7 +102,8 @@ class CollabCreatePage(QWizardPage):
     def initializePage(self, /):
         super().initializePage()
         self.setButtonText(QWizard.WizardButton.NextButton, "Create")
-        self._server_url.setText("https://sciqlop.lpp.polytechnique.fr/collab")
+        from .settings import ExperimentalCollaborationSettings
+        self._server_url.setText(ExperimentalCollaborationSettings().server_url)
         self._room_id.setText(uuid4().hex)
 
     def validatePage(self):

@@ -10,7 +10,6 @@
     }
   ],
   "license": "MIT",
-  "dependencies": {
-  },
+  "python_dependencies": [],
   "disabled": true
 }

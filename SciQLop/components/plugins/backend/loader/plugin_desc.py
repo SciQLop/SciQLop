@@ -1,6 +1,5 @@
-from pandas.core.arraylike import OpsMixin
 from pydantic import BaseModel, Field
-from typing import List, Dict, Optional
+from typing import List
 import json
 
 
@@ -16,8 +15,9 @@ class PluginDesc(BaseModel):
     description: str
     authors: List[Author]
     license: str
-    dependencies: Dict[str, str]
-    disabled: bool = Field(default=False)
+    python_dependencies: List[str] = Field(default_factory=list, description="Required python packages")
+    dependencies: List[str] = Field(default_factory=list, description="Required plugins")
+    disabled: bool = Field(default=False, description="Whether the plugin is disabled by default")
 
     @staticmethod
     def from_json(path: str) -> "PluginDesc":

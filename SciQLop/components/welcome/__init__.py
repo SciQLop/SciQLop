@@ -1,1 +1,1 @@
-from .welcome_page import WelcomePage
+from .web_welcome_page import WebWelcomePage as WelcomePage

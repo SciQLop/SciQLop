@@ -1,1 +1,1 @@
-from .backend import ConfigEntry
+from .backend import ConfigEntry, SettingsCategory

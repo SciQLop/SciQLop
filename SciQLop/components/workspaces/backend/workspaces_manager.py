@@ -1,151 +1,158 @@
 import os
 import shutil
 from datetime import datetime
-from typing import List, Optional, Union
+from re import sub as re_sub
+from typing import Optional
 from PySide6.QtCore import QObject, Signal, Slot, QFile
 from PySide6.QtGui import QIcon
 
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
-from SciQLop.core.data_models import WorkspaceSpecFile
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 from SciQLop.components.workspaces.backend.workspace import Workspace
-from SciQLop.core.icons import register_icon
-from SciQLop.core.examples import Example
+from SciQLop.components.theming.icons import register_icon
+from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.core.sciqlop_application import sciqlop_app
-from SciQLop.components.jupyter.IPythonKernel import InternalIPKernel
+from SciQLop.components.jupyter.kernel import KernelManager
 from SciQLop.core.common import background_run
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.components.jupyter.jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
 import uuid
 from SciQLopPlots import Icons
 
-register_icon("Jupyter", QIcon("://icons/Jupyter_logo.png"))
-register_icon("JupyterConsole", QIcon("://icons/JupyterConsole.png"))
+register_icon("Jupyter", lambda: QIcon("://icons/Jupyter_logo.png"))
 
 log = getLogger(__name__)
 
 
-def _try_load_workspace(workspace_dir):
-    try:
-        return WorkspaceSpecFile(workspace_dir)
-    except Exception as e:
-        log.error(f"Error loading workspace {workspace_dir}: {e}")
-        return None
+def _ensure_migrated(ws_dir: str) -> bool:
+    """Migrate workspace.json → workspace.sciqlop if needed. Returns True if manifest exists."""
+    from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace, restore_legacy_json
+    manifest_path = os.path.join(ws_dir, "workspace.sciqlop")
+    if os.path.exists(manifest_path):
+        restore_legacy_json(ws_dir)
+        return True
+    if os.path.exists(os.path.join(ws_dir, "workspace.json")):
+        migrate_workspace(ws_dir)
+        return os.path.exists(manifest_path)
+    return False
 
 
-def list_existing_workspaces() -> List[WorkspaceSpecFile]:
+def list_existing_workspaces() -> list[WorkspaceManifest]:
     workspaces_dir = SciQLopWorkspacesSettings().workspaces_dir
     if not os.path.exists(workspaces_dir):
         return []
-    return list(
-        filter(
-            lambda w: w is not None,
-            map(
-                _try_load_workspace,
-                filter(
-                    lambda workspace_dir: os.path.exists(os.path.join(workspace_dir, "workspace.json")),
-                    filter(
-                        lambda d: os.path.isdir(d) and d != 'default',
-                        map(lambda workspace_dir: os.path.join(workspaces_dir, workspace_dir),
-                            os.listdir(workspaces_dir))
-                    )
-                )
-            )
-        )
-    )
+    results = []
+    for entry in os.listdir(workspaces_dir):
+        ws_dir = os.path.join(workspaces_dir, entry)
+        if not os.path.isdir(ws_dir):
+            continue
+        if not _ensure_migrated(ws_dir):
+            continue
+        try:
+            results.append(WorkspaceManifest.load(os.path.join(ws_dir, "workspace.sciqlop")))
+        except Exception as e:
+            log.error(f"Error loading workspace {ws_dir}: {e}")
+    return results
+
+
+_EXAMPLE_METADATA_FILES = {"example.json", "image.png"}
+
+
+def _copy_example_tree(src: str, dest: str):
+    for entry in os.listdir(src):
+        if entry in _EXAMPLE_METADATA_FILES:
+            continue
+        src_path = os.path.join(src, entry)
+        dest_path = os.path.join(dest, entry)
+        if os.path.isdir(src_path):
+            shutil.copytree(src_path, dest_path, dirs_exist_ok=True)
+        else:
+            os.makedirs(dest, exist_ok=True)
+            shutil.copy2(src_path, dest_path)
 
 
 class WorkspaceManager(QObject):
     workspace_loaded = Signal(Workspace)
-    jupyterlab_started = Signal(str)
 
     def __init__(self, parent=None):
         QObject.__init__(self, parent)
         self._quit = False
-        self._deferred_variables = {}
         self._workspace: Optional[Workspace] = None
 
-        sciqlop_app().add_quickstart_shortcut("JupyterLab", "Start JupyterLab in current workspace or a new one",
-                                              Icons.get_icon("Jupyter"),
-                                              self.start_jupyterlab)
+        self._kernel_manager = KernelManager(parent=self)
+        self._default_workspace: WorkspaceManifest = self._ensure_default_workspace_exists()
+        self._auto_load_workspace()
 
-        self._ipykernel: Optional[InternalIPKernel] = None
-        self._ipykernel_clients_manager: Optional[IPythonKernelClientsManager] = None
-        self._default_workspace: WorkspaceSpecFile = self._ensure_default_workspace_exists()
-
-    def _init_kernel(self):
-        if self._ipykernel is not None:
+    def _auto_load_workspace(self):
+        target = os.environ.get("SCIQLOP_WORKSPACE_DIR")
+        if not target:
             return
-        self._ipykernel = InternalIPKernel()
-        self._ipykernel.init_ipkernel()
-        self.push_variables({"app": sciqlop_app(), "background_run": background_run})
-        self.push_variables(self._deferred_variables)
-        self._ipykernel_clients_manager = IPythonKernelClientsManager(self._ipykernel.connection_file, parent=self)
-        self._ipykernel_clients_manager.jupyterlab_started.connect(self.jupyterlab_started)
+        default_dir = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, "default")
+        if os.path.realpath(target) == os.path.realpath(default_dir):
+            return
+        manifest_path = os.path.join(target, "workspace.sciqlop")
+        if os.path.exists(manifest_path):
+            log.info(f"Auto-loading workspace: {target}")
+            self.load_workspace(WorkspaceManifest.load(manifest_path))
 
-    def _ensure_default_workspace_exists(self) -> WorkspaceSpecFile:
-        default_workspace = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, "default")
-        if not os.path.exists(default_workspace):
-            return self._create_workspace("default", default_workspace, description="Default workspace",
-                                          default_workspace=True)
-        return WorkspaceSpecFile(default_workspace)
+    def _ensure_default_workspace_exists(self) -> WorkspaceManifest:
+        default_dir = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, "default")
+        manifest_path = os.path.join(default_dir, "workspace.sciqlop")
+        if not os.path.exists(manifest_path):
+            return self._create_workspace("default", default_dir, description="Default workspace", default=True)
+        manifest = WorkspaceManifest.load(manifest_path)
+        if not manifest.default:
+            manifest.default = True
+            manifest.save(manifest_path)
+        return manifest
 
-    def start_jupyterlab(self):
-        self._init_kernel()
-        w = self.workspace
-        self._ipykernel_clients_manager.start_jupyterlab(cwd=w.workspace_dir)
+    def open_in_browser(self):
+        self._kernel_manager.open_in_browser()
 
-    def new_qt_console(self):
-        self._init_kernel()
-        w = self.workspace
-        self._ipykernel_clients_manager.new_qt_console(cwd=w.workspace_dir)
+    def widget(self):
+        return self._kernel_manager.widget()
+
+    def wrap_qt(self, obj):
+        return self._kernel_manager.wrap_qt(obj)
 
     @staticmethod
-    def _create_workspace(name: str, path: str, **kwargs) -> WorkspaceSpecFile:
-        spec = WorkspaceSpecFile(path, name=name, **kwargs)
-        if spec.image == "":
-            QFile.copy(":/splash.png", os.path.join(path, "image.png"))
-            spec.image = "image.png"
-        return spec
+    def _create_workspace(name: str, path: str, **kwargs) -> WorkspaceManifest:
+        os.makedirs(path, exist_ok=True)
+        manifest = WorkspaceManifest(name=name, **kwargs)
+        manifest_path = os.path.join(path, "workspace.sciqlop")
+        dest = os.path.join(path, "image.png")
+        if not os.path.exists(dest):
+            QFile.copy(":/splash.png", dest)
+            os.chmod(dest, 0o644)
+        manifest.image = "image.png"
+        manifest.save(manifest_path)
+        return WorkspaceManifest.load(manifest_path)
 
-    def create_workspace(self, name: Optional[str] = None, **kwargs) -> Workspace:
-        self._init_kernel()
-        if self._workspace is not None:
-            raise Exception("Workspace already created")
+    def create_workspace(self, name: Optional[str] = None, **kwargs):
         name = name or f"New workspace from {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         log.info(f"Creating workspace {name}")
-        # using uuid4 to avoid name collision and simplify workspace renaming without having to move the directory and
-        # update python path at runtime
         directory = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, uuid.uuid4().hex)
-        spec = self._create_workspace(name, directory, **kwargs)
-        return self.load_workspace(spec)
+        self._create_workspace(name, directory, **kwargs)
+        from SciQLop.sciqlop_app import switch_workspace
+        switch_workspace(directory)
 
-    def load_example(self, example_path: str) -> Workspace:
-        log.info(f"Loading example from {example_path}")
+    @staticmethod
+    def add_example_to_workspace(example_path: str, workspace_dir: str) -> list[str]:
         example = Example(example_path)
-        if self._workspace is None:
-            self.create_workspace(example.name, description=example.description, image=os.path.basename(example.image),
-                                  notebooks=[os.path.basename(example.notebook)], dependencies=example.dependencies)
-        assert self._workspace is not None
-        self._workspace.add_files([example.notebook, example.image])
-        for directory in filter(lambda d: os.path.isdir(os.path.join(example_path, d)), os.listdir(example_path)):
-            self._workspace.add_directory(os.path.join(example_path, directory), directory)
-        assert self._ipykernel_clients_manager is not None
-        if not self._ipykernel_clients_manager.has_running_jupyterlab:
-            self.start_jupyterlab()
-        return self._workspace
+        slug = re_sub(r'[^\w\-]', '_', example.name).strip('_')
+        dest = os.path.join(workspace_dir, slug)
+        _copy_example_tree(example_path, dest)
+        manifest = WorkspaceManifest.load(os.path.join(workspace_dir, "workspace.sciqlop"))
+        return [d for d in example.dependencies if d not in manifest.requires]
 
-    def load_workspace(self, workspace_spec: Union[WorkspaceSpecFile, str, None]) -> Workspace:
+    def load_workspace(self, manifest: WorkspaceManifest | None = None) -> Workspace:
         if self._workspace is not None:
             raise Exception("Workspace already created")
-        if isinstance(workspace_spec, str):
-            workspace_spec = WorkspaceSpecFile(workspace_spec)
-        if workspace_spec is None:
-            workspace_spec = self._default_workspace
-        self._workspace = Workspace(workspace_spec=workspace_spec)
+        if manifest is None:
+            manifest = self._default_workspace
+        self._workspace = Workspace(manifest=manifest)
+        self._workspace.activate()
         self.workspace_loaded.emit(self._workspace)
         self.push_variables({"workspace": self._workspace})
-        if len(workspace_spec.notebooks) and os.path.exists(workspace_spec.notebooks[0]):
-            self.start_jupyterlab()
         return self._workspace
 
     @Slot(str)
@@ -155,15 +162,13 @@ class WorkspaceManager(QObject):
     @Slot(str)
     def duplicate_workspace(self, workspace: str, background: bool = False):
         def duplicate(directory: str):
-            shutil.copytree(directory, directory + "_copy")
-            spec = WorkspaceSpecFile(directory + "_copy")
-            spec.name = f"Copy of {spec.name}"
-
-        if background:
-            log.info("Backgrounding duplicate")
-            duplicate(workspace)
-        else:
-            duplicate(workspace)
+            copy_dir = directory + "_copy"
+            shutil.copytree(directory, copy_dir)
+            manifest_path = os.path.join(copy_dir, "workspace.sciqlop")
+            manifest = WorkspaceManifest.load(manifest_path)
+            manifest.name = f"Copy of {manifest.name}"
+            manifest.save(manifest_path)
+        duplicate(workspace)
 
     @property
     def workspace(self) -> Workspace:
@@ -176,29 +181,22 @@ class WorkspaceManager(QObject):
         return self._workspace is not None
 
     @staticmethod
-    def workspace_spec(name) -> WorkspaceSpecFile:
-        return WorkspaceSpecFile(str(os.path.join(SciQLopWorkspacesSettings().workspaces_dir, name)))
-
-    @staticmethod
-    def list_workspaces() -> List[WorkspaceSpecFile]:
+    def list_workspaces() -> list[WorkspaceManifest]:
         return list_existing_workspaces()
 
     def push_variables(self, variable_dict):
-        if self._ipykernel is None:
-            self._deferred_variables.update(variable_dict)
-        else:
-            self._ipykernel.push_variables(variable_dict)
+        self._kernel_manager.push_variables(variable_dict)
 
     def start(self):
-        if self._ipykernel is None:
-            self._init_kernel()
-        self._ipykernel.start()
+        self.push_variables({
+            "app": self.wrap_qt(sciqlop_app()),
+            "background_run": background_run,
+        })
+        cwd = self.workspace.workspace_dir
+        self._kernel_manager.start(cwd=cwd)
 
     def quit(self):
-        if self._ipykernel is None:
-            return
-        self._ipykernel_clients_manager.cleanup()
-        self._ipykernel.ipykernel.shell.run_cell("quit()")
+        self._kernel_manager.shutdown()
         self._quit = True
 
 

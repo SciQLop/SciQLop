@@ -1,6 +1,7 @@
 import os
 import platform
 import sys
+from pathlib import Path
 
 if platform.system() == 'Windows':
     import matplotlib.pyplot as plt
@@ -10,31 +11,54 @@ if platform.system() == 'Windows':
 else:
     os.environ['QT_API'] = 'PySide6'  # breaks ipython kernel event loop on windows
 
+# QtADS drag-and-drop relies on QCursor::pos() which returns garbage on
+# native Wayland.  Force XCB (XWayland) unless the user explicitly opts in
+# to native Wayland via SCIQLOP_NATIVE_WAYLAND=1.
+if 'WAYLAND_DISPLAY' in os.environ and 'QT_QPA_PLATFORM' not in os.environ:
+    if not os.environ.get('SCIQLOP_NATIVE_WAYLAND', ''):
+        os.environ['QT_QPA_PLATFORM'] = 'xcb'
+
 print("Forcing TZ to UTC")
 os.environ['TZ'] = 'UTC'
-if platform.system() == 'Linux':
-    os.environ['QT_QPA_PLATFORM'] = os.environ.get("SCIQLOP_QT_QPA_PLATFORM", 'xcb')
-    print(f"Setting QT_QPA_PLATFORM to {os.environ['QT_QPA_PLATFORM']}")
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)) + '/..'))
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+EXIT_SWITCH_WORKSPACE = 65
+SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"
+
+
+def switch_workspace(workspace_name: str) -> None:
+    """Signal the launcher to restart with a different workspace.
+
+    Writes the target workspace name to a file in the current workspace dir
+    (from SCIQLOP_WORKSPACE_DIR env var), then exits with code 65 so the
+    launcher restarts into the target workspace.
+    """
+    ws_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", ".")
+    (Path(ws_dir) / SWITCH_WORKSPACE_FILE).write_text(workspace_name)
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    app._sciqlop_exit_code = EXIT_SWITCH_WORKSPACE
+    QApplication.exit(EXIT_SWITCH_WORKSPACE)
 
 
 def start_sciqlop():
     os.environ['INSIDE_SCIQLOP'] = '1'
-    from PySide6 import QtPrintSupport, QtOpenGL, QtQml, QtCore
+    from PySide6 import QtPrintSupport, QtQml
     from PySide6.QtGui import QPixmap
     from PySide6.QtWidgets import QSplashScreen
-    # import PySide6QtAds
-
-    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_UseDesktopOpenGL, True)
-    QtCore.QCoreApplication.setAttribute(QtCore.Qt.AA_ShareOpenGLContexts, True)
 
     from SciQLop.core.sciqlop_application import sciqlop_event_loop, sciqlop_app
+    from SciQLop.resources import qInitResources
 
-    print(str(QtPrintSupport) + str(QtOpenGL) + str(QtQml))
+    print(str(QtPrintSupport) + str(QtQml))
 
     app = sciqlop_app()
-    envent_loop = sciqlop_event_loop()
+    qInitResources()
+    from SciQLop.components.theming.icons import flush_deferred_icons
+    flush_deferred_icons()
+    sciqlop_event_loop()
     pixmap = QPixmap(":/splash.png")
     splash = QSplashScreen(pixmap)
     splash.show()
@@ -50,6 +74,13 @@ def start_sciqlop():
     main_windows.show()
     app.processEvents()
     load_all(main_windows)
+
+    from SciQLop.components.command_palette.commands import register_builtin_commands
+    register_builtin_commands(app.command_registry)
+
+    from SciQLop.components.command_palette.backend.harvester import harvest_qactions
+    harvest_qactions(app.command_registry, main_windows)
+
     main_windows.push_variables_to_console({"plugins": loaded_plugins})
 
     app.processEvents()
@@ -62,10 +93,15 @@ def main():
         main_windows.start()
     except Exception as e:
         print(e)
+    from SciQLop.core.sciqlop_application import sciqlop_event_loop
+    sciqlop_event_loop().exec()
 
 
 if __name__ == '__main__':
     main()
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    exit_code = getattr(app, '_sciqlop_exit_code', 0) if app else 0
     if os.environ.get("RESTART_SCIQLOP", None) is not None:
-        sys.exit(64)
-    sys.exit(1)
+        exit_code = 64
+    sys.exit(exit_code)

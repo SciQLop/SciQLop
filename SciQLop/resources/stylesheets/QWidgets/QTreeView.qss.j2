@@ -1,22 +1,20 @@
 QTreeView {
     background-color: {{ palette('base') }};
-    alternate-background-color: {{ palette('base') | darker(105)}};
+    alternate-background-color: {{ palette('base') | darker(103)}};
     show-decoration-selected: 1;
+    border: none;
 }
 
 QTreeView::item {
-    border: 1px solid #d9d9d9;
-    border-top-color: transparent;
-    border-bottom-color: transparent;
+    padding: 2px 0;
 }
 
 QTreeView::item:hover {
-    background: palette(mid);
-    border: 1px solid {{ palette('Selection') }};
+    background: {{ palette('highlight') | alpha(25) }};
 }
 
 QTreeView::item:selected {
-    border: 1px solid {{ palette('Selection') }};
+    border: none;
 }
 
 QTreeView::item:selected:active{
@@ -24,7 +22,7 @@ QTreeView::item:selected:active{
 }
 
 QTreeView::item:selected:!active {
-    background: {{ palette('Selection') | lighter(150) }};
+    background: {{ palette('Selection') | alpha(80) }};
 }
 
 QTreeView::branch {
@@ -35,11 +33,11 @@ QTreeView::branch {
 QTreeView::branch:has-children:!has-siblings:closed,
 QTreeView::branch:closed:has-children:has-siblings {
         border-image: none;
-        image: url(:/icons/theme/arrow_right.png);
+        image: {{ icon('arrow_right') }};
 }
 
 QTreeView::branch:open:has-children:!has-siblings,
 QTreeView::branch:open:has-children:has-siblings  {
         border-image: none;
-        image: url(:/icons/theme/arrow_drop_down.png);
+        image: {{ icon('arrow_drop_down') }};
 }

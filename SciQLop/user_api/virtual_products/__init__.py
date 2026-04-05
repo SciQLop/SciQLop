@@ -103,3 +103,6 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
     elif product_type == VirtualProductType.Spectrogram:
         return VirtualSpectrogram(path, callback, debug=debug, cachable=cachable)
     return None
+
+
+from SciQLop.user_api.virtual_products.types import Scalar, Vector, MultiComponent, Spectrogram

@@ -19,19 +19,6 @@ def from_dict(obj, d: dict):
     return obj
 
 
-def _from_json_obj(obj: Any, json_str):
-    d = json.loads(json_str)
-    return from_dict(obj, d)
-
-
-def _from_json(cls, json_str):
-    return _from_json_obj(cls(), json_str)
-
-
-def from_json(*args):
-    assert len(args) == 2
-    assert type(args[1]) is str
-    if type(args[0]) is type:
-        return lambda json_str: _from_json(args[0], args[1])
-    elif is_dataclass(args[0]):
-        return _from_json_obj(args[0], args[1])
+def from_json(obj, json_str: str):
+    assert is_dataclass(obj)
+    return from_dict(obj, json.loads(json_str))

@@ -18,3 +18,5 @@ documentation/*
 .vscode
 *.pyc
 *.swp
+.serena/
+.superpowers/

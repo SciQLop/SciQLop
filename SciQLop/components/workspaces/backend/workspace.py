@@ -1,132 +1,69 @@
-import datetime
-
-from SciQLop.components.jupyter.IPythonKernel import InternalIPKernel
-from SciQLop.components.jupyter.jupyter_clients.clients_manager import ClientsManager as IPythonKernelClientsManager
-# from .workspace_spec import WorkspaceSpecFile
-from .settings import SciQLopWorkspacesSettings
-from SciQLop.core.data_models.models import WorkspaceSpecFile
-from SciQLop.core.common.pip_process import pip_install_requirements
-from SciQLop.core.common import ensure_dir_exists
-from SciQLop.components.sciqlop_logging import getLogger
-from PySide6.QtCore import QObject, Signal, Slot
-from typing import List, Optional
-import shutil
 import os
+import shutil
 import sys
+from pathlib import Path
 
+from PySide6.QtCore import QObject, Signal
+
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
 
 
-def create_workspace_dir(workspace_dir: str):
-    ensure_dir_exists(workspace_dir)
-    ensure_dir_exists(os.path.join(workspace_dir, "dependencies"))
-    ensure_dir_exists(os.path.join(workspace_dir, "scripts"))
-
-
 class Workspace(QObject):
-    """Workspace class. Used to manage workspace. A workspace is a directory containing a workspace_spec.json file and specific dependencies for a given project.
-    """
-    _ipykernel_clients_manager: IPythonKernelClientsManager = None
-
     name_changed = Signal(str)
-    kernel_started = Signal()
-    dependencies_installed = Signal()
 
-    def __init__(self, workspace_dir=None, parent=None, workspace_spec: Optional[WorkspaceSpecFile] = None):
-        QObject.__init__(self, parent)
-        self._mpl_backend = None
-        if workspace_spec is None:
-            self._workspace_dir = str(os.path.join(SciQLopWorkspacesSettings().workspaces_dir, workspace_dir or "default"))
-        else:
-            self._workspace_dir = workspace_spec.directory
-        self._dependencies_dir = str(os.path.join(self._workspace_dir, "dependencies"))
-        self._ipykernel: Optional[InternalIPKernel] = None
+    def __init__(self, manifest: WorkspaceManifest, parent=None):
+        super().__init__(parent)
+        self._manifest = manifest
+        self._manifest_path = Path(manifest.directory) / "workspace.sciqlop"
 
-        create_workspace_dir(self._workspace_dir)
-
-        self._workspace_spec = workspace_spec or WorkspaceSpecFile(
-            os.path.join(self._workspace_dir, "workspace_spec.json"))
-        self._workspace_spec.last_used = datetime.datetime.now().isoformat()
-        self.add_to_python_path(self._dependencies_dir, prepend=True, permanent=False)
-        os.chdir(self._workspace_dir)
-        self._ensure_all_dependencies_installed()
+    def activate(self):
+        """Make this workspace the active one: chdir, add to sys.path, touch timestamp."""
+        os.chdir(self._manifest.directory)
+        if self._manifest.directory not in sys.path:
+            sys.path.insert(0, self._manifest.directory)
+        WorkspaceManifest.touch_last_used(self._manifest.directory)
 
     @property
-    def workspace_dir(self):
-        return self._workspace_dir
-
-    def add_to_python_path(self, path, prepend=True, permanent=False):
-        if prepend:
-            sys.path.insert(0, path)
-        else:
-            sys.path.append(path)
-        if permanent:
-            if prepend:
-                self._workspace_spec.python_path.insert(0, path)
-            else:
-                self._workspace_spec.python_path.append(path)
-            self._workspace_spec.save()
+    def workspace_dir(self) -> str:
+        return self._manifest.directory
 
     @property
-    def python_path(self):
-        return self._workspace_spec.python_path
-
-    @property
-    def dependencies(self):
-        return self._workspace_spec.dependencies
-
-    def install_dependency(self, dependency):
-        self._workspace_spec.dependencies.append(dependency)
-        self._ensure_all_dependencies_installed()
-
-    def install_dependencies(self, dependencies: List[str]):
-        self._workspace_spec.dependencies.extend(dependencies)
-        self._ensure_all_dependencies_installed()
-
-    def add_files(self, files: List[str], destination: str = ""):
-        for file in files:
-            log.info(f"Copying {file} to {os.path.join(self._workspace_dir, destination)}")
-            shutil.copy(file, os.path.join(self._workspace_dir, destination))
-
-    def add_directory(self, directory: str, destination: str = ""):
-        log.info(f"Coping {directory} to {os.path.join(self._workspace_dir, destination)}")
-        shutil.copytree(directory, os.path.join(self._workspace_dir, destination))
-
-    @property
-    def name(self):
-        return self._workspace_spec.name
+    def name(self) -> str:
+        return self._manifest.name
 
     @name.setter
-    def name(self, value):
-        self._workspace_spec.name = value
+    def name(self, value: str):
+        self._manifest.name = value
+        self._manifest.save(self._manifest_path)
+        self.name_changed.emit(value)
 
-    @Slot()
-    def _dependencies_installed(self):
-        log.info("Dependencies installed")
-        log.info(self._install_proc.stdout)
-        log.info(self._install_proc.stderr)
+    @property
+    def dependencies(self) -> list[str]:
+        return self._manifest.requires
 
-    def _ensure_all_dependencies_installed(self):
-        if len(self.dependencies):
-            if 'SCIQLOP_BUNDLED' in os.environ:
-                git_dependencies = list(filter(lambda x: x.startswith("git+"), self.dependencies))
-                if len(git_dependencies):
-                    from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.warning(None, "SciQLop", "The following dependencies are git repositories:\n\n"
-                                                         f"{', '.join(git_dependencies)}\n\n"
-                                                         "These dependencies are not supported in the bundled version of SciQLop because git is not provided.")
-                    return
+    def install_dependency(self, dep: str):
+        if dep not in self._manifest.requires:
+            self._manifest.requires.append(dep)
+            self._manifest.save(self._manifest_path)
 
-            log.info(f"Installing dependencies: {self.dependencies}")
-            with open(os.path.join(self._workspace_dir, "requirements.txt"), 'w') as f:
-                f.write('\n'.join(self.dependencies))
-            self._install_proc = pip_install_requirements(
-                requirements_file=os.path.join(self._workspace_dir, "requirements.txt"),
-                install_dir=self._dependencies_dir, cwd=self._workspace_dir)
-            self._install_proc.finished.connect(self.dependencies_installed)
-            self._install_proc.finished.connect(self._dependencies_installed)
-            self._install_proc.start()
-        else:
-            log.info("No dependencies to install")
-            self.dependencies_installed.emit()
+    def install_dependencies(self, deps: list[str]):
+        added = [d for d in deps if d not in self._manifest.requires]
+        if added:
+            self._manifest.requires.extend(added)
+            self._manifest.save(self._manifest_path)
+
+    def add_files(self, files: list[str], destination: str = ""):
+        for f in files:
+            dest = os.path.join(self.workspace_dir, destination, os.path.basename(f))
+            os.makedirs(os.path.dirname(dest), exist_ok=True)
+            shutil.copy2(f, dest)
+
+    def add_directory(self, directory: str, destination: str = ""):
+        dest = os.path.join(self.workspace_dir, destination)
+        shutil.copytree(directory, dest, dirs_exist_ok=True)
+
+    def __str__(self):
+        return self.name

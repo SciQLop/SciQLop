@@ -1,7 +1,5 @@
 from typing import Optional
 from pycrdt import Doc, Map, MapEvent, Transaction
-from pycrdt_websocket import WebsocketProvider
-from pycrdt_websocket.websocket import HttpxWebsocket
 from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel, TimeRange, SciQLopPlot
 import traceback
 from SciQLop.components.sciqlop_logging import getLogger
@@ -90,7 +88,7 @@ class PanelSync(QObject):
         try:
             with self.doc.transaction(origin="local"):
                 update_time_range(self.time_range_crdt, trange)
-        except Exception as e:
+        except BaseException as e:
             log.error(f"Error changing time range: {e}, traceback: {traceback.format_exc()}")
 
     def _remote_time_range_changed(self, event, txn):

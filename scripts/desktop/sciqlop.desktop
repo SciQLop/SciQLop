@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=SciQLop
+Exec=sciqlop %f
+Icon=sciqlop
+Type=Application
+Categories=Science;Education;
+MimeType=application/x-sciqlop-workspace;application/x-sciqlop-archive;

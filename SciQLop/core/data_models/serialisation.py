@@ -18,7 +18,7 @@ class ReadOnlySpecFile:
 
     def __init__(self, path: str, spec_class: type, spec_filename: str, **kwargs):
         self._path = _ensure_fname(path, spec_filename)
-        assert os.path.exists(path)
+        assert os.path.exists(self._path)
         with open(self._path, 'r') as f:
             self._spec = from_json(spec_class(**kwargs), f.read())
 

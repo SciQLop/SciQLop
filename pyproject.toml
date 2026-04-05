@@ -1,9 +1,12 @@
 [build-system]
-build-backend = "flit_core.buildapi"
-requires = ["flit_core"]
+build-backend = "hatchling.build"
+requires = ["hatchling"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["SciQLop"]
 
 [project]
-name = 'SciQLop'
+name = "SciQLop"
 version = "0.10.0"
 description = "An ergonomic and efficient application to browse and label in situ plasma measurements from multi-mission satellite data."
 keywords = ["machine-learning", "satellite", "plasma-physics", "nasa-data", "amda", "cdpp"]
@@ -15,7 +18,7 @@ maintainers = [
     { name = "Alexis Jeandet", email = "alexis.jeandet@member.fsf.org" }
 ]
 
-requires-python = ">=3.8"
+requires-python = ">=3.10,<3.15"
 license = { file = "COPYING" }
 readme = "README.md"
 classifiers = [
@@ -24,7 +27,6 @@ classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Natural Language :: English",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -34,33 +36,31 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
 ]
 dependencies = [
-    'SciQLopPlots==0.17.1',
-    'speasy>=1.5.2',
-    'qtconsole',
-    'tscat_gui==0.6.*',
-    'tscat==0.4.*',
+    "SciQLopPlots==0.20.7",
+    "speasy>=1.6.1",
+    "qtconsole",
     "humanize",
-    'platformdirs',
-    'seaborn',
+    "platformdirs",
+    "seaborn",
     "scipy",
-    "pyside6==6.9.2",
-    "shiboken6==6.9.2",
-    "PySide6-QtAds==4.4.1",
-    "IPython",
-    "ipykernel<7.1.0",
-    "jupyterlab>=4,!=4.1.0",
-    "notebook",
-    "ipympl",
+    "pyside6==6.10.2",
+    "shiboken6==6.10.2",
+    "PySide6-QtAds==4.5.0.2",
+    "ipython",
+    "jupyqt>=0.4.1",
+    "matplotlib==3.10.8",
     "qasync",
     "jinja2",
     "pyzstd",
     "PyGitHub",
     "numpy",
     "expression",
-    "httpx_ws>=0.7.1,<0.8.0",
-    "pycrdt-websocket>=0.15.4,<0.16.0",
-    "pycrdt",
-    "pydantic"
+    "pydantic",
+    "keyring",
+    "uv",
+    "tomli_w",
+    "pyyaml",
+    "psutil"
 ]
 [project.urls]
 homepage = "https://github.com/SciQLop/SciQLop"
@@ -68,19 +68,19 @@ bug_tracker = "https://github.com/SciQLop/SciQLop/issues"
 
 [project.optional-dependencies]
 dev = [
-    "pytest-runner",
     "pytest",
     "pytest-cov",
     "pytest-qt",
+    "hypothesis",
     'pytest-xvfb; platform_system == "Linux"',
 ]
 
 [project.gui-scripts]
 sciqlop = "SciQLop.app:main"
 
-[project.entry-points."jupyter_client.kernel_provisioners"]
-sciqlop-kernel-provisioner = "SciQLop.Jupyter:SciQLopProvisioner"
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 qt_api = "pyside6"
+xvfb_width = 2560
+xvfb_height = 1440
+xvfb_xauth = true

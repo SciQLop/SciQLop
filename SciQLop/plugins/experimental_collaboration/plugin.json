@@ -10,6 +10,9 @@
     }
   ],
   "license": "MIT",
-  "dependencies": {},
+  "python_dependencies": [
+    "wire-websocket>=0.7.1,<0.8.0",
+    "pycrdt>=0.12.40,<0.13.0"
+  ],
   "disabled": true
 }
