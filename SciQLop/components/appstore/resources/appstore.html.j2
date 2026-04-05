@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SciQLop Store</title>
+    <style>
+        :root {
+            {% for name, color in palette.items() %}
+            --{{ name }}: {{ color }};
+            {% endfor %}
+        }
+    </style>
+    <link rel="stylesheet" href="appstore.css">
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+</head>
+<body>
+    <div id="tab-bar">
+        <button class="tab active" data-category="">All</button>
+        <button class="tab" data-category="plugin">Plugins</button>
+        <button class="tab" data-category="workspace">Workspaces</button>
+        <button class="tab" data-category="template">Templates</button>
+        <button class="tab" data-category="example">Examples</button>
+    </div>
+
+    <div id="toolbar">
+        <input type="text" id="search-input" placeholder="Search plugins, workspaces, examples...">
+        <select id="sort-select">
+            <option value="stars">Popular</option>
+            <option value="name">Name</option>
+        </select>
+    </div>
+
+    <div id="tag-chips"></div>
+
+    <div id="loading">Loading...</div>
+
+    <div class="cards-grid" id="package-cards"></div>
+
+    <aside id="details-panel" class="hidden">
+        <h2 id="details-title">Details</h2>
+        <hr>
+        <div id="details-content"></div>
+    </aside>
+
+    <script src="appstore.js"></script>
+</body>
+</html>
