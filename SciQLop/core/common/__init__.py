@@ -1,13 +1,8 @@
 import os
-from typing import Optional, AnyStr, Protocol
-from contextlib import closing
-import socket
-
+from typing import AnyStr
 import asyncio
 from qasync import QThreadExecutor
 import functools
-
-from PySide6.QtGui import QColor
 
 from .signal_rate_limiter import SignalRateLimiter
 
@@ -36,15 +31,6 @@ def insort(a, x, lo=0, hi=None, key=None):
         else:
             lo = mid + 1
     a.insert(lo, x)
-
-
-def find_available_port(start_port: int = 8000, end_port: int = 9000) -> Optional[int]:
-    for port in range(start_port, end_port):
-        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            res = sock.connect_ex(('localhost', port))
-            if res != 0:
-                return port
-    return None
 
 
 def ensure_dir_exists(path: AnyStr):
@@ -314,9 +300,3 @@ def pipeline(*funcs):
     return wrapper
 
 
-def combine_colors(color1: QColor, color2: QColor) -> QColor:
-    r = (color1.red() + color2.red()) // 2
-    g = (color1.green() + color2.green()) // 2
-    b = (color1.blue() + color2.blue()) // 2
-    a = (color1.alpha() + color2.alpha()) // 2
-    return QColor(r, g, b, a)

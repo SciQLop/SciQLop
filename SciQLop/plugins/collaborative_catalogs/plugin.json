@@ -10,8 +10,11 @@
     }
   ],
   "license": "MIT",
-  "dependencies": {
-    "cocat": ">=0.1.0"
-  },
+  "python_dependencies": [
+    "cocat>=0.7.0"
+  ],
+  "dependencies": [
+    "tscat_catalogs"
+  ],
   "disabled": true
 }

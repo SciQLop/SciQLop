@@ -1,0 +1,21 @@
+QSplitter {
+    background: {{ palette('base') }};
+}
+
+QSplitter::handle {
+    background: {{ palette('mid') }};
+    border: none;
+    border-radius: 1px;
+}
+
+QSplitter::handle:horizontal {
+    min-width: 3px;
+}
+
+QSplitter::handle:vertical {
+    min-height: 3px;
+}
+
+QSplitter::handle:hover {
+    background: {{ palette('Highlight') | alpha(120) }};
+}

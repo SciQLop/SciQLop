@@ -2,21 +2,18 @@
 QDateEdit,
 QComboBox {
   color: palette(text);
-  border: 2px solid {{ palette('border') }};
+  border: 1px solid {{ palette('border') }};
   padding-left: 5px;
-  border-radius: 0px;
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px;
+  border-radius: 4px;
   height: {{ controls_height }};
   background-color: palette(button);
 }
 
-
 QDateEdit:disabled,
 QComboBox:disabled {
-  color: palette(mid);
+  color: {{ palette('UnselectedText') }};
   background-color: palette(base);
-  border-bottom: 2px solid {{ palette('border') }};
+  border: 1px solid {{ palette('border') }};
 }
 
 QDateEdit::drop-down,
@@ -28,28 +25,44 @@ QComboBox::drop-down {
 
 QDateEdit::down-arrow,
 QComboBox::down-arrow {
-  image: url(:/icons/theme/arrow_drop_down.png);
+  image: {{ icon('arrow_drop_down') }};
   margin-right: 12px;
 }
 
-
 QDateEdit::down-arrow:focus,
 QComboBox::down-arrow:focus {
-  image: url(:/icons/theme/arrow_drop_down.png);
+  image: {{ icon('arrow_drop_down') }};
   margin-right: 12px;
 }
 
 QDateEdit::down-arrow:disabled,
 QComboBox::down-arrow:disabled {
-  image: url(:/icons/theme/arrow_drop_down.png);
+  image: {{ icon('arrow_drop_down') }};
   margin-right: 12px;
 }
 
 QDateEdit QAbstractItemView,
 QComboBox QAbstractItemView {
+  color: palette(text);
   background-color: palette(base);
-  border: 2px solid {{ palette('border') }};
-  border-radius: 5px;
+  border: 1px solid {{ palette('border') }};
+  border-radius: 4px;
+  selection-color: palette(highlighted-text);
+  selection-background-color: palette(highlight);
+  outline: none;
+}
+
+QDateEdit QAbstractItemView::item,
+QComboBox QAbstractItemView::item {
+  color: palette(text);
+  background-color: palette(base);
+  padding: 4px 6px;
+}
+
+QDateEdit QAbstractItemView::item:selected,
+QComboBox QAbstractItemView::item:selected {
+  color: palette(highlighted-text);
+  background-color: palette(highlight);
 }
 
 QDateEdit[frame='false'],
@@ -61,5 +74,5 @@ QComboBox[frame='false'] {
 
 QDateEdit[frame='false']:disabled,
 QComboBox[frame='false']:disabled {
-  color: palette(mid);
+  color: {{ palette('UnselectedText') }};
 }

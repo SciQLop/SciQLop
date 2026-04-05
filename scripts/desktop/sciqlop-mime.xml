@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-sciqlop-workspace">
+    <comment>SciQLop Workspace</comment>
+    <glob pattern="*.sciqlop"/>
+  </mime-type>
+  <mime-type type="application/x-sciqlop-archive">
+    <comment>SciQLop Workspace Archive</comment>
+    <glob pattern="*.sciqlop-archive"/>
+  </mime-type>
+</mime-info>

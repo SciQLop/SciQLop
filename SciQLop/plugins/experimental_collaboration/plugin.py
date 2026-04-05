@@ -1,15 +1,15 @@
 import uuid
 import asyncio
-from httpx_ws import aconnect_ws
-from pycrdt_websocket import WebsocketProvider
-from pycrdt_websocket.websocket import HttpxWebsocket
+from wire_websocket import AsyncWebSocketClient
 from PySide6.QtCore import QObject
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtGui import QIcon
 from SciQLop.core.ui.mainwindow import SciQLopMainWindow
 from .collab_wizard import CollabWizard, Result as CollabResult
 from .collab import PanelsSync
 from pycrdt import Doc
 from SciQLop.components.sciqlop_logging import getLogger
+from urllib.parse import urlparse
+from .settings import ExperimentalCollaborationSettings
 
 log = getLogger(__name__)
 
@@ -28,13 +28,7 @@ class Plugin(QObject):
         self._collab_wizard.setModal(True)
         self._collab_wizard.done.connect(self._start_collab)
 
-        self.start_collab = QAction(self)
-        self.start_collab.setIcon(QIcon("://icons/theme/collab.png"))
-        self.start_collab.setText("Start collaborative mode")
-        self.start_collab.triggered.connect(self.toggle_collab)
-        main_window.toolBar.addAction(self.start_collab)
-
-        self._server_url = "https://sciqlop.lpp.polytechnique.fr/cache-dev"
+        self._server_url = ExperimentalCollaborationSettings().server_url
         self._room_id = uuid.uuid4().hex
         self._ws = None
         self._provider = None
@@ -74,20 +68,20 @@ class Plugin(QObject):
         self.close_event.set()
 
     async def _start(self):
-        async with (
-            aconnect_ws(f"{self._server_url}/{self._room_id}") as websocket,
-            WebsocketProvider(self._doc, HttpxWebsocket(websocket, self._room_id), log) as provider,
-        ):
-            self._ws = websocket
-            self._provider = provider
+        p = urlparse(self._server_url)
+        host = f"{p.scheme}://{p.hostname}"
+        port = p.port if p.port is not None else (443 if p.scheme == "https" else 80)
+        path = p.path
+        async with (AsyncWebSocketClient(f"{path}/{self._room_id}", doc=self._doc,
+                                         host=host, port=port,
+                                         cookies=None) as self._ws):
             await self.close_event.wait()
 
     def start(self):
+        self.close_event.clear()
         self._task = asyncio.create_task(self._start())
-        self.start_collab.setText("Stop collaborative mode")
 
     def stop(self):
         self.close_event.set()
         self._ws = None
         self._provider = None
-        self.start_collab.setText("Start collaborative mode")

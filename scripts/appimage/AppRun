@@ -1,29 +1,52 @@
-#! /bin/bash
+#!/bin/sh
 
-# If running from an extracted image, then export ARGV0 and APPDIR
+set -e
+
 if [ -z "${APPIMAGE}" ]; then
-    export ARGV0="$0"
-
-    self=$(readlink -f -- "$0") # Protect spaces (issue 55)
+    self=$(readlink -f -- "$0")
     export APPDIR="${self%/*}"
 fi
 
-# Resolve the calling command (preserving symbolic links).
-export APPIMAGE_COMMAND=$(command -v -- "$ARGV0")
+PYTHON="${APPDIR}/opt/python/bin/python3"
 
-# Export TCl/Tk
-export TCL_LIBRARY="${APPDIR}/usr/share/tcltk/tcl8.6"
-export TK_LIBRARY="${APPDIR}/usr/share/tcltk/tk8.6"
-export TKPATH="${TK_LIBRARY}"
 export SCIQLOP_BUNDLED="1"
+export SSL_CERT_FILE=$($PYTHON -c "import certifi; print(certifi.where())")
+export PATH="${APPDIR}/opt/uv:${APPDIR}/opt/python/bin:${APPDIR}/usr/local/bin:${PATH}"
 
-# Export SSL certificate
-export SSL_CERT_FILE="${APPDIR}/opt/_internal/certs.pem"
+############################################
+# Handle AppImage built-in commands first
+############################################
 
-export PATH="${APPDIR}/usr/local/bin:${APPDIR}/usr/bin:${APPDIR}/bin"
+case "$1" in
+    --appimage-extract|--appimage-mount|--appimage-version)
+        exec "$APPIMAGE" "$@"
+        ;;
+esac
+
+############################################
+# Subcommands
+############################################
+
+case "$1" in
+    python) shift; exec "$PYTHON" "$@" ;;
+    uv)     shift; exec "${APPDIR}/opt/uv/uv" "$@" ;;
+    shell)  exec /bin/sh ;;
+esac
+
+############################################
+# Handle re-entry as Python interpreter
+# (venv symlinks python → AppImage binary)
+############################################
+
+case "$1" in
+    -c|-m|-V|--version|-W|-X|-h|--help|-I|-s|-u|-v|-E|-B|-O)
+        exec "$PYTHON" "$@"
+        ;;
+esac
+
+############################################
+# Default: launch SciQLop
+############################################
 
 #export SCIQLOP_DEBUG="1"
-
-# Call Python
-"$APPDIR/usr/bin/python" -I -m SciQLop.app "$@"
-
+exec "$PYTHON" -I -m SciQLop.app "$@"

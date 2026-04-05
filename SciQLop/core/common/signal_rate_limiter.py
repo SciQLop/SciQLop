@@ -29,6 +29,7 @@ class SignalRateLimiter:
             self.max_delay_timer.start()
 
     def _timeout(self):
-        if self.max_delay is not None and not self.max_delay_timer.isActive():
-            self.timer.stop()
+        self.timer.stop()
+        if self.max_delay is not None:
+            self.max_delay_timer.stop()
         self.callback(*self._args, **self._kwargs)

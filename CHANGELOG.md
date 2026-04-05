@@ -1,5 +1,83 @@
 # Changelog
 
+## [v0.11.0](https://github.com/SciQlop/SciQLop/tree/v0.11.0) (unreleased)
+
+[Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.10.4...v0.11.0)
+
+### New features
+
+- **Catalog system rewrite**: New provider-based catalog architecture with capability-gated UI (create, rename, delete catalogs and events), tree/table split view browser, per-catalog color-coded overlays on plot panels, folder-based catalog paths, dirty tracking with deferred save, and jump-to-event navigation
+- **Catalog browser improvements**: Context menu with New Catalog/New Folder, folder creation via placeholders, node type icons, placeholder type enum
+- **Catalog user API**: Full CRUD API for catalogs from the Jupyter console — `catalogs.list()`, `catalogs.get()`, `catalogs.create()`, `catalogs.save()`, `catalogs.remove()`
+- **Collaborative catalogs**: Real-time catalog co-editing via cocat (CRDT/WebSocket), ported to new provider API
+- **Cocat multi-room provider**: Collaborative catalog provider now supports multiple rooms with on-demand joining and path-based catalog creation
+- **Welcome page redesign**: Migrated to QWebEngineView + QWebChannel + Jinja2, two-column layout with hero workspace, news feed, featured packages, quickstart shortcuts, example browser with workspace picker modal
+- **Welcome page workspace editing**: Workspace name and description editable from the details panel; package management with add/remove controls (installs immediately for active workspace, saves to manifest for inactive ones); resizable details panel; active workspace badge; latest GitHub release banner with update-available alert
+- **App Store panel**: New dock panel for browsing community plugins with tab bar, search, tag filtering, sort, and detail panel (mock data, UI ready)
+- **Workspace management overhaul**: Migrated workspace metadata from `workspace.json` (JSON) to `workspace.sciqlop` (TOML) with `WorkspaceManifest`, filesystem-based timestamps, auto-migration of old workspaces, auto-start JupyterLab for non-default workspaces
+- **Workspace launcher**: Rewritten as workspace-aware supervisor process with venv isolation, plugin dependency resolution via uv, workspace switching (exit code 65), `.sciqlop`/`.sciqlop-archive` file associations, freedesktop MIME type and desktop entry
+- **Product tree context menu**: Right-click on products in the tree to plot them ([\#70](https://github.com/SciQLop/SciQLop/issues/70))
+- **Fluent plot panel API**: New declarative API for constructing plot panels from the Jupyter console (`user_api`)
+- **Speasy plot backend**: SciQLop registers as a `speasy` plot backend — `speasy.plot()` renders directly into SciQLop panels
+- **Speasy catalog integration**: Speasy inventory catalogs and timetables exposed as read-only catalog providers
+- **Jupyter integration improvements**: Extracted `KernelManager` for kernel lifecycle, adaptive kernel poller, hardened subprocess cleanup with graceful termination escalation
+- **Command palette**: Ctrl+K fuzzy command palette with QAction harvesting, multi-step argument chains, LRU history, and product plotting integration
+- **Virtual product `%%vp` magic**: Cell magic for defining virtual products with type annotations (`Scalar`, `Vector["Bx","By","Bz"]`), `--debug` workbench mode with diagnostic overlays, hot-reload via `MutableCallback`
+- **Settings system**: New Pydantic-based settings with category/subcategory organization, YAML persistence, and type-based UI delegate registry
+- **Theming**: Dark palette support with automatic icon inversion based on current palette, styled QSplitter
+- Per-event color mapping for catalog overlays: right-click a catalog → "Color by..." to color spans by a metadata column (categorical or continuous with matplotlib colormaps)
+
+### Bug fixes
+
+- Fixed non-deterministic catalog overlay colors — `hash()` replaced with `md5` for stable cross-process results
+- Fixed `SignalRateLimiter` double-firing callback when both regular and max-delay timers expired
+- Fixed missing `await` on `leave_room()` in collaborative catalog client
+- Fixed sorted event list not re-sorted after drag-editing an event range
+- Fixed `ConfigEntry` crash when loading an empty YAML file
+- Fixed `ReadOnlySpecFile` asserting wrong variable on construction
+- Fixed experimental collaboration plugin `self._ws` never assigned (WebSocket unreachable)
+- Added `psutil` as declared dependency
+- Fixed `logging.debug` call in `ExtraColumnsProxyModel` silently dropping arguments
+- Fixed async plugin shutdown — cleanup now happens in `closeEvent` while event loop is alive, not in `aboutToQuit`
+- Patched qasync to handle infinite timer delays (`anyio.sleep_forever()`)
+- Fixed qasync exit code propagation — store on app instance since `exec()` doesn't return Qt's code
+- Fixed workspace switching always landing on default workspace (double-import and env var issues)
+- Fixed `list_existing_workspaces` default-dir comparison bug
+- Fixed catalog event editing loop, table refresh, and double span creation
+- Fixed catalog provider signal disconnection on unregister
+- Fixed tscat datetime handling for naive/aware mismatches and ordering validation
+- Fixed tscat catalog creation in folders and PySide6 enum deprecation warnings
+- Fixed catalog `_folder_path` deduplication and parent expansion before inline edit
+- Fixed lazy event loading for large catalogs (>=5000 events)
+- Fixed JupyterLab file download support
+- Fixed time range forwarding and label propagation in speasy plot backend
+- Fixed `datetime64` conversion to epoch seconds in speasy backend
+- Clear error message when speasy backend is used outside SciQLop
+
+### Refactoring
+
+- Reorganized codebase from layer-based to component-based structure (`core/` → `components/`)
+- Moved workspace infrastructure and examples from `core/` to `components/workspaces/backend/`
+- Moved plugin dependency resolution from `core/` to `components/plugins/`
+- Removed dead code: old Qt widget welcome page subtree, `WorkspaceSpec`/`WorkspaceSpecFile`, unused core modules (`python.py`, `ExtraColumnsProxyModel.py`, `datetime_range.py`, `flow_layout.py`, `mpl_panel.py`, `time_span.py`), dead functions (`find_available_port`, `combine_colors`, `got_text` signal, 6 unused terminal message functions), simplified `from_json` API
+- Renamed Jupyter `IPythonKernel/` to `kernel/`
+- Modernized QSS theme to match welcome page design language
+- Excluded speasy catalogs and timetables from the product tree (moved to catalog providers)
+
+### Testing
+
+- **Story-driven UI testing framework**: Declarative `@ui_action` decorator with narrative templates, `StoryRunner` for scripted tests and Hypothesis `RuleBasedStateMachine` for fuzzing — produces human-readable failure stories and pseudo-code reproducers
+- Migrated plot and command palette workflow tests to story-driven API
+- CI uploads fuzzer story artifacts on test failure
+
+### Dependencies
+
+- Bumped PySide6 to 6.10.2
+- Added uv as a dependency
+- Added hypothesis for stateful UI testing
+- Frozen Jupyter packages for stability
+- Added keyring for credential storage
+
 ## [v0.10.0](https://github.com/SciQlop/SciQLop/tree/v0.10.0) (2025-09-22)
 
 [Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.9.4...v0.10.0)

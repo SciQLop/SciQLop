@@ -16,6 +16,10 @@ from SciQLop.components.plotting.backend.palette import Palette as _Palette, mak
 from ._plots import to_product_path, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
     is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product
 from ._graphs import ensure_arrays_of_double
+from ._thread_safety import on_main_thread
+import numpy as _np
+from speasy.products import SpeasyVariable as _SpeasyVariable
+from speasy.core import datetime64_to_epoch as _datetime64_to_epoch
 
 __all__ = ['PlotPanel', 'plot_panel', 'create_plot_panel']
 
@@ -59,6 +63,15 @@ def _to_sqp_orientation(orientation: Orientation) -> _Qt.Orientation:
         raise ValueError(f"Unknown orientation {orientation}")
 
 
+def _speasy_variable_to_arrays(v: _SpeasyVariable):
+    """Extract (x, y) or (x, y, z) float64 arrays from a SpeasyVariable."""
+    time = _datetime64_to_epoch(v.time)
+    numeric_axes = [ax for ax in v.axes[1:] if _np.issubdtype(ax.values.dtype, _np.number)]
+    if numeric_axes:
+        return time, numeric_axes[0].values.astype(_np.float64), v.values.astype(_np.float64)
+    return time, v.values.astype(_np.float64)
+
+
 def _maybe_product(*args, **kwargs) -> Option[List[str]]:
     if len(args) == 1 and is_product(args[0]):
         return Some(to_product_path(args[0]))
@@ -94,12 +107,14 @@ class PlotPanel:
         return self._impl
 
     @experimental_api()
+    @on_main_thread
     def add_sub_panel(self, orientation: Orientation = Orientation.Horizontal) -> "PlotPanel":
         _panel = _SciQLopMultiPlotPanel(self._impl, synchronize_x=False,
                                         synchronize_time=True, orientation=_to_sqp_orientation(orientation))
         self._impl.add_panel(_panel)
         return PlotPanel(_panel)
 
+    @on_main_thread
     def plot_product(self, product: AnyProductType, plot_index=-1, **kwargs) -> Tuple[
         ProjectionPlot | TimeSeriesPlot, Plottable]:
         """Plot a product in the panel.
@@ -128,14 +143,15 @@ class PlotPanel:
         _p, _g = _plot_product(self._get_impl_or_raise(), to_product_path(product), index=plot_index, **kwargs)
         return to_plot(_p), to_plottable(_g)
 
-    def plot_data(self, x, y, z=None, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
-        """Plot static data in the panel.
+    @on_main_thread
+    def plot_data(self, x, y=None, z=None, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
+        """Plot static data or a SpeasyVariable in the panel.
         Parameters
         ----------
-        x : array-like
-            The X data to plot.
-        y : array-like
-            The Y data to plot.
+        x : array-like or SpeasyVariable
+            The X data to plot, or a SpeasyVariable (time and values extracted automatically).
+        y : array-like, optional
+            The Y data to plot. Not needed if x is a SpeasyVariable.
         z : array-like, optional
             The Z data to plot. If not provided, a 2D plot will be created.
         plot_index : int
@@ -151,6 +167,10 @@ class PlotPanel:
         Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]
             A tuple containing the plot and the graph object.
         """
+        if isinstance(x, _SpeasyVariable):
+            arrays = _speasy_variable_to_arrays(x)
+            x, y = arrays[0], arrays[1]
+            z = arrays[2] if len(arrays) == 3 else None
 
         kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
         if kwargs["plot_type"] != _PlotType.TimeSeries:
@@ -159,6 +179,7 @@ class PlotPanel:
                                    **kwargs)
         return to_plot(_p), to_plottable(_g)
 
+    @on_main_thread
     def plot_function(self, f, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
         kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
         if kwargs["plot_type"] != _PlotType.TimeSeries:
@@ -166,7 +187,10 @@ class PlotPanel:
         _p, _g = _plot_function(self._get_impl_or_raise(), f, index=plot_index, **kwargs)
         return to_plot(_p), to_plottable(_g)
 
+    @on_main_thread
     def plot(self, *args, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable] | None:
+        if len(args) == 1 and isinstance(args[0], _SpeasyVariable):
+            return self.plot_data(args[0], plot_index=plot_index, **kwargs)
         if len(args) <= 1:  # product or callable
             r = _maybe_product(*args, **kwargs).map(lambda p: self.plot_product(p, plot_index, **kwargs)).or_else(
                 _maybe_callable(*args, **kwargs).map(lambda f: self.plot_function(f, plot_index, **kwargs)))
@@ -182,14 +206,45 @@ class PlotPanel:
         pass
 
     @property
+    @on_main_thread
     def time_range(self) -> TimeRange:
         return self._get_impl_or_raise().time_axis_range()
 
     @time_range.setter
+    @on_main_thread
     def time_range(self, time_range: TimeRange):
         self._get_impl_or_raise().set_time_axis_range(time_range)
 
+    def _get_time_range_bar(self):
+        return getattr(self._get_impl_or_raise(), '_time_range_bar', None)
+
     @property
+    @on_main_thread
+    def duration(self) -> str:
+        bar = self._get_time_range_bar()
+        return bar.duration_text if bar else ""
+
+    @duration.setter
+    @on_main_thread
+    def duration(self, value: str):
+        bar = self._get_time_range_bar()
+        if bar:
+            bar.duration_text = value
+
+    @on_main_thread
+    def step_forward(self, n: int = 1):
+        bar = self._get_time_range_bar()
+        if bar:
+            bar.step(n)
+
+    @on_main_thread
+    def step_backward(self, n: int = 1):
+        bar = self._get_time_range_bar()
+        if bar:
+            bar.step(-n)
+
+    @property
+    @on_main_thread
     def plots(self):
         def wrap_plot(p):
             if is_time_series_plot(p):
@@ -202,6 +257,45 @@ class PlotPanel:
                 return None
 
         return list(filter(lambda p: p is not None, map(wrap_plot, self._impl.plots())))
+
+    @on_main_thread
+    def save(self, path: str) -> None:
+        """Save the panel as an image (PNG, PDF, JPG, or BMP).
+
+        The format is inferred from the file extension.
+
+        Parameters
+        ----------
+        path : str
+            Destination file path. Supported extensions: .png, .pdf, .jpg, .bmp
+        """
+        import os
+        impl = self._get_impl_or_raise()
+        ext = os.path.splitext(path)[1].lower()
+        exporters = {
+            '.png': impl.save_png,
+            '.pdf': impl.save_pdf,
+            '.jpg': impl.save_jpg,
+            '.jpeg': impl.save_jpg,
+            '.bmp': impl.save_bmp,
+        }
+        exporter = exporters.get(ext)
+        if exporter is None:
+            raise ValueError(f"Unsupported format '{ext}'. Use one of: {', '.join(exporters)}")
+        exporter(path)
+
+    @on_main_thread
+    def save_template(self, name_or_path: str) -> None:
+        from SciQLop.components.plotting.panel_template import PanelTemplate, templates_dir, save_preview
+        impl = self._get_impl_or_raise()
+        t = PanelTemplate.from_panel(impl)
+        if '/' not in name_or_path and '\\' not in name_or_path:
+            t.name = name_or_path.removesuffix('.json').removesuffix('.yaml').removesuffix('.yml')
+            if not any(name_or_path.endswith(ext) for ext in ('.json', '.yaml', '.yml')):
+                name_or_path = name_or_path + '.json'
+            name_or_path = str(templates_dir() / name_or_path)
+        t.to_file(name_or_path)
+        save_preview(impl, name_or_path)
 
     def _repr_pretty_(self, p, cycle):
         if cycle:
@@ -218,6 +312,7 @@ class PlotPanel:
                     p.pretty(plot)
 
 
+@on_main_thread
 def plot_panel(name: str) -> Optional[PlotPanel]:
     """Get a plot panel by name.
 
@@ -233,6 +328,7 @@ def plot_panel(name: str) -> Optional[PlotPanel]:
     return None
 
 
+@on_main_thread
 def create_plot_panel() -> PlotPanel:
     """Create a new plot panel.
 

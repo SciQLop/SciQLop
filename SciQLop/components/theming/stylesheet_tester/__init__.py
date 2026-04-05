@@ -5,7 +5,6 @@ from PySide6.QtWidgets import QWidget, QComboBox, QPushButton, QLabel, QLineEdit
 from PySide6.QtCore import QStringListModel
 
 from SciQLop.core.sciqlop_application import sciqlop_app, sciqlop_event_loop
-import platform, os
 
 
 
@@ -95,8 +94,6 @@ class WidgetGallery(QMainWindow):
 
 
 def main():
-    if platform.system() == 'Linux':
-        os.environ['QT_QPA_PLATFORM'] = os.environ.get("SCIQLOP_QT_QPA_PLATFORM", 'xcb')
     app = sciqlop_app()
     loop = sciqlop_event_loop()
     main_window = WidgetGallery()

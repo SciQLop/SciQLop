@@ -16,8 +16,19 @@ def is_array_of_double(a):
     return isinstance(a, np.ndarray) and a.dtype == np.float64
 
 
+def _to_float64(a):
+    if a is None:
+        return None
+    if is_array_of_double(a):
+        return a
+    if hasattr(a, 'dtype') and np.issubdtype(a.dtype, np.datetime64):
+        from speasy.core import datetime64_to_epoch
+        return datetime64_to_epoch(a)
+    return np.array(a, dtype=np.float64)
+
+
 def ensure_arrays_of_double(*args):
-    return (np.array(a, dtype=np.float64) if not (is_array_of_double(a) or a is None) else a for a in args)
+    return (_to_float64(a) for a in args)
 
 class Graph(Plottable):
     def __init__(self, impl):

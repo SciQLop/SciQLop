@@ -10,8 +10,9 @@
     }
   ],
   "license": "MIT",
-  "dependencies": {
-    "tscat": ">=0.4.0",
-    "tscat_gui": ">=0.6.0"
-  }
+  "python_dependencies": [
+    "tscat>=0.4.0",
+    "tscat_gui>=0.6.0"
+  ],
+  "dependencies": []
 }

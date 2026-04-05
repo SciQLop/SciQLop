@@ -85,7 +85,7 @@ class DataProvider:
             if len(axes) == 0 or self.graph_type(node) in (GraphType.MultiLines, GraphType.SingleLine):
                 return [time, _ensure_float64_and_C(v.values)]
             return [time, _ensure_float64_and_C(axes[0].values), _ensure_float64_and_C(v.values)]
-        except:  # pylint: disable=broad-except
+        except Exception:
             log.error(
                 f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")
             return []

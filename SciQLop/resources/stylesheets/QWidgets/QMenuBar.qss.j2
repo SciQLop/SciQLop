@@ -1,5 +1,41 @@
 QMenuBar {
     background-color: palette(base);
-    border: 1px;
-    spacing: 3px; /* spacing between menu bar items */
+    border: none;
+    border-bottom: 1px solid {{ palette('border') }};
+    spacing: 3px;
+}
+
+QMenuBar::item {
+    padding: 4px 8px;
+    background: transparent;
+    border-radius: 4px;
+}
+
+QMenuBar::item:selected {
+    background: {{ palette('highlight') | alpha(25) }};
+}
+
+QMenuBar::item:pressed {
+    background: {{ palette('highlight') | alpha(50) }};
+}
+
+QMenu {
+    background-color: palette(base);
+    border: 1px solid {{ palette('border') }};
+    border-radius: 4px;
+    padding: 4px 0;
+}
+
+QMenu::item {
+    padding: 4px 24px 4px 8px;
+}
+
+QMenu::item:selected {
+    background: {{ palette('highlight') | alpha(25) }};
+}
+
+QMenu::separator {
+    height: 1px;
+    background: {{ palette('border') }};
+    margin: 4px 8px;
 }

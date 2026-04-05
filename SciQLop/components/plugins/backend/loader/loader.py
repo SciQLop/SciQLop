@@ -1,4 +1,5 @@
 import importlib
+import importlib.metadata
 import os
 import traceback
 from typing import List
@@ -55,21 +56,6 @@ class Worker(QRunnable):
             log.error(f"Traceback: {traceback.format_exc()}")
 
 
-def load_plugin(name, mod, main_window):
-    if mod:
-        try:
-            log.info(f"Loading {name}")
-            r = mod.load(main_window)
-            if r:
-                loaded_plugins.__dict__[name] = r
-            return r
-        except Exception as e:
-            log.error(f"Oups can't load {name} from {mod} , {e}")
-            log.error(f"Traceback: {traceback.format_exc()}")
-    else:
-        log.error(f"Oups can't load {name} , {mod}")
-
-
 def import_from_path(module_name, file_path):
     import sys
     spec = importlib.util.spec_from_file_location(module_name, file_path)
@@ -85,12 +71,28 @@ def load_module(path, name):
         # if path not in sys.path:
         #    sys.path.insert(0, path)
         # mod = importlib.import_module(name, "*")
-        mod = import_from_path(name, os.path.join(path, name ,  "__init__.py"))
-        return name, mod
+        mod = import_from_path(name, os.path.join(path, name, "__init__.py"))
+        return mod
     except Exception as e:
         log.error(f"Oups can't load {name} , {e}")
         log.error(f"Traceback: {traceback.format_exc()}")
-        return "", None
+        return None
+
+
+def load_plugin(path, name, main_window):
+    mod = load_module(path, name)
+    if mod:
+        try:
+            log.info(f"Loading {name}")
+            r = mod.load(main_window)
+            if r:
+                loaded_plugins.__dict__[name] = r
+            return r
+        except Exception as e:
+            log.error(f"Oups can't load {name} from {mod} , {e}")
+            log.error(f"Traceback: {traceback.format_exc()}")
+    else:
+        log.error(f"Oups can't load {name} , {mod}")
 
 
 def background_load(plugin, main_window):
@@ -105,24 +107,50 @@ def list_plugins_as_modules(plugin_path):
 
 
 def list_plugins_as_packages(plugin_path):
-    return [f for f in os.listdir(plugin_path) if os.path.isdir(f"{plugin_path}/{f}") and not f.startswith('_')]
+    return [f for f in os.listdir(plugin_path) if os.path.isdir(f"{plugin_path}/{f}") and not f.startswith(('_', '.'))]
 
 
 def list_plugins(plugin_path):
     return list_plugins_as_modules(plugin_path) + list_plugins_as_packages(plugin_path)
 
 
+ENTRY_POINT_GROUP = "sciqlop.plugins"
+
+
+def _discover_entry_point_plugins() -> dict[str, importlib.metadata.EntryPoint]:
+    return {ep.name: ep for ep in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP)}
+
+
+def _load_entry_point_plugin(ep: importlib.metadata.EntryPoint, main_window):
+    try:
+        mod = ep.load()
+        log.info(f"Loading entry-point plugin {ep.name}")
+        r = mod.load(main_window)
+        if r:
+            loaded_plugins.__dict__[ep.name] = r
+        return r
+    except Exception as e:
+        log.error(f"Failed to load entry-point plugin {ep.name}: {e}")
+        log.error(f"Traceback: {traceback.format_exc()}")
+        return None
+
+
 def load_all(main_window):
     from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings, PluginConfig
     from .plugin_desc import PluginDesc
     plugin_list = []
+    ep_plugins = _discover_entry_point_plugins()
     with SciQLopPluginsSettings() as settings:
         for folder in plugins_folders():
             plugins = list_plugins(folder)
             log.info(f"Plugins found: {plugins}")
             for plugin in plugins:
                 if plugin not in settings.plugins:
-                    desc = PluginDesc.from_json(os.path.join(folder, plugin, "plugin.json"))
+                    try:
+                        desc = PluginDesc.from_json(os.path.join(folder, plugin, "plugin.json"))
+                    except Exception as e:
+                        log.warning(f"Skipping plugin {plugin}: {e}")
+                        continue
                     settings.plugins[plugin] = PluginConfig()
                     if desc.disabled:
                         log.info(f"Plugin {plugin} is disabled by default")
@@ -131,4 +159,18 @@ def load_all(main_window):
                 if settings.plugins[plugin].enabled:
                     plugin_list.append((folder, plugin))
 
-    return {plugin: load_plugin(*load_module(folder, plugin), main_window) for folder, plugin in plugin_list}
+        for name, ep in ep_plugins.items():
+            if name not in settings.plugins:
+                settings.plugins[name] = PluginConfig()
+            if not settings.plugins[name].enabled:
+                log.info(f"Entry-point plugin {name} is disabled")
+                continue
+            plugin_list.append((None, name))
+
+    results = {}
+    for folder, plugin in plugin_list:
+        if folder is None:
+            results[plugin] = _load_entry_point_plugin(ep_plugins[plugin], main_window)
+        else:
+            results[plugin] = load_plugin(folder, plugin, main_window)
+    return results

@@ -11,7 +11,7 @@ from SciQLop.core.unique_names import make_simple_incr_name
 from SciQLop.core.models import products, ProductsModelNode, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder, DataProviderReturnType
-from SciQLop.core.icons import register_icon
+from SciQLop.components.theming import register_icon
 from SciQLop.components import sciqlop_logging
 from inspect import signature
 
@@ -54,7 +54,7 @@ def _positional_args_types(callback: VirtualProductCallback) -> List[type]:
 
 def _arguments_type(callback: VirtualProductCallback) -> ArgumentsType:
     pos_arg_types = _positional_args_types(callback)
-    all_are = lambda types, expected: all(map(lambda x: x is expected, pos_arg_types))
+    all_are = lambda types, expected: all(t is expected for t in types)
     if len(pos_arg_types) >= 2:
         if all_are(pos_arg_types[:2], float):
             return ArgumentsType.Float
@@ -101,7 +101,8 @@ class EasyProvider(DataProvider):
         product_name = self._path[-1]
         product_path = self._path[:-1]
         metadata.update(
-            {"description": f"Virtual {parameter_type.name} product built from Python function: {self.name}"})
+            {"description": f"Virtual {parameter_type.name} product built from Python function: {self.name}",
+             "stable_id": path})
         products.add_node(
             product_path,
             ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER, parameter_type, "",
@@ -138,10 +139,14 @@ def {self.name}(start: np.datetime64, stop: np.datetime64) -> Optional[SpeasyVar
         return self._user_get_data(start, stop)
 
     def _debug_get_data(self, callback, start, stop):
-        try:
-            return callback(start, stop)
-        except Exception as e:
-            log.error(f"Error in {self.name}: {e}")
+        from SciQLop.user_api.virtual_products.validation import validate_and_call
+        result = validate_and_call(callback, start, stop, None, None)
+        for d in result.diagnostics:
+            if d.level == "error":
+                log.error(f"{self.name}: {d.message}")
+            elif d.level == "warning":
+                log.warning(f"{self.name}: {d.message}")
+        return result.data
 
     @property
     def path(self):
@@ -198,10 +203,11 @@ class EasyVector(EasyProvider):
 class EasyMultiComponent(EasyVector):
     def __init__(self, path, get_data_callback: VirtualProductCallback, components_names: List[str], metadata: dict,
                  data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False):
-        super(EasyVector, self).__init__(path=path, callback=get_data_callback,
-                                         parameter_type=ParameterType.Multicomponents,
-                                         metadata={**metadata, "components": ';'.join(components_names)},
-                                         data_order=data_order, cacheable=cacheable, debug=debug)
+        # Skip EasyVector.__init__ intentionally — same logic but with Multicomponents type
+        EasyProvider.__init__(self, path=path, callback=get_data_callback,
+                              parameter_type=ParameterType.Multicomponents,
+                              metadata={**metadata, "components": ';'.join(components_names)},
+                              data_order=data_order, cacheable=cacheable, debug=debug)
         self._columns = components_names
 
 

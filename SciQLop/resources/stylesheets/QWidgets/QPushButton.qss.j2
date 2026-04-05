@@ -1,45 +1,28 @@
 
 QPushButton {
     background-color: palette(button);
-    border: 2px solid {{ palette('border') }};
-    border-radius: 5px;
+    border: 1px solid {{ palette('border') }};
+    border-radius: 4px;
     height: {{ controls_height }};
+    padding: 0 8px;
 }
 
 QPushButton:disabled {
-    background-color: {{ palette('button') |  lighter(120) }};
-    color: #6c757d;
-    border: 1px solid {{ palette('border') }};
-}
-
-QPushButton:enabled:focus {
-    background-color: #f0faff;
-    border: 2px solid {{ palette('border') }};
-    border-radius: 5px;
-}
-
-QPushButton:disabled:hover {
-    background-color: {{ palette('button') |  lighter(150) }};
+    color: {{ palette('UnselectedText') }};
     border: 1px solid {{ palette('border') }};
 }
 
 QPushButton:enabled:hover {
-    background-color: {{ palette('button') |  lighter(120) }};
-    border: 2px solid {{ palette('border') }};
-    border-radius: 5px;
+    background-color: {{ palette('button') | lighter(110) }};
+    border: 1px solid {{ palette('Selection') }};
 }
 
-
-QPushButton:enabled:hover:focus {
-    background-color: {{ palette('button') |  lighter(120) }};
-    border: 2px solid {{ palette('border') }};
-    border-radius: 5px;
+QPushButton:enabled:focus {
+    border: 1px solid {{ palette('Selection') }};
 }
-
 
 QPushButton:enabled:pressed,
 QPushButton:enabled:pressed:focus {
-    background-color: {{ palette('button') |  darker(120) }};
-    border: 2px solid {{ palette('border') }};
-    border-radius: 5px;
+    background-color: {{ palette('button') | darker(110) }};
+    border: 1px solid {{ palette('Selection') }};
 }

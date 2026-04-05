@@ -4,10 +4,10 @@ from PySide6.QtGui import QIcon
 import threading
 import traceback
 import speasy as spz
-from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex
+from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex, CatalogIndex, TimetableIndex
 from speasy.products import SpeasyVariable
 
-from SciQLop.core import register_icon
+from SciQLop.components.theming import register_icon, get_icon
 from SciQLop.components import sciqlop_logging
 from SciQLop.core.enums import ParameterType, GraphType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder
@@ -23,7 +23,7 @@ register_icon("nasa", QIcon(":/icons/NASA.jpg"))
 register_icon("amda", QIcon(":/icons/amda.png"))
 register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
 register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
-register_icon("uiowaephtool", QIcon(f"{__here__}/../resources/icons/Iowa_Hawkeyes_logo.svg"))
+register_icon("uiowaephtool", QIcon(f"{__here__}/../../resources/icons/Iowa_Hawkeyes_logo.svg"))
 
 
 def _current_thread_id():
@@ -60,7 +60,7 @@ def get_components(param: ParameterIndex) -> List[str] or None:
         if type(param.LABL_PTR_1) is str:
             try:
                 return ast.literal_eval(param.LABL_PTR_1)
-            except:
+            except (ValueError, SyntaxError):
                 return param.LABL_PTR_1.split(',')
         elif type(param.LABL_PTR_1) is list:
             return param.LABL_PTR_1
@@ -124,6 +124,7 @@ def make_product(name, node: ParameterIndex, provider):
     meta["components"] = get_components(node)
     meta["provider"] = node.spz_provider()
     meta["speasy_id"] = f"{node.spz_provider()}/{node.spz_uid()}"
+    meta["stable_id"] = meta["speasy_id"]
     return ProductsModelNode(name, provider, meta, ProductsModelNodeType.PARAMETER, p_type)
 
 
@@ -132,7 +133,9 @@ def explore_nodes(inventory_node, product_node: ProductsModelNode, provider):
         if name and child:
             if hasattr(child, "name") and child.name != "AMDA":
                 name = child.name
-            if isinstance(child, ParameterIndex):
+            if isinstance(child, (CatalogIndex, TimetableIndex)):
+                continue
+            elif isinstance(child, ParameterIndex):
                 product_node.add_child(make_product(name, child, provider=provider))
             elif hasattr(child, "__dict__"):
                 meta = {}
@@ -141,8 +144,9 @@ def explore_nodes(inventory_node, product_node: ProductsModelNode, provider):
                 elif hasattr(child, "description"):
                     meta = {"description": child.description}
                 cur_prod = ProductsModelNode(name, meta)
-                product_node.add_child(cur_prod)
                 explore_nodes(child, cur_prod, provider=provider)
+                if cur_prod.children_count() > 0:
+                    product_node.add_child(cur_prod)
 
 
 def build_product_tree(root_node: ProductsModelNode, provider):
@@ -199,5 +203,23 @@ class SpeasyPlugin(DataProvider):
 
 def load(*args):
     from speasy.core.cache import _cache
+    from .speasy_catalog_provider import SpeasyCatalogProvider
     _cache._data._local = ThreadStorage()
-    return SpeasyPlugin()
+    plugin = SpeasyPlugin()
+    plugin._catalog_provider = SpeasyCatalogProvider()
+    _register_plot_backend()
+    return plugin
+
+
+def _register_plot_backend():
+    try:
+        import speasy.plotting as splt
+        from SciQLop.user_api.plot._speasy_backend import SciQLopBackend
+        from SciQLop.components.settings.backend.plot_backend_settings import PlotBackendSettings
+
+        splt.__backends__["sciqlop"] = SciQLopBackend
+        if PlotBackendSettings().default_speasy_backend == "sciqlop":
+            splt.__backends__[None] = SciQLopBackend
+    except Exception as e:
+        from SciQLop.components.sciqlop_logging import getLogger
+        getLogger(__name__).debug(f"Could not register SciQLop plot backend: {e}")

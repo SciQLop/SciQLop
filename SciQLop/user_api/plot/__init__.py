@@ -7,8 +7,9 @@ from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from ._plots import XYPlot, TimeSeriesPlot, ProjectionPlot, TimeRange
 from ._panel import PlotPanel, create_plot_panel, plot_panel
 from ._graphic_primitives import Ellipse, Text, CurvedLine
+from . import _fluent as fluent
 
 log = _getLogger(__name__)
 
 __all__ = ['ScaleType', 'PlotType', 'Plot', 'Plottable', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
-           'create_plot_panel', 'plot_panel', 'TimeRange', 'Ellipse']
+           'create_plot_panel', 'plot_panel', 'TimeRange', 'Ellipse', 'fluent']
