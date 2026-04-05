@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SciQLop Welcome</title>
+    <style>
+        :root {
+            {% for name, color in palette.items() %}
+            --{{ name }}: {{ color }};
+            {% endfor %}
+        }
+    </style>
+    <link rel="stylesheet" href="welcome.css">
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+</head>
+<body>
+    <div id="global-filter-bar">
+        <input type="text" id="global-filter-input" placeholder="Type to filter...">
+    </div>
+
+    <div id="latest-release" class="hidden"></div>
+
+    <div id="hero" class="hidden"></div>
+
+    <div id="news-banner" class="hidden">
+        <div id="news-list"></div>
+        <button id="news-dismiss" class="news-dismiss" title="Dismiss">&times;</button>
+    </div>
+
+    <div id="main-content">
+        <div id="left-column">
+            <section id="quickstart">
+                <h2>Quick start</h2>
+                <div class="cards-row" id="quickstart-cards"></div>
+            </section>
+
+            <section id="recent-workspaces">
+                <div class="section-header">
+                    <h2>Recent workspaces</h2>
+                </div>
+                <div class="cards-grid" id="workspace-cards"></div>
+            </section>
+
+            <section id="examples" class="collapsible-section">
+                <div class="section-header">
+                    <button class="section-toggle" aria-expanded="true" data-target="example-cards">&#9662;</button>
+                    <h2>Examples</h2>
+                </div>
+                <div class="cards-grid section-body" id="example-cards"></div>
+            </section>
+
+            <section id="templates" class="collapsible-section">
+                <div class="section-header">
+                    <button class="section-toggle" aria-expanded="true" data-target="template-cards">&#9662;</button>
+                    <h2>Templates</h2>
+                </div>
+                <div class="cards-grid section-body" id="template-cards"></div>
+            </section>
+        </div>
+
+        <div id="right-column">
+            <section id="featured">
+                <div class="section-header">
+                    <h2>Featured</h2>
+                    <a href="#" id="browse-all-link" class="browse-link">Browse all &rarr;</a>
+                </div>
+                <div class="cards-grid cards-grid-small" id="featured-cards"></div>
+            </section>
+        </div>
+    </div>
+
+    <aside id="details-panel" class="hidden">
+        <div id="details-resize-handle"></div>
+        <h2 id="details-title">Details</h2>
+        <hr>
+        <div id="details-content"></div>
+    </aside>
+
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal">
+            <h2 id="modal-title"></h2>
+            <div id="modal-body"></div>
+            <div id="modal-actions"></div>
+        </div>
+    </div>
+
+    <script src="welcome.js"></script>
+</body>
+</html>
