@@ -1,0 +1,71 @@
+app-id: com.github.SciQLop.SciQLop
+runtime: org.kde.Platform
+runtime-version: '6.9'
+sdk: org.kde.Sdk
+command: sciqlop
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=home
+  - --talk-name=org.freedesktop.secrets
+
+modules:
+  # uv — needed at runtime for workspace venvs
+  - name: uv
+    buildsystem: simple
+    build-commands:
+      - install -Dm755 uv /app/bin/uv
+    sources:
+      - type: archive
+        url: https://github.com/astral-sh/uv/releases/download/0.11.2/uv-x86_64-unknown-linux-gnu.tar.gz
+        sha256: 7ac2ca0449c8d68dae9b99e635cd3bc9b22a4cb1de64b7c43716398447d42981
+        only-arches:
+          - x86_64
+
+  # Node.js — needed for JupyterLab
+  - name: nodejs
+    buildsystem: simple
+    build-commands:
+      - cp -r bin lib include share /app/
+    sources:
+      - type: archive
+        url: https://nodejs.org/dist/v23.11.0/node-v23.11.0-linux-x64.tar.xz
+        sha256: fa9ae28d8796a6cfb7057397e1eea30ca1c61002b42b8897f354563a254e7cf5
+        only-arches:
+          - x86_64
+
+  # krb5 — needed by PySide6's QtNetwork (libgssapi_krb5.so.2)
+  # see https://github.com/beeware/briefcase/issues/2182
+  - name: mit-krb5
+    buildsystem: simple
+    sources:
+      - type: archive
+        url: https://kerberos.org/dist/krb5/1.21/krb5-1.21.3.tar.gz
+        sha256: b7a4cd5ead67fb08b980b21abd150ff7217e85ea320c9ed0c6dadd304840ad35
+    build-commands:
+      - cd src && autoreconf -i
+      - cd src && ./configure --prefix=/app --disable-static --enable-shared
+      - cd src && make -j$(nproc)
+      - cd src && make install
+
+  # PySide6 + shiboken6 + QtAds (arch-specific wheels)
+  - pyside6-deps.yaml
+
+  # All other Python dependencies (auto-generated)
+  - python-deps.yaml
+
+  # SciQLop itself
+  - name: sciqlop
+    buildsystem: simple
+    build-commands:
+      - pip3 install --verbose --no-deps --no-index --find-links="file://${PWD}"
+        --prefix=${FLATPAK_DEST} --no-build-isolation .
+      - sed 's/Icon=sciqlop/Icon=com.github.SciQLop.SciQLop/' scripts/desktop/sciqlop.desktop > /tmp/sciqlop.desktop && install -Dm644 /tmp/sciqlop.desktop /app/share/applications/com.github.SciQLop.SciQLop.desktop
+      - install -Dm644 SciQLop/resources/icons/SciQLop.png /app/share/icons/hicolor/512x512/apps/com.github.SciQLop.SciQLop.png
+      - install -Dm644 scripts/flatpak/com.github.SciQLop.SciQLop.metainfo.xml /app/share/metainfo/com.github.SciQLop.SciQLop.metainfo.xml
+    sources:
+      - type: dir
+        path: ../../
