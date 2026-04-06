@@ -1,0 +1,42 @@
+name: python3-native-wheels
+buildsystem: simple
+build-commands:
+  - pip3 install --verbose --no-index --no-deps --find-links="file://${PWD}"
+    --prefix=${FLATPAK_DEST} --no-build-isolation
+    shiboken6==6.10.2
+    pyside6_essentials==6.10.2
+    pyside6_addons==6.10.2
+    pyside6==6.10.2
+    pyside6_qtads==4.5.0.2
+    SciQLopPlots==0.20.7
+sources:
+  - type: file
+    url: https://files.pythonhosted.org/packages/52/88/292e0576489c46624ab419ee284ac5a59ae10e2eb34a58b6abca51dfd290/shiboken6-6.10.2-cp39-abi3-manylinux_2_34_x86_64.whl
+    sha256: ace0790032d9cb0adda644b94ee28d59410180d9773643bb6cf8438c361987ad
+    only-arches:
+      - x86_64
+  - type: file
+    url: https://files.pythonhosted.org/packages/99/20/3a6ca95052e1744b5a3eba164e2dd451d358a3dcaf78179de4b45c8e3f47/pyside6_essentials-6.10.2-cp39-abi3-manylinux_2_34_x86_64.whl
+    sha256: 660aea45bfa36f1e06f799b934c2a7df963bd31abc5083e8bb8a5bfaef45686b
+    only-arches:
+      - x86_64
+  - type: file
+    url: https://files.pythonhosted.org/packages/a5/69/e1ab8c756fd3984b1fd7b186446227f524f6b561160bfbfdba8874b4709a/pyside6_addons-6.10.2-cp39-abi3-manylinux_2_34_x86_64.whl
+    sha256: 030a851163b51dbf0063be59e9ddb6a9e760bde89a28e461ccc81a224d286eaf
+    only-arches:
+      - x86_64
+  - type: file
+    url: https://files.pythonhosted.org/packages/35/d3/ab5cd2fac3d34469c7376e0cd18eec92905dbe44748c70bda7699a2a7206/pyside6-6.10.2-cp39-abi3-manylinux_2_34_x86_64.whl
+    sha256: 1b89ce8558d4b4f35b85bff1db90d680912e4d3ce9e79ff804d6fef1d1a151ef
+    only-arches:
+      - x86_64
+  - type: file
+    url: https://files.pythonhosted.org/packages/ba/c0/bc910d9b5d841291cf5b455ee7bf916be7c3b881cdc20346888c12972b91/pyside6_qtads-4.5.0.2-cp39-abi3-manylinux_2_34_x86_64.whl
+    sha256: ade03254e155f38307682aa5b180c57f5e5c961bf27f5419575bd8a9f6dc7d69
+    only-arches:
+      - x86_64
+  - type: file
+    url: https://files.pythonhosted.org/packages/46/8a/6c4b966a1b6fb03412b0927fad6e800396a3e345fffe679564dd11b8b415/sciqlopplots-0.20.7-cp312-cp312-manylinux_2_34_x86_64.whl
+    sha256: 806c5d3e6d2cb1d64f2d8fb61c1f4fde1c7be97ad9b72a8e97efaf93b48a2868
+    only-arches:
+      - x86_64

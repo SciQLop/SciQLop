@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.github.SciQLop.SciQLop</id>
+  <name>SciQLop</name>
+  <summary>Interactive visualization and labeling of in-situ space plasma data</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+
+  <developer id="io.github.sciqlop">
+    <name>SciQLop team</name>
+  </developer>
+
+  <description>
+    <p>
+      SciQLop (Scientific Qt application for Learning from Observations of Plasmas)
+      is a desktop application for interactive visualization and labeling of in-situ
+      space plasma time series. It connects to major space physics data archives
+      (AMDA, CDAWeb, SSCWeb) and lets you browse, plot, and annotate multi-mission
+      satellite measurements.
+    </p>
+    <p>Key features:</p>
+    <ul>
+      <li>Multi-panel time-series plotting with synchronized time axes and GPU-accelerated rendering</li>
+      <li>Catalog system for creating, editing, and overlaying event catalogs on plots</li>
+      <li>Embedded Jupyter/IPython kernel with a Python API for scripting and custom analysis</li>
+      <li>Virtual products defined from the notebook with live hot-reload</li>
+      <li>Workspace system with isolated Python environments and plugin support</li>
+      <li>Speasy integration for seamless access to space physics data providers</li>
+    </ul>
+  </description>
+
+  <url type="homepage">https://github.com/SciQLop/SciQLop</url>
+  <url type="bugtracker">https://github.com/SciQLop/SciQLop/issues</url>
+  <url type="vcs-browser">https://github.com/SciQLop/SciQLop</url>
+
+  <launchable type="desktop-id">com.github.SciQLop.SciQLop.desktop</launchable>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#e8f0fe</color>
+    <color type="primary" scheme_preference="dark">#1a2744</color>
+  </branding>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Multi-panel time series view with catalog overlays</caption>
+      <image>https://raw.githubusercontent.com/SciQLop/SciQLop/main/pictures/sciqlop_screenshot.png</image>
+    </screenshot>
+  </screenshots>
+
+  <content_rating type="oars-1.1" />
+
+  <releases>
+    <release version="0.10.5" date="2026-03-24">
+      <description><p>Bug fixes and packaging improvements.</p></description>
+    </release>
+    <release version="0.10.4" date="2025-12-04">
+      <description><p>Bug fixes and stability improvements.</p></description>
+    </release>
+    <release version="0.10.0" date="2025-09-22">
+      <description><p>Initial public release with multi-panel plotting, catalog system, embedded Jupyter kernel, and speasy integration.</p></description>
+    </release>
+  </releases>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
+  <categories>
+    <category>Science</category>
+    <category>Education</category>
+  </categories>
+</component>
