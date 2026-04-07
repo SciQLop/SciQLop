@@ -17,6 +17,7 @@ from SciQLop.core.property import SciQLopProperty
 from SciQLop.core.mime import decode_mime
 from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
 from SciQLop.components.plotting.backend.palette import Palette, make_color_list
+from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -184,6 +185,27 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self._catalog_manager = PanelCatalogManager(self)
         self.installEventFilter(self)
         self.plot_added.connect(self._install_filter_on_plot)
+
+        self._search_overlay = ProductSearchOverlay(self.viewport())
+        self._search_overlay.product_selected.connect(self._on_overlay_product_selected)
+        self.plot_added.connect(self._dismiss_search_overlay)
+        self._search_overlay.raise_()
+        self._search_overlay.focus_search()
+
+    def _on_overlay_product_selected(self, product_path: list[str]):
+        from SciQLopPlots import PlotType
+        plot_product(self, product_path, plot_type=PlotType.TimeSeries)
+
+    def _dismiss_search_overlay(self, _plot=None):
+        if self._search_overlay is not None:
+            self._search_overlay.hide()
+            self._search_overlay.deleteLater()
+            self._search_overlay = None
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if self._search_overlay is not None:
+            self._search_overlay.setGeometry(self.viewport().geometry())
 
     def update_theme(self):
         from SciQLop.components.theming.palette import SCIQLOP_PALETTE
