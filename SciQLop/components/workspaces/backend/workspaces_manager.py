@@ -157,6 +157,10 @@ class WorkspaceManager(QObject):
 
     @Slot(str)
     def delete_workspace(self, workspace: str):
+        active_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", "")
+        if os.path.realpath(workspace) == os.path.realpath(active_dir):
+            log.warning("Refusing to delete the active workspace: %s", workspace)
+            return
         shutil.rmtree(workspace, ignore_errors=True)
 
     @Slot(str)

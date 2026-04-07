@@ -1,5 +1,7 @@
 let backend = null;
 let selectedCard = null;
+let _currentDetailsWs = null;
+let _currentDetailsIsActive = false;
 
 // --- Initialization ---
 
@@ -22,6 +24,7 @@ function init() {
         backend.templates_changed.connect(loadTemplates);
         backend.latest_release_ready.connect(showLatestRelease);
         backend.featured_packages_ready.connect(onFeaturedReady);
+        backend.dependency_install_finished.connect(onDependencyInstallFinished);
         backend.fetch_latest_release();
         backend.fetch_featured_packages();
 
@@ -371,7 +374,19 @@ function createFeaturedCard(pkg) {
 
 // --- Details panel ---
 
+function onDependencyInstallFinished(resultJson) {
+    var result = JSON.parse(resultJson);
+    if (_currentDetailsWs && _currentDetailsWs.directory === result.dir) {
+        if (result.ok) {
+            _currentDetailsWs.requires = (_currentDetailsWs.requires || []).concat(result.deps);
+        }
+        showWorkspaceDetails(_currentDetailsWs, _currentDetailsIsActive);
+    }
+}
+
 function showWorkspaceDetails(ws, isActive) {
+    _currentDetailsWs = ws;
+    _currentDetailsIsActive = isActive;
     const panel = document.getElementById("details-panel");
     document.getElementById("details-title").textContent = "Workspace details";
 
@@ -469,15 +484,8 @@ function buildPackageList(ws, isActive, editable) {
             var doAdd = function() {
                 var dep = addInput.value.trim();
                 if (!dep) return;
-                ws.requires = (ws.requires || []).concat([dep]);
-                if (isActive) {
-                    backend.add_dependencies_to_workspace(
-                        ws.directory, JSON.stringify([dep]));
-                } else {
-                    backend.update_workspace_field(ws.directory,
-                        JSON.stringify({field: "requires", value: ws.requires}));
-                }
-                showWorkspaceDetails(ws, isActive);
+                backend.add_dependencies_to_workspace(
+                    ws.directory, JSON.stringify([dep]));
             };
             addBtn.addEventListener("click", doAdd);
             addInput.addEventListener("keydown", function(e) {
