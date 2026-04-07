@@ -65,6 +65,12 @@ def _normalize_input(data) -> SpeasyCatalog:
 
 
 class CatalogService:
+    """Notebook-facing facade for catalog CRUD operations.
+
+    Singleton instance available as ``catalogs`` from
+    ``SciQLop.user_api.catalogs``.  All paths follow the convention
+    ``"provider//sub//path//catalog_name"`` (``//``-separated segments).
+    """
 
     def _registry(self) -> CatalogRegistry:
         return CatalogRegistry.instance()
@@ -89,7 +95,30 @@ class CatalogService:
             raise KeyError(f"Catalog not found: {path!r}")
         return provider, catalog
 
+    def _persist(self, provider: CatalogProvider, catalog: Catalog, events: list[CatalogEvent]) -> None:
+        provider._set_events(catalog, events)
+        provider.events_changed.emit(catalog)
+        provider.mark_dirty(catalog)
+        if Capability.SAVE_CATALOG in provider.capabilities():
+            provider.save_catalog(catalog)
+        elif Capability.SAVE in provider.capabilities():
+            provider.save()
+
     def list(self, prefix: str | None = None) -> list[str]:
+        """Return full paths of all catalogs, optionally filtered by *prefix*.
+
+        Parameters
+        ----------
+        prefix : str, optional
+            If given, only catalogs whose path starts with this prefix are
+            returned.  E.g. ``"tscat"`` lists all tscat catalogs,
+            ``"cocat//room_id"`` lists catalogs in a specific cocat room.
+
+        Returns
+        -------
+        list[str]
+            Fully-qualified ``//``-separated catalog paths.
+        """
         if prefix is None:
             return [
                 _build_path_string(p.name, cat.path, cat.name)
@@ -105,12 +134,49 @@ class CatalogService:
         ]
 
     def get(self, path: str) -> SpeasyCatalog:
+        """Retrieve a catalog as a ``speasy.Catalog``.
+
+        Parameters
+        ----------
+        path : str
+            Fully-qualified catalog path (e.g. ``"tscat//my_catalog"``).
+
+        Returns
+        -------
+        speasy.products.catalog.Catalog
+            Catalog with events. Each event's ``meta["__sciqlop_uuid__"]``
+            preserves the internal UUID for round-trip editing.
+
+        Raises
+        ------
+        KeyError
+            If the provider or catalog is not found.
+        """
         provider, catalog = self._resolve(path)
         events = provider.events(catalog)
         speasy_events = [_event_to_speasy(e) for e in events]
         return SpeasyCatalog(name=catalog.name, events=speasy_events)
 
     def save(self, path: str, data) -> None:
+        """Save events to a catalog, creating it if it doesn't exist (upsert).
+
+        Existing events are replaced in bulk. UUIDs embedded in
+        ``event.meta["__sciqlop_uuid__"]`` are preserved on round-trip.
+
+        Parameters
+        ----------
+        path : str
+            Fully-qualified catalog path.
+        data : CatalogInput
+            A ``speasy.Catalog``, an iterable of ``(start, stop)`` tuples,
+            or an iterable of ``(start, stop, meta_dict)`` tuples.
+
+        Raises
+        ------
+        PermissionError
+            If the provider doesn't support catalog creation and the catalog
+            doesn't already exist.
+        """
         speasy_cat = _normalize_input(data)
         new_events = [_event_to_internal(e) for e in speasy_cat]
         provider_name, segments, name = _parse_path(path)
@@ -122,21 +188,46 @@ class CatalogService:
                 raise PermissionError(f"Provider {provider_name!r} cannot create catalogs")
             existing = provider.create_catalog(name, path=segments)
 
-        provider._set_events(existing, new_events)
-        provider.events_changed.emit(existing)
-        provider.mark_dirty(existing)
-        if Capability.SAVE_CATALOG in provider.capabilities():
-            provider.save_catalog(existing)
-        elif Capability.SAVE in provider.capabilities():
-            provider.save()
+        self._persist(provider, existing, new_events)
 
     def remove(self, path: str) -> None:
+        """Delete a catalog.
+
+        Parameters
+        ----------
+        path : str
+            Fully-qualified catalog path.
+
+        Raises
+        ------
+        KeyError
+            If the provider or catalog is not found.
+        PermissionError
+            If the provider doesn't support catalog deletion.
+        """
         provider, catalog = self._resolve(path)
         if Capability.DELETE_CATALOGS not in provider.capabilities():
             raise PermissionError(f"Provider {provider.name!r} cannot delete catalogs")
         provider.remove_catalog(catalog)
 
     def create(self, path: str, data) -> None:
+        """Create a new catalog with the given events (strict — fails if exists).
+
+        Parameters
+        ----------
+        path : str
+            Fully-qualified catalog path.
+        data : CatalogInput
+            A ``speasy.Catalog``, an iterable of ``(start, stop)`` tuples,
+            or an iterable of ``(start, stop, meta_dict)`` tuples.
+
+        Raises
+        ------
+        ValueError
+            If a catalog at *path* already exists.
+        PermissionError
+            If the provider doesn't support catalog creation.
+        """
         provider_name, segments, name = _parse_path(path)
         provider = self._find_provider(provider_name)
 
@@ -149,10 +240,63 @@ class CatalogService:
         speasy_cat = _normalize_input(data)
         new_events = [_event_to_internal(e) for e in speasy_cat]
         if new_events:
-            provider._set_events(catalog, new_events)
-            provider.events_changed.emit(catalog)
-            provider.mark_dirty(catalog)
-            if Capability.SAVE_CATALOG in provider.capabilities():
-                provider.save_catalog(catalog)
-            elif Capability.SAVE in provider.capabilities():
-                provider.save()
+            self._persist(provider, catalog, new_events)
+
+    def add_events(self, path: str, data) -> None:
+        """Append events to an existing catalog.
+
+        Parameters
+        ----------
+        path : str
+            Fully-qualified catalog path.
+        data : CatalogInput
+            A ``speasy.Catalog``, an iterable of ``(start, stop)`` tuples,
+            or an iterable of ``(start, stop, meta_dict)`` tuples.
+
+        Raises
+        ------
+        KeyError
+            If the provider or catalog is not found.
+        """
+        provider, catalog = self._resolve(path)
+        existing = provider.events(catalog)
+        speasy_cat = _normalize_input(data)
+        new_events = [_event_to_internal(e) for e in speasy_cat]
+        self._persist(provider, catalog, existing + new_events)
+
+    def remove_events(self, path: str, events) -> None:
+        """Remove specific events from a catalog.
+
+        Events are identified by their ``__sciqlop_uuid__`` metadata key
+        (present on events returned by :meth:`get`). Raw UUID strings are
+        also accepted.
+
+        Parameters
+        ----------
+        path : str
+            Fully-qualified catalog path.
+        events : iterable of speasy.Event or str
+            Events to remove. Speasy ``Event`` objects must carry a
+            ``meta["__sciqlop_uuid__"]`` key. Plain UUID strings are also
+            accepted.
+
+        Raises
+        ------
+        KeyError
+            If the provider or catalog is not found.
+        ValueError
+            If an event has no UUID and is not a string.
+        """
+        uuids_to_remove = set()
+        for e in events:
+            if isinstance(e, str):
+                uuids_to_remove.add(e)
+            elif isinstance(e, SpeasyEvent) and e.meta and _UUID_KEY in e.meta:
+                uuids_to_remove.add(e.meta[_UUID_KEY])
+            else:
+                raise ValueError(f"Cannot identify event to remove (no UUID): {e!r}")
+
+        provider, catalog = self._resolve(path)
+        existing = provider.events(catalog)
+        remaining = [e for e in existing if e.uuid not in uuids_to_remove]
+        self._persist(provider, catalog, remaining)
