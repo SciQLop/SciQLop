@@ -8,7 +8,7 @@ def register_all_magics(shell):
     from SciQLop.user_api.magics.timerange_magic import timerange_magic
     from SciQLop.user_api.magics.install_magic import install_magic
     from SciQLop.user_api.magics.workspace_magic import workspace_magic
-    from SciQLop.user_api.magics.completions import _match_plot, _match_timerange, _match_vp
+    from SciQLop.user_api.magics.completions import _match_plot, _match_timerange, _match_vp, _match_workspace
 
     shell.register_magic_function(vp_magic, magic_kind="cell", magic_name="vp")
     shell.register_magic_function(plot_magic, magic_kind="line", magic_name="plot")
@@ -20,3 +20,4 @@ def register_all_magics(shell):
     shell.Completer.custom_matchers.append(_match_plot)
     shell.Completer.custom_matchers.append(_match_timerange)
     shell.Completer.custom_matchers.append(_match_vp)
+    shell.Completer.custom_matchers.append(_match_workspace)
