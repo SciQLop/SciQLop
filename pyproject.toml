@@ -36,7 +36,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
 ]
 dependencies = [
-    "SciQLopPlots==0.20.7",
+    "SciQLopPlots==0.21.0",
     "speasy>=1.6.1",
     "qtconsole",
     "humanize",
