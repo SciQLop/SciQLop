@@ -413,7 +413,7 @@ function showWorkspaceDetails(ws, isActive) {
             '<button class="primary" onclick="tryOpenWorkspace(\'' + escapeAttr(ws.directory) + '\')">Open workspace</button>' +
             '<div class="details-actions-row">' +
                 '<button class="secondary" onclick="backend.duplicate_workspace(\'' + escapeAttr(ws.directory) + '\')">Clone</button>' +
-                (ws.is_default ? '' :
+                (ws.is_default || isActive ? '' :
                     '<button class="secondary danger" onclick="confirmDelete(\'' + escapeAttr(ws.directory) + '\', \'' + escapeAttr(ws.name) + '\')">Delete</button>') +
             '</div>' +
         '</div>';
