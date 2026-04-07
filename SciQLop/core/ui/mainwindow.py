@@ -20,7 +20,7 @@ from SciQLop.core import TimeRange
 from SciQLop.core.sciqlop_application import sciqlop_app
 from SciQLop.core.unique_names import auto_name
 from SciQLop.components.workspaces import Workspace
-from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, SciQLopStyle
+from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle
 from SciQLop.core.ui import Metrics
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel
@@ -91,6 +91,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def _setup_dock_manager(self):
         QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FocusHighlighting, True)
         QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerHasWidgetIcon, True)
+        QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.TabCloseButtonIsToolButton, True)
         QtAds.CDockManager.setAutoHideConfigFlags(
             QtAds.CDockManager.AutoHideFeatureEnabled |
             QtAds.CDockManager.AutoHideCloseButtonCollapsesDock |
@@ -121,14 +122,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _setup_side_panels(self):
         self.productTree = ProductsView(self)
-        self.productTree.setWindowIcon(get_current_style_icon("tree"))
+        self.productTree.setWindowIcon(theme_icon("tree"))
         self.add_side_pan(self.productTree)
 
         from SciQLop.components.products.product_context_menu import setup_product_context_menu
         setup_product_context_menu(self.productTree, self)
 
         self.catalogs_browser = CatalogBrowser(self)
-        self.catalogs_browser.setWindowIcon(get_current_style_icon("catalogue"))
+        self.catalogs_browser.setWindowIcon(theme_icon("catalogue"))
         self.add_side_pan(self.catalogs_browser)
         self.panel_added.connect(self.catalogs_browser.connect_to_panel)
 
@@ -141,16 +142,16 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolsMenu.addAction("Open JupyterLab in browser", wm.open_in_browser)
 
         self.logs = LogsWidget(self)
-        self.logs.setWindowIcon(get_current_style_icon("view_list"))
-        self.add_side_pan(self.logs, QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom)
+        self.logs.setWindowIcon(theme_icon("view_list"))
+        self.viewMenu.addAction("Logs", self._show_logs)
 
         self.settings_panel = SettingsPanel(self)
-        self.settings_panel.setWindowIcon(get_icon("settings"))
+        self.settings_panel.setWindowIcon(theme_adapted_icon("settings"))
         self.settings_panel.setWindowTitle("Settings")
         self.add_side_pan(self.settings_panel)
 
         self.properties_panel = PropertiesPanel(self)
-        self.properties_panel.setWindowIcon(get_icon("plot_properties"))
+        self.properties_panel.setWindowIcon(theme_adapted_icon("plot_properties"))
         self.add_side_pan(self.properties_panel)
 
     def _setup_toolbar(self):
@@ -161,12 +162,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
         self.addTSPanel = QtGui.QAction(self)
-        self.addTSPanel.setIcon(get_current_style_icon("add_graph"))
+        self.addTSPanel.setIcon(theme_icon("add_graph"))
         self.addTSPanel.setText("Add new plot panel")
         self.addTSPanel.triggered.connect(lambda: self.new_plot_panel())
         self.toolBar.addAction(self.addTSPanel)
         sciqlop_app().add_quickstart_shortcut(name="Plot panel", description="Add a new plot panel",
-                                              icon=get_icon("plot_panel"), callback=self.new_plot_panel)
+                                              icon=theme_adapted_icon("plot_panel"), callback=self.new_plot_panel)
 
     def _setup_status_bar(self):
         self._statusbar = QtWidgets.QStatusBar(self)
@@ -229,6 +230,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         shortcut = QtGui.QShortcut(QtGui.QKeySequence(palette_settings.keybinding), self)
         shortcut.activated.connect(self._command_palette.toggle)
+
+    def _show_logs(self):
+        dw = self.dock_manager.findDockWidget(self.logs.windowTitle())
+        if dw is None:
+            self.addWidgetIntoDock(QtAds.DockWidgetArea.BottomDockWidgetArea, self.logs)
+        else:
+            dw.toggleView(True)
+            dw.raise_()
 
     def _show_appstore(self):
         if self._appstore is None:

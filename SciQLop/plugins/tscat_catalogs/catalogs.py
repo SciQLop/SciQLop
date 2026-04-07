@@ -6,14 +6,14 @@ from PySide6.QtWidgets import QToolBar
 from tscat_gui import TSCatGUI
 
 from SciQLop.core.ui.mainwindow import SciQLopMainWindow
-from SciQLop.components.theming import get_current_style_icon
+from SciQLop.components.theming import theme_icon
 
 
 class CatalogGUISpawner(QAction):
     def __init__(self, catalog_gui, parent=None):
         super(CatalogGUISpawner, self).__init__(parent)
         self.catalog_gui = catalog_gui
-        self.setIcon(get_current_style_icon("catalogue"))
+        self.setIcon(theme_icon("catalogue"))
         self.triggered.connect(self.show_catalogue_gui)
         self.setText("Open Catalogue Explorer")
 

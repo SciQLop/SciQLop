@@ -1,25 +1,40 @@
+/* Title-bar buttons: explicit size prevents macOS QMacStyle from inflating them */
 #tabsMenuButton {
     qproperty-icon: {{ icon('arrow_drop_down') }};
     qproperty-iconSize: 16px;
+    max-height: 2ex;
+    max-width: 2ex;
+    padding: 0;
+    margin: 0;
 }
 
 
 #dockAreaCloseButton {
     qproperty-icon: {{ icon('close') }}, {{ icon('close') }} disabled;
     qproperty-iconSize: 16px;
+    max-height: 2ex;
+    max-width: 2ex;
+    padding: 0;
+    margin: 0;
 }
 
 
 #detachGroupButton {
     qproperty-icon: {{ icon('detach_tab') }}, {{ icon('detach_tab') }} disabled;
     qproperty-iconSize: 16px;
+    max-height: 2ex;
+    max-width: 2ex;
+    padding: 0;
+    margin: 0;
 }
 
 #tabCloseButton {
-    margin-top: 0.2ex;
     background: none;
     border: none;
-    padding: 0 -0.2ex;
+    padding: 0;
+    margin: 0;
+    max-height: 2ex;
+    max-width: 2ex;
     qproperty-icon: {{ icon('close') }}, {{ icon('close') }} disabled;
     qproperty-iconSize: 16px;
 }

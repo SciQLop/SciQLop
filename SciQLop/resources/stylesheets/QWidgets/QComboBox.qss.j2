@@ -1,4 +1,5 @@
 
+QDateTimeEdit,
 QDateEdit,
 QComboBox {
   color: palette(text);
@@ -9,6 +10,7 @@ QComboBox {
   background-color: palette(button);
 }
 
+QDateTimeEdit:disabled,
 QDateEdit:disabled,
 QComboBox:disabled {
   color: {{ palette('UnselectedText') }};
@@ -16,6 +18,7 @@ QComboBox:disabled {
   border: 1px solid {{ palette('border') }};
 }
 
+QDateTimeEdit::drop-down,
 QDateEdit::drop-down,
 QComboBox::drop-down {
   border: none;
@@ -23,24 +26,28 @@ QComboBox::drop-down {
   width: 2ex;
 }
 
+QDateTimeEdit::down-arrow,
 QDateEdit::down-arrow,
 QComboBox::down-arrow {
   image: {{ icon('arrow_drop_down') }};
   margin-right: 1.2ex;
 }
 
+QDateTimeEdit::down-arrow:focus,
 QDateEdit::down-arrow:focus,
 QComboBox::down-arrow:focus {
   image: {{ icon('arrow_drop_down') }};
   margin-right: 1.2ex;
 }
 
+QDateTimeEdit::down-arrow:disabled,
 QDateEdit::down-arrow:disabled,
 QComboBox::down-arrow:disabled {
   image: {{ icon('arrow_drop_down') }};
   margin-right: 1.2ex;
 }
 
+QDateTimeEdit QAbstractItemView,
 QDateEdit QAbstractItemView,
 QComboBox QAbstractItemView {
   color: palette(text);
@@ -52,6 +59,7 @@ QComboBox QAbstractItemView {
   outline: none;
 }
 
+QDateTimeEdit QAbstractItemView::item,
 QDateEdit QAbstractItemView::item,
 QComboBox QAbstractItemView::item {
   color: palette(text);
@@ -59,12 +67,60 @@ QComboBox QAbstractItemView::item {
   padding: 0.4ex 0.6ex;
 }
 
+QDateTimeEdit QAbstractItemView::item:selected,
 QDateEdit QAbstractItemView::item:selected,
 QComboBox QAbstractItemView::item:selected {
   color: palette(highlighted-text);
   background-color: palette(highlight);
 }
 
+/* QCalendarWidget popup */
+QCalendarWidget {
+  background-color: palette(base);
+}
+
+QCalendarWidget QWidget#qt_calendar_navigationbar {
+  background-color: palette(button);
+  padding: 0.2ex;
+}
+
+QCalendarWidget QToolButton {
+  color: palette(text);
+  background-color: transparent;
+  border: none;
+  padding: 0.3ex 0.6ex;
+  border-radius: 0.3ex;
+}
+
+QCalendarWidget QToolButton:hover {
+  background-color: palette(mid);
+}
+
+QCalendarWidget QToolButton::menu-indicator {
+  image: none;
+  width: 0;
+}
+
+QCalendarWidget QTableView {
+  background-color: palette(base);
+  selection-background-color: palette(highlight);
+  selection-color: palette(highlighted-text);
+  alternate-background-color: palette(alternate-base);
+  outline: none;
+}
+
+QCalendarWidget QMenu {
+  color: palette(text);
+  background-color: palette(base);
+  border: 1px solid {{ palette('border') }};
+}
+
+QCalendarWidget QMenu::item:selected {
+  color: palette(highlighted-text);
+  background-color: palette(highlight);
+}
+
+QDateTimeEdit[frame='false'],
 QDateEdit[frame='false'],
 QComboBox[frame='false'] {
   color: palette(text);
@@ -72,6 +128,7 @@ QComboBox[frame='false'] {
   border: 1px solid transparent;
 }
 
+QDateTimeEdit[frame='false']:disabled,
 QDateEdit[frame='false']:disabled,
 QComboBox[frame='false']:disabled {
   color: {{ palette('UnselectedText') }};
