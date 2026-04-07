@@ -87,6 +87,7 @@ class WelcomeBackend(QObject):
     appstore_requested = Signal()
     latest_release_ready = Signal(str)
     templates_changed = Signal()
+    dependency_install_finished = Signal(str)
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -309,14 +310,30 @@ class WelcomeBackend(QObject):
         manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
         manifest = WorkspaceManifest.load(manifest_path)
         new_deps = [d for d in deps if d not in manifest.requires]
-        if new_deps:
-            manifest.requires.extend(new_deps)
-            manifest.save(manifest_path)
+        if not new_deps:
+            return
+
+        active_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", "")
+        is_active = os.path.realpath(workspace_dir) == os.path.realpath(active_dir)
+
+        def _install():
             try:
-                cmd = uv_command("pip", "install", *new_deps)
-                subprocess.run(cmd, check=True)
+                if is_active:
+                    cmd = uv_command("pip", "install", *new_deps)
+                else:
+                    cmd = uv_command("pip", "install", "--dry-run", *new_deps)
+                subprocess.run(cmd, check=True, capture_output=True, text=True)
             except Exception as e:
                 log.error(f"Failed to install dependencies: {e}")
+                self.dependency_install_finished.emit(
+                    json.dumps({"ok": False, "deps": new_deps, "dir": workspace_dir, "error": str(e)}))
+                return
+            manifest.requires.extend(new_deps)
+            manifest.save(manifest_path)
+            self.dependency_install_finished.emit(
+                json.dumps({"ok": True, "deps": new_deps, "dir": workspace_dir}))
+
+        threading.Thread(target=_install, daemon=True).start()
 
     @Slot()
     def open_appstore(self) -> None:

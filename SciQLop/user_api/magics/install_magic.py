@@ -18,7 +18,7 @@ def _record_in_manifest(packages: list[str]):
     ws = wm.workspace
     if ws is None:
         return
-    ws.install_dependencies(packages)
+    ws.record_dependencies(packages)
 
 
 def install_magic(line: str):

@@ -35,8 +35,9 @@ def switch_workspace(workspace_name: str) -> None:
     (from SCIQLOP_WORKSPACE_DIR env var), then exits with code 65 so the
     launcher restarts into the target workspace.
     """
-    ws_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", ".")
-    (Path(ws_dir) / SWITCH_WORKSPACE_FILE).write_text(workspace_name)
+    ws_dir = Path(os.environ.get("SCIQLOP_WORKSPACE_DIR", "."))
+    ws_dir.mkdir(parents=True, exist_ok=True)
+    (ws_dir / SWITCH_WORKSPACE_FILE).write_text(workspace_name)
     from PySide6.QtWidgets import QApplication
     app = QApplication.instance()
     app._sciqlop_exit_code = EXIT_SWITCH_WORKSPACE
