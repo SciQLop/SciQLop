@@ -1,6 +1,6 @@
 from pathlib import Path
-from PySide6.QtGui import QIcon, QColor, QPixmap, QPalette
-from PySide6.QtCore import QSize
+from PySide6.QtGui import QIcon, QIconEngine, QColor, QPixmap, QPainter, QPalette
+from PySide6.QtCore import QSize, QRect
 from SciQLopPlots import Icons
 from PySide6.QtWidgets import QApplication
 from SciQLop.components.storage import cache_dir
@@ -132,6 +132,41 @@ def _app_base_color() -> QColor:
     return QColor(255, 255, 255)
 
 
+class _ThemeIconEngine(QIconEngine):
+    """Resolves a named icon against the current palette on every paint call."""
+
+    def __init__(self, name: str, use_style_dir: bool):
+        super().__init__()
+        self._name = name
+        self._use_style_dir = use_style_dir
+
+    def _resolve(self) -> QIcon:
+        if self._use_style_dir:
+            from .settings import SciQLopStyle
+            path = per_palette_icon_dir(SciQLopStyle().color_palette) / f"{self._name}.png"
+            return QIcon(str(path))
+        return _mutate_icon_color(Icons.get_icon(self._name), opposite_color(_app_base_color()))
+
+    def paint(self, painter: QPainter, rect: QRect, mode, state):
+        self._resolve().paint(painter, rect, mode, state)
+
+    def pixmap(self, size: QSize, mode, state) -> QPixmap:
+        return self._resolve().pixmap(size, mode, state)
+
+    def clone(self) -> QIconEngine:
+        return _ThemeIconEngine(self._name, self._use_style_dir)
+
+
+def theme_icon(name: str) -> QIcon:
+    """Return an icon that automatically updates when the theme changes."""
+    return QIcon(_ThemeIconEngine(name, use_style_dir=True))
+
+
+def theme_adapted_icon(name: str) -> QIcon:
+    """Return a registry icon that auto-adapts its color to the current palette."""
+    return QIcon(_ThemeIconEngine(name, use_style_dir=False))
+
+
 def get_icon(name: str, auto_adapt_colors=True) -> QIcon:
     icon = Icons.get_icon(name)
     if auto_adapt_colors:
@@ -149,19 +184,16 @@ def build_icon_set_for_palette(palette_name: str, base_color: str or QColor):
     """Generates a variant of the default icon set with colors adapted to the given palette."""
     if type(base_color) is str:
         base_color = QColor(base_color)
-    icons = filter(_is_theme_icon, Icons.icons())
-    for icon in icons:
+    dest_color = opposite_color(base_color)
+    for icon in filter(_is_theme_icon, Icons.icons()):
         if '/' in icon:
             name = icon.split("/")[-1].split(".png")[0]
         else:
             name = icon.split(":")[-1].split(".png")[0]
-        destination_path = per_palette_icon_dir(palette_name) / f"{name}.png"
-        dest_color = opposite_color(base_color)
-        if not destination_path.exists():
-            mutated_icon = _mutate_icon_color(get_icon(icon, auto_adapt_colors=False), dest_color)
-            if 'theme' in name:
-                name = name.split("://icons/theme/")[-1].split(".png")[0]
-            mutated_icon.pixmap(QSize(24, 24)).save(str(per_palette_icon_dir(palette_name) / f"{name}.png"))
+        if 'theme' in name:
+            name = name.split("://icons/theme/")[-1].split(".png")[0]
+        mutated_icon = _mutate_icon_color(get_icon(icon, auto_adapt_colors=False), dest_color)
+        mutated_icon.pixmap(QSize(24, 24)).save(str(per_palette_icon_dir(palette_name) / f"{name}.png"))
 
 
 def list_icons() -> list[str]:

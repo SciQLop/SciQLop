@@ -30,6 +30,7 @@ _patch_qasync_infinite_timer()
 class SciQLopApp(QApplication):
     quickstart_shortcuts_added = QtCore.Signal(str)
     panels_list_changed = QtCore.Signal(list)
+    theme_changed = QtCore.Signal(str)
 
     def __init__(self, args):
         from SciQLop.components import sciqlop_logging
@@ -75,6 +76,7 @@ class SciQLopApp(QApplication):
         self.setPalette(self._current_palette)
         self.load_stylesheet()
         self._update_plot_themes()
+        self.theme_changed.emit(palette_name)
 
     def _update_plot_themes(self):
         from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel

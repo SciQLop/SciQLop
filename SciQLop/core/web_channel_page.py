@@ -11,9 +11,6 @@ from PySide6.QtWidgets import QVBoxLayout, QWidget
 
 from jinja2 import Environment, FileSystemLoader
 
-from SciQLop.components.theming.palette import SCIQLOP_PALETTE
-
-
 class WebChannelPage(QWidget):
     """Base widget: renders a Jinja2 template in QWebEngineView with a QWebChannel backend.
 
@@ -39,20 +36,26 @@ class WebChannelPage(QWidget):
         self._view.settings().setAttribute(
             QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
 
-        html = self._render_template()
-        # Strip .j2 suffix so the base URL matches the original non-template filename
-        base_name = self.template_name.removesuffix(".j2")
-        base_url = QUrl.fromLocalFile(os.path.join(self.resources_dir, base_name))
-        self._view.setHtml(html, base_url)
+        self._load_html()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._view)
 
+        from SciQLop.core.sciqlop_application import sciqlop_app
+        sciqlop_app().theme_changed.connect(lambda _: self._load_html())
+
     def _create_backend(self) -> QObject:
         raise NotImplementedError
 
+    def _load_html(self):
+        html = self._render_template()
+        base_name = self.template_name.removesuffix(".j2")
+        base_url = QUrl.fromLocalFile(os.path.join(self.resources_dir, base_name))
+        self._view.setHtml(html, base_url)
+
     def _render_template(self) -> str:
+        from SciQLop.components.theming.palette import SCIQLOP_PALETTE
         env = Environment(loader=FileSystemLoader(self.resources_dir))
         template = env.get_template(self.template_name)
         return template.render(palette=SCIQLOP_PALETTE)
