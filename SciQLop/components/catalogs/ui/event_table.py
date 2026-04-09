@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt
 
 from ..backend.provider import CatalogEvent
 
@@ -10,6 +10,7 @@ from ..backend.provider import CatalogEvent
 class EventTableModel(QAbstractTableModel):
     """Table model for catalog events: start, stop, then dynamic meta columns."""
 
+    SortRole = Qt.ItemDataRole.UserRole + 1
     _FIXED_COLUMNS = ("start", "stop")
 
     def __init__(self, parent=None):
@@ -76,18 +77,31 @@ class EventTableModel(QAbstractTableModel):
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
         return len(self._FIXED_COLUMNS) + len(self._meta_keys)
 
+    def _format_dt(self, dt) -> str:
+        return dt.strftime("%Y-%m-%d %H:%M:%S")
+
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
-        if not index.isValid() or role != Qt.ItemDataRole.DisplayRole:
+        if not index.isValid():
             return None
         event = self._events[index.row()]
         col = index.column()
-        if col == 0:
-            return str(event.start)
-        elif col == 1:
-            return str(event.stop)
-        else:
-            key = self._meta_keys[col - len(self._FIXED_COLUMNS)]
-            return str(event.meta.get(key, ""))
+        if role == Qt.ItemDataRole.DisplayRole:
+            if col == 0:
+                return self._format_dt(event.start)
+            elif col == 1:
+                return self._format_dt(event.stop)
+            else:
+                key = self._meta_keys[col - len(self._FIXED_COLUMNS)]
+                return str(event.meta.get(key, ""))
+        elif role == self.SortRole:
+            if col == 0:
+                return event.start.timestamp()
+            elif col == 1:
+                return event.stop.timestamp()
+            else:
+                key = self._meta_keys[col - len(self._FIXED_COLUMNS)]
+                return str(event.meta.get(key, ""))
+        return None
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if role != Qt.ItemDataRole.DisplayRole:
@@ -97,3 +111,11 @@ class EventTableModel(QAbstractTableModel):
                 return self._FIXED_COLUMNS[section]
             return self._meta_keys[section - len(self._FIXED_COLUMNS)]
         return str(section + 1)
+
+
+class EventSortProxy(QSortFilterProxyModel):
+    """Sorts by numeric timestamps for start/stop columns."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setSortRole(EventTableModel.SortRole)

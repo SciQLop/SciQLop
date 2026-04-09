@@ -100,11 +100,18 @@ class TscatCatalogProvider(CatalogProvider):
         self._stale_events: dict[str, list[CatalogEvent]] = {}
         self._pending_paths: dict[str, list[str]] = {}
         self._root_model = tscat_model.tscat_root()
-        super().__init__(name="TSCat Local", parent=parent)
+        super().__init__(name="My Catalogs", parent=parent)
         tscat_model.action_done.connect(self._on_action_done)
         self._root_model.rowsInserted.connect(self._on_root_rows_changed)
         self._root_model.rowsRemoved.connect(self._on_root_rows_changed)
         self._root_model.modelReset.connect(self._on_root_rows_changed)
+
+    def node_icon(self, node_type, path=None):
+        from SciQLop.components.catalogs.backend.provider import NodeType
+        if node_type == NodeType.PROVIDER:
+            from SciQLop.components.theming import get_icon
+            return get_icon("folder_open")
+        return None
 
     def catalogs(self) -> list[Catalog]:
         if self._catalog_cache is not None:

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from typing import Optional
 import uuid as _uuid
 
 from PySide6.QtCore import QObject, QTimer
+from PySide6.QtGui import QIcon
 
 from SciQLop.components.catalogs import (
     Capability,
@@ -13,9 +15,14 @@ from SciQLop.components.catalogs import (
     CatalogProvider,
     ProviderAction,
 )
+from SciQLop.components.theming import register_icon
 from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
+
+__here__ = os.path.dirname(__file__)
+register_icon("link", lambda: QIcon(os.path.join(__here__, "..", "..", "resources", "icons", "link.png")))
+register_icon("link_off", lambda: QIcon(os.path.join(__here__, "..", "..", "resources", "icons", "link_off.png")))
 
 
 class CocatEvent(CatalogEvent):
@@ -73,7 +80,14 @@ class CocatCatalogProvider(CatalogProvider):
         self._default_room_id: str | None = None
         self._connected = False
         self._client_for_listing = None
-        super().__init__(name="CoCat", parent=parent)
+        super().__init__(name="Shared", parent=parent)
+
+    def node_icon(self, node_type, path=None):
+        from SciQLop.components.catalogs.backend.provider import NodeType
+        if node_type == NodeType.PROVIDER:
+            from SciQLop.components.theming import get_icon
+            return get_icon("link" if self._connected else "link_off")
+        return None
 
     @property
     def connected(self) -> bool:
@@ -89,6 +103,7 @@ class CocatCatalogProvider(CatalogProvider):
         self._default_room_id = client.room_id
         rooms = client.list_rooms() or []
         self._connected = True
+        self.status_changed.emit()
         self._available_rooms = rooms
         # Emit default room first
         if self._default_room_id and self._default_room_id in rooms:
@@ -110,6 +125,7 @@ class CocatCatalogProvider(CatalogProvider):
         self._default_room_id = None
         self._connected = False
         self._client_for_listing = None
+        self.status_changed.emit()
 
     async def async_close(self) -> None:
         """Async shutdown: properly close all room WebSocket connections."""
@@ -168,10 +184,47 @@ class CocatCatalogProvider(CatalogProvider):
             return self._rooms.get(catalog.path[0])
         return None
 
+    def _cocat_catalogue(self, catalog: Catalog):
+        """Get the cocat Catalogue object for a Catalog."""
+        room = self._room_for_catalog(catalog)
+        if room is None:
+            return None
+        return room.get_catalogue(catalog.uuid)
+
     # ---- CatalogProvider interface ----
 
     def catalogs(self) -> list[Catalog]:
         return list(self._catalog_map.values())
+
+    def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
+        cocat_cat = self._cocat_catalogue(catalog)
+        if cocat_cat is None:
+            return
+        room = self._room_for_catalog(catalog)
+        cocat_event = room.db.create_event(
+            start=event.start, stop=event.stop, author="SciQLop",
+            uuid=event.uuid,
+        )
+        cocat_cat.add_events([cocat_event])
+        wrapped = CocatEvent(cocat_event, parent=self)
+        self._add_event(catalog, wrapped)
+
+    def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
+        cocat_cat = self._cocat_catalogue(catalog)
+        if cocat_cat is None:
+            return
+        self._remove_event(catalog, event)
+        if isinstance(event, CocatEvent):
+            cocat_cat.remove_events([event._cocat_event])
+            event._cocat_event.delete()
+        else:
+            try:
+                room = self._room_for_catalog(catalog)
+                cocat_event = room.db.get_event(event.uuid)
+                cocat_cat.remove_events([cocat_event])
+                cocat_event.delete()
+            except Exception:
+                log.warning("Could not remove event %s from cocat backend", event.uuid)
 
     def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
         room_id = path[0] if path else self._default_room_id
