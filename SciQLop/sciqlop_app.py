@@ -44,11 +44,16 @@ def switch_workspace(workspace_name: str) -> None:
     QApplication.exit(EXIT_SWITCH_WORKSPACE)
 
 
+def _signal_ready() -> None:
+    """Write the ready-file so the launcher knows the main window is up."""
+    ready_path = os.environ.get("SCIQLOP_STARTUP_READY_FILE")
+    if ready_path:
+        Path(ready_path).touch()
+
+
 def start_sciqlop():
     os.environ['INSIDE_SCIQLOP'] = '1'
     from PySide6 import QtPrintSupport, QtQml
-    from PySide6.QtGui import QPixmap
-    from PySide6.QtWidgets import QSplashScreen
 
     from SciQLop.core.sciqlop_application import sciqlop_event_loop, sciqlop_app
     from SciQLop.resources import qInitResources
@@ -60,12 +65,6 @@ def start_sciqlop():
     from SciQLop.components.theming.icons import flush_deferred_icons
     flush_deferred_icons()
     sciqlop_event_loop()
-    pixmap = QPixmap(":/splash.png")
-    splash = QSplashScreen(pixmap)
-    splash.show()
-    app.processEvents()
-    splash.showMessage("Loading SciQLop...")
-    app.processEvents()
 
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
     from SciQLop.components.plugins import load_all, loaded_plugins
@@ -85,7 +84,7 @@ def start_sciqlop():
     main_windows.push_variables_to_console({"plugins": loaded_plugins})
 
     app.processEvents()
-    splash.finish(main_windows)
+    _signal_ready()
     return main_windows
 
 def main():
