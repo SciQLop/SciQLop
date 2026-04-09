@@ -20,7 +20,7 @@ def handle_debug(args, func, func_name: str, entry: RegistryEntry, type_info,
 
         panel = entry.panel
         if panel is None or not _panel_is_alive(panel):
-            panel = _create_debug_panel(func_name, start, stop)
+            panel = _create_debug_panel(func_name)
             entry.panel = panel
 
         overlay = getattr(panel, '_vp_overlay', None)
@@ -102,9 +102,8 @@ def _find_existing_debug_dock(mw):
     return None
 
 
-def _create_debug_panel(func_name: str, start: float, stop: float):
+def _create_debug_panel(func_name: str):
     from SciQLop.user_api.gui import get_main_window
-    from SciQLop.core import TimeRange
     from SciQLop.core.ui.mainwindow import auto_name
     from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
     import PySide6QtAds as QtAds
@@ -113,7 +112,7 @@ def _create_debug_panel(func_name: str, start: float, stop: float):
     mw = get_main_window()
 
     panel = TimeSyncPanel(parent=None, name=auto_name(base="Panel", name=panel_name),
-                          time_range=TimeRange(start, stop))
+                          show_search_overlay=False)
 
     doc = QtAds.CDockWidget(panel.windowTitle())
     doc.setWidget(panel)

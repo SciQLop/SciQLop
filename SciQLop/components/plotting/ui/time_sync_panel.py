@@ -166,7 +166,8 @@ class TimeRangeDnDCallback(PlotDragNDropCallback):
 
 class TimeSyncPanel(SciQLopMultiPlotPanel):
 
-    def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None):
+    def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None,
+                 show_search_overlay: bool = True):
         super().__init__(parent, synchronize_x=False, synchronize_time=True)
         self.setObjectName(name)
         self.setWindowTitle(name)
@@ -186,11 +187,13 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self.installEventFilter(self)
         self.plot_added.connect(self._install_filter_on_plot)
 
-        self._search_overlay = ProductSearchOverlay(self.viewport())
-        self._search_overlay.product_selected.connect(self._on_overlay_product_selected)
-        self.plot_added.connect(self._dismiss_search_overlay)
-        self._search_overlay.raise_()
-        self._search_overlay.focus_search()
+        self._search_overlay = None
+        if show_search_overlay:
+            self._search_overlay = ProductSearchOverlay(self.viewport())
+            self._search_overlay.product_selected.connect(self._on_overlay_product_selected)
+            self.plot_added.connect(self._dismiss_search_overlay)
+            self._search_overlay.raise_()
+            self._search_overlay.focus_search()
 
     def _on_overlay_product_selected(self, product_path: list[str]):
         from SciQLopPlots import PlotType
