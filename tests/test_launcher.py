@@ -1,9 +1,11 @@
 # tests/test_launcher.py
+import os
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 from SciQLop.sciqlop_launcher import (
     parse_args, resolve_workspace_dir, _read_switch_target,
-    EXIT_RESTART, EXIT_SWITCH_WORKSPACE,
+    check_xcb_cursor,
+    EXIT_RESTART, EXIT_SWITCH_WORKSPACE, READY_FILE_ENV,
 )
 
 MODULE = "SciQLop.sciqlop_launcher"
@@ -122,3 +124,24 @@ def test_read_switch_target(tmp_path):
 def test_read_switch_target_missing(tmp_path):
     target = _read_switch_target(tmp_path)
     assert target is None
+
+
+# --- check_xcb_cursor tests ---
+
+@patch("SciQLop.sciqlop_launcher.platform.system", return_value="Linux")
+@patch("SciQLop.sciqlop_launcher.ctypes.cdll.LoadLibrary")
+def test_xcb_cursor_returns_none_when_available(mock_load, mock_sys):
+    assert check_xcb_cursor() is None
+
+
+@patch("SciQLop.sciqlop_launcher.platform.system", return_value="Linux")
+@patch("SciQLop.sciqlop_launcher.ctypes.cdll.LoadLibrary", side_effect=OSError)
+def test_xcb_cursor_returns_warning_when_missing(mock_load, mock_sys):
+    result = check_xcb_cursor()
+    assert result is not None
+    assert "xcb-cursor" in result.lower()
+
+
+@patch("SciQLop.sciqlop_launcher.platform.system", return_value="Windows")
+def test_xcb_cursor_returns_none_on_non_linux(mock_sys):
+    assert check_xcb_cursor() is None

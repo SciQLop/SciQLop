@@ -59,6 +59,7 @@ class TestErrorState:
         assert window._quit_btn.isVisible()
         assert window._copy_btn.isVisible()
         assert not window._phase_label.isVisible()
+        assert not window._show_background
 
     def test_copy_button_copies_to_clipboard(self, window, qtbot):
         window.show_error("some error text")

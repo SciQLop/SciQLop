@@ -11,14 +11,19 @@ instead of a workspace venv, since the dev venv already has all dependencies.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import os
+import platform
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 EXIT_RESTART = 64
 EXIT_SWITCH_WORKSPACE = 65
 SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"
+READY_FILE_ENV = "SCIQLOP_STARTUP_READY_FILE"
 
 
 def _is_editable_install() -> bool:
@@ -84,25 +89,125 @@ def _read_switch_target(workspace_dir: Path) -> str | None:
     return None
 
 
-def run_sciqlop_app(python_path: Path, workspace_dir: Path) -> int:
-    """Launch the SciQLop Qt app as a subprocess using the workspace venv Python."""
+def check_xcb_cursor() -> str | None:
+    """Return a warning if libxcb-cursor is missing on Linux, else None."""
+    if platform.system() != "Linux":
+        return None
+    try:
+        ctypes.cdll.LoadLibrary("libxcb-cursor.so.0")
+        return None
+    except OSError:
+        return (
+            "Warning: libxcb-cursor0 is not installed.\n"
+            "Cursor rendering may be broken. Install it with:\n"
+            "  sudo apt install libxcb-cursor0   (Debian/Ubuntu)\n"
+            "  sudo dnf install xcb-util-cursor   (Fedora)"
+        )
+
+
+def _run_with_startup_window(workspace_dir: Path, default_python: Path, prepare_fn) -> int:
+    from PySide6.QtCore import QTimer
+    from PySide6.QtWidgets import QApplication
+    from SciQLop.resources import qInitResources
+    from SciQLop.components.startup.startup_window import StartupWindow
+
+    app = QApplication(sys.argv[:1])
+    qInitResources()
+
+    window = StartupWindow()
+    window.center_on_screen()
+    window.show()
+    window.set_phase("Preparing workspace...")
+    app.processEvents()
+
+    python_path = default_python
+    try:
+        def on_output(line: str) -> None:
+            window.set_detail(line)
+            app.processEvents()
+        result = prepare_fn(on_output)
+        if result is not None:
+            python_path = result
+    except Exception:
+        import traceback
+        window.show_error(traceback.format_exc())
+        app.exec()
+        return 1
+
+    xcb_warning = check_xcb_cursor()
+    if xcb_warning:
+        window.show_warning(xcb_warning)
+        waiting = True
+
+        def on_ack():
+            nonlocal waiting
+            waiting = False
+
+        window.warning_acknowledged.connect(on_ack)
+        while waiting:
+            app.processEvents()
+
+    window.set_phase("Starting SciQLop...")
+    window.set_detail("")
+    app.processEvents()
+
+    ready_dir = tempfile.mkdtemp(prefix="sciqlop_startup_")
+    ready_file = Path(ready_dir) / "ready"
+
     env = os.environ.copy()
     env["SCIQLOP_WORKSPACE_DIR"] = str(workspace_dir)
     env["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
-    result = subprocess.run(
+    env[READY_FILE_ENV] = str(ready_file)
+
+    proc = subprocess.Popen(
         [str(python_path), "-m", "SciQLop.sciqlop_app"],
         env=env,
+        stderr=subprocess.PIPE,
+        text=True,
     )
-    return result.returncode
+    # Drain stderr in a background thread to prevent pipe buffer deadlock
+    import threading
+    stderr_lines: list[str] = []
+
+    def _drain_stderr():
+        for line in proc.stderr:
+            stderr_lines.append(line)
+
+    threading.Thread(target=_drain_stderr, daemon=True).start()
+
+    def check_ready():
+        if ready_file.exists():
+            window.close()
+            app.quit()
+        elif proc.poll() is not None:
+            timer.stop()
+            window.show_error(
+                f"SciQLop process exited with code {proc.returncode}.\n\n"
+                f"{''.join(stderr_lines)}"
+            )
+
+    timer = QTimer()
+    timer.timeout.connect(check_ready)
+    timer.start(100)
+
+    app.exec()
+    timer.stop()
+
+    shutil.rmtree(ready_dir, ignore_errors=True)
+
+    if proc.poll() is None:
+        return proc.wait()
+    return proc.returncode
 
 
-def _prepare_workspace_dev(workspace_dir: Path) -> None:
+def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
     """Set up workspace directory, metadata, and install plugin deps in dev mode."""
     from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
     from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
     from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
     from SciQLop.components.workspaces.backend.workspace_setup import get_globally_enabled_plugins, get_plugin_folders
     from SciQLop.components.workspaces.backend.uv import uv_command
+    from SciQLop.components.workspaces.backend.workspace_venv import _run_uv
 
     workspace_dir.mkdir(parents=True, exist_ok=True)
     migrate_workspace(workspace_dir)
@@ -114,7 +219,6 @@ def _prepare_workspace_dev(workspace_dir: Path) -> None:
         manifest = WorkspaceManifest.default_manifest(workspace_dir.name)
         manifest.save(manifest_path)
 
-    # Collect and install plugin + workspace deps into the current dev env
     plugin_deps = collect_plugin_dependencies(
         plugin_folders=get_plugin_folders(),
         enabled_plugins=get_globally_enabled_plugins(),
@@ -125,7 +229,7 @@ def _prepare_workspace_dev(workspace_dir: Path) -> None:
     if all_deps:
         try:
             cmd = uv_command("pip", "install", *all_deps)
-            subprocess.run(cmd, check=True)
+            _run_uv(cmd, on_output)
         except Exception as e:
             print(f"Warning: failed to install plugin/workspace deps: {e}")
 
@@ -137,14 +241,15 @@ def main(argv: list[str] | None = None) -> int:
 
     while True:
         if dev_mode:
-            # Dev mode: set up workspace metadata, use current Python
-            _prepare_workspace_dev(workspace_dir)
-            exit_code = run_sciqlop_app(Path(sys.executable), workspace_dir)
+            def prepare_fn(on_output):
+                _prepare_workspace_dev(workspace_dir, on_output=on_output)
+                return None
+            exit_code = _run_with_startup_window(workspace_dir, Path(sys.executable), prepare_fn)
         else:
-            # Production mode: prepare workspace venv and spawn subprocess
-            from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
-            python_path = prepare_workspace(workspace_dir)
-            exit_code = run_sciqlop_app(python_path, workspace_dir)
+            def prepare_fn(on_output):
+                from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+                return prepare_workspace(workspace_dir, on_output=on_output)
+            exit_code = _run_with_startup_window(workspace_dir, Path(sys.executable), prepare_fn)
 
         if exit_code == EXIT_RESTART:
             continue
