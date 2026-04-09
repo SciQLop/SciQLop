@@ -115,21 +115,40 @@ class TestPrepareWorkspaceVenv:
         prepare_workspace(workspace_dir, workspace_name="Test")
 
         patches["WorkspaceVenv"].assert_called_once_with(workspace_dir)
-        patches["venv"].ensure.assert_called_once()
-        patches["venv"].sync.assert_called_once_with(locked=False)
+        patches["venv"].ensure.assert_called_once_with(on_output=None)
+        patches["venv"].sync.assert_called_once_with(locked=False, on_output=None)
 
     def test_locked_sync(self, workspace_dir, patches):
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         prepare_workspace(workspace_dir, workspace_name="Test", locked=True)
 
-        patches["venv"].sync.assert_called_once_with(locked=True)
+        patches["venv"].sync.assert_called_once_with(locked=True, on_output=None)
 
     def test_returns_python_path(self, workspace_dir, patches):
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         result = prepare_workspace(workspace_dir, workspace_name="Test")
         assert result == Path("/fake/.venv/bin/python")
+
+
+class TestPrepareWorkspaceCallback:
+    def test_forwards_on_output_to_venv_methods(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        cb = MagicMock()
+        prepare_workspace(workspace_dir, workspace_name="Test", on_output=cb)
+
+        patches["venv"].ensure.assert_called_once_with(on_output=cb)
+        patches["venv"].sync.assert_called_once_with(locked=False, on_output=cb)
+
+    def test_no_callback_by_default(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        patches["venv"].ensure.assert_called_once_with(on_output=None)
+        patches["venv"].sync.assert_called_once_with(locked=False, on_output=None)
 
 
 class TestCollectPluginDepsArgs:
