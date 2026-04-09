@@ -123,10 +123,10 @@ Write-Host "Trimming package contents..."
 Get-ChildItem -Path "$PackageDir\python" -Recurse -Directory -Filter "__pycache__" |
     Remove-Item -Recurse -Force
 Get-ChildItem -Path "$PackageDir\python" -Recurse -Directory -Filter "tests" |
-    Where-Object { $_.FullName -match 'site-packages' } |
+    Where-Object { $_.FullName -match 'site-packages' -and $_.FullName -notmatch 'astropy' } |
     Remove-Item -Recurse -Force
 Get-ChildItem -Path "$PackageDir\python" -Recurse -Directory -Filter "test" |
-    Where-Object { $_.FullName -match 'site-packages' } |
+    Where-Object { $_.FullName -match 'site-packages' -and $_.FullName -notmatch 'astropy' } |
     Remove-Item -Recurse -Force
 Get-ChildItem -Path $PackageDir -Recurse |
     Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint } |

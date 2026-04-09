@@ -19,6 +19,8 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+SetupIconFile={#ScriptDir}\..\..\SciQLop\resources\icons\SciQLop.ico
+UninstallDisplayIcon={app}\python\Lib\site-packages\SciQLop\resources\icons\SciQLop.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -31,9 +33,9 @@ Source: "{#LauncherExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ScriptDir}\install.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\python\Lib\site-packages\SciQLop\resources\icons\SciQLop.ico"
 Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\python\Lib\site-packages\SciQLop\resources\icons\SciQLop.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "powershell.exe"; \
