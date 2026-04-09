@@ -8,6 +8,7 @@ all in place, then returns the path to the venv's Python executable.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from pathlib import Path
 
 from SciQLop.components.plugins.backend.loader.loader import plugins_folders
@@ -38,6 +39,7 @@ def prepare_workspace(
     workspace_dir: Path | str,
     workspace_name: str | None = None,
     locked: bool = False,
+    on_output: Callable[[str], None] | None = None,
 ) -> Path:
     """Prepare a workspace: ensure manifest, generate pyproject.toml, sync venv.
 
@@ -97,7 +99,7 @@ def prepare_workspace(
 
     # Step 5: Ensure venv exists and sync
     venv = WorkspaceVenv(workspace_dir)
-    venv.ensure()
-    venv.sync(locked=locked)
+    venv.ensure(on_output=on_output)
+    venv.sync(locked=locked, on_output=on_output)
 
     return venv.python_path
