@@ -6,6 +6,6 @@ class SciQLopStyle(ConfigEntry):
     category = SettingsCategory.APPEARANCE
     subcategory = "style"
     color_palette: str = Field(
-        default="light",
+        default="space",
         json_schema_extra={"widget": "combo", "choices": ["light", "dark", "neutral", "space"]},
     )

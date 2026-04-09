@@ -96,8 +96,11 @@ class CatalogProvider(QObject):
     events_changed = Signal(object)
     error_occurred = Signal(str)
     dirty_changed = Signal(object, bool)  # (catalog, is_dirty)
+    loading_started = Signal(object)   # catalog
+    loading_finished = Signal(object)  # catalog
     folder_added = Signal(list)    # path segments for an explicit folder
     folder_removed = Signal(list)  # path segments for an explicit folder
+    status_changed = Signal()      # provider-level state changed (e.g. connection)
 
     def __init__(self, name: str, parent: QObject | None = None):
         super().__init__(parent)

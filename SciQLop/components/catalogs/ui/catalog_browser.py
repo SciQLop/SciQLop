@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent, QItemSelectionModel
+from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent, QItemSelectionModel, QTimer
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLineEdit,
@@ -12,16 +12,17 @@ from PySide6.QtWidgets import (
     QTreeView,
     QVBoxLayout,
     QWidget,
+    QHeaderView,
     QMenu,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QPen, QColor
 
 from datetime import datetime, timezone, timedelta
 import uuid as _uuid
 from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent
 from .catalog_tree import CatalogTreeModel
-from .event_table import EventTableModel
+from .event_table import EventTableModel, EventSortProxy
 
 
 class _CatalogFilterProxy(QSortFilterProxyModel):
@@ -43,40 +44,82 @@ class _CatalogFilterProxy(QSortFilterProxyModel):
 
 
 class _SaveButtonDelegate(QStyledItemDelegate):
-    """Renders a clickable save icon next to dirty provider nodes."""
+    """Renders a clickable save icon next to dirty provider nodes
+    and an animated spinner next to loading catalog nodes."""
 
     save_clicked = Signal(QModelIndex)
+
+    _ICON_SIZE = 16
+    _SPINNER_SEGMENTS = 8
+    _SPINNER_INTERVAL_MS = 80
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self._icon = None
-        self._icon_size = 16
+        self._spinner_angle = 0
+        self._has_loading = False
+        self._spinner_timer = QTimer(self)
+        self._spinner_timer.setInterval(self._SPINNER_INTERVAL_MS)
+        self._spinner_timer.timeout.connect(self._tick_spinner)
 
     def _get_icon(self):
         if self._icon is None:
             self._icon = QIcon.fromTheme("document-save")
         return self._icon
 
+    def _tick_spinner(self):
+        self._spinner_angle = (self._spinner_angle + 360 // self._SPINNER_SEGMENTS) % 360
+        if self.parent() is not None:
+            self.parent().viewport().update()
+        if not self._has_loading:
+            self._spinner_timer.stop()
+        self._has_loading = False
+
     def paint(self, painter, option, index):
+        from .catalog_tree import DIRTY_PROVIDER_ROLE, LOADING_ROLE
         super().paint(painter, option, index)
-        from .catalog_tree import DIRTY_PROVIDER_ROLE
+        if index.data(LOADING_ROLE):
+            self._paint_spinner(painter, option)
+            self._has_loading = True
+            if not self._spinner_timer.isActive():
+                self._spinner_timer.start()
         if index.data(DIRTY_PROVIDER_ROLE):
-            icon_rect = self._icon_rect(option)
-            self._get_icon().paint(painter, icon_rect)
+            self._get_icon().paint(painter, self._icon_rect(option))
+
+    def _paint_spinner(self, painter, option):
+        import math
+        s = self._ICON_SIZE
+        cx = option.rect.right() - s // 2 - 2
+        cy = option.rect.top() + option.rect.height() // 2
+        r = s // 2 - 2
+        painter.save()
+        painter.setRenderHint(painter.RenderHint.Antialiasing)
+        for i in range(self._SPINNER_SEGMENTS):
+            angle = math.radians(self._spinner_angle + i * (360 // self._SPINNER_SEGMENTS))
+            alpha = 255 - i * (200 // self._SPINNER_SEGMENTS)
+            color = option.palette.text().color()
+            color.setAlpha(max(alpha, 55))
+            painter.setPen(QPen(color, 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+            x1 = cx + (r - 2) * math.cos(angle)
+            y1 = cy - (r - 2) * math.sin(angle)
+            x2 = cx + r * math.cos(angle)
+            y2 = cy - r * math.sin(angle)
+            painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+        painter.restore()
 
     def sizeHint(self, option, index):
+        from .catalog_tree import DIRTY_PROVIDER_ROLE, LOADING_ROLE
         size = super().sizeHint(option, index)
-        from .catalog_tree import DIRTY_PROVIDER_ROLE
-        if index.data(DIRTY_PROVIDER_ROLE):
-            size.setWidth(size.width() + self._icon_size + 4)
+        if index.data(DIRTY_PROVIDER_ROLE) or index.data(LOADING_ROLE):
+            size.setWidth(size.width() + self._ICON_SIZE + 4)
         return size
 
     def _icon_rect(self, option):
         return QRect(
-            option.rect.right() - self._icon_size - 2,
-            option.rect.top() + (option.rect.height() - self._icon_size) // 2,
-            self._icon_size,
-            self._icon_size,
+            option.rect.right() - self._ICON_SIZE - 2,
+            option.rect.top() + (option.rect.height() - self._ICON_SIZE) // 2,
+            self._ICON_SIZE,
+            self._ICON_SIZE,
         )
 
     def editorEvent(self, event, model, option, index):
@@ -125,8 +168,14 @@ class CatalogBrowser(QWidget):
 
         # --- event table (right) ---
         self._event_model = EventTableModel()
+        self._sort_proxy = EventSortProxy(self)
+        self._sort_proxy.setSourceModel(self._event_model)
         self._event_table = QTableView()
-        self._event_table.setModel(self._event_model)
+        self._event_table.setModel(self._sort_proxy)
+        self._event_table.setSortingEnabled(True)
+        self._event_table.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        self._event_table.horizontalHeader().setStretchLastSection(True)
+        self._event_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
         self._event_table.selectionModel().currentChanged.connect(self._on_event_selected)
 
         # --- event toolbar (above table) ---
@@ -215,7 +264,8 @@ class CatalogBrowser(QWidget):
 
     def _on_event_selected(self, current: QModelIndex, previous: QModelIndex) -> None:
         if current.isValid():
-            event = self._event_model.event_at(current.row())
+            source_index = self._sort_proxy.mapToSource(current)
+            event = self._event_model.event_at(source_index.row())
             if event is not None:
                 self.event_selected.emit(event)
 
@@ -251,9 +301,10 @@ class CatalogBrowser(QWidget):
         """Select the row in the event table matching the given event."""
         row = self._event_model.row_for_event(event)
         if row >= 0:
-            index = self._event_model.index(row, 0)
+            source_index = self._event_model.index(row, 0)
+            proxy_index = self._sort_proxy.mapFromSource(source_index)
             self._event_table.selectionModel().setCurrentIndex(
-                index, QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
+                proxy_index, QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
             )
 
     def connect_to_panel(self, panel) -> None:
@@ -317,7 +368,8 @@ class CatalogBrowser(QWidget):
             return
         selected = self._event_table.selectionModel().currentIndex()
         if selected.isValid() and self._current_catalog is not None:
-            event = self._event_model.event_at(selected.row())
+            source_index = self._sort_proxy.mapToSource(selected)
+            event = self._event_model.event_at(source_index.row())
             if event is not None:
                 caps = self._current_provider.capabilities(self._current_catalog)
                 if Capability.DELETE_EVENTS in caps:

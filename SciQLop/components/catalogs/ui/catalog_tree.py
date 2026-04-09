@@ -9,6 +9,7 @@ from ..backend.provider import Catalog, CatalogProvider
 from ..backend.registry import CatalogRegistry
 
 DIRTY_PROVIDER_ROLE = Qt.ItemDataRole.UserRole + 1
+LOADING_ROLE = Qt.ItemDataRole.UserRole + 2
 
 
 class _PlaceholderType(str, Enum):
@@ -57,6 +58,7 @@ class CatalogTreeModel(QAbstractItemModel):
         super().__init__(parent)
         self._root = _Node(name="root")
         self._provider_connections: dict[int, list[tuple]] = {}
+        self._loading_uuids: set[str] = set()
         self._registry = CatalogRegistry.instance()
 
         # Populate with existing providers (skip dead ones)
@@ -141,12 +143,18 @@ class CatalogTreeModel(QAbstractItemModel):
         on_renamed = lambda cat, p=provider, n=node: self._on_catalog_renamed(p, n, cat)
         on_folder_added = lambda path, p=provider, n=node: self._on_folder_added(p, n, path)
         on_folder_removed = lambda path, p=provider, n=node: self._on_folder_removed(p, n, path)
+        on_status = lambda p=provider, n=node: self._on_provider_status_changed(n)
+        on_load_start = lambda cat, p=provider, n=node: self._on_loading_changed(p, n, cat, True)
+        on_load_end = lambda cat, p=provider, n=node: self._on_loading_changed(p, n, cat, False)
         provider.catalog_added.connect(on_added)
         provider.catalog_removed.connect(on_removed)
         provider.dirty_changed.connect(on_dirty)
         provider.catalog_renamed.connect(on_renamed)
         provider.folder_added.connect(on_folder_added)
         provider.folder_removed.connect(on_folder_removed)
+        provider.status_changed.connect(on_status)
+        provider.loading_started.connect(on_load_start)
+        provider.loading_finished.connect(on_load_end)
         self._provider_connections[id(provider)] = [
             (provider.catalog_added, on_added),
             (provider.catalog_removed, on_removed),
@@ -154,6 +162,9 @@ class CatalogTreeModel(QAbstractItemModel):
             (provider.catalog_renamed, on_renamed),
             (provider.folder_added, on_folder_added),
             (provider.folder_removed, on_folder_removed),
+            (provider.status_changed, on_status),
+            (provider.loading_started, on_load_start),
+            (provider.loading_finished, on_load_end),
         ]
         return node
 
@@ -290,6 +301,20 @@ class CatalogTreeModel(QAbstractItemModel):
         self.beginRemoveRows(parent_index, i, i)
         parent.children.pop(i)
         self.endRemoveRows()
+
+    def _on_loading_changed(self, provider: CatalogProvider, pnode: _Node, catalog: object, loading: bool) -> None:
+        if loading:
+            self._loading_uuids.add(catalog.uuid)
+        else:
+            self._loading_uuids.discard(catalog.uuid)
+        cat_node = self._find_catalog_node(pnode, catalog)
+        if cat_node is not None:
+            idx = self.createIndex(cat_node.row(), 0, cat_node)
+            self.dataChanged.emit(idx, idx, [LOADING_ROLE])
+
+    def _on_provider_status_changed(self, pnode: _Node) -> None:
+        idx = self.createIndex(pnode.row(), 0, pnode)
+        self.dataChanged.emit(idx, idx)
 
     def _remove_catalog_recursive(self, node: _Node, catalog: object) -> bool:
         """Find and remove catalog node, then prune empty folders. Returns True if found."""
@@ -436,6 +461,11 @@ class CatalogTreeModel(QAbstractItemModel):
                 from ..backend.provider import Capability
                 has_save = Capability.SAVE in node.provider.capabilities()
                 return has_save and node.provider.is_dirty()
+            return False
+        if role == LOADING_ROLE:
+            node = index.internalPointer()
+            if node.catalog is not None:
+                return node.catalog.uuid in self._loading_uuids
             return False
         return None
 

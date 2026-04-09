@@ -410,7 +410,7 @@ function showWorkspaceDetails(ws, isActive) {
         '<div class="details-field"><label>Description</label>' + descHtml + '</div>' +
         '<div class="details-section"><label>Packages</label>' + pkgHtml + '</div>' +
         '<div class="details-actions">' +
-            '<button class="primary" onclick="tryOpenWorkspace(\'' + escapeAttr(ws.directory) + '\')">Open workspace</button>' +
+            (isActive ? '' : '<button class="primary" onclick="tryOpenWorkspace(\'' + escapeAttr(ws.directory) + '\')">Open workspace</button>') +
             '<div class="details-actions-row">' +
                 '<button class="secondary" onclick="backend.duplicate_workspace(\'' + escapeAttr(ws.directory) + '\')">Clone</button>' +
                 (ws.is_default || isActive ? '' :

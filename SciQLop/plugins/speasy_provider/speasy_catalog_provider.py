@@ -1,7 +1,10 @@
+import asyncio
+
 import speasy as spz
 from speasy.core.inventory.indexes import CatalogIndex, TimetableIndex, SpeasyIndex
 
 from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, CatalogEvent
+from SciQLop.core.common import background_run
 from SciQLop.components import sciqlop_logging
 
 log = sciqlop_logging.getLogger(__name__)
@@ -42,7 +45,8 @@ class SpeasyCatalogProvider(CatalogProvider):
         # and the tree model immediately calls catalogs()
         self._catalog_list: list[Catalog] = []
         self._speasy_ids: dict[str, str] = {}
-        super().__init__(name="Speasy Catalogs", parent=parent)
+        self._loading: set[str] = set()
+        super().__init__(name="Remote", parent=parent)
         self._build_catalog_list()
         for cat in self._catalog_list:
             self.catalog_added.emit(cat)
@@ -57,23 +61,43 @@ class SpeasyCatalogProvider(CatalogProvider):
                 self._catalog_list.append(cat)
                 self._speasy_ids[sid] = sid
 
+    def node_icon(self, node_type, path=None):
+        from SciQLop.components.catalogs.backend.provider import NodeType
+        if node_type == NodeType.PROVIDER:
+            from SciQLop.components.theming import get_icon
+            return get_icon("cloud")
+        return None
+
     def catalogs(self) -> list[Catalog]:
         return list(self._catalog_list)
 
     def events(self, catalog, start=None, stop=None) -> list[CatalogEvent]:
         if catalog.uuid not in self._events:
-            self._load_events(catalog)
+            self._events[catalog.uuid] = []
+            self._start_async_load(catalog)
         return super().events(catalog, start, stop)
 
-    def _load_events(self, catalog: Catalog):
+    def _start_async_load(self, catalog: Catalog):
         sid = self._speasy_ids.get(catalog.uuid)
         if sid is None:
             return
-        try:
-            data = spz.get_data(sid)
-            if data is not None:
-                self._set_events(catalog, _make_catalog_events(data, catalog.uuid))
-            else:
-                log.warning(f"No data returned for {sid}")
-        except Exception:
-            log.error(f"Failed to load events for {sid}", exc_info=True)
+        if sid in self._loading:
+            return
+        self._loading.add(sid)
+        self.loading_started.emit(catalog)
+
+        async def _fetch():
+            try:
+                data = await background_run(spz.get_data, sid)
+                if data is not None:
+                    self._set_events(catalog, _make_catalog_events(data, catalog.uuid))
+                    self.events_changed.emit(catalog)
+                else:
+                    log.warning("No data returned for %s", sid)
+            except Exception:
+                log.error("Failed to load events for %s", sid, exc_info=True)
+            finally:
+                self._loading.discard(sid)
+                self.loading_finished.emit(catalog)
+
+        asyncio.ensure_future(_fetch())
