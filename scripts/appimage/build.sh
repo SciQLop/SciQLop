@@ -44,14 +44,17 @@ UV_BIN=$APPDIR/opt/uv/uv
 
 $UV_BIN python install $PYTHON_VERSION --install-dir $APPDIR/opt
 
-# Rename to a stable path (drop version+arch suffix)
-PYTHON_INSTALL=$(ls -d $APPDIR/opt/cpython-* | head -1)
-mv "$PYTHON_INSTALL" "$APPDIR/opt/python"
+# uv creates $APPDIR/opt/cpython-<version+arch>/ — use it as-is.
+# Do NOT rename: uv pip install recreates an absolute "python" symlink that
+# breaks inside the AppImage at runtime.
+PYTHON_DIR=$(ls -d $APPDIR/opt/cpython-* | head -1)
+PYTHON_BIN=$PYTHON_DIR/bin/python$PYTHON_VERSION
 
-PYTHON_BIN=$APPDIR/opt/python/bin/python$PYTHON_VERSION
+# Ensure python3 symlink exists (not all python-build-standalone builds create it)
+ln -sf python$PYTHON_VERSION $PYTHON_DIR/bin/python3
 
 # Remove PEP 668 marker so uv pip install works
-rm -f $APPDIR/opt/python/lib/python${PYTHON_VERSION}/EXTERNALLY-MANAGED
+rm -f $PYTHON_DIR/lib/python${PYTHON_VERSION}/EXTERNALLY-MANAGED
 
 ########################################
 # Install SciQLop
@@ -82,6 +85,9 @@ fi
 ########################################
 
 $UV_BIN pip install --python $PYTHON_BIN certifi
+
+# Remove the "python" symlink uv recreates on every pip install (absolute, breaks at runtime)
+rm -f "$APPDIR/opt/python"
 
 ########################################
 # AppRun, desktop file, icon

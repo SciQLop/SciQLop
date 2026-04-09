@@ -7,11 +7,14 @@ if [ -z "${APPIMAGE}" ]; then
     export APPDIR="${self%/*}"
 fi
 
-PYTHON="${APPDIR}/opt/python/bin/python3"
+# uv creates opt/python as a symlink or directory — resolve to the real cpython dir
+PYTHON_DIR=$(find "${APPDIR}/opt" -maxdepth 1 -type d -name "cpython-*" | head -1)
+PYTHON_DIR="${PYTHON_DIR:-${APPDIR}/opt/python}"
+PYTHON="${PYTHON_DIR}/bin/python3"
 
 export SCIQLOP_BUNDLED="1"
 export SSL_CERT_FILE=$($PYTHON -c "import certifi; print(certifi.where())")
-export PATH="${APPDIR}/opt/uv:${APPDIR}/opt/python/bin:${APPDIR}/usr/local/bin:${PATH}"
+export PATH="${APPDIR}/opt/uv:${PYTHON_DIR}/bin:${APPDIR}/usr/local/bin:${PATH}"
 
 ############################################
 # Handle AppImage built-in commands first
