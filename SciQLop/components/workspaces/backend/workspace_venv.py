@@ -1,15 +1,30 @@
 """Workspace virtual environment manager using uv."""
 
+from __future__ import annotations
+
 import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from SciQLop.core.common.python import get_python
 from SciQLop.components.workspaces.backend.uv import uv_command
 
 _WINDOWS = os.name == "nt"
+
+
+def _run_uv(cmd: list[str], on_output: Callable[[str], None] | None = None, **kwargs) -> None:
+    if on_output is None:
+        subprocess.run(cmd, check=True, **kwargs)
+        return
+    proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True, **kwargs)
+    for line in proc.stderr:
+        on_output(line.rstrip("\n"))
+    rc = proc.wait()
+    if rc != 0:
+        raise subprocess.CalledProcessError(rc, cmd)
 
 
 class WorkspaceVenv:
@@ -31,7 +46,7 @@ class WorkspaceVenv:
         """Whether the venv directory and its Python executable exist."""
         return self._venv_dir.exists() and self.python_path.exists()
 
-    def create(self) -> None:
+    def create(self, on_output: Callable[[str], None] | None = None) -> None:
         """Create the workspace venv with --system-site-packages."""
         cmd = uv_command(
             "venv",
@@ -41,13 +56,13 @@ class WorkspaceVenv:
             "--python",
             get_python(),
         )
-        subprocess.run(cmd, check=True)
+        _run_uv(cmd, on_output)
 
-    def sync(self, locked: bool = False) -> None:
+    def sync(self, locked: bool = False, on_output: Callable[[str], None] | None = None) -> None:
         """Run uv sync in the workspace directory."""
         args = ("sync", "--locked") if locked else ("sync",)
         cmd = uv_command(*args)
-        subprocess.run(cmd, check=True, cwd=str(self._workspace_dir))
+        _run_uv(cmd, on_output, cwd=str(self._workspace_dir))
 
     def _read_pyvenv_cfg(self) -> dict[str, str]:
         cfg = self._venv_dir / "pyvenv.cfg"
@@ -77,9 +92,9 @@ class WorkspaceVenv:
             return True
         return False
 
-    def ensure(self) -> None:
+    def ensure(self, on_output: Callable[[str], None] | None = None) -> None:
         """Create the venv if missing, wrong version, or stale paths."""
         if self._needs_recreate():
             if self._venv_dir.exists():
                 shutil.rmtree(self._venv_dir)
-            self.create()
+            self.create(on_output=on_output)
