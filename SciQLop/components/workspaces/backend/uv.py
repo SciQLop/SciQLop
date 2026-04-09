@@ -13,8 +13,9 @@ def _find_bundled_uv() -> Optional[str]:
         if os.path.exists(candidate):
             return candidate
     # MSIX / Windows bundle: <package_root>/uv/uv.exe (sibling of python/)
+    # sys.executable = <root>/python/python.exe → two dirname calls
     if os.environ.get("SCIQLOP_BUNDLED"):
-        package_root = os.path.dirname(os.path.dirname(os.path.dirname(sys.executable)))
+        package_root = os.path.dirname(os.path.dirname(sys.executable))
         candidate = os.path.join(package_root, "uv", "uv.exe" if sys.platform == "win32" else "uv")
         if os.path.exists(candidate):
             return candidate

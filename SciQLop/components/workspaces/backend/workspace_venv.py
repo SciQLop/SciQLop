@@ -1,5 +1,6 @@
 """Workspace virtual environment manager using uv."""
 
+import os
 import shutil
 import subprocess
 import sys
@@ -7,6 +8,8 @@ from pathlib import Path
 
 from SciQLop.core.common.python import get_python
 from SciQLop.components.workspaces.backend.uv import uv_command
+
+_WINDOWS = os.name == "nt"
 
 
 class WorkspaceVenv:
@@ -19,6 +22,8 @@ class WorkspaceVenv:
     @property
     def python_path(self) -> Path:
         """Path to the venv's Python executable."""
+        if _WINDOWS:
+            return self._venv_dir / "Scripts" / "python.exe"
         return self._venv_dir / "bin" / "python"
 
     @property
@@ -65,7 +70,7 @@ class WorkspaceVenv:
             return True
         if (int(parts[0]), int(parts[1])) != (sys.version_info.major, sys.version_info.minor):
             return True
-        python = self._venv_dir / "bin" / "python"
+        python = self.python_path
         if python.is_symlink() and not python.resolve().exists():
             return True
         if python.is_symlink() and str(python.resolve()) != str(Path(get_python()).resolve()):

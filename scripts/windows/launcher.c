@@ -56,7 +56,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     STARTUPINFOW si = { .cb = sizeof(si) };
     PROCESS_INFORMATION pi;
 
-    if (!CreateProcessW(NULL, cmd, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessW(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
         MessageBoxW(NULL, L"Failed to start SciQLop", L"Error", MB_OK | MB_ICONERROR);
         return 1;
     }
