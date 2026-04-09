@@ -6,7 +6,7 @@ import sys
 def get_python() -> str:
     appdir = os.environ.get("APPDIR")
     if appdir:
-        candidates = glob.glob(os.path.join(appdir, "opt", "cpython-*"))
+        candidates = [p for p in glob.glob(os.path.join(appdir, "opt", "cpython-*")) if not os.path.islink(p)]
         python_dir = candidates[0] if candidates else os.path.join(appdir, "opt", "python")
         return os.path.join(python_dir, "bin", "python3")
     python_exe = 'python.exe' if os.name == 'nt' else 'python'

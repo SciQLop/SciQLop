@@ -86,8 +86,10 @@ fi
 
 $UV_BIN pip install --python $PYTHON_BIN certifi
 
-# Remove the "python" symlink uv recreates on every pip install (absolute, breaks at runtime)
-rm -f "$APPDIR/opt/python"
+# Remove symlinks uv creates in opt/ (absolute, break inside AppImage mount)
+# - "python" → cpython-<version>
+# - "cpython-3.14-<arch>" → cpython-3.14.3-<arch> (minor-only alias)
+find "$APPDIR/opt" -maxdepth 1 -type l -delete
 
 ########################################
 # AppRun, desktop file, icon
