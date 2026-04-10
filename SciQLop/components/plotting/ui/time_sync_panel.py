@@ -99,6 +99,30 @@ def _set_product_path(r, product_path_str):
     graph.setProperty("sqp_product_path", product_path_str)
 
 
+def _resolve_plot_target(p, kwargs):
+    """If index targets an existing subplot, plot on that subplot instead of the panel.
+
+    Returns (target, existing_plot_or_None). When target is an existing subplot,
+    existing_plot is that subplot so callers can build the (plot, graph) pair.
+    """
+    index = kwargs.pop("index", None)
+    if index is not None and isinstance(p, SciQLopMultiPlotPanel):
+        plots = p.plots()
+        if 0 <= index < len(plots):
+            ptr = plots[index]
+            # plot_type is only used by the panel to create the subplot type;
+            # strip it when targeting an existing subplot
+            kwargs.pop("plot_type", None)
+            # plots() returns SciQLopPlotInterfacePtr which lacks patched methods,
+            # so find the actual SciQLopPlot child by matching objectName
+            name = ptr.objectName()
+            for child in p.findChildren(SciQLopPlot):
+                if child.objectName() == name:
+                    return child, child
+            return ptr, ptr
+    return p, None
+
+
 def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):
     if isinstance(product, list):
         node = ProductsModel.node(product)
@@ -107,23 +131,28 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
             log.debug(f"Provider: {provider}")
             if provider is not None:
                 product_path_str = "//".join(product)
+                target, existing_plot = _resolve_plot_target(p, kwargs)
                 log.debug(f"Parameter type: {node.parameter_type()}")
                 if node.parameter_type() in (ParameterType.Scalar, ParameterType.Vector, ParameterType.Multicomponents):
                     callback = _plot_product_callback(provider, node)
                     labels = listify(provider.labels(node))
                     log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
-                    r = p.plot(callback, labels=labels, **kwargs)
+                    r = target.plot(callback, labels=labels, **kwargs)
                     if hasattr(r, '__iter__'):
                         r[1].set_name(node.name())
                     else:
                         r.set_name(node.name())
+                        if existing_plot is not None:
+                            r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
                     return r
                 elif node.parameter_type() == ParameterType.Spectrogram:
                     callback = _specgram_callback(provider, node)
                     log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
-                    r = p.plot(callback, name=node.name(), graph_type=GraphType.ColorMap, y_log_scale=True,
-                               z_log_scale=True, **kwargs)
+                    r = target.plot(callback, name=node.name(), graph_type=GraphType.ColorMap, y_log_scale=True,
+                                    z_log_scale=True, **kwargs)
+                    if not hasattr(r, '__iter__') and existing_plot is not None:
+                        r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
                     return r
     log.debug(f"Product not found: {product}")
@@ -131,14 +160,22 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
 
 
 def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], x, y, z=None, **kwargs):
+    target, existing_plot = _resolve_plot_target(p, kwargs)
     if z is not None:
-        return p.plot(x, y, z, **kwargs)
+        r = target.plot(x, y, z, **kwargs)
     else:
-        return p.plot(x, y, **kwargs)
+        r = target.plot(x, y, **kwargs)
+    if not hasattr(r, '__iter__') and existing_plot is not None:
+        r = (existing_plot, r)
+    return r
 
 
 def plot_function(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], f, **kwargs):
-    return p.plot(f, **kwargs)
+    target, existing_plot = _resolve_plot_target(p, kwargs)
+    r = target.plot(f, **kwargs)
+    if not hasattr(r, '__iter__') and existing_plot is not None:
+        r = (existing_plot, r)
+    return r
 
 
 class ProductDnDCallback(PlotDragNDropCallback):

@@ -7,7 +7,14 @@ from SciQLop.user_api.magics.completions import _complete_products
 
 
 def _resolve_product(query: str) -> str:
-    """Fuzzy-match a product query, returning the top result's full path."""
+    """Resolve a product by exact path or fuzzy match."""
+    from SciQLop.user_api.threading import invoke_on_main_thread
+    from SciQLopPlots import ProductsModel
+
+    path = query.split('/') if '/' in query else query.split('//')
+    if invoke_on_main_thread(ProductsModel.node, path) is not None:
+        return query
+
     matches = _complete_products(query, max_results=1)
     if not matches:
         raise UsageError(f"No product matching '{query}'")
@@ -36,7 +43,10 @@ def plot_magic(line: str):
                 raise UsageError(f"Panel '{args[1]}' not found")
         else:
             p = create_plot_panel()
-        p.plot_product(product_path, plot_type=PlotType.TimeSeries)
+        plot, _graph = p.plot_product(product_path, plot_type=PlotType.TimeSeries)
+        # Newly added plots don't inherit the panel's time range automatically,
+        # so push it explicitly to trigger the initial data fetch.
+        plot.time_range = p.time_range
 
     invoke_on_main_thread(_do_plot)
 

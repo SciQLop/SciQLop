@@ -213,7 +213,10 @@ class PlotPanel:
     @time_range.setter
     @on_main_thread
     def time_range(self, time_range: TimeRange):
-        self._get_impl_or_raise().set_time_axis_range(time_range)
+        impl = self._get_impl_or_raise()
+        impl.set_time_axis_range(time_range)
+        for plot in impl.plots():
+            plot.set_time_range(time_range)
 
     def _get_time_range_bar(self):
         return getattr(self._get_impl_or_raise(), '_time_range_bar', None)

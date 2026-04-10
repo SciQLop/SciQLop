@@ -29,7 +29,7 @@ def handle_debug(args, func, func_name: str, entry: RegistryEntry, type_info,
             panel._vp_overlay = overlay
 
         from SciQLop.core import TimeRange
-        _plot_on_debug_panel(panel, func_name)
+        _plot_on_debug_panel(panel, args.path or func_name)
         panel.time_range = TimeRange(start, stop)
 
         if eval_error is not None:

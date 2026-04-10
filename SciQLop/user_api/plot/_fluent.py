@@ -38,7 +38,6 @@ class PanelBuilder:
     def subplot(self) -> PanelBuilder:
         """Start a new subplot (axes) in the panel. Subsequent .plot() calls add graphs to this subplot."""
         self._current_plot = None
-        self._current_plot_index += 1
         return self
 
     def plot(self, *args, **kwargs) -> PanelBuilder:
