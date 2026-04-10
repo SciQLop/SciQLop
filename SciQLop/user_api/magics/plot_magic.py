@@ -11,7 +11,7 @@ def _resolve_product(query: str) -> str:
     from SciQLop.user_api.threading import invoke_on_main_thread
     from SciQLopPlots import ProductsModel
 
-    path = query.split('/') if '/' in query else query.split('//')
+    path = query.split('//' if '//' in query else '/')
     if invoke_on_main_thread(ProductsModel.node, path) is not None:
         return query
 

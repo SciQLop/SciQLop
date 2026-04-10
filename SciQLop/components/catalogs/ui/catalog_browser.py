@@ -18,10 +18,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QKeySequence, QPen, QColor, QShortcut
 
+import math
 from datetime import datetime, timezone, timedelta
 import uuid as _uuid
 from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent
-from .catalog_tree import CatalogTreeModel
+from .catalog_tree import CatalogTreeModel, DIRTY_PROVIDER_ROLE, LOADING_ROLE
 from .event_table import EventTableModel, EventSortProxy
 
 
@@ -52,6 +53,10 @@ class _SaveButtonDelegate(QStyledItemDelegate):
     _ICON_SIZE = 16
     _SPINNER_SEGMENTS = 8
     _SPINNER_INTERVAL_MS = 80
+    _SPINNER_OFFSETS = tuple(
+        (math.cos(math.radians(i * 360 / 8)), math.sin(math.radians(i * 360 / 8)))
+        for i in range(8)
+    )
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -76,7 +81,6 @@ class _SaveButtonDelegate(QStyledItemDelegate):
         self._has_loading = False
 
     def paint(self, painter, option, index):
-        from .catalog_tree import DIRTY_PROVIDER_ROLE, LOADING_ROLE
         super().paint(painter, option, index)
         if index.data(LOADING_ROLE):
             self._paint_spinner(painter, option)
@@ -87,28 +91,29 @@ class _SaveButtonDelegate(QStyledItemDelegate):
             self._get_icon().paint(painter, self._icon_rect(option))
 
     def _paint_spinner(self, painter, option):
-        import math
         s = self._ICON_SIZE
         cx = option.rect.right() - s // 2 - 2
         cy = option.rect.top() + option.rect.height() // 2
         r = s // 2 - 2
+        rot = math.radians(self._spinner_angle)
+        cos_rot, sin_rot = math.cos(rot), math.sin(rot)
         painter.save()
         painter.setRenderHint(painter.RenderHint.Antialiasing)
-        for i in range(self._SPINNER_SEGMENTS):
-            angle = math.radians(self._spinner_angle + i * (360 // self._SPINNER_SEGMENTS))
+        for i, (ux, uy) in enumerate(self._SPINNER_OFFSETS):
+            # Rotate the precomputed unit-circle offset by the current angle
+            rx = ux * cos_rot - uy * sin_rot
+            ry = ux * sin_rot + uy * cos_rot
             alpha = 255 - i * (200 // self._SPINNER_SEGMENTS)
             color = option.palette.text().color()
             color.setAlpha(max(alpha, 55))
             painter.setPen(QPen(color, 2, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
-            x1 = cx + (r - 2) * math.cos(angle)
-            y1 = cy - (r - 2) * math.sin(angle)
-            x2 = cx + r * math.cos(angle)
-            y2 = cy - r * math.sin(angle)
-            painter.drawLine(int(x1), int(y1), int(x2), int(y2))
+            painter.drawLine(
+                int(cx + (r - 2) * rx), int(cy - (r - 2) * ry),
+                int(cx + r * rx), int(cy - r * ry),
+            )
         painter.restore()
 
     def sizeHint(self, option, index):
-        from .catalog_tree import DIRTY_PROVIDER_ROLE, LOADING_ROLE
         size = super().sizeHint(option, index)
         if index.data(DIRTY_PROVIDER_ROLE) or index.data(LOADING_ROLE):
             size.setWidth(size.width() + self._ICON_SIZE + 4)
@@ -123,7 +128,6 @@ class _SaveButtonDelegate(QStyledItemDelegate):
         )
 
     def editorEvent(self, event, model, option, index):
-        from .catalog_tree import DIRTY_PROVIDER_ROLE
         if index.data(DIRTY_PROVIDER_ROLE):
             if event.type() == QEvent.Type.MouseButtonRelease:
                 if self._icon_rect(option).contains(event.pos()):

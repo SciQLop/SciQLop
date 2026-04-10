@@ -314,7 +314,7 @@ class CatalogTreeModel(QAbstractItemModel):
 
     def _on_provider_status_changed(self, pnode: _Node) -> None:
         idx = self.createIndex(pnode.row(), 0, pnode)
-        self.dataChanged.emit(idx, idx)
+        self.dataChanged.emit(idx, idx, [int(Qt.ItemDataRole.DisplayRole), int(Qt.ItemDataRole.DecorationRole)])
 
     def _remove_catalog_recursive(self, node: _Node, catalog: object) -> bool:
         """Find and remove catalog node, then prune empty folders. Returns True if found."""

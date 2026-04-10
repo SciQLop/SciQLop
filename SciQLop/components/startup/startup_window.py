@@ -32,7 +32,8 @@ class StartupWindow(QWidget):
         self._apply_size()
 
     def _apply_size(self) -> None:
-        dpr = self._screen_dpr()
+        screen = QApplication.primaryScreen()
+        dpr = screen.devicePixelRatio() if screen else 1.0
         # Scale so the splash is legible on HiDPI — at least 1.5x on >2x DPR
         scale = max(1.0, dpr * 0.75)
         if not self._background.isNull():
@@ -41,10 +42,6 @@ class StartupWindow(QWidget):
         else:
             w, h = int(600 * scale), int(316 * scale)
         self.setFixedSize(w, h)
-
-    def _screen_dpr(self) -> float:
-        screen = QApplication.primaryScreen()
-        return screen.devicePixelRatio() if screen else 1.0
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -132,15 +129,15 @@ class StartupWindow(QWidget):
 
     def show_error(self, traceback_text: str) -> None:
         self._show_background = False
+        self._enter_progress_state()
         self._phase_label.setVisible(False)
         self._detail_label.setVisible(False)
-        self._warning_banner.setVisible(False)
-        self._continue_btn.setVisible(False)
         self._error_text.setPlainText(traceback_text)
         self._error_text.setVisible(True)
         self._copy_btn.setVisible(True)
         self._quit_btn.setVisible(True)
-        dpr = self._screen_dpr()
+        screen = QApplication.primaryScreen()
+        dpr = screen.devicePixelRatio() if screen else 1.0
         scale = max(1.0, dpr * 0.75)
         self.setFixedSize(int(700 * scale), int(500 * scale))
         self.setStyleSheet(

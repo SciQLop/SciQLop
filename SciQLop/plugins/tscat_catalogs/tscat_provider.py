@@ -172,11 +172,15 @@ class TscatCatalogProvider(CatalogProvider):
                 ))
 
         self._pending_actions += 1
-        tscat_model.do(CreateEntityAction(
-            user_callback=_persist_path if effective_path else None,
-            cls=tscat._Catalogue,
-            args=dict(name=name, author="SciQLop", uuid=catalog_uuid),
-        ))
+        try:
+            tscat_model.do(CreateEntityAction(
+                user_callback=_persist_path if effective_path else None,
+                cls=tscat._Catalogue,
+                args=dict(name=name, author="SciQLop", uuid=catalog_uuid),
+            ))
+        except Exception:
+            self._pending_actions -= 1
+            raise
 
         cat = next((c for c in (self._catalog_cache or []) if c.uuid == catalog_uuid), None)
         if cat is None:
@@ -191,11 +195,15 @@ class TscatCatalogProvider(CatalogProvider):
 
     def remove_catalog(self, catalog: Catalog) -> None:
         self._pending_actions += 1
-        tscat_model.do(RemoveEntitiesAction(
-            user_callback=None,
-            uuids=[catalog.uuid],
-            permanently=False,
-        ))
+        try:
+            tscat_model.do(RemoveEntitiesAction(
+                user_callback=None,
+                uuids=[catalog.uuid],
+                permanently=False,
+            ))
+        except Exception:
+            self._pending_actions -= 1
+            raise
         if self._catalog_cache is not None:
             self._catalog_cache = [c for c in self._catalog_cache if c.uuid != catalog.uuid]
             self._known_uuids.discard(catalog.uuid)
@@ -226,22 +234,30 @@ class TscatCatalogProvider(CatalogProvider):
             ))
 
         self._pending_actions += 1
-        tscat_model.do(CreateEntityAction(
-            user_callback=_link_to_catalog,
-            cls=tscat._Event,
-            args=dict(start=event.start, stop=event.stop, author="SciQLop",
-                      uuid=event.uuid),
-        ))
+        try:
+            tscat_model.do(CreateEntityAction(
+                user_callback=_link_to_catalog,
+                cls=tscat._Event,
+                args=dict(start=event.start, stop=event.stop, author="SciQLop",
+                          uuid=event.uuid),
+            ))
+        except Exception:
+            self._pending_actions -= 1
+            raise
         self._add_event(catalog, event)
         self.mark_dirty(catalog)
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         self._pending_actions += 1
-        tscat_model.do(RemoveEntitiesAction(
-            user_callback=None,
-            uuids=[event.uuid],
-            permanently=False,
-        ))
+        try:
+            tscat_model.do(RemoveEntitiesAction(
+                user_callback=None,
+                uuids=[event.uuid],
+                permanently=False,
+            ))
+        except Exception:
+            self._pending_actions -= 1
+            raise
         super().remove_event(catalog, event)
 
     def _load_events(self, catalog: Catalog, emit: bool = True) -> None:
