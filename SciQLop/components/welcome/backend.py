@@ -71,10 +71,14 @@ def _discover_examples() -> list[Example]:
 
 
 _MOCK_NEWS = [
-    {"icon": "\u2318", "title": "Command Palette \u2014 Press Ctrl+K to search and execute any action", "date": "2026-03-13"},
-    {"icon": "\U0001f389", "title": "SciQLop 0.8 released", "date": "2026-03-10"},
-    {"icon": "\U0001f4e6", "title": "New MMS data products available", "date": "2026-03-08"},
-    {"icon": "\U0001f4a1", "title": "Tip: Use virtual products for derived quantities", "date": "2026-03-05"},
+    {"icon": "\U0001f4c2", "title": "Catalog Browser \u2014 browse, create, edit and overlay catalogs on plots", "date": "2026-04-10"},
+    {"icon": "\U0001f6cd\ufe0f", "title": "App Store \u2014 discover and install community plugins", "date": "2026-04-10"},
+    {"icon": "\u2318", "title": "Command Palette \u2014 press Ctrl+K to search and execute any action", "date": "2026-04-10"},
+    {"icon": "\U0001f3a8", "title": "New dark & neutral themes with runtime switching", "date": "2026-04-10"},
+    {"icon": "\U0001f4d3", "title": "Workspace overhaul \u2014 TOML manifests, uv venvs, examples & templates", "date": "2026-04-10"},
+    {"icon": "\U0001f50c", "title": "Plugin system \u2014 entry-point discovery, dependency resolution, product context menus", "date": "2026-04-10"},
+    {"icon": "\U0001f9ea", "title": "Expanded user API \u2014 catalog service, %plot / %%vp magics, fluent API, graphic primitives", "date": "2026-04-10"},
+    {"icon": "\U0001f4e6", "title": "Packaging \u2014 AppImage, Windows installer, Flatpak, and macOS DMG with notarization", "date": "2026-04-10"},
 ]
 
 _APPSTORE_URL = "https://sciqlop.github.io/sciqlop-appstore/index.json"

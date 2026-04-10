@@ -106,7 +106,7 @@ def check_xcb_cursor() -> str | None:
 
 
 def _run_with_startup_window(workspace_dir: Path, default_python: Path, prepare_fn) -> int:
-    from PySide6.QtCore import QTimer
+    from PySide6.QtCore import QEventLoop, QTimer
     from PySide6.QtWidgets import QApplication
     from SciQLop.resources import qInitResources
     from SciQLop.components.startup.startup_window import StartupWindow
@@ -138,15 +138,9 @@ def _run_with_startup_window(workspace_dir: Path, default_python: Path, prepare_
     xcb_warning = check_xcb_cursor()
     if xcb_warning:
         window.show_warning(xcb_warning)
-        waiting = True
-
-        def on_ack():
-            nonlocal waiting
-            waiting = False
-
-        window.warning_acknowledged.connect(on_ack)
-        while waiting:
-            app.processEvents()
+        loop = QEventLoop()
+        window.warning_acknowledged.connect(loop.quit)
+        loop.exec()
 
     window.set_phase("Starting SciQLop...")
     window.set_detail("")
