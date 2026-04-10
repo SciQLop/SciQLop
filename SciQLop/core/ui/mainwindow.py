@@ -377,6 +377,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                               time_range=self._default_time_range)
         container = PanelContainer(panel)
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, container, delete_on_close=True)
+        panel.delete_me.connect(lambda: self.remove_panel(panel))
         self.panel_added.emit(panel)
         self._notify_panels_list_changed()
         panel.destroyed.connect(self._notify_panels_list_changed)

@@ -17,7 +17,7 @@ __all__ = ['Pixmap', 'Ellipse', 'Text', 'CurvedLine']
 
 def _coordinate_system_to_sqp(coordinate_system: CoordinateSystem) -> _Coordinates:
     if coordinate_system == CoordinateSystem.Pixel:
-        return _Coordinates.Pixel
+        return _Coordinates.Pixels
     elif coordinate_system == CoordinateSystem.Data:
         return _Coordinates.Data
     else:

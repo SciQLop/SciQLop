@@ -14,9 +14,8 @@ else:
 # QtADS drag-and-drop relies on QCursor::pos() which returns garbage on
 # native Wayland.  Force XCB (XWayland) unless the user explicitly opts in
 # to native Wayland via SCIQLOP_NATIVE_WAYLAND=1.
-if 'WAYLAND_DISPLAY' in os.environ and 'QT_QPA_PLATFORM' not in os.environ:
-    if not os.environ.get('SCIQLOP_NATIVE_WAYLAND', ''):
-        os.environ['QT_QPA_PLATFORM'] = 'xcb'
+if platform.system() == 'Linux' and not os.environ.get('SCIQLOP_NATIVE_WAYLAND', ''):
+    os.environ['QT_QPA_PLATFORM'] = 'xcb'
 
 print("Forcing TZ to UTC")
 os.environ['TZ'] = 'UTC'
