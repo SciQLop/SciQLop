@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
     QMenu,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon, QPen, QColor
+from PySide6.QtGui import QIcon, QKeySequence, QPen, QColor, QShortcut
 
 from datetime import datetime, timezone, timedelta
 import uuid as _uuid
@@ -165,6 +165,9 @@ class CatalogBrowser(QWidget):
         self._catalog_tree.doubleClicked.connect(self._on_tree_double_clicked)
         self._catalog_tree.selectionModel().currentChanged.connect(self._on_catalog_selected)
         self._filter_bar.textChanged.connect(self._on_filter_changed)
+        delete_shortcut = QShortcut(QKeySequence.StandardKey.Delete, self._catalog_tree)
+        delete_shortcut.setContext(Qt.ShortcutContext.WidgetShortcut)
+        delete_shortcut.activated.connect(self._on_delete_selected_catalog)
 
         # --- event table (right) ---
         self._event_model = EventTableModel()
@@ -525,6 +528,17 @@ class CatalogBrowser(QWidget):
             overlay = panel.catalog_manager.overlay(catalog.uuid)
             if overlay is not None:
                 overlay.update_color_mapper(mapper)
+
+    def _on_delete_selected_catalog(self) -> None:
+        index = self._catalog_tree.currentIndex()
+        if not index.isValid():
+            return
+        node = self._tree_model.node_from_index(self._proxy_model.mapToSource(index))
+        if node.catalog is None or node.provider is None:
+            return
+        if Capability.DELETE_CATALOGS not in node.provider.capabilities():
+            return
+        self._delete_catalog(node)
 
     def _delete_catalog(self, node) -> None:
         from PySide6.QtWidgets import QMessageBox
