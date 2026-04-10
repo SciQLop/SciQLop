@@ -111,7 +111,8 @@ def _run_with_startup_window(workspace_dir: Path, default_python: Path, prepare_
     from SciQLop.resources import qInitResources
     from SciQLop.components.startup.startup_window import StartupWindow
 
-    app = QApplication(sys.argv[:1])
+    existing = QApplication.instance()
+    app = existing or QApplication(sys.argv[:1])
     qInitResources()
 
     window = StartupWindow()

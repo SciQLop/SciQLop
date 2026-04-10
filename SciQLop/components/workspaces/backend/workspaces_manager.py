@@ -136,13 +136,33 @@ class WorkspaceManager(QObject):
         switch_workspace(directory)
 
     @staticmethod
-    def add_example_to_workspace(example_path: str, workspace_dir: str) -> list[str]:
+    def add_example_to_workspace(example_path: str, workspace_dir: str) -> dict:
+        from .workspace_manifest import InstalledExample
         example = Example(example_path)
         slug = re_sub(r'[^\w\-]', '_', example.name).strip('_')
         dest = os.path.join(workspace_dir, slug)
+        manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
+        manifest = WorkspaceManifest.load(manifest_path)
+
+        existing = next((e for e in manifest.examples if e.name == example.name), None)
+        is_update = existing is not None
+
         _copy_example_tree(example_path, dest)
-        manifest = WorkspaceManifest.load(os.path.join(workspace_dir, "workspace.sciqlop"))
-        return [d for d in example.dependencies if d not in manifest.requires]
+
+        if existing:
+            existing.version = example.version
+            existing.source = example_path
+        else:
+            manifest.examples.append(InstalledExample(
+                name=example.name, source=example_path, version=example.version))
+
+        manifest.save(manifest_path)
+        missing_deps = [d for d in example.dependencies if d not in manifest.requires]
+        return {
+            "name": example.name,
+            "is_update": is_update,
+            "missing_dependencies": missing_deps,
+        }
 
     def load_workspace(self, manifest: WorkspaceManifest | None = None) -> Workspace:
         if self._workspace is not None:

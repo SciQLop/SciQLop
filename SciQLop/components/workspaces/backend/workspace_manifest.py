@@ -13,6 +13,11 @@ Manifest format::
 
     [dependencies]
     requires = ["matplotlib>=3.8", "scipy", "hapiclient"]
+
+    [[examples.installed]]
+    name = "MMS"
+    source = "/path/to/SciQLop/examples/mms"
+    version = "1"
 """
 
 from __future__ import annotations
@@ -26,6 +31,14 @@ LAST_USED_MARKER = ".last_used"
 
 
 @dataclass
+class InstalledExample:
+    """Record of an example installed into a workspace."""
+    name: str
+    source: str
+    version: str = ""
+
+
+@dataclass
 class WorkspaceManifest:
     """Dataclass representing a .sciqlop workspace manifest."""
 
@@ -36,6 +49,7 @@ class WorkspaceManifest:
     plugins_add: list[str] = field(default_factory=list)
     plugins_remove: list[str] = field(default_factory=list)
     requires: list[str] = field(default_factory=list)
+    examples: list[InstalledExample] = field(default_factory=list)
     _directory: str = field(default="", repr=False, compare=False, init=False)
 
     @property
@@ -75,6 +89,8 @@ class WorkspaceManifest:
         workspace = data.get("workspace", {})
         plugins = data.get("plugins", {})
         dependencies = data.get("dependencies", {})
+        examples_data = data.get("examples", {})
+        installed = [InstalledExample(**e) for e in examples_data.get("installed", [])]
 
         manifest = cls(
             name=workspace["name"],
@@ -84,6 +100,7 @@ class WorkspaceManifest:
             plugins_add=plugins.get("add", []),
             plugins_remove=plugins.get("remove", []),
             requires=dependencies.get("requires", []),
+            examples=installed,
         )
         manifest._directory = str(path.parent)
         return manifest
@@ -112,6 +129,12 @@ class WorkspaceManifest:
 
         if self.requires:
             data["dependencies"] = {"requires": self.requires}
+
+        if self.examples:
+            data["examples"] = {
+                "installed": [{"name": e.name, "source": e.source, "version": e.version}
+                              for e in self.examples]
+            }
 
         import tomli_w
 

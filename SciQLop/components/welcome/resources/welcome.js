@@ -2,6 +2,7 @@ let backend = null;
 let selectedCard = null;
 let _currentDetailsWs = null;
 let _currentDetailsIsActive = false;
+var _installedExamples = {};
 
 // --- Initialization ---
 
@@ -122,13 +123,32 @@ function loadWorkspaces() {
     });
 }
 
+function _refreshInstalledExamples(callback) {
+    backend.get_active_workspace_dir(function(activeJson) {
+        var wsDir = JSON.parse(activeJson);
+        if (!wsDir) {
+            _installedExamples = {};
+            if (callback) callback();
+            return;
+        }
+        backend.get_installed_examples(wsDir, function(json_str) {
+            var list = JSON.parse(json_str);
+            _installedExamples = {};
+            list.forEach(function(e) { _installedExamples[e.name] = e.version; });
+            if (callback) callback();
+        });
+    });
+}
+
 function loadExamples() {
-    backend.list_examples(function(json_str) {
-        const examples = JSON.parse(json_str);
-        const container = document.getElementById("example-cards");
-        container.innerHTML = "";
-        examples.forEach(function(ex) {
-            container.appendChild(createExampleCard(ex));
+    _refreshInstalledExamples(function() {
+        backend.list_examples(function(json_str) {
+            const examples = JSON.parse(json_str);
+            const container = document.getElementById("example-cards");
+            container.innerHTML = "";
+            examples.forEach(function(ex) {
+                container.appendChild(createExampleCard(ex));
+            });
         });
     });
 }
@@ -322,10 +342,19 @@ function createExampleCard(ex) {
         ? '<div class="card-tags">Tags: ' + escapeHtml(ex.tags.join(", ")) + '</div>'
         : '';
 
+    var isInstalled = ex.name in _installedExamples;
+    var installedVersion = isInstalled ? _installedExamples[ex.name] : null;
+    var hasUpdate = isInstalled && ex.version && installedVersion !== ex.version;
+    var badgeHtml = hasUpdate
+        ? '<span class="card-installed-badge" style="background:#e67e22">update</span>'
+        : isInstalled
+        ? '<span class="card-installed-badge">installed</span>'
+        : '';
+
     card.innerHTML =
         '<div class="card-image-wrapper">' + imageHtml + '</div>' +
         '<div class="card-body">' +
-            '<span class="card-name">' + escapeHtml(ex.name) + '</span>' +
+            '<span class="card-name">' + escapeHtml(ex.name) + badgeHtml + '</span>' +
             tagsHtml +
         '</div>';
 
@@ -501,12 +530,26 @@ function showExampleDetails(ex) {
     const panel = document.getElementById("details-panel");
     document.getElementById("details-title").textContent = "Example details";
 
+    var isInstalled = ex.name in _installedExamples;
+    var installedVersion = isInstalled ? _installedExamples[ex.name] : null;
+    var hasUpdate = isInstalled && ex.version && installedVersion !== ex.version;
+
+    var buttonLabel = hasUpdate ? "Update example" : isInstalled ? "Reinstall example" : "Add to workspace";
+    var buttonClass = hasUpdate ? "primary" : "";
+    var statusHtml = isInstalled
+        ? '<div class="details-field"><label>Status</label><span>' +
+            (hasUpdate ? 'Installed (update available)' : 'Installed') +
+          '</span></div>'
+        : '';
+
     const content = document.getElementById("details-content");
     content.innerHTML =
         '<div class="details-field"><label>Name</label><span>' + escapeHtml(ex.name) + '</span></div>' +
         '<div class="details-field"><label>Description</label><span>' + escapeHtml(ex.description || "") + '</span></div>' +
+        (ex.version ? '<div class="details-field"><label>Version</label><span>' + escapeHtml(ex.version) + '</span></div>' : '') +
+        statusHtml +
         '<div class="details-actions">' +
-            '<button onclick="openExample(\'' + escapeAttr(ex.directory) + '\')">Add to workspace</button>' +
+            '<button class="' + buttonClass + '" onclick="openExample(\'' + escapeAttr(ex.directory) + '\')">' + buttonLabel + '</button>' +
         '</div>';
 
     panel.classList.remove("hidden");
@@ -688,6 +731,9 @@ function openExample(exampleDir) {
 function addExampleAndPromptDeps(exampleDir, wsDir) {
     backend.add_example_to_workspace(exampleDir, wsDir, function(json_str) {
         var result = JSON.parse(json_str);
+        var verb = result.is_update ? "updated" : "added";
+        showToast("Example '" + result.name + "' " + verb + " successfully", "toast-success");
+        loadExamples();
         if (result.missing_dependencies && result.missing_dependencies.length > 0) {
             confirmDependencies(wsDir, result.missing_dependencies);
         }
@@ -772,6 +818,17 @@ function tryOpenWorkspace(directory) {
     if (confirm("SciQLop will restart to open this workspace.")) {
         backend.open_workspace(directory);
     }
+}
+
+// --- Toast notifications ---
+
+function showToast(message, className) {
+    var container = document.getElementById("toast-container");
+    var toast = document.createElement("div");
+    toast.className = "toast" + (className ? " " + className : "");
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 3000);
 }
 
 // --- Utilities ---

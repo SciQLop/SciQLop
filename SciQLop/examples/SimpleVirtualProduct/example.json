@@ -3,6 +3,7 @@
   "notebook": "simple_virtual_product.ipynb",
   "description": "A simple virtual product that can plotted in SciQLop",
   "name": "Simple Virtual Product",
+  "version": "1",
   "tags": [
     "virtual-product",
     "basic"

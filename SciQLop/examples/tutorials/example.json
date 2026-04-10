@@ -3,6 +3,7 @@
   "notebook": "Tutorials.ipynb",
   "description": "Speasy and SciQLop step-by-step tutorials",
   "name": "Tutorials",
+  "version": "1",
   "tags": [
     "tutorial",
     "virtual-product",
