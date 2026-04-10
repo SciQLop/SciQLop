@@ -319,7 +319,7 @@ class CatalogTreeModel(QAbstractItemModel):
     def _remove_catalog_recursive(self, node: _Node, catalog: object) -> bool:
         """Find and remove catalog node, then prune empty folders. Returns True if found."""
         for i, child in enumerate(node.children):
-            if child.catalog is catalog:
+            if child.catalog is not None and child.catalog.uuid == catalog.uuid:
                 parent_index = self.createIndex(node.row(), 0, node) if node.parent is not None else QModelIndex()
                 self.beginRemoveRows(parent_index, i, i)
                 node.children.pop(i)

@@ -99,7 +99,7 @@ class TscatCatalogProvider(CatalogProvider):
         self._loading_uuids: set[str] = set()
         self._stale_events: dict[str, list[CatalogEvent]] = {}
         self._pending_paths: dict[str, list[str]] = {}
-        self._mutating = 0
+        self._pending_actions = 0
         self._root_model = tscat_model.tscat_root()
         super().__init__(name="My Catalogs", parent=parent)
         tscat_model.action_done.connect(self._on_action_done)
@@ -171,33 +171,31 @@ class TscatCatalogProvider(CatalogProvider):
                     values=[effective_path],
                 ))
 
-        self._mutating += 1
-        try:
-            tscat_model.do(CreateEntityAction(
-                user_callback=_persist_path if effective_path else None,
-                cls=tscat._Catalogue,
-                args=dict(name=name, author="SciQLop", uuid=catalog_uuid),
-            ))
-        finally:
-            self._mutating -= 1
+        self._pending_actions += 1
+        tscat_model.do(CreateEntityAction(
+            user_callback=_persist_path if effective_path else None,
+            cls=tscat._Catalogue,
+            args=dict(name=name, author="SciQLop", uuid=catalog_uuid),
+        ))
 
         cat = next((c for c in (self._catalog_cache or []) if c.uuid == catalog_uuid), None)
         if cat is None:
             cat = Catalog(uuid=catalog_uuid, name=name, provider=self, path=effective_path)
+            if self._catalog_cache is not None:
+                self._catalog_cache.append(cat)
+                self._known_uuids.add(catalog_uuid)
+            self.catalog_added.emit(cat)
         self._set_events(cat, [])
         self.mark_dirty(cat)
         return cat
 
     def remove_catalog(self, catalog: Catalog) -> None:
-        self._mutating += 1
-        try:
-            tscat_model.do(RemoveEntitiesAction(
-                user_callback=None,
-                uuids=[catalog.uuid],
-                permanently=False,
-            ))
-        finally:
-            self._mutating -= 1
+        self._pending_actions += 1
+        tscat_model.do(RemoveEntitiesAction(
+            user_callback=None,
+            uuids=[catalog.uuid],
+            permanently=False,
+        ))
         if self._catalog_cache is not None:
             self._catalog_cache = [c for c in self._catalog_cache if c.uuid != catalog.uuid]
             self._known_uuids.discard(catalog.uuid)
@@ -220,35 +218,30 @@ class TscatCatalogProvider(CatalogProvider):
         self._ensure_clean_session()
 
         def _link_to_catalog(action):
+            self._pending_actions += 1
             tscat_model.do(AddEventsToCatalogueAction(
                 user_callback=None,
                 uuids=[action.entity.uuid],
                 catalogue_uuid=catalog.uuid,
             ))
 
-        self._mutating += 1
-        try:
-            tscat_model.do(CreateEntityAction(
-                user_callback=_link_to_catalog,
-                cls=tscat._Event,
-                args=dict(start=event.start, stop=event.stop, author="SciQLop",
-                          uuid=event.uuid),
-            ))
-        finally:
-            self._mutating -= 1
+        self._pending_actions += 1
+        tscat_model.do(CreateEntityAction(
+            user_callback=_link_to_catalog,
+            cls=tscat._Event,
+            args=dict(start=event.start, stop=event.stop, author="SciQLop",
+                      uuid=event.uuid),
+        ))
         self._add_event(catalog, event)
         self.mark_dirty(catalog)
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
-        self._mutating += 1
-        try:
-            tscat_model.do(RemoveEntitiesAction(
-                user_callback=None,
-                uuids=[event.uuid],
-                permanently=False,
-            ))
-        finally:
-            self._mutating -= 1
+        self._pending_actions += 1
+        tscat_model.do(RemoveEntitiesAction(
+            user_callback=None,
+            uuids=[event.uuid],
+            permanently=False,
+        ))
         super().remove_event(catalog, event)
 
     def _load_events(self, catalog: Catalog, emit: bool = True) -> None:
@@ -296,8 +289,8 @@ class TscatCatalogProvider(CatalogProvider):
         if emit:
             self.events_changed.emit(catalog)
 
-    @Slot()
-    def _on_root_rows_changed(self, *args) -> None:
+    def _refresh_catalogs_and_notify(self) -> None:
+        """Rebuild catalog cache from the model and emit add/remove signals."""
         old_uuids = set(self._known_uuids)
         old_catalogs = {c.uuid: c for c in (self._catalog_cache or [])}
         self._catalog_cache = None
@@ -308,22 +301,33 @@ class TscatCatalogProvider(CatalogProvider):
             if cat.uuid not in old_uuids:
                 self.catalog_added.emit(cat)
 
-        removed_uuids = old_uuids - new_uuids
-        for uuid in removed_uuids:
+        for uuid in old_uuids - new_uuids:
             removed_cat = old_catalogs.get(uuid)
             if removed_cat is not None:
                 self.catalog_removed.emit(removed_cat)
-                # Clean up cached events for removed catalog
                 self._events.pop(uuid, None)
+
+    @Slot()
+    def _on_root_rows_changed(self, *args) -> None:
+        if self._pending_actions > 0:
+            return
+        self._refresh_catalogs_and_notify()
+
+    _TRACKED_ACTIONS = (CreateEntityAction, RemoveEntitiesAction, AddEventsToCatalogueAction)
 
     @Slot()
     def _on_action_done(self, action) -> None:
         if isinstance(action, SetAttributeAction):
             return
-        # Our own mutations (add/remove/create) manage the cache directly;
-        # this handler only needs to react to external changes (tscat GUI).
-        if self._mutating > 0:
+        is_ours = isinstance(action, self._TRACKED_ACTIONS) and self._pending_actions > 0
+        if is_ours:
+            self._pending_actions -= 1
+            if self._pending_actions == 0:
+                self._refresh_catalogs_and_notify()
             return
+        if self._pending_actions > 0:
+            return
+        # Only invalidate event cache for external changes (e.g. tscat GUI).
         self._catalog_cache = None
         for catalog in self.catalogs():
             if catalog.uuid in self._events:
