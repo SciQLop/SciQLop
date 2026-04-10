@@ -228,6 +228,9 @@ class TscatCatalogProvider(CatalogProvider):
             args=dict(start=event.start, stop=event.stop, author="SciQLop",
                       uuid=event.uuid),
         ))
+        # _on_action_done may have wiped self._events during do(), so
+        # always update the in-memory cache to keep it in sync with the ORM.
+        self._add_event(catalog, event)
         self.mark_dirty(catalog)
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
