@@ -96,9 +96,14 @@ class CatalogService:
         return provider, catalog
 
     def _persist(self, provider: CatalogProvider, catalog: Catalog, events: list[CatalogEvent]) -> None:
-        provider._set_events(catalog, events)
-        provider.events_changed.emit(catalog)
-        provider.mark_dirty(catalog)
+        # Remove existing events through the provider so backends (e.g. tscat)
+        # can update their ORM/DB, not just the in-memory dict.
+        for old in list(provider.events(catalog)):
+            provider.remove_event(catalog, old)
+
+        for event in events:
+            provider.add_event(catalog, event)
+
         if Capability.SAVE_CATALOG in provider.capabilities():
             provider.save_catalog(catalog)
         elif Capability.SAVE in provider.capabilities():

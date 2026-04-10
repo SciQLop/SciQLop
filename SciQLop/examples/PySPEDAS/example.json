@@ -3,6 +3,7 @@
   "notebook": "pyspedas.ipynb",
   "description": "A basic example of how to integrate PySPEDAS into SciQLop",
   "name": "PySPEDAS",
+  "version": "1",
   "tags": [
     "pyspedas",
     "virtual-product",

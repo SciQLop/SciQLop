@@ -13,6 +13,7 @@ class ExampleSpec:
     image: str = field(default_factory=str)
     tags: List[str] = field(default_factory=list)
     notebook: str = field(default_factory=str)
+    version: str = ""
     valid: bool = False
 
 

@@ -45,5 +45,9 @@ class Example:
         return self._example_spec.valid
 
     @property
+    def version(self):
+        return self._example_spec.version or ""
+
+    @property
     def notebook(self):
         return os.path.join(self._example_spec.directory, self._example_spec.notebook)

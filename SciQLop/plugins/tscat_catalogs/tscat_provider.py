@@ -154,6 +154,7 @@ class TscatCatalogProvider(CatalogProvider):
 
     def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
         import uuid as _uuid
+        self._ensure_clean_session()
         catalog_uuid = str(_uuid.uuid4())
         effective_path = path or []
 
@@ -198,11 +199,22 @@ class TscatCatalogProvider(CatalogProvider):
             self._known_uuids.discard(catalog.uuid)
         super().remove_catalog(catalog)
 
+    @staticmethod
+    def _ensure_clean_session():
+        """Rollback any pending transaction left by a prior failed flush."""
+        from tscat.base import backend as _tscat_backend
+        session = _tscat_backend().session
+        if not session.is_active:
+            session.rollback()
+
     def _do_save(self) -> None:
         import tscat
+        self._ensure_clean_session()
         tscat.save()
 
     def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
+        self._ensure_clean_session()
+
         def _link_to_catalog(action):
             tscat_model.do(AddEventsToCatalogueAction(
                 user_callback=None,

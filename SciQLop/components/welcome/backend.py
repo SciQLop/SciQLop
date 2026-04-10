@@ -56,6 +56,7 @@ def _example_to_dict(ex: Example) -> dict:
         "image": ex.image if ex.image and os.path.exists(ex.image) else "",
         "tags": ex.tags,
         "directory": str(ex.directory),
+        "version": ex.version,
     }
 
 
@@ -300,8 +301,17 @@ class WelcomeBackend(QObject):
 
     @Slot(str, str, result=str)
     def add_example_to_workspace(self, example_dir: str, workspace_dir: str) -> str:
-        missing = WorkspaceManager.add_example_to_workspace(example_dir, workspace_dir)
-        return json.dumps({"missing_dependencies": missing})
+        result = WorkspaceManager.add_example_to_workspace(example_dir, workspace_dir)
+        return json.dumps(result)
+
+    @Slot(str, result=str)
+    def get_installed_examples(self, workspace_dir: str) -> str:
+        manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
+        if not os.path.exists(manifest_path):
+            return json.dumps([])
+        from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+        manifest = WorkspaceManifest.load(manifest_path)
+        return json.dumps([{"name": e.name, "version": e.version} for e in manifest.examples])
 
     @Slot(str, str)
     def add_dependencies_to_workspace(self, workspace_dir: str, dependencies_json: str) -> None:
