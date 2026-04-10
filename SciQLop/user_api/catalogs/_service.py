@@ -96,13 +96,19 @@ class CatalogService:
         return provider, catalog
 
     def _persist(self, provider: CatalogProvider, catalog: Catalog, events: list[CatalogEvent]) -> None:
-        # Remove existing events through the provider so backends (e.g. tscat)
-        # can update their ORM/DB, not just the in-memory dict.
+        # Route through add_event/remove_event so backends (e.g. tscat) can
+        # persist to their ORM/DB.  Each call may invalidate the in-memory
+        # cache, so we do a final _set_events to guarantee consistency.
         for old in list(provider.events(catalog)):
             provider.remove_event(catalog, old)
 
         for event in events:
             provider.add_event(catalog, event)
+
+        # Authoritative cache update — backends may have wiped self._events
+        # during the individual add/remove calls above.
+        provider._set_events(catalog, events)
+        provider.events_changed.emit(catalog)
 
         if Capability.SAVE_CATALOG in provider.capabilities():
             provider.save_catalog(catalog)

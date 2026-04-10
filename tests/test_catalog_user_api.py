@@ -305,6 +305,117 @@ def test_remove_not_found(catalog_service, dummy_provider):
         catalog_service.remove("IsolatedDummy//room1//NoSuchCatalog")
 
 
+class _CacheInvalidatingProvider(CatalogProvider):
+    """Simulates tscat-like behavior: add_event creates events in a 'backend'
+    and clears the in-memory _events cache (like _on_action_done does).
+    This ensures _persist works even when the cache is wiped mid-operation."""
+
+    def __init__(self, parent=None):
+        super().__init__(name="CacheInvalidating", parent=parent)
+        self._catalogs: list = []
+        self._backend_events: dict[str, list[CatalogEvent]] = {}
+
+    def catalogs(self):
+        return list(self._catalogs)
+
+    def capabilities(self, catalog=None):
+        from SciQLop.components.catalogs.backend.provider import Capability
+        return {
+            Capability.EDIT_EVENTS, Capability.CREATE_EVENTS,
+            Capability.DELETE_EVENTS, Capability.CREATE_CATALOGS,
+            Capability.DELETE_CATALOGS, Capability.SAVE,
+        }
+
+    def create_catalog(self, name, path=None):
+        cat = Catalog(uuid=str(len(self._catalogs)), name=name, provider=self, path=path or [])
+        self._catalogs.append(cat)
+        self._backend_events[cat.uuid] = []
+        self._set_events(cat, [])
+        return cat
+
+    def add_event(self, catalog, event):
+        # Simulate tscat: persist to backend, then wipe in-memory cache
+        # (like _on_action_done does), then re-add to cache.
+        self._backend_events.setdefault(catalog.uuid, []).append(event)
+        self._events.pop(catalog.uuid, None)  # simulate _on_action_done
+        self._add_event(catalog, event)
+        self.mark_dirty(catalog)
+
+    def remove_event(self, catalog, event):
+        backend = self._backend_events.get(catalog.uuid, [])
+        self._backend_events[catalog.uuid] = [e for e in backend if e.uuid != event.uuid]
+        super().remove_event(catalog, event)
+
+    def remove_catalog(self, catalog):
+        self._catalogs = [c for c in self._catalogs if c.uuid != catalog.uuid]
+        self._backend_events.pop(catalog.uuid, None)
+        super().remove_catalog(catalog)
+
+
+@pytest.fixture
+def cache_invalidating_provider(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    registry = CatalogRegistry.instance()
+    provider = _CacheInvalidatingProvider()
+    yield provider
+    registry.unregister(provider)
+
+
+@pytest.fixture
+def cache_invalidating_service(cache_invalidating_provider):
+    from SciQLop.user_api.catalogs._service import CatalogService
+    return CatalogService()
+
+
+def test_create_then_get_with_cache_invalidation(cache_invalidating_service):
+    """Reproducer: create + get must return events even when the provider
+    clears its in-memory cache during add_event (like tscat does)."""
+    svc = cache_invalidating_service
+    svc.create("CacheInvalidating//test_cat", [
+        ("2020-01-01", "2020-01-02", {"tag": "a"}),
+        ("2020-06-01", "2020-06-02", {"tag": "b"}),
+        ("2020-12-01", "2020-12-02", {"tag": "c"}),
+    ])
+    cat = svc.get("CacheInvalidating//test_cat")
+    assert len(cat) == 3
+    assert cat[0].meta["tag"] == "a"
+    assert cat[1].meta["tag"] == "b"
+    assert cat[2].meta["tag"] == "c"
+
+
+def test_save_then_get_with_cache_invalidation(cache_invalidating_service):
+    """save (upsert) must also survive cache invalidation."""
+    svc = cache_invalidating_service
+    svc.save("CacheInvalidating//upsert_cat", [
+        ("2020-01-01", "2020-01-02"),
+        ("2020-06-01", "2020-06-02"),
+    ])
+    cat = svc.get("CacheInvalidating//upsert_cat")
+    assert len(cat) == 2
+
+
+def test_add_events_with_cache_invalidation(cache_invalidating_service):
+    """add_events must survive cache invalidation."""
+    svc = cache_invalidating_service
+    svc.create("CacheInvalidating//append_cat", [("2020-01-01", "2020-01-02")])
+    svc.add_events("CacheInvalidating//append_cat", [("2020-06-01", "2020-06-02")])
+    cat = svc.get("CacheInvalidating//append_cat")
+    assert len(cat) == 2
+
+
+def test_remove_events_with_cache_invalidation(cache_invalidating_service):
+    """remove_events must survive cache invalidation."""
+    svc = cache_invalidating_service
+    svc.create("CacheInvalidating//remove_cat", [
+        ("2020-01-01", "2020-01-02"),
+        ("2020-06-01", "2020-06-02"),
+    ])
+    cat = svc.get("CacheInvalidating//remove_cat")
+    svc.remove_events("CacheInvalidating//remove_cat", [cat[0]])
+    cat = svc.get("CacheInvalidating//remove_cat")
+    assert len(cat) == 1
+
+
 def test_import_catalogs_singleton():
     from SciQLop.user_api.catalogs import catalogs
     assert hasattr(catalogs, 'list')

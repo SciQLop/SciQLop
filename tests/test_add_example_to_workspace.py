@@ -41,10 +41,12 @@ class TestAddExampleToWorkspace:
         example_path = _create_example(tmp_path)
         ws_dir = _create_workspace(tmp_path)
 
-        missing = WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
+        result = WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
 
         assert os.path.exists(os.path.join(ws_dir, "mms", "index.ipynb"))
-        assert missing == []
+        assert result["missing_dependencies"] == []
+        assert result["name"] == "mms"
+        assert result["is_update"] is False
 
     def test_skips_metadata_files(self, tmp_path):
         example_path = _create_example(tmp_path)
@@ -69,9 +71,9 @@ class TestAddExampleToWorkspace:
         example_path = _create_example(tmp_path, deps=["spok", "numpy"])
         ws_dir = _create_workspace(tmp_path, deps=["numpy"])
 
-        missing = WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
+        result = WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
 
-        assert missing == ["spok"]
+        assert result["missing_dependencies"] == ["spok"]
 
     def test_overwrites_existing_subfolder(self, tmp_path):
         example_path = _create_example(tmp_path)
@@ -79,7 +81,29 @@ class TestAddExampleToWorkspace:
 
         WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
         Path(example_path, "index.ipynb").write_text('{"cells": ["updated"]}')
-        WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
+        result = WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
 
         content = Path(ws_dir, "mms", "index.ipynb").read_text()
         assert "updated" in content
+        assert result["is_update"] is True
+
+    def test_tracks_installed_example_in_manifest(self, tmp_path):
+        example_path = _create_example(tmp_path)
+        ws_dir = _create_workspace(tmp_path)
+
+        WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
+
+        manifest = WorkspaceManifest.load(os.path.join(ws_dir, "workspace.sciqlop"))
+        assert len(manifest.examples) == 1
+        assert manifest.examples[0].name == "mms"
+        assert manifest.examples[0].source == example_path
+
+    def test_update_preserves_single_entry(self, tmp_path):
+        example_path = _create_example(tmp_path)
+        ws_dir = _create_workspace(tmp_path)
+
+        WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
+        WorkspaceManager.add_example_to_workspace(example_path, ws_dir)
+
+        manifest = WorkspaceManifest.load(os.path.join(ws_dir, "workspace.sciqlop"))
+        assert len(manifest.examples) == 1
