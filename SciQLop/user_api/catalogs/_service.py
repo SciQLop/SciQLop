@@ -96,24 +96,23 @@ class CatalogService:
         return provider, catalog
 
     def _persist(self, provider: CatalogProvider, catalog: Catalog, events: list[CatalogEvent]) -> None:
-        # Route through add_event/remove_event so backends (e.g. tscat) can
-        # persist to their ORM/DB.  Each call may invalidate the in-memory
-        # cache, so we do a final _set_events to guarantee consistency.
-        for old in list(provider.events(catalog)):
-            provider.remove_event(catalog, old)
+        old_by_uuid = {e.uuid: e for e in provider.events(catalog)}
+        new_uuids = {e.uuid for e in events}
 
+        for uuid, old in old_by_uuid.items():
+            if uuid not in new_uuids:
+                provider.remove_event(catalog, old)
         for event in events:
-            provider.add_event(catalog, event)
-
-        # Authoritative cache update — backends may have wiped self._events
-        # during the individual add/remove calls above.
-        provider._set_events(catalog, events)
-        provider.events_changed.emit(catalog)
+            if event.uuid not in old_by_uuid:
+                provider.add_event(catalog, event)
 
         if Capability.SAVE_CATALOG in provider.capabilities():
             provider.save_catalog(catalog)
         elif Capability.SAVE in provider.capabilities():
             provider.save()
+
+        provider._set_events(catalog, events)
+        provider.events_changed.emit(catalog)
 
     def list(self, prefix: str | None = None) -> list[str]:
         """Return full paths of all catalogs, optionally filtered by *prefix*.

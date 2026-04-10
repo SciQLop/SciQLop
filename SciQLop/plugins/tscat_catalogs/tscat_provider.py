@@ -99,6 +99,7 @@ class TscatCatalogProvider(CatalogProvider):
         self._loading_uuids: set[str] = set()
         self._stale_events: dict[str, list[CatalogEvent]] = {}
         self._pending_paths: dict[str, list[str]] = {}
+        self._mutating = 0
         self._root_model = tscat_model.tscat_root()
         super().__init__(name="My Catalogs", parent=parent)
         tscat_model.action_done.connect(self._on_action_done)
@@ -158,8 +159,6 @@ class TscatCatalogProvider(CatalogProvider):
         catalog_uuid = str(_uuid.uuid4())
         effective_path = path or []
 
-        # Store path before the action so _on_root_rows_changed → catalogs()
-        # picks it up (path__ isn't persisted on the entity yet at that point).
         if effective_path:
             self._pending_paths[catalog_uuid] = effective_path
 
@@ -172,15 +171,16 @@ class TscatCatalogProvider(CatalogProvider):
                     values=[effective_path],
                 ))
 
-        # _on_root_rows_changed fires synchronously during do() and emits
-        # catalog_added with the correct path (via _pending_paths).
-        tscat_model.do(CreateEntityAction(
-            user_callback=_persist_path if effective_path else None,
-            cls=tscat._Catalogue,
-            args=dict(name=name, author="SciQLop", uuid=catalog_uuid),
-        ))
+        self._mutating += 1
+        try:
+            tscat_model.do(CreateEntityAction(
+                user_callback=_persist_path if effective_path else None,
+                cls=tscat._Catalogue,
+                args=dict(name=name, author="SciQLop", uuid=catalog_uuid),
+            ))
+        finally:
+            self._mutating -= 1
 
-        # Return the catalog from cache (built by signal handlers during do()).
         cat = next((c for c in (self._catalog_cache or []) if c.uuid == catalog_uuid), None)
         if cat is None:
             cat = Catalog(uuid=catalog_uuid, name=name, provider=self, path=effective_path)
@@ -189,11 +189,15 @@ class TscatCatalogProvider(CatalogProvider):
         return cat
 
     def remove_catalog(self, catalog: Catalog) -> None:
-        tscat_model.do(RemoveEntitiesAction(
-            user_callback=None,
-            uuids=[catalog.uuid],
-            permanently=False,
-        ))
+        self._mutating += 1
+        try:
+            tscat_model.do(RemoveEntitiesAction(
+                user_callback=None,
+                uuids=[catalog.uuid],
+                permanently=False,
+            ))
+        finally:
+            self._mutating -= 1
         if self._catalog_cache is not None:
             self._catalog_cache = [c for c in self._catalog_cache if c.uuid != catalog.uuid]
             self._known_uuids.discard(catalog.uuid)
@@ -222,23 +226,29 @@ class TscatCatalogProvider(CatalogProvider):
                 catalogue_uuid=catalog.uuid,
             ))
 
-        tscat_model.do(CreateEntityAction(
-            user_callback=_link_to_catalog,
-            cls=tscat._Event,
-            args=dict(start=event.start, stop=event.stop, author="SciQLop",
-                      uuid=event.uuid),
-        ))
-        # _on_action_done may have wiped self._events during do(), so
-        # always update the in-memory cache to keep it in sync with the ORM.
+        self._mutating += 1
+        try:
+            tscat_model.do(CreateEntityAction(
+                user_callback=_link_to_catalog,
+                cls=tscat._Event,
+                args=dict(start=event.start, stop=event.stop, author="SciQLop",
+                          uuid=event.uuid),
+            ))
+        finally:
+            self._mutating -= 1
         self._add_event(catalog, event)
         self.mark_dirty(catalog)
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
-        tscat_model.do(RemoveEntitiesAction(
-            user_callback=None,
-            uuids=[event.uuid],
-            permanently=False,
-        ))
+        self._mutating += 1
+        try:
+            tscat_model.do(RemoveEntitiesAction(
+                user_callback=None,
+                uuids=[event.uuid],
+                permanently=False,
+            ))
+        finally:
+            self._mutating -= 1
         super().remove_event(catalog, event)
 
     def _load_events(self, catalog: Catalog, emit: bool = True) -> None:
@@ -254,6 +264,11 @@ class TscatCatalogProvider(CatalogProvider):
                 self._deferred_load(catalog, catalog_model, retries=50)
 
     def _deferred_load(self, catalog: Catalog, catalog_model, retries: int) -> None:
+        # Events may have been set directly (e.g. by _persist) since the
+        # deferred load was scheduled — don't overwrite them.
+        if catalog.uuid in self._events:
+            self._loading_uuids.discard(catalog.uuid)
+            return
         if catalog_model.rowCount() > 0:
             self._loading_uuids.discard(catalog.uuid)
             self._read_events_from_model(catalog, catalog_model)
@@ -262,7 +277,6 @@ class TscatCatalogProvider(CatalogProvider):
         else:
             self._loading_uuids.discard(catalog.uuid)
             self.error_occurred.emit(f"Timeout loading events for {catalog.name}")
-            self._set_events(catalog, [])
             self.events_changed.emit(catalog)
 
     def _read_events_from_model(self, catalog: Catalog, catalog_model, emit: bool = True) -> None:
@@ -304,9 +318,11 @@ class TscatCatalogProvider(CatalogProvider):
 
     @Slot()
     def _on_action_done(self, action) -> None:
-        # SetAttributeAction only updates existing event fields (start/stop);
-        # the TscatEvent objects already reflect those changes locally.
         if isinstance(action, SetAttributeAction):
+            return
+        # Our own mutations (add/remove/create) manage the cache directly;
+        # this handler only needs to react to external changes (tscat GUI).
+        if self._mutating > 0:
             return
         self._catalog_cache = None
         for catalog in self.catalogs():

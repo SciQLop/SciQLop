@@ -306,14 +306,16 @@ def test_remove_not_found(catalog_service, dummy_provider):
 
 
 class _CacheInvalidatingProvider(CatalogProvider):
-    """Simulates tscat-like behavior: add_event creates events in a 'backend'
-    and clears the in-memory _events cache (like _on_action_done does).
-    This ensures _persist works even when the cache is wiped mid-operation."""
+    """Simulates tscat-like behavior:
+    - add_event persists to a 'backend' and wipes the in-memory cache
+    - remove_event trashes (not deletes) — re-adding with same UUID raises
+    - This ensures _persist's diff logic works correctly."""
 
     def __init__(self, parent=None):
         super().__init__(name="CacheInvalidating", parent=parent)
         self._catalogs: list = []
         self._backend_events: dict[str, list[CatalogEvent]] = {}
+        self._trashed_uuids: set[str] = set()
 
     def catalogs(self):
         return list(self._catalogs)
@@ -334,8 +336,8 @@ class _CacheInvalidatingProvider(CatalogProvider):
         return cat
 
     def add_event(self, catalog, event):
-        # Simulate tscat: persist to backend, then wipe in-memory cache
-        # (like _on_action_done does), then re-add to cache.
+        if event.uuid in self._trashed_uuids:
+            raise RuntimeError(f"Cannot create entity with trashed UUID {event.uuid}")
         self._backend_events.setdefault(catalog.uuid, []).append(event)
         self._events.pop(catalog.uuid, None)  # simulate _on_action_done
         self._add_event(catalog, event)
@@ -344,6 +346,7 @@ class _CacheInvalidatingProvider(CatalogProvider):
     def remove_event(self, catalog, event):
         backend = self._backend_events.get(catalog.uuid, [])
         self._backend_events[catalog.uuid] = [e for e in backend if e.uuid != event.uuid]
+        self._trashed_uuids.add(event.uuid)
         super().remove_event(catalog, event)
 
     def remove_catalog(self, catalog):
