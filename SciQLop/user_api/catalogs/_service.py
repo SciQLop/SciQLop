@@ -106,11 +106,11 @@ class CatalogService:
             if event.uuid not in old_by_uuid:
                 provider.add_event(catalog, event)
 
-        if Capability.SAVE_CATALOG in provider.capabilities():
-            provider.save_catalog(catalog)
-        elif Capability.SAVE in provider.capabilities():
-            provider.save()
-
+        # Don't call save() here — providers like tscat queue mutations
+        # asynchronously (QThread worker), so saving immediately would
+        # race with pending ORM actions. The cache below is authoritative;
+        # disk persistence happens via provider.save() called explicitly
+        # or on shutdown.
         provider._set_events(catalog, events)
         provider.events_changed.emit(catalog)
 
