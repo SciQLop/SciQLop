@@ -216,7 +216,8 @@ class PlotPanel:
         impl = self._get_impl_or_raise()
         impl.set_time_axis_range(time_range)
         for plot in impl.plots():
-            plot.set_time_range(time_range)
+            if hasattr(plot, 'set_time_range'):
+                plot.set_time_range(time_range)
 
     def _get_time_range_bar(self):
         return getattr(self._get_impl_or_raise(), '_time_range_bar', None)
