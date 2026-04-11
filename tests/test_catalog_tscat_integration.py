@@ -146,3 +146,13 @@ class TestCatalogTscatIntegration:
         uuid1 = catalogs.get(_path("t_uuid"))[0].meta["__sciqlop_uuid__"]
         uuid2 = catalogs.get(_path("t_uuid"))[0].meta["__sciqlop_uuid__"]
         assert uuid1 == uuid2
+
+
+class TestTrackedActionExceptionSafety:
+    def test_pending_actions_decremented_on_failure(self, tscat_provider):
+        """_tracked_action must decrement _pending_actions if the body raises."""
+        before = tscat_provider._pending_actions
+        with pytest.raises(RuntimeError):
+            with tscat_provider._tracked_action():
+                raise RuntimeError("simulated failure")
+        assert tscat_provider._pending_actions == before
