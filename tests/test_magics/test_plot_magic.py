@@ -17,6 +17,28 @@ class TestResolveProduct:
         with pytest.raises(Exception, match="No product matching"):
             _resolve_product("zzz_nothing")
 
+    @patch("SciQLop.user_api.threading.invoke_on_main_thread",
+           side_effect=lambda fn, *a: fn(*a))
+    @patch("SciQLopPlots.ProductsModel")
+    def test_double_slash_separator(self, mock_model, _mock_invoke):
+        """Paths with // should split on // not /."""
+        from SciQLop.user_api.magics.plot_magic import _resolve_product
+        mock_model.node.return_value = True
+        result = _resolve_product("speasy//cda//MMS")
+        mock_model.node.assert_called_with(["speasy", "cda", "MMS"])
+        assert result == "speasy//cda//MMS"
+
+    @patch("SciQLop.user_api.threading.invoke_on_main_thread",
+           side_effect=lambda fn, *a: fn(*a))
+    @patch("SciQLopPlots.ProductsModel")
+    def test_single_slash_separator(self, mock_model, _mock_invoke):
+        """Paths with / should split on /."""
+        from SciQLop.user_api.magics.plot_magic import _resolve_product
+        mock_model.node.return_value = True
+        result = _resolve_product("speasy/cda/MMS")
+        mock_model.node.assert_called_with(["speasy", "cda", "MMS"])
+        assert result == "speasy/cda/MMS"
+
 
 class TestPlotMagic:
     @patch("SciQLop.user_api.magics.plot_magic.plot_panel")

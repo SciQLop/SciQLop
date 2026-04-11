@@ -119,6 +119,14 @@ class TestWorkspaceExamples:
         _cmd_examples()
         assert "No examples" in capsys.readouterr().out
 
+    def test_list_examples_returns_valid_entries(self):
+        """Real examples in SciQLop/examples/ should load with is_valid=True."""
+        from SciQLop.user_api.magics.workspace_magic import _list_examples
+        examples = _list_examples()
+        assert len(examples) > 0, "Expected at least one bundled example"
+        for ex in examples:
+            assert ex.is_valid, f"Example '{ex.name}' should be valid after loading"
+
 
 class TestWorkspaceDispatch:
     @patch("SciQLop.user_api.magics.workspace_magic._get_workspace")
