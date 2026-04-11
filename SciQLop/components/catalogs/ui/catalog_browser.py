@@ -54,7 +54,7 @@ class _SaveButtonDelegate(QStyledItemDelegate):
     _SPINNER_SEGMENTS = 8
     _SPINNER_INTERVAL_MS = 80
     _SPINNER_OFFSETS = tuple(
-        (math.cos(math.radians(i * 360 / 8)), math.sin(math.radians(i * 360 / 8)))
+        (math.cos(math.radians(i * 45)), math.sin(math.radians(i * 45)))
         for i in range(8)
     )
 
@@ -100,7 +100,6 @@ class _SaveButtonDelegate(QStyledItemDelegate):
         painter.save()
         painter.setRenderHint(painter.RenderHint.Antialiasing)
         for i, (ux, uy) in enumerate(self._SPINNER_OFFSETS):
-            # Rotate the precomputed unit-circle offset by the current angle
             rx = ux * cos_rot - uy * sin_rot
             ry = ux * sin_rot + uy * cos_rot
             alpha = 255 - i * (200 // self._SPINNER_SEGMENTS)

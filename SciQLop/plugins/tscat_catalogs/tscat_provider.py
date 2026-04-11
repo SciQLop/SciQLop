@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from datetime import datetime
 from typing import Any
 
@@ -107,6 +108,15 @@ class TscatCatalogProvider(CatalogProvider):
         self._root_model.rowsRemoved.connect(self._on_root_rows_changed)
         self._root_model.modelReset.connect(self._on_root_rows_changed)
 
+    @contextmanager
+    def _tracked_action(self):
+        self._pending_actions += 1
+        try:
+            yield
+        except Exception:
+            self._pending_actions -= 1
+            raise
+
     def node_icon(self, node_type, path=None):
         from SciQLop.components.catalogs.backend.provider import NodeType
         if node_type == NodeType.PROVIDER:
@@ -171,16 +181,12 @@ class TscatCatalogProvider(CatalogProvider):
                     values=[effective_path],
                 ))
 
-        self._pending_actions += 1
-        try:
+        with self._tracked_action():
             tscat_model.do(CreateEntityAction(
                 user_callback=_persist_path if effective_path else None,
                 cls=tscat._Catalogue,
                 args=dict(name=name, author="SciQLop", uuid=catalog_uuid),
             ))
-        except Exception:
-            self._pending_actions -= 1
-            raise
 
         cat = next((c for c in (self._catalog_cache or []) if c.uuid == catalog_uuid), None)
         if cat is None:
@@ -194,16 +200,12 @@ class TscatCatalogProvider(CatalogProvider):
         return cat
 
     def remove_catalog(self, catalog: Catalog) -> None:
-        self._pending_actions += 1
-        try:
+        with self._tracked_action():
             tscat_model.do(RemoveEntitiesAction(
                 user_callback=None,
                 uuids=[catalog.uuid],
                 permanently=False,
             ))
-        except Exception:
-            self._pending_actions -= 1
-            raise
         if self._catalog_cache is not None:
             self._catalog_cache = [c for c in self._catalog_cache if c.uuid != catalog.uuid]
             self._known_uuids.discard(catalog.uuid)
@@ -233,31 +235,23 @@ class TscatCatalogProvider(CatalogProvider):
                 catalogue_uuid=catalog.uuid,
             ))
 
-        self._pending_actions += 1
-        try:
+        with self._tracked_action():
             tscat_model.do(CreateEntityAction(
                 user_callback=_link_to_catalog,
                 cls=tscat._Event,
                 args=dict(start=event.start, stop=event.stop, author="SciQLop",
                           uuid=event.uuid),
             ))
-        except Exception:
-            self._pending_actions -= 1
-            raise
         self._add_event(catalog, event)
         self.mark_dirty(catalog)
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
-        self._pending_actions += 1
-        try:
+        with self._tracked_action():
             tscat_model.do(RemoveEntitiesAction(
                 user_callback=None,
                 uuids=[event.uuid],
                 permanently=False,
             ))
-        except Exception:
-            self._pending_actions -= 1
-            raise
         super().remove_event(catalog, event)
 
     def _load_events(self, catalog: Catalog, emit: bool = True) -> None:
