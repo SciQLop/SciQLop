@@ -19,12 +19,19 @@ def _run_uv(cmd: list[str], on_output: Callable[[str], None] | None = None, **kw
     if on_output is None:
         subprocess.run(cmd, check=True, **kwargs)
         return
+    stderr_lines: list[str] = []
     proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True, **kwargs)
     for line in proc.stderr:
-        on_output(line.rstrip("\n"))
+        stripped = line.rstrip("\n")
+        stderr_lines.append(stripped)
+        on_output(stripped)
     rc = proc.wait()
     if rc != 0:
-        raise subprocess.CalledProcessError(rc, cmd)
+        stderr = "\n".join(stderr_lines)
+        raise RuntimeError(
+            f"uv command failed (exit {rc}):\n"
+            f"  {' '.join(cmd)}\n\n{stderr}"
+        )
 
 
 class WorkspaceVenv:
