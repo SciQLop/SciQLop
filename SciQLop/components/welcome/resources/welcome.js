@@ -354,7 +354,10 @@ function createExampleCard(ex) {
     card.innerHTML =
         '<div class="card-image-wrapper">' + imageHtml + '</div>' +
         '<div class="card-body">' +
-            '<span class="card-name">' + escapeHtml(ex.name) + badgeHtml + '</span>' +
+            '<div class="card-name-row">' +
+                '<span class="card-name">' + escapeHtml(ex.name) + '</span>' +
+                badgeHtml +
+            '</div>' +
             tagsHtml +
         '</div>';
 
