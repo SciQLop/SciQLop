@@ -132,4 +132,24 @@ Get-ChildItem -Path $PackageDir -Recurse |
     Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint } |
     Remove-Item -Force
 
+########################################
+# Validate PE binaries
+########################################
+
+Write-Host "Validating PE binaries..."
+$InvalidBinaries = @()
+Get-ChildItem -Path $PackageDir -Recurse -Include *.exe,*.dll,*.pyd |
+    ForEach-Object {
+        $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+        if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+            $InvalidBinaries += $_.FullName
+            Write-Warning "Invalid PE: $($_.FullName)"
+        }
+    }
+if ($InvalidBinaries.Count -gt 0) {
+    Write-Error "Found $($InvalidBinaries.Count) invalid PE binary(ies) in the bundle"
+    exit 1
+}
+Write-Host "All PE binaries valid."
+
 Write-Host "Bundle complete at $PackageDir"
