@@ -21,6 +21,8 @@ class ReadOnlySpecFile:
         assert os.path.exists(self._path)
         with open(self._path, 'r') as f:
             self._spec = from_json(spec_class(**kwargs), f.read())
+        if hasattr(self._spec, "valid"):
+            self._spec.valid = True
 
     @property
     def path(self):

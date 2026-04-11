@@ -31,9 +31,13 @@ class StartupWindow(QWidget):
         self._enter_progress_state()
         self._apply_size()
 
-    def _apply_size(self) -> None:
+    @staticmethod
+    def _screen_dpr() -> float:
         screen = QApplication.primaryScreen()
-        dpr = screen.devicePixelRatio() if screen else 1.0
+        return screen.devicePixelRatio() if screen else 1.0
+
+    def _apply_size(self) -> None:
+        dpr = self._screen_dpr()
         # Scale so the splash is legible on HiDPI — at least 1.5x on >2x DPR
         scale = max(1.0, dpr * 0.75)
         if not self._background.isNull():
@@ -136,9 +140,7 @@ class StartupWindow(QWidget):
         self._error_text.setVisible(True)
         self._copy_btn.setVisible(True)
         self._quit_btn.setVisible(True)
-        screen = QApplication.primaryScreen()
-        dpr = screen.devicePixelRatio() if screen else 1.0
-        scale = max(1.0, dpr * 0.75)
+        scale = max(1.0, self._screen_dpr() * 0.75)
         self.setFixedSize(int(700 * scale), int(500 * scale))
         self.setStyleSheet(
             "StartupWindow { background: #2d2d2d; }"
