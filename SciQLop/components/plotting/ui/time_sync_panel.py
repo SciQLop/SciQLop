@@ -223,6 +223,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self._catalog_manager = PanelCatalogManager(self)
         self.installEventFilter(self)
         self.plot_added.connect(self._install_filter_on_plot)
+        self.plot_added.connect(self._apply_theme_to_plot)
 
         self._search_overlay = None
         if show_search_overlay:
@@ -247,9 +248,21 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         if self._search_overlay is not None:
             self._search_overlay.setGeometry(self.viewport().geometry())
 
+    def _apply_theme_to_plot(self, plot):
+        # Workaround: SciQLopNDProjectionPlot doesn't override set_theme/theme,
+        # so we reach into its inner SciQLopPlot children directly.
+        # Remove once SciQLopPlots implements set_theme on SciQLopNDProjectionPlot.
+        theme = self.theme()
+        if theme is None:
+            return
+        for child in plot.findChildren(SciQLopPlot):
+            child.set_theme(theme)
+
     def update_theme(self):
         from SciQLop.components.theming.palette import SCIQLOP_PALETTE
         self.set_theme(_theme_from_palette(SCIQLOP_PALETTE, self))
+        for plot in self.plots():
+            self._apply_theme_to_plot(plot)
 
     @property
     def catalog_manager(self):
