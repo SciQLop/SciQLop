@@ -327,13 +327,19 @@ h2 {
     border-left-width: 3px;
 }
 
+.card-name-row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
 .card-name {
     font-size: 0.95em;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: block;
+    min-width: 0;
 }
 
 .card-sub {
@@ -917,11 +923,11 @@ h2 {
 
 .card-installed-badge {
     display: inline-block;
+    flex-shrink: 0;
     font-size: 0.65em;
     padding: 1px 5px;
     border-radius: 3px;
     background: #27ae60;
     color: #fff;
     margin-left: 6px;
-    vertical-align: middle;
 }
