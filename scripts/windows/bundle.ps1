@@ -132,4 +132,43 @@ Get-ChildItem -Path $PackageDir -Recurse |
     Where-Object { $_.Attributes -band [IO.FileAttributes]::ReparsePoint } |
     Remove-Item -Force
 
+# Remove Unix artifacts that trip the Windows Store pre-processing scanner (0x800700C1)
+Get-ChildItem -Path $PackageDir -Recurse -Include *.a,*.o,*.so,*.dylib |
+    Remove-Item -Force
+# Node.js ships extensionless Unix shell scripts alongside .cmd wrappers
+foreach ($dir in @("$PackageDir\node", "$PackageDir\node\node_modules")) {
+    if (Test-Path $dir) {
+        Get-ChildItem -Path $dir -Recurse -File |
+            Where-Object { -not $_.Extension } |
+            Where-Object {
+                $first = Get-Content $_.FullName -First 1 -ErrorAction SilentlyContinue
+                $first -and $first.StartsWith("#!")
+            } |
+            ForEach-Object {
+                Write-Host "Removing Unix shell script: $($_.FullName)"
+                Remove-Item $_.FullName -Force
+            }
+    }
+}
+
+########################################
+# Validate PE binaries
+########################################
+
+Write-Host "Validating PE binaries..."
+$InvalidBinaries = @()
+Get-ChildItem -Path $PackageDir -Recurse -Include *.exe,*.dll,*.pyd |
+    ForEach-Object {
+        $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+        if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
+            $InvalidBinaries += $_.FullName
+            Write-Warning "Invalid PE: $($_.FullName)"
+        }
+    }
+if ($InvalidBinaries.Count -gt 0) {
+    Write-Error "Found $($InvalidBinaries.Count) invalid PE binary(ies) in the bundle"
+    exit 1
+}
+Write-Host "All PE binaries valid."
+
 Write-Host "Bundle complete at $PackageDir"
