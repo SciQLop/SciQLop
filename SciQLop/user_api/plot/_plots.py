@@ -11,6 +11,7 @@ from SciQLopPlots import SciQLopPlotAxis as _SciQLopPlotAxis
 from SciQLopPlots import SciQLopNDProjectionPlot as _SciQLopNDProjectionPlot
 from SciQLopPlots import GraphType as _GraphType
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot_product
+from ._thread_safety import on_main_thread
 
 from speasy.core import AnyDateTimeType
 
@@ -105,6 +106,7 @@ class XYPlot(_BasePlot):
         super().__init__(impl)
         assert is_xy_plot(impl)
 
+    @on_main_thread
     def plot(self, *args, **kwargs):
         """Plot data on the plot, either two vectors or a product path or a function"""
         kwargs["graph_type"] = kwargs.get("graph_type", _GraphType.ParametricCurve)
@@ -119,6 +121,7 @@ class XYPlot(_BasePlot):
             return ColorMap(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
         return None
 
+    @on_main_thread
     def set_x_range(self, xmin: float, xmax: float):
         """Set the x-axis range of the plot and replot.
 
@@ -132,6 +135,7 @@ class XYPlot(_BasePlot):
         xmin, xmax = min(xmin, xmax), max(xmin, xmax)
         self._impl.set_x_range(xmin, xmax)
 
+    @on_main_thread
     def set_y_range(self, ymin: float, ymax: float):
         """Set the y-axis range of the plot and replot.
 
@@ -146,23 +150,28 @@ class XYPlot(_BasePlot):
         self._impl.set_y_range(ymin, ymax)
 
     @property
+    @on_main_thread
     def x_scale_type(self) -> ScaleType:
         return _get_axis_scale_type(self._impl.x_axis())
 
     @x_scale_type.setter
+    @on_main_thread
     def x_scale_type(self, scale_type: ScaleType):
         _set_axis_scale_type(scale_type, self._impl.x_axis())
         self.replot()
 
     @property
+    @on_main_thread
     def y_scale_type(self) -> ScaleType:
         return _get_axis_scale_type(self._impl.y_axis())
 
     @y_scale_type.setter
+    @on_main_thread
     def y_scale_type(self, scale_type: ScaleType):
         _set_axis_scale_type(scale_type, self._impl.y_axis())
         self.replot()
 
+    @on_main_thread
     def replot(self):
         """Replot the plot. This method is used to force a redraw of the plot.
         """
@@ -189,6 +198,7 @@ class TimeSeriesPlot(_BasePlot):
         super().__init__(impl)
         assert is_time_series_plot(impl)
 
+    @on_main_thread
     def plot(self, *args, **kwargs):
         """Plot data on the plot, either two vectors or a product path or a function.
         If only one argument is passed, it is assumed to be a function that behaves like a callback and returns two vectors (x, y) or a product path from the product tree.
@@ -220,6 +230,7 @@ class TimeSeriesPlot(_BasePlot):
             return to_plottable(self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs))
         raise ValueError("Invalid arguments")
 
+    @on_main_thread
     def set_x_range(self, xmin: AnyDateTimeType, xmax: AnyDateTimeType):
         """Set the x-axis range of the plot.
         This method accepts any type of datetime object, Python datetime object, or timestamp or string.
@@ -236,6 +247,7 @@ class TimeSeriesPlot(_BasePlot):
         """
         self.time_range = TimeRange(xmin, xmax)
 
+    @on_main_thread
     def set_y_range(self, ymin: float, ymax: float):
         """Set the main y-axis range of the plot.
 
@@ -251,6 +263,7 @@ class TimeSeriesPlot(_BasePlot):
         s_y_max = max(ymin, ymax)
         self._get_impl_or_raise().y_axis().set_range(s_y_min, s_y_max)
 
+    @on_main_thread
     def set_y_scale_type(self, scale: ScaleType):
         """Set the scale type of the main y-axis.
 
@@ -260,22 +273,27 @@ class TimeSeriesPlot(_BasePlot):
         self.y_scale_type = scale
 
     @property
+    @on_main_thread
     def time_range(self) -> TimeRange:
         return self._get_impl_or_raise().time_axis().range()
 
     @time_range.setter
+    @on_main_thread
     def time_range(self, time_range: TimeRange):
         self._impl.set_time_range(time_range)
 
     @property
+    @on_main_thread
     def y_scale_type(self) -> ScaleType:
         return _get_axis_scale_type(self._get_impl_or_raise().y_axis())
 
     @y_scale_type.setter
+    @on_main_thread
     def y_scale_type(self, scale_type: ScaleType):
         _set_axis_scale_type(scale_type, self._get_impl_or_raise().y_axis())
         self.replot()
 
+    @on_main_thread
     def replot(self):
         """Replot the plot. This method is used to force a redraw of the plot.
         """
@@ -320,6 +338,7 @@ class ProjectionPlot:
     def set_y_scale_type(self, scale: ScaleType):
         pass
 
+    @on_main_thread
     def plot(self, product: Union[str, VirtualProduct], **kwargs) -> Optional[Graph]:
         """Plot a product on the plot.
         Parameters
