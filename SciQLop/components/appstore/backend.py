@@ -7,6 +7,8 @@ import threading
 import urllib.request
 from importlib.metadata import PackageNotFoundError, distribution
 
+import packaging.version
+
 from PySide6.QtCore import QObject, Signal, Slot
 
 from SciQLop.components.sciqlop_logging import getLogger
@@ -27,7 +29,9 @@ def _fetch_index(url: str) -> list[dict]:
 
 def _latest_version(plugin: dict) -> dict | None:
     versions = plugin.get("versions", [])
-    return versions[-1] if versions else None
+    if not versions:
+        return None
+    return max(versions, key=lambda v: packaging.version.parse(v["version"]))
 
 
 def _package_name_from_pip(pip_field: str) -> str | None:
