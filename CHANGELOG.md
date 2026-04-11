@@ -1,6 +1,6 @@
 # Changelog
 
-## [v0.11.0](https://github.com/SciQlop/SciQLop/tree/v0.11.0) (unreleased)
+## [v0.11.0](https://github.com/SciQlop/SciQLop/tree/v0.11.0) (2026-04-11)
 
 [Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.10.4...v0.11.0)
 
