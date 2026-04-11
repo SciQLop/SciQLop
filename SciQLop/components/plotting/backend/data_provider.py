@@ -16,12 +16,8 @@ DataProviderReturnType = Union[
 providers = {}
 
 
-def _ensure_float64_and_C(v):
-    if v.dtype != np.float64:
-        v = v.astype(np.float64)
-    if not v.flags.c_contiguous:
-        v = np.ascontiguousarray(v)
-    return v
+def _ensure_contiguous(v):
+    return np.ascontiguousarray(v)
 
 
 def _filter_axis_numeric_axes(axes: List[VariableAxis]) -> List[VariableAxis]:
@@ -83,8 +79,8 @@ class DataProvider:
             time = datetime64_to_epoch(v.time)
             axes = _filter_axis_numeric_axes(v.axes[1:])
             if len(axes) == 0 or self.graph_type(node) in (GraphType.MultiLines, GraphType.SingleLine):
-                return [time, _ensure_float64_and_C(v.values)]
-            return [time, _ensure_float64_and_C(axes[0].values), _ensure_float64_and_C(v.values)]
+                return [time, _ensure_contiguous(v.values)]
+            return [time, _ensure_contiguous(axes[0].values), _ensure_contiguous(v.values)]
         except Exception:
             log.error(
                 f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")

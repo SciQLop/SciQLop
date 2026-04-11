@@ -9,6 +9,7 @@ from SciQLopPlots import (Coordinates as _Coordinates, LineTermination as _LineT
 
 from .protocol import Plot, Item
 from .enums import CoordinateSystem
+from ._thread_safety import on_main_thread
 from PySide6.QtCore import QRectF, QPointF
 from PySide6.QtGui import QColor, QBrush, Qt
 
@@ -27,6 +28,7 @@ def _coordinate_system_to_sqp(coordinate_system: CoordinateSystem) -> _Coordinat
 class Pixmap(Item):
     """A class representing a pixmap in a plot.
     """
+    @on_main_thread
     def __init__(self, plot: Plot, x: float, y: float, width: float, height: float, image: Union[str, bytes],
                  coordinate_system: CoordinateSystem = CoordinateSystem.Data, tool_tip: str = ""):
         """Initialize a Pixmap object.
@@ -56,19 +58,23 @@ class Pixmap(Item):
                                                             tool_tip)
 
     @property
+    @on_main_thread
     def visible(self) -> bool:
         return self._impl.visible()
 
     @visible.setter
+    @on_main_thread
     def visible(self, visible: bool):
         self._impl.set_visible(visible)
 
     @property
+    @on_main_thread
     def position(self) -> Tuple[float, float]:
         p = self._impl.position()
         return p.x(), p.y()
 
     @position.setter
+    @on_main_thread
     def position(self, position: Tuple[float, float]):
         self._impl.set_position(*position)
 
@@ -77,6 +83,7 @@ class Ellipse(Item):
     """A class representing an ellipse in a plot.
     """
 
+    @on_main_thread
     def __init__(self, plot: Plot, x: float, y: float, width: float, height: float,
                  coordinate_system: CoordinateSystem = CoordinateSystem.Data, tool_tip: str = ""):
         """Initialize an Ellipse object.
@@ -108,47 +115,57 @@ class Ellipse(Item):
                                                               tool_tip)
 
     @property
+    @on_main_thread
     def visible(self) -> bool:
         return self._impl.visible()
 
     @visible.setter
+    @on_main_thread
     def visible(self, visible: bool):
         self._impl.set_visible(visible)
 
     @property
+    @on_main_thread
     def position(self) -> Tuple[float, float]:
         p = self._impl.position()
         return p.x(), p.y()
 
     @position.setter
+    @on_main_thread
     def position(self, position: Tuple[float, float]):
         self._impl.set_position(*position)
 
     @property
+    @on_main_thread
     def line_width(self) -> float:
         return self._impl.pen().width()
 
     @line_width.setter
+    @on_main_thread
     def line_width(self, line_width: float):
         pen = self._impl.pen()
         pen.setWidthF(line_width)
         self._impl.set_pen(pen)
 
     @property
+    @on_main_thread
     def line_color(self) -> int:
         return self._impl.pen().color().rgba()
 
     @line_color.setter
+    @on_main_thread
     def line_color(self, line_color: Union[int, str]):
         pen = self._impl.pen()
         pen.setColor(QColor(line_color))
         self._impl.set_pen(pen)
 
     @property
+    @on_main_thread
     def fill_color(self) -> int:
         return self._impl.brush().color().rgba()
 
     @fill_color.setter
+    @on_main_thread
     def fill_color(self, fill_color: Union[int, str, None]):
         brush: QBrush = self._impl.brush()
         if fill_color is None:
@@ -163,6 +180,7 @@ class Text(Item):
     """A class representing a text item in a plot.
     """
 
+    @on_main_thread
     def __init__(self, plot: Plot, text: str, x: float, y: float,
                  coordinate_system: CoordinateSystem = CoordinateSystem.Data, ):
         """Initialize a Text object.
@@ -184,19 +202,23 @@ class Text(Item):
                                                         _coordinate_system_to_sqp(coordinate_system))
 
     @property
+    @on_main_thread
     def position(self) -> Tuple[float, float]:
         p = self._impl.position()
         return p.x(), p.y()
 
     @position.setter
+    @on_main_thread
     def position(self, position: Tuple[float, float]):
         self._impl.set_position(QPointF(*position))
 
     @property
+    @on_main_thread
     def text(self) -> str:
         return self._impl.text()
 
     @text.setter
+    @on_main_thread
     def text(self, text: str):
         self._impl.set_text(text)
 
@@ -205,6 +227,7 @@ class CurvedLine(Item):
     """A class representing a curved line with arrow termination.
     """
 
+    @on_main_thread
     def __init__(self, plot: Plot, start: Tuple[float, float], stop: Tuple[float, float],
                  coordinate_system: CoordinateSystem = CoordinateSystem.Data):
         """Initialize a CurvedLine object.
@@ -227,37 +250,45 @@ class CurvedLine(Item):
                                                                     _coordinate_system_to_sqp(coordinate_system))
 
     @property
+    @on_main_thread
     def start(self) -> Tuple[float, float]:
         p = self._impl.start_position()
         return p.x(), p.y()
 
     @start.setter
+    @on_main_thread
     def start(self, start: Tuple[float, float]):
         self._impl.set_start_position(QPointF(*start))
 
     @property
+    @on_main_thread
     def stop(self) -> Tuple[float, float]:
         p = self._impl.stop_position()
         return p.x(), p.y()
 
     @stop.setter
+    @on_main_thread
     def stop(self, stop: Tuple[float, float]):
         self._impl.set_stop_position(QPointF(*stop))
 
     @property
+    @on_main_thread
     def start_direction(self) -> Tuple[float, float]:
         p = self._impl.start_dir_position()
         return p.x(), p.y()
 
     @start_direction.setter
+    @on_main_thread
     def start_direction(self, start_direction: Tuple[float, float]):
         self._impl.set_start_dir_position(QPointF(*start_direction))
 
     @property
+    @on_main_thread
     def stop_direction(self) -> Tuple[float, float]:
         p = self._impl.stop_dir_position()
         return p.x(), p.y()
 
     @stop_direction.setter
+    @on_main_thread
     def stop_direction(self, stop_direction: Tuple[float, float]):
         self._impl.set_stop_dir_position(QPointF(*stop_direction))

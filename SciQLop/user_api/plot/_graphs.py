@@ -2,6 +2,7 @@ import numpy as np
 from .protocol import Plot, Plottable
 from typing import Optional, Union, List
 from ..virtual_products import VirtualProduct
+from ._thread_safety import on_main_thread
 
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 
@@ -34,22 +35,27 @@ class Graph(Plottable):
     def __init__(self, impl):
         self._impl = impl
 
+    @on_main_thread
     def set_data(self, x, y):
         self._impl.set_data(*ensure_arrays_of_double(x, y))
 
     @property
+    @on_main_thread
     def data(self):
         return self._impl.data()
 
     @data.setter
+    @on_main_thread
     def data(self, data):
         self.set_data(*data)
 
     @property
+    @on_main_thread
     def visible(self) -> bool:
         return self._impl.visible()
 
     @visible.setter
+    @on_main_thread
     def visible(self, visible):
         self._impl.set_visible(visible)
 
@@ -69,22 +75,27 @@ class ColorMap(Plottable):
             raise ValueError("The plot does not exist anymore.")
         return self._impl
 
+    @on_main_thread
     def set_data(self, x, y, z):
         self._impl.set_data(*ensure_arrays_of_double(x, y, z))
 
     @property
+    @on_main_thread
     def data(self):
         return self._impl.data()
 
     @data.setter
+    @on_main_thread
     def data(self, data):
         self.set_data(*data)
 
     @property
+    @on_main_thread
     def visible(self) -> bool:
         return self._impl.visible()
 
     @visible.setter
+    @on_main_thread
     def visible(self, visible):
         self._impl.set_visible(visible)
 
