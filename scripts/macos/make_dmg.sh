@@ -152,12 +152,41 @@ rsync -avhu $DIST/node-v$NODE_VERSION-darwin-$ARCH/* $DIST/SciQLop.app/Contents/
 
 python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 
+########################################
+# Code signing (parallel, inside-out)
+# `codesign --deep` is deprecated and serial — for a Qt/PySide6 + CPython + Node bundle
+# it can exceed GitHub Actions' 6-hour job limit. Sign each Mach-O binary and framework
+# in parallel instead, then sign the outer .app last.
+########################################
+
 if [[ -n "$CODESIGN_IDENTITY" ]]; then
-  codesign --force --deep --verbose --options runtime -s "$CODESIGN_IDENTITY" $DIST/SciQLop.app
+  SIGN_OPTS=(--force --options runtime --timestamp -s "$CODESIGN_IDENTITY")
 else
   echo "WARNING: No CODESIGN_IDENTITY set, using ad-hoc signing"
-  codesign --force --deep --verbose -s - $DIST/SciQLop.app
+  SIGN_OPTS=(--force -s -)
 fi
+
+APP=$DIST/SciQLop.app
+NPROC=$(sysctl -n hw.ncpu)
+
+echo "Signing dylibs and .so files in parallel..."
+find "$APP" -type f \( -name "*.dylib" -o -name "*.so" \) -print0 | \
+  xargs -0 -n 50 -P "$NPROC" codesign "${SIGN_OPTS[@]}"
+
+echo "Signing frameworks..."
+find "$APP" -type d -name "*.framework" -print0 | \
+  xargs -0 -n 1 -P "$NPROC" codesign "${SIGN_OPTS[@]}"
+
+echo "Signing executables..."
+find "$APP/Contents/MacOS" -type f -perm +111 -print0 | \
+  xargs -0 -n 50 -P "$NPROC" codesign "${SIGN_OPTS[@]}"
+if [[ -d "$APP/Contents/Resources/usr/local/bin" ]]; then
+  find "$APP/Contents/Resources/usr/local/bin" -type f -perm +111 -print0 | \
+    xargs -0 -n 50 -P "$NPROC" codesign "${SIGN_OPTS[@]}"
+fi
+
+echo "Signing app bundle..."
+codesign "${SIGN_OPTS[@]}" "$APP"
 
 cd $DIST
 create-dmg --overwrite --dmg-title=SciQLop SciQLop.app .
