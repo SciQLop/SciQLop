@@ -185,9 +185,11 @@ python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 ########################################
 
 APP=$DIST/SciQLop.app
+ENTITLEMENTS=$(realpath $HERE/entitlements.plist)
 
 if [[ -n "$CODESIGN_IDENTITY" ]]; then
   SIGN_ARGS=(--force --options runtime --timestamp -s "$CODESIGN_IDENTITY")
+  EXEC_SIGN_ARGS=(--force --options runtime --timestamp --entitlements "$ENTITLEMENTS" -s "$CODESIGN_IDENTITY")
   echo "Pre-flight: verifying signing identity is in keychain..."
   security find-identity -v -p codesigning
   if ! security find-identity -v -p codesigning | grep -q "Developer ID Application:"; then
@@ -205,37 +207,55 @@ if [[ -n "$CODESIGN_IDENTITY" ]]; then
 else
   echo "WARNING: No CODESIGN_IDENTITY set, using ad-hoc signing"
   SIGN_ARGS=(--force -s -)
+  EXEC_SIGN_ARGS=(--force --entitlements "$ENTITLEMENTS" -s -)
 fi
 
-echo "Collecting all Mach-O binaries in $APP..."
-MACHO_LIST=$(mktemp)
+# Mach-O executables (MH_EXECUTE) need entitlements so hardened-runtime
+# library validation lets python3 dlopen third-party-signed PyPI wheels
+# (PySide6, shiboken6, numpy, ...). Libraries (.dylib, .so bundles) and
+# framework inner Mach-Os must NOT carry entitlements — Apple notarization
+# rejects entitlements on non-executable Mach-Os.
+#
+# `file -b` distinguishes them: executables show "executable", dylibs show
+# "shared library", Python .so extensions show "bundle".
+echo "Collecting Mach-O binaries in $APP..."
+MACHO_EXEC_LIST=$(mktemp)
+MACHO_LIB_LIST=$(mktemp)
 while IFS= read -r -d '' f; do
-  if file -b "$f" 2>/dev/null | grep -q "Mach-O"; then
-    printf '%s\0' "$f" >> "$MACHO_LIST"
-  fi
+  desc=$(file -b "$f" 2>/dev/null)
+  case "$desc" in
+    *Mach-O*executable*) printf '%s\0' "$f" >> "$MACHO_EXEC_LIST" ;;
+    *Mach-O*) printf '%s\0' "$f" >> "$MACHO_LIB_LIST" ;;
+  esac
 done < <(find "$APP" -type f -print0)
 
-MACHO_COUNT=$(tr -cd '\0' < "$MACHO_LIST" | wc -c | tr -d ' ')
-echo "Signing $MACHO_COUNT Mach-O binaries..."
-xargs -0 -n 50 codesign "${SIGN_ARGS[@]}" < "$MACHO_LIST"
-rm -f "$MACHO_LIST"
+EXEC_COUNT=$(tr -cd '\0' < "$MACHO_EXEC_LIST" | wc -c | tr -d ' ')
+LIB_COUNT=$(tr -cd '\0' < "$MACHO_LIB_LIST" | wc -c | tr -d ' ')
 
-echo "Signing nested .app bundles (deepest first)..."
+echo "Signing $LIB_COUNT Mach-O libraries (no entitlements)..."
+xargs -0 -n 50 codesign "${SIGN_ARGS[@]}" < "$MACHO_LIB_LIST"
+
+echo "Signing $EXEC_COUNT Mach-O executables (with entitlements)..."
+xargs -0 -n 50 codesign "${EXEC_SIGN_ARGS[@]}" < "$MACHO_EXEC_LIST"
+
+rm -f "$MACHO_EXEC_LIST" "$MACHO_LIB_LIST"
+
+echo "Signing nested .app bundles (deepest first, with entitlements)..."
 find "$APP" -mindepth 1 -type d -name "*.app" \
   | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- \
   | while IFS= read -r app; do
-      codesign "${SIGN_ARGS[@]}" "$app"
+      codesign "${EXEC_SIGN_ARGS[@]}" "$app"
     done
 
-echo "Signing framework wrappers (deepest first)..."
+echo "Signing framework wrappers (deepest first, no entitlements)..."
 find "$APP" -type d -name "*.framework" \
   | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- \
   | while IFS= read -r fw; do
       codesign "${SIGN_ARGS[@]}" "$fw"
     done
 
-echo "Signing outer app bundle..."
-codesign "${SIGN_ARGS[@]}" "$APP"
+echo "Signing outer app bundle (with entitlements)..."
+codesign "${EXEC_SIGN_ARGS[@]}" "$APP"
 
 echo "Verifying signature..."
 codesign --verify --deep --strict --verbose=2 "$APP" || {
