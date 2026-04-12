@@ -37,7 +37,7 @@ jobs:
         run: |
           echo "RELEASE=1" >> $GITHUB_ENV
       - name: Install signing certificate
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
@@ -52,7 +52,7 @@ jobs:
           rm certificate.p12
       - name: bundle SciQLop
         env:
-          CODESIGN_IDENTITY: ${{ github.event_name == 'release' && secrets.CODESIGN_IDENTITY || '' }}
+          CODESIGN_IDENTITY: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.CODESIGN_IDENTITY || '' }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
@@ -81,7 +81,7 @@ jobs:
         run: |
           echo "RELEASE=1" >> $GITHUB_ENV
       - name: Install signing certificate
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
         env:
           MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
           MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
@@ -96,7 +96,7 @@ jobs:
           rm certificate.p12
       - name: bundle SciQLop
         env:
-          CODESIGN_IDENTITY: ${{ github.event_name == 'release' && secrets.CODESIGN_IDENTITY || '' }}
+          CODESIGN_IDENTITY: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.CODESIGN_IDENTITY || '' }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
