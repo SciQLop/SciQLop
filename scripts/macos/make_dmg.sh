@@ -219,9 +219,21 @@ fi
 # `file -b` distinguishes them: executables show "executable", dylibs show
 # "shared library", Python .so extensions show "bundle".
 echo "Collecting Mach-O binaries in $APP..."
+# Skip Mach-Os inside *.framework/ — the framework wrapper sign pass below
+# signs them as part of the framework bundle. Signing framework inner
+# binaries directly AND then re-sealing the framework wrapper corrupts
+# signatures for frameworks that contain nested .app helpers
+# (notably QtWebEngineCore.framework/Versions/A/Helpers/QtWebEngineProcess.app),
+# which makes notarytool reject the inner binary as "signature is invalid".
+# Same logic for nested .app bundles — handled in their own pass below.
 MACHO_EXEC_LIST=$(mktemp)
 MACHO_LIB_LIST=$(mktemp)
 while IFS= read -r -d '' f; do
+  rel="${f#$APP/}"
+  case "$rel" in
+    *.framework/*) continue ;;
+    *.app/*) continue ;;
+  esac
   desc=$(file -b "$f" 2>/dev/null)
   case "$desc" in
     *Mach-O*executable*) printf '%s\0' "$f" >> "$MACHO_EXEC_LIST" ;;
