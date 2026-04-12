@@ -153,40 +153,62 @@ rsync -avhu $DIST/node-v$NODE_VERSION-darwin-$ARCH/* $DIST/SciQLop.app/Contents/
 python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 
 ########################################
-# Code signing (parallel, inside-out)
+# Code signing (parallel, inside-out, skipping already-valid signatures)
 # `codesign --deep` is deprecated and serial — for a Qt/PySide6 + CPython + Node bundle
-# it can exceed GitHub Actions' 6-hour job limit. Sign each Mach-O binary and framework
-# in parallel instead, then sign the outer .app last.
+# it exceeded GitHub Actions' 6-hour job limit. Sign each Mach-O binary in parallel.
+# --timestamp is network-bound (round-trip to timestamp.apple.com per signature), so
+# oversubscribe the parallelism AND skip binaries whose existing signature already
+# satisfies notarization (Developer ID + hardened runtime + timestamp). python-build-
+# standalone and Node.js ship pre-signed this way, which cuts thousands of files from
+# the signing pass.
 ########################################
 
+APP=$DIST/SciQLop.app
+SIGN_JOBS=32
+
 if [[ -n "$CODESIGN_IDENTITY" ]]; then
-  SIGN_OPTS=(--force --options runtime --timestamp -s "$CODESIGN_IDENTITY")
+  export CODESIGN_IDENTITY
+  _sign_one() {
+    local f="$1"
+    local info
+    info=$(codesign -dv --verbose=2 "$f" 2>&1)
+    if [[ "$info" == *'flags='*'runtime'* ]] \
+       && [[ "$info" == *'Authority=Developer ID'* ]] \
+       && [[ "$info" == *'Timestamp='* ]]; then
+      return 0
+    fi
+    codesign --force --options runtime --timestamp -s "$CODESIGN_IDENTITY" "$f"
+  }
 else
   echo "WARNING: No CODESIGN_IDENTITY set, using ad-hoc signing"
-  SIGN_OPTS=(--force -s -)
+  _sign_one() {
+    codesign --force -s - "$1"
+  }
 fi
+export -f _sign_one
 
-APP=$DIST/SciQLop.app
-NPROC=$(sysctl -n hw.ncpu)
+sign_parallel() {
+  xargs -0 -n 1 -P "$SIGN_JOBS" bash -c '_sign_one "$1"' _
+}
 
 echo "Signing dylibs and .so files in parallel..."
-find "$APP" -type f \( -name "*.dylib" -o -name "*.so" \) -print0 | \
-  xargs -0 -n 50 -P "$NPROC" codesign "${SIGN_OPTS[@]}"
+find "$APP" -type f \( -name "*.dylib" -o -name "*.so" \) -print0 | sign_parallel
 
 echo "Signing frameworks..."
-find "$APP" -type d -name "*.framework" -print0 | \
-  xargs -0 -n 1 -P "$NPROC" codesign "${SIGN_OPTS[@]}"
+find "$APP" -type d -name "*.framework" -print0 | sign_parallel
 
 echo "Signing executables..."
-find "$APP/Contents/MacOS" -type f -perm +111 -print0 | \
-  xargs -0 -n 50 -P "$NPROC" codesign "${SIGN_OPTS[@]}"
+find "$APP/Contents/MacOS" -type f -perm +111 -print0 | sign_parallel
 if [[ -d "$APP/Contents/Resources/usr/local/bin" ]]; then
-  find "$APP/Contents/Resources/usr/local/bin" -type f -perm +111 -print0 | \
-    xargs -0 -n 50 -P "$NPROC" codesign "${SIGN_OPTS[@]}"
+  find "$APP/Contents/Resources/usr/local/bin" -type f -perm +111 -print0 | sign_parallel
 fi
 
 echo "Signing app bundle..."
-codesign "${SIGN_OPTS[@]}" "$APP"
+if [[ -n "$CODESIGN_IDENTITY" ]]; then
+  codesign --force --options runtime --timestamp -s "$CODESIGN_IDENTITY" "$APP"
+else
+  codesign --force -s - "$APP"
+fi
 
 cd $DIST
 create-dmg --overwrite --dmg-title=SciQLop SciQLop.app .
