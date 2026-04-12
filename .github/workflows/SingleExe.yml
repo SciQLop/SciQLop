@@ -51,7 +51,7 @@ jobs:
         run: |
           brew install graphicsmagick imagemagick dylibbundler
           npm install --global create-dmg
-          sh scripts/macos/make_dmg.sh
+          bash scripts/macos/make_dmg.sh
       - name: Save packages as artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -87,7 +87,7 @@ jobs:
         run: |
           brew install graphicsmagick imagemagick dylibbundler coreutils
           npm install --global create-dmg
-          sh scripts/macos/make_dmg.sh
+          bash scripts/macos/make_dmg.sh
       - name: Save packages as artifacts
         uses: actions/upload-artifact@v4
         with:
