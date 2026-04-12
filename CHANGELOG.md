@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.11.1](https://github.com/SciQlop/SciQLop/tree/v0.11.1) (2026-04-12)
+
+[Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.11.0...v0.11.1)
+
+### Bug fixes
+
+- Fixed missing icons for remote catalogs (speasy cloud) and collaborative catalogs (link/link_off) in bundled builds — icon PNGs were referenced but never committed
+- Fixed macOS codesign hanging in CI when the build keychain auto-relocked mid-build; switched to `apple-actions/import-codesign-certs` which keeps the keychain unlocked for the entire job
+- Fixed flake8 F821 errors on `main` by gating forward-reference imports behind `TYPE_CHECKING` and bumping minimum Python to 3.11
+- Fixed appstore picking the wrong plugin version when the version index is not sorted ascending — now uses `packaging.version.parse` max
+- Fixed Windows Store MSIX pre-processing rejection (`0x800700C1`) by stripping non-PE artifacts (Unix shell scripts, `.a`/`.o`/`.so`/`.dylib`) from the bundle and validating every `.exe`/`.dll`/`.pyd` has the MZ magic bytes
+
 ## [v0.11.0](https://github.com/SciQlop/SciQLop/tree/v0.11.0) (2026-04-11)
 
 [Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.10.4...v0.11.0)
