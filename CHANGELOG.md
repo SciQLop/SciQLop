@@ -4,9 +4,14 @@
 
 [Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.11.1...v0.11.2)
 
-### Bug fixes
+### Bug fixes (macOS bundle)
 
-- Fixed macOS v0.11.1 DMGs failing to launch with `different Team IDs` error: the new codesign pass did not re-sign Qt framework inner Mach-O binaries (e.g. `QtCore.framework/Versions/A/QtCore`), leaving them signed with Qt Company's Team ID while the outer app carried ours. Frameworks are now signed with `codesign --deep` so all inner binaries are re-signed with the Developer ID.
+- Fixed bundled `python3` missing `LC_RPATH @executable_path/../lib`, which made `_lzma.so` (and other stdlib extensions linking against bundled dylibs via `@rpath`) fail to load at startup. Root cause was a bug in `make_bundle_portable.py` that passed basenames instead of full paths to the Mach-O detection helper, silently skipping every binary in `Resources/usr/local/bin/`.
+- Fixed hardened-runtime library validation rejecting PySide6, shiboken6, numpy and other PyPI wheels loaded from the per-user workspace venv with `different Team IDs`. The bundled `python3` is now signed with `com.apple.security.cs.disable-library-validation`, `com.apple.security.cs.allow-dyld-environment-variables`, `com.apple.security.cs.allow-unsigned-executable-memory` and `com.apple.security.cs.allow-jit` (the last one fixes a V8 crash in `Chrome_InProcRendererThread` when the welcome page loads in QtWebEngine on Apple Silicon).
+- Rewrote the macOS codesign pass to follow Apple TN2206 canonical inside-out signing: nested `.app` bundles deepest-first, loose Mach-Os outside `.app` and `.framework`, then each `*.framework/Versions/A` directory deepest-first (the canonical multi-version sign target — previously we were signing `Foo.framework` which left framework inner main binaries without secure timestamps), then the outer `SciQLop.app`. This fixes notarization rejection of `QtWebEngineCore.framework` (whose nested `Helpers/QtWebEngineProcess.app` made the previous re-seal pass corrupt the framework's main binary signature).
+- The macOS `.app` is now notarized and stapled **before** being wrapped in the DMG, so the notarization ticket travels with the app into `/Applications`. Previously only the DMG was stapled, which made Gatekeeper fall back to an online ticket lookup on first launch and prompt "cannot verify".
+- The CI bundle script now fails the build loudly if `notarytool` returns anything other than `status: Accepted` and dumps the `notarytool log` for the failing submission, instead of silently shipping unstapled or unnotarized DMGs.
+- Pre-flight check verifies a `Developer ID Application:` certificate is in the keychain and matches `CODESIGN_IDENTITY` before starting the signing pass, failing fast on misconfigured CI secrets.
 
 ## [v0.11.1](https://github.com/SciQlop/SciQLop/tree/v0.11.1) (2026-04-12)
 
