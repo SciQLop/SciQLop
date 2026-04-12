@@ -60,7 +60,7 @@ def test_spectrogram():
 
 
 def test_extract_from_function_annotation():
-    def my_func(start, stop) -> Vector["Bx", "By", "Bz"]:
+    def my_func(start, stop) -> Vector["Bx", "By", "Bz"]:  # noqa: F821
         pass
     info = extract_vp_type_info(my_func.__annotations__["return"])
     assert info.product_type == "vector"

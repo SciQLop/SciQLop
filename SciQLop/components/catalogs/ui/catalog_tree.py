@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
 
 from ..backend.provider import Catalog, CatalogProvider
 from ..backend.registry import CatalogRegistry
+
+if TYPE_CHECKING:
+    from ..backend.provider import NodeType
 
 DIRTY_PROVIDER_ROLE = Qt.ItemDataRole.UserRole + 1
 LOADING_ROLE = Qt.ItemDataRole.UserRole + 2

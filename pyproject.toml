@@ -18,7 +18,7 @@ maintainers = [
     { name = "Alexis Jeandet", email = "alexis.jeandet@member.fsf.org" }
 ]
 
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.11,<3.15"
 license = { file = "COPYING" }
 readme = "README.md"
 classifiers = [

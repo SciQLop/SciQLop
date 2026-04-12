@@ -1,11 +1,14 @@
 from PySide6 import QtWidgets, QtCore, QtGui
-from typing import Dict, List, Optional, Any, Callable
+from typing import Dict, List, Optional, Any, Callable, TYPE_CHECKING
 from SciQLop.components.theming import load_stylesheets, setup_palette, SciQLopStyle
 from qasync import QEventLoop, QApplication
 import asyncio
 import math
 import sys
 import time
+
+if TYPE_CHECKING:
+    from SciQLop.components.command_palette.backend.registry import CommandRegistry
 
 
 # qasync's _SimpleTimer.add_callback crashes on infinite delays (e.g. anyio.sleep_forever())
