@@ -38,18 +38,10 @@ jobs:
           echo "RELEASE=1" >> $GITHUB_ENV
       - name: Install signing certificate
         if: github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-        env:
-          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
-          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-        run: |
-          KEYCHAIN_PWD=$(openssl rand -base64 24)
-          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
-          security create-keychain -p "$KEYCHAIN_PWD" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$KEYCHAIN_PWD" build.keychain
-          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" build.keychain
-          rm certificate.p12
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
       - name: bundle SciQLop
         env:
           CODESIGN_IDENTITY: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.CODESIGN_IDENTITY || '' }}
@@ -82,18 +74,10 @@ jobs:
           echo "RELEASE=1" >> $GITHUB_ENV
       - name: Install signing certificate
         if: github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
-        env:
-          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
-          MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
-        run: |
-          KEYCHAIN_PWD=$(openssl rand -base64 24)
-          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
-          security create-keychain -p "$KEYCHAIN_PWD" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$KEYCHAIN_PWD" build.keychain
-          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PWD" build.keychain
-          rm certificate.p12
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+          p12-password: ${{ secrets.MACOS_CERTIFICATE_PWD }}
       - name: bundle SciQLop
         env:
           CODESIGN_IDENTITY: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.CODESIGN_IDENTITY || '' }}
