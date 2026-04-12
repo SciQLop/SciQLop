@@ -153,51 +153,95 @@ rsync -avhu $DIST/node-v$NODE_VERSION-darwin-$ARCH/* $DIST/SciQLop.app/Contents/
 python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 
 ########################################
-# Code signing — inside-out, sequential.
-# Rules:
-#   1. Frameworks are signed with --deep so their inner Mach-O (e.g.
-#      QtCore.framework/Versions/A/QtCore, which has no extension and isn't
-#      caught by the .dylib/.so pass) gets re-signed with our Team ID.
-#      Without this, hardened runtime refuses to load Qt frameworks with a
-#      "different Team IDs" error at runtime. --deep is only problematic on
-#      the huge outer bundle; on a single framework it's fast and correct.
-#   2. Everything else is signed one file at a time (batched via xargs) with
-#      explicit options; no parallelism because the keychain serializes
-#      codesign operations and parallel calls just deadlock on lock
-#      contention.
-#   3. apple-actions/import-codesign-certs in the workflow keeps the keychain
-#      unlocked for the whole job — no per-call unlock dances needed.
+# Code signing — explicit inside-out, sequential.
+#
+# Why not `codesign --deep --force`:
+#   `--force` on `--deep` does NOT propagate into nested code. When
+#   codesign encounters an already-signed inner Mach-O during --deep
+#   traversal it silently skips it. After `make_bundle_portable.py` runs
+#   `install_name_tool` and `lipo -remove` on fat framework binaries,
+#   their original (Qt Company) signatures are either invalidated or
+#   partially retained. --deep --force won't replace them, so the runtime
+#   fails with a Team ID mismatch at dlopen time, and notarization rejects
+#   every one with "code object is not signed at all".
+#
+# Strategy: find EVERY Mach-O file by magic bytes and sign each one
+# explicitly (hardened runtime + secure timestamp). Then seal the bundle
+# wrappers inside-out: nested .app bundles deepest-first, then framework
+# wrappers, then the outer SciQLop.app. --force is applied to each item
+# directly, never via --deep.
+#
+# This covers items --deep --force misses:
+#   - Qt framework inner Mach-Os (QtCore, QtGui, ...)
+#   - dylibs and .so files
+#   - Extensionless Mach-Os in PySide6/ (balsam, lupdate, qmlformat, ...)
+#     and PySide6/Qt/libexec/ (rcc, uic, qmlcachegen, ...)
+#   - Contents/Resources/opt/uv/uv
+#   - Nested .app bundles: PySide6/{Assistant,Designer,Linguist}.app
+#   - QtWebEngineProcess.app inside QtWebEngineCore.framework/Versions/A/Helpers/
+#
+# Sequential on purpose: keychain serializes codesign anyway, and
+# apple-actions/import-codesign-certs keeps it unlocked for the whole job.
 ########################################
 
 APP=$DIST/SciQLop.app
 
 if [[ -n "$CODESIGN_IDENTITY" ]]; then
   SIGN_ARGS=(--force --options runtime --timestamp -s "$CODESIGN_IDENTITY")
+  echo "Pre-flight: verifying signing identity is in keychain..."
+  security find-identity -v -p codesigning
+  if ! security find-identity -v -p codesigning | grep -q "Developer ID Application:"; then
+    echo "ERROR: no 'Developer ID Application:' certificate in keychain."
+    echo "       The p12 in MACOS_CERTIFICATE must contain a Developer ID Application"
+    echo "       certificate (not 'Mac Developer', 'Apple Development', etc)."
+    echo "       Notarization will reject any signature made with a non-Developer-ID cert."
+    exit 1
+  fi
+  if ! security find-identity -v -p codesigning | grep -qF "$CODESIGN_IDENTITY"; then
+    echo "ERROR: CODESIGN_IDENTITY does not match any identity in the keychain."
+    echo "       Expected substring: $CODESIGN_IDENTITY"
+    exit 1
+  fi
 else
   echo "WARNING: No CODESIGN_IDENTITY set, using ad-hoc signing"
   SIGN_ARGS=(--force -s -)
 fi
 
-sign_all() {
-  xargs -0 -n 50 codesign "${SIGN_ARGS[@]}"
-}
+echo "Collecting all Mach-O binaries in $APP..."
+MACHO_LIST=$(mktemp)
+while IFS= read -r -d '' f; do
+  if file -b "$f" 2>/dev/null | grep -q "Mach-O"; then
+    printf '%s\0' "$f" >> "$MACHO_LIST"
+  fi
+done < <(find "$APP" -type f -print0)
 
-echo "Signing frameworks (--deep to cover inner Mach-O binaries)..."
-while IFS= read -r -d '' fw; do
-  codesign --deep "${SIGN_ARGS[@]}" "$fw"
-done < <(find "$APP" -type d -name "*.framework" -print0)
+MACHO_COUNT=$(tr -cd '\0' < "$MACHO_LIST" | wc -c | tr -d ' ')
+echo "Signing $MACHO_COUNT Mach-O binaries..."
+xargs -0 -n 50 codesign "${SIGN_ARGS[@]}" < "$MACHO_LIST"
+rm -f "$MACHO_LIST"
 
-echo "Signing dylibs and .so files..."
-find "$APP" -type f \( -name "*.dylib" -o -name "*.so" \) -print0 | sign_all
+echo "Signing nested .app bundles (deepest first)..."
+find "$APP" -mindepth 1 -type d -name "*.app" \
+  | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- \
+  | while IFS= read -r app; do
+      codesign "${SIGN_ARGS[@]}" "$app"
+    done
 
-echo "Signing executables..."
-find "$APP/Contents/MacOS" -type f -perm +111 -print0 | sign_all
-if [[ -d "$APP/Contents/Resources/usr/local/bin" ]]; then
-  find "$APP/Contents/Resources/usr/local/bin" -type f -perm +111 -print0 | sign_all
-fi
+echo "Signing framework wrappers (deepest first)..."
+find "$APP" -type d -name "*.framework" \
+  | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- \
+  | while IFS= read -r fw; do
+      codesign "${SIGN_ARGS[@]}" "$fw"
+    done
 
-echo "Signing app bundle..."
+echo "Signing outer app bundle..."
 codesign "${SIGN_ARGS[@]}" "$APP"
+
+echo "Verifying signature..."
+codesign --verify --deep --strict --verbose=2 "$APP" || {
+  echo "ERROR: signature verification failed"
+  exit 1
+}
 
 cd $DIST
 create-dmg --overwrite --dmg-title=SciQLop SciQLop.app .
