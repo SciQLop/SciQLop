@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.11.2](https://github.com/SciQlop/SciQLop/tree/v0.11.2) (2026-04-12)
+
+[Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.11.1...v0.11.2)
+
+### Bug fixes
+
+- Fixed macOS v0.11.1 DMGs failing to launch with `different Team IDs` error: the new codesign pass did not re-sign Qt framework inner Mach-O binaries (e.g. `QtCore.framework/Versions/A/QtCore`), leaving them signed with Qt Company's Team ID while the outer app carried ours. Frameworks are now signed with `codesign --deep` so all inner binaries are re-signed with the Developer ID.
+
 ## [v0.11.1](https://github.com/SciQlop/SciQLop/tree/v0.11.1) (2026-04-12)
 
 [Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.11.0...v0.11.1)

@@ -154,11 +154,19 @@ python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 
 ########################################
 # Code signing — inside-out, sequential.
-# `codesign --deep` is deprecated. We walk the bundle from leaves to root so each
-# enclosing container is signed after its contents. Sequential on purpose:
-# the keychain serializes codesign operations and parallelism just hangs on lock
-# contention. apple-actions/import-codesign-certs in the workflow keeps the
-# keychain unlocked for the whole job so we don't need per-call unlock dances.
+# Rules:
+#   1. Frameworks are signed with --deep so their inner Mach-O (e.g.
+#      QtCore.framework/Versions/A/QtCore, which has no extension and isn't
+#      caught by the .dylib/.so pass) gets re-signed with our Team ID.
+#      Without this, hardened runtime refuses to load Qt frameworks with a
+#      "different Team IDs" error at runtime. --deep is only problematic on
+#      the huge outer bundle; on a single framework it's fast and correct.
+#   2. Everything else is signed one file at a time (batched via xargs) with
+#      explicit options; no parallelism because the keychain serializes
+#      codesign operations and parallel calls just deadlock on lock
+#      contention.
+#   3. apple-actions/import-codesign-certs in the workflow keeps the keychain
+#      unlocked for the whole job — no per-call unlock dances needed.
 ########################################
 
 APP=$DIST/SciQLop.app
@@ -174,11 +182,13 @@ sign_all() {
   xargs -0 -n 50 codesign "${SIGN_ARGS[@]}"
 }
 
+echo "Signing frameworks (--deep to cover inner Mach-O binaries)..."
+while IFS= read -r -d '' fw; do
+  codesign --deep "${SIGN_ARGS[@]}" "$fw"
+done < <(find "$APP" -type d -name "*.framework" -print0)
+
 echo "Signing dylibs and .so files..."
 find "$APP" -type f \( -name "*.dylib" -o -name "*.so" \) -print0 | sign_all
-
-echo "Signing frameworks..."
-find "$APP" -type d -name "*.framework" -print0 | sign_all
 
 echo "Signing executables..."
 find "$APP/Contents/MacOS" -type f -perm +111 -print0 | sign_all
