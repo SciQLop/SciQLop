@@ -210,63 +210,86 @@ else
   EXEC_SIGN_ARGS=(--force --entitlements "$ENTITLEMENTS" -s -)
 fi
 
-# Mach-O executables (MH_EXECUTE) need entitlements so hardened-runtime
-# library validation lets python3 dlopen third-party-signed PyPI wheels
-# (PySide6, shiboken6, numpy, ...). Libraries (.dylib, .so bundles) and
-# framework inner Mach-Os must NOT carry entitlements — Apple notarization
-# rejects entitlements on non-executable Mach-Os.
+# Canonical inside-out signing per Apple TN2206:
+# - "all nested code must already be signed correctly" before signing the outer
+# - For multi-version frameworks: "sign each specific version as opposed to
+#   the whole framework", i.e. `codesign Foo.framework/Versions/A`, NOT
+#   `codesign Foo.framework`. PySide6's Qt frameworks are all multi-version.
+# - Do NOT use `--deep` (deprecated, "emergency repairs only").
+# - Mach-O executables (MH_EXECUTE) need entitlements so hardened-runtime
+#   library validation lets python3 dlopen PyPI wheels from the workspace
+#   venv. Libraries/bundles must NOT carry entitlements — notarization
+#   rejects entitlements on non-executable Mach-Os.
 #
-# `file -b` distinguishes them: executables show "executable", dylibs show
-# "shared library", Python .so extensions show "bundle".
-echo "Collecting Mach-O binaries in $APP..."
-# Skip Mach-Os inside *.framework/ — the framework wrapper sign pass below
-# signs them as part of the framework bundle. Signing framework inner
-# binaries directly AND then re-sealing the framework wrapper corrupts
-# signatures for frameworks that contain nested .app helpers
-# (notably QtWebEngineCore.framework/Versions/A/Helpers/QtWebEngineProcess.app),
-# which makes notarytool reject the inner binary as "signature is invalid".
-# Same logic for nested .app bundles — handled in their own pass below.
-MACHO_EXEC_LIST=$(mktemp)
-MACHO_LIB_LIST=$(mktemp)
-while IFS= read -r -d '' f; do
-  rel="${f#$APP/}"
-  case "$rel" in
-    *.framework/*) continue ;;
-    *.app/*) continue ;;
-  esac
+# Order:
+#   1. Nested .app bundles, deepest first (inner Mach-Os, then .app wrapper)
+#      — covers PySide6/{Designer,Linguist,Assistant}.app and the helper
+#      QtWebEngineProcess.app inside QtWebEngineCore.framework/Versions/A/Helpers/
+#   2. Loose Mach-Os outside any .app and outside any .framework
+#      — python3, *.so bundles in PySide6/, plain dylibs in usr/local/lib/
+#   3. Each *.framework/Versions/A directory, deepest first — canonical
+#      multi-version-framework sign target. Codesign signs the version's
+#      main binary and seals _CodeSignature/CodeResources with the
+#      already-signed helpers.
+#   4. Outer SciQLop.app
+
+classify_macho() {
+  local f="$1" desc
   desc=$(file -b "$f" 2>/dev/null)
   case "$desc" in
-    *Mach-O*executable*) printf '%s\0' "$f" >> "$MACHO_EXEC_LIST" ;;
-    *Mach-O*) printf '%s\0' "$f" >> "$MACHO_LIB_LIST" ;;
+    *Mach-O*executable*) echo exec ;;
+    *Mach-O*)            echo lib ;;
+    *)                   echo none ;;
   esac
-done < <(find "$APP" -type f -print0)
+}
 
-EXEC_COUNT=$(tr -cd '\0' < "$MACHO_EXEC_LIST" | wc -c | tr -d ' ')
-LIB_COUNT=$(tr -cd '\0' < "$MACHO_LIB_LIST" | wc -c | tr -d ' ')
+sign_macho() {
+  local f="$1"
+  case "$(classify_macho "$f")" in
+    exec) codesign "${EXEC_SIGN_ARGS[@]}" "$f" ;;
+    lib)  codesign "${SIGN_ARGS[@]}"      "$f" ;;
+  esac
+}
 
-echo "Signing $LIB_COUNT Mach-O libraries (no entitlements)..."
-xargs -0 -n 50 codesign "${SIGN_ARGS[@]}" < "$MACHO_LIB_LIST"
+echo "[1/4] Signing nested .app bundles (deepest first, inside-out)..."
+NESTED_APPS=$(mktemp)
+find "$APP/Contents" -type d -name "*.app" \
+  | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- > "$NESTED_APPS"
 
-echo "Signing $EXEC_COUNT Mach-O executables (with entitlements)..."
-xargs -0 -n 50 codesign "${EXEC_SIGN_ARGS[@]}" < "$MACHO_EXEC_LIST"
+while IFS= read -r app; do
+  echo "  $app"
+  while IFS= read -r -d '' f; do
+    sign_macho "$f"
+  done < <(find "$app" -type f -print0)
+  codesign "${EXEC_SIGN_ARGS[@]}" "$app"
+done < "$NESTED_APPS"
+rm -f "$NESTED_APPS"
 
-rm -f "$MACHO_EXEC_LIST" "$MACHO_LIB_LIST"
+echo "[2/4] Signing loose Mach-Os (outside .app and outside .framework)..."
+while IFS= read -r -d '' f; do
+  sign_macho "$f"
+done < <(find "$APP/Contents" \
+  \( -type d \( -name "*.app" -o -name "*.framework" \) -prune \) \
+  -o -type f -print0)
 
-echo "Signing nested .app bundles (deepest first, with entitlements)..."
-find "$APP" -mindepth 1 -type d -name "*.app" \
-  | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- \
-  | while IFS= read -r app; do
-      codesign "${EXEC_SIGN_ARGS[@]}" "$app"
-    done
+echo "[3/4] Signing framework Versions/<X> directories (deepest first)..."
+FRAMEWORK_VERSIONS=$(mktemp)
+while IFS= read -r -d '' fw; do
+  for ver in "$fw"/Versions/*; do
+    [[ -d "$ver" && ! -L "$ver" ]] || continue
+    [[ "$(basename "$ver")" == "Current" ]] && continue
+    echo "$ver"
+  done
+done < <(find "$APP" -type d -name "*.framework" -print0) \
+  | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- > "$FRAMEWORK_VERSIONS"
 
-echo "Signing framework wrappers (deepest first, no entitlements)..."
-find "$APP" -type d -name "*.framework" \
-  | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- \
-  | while IFS= read -r fw; do
-      codesign "${SIGN_ARGS[@]}" "$fw"
-    done
+while IFS= read -r ver; do
+  echo "  $ver"
+  codesign "${SIGN_ARGS[@]}" "$ver"
+done < "$FRAMEWORK_VERSIONS"
+rm -f "$FRAMEWORK_VERSIONS"
 
-echo "Signing outer app bundle (with entitlements)..."
+echo "[4/4] Signing outer app bundle (with entitlements)..."
 codesign "${EXEC_SIGN_ARGS[@]}" "$APP"
 
 echo "Verifying signature..."
