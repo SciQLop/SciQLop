@@ -153,8 +153,9 @@ def main():
         fix_library(library, bundle_lib_path)
     copy_shiboken_libs(bundle, bundle_lib_path)
     for file in os.listdir(bundle_bin_path):
-        if is_macos_binary(file):
-            add_rpath_to_executable(file, '@executable_path/../lib')
+        file_path = os.path.join(bundle_bin_path, file)
+        if os.path.isfile(file_path) and is_macos_binary(file_path):
+            add_rpath_to_executable(file_path, '@executable_path/../lib')
     reduce_binaries(bundle)
 
 
