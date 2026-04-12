@@ -263,6 +263,44 @@ codesign --verify --deep --strict --verbose=2 "$APP" || {
   exit 1
 }
 
+# Notarize the .app FIRST so we can staple the ticket onto the .app itself
+# (not just onto the outer DMG). Otherwise, when the user drags the .app out
+# of the DMG into /Applications, the staple stays on the DMG and Gatekeeper
+# has to do an online ticket lookup on first launch, which is fragile.
+if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
+  echo "Zipping .app for notarization submission..."
+  APP_ZIP="$DIST/SciQLop-$ARCH-app.zip"
+  ditto -c -k --keepParent "$APP" "$APP_ZIP"
+
+  echo "Submitting .app to notarytool..."
+  NOTARY_OUT=$(mktemp)
+  if ! xcrun notarytool submit "$APP_ZIP" \
+        --apple-id "$APPLE_ID" \
+        --password "$APPLE_ID_PWD" \
+        --team-id "$APPLE_TEAM_ID" \
+        --wait 2>&1 | tee "$NOTARY_OUT"; then
+    echo "ERROR: notarytool submit failed"
+    cat "$NOTARY_OUT"
+    exit 1
+  fi
+  if ! grep -q "status: Accepted" "$NOTARY_OUT"; then
+    echo "ERROR: notarization not Accepted. Fetching log..."
+    SUB_ID=$(grep -m1 "id:" "$NOTARY_OUT" | awk '{print $2}')
+    if [[ -n "$SUB_ID" ]]; then
+      xcrun notarytool log "$SUB_ID" \
+        --apple-id "$APPLE_ID" \
+        --password "$APPLE_ID_PWD" \
+        --team-id "$APPLE_TEAM_ID" || true
+    fi
+    exit 1
+  fi
+  rm -f "$APP_ZIP" "$NOTARY_OUT"
+
+  echo "Stapling notarization ticket to .app..."
+  xcrun stapler staple "$APP"
+  xcrun stapler validate "$APP"
+fi
+
 cd $DIST
 create-dmg --overwrite --dmg-title=SciQLop SciQLop.app .
 mv SciQLop*.dmg SciQLop-$ARCH.dmg
@@ -271,12 +309,31 @@ if [[ -n "$CODESIGN_IDENTITY" ]]; then
   codesign --force --verbose --options runtime -s "$CODESIGN_IDENTITY" SciQLop-$ARCH.dmg
 fi
 
+# DMG also gets notarized + stapled so the download itself is verifiable
+# without having to mount it first.
 if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
-  xcrun notarytool submit SciQLop-$ARCH.dmg \
-    --apple-id "$APPLE_ID" \
-    --password "$APPLE_ID_PWD" \
-    --team-id "$APPLE_TEAM_ID" \
-    --wait
+  echo "Submitting DMG to notarytool..."
+  DMG_NOTARY_OUT=$(mktemp)
+  if ! xcrun notarytool submit SciQLop-$ARCH.dmg \
+        --apple-id "$APPLE_ID" \
+        --password "$APPLE_ID_PWD" \
+        --team-id "$APPLE_TEAM_ID" \
+        --wait 2>&1 | tee "$DMG_NOTARY_OUT"; then
+    echo "ERROR: DMG notarytool submit failed"
+    exit 1
+  fi
+  if ! grep -q "status: Accepted" "$DMG_NOTARY_OUT"; then
+    echo "ERROR: DMG notarization not Accepted"
+    SUB_ID=$(grep -m1 "id:" "$DMG_NOTARY_OUT" | awk '{print $2}')
+    if [[ -n "$SUB_ID" ]]; then
+      xcrun notarytool log "$SUB_ID" \
+        --apple-id "$APPLE_ID" \
+        --password "$APPLE_ID_PWD" \
+        --team-id "$APPLE_TEAM_ID" || true
+    fi
+    exit 1
+  fi
+  rm -f "$DMG_NOTARY_OUT"
   xcrun stapler staple SciQLop-$ARCH.dmg
 fi
 
