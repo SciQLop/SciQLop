@@ -1385,7 +1385,7 @@ wheels = [
 
 [[package]]
 name = "jupyqt"
-version = "0.5.0"
+version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1396,9 +1396,9 @@ dependencies = [
     { name = "jupyverse", extra = ["jupyterlab"] },
     { name = "pyside6" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/2f/cf/c4aad354bff4bdd3a2e000b7e7222bce54c196fe3a5bc724259d281719ac/jupyqt-0.5.0.tar.gz", hash = "sha256:dd5a43e7d80b22d45002f52455fc46bbff278cb8f37e87c657785abc00414d9a", size = 66230, upload-time = "2026-04-08T09:52:33.136Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/40/1aebb75f2b83ec333649b93b2a98abbfe0fe6e719ef582064cb827bddfca/jupyqt-0.5.2.tar.gz", hash = "sha256:9a8bee5b2fc62b6b4ccd5063ce54a1e10cbfa72074f402af121d8dc3ace0b0fa", size = 70637, upload-time = "2026-04-13T19:20:35.388Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/48/0b/76ecd58b176130994ca991980e4ef9763286cf7cc59724086153cf400a1a/jupyqt-0.5.0-py3-none-any.whl", hash = "sha256:270cdc1d09c40ca6f3e9922b9412aa88e0e0250b6dcc59c1cd4ab04ae5fbcb99", size = 25749, upload-time = "2026-04-08T09:52:31.587Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/c3/68e1d6b3348b1d5830f736daae8b20f965e4459beed5aa27b0c3b211b63b/jupyqt-0.5.2-py3-none-any.whl", hash = "sha256:c0d59c38908607eadd62e43dcde0f032fd95261d94df5f76a7b16c7b4d2ddbfd", size = 28160, upload-time = "2026-04-13T19:20:33.963Z" },
 ]
 
 [[package]]
@@ -2194,7 +2194,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -2855,8 +2855,8 @@ name = "pytest-xvfb"
 version = "3.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
-    { name = "pyvirtualdisplay" },
+    { name = "pytest", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyvirtualdisplay", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b6/ce/b3444c98eab123b7348d55d4705c2f1095a6bdf8dae85bc6a34ab5222845/pytest_xvfb-3.1.1.tar.gz", hash = "sha256:90593634427d974b272e845793e4533f5b827c9d84c051879013624504175e44", size = 9022, upload-time = "2025-03-12T12:35:07.533Z" }
 wheels = [
@@ -3382,7 +3382,7 @@ requires-dist = [
     { name = "hypothesis", marker = "extra == 'dev'" },
     { name = "ipython" },
     { name = "jinja2" },
-    { name = "jupyqt", specifier = ">=0.5.0" },
+    { name = "jupyqt", specifier = ">=0.5.2" },
     { name = "keyring" },
     { name = "matplotlib", specifier = "==3.10.8" },
     { name = "numpy" },
@@ -3462,8 +3462,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "jeepney" },
+    { name = "cryptography", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "jeepney", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
