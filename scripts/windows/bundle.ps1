@@ -153,22 +153,60 @@ foreach ($dir in @("$PackageDir\node", "$PackageDir\node\node_modules")) {
 
 ########################################
 # Validate PE binaries
+#
+# The Windows Store certification "Sign" step fails with 0x800700C1
+# (ERROR_BAD_EXE_FORMAT) on any .exe/.dll/.pyd that is not a valid x64 PE.
+# A bare MZ-magic check is not enough: pip._vendor.distlib and debugpy ship
+# i386/arm64 launcher stubs that are valid PEs for the wrong architecture.
+# Parse the PE header, strip non-amd64 binaries, and fail on anything that
+# is neither a valid PE nor recognizable as a stripped foreign-arch stub.
 ########################################
+
+$IMAGE_FILE_MACHINE_AMD64 = 0x8664
+
+function Get-PEMachine($Path) {
+    try {
+        $fs = [System.IO.File]::OpenRead($Path)
+        try {
+            if ($fs.Length -lt 0x40) { return @{ Ok = $false; Reason = "too small" } }
+            $br = New-Object System.IO.BinaryReader($fs)
+            if ($br.ReadUInt16() -ne 0x5A4D) { return @{ Ok = $false; Reason = "no MZ magic" } }
+            $fs.Position = 0x3c
+            $eLfanew = $br.ReadInt32()
+            if ($eLfanew -le 0 -or $eLfanew -gt ($fs.Length - 24)) {
+                return @{ Ok = $false; Reason = "bad e_lfanew=$eLfanew" }
+            }
+            $fs.Position = $eLfanew
+            if ($br.ReadUInt32() -ne 0x00004550) { return @{ Ok = $false; Reason = "no PE\0\0 signature" } }
+            $machine = $br.ReadUInt16()
+            return @{ Ok = $true; Machine = $machine }
+        } finally { $fs.Close() }
+    } catch {
+        return @{ Ok = $false; Reason = "read error: $_" }
+    }
+}
 
 Write-Host "Validating PE binaries..."
 $InvalidBinaries = @()
+$RemovedForeignArch = @()
 Get-ChildItem -Path $PackageDir -Recurse -Include *.exe,*.dll,*.pyd |
     ForEach-Object {
-        $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
-        if ($bytes.Length -lt 2 -or $bytes[0] -ne 0x4D -or $bytes[1] -ne 0x5A) {
-            $InvalidBinaries += $_.FullName
-            Write-Warning "Invalid PE: $($_.FullName)"
+        $info = Get-PEMachine $_.FullName
+        if (-not $info.Ok) {
+            $InvalidBinaries += "$($_.FullName) [$($info.Reason)]"
+            Write-Warning "Invalid PE: $($_.FullName) [$($info.Reason)]"
+            return
+        }
+        if ($info.Machine -ne $IMAGE_FILE_MACHINE_AMD64) {
+            Write-Host ("Removing non-amd64 PE (machine={0:X4}): {1}" -f $info.Machine, $_.FullName)
+            Remove-Item $_.FullName -Force
+            $RemovedForeignArch += $_.FullName
         }
     }
 if ($InvalidBinaries.Count -gt 0) {
     Write-Error "Found $($InvalidBinaries.Count) invalid PE binary(ies) in the bundle"
     exit 1
 }
-Write-Host "All PE binaries valid."
+Write-Host "All PE binaries valid (removed $($RemovedForeignArch.Count) non-amd64 stub(s))."
 
 Write-Host "Bundle complete at $PackageDir"
