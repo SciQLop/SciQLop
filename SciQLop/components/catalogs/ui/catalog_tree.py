@@ -283,7 +283,7 @@ class CatalogTreeModel(QAbstractItemModel):
                 self.endInsertRows()
                 target = folder
                 target_index = self.createIndex(folder.row(), 0, folder)
-                self._ensure_placeholders(folder, target_index)
+        self._ensure_placeholders(target, target_index)
 
     def _on_folder_removed(self, provider: CatalogProvider, pnode: _Node, path: list) -> None:
         target = pnode

@@ -4,12 +4,16 @@ from datetime import datetime, timedelta, timezone
 from SciQLop.components.catalogs.backend.provider import CatalogProvider, Catalog, CatalogEvent
 
 
-def test_parse_path_single_slash():
+def test_parse_path_single_slash_rejected():
     from SciQLop.user_api.catalogs._service import _parse_path
-    provider, path, name = _parse_path("tscat/My Catalog")
-    assert provider == "tscat"
-    assert path == []
-    assert name == "My Catalog"
+    with pytest.raises(ValueError, match="must be separated by '//'"):
+        _parse_path("tscat/My Catalog")
+
+
+def test_parse_path_mixed_separators_rejected():
+    from SciQLop.user_api.catalogs._service import _parse_path
+    with pytest.raises(ValueError, match="must be separated by '//'"):
+        _parse_path("Shared//Bepi MSA/test")
 
 
 def test_parse_path_double_slash():
@@ -28,12 +32,10 @@ def test_parse_path_double_slash_nested():
     assert name == "My Catalog"
 
 
-def test_parse_path_name_with_slash():
+def test_parse_path_name_with_slash_rejected():
     from SciQLop.user_api.catalogs._service import _parse_path
-    provider, path, name = _parse_path("cocat//room1//Cat/with slash")
-    assert provider == "cocat"
-    assert path == ["room1"]
-    assert name == "Cat/with slash"
+    with pytest.raises(ValueError, match="cannot contain '/'"):
+        _parse_path("cocat//room1//Cat/with slash")
 
 
 def test_parse_path_too_short():

@@ -405,6 +405,55 @@ def test_tree_model_dynamic_add_with_path(qtbot, qapp):
     assert model.data(cat_idx) == "New Cat"
 
 
+def test_tree_model_placeholders_added_on_late_folder_event(qtbot, qapp):
+    """A provider that gains CREATE_CATALOGS *after* the folder is announced
+    (cocat pattern: rooms exist before any is joined) must get placeholders
+    when folder_added is re-emitted. Regression for cocat UI bug where rooms
+    never received 'New Catalog...' / 'New Folder...' items."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider, Capability
+
+    class LateCapsProvider(CatalogProvider):
+        def __init__(self):
+            self._can_create = False
+            super().__init__(name="LateCaps")
+
+        def catalogs(self):
+            return []
+
+        def capabilities(self, catalog=None):
+            return {Capability.CREATE_CATALOGS} if self._can_create else set()
+
+    provider = LateCapsProvider()
+    model = CatalogTreeModel()
+
+    provider_idx = None
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        if model.node_from_index(idx).provider is provider:
+            provider_idx = idx
+            break
+    assert provider_idx is not None
+
+    # Step 1: announce a folder while caps are still empty — no placeholders.
+    provider.folder_added.emit(["room1"])
+    assert model.rowCount(provider_idx) == 1
+    room_idx = model.index(0, 0, provider_idx)
+    assert model.rowCount(room_idx) == 0
+
+    # Step 2: flip capabilities (room joined) and re-emit folder_added.
+    provider._can_create = True
+    provider.folder_added.emit(["room1"])
+
+    # Room folder should now expose both placeholders.
+    placeholder_types = {
+        model.node_from_index(model.index(i, 0, room_idx)).placeholder_type
+        for i in range(model.rowCount(room_idx))
+    }
+    assert _PlaceholderType.CATALOG in placeholder_types
+    assert _PlaceholderType.FOLDER in placeholder_types
+
+
 def test_catalog_tree_model_dynamic_add(qtbot, qapp):
     """Test that creating a provider after the model populates the tree."""
     from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
@@ -788,6 +837,99 @@ def test_cocat_provider_is_catalog_provider(qtbot, qapp):
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert issubclass(mod.CocatCatalogProvider, CatalogProvider)
+
+
+def _load_cocat_provider_module():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "cocat_provider_under_test",
+        "SciQLop/plugins/collaborative_catalogs/cocat_provider.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+class _FakeCatalogue:
+    def __init__(self, name, attributes=None):
+        self.uuid = f"uuid-{name}"
+        self.name = name
+        self.attributes = dict(attributes or {})
+        self.events = []
+
+
+class _FakeRoomDB:
+    def __init__(self):
+        self._catalogues: dict[str, _FakeCatalogue] = {}
+
+    def create_catalogue(self, name, author, attributes=None):
+        cat = _FakeCatalogue(name, attributes)
+        self._catalogues[name] = cat
+        return cat
+
+
+class _FakeRoom:
+    def __init__(self):
+        self.db = _FakeRoomDB()
+
+    @property
+    def catalogues(self):
+        return list(self.db._catalogues.keys())
+
+    def get_catalogue(self, name_or_uuid):
+        for c in self.db._catalogues.values():
+            if c.name == name_or_uuid or c.uuid == name_or_uuid:
+                return c
+        raise KeyError(name_or_uuid)
+
+
+def test_cocat_create_catalog_preserves_subpath(qtbot, qapp):
+    """Creating a catalog under a nested folder must store the sub-path
+    (regression for the bug where nested catalogs collapsed to the room root)."""
+    mod = _load_cocat_provider_module()
+    provider = mod.CocatCatalogProvider.__new__(mod.CocatCatalogProvider)
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider
+    CatalogProvider.__init__(provider, name="Shared")
+    provider._url = ""
+    provider._catalog_map = {}
+    provider._available_rooms = ["room1"]
+    provider._default_room_id = "room1"
+    provider._connected = True
+    provider._client_for_listing = None
+    room = _FakeRoom()
+    provider._rooms = {"room1": room}
+
+    cat = provider.create_catalog("my_cat", path=["room1", "sub", "deeper"])
+
+    assert cat.path == ["room1", "sub", "deeper"]
+    cocat_cat = room.db._catalogues["my_cat"]
+    assert cocat_cat.attributes["sciqlop_path"] == "sub/deeper"
+
+
+def test_cocat_load_room_catalogs_restores_subpath(qtbot, qapp):
+    """Catalogs loaded from a room must recover their sub-path from attributes."""
+    mod = _load_cocat_provider_module()
+    provider = mod.CocatCatalogProvider.__new__(mod.CocatCatalogProvider)
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider
+    CatalogProvider.__init__(provider, name="Shared")
+    provider._url = ""
+    provider._catalog_map = {}
+    provider._available_rooms = ["room1"]
+    provider._default_room_id = "room1"
+    provider._connected = True
+    provider._client_for_listing = None
+    room = _FakeRoom()
+    room.db._catalogues["root_cat"] = _FakeCatalogue("root_cat")
+    room.db._catalogues["nested_cat"] = _FakeCatalogue(
+        "nested_cat", attributes={"sciqlop_path": "a/b"}
+    )
+    provider._rooms = {"room1": room}
+
+    provider._load_room_catalogs("room1", room)
+
+    paths = {c.name: c.path for c in provider._catalog_map.values()}
+    assert paths["root_cat"] == ["room1"]
+    assert paths["nested_cat"] == ["room1", "a", "b"]
 
 
 # --- Inline catalog editing ---
