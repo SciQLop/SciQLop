@@ -388,7 +388,14 @@ fi
 
 cd $DIST
 echo "Building DMG..."
-create-dmg --overwrite --dmg-title=SciQLop SciQLop.app . >/dev/null
+# `create-dmg` auto-detects any codesigning identity in the keychain and tries
+# to sign the DMG. On PR builds we have no CODESIGN_IDENTITY (ad-hoc app
+# signing), so force --identity=NONE to skip DMG signing entirely.
+if [[ -n "$CODESIGN_IDENTITY" ]]; then
+  create-dmg --overwrite --dmg-title=SciQLop SciQLop.app . >/dev/null
+else
+  create-dmg --overwrite --identity=NONE --dmg-title=SciQLop SciQLop.app . >/dev/null
+fi
 mv SciQLop*.dmg SciQLop-$ARCH.dmg
 
 if [[ -n "$CODESIGN_IDENTITY" ]]; then
