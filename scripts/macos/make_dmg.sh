@@ -118,6 +118,17 @@ chmod +x $DIST/SciQLop.app/Contents/Resources/opt/uv/uv
 
 UV_BIN=$DIST/SciQLop.app/Contents/Resources/opt/uv/uv
 
+# On x86_64, the from-source Python links against Homebrew's libintl.8.dylib.
+# Newer Homebrew gettext sets its install name to `@loader_path/lib/libintl.8.dylib`,
+# which dyld resolves relative to the consuming binary's directory. The bundled
+# python3 lives in `usr/local/bin/`, so the dylib must sit at
+# `usr/local/bin/lib/libintl.8.dylib`. Stage it BEFORE any subsequent invocation
+# of $PYTHON_BIN (uv pip install would otherwise SIGABRT in dyld).
+if [[ $ARCH == "x86_64" ]]; then
+  mkdir -p "$PREFIX_ABS/bin/lib"
+  cp "$(brew --prefix gettext)/lib/libintl.8.dylib" "$PREFIX_ABS/bin/lib/"
+fi
+
 ########################################
 # Install SciQLop using uv
 ########################################
@@ -133,11 +144,6 @@ PLUGIN_DEPENDENCIES=$($PYTHON_BIN -I $SCIQLOP_ROOT/scripts/list_plugins_dependen
 if [[ -n "$PLUGIN_DEPENDENCIES" ]]; then
   echo "Installing plugin dependencies: $PLUGIN_DEPENDENCIES"
   $UV_BIN pip install -q --python $PYTHON_BIN $PLUGIN_DEPENDENCIES
-fi
-
-if [[ $ARCH == "x86_64" ]]; then
-  cp $(brew --prefix gettext)/lib/libintl.8.dylib $DIST/SciQLop.app/Contents/Resources/usr/local/lib/
-  install_name_tool -change /usr/local/opt/gettext/lib/libintl.8.dylib @loader_path/lib/libintl.8.dylib $DIST/SciQLop.app/Contents/Resources/usr/local/bin/python3
 fi
 
 ########################################
@@ -388,13 +394,16 @@ fi
 
 cd $DIST
 echo "Building DMG..."
-# `create-dmg` auto-detects any codesigning identity in the keychain and tries
-# to sign the DMG. On PR builds we have no CODESIGN_IDENTITY (ad-hoc app
-# signing), so force --identity=NONE to skip DMG signing entirely.
+# `create-dmg` auto-detects any codesigning identity in the keychain and
+# attempts to sign the DMG. On PR builds CODESIGN_IDENTITY is empty and
+# whatever it finds will fail with "The specified item could not be found
+# in the keychain", but the DMG file is still produced. Tolerate the
+# non-zero exit on that path and verify the DMG exists instead.
 if [[ -n "$CODESIGN_IDENTITY" ]]; then
   create-dmg --overwrite --dmg-title=SciQLop SciQLop.app . >/dev/null
 else
-  create-dmg --overwrite --identity=NONE --dmg-title=SciQLop SciQLop.app . >/dev/null
+  create-dmg --overwrite --dmg-title=SciQLop SciQLop.app . >/dev/null || true
+  ls SciQLop*.dmg >/dev/null 2>&1 || { echo "ERROR: create-dmg produced no DMG"; exit 1; }
 fi
 mv SciQLop*.dmg SciQLop-$ARCH.dmg
 
