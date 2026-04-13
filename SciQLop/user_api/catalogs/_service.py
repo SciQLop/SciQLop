@@ -17,9 +17,16 @@ _UUID_KEY = "__sciqlop_uuid__"
 
 
 def _split_segments(path: str) -> list[str]:
-    if "//" in path:
-        return path.split("//")
-    return path.split("/")
+    segments = path.split("//")
+    for seg in segments:
+        if "/" in seg:
+            raise ValueError(
+                f"Invalid path {path!r}: segments must be separated by '//', "
+                f"and segments cannot contain '/' (got {seg!r})"
+            )
+        if not seg:
+            raise ValueError(f"Invalid path {path!r}: empty segment")
+    return segments
 
 
 def _parse_path(path: str) -> tuple[str, list[str], str]:

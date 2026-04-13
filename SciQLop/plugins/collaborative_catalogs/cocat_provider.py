@@ -20,6 +20,21 @@ from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
 
+_SUBPATH_ATTR = "sciqlop_path"
+
+
+def _encode_subpath(segments: list[str]) -> str:
+    return "/".join(segments)
+
+
+def _decode_subpath(value) -> list[str]:
+    if not value:
+        return []
+    if isinstance(value, str):
+        return [s for s in value.split("/") if s]
+    return [str(s) for s in value if s]
+
+
 __here__ = os.path.dirname(__file__)
 register_icon("link", lambda: QIcon(os.path.join(__here__, "..", "..", "resources", "icons", "link.png")))
 register_icon("link_off", lambda: QIcon(os.path.join(__here__, "..", "..", "resources", "icons", "link_off.png")))
@@ -146,12 +161,16 @@ class CocatCatalogProvider(CatalogProvider):
             return
         self._rooms[room_id] = room
         self._load_room_catalogs(room_id, room)
+        # Re-emit folder_added now that CREATE_CATALOGS is in capabilities,
+        # so the tree can add "New Catalog..."/"New Folder..." placeholders
+        # that were skipped when the folder was first announced.
+        self.folder_added.emit([room_id])
         log.info("Joined room '%s', loaded %d catalogs", room_id,
-                 sum(1 for c in self._catalog_map.values() if c.path == [room_id]))
+                 sum(1 for c in self._catalog_map.values() if c.path and c.path[0] == room_id))
 
     def _detach_room_catalogs(self, room_id: str) -> None:
         """Remove catalogs from a room (sync, no WebSocket close)."""
-        catalogs_to_remove = [c for c in self._catalog_map.values() if c.path == [room_id]]
+        catalogs_to_remove = [c for c in self._catalog_map.values() if c.path and c.path[0] == room_id]
         for cat in catalogs_to_remove:
             self._catalog_map.pop(cat.uuid, None)
             super().remove_catalog(cat)
@@ -167,11 +186,12 @@ class CocatCatalogProvider(CatalogProvider):
     def _load_room_catalogs(self, room_id: str, room) -> None:
         for cat_name in room.catalogues:
             cocat_cat = room.get_catalogue(cat_name)
+            sub_path = _decode_subpath(cocat_cat.attributes.get(_SUBPATH_ATTR))
             cat = Catalog(
                 uuid=str(cocat_cat.uuid) if hasattr(cocat_cat, 'uuid') else cat_name,
                 name=cat_name,
                 provider=self,
-                path=[room_id],
+                path=[room_id, *sub_path],
             )
             self._catalog_map[cat.uuid] = cat
             events = [CocatEvent(ev, parent=self) for ev in cocat_cat.events]
@@ -234,13 +254,17 @@ class CocatCatalogProvider(CatalogProvider):
             room_id = next(iter(self._rooms), None)
         if room_id is None:
             raise RuntimeError("No rooms joined")
+        sub_path = list(path[1:]) if path else []
         room = self._rooms[room_id]
-        cocat_cat = room.db.create_catalogue(name=name, author="SciQLop")
+        attributes = {_SUBPATH_ATTR: _encode_subpath(sub_path)} if sub_path else None
+        cocat_cat = room.db.create_catalogue(
+            name=name, author="SciQLop", attributes=attributes,
+        )
         cat = Catalog(
             uuid=str(cocat_cat.uuid),
             name=name,
             provider=self,
-            path=[room_id],
+            path=[room_id, *sub_path],
         )
         self._catalog_map[cat.uuid] = cat
         self._set_events(cat, [])
