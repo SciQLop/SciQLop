@@ -21,6 +21,17 @@ log = getLogger(__name__)
 _EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "examples")
 
 
+def _is_update_available(latest_tag: str) -> bool:
+    from packaging.version import InvalidVersion, parse as _parse_version
+    from SciQLop import __version__
+    try:
+        latest = _parse_version(latest_tag.lstrip("v"))
+        current = _parse_version(__version__)
+    except InvalidVersion:
+        return False
+    return latest > current
+
+
 def _icon_to_data_uri(icon) -> str:
     if icon is None:
         return ""
@@ -262,11 +273,13 @@ class WelcomeBackend(QObject):
                 )
                 with urllib.request.urlopen(req, timeout=5) as resp:
                     data = json.loads(resp.read())
+                tag = data["tag_name"]
                 result = json.dumps({
-                    "tag": data["tag_name"],
-                    "name": data.get("name", data["tag_name"]),
+                    "tag": tag,
+                    "name": data.get("name", tag),
                     "url": data["html_url"],
                     "published": data.get("published_at", ""),
+                    "is_update": _is_update_available(tag),
                 })
             except Exception as e:
                 log.debug(f"Could not fetch latest release: {e}")
