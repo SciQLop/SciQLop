@@ -229,17 +229,6 @@ function onFeaturedReady(json_str) {
     });
 }
 
-function compareVersions(a, b) {
-    var pa = a.replace(/^v/, "").split(".").map(Number);
-    var pb = b.replace(/^v/, "").split(".").map(Number);
-    for (var i = 0; i < Math.max(pa.length, pb.length); i++) {
-        var na = pa[i] || 0;
-        var nb = pb[i] || 0;
-        if (na !== nb) return na - nb;
-    }
-    return 0;
-}
-
 function showLatestRelease(json_str) {
     var container = document.getElementById("latest-release");
     var release = JSON.parse(json_str);
@@ -249,7 +238,7 @@ function showLatestRelease(json_str) {
     }
 
     backend.get_current_version(function(currentVersion) {
-        var isNewer = compareVersions(release.tag, currentVersion) > 0;
+        var isNewer = !!release.is_update;
         container.classList.remove("hidden");
         container.className = isNewer ? "release-update" : "release-current";
         container.innerHTML = isNewer
