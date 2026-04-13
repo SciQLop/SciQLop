@@ -7,7 +7,7 @@ packages = ["SciQLop"]
 
 [project]
 name = "SciQLop"
-version = "0.11.2"
+version = "0.11.3"
 description = "An ergonomic and efficient application to browse and label in situ plasma measurements from multi-mission satellite data."
 keywords = ["machine-learning", "satellite", "plasma-physics", "nasa-data", "amda", "cdpp"]
 authors = [
@@ -86,7 +86,7 @@ xvfb_height = 1440
 xvfb_xauth = true
 
 [tool.bumpversion]
-current_version = "0.11.2"
+current_version = "0.11.3"
 commit = true
 tag = false
 allow_dirty = false

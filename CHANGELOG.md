@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## [v0.11.3](https://github.com/SciQlop/SciQLop/tree/v0.11.3) (2026-04-13)
+
+[Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.11.2...v0.11.3)
+
+### Bug fixes (catalogs)
+
+- Fixed panels keeping stale `CatalogOverlay` instances after a catalog is deleted. `PanelCatalogManager` now listens to `CatalogProvider.catalog_removed` for every existing provider and for any provider registered later (via `CatalogRegistry.provider_registered`), and drops the corresponding overlay automatically. Previously deleting a catalog via the tree, a collaborative backend, or the user API left every panel still drawing that catalog's events and broke UUID-keyed menu toggling.
+- Fixed collaborative catalog sub-paths collapsing to the room root. Nested catalog paths beneath a cocat room are now encoded into the catalogue's `sciqlop_path` attribute and decoded on load, so nested catalogs survive round-trips. Room-membership lookups tolerate nested segments.
+- Fixed catalog tree not showing `New Catalog.../New Folder...` placeholders on rooms joined after capabilities were granted. When a provider re-emits `folder_added` with new capabilities (cocat on room join), the tree model now walks into the inserted folder and installs the placeholders.
+- Tightened `catalogs` user API path parsing: mixed separators and single-slash paths now raise `ValueError` with a clear message instead of being silently mangled. The public contract is now `//`-only, e.g. `"Shared//room//Cat"`.
+
 ### Bug fixes
 
 - Fixed welcome page always showing "update available" because `SciQLop.__version__` was hardcoded to `0.11.0` in `SciQLop/__init__.py` and never bumped for 0.11.1/0.11.2. Version is now read from package metadata via `importlib.metadata.version("SciQLop")`, so it tracks `pyproject.toml` automatically.
