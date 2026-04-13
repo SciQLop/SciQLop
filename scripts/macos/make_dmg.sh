@@ -156,8 +156,11 @@ fi
 
 export PATH=$SAVED_PATH
 
-download_and_extract https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-darwin-$ARCH.tar.gz
-rsync -aq $DIST/node-v$NODE_VERSION-darwin-$ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/
+# Node publishes macOS builds as `darwin-arm64` / `darwin-x64`; `uname -m`
+# returns `arm64` / `x86_64`, so map the Intel name explicitly.
+if [[ $ARCH == "x86_64" ]]; then NODE_ARCH=x64; else NODE_ARCH=$ARCH; fi
+download_and_extract https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-darwin-$NODE_ARCH.tar.gz
+rsync -aq $DIST/node-v$NODE_VERSION-darwin-$NODE_ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/
 
 python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 
