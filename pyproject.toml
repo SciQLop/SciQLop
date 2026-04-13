@@ -84,3 +84,53 @@ qt_api = "pyside6"
 xvfb_width = 2560
 xvfb_height = 1440
 xvfb_xauth = true
+
+[tool.bumpversion]
+current_version = "0.11.2"
+commit = true
+tag = false
+allow_dirty = false
+message = "Bump version: {current_version} → {new_version}"
+tag_name = "v{new_version}"
+tag_message = "Release v{new_version}"
+# PEP 440 dev-release scheme. The optional `.dev<N>` suffix marks unreleased
+# development builds; bumping the `release` part to its optional value drops
+# the suffix and produces a final release.
+parse = """(?x)
+    (?P<major>\\d+)\\.
+    (?P<minor>\\d+)\\.
+    (?P<patch>\\d+)
+    (?:
+        \\.(?P<release>dev)
+        (?P<build>\\d+)
+    )?
+"""
+serialize = [
+    "{major}.{minor}.{patch}.{release}{build}",
+    "{major}.{minor}.{patch}",
+]
+
+# Workflow:
+#   - Right after releasing 0.11.2, run:
+#       bump-my-version bump minor   # → 0.12.0.dev0 (commit, no tag)
+#   - Iterate during development:
+#       bump-my-version bump build   # → 0.12.0.dev1, .dev2, ...
+#   - At release time:
+#       bump-my-version bump release          # → 0.12.0 (commit)
+#       git tag -a v0.12.0 -m "Release v0.12.0"
+#       git push jeandet main v0.12.0
+#   `tag = false` globally so iterative dev bumps don't accidentally create
+#   throwaway tags; release tags are created manually (one extra command, but
+#   unambiguous).
+
+[tool.bumpversion.parts.release]
+values = ["dev", "final"]
+optional_value = "final"
+
+[tool.bumpversion.parts.build]
+first_value = "0"
+
+[[tool.bumpversion.files]]
+filename = "pyproject.toml"
+search = 'version = "{current_version}"'
+replace = 'version = "{new_version}"'
