@@ -41,6 +41,55 @@ def test_manager_remove_catalog(qtbot, qapp):
     assert cat.uuid not in manager.catalog_uuids
 
 
+def test_manager_drops_overlay_when_provider_removes_catalog(qtbot, qapp):
+    """When a provider emits catalog_removed (e.g. catalog deleted from the
+    tree or from a collaborative backend), any panel displaying that catalog
+    must drop its overlay. Regression: overlay would stay live, referencing
+    a deleted catalog."""
+    from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+
+    panel = TimeSyncPanel("test-panel")
+    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    panel.time_range = TimeRange(base.timestamp(), (base + timedelta(days=200)).timestamp())
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+
+    manager = PanelCatalogManager(panel)
+    manager.add_catalog(cat)
+    assert cat.uuid in manager.catalog_uuids
+
+    provider.remove_catalog(cat)
+
+    assert cat.uuid not in manager.catalog_uuids
+
+
+def test_manager_syncs_with_provider_registered_after_construction(qtbot, qapp):
+    """A provider registered after the PanelCatalogManager is created must
+    still have its catalog_removed signal honored by the panel."""
+    from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+
+    panel = TimeSyncPanel("test-panel")
+    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    panel.time_range = TimeRange(base.timestamp(), (base + timedelta(days=200)).timestamp())
+
+    manager = PanelCatalogManager(panel)
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=1)
+    cat = provider.catalogs()[0]
+    manager.add_catalog(cat)
+    assert cat.uuid in manager.catalog_uuids
+
+    provider.remove_catalog(cat)
+    assert cat.uuid not in manager.catalog_uuids
+
+
 def test_manager_interaction_mode(qtbot, qapp):
     from SciQLop.components.catalogs.backend.panel_manager import (
         PanelCatalogManager, InteractionMode,
