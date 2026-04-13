@@ -31,6 +31,13 @@ class PanelCatalogManager(QObject):
         self._mode = InteractionMode.VIEW
         self._bar_connected = False
         self._panel.span_created.connect(self._on_span_created)
+        registry = CatalogRegistry.instance()
+        for provider in registry.providers():
+            self._bind_provider(provider)
+        registry.provider_registered.connect(self._bind_provider)
+
+    def _bind_provider(self, provider) -> None:
+        provider.catalog_removed.connect(self.remove_catalog)
 
     @property
     def panel(self):
