@@ -45,9 +45,9 @@ jobs:
       - name: bundle SciQLop
         env:
           CODESIGN_IDENTITY: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.CODESIGN_IDENTITY || '' }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.APPLE_ID || '' }}
+          APPLE_ID_PWD: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.APPLE_ID_PWD || '' }}
+          APPLE_TEAM_ID: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.APPLE_TEAM_ID || '' }}
         run: |
           brew install graphicsmagick imagemagick dylibbundler
           npm install --global create-dmg
@@ -81,9 +81,9 @@ jobs:
       - name: bundle SciQLop
         env:
           CODESIGN_IDENTITY: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.CODESIGN_IDENTITY || '' }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PWD: ${{ secrets.APPLE_ID_PWD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.APPLE_ID || '' }}
+          APPLE_ID_PWD: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.APPLE_ID_PWD || '' }}
+          APPLE_TEAM_ID: ${{ (github.event_name == 'release' || (github.event_name == 'push' && github.ref == 'refs/heads/main')) && secrets.APPLE_TEAM_ID || '' }}
         run: |
           brew install graphicsmagick imagemagick dylibbundler coreutils
           npm install --global create-dmg
