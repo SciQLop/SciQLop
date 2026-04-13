@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Bug fixes
+
+- Fixed welcome page always showing "update available" because `SciQLop.__version__` was hardcoded to `0.11.0` in `SciQLop/__init__.py` and never bumped for 0.11.1/0.11.2. Version is now read from package metadata via `importlib.metadata.version("SciQLop")`, so it tracks `pyproject.toml` automatically.
+- Welcome page update banner now uses `packaging.version` (PEP 440) for the comparison instead of a naïve numeric per-segment compare in JavaScript. Pre-release/dev versions (`0.12.0.dev0`) are now ordered correctly relative to final releases.
+
+### Tooling
+
+- Migrated version bumping from legacy `bumpversion` (in `setup.cfg`) to `bump-my-version` configured in `pyproject.toml`. Single source of truth (`pyproject.toml`), supports PEP 440 dev releases (`0.12.0.dev0` → `.dev1` → … → `0.12.0`). See `[tool.bumpversion]` in `pyproject.toml` for the workflow.
+
+### Bug fixes (Windows MSIX)
+
+- Fixed Windows Store certification "Sign returned error: 0x800700C1" by stripping non-amd64 PE binaries from the MSIX bundle. `pip._vendor.distlib` (`w32.exe`, `w64-arm.exe`, `t32.exe`, `t64-arm.exe`) and `debugpy._vendored.pydevd` (`inject_dll_x86.exe`, `attach_x86.dll`, `run_code_on_dllmain_x86.dll`) ship i386/arm64 launcher stubs that are valid PEs for the wrong architecture — the v0.11.1 MZ-magic check passed them through. The validator now parses the PE header (`e_lfanew` → `PE\0\0` → `IMAGE_FILE_MACHINE_AMD64`) and removes anything that is not a valid x64 PE.
+
 ## [v0.11.2](https://github.com/SciQlop/SciQLop/tree/v0.11.2) (2026-04-12)
 
 [Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.11.1...v0.11.2)
