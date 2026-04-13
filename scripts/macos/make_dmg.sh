@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-set -x
+set -eo pipefail
 HERE=$(dirname $BASH_SOURCE)
 SCIQLOP_ROOT=$HERE/../../
 DIST=$SCIQLOP_ROOT/dist
@@ -11,7 +11,7 @@ PYTHON_VERSION=3.12.10
 NODE_VERSION=23.11.0
 UV_VERSION=0.11.2
 
-mkdir $DIST
+mkdir -p $DIST
 
 mkdir -p $DIST/SciQLop.app/Contents/MacOS
 mkdir -p $DIST/SciQLop.app/Contents/Resources/usr/local
@@ -62,7 +62,8 @@ function download_and_extract() {
   if [[ -f $DESTFILE ]]; then
     echo "File $DESTFILE already exists"
   else
-    curl -L $1 -o $DESTFILE
+    echo "Downloading $1"
+    curl -fLsS $1 -o $DESTFILE
   fi
   if [[ $EXTENSION == "zip" ]]; then
     unzip $DESTFILE -d $DIST &> /dev/null
@@ -108,7 +109,7 @@ else
 fi
 
 if [[ ! -f $DIST/uv.tar.gz ]]; then
-  curl -L -o $DIST/uv.tar.gz "$UV_URL"
+  curl -fLsS -o $DIST/uv.tar.gz "$UV_URL"
 fi
 
 tar -xzf $DIST/uv.tar.gz -C $DIST
@@ -121,7 +122,8 @@ UV_BIN=$DIST/SciQLop.app/Contents/Resources/opt/uv/uv
 # Install SciQLop using uv
 ########################################
 
-$UV_BIN pip install --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROOT/"
+echo "Installing SciQLop into bundle..."
+$UV_BIN pip install -q --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROOT/"
 
 ########################################
 # Plugin dependencies
@@ -129,7 +131,8 @@ $UV_BIN pip install --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROOT/"
 
 PLUGIN_DEPENDENCIES=$($PYTHON_BIN -I $SCIQLOP_ROOT/scripts/list_plugins_dependencies.py $SCIQLOP_ROOT/SciQLop/plugins)
 if [[ -n "$PLUGIN_DEPENDENCIES" ]]; then
-  $UV_BIN pip install --python $PYTHON_BIN $PLUGIN_DEPENDENCIES
+  echo "Installing plugin dependencies: $PLUGIN_DEPENDENCIES"
+  $UV_BIN pip install -q --python $PYTHON_BIN $PLUGIN_DEPENDENCIES
 fi
 
 if [[ $ARCH == "x86_64" ]]; then
@@ -142,13 +145,13 @@ fi
 ########################################
 
 if [[ -z $RELEASE ]]; then
-  $UV_BIN pip install --python $PYTHON_BIN --upgrade git+https://github.com/SciQLop/speasy
+  $UV_BIN pip install -q --python $PYTHON_BIN --upgrade git+https://github.com/SciQLop/speasy
 fi
 
 export PATH=$SAVED_PATH
 
 download_and_extract https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-darwin-$ARCH.tar.gz
-rsync -avhu $DIST/node-v$NODE_VERSION-darwin-$ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/
+rsync -aq $DIST/node-v$NODE_VERSION-darwin-$ARCH/* $DIST/SciQLop.app/Contents/Resources/usr/local/
 
 python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 
@@ -187,28 +190,54 @@ python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 APP=$DIST/SciQLop.app
 ENTITLEMENTS=$(realpath $HERE/entitlements.plist)
 
+# Redact secrets from any string before printing. Substitutes the literal
+# values of CODESIGN_IDENTITY, APPLE_ID, APPLE_ID_PWD, APPLE_TEAM_ID with
+# fixed placeholders so a stray dump can't leak them.
+redact() {
+  local s="$1"
+  [[ -n "${CODESIGN_IDENTITY:-}" ]] && s="${s//${CODESIGN_IDENTITY}/<CODESIGN_IDENTITY>}"
+  [[ -n "${APPLE_ID:-}"          ]] && s="${s//${APPLE_ID}/<APPLE_ID>}"
+  [[ -n "${APPLE_ID_PWD:-}"      ]] && s="${s//${APPLE_ID_PWD}/<APPLE_ID_PWD>}"
+  [[ -n "${APPLE_TEAM_ID:-}"     ]] && s="${s//${APPLE_TEAM_ID}/<APPLE_TEAM_ID>}"
+  printf '%s' "$s"
+}
+
 if [[ -n "$CODESIGN_IDENTITY" ]]; then
   SIGN_ARGS=(--force --options runtime --timestamp -s "$CODESIGN_IDENTITY")
   EXEC_SIGN_ARGS=(--force --options runtime --timestamp --entitlements "$ENTITLEMENTS" -s "$CODESIGN_IDENTITY")
-  echo "Pre-flight: verifying signing identity is in keychain..."
-  security find-identity -v -p codesigning
-  if ! security find-identity -v -p codesigning | grep -q "Developer ID Application:"; then
+  IDENTITIES=$(security find-identity -v -p codesigning 2>&1 || true)
+  if ! grep -q "Developer ID Application:" <<<"$IDENTITIES"; then
     echo "ERROR: no 'Developer ID Application:' certificate in keychain."
     echo "       The p12 in MACOS_CERTIFICATE must contain a Developer ID Application"
     echo "       certificate (not 'Mac Developer', 'Apple Development', etc)."
-    echo "       Notarization will reject any signature made with a non-Developer-ID cert."
+    echo "       Found $(grep -c 'valid identities found' <<<"$IDENTITIES" || true) identities (names redacted)."
     exit 1
   fi
-  if ! security find-identity -v -p codesigning | grep -qF "$CODESIGN_IDENTITY"; then
+  if ! grep -qF "$CODESIGN_IDENTITY" <<<"$IDENTITIES"; then
     echo "ERROR: CODESIGN_IDENTITY does not match any identity in the keychain."
-    echo "       Expected substring: $CODESIGN_IDENTITY"
     exit 1
   fi
+  echo "Signing identity present and matched (value redacted)."
 else
   echo "WARNING: No CODESIGN_IDENTITY set, using ad-hoc signing"
   SIGN_ARGS=(--force -s -)
   EXEC_SIGN_ARGS=(--force --entitlements "$ENTITLEMENTS" -s -)
 fi
+
+# Quiet codesign wrapper: swallow output on success, dump on failure.
+# codesign normally prints "<file>: replacing existing signature" + "signed
+# Mach-O ..." for each item — that's hundreds of lines per build. On failure
+# we redact the signing identity from both args and output before printing.
+quiet_codesign() {
+  local out rc
+  out=$(codesign "$@" 2>&1) && rc=0 || rc=$?
+  if [[ $rc -ne 0 ]]; then
+    echo "ERROR: codesign failed (exit $rc) on file: ${!#}"
+    redact "$out" | sed 's/^/  /'
+    echo
+    return $rc
+  fi
+}
 
 # Canonical inside-out signing per Apple TN2206:
 # - "all nested code must already be signed correctly" before signing the outer
@@ -246,33 +275,33 @@ classify_macho() {
 sign_macho() {
   local f="$1"
   case "$(classify_macho "$f")" in
-    exec) codesign "${EXEC_SIGN_ARGS[@]}" "$f" ;;
-    lib)  codesign "${SIGN_ARGS[@]}"      "$f" ;;
+    exec) quiet_codesign "${EXEC_SIGN_ARGS[@]}" "$f" && SIGNED_COUNT=$((SIGNED_COUNT+1)) ;;
+    lib)  quiet_codesign "${SIGN_ARGS[@]}"      "$f" && SIGNED_COUNT=$((SIGNED_COUNT+1)) ;;
   esac
 }
 
-echo "[1/4] Signing nested .app bundles (deepest first, inside-out)..."
+SIGNED_COUNT=0
 NESTED_APPS=$(mktemp)
 find "$APP/Contents" -type d -name "*.app" \
   | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- > "$NESTED_APPS"
+NESTED_APP_COUNT=$(wc -l <"$NESTED_APPS" | tr -d ' ')
 
+echo "[1/4] Signing $NESTED_APP_COUNT nested .app bundle(s) inside-out..."
 while IFS= read -r app; do
-  echo "  $app"
   while IFS= read -r -d '' f; do
     sign_macho "$f"
   done < <(find "$app" -type f -print0)
-  codesign "${EXEC_SIGN_ARGS[@]}" "$app"
+  quiet_codesign "${EXEC_SIGN_ARGS[@]}" "$app"
 done < "$NESTED_APPS"
 rm -f "$NESTED_APPS"
 
-echo "[2/4] Signing loose Mach-Os (outside .app and outside .framework)..."
+echo "[2/4] Signing loose Mach-Os outside .app/.framework..."
 while IFS= read -r -d '' f; do
   sign_macho "$f"
 done < <(find "$APP/Contents" \
   \( -type d \( -name "*.app" -o -name "*.framework" \) -prune \) \
   -o -type f -print0)
 
-echo "[3/4] Signing framework Versions/<X> directories (deepest first)..."
 FRAMEWORK_VERSIONS=$(mktemp)
 while IFS= read -r -d '' fw; do
   for ver in "$fw"/Versions/*; do
@@ -282,94 +311,117 @@ while IFS= read -r -d '' fw; do
   done
 done < <(find "$APP" -type d -name "*.framework" -print0) \
   | awk '{print length, $0}' | sort -rn | cut -d' ' -f2- > "$FRAMEWORK_VERSIONS"
+FRAMEWORK_COUNT=$(wc -l <"$FRAMEWORK_VERSIONS" | tr -d ' ')
 
+echo "[3/4] Signing $FRAMEWORK_COUNT framework version(s)..."
 while IFS= read -r ver; do
-  echo "  $ver"
-  codesign "${SIGN_ARGS[@]}" "$ver"
+  quiet_codesign "${SIGN_ARGS[@]}" "$ver"
 done < "$FRAMEWORK_VERSIONS"
 rm -f "$FRAMEWORK_VERSIONS"
 
-echo "[4/4] Signing outer app bundle (with entitlements)..."
-codesign "${EXEC_SIGN_ARGS[@]}" "$APP"
+echo "[4/4] Signing outer SciQLop.app..."
+quiet_codesign "${EXEC_SIGN_ARGS[@]}" "$APP"
+echo "Signed $SIGNED_COUNT Mach-O file(s) + $NESTED_APP_COUNT nested .app(s) + $FRAMEWORK_COUNT framework version(s) + outer .app"
 
-echo "Verifying signature..."
-codesign --verify --deep --strict --verbose=2 "$APP" || {
-  echo "ERROR: signature verification failed"
+if ! codesign --verify --strict "$APP" >/dev/null 2>&1; then
+  echo "ERROR: signature verification failed; re-running verbose for diagnostics:"
+  codesign --verify --deep --strict --verbose=2 "$APP" || true
   exit 1
-}
+fi
+echo "Signature verified."
 
 # Notarize the .app FIRST so we can staple the ticket onto the .app itself
 # (not just onto the outer DMG). Otherwise, when the user drags the .app out
 # of the DMG into /Applications, the staple stays on the DMG and Gatekeeper
 # has to do an online ticket lookup on first launch, which is fragile.
+# Notarytool helpers: never echo the credentials; redact stdout/stderr and
+# capture to a file so failure dumps go through redact() too.
+notary_submit() {
+  local target="$1" out="$2"
+  xcrun notarytool submit "$target" \
+    --apple-id "$APPLE_ID" \
+    --password "$APPLE_ID_PWD" \
+    --team-id "$APPLE_TEAM_ID" \
+    --wait >"$out" 2>&1
+}
+
+notary_log() {
+  local sub_id="$1"
+  xcrun notarytool log "$sub_id" \
+    --apple-id "$APPLE_ID" \
+    --password "$APPLE_ID_PWD" \
+    --team-id "$APPLE_TEAM_ID" 2>&1 || true
+}
+
 if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
   echo "Zipping .app for notarization submission..."
   APP_ZIP="$DIST/SciQLop-$ARCH-app.zip"
   ditto -c -k --keepParent "$APP" "$APP_ZIP"
 
-  echo "Submitting .app to notarytool..."
+  echo "Submitting .app to notarytool (this may take several minutes)..."
   NOTARY_OUT=$(mktemp)
-  if ! xcrun notarytool submit "$APP_ZIP" \
-        --apple-id "$APPLE_ID" \
-        --password "$APPLE_ID_PWD" \
-        --team-id "$APPLE_TEAM_ID" \
-        --wait 2>&1 | tee "$NOTARY_OUT"; then
-    echo "ERROR: notarytool submit failed"
-    cat "$NOTARY_OUT"
+  if ! notary_submit "$APP_ZIP" "$NOTARY_OUT"; then
+    echo "ERROR: notarytool submit failed:"
+    redact "$(cat "$NOTARY_OUT")" | sed 's/^/  /'
+    rm -f "$NOTARY_OUT"
     exit 1
   fi
   if ! grep -q "status: Accepted" "$NOTARY_OUT"; then
-    echo "ERROR: notarization not Accepted. Fetching log..."
-    SUB_ID=$(grep -m1 "id:" "$NOTARY_OUT" | awk '{print $2}')
+    echo "ERROR: notarization not Accepted. Submission output:"
+    redact "$(cat "$NOTARY_OUT")" | sed 's/^/  /'
+    SUB_ID=$(grep -m1 "id:" "$NOTARY_OUT" | awk '{print $2}' || true)
     if [[ -n "$SUB_ID" ]]; then
-      xcrun notarytool log "$SUB_ID" \
-        --apple-id "$APPLE_ID" \
-        --password "$APPLE_ID_PWD" \
-        --team-id "$APPLE_TEAM_ID" || true
+      echo "Fetching notarytool log for $SUB_ID:"
+      redact "$(notary_log "$SUB_ID")" | sed 's/^/  /'
     fi
+    rm -f "$NOTARY_OUT"
     exit 1
   fi
+  echo "Notarization Accepted."
   rm -f "$APP_ZIP" "$NOTARY_OUT"
 
   echo "Stapling notarization ticket to .app..."
-  xcrun stapler staple "$APP"
-  xcrun stapler validate "$APP"
+  xcrun stapler staple "$APP" >/dev/null
+  xcrun stapler validate "$APP" >/dev/null
+  echo "Stapled and validated."
 fi
 
 cd $DIST
-create-dmg --overwrite --dmg-title=SciQLop SciQLop.app .
+echo "Building DMG..."
+create-dmg --overwrite --dmg-title=SciQLop SciQLop.app . >/dev/null
 mv SciQLop*.dmg SciQLop-$ARCH.dmg
 
 if [[ -n "$CODESIGN_IDENTITY" ]]; then
-  codesign --force --verbose --options runtime -s "$CODESIGN_IDENTITY" SciQLop-$ARCH.dmg
+  echo "Signing DMG..."
+  quiet_codesign --force --options runtime -s "$CODESIGN_IDENTITY" SciQLop-$ARCH.dmg
 fi
 
 # DMG also gets notarized + stapled so the download itself is verifiable
 # without having to mount it first.
 if [[ -n "$APPLE_ID" && -n "$APPLE_ID_PWD" && -n "$APPLE_TEAM_ID" ]]; then
-  echo "Submitting DMG to notarytool..."
+  echo "Submitting DMG to notarytool (this may take several minutes)..."
   DMG_NOTARY_OUT=$(mktemp)
-  if ! xcrun notarytool submit SciQLop-$ARCH.dmg \
-        --apple-id "$APPLE_ID" \
-        --password "$APPLE_ID_PWD" \
-        --team-id "$APPLE_TEAM_ID" \
-        --wait 2>&1 | tee "$DMG_NOTARY_OUT"; then
-    echo "ERROR: DMG notarytool submit failed"
+  if ! notary_submit "SciQLop-$ARCH.dmg" "$DMG_NOTARY_OUT"; then
+    echo "ERROR: DMG notarytool submit failed:"
+    redact "$(cat "$DMG_NOTARY_OUT")" | sed 's/^/  /'
+    rm -f "$DMG_NOTARY_OUT"
     exit 1
   fi
   if ! grep -q "status: Accepted" "$DMG_NOTARY_OUT"; then
-    echo "ERROR: DMG notarization not Accepted"
-    SUB_ID=$(grep -m1 "id:" "$DMG_NOTARY_OUT" | awk '{print $2}')
+    echo "ERROR: DMG notarization not Accepted. Submission output:"
+    redact "$(cat "$DMG_NOTARY_OUT")" | sed 's/^/  /'
+    SUB_ID=$(grep -m1 "id:" "$DMG_NOTARY_OUT" | awk '{print $2}' || true)
     if [[ -n "$SUB_ID" ]]; then
-      xcrun notarytool log "$SUB_ID" \
-        --apple-id "$APPLE_ID" \
-        --password "$APPLE_ID_PWD" \
-        --team-id "$APPLE_TEAM_ID" || true
+      echo "Fetching notarytool log for $SUB_ID:"
+      redact "$(notary_log "$SUB_ID")" | sed 's/^/  /'
     fi
+    rm -f "$DMG_NOTARY_OUT"
     exit 1
   fi
+  echo "DMG notarization Accepted."
   rm -f "$DMG_NOTARY_OUT"
-  xcrun stapler staple SciQLop-$ARCH.dmg
+  xcrun stapler staple SciQLop-$ARCH.dmg >/dev/null
+  echo "DMG stapled."
 fi
 
 cd -
