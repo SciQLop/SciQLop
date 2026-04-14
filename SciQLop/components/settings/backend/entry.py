@@ -45,17 +45,32 @@ def _load_keyring(mapping: KeyringMapping, data: dict) -> None:
     service = data.get(mapping.service_field, "").rstrip("/")
     if not service:
         return
-    try:
-        creds = keyring.get_credential(service, None)
-    except Exception as e:
-        log.debug("Cannot read credentials from keyring for %s: %s", service, e)
-        return
-    if creds is None:
-        return
-    if not data.get(mapping.username_field):
+    username = data.get(mapping.username_field, "")
+    if not username:
+        # Migration path: older SciQLop versions (≤0.11.3) never persisted the
+        # username to YAML and relied on keyring.get_credential(service, None).
+        # That query is only supported by backends that override get_credential
+        # (Linux SecretService, Windows). On first run after the fix, recover
+        # the pair and let save() write the username back to YAML.
+        try:
+            creds = keyring.get_credential(service, None)
+        except Exception as e:
+            log.debug("Cannot read credentials from keyring for %s: %s", service, e)
+            return
+        if creds is None:
+            return
         data[mapping.username_field] = creds.username
-    if not data.get(mapping.password_field):
         data[mapping.password_field] = creds.password
+        return
+    if data.get(mapping.password_field):
+        return
+    try:
+        password = keyring.get_password(service, username)
+    except Exception as e:
+        log.debug("Cannot read password from keyring for %s: %s", service, e)
+        return
+    if password:
+        data[mapping.password_field] = password
 
 
 def _save_keyring(mapping: KeyringMapping, data: dict) -> None:
@@ -63,7 +78,7 @@ def _save_keyring(mapping: KeyringMapping, data: dict) -> None:
     service = data.get(mapping.service_field, "").rstrip("/")
     username = data.get(mapping.username_field, "")
     password = data.get(mapping.password_field, "")
-    if not service or not username:
+    if not service or not username or not password:
         return
     try:
         keyring.set_password(service, username, password)
@@ -114,7 +129,7 @@ class ConfigEntry(BaseModel):
         m = cls._keyring_
         if m is None:
             return set()
-        return {m.username_field, m.password_field}
+        return {m.password_field}
 
     def __init__(self, **data):
         save = True
