@@ -850,22 +850,107 @@ def _load_cocat_provider_module():
     return mod
 
 
+class _FakeCocatEvent:
+    def __init__(self, uuid, start, stop):
+        self.uuid = uuid
+        self.start = start
+        self.stop = stop
+        self._range_cbs = []
+        self._delete_cbs = []
+
+    def on_change_range(self, cb):
+        self._range_cbs.append(cb)
+
+    def on_delete(self, cb):
+        self._delete_cbs.append(cb)
+
+    @property
+    def range(self):
+        return (self.start, self.stop)
+
+    @range.setter
+    def range(self, value):
+        self.start, self.stop = value
+        for cb in list(self._range_cbs):
+            cb(self.start, self.stop)
+
+    def delete(self):
+        for cb in list(self._delete_cbs):
+            cb()
+
+
 class _FakeCatalogue:
-    def __init__(self, name, attributes=None):
-        self.uuid = f"uuid-{name}"
+    def __init__(self, name, attributes=None, uuid=None):
+        self.uuid = uuid or f"uuid-{name}"
         self.name = name
         self.attributes = dict(attributes or {})
         self.events = []
+        self._add_events_cbs = []
+        self._remove_events_cbs = []
+        self._delete_cbs = []
+        self._rename_cbs = []
+
+    def on_add_events(self, cb):
+        self._add_events_cbs.append(cb)
+
+    def on_remove_events(self, cb):
+        self._remove_events_cbs.append(cb)
+
+    def on_delete(self, cb):
+        self._delete_cbs.append(cb)
+
+    def on_change_name(self, cb):
+        self._rename_cbs.append(cb)
+
+    def add_events(self, evs):
+        self.events.extend(evs)
+        for cb in list(self._add_events_cbs):
+            cb(evs)
+
+    def remove_events(self, evs):
+        uuids = [e.uuid for e in evs]
+        self.events = [e for e in self.events if e.uuid not in uuids]
+        for cb in list(self._remove_events_cbs):
+            cb(uuids)
+
+    def remote_rename(self, new_name):
+        self.name = new_name
+        for cb in list(self._rename_cbs):
+            cb(new_name)
+
+    def delete(self):
+        for cb in list(self._delete_cbs):
+            cb()
 
 
 class _FakeRoomDB:
     def __init__(self):
         self._catalogues: dict[str, _FakeCatalogue] = {}
+        self._events_by_uuid: dict[str, _FakeCocatEvent] = {}
+        self._create_cat_cbs = []
+
+    def on_create_catalogue(self, cb):
+        self._create_cat_cbs.append(cb)
 
     def create_catalogue(self, name, author, attributes=None):
         cat = _FakeCatalogue(name, attributes)
         self._catalogues[name] = cat
         return cat
+
+    def remote_create_catalogue(self, name, attributes=None):
+        cat = _FakeCatalogue(name, attributes)
+        self._catalogues[name] = cat
+        for cb in list(self._create_cat_cbs):
+            cb(cat)
+        return cat
+
+    def create_event(self, start, stop, author, uuid=None):
+        ev = _FakeCocatEvent(uuid or f"ev-{len(self._events_by_uuid)}", start, stop)
+        self._events_by_uuid[ev.uuid] = ev
+        return ev
+
+    def get_event(self, uuid):
+        return self._events_by_uuid[uuid]
 
 
 class _FakeRoom:
@@ -881,6 +966,22 @@ class _FakeRoom:
             if c.name == name_or_uuid or c.uuid == name_or_uuid:
                 return c
         raise KeyError(name_or_uuid)
+
+
+def _make_cocat_provider():
+    mod = _load_cocat_provider_module()
+    provider = mod.CocatCatalogProvider.__new__(mod.CocatCatalogProvider)
+    from SciQLop.components.catalogs.backend.provider import CatalogProvider
+    CatalogProvider.__init__(provider, name="Shared")
+    provider._url = ""
+    provider._catalog_map = {}
+    provider._available_rooms = ["room1"]
+    provider._default_room_id = "room1"
+    provider._connected = True
+    provider._client_for_listing = None
+    room = _FakeRoom()
+    provider._rooms = {"room1": room}
+    return mod, provider, room
 
 
 def test_cocat_create_catalog_preserves_subpath(qtbot, qapp):
@@ -930,6 +1031,148 @@ def test_cocat_load_room_catalogs_restores_subpath(qtbot, qapp):
     paths = {c.name: c.path for c in provider._catalog_map.values()}
     assert paths["root_cat"] == ["room1"]
     assert paths["nested_cat"] == ["room1", "a", "b"]
+
+
+# --- CRDT update propagation (remote peer events) ---
+
+def test_cocat_remote_catalogue_creation_propagates(qtbot, qapp):
+    """A catalogue created by a peer (CRDT sync) must appear in the provider
+    without requiring a leave/join cycle."""
+    mod, provider, room = _make_cocat_provider()
+    provider._load_room_catalogs("room1", room)
+
+    added = []
+    provider.catalog_added.connect(lambda c: added.append(c))
+
+    room.db.remote_create_catalogue("from_peer", attributes={"sciqlop_path": "x/y"})
+
+    assert any(c.name == "from_peer" for c in provider._catalog_map.values())
+    cat = next(c for c in provider._catalog_map.values() if c.name == "from_peer")
+    assert cat.path == ["room1", "x", "y"]
+    assert cat in added
+
+
+def test_cocat_remote_catalogue_deletion_propagates(qtbot, qapp):
+    """When a peer deletes a catalogue, the provider must drop it and emit
+    catalog_removed so panels can clear their overlays."""
+    mod, provider, room = _make_cocat_provider()
+    room.db._catalogues["shared"] = _FakeCatalogue("shared")
+    provider._load_room_catalogs("room1", room)
+
+    removed = []
+    provider.catalog_removed.connect(lambda c: removed.append(c))
+
+    cat = next(iter(provider._catalog_map.values()))
+    room.db._catalogues["shared"].delete()
+
+    assert cat.uuid not in provider._catalog_map
+    assert removed == [cat]
+
+
+def test_cocat_remote_catalogue_rename_propagates(qtbot, qapp):
+    mod, provider, room = _make_cocat_provider()
+    room.db._catalogues["old"] = _FakeCatalogue("old")
+    provider._load_room_catalogs("room1", room)
+
+    renamed = []
+    provider.catalog_renamed.connect(lambda c: renamed.append(c))
+
+    room.db._catalogues["old"].remote_rename("new_name")
+
+    cat = next(iter(provider._catalog_map.values()))
+    assert cat.name == "new_name"
+    assert renamed == [cat]
+
+
+def test_cocat_remote_events_added_propagates(qtbot, qapp):
+    mod, provider, room = _make_cocat_provider()
+    room.db._catalogues["c"] = _FakeCatalogue("c")
+    provider._load_room_catalogs("room1", room)
+
+    changed = []
+    provider.events_changed.connect(lambda c: changed.append(c))
+
+    t = datetime(2021, 1, 1, tzinfo=timezone.utc)
+    ev = _FakeCocatEvent("ev1", t, t + timedelta(hours=1))
+    room.db._catalogues["c"].add_events([ev])
+
+    cat = next(iter(provider._catalog_map.values()))
+    evs = provider.events(cat)
+    assert len(evs) == 1
+    assert evs[0].uuid == "ev1"
+    assert changed and changed[-1] is cat
+
+
+def test_cocat_remote_events_removed_propagates(qtbot, qapp):
+    mod, provider, room = _make_cocat_provider()
+    t = datetime(2021, 1, 1, tzinfo=timezone.utc)
+    cocat_cat = _FakeCatalogue("c")
+    ev = _FakeCocatEvent("ev1", t, t + timedelta(hours=1))
+    cocat_cat.events = [ev]
+    room.db._catalogues["c"] = cocat_cat
+    provider._load_room_catalogs("room1", room)
+
+    cat = next(iter(provider._catalog_map.values()))
+    assert len(provider.events(cat)) == 1
+
+    cocat_cat.remove_events([ev])
+
+    assert len(provider.events(cat)) == 0
+
+
+def test_cocat_remote_event_range_change_propagates(qtbot, qapp):
+    mod, provider, room = _make_cocat_provider()
+    t = datetime(2021, 1, 1, tzinfo=timezone.utc)
+    cocat_cat = _FakeCatalogue("c")
+    ev = _FakeCocatEvent("ev1", t, t + timedelta(hours=1))
+    cocat_cat.events = [ev]
+    room.db._catalogues["c"] = cocat_cat
+    provider._load_room_catalogs("room1", room)
+
+    cat = next(iter(provider._catalog_map.values()))
+    wrapper = provider.events(cat)[0]
+
+    range_changed_hits = []
+    wrapper.range_changed.connect(lambda: range_changed_hits.append(1))
+
+    new_start = datetime(2022, 6, 15, tzinfo=timezone.utc)
+    new_stop = datetime(2022, 6, 16, tzinfo=timezone.utc)
+    ev.range = (new_start, new_stop)
+
+    assert wrapper.start == new_start
+    assert wrapper.stop == new_stop
+    assert range_changed_hits
+
+
+def test_cocat_local_remove_catalog_does_not_double_emit(qtbot, qapp):
+    """Local remove_catalog triggers cocat.on_delete synchronously. The handler
+    must be idempotent — exactly one catalog_removed emission."""
+    mod, provider, room = _make_cocat_provider()
+    room.db._catalogues["c"] = _FakeCatalogue("c")
+    provider._load_room_catalogs("room1", room)
+
+    removed = []
+    provider.catalog_removed.connect(lambda c: removed.append(c))
+
+    cat = next(iter(provider._catalog_map.values()))
+    provider.remove_catalog(cat)
+
+    assert len(removed) == 1
+
+
+def test_cocat_local_add_event_does_not_double_wrap(qtbot, qapp):
+    """Local add_event triggers cocat.on_add_events synchronously. The handler
+    must dedupe so we don't end up with two wrappers for the same event."""
+    mod, provider, room = _make_cocat_provider()
+    room.db._catalogues["c"] = _FakeCatalogue("c")
+    provider._load_room_catalogs("room1", room)
+
+    cat = next(iter(provider._catalog_map.values()))
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+    t = datetime(2021, 1, 1, tzinfo=timezone.utc)
+    provider.add_event(cat, CatalogEvent(uuid="ev-new", start=t, stop=t + timedelta(hours=1)))
+
+    assert len(provider.events(cat)) == 1
 
 
 # --- Inline catalog editing ---

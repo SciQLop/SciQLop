@@ -82,6 +82,14 @@ class CocatEvent(CatalogEvent):
     def _apply(self) -> None:
         self._cocat_event.range = (self._start, self._stop)
 
+    def update_from_cocat(self, start: datetime, stop: datetime) -> None:
+        """Apply a remote (CRDT) range update without re-triggering _apply()."""
+        if start == self._start and stop == self._stop:
+            return
+        self._start = start
+        self._stop = stop
+        self.range_changed.emit()
+
 
 class CocatCatalogProvider(CatalogProvider):
     """Multi-room CoCat provider. Always registered; rooms are joined on demand."""
@@ -184,19 +192,79 @@ class CocatCatalogProvider(CatalogProvider):
             asyncio.ensure_future(room.close())
 
     def _load_room_catalogs(self, room_id: str, room) -> None:
+        room.db.on_create_catalogue(
+            lambda cocat_cat: self._wrap_remote_catalogue(room_id, cocat_cat)
+        )
         for cat_name in room.catalogues:
             cocat_cat = room.get_catalogue(cat_name)
-            sub_path = _decode_subpath(cocat_cat.attributes.get(_SUBPATH_ATTR))
-            cat = Catalog(
-                uuid=str(cocat_cat.uuid) if hasattr(cocat_cat, 'uuid') else cat_name,
-                name=cat_name,
-                provider=self,
-                path=[room_id, *sub_path],
-            )
-            self._catalog_map[cat.uuid] = cat
-            events = [CocatEvent(ev, parent=self) for ev in cocat_cat.events]
-            self._set_events(cat, events)
-            self.catalog_added.emit(cat)
+            self._wrap_catalogue(room_id, cocat_cat)
+
+    def _wrap_catalogue(self, room_id: str, cocat_cat) -> Catalog:
+        sub_path = _decode_subpath(cocat_cat.attributes.get(_SUBPATH_ATTR))
+        cat = Catalog(
+            uuid=str(cocat_cat.uuid) if hasattr(cocat_cat, 'uuid') else cocat_cat.name,
+            name=cocat_cat.name,
+            provider=self,
+            path=[room_id, *sub_path],
+        )
+        self._catalog_map[cat.uuid] = cat
+        wrappers = [self._wrap_event(ev) for ev in cocat_cat.events]
+        self._set_events(cat, wrappers)
+        self._subscribe_catalogue(cocat_cat, cat)
+        self.catalog_added.emit(cat)
+        return cat
+
+    def _wrap_remote_catalogue(self, room_id: str, cocat_cat) -> None:
+        uuid = str(cocat_cat.uuid) if hasattr(cocat_cat, 'uuid') else cocat_cat.name
+        if uuid in self._catalog_map:
+            return
+        self._wrap_catalogue(room_id, cocat_cat)
+
+    def _wrap_event(self, cocat_event) -> CocatEvent:
+        wrapper = CocatEvent(cocat_event, parent=self)
+        cocat_event.on_change_range(
+            lambda start, stop, w=wrapper: w.update_from_cocat(start, stop)
+        )
+        return wrapper
+
+    def _subscribe_catalogue(self, cocat_cat, cat: Catalog) -> None:
+        cocat_cat.on_delete(lambda c=cat: self._on_remote_catalogue_deleted(c))
+        cocat_cat.on_change_name(
+            lambda name, c=cat: self._on_remote_catalogue_renamed(c, name)
+        )
+        cocat_cat.on_add_events(
+            lambda evs, c=cat: self._on_remote_events_added(c, evs)
+        )
+        cocat_cat.on_remove_events(
+            lambda uuids, c=cat: self._on_remote_events_removed(c, uuids)
+        )
+
+    def _on_remote_catalogue_deleted(self, cat: Catalog) -> None:
+        if cat.uuid not in self._catalog_map:
+            return
+        self._catalog_map.pop(cat.uuid, None)
+        CatalogProvider.remove_catalog(self, cat)
+
+    def _on_remote_catalogue_renamed(self, cat: Catalog, new_name: str) -> None:
+        if cat.name == new_name:
+            return
+        cat.name = new_name
+        self.catalog_renamed.emit(cat)
+
+    def _on_remote_events_added(self, cat: Catalog, cocat_events) -> None:
+        existing = {e.uuid for e in self._events.get(cat.uuid, [])}
+        for cocat_ev in cocat_events:
+            uuid = str(cocat_ev.uuid)
+            if uuid in existing:
+                continue
+            wrapper = self._wrap_event(cocat_ev)
+            self._add_event(cat, wrapper)
+
+    def _on_remote_events_removed(self, cat: Catalog, uuids) -> None:
+        targets = {str(u) for u in uuids}
+        for wrapper in list(self._events.get(cat.uuid, [])):
+            if wrapper.uuid in targets:
+                self._remove_event(cat, wrapper)
 
     def _room_for_catalog(self, catalog: Catalog):
         """Get the Room instance for a catalog's room."""
@@ -225,9 +293,9 @@ class CocatCatalogProvider(CatalogProvider):
             start=event.start, stop=event.stop, author="SciQLop",
             uuid=event.uuid,
         )
-        cocat_cat.add_events([cocat_event])
-        wrapped = CocatEvent(cocat_event, parent=self)
+        wrapped = self._wrap_event(cocat_event)
         self._add_event(catalog, wrapped)
+        cocat_cat.add_events([cocat_event])
 
     def remove_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         cocat_cat = self._cocat_catalogue(catalog)
@@ -268,6 +336,7 @@ class CocatCatalogProvider(CatalogProvider):
         )
         self._catalog_map[cat.uuid] = cat
         self._set_events(cat, [])
+        self._subscribe_catalogue(cocat_cat, cat)
         self.catalog_added.emit(cat)
         return cat
 
@@ -276,21 +345,21 @@ class CocatCatalogProvider(CatalogProvider):
         if room is None:
             return
         cocat_cat = room.get_catalogue(catalog.uuid)
-        cocat_cat.name = new_name
         catalog.name = new_name
         self.catalog_renamed.emit(catalog)
+        cocat_cat.name = new_name
 
     def remove_catalog(self, catalog: Catalog) -> None:
         room = self._room_for_catalog(catalog)
         if room is None:
             return
         cocat_cat = room.get_catalogue(catalog.uuid)
+        self._catalog_map.pop(catalog.uuid, None)
+        super().remove_catalog(catalog)
         try:
             cocat_cat.delete()
         except ExceptionGroup:
             pass  # cocat observer bug: KeyError on _catalogue_change_callbacks cleanup
-        self._catalog_map.pop(catalog.uuid, None)
-        super().remove_catalog(catalog)
 
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
         if not self._rooms:
