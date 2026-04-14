@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+## [v0.11.4](https://github.com/SciQlop/SciQLop/tree/v0.11.4) (2026-04-14)
+
+[Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.11.3...v0.11.4)
+
+### Bug fixes (collaborative catalogs)
+
+- Fixed remote CRDT updates (catalog create/delete/rename, event add/remove, event range edits) not propagating to the UI until the user left and rejoined the room. The cocat provider now subscribes to `DB.on_create_catalogue` and to each catalogue's `on_delete`/`on_change_name`/`on_add_events`/`on_remove_events` callbacks on join, and wires every wrapped event to `Event.on_change_range`. Local writes reorder wrapper state updates before the cocat call so the synchronous echo callbacks are idempotent no-ops.
+- Fixed `CocatCatalogProvider` credentials not loading on macOS. The system keyring backend on macOS does not override `get_credential`, so the base-class lookup for `username=None` always returned `None` and stored passwords were unreachable on reload. The username is now persisted to YAML alongside the server URL and the password is fetched via `get_password(service, username)`. Existing Linux users with ≤0.11.3 YAML files (which never stored the username) fall back to `get_credential(service, None)` — supported by SecretService and Windows backends — and the username is written back to YAML on the next save, so no credentials are lost across the upgrade.
+
+### Bug fixes (Windows MSIX)
+
+- Fixed Windows Store certification failing on `v0.11.4.dev0` because `make_msix.ps1` concatenated `.0` onto the raw `pyproject.toml` version, producing `0.11.4.dev0.0` which violates the MSIX `{ushort}.{ushort}.{ushort}.{ushort}` format. The script now extracts the `major.minor.patch` prefix via regex and appends `.0` only to that.
+- Fixed Windows Store certification "Sign returned error: 0x800700C1" on files with `.cat` extension. `astroquery.jplspec` and `astroquery.linelists` ship plain-text molecular-line catalog data files (`catdir.cat`, `partfunc.cat`) that the Store Sign preprocessor treats as Microsoft Authenticode Catalogs (PKCS#7) and fails to parse as ASN.1. Both subpackages are now stripped from the bundle — speasy only uses `astroquery.utils.tap.core.TapPlus`, so the removal is surgical. `bundle.ps1` also runs a local signtool preflight over every `.cat` in the staged bundle to catch this class of failure before submission.
+
 ## [v0.11.3](https://github.com/SciQlop/SciQLop/tree/v0.11.3) (2026-04-13)
 
 [Full Changelog](https://github.com/SciQlop/SciQLop/compare/v0.11.2...v0.11.3)
