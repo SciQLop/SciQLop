@@ -3335,7 +3335,7 @@ wheels = [
 
 [[package]]
 name = "sciqlop"
-version = "0.11.2"
+version = "0.11.4.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "expression" },
