@@ -135,6 +135,21 @@ Get-ChildItem -Path $PackageDir -Recurse |
 # Remove Unix artifacts that trip the Windows Store pre-processing scanner (0x800700C1)
 Get-ChildItem -Path $PackageDir -Recurse -Include *.a,*.o,*.so,*.dylib |
     Remove-Item -Force
+
+# Strip astroquery.jplspec and astroquery.linelists — both ship plain-text data
+# files with a .cat extension (catdir.cat, partfunc.cat) which collide with
+# Windows Microsoft Catalog (PKCS#7) files. The Store Sign preprocessor
+# signtool's them by extension and fails with 0x800700C1 when they don't parse
+# as ASN.1. speasy only uses astroquery.utils.tap.core.TapPlus (for the CSA
+# provider), and nothing else in astroquery imports jplspec/linelists, so
+# removing these two subpackages is safe.
+foreach ($sub in @("jplspec", "linelists")) {
+    $target = "$PackageDir\python\Lib\site-packages\astroquery\$sub"
+    if (Test-Path $target) {
+        Write-Host "Removing astroquery subpackage with .cat data files: $target"
+        Remove-Item -Recurse -Force $target
+    }
+}
 # Node.js ships extensionless Unix shell scripts alongside .cmd wrappers
 foreach ($dir in @("$PackageDir\node", "$PackageDir\node\node_modules")) {
     if (Test-Path $dir) {
@@ -208,5 +223,86 @@ if ($InvalidBinaries.Count -gt 0) {
     exit 1
 }
 Write-Host "All PE binaries valid (removed $($RemovedForeignArch.Count) non-amd64 stub(s))."
+
+########################################
+# Signtool preflight — simulate Store Sign preprocessor
+#
+# The Windows Store preprocessing "Sign" step runs signtool on every file
+# with an Authenticode-signable extension and fails the whole submission
+# with 0x800700C1 when signtool can't parse one. Historical root causes:
+# foreign-arch PE stubs (distlib, debugpy — now caught by the PE validator
+# above) and plain-text data files whose extension collides with a
+# Microsoft Authenticode format (astroquery .cat molecular-line catalogs).
+# This block signs each non-PE signable file against a throwaway
+# self-signed cert so the build fails here instead of after a Store upload
+# round-trip. PE extensions (.exe/.dll/.pyd) are skipped — already vetted
+# by the validator above.
+########################################
+
+Write-Host "Signtool preflight (simulating Store Sign preprocessor)..."
+
+$SigntoolExe = (Get-Command signtool.exe -ErrorAction SilentlyContinue).Source
+if (-not $SigntoolExe) {
+    $LatestSdk = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Directory `
+            -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -match '^10\.' } |
+        Sort-Object Name -Descending | Select-Object -First 1
+    if ($LatestSdk) {
+        $SigntoolExe = Join-Path $LatestSdk.FullName "x64\signtool.exe"
+    }
+}
+if (-not $SigntoolExe -or -not (Test-Path $SigntoolExe)) {
+    Write-Error "signtool.exe not found; cannot run Store preflight"
+    exit 1
+}
+
+$PreflightCert = New-SelfSignedCertificate -Type CodeSigningCert `
+    -Subject "CN=SciQLopPreflight" -KeyUsage DigitalSignature -KeySpec Signature `
+    -HashAlgorithm SHA256 -CertStoreLocation "Cert:\CurrentUser\My"
+$PreflightPfx = Join-Path $env:TEMP "sciqlop-preflight.pfx"
+$PreflightPwd = "preflight"
+Export-PfxCertificate -Cert $PreflightCert -FilePath $PreflightPfx `
+    -Password (ConvertTo-SecureString -String $PreflightPwd -Force -AsPlainText) | Out-Null
+Remove-Item "Cert:\CurrentUser\My\$($PreflightCert.Thumbprint)" -Force
+
+# Non-PE Authenticode-signable extensions. See Microsoft's "Authenticode"
+# specification for the full list; PE-family extensions are covered by the
+# PE validator above.
+$SignablePatterns = @("*.cat", "*.cab", "*.msi", "*.msp",
+                      "*.ps1", "*.psm1", "*.psd1", "*.ps1xml")
+$PreflightTemp = Join-Path $env:TEMP "sciqlop-preflight-test"
+if (Test-Path $PreflightTemp) { Remove-Item -Recurse -Force $PreflightTemp }
+New-Item -ItemType Directory -Path $PreflightTemp -Force | Out-Null
+$PreflightFailures = @()
+$PreflightIdx = 0
+
+Get-ChildItem -Path $PackageDir -Recurse -File -Include $SignablePatterns |
+    ForEach-Object {
+        $PreflightIdx++
+        $scratch = Join-Path $PreflightTemp "$PreflightIdx$($_.Extension)"
+        Copy-Item -LiteralPath $_.FullName -Destination $scratch -Force
+        $output = & $SigntoolExe sign /f $PreflightPfx /p $PreflightPwd /fd SHA256 $scratch 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            $PreflightFailures += [PSCustomObject]@{
+                Path = $_.FullName
+                Output = ($output | Out-String).Trim()
+            }
+        }
+        Remove-Item -LiteralPath $scratch -Force -ErrorAction SilentlyContinue
+    }
+
+Remove-Item -Recurse -Force $PreflightTemp -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $PreflightPfx -Force -ErrorAction SilentlyContinue
+
+if ($PreflightFailures.Count -gt 0) {
+    Write-Host ("Signtool preflight FAILED on {0} file(s):" -f $PreflightFailures.Count)
+    foreach ($f in $PreflightFailures) {
+        Write-Host "  $($f.Path)"
+        $f.Output.Split([Environment]::NewLine) | ForEach-Object { Write-Host "    $_" }
+    }
+    Write-Error "Store preflight: $($PreflightFailures.Count) file(s) would be rejected by the Store Sign preprocessor (0x800700C1 or similar)."
+    exit 1
+}
+Write-Host "Signtool preflight OK ($PreflightIdx non-PE signable file(s) checked)."
 
 Write-Host "Bundle complete at $PackageDir"
