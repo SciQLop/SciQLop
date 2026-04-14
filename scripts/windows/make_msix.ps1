@@ -37,7 +37,14 @@ foreach ($asset in $Sizes) {
 ########################################
 
 $VersionLine = Select-String -Path "$SciQLopRoot\pyproject.toml" -Pattern '^version\s*=\s*"(.+)"'
-$MsixVersion = "$($VersionLine.Matches.Groups[1].Value).0"
+$RawVersion = $VersionLine.Matches.Groups[1].Value
+# MSIX requires major.minor.build.revision (four unsigned shorts). Strip any
+# PEP 440 suffix (.dev0, a1, b2, rc3, .post1) and pad to four parts.
+if ($RawVersion -notmatch '^(\d+)\.(\d+)\.(\d+)') {
+    throw "Cannot derive MSIX version from pyproject.toml value '$RawVersion'"
+}
+$MsixVersion = "$($Matches[1]).$($Matches[2]).$($Matches[3]).0"
+Write-Host "MSIX version: $MsixVersion (from pyproject '$RawVersion')"
 
 $ManifestTemplate = Get-Content "$ScriptDir\AppxManifest.xml.in" -Raw
 $Manifest = $ManifestTemplate -replace "VERSION_PLACEHOLDER", $MsixVersion
