@@ -4,6 +4,7 @@ import traceback
 import numpy as np
 
 from SciQLop.core.enums import DataOrder, GraphType
+from SciQLop.core.plot_hints import PlotHints
 from SciQLop.components import sciqlop_logging
 from speasy.products import SpeasyVariable, VariableAxis
 from speasy.core import datetime64_to_epoch
@@ -66,10 +67,26 @@ class DataProvider:
     def graph_type(self, node) -> GraphType:
         pass
 
-    def _get_data(self, node, start, stop) -> Union[
+    def plot_hints(self, node) -> PlotHints:
+        return PlotHints()
+
+    def plot_hints_from_variable(self, node, variable) -> PlotHints:
+        """Compute extra hints from a successfully fetched data variable.
+
+        Called at most once per plot, after the first fetch that returned
+        non-empty data. Defaults to no extra hints.
+        """
+        return PlotHints()
+
+    def _get_data(self, node, start, stop, on_variable=None) -> Union[
         List[np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         try:
             v = self.get_data(node, start, stop)
+            if v is not None and on_variable is not None:
+                try:
+                    on_variable(v)
+                except Exception:
+                    log.debug("on_variable callback failed", exc_info=True)
             if v is None:
                 return []
             if isinstance(v, list) or isinstance(v, tuple):

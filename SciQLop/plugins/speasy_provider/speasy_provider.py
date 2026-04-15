@@ -11,6 +11,8 @@ from SciQLop.components.theming import register_icon, get_icon
 from SciQLop.components import sciqlop_logging
 from SciQLop.core.enums import ParameterType, GraphType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder
+from SciQLop.core.plot_hints import PlotHints
+from SciQLop.core.istp_hints import istp_metadata_to_hints
 from SciQLop import __version__ as sciqlop_version
 from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
 
@@ -112,9 +114,14 @@ def data_serie_type(param: ParameterIndex):
 def get_node_meta(node):
     meta = {}
     for name, child in node.__dict__.items():
-        if isinstance(child, str):
-            if not name.startswith("_"):
-                meta[name] = child
+        if name.startswith("_"):
+            continue
+        if isinstance(child, (str, int, float)):
+            meta[name] = child
+        elif isinstance(child, (list, tuple)) and all(
+            isinstance(v, (str, int, float)) for v in child
+        ):
+            meta[name] = list(child)
     return meta
 
 
@@ -200,6 +207,30 @@ class SpeasyPlugin(DataProvider):
         if param_type == ParameterType.Spectrogram:
             return GraphType.ColorMap
         return GraphType.Unknown
+
+    def plot_hints(self, node: ProductsModelNode) -> PlotHints:
+        try:
+            return istp_metadata_to_hints(node.metadata())
+        except Exception:
+            log.debug("plot_hints failed for %s", node, exc_info=True)
+            return PlotHints()
+
+    def plot_hints_from_variable(self, node: ProductsModelNode, variable: SpeasyVariable) -> PlotHints:
+        try:
+            meta = dict(variable.meta or {})
+            if len(variable.axes) > 1:
+                axis = variable.axes[1]
+                meta["_depend_1"] = {
+                    **(dict(axis.meta) if axis.meta else {}),
+                    "UNITS": axis.unit,
+                    "LABLAXIS": axis.name,
+                }
+            if variable.unit and "UNITS" not in meta:
+                meta["UNITS"] = variable.unit
+            return istp_metadata_to_hints(meta)
+        except Exception:
+            log.debug("plot_hints_from_variable failed for %s", node, exc_info=True)
+            return PlotHints()
 
 
 def load(*args):
