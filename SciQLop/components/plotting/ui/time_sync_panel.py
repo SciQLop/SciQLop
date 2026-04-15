@@ -13,6 +13,9 @@ from SciQLop.core import TimeRange
 from SciQLop.core import listify
 from SciQLop.components import sciqlop_logging
 from SciQLop.components.plotting.backend.data_provider import providers, DataProvider
+import weakref
+
+from SciQLop.core.plot_hints import apply_plot_hints, combine_hints, merge_hints, PlotHints
 from SciQLop.core.property import SciQLopProperty
 from SciQLop.core.mime import decode_mime
 from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
@@ -24,14 +27,136 @@ log = sciqlop_logging.getLogger(__name__)
 register_icon("QCP", QIcon("://icons/QCP.png"))
 
 
+def _variable_is_successful(v) -> bool:
+    if v is None:
+        return False
+    try:
+        return len(v) > 0
+    except TypeError:
+        return True
+
+
+import shiboken6
+
+_PLOT_REGISTRIES: dict[int, "_PlotHintsRegistry"] = {}
+
+
+def _plot_key(plot) -> Optional[int]:
+    try:
+        return int(shiboken6.getCppPointer(plot)[0])
+    except Exception:
+        return id(plot)
+
+
+def _graph_key(graph) -> int:
+    try:
+        return int(shiboken6.getCppPointer(graph)[0])
+    except Exception:
+        return id(graph)
+
+
+class _PlotHintsRegistry:
+    """Per-plot accumulator of per-graph PlotHints.
+
+    When several products are plotted on one plot (e.g. two line products),
+    the y-axis label becomes the comma-joined list of each product's composed
+    label. Graphs auto-deregister via their QObject.destroyed signal so
+    removing a product cleans up the label without a manual refresh.
+
+    Keyed by C++ pointers (not by Python wrapper identity, which shiboken
+    does not preserve across calls).
+    """
+
+    def __init__(self, plot):
+        self._plot = plot  # strong ref; evicted from _PLOT_REGISTRIES on destroyed
+        self._entries: dict[int, PlotHints] = {}
+
+    def register(self, graph, hints: PlotHints) -> int:
+        key = _graph_key(graph)
+        self._entries[key] = hints
+        try:
+            graph.destroyed.connect(lambda *_, k=key: self._drop(k))
+        except (AttributeError, RuntimeError):
+            log.debug("graph has no destroyed signal; leak-resistant cleanup off")
+        self._recompute()
+        return key
+
+    def update_if_present(self, key: int, hints: PlotHints) -> None:
+        if key in self._entries:
+            self._entries[key] = hints
+            self._recompute()
+
+    def _drop(self, key: int) -> None:
+        if self._entries.pop(key, None) is not None:
+            self._recompute()
+
+    def _recompute(self) -> None:
+        try:
+            apply_plot_hints(self._plot, combine_hints(list(self._entries.values())))
+        except RuntimeError:
+            log.debug("plot already destroyed during hints recompute")
+
+
+def _get_or_create_registry(plot) -> Optional["_PlotHintsRegistry"]:
+    if plot is None:
+        return None
+    key = _plot_key(plot)
+    if key is None:
+        return _PlotHintsRegistry(plot)
+    reg = _PLOT_REGISTRIES.get(key)
+    if reg is None:
+        reg = _PlotHintsRegistry(plot)
+        _PLOT_REGISTRIES[key] = reg
+        try:
+            plot.destroyed.connect(lambda *_, k=key: _PLOT_REGISTRIES.pop(k, None))
+        except (AttributeError, RuntimeError):
+            log.debug("plot has no destroyed signal; registry leaks until app exit")
+    return reg
+
+
+class _PostFetchHintsApplier:
+    """Refines a graph's hints via provider.plot_hints_from_variable() on the
+    first successful fetch, then updates the plot's registry entry — so the
+    combined label reflects the richer post-fetch information."""
+
+    def __init__(self, provider: DataProvider, node, registry: Optional["_PlotHintsRegistry"],
+                 graph_key: int, base_hints: PlotHints):
+        self._provider = provider
+        self._node = node
+        self._registry_ref = weakref.ref(registry) if registry is not None else None
+        self._graph_key = graph_key
+        self._base_hints = base_hints
+        self._applied = False
+
+    def observe(self, variable) -> None:
+        if self._applied:
+            return
+        if not _variable_is_successful(variable):
+            return
+        reg = self._registry_ref() if self._registry_ref is not None else None
+        if reg is None:
+            self._applied = True
+            return
+        try:
+            extra = self._provider.plot_hints_from_variable(self._node, variable)
+        except Exception:
+            log.debug("plot_hints_from_variable failed for %s", self._node, exc_info=True)
+            self._applied = True
+            return
+        reg.update_if_present(self._graph_key, merge_hints(self._base_hints, extra))
+        self._applied = True
+
+
 class _plot_product_callback:
-    def __init__(self, provider: DataProvider, node):
+    def __init__(self, provider: DataProvider, node, post_fetch: Optional["_PostFetchHintsApplier"] = None):
         self.provider = provider
         self.node = node
+        self._post_fetch = post_fetch
 
     def __call__(self, start, stop):
         try:
-            return self.provider._get_data(self.node, start, stop)
+            observer = self._post_fetch.observe if self._post_fetch is not None else None
+            return self.provider._get_data(self.node, start, stop, on_variable=observer)
         except Exception as e:
             log.error(f"Error getting data for {self.node}: {e}")
             return []
@@ -47,10 +172,11 @@ def _y_is_descending(y):
 
 
 class _specgram_callback:
-    def __init__(self, provider: DataProvider, node):
+    def __init__(self, provider: DataProvider, node, post_fetch: Optional["_PostFetchHintsApplier"] = None):
         self.provider = provider
         self.node = node
         self._y_is_descending_ = None
+        self._post_fetch = post_fetch
 
     def _y_is_descending(self, y):
         if self._y_is_descending_ is None:
@@ -60,7 +186,8 @@ class _specgram_callback:
 
     def __call__(self, start, stop):
         try:
-            x, y, z = self.provider._get_data(self.node, start, stop)
+            observer = self._post_fetch.observe if self._post_fetch is not None else None
+            x, y, z = self.provider._get_data(self.node, start, stop, on_variable=observer)
             if self._y_is_descending(y):
                 if len(y.shape) == 1:
                     y = y[::-1].copy()
@@ -97,6 +224,42 @@ def _theme_from_palette(palette: dict[str, str], parent=None) -> SciQLopTheme:
 def _set_product_path(r, product_path_str):
     graph = r[1] if hasattr(r, '__iter__') else r
     graph.setProperty("sqp_product_path", product_path_str)
+
+
+def _plot_from_result(r, target):
+    """Extract the plot object from target.plot()'s return value.
+
+    target.plot() may return a graph (when target is already a SciQLopPlot),
+    or a (plot, graph) tuple (when target is a SciQLopMultiPlotPanel that
+    created a new subplot). In the first case the plot is the target itself.
+    """
+    if hasattr(r, '__iter__'):
+        return r[0]
+    if isinstance(target, SciQLopPlot):
+        return target
+    return None
+
+
+def _safe_plot_hints(provider, node) -> PlotHints:
+    try:
+        return provider.plot_hints(node)
+    except Exception:
+        log.debug("plot_hints failed for %s", node, exc_info=True)
+        return PlotHints()
+
+
+def _graph_from_result(r):
+    return r[1] if hasattr(r, '__iter__') else r
+
+
+def _register_graph_hints(provider, node, r, target) -> Optional["_PostFetchHintsApplier"]:
+    plot = _plot_from_result(r, target)
+    registry = _get_or_create_registry(plot)
+    if registry is None:
+        return None
+    base_hints = _safe_plot_hints(provider, node)
+    graph_key = registry.register(_graph_from_result(r), base_hints)
+    return _PostFetchHintsApplier(provider, node, registry, graph_key, base_hints)
 
 
 def _resolve_plot_target(p, kwargs):
@@ -145,6 +308,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
                         if existing_plot is not None:
                             r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
+                    callback._post_fetch = _register_graph_hints(provider, node, r, target)
                     return r
                 elif node.parameter_type() == ParameterType.Spectrogram:
                     callback = _specgram_callback(provider, node)
@@ -154,6 +318,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
                     if not hasattr(r, '__iter__') and existing_plot is not None:
                         r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
+                    callback._post_fetch = _register_graph_hints(provider, node, r, target)
                     return r
     log.debug(f"Product not found: {product}")
     return None
