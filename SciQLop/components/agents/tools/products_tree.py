@@ -37,9 +37,24 @@ def _split_path(path: str) -> List[str]:
 
 def _render_root(pm, node_types) -> str:
     root = pm.node([])
-    if root is None:
+    if root is not None:
+        return _render_folder([], root, node_types)
+    # ProductsModel has no explicit root node — enumerate top-level children
+    # via the QAbstractItemModel API (rowCount at invalid parent index).
+    from PySide6.QtCore import QModelIndex
+    count = pm.rowCount(QModelIndex())
+    if count == 0:
         return "# Products tree is empty — no providers loaded."
-    return _render_folder([], root, node_types)
+    names = []
+    for i in range(count):
+        idx = pm.index(i, 0, QModelIndex())
+        names.append(idx.data() or f"<row {i}>")
+    lines = ["# `<root>`", "", f"## Providers ({count})", ""]
+    for name in names:
+        lines.append(f"- 📁 **`{name}`**")
+    lines.append("")
+    lines.append(f"Drill deeper with `sciqlop_products_tree('{names[0]}')`.")
+    return "\n".join(lines)
 
 
 def _render_folder(parts: List[str], node, node_types) -> str:
