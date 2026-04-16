@@ -14,12 +14,24 @@ from PySide6.QtCore import QMimeData, QStringListModel, Qt, QTimer, QUrl
 from PySide6.QtGui import (
     QImage,
     QKeyEvent,
+    QStandardItem,
+    QStandardItemModel,
     QTextCursor,
     QTextDocument,
     QTextDocumentFragment,
     QTextImageFormat,
 )
-from PySide6.QtWidgets import QCompleter, QTextBrowser, QTextEdit
+from PySide6.QtWidgets import (
+    QCompleter,
+    QLineEdit,
+    QListView,
+    QTextBrowser,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+from .history import PromptHistory
 
 
 @dataclass
@@ -143,7 +155,7 @@ class TranscriptView(QTextBrowser):
 class ChatInput(QTextEdit):
     _DEFAULT_PLACEHOLDER = (
         "Ask about the current SciQLop state… "
-        "(Ctrl+V to paste images, / for commands)"
+        "(Ctrl+V to paste images, / for commands, ↑↓ history, Ctrl+R search)"
     )
 
     def __init__(self, tempdir: Path, parent=None):
@@ -160,6 +172,12 @@ class ChatInput(QTextEdit):
         self._completer.setCompletionMode(QCompleter.CompletionMode.PopupCompletion)
         self._completer.setCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
         self._completer.activated.connect(self._insert_completion)
+
+        self._history = PromptHistory()
+        self._history_index = -1
+        self._draft = ""
+
+        self._search_popup: _HistorySearchPopup | None = None
 
     def set_completions(self, words: List[str]) -> None:
         self._completer_model.setStringList(sorted(set(words)))
@@ -185,6 +203,40 @@ class ChatInput(QTextEdit):
         cursor.insertText(completion + " ")
         self.setTextCursor(cursor)
 
+    def _navigate_history(self, direction: int) -> bool:
+        entries = self._history.entries()
+        if not entries:
+            return False
+        if self._history_index == -1:
+            self._draft = self.toPlainText()
+        new_index = self._history_index + direction
+        if new_index < -1:
+            return False
+        if new_index >= len(entries):
+            return False
+        self._history_index = new_index
+        if new_index == -1:
+            self.setPlainText(self._draft)
+        else:
+            self.setPlainText(entries[new_index])
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.setTextCursor(cursor)
+        return True
+
+    def _open_history_search(self) -> None:
+        if self._search_popup is None:
+            self._search_popup = _HistorySearchPopup(self._history, self)
+            self._search_popup.prompt_selected.connect(self._on_history_selected)
+        self._search_popup.show_at(self)
+
+    def _on_history_selected(self, prompt: str) -> None:
+        self.setPlainText(prompt)
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        self.setTextCursor(cursor)
+        self.setFocus()
+
     def keyPressEvent(self, event: QKeyEvent) -> None:
         popup = self._completer.popup()
         if popup and popup.isVisible():
@@ -198,6 +250,20 @@ class ChatInput(QTextEdit):
             ):
                 event.ignore()
                 return
+
+        # Ctrl+R → fuzzy history search
+        if event.key() == Qt.Key.Key_R and event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            self._open_history_search()
+            return
+
+        # Up/Down → history navigation (only when cursor is on first/last line)
+        if event.key() == Qt.Key.Key_Up and self._cursor_on_first_line():
+            if self._navigate_history(1):
+                return
+        if event.key() == Qt.Key.Key_Down and self._cursor_on_last_line():
+            if self._navigate_history(-1):
+                return
+
         super().keyPressEvent(event)
         token = self._current_slash_token()
         if len(token) >= 1 and self._completer_model.rowCount() > 0:
@@ -211,6 +277,16 @@ class ChatInput(QTextEdit):
         else:
             if popup:
                 popup.hide()
+
+    def _cursor_on_first_line(self) -> bool:
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.StartOfLine)
+        return cursor.atStart()
+
+    def _cursor_on_last_line(self) -> bool:
+        cursor = self.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.EndOfLine)
+        return cursor.atEnd()
 
     def canInsertFromMimeData(self, source: QMimeData) -> bool:
         if source.hasImage() or source.hasUrls():
@@ -257,4 +333,100 @@ class ChatInput(QTextEdit):
         images = list(self._pending_images)
         self._pending_images.clear()
         self.clear()
+        self._history_index = -1
+        self._draft = ""
+        if body:
+            self._history.add(body)
         return body, images
+
+
+class _HistorySearchPopup(QWidget):
+    """Overlay popup for fuzzy-searching prompt history (Ctrl+R)."""
+
+    from PySide6.QtCore import Signal
+    prompt_selected = Signal(str)
+
+    def __init__(self, history: PromptHistory, parent: QWidget):
+        super().__init__(parent, Qt.WindowType.Popup)
+        self._history = history
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(2)
+
+        self._input = QLineEdit(self)
+        self._input.setPlaceholderText("Search history…")
+        self._input.textChanged.connect(self._on_query_changed)
+        self._input.installEventFilter(self)
+        layout.addWidget(self._input)
+
+        self._list = QListView(self)
+        self._model = QStandardItemModel(self)
+        self._list.setModel(self._model)
+        self._list.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self._list.clicked.connect(self._on_item_clicked)
+        layout.addWidget(self._list)
+
+        self.setMinimumWidth(400)
+        self.setMaximumHeight(300)
+
+    def show_at(self, anchor: QWidget) -> None:
+        self._input.clear()
+        self._refresh_results("")
+        pos = anchor.mapToGlobal(anchor.rect().topLeft())
+        pos.setY(pos.y() - self.sizeHint().height() - 4)
+        self.move(pos)
+        self.show()
+        self._input.setFocus()
+
+    def _on_query_changed(self, text: str) -> None:
+        self._refresh_results(text)
+
+    def _refresh_results(self, query: str) -> None:
+        self._model.clear()
+        for entry in self._history.search(query, limit=20):
+            item = QStandardItem(_truncate(entry, 120))
+            item.setData(entry, Qt.ItemDataRole.UserRole)
+            item.setEditable(False)
+            self._model.appendRow(item)
+
+    def _on_item_clicked(self, index) -> None:
+        prompt = index.data(Qt.ItemDataRole.UserRole)
+        if prompt:
+            self.prompt_selected.emit(prompt)
+        self.hide()
+
+    def eventFilter(self, obj, event) -> bool:
+        if obj is self._input and isinstance(event, QKeyEvent):
+            if event.key() == Qt.Key.Key_Escape:
+                self.hide()
+                return True
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                idx = self._list.currentIndex()
+                if not idx.isValid() and self._model.rowCount() > 0:
+                    idx = self._model.index(0, 0)
+                if idx.isValid():
+                    prompt = idx.data(Qt.ItemDataRole.UserRole)
+                    if prompt:
+                        self.prompt_selected.emit(prompt)
+                self.hide()
+                return True
+            if event.key() == Qt.Key.Key_Down:
+                idx = self._list.currentIndex()
+                next_row = (idx.row() + 1) if idx.isValid() else 0
+                if next_row < self._model.rowCount():
+                    self._list.setCurrentIndex(self._model.index(next_row, 0))
+                return True
+            if event.key() == Qt.Key.Key_Up:
+                idx = self._list.currentIndex()
+                if idx.isValid() and idx.row() > 0:
+                    self._list.setCurrentIndex(self._model.index(idx.row() - 1, 0))
+                return True
+        return super().eventFilter(obj, event)
+
+
+def _truncate(text: str, max_len: int) -> str:
+    single_line = text.replace("\n", " ").strip()
+    if len(single_line) <= max_len:
+        return single_line
+    return single_line[:max_len - 1] + "…"
