@@ -45,6 +45,7 @@ class AgentChatDock(QWidget):
         self._current: Optional[str] = None
         self._allow_writes = False
         self._turn_task: Optional[asyncio.Task] = None
+        self._bg_tasks: set[asyncio.Task] = set()
 
         self._build_ui()
         self.refresh_backends()
@@ -180,7 +181,7 @@ class AgentChatDock(QWidget):
         self._populate_session_list(be)
         self._transcript.render_messages(session.messages)
         self._transcript.flush_now()
-        asyncio.ensure_future(self._refresh_completions())
+        self._spawn(self._refresh_completions())
 
     def _populate_models(self, backend: AgentBackend) -> None:
         self._model_combo.blockSignals(True)
@@ -205,7 +206,7 @@ class AgentChatDock(QWidget):
             return
         value = self._model_combo.itemData(index)
         backend = self._sessions[self._current].backend
-        asyncio.ensure_future(backend.set_model(value))
+        self._spawn(backend.set_model(value))
         self._set_status(f"Model → {self._model_combo.currentText()}")
 
     def _on_writes_toggled(self, state: int) -> None:
@@ -224,7 +225,7 @@ class AgentChatDock(QWidget):
         session.resume_id = None
         self._purge_replay_tempdir(self._current)
         self._transcript.render_messages(session.messages)
-        asyncio.ensure_future(self._reset_backend(session))
+        self._spawn(self._reset_backend(session))
 
     async def _reset_backend(self, session: _AgentSession) -> None:
         await session.backend.reset()
@@ -249,7 +250,7 @@ class AgentChatDock(QWidget):
         self._set_status(
             f"Resumed session {session_id[:8]} ({len(session.messages)} messages)"
         )
-        asyncio.ensure_future(backend.resume(session_id))
+        self._spawn(backend.resume(session_id))
 
     def _purge_replay_tempdir(self, backend_name: str) -> None:
         shutil.rmtree(self._tempdir / backend_name / "session_replay", ignore_errors=True)
@@ -299,6 +300,7 @@ class AgentChatDock(QWidget):
             )
             self._transcript.render_messages(session.messages)
             self._set_status("Cancelled.")
+            raise
         except Exception as e:
             session.messages.append(
                 ChatMessage(
@@ -323,7 +325,7 @@ class AgentChatDock(QWidget):
         if self._current is None or self._turn_task is None:
             return
         backend = self._sessions[self._current].backend
-        asyncio.ensure_future(backend.cancel())
+        self._spawn(backend.cancel())
 
     def _set_running(self, running: bool) -> None:
         self._send_btn.setVisible(not running)
@@ -375,6 +377,12 @@ class AgentChatDock(QWidget):
         except Exception:
             cmds = []
         self._input.set_completions(cmds)
+
+    def _spawn(self, coro) -> asyncio.Task:
+        task = asyncio.ensure_future(coro)
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
+        return task
 
     def closeEvent(self, event):
         shutil.rmtree(self._tempdir, ignore_errors=True)
