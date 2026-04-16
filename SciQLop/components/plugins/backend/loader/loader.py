@@ -103,10 +103,14 @@ def background_load(plugin, main_window):
 
 
 def list_plugins_as_modules(plugin_path):
+    if not os.path.isdir(plugin_path):
+        return []
     return [f[:-3] for f in os.listdir(plugin_path) if f[-3:] == '.py' and f != '__init__.py']
 
 
 def list_plugins_as_packages(plugin_path):
+    if not os.path.isdir(plugin_path):
+        return []
     return [f for f in os.listdir(plugin_path) if os.path.isdir(f"{plugin_path}/{f}") and not f.startswith(('_', '.'))]
 
 
