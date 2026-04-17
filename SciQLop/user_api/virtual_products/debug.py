@@ -13,7 +13,8 @@ def handle_debug(args, func, func_name: str, entry: RegistryEntry, type_info,
     """Open/reuse a scratch pad panel and run callback with validation."""
     result = None
     if eval_error is None:
-        result = validate_with_data(cached_data, type_info.product_type, type_info.labels)
+        result = validate_with_data(cached_data, type_info.product_type, type_info.labels,
+                                    eval_elapsed, start=start, stop=stop)
 
     def _do_debug_ui():
         from SciQLop.components.plotting.ui.diagnostic_overlay import DiagnosticOverlay
@@ -50,8 +51,14 @@ def handle_debug(args, func, func_name: str, entry: RegistryEntry, type_info,
         def _on_data_fetched(data, elapsed):
             if data is None:
                 return
-            n_pts, shape, dtype = _extract_data_info(data)
-            overlay.show_success(n_pts, shape, dtype, elapsed)
+            tr = panel.time_range
+            vr = validate_with_data(data, type_info.product_type, type_info.labels,
+                                    elapsed, start=tr.start(), stop=tr.stop())
+            if vr.diagnostics:
+                overlay.show_diagnostics(vr.diagnostics)
+            else:
+                n_pts, shape, dtype = _extract_data_info(data)
+                overlay.show_success(n_pts, shape, dtype, elapsed)
 
         entry.wrapper.after_call = _on_data_fetched
 

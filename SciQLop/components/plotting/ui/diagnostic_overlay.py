@@ -10,6 +10,11 @@ if TYPE_CHECKING:
 
 from SciQLopPlots import OverlayLevel, OverlaySizeMode, OverlayPosition
 
+# These enum values exist in C++ but aren't exported in the Python stub
+_INFO = OverlayLevel(0)
+_COMPACT = OverlaySizeMode(0)
+_TOP = OverlayPosition(0)
+
 
 class _DiagnosticDispatcher(QObject):
     """Thread-safe dispatcher: emit signals from any thread, overlay updates in GUI thread."""
@@ -22,15 +27,31 @@ def _format_diagnostics(diagnostics: List[Diagnostic]) -> tuple[str, OverlayLeve
     has_error = any(d.level == "error" for d in diagnostics)
     lines = []
     for d in diagnostics:
-        prefix = "[X]" if d.level == "error" else "[!]"
-        lines.append(f"{prefix} {d.message}")
+        if d.level == "error":
+            lines.append(f"ERROR: {d.message}")
+        elif d.level == "warning":
+            lines.append(f"WARNING: {d.message}")
+        else:
+            lines.append(d.message)
     text = "\n\n".join(lines)
     level = OverlayLevel.Error if has_error else OverlayLevel.Warning
     return text, level
 
 
+def _fmt_elapsed(elapsed: float) -> str:
+    if elapsed < 0.001:
+        return f"{elapsed * 1_000_000:.0f}\u00b5s"
+    if elapsed < 1:
+        return f"{elapsed * 1000:.0f}ms"
+    return f"{elapsed:.2f}s"
+
+
 def _format_success(n_points: int, shape: str, dtype: str, elapsed: float) -> str:
-    return f"[ok] {n_points} pts, {shape} {dtype}, {elapsed:.2f}s"
+    lines = [
+        f"Data: {n_points:,} points, shape {shape}, dtype {dtype}",
+        f"Execution time: {_fmt_elapsed(elapsed)}",
+    ]
+    return "\n".join(lines)
 
 
 class DiagnosticOverlay:
@@ -72,7 +93,8 @@ class DiagnosticOverlay:
         size_mode = OverlaySizeMode.FullWidget if level == OverlayLevel.Error else OverlaySizeMode.FitContent
         for plot in self._plots():
             ov = plot.overlay()
-            ov.show_message(text, level, size_mode, OverlayPosition.Top)
+            ov.set_collapsible(True)
+            ov.show_message(text, level, size_mode, _TOP)
 
     def _on_success(self, n_points: int, shape: str, dtype: str, elapsed: float):
         text = _format_success(n_points, shape, dtype, elapsed)
@@ -81,8 +103,8 @@ class DiagnosticOverlay:
         plots = self._plots()
         if plots:
             ov = plots[0].overlay()
-            ov.show_message(text, OverlayLevel.Info, OverlaySizeMode.Compact, OverlayPosition.Top)
-            # Clear overlays on other plots
+            ov.set_collapsible(True)
+            ov.show_message(text, _INFO, OverlaySizeMode.FitContent, _TOP)
             for plot in plots[1:]:
                 plot.overlay().clear_message()
 
