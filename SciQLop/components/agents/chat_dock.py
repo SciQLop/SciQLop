@@ -182,6 +182,23 @@ class AgentChatDock(QWidget):
         self._transcript.render_messages(session.messages)
         self._transcript.flush_now()
         self._spawn(self._refresh_completions())
+        on_activated = getattr(be, "on_activated", None)
+        if on_activated is not None:
+            try:
+                on_activated()
+            except Exception:
+                pass
+
+    def reload_backend_models(self) -> None:
+        """Re-read `model_choices` from the current backend and repopulate the
+        dropdown. Plugins call this after an event that changes the model list
+        (e.g. an auth flow that unlocks more models)."""
+        if self._current is None:
+            return
+        session = self._sessions.get(self._current)
+        if session is None:
+            return
+        self._populate_models(session.backend)
 
     def _populate_models(self, backend: AgentBackend) -> None:
         self._model_combo.blockSignals(True)
