@@ -1,6 +1,6 @@
 from .enums import ScaleType
 from .protocol import Plot
-from ._graphs import Graph, ColorMap, to_plottable, ensure_arrays_of_double
+from ._graphs import Graph, ColorMap, Histogram2D, to_plottable, ensure_arrays_of_double
 from typing import Optional, Union, List, Any
 from ..virtual_products import VirtualProduct
 from SciQLop.core import TimeRange
@@ -13,6 +13,7 @@ from SciQLopPlots import GraphType as _GraphType
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot_product
 from ._thread_safety import on_main_thread
 from ._overlay import Overlay
+from .._annotations import experimental_api
 
 from speasy.core import AnyDateTimeType
 
@@ -133,6 +134,35 @@ class XYPlot(_BasePlot):
             return ColorMap(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
         return None
 
+    @experimental_api()
+    @on_main_thread
+    def histogram2d(self, x, y, *, name: str = "histogram",
+                    key_bins: int = 100, value_bins: int = 100,
+                    z_log_scale: bool = False) -> Histogram2D:
+        """Add a 2D density histogram to this plot.
+
+        Parameters
+        ----------
+        x, y : array-like
+            Scatter data to bin.
+        name : str
+            Histogram label.
+        key_bins, value_bins : int
+            Bin counts along X and Y.
+        z_log_scale : bool
+            Use a logarithmic color scale.
+
+        Returns
+        -------
+        Histogram2D
+            The histogram plottable.
+        """
+        impl = self._get_impl_or_raise()
+        hist_impl = impl.add_histogram2d(name, key_bins, value_bins)
+        hist_impl.set_z_log_scale(z_log_scale)
+        hist_impl.set_data(*ensure_arrays_of_double(x, y))
+        return Histogram2D(hist_impl)
+
     @on_main_thread
     def set_x_range(self, xmin: float, xmax: float):
         """Set the x-axis range of the plot and replot.
@@ -241,6 +271,18 @@ class TimeSeriesPlot(_BasePlot):
         elif 3 >= len(args) >= 2:
             return to_plottable(self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs))
         raise ValueError("Invalid arguments")
+
+    @experimental_api()
+    @on_main_thread
+    def histogram2d(self, x, y, *, name: str = "histogram",
+                    key_bins: int = 100, value_bins: int = 100,
+                    z_log_scale: bool = False) -> Histogram2D:
+        """Add a 2D density histogram to this plot. See XYPlot.histogram2d."""
+        impl = self._get_impl_or_raise()
+        hist_impl = impl.add_histogram2d(name, key_bins, value_bins)
+        hist_impl.set_z_log_scale(z_log_scale)
+        hist_impl.set_data(*ensure_arrays_of_double(x, y))
+        return Histogram2D(hist_impl)
 
     @on_main_thread
     def set_x_range(self, xmin: AnyDateTimeType, xmax: AnyDateTimeType):

@@ -5,6 +5,7 @@ from .protocol import Plot, Plottable
 
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from ._plots import XYPlot, TimeSeriesPlot, ProjectionPlot, TimeRange
+from ._graphs import Histogram2D
 from ._panel import PlotPanel, create_plot_panel, plot_panel
 from ._graphic_primitives import Ellipse, Text, CurvedLine
 from ._overlay import Overlay
@@ -12,6 +13,6 @@ from . import _fluent as fluent
 
 log = _getLogger(__name__)
 
-__all__ = ['ScaleType', 'PlotType', 'Plot', 'Plottable', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
+__all__ = ['ScaleType', 'PlotType', 'Plot', 'Plottable', 'Histogram2D', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
            'create_plot_panel', 'plot_panel', 'TimeRange', 'Ellipse', 'fluent',
            'Overlay', 'OverlayLevel', 'OverlaySizeMode', 'OverlayPosition']
