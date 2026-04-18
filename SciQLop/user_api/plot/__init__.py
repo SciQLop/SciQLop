@@ -1,15 +1,17 @@
 """Plotting API. This module provides the public API for plotting data and managing plot panels.
 """
-from .enums import ScaleType, PlotType
+from .enums import ScaleType, PlotType, OverlayLevel, OverlaySizeMode, OverlayPosition
 from .protocol import Plot, Plottable
 
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from ._plots import XYPlot, TimeSeriesPlot, ProjectionPlot, TimeRange
 from ._panel import PlotPanel, create_plot_panel, plot_panel
 from ._graphic_primitives import Ellipse, Text, CurvedLine
+from ._overlay import Overlay
 from . import _fluent as fluent
 
 log = _getLogger(__name__)
 
 __all__ = ['ScaleType', 'PlotType', 'Plot', 'Plottable', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
-           'create_plot_panel', 'plot_panel', 'TimeRange', 'Ellipse', 'fluent']
+           'create_plot_panel', 'plot_panel', 'TimeRange', 'Ellipse', 'fluent',
+           'Overlay', 'OverlayLevel', 'OverlaySizeMode', 'OverlayPosition']

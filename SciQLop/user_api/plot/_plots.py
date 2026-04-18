@@ -12,6 +12,7 @@ from SciQLopPlots import SciQLopNDProjectionPlot as _SciQLopNDProjectionPlot
 from SciQLopPlots import GraphType as _GraphType
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot_product
 from ._thread_safety import on_main_thread
+from ._overlay import Overlay
 
 from speasy.core import AnyDateTimeType
 
@@ -89,6 +90,17 @@ class _BasePlot(Plot):
 
     def _on_destroyed(self):
         self._impl = None
+
+    @property
+    @on_main_thread
+    def overlay(self) -> Overlay:
+        """Access the in-canvas message overlay for this plot.
+
+        Returns a fresh Overlay handle on each access — the wrapper is cheap
+        and avoids stale-reference issues if the underlying overlay is
+        recreated.
+        """
+        return Overlay(self._get_impl_or_raise().overlay())
 
 
 class XYPlot(_BasePlot):
