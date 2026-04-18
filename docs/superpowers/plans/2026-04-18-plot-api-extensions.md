@@ -626,7 +626,7 @@ Then add the method to `PlotPanel`:
         ``SciQLopPlot::add_histogram2d(GetDataPyCallable, ...)``.
         """
         impl = self._get_impl_or_raise()
-        plot_impl = impl.create_plot(_PlotType.BasicXY, plot_index)
+        plot_impl = impl.create_plot(plot_index, _PlotType.BasicXY)
         hist_impl = plot_impl.add_histogram2d(name, key_bins, value_bins)
         if z_log_scale:
             hist_impl.set_z_log_scale(True)
@@ -1540,20 +1540,27 @@ Create `tests/test_dsp_speasy.py`:
 
 ```python
 """Tests for the SciQLop.user_api.dsp facade with SpeasyVariable inputs."""
+from .fixtures import *  # noqa: F401, F403  (qapp + plot fixtures)
 import numpy as np
 import pytest
 from speasy.products import SpeasyVariable, VariableTimeAxis
+from speasy.core.data_containers import DataContainer
 from speasy.core import epoch_to_datetime64
-
-from SciQLop.user_api import dsp
 
 
 def _make_var(n: int = 1000, dt: float = 0.01, name: str = "test") -> SpeasyVariable:
     epoch = np.arange(n, dtype=np.float64) * dt
     time = epoch_to_datetime64(epoch)
     values = np.sin(2 * np.pi * 1.0 * epoch).astype(np.float64)
-    return SpeasyVariable(axes=[VariableTimeAxis(values=time)],
-                          values=values, name=name, meta={"unit": "nT"})
+    data = DataContainer(values=values, meta={"UNITS": "nT"}, name=name)
+    return SpeasyVariable(axes=[VariableTimeAxis(values=time)], values=data)
+
+
+@pytest.fixture
+def dsp(qapp):
+    """Defer SciQLop.user_api import past Qt static-init."""
+    from SciQLop.user_api import dsp as _dsp
+    return _dsp
 
 
 @pytest.fixture
@@ -1564,54 +1571,55 @@ def var():
 @pytest.fixture
 def var_with_nan():
     v = _make_var()
-    v.values[100] = np.nan
+    v.values[100, 0] = np.nan
     return v
 
 
 class TestSameAxisTransforms:
-    def test_filtfilt_returns_speasy_variable(self, var):
+    def test_filtfilt_returns_speasy_variable(self, dsp, var):
         coeffs = np.array([0.25, 0.5, 0.25], dtype=np.float64)
         out = dsp.filtfilt(var, coeffs)
         assert isinstance(out, SpeasyVariable)
         assert out.name.endswith("_filtfilt")
         assert out.values.shape == var.values.shape
 
-    def test_interpolate_nan_returns_var(self, var_with_nan):
+    def test_interpolate_nan_returns_var(self, dsp, var_with_nan):
         out = dsp.interpolate_nan(var_with_nan, max_consecutive=2)
         assert isinstance(out, SpeasyVariable)
         assert out.name.endswith("_interp_nan")
-        assert not np.isnan(out.values[100])
+        assert not np.isnan(out.values[100, 0])
 
-    def test_rolling_mean_returns_var(self, var):
+    def test_rolling_mean_returns_var(self, dsp, var):
         out = dsp.rolling_mean(var, window=5)
         assert isinstance(out, SpeasyVariable)
         assert out.name.endswith("_rmean")
 
-    def test_rolling_std_returns_var(self, var):
+    def test_rolling_std_returns_var(self, dsp, var):
         out = dsp.rolling_std(var, window=5)
         assert isinstance(out, SpeasyVariable)
         assert out.name.endswith("_rstd")
 
 
 class TestNewAxisTransforms:
-    def test_resample_changes_time_axis(self, var):
+    def test_resample_changes_time_axis(self, dsp, var):
         out = dsp.resample(var, target_dt=0.02)
         assert isinstance(out, SpeasyVariable)
         assert out.name.endswith("_resample")
         # Roughly half the samples (dt doubled).
         assert 400 <= out.values.shape[0] <= 600
 
-    def test_fft_returns_list_of_freq_vars(self, var):
+    def test_fft_returns_list_of_tuples(self, dsp, var):
+        # fft() returns raw (freqs, magnitude) tuples — SpeasyVariable
+        # cannot represent a frequency-only axis.
         result = dsp.fft(var)
         assert isinstance(result, list)
         assert len(result) >= 1
-        first = result[0]
-        assert isinstance(first, SpeasyVariable)
-        assert first.name.endswith("_fft")
-        # First axis should be frequency (Hz), not time.
-        assert first.axes[0].name == "frequency"
+        freqs, magnitude = result[0]
+        assert isinstance(freqs, np.ndarray)
+        assert isinstance(magnitude, np.ndarray)
+        assert freqs.ndim == 1
 
-    def test_spectrogram_returns_list_of_2d_vars(self, var):
+    def test_spectrogram_returns_list_of_2d_vars(self, dsp, var):
         result = dsp.spectrogram(var, window_size=128, overlap=64)
         assert isinstance(result, list)
         assert len(result) >= 1
@@ -1619,8 +1627,9 @@ class TestNewAxisTransforms:
         assert isinstance(first, SpeasyVariable)
         assert first.name.endswith("_spectrogram")
         assert first.values.ndim == 2
+        assert first.axes[1].unit == "Hz"
 
-    def test_split_segments_no_gap(self, var):
+    def test_split_segments_no_gap(self, dsp, var):
         result = dsp.split_segments(var)
         assert isinstance(result, list)
         assert len(result) == 1
@@ -1628,7 +1637,7 @@ class TestNewAxisTransforms:
 
 
 class TestRejectsRawArrays:
-    def test_filtfilt_rejects_arrays(self):
+    def test_filtfilt_rejects_arrays(self, dsp):
         x = np.arange(10, dtype=np.float64)
         with pytest.raises(TypeError):
             dsp.filtfilt(x, np.array([1.0]))
@@ -1637,7 +1646,7 @@ class TestRejectsRawArrays:
 - [ ] **Step 2: Run the tests**
 
 Run: `uv run pytest tests/test_dsp_speasy.py -v`
-Expected: all pass. If `SpeasyVariable` constructor signature differs from the one used in `_make_var` (e.g. needs `columns=`), adjust the fixture; the helper in `_speasy.py` already mirrors the right signature so just match it.
+Expected: all pass under CI's Xvfb. Local headless execution segfaults (Qt static-init via `SciQLop.core` triggered through the `dsp(qapp)` fixture); the test file deliberately defers the SciQLop import behind `qapp` for that reason. Static collection should succeed locally — verify with `uv run pytest tests/test_dsp_speasy.py --collect-only -q`.
 
 - [ ] **Step 3: Commit**
 

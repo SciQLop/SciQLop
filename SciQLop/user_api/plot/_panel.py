@@ -222,7 +222,7 @@ class PlotPanel:
         ``SciQLopPlot::add_histogram2d(GetDataPyCallable, ...)``.
         """
         impl = self._get_impl_or_raise()
-        plot_impl = impl.create_plot(_PlotType.BasicXY, plot_index)
+        plot_impl = impl.create_plot(plot_index, _PlotType.BasicXY)
         hist_impl = plot_impl.add_histogram2d(name, key_bins, value_bins)
         hist_impl.set_z_log_scale(z_log_scale)
         hist_impl.set_data(*ensure_arrays_of_double(x, y))
