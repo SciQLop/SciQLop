@@ -15,7 +15,7 @@ def _to_sqp_level(level: OverlayLevel) -> _OverlayLevel:
 
 
 def _from_sqp_level(level: _OverlayLevel) -> OverlayLevel:
-    return OverlayLevel(int(level))
+    return OverlayLevel(level.value)
 
 
 def _to_sqp_size_mode(size_mode: OverlaySizeMode) -> _OverlaySizeMode:
@@ -23,7 +23,7 @@ def _to_sqp_size_mode(size_mode: OverlaySizeMode) -> _OverlaySizeMode:
 
 
 def _from_sqp_size_mode(size_mode: _OverlaySizeMode) -> OverlaySizeMode:
-    return OverlaySizeMode(int(size_mode))
+    return OverlaySizeMode(size_mode.value)
 
 
 def _to_sqp_position(position: OverlayPosition) -> _OverlayPosition:
@@ -31,7 +31,7 @@ def _to_sqp_position(position: OverlayPosition) -> _OverlayPosition:
 
 
 def _from_sqp_position(position: _OverlayPosition) -> OverlayPosition:
-    return OverlayPosition(int(position))
+    return OverlayPosition(position.value)
 
 
 class Overlay:
