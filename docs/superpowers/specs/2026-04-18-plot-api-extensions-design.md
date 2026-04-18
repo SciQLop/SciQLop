@@ -73,7 +73,18 @@ def histogram2d(self, x, y, *, name="histogram", key_bins=100, value_bins=100,
 
 ### Routing in `to_plottable`
 
-Both `Histogram2D` and `ColorMap` impls expose `gradient`. Disambiguate by class: check `isinstance(impl, _SciQLopHistogram2D)` first, fall back to `ColorMap` detection, then default to `Graph`.
+Both `Histogram2D` and `ColorMap` impls expose `gradient`, so the existing `hasattr(impl, "gradient")` test in `_graphs.py:112` no longer disambiguates them. New logic:
+
+```python
+def to_plottable(impl) -> Optional[Plottable]:
+    if impl is None:
+        return None
+    if isinstance(impl, _SciQLopHistogram2D):   # check histogram FIRST
+        return Histogram2D(impl)
+    if hasattr(impl, "gradient"):                # falls through to colormap
+        return ColorMap(impl)
+    return Graph(impl)
+```
 
 ### Spec note
 
@@ -279,7 +290,7 @@ Numerical-equivalence testing against scipy — `SciQLopPlots` already has those
 - `tests/test_overlay.py`
 - `tests/test_dsp.py`
 
-### Modified files (6)
+### Modified files (7)
 
 - `SciQLop/user_api/plot/_graphs.py` — add `Histogram2D` class; update `to_plottable` to detect histograms before colormaps (since both have `gradient`).
 - `SciQLop/user_api/plot/_plots.py` — add `overlay` property on `_BasePlot`; add `histogram2d()` on `XYPlot` + `TimeSeriesPlot`.
