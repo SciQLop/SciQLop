@@ -4,5 +4,6 @@ All functions and classes are simplified Facades to the internal API, and are de
 """
 
 from SciQLop.core import TimeRange
+from . import dsp
 
-__all__ = ["TimeRange"]
+__all__ = ["TimeRange", "dsp"]
