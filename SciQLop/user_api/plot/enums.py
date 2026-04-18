@@ -41,3 +41,25 @@ class Observables(Enum):
     Data = 2
     XAxis = 3
     YAxis = 4
+
+
+class OverlayLevel(Enum):
+    """Severity level of an overlay message."""
+    Info = 0
+    Warning = 1
+    Error = 2
+
+
+class OverlaySizeMode(Enum):
+    """How the overlay sizes itself relative to the plot."""
+    Compact = 0
+    FitContent = 1
+    FullWidget = 2
+
+
+class OverlayPosition(Enum):
+    """Where the overlay anchors inside the plot."""
+    Top = 0
+    Bottom = 1
+    Left = 2
+    Right = 3
