@@ -15,7 +15,7 @@ from SciQLop.components.plotting.ui.time_sync_panel import (TimeSyncPanel as _Im
 from SciQLop.components.plotting.backend.palette import Palette as _Palette, make_color_list as _make_color_list
 from ._plots import to_product_path, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
     is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product
-from ._graphs import ensure_arrays_of_double
+from ._graphs import ensure_arrays_of_double, Histogram2D
 from ._thread_safety import on_main_thread
 import numpy as _np
 from speasy.products import SpeasyVariable as _SpeasyVariable
@@ -186,6 +186,47 @@ class PlotPanel:
             kwargs["graph_type"] = _GraphType.ParametricCurve
         _p, _g = _plot_function(self._get_impl_or_raise(), f, index=plot_index, **kwargs)
         return to_plot(_p), to_plottable(_g)
+
+    @experimental_api()
+    @on_main_thread
+    def histogram2d(self, x, y, *, name: str = "histogram",
+                    key_bins: int = 100, value_bins: int = 100,
+                    z_log_scale: bool = False, plot_index: int = -1) -> Tuple[XYPlot, Histogram2D]:
+        """Add a 2D density histogram in a new XY plot.
+
+        Bins (x, y) into a key_bins x value_bins grid asynchronously.
+
+        Parameters
+        ----------
+        x, y : array-like
+            Scatter data to bin.
+        name : str
+            Histogram label (shown in legend).
+        key_bins : int
+            Number of bins along the X axis.
+        value_bins : int
+            Number of bins along the Y axis.
+        z_log_scale : bool
+            Use a logarithmic color scale.
+        plot_index : int
+            Index in the panel where the new plot is created. -1 = append.
+
+        Returns
+        -------
+        Tuple[XYPlot, Histogram2D]
+            The newly created plot and the histogram plottable.
+
+        Notes
+        -----
+        Callable / function-source variant pending upstream support in
+        ``SciQLopPlot::add_histogram2d(GetDataPyCallable, ...)``.
+        """
+        impl = self._get_impl_or_raise()
+        plot_impl = impl.create_plot(_PlotType.BasicXY, plot_index)
+        hist_impl = plot_impl.add_histogram2d(name, key_bins, value_bins)
+        hist_impl.set_z_log_scale(z_log_scale)
+        hist_impl.set_data(*ensure_arrays_of_double(x, y))
+        return XYPlot(plot_impl), Histogram2D(hist_impl)
 
     @on_main_thread
     def plot(self, *args, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable] | None:
