@@ -1196,6 +1196,7 @@ import numpy as np
 
 from speasy.products import SpeasyVariable, VariableTimeAxis, VariableAxis
 from speasy.core import datetime64_to_epoch, epoch_to_datetime64
+from speasy.core.data_containers import DataContainer
 
 
 def unwrap(v: SpeasyVariable) -> Tuple[np.ndarray, np.ndarray]:
@@ -1223,51 +1224,47 @@ def rewrap_time_series(template: SpeasyVariable, values: np.ndarray, *,
     time = template.time if time_epoch is None else epoch_to_datetime64(time_epoch)
     time_axis = VariableTimeAxis(values=time)
     other_axes = list(template.axes[1:])
+    data = DataContainer(values=values, meta=dict(template.meta),
+                         name=template.name + name_suffix)
     return SpeasyVariable(
         axes=[time_axis] + other_axes,
-        values=values,
+        values=data,
         columns=template.columns,
-        meta=dict(template.meta),
-        name=template.name + name_suffix,
-    )
-
-
-def rewrap_frequency(template: SpeasyVariable, freqs: np.ndarray, magnitude: np.ndarray, *,
-                     name_suffix: str = "_fft") -> SpeasyVariable:
-    """Wrap an FFT result as a SpeasyVariable whose first axis is frequency (Hz)."""
-    freq_axis = VariableAxis(name="frequency", unit="Hz", values=freqs)
-    return SpeasyVariable(
-        axes=[freq_axis],
-        values=magnitude,
-        columns=template.columns,
-        meta=dict(template.meta),
-        name=template.name + name_suffix,
     )
 
 
 def rewrap_spectrogram(template: SpeasyVariable,
                        t: np.ndarray, f: np.ndarray, power: np.ndarray, *,
-                       name_suffix: str = "_spectrogram") -> SpeasyVariable:
-    """Wrap a spectrogram segment as a 2D SpeasyVariable (time x frequency)."""
+                       name_suffix: str = "_spectrogram",
+                       power_units: str = "") -> SpeasyVariable:
+    """Wrap a spectrogram segment as a 2D SpeasyVariable (time x frequency).
+
+    Power may be returned as ``(n_freq, n_time)`` and is transposed so the
+    first axis is time. When ``n_freq == n_time`` the orientation is
+    ambiguous; callers must ensure power is already ``(n_time, n_freq)``
+    in that case.
+
+    ``power_units`` overrides the unit of the output values — spectrogram
+    power has different units than the input signal (e.g. ``nT^2/Hz``),
+    so the template's ``UNITS`` is not propagated.
+    """
     time_axis = VariableTimeAxis(values=epoch_to_datetime64(t))
-    freq_axis = VariableAxis(name="frequency", unit="Hz", values=f)
-    # Power may be returned as (n_freq, n_time) — transpose so first axis = time.
+    freq_axis = VariableAxis(name="frequency", meta={"UNITS": "Hz"}, values=f)
     if power.shape[0] == f.shape[0] and power.shape[1] == t.shape[0]:
         power = power.T
+    meta = dict(template.meta)
+    meta["UNITS"] = power_units
+    data = DataContainer(values=power, meta=meta,
+                         name=template.name + name_suffix)
     return SpeasyVariable(
         axes=[time_axis, freq_axis],
-        values=power,
-        meta=dict(template.meta),
-        name=template.name + name_suffix,
+        values=data,
     )
 
 
 def slice_segments(v: SpeasyVariable, segs: List[Tuple[int, int]]) -> List[SpeasyVariable]:
     """Slice a SpeasyVariable along its time axis using ``[(start, end), ...]`` index ranges."""
-    out = []
-    for start, end in segs:
-        out.append(v[start:end])
-    return out
+    return [v[start:end] for start, end in segs]
 ```
 
 - [ ] **Step 2: Smoke test**
@@ -1441,19 +1438,21 @@ def resample(data, *, target_dt: float = 0.0, gap_factor: float = 3.0):
 
 
 @experimental_api()
-def fft(data, *, gap_factor: float = 3.0, window: str = 'hann') -> List[SpeasyVariable]:
+def fft(data, *, gap_factor: float = 3.0, window: str = 'hann') -> List[Tuple[np.ndarray, np.ndarray]]:
     """Per-segment FFT.
 
     Returns
     -------
-    list of SpeasyVariable
-        One per detected segment, each with a frequency axis (Hz) replacing
-        the time axis. Names suffixed ``_fft``.
+    list of (freqs, magnitude)
+        One per detected segment. ``SpeasyVariable`` cannot represent a
+        frequency-only sample (its first axis must be time), so the FFT
+        path returns raw numpy tuples even for SpeasyVariable inputs.
+        Use ``spectrogram`` if you need a time-resolved spectrum wrapped
+        as a ``SpeasyVariable``.
     """
     if _is_var(data):
         x, y = _sp.unwrap(data)
-        segs = arrays.fft(x, y, gap_factor=gap_factor, window=window)
-        return [_sp.rewrap_frequency(data, f, mag) for f, mag in segs]
+        return arrays.fft(x, y, gap_factor=gap_factor, window=window)
     raise TypeError("fft(data, ...) requires a SpeasyVariable; "
                     "use SciQLop.user_api.dsp.arrays.fft(x, y) for arrays.")
 
