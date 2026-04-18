@@ -78,10 +78,15 @@ class DataProvider:
         """
         return PlotHints()
 
-    def _get_data(self, node, start, stop, on_variable=None) -> Union[
+    def get_knobs(self, product) -> list:
+        """Return a list of KnobSpec for this product (empty = not parameterized)."""
+        return []
+
+    def _get_data(self, node, start, stop, on_variable=None, knobs=None) -> Union[
         List[np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
         try:
-            v = self.get_data(node, start, stop)
+            v = self.get_data(node, start, stop, knobs=knobs) if knobs is not None \
+                else self.get_data(node, start, stop)
             if v is not None and on_variable is not None:
                 try:
                     on_variable(v)
@@ -103,5 +108,5 @@ class DataProvider:
                 f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")
             return []
 
-    def get_data(self, node, start: float, stop: float) -> DataProviderReturnType:
+    def get_data(self, node, start: float, stop: float, knobs=None) -> DataProviderReturnType:
         pass
