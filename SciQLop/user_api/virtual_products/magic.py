@@ -172,6 +172,12 @@ def vp_magic(line: str, cell: str, local_ns=None):
     if is_new or entry.signature_changed:
         _register_virtual_product(func_name, entry.wrapper, type_info.product_type,
                                   type_info.labels, args.path, cached_data=cached_data)
+    else:
+        from SciQLop.components.plotting.backend.data_provider import providers
+        for p in providers.values():
+            if getattr(p, "_callback", None) is entry.wrapper:
+                if hasattr(p, "_refresh_knob_specs"):
+                    p._refresh_knob_specs()
 
     if args.debug:
         from SciQLop.user_api.virtual_products.debug import handle_debug
