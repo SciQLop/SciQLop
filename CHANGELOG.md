@@ -6,7 +6,7 @@
 
 - Added runtime-tunable parameters to virtual products and speasy templated parameters. Python VP callbacks can declare `Annotated[T, Knob(...)]` kwargs; speasy-templated parameters auto-expose their `ArgumentIndex` choices. Spec: `docs/superpowers/specs/2026-04-18-parameterized-virtual-products-design.md`.
 - Public API surface: `SciQLop.user_api.knobs` (`Knob`, `KnobSpec`, `IntKnob`, `FloatKnob`, `BoolKnob`, `ChoiceKnob`, `StringKnob`, `validate_dict`, `canonical_hash`, `defaults_for`). Providers pass knob values through the existing `plot_product` callback; re-fetch is signal-driven.
-- Inspector "Parameters" section with per-knob delegates (debounced or manual-apply), a reset-to-defaults action in the panel context menu, and an info-badge overlay on parameterized graphs. One-shot discoverability hint persists dismissal via `KnobHintSettings` (new `ConfigEntry` under the `plotting` category).
+- Inspector "Parameters" section with per-knob delegates (debounced or manual-apply) and a reset-to-defaults action in the panel context menu.
 - `%%vp --debug` preserves knob values across re-plots by snapshotting `GraphKnobState` entries before clearing and restoring them after, so the user's tuning survives cell re-evaluation. When a Jupyter widget comm is attached, the magic also emits a best-effort `ipywidgets` strip bound bidirectionally to the graph state.
 
 ## [v0.11.4](https://github.com/SciQlop/SciQLop/tree/v0.11.4) (2026-04-14)

@@ -280,20 +280,11 @@ def _attach_knob_state(provider, product_path_str, callback, r, target=None):
     if not specs:
         return
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
-    from SciQLop.components.plotting.ui.knob_inspector.badge import KnobBadge
     graph = _graph_from_result(r)
     state = GraphKnobState(specs, parent=graph)
     graph._knob_state = state
     callback.knob_state = state
     state.knobs_changed.connect(lambda *_: _trigger_refetch(graph))
-    plot = _plot_from_result(r, target)
-    if plot is not None:
-        badge = KnobBadge(state, parent=plot)
-        badge.clicked.connect(lambda g=graph: _focus_knob_inspector(g))
-        graph._knob_badge = badge
-        state._badge = badge
-        badge.show()
-        _maybe_show_knob_hint(plot)
 
 
 def _build_knob_reset_action(state, parent):
@@ -306,44 +297,6 @@ def _build_knob_reset_action(state, parent):
 
     action.triggered.connect(_do_reset)
     return action
-
-
-def _focus_knob_inspector(graph):
-    try:
-        from SciQLop.user_api.gui import get_main_window
-        mw = get_main_window()
-        dw = mw.dock_manager.findDockWidget("Parameters")
-        if dw is None:
-            return
-        inspector = dw.widget()
-        if inspector is not None and hasattr(inspector, "set_graph"):
-            inspector.set_graph(graph)
-        dw.raise_()
-        area = dw.dockAreaWidget()
-        if area is not None:
-            area.setCurrentDockWidget(dw)
-    except Exception:
-        log.debug("could not focus knob inspector", exc_info=True)
-
-
-def _show_knob_hint(parent):
-    from PySide6.QtWidgets import QMessageBox
-    box = QMessageBox(parent)
-    box.setIcon(QMessageBox.Information)
-    box.setWindowTitle("Parameterized product")
-    box.setText("This product has tunable parameters — open the Inspector to adjust them.")
-    box.setStandardButtons(QMessageBox.Ok)
-    box.exec()
-
-
-def _maybe_show_knob_hint(parent):
-    from SciQLop.components.plotting.backend.knob_hint_settings import KnobHintSettings
-    s = KnobHintSettings()
-    if s.parameterized_drop_hint_dismissed:
-        return
-    _show_knob_hint(parent)
-    with KnobHintSettings() as s:
-        s.parameterized_drop_hint_dismissed = True
 
 
 def _safe_plot_hints(provider, node) -> PlotHints:
