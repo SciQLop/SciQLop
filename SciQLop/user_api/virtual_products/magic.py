@@ -203,6 +203,22 @@ def vp_magic(line: str, cell: str, local_ns=None):
                      cached_data=cached_data, eval_error=eval_error,
                      eval_elapsed=eval_elapsed)
 
+        try:
+            from SciQLop.user_api.virtual_products.ipywidgets_binding import (
+                display_widgets_for_state,
+            )
+            from IPython.display import display
+            panel = entry.panel
+            plots = panel.plots() if panel is not None else []
+            if plots:
+                state = getattr(plots[0], "_knob_state", None)
+                if state is not None and state.specs:
+                    box = display_widgets_for_state(state)
+                    if box is not None:
+                        display(box)
+        except Exception:
+            _get_log().debug("ipywidgets binding skipped", exc_info=True)
+
     return func, args, type_info
 
 
