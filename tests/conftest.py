@@ -73,6 +73,19 @@ def sciqlop_test_env():
     yield _test_tmp
 
 
+@pytest.fixture(autouse=True)
+def _stub_blocking_knob_hint(monkeypatch):
+    """Prevent the one-shot 'parameterized product' QMessageBox from blocking
+    xvfb test runs. Tests that need to observe or suppress this specifically
+    override the patch inside their body (their setattr wins).
+    """
+    try:
+        import SciQLop.components.plotting.ui.time_sync_panel as tsp
+    except ImportError:
+        return
+    monkeypatch.setattr(tsp, "_show_knob_hint", lambda parent: None, raising=False)
+
+
 def pytest_unconfigure(config):
     import shutil
     shutil.rmtree(_test_tmp, ignore_errors=True)

@@ -263,7 +263,7 @@ def _graph_from_result(r):
 def _trigger_refetch(graph):
     try:
         graph.replot()
-    except AttributeError:
+    except (AttributeError, TypeError):
         try:
             graph.parentPlot().replot()
         except Exception:
