@@ -47,6 +47,8 @@ dependencies = [
     "shiboken6==6.10.2",
     "PySide6-QtAds==4.5.0.2",
     "ipython",
+    "ipywidgets",
+    "jupyterlab_widgets",
     "jupyqt>=0.5.2",
     "matplotlib==3.10.8",
     "qasync",
