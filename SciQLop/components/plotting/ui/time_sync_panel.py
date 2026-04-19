@@ -261,13 +261,14 @@ def _graph_from_result(r):
 
 
 def _trigger_refetch(graph):
+    call = getattr(graph, "call", None)
+    if call is None:
+        log.debug("graph has no function pipeline — cannot refetch on knob change")
+        return
     try:
-        graph.replot()
-    except (AttributeError, TypeError):
-        try:
-            graph.parentPlot().replot()
-        except Exception:
-            log.debug("could not trigger replot for knob change", exc_info=True)
+        call(graph.range())
+    except Exception:
+        log.debug("could not trigger refetch for knob change", exc_info=True)
 
 
 def _attach_knob_state(provider, product_path_str, callback, r, target=None):
