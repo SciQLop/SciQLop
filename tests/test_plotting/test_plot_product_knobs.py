@@ -78,3 +78,41 @@ def test_attach_knob_state_knobs_changed_signal_fires(qapp, qtbot):
     state.knobs_changed.connect(lambda d: fired.append(d))
     state.set_value("fft", 512)
     assert fired == [{"fft": 512}]
+
+
+def test_attach_knob_state_creates_badge_when_plot_resolvable(qapp):
+    from types import SimpleNamespace
+    from PySide6.QtWidgets import QWidget
+    from SciQLop.components.plotting.ui.time_sync_panel import _attach_knob_state
+    from SciQLop.components.plotting.ui.knob_inspector.badge import KnobBadge
+
+    plot = QWidget()
+    graph = QWidget(parent=plot)
+
+    class _Prov:
+        def get_knobs(self, _p):
+            return [IntKnob(name="fft", default=256, min=64, max=4096)]
+
+    callback = SimpleNamespace(knob_state=None)
+    _attach_knob_state(_Prov(), "p", callback, (plot, graph), None)
+
+    assert hasattr(graph, "_knob_state")
+    assert isinstance(getattr(graph, "_knob_badge", None), KnobBadge)
+
+
+def test_attach_knob_state_no_badge_when_plot_none(qapp):
+    from types import SimpleNamespace
+    from PySide6.QtWidgets import QWidget
+    from SciQLop.components.plotting.ui.time_sync_panel import _attach_knob_state
+
+    graph = QWidget()
+
+    class _Prov:
+        def get_knobs(self, _p):
+            return [IntKnob(name="fft", default=256, min=64, max=4096)]
+
+    callback = SimpleNamespace(knob_state=None)
+    _attach_knob_state(_Prov(), "p", callback, graph, None)
+
+    assert hasattr(graph, "_knob_state")
+    assert not hasattr(graph, "_knob_badge")

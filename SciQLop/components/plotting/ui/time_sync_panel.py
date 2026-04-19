@@ -256,6 +256,10 @@ def _plot_from_result(r, target):
     return None
 
 
+def _graph_from_result(r):
+    return r[1] if hasattr(r, '__iter__') else r
+
+
 def _trigger_refetch(graph):
     try:
         graph.replot()
@@ -266,7 +270,7 @@ def _trigger_refetch(graph):
             log.debug("could not trigger replot for knob change", exc_info=True)
 
 
-def _attach_knob_state(provider, product_path_str, callback, r):
+def _attach_knob_state(provider, product_path_str, callback, r, target=None):
     specs = []
     try:
         specs = provider.get_knobs(product_path_str)
@@ -275,11 +279,37 @@ def _attach_knob_state(provider, product_path_str, callback, r):
     if not specs:
         return
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.badge import KnobBadge
     graph = _graph_from_result(r)
     state = GraphKnobState(specs, parent=graph)
     graph._knob_state = state
     callback.knob_state = state
     state.knobs_changed.connect(lambda *_: _trigger_refetch(graph))
+    plot = _plot_from_result(r, target)
+    if plot is not None:
+        badge = KnobBadge(state, parent=plot)
+        badge.clicked.connect(lambda g=graph: _focus_knob_inspector(g))
+        graph._knob_badge = badge
+        state._badge = badge
+        badge.show()
+
+
+def _focus_knob_inspector(graph):
+    try:
+        from SciQLop.user_api.gui import get_main_window
+        mw = get_main_window()
+        dw = mw.dock_manager.findDockWidget("Parameters")
+        if dw is None:
+            return
+        inspector = dw.widget()
+        if inspector is not None and hasattr(inspector, "set_graph"):
+            inspector.set_graph(graph)
+        dw.raise_()
+        area = dw.dockAreaWidget()
+        if area is not None:
+            area.setCurrentDockWidget(dw)
+    except Exception:
+        log.debug("could not focus knob inspector", exc_info=True)
 
 
 def _safe_plot_hints(provider, node) -> PlotHints:
@@ -288,10 +318,6 @@ def _safe_plot_hints(provider, node) -> PlotHints:
     except Exception:
         log.debug("plot_hints failed for %s", node, exc_info=True)
         return PlotHints()
-
-
-def _graph_from_result(r):
-    return r[1] if hasattr(r, '__iter__') else r
 
 
 def _register_graph_hints(provider, node, r, target) -> Optional["_PostFetchHintsApplier"]:
@@ -351,7 +377,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
                             r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
                     callback._post_fetch = _register_graph_hints(provider, node, r, target)
-                    _attach_knob_state(provider, product_path_str, callback, r)
+                    _attach_knob_state(provider, product_path_str, callback, r, target)
                     return r
                 elif node.parameter_type() == ParameterType.Spectrogram:
                     callback = _specgram_callback(provider, node)
@@ -362,7 +388,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
                         r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
                     callback._post_fetch = _register_graph_hints(provider, node, r, target)
-                    _attach_knob_state(provider, product_path_str, callback, r)
+                    _attach_knob_state(provider, product_path_str, callback, r, target)
                     return r
     log.debug(f"Product not found: {product}")
     return None
