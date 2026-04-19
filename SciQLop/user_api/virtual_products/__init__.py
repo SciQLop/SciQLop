@@ -29,36 +29,47 @@ class VirtualProduct:
 
 class VirtualScalar(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, label: str,
-                 debug: Optional[bool] = False, cachable: Optional[bool] = False):
+                 debug: Optional[bool] = False, cachable: Optional[bool] = False,
+                 knobs_model=None, knobs_kwarg_name="knobs"):
         super(VirtualScalar, self).__init__(path, callback, VirtualProductType.Scalar)
-        self._impl = _EasyScalar(path, callback, component_name=label, metadata={}, debug=debug, cacheable=cachable)
+        self._impl = _EasyScalar(path, callback, component_name=label, metadata={},
+                                 debug=debug, cacheable=cachable,
+                                 knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
 
 
 class VirtualVector(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, labels: List[str],
-                 debug: Optional[bool] = False, cachable: Optional[bool] = False):
+                 debug: Optional[bool] = False, cachable: Optional[bool] = False,
+                 knobs_model=None, knobs_kwarg_name="knobs"):
         super(VirtualVector, self).__init__(path, callback, VirtualProductType.Vector)
-        self._impl = _EasyVector(path, callback, components_names=labels, metadata={}, debug=debug, cacheable=cachable)
+        self._impl = _EasyVector(path, callback, components_names=labels, metadata={},
+                                 debug=debug, cacheable=cachable,
+                                 knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
 
 
 class VirtualMultiComponent(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, labels: List[str],
-                 debug: Optional[bool] = False, cachable: Optional[bool] = False):
+                 debug: Optional[bool] = False, cachable: Optional[bool] = False,
+                 knobs_model=None, knobs_kwarg_name="knobs"):
         super(VirtualMultiComponent, self).__init__(path, callback, VirtualProductType.MultiComponent)
-        self._impl = _EasyMultiComponent(path, callback, components_names=labels, metadata={}, debug=debug,
-                                         cacheable=cachable)
+        self._impl = _EasyMultiComponent(path, callback, components_names=labels, metadata={},
+                                         debug=debug, cacheable=cachable,
+                                         knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
 
 
 class VirtualSpectrogram(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, debug: Optional[bool] = False,
-                 cachable: Optional[bool] = False):
+                 cachable: Optional[bool] = False,
+                 knobs_model=None, knobs_kwarg_name="knobs"):
         super(VirtualSpectrogram, self).__init__(path, callback, VirtualProductType.Spectrogram)
-        self._impl = _EasySpectrogram(path, callback, metadata={}, debug=debug, cacheable=cachable)
+        self._impl = _EasySpectrogram(path, callback, metadata={}, debug=debug, cacheable=cachable,
+                                      knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
 
 
 def create_virtual_product(path: str, callback: VirtualProductCallback,
                            product_type: VirtualProductType, labels: Optional[List[str]] = None,
-                           debug: Optional[bool] = False, cachable: Optional[bool] = False) -> Optional[VirtualProduct]:
+                           debug: Optional[bool] = False, cachable: Optional[bool] = False,
+                           knobs_model=None, knobs_kwarg_name="knobs") -> Optional[VirtualProduct]:
     """
     Create a new virtual product that will be listed in the product tree.
 
@@ -76,6 +87,10 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
         The debug flag, prints stack traces of exceptions if True. Handy for debugging the callback function.
     cachable : Optional[bool]
         The cachable flag, when True, SciQLop will assume the callback function is deterministic and always return the same result for the same input.
+    knobs_model : Optional[type]
+        A Pydantic BaseModel class whose fields define the knobs for this product. When provided, the model instance is passed to the callback under knobs_kwarg_name.
+    knobs_kwarg_name : str
+        Name of the keyword argument used to pass the knobs model instance to the callback (default: "knobs").
     Returns
     -------
     Optional[VirtualProduct]
@@ -93,15 +108,19 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
     """
     if product_type == VirtualProductType.Scalar:
         assert labels is not None and len(labels) == 1
-        return VirtualScalar(path, callback, label=labels[0], debug=debug, cachable=cachable)
+        return VirtualScalar(path, callback, label=labels[0], debug=debug, cachable=cachable,
+                             knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
     elif product_type == VirtualProductType.Vector:
         assert labels is not None and len(labels) == 3
-        return VirtualVector(path, callback, labels=labels, debug=debug, cachable=cachable)
+        return VirtualVector(path, callback, labels=labels, debug=debug, cachable=cachable,
+                             knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
     elif product_type == VirtualProductType.MultiComponent:
         assert labels is not None
-        return VirtualMultiComponent(path, callback, labels=labels, debug=debug, cachable=cachable)
+        return VirtualMultiComponent(path, callback, labels=labels, debug=debug, cachable=cachable,
+                                     knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
     elif product_type == VirtualProductType.Spectrogram:
-        return VirtualSpectrogram(path, callback, debug=debug, cachable=cachable)
+        return VirtualSpectrogram(path, callback, debug=debug, cachable=cachable,
+                                  knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
     return None
 
 

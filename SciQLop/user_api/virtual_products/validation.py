@@ -297,10 +297,11 @@ def _fmt_duration(seconds: float) -> str:
 # ---------------------------------------------------------------------------
 
 def validate_and_call(callback, start: float, stop: float,
-                      declared_type: str, labels: Optional[List[str]]) -> ValidationResult:
+                      declared_type: str, labels: Optional[List[str]],
+                      **kwargs) -> ValidationResult:
     t0 = time.monotonic()
     try:
-        data = callback(start, stop)
+        data = callback(start, stop, **kwargs)
     except Exception:
         elapsed = time.monotonic() - t0
         tb = _filter_traceback(traceback.format_exc())

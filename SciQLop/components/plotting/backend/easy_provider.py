@@ -4,7 +4,6 @@ import numpy as np
 from enum import Enum
 from typing import Callable, List, Optional, Union, Tuple
 from datetime import datetime, timezone
-from expression import compose
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis, VariableAxis
 from PySide6.QtGui import QIcon
 from SciQLop.core.unique_names import make_simple_incr_name
@@ -40,12 +39,6 @@ class ArgumentsType(Enum):
 
 
 def _positional_args_types(callback: VirtualProductCallback) -> List[type]:
-    """
-    Get the annotations of the callback function.
-    :param callback: The callback function
-    :return: A dictionary of annotations
-    """
-
     sig = signature(callback, eval_str=True)
     return [
         v.annotation for v in sig.parameters.values() if v.default == v.empty
@@ -94,7 +87,9 @@ def _to_datetime64(start: float, stop: float) -> Tuple[np.datetime64, np.datetim
 class EasyProvider(DataProvider):
     def __init__(self, path, callback: VirtualProductCallback, parameter_type: ParameterType, metadata: dict,
                  data_order=DataOrder.Y_FIRST,
-                 cacheable=False, debug=False):
+                 cacheable=False, debug=False,
+                 knobs_model: Optional[type] = None,
+                 knobs_kwarg_name: str = "knobs"):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(_name_callable(callback)), data_order=data_order,
                                            cacheable=cacheable)
         self._path = path.split('/')
@@ -108,6 +103,12 @@ class EasyProvider(DataProvider):
             ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER, parameter_type, "",
                               None)
         )
+        self._callback = callback
+        self._debug = debug
+        self._knobs_model = knobs_model
+        self._knobs_kwarg_name = knobs_kwarg_name
+        self._knob_specs = self._compute_knob_specs(callback, knobs_model)
+
         stack = []
         arguments_type = _arguments_type(callback)
         match arguments_type:
@@ -122,31 +123,50 @@ class EasyProvider(DataProvider):
 Please add type hints to the callback function to avoid this warning:
 def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
     ...
-Or:
-def {self.name}(start: datetime, stop: datetime) -> Optional[SpeasyVariable]:
-    ...
-Or:
-def {self.name}(start: np.datetime64, stop: np.datetime64) -> Optional[SpeasyVariable]:
-    ...
             """)
-        if debug:
-            stack.append(lambda rng: self._debug_get_data(callback, *rng))
+        self._range_stack = stack
+
+    @staticmethod
+    def _compute_knob_specs(callback, knobs_model):
+        from SciQLop.user_api.knobs import (
+            extract_specs_from_callback, extract_specs_from_model,
+        )
+        if knobs_model is not None:
+            return extract_specs_from_model(knobs_model)
+        return extract_specs_from_callback(callback)
+
+    def _refresh_knob_specs(self):
+        self._knob_specs = self._compute_knob_specs(self._callback, self._knobs_model)
+
+    def get_knobs(self, product) -> list:
+        return list(self._knob_specs)
+
+    def _apply_range(self, start, stop):
+        rng = (start, stop)
+        for fn in self._range_stack:
+            rng = fn(rng)
+        return rng
+
+    def _invoke_callback(self, start, stop, knobs):
+        rng = self._apply_range(start, stop)
+        if self._knobs_model is not None:
+            model = self._knobs_model(**(knobs or {}))
+            kwargs = {self._knobs_kwarg_name: model}
         else:
-            stack.append(lambda rng: callback(*rng))
-        self._user_get_data = lambda start, stop: compose(*stack)((start, stop))
+            kwargs = dict(knobs or {})
+        if self._debug:
+            from SciQLop.user_api.virtual_products.validation import validate_and_call
+            result = validate_and_call(self._callback, *rng, None, None, **kwargs)
+            for d in result.diagnostics:
+                if d.level == "error":
+                    log.error(f"{self.name}: {d.message}")
+                elif d.level == "warning":
+                    log.warning(f"{self.name}: {d.message}")
+            return result.data
+        return self._callback(*rng, **kwargs)
 
-    def get_data(self, product, start: float, stop: float) -> DataProviderReturnType:
-        return self._user_get_data(start, stop)
-
-    def _debug_get_data(self, callback, start, stop):
-        from SciQLop.user_api.virtual_products.validation import validate_and_call
-        result = validate_and_call(callback, start, stop, None, None)
-        for d in result.diagnostics:
-            if d.level == "error":
-                log.error(f"{self.name}: {d.message}")
-            elif d.level == "warning":
-                log.warning(f"{self.name}: {d.message}")
-        return result.data
+    def get_data(self, product, start: float, stop: float, knobs=None) -> DataProviderReturnType:
+        return self._invoke_callback(start, stop, knobs)
 
     @property
     def path(self):
@@ -158,14 +178,16 @@ def {self.name}(start: np.datetime64, stop: np.datetime64) -> Optional[SpeasyVar
 
 class EasyScalar(EasyProvider):
     def __init__(self, path, get_data_callback: VirtualProductCallback, component_name: str, metadata: dict,
-                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False):
-        super(EasyScalar, self).__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.Scalar,
-                                         metadata={**metadata, "components": component_name}, data_order=data_order,
-                                         cacheable=cacheable, debug=debug)
+                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
+                 knobs_model=None, knobs_kwarg_name="knobs"):
+        super().__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.Scalar,
+                         metadata={**metadata, "components": component_name},
+                         data_order=data_order, cacheable=cacheable, debug=debug,
+                         knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
         self._columns = [component_name]
 
-    def get_data(self, product, start: float, stop: float) -> DataProviderReturnType:
-        res = self._user_get_data(start, stop)
+    def get_data(self, product, start, stop, knobs=None):
+        res = self._invoke_callback(start, stop, knobs)
         if type(res) is SpeasyVariable:
             return res
         elif type(res) is tuple:
@@ -173,20 +195,21 @@ class EasyScalar(EasyProvider):
             return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x))],
                                   values=DataContainer(np.ascontiguousarray(y)),
                                   columns=self._columns)
-        else:
-            return None
+        return None
 
 
 class EasyVector(EasyProvider):
     def __init__(self, path, get_data_callback: VirtualProductCallback, components_names: List[str], metadata: dict,
-                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False):
-        super(EasyVector, self).__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.Vector,
-                                         metadata={**metadata, "components": ';'.join(components_names)},
-                                         data_order=data_order, cacheable=cacheable, debug=debug)
+                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
+                 knobs_model=None, knobs_kwarg_name="knobs"):
+        super().__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.Vector,
+                         metadata={**metadata, "components": ';'.join(components_names)},
+                         data_order=data_order, cacheable=cacheable, debug=debug,
+                         knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
         self._columns = components_names
 
-    def get_data(self, product, start: float, stop: float) -> Optional[DataProviderReturnType]:
-        res = self._user_get_data(start, stop)
+    def get_data(self, product, start, stop, knobs=None) -> Optional[DataProviderReturnType]:
+        res = self._invoke_callback(start, stop, knobs)
         if type(res) is SpeasyVariable:
             return res
         elif type(res) in (tuple, list) and len(res) == 2:
@@ -202,27 +225,32 @@ class EasyVector(EasyProvider):
 
 class EasyMultiComponent(EasyVector):
     def __init__(self, path, get_data_callback: VirtualProductCallback, components_names: List[str], metadata: dict,
-                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False):
+                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
+                 knobs_model=None, knobs_kwarg_name="knobs"):
         # Skip EasyVector.__init__ intentionally — same logic but with Multicomponents type
         EasyProvider.__init__(self, path=path, callback=get_data_callback,
                               parameter_type=ParameterType.Multicomponents,
                               metadata={**metadata, "components": ';'.join(components_names)},
-                              data_order=data_order, cacheable=cacheable, debug=debug)
+                              data_order=data_order, cacheable=cacheable, debug=debug,
+                              knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
         self._columns = components_names
 
 
 class EasySpectrogram(EasyProvider):
     def __init__(self, path, get_data_callback: VirtualProductCallback, metadata: dict,
-                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False):
-        super(EasySpectrogram, self).__init__(path=path, callback=get_data_callback,
-                                              parameter_type=ParameterType.Spectrogram,
-                                              metadata={**metadata},
-                                              data_order=data_order,
-                                              cacheable=cacheable,
-                                              debug=debug)
+                 data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
+                 knobs_model=None, knobs_kwarg_name="knobs"):
+        super().__init__(path=path, callback=get_data_callback,
+                         parameter_type=ParameterType.Spectrogram,
+                         metadata={**metadata},
+                         data_order=data_order,
+                         cacheable=cacheable,
+                         debug=debug,
+                         knobs_model=knobs_model,
+                         knobs_kwarg_name=knobs_kwarg_name)
 
-    def get_data(self, product, start: float, stop: float) -> Optional[DataProviderReturnType]:
-        res = self._user_get_data(start, stop)
+    def get_data(self, product, start, stop, knobs=None) -> Optional[DataProviderReturnType]:
+        res = self._invoke_callback(start, stop, knobs)
         if type(res) is SpeasyVariable:
             return res
         elif type(res) is tuple:

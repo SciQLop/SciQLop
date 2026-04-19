@@ -95,7 +95,7 @@ def extract_specs_from_callback(callback) -> list[KnobSpec]:
 
     try:
         hints = get_type_hints(callback, include_extras=True)
-    except NameError:
+    except (NameError, TypeError):
         hints = {}
 
     specs: list[KnobSpec] = []
