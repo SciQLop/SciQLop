@@ -80,11 +80,16 @@ def test_attach_knob_state_knobs_changed_signal_fires(qapp, qtbot):
     assert fired == [{"fft": 512}]
 
 
-def test_attach_knob_state_creates_badge_when_plot_resolvable(qapp):
+def test_attach_knob_state_creates_badge_when_plot_resolvable(qapp, tmp_path, monkeypatch):
     from types import SimpleNamespace
     from PySide6.QtWidgets import QWidget
+    from SciQLop.components.plotting.ui import time_sync_panel as tsp
     from SciQLop.components.plotting.ui.time_sync_panel import _attach_knob_state
     from SciQLop.components.plotting.ui.knob_inspector.badge import KnobBadge
+    from SciQLop.components.settings.backend import entry as entry_mod
+
+    monkeypatch.setattr(entry_mod, "SCIQLOP_CONFIG_DIR", str(tmp_path))
+    monkeypatch.setattr(tsp, "_show_knob_hint", lambda parent: None)
 
     plot = QWidget()
     graph = QWidget(parent=plot)
@@ -100,10 +105,15 @@ def test_attach_knob_state_creates_badge_when_plot_resolvable(qapp):
     assert isinstance(getattr(graph, "_knob_badge", None), KnobBadge)
 
 
-def test_attach_knob_state_no_badge_when_plot_none(qapp):
+def test_attach_knob_state_no_badge_when_plot_none(qapp, tmp_path, monkeypatch):
     from types import SimpleNamespace
     from PySide6.QtWidgets import QWidget
+    from SciQLop.components.plotting.ui import time_sync_panel as tsp
     from SciQLop.components.plotting.ui.time_sync_panel import _attach_knob_state
+    from SciQLop.components.settings.backend import entry as entry_mod
+
+    monkeypatch.setattr(entry_mod, "SCIQLOP_CONFIG_DIR", str(tmp_path))
+    monkeypatch.setattr(tsp, "_show_knob_hint", lambda parent: None)
 
     graph = QWidget()
 

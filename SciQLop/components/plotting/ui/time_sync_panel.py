@@ -292,6 +292,7 @@ def _attach_knob_state(provider, product_path_str, callback, r, target=None):
         graph._knob_badge = badge
         state._badge = badge
         badge.show()
+        _maybe_show_knob_hint(plot)
 
 
 def _focus_knob_inspector(graph):
@@ -310,6 +311,26 @@ def _focus_knob_inspector(graph):
             area.setCurrentDockWidget(dw)
     except Exception:
         log.debug("could not focus knob inspector", exc_info=True)
+
+
+def _show_knob_hint(parent):
+    from PySide6.QtWidgets import QMessageBox
+    box = QMessageBox(parent)
+    box.setIcon(QMessageBox.Information)
+    box.setWindowTitle("Parameterized product")
+    box.setText("This product has tunable parameters — open the Inspector to adjust them.")
+    box.setStandardButtons(QMessageBox.Ok)
+    box.exec()
+
+
+def _maybe_show_knob_hint(parent):
+    from SciQLop.components.plotting.backend.knob_hint_settings import KnobHintSettings
+    s = KnobHintSettings()
+    if s.parameterized_drop_hint_dismissed:
+        return
+    _show_knob_hint(parent)
+    with KnobHintSettings() as s:
+        s.parameterized_drop_hint_dismissed = True
 
 
 def _safe_plot_hints(provider, node) -> PlotHints:
