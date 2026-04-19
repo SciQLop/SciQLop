@@ -1,9 +1,17 @@
 # SciQLop/user_api/virtual_products/registry.py
 """VP lifecycle: MutableCallback wrapper, registry for hot-reload, registration into product tree."""
+import inspect
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
-import numpy as np
+
+def _signature_kwargs(callback) -> tuple:
+    sig = inspect.signature(callback)
+    return tuple(
+        (name, p.default.__class__)
+        for name, p in sig.parameters.items()
+        if p.default is not inspect.Parameter.empty and name not in ("start", "stop")
+    )
 
 
 class MutableCallback:
@@ -12,7 +20,6 @@ class MutableCallback:
         self.after_call: Optional[Callable] = None
 
     def _update_metadata(self, callback: Callable):
-        """Forward signature/annotations so EasyProvider can inspect argument types."""
         import functools
         functools.update_wrapper(self, callback)
 
@@ -25,10 +32,10 @@ class MutableCallback:
         self._callback = value
         self._update_metadata(value)
 
-    def __call__(self, start, stop):
+    def __call__(self, start, stop, **kwargs):
         import time as _time
         t0 = _time.monotonic()
-        result = self._callback(start, stop)
+        result = self._callback(start, stop, **kwargs)
         elapsed = _time.monotonic() - t0
         if self.after_call is not None:
             self.after_call(result, elapsed)
@@ -51,10 +58,13 @@ class VPRegistry:
     def register(self, name: str, callback: Callable,
                  product_type: str, labels: Optional[List[str]]) -> RegistryEntry:
         existing = self._entries.get(name)
+        new_sig_kwargs = _signature_kwargs(callback)
         if existing and existing.product_type == product_type and existing.labels == labels:
-            existing.wrapper.callback = callback
-            existing.signature_changed = False
-            return existing
+            old_sig_kwargs = _signature_kwargs(existing.wrapper.callback)
+            if old_sig_kwargs == new_sig_kwargs:
+                existing.wrapper.callback = callback
+                existing.signature_changed = False
+                return existing
 
         wrapper = MutableCallback(callback)
         entry = RegistryEntry(
