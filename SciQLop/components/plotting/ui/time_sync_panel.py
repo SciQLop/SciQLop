@@ -148,15 +148,23 @@ class _PostFetchHintsApplier:
 
 
 class _plot_product_callback:
-    def __init__(self, provider: DataProvider, node, post_fetch: Optional["_PostFetchHintsApplier"] = None):
+    def __init__(self, provider: DataProvider, node,
+                 post_fetch: Optional["_PostFetchHintsApplier"] = None,
+                 knob_state=None):
         self.provider = provider
         self.node = node
         self._post_fetch = post_fetch
+        self.knob_state = knob_state
+
+    def _knob_values(self):
+        return self.knob_state.values if self.knob_state is not None else None
 
     def __call__(self, start, stop):
         try:
             observer = self._post_fetch.observe if self._post_fetch is not None else None
-            return self.provider._get_data(self.node, start, stop, on_variable=observer)
+            return self.provider._get_data(self.node, start, stop,
+                                           on_variable=observer,
+                                           knobs=self._knob_values())
         except Exception as e:
             log.error(f"Error getting data for {self.node}: {e}")
             return []
@@ -172,11 +180,17 @@ def _y_is_descending(y):
 
 
 class _specgram_callback:
-    def __init__(self, provider: DataProvider, node, post_fetch: Optional["_PostFetchHintsApplier"] = None):
+    def __init__(self, provider: DataProvider, node,
+                 post_fetch: Optional["_PostFetchHintsApplier"] = None,
+                 knob_state=None):
         self.provider = provider
         self.node = node
         self._y_is_descending_ = None
         self._post_fetch = post_fetch
+        self.knob_state = knob_state
+
+    def _knob_values(self):
+        return self.knob_state.values if self.knob_state is not None else None
 
     def _y_is_descending(self, y):
         if self._y_is_descending_ is None:
@@ -187,7 +201,9 @@ class _specgram_callback:
     def __call__(self, start, stop):
         try:
             observer = self._post_fetch.observe if self._post_fetch is not None else None
-            x, y, z = self.provider._get_data(self.node, start, stop, on_variable=observer)
+            x, y, z = self.provider._get_data(self.node, start, stop,
+                                              on_variable=observer,
+                                              knobs=self._knob_values())
             if self._y_is_descending(y):
                 if len(y.shape) == 1:
                     y = y[::-1].copy()
