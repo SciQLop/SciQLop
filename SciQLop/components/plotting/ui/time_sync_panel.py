@@ -295,6 +295,18 @@ def _attach_knob_state(provider, product_path_str, callback, r, target=None):
         _maybe_show_knob_hint(plot)
 
 
+def _build_knob_reset_action(state, parent):
+    from PySide6.QtGui import QAction
+    action = QAction("Reset parameters to defaults", parent)
+
+    def _do_reset():
+        defaults = {s.name: s.default for s in state.specs}
+        state.set_all(defaults)
+
+    action.triggered.connect(_do_reset)
+    return action
+
+
 def _focus_knob_inspector(graph):
     try:
         from SciQLop.user_api.gui import get_main_window
@@ -548,7 +560,23 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
             menu.addAction("Update template", self._update_template)
         menu.addAction("Save as template\u2026", self._quick_save_template)
         menu.addAction("Export template\u2026", self._export_template)
+        self._append_knob_reset_actions(menu)
         menu.exec(global_pos)
+
+    def _append_knob_reset_actions(self, menu):
+        actions = []
+        for plot in self.plots():
+            for child in plot.children():
+                state = getattr(child, "_knob_state", None)
+                if state is not None and state.specs:
+                    label = child.name() if hasattr(child, "name") else "graph"
+                    a = _build_knob_reset_action(state, parent=menu)
+                    a.setText(f"Reset parameters: {label}")
+                    actions.append(a)
+        if actions:
+            menu.addSeparator()
+            for a in actions:
+                menu.addAction(a)
 
     def _export_png(self):
         from PySide6.QtWidgets import QFileDialog
