@@ -65,3 +65,21 @@ def test_get_knobs_returns_empty_for_non_templated(monkeypatch, qapp, sciqlop_re
     plugin = mod.SpeasyPlugin.__new__(mod.SpeasyPlugin)
     monkeypatch.setattr(plugin, "_resolve_index", lambda product: object(), raising=False)
     assert plugin.get_knobs("amda/regular_param") == []
+
+
+def test_knob_name_matches_speasy_template_key(qapp, sciqlop_resources):
+    """speasy substitutes ##arg.key## in templates; knob.name must equal arg.key
+    so that the product_inputs dict reaches the right placeholder."""
+    from SciQLop.plugins.speasy_provider.speasy_provider import _argument_to_knob
+
+    class RealShapeArg:
+        key = "side"
+        name = "Side"
+        type = "list"
+        default = "0"
+        choices = [("Side 0", "0"), ("Side 1", "1")]
+
+    knob = _argument_to_knob(RealShapeArg())
+    assert knob.name == "side", "knob.name must be arg.key for product_inputs dispatch"
+    assert knob.label == "Side", "knob.label carries the human-readable name"
+    assert knob.default == "0"

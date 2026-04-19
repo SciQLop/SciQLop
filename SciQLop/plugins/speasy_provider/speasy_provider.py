@@ -41,9 +41,11 @@ def _find_argument_list(index) -> Optional[ArgumentListIndex]:
 
 
 def _argument_to_knob(arg) -> Optional[KnobSpec]:
-    name = getattr(arg, "name", None) or getattr(arg, "spz_name", lambda: "")()
-    if not name:
+    key = getattr(arg, "key", None) or getattr(arg, "name", None) \
+        or getattr(arg, "spz_name", lambda: "")()
+    if not key:
         return None
+    label = getattr(arg, "name", "") or key
     arg_type = (getattr(arg, "type", "") or "").lower()
     default = getattr(arg, "default", None)
 
@@ -55,16 +57,21 @@ def _argument_to_knob(arg) -> Optional[KnobSpec]:
                 choices.append((str(c[0]), c[1]))
             else:
                 choices.append((str(c), c))
-        return ChoiceKnob(name=name, default=default, choices=tuple(choices))
+        return ChoiceKnob(name=key, label=label, default=default,
+                          choices=tuple(choices))
 
     if arg_type == "bool":
-        return BoolKnob(name=name, default=bool(default) if default is not None else False)
+        return BoolKnob(name=key, label=label,
+                        default=bool(default) if default is not None else False)
     if arg_type in ("int", "integer"):
-        return IntKnob(name=name, default=int(default) if default is not None else 0)
+        return IntKnob(name=key, label=label,
+                       default=int(default) if default is not None else 0)
     if arg_type in ("float", "double"):
-        return FloatKnob(name=name, default=float(default) if default is not None else 0.0)
+        return FloatKnob(name=key, label=label,
+                         default=float(default) if default is not None else 0.0)
     if arg_type in ("string", "str", ""):
-        return StringKnob(name=name, default=str(default) if default is not None else "")
+        return StringKnob(name=key, label=label,
+                          default=str(default) if default is not None else "")
     return None
 
 
