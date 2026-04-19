@@ -30,6 +30,17 @@ def _find_existing_debug_dock(mw):
     return _impl(mw)
 
 
+def _find_knob_state(panel):
+    if panel is None:
+        return None
+    for plot in panel.plots():
+        for graph in plot.plottables():
+            state = getattr(graph, "_knob_state", None)
+            if state is not None:
+                return state
+    return None
+
+
 def _persisted_knob_values(entry):
     panel = getattr(entry, "panel", None) if entry is not None else None
     if panel is None:
@@ -208,14 +219,11 @@ def vp_magic(line: str, cell: str, local_ns=None):
                 display_widgets_for_state,
             )
             from IPython.display import display
-            panel = entry.panel
-            plots = panel.plots() if panel is not None else []
-            if plots:
-                state = getattr(plots[0], "_knob_state", None)
-                if state is not None and state.specs:
-                    box = display_widgets_for_state(state)
-                    if box is not None:
-                        display(box)
+            state = _find_knob_state(entry.panel)
+            if state is not None and state.specs:
+                box = display_widgets_for_state(state)
+                if box is not None:
+                    display(box)
         except Exception:
             _get_log().debug("ipywidgets binding skipped", exc_info=True)
 
