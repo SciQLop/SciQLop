@@ -65,13 +65,41 @@ def handle_debug(args, func, func_name: str, entry: RegistryEntry, type_info,
     _invoke_on_main_thread(_do_debug_ui)
 
 
+def _iter_knob_states(panel):
+    seen = set()
+    for plot in panel.plots():
+        candidates = list(plot.plottables() or [])
+        candidates.extend(plot.children())
+        for obj in candidates:
+            state = getattr(obj, "_knob_state", None)
+            if state is not None and id(state) not in seen:
+                seen.add(id(state))
+                yield state
+
+
+def _snapshot_knob_values(panel):
+    snapshot = {}
+    for state in _iter_knob_states(panel):
+        snapshot.update(state.values)
+    return snapshot
+
+
+def _restore_knob_values(panel, snapshot):
+    if not snapshot:
+        return
+    for state in _iter_knob_states(panel):
+        state.set_all(snapshot)
+
+
 def _plot_on_debug_panel(panel, func_name: str):
     """Clear and re-plot the virtual product on the debug panel."""
     from SciQLop.components.plotting.ui.time_sync_panel import plot_product
     from SciQLopPlots import PlotType
+    snapshot = _snapshot_knob_values(panel)
     panel.clear()
     path = func_name.split('/')
     plot_product(panel, path, plot_type=PlotType.TimeSeries)
+    _restore_knob_values(panel, snapshot)
 
 
 def _auto_scale_plots(panel):

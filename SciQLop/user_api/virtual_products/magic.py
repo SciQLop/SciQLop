@@ -30,6 +30,17 @@ def _find_existing_debug_dock(mw):
     return _impl(mw)
 
 
+def _persisted_knob_values(entry):
+    panel = getattr(entry, "panel", None) if entry is not None else None
+    if panel is None:
+        return {}
+    try:
+        from SciQLop.user_api.virtual_products.debug import _snapshot_knob_values
+        return _snapshot_knob_values(panel)
+    except Exception:
+        return {}
+
+
 def _parse_args(line: str):
     import argparse
     import shlex
@@ -145,9 +156,13 @@ def vp_magic(line: str, cell: str, local_ns=None):
 
     if needs_eval:
         start, stop = _resolve_time_range(args, func)
+        preserved = _persisted_knob_values(_registry.get(func_name))
         t0 = _time.monotonic()
         try:
-            cached_data = func(start, stop)
+            try:
+                cached_data = func(start, stop, **preserved)
+            except TypeError:
+                cached_data = func(start, stop)
         except Exception as e:
             eval_error = e
             cached_data = None
