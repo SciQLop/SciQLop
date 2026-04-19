@@ -1,12 +1,13 @@
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from PySide6.QtGui import QIcon
 import threading
 import traceback
 import speasy as spz
-from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex, CatalogIndex, TimetableIndex
+from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex, CatalogIndex, TimetableIndex, ArgumentListIndex
 from speasy.products import SpeasyVariable
 
+from SciQLop.user_api.knobs import KnobSpec, ChoiceKnob, IntKnob, FloatKnob, BoolKnob, StringKnob
 from SciQLop.components.theming import register_icon, get_icon
 from SciQLop.components import sciqlop_logging
 from SciQLop.core.enums import ParameterType, GraphType
@@ -28,6 +29,43 @@ register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
 register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
 register_icon("uiowaephtool", QIcon(f"{__here__}/../../resources/icons/Iowa_Hawkeyes_logo.svg"))
 register_icon("cloud", lambda: QIcon(f"{__here__}/../../resources/icons/cloud.png"))
+
+
+def _find_argument_list(index) -> Optional[ArgumentListIndex]:
+    if isinstance(index, ArgumentListIndex):
+        return index
+    for child in getattr(index, "__dict__", {}).values():
+        if isinstance(child, ArgumentListIndex):
+            return child
+    return None
+
+
+def _argument_to_knob(arg) -> Optional[KnobSpec]:
+    name = getattr(arg, "name", None) or getattr(arg, "spz_name", lambda: "")()
+    if not name:
+        return None
+    arg_type = (getattr(arg, "type", "") or "").lower()
+    default = getattr(arg, "default", None)
+
+    if arg_type in ("list", "generated-list"):
+        raw_choices = getattr(arg, "choices", []) or []
+        choices = []
+        for c in raw_choices:
+            if isinstance(c, tuple) and len(c) == 2:
+                choices.append((str(c[0]), c[1]))
+            else:
+                choices.append((str(c), c))
+        return ChoiceKnob(name=name, default=default, choices=tuple(choices))
+
+    if arg_type == "bool":
+        return BoolKnob(name=name, default=bool(default) if default is not None else False)
+    if arg_type in ("int", "integer"):
+        return IntKnob(name=name, default=int(default) if default is not None else 0)
+    if arg_type in ("float", "double"):
+        return FloatKnob(name=name, default=float(default) if default is not None else 0.0)
+    if arg_type in ("string", "str", ""):
+        return StringKnob(name=name, default=str(default) if default is not None else "")
+    return None
 
 
 def _current_thread_id():
@@ -186,13 +224,40 @@ class SpeasyPlugin(DataProvider):
         build_product_tree(root_node, provider=self.name)
         ProductsModel.instance().add_node([], root_node)
 
-    def get_data(self, product: ProductsModelNode, start, stop):
-        try:
+    def _resolve_index(self, product):
+        if hasattr(product, "metadata"):
             speasy_id = product.metadata("speasy_id")
-            v: SpeasyVariable = spz.get_data(speasy_id, start, stop)
+        else:
+            speasy_id = product
+        if not speasy_id:
+            return None
+        try:
+            return spz.inventories.flat_inventories.parameters.get(speasy_id)
+        except Exception:
+            return None
+
+    def get_knobs(self, product) -> list:
+        index = self._resolve_index(product)
+        if index is None:
+            return []
+        args_node = _find_argument_list(index)
+        if args_node is None:
+            return []
+        out = []
+        for arg in args_node:
+            spec = _argument_to_knob(arg)
+            if spec is not None:
+                out.append(spec)
+        return out
+
+    def get_data(self, product, start, stop, knobs=None):
+        try:
+            speasy_id = product.metadata("speasy_id") if hasattr(product, "metadata") else product
+            kwargs = {"product_inputs": dict(knobs)} if knobs else {}
+            v: SpeasyVariable = spz.get_data(speasy_id, start, stop, **kwargs)
             if v:
                 return v.replace_fillval_by_nan(inplace=True, convert_to_float=True)
-        except Exception as e:
+        except Exception:
             log.error(f"Error getting data for {product} between {start} and {stop}: {traceback.format_exc()}")
             return None
 
