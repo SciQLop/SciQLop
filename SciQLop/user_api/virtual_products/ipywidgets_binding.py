@@ -79,7 +79,7 @@ def bind_state_to_widgets(state, widgets: dict):
 def display_widgets_for_state(state):
     """Return an HBox of widgets bound to state, or None if unsupported."""
     w = _import_ipywidgets()
-    if w is None or not _has_widget_comm():
+    if w is None:
         return None
     widgets = {}
     for spec in state.specs:

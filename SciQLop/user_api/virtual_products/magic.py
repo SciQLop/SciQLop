@@ -218,14 +218,28 @@ def vp_magic(line: str, cell: str, local_ns=None):
             from SciQLop.user_api.virtual_products.ipywidgets_binding import (
                 display_widgets_for_state,
             )
+            from SciQLop.user_api.knobs import extract_specs_from_callback
             from IPython.display import display
+
             state = _find_knob_state(entry.panel)
-            if state is not None and state.specs:
+            specs = state.specs if state is not None else extract_specs_from_callback(func)
+            if not specs:
+                _get_log().info(
+                    "no tunable parameters on %s — give a kwarg a default "
+                    "(e.g. gain=1.0) to get a widget", func_name)
+            else:
+                if state is None:
+                    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+                    state = GraphKnobState(specs)
                 box = display_widgets_for_state(state)
-                if box is not None:
+                if box is None:
+                    _get_log().info(
+                        "ipywidgets not available; `pip install ipywidgets` "
+                        "to get interactive knobs in --debug mode")
+                else:
                     display(box)
         except Exception:
-            _get_log().debug("ipywidgets binding skipped", exc_info=True)
+            _get_log().warning("ipywidgets binding failed", exc_info=True)
 
     return func, args, type_info
 
