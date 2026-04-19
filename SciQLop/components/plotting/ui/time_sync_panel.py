@@ -256,6 +256,32 @@ def _plot_from_result(r, target):
     return None
 
 
+def _trigger_refetch(graph):
+    try:
+        graph.replot()
+    except AttributeError:
+        try:
+            graph.parentPlot().replot()
+        except Exception:
+            log.debug("could not trigger replot for knob change", exc_info=True)
+
+
+def _attach_knob_state(provider, product_path_str, callback, r):
+    specs = []
+    try:
+        specs = provider.get_knobs(product_path_str)
+    except Exception:
+        log.debug("get_knobs failed for %s", product_path_str, exc_info=True)
+    if not specs:
+        return
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    graph = _graph_from_result(r)
+    state = GraphKnobState(specs, parent=graph)
+    graph._knob_state = state
+    callback.knob_state = state
+    state.knobs_changed.connect(lambda *_: _trigger_refetch(graph))
+
+
 def _safe_plot_hints(provider, node) -> PlotHints:
     try:
         return provider.plot_hints(node)
@@ -325,6 +351,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
                             r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
                     callback._post_fetch = _register_graph_hints(provider, node, r, target)
+                    _attach_knob_state(provider, product_path_str, callback, r)
                     return r
                 elif node.parameter_type() == ParameterType.Spectrogram:
                     callback = _specgram_callback(provider, node)
@@ -335,6 +362,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
                         r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
                     callback._post_fetch = _register_graph_hints(provider, node, r, target)
+                    _attach_knob_state(provider, product_path_str, callback, r)
                     return r
     log.debug(f"Product not found: {product}")
     return None

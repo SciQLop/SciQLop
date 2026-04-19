@@ -34,6 +34,16 @@ def test_plot_product_callback_passes_knobs():
     assert seen["fft"] == 1024
 
 
+def test_state_cache_key_changes_with_value():
+    from SciQLop.user_api.knobs import IntKnob
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    s = GraphKnobState([IntKnob(name="fft", default=256, min=64, max=4096)])
+    k0 = s.cache_key()
+    s.set_value("fft", 1024)
+    k1 = s.cache_key()
+    assert k0 != k1
+
+
 def test_plot_product_callback_without_state_calls_unchanged():
     from SciQLop.components.plotting.backend.easy_provider import EasyScalar
     from SciQLop.components.plotting.ui.time_sync_panel import _plot_product_callback
