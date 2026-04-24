@@ -10,9 +10,11 @@ from ._panel import PlotPanel, create_plot_panel, plot_panel
 from ._graphic_primitives import Ellipse, Text, CurvedLine
 from ._overlay import Overlay
 from . import _fluent as fluent
+from SciQLop.user_api.layers import Marker, Span, HLine
 
 log = _getLogger(__name__)
 
 __all__ = ['ScaleType', 'PlotType', 'Plot', 'Plottable', 'Histogram2D', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
            'create_plot_panel', 'plot_panel', 'TimeRange', 'Ellipse', 'fluent',
-           'Overlay', 'OverlayLevel', 'OverlaySizeMode', 'OverlayPosition']
+           'Overlay', 'OverlayLevel', 'OverlaySizeMode', 'OverlayPosition',
+           'Marker', 'Span', 'HLine']

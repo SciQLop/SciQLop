@@ -15,7 +15,7 @@ from SciQLop.components.plotting.ui.time_sync_panel import (TimeSyncPanel as _Im
 from SciQLop.components.plotting.backend.palette import Palette as _Palette, make_color_list as _make_color_list
 from ._plots import to_product_path, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
     is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product
-from ._graphs import ensure_arrays_of_double, Histogram2D
+from ._graphs import ensure_arrays_of_double, Histogram2D, _create_histogram2d
 from ._thread_safety import on_main_thread
 import numpy as _np
 from speasy.products import SpeasyVariable as _SpeasyVariable
@@ -189,25 +189,29 @@ class PlotPanel:
 
     @experimental_api()
     @on_main_thread
-    def histogram2d(self, x, y, *, name: str = "histogram",
-                    key_bins: int = 100, value_bins: int = 100,
-                    z_log_scale: bool = False, plot_index: int = -1) -> Tuple[XYPlot, Histogram2D]:
-        """Add a 2D density histogram in a new XY plot.
-
-        Bins (x, y) into a key_bins x value_bins grid asynchronously.
+    def histogram2d(self, *args, name: str = "histogram",
+                    x_bins: int = 100, y_bins: int = 100,
+                    z_log_scale: bool = False, gradient=None,
+                    plot_index: int = -1):
+        """Add a 2D density histogram in a new plot.
 
         Parameters
         ----------
-        x, y : array-like
-            Scatter data to bin.
+        *args : callable or (x, y)
+            Either a callback ``f(start, stop) -> (x, y)`` that is
+            called automatically when the time range changes, or two
+            array-like arguments ``(x, y)`` with static scatter data.
+            Both paths create an XY plot.
         name : str
             Histogram label (shown in legend).
-        key_bins : int
+        x_bins : int
             Number of bins along the X axis.
-        value_bins : int
+        y_bins : int
             Number of bins along the Y axis.
         z_log_scale : bool
             Use a logarithmic color scale.
+        gradient
+            Color gradient for the density map. None keeps the default.
         plot_index : int
             Index in the panel where the new plot is created. -1 = append.
 
@@ -215,18 +219,77 @@ class PlotPanel:
         -------
         Tuple[XYPlot, Histogram2D]
             The newly created plot and the histogram plottable.
-
-        Notes
-        -----
-        Callable / function-source variant pending upstream support in
-        ``SciQLopPlot::add_histogram2d(GetDataPyCallable, ...)``.
         """
         impl = self._get_impl_or_raise()
         plot_impl = impl.create_plot(plot_index, _PlotType.BasicXY)
-        hist_impl = plot_impl.add_histogram2d(name, key_bins, value_bins)
-        hist_impl.set_z_log_scale(z_log_scale)
-        hist_impl.set_data(*ensure_arrays_of_double(x, y))
-        return XYPlot(plot_impl), Histogram2D(hist_impl)
+        hist = _create_histogram2d(plot_impl, *args, name=name,
+                                   x_bins=x_bins, y_bins=y_bins,
+                                   z_log_scale=z_log_scale, gradient=gradient)
+        if len(args) == 1 and callable(args[0]):
+            impl.time_range_changed.connect(hist._impl.set_range)
+        return XYPlot(plot_impl), hist
+
+    @experimental_api()
+    @on_main_thread
+    def add_layer(self, func, plot_index: int = 0, **initial_knobs):
+        """Attach an annotation layer to an existing plot in this panel.
+
+        Parameters
+        ----------
+        func : callable
+            A function ``f(start, stop, **knobs) -> list[Marker|Span|HLine]``.
+        plot_index : int
+            Index of the subplot to attach the layer to. Defaults to 0 (first plot).
+        **initial_knobs
+            Initial values for the layer's knob parameters.
+        """
+        from SciQLop.user_api.layers._renderer import LayerRenderer
+        from SciQLop.user_api.knobs import extract_specs_from_callback
+        from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+        from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
+        from SciQLop.components.plotting.ui.time_sync_panel import _trigger_layer_update
+        from SciQLopPlots import SciQLopPlot
+
+        impl = self._get_impl_or_raise()
+        plots = impl.plots()
+        if not plots or plot_index >= len(plots):
+            raise IndexError(f"No plot at index {plot_index}")
+
+        target = plots[plot_index]
+        name = target.objectName()
+        for child in impl.findChildren(SciQLopPlot):
+            if child.objectName() == name:
+                target = child
+                break
+
+        renderer = LayerRenderer(target, func, parent=target)
+
+        specs = extract_specs_from_callback(func)
+        if specs:
+            state = GraphKnobState(specs, parent=renderer)
+            renderer._knob_state = state
+            if initial_knobs:
+                state.set_all(initial_knobs)
+            state.knobs_changed.connect(lambda *_: _trigger_layer_update(renderer, target))
+            if hasattr(target, "add_inspector_extension"):
+                ext = KnobInspectorExtension(state, parent=renderer)
+                renderer._knob_inspector_ext = ext
+                target.add_inspector_extension(ext)
+
+        target.x_axis().range_changed.connect(
+            lambda new_range: renderer.update(new_range.start(), new_range.stop()))
+
+        if not hasattr(target, "_layer_renderers"):
+            target._layer_renderers = []
+        target._layer_renderers.append(renderer)
+
+        try:
+            current_range = target.x_axis().range()
+            renderer.update(current_range.start(), current_range.stop())
+        except Exception:
+            pass
+
+        return renderer
 
     @on_main_thread
     def plot(self, *args, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable] | None:

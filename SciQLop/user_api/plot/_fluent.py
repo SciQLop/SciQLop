@@ -53,6 +53,30 @@ class PanelBuilder:
             self._current_plot, _ = result
         return self
 
+    def histogram2d(self, *args, **kwargs) -> PanelBuilder:
+        """Add a 2D density histogram. Accepts the same arguments as PlotPanel.histogram2d().
+
+        Creates a new subplot. Pass ``(x, y)`` arrays for static data or a
+        callable ``f(start, stop) -> (x, y)`` for live updates on time-range changes.
+        """
+        self._current_plot_index += 1
+        kwargs.setdefault("plot_index", self._current_plot_index)
+        result = self._panel.histogram2d(*args, **kwargs)
+        if result is not None:
+            self._current_plot, _ = result
+        return self
+
+    def layer(self, func, **kwargs) -> PanelBuilder:
+        """Attach an annotation layer to the current subplot.
+
+        The layer callback ``f(start, stop, **knobs) -> list[Marker|Span|HLine]``
+        is called on time-range changes and renders annotations on the subplot.
+        """
+        if self._current_plot is None:
+            raise RuntimeError("No plot yet — call .plot() first to create a subplot")
+        self._panel.add_layer(func, plot_index=self._current_plot_index, **kwargs)
+        return self
+
     def y_range(self, lo: float, hi: float) -> PanelBuilder:
         """Set the Y-axis range of the current subplot."""
         self._require_current_plot().set_y_range(lo, hi)
