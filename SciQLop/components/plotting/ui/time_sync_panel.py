@@ -1,5 +1,6 @@
 from typing import Optional, List, Union
 
+import time as _time
 import numpy as np
 from PySide6.QtCore import QMimeData
 from PySide6.QtGui import QIcon
@@ -155,19 +156,27 @@ class _plot_product_callback:
         self.node = node
         self._post_fetch = post_fetch
         self.knob_state = knob_state
+        self.on_data_fetched = None
 
     def _knob_values(self):
         return self.knob_state.values if self.knob_state is not None else None
 
     def __call__(self, start, stop):
+        t0 = _time.monotonic() if self.on_data_fetched is not None else 0
         try:
             observer = self._post_fetch.observe if self._post_fetch is not None else None
-            return self.provider._get_data(self.node, start, stop,
-                                           on_variable=observer,
-                                           knobs=self._knob_values())
+            result = self.provider._get_data(self.node, start, stop,
+                                             on_variable=observer,
+                                             knobs=self._knob_values())
         except Exception as e:
             log.error(f"Error getting data for {self.node}: {e}")
             return []
+        if self.on_data_fetched is not None:
+            try:
+                self.on_data_fetched(result, _time.monotonic() - t0, start, stop)
+            except Exception:
+                log.debug("on_data_fetched hook raised", exc_info=True)
+        return result
 
 
 def _y_is_descending(y):
@@ -260,31 +269,50 @@ def _graph_from_result(r):
     return r[1] if hasattr(r, '__iter__') else r
 
 
-def _trigger_refetch(graph):
+def _trigger_refetch_impl(graph):
     call = getattr(graph, "call", None)
     if call is None:
         log.debug("graph has no function pipeline — cannot refetch on knob change")
         return
+    invalidate = getattr(graph, "invalidate_cache", None)
+    if invalidate is not None:
+        try:
+            invalidate()
+        except Exception:
+            log.debug("invalidate_cache failed", exc_info=True)
     try:
-        call(graph.range())
+        # graph.range() returns stale m_range (never updated by axis-driven fetches);
+        # read the live x-axis range instead
+        current_range = graph.x_axis().range()
+        call(current_range)
     except Exception:
         log.debug("could not trigger refetch for knob change", exc_info=True)
 
 
-def _attach_knob_state(provider, product_path_str, callback, r, target=None):
+def _trigger_refetch(graph):
+    from SciQLop.user_api.threading import on_main_thread
+    on_main_thread(_trigger_refetch_impl)(graph)
+
+
+def _attach_knob_state(provider, node, callback, r, target=None):
     specs = []
     try:
-        specs = provider.get_knobs(product_path_str)
+        specs = provider.get_knobs(node)
     except Exception:
-        log.debug("get_knobs failed for %s", product_path_str, exc_info=True)
+        log.error("get_knobs failed for %s", node, exc_info=True)
     if not specs:
         return
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
     graph = _graph_from_result(r)
     state = GraphKnobState(specs, parent=graph)
     graph._knob_state = state
     callback.knob_state = state
     state.knobs_changed.connect(lambda *_: _trigger_refetch(graph))
+    if hasattr(graph, "add_inspector_extension"):
+        ext = KnobInspectorExtension(state, parent=graph)
+        graph._knob_inspector_ext = ext
+        graph.add_inspector_extension(ext)
 
 
 def _build_knob_reset_action(state, parent):
@@ -364,7 +392,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
                             r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
                     callback._post_fetch = _register_graph_hints(provider, node, r, target)
-                    _attach_knob_state(provider, product_path_str, callback, r, target)
+                    _attach_knob_state(provider, node, callback, r, target)
                     return r
                 elif node.parameter_type() == ParameterType.Spectrogram:
                     callback = _specgram_callback(provider, node)
@@ -375,7 +403,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
                         r = (existing_plot, r)
                     _set_product_path(r, product_path_str)
                     callback._post_fetch = _register_graph_hints(provider, node, r, target)
-                    _attach_knob_state(provider, product_path_str, callback, r, target)
+                    _attach_knob_state(provider, node, callback, r, target)
                     return r
     log.debug(f"Product not found: {product}")
     return None
@@ -400,6 +428,61 @@ def plot_function(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
     return r
 
 
+def attach_layer(plot, product: list[str]):
+    """Attach an annotation layer to an existing plot."""
+    from SciQLop.user_api.layers._provider import _layer_providers
+    from SciQLop.user_api.layers._renderer import LayerRenderer
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
+
+    node = ProductsModel.node(product)
+    if node is None:
+        return None
+    provider = _layer_providers.get(node.provider())
+    if provider is None:
+        return None
+
+    renderer = LayerRenderer(plot, provider.callback, parent=plot)
+
+    specs = provider.get_knobs()
+    if specs:
+        state = GraphKnobState(specs, parent=renderer)
+        renderer._knob_state = state
+        state.knobs_changed.connect(lambda *_: _trigger_layer_update(renderer, plot))
+        if hasattr(plot, "add_inspector_extension"):
+            ext = KnobInspectorExtension(state, parent=renderer)
+            renderer._knob_inspector_ext = ext
+            plot.add_inspector_extension(ext)
+
+    plot.x_axis().range_changed.connect(lambda new_range: renderer.update(new_range.start(), new_range.stop()))
+
+    if not hasattr(plot, "_layer_renderers"):
+        plot._layer_renderers = []
+    plot._layer_renderers.append(renderer)
+
+    try:
+        current_range = plot.x_axis().range()
+        renderer.update(current_range.start(), current_range.stop())
+    except Exception:
+        log.debug("initial layer render skipped — no valid range yet")
+
+    return renderer
+
+
+def _trigger_layer_update(renderer, plot):
+    from SciQLop.user_api.threading import on_main_thread
+
+    @on_main_thread
+    def _do():
+        try:
+            current_range = plot.x_axis().range()
+            renderer.update(current_range.start(), current_range.stop())
+        except Exception:
+            log.debug("layer knob-triggered update failed", exc_info=True)
+
+    _do()
+
+
 class ProductDnDCallback(PlotDragNDropCallback):
     def __init__(self, parent):
         super().__init__(PRODUCT_LIST_MIME_TYPE, True, parent)
@@ -411,7 +494,10 @@ class ProductDnDCallback(PlotDragNDropCallback):
             node = ProductsModel.node(product)
             if node is not None:
                 log.debug(f"ProductDnDCallback: {node}")
-                plot_product(plot, product)
+                if node.metadata().get("sciqlop_layer") == "true":
+                    attach_layer(plot, product)
+                else:
+                    plot_product(plot, product)
 
 
 class TimeRangeDnDCallback(PlotDragNDropCallback):
