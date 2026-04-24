@@ -243,11 +243,7 @@ class PlotPanel:
         **initial_knobs
             Initial values for the layer's knob parameters.
         """
-        from SciQLop.user_api.layers._renderer import LayerRenderer
-        from SciQLop.user_api.knobs import extract_specs_from_callback
-        from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
-        from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
-        from SciQLop.components.plotting.ui.time_sync_panel import _trigger_layer_update
+        from SciQLop.components.plotting.ui.time_sync_panel import wire_layer_renderer
         from SciQLopPlots import SciQLopPlot
 
         impl = self._get_impl_or_raise()
@@ -262,34 +258,7 @@ class PlotPanel:
                 target = child
                 break
 
-        renderer = LayerRenderer(target, func, parent=target)
-
-        specs = extract_specs_from_callback(func)
-        if specs:
-            state = GraphKnobState(specs, parent=renderer)
-            renderer._knob_state = state
-            if initial_knobs:
-                state.set_all(initial_knobs)
-            state.knobs_changed.connect(lambda *_: _trigger_layer_update(renderer, target))
-            if hasattr(target, "add_inspector_extension"):
-                ext = KnobInspectorExtension(state, parent=renderer)
-                renderer._knob_inspector_ext = ext
-                target.add_inspector_extension(ext)
-
-        target.x_axis().range_changed.connect(
-            lambda new_range: renderer.update(new_range.start(), new_range.stop()))
-
-        if not hasattr(target, "_layer_renderers"):
-            target._layer_renderers = []
-        target._layer_renderers.append(renderer)
-
-        try:
-            current_range = target.x_axis().range()
-            renderer.update(current_range.start(), current_range.stop())
-        except Exception:
-            pass
-
-        return renderer
+        return wire_layer_renderer(target, func, initial_knobs=initial_knobs or None)
 
     @on_main_thread
     def plot(self, *args, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable] | None:

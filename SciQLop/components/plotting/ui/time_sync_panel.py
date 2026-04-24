@@ -428,12 +428,59 @@ def plot_function(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
     return r
 
 
-def attach_layer(plot, product: list[str]):
-    """Attach an annotation layer to an existing plot."""
-    from SciQLop.user_api.layers._provider import _layer_providers
+def _trigger_layer_update_impl(renderer, plot):
+    try:
+        current_range = plot.x_axis().range()
+        renderer.update(current_range.start(), current_range.stop())
+    except Exception:
+        log.debug("layer update failed", exc_info=True)
+
+
+def _trigger_layer_update(renderer, plot):
+    from SciQLop.user_api.threading import on_main_thread
+    on_main_thread(_trigger_layer_update_impl)(renderer, plot)
+
+
+def wire_layer_renderer(target, func, specs=None, initial_knobs=None):
+    """Create a LayerRenderer, wire knobs + range listener, return the renderer."""
     from SciQLop.user_api.layers._renderer import LayerRenderer
+    from SciQLop.user_api.knobs import extract_specs_from_callback
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
     from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
+
+    renderer = LayerRenderer(target, func)
+
+    if specs is None:
+        specs = extract_specs_from_callback(func)
+    if specs:
+        state = GraphKnobState(specs, parent=renderer)
+        renderer._knob_state = state
+        if initial_knobs:
+            state.set_all(initial_knobs)
+        state.knobs_changed.connect(lambda *_: _trigger_layer_update(renderer, target))
+        if hasattr(target, "add_inspector_extension"):
+            ext = KnobInspectorExtension(state, parent=renderer)
+            renderer._knob_inspector_ext = ext
+            target.add_inspector_extension(ext)
+
+    target.x_axis().range_changed.connect(
+        lambda new_range: renderer.update(new_range.start(), new_range.stop()))
+
+    if not hasattr(target, "_layer_renderers"):
+        target._layer_renderers = []
+    target._layer_renderers.append(renderer)
+
+    try:
+        current_range = target.x_axis().range()
+        renderer.update(current_range.start(), current_range.stop())
+    except Exception:
+        log.debug("initial layer render skipped — no valid range yet")
+
+    return renderer
+
+
+def attach_layer(plot, product: list[str]):
+    from SciQLop.user_api.layers._provider import _layer_providers
 
     node = ProductsModel.node(product)
     if node is None:
@@ -442,45 +489,7 @@ def attach_layer(plot, product: list[str]):
     if provider is None:
         return None
 
-    renderer = LayerRenderer(plot, provider.callback, parent=plot)
-
-    specs = provider.get_knobs()
-    if specs:
-        state = GraphKnobState(specs, parent=renderer)
-        renderer._knob_state = state
-        state.knobs_changed.connect(lambda *_: _trigger_layer_update(renderer, plot))
-        if hasattr(plot, "add_inspector_extension"):
-            ext = KnobInspectorExtension(state, parent=renderer)
-            renderer._knob_inspector_ext = ext
-            plot.add_inspector_extension(ext)
-
-    plot.x_axis().range_changed.connect(lambda new_range: renderer.update(new_range.start(), new_range.stop()))
-
-    if not hasattr(plot, "_layer_renderers"):
-        plot._layer_renderers = []
-    plot._layer_renderers.append(renderer)
-
-    try:
-        current_range = plot.x_axis().range()
-        renderer.update(current_range.start(), current_range.stop())
-    except Exception:
-        log.debug("initial layer render skipped — no valid range yet")
-
-    return renderer
-
-
-def _trigger_layer_update(renderer, plot):
-    from SciQLop.user_api.threading import on_main_thread
-
-    @on_main_thread
-    def _do():
-        try:
-            current_range = plot.x_axis().range()
-            renderer.update(current_range.start(), current_range.stop())
-        except Exception:
-            log.debug("layer knob-triggered update failed", exc_info=True)
-
-    _do()
+    return wire_layer_renderer(plot, provider.callback, specs=provider.get_knobs())
 
 
 class ProductDnDCallback(PlotDragNDropCallback):
@@ -494,7 +503,8 @@ class ProductDnDCallback(PlotDragNDropCallback):
             node = ProductsModel.node(product)
             if node is not None:
                 log.debug(f"ProductDnDCallback: {node}")
-                if node.metadata().get("sciqlop_layer") == "true":
+                from SciQLop.user_api.layers._provider import LAYER_META_KEY
+                if node.metadata().get(LAYER_META_KEY) == "true":
                     attach_layer(plot, product)
                 else:
                     plot_product(plot, product)

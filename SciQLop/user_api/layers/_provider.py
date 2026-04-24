@@ -11,6 +11,7 @@ from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 log = _getLogger(__name__)
 
 _LAYERS_ROOT = "Layers"
+LAYER_META_KEY = "sciqlop_layer"
 
 _layer_providers: dict[str, "LayerProvider"] = {}
 
@@ -26,7 +27,7 @@ class LayerProvider:
         metadata = {
             "description": f"Annotation layer: {self.name}",
             "stable_id": f"{_LAYERS_ROOT}/{path}",
-            "sciqlop_layer": "true",
+            LAYER_META_KEY: "true",
         }
         product_path = self._path[:-1]
         leaf = ProductsModelNode(
@@ -44,8 +45,9 @@ class LayerProvider:
     def get_knobs(self) -> list:
         return list(self._knob_specs)
 
-    def refresh_knob_specs(self):
-        self._knob_specs = extract_specs_from_callback(self._callback)
+    def update_callback(self, callback: Callable):
+        self._callback = callback
+        self._knob_specs = extract_specs_from_callback(callback)
 
     @property
     def callback(self):

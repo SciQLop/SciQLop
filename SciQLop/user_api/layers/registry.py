@@ -1,4 +1,5 @@
 """Layer lifecycle: MutableCallback wrapper and registry for hot-reload."""
+import functools
 import inspect
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
@@ -24,7 +25,6 @@ class MutableCallback:
     @callback.setter
     def callback(self, value):
         self._callback = value
-        import functools
         functools.update_wrapper(self, value)
 
     def __call__(self, start, stop, **kwargs):

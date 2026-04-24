@@ -5,6 +5,9 @@ from IPython.core.magic import needs_local_scope
 
 from SciQLop.user_api.layers.registry import _registry
 from SciQLop.user_api.layers.types import Marker, Span, HLine
+from SciQLop.components.sciqlop_logging import getLogger as _getLogger
+
+log = _getLogger(__name__)
 
 
 def _parse_args(line: str):
@@ -31,28 +34,16 @@ def _inject_type_names(user_ns: dict):
     user_ns.setdefault("HLine", HLine)
 
 
-def _get_log():
-    from SciQLop.components import sciqlop_logging
-    return sciqlop_logging.getLogger(__name__)
-
-
-def _invoke_on_main_thread(func, *args, **kwargs):
-    from SciQLop.user_api.threading import invoke_on_main_thread
-    return invoke_on_main_thread(func, *args, **kwargs)
-
-
 def _register_layer_provider(name, wrapper, path):
     from SciQLop.user_api.layers._provider import LayerProvider, _layer_providers
+    from SciQLop.user_api.threading import invoke_on_main_thread
+
     existing = _layer_providers.get(name)
     if existing is not None:
-        existing._callback = wrapper
-        existing.refresh_knob_specs()
+        existing.update_callback(wrapper)
         return existing
 
-    def _do():
-        return LayerProvider(path, wrapper)
-
-    return _invoke_on_main_thread(_do)
+    return invoke_on_main_thread(lambda: LayerProvider(path, wrapper))
 
 
 @needs_local_scope
@@ -70,7 +61,7 @@ def layer_magic(line: str, cell: str, local_ns=None):
     layer_path = args.path or func_name
     _register_layer_provider(func_name, entry.wrapper, layer_path)
 
-    _get_log().info(f"Layer '{func_name}' registered — drag from product tree onto a plot")
+    log.info(f"Layer '{func_name}' registered — drag from product tree onto a plot")
 
     if args.debug:
         try:
@@ -86,6 +77,4 @@ def layer_magic(line: str, cell: str, local_ns=None):
                 if box is not None:
                     display(box)
         except Exception:
-            _get_log().warning("ipywidgets binding failed", exc_info=True)
-
-    return func, args
+            log.warning("ipywidgets binding failed", exc_info=True)

@@ -2,7 +2,14 @@
 import numpy as np
 from typing import Optional
 
+from PySide6.QtGui import QColor
+from SciQLopPlots import (SciQLopVerticalSpan, SciQLopPlotRange,
+                          SciQLopHorizontalLine, GraphType)
+
 from SciQLop.user_api.layers.types import Marker, Span, HLine, Annotation
+from SciQLop.components.sciqlop_logging import getLogger as _getLogger
+
+log = _getLogger(__name__)
 
 _DEFAULT_SPAN_ALPHA = 60
 _DEFAULT_MARKER_COLOR = "#e74c3c"
@@ -23,7 +30,6 @@ def _partition(items: list[Annotation]) -> dict[str, list]:
 
 
 def _parse_color(color_str: Optional[str], default: str, alpha: int = 255):
-    from PySide6.QtGui import QColor
     c = QColor(color_str or default)
     if alpha < 255:
         c.setAlpha(alpha)
@@ -31,9 +37,8 @@ def _parse_color(color_str: Optional[str], default: str, alpha: int = 255):
 
 
 class LayerRenderer:
-    """Renders annotation items on a target plot and refreshes on time-range/knob changes."""
 
-    def __init__(self, plot, callback, knob_state=None, parent=None):
+    def __init__(self, plot, callback, knob_state=None):
         self._plot = plot
         self._callback = callback
         self._knob_state = knob_state
@@ -42,8 +47,6 @@ class LayerRenderer:
         self._marker_graph = None
 
     def update(self, start: float, stop: float):
-        from SciQLop.components import sciqlop_logging
-        log = sciqlop_logging.getLogger(__name__)
         knobs = self._knob_state.values if self._knob_state is not None else {}
         try:
             items = self._callback(start, stop, **knobs)
@@ -62,7 +65,6 @@ class LayerRenderer:
         for old in self._spans:
             old.deleteLater()
         self._spans.clear()
-        from SciQLopPlots import SciQLopVerticalSpan, SciQLopPlotRange
         for s in spans:
             vs = SciQLopVerticalSpan(self._plot, SciQLopPlotRange(s.start, s.stop))
             vs.set_color(_parse_color(s.color, _DEFAULT_SPAN_COLOR, _DEFAULT_SPAN_ALPHA))
@@ -75,7 +77,6 @@ class LayerRenderer:
         for old in self._hlines:
             old.deleteLater()
         self._hlines.clear()
-        from SciQLopPlots import SciQLopHorizontalLine
         for h in hlines:
             hl = SciQLopHorizontalLine(self._plot, h.value)
             hl.set_color(_parse_color(h.color, _DEFAULT_HLINE_COLOR))
@@ -97,9 +98,6 @@ class LayerRenderer:
             self._marker_graph.set_data(times, values)
 
     def _create_marker_graph(self):
-        from SciQLop.components import sciqlop_logging
-        log = sciqlop_logging.getLogger(__name__)
-        from SciQLopPlots import GraphType
         try:
             return self._plot.plot(
                 np.empty(0, dtype=np.float64),
