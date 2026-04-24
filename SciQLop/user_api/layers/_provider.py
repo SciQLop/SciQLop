@@ -2,6 +2,7 @@
 from typing import Callable, Optional
 
 from SciQLop.core.unique_names import make_simple_incr_name
+from SciQLop.core.models import products, ProductsModelNode, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
 from SciQLop.user_api.knobs import extract_specs_from_callback
 from SciQLop.user_api.layers.types import infer_type_from_annotation
@@ -16,8 +17,6 @@ _layer_providers: dict[str, "LayerProvider"] = {}
 
 class LayerProvider:
     def __init__(self, path: str, callback: Callable, annotation_type: Optional[str] = None):
-        from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType
-
         self.name = make_simple_incr_name(getattr(callback, "__name__", "layer"))
         self._path = f"{_LAYERS_ROOT}/{path}".split("/")
         self._callback = callback
@@ -29,18 +28,12 @@ class LayerProvider:
             "stable_id": f"{_LAYERS_ROOT}/{path}",
             "sciqlop_layer": "true",
         }
+        product_path = self._path[:-1]
         leaf = ProductsModelNode(
             self._path[-1], self.name, metadata,
             ProductsModelNodeType.PARAMETER, ParameterType.Scalar,
         )
-        root = ProductsModelNode(_LAYERS_ROOT)
-        node = root
-        for part in self._path[1:-1]:
-            child = ProductsModelNode(part)
-            node.add_child(child)
-            node = child
-        node.add_child(leaf)
-        ProductsModel.instance().add_node([], root)
+        products.add_node(product_path, leaf)
 
         _layer_providers[self.name] = self
 
