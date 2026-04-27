@@ -1,3 +1,3 @@
-from .extension import KnobInspectorExtension
+from .extension import KnobInspectorExtension, LayerExtension
 
-__all__ = ["KnobInspectorExtension"]
+__all__ = ["KnobInspectorExtension", "LayerExtension"]

@@ -9,6 +9,7 @@ from SciQLop.components.plotting.ui.knob_inspector.section import KnobsSection
 class KnobInspectorExtension(InspectorExtension):
     def __init__(self, state: GraphKnobState, parent=None, title: str = "Parameters"):
         super().__init__(parent)
+        self.setObjectName(title)
         self._state = state
         self._title = title
 
@@ -24,11 +25,13 @@ class KnobInspectorExtension(InspectorExtension):
 
 class LayerExtension(InspectorExtension):
     """Minimal extension for layers without knobs — just a tree node."""
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, title: str = "Layer"):
         super().__init__(parent)
+        self.setObjectName(title)
+        self._title = title
 
     def section_title(self) -> str:
-        return "Layer"
+        return self._title
 
     def priority(self) -> int:
         return 100

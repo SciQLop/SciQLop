@@ -3,9 +3,9 @@ import numpy as np
 from typing import Optional
 
 from PySide6.QtCore import QObject
-from PySide6.QtGui import QColor
+from PySide6.QtGui import QColor, QPen
 from SciQLopPlots import (SciQLopVerticalSpan, SciQLopPlotRange,
-                          SciQLopHorizontalLine, GraphType)
+                          SciQLopHorizontalLine, GraphMarkerShape)
 
 from SciQLop.user_api.layers.types import Marker, Span, HLine, Annotation
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
@@ -101,23 +101,17 @@ class LayerRenderer(QObject):
 
     def _create_marker_graph(self):
         try:
-            return self._plot.plot(
+            graph = self._plot.scatter(
                 np.empty(0, dtype=np.float64),
                 np.empty(0, dtype=np.float64),
-                graph_type=GraphType.Scatter,
-                name="layer_markers",
+                marker=GraphMarkerShape.FilledCircle,
             )
+            for comp in graph.components():
+                comp.set_marker_pen(QPen(comp.color(), 1.5))
+            return graph
         except Exception:
-            log.warning("scatter graph creation failed, falling back to line graph")
-            try:
-                return self._plot.plot(
-                    np.empty(0, dtype=np.float64),
-                    np.empty(0, dtype=np.float64),
-                    name="layer_markers",
-                )
-            except Exception:
-                log.error("marker graph creation failed entirely", exc_info=True)
-                return None
+            log.error("scatter graph creation failed", exc_info=True)
+            return None
 
     def clear(self):
         for s in self._spans:

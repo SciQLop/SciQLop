@@ -240,7 +240,11 @@ class SpeasyPlugin(DataProvider):
         if not speasy_id:
             return None
         try:
-            return spz.inventories.flat_inventories.parameters.get(speasy_id)
+            provider, uid = speasy_id.split("/", 1)
+            provider_fi = getattr(spz.inventories.flat_inventories, provider, None)
+            if provider_fi is None:
+                return None
+            return provider_fi.parameters.get(uid)
         except Exception:
             return None
 

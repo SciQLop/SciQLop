@@ -2,7 +2,7 @@ from typing import Optional
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QFormLayout, QLabel, QPushButton, QHBoxLayout,
+    QWidget, QVBoxLayout, QFormLayout, QPushButton, QHBoxLayout,
 )
 
 from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
@@ -23,9 +23,6 @@ class KnobsSection(QWidget):
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
-        title = QLabel("Parameters")
-        title.setObjectName("KnobsSectionTitle")
-        outer.addWidget(title)
 
         form = QFormLayout()
         form.setContentsMargins(0, 0, 0, 0)

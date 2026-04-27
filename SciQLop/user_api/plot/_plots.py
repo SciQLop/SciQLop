@@ -10,18 +10,23 @@ from SciQLopPlots import SciQLopPlot as _SciQLopPlot
 from SciQLopPlots import SciQLopTimeSeriesPlot as _SciQLopTimeSeriesPlot
 from SciQLopPlots import SciQLopPlotAxis as _SciQLopPlotAxis
 from SciQLopPlots import SciQLopNDProjectionPlot as _SciQLopNDProjectionPlot
-from SciQLopPlots import GraphType as _GraphType
+from SciQLopPlots import GraphType as _GraphType, GraphMarkerShape as _GraphMarkerShape
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot_product
 from ._thread_safety import on_main_thread
 from ._overlay import Overlay
 from .._annotations import experimental_api
-from PySide6.QtGui import QColor as _QColor
+from PySide6.QtGui import QColor as _QColor, QPen as _QPen
 
 from speasy.core import AnyDateTimeType
 
 log = _getLogger(__name__)
 
 AnyProductType = Union[str, VirtualProduct, List[str]]
+
+
+def _fix_scatter_marker_pen(graph):
+    for comp in graph.components():
+        comp.set_marker_pen(_QPen(comp.color(), 1.5))
 
 __all__ = ['XYPlot', 'TimeSeriesPlot', 'ProjectionPlot']
 
@@ -124,7 +129,10 @@ class _BasePlot(Plot):
             The created scatter graph.
         """
         impl = self._get_impl_or_raise()
-        return Graph(impl.scatter(*ensure_arrays_of_double(x, y), **kwargs))
+        kwargs.setdefault('marker', _GraphMarkerShape.FilledCircle)
+        graph = impl.scatter(*ensure_arrays_of_double(x, y), **kwargs)
+        _fix_scatter_marker_pen(graph)
+        return Graph(graph)
 
     @experimental_api()
     @on_main_thread

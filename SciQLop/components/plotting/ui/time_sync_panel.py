@@ -446,9 +446,11 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None
     from SciQLop.user_api.layers._renderer import LayerRenderer
     from SciQLop.user_api.knobs import extract_specs_from_callback
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
-    from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
+    from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension, LayerExtension
 
     renderer = LayerRenderer(target, func, parent=target)
+    title = getattr(func, "__name__", "Layer")
+    knob_host = panel if panel is not None else target
 
     if specs is None:
         specs = extract_specs_from_callback(func)
@@ -458,11 +460,14 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None
         if initial_knobs:
             state.set_all(initial_knobs)
         state.knobs_changed.connect(lambda *_: _trigger_layer_update(renderer, target))
-        knob_host = panel if panel is not None else target
         if hasattr(knob_host, "add_inspector_extension"):
-            title = getattr(func, "__name__", "Parameters")
             ext = KnobInspectorExtension(state, parent=renderer, title=title)
             renderer._knob_inspector_ext = ext
+            knob_host.add_inspector_extension(ext)
+    else:
+        if hasattr(knob_host, "add_inspector_extension"):
+            ext = LayerExtension(parent=renderer, title=title)
+            renderer._layer_ext = ext
             knob_host.add_inspector_extension(ext)
 
     target.x_axis().range_changed.connect(
