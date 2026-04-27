@@ -190,7 +190,7 @@ class PlotPanel:
     @experimental_api()
     @on_main_thread
     def histogram2d(self, *args, name: str = "histogram",
-                    x_bins: int = 100, y_bins: int = 100,
+                    key_bins: int = 100, value_bins: int = 100,
                     z_log_scale: bool = False, gradient=None,
                     plot_index: int = -1):
         """Add a 2D density histogram in a new plot.
@@ -204,10 +204,10 @@ class PlotPanel:
             Both paths create an XY plot.
         name : str
             Histogram label (shown in legend).
-        x_bins : int
-            Number of bins along the X axis.
-        y_bins : int
-            Number of bins along the Y axis.
+        key_bins : int
+            Number of bins along the key (X) axis.
+        value_bins : int
+            Number of bins along the value (Y) axis.
         z_log_scale : bool
             Use a logarithmic color scale.
         gradient
@@ -223,7 +223,7 @@ class PlotPanel:
         impl = self._get_impl_or_raise()
         plot_impl = impl.create_plot(plot_index, _PlotType.BasicXY)
         hist = _create_histogram2d(plot_impl, *args, name=name,
-                                   x_bins=x_bins, y_bins=y_bins,
+                                   key_bins=key_bins, value_bins=value_bins,
                                    z_log_scale=z_log_scale, gradient=gradient)
         if len(args) == 1 and callable(args[0]):
             impl.time_range_changed.connect(hist._impl.set_range)
@@ -258,7 +258,7 @@ class PlotPanel:
                 target = child
                 break
 
-        return wire_layer_renderer(target, func, initial_knobs=initial_knobs or None)
+        return wire_layer_renderer(target, func, initial_knobs=initial_knobs or None, panel=impl)
 
     @on_main_thread
     def plot(self, *args, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable] | None:

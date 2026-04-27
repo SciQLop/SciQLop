@@ -441,14 +441,14 @@ def _trigger_layer_update(renderer, plot):
     on_main_thread(_trigger_layer_update_impl)(renderer, plot)
 
 
-def wire_layer_renderer(target, func, specs=None, initial_knobs=None):
+def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None):
     """Create a LayerRenderer, wire knobs + range listener, return the renderer."""
     from SciQLop.user_api.layers._renderer import LayerRenderer
     from SciQLop.user_api.knobs import extract_specs_from_callback
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
     from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
 
-    renderer = LayerRenderer(target, func)
+    renderer = LayerRenderer(target, func, parent=target)
 
     if specs is None:
         specs = extract_specs_from_callback(func)
@@ -458,10 +458,12 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None):
         if initial_knobs:
             state.set_all(initial_knobs)
         state.knobs_changed.connect(lambda *_: _trigger_layer_update(renderer, target))
-        if hasattr(target, "add_inspector_extension"):
-            ext = KnobInspectorExtension(state, parent=renderer)
+        knob_host = panel if panel is not None else target
+        if hasattr(knob_host, "add_inspector_extension"):
+            title = getattr(func, "__name__", "Parameters")
+            ext = KnobInspectorExtension(state, parent=renderer, title=title)
             renderer._knob_inspector_ext = ext
-            target.add_inspector_extension(ext)
+            knob_host.add_inspector_extension(ext)
 
     target.x_axis().range_changed.connect(
         lambda new_range: renderer.update(new_range.start(), new_range.stop()))
@@ -479,7 +481,7 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None):
     return renderer
 
 
-def attach_layer(plot, product: list[str]):
+def attach_layer(plot, product: list[str], panel=None):
     from SciQLop.user_api.layers._provider import _layer_providers
 
     node = ProductsModel.node(product)
@@ -489,7 +491,7 @@ def attach_layer(plot, product: list[str]):
     if provider is None:
         return None
 
-    return wire_layer_renderer(plot, provider.callback, specs=provider.get_knobs())
+    return wire_layer_renderer(plot, provider.callback, specs=provider.get_knobs(), panel=panel)
 
 
 class ProductDnDCallback(PlotDragNDropCallback):
@@ -505,7 +507,7 @@ class ProductDnDCallback(PlotDragNDropCallback):
                 log.debug(f"ProductDnDCallback: {node}")
                 from SciQLop.user_api.layers._provider import LAYER_META_KEY
                 if node.metadata().get(LAYER_META_KEY) == "true":
-                    attach_layer(plot, product)
+                    attach_layer(plot, product, panel=self.parent())
                 else:
                     plot_product(plot, product)
 

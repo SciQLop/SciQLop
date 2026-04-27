@@ -1,19 +1,21 @@
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 from SciQLopPlots import (SciQLopPixmapItem as _SciQLopPixmapItem,
                           SciQLopEllipseItem as _SciQLopEllipseItem,
                           SciQLopTextItem as _SciQLopTextItem,
                           SciQLopCurvedLineItem as _SciQLopCurvedLineItem,
+                          SciQLopHorizontalLine as _SciQLopHorizontalLine,
                           )
 
 from SciQLopPlots import (Coordinates as _Coordinates, LineTermination as _LineTermination)
 
 from .protocol import Plot, Item
 from .enums import CoordinateSystem
+from .._annotations import experimental_api
 from ._thread_safety import on_main_thread
 from PySide6.QtCore import QRectF, QPointF
 from PySide6.QtGui import QColor, QBrush, Qt
 
-__all__ = ['Pixmap', 'Ellipse', 'Text', 'CurvedLine']
+__all__ = ['Pixmap', 'Ellipse', 'Text', 'CurvedLine', 'HorizontalLine']
 
 
 def _coordinate_system_to_sqp(coordinate_system: CoordinateSystem) -> _Coordinates:
@@ -292,3 +294,67 @@ class CurvedLine(Item):
     @on_main_thread
     def stop_direction(self, stop_direction: Tuple[float, float]):
         self._impl.set_stop_dir_position(QPointF(*stop_direction))
+
+
+class HorizontalLine:
+    """A horizontal line at a fixed Y value on a plot.
+
+    Parameters
+    ----------
+    plot : Plot
+        The plot to which the line belongs.
+    value : float
+        The Y-axis position of the line.
+    color : str or QColor, optional
+        Line color. Accepts CSS color strings (e.g. ``"#2ecc71"``)
+        or ``QColor`` instances. Defaults to green.
+    movable : bool
+        Whether the user can drag the line. Defaults to False.
+    """
+
+    @experimental_api()
+    @on_main_thread
+    def __init__(self, plot: Plot, value: float, *,
+                 color: Optional[Union[str, QColor]] = None,
+                 movable: bool = False):
+        self._impl: _SciQLopHorizontalLine = _SciQLopHorizontalLine(
+            plot._get_impl_or_raise(), value, movable)
+        if color is not None:
+            self._impl.set_color(QColor(color))
+
+    @property
+    @on_main_thread
+    def value(self) -> float:
+        return self._impl.position()
+
+    @value.setter
+    @on_main_thread
+    def value(self, v: float):
+        self._impl.set_position(v)
+
+    @property
+    @on_main_thread
+    def color(self) -> QColor:
+        return self._impl.color()
+
+    @color.setter
+    @on_main_thread
+    def color(self, c: Union[str, QColor]):
+        self._impl.set_color(QColor(c))
+
+    @property
+    @on_main_thread
+    def line_width(self) -> float:
+        return self._impl.line_width()
+
+    @line_width.setter
+    @on_main_thread
+    def line_width(self, w: float):
+        self._impl.set_line_width(w)
+
+    @on_main_thread
+    def remove(self) -> None:
+        """Remove this line from the plot and release C++ resources."""
+        if self._impl is not None:
+            self._impl.deleteLater()
+            self._impl = None

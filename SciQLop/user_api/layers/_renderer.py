@@ -2,6 +2,7 @@
 import numpy as np
 from typing import Optional
 
+from PySide6.QtCore import QObject
 from PySide6.QtGui import QColor
 from SciQLopPlots import (SciQLopVerticalSpan, SciQLopPlotRange,
                           SciQLopHorizontalLine, GraphType)
@@ -36,9 +37,10 @@ def _parse_color(color_str: Optional[str], default: str, alpha: int = 255):
     return c
 
 
-class LayerRenderer:
+class LayerRenderer(QObject):
 
-    def __init__(self, plot, callback, knob_state=None):
+    def __init__(self, plot, callback, knob_state=None, parent=None):
+        super().__init__(parent or plot)
         self._plot = plot
         self._callback = callback
         self._knob_state = knob_state

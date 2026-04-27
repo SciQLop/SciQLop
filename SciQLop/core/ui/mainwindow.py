@@ -26,7 +26,6 @@ from SciQLop.components.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel
 from SciQLop.components.settings.ui import SettingsPanel
 from SciQLop.components.catalogs.ui import CatalogBrowser
-from SciQLop.components.plotting.ui.knob_inspector.dock import KnobInspectorDock
 
 __here__ = os.path.dirname(__file__)
 
@@ -155,9 +154,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.properties_panel.setWindowIcon(theme_adapted_icon("plot_properties"))
         self.add_side_pan(self.properties_panel)
 
-        self.knob_inspector = KnobInspectorDock(self)
-        self.knob_inspector.setWindowIcon(theme_adapted_icon("plot_properties"))
-        self.add_side_pan(self.knob_inspector)
 
     def _setup_toolbar(self):
         self.setWindowTitle("SciQLop")

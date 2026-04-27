@@ -169,6 +169,26 @@ class Histogram2D(Plottable):
             p.text(f"Histogram2D({self._impl})")
 
 
+def _create_histogram2d(plot_impl, *args, name: str = "histogram",
+                        key_bins: int = 100, value_bins: int = 100,
+                        z_log_scale: bool = False, gradient=None) -> Histogram2D:
+    if len(args) == 1 and callable(args[0]):
+        impl = plot_impl.histogram2d(args[0], name=name,
+                                     key_bins=key_bins, value_bins=value_bins)
+    elif len(args) == 2:
+        x, y = ensure_arrays_of_double(*args)
+        impl = plot_impl.histogram2d(x, y, name=name,
+                                     key_bins=key_bins, value_bins=value_bins)
+    else:
+        raise TypeError("histogram2d expects (callable,) or (x, y)")
+    hist = Histogram2D(impl)
+    if z_log_scale:
+        hist.z_log_scale = z_log_scale
+    if gradient is not None:
+        hist.gradient = gradient
+    return hist
+
+
 def to_plottable(impl) -> Optional[Plottable]:
     if impl is None:
         return None

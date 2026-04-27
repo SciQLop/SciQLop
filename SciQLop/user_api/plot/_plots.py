@@ -1,6 +1,7 @@
 from .enums import ScaleType
 from .protocol import Plot
-from ._graphs import Graph, ColorMap, Histogram2D, to_plottable, ensure_arrays_of_double
+from ._graphs import Graph, ColorMap, Histogram2D, to_plottable, ensure_arrays_of_double, _create_histogram2d
+from ._graphic_primitives import HorizontalLine
 from typing import Optional, Union, List, Any
 from ..virtual_products import VirtualProduct
 from SciQLop.core import TimeRange
@@ -14,6 +15,7 @@ from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot
 from ._thread_safety import on_main_thread
 from ._overlay import Overlay
 from .._annotations import experimental_api
+from PySide6.QtGui import QColor as _QColor
 
 from speasy.core import AnyDateTimeType
 
@@ -103,6 +105,64 @@ class _BasePlot(Plot):
         """
         return Overlay(self._get_impl_or_raise().overlay())
 
+    @experimental_api()
+    @on_main_thread
+    def scatter(self, x, y, **kwargs) -> Graph:
+        """Plot data as a scatter graph (markers only, no lines).
+
+        Parameters
+        ----------
+        x, y : array-like
+            Data arrays. Converted to float64 automatically.
+        **kwargs
+            Forwarded to the underlying plot implementation (e.g. ``labels``,
+            ``colors``).
+
+        Returns
+        -------
+        Graph
+            The created scatter graph.
+        """
+        impl = self._get_impl_or_raise()
+        return Graph(impl.scatter(*ensure_arrays_of_double(x, y), **kwargs))
+
+    @experimental_api()
+    @on_main_thread
+    def add_hline(self, value: float, *,
+                  color: Union[str, _QColor, None] = None,
+                  movable: bool = False) -> HorizontalLine:
+        """Add a horizontal line at a fixed Y value.
+
+        Parameters
+        ----------
+        value : float
+            Y-axis position.
+        color : str or QColor, optional
+            Line color (CSS string or QColor).
+        movable : bool
+            Whether the user can drag the line.
+
+        Returns
+        -------
+        HorizontalLine
+            The line object (position, color, line_width are settable).
+        """
+        return HorizontalLine(self, value, color=color, movable=movable)
+
+    @experimental_api()
+    @on_main_thread
+    def remove_graph(self, graph: Graph) -> None:
+        """Remove a graph (line, scatter, etc.) from this plot.
+
+        Parameters
+        ----------
+        graph : Graph
+            The graph to remove. Obtained from ``plot()``, ``scatter()``, etc.
+        """
+        if graph._impl is None:
+            raise ValueError("The graph does not exist anymore.")
+        self._get_impl_or_raise().remove_plottable(graph._impl)
+
 
 class XYPlot(_BasePlot):
     """A class representing a 2D XY plot where the x-axis and y-axis can represent any type of data.
@@ -157,11 +217,10 @@ class XYPlot(_BasePlot):
         Histogram2D
             The histogram plottable.
         """
-        impl = self._get_impl_or_raise()
-        hist_impl = impl.add_histogram2d(name, key_bins, value_bins)
-        hist_impl.set_z_log_scale(z_log_scale)
-        hist_impl.set_data(*ensure_arrays_of_double(x, y))
-        return Histogram2D(hist_impl)
+        return _create_histogram2d(self._get_impl_or_raise(), x, y,
+                                   name=name, key_bins=key_bins,
+                                   value_bins=value_bins,
+                                   z_log_scale=z_log_scale)
 
     @on_main_thread
     def set_x_range(self, xmin: float, xmax: float):
@@ -278,11 +337,10 @@ class TimeSeriesPlot(_BasePlot):
                     key_bins: int = 100, value_bins: int = 100,
                     z_log_scale: bool = False) -> Histogram2D:
         """Add a 2D density histogram to this plot. See XYPlot.histogram2d."""
-        impl = self._get_impl_or_raise()
-        hist_impl = impl.add_histogram2d(name, key_bins, value_bins)
-        hist_impl.set_z_log_scale(z_log_scale)
-        hist_impl.set_data(*ensure_arrays_of_double(x, y))
-        return Histogram2D(hist_impl)
+        return _create_histogram2d(self._get_impl_or_raise(), x, y,
+                                   name=name, key_bins=key_bins,
+                                   value_bins=value_bins,
+                                   z_log_scale=z_log_scale)
 
     @on_main_thread
     def set_x_range(self, xmin: AnyDateTimeType, xmax: AnyDateTimeType):
