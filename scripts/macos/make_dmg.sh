@@ -35,7 +35,7 @@ rm -rf $ICONDIR
 
 python3 $HERE/make_info_dot_plist.py > $DIST/SciQLop.app/Contents/Info.plist
 
-cat <<'EOT' >> $DIST/SciQLop.app/Contents/MacOS/SciQLop
+cat <<'EOT' > $DIST/SciQLop.app/Contents/MacOS/SciQLop
 #! /usr/bin/env bash
 export HERE=$(dirname $BASH_SOURCE)
 export RESOURCES=$HERE/../Resources
