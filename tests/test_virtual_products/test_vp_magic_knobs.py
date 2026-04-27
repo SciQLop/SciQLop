@@ -2,13 +2,6 @@ from tests.fixtures import *
 import pytest
 
 
-@pytest.fixture(autouse=True)
-def _clean_registry():
-    from SciQLop.user_api.virtual_products.registry import _registry
-    _registry._entries.clear()
-    yield
-    _registry._entries.clear()
-
 
 def test_vp_magic_reports_knob_specs(qtbot, qapp, main_window):
     from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry

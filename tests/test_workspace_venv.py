@@ -110,7 +110,7 @@ class TestCreateWithCallback:
         proc.wait.return_value = 1
         mock_popen.return_value = proc
 
-        with pytest.raises(subprocess.CalledProcessError):
+        with pytest.raises(RuntimeError, match="uv command failed"):
             venv.create(on_output=lambda _: None)
 
 

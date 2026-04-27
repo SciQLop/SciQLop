@@ -39,7 +39,7 @@ def test_overlay_shows_success(qtbot):
     overlay.show_success(1000, (1000, 3), "float64", 0.12)
     QApplication.processEvents()
     assert overlay.isVisible()
-    assert "1000 pts" in overlay.text()
+    assert "1,000 points" in overlay.text()
 
 
 def test_overlay_clears(qtbot):

@@ -1,15 +1,6 @@
 """Reproducer for: changing a knob must re-fetch plot data."""
-import pytest
-
 from tests.fixtures import *  # noqa: F401,F403
 
-
-@pytest.fixture(autouse=True)
-def _clean_registry():
-    from SciQLop.user_api.virtual_products.registry import _registry
-    _registry._entries.clear()
-    yield
-    _registry._entries.clear()
 
 
 def _find_graph_with_state(panel):

@@ -1,14 +1,5 @@
-import pytest
-
 from tests.fixtures import *
 
-
-@pytest.fixture(autouse=True)
-def _clean_registry():
-    from SciQLop.user_api.virtual_products.registry import _registry
-    _registry._entries.clear()
-    yield
-    _registry._entries.clear()
 
 
 def _find_knob_state(panel):

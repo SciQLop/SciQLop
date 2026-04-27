@@ -22,13 +22,14 @@ log = sciqlop_logging.getLogger(__name__)
 
 __here__ = os.path.dirname(__file__)
 
-register_icon("speasy", QIcon(":/icons/logo_speasy.png"))
-register_icon("nasa", QIcon(":/icons/NASA.jpg"))
-register_icon("amda", QIcon(":/icons/amda.png"))
-register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
-register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
-register_icon("uiowaephtool", QIcon(f"{__here__}/../../resources/icons/Iowa_Hawkeyes_logo.svg"))
-register_icon("cloud", lambda: QIcon(f"{__here__}/../../resources/icons/cloud.png"))
+def _register_icons():
+    register_icon("speasy", QIcon(":/icons/logo_speasy.png"))
+    register_icon("nasa", QIcon(":/icons/NASA.jpg"))
+    register_icon("amda", QIcon(":/icons/amda.png"))
+    register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
+    register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
+    register_icon("uiowaephtool", QIcon(f"{__here__}/../../resources/icons/Iowa_Hawkeyes_logo.svg"))
+    register_icon("cloud", lambda: QIcon(f"{__here__}/../../resources/icons/cloud.png"))
 
 
 def _find_argument_list(index) -> Optional[ArgumentListIndex]:
@@ -303,6 +304,7 @@ def load(*args):
     from speasy.core.cache import _cache
     from .speasy_catalog_provider import SpeasyCatalogProvider
     _cache._data._local = ThreadStorage()
+    _register_icons()
     plugin = SpeasyPlugin()
     plugin._catalog_provider = SpeasyCatalogProvider()
     _register_plot_backend()

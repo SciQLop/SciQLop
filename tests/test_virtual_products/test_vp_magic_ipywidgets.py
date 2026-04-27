@@ -7,13 +7,6 @@ import pytest
 from tests.fixtures import *  # noqa: F401,F403
 
 
-@pytest.fixture(autouse=True)
-def _clean_registry():
-    from SciQLop.user_api.virtual_products.registry import _registry
-    _registry._entries.clear()
-    yield
-    _registry._entries.clear()
-
 
 def _install_fake_ipywidgets(monkeypatch):
     fake = types.ModuleType("ipywidgets")

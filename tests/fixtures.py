@@ -21,13 +21,9 @@ def sciqlop_resources(qapp):
     sciqlop_event_loop()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="session")
 def main_window(qapp, sciqlop_resources):
-    """Module-scoped main window with plugins loaded.
-
-    Shared across all tests in a workflow file. No splash screen.
-    Teardown closes the window and clears the command registry.
-    """
+    """Session-scoped main window with plugins loaded."""
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
     from SciQLop.components.plugins import load_all, loaded_plugins
     from SciQLop.components.command_palette.commands import register_builtin_commands

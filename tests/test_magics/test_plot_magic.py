@@ -48,6 +48,8 @@ class TestPlotMagic:
         from SciQLopPlots import PlotType
         mock_resolve.return_value = "speasy/amda/imf"
         mock_panel = MagicMock()
+        mock_plot = MagicMock()
+        mock_panel.plot_product.return_value = (mock_plot, MagicMock())
         mock_pp.return_value = mock_panel
 
         plot_magic('imf "Panel-0"')
@@ -61,6 +63,7 @@ class TestPlotMagic:
         from SciQLop.user_api.magics.plot_magic import plot_magic
         mock_resolve.return_value = "speasy/amda/imf"
         mock_panel = MagicMock()
+        mock_panel.plot_product.return_value = (MagicMock(), MagicMock())
         mock_create.return_value = mock_panel
 
         plot_magic("imf")

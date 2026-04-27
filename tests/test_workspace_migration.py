@@ -32,7 +32,7 @@ def test_migrate_old_workspace(tmp_path):
     assert m.description == "Legacy workspace"
     assert "matplotlib" in m.requires
     assert "scipy>=1.10" in m.requires
-    assert (tmp_path / "workspace.json.bak").exists()
+    assert (tmp_path / "workspace.json").exists()
     assert not deps_dir.exists()
 
 

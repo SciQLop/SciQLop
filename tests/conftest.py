@@ -67,10 +67,53 @@ def pytest_configure(config):
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
 
+@pytest.fixture(scope="session")
+def qapp_cls():
+    from SciQLop.core.sciqlop_application import SciQLopApp
+    return SciQLopApp
+
+
 @pytest.fixture(scope="session", autouse=True)
 def sciqlop_test_env():
     """Expose the test temp root to fixtures that need it."""
     yield _test_tmp
+
+
+
+def _cleanup_vp_state():
+    import sys
+    app_mod = sys.modules.get("PySide6.QtWidgets")
+    app = app_mod.QApplication.instance() if app_mod else None
+    reg_mod = sys.modules.get("SciQLop.user_api.virtual_products.registry")
+    if reg_mod is not None:
+        registry = getattr(reg_mod, "_registry", None)
+        if registry is not None:
+            for entry in registry._entries.values():
+                if entry.panel is not None:
+                    try:
+                        panel = entry.panel
+                        panel.clear()
+                        dock = panel.parent()
+                        if dock is not None:
+                            dock.closeDockWidget()
+                            dock.deleteLater()
+                    except RuntimeError:
+                        pass
+                    entry.panel = None
+            registry._entries.clear()
+    backend_mod = sys.modules.get("SciQLop.user_api.plot._speasy_backend")
+    if backend_mod is not None:
+        backend_mod._current_panel = None
+    if app is not None:
+        app.processEvents()
+        app.processEvents()
+
+
+@pytest.fixture(autouse=True)
+def _clean_vp_state():
+    _cleanup_vp_state()
+    yield
+    _cleanup_vp_state()
 
 
 def pytest_unconfigure(config):

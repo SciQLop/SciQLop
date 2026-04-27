@@ -542,8 +542,8 @@ def test_event_table_model_meta_columns(qtbot, qapp):
     model = EventTableModel()
     model.set_events(events)
 
-    # DummyProvider events have meta keys "index" and "catalog"
-    assert model.columnCount() == 4  # start, stop, catalog, index
+    # DummyProvider events have meta keys: catalog, class, index, score
+    assert model.columnCount() == 6  # start, stop + 4 meta keys
     headers = []
     for c in range(model.columnCount()):
         headers.append(model.headerData(c, Qt.Orientation.Horizontal, Qt.ItemDataRole.DisplayRole))
@@ -551,6 +551,8 @@ def test_event_table_model_meta_columns(qtbot, qapp):
     assert "stop" in headers
     assert "index" in headers
     assert "catalog" in headers
+    assert "class" in headers
+    assert "score" in headers
 
 
 # --- Task 8: CatalogBrowser tests ---
