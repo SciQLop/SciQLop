@@ -1,17 +1,31 @@
 """Annotation layers — experimental API for reactive visual overlays on plots.
 
 Layers are functions that return lists of annotations (Marker, Span, HLine)
-and are rendered as visual overlays on existing plots. They react to time-range
-changes and support tunable knobs.
+and are rendered as visual overlays on existing plots.
+
+Two callback shapes are supported:
+
+- **Range-only** (classic): ``f(start, stop, **knobs) -> list[Annotation]``
+  Re-evaluated on every time-range change.
+
+- **Data-aware**: ``f(data: Vector, **knobs) -> list[Annotation]``
+  Receives the actual graph data. Type-hint the ``data`` parameter with
+  ``Scalar``, ``Vector``, ``MultiComponent``, or ``Spectrogram`` to
+  automatically select the matching graph on the plot.
 
 .. warning::
     This is an experimental API. It may change or be removed in future versions.
 """
 from SciQLop.user_api._annotations import experimental_api
 from SciQLop.user_api.layers.types import Marker, Span, HLine, Annotation
+from SciQLop.user_api.data_types import Scalar, Vector, MultiComponent, Spectrogram  # noqa: F401
 from SciQLop.user_api.layers.registry import _registry
 
-__all__ = ["Marker", "Span", "HLine", "Annotation", "register_layer"]
+__all__ = [
+    "Marker", "Span", "HLine", "Annotation",
+    "Scalar", "Vector", "MultiComponent", "Spectrogram",
+    "register_layer",
+]
 
 
 @experimental_api()
@@ -26,12 +40,18 @@ def register_layer(path: str = None):
     path : str, optional
         Path in the product tree (under Layers/). Defaults to the function name.
 
-    Example
-    -------
-    ::
+    Examples
+    --------
+    Range-only (re-evaluated on time-range change)::
 
         @register_layer("detectors/peaks")
         def find_peaks(start: float, stop: float, threshold: float = 0.5) -> list[Marker]:
+            ...
+
+    Data-aware (receives graph data, re-evaluated on data change)::
+
+        @register_layer("analysis/threshold")
+        def threshold_crossings(data: Vector, level: float = 10.0) -> list[Span]:
             ...
     """
     def decorator(func):

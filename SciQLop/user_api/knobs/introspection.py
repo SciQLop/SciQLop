@@ -10,7 +10,7 @@ from SciQLop.user_api.knobs.specs import (
 
 log = logging.getLogger(__name__)
 
-_RESERVED = {"start", "stop"}
+_RESERVED = {"start", "stop", "data"}
 
 
 def _has_concrete_default(field) -> bool:

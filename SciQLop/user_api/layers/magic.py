@@ -15,7 +15,6 @@ def _parse_args(line: str):
     import shlex
     parser = argparse.ArgumentParser(prog="%%layer", add_help=False)
     parser.add_argument("--path", type=str, default=None)
-    parser.add_argument("--debug", action="store_true", default=False)
     return parser.parse_args(shlex.split(line))
 
 
@@ -62,19 +61,3 @@ def layer_magic(line: str, cell: str, local_ns=None):
     _register_layer_provider(func_name, entry.wrapper, layer_path)
 
     log.info(f"Layer '{func_name}' registered — drag from product tree onto a plot")
-
-    if args.debug:
-        try:
-            from SciQLop.user_api.knobs import extract_specs_from_callback
-            from SciQLop.user_api.virtual_products.ipywidgets_binding import display_widgets_for_state
-            from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
-            from IPython.display import display
-
-            specs = extract_specs_from_callback(func)
-            if specs:
-                state = GraphKnobState(specs)
-                box = display_widgets_for_state(state)
-                if box is not None:
-                    display(box)
-        except Exception:
-            log.warning("ipywidgets binding failed", exc_info=True)

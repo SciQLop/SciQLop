@@ -444,11 +444,13 @@ def _trigger_layer_update(renderer, plot):
 def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None):
     """Create a LayerRenderer, wire knobs + range listener, return the renderer."""
     from SciQLop.user_api.layers._renderer import LayerRenderer
+    from SciQLop.user_api.layers._introspection import extract_data_type
     from SciQLop.user_api.knobs import extract_specs_from_callback
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
     from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension, LayerExtension
 
-    renderer = LayerRenderer(target, func, parent=target)
+    data_type = extract_data_type(func)
+    renderer = LayerRenderer(target, func, data_type=data_type, parent=target)
     title = getattr(func, "__name__", "Layer")
     knob_host = panel if panel is not None else target
 
@@ -470,8 +472,11 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None
             renderer._layer_ext = ext
             knob_host.add_inspector_extension(ext)
 
-    target.x_axis().range_changed.connect(
-        lambda new_range: renderer.update(new_range.start(), new_range.stop()))
+    if renderer.data_aware:
+        renderer.setup_data_binding()
+    else:
+        target.x_axis().range_changed.connect(
+            lambda new_range: renderer.update(new_range.start(), new_range.stop()))
 
     if not hasattr(target, "_layer_renderers"):
         target._layer_renderers = []

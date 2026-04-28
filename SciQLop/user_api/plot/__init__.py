@@ -11,10 +11,11 @@ from ._graphic_primitives import Ellipse, Text, CurvedLine, HorizontalLine
 from ._overlay import Overlay
 from . import _fluent as fluent
 from SciQLop.user_api.layers import Marker, Span, HLine
+from SciQLop.user_api.data_types import Scalar, Vector, MultiComponent, Spectrogram  # noqa: F401
 
 log = _getLogger(__name__)
 
 __all__ = ['ScaleType', 'PlotType', 'Plot', 'Plottable', 'Histogram2D', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
            'create_plot_panel', 'plot_panel', 'TimeRange', 'Ellipse', 'HorizontalLine', 'fluent',
            'Overlay', 'OverlayLevel', 'OverlaySizeMode', 'OverlayPosition',
-           'Marker', 'Span', 'HLine']
+           'Marker', 'Span', 'HLine', 'Scalar', 'Vector', 'MultiComponent', 'Spectrogram']

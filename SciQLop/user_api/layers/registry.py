@@ -10,7 +10,7 @@ def _signature_kwargs(callback) -> tuple:
     return tuple(
         (name, p.default.__class__)
         for name, p in sig.parameters.items()
-        if p.default is not inspect.Parameter.empty and name not in ("start", "stop")
+        if p.default is not inspect.Parameter.empty and name not in ("start", "stop", "data")
     )
 
 
@@ -27,8 +27,8 @@ class MutableCallback:
         self._callback = value
         functools.update_wrapper(self, value)
 
-    def __call__(self, start, stop, **kwargs):
-        return self._callback(start, stop, **kwargs)
+    def __call__(self, *args, **kwargs):
+        return self._callback(*args, **kwargs)
 
 
 @dataclass

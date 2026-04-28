@@ -1,24 +1,5 @@
-# tests/test_vp_types.py
-"""Tests for virtual product type annotations.
-
-We pre-register the types module to avoid importing the heavy
-virtual_products __init__.py which requires a running Qt application.
-"""
-import sys
-import importlib.util
-
-# Register types.py directly before importing through the package path,
-# so Python never needs to execute virtual_products/__init__.py
-_spec = importlib.util.spec_from_file_location(
-    "SciQLop.user_api.virtual_products.types",
-    "SciQLop/user_api/virtual_products/types.py",
-    submodule_search_locations=[],
-)
-_mod = importlib.util.module_from_spec(_spec)
-sys.modules[_spec.name] = _mod
-_spec.loader.exec_module(_mod)
-
-from SciQLop.user_api.virtual_products.types import (
+"""Tests for data type annotations (shared by virtual products and layers)."""
+from SciQLop.user_api.data_types import (
     Scalar, Vector, MultiComponent, Spectrogram, VPTypeInfo, extract_vp_type_info,
 )
 

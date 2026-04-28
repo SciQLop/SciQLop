@@ -23,16 +23,9 @@ def test_parse_args_empty():
     from SciQLop.user_api.layers.magic import _parse_args
     args = _parse_args("")
     assert args.path is None
-    assert args.debug is False
 
 
 def test_parse_args_with_path():
     from SciQLop.user_api.layers.magic import _parse_args
     args = _parse_args("--path detectors/peaks")
     assert args.path == "detectors/peaks"
-
-
-def test_parse_args_debug():
-    from SciQLop.user_api.layers.magic import _parse_args
-    args = _parse_args("--debug")
-    assert args.debug is True
