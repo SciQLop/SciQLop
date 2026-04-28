@@ -304,7 +304,9 @@ def _attach_knob_state(provider, node, callback, r, target=None):
         return
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
     from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import create_plot_items
     graph = _graph_from_result(r)
+    plot = _plot_from_result(r, target)
     state = GraphKnobState(specs, parent=graph)
     graph._knob_state = state
     callback.knob_state = state
@@ -313,6 +315,8 @@ def _attach_knob_state(provider, node, callback, r, target=None):
         ext = KnobInspectorExtension(state, parent=graph)
         graph._knob_inspector_ext = ext
         graph.add_inspector_extension(ext)
+    if plot is not None:
+        graph._visual_knob_items = create_plot_items(plot, state)
 
 
 def _build_knob_reset_action(state, parent):
@@ -457,6 +461,7 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None
     if specs is None:
         specs = extract_specs_from_callback(func)
     if specs:
+        from SciQLop.components.plotting.ui.knob_inspector.plot_items import create_plot_items
         state = GraphKnobState(specs, parent=renderer)
         renderer._knob_state = state
         if initial_knobs:
@@ -466,6 +471,7 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None
             ext = KnobInspectorExtension(state, parent=renderer, title=title)
             renderer._knob_inspector_ext = ext
             knob_host.add_inspector_extension(ext)
+        renderer._visual_knob_items = create_plot_items(target, state)
     else:
         if hasattr(knob_host, "add_inspector_extension"):
             ext = LayerExtension(parent=renderer, title=title)

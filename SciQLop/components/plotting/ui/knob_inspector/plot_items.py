@@ -1,10 +1,12 @@
 """Creates interactive plot items (VSpan, HLine) for visual knobs and
 wires them bidirectionally with GraphKnobState."""
 
+import math
+
 from PySide6.QtGui import QColor
 from SciQLopPlots import (
-    SciQLopVerticalSpan, SciQLopHorizontalLine, SciQLopPlotRange,
-    Coordinates,
+    SciQLopHorizontalLine, SciQLopPlotRange,
+    MultiPlotsVerticalSpan, SciQLopMultiPlotPanel,
 )
 
 from SciQLop.user_api.knobs.specs import TimeRangeKnob, ThresholdKnob
@@ -16,65 +18,84 @@ log = sciqlop_logging.getLogger(__name__)
 _DEFAULT_SPAN_ALPHA = 80
 
 
+def _resolve_fraction(default: SciQLopPlotRange, axis_range: SciQLopPlotRange) -> SciQLopPlotRange:
+    lo, hi = axis_range.start(), axis_range.stop()
+    lo_frac, hi_frac = default.start(), default.stop()
+    return SciQLopPlotRange(
+        lo + lo_frac * (hi - lo),
+        lo + hi_frac * (hi - lo),
+    )
+
+
+def _is_fractional(r: SciQLopPlotRange) -> bool:
+    lo, hi = r.start(), r.stop()
+    return 0.0 <= lo <= 1.0 and 0.0 <= hi <= 1.0
+
+
+def _is_valid_time_range(r: SciQLopPlotRange) -> bool:
+    lo, hi = r.start(), r.stop()
+    return not (math.isnan(lo) or math.isnan(hi)) and hi > lo
+
+
+def _find_panel(plot) -> SciQLopMultiPlotPanel | None:
+    node = plot
+    while node is not None:
+        if isinstance(node, SciQLopMultiPlotPanel):
+            return node
+        node = node.parent()
+    return None
+
+
 class _DataSpan:
-    """VSpan in data coordinates, synced with a TimeRangeKnob.
+    """Panel-wide VSpan synced with a TimeRangeKnob.
 
-    A fractional default like (0.3, 0.7) is interpreted as fractions of the
-    visible axis range. Because the plot's axis range is often set AFTER the
-    knob is created (e.g. `%%vp --debug` builds the subplot first, then sets
-    the panel's time range), fractional defaults are re-resolved on every
-    axis range change UNTIL the user drags the span — which locks it in
-    data coords."""
+    Always rendered as a `MultiPlotsVerticalSpan` so the analysis window
+    appears on every plot in the panel — the user can position it against
+    ANY signal, not just the VP's own (often transformed) output. The panel
+    is auto-derived from the plot's parent chain when not passed explicitly.
 
-    def __init__(self, plot, spec: TimeRangeKnob, state: GraphKnobState):
-        self._plot = plot
+    For a fractional default (e.g. (0.3, 0.7)) the span is **anchored to the
+    visible window**: it sits at that fraction of the panel's current time
+    range and is re-resolved on every `time_range_changed` so it stays in
+    view as the user pans or zooms. Dragging the span re-records the fraction
+    relative to the current view, so subsequent pans preserve the user's
+    placement. An absolute default is left in data coords and never moves."""
+
+    def __init__(self, plot, spec: TimeRangeKnob, state: GraphKnobState, panel=None):
+        panel = panel if panel is not None else _find_panel(plot)
+        if panel is None:
+            raise ValueError("TimeRangeKnob requires a SciQLopMultiPlotPanel "
+                             "in the plot's parent chain")
         self._spec = spec
         self._state = state
+        self._panel = panel
         self._reentry = False
-        self._user_locked = False
-        self._fractional_default = self._is_fractional(spec.default)
+        self._fraction = spec.default if _is_fractional(spec.default) else None
 
         color = QColor(spec.color)
         color.setAlpha(_DEFAULT_SPAN_ALPHA)
-        initial = self._resolve_default(plot, spec.default)
-        self._span = SciQLopVerticalSpan(
-            plot, initial, color, False, True, spec.label or spec.name,
-            Coordinates.Data,
-        )
+        initial = self._resolve_initial(spec.default, panel)
 
+        self._span = MultiPlotsVerticalSpan(
+            panel, initial, color, False, True, spec.label or spec.name,
+        )
         self._state.set_value(spec.name, initial)
         self._span.range_changed.connect(self._on_span_dragged)
-        if self._fractional_default:
-            plot.x_axis().range_changed.connect(self._on_axis_changed)
+
+        if self._fraction is not None:
+            panel.time_range_changed.connect(self._on_panel_range_changed)
 
     @staticmethod
-    def _is_fractional(r: SciQLopPlotRange) -> bool:
-        lo, hi = r.start(), r.stop()
-        return 0.0 <= lo <= 1.0 and 0.0 <= hi <= 1.0
-
-    @classmethod
-    def _resolve_default(cls, plot, default: SciQLopPlotRange) -> SciQLopPlotRange:
-        if not cls._is_fractional(default):
+    def _resolve_initial(default: SciQLopPlotRange, panel) -> SciQLopPlotRange:
+        if not _is_fractional(default):
             return default
-        axis = plot.x_axis().range()
-        lo, hi = axis.start(), axis.stop()
-        lo_frac, hi_frac = default.start(), default.stop()
-        return SciQLopPlotRange(
-            lo + lo_frac * (hi - lo),
-            lo + hi_frac * (hi - lo),
-        )
+        axis = panel.time_axis_range()
+        return _resolve_fraction(default, axis) if _is_valid_time_range(axis) else default
 
-    def _on_axis_changed(self, new_range: SciQLopPlotRange):
-        if self._user_locked or self._reentry:
+    def _on_panel_range_changed(self, new_range: SciQLopPlotRange):
+        if self._reentry or self._fraction is None or not _is_valid_time_range(new_range):
             return
-        lo, hi = new_range.start(), new_range.stop()
-        if hi <= lo:
-            return
-        lo_frac, hi_frac = self._spec.default.start(), self._spec.default.stop()
-        resolved = SciQLopPlotRange(
-            lo + lo_frac * (hi - lo),
-            lo + hi_frac * (hi - lo),
-        )
+        resolved = _resolve_fraction(self._fraction, new_range)
         self._reentry = True
         try:
             self._span.set_range(resolved)
@@ -85,12 +106,24 @@ class _DataSpan:
     def _on_span_dragged(self, new_range: SciQLopPlotRange):
         if self._reentry:
             return
-        self._user_locked = True
+        if self._fraction is not None:
+            self._record_fraction_from_view(new_range)
         self._reentry = True
         try:
             self._state.set_value(self._spec.name, new_range)
         finally:
             self._reentry = False
+
+    def _record_fraction_from_view(self, span_range: SciQLopPlotRange):
+        view = self._panel.time_axis_range()
+        if not _is_valid_time_range(view):
+            return
+        vlo, vhi = view.start(), view.stop()
+        size = vhi - vlo
+        self._fraction = SciQLopPlotRange(
+            (span_range.start() - vlo) / size,
+            (span_range.stop() - vlo) / size,
+        )
 
     def update_from_state(self, values: dict):
         if self._reentry:
@@ -144,13 +177,14 @@ class _MovableHLine:
         self._line.deleteLater()
 
 
-def create_plot_items(plot, state: GraphKnobState):
+def create_plot_items(plot, state: GraphKnobState, panel=None):
     """Scan specs for visual knobs, create plot items, wire bidirectional sync.
-    Returns a list of items (for lifecycle management)."""
+    When `panel` is provided, TimeRangeKnobs become panel-wide spans visible
+    on every plot in the panel. Returns a list of items (for lifecycle management)."""
     items = []
     for spec in state.specs:
         if isinstance(spec, TimeRangeKnob):
-            items.append(_DataSpan(plot, spec, state))
+            items.append(_DataSpan(plot, spec, state, panel=panel))
         elif isinstance(spec, ThresholdKnob):
             items.append(_MovableHLine(plot, spec, state))
 

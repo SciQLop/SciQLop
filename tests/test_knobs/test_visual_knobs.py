@@ -222,20 +222,56 @@ def test_graph_knob_state_with_visual_knobs(qtbot):
 # --- Plot items integration ---
 
 @pytest.fixture
-def sciqlop_plot(qtbot):
-    from SciQLopPlots import SciQLopPlot
-    plot = SciQLopPlot()
-    plot.resize(800, 600)
-    plot.show()
-    qtbot.addWidget(plot)
-    qtbot.waitExposed(plot)
-    plot.x_axis().set_range(SciQLopPlotRange(100.0, 200.0))
+def sciqlop_panel(qtbot):
+    from SciQLopPlots import SciQLopMultiPlotPanel, PlotType
+    panel = SciQLopMultiPlotPanel(synchronize_x=False, synchronize_time=True)
+    panel.resize(800, 600)
+    qtbot.addWidget(panel)
+    panel.set_time_axis_range(SciQLopPlotRange(100.0, 200.0))
+    panel.create_plot(0, PlotType.TimeSeries)
+    panel.create_plot(1, PlotType.TimeSeries)
     qtbot.wait(50)
-    return plot
+    return panel
 
 
-def test_data_span_resolves_fractional_default(sciqlop_plot, qtbot):
-    """Fractional default (0.3, 0.7) is converted to data-space using axis range."""
+@pytest.fixture
+def sciqlop_plot(sciqlop_panel):
+    from SciQLopPlots import SciQLopPlot
+    return sciqlop_panel.findChildren(SciQLopPlot)[0]
+
+
+def test_data_span_uses_multiplot_span(sciqlop_panel, sciqlop_plot, qtbot):
+    """Visual TimeRangeKnob always uses MultiPlotsVerticalSpan so the analysis
+    window appears on every plot in the panel — not just on the VP's own
+    (often transformed) output plot."""
+    from SciQLopPlots import MultiPlotsVerticalSpan
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
+
+    spec = TimeRangeKnob(name="window", default=SciQLopPlotRange(0.3, 0.7))
+    state = GraphKnobState([spec])
+    span = _DataSpan(sciqlop_plot, spec, state)
+
+    assert isinstance(span._span, MultiPlotsVerticalSpan)
+    span.cleanup()
+
+
+def test_data_span_auto_derives_panel_from_plot(sciqlop_panel, sciqlop_plot, qtbot):
+    """The panel is found by walking up the plot's parent chain — callers
+    don't have to thread it explicitly."""
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
+
+    spec = TimeRangeKnob(name="window", default=SciQLopPlotRange(0.3, 0.7))
+    state = GraphKnobState([spec])
+    span = _DataSpan(sciqlop_plot, spec, state)
+    assert span._panel is sciqlop_panel
+    span.cleanup()
+
+
+def test_data_span_resolves_fractional_default(sciqlop_panel, sciqlop_plot, qtbot):
+    """Fractional default (0.3, 0.7) is converted to data-space using the
+    panel's time range."""
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
     from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
 
@@ -244,46 +280,43 @@ def test_data_span_resolves_fractional_default(sciqlop_plot, qtbot):
     span = _DataSpan(sciqlop_plot, spec, state)
 
     val = state.values["window"]
-    assert isinstance(val, SciQLopPlotRange)
-    # axis is 100-200, so 0.3 → 130, 0.7 → 170
     assert val.start() == pytest.approx(130.0)
     assert val.stop() == pytest.approx(170.0)
     span.cleanup()
 
 
-def test_data_span_resolves_when_axis_range_set_after_construction(sciqlop_plot, qtbot):
-    """Reproducer: when the plot's time range is set AFTER the visual knob is created
-    (the case in `%%vp --debug`), the span must re-resolve its fractional default
-    against the new axis range — otherwise it sits at literal 0.3-0.7 in epoch space
-    and is invisible. See MVA tutorial cell."""
+def test_data_span_resolves_when_panel_time_range_set_after_construction(sciqlop_panel, sciqlop_plot, qtbot):
+    """Reproducer: when the panel's time range isn't configured yet (NaN —
+    the case in `%%vp --debug` where the subplot is built before the time
+    range is set), the span must resolve its fractional default against the
+    FIRST valid time_range_changed event. See MVA tutorial cell."""
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
     from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
 
-    sciqlop_plot.x_axis().set_range(SciQLopPlotRange(0.0, 1.0))
+    sciqlop_panel.set_time_axis_range(SciQLopPlotRange(float("nan"), float("nan")))
     qtbot.wait(50)
 
     spec = TimeRangeKnob(name="window", default=SciQLopPlotRange(0.3, 0.7))
     state = GraphKnobState([spec])
     span = _DataSpan(sciqlop_plot, spec, state)
 
-    sciqlop_plot.x_axis().set_range(SciQLopPlotRange(1_447_813_470.0, 1_447_818_240.0))
+    sciqlop_panel.set_time_axis_range(SciQLopPlotRange(1_447_813_470.0, 1_447_818_240.0))
     qtbot.wait(50)
 
     val = state.values["window"]
-    span_range = span._span.range()
     expected_start = 1_447_813_470.0 + 0.3 * (1_447_818_240.0 - 1_447_813_470.0)
     expected_stop = 1_447_813_470.0 + 0.7 * (1_447_818_240.0 - 1_447_813_470.0)
-
     assert val.start() == pytest.approx(expected_start)
     assert val.stop() == pytest.approx(expected_stop)
-    assert span_range.start() == pytest.approx(expected_start)
-    assert span_range.stop() == pytest.approx(expected_stop)
+    assert span._span.range.start() == pytest.approx(expected_start)
+    assert span._span.range.stop() == pytest.approx(expected_stop)
     span.cleanup()
 
 
-def test_data_span_user_drag_locks_against_axis_changes(sciqlop_plot, qtbot):
-    """Once the user drags the span, subsequent axis range changes must NOT
-    move it — the span is locked in data coords."""
+def test_data_span_follows_panel_view_to_stay_visible(sciqlop_panel, sciqlop_plot, qtbot):
+    """A fractional default keeps the span anchored to the visible window:
+    panning the panel re-resolves the span so it stays in view (otherwise
+    it'd drift off-screen and the user would lose it)."""
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
     from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
 
@@ -291,19 +324,59 @@ def test_data_span_user_drag_locks_against_axis_changes(sciqlop_plot, qtbot):
     state = GraphKnobState([spec])
     span = _DataSpan(sciqlop_plot, spec, state)
 
-    span._on_span_dragged(SciQLopPlotRange(150.0, 160.0))
-    assert state.values["window"].start() == pytest.approx(150.0)
-
-    sciqlop_plot.x_axis().set_range(SciQLopPlotRange(0.0, 1000.0))
+    sciqlop_panel.set_time_axis_range(SciQLopPlotRange(500.0, 600.0))
     qtbot.wait(50)
 
     val = state.values["window"]
-    assert val.start() == pytest.approx(150.0)
+    assert val.start() == pytest.approx(530.0)
+    assert val.stop() == pytest.approx(570.0)
+    span.cleanup()
+
+
+def test_data_span_drag_re_records_fraction_for_subsequent_pans(sciqlop_panel, sciqlop_plot, qtbot):
+    """Dragging the span updates the recorded fraction relative to the
+    current view, so subsequent pans preserve the user's placement (in
+    view-relative terms, not absolute data coords)."""
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
+
+    spec = TimeRangeKnob(name="window", default=SciQLopPlotRange(0.3, 0.7))
+    state = GraphKnobState([spec])
+    span = _DataSpan(sciqlop_plot, spec, state)
+
+    span._on_span_dragged(SciQLopPlotRange(120.0, 180.0))
+    assert state.values["window"].start() == pytest.approx(120.0)
+
+    sciqlop_panel.set_time_axis_range(SciQLopPlotRange(500.0, 600.0))
+    qtbot.wait(50)
+
+    val = state.values["window"]
+    assert val.start() == pytest.approx(520.0)
+    assert val.stop() == pytest.approx(580.0)
+    span.cleanup()
+
+
+def test_data_span_absolute_default_is_pinned_in_data_coords(sciqlop_panel, sciqlop_plot, qtbot):
+    """An absolute (non-fractional) default opts out of view-anchoring —
+    it stays in data coords and panning does NOT move it."""
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
+
+    spec = TimeRangeKnob(name="window", default=SciQLopPlotRange(140.0, 160.0))
+    state = GraphKnobState([spec])
+    span = _DataSpan(sciqlop_plot, spec, state)
+    assert state.values["window"].start() == pytest.approx(140.0)
+
+    sciqlop_panel.set_time_axis_range(SciQLopPlotRange(500.0, 600.0))
+    qtbot.wait(50)
+
+    val = state.values["window"]
+    assert val.start() == pytest.approx(140.0)
     assert val.stop() == pytest.approx(160.0)
     span.cleanup()
 
 
-def test_data_span_drag_updates_state(sciqlop_plot, qtbot):
+def test_data_span_drag_updates_state(sciqlop_panel, sciqlop_plot, qtbot):
     """Dragging the span updates the knob state value."""
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
     from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
@@ -319,7 +392,7 @@ def test_data_span_drag_updates_state(sciqlop_plot, qtbot):
     span.cleanup()
 
 
-def test_data_span_syncs_from_state(sciqlop_plot, qtbot):
+def test_data_span_syncs_from_state(sciqlop_panel, sciqlop_plot, qtbot):
     """update_from_state moves the span to match."""
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
     from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
@@ -329,10 +402,23 @@ def test_data_span_syncs_from_state(sciqlop_plot, qtbot):
     span = _DataSpan(sciqlop_plot, spec, state)
 
     span.update_from_state({"window": SciQLopPlotRange(110.0, 190.0)})
-    r = span._span.range()
-    assert r.start() == pytest.approx(110.0)
-    assert r.stop() == pytest.approx(190.0)
+    assert span._span.range.start() == pytest.approx(110.0)
+    assert span._span.range.stop() == pytest.approx(190.0)
     span.cleanup()
+
+
+def test_data_span_requires_panel_in_parent_chain(qtbot):
+    """A bare plot with no panel parent raises a clear error."""
+    from SciQLopPlots import SciQLopPlot
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
+
+    plot = SciQLopPlot()
+    qtbot.addWidget(plot)
+    spec = TimeRangeKnob(name="window")
+    state = GraphKnobState([spec])
+    with pytest.raises(ValueError, match="SciQLopMultiPlotPanel"):
+        _DataSpan(plot, spec, state)
 
 
 def test_movable_hline_creates_at_default(sciqlop_plot, qtbot):
