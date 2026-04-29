@@ -3,8 +3,11 @@ import json
 import re
 from typing import Any, Iterable
 
+from SciQLopPlots import SciQLopPlotRange
+
 from SciQLop.user_api.knobs.specs import (
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob,
+    TimeRangeKnob, ThresholdKnob,
 )
 
 
@@ -30,7 +33,20 @@ def _clamp(v, lo, hi):
     return v
 
 
+def _coerce_time_range(value: Any) -> SciQLopPlotRange:
+    if isinstance(value, SciQLopPlotRange):
+        return value
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return SciQLopPlotRange(float(value[0]), float(value[1]))
+    raise TypeError(f"Cannot coerce {type(value).__name__} to TimeRange")
+
+
 def coerce_value(spec: KnobSpec, value: Any) -> Any:
+    if isinstance(spec, TimeRangeKnob):
+        return _coerce_time_range(value)
+    if isinstance(spec, ThresholdKnob):
+        v = float(value)
+        return _clamp(v, spec.min, spec.max)
     if isinstance(spec, IntKnob):
         v = int(value)
         v = _clamp(v, spec.min, spec.max)
@@ -72,6 +88,8 @@ def validate_dict(specs: Iterable[KnobSpec], values: dict[str, Any]) -> dict[str
 
 
 def _canonicalize(value: Any) -> Any:
+    if isinstance(value, SciQLopPlotRange):
+        return [round(value.start(), 9), round(value.stop(), 9)]
     if isinstance(value, float):
         return round(value, 9)
     if isinstance(value, dict):

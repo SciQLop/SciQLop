@@ -1,5 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal
+
+from SciQLopPlots import SciQLopPlotRange
 
 
 @dataclass(frozen=True, slots=True)
@@ -10,6 +12,7 @@ class KnobSpec:
     unit: str = ""
     description: str = ""
     apply: Literal["live", "manual"] = "live"
+    widget: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,3 +46,16 @@ class ChoiceKnob(KnobSpec):
 class StringKnob(KnobSpec):
     default: str = ""
     pattern: str = ""
+
+
+@dataclass(frozen=True, slots=True)
+class TimeRangeKnob(KnobSpec):
+    default: SciQLopPlotRange = field(default_factory=lambda: SciQLopPlotRange(0.25, 0.75))
+    widget: str = "vspan"
+    color: str = "#3498db"
+
+
+@dataclass(frozen=True, slots=True)
+class ThresholdKnob(FloatKnob):
+    widget: str = "hline"
+    color: str = "#e74c3c"

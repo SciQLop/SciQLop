@@ -13,3 +13,5 @@ class Knob:
     apply: Literal["live", "manual"] = "live"
     choices: tuple[tuple[str, Any], ...] | None = None
     pattern: str = ""
+    widget: str = ""
+    color: str = ""

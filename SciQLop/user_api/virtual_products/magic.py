@@ -168,6 +168,8 @@ def vp_magic(line: str, cell: str, local_ns=None):
     if needs_eval:
         start, stop = _resolve_time_range(args, func)
         preserved = _persisted_knob_values(_registry.get(func_name))
+        from SciQLop.user_api.virtual_products.registry import _resolve_range_defaults
+        preserved = _resolve_range_defaults(func, start, stop, preserved)
         t0 = _time.monotonic()
         try:
             try:

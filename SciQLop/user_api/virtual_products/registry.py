@@ -5,6 +5,36 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
 
+def _resolve_fractional_range(start: float, stop: float, v):
+    """If v is a SciQLopPlotRange with fractional coords (0-1), convert to absolute."""
+    from SciQLopPlots import SciQLopPlotRange
+    if isinstance(v, SciQLopPlotRange):
+        lo, hi = v.start(), v.stop()
+        if 0.0 <= lo <= 1.0 and 0.0 <= hi <= 1.0:
+            return SciQLopPlotRange(
+                start + lo * (stop - start),
+                start + hi * (stop - start),
+            )
+    return v
+
+
+def _resolve_fractional_ranges(start: float, stop: float, kwargs: dict) -> dict:
+    return {k: _resolve_fractional_range(start, stop, v) for k, v in kwargs.items()}
+
+
+def _resolve_range_defaults(callback, start: float, stop: float, kwargs: dict) -> dict:
+    """Resolve fractional SciQLopPlotRange values in kwargs AND in missing defaults."""
+    from SciQLopPlots import SciQLopPlotRange
+    resolved = _resolve_fractional_ranges(start, stop, kwargs)
+    for name, param in inspect.signature(callback).parameters.items():
+        if name in ("start", "stop") or name in resolved:
+            continue
+        if param.default is not inspect.Parameter.empty:
+            if isinstance(param.default, SciQLopPlotRange):
+                resolved[name] = _resolve_fractional_range(start, stop, param.default)
+    return resolved
+
+
 def _signature_kwargs(callback) -> tuple:
     sig = inspect.signature(callback)
     return tuple(
@@ -34,12 +64,16 @@ class MutableCallback:
 
     def __call__(self, start, stop, **kwargs):
         import time as _time
+        kwargs = self._resolve_ranges(start, stop, kwargs)
         t0 = _time.monotonic()
         result = self._callback(start, stop, **kwargs)
         elapsed = _time.monotonic() - t0
         if self.after_call is not None:
-            self.after_call(result, elapsed)
+            self.after_call(result, elapsed, start, stop)
         return result
+
+    def _resolve_ranges(self, start, stop, kwargs):
+        return _resolve_range_defaults(self._callback, start, stop, kwargs)
 
 
 @dataclass

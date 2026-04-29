@@ -4,8 +4,11 @@ from typing import (Annotated, Any, Literal, get_args, get_origin,
                     get_type_hints)
 
 from SciQLop.user_api.knobs.marker import Knob
+from SciQLopPlots import SciQLopPlotRange
+
 from SciQLop.user_api.knobs.specs import (
     BoolKnob, ChoiceKnob, FloatKnob, IntKnob, KnobSpec, StringKnob,
+    TimeRangeKnob, ThresholdKnob,
 )
 
 log = logging.getLogger(__name__)
@@ -39,13 +42,45 @@ def _normalize_choices(raw) -> tuple[tuple[str, Any], ...]:
 def _kwargs_meta(marker: Knob | None) -> dict:
     if marker is None:
         return {}
-    return {"label": marker.label, "unit": marker.unit,
+    meta = {"label": marker.label, "unit": marker.unit,
             "description": marker.description, "apply": marker.apply}
+    if marker.widget:
+        meta["widget"] = marker.widget
+    if marker.color:
+        meta["color"] = marker.color
+    return meta
+
+
+def _is_time_range(base, marker, default) -> bool:
+    if marker is not None and marker.widget == "vspan":
+        return True
+    if base is SciQLopPlotRange or isinstance(default, SciQLopPlotRange):
+        return True
+    return False
+
+
+def _is_threshold(marker) -> bool:
+    return marker is not None and marker.widget == "hline"
 
 
 def _spec_from_kwarg(name: str, annot, default: Any) -> KnobSpec | None:
     base, markers = _split_annotation(annot)
     marker = markers[0] if markers else None
+
+    if _is_time_range(base, marker, default):
+        meta = _kwargs_meta(marker)
+        color = meta.pop("color", "") or "#3498db"
+        return TimeRangeKnob(name=name, default=default or SciQLopPlotRange(0.25, 0.75),
+                             color=color, **meta)
+
+    if _is_threshold(marker):
+        meta = _kwargs_meta(marker)
+        color = meta.pop("color", "") or "#e74c3c"
+        return ThresholdKnob(name=name, default=float(default),
+                             min=marker.min if marker else None,
+                             max=marker.max if marker else None,
+                             step=marker.step if marker and marker.step is not None else 0.01,
+                             color=color, **meta)
 
     if get_origin(base) is Literal:
         choices = _normalize_choices(get_args(base))

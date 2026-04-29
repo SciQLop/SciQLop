@@ -48,12 +48,11 @@ def handle_debug(args, func, func_name: str, entry: RegistryEntry, type_info,
         else:
             overlay.show_diagnostics(result.diagnostics)
 
-        def _on_data_fetched(data, elapsed):
+        def _on_data_fetched(data, elapsed, start=None, stop=None):
             if data is None:
                 return
-            tr = panel.time_range
             vr = validate_with_data(data, type_info.product_type, type_info.labels,
-                                    elapsed, start=tr.start(), stop=tr.stop())
+                                    elapsed, start=start, stop=stop)
             if vr.diagnostics:
                 overlay.show_diagnostics(vr.diagnostics)
             else:

@@ -3,11 +3,12 @@ from typing import Any
 from PySide6.QtCore import QRegularExpression, Signal
 from PySide6.QtGui import QRegularExpressionValidator
 from PySide6.QtWidgets import (
-    QWidget, QHBoxLayout, QSpinBox, QDoubleSpinBox, QCheckBox, QComboBox, QLineEdit,
+    QWidget, QHBoxLayout, QSpinBox, QDoubleSpinBox, QCheckBox, QComboBox, QLineEdit, QLabel,
 )
 
 from SciQLop.user_api.knobs import (
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob,
+    TimeRangeKnob, ThresholdKnob,
 )
 
 
@@ -148,12 +149,62 @@ class _StringDelegate(KnobDelegate):
         self._edit.blockSignals(False)
 
 
+class _TimeRangeDelegate(KnobDelegate):
+    def __init__(self, spec: TimeRangeKnob, parent=None):
+        super().__init__(spec, parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._label = QLabel("(set on plot)")
+        self._value = spec.default
+        layout.addWidget(self._label)
+
+    def get_value(self):
+        return self._value
+
+    def set_value(self, value):
+        from SciQLopPlots import SciQLopPlotRange
+        if isinstance(value, SciQLopPlotRange):
+            self._value = value
+            self._label.setText(f"{value.start():.1f} – {value.stop():.1f}")
+
+
+class _ThresholdDelegate(KnobDelegate):
+    def __init__(self, spec: ThresholdKnob, parent=None):
+        super().__init__(spec, parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._spin = QDoubleSpinBox()
+        self._spin.setDecimals(6)
+        if spec.min is not None:
+            self._spin.setMinimum(spec.min)
+        else:
+            self._spin.setMinimum(-1e18)
+        if spec.max is not None:
+            self._spin.setMaximum(spec.max)
+        else:
+            self._spin.setMaximum(1e18)
+        if spec.step:
+            self._spin.setSingleStep(spec.step)
+        layout.addWidget(self._spin)
+        self._spin.valueChanged.connect(self.value_changed.emit)
+
+    def get_value(self):
+        return self._spin.value()
+
+    def set_value(self, value):
+        self._spin.blockSignals(True)
+        self._spin.setValue(float(value))
+        self._spin.blockSignals(False)
+
+
 _DELEGATES = {
     IntKnob: _IntDelegate,
     FloatKnob: _FloatDelegate,
     BoolKnob: _BoolDelegate,
     ChoiceKnob: _ChoiceDelegate,
     StringKnob: _StringDelegate,
+    TimeRangeKnob: _TimeRangeDelegate,
+    ThresholdKnob: _ThresholdDelegate,
 }
 
 
