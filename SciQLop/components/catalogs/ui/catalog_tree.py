@@ -515,7 +515,27 @@ class CatalogTreeModel(QAbstractItemModel):
             return base | Qt.ItemFlag.ItemIsEditable
         if node.catalog is not None:
             from ..backend.provider import Capability
+            base |= Qt.ItemFlag.ItemIsDragEnabled
             if (node.provider is not None
                     and Capability.RENAME_CATALOG in node.provider.capabilities()):
-                return base | Qt.ItemFlag.ItemIsEditable
+                base |= Qt.ItemFlag.ItemIsEditable
         return base
+
+    def mimeTypes(self) -> list[str]:
+        from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE
+        return [CATALOG_LIST_MIME_TYPE]
+
+    def mimeData(self, indexes):
+        from SciQLop.core.mime import encode_mime
+        catalogs: list = []
+        seen: set[str] = set()
+        for idx in indexes:
+            if not idx.isValid():
+                continue
+            node = idx.internalPointer()
+            if node.catalog is not None and node.catalog.uuid not in seen:
+                catalogs.append(node.catalog)
+                seen.add(node.catalog.uuid)
+        if not catalogs:
+            return None
+        return encode_mime(catalogs)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent, QItemSelectionModel, QTimer
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QHBoxLayout,
     QLineEdit,
     QPushButton,
@@ -160,6 +161,8 @@ class CatalogBrowser(QWidget):
         self._catalog_tree = QTreeView()
         self._catalog_tree.setModel(self._proxy_model)
         self._catalog_tree.setHeaderHidden(True)
+        self._catalog_tree.setDragEnabled(True)
+        self._catalog_tree.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
         self._save_delegate = _SaveButtonDelegate(self._catalog_tree)
         self._save_delegate.save_clicked.connect(self._on_save_clicked)
         self._catalog_tree.setItemDelegate(self._save_delegate)

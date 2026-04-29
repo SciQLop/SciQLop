@@ -19,7 +19,7 @@ import weakref
 from SciQLop.core.plot_hints import apply_plot_hints, combine_hints, merge_hints, PlotHints
 from SciQLop.core.property import SciQLopProperty
 from SciQLop.core.mime import decode_mime
-from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
+from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE, CATALOG_LIST_MIME_TYPE
 from SciQLop.components.plotting.backend.palette import Palette, make_color_list
 from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
 
@@ -537,6 +537,19 @@ class TimeRangeDnDCallback(PlotDragNDropCallback):
         plot.time_axis().set_range(time_range)
 
 
+class CatalogDnDCallback(PlotDragNDropCallback):
+    def __init__(self, parent):
+        super().__init__(CATALOG_LIST_MIME_TYPE, False, parent)
+
+    def call(self, plot, mime_data: QMimeData):
+        catalogs = decode_mime(mime_data)
+        if not catalogs:
+            return
+        manager = self.parent().catalog_manager
+        for cat in catalogs:
+            manager.add_catalog(cat)
+
+
 class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None,
@@ -548,8 +561,10 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self._template_source_path: str | None = None
         self._product_plot_callback = ProductDnDCallback(self)
         self._time_range_plot_callback = TimeRangeDnDCallback(self)
+        self._catalog_plot_callback = CatalogDnDCallback(self)
         self.add_accepted_mime_type(self._product_plot_callback)
         self.add_accepted_mime_type(self._time_range_plot_callback)
+        self.add_accepted_mime_type(self._catalog_plot_callback)
         self.set_color_palette(make_color_list(Palette()))
         self.update_theme()
         if time_range is not None:
