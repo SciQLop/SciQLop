@@ -325,7 +325,7 @@ class HorizontalLine:
     @property
     @on_main_thread
     def value(self) -> float:
-        return self._impl.position()
+        return self._impl.position
 
     @value.setter
     @on_main_thread
