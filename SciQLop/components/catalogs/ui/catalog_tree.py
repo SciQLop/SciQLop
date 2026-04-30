@@ -144,6 +144,7 @@ class CatalogTreeModel(QAbstractItemModel):
         on_removed = lambda cat, p=provider, n=node: self._on_catalog_removed(p, n, cat)
         on_dirty = lambda cat, dirty, p=provider, n=node: self._on_dirty_changed(p, n, cat, dirty)
         on_renamed = lambda cat, p=provider, n=node: self._on_catalog_renamed(p, n, cat)
+        on_moved = lambda cat, p=provider, n=node: self._on_catalog_moved(p, n, cat)
         on_folder_added = lambda path, p=provider, n=node: self._on_folder_added(p, n, path)
         on_folder_removed = lambda path, p=provider, n=node: self._on_folder_removed(p, n, path)
         on_status = lambda p=provider, n=node: self._on_provider_status_changed(n)
@@ -153,6 +154,7 @@ class CatalogTreeModel(QAbstractItemModel):
         provider.catalog_removed.connect(on_removed)
         provider.dirty_changed.connect(on_dirty)
         provider.catalog_renamed.connect(on_renamed)
+        provider.catalog_moved.connect(on_moved)
         provider.folder_added.connect(on_folder_added)
         provider.folder_removed.connect(on_folder_removed)
         provider.status_changed.connect(on_status)
@@ -163,6 +165,7 @@ class CatalogTreeModel(QAbstractItemModel):
             (provider.catalog_removed, on_removed),
             (provider.dirty_changed, on_dirty),
             (provider.catalog_renamed, on_renamed),
+            (provider.catalog_moved, on_moved),
             (provider.folder_added, on_folder_added),
             (provider.folder_removed, on_folder_removed),
             (provider.status_changed, on_status),
@@ -228,6 +231,14 @@ class CatalogTreeModel(QAbstractItemModel):
             cat_node.name = catalog.name
             idx = self.createIndex(cat_node.row(), 0, cat_node)
             self.dataChanged.emit(idx, idx, [int(Qt.ItemDataRole.DisplayRole)])
+
+    def _on_catalog_moved(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
+        """Relocate the catalog node to its new path. The catalog object's
+        path has already been updated by the provider."""
+        if self._find_catalog_node(pnode, catalog) is None:
+            return
+        self._remove_catalog_recursive(pnode, catalog)
+        self._on_catalog_added(provider, pnode, catalog)
 
     def _on_catalog_added(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
         if self._find_catalog_node(pnode, catalog) is not None:
@@ -513,13 +524,23 @@ class CatalogTreeModel(QAbstractItemModel):
         base = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
         if node.is_placeholder:
             return base | Qt.ItemFlag.ItemIsEditable
+        from ..backend.provider import Capability
         if node.catalog is not None:
-            from ..backend.provider import Capability
             base |= Qt.ItemFlag.ItemIsDragEnabled
             if (node.provider is not None
                     and Capability.RENAME_CATALOG in node.provider.capabilities()):
                 base |= Qt.ItemFlag.ItemIsEditable
+        if node.provider is not None and self._node_accepts_drop(node):
+            base |= Qt.ItemFlag.ItemIsDropEnabled
         return base
+
+    def _node_accepts_drop(self, node: _Node) -> bool:
+        """A node accepts drops if its provider can either accept a moved
+        catalog (same-provider drop) or create a new catalog there
+        (cross-provider drop)."""
+        from ..backend.provider import Capability
+        caps = node.provider.capabilities()
+        return Capability.CREATE_CATALOGS in caps or Capability.MOVE_CATALOG in caps
 
     def mimeTypes(self) -> list[str]:
         from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE
@@ -539,3 +560,99 @@ class CatalogTreeModel(QAbstractItemModel):
         if not catalogs:
             return None
         return encode_mime(catalogs)
+
+    def supportedDropActions(self) -> Qt.DropAction:
+        return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
+
+    def supportedDragActions(self) -> Qt.DropAction:
+        return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
+
+    def _resolve_drop_target(self, parent: QModelIndex):
+        """Walk up to a folder/provider node, returning (provider_node,
+        sub_path) or None if no valid drop target."""
+        if not parent.isValid():
+            return None
+        node = parent.internalPointer()
+        if node.is_placeholder:
+            return None
+        # Drop on a catalog → treat as drop on its parent folder
+        if node.catalog is not None:
+            node = node.parent
+        if node is None or node.provider is None:
+            return None
+        provider_node = node
+        while provider_node.parent is not None and provider_node.parent is not self._root:
+            provider_node = provider_node.parent
+        sub_path = self._folder_path(node) if node is not provider_node else []
+        return provider_node, sub_path
+
+    def canDropMimeData(self, data, action, row, column, parent) -> bool:
+        from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE
+        from ..backend.provider import Capability
+        if not data.hasFormat(CATALOG_LIST_MIME_TYPE):
+            return False
+        target = self._resolve_drop_target(parent)
+        if target is None:
+            return False
+        provider_node, _ = target
+        caps = provider_node.provider.capabilities()
+        return Capability.CREATE_CATALOGS in caps or Capability.MOVE_CATALOG in caps
+
+    def dropMimeData(self, data, action, row, column, parent) -> bool:
+        from SciQLop.core.mime import decode_mime
+        from ..backend.provider import Capability, CatalogEvent
+        import uuid as _uuid
+        if action == Qt.DropAction.IgnoreAction:
+            return True
+        catalogs = decode_mime(data)
+        if not catalogs:
+            return False
+        target = self._resolve_drop_target(parent)
+        if target is None:
+            return False
+        dest_provider_node, dest_sub_path = target
+        dest_provider = dest_provider_node.provider
+        dest_caps = dest_provider.capabilities()
+        for source_cat in catalogs:
+            if source_cat.provider is dest_provider:
+                if Capability.MOVE_CATALOG not in dest_caps:
+                    continue
+                if list(source_cat.path) == list(dest_sub_path):
+                    continue
+                dest_provider.move_catalog(source_cat, dest_sub_path)
+            else:
+                if Capability.CREATE_CATALOGS not in dest_caps:
+                    continue
+                new_name = self._unique_catalog_name(
+                    dest_provider, dest_sub_path, source_cat.name,
+                )
+                new_cat = dest_provider.create_catalog(new_name, path=dest_sub_path)
+                source_events = source_cat.provider.events(source_cat) if source_cat.provider else []
+                for ev in source_events:
+                    copied = CatalogEvent(
+                        uuid=str(_uuid.uuid4()),
+                        start=ev.start, stop=ev.stop,
+                        meta=dict(ev.meta),
+                    )
+                    dest_provider.add_event(new_cat, copied)
+        # Return False so Qt does not also call removeRows() on the source —
+        # provider signals (move/remove/add) drive tree updates instead.
+        return False
+
+    def _unique_catalog_name(self, provider, sub_path: list[str], base: str) -> str:
+        existing = {
+            c.name for c in provider.catalogs()
+            if list(c.path) == list(sub_path)
+        }
+        if base not in existing:
+            return base
+        for i in range(2, 1000):
+            candidate = f"{base} ({i})"
+            if candidate not in existing:
+                return candidate
+        return f"{base} ({_uuid_short()})"
+
+
+def _uuid_short() -> str:
+    import uuid as _uuid
+    return str(_uuid.uuid4())[:8]

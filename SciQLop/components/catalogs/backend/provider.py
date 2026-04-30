@@ -64,6 +64,7 @@ class Capability(str, Enum):
     SAVE = "save"
     SAVE_CATALOG = "save_catalog"
     RENAME_CATALOG = "rename_catalog"
+    MOVE_CATALOG = "move_catalog"
 
 
 class NodeType(str, Enum):
@@ -93,6 +94,7 @@ class CatalogProvider(QObject):
     catalog_added = Signal(object)
     catalog_removed = Signal(object)
     catalog_renamed = Signal(object)
+    catalog_moved = Signal(object)
     events_changed = Signal(object)
     error_occurred = Signal(str)
     dirty_changed = Signal(object, bool)  # (catalog, is_dirty)
@@ -209,6 +211,19 @@ class CatalogProvider(QObject):
     def rename_catalog(self, catalog: Catalog, new_name: str) -> None:
         """Public API: rename a catalog. Override for backend persistence."""
         pass
+
+    def move_catalog(self, catalog: Catalog, new_path: list[str]) -> None:
+        """Public API: relocate a catalog under *new_path*, preserving its uuid.
+
+        Default updates ``catalog.path`` in memory and emits ``catalog_moved``.
+        Subclasses with persistent backends must override to also persist the
+        new path.
+        """
+        if list(catalog.path) == list(new_path):
+            return
+        catalog.path = list(new_path)
+        self.catalog_moved.emit(catalog)
+        self.mark_dirty(catalog)
 
     def remove_catalog(self, catalog: Catalog) -> None:
         """Public API: remove a catalog. Override for backend persistence."""

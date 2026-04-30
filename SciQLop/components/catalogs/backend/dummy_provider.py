@@ -56,6 +56,7 @@ class DummyProvider(CatalogProvider):
             Capability.SAVE,
             Capability.SAVE_CATALOG,
             Capability.RENAME_CATALOG,
+            Capability.MOVE_CATALOG,
         }
 
     def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:

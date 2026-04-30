@@ -160,6 +160,7 @@ class TscatCatalogProvider(CatalogProvider):
             Capability.DELETE_EVENTS,
             Capability.CREATE_CATALOGS,
             Capability.DELETE_CATALOGS,
+            Capability.MOVE_CATALOG,
             Capability.SAVE,
         }
 
@@ -210,6 +211,19 @@ class TscatCatalogProvider(CatalogProvider):
             self._catalog_cache = [c for c in self._catalog_cache if c.uuid != catalog.uuid]
             self._known_uuids.discard(catalog.uuid)
         super().remove_catalog(catalog)
+
+    def move_catalog(self, catalog: Catalog, new_path: list[str]) -> None:
+        if list(catalog.path) == list(new_path):
+            return
+        self._ensure_clean_session()
+        with self._tracked_action():
+            tscat_model.do(SetAttributeAction(
+                user_callback=None,
+                uuids=[catalog.uuid],
+                name="path__",
+                values=[list(new_path)],
+            ))
+        super().move_catalog(catalog, new_path)
 
     @staticmethod
     def _ensure_clean_session():
