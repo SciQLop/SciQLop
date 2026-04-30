@@ -190,6 +190,10 @@ class CatalogBrowser(QWidget):
         self._event_model.modelReset.connect(self._fit_event_columns)
         self._event_table.selectionModel().currentChanged.connect(self._on_event_selected)
 
+        from .event_table_delegate import EventTableDelegate
+        self._event_delegate = EventTableDelegate(self._event_model, self._event_table)
+        self._event_table.setItemDelegate(self._event_delegate)
+
         # --- event toolbar (above table) ---
         self._add_event_btn = QPushButton("Add Event")
         self._add_event_btn.setVisible(False)

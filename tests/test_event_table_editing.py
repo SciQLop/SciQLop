@@ -119,3 +119,112 @@ def test_new_meta_key_emits_columns_inserted_not_reset(qtbot, qapp):
 
     assert len(received_inserts) == 1
     assert received_resets == []
+
+
+def test_event_table_delegate_creates_int_editor_for_int_column(qapp):
+    from PySide6.QtWidgets import QSpinBox, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    index_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("index")
+    idx = model.index(0, index_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    assert editor is not None
+    spinboxes = editor.findChildren(QSpinBox)
+    assert len(spinboxes) == 1
+
+
+def test_event_table_delegate_creates_float_editor_for_float_column(qapp):
+    from PySide6.QtWidgets import QDoubleSpinBox, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    score_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("score")
+    idx = model.index(0, score_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    spinboxes = editor.findChildren(QDoubleSpinBox)
+    assert len(spinboxes) == 1
+
+
+def test_event_table_delegate_creates_string_editor_for_str_column(qapp):
+    from PySide6.QtWidgets import QLineEdit, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    class_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("class")
+    idx = model.index(0, class_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    assert editor.findChildren(QLineEdit)
+
+
+def test_event_table_delegate_creates_datetime_editor_for_start_column(qapp):
+    from PySide6.QtWidgets import QDateTimeEdit, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    idx = model.index(0, 0)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    assert isinstance(editor, QDateTimeEdit)
+
+
+def test_event_table_delegate_setEditorData_setModelData_roundtrip_meta(qapp):
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+    delegate = EventTableDelegate(model)
+    score_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("score")
+    idx = model.index(0, score_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    delegate.setEditorData(editor, idx)
+    # Inject a new value via the SettingDelegate API
+    editor.set_value(0.123)
+    delegate.setModelData(editor, model, idx)
+    assert provider.events(cat)[0].meta["score"] == 0.123
+
+
+def test_event_table_delegate_column_type_inference_resets_on_model_reset(qapp):
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+    delegate = EventTableDelegate(model)
+    score_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("score")
+    delegate._column_type(score_col)  # cache something
+    assert score_col in delegate._column_types
+
+    # Trigger a reset
+    model.set_events(provider.events(cat))
+    assert delegate._column_types == {}
