@@ -264,6 +264,7 @@ class CatalogBrowser(QWidget):
         if node.catalog is not None:
             self._current_provider = node.provider
             self._current_catalog = node.catalog
+            self._event_model.set_context(node.provider, node.catalog)
             events = node.provider.events(node.catalog)
             self._event_model.set_events(events)
             node.provider.events_changed.connect(self._on_events_changed)
@@ -271,6 +272,7 @@ class CatalogBrowser(QWidget):
         else:
             self._current_provider = node.provider
             self._current_catalog = None
+            self._event_model.set_context(None, None)
             self._event_model.clear()
         self._update_toolbar()
 
