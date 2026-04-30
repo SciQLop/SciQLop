@@ -228,3 +228,105 @@ def test_event_table_delegate_column_type_inference_resets_on_model_reset(qapp):
     # Trigger a reset
     model.set_events(provider.events(cat))
     assert delegate._column_types == {}
+
+
+def test_bulk_edit_propagates_to_selected_rows(qtbot, qapp):
+    from PySide6.QtCore import Qt, QItemSelectionModel
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=5)
+    cat = provider.catalogs()[0]
+    browser._current_provider = provider
+    browser._current_catalog = cat
+    browser._event_model.set_context(provider, cat)
+    browser._event_model.set_events(provider.events(cat))
+
+    sm = browser._event_table.selectionModel()
+    sm.clear()
+    for row in (0, 1, 2):
+        sm.select(
+            browser._sort_proxy.index(row, 0),
+            QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows,
+        )
+
+    class_col = len(browser._event_model._FIXED_COLUMNS) + browser._event_model._meta_keys.index("class")
+    proxy_idx = browser._sort_proxy.index(0, class_col)
+    browser._sort_proxy.setData(proxy_idx, "boundary", Qt.ItemDataRole.EditRole)
+    qapp.processEvents()
+
+    events = provider.events(cat)
+    for row in (0, 1, 2):
+        source_idx = browser._sort_proxy.mapToSource(browser._sort_proxy.index(row, class_col))
+        ev = browser._event_model.event_at(source_idx.row())
+        assert ev.meta["class"] == "boundary"
+    # Row 3 was not selected - should be unchanged
+    source_idx = browser._sort_proxy.mapToSource(browser._sort_proxy.index(3, class_col))
+    ev3 = browser._event_model.event_at(source_idx.row())
+    assert ev3.meta["class"] != "boundary"
+
+
+def test_bulk_edit_no_loop_when_propagating(qtbot, qapp):
+    """Re-entry guard prevents the propagation from triggering itself."""
+    from PySide6.QtCore import Qt, QItemSelectionModel
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=5)
+    cat = provider.catalogs()[0]
+    browser._current_provider = provider
+    browser._current_catalog = cat
+    browser._event_model.set_context(provider, cat)
+    browser._event_model.set_events(provider.events(cat))
+
+    sm = browser._event_table.selectionModel()
+    for row in (0, 1, 2):
+        sm.select(
+            browser._sort_proxy.index(row, 0),
+            QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows,
+        )
+
+    propagation_calls = []
+    real = browser._propagate_bulk_edit
+
+    def spy(*args, **kwargs):
+        propagation_calls.append(args)
+        return real(*args, **kwargs)
+
+    browser._propagate_bulk_edit = spy
+
+    class_col = len(browser._event_model._FIXED_COLUMNS) + browser._event_model._meta_keys.index("class")
+    proxy_idx = browser._sort_proxy.index(0, class_col)
+    browser._sort_proxy.setData(proxy_idx, "newvalue", Qt.ItemDataRole.EditRole)
+    qapp.processEvents()
+
+    # Exactly ONE propagation call, even though 3 cells changed
+    assert len(propagation_calls) == 1
+
+
+def test_bulk_delete_removes_all_selected(qtbot, qapp):
+    from PySide6.QtCore import QItemSelectionModel
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=5)
+    cat = provider.catalogs()[0]
+    browser._current_provider = provider
+    browser._current_catalog = cat
+    browser._event_model.set_context(provider, cat)
+    browser._event_model.set_events(provider.events(cat))
+
+    sm = browser._event_table.selectionModel()
+    for row in (0, 1):
+        sm.select(
+            browser._sort_proxy.index(row, 0),
+            QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows,
+        )
+
+    initial = len(provider.events(cat))
+    browser._on_delete()
+    qapp.processEvents()
+    assert len(provider.events(cat)) == initial - 2

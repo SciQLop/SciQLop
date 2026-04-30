@@ -189,6 +189,11 @@ class CatalogBrowser(QWidget):
         self._event_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
         self._event_model.modelReset.connect(self._fit_event_columns)
         self._event_table.selectionModel().currentChanged.connect(self._on_event_selected)
+        self._event_table.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
+        self._event_table.setSelectionMode(QTableView.SelectionMode.ExtendedSelection)
+
+        self._propagating_bulk_edit = False
+        self._event_model.dataChanged.connect(self._on_event_data_changed)
 
         from .event_table_delegate import EventTableDelegate
         self._event_delegate = EventTableDelegate(self._event_model, self._event_table)
@@ -286,6 +291,67 @@ class CatalogBrowser(QWidget):
             event = self._event_model.event_at(source_index.row())
             if event is not None:
                 self.event_selected.emit(event)
+
+    def _on_event_data_changed(self, top_left, bottom_right, roles=None) -> None:
+        if self._propagating_bulk_edit:
+            return
+        if top_left != bottom_right:
+            return
+        if self._current_provider is None or self._current_catalog is None:
+            return
+        proxy_idx = self._sort_proxy.mapFromSource(top_left)
+        if not proxy_idx.isValid():
+            return
+        event = self._event_model.event_at(top_left.row())
+        if event is None:
+            return
+        col = top_left.column()
+        if col >= len(self._event_model._FIXED_COLUMNS):
+            key = self._event_model._meta_keys[col - len(self._event_model._FIXED_COLUMNS)]
+            value = event.meta.get(key)
+        elif col == 0:
+            value = event.start
+        else:
+            value = event.stop
+        self._propagate_bulk_edit(proxy_idx, value)
+
+    def _propagate_bulk_edit(self, proxy_idx, value) -> None:
+        sm = self._event_table.selectionModel()
+        if sm is None:
+            return
+        selected_rows = {idx.row() for idx in sm.selectedRows()}
+        if proxy_idx.row() not in selected_rows or len(selected_rows) <= 1:
+            return
+        col = proxy_idx.column()
+        source_origin = self._sort_proxy.mapToSource(proxy_idx)
+        origin_event = self._event_model.event_at(source_origin.row())
+        if origin_event is None:
+            return
+        targets = []
+        for row in selected_rows:
+            if row == proxy_idx.row():
+                continue
+            source_idx = self._sort_proxy.mapToSource(self._sort_proxy.index(row, col))
+            ev = self._event_model.event_at(source_idx.row())
+            if ev is not None and ev is not origin_event:
+                targets.append(ev)
+        if not targets:
+            return
+        self._propagating_bulk_edit = True
+        try:
+            if col == 0:
+                for ev in targets:
+                    ev.start = value
+            elif col == 1:
+                for ev in targets:
+                    ev.stop = value
+            else:
+                key = self._event_model._meta_keys[col - len(self._event_model._FIXED_COLUMNS)]
+                self._current_provider.set_events_meta(
+                    self._current_catalog, targets, key, value,
+                )
+        finally:
+            self._propagating_bulk_edit = False
 
     def _on_events_changed(self, catalog: Catalog) -> None:
         """Refresh event table when async loading completes for the selected catalog."""
@@ -415,19 +481,24 @@ class CatalogBrowser(QWidget):
         self._event_model.set_events(events)
 
     def _on_delete(self) -> None:
-        if self._current_provider is None:
+        if self._current_provider is None or self._current_catalog is None:
             return
-        selected = self._event_table.selectionModel().currentIndex()
-        if selected.isValid() and self._current_catalog is not None:
-            source_index = self._sort_proxy.mapToSource(selected)
-            event = self._event_model.event_at(source_index.row())
-            if event is not None:
-                caps = self._current_provider.capabilities(self._current_catalog)
-                if Capability.DELETE_EVENTS in caps:
-                    self._current_provider.remove_event(self._current_catalog, event)
-                    events = self._current_provider.events(self._current_catalog)
-                    self._event_model.set_events(events)
-                    return
+        caps = self._current_provider.capabilities(self._current_catalog)
+        if Capability.DELETE_EVENTS not in caps:
+            return
+        sm = self._event_table.selectionModel()
+        if sm is None:
+            return
+        events = []
+        for proxy_idx in sm.selectedRows():
+            source_idx = self._sort_proxy.mapToSource(proxy_idx)
+            ev = self._event_model.event_at(source_idx.row())
+            if ev is not None:
+                events.append(ev)
+        for ev in events:
+            self._current_provider.remove_event(self._current_catalog, ev)
+        events_after = self._current_provider.events(self._current_catalog)
+        self._event_model.set_events(events_after)
 
     def _on_save_clicked(self, proxy_index: QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(proxy_index)
