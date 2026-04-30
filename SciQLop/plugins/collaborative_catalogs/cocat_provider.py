@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 import uuid as _uuid
 
 from PySide6.QtCore import QObject, QTimer
@@ -15,6 +15,7 @@ from SciQLop.components.catalogs import (
     CatalogProvider,
     ProviderAction,
 )
+from SciQLop.components.catalogs.backend.provider import _SENTINEL
 from SciQLop.components.theming import register_icon
 from SciQLop.components.sciqlop_logging import getLogger
 
@@ -49,13 +50,23 @@ class CocatEvent(CatalogEvent):
             uuid=str(cocat_event.uuid),
             start=cocat_event.start,
             stop=cocat_event.stop,
-            meta={},
+            meta=dict(cocat_event.attributes),
             parent=parent,
         )
         self._deferred = QTimer(self)
         self._deferred.setSingleShot(True)
         self._deferred.setInterval(100)
         self._deferred.timeout.connect(self._apply)
+        cocat_event.on_set_attributes(self._on_remote_set_attributes)
+        cocat_event.on_remove_attributes(self._on_remote_remove_attributes)
+
+    def _on_remote_set_attributes(self, attrs: dict) -> None:
+        for key, value in attrs.items():
+            self.set_meta(key, value)
+
+    def _on_remote_remove_attributes(self, keys) -> None:
+        for key in keys:
+            self.remove_meta(key)
 
     @property
     def start(self) -> datetime:
@@ -409,6 +420,27 @@ class CocatCatalogProvider(CatalogProvider):
         elif _SUBPATH_ATTR in cocat_cat.attributes:
             cocat_cat.remove_attributes([_SUBPATH_ATTR])
         super().move_catalog(catalog, new_path)
+
+    def set_event_meta(self, catalog: Catalog, event: CatalogEvent, key: str, value: Any) -> None:
+        if event.meta.get(key, _SENTINEL) == value:
+            return
+        assert isinstance(event, CocatEvent), \
+            f"CocatCatalogProvider expects CocatEvent, got {type(event).__name__}"
+        event._cocat_event.set_attributes(**{key: value})
+        # Observer fires synchronously at transaction commit, so event.meta is
+        # already updated and meta_changed has already been emitted by the time
+        # set_attributes returns. We just emit the provider-level signal.
+        self.event_meta_changed.emit(catalog, event, key)
+        self.mark_dirty(catalog)
+
+    def remove_event_meta(self, catalog: Catalog, event: CatalogEvent, key: str) -> None:
+        if key not in event.meta:
+            return
+        assert isinstance(event, CocatEvent), \
+            f"CocatCatalogProvider expects CocatEvent, got {type(event).__name__}"
+        event._cocat_event.remove_attributes([key])
+        self.event_meta_changed.emit(catalog, event, key)
+        self.mark_dirty(catalog)
 
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
         if not self._rooms:
