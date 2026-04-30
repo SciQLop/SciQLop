@@ -11,9 +11,13 @@ from SciQLop.components.catalogs import (
     CatalogEvent,
     CatalogProvider,
 )
+from SciQLop.components.catalogs.backend.provider import _SENTINEL
 
 from tscat_gui.tscat_driver.model import tscat_model
-from tscat_gui.tscat_driver.actions import SetAttributeAction, CreateEntityAction, RemoveEntitiesAction, AddEventsToCatalogueAction
+from tscat_gui.tscat_driver.actions import (
+    SetAttributeAction, CreateEntityAction, RemoveEntitiesAction,
+    AddEventsToCatalogueAction, DeleteAttributeAction,
+)
 import tscat
 from tscat_gui.model_base.constants import EntityRole
 
@@ -267,6 +271,50 @@ class TscatCatalogProvider(CatalogProvider):
                 permanently=False,
             ))
         super().remove_event(catalog, event)
+
+    def set_event_meta(self, catalog: Catalog, event: CatalogEvent, key: str, value: Any) -> None:
+        if event.meta.get(key, _SENTINEL) == value:
+            return
+        with self._tracked_action():
+            tscat_model.do(SetAttributeAction(
+                user_callback=None,
+                uuids=[event.uuid],
+                name=key,
+                values=[value],
+            ))
+        event.set_meta(key, value)
+        self.event_meta_changed.emit(catalog, event, key)
+        self.mark_dirty(catalog)
+
+    def remove_event_meta(self, catalog: Catalog, event: CatalogEvent, key: str) -> None:
+        if key not in event.meta:
+            return
+        with self._tracked_action():
+            tscat_model.do(DeleteAttributeAction(
+                user_callback=None,
+                uuids=[event.uuid],
+                name=key,
+            ))
+        event.remove_meta(key)
+        self.event_meta_changed.emit(catalog, event, key)
+        self.mark_dirty(catalog)
+
+    def set_events_meta(self, catalog: Catalog, events: list[CatalogEvent],
+                        key: str, value: Any) -> None:
+        targets = [e for e in events if e.meta.get(key, _SENTINEL) != value]
+        if not targets:
+            return
+        with self._tracked_action():
+            tscat_model.do(SetAttributeAction(
+                user_callback=None,
+                uuids=[e.uuid for e in targets],
+                name=key,
+                values=[value] * len(targets),
+            ))
+        for e in targets:
+            e.set_meta(key, value)
+            self.event_meta_changed.emit(catalog, e, key)
+        self.mark_dirty(catalog)
 
     def _load_events(self, catalog: Catalog, emit: bool = True) -> None:
         catalog_model = tscat_model.catalog(catalog.uuid)

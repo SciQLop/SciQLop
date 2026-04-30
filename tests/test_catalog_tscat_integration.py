@@ -5,8 +5,12 @@ the user-facing CatalogService, backed by the live TscatCatalogProvider.
 """
 
 import time
+import uuid as _uuid
+from datetime import datetime, timezone
 
 import pytest
+
+from SciQLop.components.catalogs.backend.provider import CatalogEvent
 
 
 PROVIDER = "My Catalogs"
@@ -156,3 +160,87 @@ class TestTrackedActionExceptionSafety:
             with tscat_provider._tracked_action():
                 raise RuntimeError("simulated failure")
         assert tscat_provider._pending_actions == before
+
+
+def test_set_event_meta_updates_local_mirror(qapp, tscat_provider):
+    """provider.set_event_meta must update event.meta synchronously and persist via tscat."""
+    cat = tscat_provider.create_catalog("t_meta_edit")
+    _process_events(qapp)
+    ev = CatalogEvent(
+        uuid=str(_uuid.uuid4()),
+        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+        meta={},
+    )
+    tscat_provider.add_event(cat, ev)
+    _process_events(qapp)
+
+    received = []
+    tscat_provider.event_meta_changed.connect(lambda c, e, k: received.append(k))
+
+    tscat_provider.set_event_meta(cat, ev, "rating", 4)
+    _process_events(qapp)
+
+    assert ev.meta["rating"] == 4
+    assert received == ["rating"]
+    assert tscat_provider.is_dirty(cat)
+
+
+def test_set_events_meta_bulk_uses_single_tscat_action(qapp, tscat_provider, monkeypatch):
+    """The bulk override should issue ONE SetAttributeAction with N uuids."""
+    from tscat_gui.tscat_driver import actions as tscat_actions
+
+    cat = tscat_provider.create_catalog("t_meta_bulk")
+    _process_events(qapp)
+    events = []
+    for _ in range(3):
+        e = CatalogEvent(
+            uuid=str(_uuid.uuid4()),
+            start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+            stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+            meta={},
+        )
+        tscat_provider.add_event(cat, e)
+        events.append(e)
+    _process_events(qapp)
+
+    captured: list = []
+    real_init = tscat_actions.SetAttributeAction.__init__
+
+    def spy_init(self, *args, **kwargs):
+        captured.append(kwargs)
+        real_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(tscat_actions.SetAttributeAction, "__init__", spy_init)
+
+    tscat_provider.set_events_meta(cat, events, "tags", ["x"])
+    _process_events(qapp)
+
+    set_attr_calls = [c for c in captured if c.get("name") == "tags"]
+    assert len(set_attr_calls) == 1
+    assert len(set_attr_calls[0]["uuids"]) == 3
+    for e in events:
+        assert e.meta["tags"] == ["x"]
+
+
+def test_set_event_meta_distinguishes_absent_from_none(qapp, tscat_provider):
+    """Setting a key to None when the key is absent must emit (sentinel-based)."""
+    cat = tscat_provider.create_catalog("t_meta_none")
+    _process_events(qapp)
+    ev = CatalogEvent(
+        uuid=str(_uuid.uuid4()),
+        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+        meta={},
+    )
+    tscat_provider.add_event(cat, ev)
+    _process_events(qapp)
+
+    received = []
+    tscat_provider.event_meta_changed.connect(lambda c, e, k: received.append(k))
+
+    tscat_provider.set_event_meta(cat, ev, "note", None)
+
+    assert "note" in ev.meta
+    assert ev.meta["note"] is None
+    assert received == ["note"]
