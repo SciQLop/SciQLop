@@ -114,6 +114,7 @@ class CatalogProvider(QObject):
     events_changed = Signal(object)
     error_occurred = Signal(str)
     dirty_changed = Signal(object, bool)  # (catalog, is_dirty)
+    event_meta_changed = Signal(object, object, str)  # (catalog, event, key)
     loading_started = Signal(object)   # catalog
     loading_finished = Signal(object)  # catalog
     folder_added = Signal(list)    # path segments for an explicit folder
@@ -219,6 +220,31 @@ class CatalogProvider(QObject):
         """Public API: remove an event from a catalog. Override for backend persistence."""
         self._remove_event(catalog, event)
         self.mark_dirty(catalog)
+
+    def set_event_meta(self, catalog: Catalog, event: CatalogEvent, key: str, value: Any) -> None:
+        """Public API: set one metadata key on an event. Override for backend persistence."""
+        if event.meta.get(key, _SENTINEL) == value:
+            return
+        event.set_meta(key, value)
+        self.event_meta_changed.emit(catalog, event, key)
+        self.mark_dirty(catalog)
+
+    def remove_event_meta(self, catalog: Catalog, event: CatalogEvent, key: str) -> None:
+        """Public API: remove one metadata key from an event. Override for backend persistence."""
+        if key not in event.meta:
+            return
+        event.remove_meta(key)
+        self.event_meta_changed.emit(catalog, event, key)
+        self.mark_dirty(catalog)
+
+    def set_events_meta(self, catalog: Catalog, events: list[CatalogEvent],
+                        key: str, value: Any) -> None:
+        """Public API: bulk variant. Default delegates to ``set_event_meta`` per
+        event so subclass overrides of ``set_event_meta`` apply automatically.
+        Override directly when the backend supports a real batch primitive.
+        """
+        for event in events:
+            self.set_event_meta(catalog, event, key, value)
 
     def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
         """Public API: create a new catalog. Override for backend persistence."""
