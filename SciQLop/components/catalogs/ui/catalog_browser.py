@@ -186,7 +186,8 @@ class CatalogBrowser(QWidget):
         self._event_table.setSortingEnabled(True)
         self._event_table.sortByColumn(0, Qt.SortOrder.AscendingOrder)
         self._event_table.horizontalHeader().setStretchLastSection(True)
-        self._event_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+        self._event_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        self._event_model.modelReset.connect(self._fit_event_columns)
         self._event_table.selectionModel().currentChanged.connect(self._on_event_selected)
 
         # --- event toolbar (above table) ---
@@ -285,6 +286,39 @@ class CatalogBrowser(QWidget):
         if self._current_catalog is not None and catalog.uuid == self._current_catalog.uuid:
             events = self._current_provider.events(self._current_catalog)
             self._event_model.set_events(events)
+
+    _COLUMN_FIT_SAMPLE_ROWS = 50
+    _COLUMN_FIT_PADDING_PX = 16
+    _COLUMN_FIT_MAX_WIDTH = 320
+
+    def _fit_event_columns(self) -> None:
+        """Resize columns to fit a capped row sample to keep large catalogs fast.
+
+        Why: ResizeToContents on the header recomputes widths against every row
+        on every model reset, which is O(rows × cols) and dominates rendering
+        time for catalogs with many events and high-precision float columns.
+        We sample the first N rows and use the widest header/value width.
+        """
+        view = self._event_table
+        model = self._event_model
+        cols = model.columnCount()
+        rows = model.rowCount()
+        if cols == 0:
+            return
+        header = view.horizontalHeader()
+        header_fm = header.fontMetrics()
+        cell_fm = view.fontMetrics()
+        sample = min(rows, self._COLUMN_FIT_SAMPLE_ROWS)
+        for col in range(cols):
+            header_text = model.headerData(col, Qt.Orientation.Horizontal) or ""
+            width = header_fm.horizontalAdvance(str(header_text))
+            for row in range(sample):
+                text = model.data(model.index(row, col), Qt.ItemDataRole.DisplayRole) or ""
+                w = cell_fm.horizontalAdvance(str(text))
+                if w > width:
+                    width = w
+            width = min(width + self._COLUMN_FIT_PADDING_PX, self._COLUMN_FIT_MAX_WIDTH)
+            header.resizeSection(col, width)
 
     def _update_toolbar(self) -> None:
         if self._current_provider is None:

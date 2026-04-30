@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+from numbers import Real
 from typing import Any
 
 from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyModel, Qt
 
 from ..backend.provider import CatalogEvent
+
+
+def _format_meta_value(value: Any) -> str:
+    if isinstance(value, bool) or value is None:
+        return str(value) if value is not None else ""
+    if isinstance(value, Real) and not isinstance(value, int):
+        return f"{float(value):.6g}"
+    return str(value)
 
 
 class EventTableModel(QAbstractTableModel):
@@ -92,7 +101,7 @@ class EventTableModel(QAbstractTableModel):
                 return self._format_dt(event.stop)
             else:
                 key = self._meta_keys[col - len(self._FIXED_COLUMNS)]
-                return str(event.meta.get(key, ""))
+                return _format_meta_value(event.meta.get(key, ""))
         elif role == self.SortRole:
             if col == 0:
                 return event.start.timestamp()
@@ -100,7 +109,10 @@ class EventTableModel(QAbstractTableModel):
                 return event.stop.timestamp()
             else:
                 key = self._meta_keys[col - len(self._FIXED_COLUMNS)]
-                return str(event.meta.get(key, ""))
+                value = event.meta.get(key, "")
+                if isinstance(value, Real) and not isinstance(value, bool):
+                    return float(value)
+                return str(value)
         return None
 
     def headerData(self, section: int, orientation: Qt.Orientation, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
