@@ -238,6 +238,12 @@ class CocatCatalogProvider(CatalogProvider):
         cocat_cat.on_remove_events(
             lambda uuids, c=cat: self._on_remote_events_removed(c, uuids)
         )
+        cocat_cat.on_set_attributes(
+            lambda attrs, c=cat: self._on_remote_attributes_set(c, attrs)
+        )
+        cocat_cat.on_remove_attributes(
+            lambda keys, c=cat: self._on_remote_attributes_removed(c, keys)
+        )
 
     def _on_remote_catalogue_deleted(self, cat: Catalog) -> None:
         if cat.uuid not in self._catalog_map:
@@ -265,6 +271,25 @@ class CocatCatalogProvider(CatalogProvider):
         for wrapper in list(self._events.get(cat.uuid, [])):
             if wrapper.uuid in targets:
                 self._remove_event(cat, wrapper)
+
+    def _on_remote_attributes_set(self, cat: Catalog, attrs: dict) -> None:
+        if _SUBPATH_ATTR not in attrs:
+            return
+        if not cat.path:
+            return
+        new_sub = _decode_subpath(attrs[_SUBPATH_ATTR])
+        new_path = [cat.path[0], *new_sub]
+        if list(cat.path) != list(new_path):
+            cat.path = new_path
+            self.catalog_moved.emit(cat)
+
+    def _on_remote_attributes_removed(self, cat: Catalog, keys) -> None:
+        if _SUBPATH_ATTR not in keys:
+            return
+        if not cat.path or len(cat.path) <= 1:
+            return
+        cat.path = [cat.path[0]]
+        self.catalog_moved.emit(cat)
 
     def _room_for_catalog(self, catalog: Catalog):
         """Get the Room instance for a catalog's room."""
@@ -361,6 +386,30 @@ class CocatCatalogProvider(CatalogProvider):
         except ExceptionGroup:
             pass  # cocat observer bug: KeyError on _catalogue_change_callbacks cleanup
 
+    def move_catalog(self, catalog: Catalog, new_path: list[str]) -> None:
+        if list(catalog.path) == list(new_path):
+            return
+        if not new_path:
+            raise ValueError("Cocat catalogs require a room id as path[0]")
+        cur_room = catalog.path[0] if catalog.path else None
+        new_room = new_path[0]
+        if cur_room != new_room:
+            raise ValueError(
+                f"Moving catalogs across cocat rooms is not supported "
+                f"(from {cur_room!r} to {new_room!r})"
+            )
+        if cur_room not in self._rooms:
+            raise KeyError(f"Room '{cur_room}' is not joined")
+        cocat_cat = self._cocat_catalogue(catalog)
+        if cocat_cat is None:
+            raise KeyError(f"Catalog {catalog.name!r} not found in room {cur_room!r}")
+        new_sub_path = list(new_path[1:])
+        if new_sub_path:
+            cocat_cat.set_attributes(**{_SUBPATH_ATTR: _encode_subpath(new_sub_path)})
+        elif _SUBPATH_ATTR in cocat_cat.attributes:
+            cocat_cat.remove_attributes([_SUBPATH_ATTR])
+        super().move_catalog(catalog, new_path)
+
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
         if not self._rooms:
             return set()
@@ -371,6 +420,7 @@ class CocatCatalogProvider(CatalogProvider):
             Capability.CREATE_CATALOGS,
             Capability.DELETE_CATALOGS,
             Capability.RENAME_CATALOG,
+            Capability.MOVE_CATALOG,
         }
 
     def actions(self, catalog: Catalog | None = None) -> list[ProviderAction]:

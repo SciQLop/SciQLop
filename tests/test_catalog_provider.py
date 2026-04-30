@@ -891,6 +891,8 @@ class _FakeCatalogue:
         self._remove_events_cbs = []
         self._delete_cbs = []
         self._rename_cbs = []
+        self._set_attr_cbs = []
+        self._remove_attr_cbs = []
 
     def on_add_events(self, cb):
         self._add_events_cbs.append(cb)
@@ -903,6 +905,12 @@ class _FakeCatalogue:
 
     def on_change_name(self, cb):
         self._rename_cbs.append(cb)
+
+    def on_set_attributes(self, cb):
+        self._set_attr_cbs.append(cb)
+
+    def on_remove_attributes(self, cb):
+        self._remove_attr_cbs.append(cb)
 
     def add_events(self, evs):
         self.events.extend(evs)

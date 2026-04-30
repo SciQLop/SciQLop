@@ -601,7 +601,9 @@ class CatalogTreeModel(QAbstractItemModel):
     def dropMimeData(self, data, action, row, column, parent) -> bool:
         from SciQLop.core.mime import decode_mime
         from ..backend.provider import Capability, CatalogEvent
+        from SciQLop.components.sciqlop_logging import getLogger
         import uuid as _uuid
+        log = getLogger(__name__)
         if action == Qt.DropAction.IgnoreAction:
             return True
         catalogs = decode_mime(data)
@@ -614,27 +616,31 @@ class CatalogTreeModel(QAbstractItemModel):
         dest_provider = dest_provider_node.provider
         dest_caps = dest_provider.capabilities()
         for source_cat in catalogs:
-            if source_cat.provider is dest_provider:
-                if Capability.MOVE_CATALOG not in dest_caps:
-                    continue
-                if list(source_cat.path) == list(dest_sub_path):
-                    continue
-                dest_provider.move_catalog(source_cat, dest_sub_path)
-            else:
-                if Capability.CREATE_CATALOGS not in dest_caps:
-                    continue
-                new_name = self._unique_catalog_name(
-                    dest_provider, dest_sub_path, source_cat.name,
-                )
-                new_cat = dest_provider.create_catalog(new_name, path=dest_sub_path)
-                source_events = source_cat.provider.events(source_cat) if source_cat.provider else []
-                for ev in source_events:
-                    copied = CatalogEvent(
-                        uuid=str(_uuid.uuid4()),
-                        start=ev.start, stop=ev.stop,
-                        meta=dict(ev.meta),
+            try:
+                if source_cat.provider is dest_provider:
+                    if Capability.MOVE_CATALOG not in dest_caps:
+                        continue
+                    if list(source_cat.path) == list(dest_sub_path):
+                        continue
+                    dest_provider.move_catalog(source_cat, dest_sub_path)
+                else:
+                    if Capability.CREATE_CATALOGS not in dest_caps:
+                        continue
+                    new_name = self._unique_catalog_name(
+                        dest_provider, dest_sub_path, source_cat.name,
                     )
-                    dest_provider.add_event(new_cat, copied)
+                    new_cat = dest_provider.create_catalog(new_name, path=dest_sub_path)
+                    source_events = source_cat.provider.events(source_cat) if source_cat.provider else []
+                    for ev in source_events:
+                        copied = CatalogEvent(
+                            uuid=str(_uuid.uuid4()),
+                            start=ev.start, stop=ev.stop,
+                            meta=dict(ev.meta),
+                        )
+                        dest_provider.add_event(new_cat, copied)
+            except Exception as e:
+                log.warning("Catalog drop failed for %r → %r: %s",
+                            source_cat.name, dest_sub_path, e)
         # Return False so Qt does not also call removeRows() on the source —
         # provider signals (move/remove/add) drive tree updates instead.
         return False
