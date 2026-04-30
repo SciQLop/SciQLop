@@ -9,9 +9,13 @@ from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon
 
 
+_SENTINEL = object()
+
+
 class CatalogEvent(QObject):
     """Minimal event: uuid + time interval + optional metadata."""
     range_changed = Signal()
+    meta_changed = Signal(str)  # key
 
     def __init__(self, uuid: str, start: datetime, stop: datetime,
                  meta: dict[str, Any] | None = None, parent: QObject | None = None):
@@ -19,7 +23,7 @@ class CatalogEvent(QObject):
         self._uuid = uuid
         self._start = make_utc_datetime(start)
         self._stop = make_utc_datetime(stop)
-        self._meta = meta or {}
+        self._meta = dict(meta or {})
 
     @property
     def uuid(self) -> str:
@@ -50,6 +54,18 @@ class CatalogEvent(QObject):
     @property
     def meta(self) -> dict[str, Any]:
         return self._meta
+
+    def set_meta(self, key: str, value: Any) -> None:
+        """Update one metadata key in place, emitting meta_changed if it changed."""
+        if self._meta.get(key, _SENTINEL) == value:
+            return
+        self._meta[key] = value
+        self.meta_changed.emit(key)
+
+    def remove_meta(self, key: str) -> None:
+        if key in self._meta:
+            del self._meta[key]
+            self.meta_changed.emit(key)
 
 
 class Capability(str, Enum):
