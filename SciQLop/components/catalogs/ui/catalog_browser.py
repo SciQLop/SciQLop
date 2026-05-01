@@ -636,11 +636,12 @@ class CatalogBrowser(QWidget):
     def _on_add_attribute_clicked(self) -> None:
         if self._current_provider is None or self._current_catalog is None:
             return
-        from PySide6.QtWidgets import QInputDialog
-        name, ok = QInputDialog.getText(self, "Add attribute", "Attribute name:")
-        if not ok or not name:
+        from .add_attribute_dialog import run_add_attribute_dialog
+        spec = run_add_attribute_dialog(self)
+        if spec is None:
             return
-        self._add_attribute_to_selection(name, "")
+        self._current_provider.set_attribute_spec(self._current_catalog, spec.name, spec)
+        self._add_attribute_to_selection(spec.name, spec.default)
 
     def _add_attribute_to_selection(self, key: str, value) -> None:
         if self._current_provider is None or self._current_catalog is None:
