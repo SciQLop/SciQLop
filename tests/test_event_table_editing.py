@@ -406,3 +406,146 @@ def test_speasy_provider_event_table_is_read_only(qtbot, qapp):
     assert not (model.flags(model.index(0, 0)) & Qt.ItemFlag.ItemIsEditable)
     meta_col = len(model._FIXED_COLUMNS)
     assert not (model.flags(model.index(0, meta_col)) & Qt.ItemFlag.ItemIsEditable)
+
+
+def test_delegate_uses_intknob_spec_for_rating_with_range(qapp):
+    """When the provider declares IntKnob(min=1, max=5) for a key, the spinbox honors the range."""
+    from PySide6.QtWidgets import QSpinBox, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+    from SciQLop.core.knobs import IntKnob
+
+    class TypedDummy(DummyProvider):
+        def attribute_spec(self, catalog, key):
+            if key == "rating":
+                return IntKnob(name=key, min=1, max=5, default=3)
+            return None
+
+    provider = TypedDummy(num_catalogs=1, events_per_catalog=2)
+    cat = provider.catalogs()[0]
+    # Add a "rating" key so the column exists
+    for ev in provider.events(cat):
+        ev.set_meta("rating", 3)
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    rating_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("rating")
+    idx = model.index(0, rating_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    spinboxes = editor.findChildren(QSpinBox)
+    assert len(spinboxes) == 1
+    sb = spinboxes[0]
+    assert sb.minimum() == 1
+    assert sb.maximum() == 5
+
+
+def test_delegate_uses_floatknob_spec_with_range(qapp):
+    from PySide6.QtWidgets import QDoubleSpinBox, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+    from SciQLop.core.knobs import FloatKnob
+
+    class TypedDummy(DummyProvider):
+        def attribute_spec(self, catalog, key):
+            if key == "score":
+                return FloatKnob(name=key, min=0.0, max=1.0, default=0.5, step=0.1)
+            return None
+
+    provider = TypedDummy(num_catalogs=1, events_per_catalog=2)
+    cat = provider.catalogs()[0]
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    score_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("score")
+    idx = model.index(0, score_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    spinboxes = editor.findChildren(QDoubleSpinBox)
+    assert len(spinboxes) == 1
+    sb = spinboxes[0]
+    assert sb.minimum() == 0.0
+    assert sb.maximum() == 1.0
+
+
+def test_delegate_uses_choiceknob_spec_for_combo_editor(qapp):
+    from PySide6.QtWidgets import QComboBox, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+    from SciQLop.core.knobs import ChoiceKnob
+
+    class TypedDummy(DummyProvider):
+        def attribute_spec(self, catalog, key):
+            if key == "class":
+                return ChoiceKnob(
+                    name=key,
+                    choices=(
+                        ("Solar wind", "solar_wind"),
+                        ("Magnetosheath", "magnetosheath"),
+                    ),
+                    default="solar_wind",
+                )
+            return None
+
+    provider = TypedDummy(num_catalogs=1, events_per_catalog=2)
+    cat = provider.catalogs()[0]
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    class_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("class")
+    idx = model.index(0, class_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    combos = editor.findChildren(QComboBox)
+    assert len(combos) == 1
+    combo = combos[0]
+    items = [combo.itemText(i) for i in range(combo.count())]
+    assert items == ["Solar wind", "Magnetosheath"]
+
+
+def test_delegate_falls_back_to_inference_when_no_spec(qapp):
+    """Free-form keys without a spec still get the inferred editor."""
+    from PySide6.QtWidgets import QDoubleSpinBox, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+
+    # DummyProvider returns None from attribute_spec by default
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    score_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("score")
+    idx = model.index(0, score_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    # score is inferred as float since DummyProvider seeds it as (i % 10) / 9.0
+    assert editor.findChildren(QDoubleSpinBox)
+
+
+def test_delegate_intknob_setEditorData_loads_current_value(qapp):
+    from PySide6.QtWidgets import QSpinBox, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+    from SciQLop.core.knobs import IntKnob
+
+    class TypedDummy(DummyProvider):
+        def attribute_spec(self, catalog, key):
+            if key == "rating":
+                return IntKnob(name=key, min=1, max=5, default=3)
+            return None
+
+    provider = TypedDummy(num_catalogs=1, events_per_catalog=2)
+    cat = provider.catalogs()[0]
+    for ev in provider.events(cat):
+        ev.set_meta("rating", 4)
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    rating_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("rating")
+    idx = model.index(0, rating_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    delegate.setEditorData(editor, idx)
+    spinbox = editor.findChildren(QSpinBox)[0]
+    assert spinbox.value() == 4
