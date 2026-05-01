@@ -377,3 +377,32 @@ def test_add_attribute_no_selection_falls_back_to_all_events(qtbot, qapp):
 
     for ev in provider.events(cat):
         assert ev.meta.get("flag") == "init"
+
+
+def test_speasy_provider_event_table_is_read_only(qtbot, qapp):
+    """Speasy events are read-only — EDIT_EVENTS not in capabilities."""
+    import pytest
+    pytest.importorskip("speasy")
+    from SciQLop.plugins.speasy_provider.speasy_catalog_provider import SpeasyCatalogProvider
+    from datetime import datetime, timezone
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+
+    provider = SpeasyCatalogProvider()
+    catalogs = provider.catalogs()
+    if not catalogs:
+        pytest.skip("Speasy returned no catalogs in test environment")
+    cat = catalogs[0]
+    assert Capability.EDIT_EVENTS not in provider.capabilities(cat)
+
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    ev = CatalogEvent(
+        uuid="speasy-fake",
+        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+        meta={"k": "v"},
+    )
+    model.set_events([ev])
+    assert not (model.flags(model.index(0, 0)) & Qt.ItemFlag.ItemIsEditable)
+    meta_col = len(model._FIXED_COLUMNS)
+    assert not (model.flags(model.index(0, meta_col)) & Qt.ItemFlag.ItemIsEditable)
