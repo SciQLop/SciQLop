@@ -150,6 +150,17 @@ class CatalogProvider(QObject):
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
         return set()
 
+    def attribute_spec(self, catalog: Catalog, key: str):
+        """Return the typed spec (`KnobSpec`) for an event metadata attribute,
+        or ``None`` if the provider has no schema for *key* (free-form).
+
+        Used by the editor delegate to pick a constrained widget (range-bound
+        spinbox, combo, …) instead of inferring the type from current values.
+        Override in providers that publish typed attributes (tscat rating,
+        cocat Event fields, …).
+        """
+        return None
+
     def actions(self, catalog: Catalog | None = None) -> list[ProviderAction]:
         return []
 
