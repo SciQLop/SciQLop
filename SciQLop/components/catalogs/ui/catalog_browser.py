@@ -187,6 +187,9 @@ class CatalogBrowser(QWidget):
         self._event_table.sortByColumn(0, Qt.SortOrder.AscendingOrder)
         self._event_table.horizontalHeader().setStretchLastSection(True)
         self._event_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Interactive)
+        header = self._event_table.horizontalHeader()
+        header.setSectionsMovable(True)
+        header.sectionMoved.connect(lambda *_: self._save_view_state())
         self._event_model.modelReset.connect(self._fit_event_columns)
         self._event_table.selectionModel().currentChanged.connect(self._on_event_selected)
         self._event_table.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
@@ -276,6 +279,7 @@ class CatalogBrowser(QWidget):
             self._event_model.set_context(node.provider, node.catalog)
             events = node.provider.events(node.catalog)
             self._event_model.set_events(events)
+            self._apply_view_state(node.catalog)
             node.provider.events_changed.connect(self._on_events_changed)
             self._events_changed_provider = node.provider
         else:
@@ -391,6 +395,58 @@ class CatalogBrowser(QWidget):
                     width = w
             width = min(width + self._COLUMN_FIT_PADDING_PX, self._COLUMN_FIT_MAX_WIDTH)
             header.resizeSection(col, width)
+
+    def _column_key(self, col: int) -> str:
+        if col < len(self._event_model._FIXED_COLUMNS):
+            return self._event_model._FIXED_COLUMNS[col]
+        return self._event_model._meta_keys[col - len(self._event_model._FIXED_COLUMNS)]
+
+    def _apply_view_state(self, catalog) -> None:
+        from ..backend.event_table_view_state import get_view_state
+        state = get_view_state(catalog.uuid)
+        header = self._event_table.horizontalHeader()
+        header.blockSignals(True)
+        try:
+            for col in range(self._event_model.columnCount()):
+                key = self._column_key(col)
+                self._event_table.setColumnHidden(col, key in state.hidden_columns)
+            self._reorder_columns(state.column_order)
+        finally:
+            header.blockSignals(False)
+
+    def _save_view_state(self) -> None:
+        if self._current_catalog is None:
+            return
+        from ..backend.event_table_view_state import CatalogViewState, save_view_state
+        hidden = [
+            self._column_key(col)
+            for col in range(self._event_model.columnCount())
+            if self._event_table.isColumnHidden(col)
+        ]
+        header = self._event_table.horizontalHeader()
+        order = [
+            self._column_key(header.logicalIndex(visual))
+            for visual in range(self._event_model.columnCount())
+        ]
+        save_view_state(self._current_catalog.uuid,
+                        CatalogViewState(hidden_columns=hidden, column_order=order))
+
+    def _reorder_columns(self, desired_order: list) -> None:
+        if not desired_order:
+            return
+        header = self._event_table.horizontalHeader()
+        keys_to_logical = {
+            self._column_key(col): col for col in range(self._event_model.columnCount())
+        }
+        target_visual = 0
+        for key in desired_order:
+            logical = keys_to_logical.get(key)
+            if logical is None:
+                continue
+            current_visual = header.visualIndex(logical)
+            if current_visual != target_visual:
+                header.moveSection(current_visual, target_visual)
+            target_visual += 1
 
     def _update_toolbar(self) -> None:
         if self._current_provider is None:
