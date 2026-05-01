@@ -169,6 +169,10 @@ class TscatCatalogProvider(CatalogProvider):
         }
 
     def attribute_spec(self, catalog: Catalog, key: str):
+        # User-declared specs take precedence over the built-in defaults
+        user_spec = super().attribute_spec(catalog, key)
+        if user_spec is not None:
+            return user_spec
         from SciQLop.core.knobs import IntKnob, StringKnob, StringListKnob
         if key == "rating":
             return IntKnob(name=key, min=1, max=5, default=3,

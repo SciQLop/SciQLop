@@ -120,6 +120,7 @@ class CatalogProvider(QObject):
     folder_added = Signal(list)    # path segments for an explicit folder
     folder_removed = Signal(list)  # path segments for an explicit folder
     status_changed = Signal()      # provider-level state changed (e.g. connection)
+    attribute_spec_changed = Signal(object, str)  # (catalog, key)
 
     def __init__(self, name: str, parent: QObject | None = None):
         super().__init__(parent)
@@ -127,6 +128,7 @@ class CatalogProvider(QObject):
         self._events: dict[str, list[CatalogEvent]] = {}
         self._dirty_catalogs: set[str] = set()
         self._range_connections: dict[str, list[tuple]] = {}
+        self._attribute_specs: dict[str, dict[str, "KnobSpec"]] = {}  # catalog_uuid → {key: spec}
         from .registry import CatalogRegistry
         CatalogRegistry.instance().register(self)
 
@@ -154,16 +156,51 @@ class CatalogProvider(QObject):
         """Return the typed spec (`KnobSpec`) for an event metadata attribute,
         or ``None`` if the provider has no schema for *key* (free-form).
 
+        User-declared specs (set via :meth:`set_attribute_spec`) take precedence
+        over any built-in/hardcoded schema. Subclasses overriding this method
+        SHOULD call ``super().attribute_spec(...)`` first and only fall back to
+        their built-ins when it returns ``None``.
+
         The *catalog* argument is part of the contract because schemas may
         differ per catalog — e.g. a cocat room can carry its own per-room
         schema, or a future tscat catalog may pin a project-specific rating
-        scale. Today both bundled providers ignore *catalog*, but
-        implementations are expected to honor it when relevant.
+        scale.
 
         Used by the editor delegate to pick a constrained widget (range-bound
         spinbox, combo, …) instead of inferring the type from current values.
         """
-        return None
+        if catalog is None:
+            return None
+        return self._attribute_specs.get(catalog.uuid, {}).get(key)
+
+    def set_attribute_spec(self, catalog: Catalog, key: str, spec) -> None:
+        """Declare a user-defined schema for an event metadata attribute.
+
+        Stored in-memory by default; subclasses override
+        :meth:`_persist_attribute_spec` to push to backend persistence.
+        Emits ``attribute_spec_changed`` after a successful update.
+        """
+        self._attribute_specs.setdefault(catalog.uuid, {})[key] = spec
+        self._persist_attribute_spec(catalog, key, spec)
+        self.attribute_spec_changed.emit(catalog, key)
+
+    def remove_attribute_spec(self, catalog: Catalog, key: str) -> None:
+        """Drop a user-declared schema. Emits ``attribute_spec_changed``."""
+        catalog_specs = self._attribute_specs.get(catalog.uuid, {})
+        if key not in catalog_specs:
+            return
+        del catalog_specs[key]
+        self._persist_attribute_spec_removal(catalog, key)
+        self.attribute_spec_changed.emit(catalog, key)
+
+    def _persist_attribute_spec(self, catalog: Catalog, key: str, spec) -> None:
+        """Subclass hook: push the schema to backend persistence (e.g. catalog
+        attribute, CRDT map). Default is no-op (in-memory only)."""
+        pass
+
+    def _persist_attribute_spec_removal(self, catalog: Catalog, key: str) -> None:
+        """Subclass hook: drop the schema from backend persistence."""
+        pass
 
     def actions(self, catalog: Catalog | None = None) -> list[ProviderAction]:
         return []
