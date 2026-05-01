@@ -49,6 +49,14 @@ class StringKnob(KnobSpec):
 
 
 @dataclass(frozen=True, slots=True)
+class StringListKnob(KnobSpec):
+    """A list of short strings (e.g. tags). Edited inline as chips/tokens."""
+    default: tuple[str, ...] = ()
+    suggestions: tuple[str, ...] = ()
+    item_pattern: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class TimeRangeKnob(KnobSpec):
     default: SciQLopPlotRange = field(default_factory=lambda: SciQLopPlotRange(0.25, 0.75))
     widget: str = "vspan"

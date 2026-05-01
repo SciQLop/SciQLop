@@ -11,7 +11,7 @@ import sys as _sys
 from SciQLop.core.knobs import (
     Knob,
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob,
-    TimeRangeKnob, ThresholdKnob,
+    StringListKnob, TimeRangeKnob, ThresholdKnob,
     coerce_value, validate_dict, canonical_hash, defaults_for,
     extract_specs_from_callback, extract_specs_from_model,
 )
@@ -33,7 +33,7 @@ introspection = _introspection
 __all__ = [
     "Knob",
     "KnobSpec", "IntKnob", "FloatKnob", "BoolKnob", "ChoiceKnob", "StringKnob",
-    "TimeRangeKnob", "ThresholdKnob",
+    "StringListKnob", "TimeRangeKnob", "ThresholdKnob",
     "coerce_value", "validate_dict", "canonical_hash", "defaults_for",
     "extract_specs_from_callback", "extract_specs_from_model",
 ]

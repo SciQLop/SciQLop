@@ -4,9 +4,10 @@ from enum import Enum
 from pydantic.fields import FieldInfo
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QPalette
+from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
-    QWidget, QLabel, QCheckBox, QLineEdit,
-    QSpinBox, QDoubleSpinBox, QComboBox,
+    QWidget, QLabel, QCheckBox, QLineEdit, QFrame,
+    QSpinBox, QDoubleSpinBox, QComboBox, QCompleter,
     QHBoxLayout, QVBoxLayout,
     QToolButton, QFileDialog, QListWidget,
     QPushButton, QInputDialog,
@@ -332,6 +333,147 @@ class ListStrDelegate(SettingDelegate):
             for item in value:
                 self._list.addItem(str(item))
         self._list.blockSignals(False)
+
+
+_TAG_CHIP_QSS = """
+QFrame#TagChip {
+    background-color: palette(alternate-base);
+    border: 1px solid palette(mid);
+    border-radius: 0.6ex;
+}
+QFrame#TagChip > QLabel {
+    background: transparent;
+    padding-left: 0.4ex;
+}
+QFrame#TagChip > QToolButton {
+    background: transparent;
+    border: none;
+    color: palette(text);
+    padding: 0 0.3ex;
+}
+QFrame#TagChip > QToolButton:hover {
+    color: palette(highlight);
+}
+"""
+
+
+class _TagChip(QFrame):
+    """A single tag chip: label + close button."""
+    removed = Signal(str)
+
+    def __init__(self, text: str, parent=None):
+        super().__init__(parent)
+        self.setObjectName("TagChip")
+        # No StyledPanel frame — adjacent chips otherwise paint a doubled border.
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setStyleSheet(_TAG_CHIP_QSS)
+        self.setSizePolicy(self.sizePolicy().horizontalPolicy(),
+                           self.sizePolicy().Policy.Maximum)
+        self._text = text
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(QLabel(text))
+        close_btn = QToolButton()
+        close_btn.setText("×")
+        close_btn.setAutoRaise(True)
+        close_btn.clicked.connect(lambda: self.removed.emit(self._text))
+        layout.addWidget(close_btn)
+
+
+@register_widget("tag_list")
+class TagListDelegate(SettingDelegate):
+    """Inline chip/token editor for a list of short strings (tags).
+
+    Type a tag and press Enter or comma to add it as a chip; click ✕ on a
+    chip to remove it; Backspace on empty input removes the last chip.
+    Suggestions (if provided) drive a QCompleter on the input.
+    """
+
+    def __init__(self, suggestions: list[str] | tuple[str, ...] | None = None,
+                 parent=None):
+        super().__init__(parent)
+        self._tags: list[str] = []
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        self._chips_layout = QHBoxLayout()
+        self._chips_layout.setContentsMargins(0, 0, 0, 0)
+        self._chips_layout.setSpacing(4)
+        layout.addLayout(self._chips_layout)
+        self._input = QLineEdit()
+        self._input.setPlaceholderText("Add tag…")
+        layout.addWidget(self._input, 1)
+        if suggestions:
+            self._input.setCompleter(QCompleter(list(suggestions), self._input))
+        self._input.textChanged.connect(self._on_text_changed)
+        self._input.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj is self._input and event.type() == QEvent.Type.KeyPress:
+            if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+                # Enter on non-empty input: commit the tag and stay in edit mode.
+                # Enter on empty input: let the event propagate so Qt's editor
+                # framework closes the cell editor (the user's "I'm done" signal).
+                if self._input.text().strip():
+                    self._commit_input()
+                    return True
+                return False
+            if event.key() == Qt.Key.Key_Backspace and not self._input.text() and self._tags:
+                self._remove_tag(self._tags[-1])
+                return True
+        return super().eventFilter(obj, event)
+
+    def _on_text_changed(self, text: str) -> None:
+        if text.endswith(","):
+            self._input.blockSignals(True)
+            self._input.setText(text[:-1])
+            self._input.blockSignals(False)
+            self._commit_input()
+
+    def _commit_input(self) -> None:
+        text = self._input.text().strip()
+        if not text or text in self._tags:
+            self._input.clear()
+            return
+        self._tags.append(text)
+        self._add_chip(text)
+        self._input.clear()
+        self.value_changed.emit(self.get_value())
+
+    def _add_chip(self, text: str) -> None:
+        chip = _TagChip(text, self)
+        chip.removed.connect(self._remove_tag)
+        self._chips_layout.addWidget(chip)
+
+    def _remove_tag(self, text: str) -> None:
+        if text in self._tags:
+            self._tags.remove(text)
+        for i in range(self._chips_layout.count()):
+            item = self._chips_layout.itemAt(i)
+            w = item.widget() if item is not None else None
+            if isinstance(w, _TagChip) and w._text == text:
+                w.setParent(None)
+                w.deleteLater()
+                break
+        self.value_changed.emit(self.get_value())
+
+    def get_value(self) -> List[str]:
+        return list(self._tags)
+
+    def set_value(self, value: Any) -> None:
+        while self._chips_layout.count():
+            item = self._chips_layout.takeAt(0)
+            w = item.widget() if item is not None else None
+            if w is not None:
+                w.deleteLater()
+        self._tags = []
+        if value:
+            for tag in value:
+                t = str(tag)
+                if t and t not in self._tags:
+                    self._tags.append(t)
+                    self._add_chip(t)
 
 
 @register_widget("plugins_dict")

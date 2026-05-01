@@ -13,9 +13,11 @@ from SciQLop.components.settings.ui.settings_delegates import (
     FloatDelegate,
     StrDelegate,
     ComboDelegate,
+    TagListDelegate,
 )
 from SciQLop.core.knobs import (
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob,
+    StringListKnob,
 )
 
 
@@ -30,6 +32,8 @@ def _infer_column_type(values: list[Any]) -> type:
         return int
     if types <= {bool, int, float}:
         return float
+    if types <= {list, tuple, set}:
+        return list
     return str
 
 
@@ -38,6 +42,7 @@ _DELEGATE_FOR_TYPE = {
     int: IntDelegate,
     float: FloatDelegate,
     str: StrDelegate,
+    list: TagListDelegate,
 }
 
 
@@ -66,6 +71,8 @@ def _editor_from_spec(spec: KnobSpec, parent: QWidget) -> SettingDelegate | None
             from PySide6.QtGui import QRegularExpressionValidator
             delegate._edit.setValidator(QRegularExpressionValidator(QRegularExpression(spec.pattern)))
         return delegate
+    if isinstance(spec, StringListKnob):
+        return TagListDelegate(suggestions=spec.suggestions, parent=parent)
     return None
 
 
@@ -176,7 +183,7 @@ class EventTableDelegate(QStyledItemDelegate):
         if spec is not None and hasattr(spec, "default"):
             default = getattr(spec, "default")
             if default is not None:
-                return default
+                return list(default) if isinstance(spec, StringListKnob) else default
         col_type = self._column_type(source_col)
         if col_type is bool:
             return False
@@ -184,6 +191,8 @@ class EventTableDelegate(QStyledItemDelegate):
             return 0
         if col_type is float:
             return 0.0
+        if col_type is list:
+            return []
         return ""
 
     def setModelData(self, editor: QWidget, model, index: QModelIndex) -> None:

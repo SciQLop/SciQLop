@@ -13,6 +13,8 @@ def _format_meta_value(value: Any) -> str:
         return str(value) if value is not None else ""
     if isinstance(value, Real) and not isinstance(value, int):
         return f"{float(value):.6g}"
+    if isinstance(value, (list, tuple, set)):
+        return ", ".join(str(v) for v in value)
     return str(value)
 
 

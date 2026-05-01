@@ -456,13 +456,16 @@ class CocatCatalogProvider(CatalogProvider):
         }
 
     def attribute_spec(self, catalog: Catalog, key: str):
-        from SciQLop.core.knobs import IntKnob, StringKnob
+        from SciQLop.core.knobs import IntKnob, StringKnob, StringListKnob
         if key == "rating":
             return IntKnob(name=key, min=1, max=5, default=3,
                            description="Event rating (1-5)")
         if key == "author":
             return StringKnob(name=key, default="",
                               description="Event author")
+        if key == "tags":
+            return StringListKnob(name=key, default=(),
+                                  description="Free-form tags")
         return None
 
     def actions(self, catalog: Catalog | None = None) -> list[ProviderAction]:
