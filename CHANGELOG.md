@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Editable event metadata in the catalog browser
+
+- Made the event table the primary surface for inspecting *and* editing per-event metadata. Cells become editable when the provider declares `Capability.EDIT_EVENTS`; tscat and cocat write through to their respective backends (tscat via `SetAttributeAction`, cocat via CRDT `set_attributes`). Speasy events stay read-only.
+- Type-aware editor widgets reused from the settings delegate registry: `bool`/`int`/`float`/`str` columns get the matching `SettingDelegate`; `start`/`stop` get a `QDateTimeEdit`. Column types are inferred from current values and cached.
+- Multi-row selection with bulk-edit propagation: edit one cell with N rows selected and the value is applied to every selected row in the same column via `provider.set_events_meta`. Bulk delete removes every selected event in one operation. Re-entry guard prevents propagation from re-triggering itself.
+- "Columns" toolbar button (and right-click on the table header) opens a popover with a search box, a checkable + drag-reorderable list of columns, and Show all / Hide all / Reset actions. Frozen columns (`start`, `stop`) are listed but cannot be hidden.
+- Per-catalog column visibility and order persisted in a new `EventTableViewState` `ConfigEntry` keyed by `catalog.uuid`, written to user settings (YAML). Pure UI concern — does not sync via cocat CRDT.
+- "+ Attribute" toolbar button prompts for a new metadata key and applies it (with empty value) to the selected events, or to every event if no selection is active. New keys auto-extend the table via `event_meta_changed` + `beginInsertColumns` (selection and scroll position survive).
+- Backend additions on `CatalogProvider`: new `event_meta_changed = Signal(catalog, event, key)`, plus `set_event_meta`, `remove_event_meta`, `set_events_meta` (default delegates to `set_event_meta` so subclass overrides apply transparently). `CatalogEvent` gains `meta_changed = Signal(str)` and `set_meta` / `remove_meta` methods. Closes backlog items #21 (multi-selection + bulk edit) and #22 (event metadata display/edition).
+
 ### Knobs (parameterized data products)
 
 - Added runtime-tunable parameters to virtual products and speasy templated parameters. Python VP callbacks can declare `Annotated[T, Knob(...)]` kwargs; speasy-templated parameters auto-expose their `ArgumentIndex` choices. Spec: `docs/superpowers/specs/2026-04-18-parameterized-virtual-products-design.md`.
