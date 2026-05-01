@@ -168,6 +168,16 @@ class TscatCatalogProvider(CatalogProvider):
             Capability.SAVE,
         }
 
+    def attribute_spec(self, catalog: Catalog, key: str):
+        from SciQLop.core.knobs import IntKnob, StringKnob
+        if key == "rating":
+            return IntKnob(name=key, min=1, max=5, default=3,
+                           description="Event rating (1-5)")
+        if key == "author":
+            return StringKnob(name=key, default="",
+                              description="Event author")
+        return None
+
     def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
         import uuid as _uuid
         self._ensure_clean_session()
