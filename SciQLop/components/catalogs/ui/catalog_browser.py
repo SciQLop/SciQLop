@@ -222,10 +222,17 @@ class CatalogBrowser(QWidget):
         self._columns_btn.setAutoRaise(True)
         self._columns_btn.clicked.connect(lambda: self._open_column_popover())
 
+        self._add_attr_btn = QToolButton()
+        self._add_attr_btn.setText("+ Attribute")
+        self._add_attr_btn.setToolTip("Add a new metadata attribute to the selected events (or all events if no selection)")
+        self._add_attr_btn.setAutoRaise(True)
+        self._add_attr_btn.clicked.connect(self._on_add_attribute_clicked)
+
         event_toolbar = QHBoxLayout()
         event_toolbar.addWidget(self._add_event_btn)
         event_toolbar.addWidget(self._delete_btn)
         event_toolbar.addWidget(self._columns_btn)
+        event_toolbar.addWidget(self._add_attr_btn)
         event_toolbar.addStretch()
 
         event_panel = QWidget()
@@ -519,6 +526,7 @@ class CatalogBrowser(QWidget):
             self._add_event_btn.setVisible(False)
             self._delete_btn.setVisible(False)
             self._columns_btn.setVisible(False)
+            self._add_attr_btn.setVisible(False)
             self._actions_btn.setVisible(False)
             return
 
@@ -526,6 +534,7 @@ class CatalogBrowser(QWidget):
         self._add_event_btn.setVisible(Capability.CREATE_EVENTS in caps)
         self._columns_btn.setVisible(self._event_model.columnCount() > 0)
         self._delete_btn.setVisible(Capability.DELETE_EVENTS in caps)
+        self._add_attr_btn.setVisible(Capability.EDIT_EVENTS in caps)
 
         # Populate custom actions menu
         self._actions_menu.clear()
@@ -623,6 +632,34 @@ class CatalogBrowser(QWidget):
             self._current_provider.remove_event(self._current_catalog, ev)
         events_after = self._current_provider.events(self._current_catalog)
         self._event_model.set_events(events_after)
+
+    def _on_add_attribute_clicked(self) -> None:
+        if self._current_provider is None or self._current_catalog is None:
+            return
+        from PySide6.QtWidgets import QInputDialog
+        name, ok = QInputDialog.getText(self, "Add attribute", "Attribute name:")
+        if not ok or not name:
+            return
+        self._add_attribute_to_selection(name, "")
+
+    def _add_attribute_to_selection(self, key: str, value) -> None:
+        if self._current_provider is None or self._current_catalog is None:
+            return
+        sm = self._event_table.selectionModel()
+        events = []
+        if sm is not None:
+            for proxy_idx in sm.selectedRows():
+                source_idx = self._sort_proxy.mapToSource(proxy_idx)
+                ev = self._event_model.event_at(source_idx.row())
+                if ev is not None:
+                    events.append(ev)
+        if not events:
+            events = list(self._current_provider.events(self._current_catalog))
+        if not events:
+            return
+        self._current_provider.set_events_meta(
+            self._current_catalog, events, key, value,
+        )
 
     def _on_save_clicked(self, proxy_index: QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(proxy_index)

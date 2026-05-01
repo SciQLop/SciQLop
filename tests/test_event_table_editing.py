@@ -330,3 +330,50 @@ def test_bulk_delete_removes_all_selected(qtbot, qapp):
     browser._on_delete()
     qapp.processEvents()
     assert len(provider.events(cat)) == initial - 2
+
+
+def test_add_attribute_creates_new_meta_column_for_selected_events(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from PySide6.QtCore import QItemSelectionModel
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    browser._current_provider = provider
+    browser._current_catalog = cat
+    browser._event_model.set_context(provider, cat)
+    browser._event_model.set_events(provider.events(cat))
+    sm = browser._event_table.selectionModel()
+    for row in (0, 1):
+        sm.select(
+            browser._sort_proxy.index(row, 0),
+            QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows,
+        )
+
+    browser._add_attribute_to_selection("note", "")
+
+    events = provider.events(cat)
+    assert events[0].meta.get("note") == ""
+    assert events[1].meta.get("note") == ""
+    assert "note" in browser._event_model._meta_keys
+
+
+def test_add_attribute_no_selection_falls_back_to_all_events(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    browser._current_provider = provider
+    browser._current_catalog = cat
+    browser._event_model.set_context(provider, cat)
+    browser._event_model.set_events(provider.events(cat))
+    # No selection
+    browser._event_table.selectionModel().clear()
+
+    browser._add_attribute_to_selection("flag", "init")
+
+    for ev in provider.events(cat):
+        assert ev.meta.get("flag") == "init"
