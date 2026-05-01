@@ -44,3 +44,14 @@ def test_extract_specs_from_callback_works_after_move(qapp):
 
     specs = extract_specs_from_callback(my_vp)
     assert any(s.name == "n" for s in specs)
+
+
+def test_submodule_path_reexport_preserves_identity(qapp):
+    """The submodule path (used by some plugin code) must resolve to the same object."""
+    from SciQLop.user_api.knobs.specs import IntKnob as user_api_IntKnob
+    from SciQLop.core.knobs.specs import IntKnob as core_IntKnob
+    assert user_api_IntKnob is core_IntKnob
+
+    from SciQLop.user_api.knobs.marker import Knob as user_api_Knob
+    from SciQLop.core.knobs.marker import Knob as core_Knob
+    assert user_api_Knob is core_Knob

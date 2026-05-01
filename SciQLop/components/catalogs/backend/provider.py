@@ -154,10 +154,14 @@ class CatalogProvider(QObject):
         """Return the typed spec (`KnobSpec`) for an event metadata attribute,
         or ``None`` if the provider has no schema for *key* (free-form).
 
+        The *catalog* argument is part of the contract because schemas may
+        differ per catalog — e.g. a cocat room can carry its own per-room
+        schema, or a future tscat catalog may pin a project-specific rating
+        scale. Today both bundled providers ignore *catalog*, but
+        implementations are expected to honor it when relevant.
+
         Used by the editor delegate to pick a constrained widget (range-bound
         spinbox, combo, …) instead of inferring the type from current values.
-        Override in providers that publish typed attributes (tscat rating,
-        cocat Event fields, …).
         """
         return None
 

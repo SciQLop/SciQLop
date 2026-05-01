@@ -549,3 +549,146 @@ def test_delegate_intknob_setEditorData_loads_current_value(qapp):
     delegate.setEditorData(editor, idx)
     spinbox = editor.findChildren(QSpinBox)[0]
     assert spinbox.value() == 4
+
+
+def test_delegate_setEditorData_handles_none_value_with_spec_default(qapp):
+    """Opening a cell whose value is None must not crash; falls back to spec default."""
+    from PySide6.QtWidgets import QSpinBox, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+    from SciQLop.core.knobs import IntKnob
+
+    class TypedDummy(DummyProvider):
+        def attribute_spec(self, catalog, key):
+            if key == "rating":
+                return IntKnob(name=key, min=1, max=5, default=3)
+            return None
+
+    provider = TypedDummy(num_catalogs=1, events_per_catalog=2)
+    cat = provider.catalogs()[0]
+    for ev in provider.events(cat):
+        ev.set_meta("rating", None)  # simulate tscat-style unset rating
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    rating_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("rating")
+    idx = model.index(0, rating_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    delegate.setEditorData(editor, idx)  # must not raise
+    sb = editor.findChildren(QSpinBox)[0]
+    assert sb.value() == 3  # spec default
+
+
+def test_delegate_setEditorData_handles_none_without_spec(qapp):
+    """No spec, value is None: the delegate's fallback picks a type-zero from inference."""
+    from PySide6.QtWidgets import QSpinBox, QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=2)
+    cat = provider.catalogs()[0]
+    for ev in provider.events(cat):
+        ev.set_meta("count", 5)
+    # Now set one to None to mix
+    provider.events(cat)[0].set_meta("count", None)
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    count_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("count")
+    idx = model.index(0, count_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    delegate.setEditorData(editor, idx)  # must not raise
+
+
+def test_choiceknob_setEditorData_with_unknown_value_keeps_original(qapp):
+    """A legacy meta value not in the spec's choices is preserved if the user doesn't change it."""
+    from PySide6.QtWidgets import QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+    from SciQLop.core.knobs import ChoiceKnob
+
+    class TypedDummy(DummyProvider):
+        def attribute_spec(self, catalog, key):
+            if key == "category":
+                return ChoiceKnob(name=key, choices=(("A", "a"), ("B", "b")), default="a")
+            return None
+
+    provider = TypedDummy(num_catalogs=1, events_per_catalog=1)
+    cat = provider.catalogs()[0]
+    for ev in provider.events(cat):
+        ev.set_meta("category", "legacy_value_not_in_choices")
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    cat_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("category")
+    idx = model.index(0, cat_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    delegate.setEditorData(editor, idx)
+    # Original value preserved as currentData
+    assert editor.get_value() == "legacy_value_not_in_choices"
+
+
+def test_delegate_cache_invalidates_on_context_change(qapp):
+    """Switching catalogs must invalidate cached specs even without set_events."""
+    from PySide6.QtWidgets import QStyleOptionViewItem
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+    from SciQLop.core.knobs import IntKnob
+
+    class TypedDummy(DummyProvider):
+        def attribute_spec(self, catalog, key):
+            if key == "score":
+                return IntKnob(name=key, min=0, max=100, default=50)
+            return None
+
+    typed = TypedDummy(num_catalogs=1, events_per_catalog=2)
+    plain = DummyProvider(num_catalogs=1, events_per_catalog=2)
+    typed_cat = typed.catalogs()[0]
+    plain_cat = plain.catalogs()[0]
+
+    model = EventTableModel()
+    model.set_context(typed, typed_cat)
+    model.set_events(typed.events(typed_cat))
+
+    delegate = EventTableDelegate(model)
+    score_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("score")
+    # Warm the cache for typed provider
+    spec_typed = delegate._column_spec(score_col)
+    assert isinstance(spec_typed, IntKnob)
+
+    # Switch context (without intermediate set_events)
+    model.set_context(plain, plain_cat)
+    model.set_events(plain.events(plain_cat))
+
+    score_col_after = len(model._FIXED_COLUMNS) + model._meta_keys.index("score")
+    spec_after = delegate._column_spec(score_col_after)
+    assert spec_after is None  # plain DummyProvider returns None
+
+
+def test_stringknob_with_pattern_attaches_validator(qapp):
+    from PySide6.QtWidgets import QStyleOptionViewItem
+    from PySide6.QtGui import QRegularExpressionValidator
+    from SciQLop.components.catalogs.ui.event_table_delegate import EventTableDelegate
+    from SciQLop.core.knobs import StringKnob
+
+    class TypedDummy(DummyProvider):
+        def attribute_spec(self, catalog, key):
+            if key == "code":
+                return StringKnob(name=key, default="", pattern=r"^[A-Z]{2,4}$")
+            return None
+
+    provider = TypedDummy(num_catalogs=1, events_per_catalog=1)
+    cat = provider.catalogs()[0]
+    for ev in provider.events(cat):
+        ev.set_meta("code", "OK")
+    model = EventTableModel()
+    model.set_context(provider, cat)
+    model.set_events(provider.events(cat))
+
+    delegate = EventTableDelegate(model)
+    code_col = len(model._FIXED_COLUMNS) + model._meta_keys.index("code")
+    idx = model.index(0, code_col)
+    editor = delegate.createEditor(None, QStyleOptionViewItem(), idx)
+    assert isinstance(editor._edit.validator(), QRegularExpressionValidator)

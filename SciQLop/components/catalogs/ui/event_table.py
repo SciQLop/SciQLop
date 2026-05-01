@@ -34,10 +34,12 @@ class EventTableModel(QAbstractTableModel):
 
     def set_context(self, provider, catalog) -> None:
         """Bind the model to a provider/catalog so setData can route through them."""
+        self.beginResetModel()
         self._provider = provider
         self._catalog = catalog
         self._editable = (provider is not None and catalog is not None
                           and Capability.EDIT_EVENTS in provider.capabilities(catalog))
+        self.endResetModel()
 
     def set_events(self, events: list[CatalogEvent]) -> None:
         self.beginResetModel()

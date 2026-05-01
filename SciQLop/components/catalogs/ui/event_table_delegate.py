@@ -44,38 +44,28 @@ _DELEGATE_FOR_TYPE = {
 def _editor_from_spec(spec: KnobSpec, parent: QWidget) -> SettingDelegate | None:
     """Build a SettingDelegate honoring the constraints in *spec*. Return None
     if the spec is not directly mappable (caller falls back to inference)."""
-    # Reaches into private ._spin / ._combo on settings delegates: these are
-    # stable intra-package handles used by the existing settings UI.
     if isinstance(spec, BoolKnob):
         return BoolDelegate(parent)
     if isinstance(spec, IntKnob):
         delegate = IntDelegate(parent)
-        spin = delegate._spin
-        if spec.min is not None:
-            spin.setMinimum(spec.min)
-        if spec.max is not None:
-            spin.setMaximum(spec.max)
-        if spec.step:
-            spin.setSingleStep(spec.step)
+        delegate.set_range(spec.min, spec.max, spec.step)
         return delegate
     if isinstance(spec, FloatKnob):
         delegate = FloatDelegate(parent)
-        spin = delegate._spin
-        if spec.min is not None:
-            spin.setMinimum(spec.min)
-        if spec.max is not None:
-            spin.setMaximum(spec.max)
-        if spec.step:
-            spin.setSingleStep(spec.step)
+        delegate.set_range(spec.min, spec.max, spec.step)
         return delegate
     if isinstance(spec, ChoiceKnob):
         delegate = ComboDelegate(parent=parent)
-        combo = delegate._combo
-        for label, value in spec.choices:
-            combo.addItem(str(label), value)
+        delegate.populate(spec.choices)
+        delegate._choice_values = [v for _, v in spec.choices]  # for unknown-value path
         return delegate
     if isinstance(spec, StringKnob):
-        return StrDelegate(parent)
+        delegate = StrDelegate(parent)
+        if spec.pattern:
+            from PySide6.QtCore import QRegularExpression
+            from PySide6.QtGui import QRegularExpressionValidator
+            delegate._edit.setValidator(QRegularExpressionValidator(QRegularExpression(spec.pattern)))
+        return delegate
     return None
 
 
@@ -166,7 +156,35 @@ class EventTableDelegate(QStyledItemDelegate):
         if isinstance(editor, SettingDelegate):
             event = self._source_model._events[source_index.row()]
             key = self._source_model._meta_keys[col - self._meta_offset()]
-            editor.set_value(event.meta.get(key))
+            value = event.meta.get(key)
+            if value is None or value == "":
+                value = self._fallback_for(col)
+            choice_values = getattr(editor, "_choice_values", None)
+            if choice_values is not None and value not in choice_values:
+                from PySide6.QtCore import Qt as _Qt
+                combo = editor._combo
+                combo.addItem(f"(unknown: {value})", value)
+                idx_unknown = combo.count() - 1
+                combo.model().item(idx_unknown).setFlags(_Qt.ItemFlag.NoItemFlags)
+                combo.setCurrentIndex(idx_unknown)
+                return
+            editor.set_value(value)
+
+    def _fallback_for(self, source_col: int):
+        """Pick a safe initial value when the cell is empty / None."""
+        spec = self._column_spec(source_col)
+        if spec is not None and hasattr(spec, "default"):
+            default = getattr(spec, "default")
+            if default is not None:
+                return default
+        col_type = self._column_type(source_col)
+        if col_type is bool:
+            return False
+        if col_type is int:
+            return 0
+        if col_type is float:
+            return 0.0
+        return ""
 
     def setModelData(self, editor: QWidget, model, index: QModelIndex) -> None:
         source_index = self._to_source(index)

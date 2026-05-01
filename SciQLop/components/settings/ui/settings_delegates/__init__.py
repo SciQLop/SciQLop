@@ -144,6 +144,15 @@ class IntDelegate(SettingDelegate):
         self._spin.setValue(int(value))
         self._spin.blockSignals(False)
 
+    def set_range(self, minimum: int | None = None, maximum: int | None = None,
+                  step: int | None = None) -> None:
+        if minimum is not None:
+            self._spin.setMinimum(minimum)
+        if maximum is not None:
+            self._spin.setMaximum(maximum)
+        if step:
+            self._spin.setSingleStep(step)
+
 
 @register_delegate(float)
 @register_widget("float")
@@ -167,6 +176,15 @@ class FloatDelegate(SettingDelegate):
         self._spin.blockSignals(True)
         self._spin.setValue(float(value))
         self._spin.blockSignals(False)
+
+    def set_range(self, minimum: float | None = None, maximum: float | None = None,
+                  step: float | None = None) -> None:
+        if minimum is not None:
+            self._spin.setMinimum(minimum)
+        if maximum is not None:
+            self._spin.setMaximum(maximum)
+        if step:
+            self._spin.setSingleStep(step)
 
 
 @register_widget("combo")
@@ -195,6 +213,16 @@ class ComboDelegate(SettingDelegate):
                 self._combo.setCurrentIndex(i)
                 break
         self._combo.blockSignals(False)
+
+    def populate(self, choices) -> None:
+        """Replace the combo's items. choices: iterable of (label, value)."""
+        self._combo.blockSignals(True)
+        try:
+            self._combo.clear()
+            for label, value in choices:
+                self._combo.addItem(str(label), value)
+        finally:
+            self._combo.blockSignals(False)
 
 
 @register_widget("path_dir")
