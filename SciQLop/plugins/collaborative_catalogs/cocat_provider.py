@@ -455,6 +455,16 @@ class CocatCatalogProvider(CatalogProvider):
             Capability.MOVE_CATALOG,
         }
 
+    def attribute_spec(self, catalog: Catalog, key: str):
+        from SciQLop.core.knobs import IntKnob, StringKnob
+        if key == "rating":
+            return IntKnob(name=key, min=1, max=5, default=3,
+                           description="Event rating (1-5)")
+        if key == "author":
+            return StringKnob(name=key, default="",
+                              description="Event author")
+        return None
+
     def actions(self, catalog: Catalog | None = None) -> list[ProviderAction]:
         if catalog is not None:
             return []

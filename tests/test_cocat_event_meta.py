@@ -91,3 +91,19 @@ def test_cocat_event_remote_attribute_remove_updates_meta(qtbot, qapp, in_memory
 
     assert "tag" not in wrapper.meta
     assert "tag" in received
+
+
+def test_cocat_attribute_spec_rating_and_author(qapp):
+    from SciQLop.plugins.collaborative_catalogs.cocat_provider import CocatCatalogProvider
+    from SciQLop.core.knobs import IntKnob, StringKnob
+
+    provider = CocatCatalogProvider()
+    rating_spec = provider.attribute_spec(None, "rating")
+    assert isinstance(rating_spec, IntKnob)
+    assert rating_spec.min == 1
+    assert rating_spec.max == 5
+
+    author_spec = provider.attribute_spec(None, "author")
+    assert isinstance(author_spec, StringKnob)
+
+    assert provider.attribute_spec(None, "free_form_xyz") is None
