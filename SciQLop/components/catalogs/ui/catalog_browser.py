@@ -22,6 +22,7 @@ from PySide6.QtGui import QIcon, QKeySequence, QPen, QColor, QShortcut
 import math
 from datetime import datetime, timezone, timedelta
 import uuid as _uuid
+from SciQLop.core.ui import Metrics
 from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent
 from .catalog_tree import CatalogTreeModel, DIRTY_PROVIDER_ROLE, LOADING_ROLE
 from .event_table import EventTableModel, EventSortProxy
@@ -190,6 +191,10 @@ class CatalogBrowser(QWidget):
         header = self._event_table.horizontalHeader()
         header.setSectionsMovable(True)
         header.sectionMoved.connect(lambda *_: self._save_view_state())
+        header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        header.customContextMenuRequested.connect(
+            lambda pos: self._open_column_popover(at_header_pos=pos)
+        )
         self._event_model.modelReset.connect(self._fit_event_columns)
         self._event_table.selectionModel().currentChanged.connect(self._on_event_selected)
         self._event_table.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
@@ -211,9 +216,16 @@ class CatalogBrowser(QWidget):
         self._delete_btn.setVisible(False)
         self._delete_btn.clicked.connect(self._on_delete)
 
+        self._columns_btn = QToolButton()
+        self._columns_btn.setText("Columns")
+        self._columns_btn.setToolTip("Show / hide / reorder columns")
+        self._columns_btn.setAutoRaise(True)
+        self._columns_btn.clicked.connect(lambda: self._open_column_popover())
+
         event_toolbar = QHBoxLayout()
         event_toolbar.addWidget(self._add_event_btn)
         event_toolbar.addWidget(self._delete_btn)
+        event_toolbar.addWidget(self._columns_btn)
         event_toolbar.addStretch()
 
         event_panel = QWidget()
@@ -448,15 +460,71 @@ class CatalogBrowser(QWidget):
                 header.moveSection(current_visual, target_visual)
             target_visual += 1
 
+    def _build_column_entries(self):
+        from .column_visibility_popover import ColumnEntry
+        header = self._event_table.horizontalHeader()
+        order = [header.logicalIndex(visual)
+                 for visual in range(self._event_model.columnCount())]
+        fixed_count = len(self._event_model._FIXED_COLUMNS)
+        entries = []
+        for logical in order:
+            key = self._column_key(logical)
+            entries.append(ColumnEntry(
+                key=key,
+                label=key,
+                visible=not self._event_table.isColumnHidden(logical),
+                frozen=logical < fixed_count,
+            ))
+        return entries
+
+    def _open_column_popover(self, at_header_pos=None) -> None:
+        if self._event_model.columnCount() == 0:
+            return
+        from .column_visibility_popover import ColumnVisibilityPopover
+        popover = ColumnVisibilityPopover(self._build_column_entries(), self)
+        popover.visibility_changed.connect(self._on_column_visibility_changed)
+        popover.reorder_requested.connect(self._on_column_reorder_requested)
+        popover.reset_requested.connect(self._on_columns_reset)
+        if at_header_pos is None:
+            anchor = self._columns_btn
+            global_pos = anchor.mapToGlobal(anchor.rect().bottomLeft())
+        else:
+            global_pos = self._event_table.horizontalHeader().mapToGlobal(at_header_pos)
+        popover.move(global_pos)
+        popover.resize(Metrics.em(28), Metrics.ex(30))
+        popover.show()
+        popover.setFocus()
+
+    def _on_column_visibility_changed(self, key: str, visible: bool) -> None:
+        for col in range(self._event_model.columnCount()):
+            if self._column_key(col) == key:
+                self._event_table.setColumnHidden(col, not visible)
+                break
+        self._save_view_state()
+
+    def _on_column_reorder_requested(self, new_order: list) -> None:
+        self._reorder_columns(new_order)
+        self._save_view_state()
+
+    def _on_columns_reset(self) -> None:
+        from ..backend.event_table_view_state import CatalogViewState, save_view_state
+        if self._current_catalog is None:
+            return
+        save_view_state(self._current_catalog.uuid, CatalogViewState())
+        for col in range(self._event_model.columnCount()):
+            self._event_table.setColumnHidden(col, False)
+
     def _update_toolbar(self) -> None:
         if self._current_provider is None:
             self._add_event_btn.setVisible(False)
             self._delete_btn.setVisible(False)
+            self._columns_btn.setVisible(False)
             self._actions_btn.setVisible(False)
             return
 
         caps = self._current_provider.capabilities(self._current_catalog)
         self._add_event_btn.setVisible(Capability.CREATE_EVENTS in caps)
+        self._columns_btn.setVisible(self._event_model.columnCount() > 0)
         self._delete_btn.setVisible(Capability.DELETE_EVENTS in caps)
 
         # Populate custom actions menu
