@@ -22,6 +22,9 @@ import tscat
 from tscat_gui.model_base.constants import EntityRole
 
 
+SCHEMA_ATTR_PREFIX = "sciqlop_schema__"
+
+
 class TscatEvent(CatalogEvent):
     """CatalogEvent wrapping a tscat entity with deferred attribute updates."""
 
@@ -147,9 +150,45 @@ class TscatCatalogProvider(CatalogProvider):
                 provider=self,
                 path=path,
             )
+            self._load_persisted_specs(entity, entity.uuid)
             self._catalog_cache.append(cat)
             self._known_uuids.add(entity.uuid)
         return list(self._catalog_cache)
+
+    def _load_persisted_specs(self, entity, catalog_uuid: str) -> None:
+        import json
+        from SciQLop.core.knobs import spec_from_dict
+        for attr_key, attr_value in entity.variable_attributes().items():
+            if not attr_key.startswith(SCHEMA_ATTR_PREFIX):
+                continue
+            user_key = attr_key[len(SCHEMA_ATTR_PREFIX):]
+            try:
+                data = json.loads(attr_value) if isinstance(attr_value, str) else attr_value
+                spec = spec_from_dict(data)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                spec = None
+            if spec is not None:
+                self._attribute_specs.setdefault(catalog_uuid, {})[user_key] = spec
+
+    def _persist_attribute_spec(self, catalog: Catalog, key: str, spec) -> None:
+        import json
+        from SciQLop.core.knobs import spec_to_dict
+        payload = json.dumps(spec_to_dict(spec))
+        with self._tracked_action():
+            tscat_model.do(SetAttributeAction(
+                user_callback=None,
+                uuids=[catalog.uuid],
+                name=SCHEMA_ATTR_PREFIX + key,
+                values=[payload],
+            ))
+
+    def _persist_attribute_spec_removal(self, catalog: Catalog, key: str) -> None:
+        with self._tracked_action():
+            tscat_model.do(DeleteAttributeAction(
+                user_callback=None,
+                uuids=[catalog.uuid],
+                name=SCHEMA_ATTR_PREFIX + key,
+            ))
 
     def events(self, catalog: Catalog, start: datetime | None = None,
                stop: datetime | None = None) -> list[CatalogEvent]:

@@ -22,6 +22,7 @@ from SciQLop.components.sciqlop_logging import getLogger
 log = getLogger(__name__)
 
 _SUBPATH_ATTR = "sciqlop_path"
+SCHEMA_ATTR_PREFIX = "sciqlop_schema__"
 
 
 def _encode_subpath(segments: list[str]) -> str:
@@ -109,6 +110,7 @@ class CocatCatalogProvider(CatalogProvider):
                  parent: QObject | None = None):
         self._url = url
         self._catalog_map: dict[str, Catalog] = {}
+        self._cocat_catalogues: dict[str, object] = {}  # cat.uuid → cocat Catalogue
         self._rooms: dict[str, object] = {}       # room_id → Room (joined)
         self._available_rooms: list[str] = []      # room_ids from server
         self._default_room_id: str | None = None
@@ -192,6 +194,7 @@ class CocatCatalogProvider(CatalogProvider):
         catalogs_to_remove = [c for c in self._catalog_map.values() if c.path and c.path[0] == room_id]
         for cat in catalogs_to_remove:
             self._catalog_map.pop(cat.uuid, None)
+            self._cocat_catalogues.pop(cat.uuid, None)
             super().remove_catalog(cat)
 
     def _leave_room(self, room_id: str) -> None:
@@ -219,11 +222,44 @@ class CocatCatalogProvider(CatalogProvider):
             path=[room_id, *sub_path],
         )
         self._catalog_map[cat.uuid] = cat
+        self._cocat_catalogues[cat.uuid] = cocat_cat
+        self._load_persisted_specs_from_cocat(cocat_cat, cat.uuid)
         wrappers = [self._wrap_event(ev) for ev in cocat_cat.events]
         self._set_events(cat, wrappers)
         self._subscribe_catalogue(cocat_cat, cat)
         self.catalog_added.emit(cat)
         return cat
+
+    def _load_persisted_specs_from_cocat(self, cocat_cat, catalog_uuid: str) -> None:
+        import json
+        from SciQLop.core.knobs import spec_from_dict
+        for attr_key, attr_value in dict(cocat_cat.attributes).items():
+            if not attr_key.startswith(SCHEMA_ATTR_PREFIX):
+                continue
+            user_key = attr_key[len(SCHEMA_ATTR_PREFIX):]
+            try:
+                data = json.loads(attr_value) if isinstance(attr_value, str) else attr_value
+                spec = spec_from_dict(data)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                spec = None
+            if spec is not None:
+                self._attribute_specs.setdefault(catalog_uuid, {})[user_key] = spec
+
+    def _persist_attribute_spec(self, catalog: Catalog, key: str, spec) -> None:
+        import json
+        from SciQLop.core.knobs import spec_to_dict
+        cocat_cat = self._cocat_catalogues.get(catalog.uuid)
+        if cocat_cat is None:
+            return
+        cocat_cat.set_attributes(**{
+            SCHEMA_ATTR_PREFIX + key: json.dumps(spec_to_dict(spec))
+        })
+
+    def _persist_attribute_spec_removal(self, catalog: Catalog, key: str) -> None:
+        cocat_cat = self._cocat_catalogues.get(catalog.uuid)
+        if cocat_cat is None:
+            return
+        cocat_cat.remove_attributes([SCHEMA_ATTR_PREFIX + key])
 
     def _wrap_remote_catalogue(self, room_id: str, cocat_cat) -> None:
         uuid = str(cocat_cat.uuid) if hasattr(cocat_cat, 'uuid') else cocat_cat.name
@@ -260,6 +296,7 @@ class CocatCatalogProvider(CatalogProvider):
         if cat.uuid not in self._catalog_map:
             return
         self._catalog_map.pop(cat.uuid, None)
+        self._cocat_catalogues.pop(cat.uuid, None)
         CatalogProvider.remove_catalog(self, cat)
 
     def _on_remote_catalogue_renamed(self, cat: Catalog, new_name: str) -> None:
@@ -284,23 +321,45 @@ class CocatCatalogProvider(CatalogProvider):
                 self._remove_event(cat, wrapper)
 
     def _on_remote_attributes_set(self, cat: Catalog, attrs: dict) -> None:
-        if _SUBPATH_ATTR not in attrs:
-            return
-        if not cat.path:
-            return
-        new_sub = _decode_subpath(attrs[_SUBPATH_ATTR])
-        new_path = [cat.path[0], *new_sub]
-        if list(cat.path) != list(new_path):
-            cat.path = new_path
-            self.catalog_moved.emit(cat)
+        if _SUBPATH_ATTR in attrs and cat.path:
+            new_sub = _decode_subpath(attrs[_SUBPATH_ATTR])
+            new_path = [cat.path[0], *new_sub]
+            if list(cat.path) != list(new_path):
+                cat.path = new_path
+                self.catalog_moved.emit(cat)
+        self._handle_remote_schema_set(cat, attrs)
 
     def _on_remote_attributes_removed(self, cat: Catalog, keys) -> None:
-        if _SUBPATH_ATTR not in keys:
-            return
-        if not cat.path or len(cat.path) <= 1:
-            return
-        cat.path = [cat.path[0]]
-        self.catalog_moved.emit(cat)
+        if _SUBPATH_ATTR in keys and cat.path and len(cat.path) > 1:
+            cat.path = [cat.path[0]]
+            self.catalog_moved.emit(cat)
+        self._handle_remote_schema_removed(cat, keys)
+
+    def _handle_remote_schema_set(self, cat: Catalog, attrs: dict) -> None:
+        import json
+        from SciQLop.core.knobs import spec_from_dict
+        for attr_key, attr_value in attrs.items():
+            if not attr_key.startswith(SCHEMA_ATTR_PREFIX):
+                continue
+            user_key = attr_key[len(SCHEMA_ATTR_PREFIX):]
+            try:
+                data = json.loads(attr_value) if isinstance(attr_value, str) else attr_value
+                spec = spec_from_dict(data)
+            except (TypeError, ValueError, json.JSONDecodeError):
+                spec = None
+            if spec is not None:
+                self._attribute_specs.setdefault(cat.uuid, {})[user_key] = spec
+                self.attribute_spec_changed.emit(cat, user_key)
+
+    def _handle_remote_schema_removed(self, cat: Catalog, keys) -> None:
+        for attr_key in keys:
+            if not attr_key.startswith(SCHEMA_ATTR_PREFIX):
+                continue
+            user_key = attr_key[len(SCHEMA_ATTR_PREFIX):]
+            specs_for_cat = self._attribute_specs.get(cat.uuid, {})
+            if user_key in specs_for_cat:
+                del specs_for_cat[user_key]
+                self.attribute_spec_changed.emit(cat, user_key)
 
     def _room_for_catalog(self, catalog: Catalog):
         """Get the Room instance for a catalog's room."""
@@ -371,6 +430,7 @@ class CocatCatalogProvider(CatalogProvider):
             path=[room_id, *sub_path],
         )
         self._catalog_map[cat.uuid] = cat
+        self._cocat_catalogues[cat.uuid] = cocat_cat
         self._set_events(cat, [])
         self._subscribe_catalogue(cocat_cat, cat)
         self.catalog_added.emit(cat)
@@ -391,6 +451,7 @@ class CocatCatalogProvider(CatalogProvider):
             return
         cocat_cat = room.get_catalogue(catalog.uuid)
         self._catalog_map.pop(catalog.uuid, None)
+        self._cocat_catalogues.pop(catalog.uuid, None)
         super().remove_catalog(catalog)
         try:
             cocat_cat.delete()
