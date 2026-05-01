@@ -12,6 +12,7 @@ from SciQLop.core.knobs import (
     Knob,
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob,
     StringListKnob, TimeRangeKnob, ThresholdKnob,
+    spec_to_dict, spec_from_dict,
     coerce_value, validate_dict, canonical_hash, defaults_for,
     extract_specs_from_callback, extract_specs_from_model,
 )
@@ -34,6 +35,7 @@ __all__ = [
     "Knob",
     "KnobSpec", "IntKnob", "FloatKnob", "BoolKnob", "ChoiceKnob", "StringKnob",
     "StringListKnob", "TimeRangeKnob", "ThresholdKnob",
+    "spec_to_dict", "spec_from_dict",
     "coerce_value", "validate_dict", "canonical_hash", "defaults_for",
     "extract_specs_from_callback", "extract_specs_from_model",
 ]
