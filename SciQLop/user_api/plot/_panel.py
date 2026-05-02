@@ -231,7 +231,8 @@ class PlotPanel:
 
     @experimental_api()
     @on_main_thread
-    def add_layer(self, func, plot_index: int = 0, **initial_knobs):
+    def add_layer(self, func, plot_index: int = 0, scope: str = "auto",
+                  **initial_knobs):
         """Attach an annotation layer to an existing plot in this panel.
 
         Parameters
@@ -240,6 +241,11 @@ class PlotPanel:
             A function ``f(start, stop, **knobs) -> list[Marker|Span|HLine]``.
         plot_index : int
             Index of the subplot to attach the layer to. Defaults to 0 (first plot).
+        scope : {"auto", "panel", "plot"}, optional
+            Where the layer's spans render and where its inspector node lives.
+            "panel" → spans on every plot in the panel; "plot" → spans on the
+            target plot only; "auto" → "plot" for data-aware layers,
+            "panel" for range-only layers.
         **initial_knobs
             Initial values for the layer's knob parameters.
         """
@@ -258,7 +264,9 @@ class PlotPanel:
                 target = child
                 break
 
-        return wire_layer_renderer(target, func, initial_knobs=initial_knobs or None, panel=impl)
+        return wire_layer_renderer(target, func,
+                                    initial_knobs=initial_knobs or None,
+                                    panel=impl, scope=scope)
 
     @on_main_thread
     def plot(self, *args, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable] | None:

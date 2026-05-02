@@ -310,13 +310,38 @@ def _attach_knob_state(provider, node, callback, r, target=None):
     state = GraphKnobState(specs, parent=graph)
     graph._knob_state = state
     callback.knob_state = state
-    state.knobs_changed.connect(lambda *_: _trigger_refetch(graph))
+    refetch_slot = lambda *_: _trigger_refetch(graph)
+    graph._knobs_slot = refetch_slot
+    state.knobs_changed.connect(refetch_slot)
+    graph._visual_knob_items = []
+    if plot is not None:
+        graph._visual_knob_items = create_plot_items(plot, state)
     if hasattr(graph, "add_inspector_extension"):
         ext = KnobInspectorExtension(state, parent=graph)
         graph._knob_inspector_ext = ext
         graph.add_inspector_extension(ext)
-    if plot is not None:
-        graph._visual_knob_items = create_plot_items(plot, state)
+        ext.destroyed.connect(lambda *_: _dispose_graph_knobs(graph))
+
+
+def _dispose_graph_knobs(graph):
+    """Called when a graph's parameters extension is deleted from the inspector.
+
+    Removes the on-plot knob handles (drag spans/lines) and disconnects the
+    re-fetch slot. Leaves the graph itself alone — only its parameter UI goes."""
+    for item in getattr(graph, "_visual_knob_items", None) or []:
+        try:
+            item.cleanup()
+        except Exception:
+            log.debug("plot item cleanup failed", exc_info=True)
+    graph._visual_knob_items = []
+    state = getattr(graph, "_knob_state", None)
+    slot = getattr(graph, "_knobs_slot", None)
+    if state is not None and slot is not None:
+        try:
+            state.knobs_changed.disconnect(slot)
+        except (RuntimeError, TypeError):
+            pass
+    graph._knobs_slot = None
 
 
 def _build_knob_reset_action(state, parent):
@@ -445,8 +470,14 @@ def _trigger_layer_update(renderer, plot):
     on_main_thread(_trigger_layer_update_impl)(renderer, plot)
 
 
-def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None):
-    """Create a LayerRenderer, wire knobs + range listener, return the renderer."""
+def wire_layer_renderer(target, func, specs=None, initial_knobs=None,
+                        panel=None, scope: str = "auto"):
+    """Create a LayerRenderer, wire knobs + range listener, return the renderer.
+
+    `scope` controls where spans render and where the inspector node lives:
+    "panel" → spans on every plot in the panel + inspector node under panel,
+    "plot"  → spans on `target` only + inspector node under that plot,
+    "auto"  → "plot" if data-aware, "panel" otherwise."""
     from SciQLop.user_api.layers._renderer import LayerRenderer
     from SciQLop.user_api.layers._introspection import extract_data_type
     from SciQLop.user_api.knobs import extract_specs_from_callback
@@ -454,9 +485,20 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None
     from SciQLop.components.plotting.ui.knob_inspector import KnobInspectorExtension, LayerExtension
 
     data_type = extract_data_type(func)
-    renderer = LayerRenderer(target, func, data_type=data_type, parent=target)
+    if scope == "auto":
+        scope = "plot" if data_type is not None else "panel"
+    if scope == "panel" and panel is None:
+        from SciQLop.user_api.layers._renderer import _find_panel
+        panel = _find_panel(target)
+        if panel is None:
+            scope = "plot"
+
+    renderer = LayerRenderer(target, func, data_type=data_type,
+                             scope=scope, panel=panel, parent=target)
+    renderer._visual_knob_items = []
     title = getattr(func, "__name__", "Layer")
-    knob_host = panel if panel is not None else target
+    knob_host = panel if scope == "panel" and panel is not None else target
+    ext = None
 
     if specs is None:
         specs = extract_specs_from_callback(func)
@@ -466,7 +508,8 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None
         renderer._knob_state = state
         if initial_knobs:
             state.set_all(initial_knobs)
-        state.knobs_changed.connect(lambda *_: _trigger_layer_update(renderer, target))
+        renderer._knobs_slot = lambda *_: _trigger_layer_update(renderer, target)
+        state.knobs_changed.connect(renderer._knobs_slot)
         if hasattr(knob_host, "add_inspector_extension"):
             ext = KnobInspectorExtension(state, parent=renderer, title=title)
             renderer._knob_inspector_ext = ext
@@ -481,12 +524,15 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None
     if renderer.data_aware:
         renderer.setup_data_binding()
     else:
-        target.x_axis().range_changed.connect(
-            lambda new_range: renderer.update(new_range.start(), new_range.stop()))
+        renderer._range_slot = lambda new_range: renderer.update(new_range.start(), new_range.stop())
+        target.x_axis().range_changed.connect(renderer._range_slot)
 
     if not hasattr(target, "_layer_renderers"):
         target._layer_renderers = []
     target._layer_renderers.append(renderer)
+
+    if ext is not None:
+        ext.destroyed.connect(lambda *_: _dispose_layer(renderer, target))
 
     try:
         current_range = target.x_axis().range()
@@ -495,6 +541,26 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None, panel=None
         log.debug("initial layer render skipped — no valid range yet")
 
     return renderer
+
+
+def _dispose_layer(renderer, target):
+    """Called when the layer's inspector extension is deleted.
+
+    Tears down visual knob items, the renderer's spans/hlines/markers, and
+    drops the renderer from the plot's bookkeeping list."""
+    for item in getattr(renderer, "_visual_knob_items", None) or []:
+        try:
+            item.cleanup()
+        except Exception:
+            log.debug("plot item cleanup failed", exc_info=True)
+    renderer._visual_knob_items = []
+    renderers = getattr(target, "_layer_renderers", None)
+    if renderers is not None and renderer in renderers:
+        renderers.remove(renderer)
+    try:
+        renderer.dispose()
+    except RuntimeError:
+        pass
 
 
 def attach_layer(plot, product: list[str], panel=None):
@@ -507,7 +573,9 @@ def attach_layer(plot, product: list[str], panel=None):
     if provider is None:
         return None
 
-    return wire_layer_renderer(plot, provider.callback, specs=provider.get_knobs(), panel=panel)
+    return wire_layer_renderer(plot, provider.callback,
+                                specs=provider.get_knobs(), panel=panel,
+                                scope=provider.resolve_scope())
 
 
 class ProductDnDCallback(PlotDragNDropCallback):

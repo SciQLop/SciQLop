@@ -29,7 +29,7 @@ __all__ = [
 
 
 @experimental_api()
-def register_layer(path: str = None):
+def register_layer(path: str = None, scope: str = "auto"):
     """Decorator to register a function as an annotation layer.
 
     The decorated function appears in the product tree under Layers/ and
@@ -39,6 +39,15 @@ def register_layer(path: str = None):
     ----------
     path : str, optional
         Path in the product tree (under Layers/). Defaults to the function name.
+    scope : {"auto", "panel", "plot"}, optional
+        Where the layer's spans render and where its inspector node lives.
+        ``"panel"`` renders spans across every plot in the panel and places
+        the inspector node under the panel. ``"plot"`` renders on the single
+        DnD-target plot and places the node under that plot. ``"auto"``
+        (default) picks ``"plot"`` for data-aware layers (they bind to a
+        specific graph) and ``"panel"`` for range-only layers.
+        ``HLine`` and ``Marker`` annotations are always plot-scoped because
+        they depend on the plot's Y axis — ``scope`` only affects spans.
 
     Examples
     --------
@@ -54,6 +63,9 @@ def register_layer(path: str = None):
         def threshold_crossings(data: Vector, level: float = 10.0) -> list[Span]:
             ...
     """
+    if scope not in ("auto", "panel", "plot"):
+        raise ValueError(f"scope must be 'auto', 'panel', or 'plot', got {scope!r}")
+
     def decorator(func):
         name = func.__name__
         entry = _registry.register(name, func)
@@ -63,7 +75,8 @@ def register_layer(path: str = None):
         if name not in _layer_providers:
             from SciQLop.user_api.threading import invoke_on_main_thread
             from SciQLop.user_api.layers._provider import LayerProvider
-            invoke_on_main_thread(lambda: LayerProvider(layer_path, entry.wrapper))
+            invoke_on_main_thread(
+                lambda: LayerProvider(layer_path, entry.wrapper, scope=scope))
 
         return func
     return decorator

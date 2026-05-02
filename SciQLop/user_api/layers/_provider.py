@@ -17,12 +17,14 @@ _layer_providers: dict[str, "LayerProvider"] = {}
 
 
 class LayerProvider:
-    def __init__(self, path: str, callback: Callable, annotation_type: Optional[str] = None):
+    def __init__(self, path: str, callback: Callable,
+                 annotation_type: Optional[str] = None, scope: str = "auto"):
         self.name = make_simple_incr_name(getattr(callback, "__name__", "layer"))
         self._path = f"{_LAYERS_ROOT}/{path}".split("/")
         self._callback = callback
         self._knob_specs = extract_specs_from_callback(callback)
         self.annotation_type = annotation_type or self._infer_type()
+        self._scope = scope
 
         metadata = {
             "description": f"Annotation layer: {self.name}",
@@ -41,6 +43,15 @@ class LayerProvider:
     def _infer_type(self) -> str:
         ann = self._callback.__annotations__.get("return")
         return infer_type_from_annotation(ann) or "mixed"
+
+    def resolve_scope(self) -> str:
+        """Returns 'panel' or 'plot'. Resolves 'auto' from the callback signature:
+        data-aware layers default to 'plot' (bound to a specific graph),
+        range-only layers default to 'panel' (visible across all plots)."""
+        if self._scope in ("panel", "plot"):
+            return self._scope
+        from SciQLop.user_api.layers._introspection import extract_data_type
+        return "plot" if extract_data_type(self._callback) is not None else "panel"
 
     def get_knobs(self) -> list:
         return list(self._knob_specs)

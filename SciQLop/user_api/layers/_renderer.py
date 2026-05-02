@@ -6,7 +6,8 @@ from PySide6.QtCore import QObject, QTimer
 from PySide6.QtGui import QColor, QPen
 from SciQLopPlots import (SciQLopVerticalSpan, SciQLopPlotRange,
                           SciQLopHorizontalLine, GraphMarkerShape,
-                          SciQLopGraphInterface, SciQLopColorMapInterface)
+                          SciQLopGraphInterface, SciQLopColorMapInterface,
+                          MultiPlotsVerticalSpan, SciQLopMultiPlotPanel)
 
 from SciQLop.user_api.layers.types import Marker, Span, HLine, Annotation
 from SciQLop.user_api.layers._introspection import DataTypeInfo
@@ -28,6 +29,18 @@ _VP_TYPE_MATCHERS = {
     "spectrogram": lambda p: isinstance(p, SciQLopColorMapInterface),
     "any": lambda p: True,
 }
+
+
+def _find_panel(plot) -> Optional["SciQLopMultiPlotPanel"]:
+    node = plot
+    while node is not None:
+        if isinstance(node, SciQLopMultiPlotPanel):
+            return node
+        try:
+            node = node.parent()
+        except RuntimeError:
+            return None
+    return None
 
 
 def _find_data_source(plot, type_info: DataTypeInfo, exclude=None):
@@ -61,19 +74,28 @@ def _parse_color(color_str: Optional[str], default: str, alpha: int = 255):
 
 class LayerRenderer(QObject):
 
-    def __init__(self, plot, callback, knob_state=None, data_type=None, parent=None):
+    def __init__(self, plot, callback, knob_state=None, data_type=None,
+                 scope: str = "plot", panel=None, parent=None):
         super().__init__(parent or plot)
         self._plot = plot
         self._callback = callback
         self._knob_state = knob_state
         self._data_type: Optional[DataTypeInfo] = data_type
+        self._scope = scope
+        self._panel = panel if panel is not None else _find_panel(plot)
+        if self._scope == "panel" and self._panel is None:
+            log.debug("scope=panel but no panel found in parent chain; falling back to plot-scoped spans")
+            self._scope = "plot"
         self._data_source = None
-        self._data_connection = None
+        self._data_slot = None
         self._pending_connections: list = []
         self._graph_list_connection = None
+        self._range_slot = None
+        self._knobs_slot = None
         self._spans: list = []
         self._hlines: list = []
         self._marker_graph = None
+        self._disposed = False
 
     @property
     def data_aware(self) -> bool:
@@ -132,8 +154,8 @@ class LayerRenderer(QObject):
         if source is None:
             return False
         self._data_source = source
-        self._data_connection = source.data_changed.connect(
-            lambda *_: self._on_data_changed())
+        self._data_slot = lambda *_: self._on_data_changed()
+        source.data_changed.connect(self._data_slot)
         return True
 
     def _on_data_changed(self):
@@ -172,11 +194,19 @@ class LayerRenderer(QObject):
             old.deleteLater()
         self._spans.clear()
         for s in spans:
-            vs = SciQLopVerticalSpan(self._plot, SciQLopPlotRange(s.start, s.stop))
-            vs.set_color(_parse_color(s.color, _DEFAULT_SPAN_COLOR, _DEFAULT_SPAN_ALPHA))
-            vs.set_read_only(True)
-            if s.label:
-                vs.set_tool_tip(s.label)
+            color = _parse_color(s.color, _DEFAULT_SPAN_COLOR, _DEFAULT_SPAN_ALPHA)
+            label = s.label or ""
+            if self._scope == "panel":
+                vs = MultiPlotsVerticalSpan(
+                    self._panel, SciQLopPlotRange(s.start, s.stop),
+                    color, True, True, label,
+                )
+            else:
+                vs = SciQLopVerticalSpan(self._plot, SciQLopPlotRange(s.start, s.stop))
+                vs.set_color(color)
+                vs.set_read_only(True)
+                if label:
+                    vs.set_tool_tip(label)
             self._spans.append(vs)
 
     def _render_hlines(self, hlines: list[HLine]):
@@ -229,3 +259,41 @@ class LayerRenderer(QObject):
                 np.empty(0, dtype=np.float64),
                 np.empty(0, dtype=np.float64),
             )
+
+    def dispose(self):
+        """Tear down all visual items and signal connections.
+
+        Idempotent. After dispose(), no further updates will fire and the
+        renderer schedules its own deletion."""
+        if self._disposed:
+            return
+        self._disposed = True
+        self._disconnect_watchers()
+        self._safe_disconnect(self._data_source, "data_changed", self._data_slot)
+        self._data_slot = None
+        try:
+            x_axis = self._plot.x_axis()
+        except RuntimeError:
+            x_axis = None
+        self._safe_disconnect(x_axis, "range_changed", self._range_slot)
+        self._range_slot = None
+        if self._knob_state is not None:
+            self._safe_disconnect(self._knob_state, "knobs_changed", self._knobs_slot)
+            self._knobs_slot = None
+        self.clear()
+        if self._marker_graph is not None:
+            try:
+                self._marker_graph.deleteLater()
+            except RuntimeError:
+                pass
+            self._marker_graph = None
+        self.deleteLater()
+
+    @staticmethod
+    def _safe_disconnect(emitter, signal_name, slot):
+        if emitter is None or slot is None:
+            return
+        try:
+            getattr(emitter, signal_name).disconnect(slot)
+        except (RuntimeError, TypeError):
+            pass
