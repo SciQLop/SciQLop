@@ -17,8 +17,27 @@ from SciQLop.components.settings.ui.settings_delegates import (
 )
 from SciQLop.core.knobs import (
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob,
-    StringListKnob,
+    StringListKnob, DatetimeKnob,
 )
+
+
+def _qdatetime_from_iso(value: Any) -> QDateTime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    qdt = QDateTime.fromSecsSinceEpoch(int(dt.timestamp()))
+    qdt.setTimeSpec(Qt.TimeSpec.UTC)
+    return qdt
+
+
+def _iso_from_qdatetime(qdt: QDateTime) -> str:
+    secs = qdt.toSecsSinceEpoch()
+    return datetime.fromtimestamp(secs, tz=timezone.utc).isoformat()
 
 
 def _infer_column_type(values: list[Any]) -> type:
@@ -46,9 +65,18 @@ _DELEGATE_FOR_TYPE = {
 }
 
 
-def _editor_from_spec(spec: KnobSpec, parent: QWidget) -> SettingDelegate | None:
-    """Build a SettingDelegate honoring the constraints in *spec*. Return None
-    if the spec is not directly mappable (caller falls back to inference)."""
+def _editor_from_spec(spec: KnobSpec, parent: QWidget) -> QWidget | None:
+    """Build an editor honoring the constraints in *spec*. Return None
+    if the spec is not directly mappable (caller falls back to inference).
+
+    DatetimeKnob returns a plain QDateTimeEdit (handled out-of-band by the
+    delegate's spec-aware setEditorData/setModelData branches); all other
+    specs return SettingDelegate subclasses."""
+    if isinstance(spec, DatetimeKnob):
+        edit = QDateTimeEdit(parent)
+        edit.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
+        edit.setCalendarPopup(True)
+        return edit
     if isinstance(spec, BoolKnob):
         return BoolDelegate(parent)
     if isinstance(spec, IntKnob):
@@ -160,6 +188,14 @@ class EventTableDelegate(QStyledItemDelegate):
             value = event.start if col == 0 else event.stop
             editor.setDateTime(QDateTime.fromSecsSinceEpoch(int(value.timestamp())))
             return
+        spec = self._column_spec(col)
+        if isinstance(spec, DatetimeKnob):
+            event = self._source_model._events[source_index.row()]
+            key = self._source_model._meta_keys[col - self._meta_offset()]
+            value = event.meta.get(key)
+            qdt = _qdatetime_from_iso(value) or QDateTime.currentDateTimeUtc()
+            editor.setDateTime(qdt)
+            return
         if isinstance(editor, SettingDelegate):
             event = self._source_model._events[source_index.row()]
             key = self._source_model._meta_keys[col - self._meta_offset()]
@@ -201,6 +237,12 @@ class EventTableDelegate(QStyledItemDelegate):
         if col < self._meta_offset():
             qdt = editor.dateTime()
             value = datetime.fromtimestamp(qdt.toSecsSinceEpoch(), tz=timezone.utc)
+            model.setData(index, value, Qt.ItemDataRole.EditRole)
+            return
+        spec = self._column_spec(col)
+        if isinstance(spec, DatetimeKnob):
+            qdt = editor.dateTime()
+            value = _iso_from_qdatetime(qdt)
             model.setData(index, value, Qt.ItemDataRole.EditRole)
             return
         if isinstance(editor, SettingDelegate):

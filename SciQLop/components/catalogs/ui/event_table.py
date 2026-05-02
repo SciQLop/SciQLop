@@ -15,6 +15,13 @@ def _format_meta_value(value: Any) -> str:
         return f"{float(value):.6g}"
     if isinstance(value, (list, tuple, set)):
         return ", ".join(str(v) for v in value)
+    if isinstance(value, str):
+        from datetime import datetime as _dt
+        try:
+            parsed = _dt.fromisoformat(value)
+            return parsed.strftime("%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            pass
     return str(value)
 
 

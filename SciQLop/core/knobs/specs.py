@@ -58,6 +58,13 @@ class StringListKnob(KnobSpec):
 
 
 @dataclass(frozen=True, slots=True)
+class DatetimeKnob(KnobSpec):
+    """ISO 8601 datetime string. Wire format is `datetime.isoformat()`; the
+    UI renders a calendar picker (QDateTimeEdit)."""
+    default: str = ""
+
+
+@dataclass(frozen=True, slots=True)
 class TimeRangeKnob(KnobSpec):
     default: SciQLopPlotRange = field(default_factory=lambda: SciQLopPlotRange(0.25, 0.75))
     widget: str = "vspan"
@@ -78,7 +85,7 @@ class ThresholdKnob(FloatKnob):
 # ThresholdKnob carry SciQLopPlotRange defaults and aren't covered.
 _SERIALIZABLE_SPECS: dict[str, type[KnobSpec]] = {
     cls.__name__: cls
-    for cls in (IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob, StringListKnob)
+    for cls in (IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob, StringListKnob, DatetimeKnob)
 }
 
 

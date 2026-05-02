@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 )
 
 from SciQLop.core.knobs import (
-    KnobSpec, StringKnob, IntKnob, FloatKnob, BoolKnob, StringListKnob,
+    KnobSpec, StringKnob, IntKnob, FloatKnob, BoolKnob, StringListKnob, DatetimeKnob,
 )
 
 
@@ -14,6 +14,7 @@ _TYPE_OPTIONS = (
     ("Text", "string"),
     ("Integer", "int"),
     ("Number", "float"),
+    ("Date/Time", "datetime"),
     ("Yes/No", "bool"),
     ("Tags", "tags"),
 )
@@ -72,6 +73,8 @@ class AddAttributeDialog(QDialog):
             return IntKnob(name=name, default=0)
         if type_id == "float":
             return FloatKnob(name=name, default=0.0)
+        if type_id == "datetime":
+            return DatetimeKnob(name=name, default="")
         if type_id == "bool":
             return BoolKnob(name=name, default=False)
         if type_id == "tags":
