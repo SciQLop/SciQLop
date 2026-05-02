@@ -8,11 +8,26 @@ from PySide6.QtCore import QAbstractTableModel, QModelIndex, QSortFilterProxyMod
 from ..backend.provider import Capability, CatalogEvent
 
 
+_SCI_LOWER = 1e-3
+_SCI_UPPER = 1e6
+
+
+def _format_float(value: float) -> str:
+    """Format a float for display: scientific when very small or very large,
+    general otherwise. Default precision is 6 significant digits."""
+    if value == 0.0:
+        return "0"
+    abs_v = abs(value)
+    if abs_v < _SCI_LOWER or abs_v >= _SCI_UPPER:
+        return f"{value:.6e}"
+    return f"{value:.6g}"
+
+
 def _format_meta_value(value: Any) -> str:
     if isinstance(value, bool) or value is None:
         return str(value) if value is not None else ""
     if isinstance(value, Real) and not isinstance(value, int):
-        return f"{float(value):.6g}"
+        return _format_float(float(value))
     if isinstance(value, (list, tuple, set)):
         return ", ".join(str(v) for v in value)
     if isinstance(value, str):
