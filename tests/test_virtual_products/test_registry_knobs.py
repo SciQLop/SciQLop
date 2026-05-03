@@ -32,10 +32,13 @@ def test_mutablecallback_after_call_still_invoked():
         return ("ok", fft)
 
     cb = MutableCallback(f)
-    cb.after_call = lambda r, e: received.update(result=r, elapsed=e)
+    cb.after_call = lambda r, e, start, stop: received.update(
+        result=r, elapsed=e, start=start, stop=stop)
     cb(0.0, 1.0, fft=128)
     assert received["result"] == ("ok", 128)
     assert received["elapsed"] >= 0
+    assert received["start"] == 0.0
+    assert received["stop"] == 1.0
 
 
 def test_registry_marks_signature_changed_when_knob_added():

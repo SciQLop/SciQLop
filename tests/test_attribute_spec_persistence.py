@@ -17,13 +17,14 @@ def _drain(qapp, rounds=15):
 
 @pytest.fixture(scope="module")
 def tscat_provider(qapp):
-    """Module-scoped tscat provider. Triggers backend init once (alembic
-    raises noise on its first run, but the second action succeeds)."""
+    """Module-scoped tscat provider. Backend pre-initialized in conftest."""
     from tscat_gui.tscat_driver.model import tscat_model
     tscat_model.tscat_root()
     from SciQLop.plugins.tscat_catalogs.tscat_provider import TscatCatalogProvider
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
     provider = TscatCatalogProvider()
     yield provider
+    CatalogRegistry.instance().unregister(provider)
 
 
 @pytest.mark.xfail(reason="Absorbs the first-run alembic Qt-event-loop noise; "

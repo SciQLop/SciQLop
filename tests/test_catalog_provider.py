@@ -853,18 +853,27 @@ def _load_cocat_provider_module():
 
 
 class _FakeCocatEvent:
-    def __init__(self, uuid, start, stop):
+    def __init__(self, uuid, start, stop, attributes=None):
         self.uuid = uuid
         self.start = start
         self.stop = stop
+        self.attributes = attributes or {}
         self._range_cbs = []
         self._delete_cbs = []
+        self._set_attr_cbs = []
+        self._remove_attr_cbs = []
 
     def on_change_range(self, cb):
         self._range_cbs.append(cb)
 
     def on_delete(self, cb):
         self._delete_cbs.append(cb)
+
+    def on_set_attributes(self, cb):
+        self._set_attr_cbs.append(cb)
+
+    def on_remove_attributes(self, cb):
+        self._remove_attr_cbs.append(cb)
 
     @property
     def range(self):
@@ -985,6 +994,7 @@ def _make_cocat_provider():
     CatalogProvider.__init__(provider, name="Shared")
     provider._url = ""
     provider._catalog_map = {}
+    provider._cocat_catalogues = {}
     provider._available_rooms = ["room1"]
     provider._default_room_id = "room1"
     provider._connected = True
@@ -1003,6 +1013,7 @@ def test_cocat_create_catalog_preserves_subpath(qtbot, qapp):
     CatalogProvider.__init__(provider, name="Shared")
     provider._url = ""
     provider._catalog_map = {}
+    provider._cocat_catalogues = {}
     provider._available_rooms = ["room1"]
     provider._default_room_id = "room1"
     provider._connected = True
@@ -1025,6 +1036,7 @@ def test_cocat_load_room_catalogs_restores_subpath(qtbot, qapp):
     CatalogProvider.__init__(provider, name="Shared")
     provider._url = ""
     provider._catalog_map = {}
+    provider._cocat_catalogues = {}
     provider._available_rooms = ["room1"]
     provider._default_room_id = "room1"
     provider._connected = True

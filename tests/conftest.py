@@ -66,6 +66,14 @@ def pytest_configure(config):
     if platform.system() == "Linux":
         os.environ["QT_QPA_PLATFORM"] = "xcb"
 
+    # Pre-initialize tscat's sqlite backend on the main thread so its alembic
+    # migration runs exactly once. tscat.base.backend() is a lazy unsynchronized
+    # singleton; the tscat_gui driver QThread races the test thread on first
+    # access and re-runs the migration ("table alembic_version already exists"
+    # / "not an error" on retry). Touching it here pins the init to one thread.
+    from tscat.base import backend as _tscat_backend
+    _tscat_backend()
+
 
 @pytest.fixture(scope="session")
 def qapp_cls():
@@ -114,6 +122,30 @@ def _clean_vp_state():
     _cleanup_vp_state()
     yield
     _cleanup_vp_state()
+
+
+@pytest.fixture(autouse=True)
+def _isolate_catalog_registry():
+    """Snapshot/restore the global CatalogRegistry around each test.
+
+    Catalog providers self-register in their __init__. Tests that instantiate
+    a provider ad-hoc (e.g. ``TscatCatalogProvider()`` in
+    ``test_catalog_attribute_spec.py``) leave the instance in the singleton
+    registry forever, and ``CatalogService._find_provider`` returns the FIRST
+    provider matching the name — so later tests using a freshly-built provider
+    end up routing through the leaked one and miss the expected signals.
+    Snapshot before, restore after, so module-scoped fixture providers stay
+    intact while function-local providers don't bleed across.
+    """
+    import sys
+    reg_mod = sys.modules.get("SciQLop.components.catalogs.backend.registry")
+    if reg_mod is None:
+        yield
+        return
+    registry = reg_mod.CatalogRegistry.instance()
+    snapshot = set(id(p) for p in registry._providers)
+    yield
+    registry._providers[:] = [p for p in registry._providers if id(p) in snapshot]
 
 
 def pytest_unconfigure(config):

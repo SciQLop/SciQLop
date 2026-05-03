@@ -109,14 +109,14 @@ class TestLayerWithKnobsDeletion:
         qtbot.wait(50)
 
         assert len(renderer._hlines) >= 1
-        assert len(renderer._visual_knob_items) >= 1
+        assert renderer._visual_knob_dispose is not None
 
         renderer._knob_inspector_ext.deleteLater()
         qtbot.wait(100)
 
         assert renderer._disposed is True
         assert renderer._hlines == []
-        assert renderer._visual_knob_items == []
+        assert renderer._visual_knob_dispose is None
         assert renderer not in getattr(plot, "_layer_renderers", [])
 
 

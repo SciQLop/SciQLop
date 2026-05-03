@@ -462,22 +462,21 @@ def test_movable_hline_syncs_from_state(sciqlop_plot, qtbot):
 
 def test_create_plot_items_wires_both_types(sciqlop_plot, qtbot):
     from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
-    from SciQLop.components.plotting.ui.knob_inspector.plot_items import (
-        create_plot_items, _DataSpan, _MovableHLine,
-    )
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import create_plot_items
 
     specs = [
         TimeRangeKnob(name="window"),
         ThresholdKnob(name="thr", default=5.0),
     ]
     state = GraphKnobState(specs)
-    items = create_plot_items(sciqlop_plot, state)
+    dispose = create_plot_items(sciqlop_plot, state)
+    assert callable(dispose)
 
-    assert len(items) == 2
-    assert isinstance(items[0], _DataSpan)
-    assert isinstance(items[1], _MovableHLine)
-    for item in items:
-        item.cleanup()
+    state.set_value("thr", 7.5)
+    state.set_value("window", SciQLopPlotRange(110.0, 190.0))
+    qtbot.wait(20)
+
+    dispose()
 
 
 def test_resolve_range_defaults_injects_missing_defaults():
@@ -514,5 +513,6 @@ def test_create_plot_items_empty_for_non_visual_specs(sciqlop_plot, qtbot):
 
     specs = [FloatKnob(name="x", default=1.0), IntKnob(name="n", default=10)]
     state = GraphKnobState(specs)
-    items = create_plot_items(sciqlop_plot, state)
-    assert items == []
+    dispose = create_plot_items(sciqlop_plot, state)
+    assert callable(dispose)
+    dispose()

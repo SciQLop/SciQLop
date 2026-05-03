@@ -30,11 +30,16 @@ def _process_events(qapp, rounds=15):
 
 @pytest.fixture(scope="module")
 def tscat_provider(qapp):
+    # tscat backend is pre-initialized in conftest.py to dodge a thread race
+    # between the driver QThread and any test thread.
     from tscat_gui.tscat_driver.model import tscat_model
     tscat_model.tscat_root()
+    _process_events(qapp)
     from SciQLop.plugins.tscat_catalogs.tscat_provider import TscatCatalogProvider
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
     provider = TscatCatalogProvider()
     yield provider
+    CatalogRegistry.instance().unregister(provider)
 
 
 @pytest.fixture
