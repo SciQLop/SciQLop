@@ -34,6 +34,7 @@ class ColumnVisibilityPopover(QFrame):
         self.setWindowFlags(Qt.WindowType.Popup)
 
         self._entries: list[ColumnEntry] = list(entries)
+        self._last_visible: dict[str, bool] = {e.key: e.visible for e in entries}
 
         self._search = QLineEdit(self)
         self._search.setPlaceholderText("Filter columns...")
@@ -115,6 +116,9 @@ class ColumnVisibilityPopover(QFrame):
     def _on_item_changed(self, item: QStandardItem) -> None:
         key = item.data(Qt.ItemDataRole.UserRole)
         visible = item.checkState() == Qt.CheckState.Checked
+        if self._last_visible.get(key) == visible:
+            return
+        self._last_visible[key] = visible
         self.visibility_changed.emit(key, visible)
 
     def _emit_order(self) -> None:

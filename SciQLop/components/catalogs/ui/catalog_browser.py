@@ -285,6 +285,8 @@ class CatalogBrowser(QWidget):
         node = self._tree_model.node_from_index(source_index)
         if node is self._tree_model._root or node.is_placeholder:
             return
+        if node.catalog is not None and node.catalog is self._current_catalog:
+            return
         # Disconnect from previously connected provider
         if self._events_changed_provider is not None:
             try:
@@ -759,9 +761,8 @@ class CatalogBrowser(QWidget):
             lambda: self._apply_color_mapper(catalog, ColorMapper())
         )
 
-        events = catalog.provider.events(catalog)
         columns: set[str] = set()
-        for event in events[:200]:
+        for event in self._event_model._events[:200]:
             columns.update(event.meta.keys())
 
         if columns:

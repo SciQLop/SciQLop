@@ -63,6 +63,7 @@ class EventTableModel(QAbstractTableModel):
         self._catalog = catalog
         self._editable = (provider is not None and catalog is not None
                           and Capability.EDIT_EVENTS in provider.capabilities(catalog))
+        self._connect_provider_meta_signal()
         self.endResetModel()
 
     def set_events(self, events: list[CatalogEvent]) -> None:
@@ -74,7 +75,6 @@ class EventTableModel(QAbstractTableModel):
             keys.update(e.meta.keys())
         self._meta_keys = sorted(keys)
         self._connect_events()
-        self._connect_provider_meta_signal()
         self.endResetModel()
 
     def _connect_events(self) -> None:

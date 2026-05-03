@@ -149,7 +149,8 @@ class EventTableDelegate(QStyledItemDelegate):
             t: type = datetime
         else:
             key = self._source_model._meta_keys[source_col - meta_offset]
-            values = [e.meta.get(key) for e in self._source_model._events]
+            sample = self._source_model._events[:100]
+            values = [e.meta.get(key) for e in sample]
             t = _infer_column_type(values)
         self._column_types[source_col] = t
         return t

@@ -127,6 +127,7 @@ class CatalogProvider(QObject):
         self._name = name
         self._events: dict[str, list[CatalogEvent]] = {}
         self._dirty_catalogs: set[str] = set()
+        self._needs_sort: set[str] = set()
         self._range_connections: dict[str, list[tuple]] = {}
         self._attribute_specs: dict[str, dict[str, "KnobSpec"]] = {}  # catalog_uuid → {key: spec}
         from .registry import CatalogRegistry
@@ -141,6 +142,7 @@ class CatalogProvider(QObject):
 
     def events(self, catalog: Catalog, start: datetime | None = None,
                stop: datetime | None = None) -> list[CatalogEvent]:
+        self._ensure_sorted(catalog.uuid)
         event_list = self._events.get(catalog.uuid, [])
         if start is None and stop is None:
             return list(event_list)
@@ -149,6 +151,14 @@ class CatalogProvider(QObject):
         hi = len(event_list) if stop is None else bisect.bisect_right(event_list, stop, key=key)
         return event_list[lo:hi]
 
+    def _ensure_sorted(self, catalog_uuid: str) -> None:
+        if catalog_uuid not in self._needs_sort:
+            return
+        event_list = self._events.get(catalog_uuid)
+        if event_list is not None:
+            event_list.sort(key=lambda e: e.start)
+        self._needs_sort.discard(catalog_uuid)
+
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
         return set()
 
@@ -156,22 +166,39 @@ class CatalogProvider(QObject):
         """Return the typed spec (`KnobSpec`) for an event metadata attribute,
         or ``None`` if the provider has no schema for *key* (free-form).
 
-        User-declared specs (set via :meth:`set_attribute_spec`) take precedence
-        over any built-in/hardcoded schema. Subclasses overriding this method
-        SHOULD call ``super().attribute_spec(...)`` first and only fall back to
-        their built-ins when it returns ``None``.
+        Resolution order:
+          1. User-declared specs (set via :meth:`set_attribute_spec`).
+          2. Built-in defaults from :meth:`_default_attribute_spec` (e.g. rating,
+             author, tags) shared across all providers.
+          3. Subclass-specific overrides (when subclasses provide their own).
 
-        The *catalog* argument is part of the contract because schemas may
-        differ per catalog — e.g. a cocat room can carry its own per-room
-        schema, or a future tscat catalog may pin a project-specific rating
-        scale.
+        Subclasses overriding this method SHOULD call
+        ``super().attribute_spec(...)`` first and only fall back to their
+        built-ins when it returns ``None``.
 
         Used by the editor delegate to pick a constrained widget (range-bound
         spinbox, combo, …) instead of inferring the type from current values.
         """
-        if catalog is None:
-            return None
-        return self._attribute_specs.get(catalog.uuid, {}).get(key)
+        if catalog is not None:
+            user_spec = self._attribute_specs.get(catalog.uuid, {}).get(key)
+            if user_spec is not None:
+                return user_spec
+        return self._default_attribute_spec(key)
+
+    @staticmethod
+    def _default_attribute_spec(key: str):
+        """Built-in spec defaults shared across providers."""
+        from SciQLop.core.knobs import IntKnob, StringKnob, StringListKnob
+        if key == "rating":
+            return IntKnob(name=key, min=1, max=5, default=3,
+                           description="Event rating (1-5)")
+        if key == "author":
+            return StringKnob(name=key, default="",
+                              description="Event author")
+        if key == "tags":
+            return StringListKnob(name=key, default=(),
+                                  description="Free-form tags")
+        return None
 
     def set_attribute_spec(self, catalog: Catalog, key: str, spec) -> None:
         """Declare a user-defined schema for an event metadata attribute.
@@ -238,6 +265,7 @@ class CatalogProvider(QObject):
     def _add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         if catalog.uuid not in self._events:
             self._events[catalog.uuid] = []
+        self._ensure_sorted(catalog.uuid)
         bisect.insort(self._events[catalog.uuid], event, key=lambda e: e.start)
         slot = lambda ev=event, cat=catalog: self._on_event_range_changed(ev, cat)
         event.range_changed.connect(slot)
@@ -325,12 +353,13 @@ class CatalogProvider(QObject):
         self._range_connections.pop(catalog.uuid, None)
         self._events.pop(catalog.uuid, None)
         self._dirty_catalogs.discard(catalog.uuid)
+        self._needs_sort.discard(catalog.uuid)
         self.catalog_removed.emit(catalog)
 
     def _on_event_range_changed(self, event: CatalogEvent, catalog: Catalog) -> None:
         event_list = self._events.get(catalog.uuid, [])
         if event in event_list:
-            event_list.sort(key=lambda e: e.start)
+            self._needs_sort.add(catalog.uuid)
             self.mark_dirty(catalog)
 
     def mark_dirty(self, catalog: Catalog) -> None:

@@ -207,23 +207,6 @@ class TscatCatalogProvider(CatalogProvider):
             Capability.SAVE,
         }
 
-    def attribute_spec(self, catalog: Catalog, key: str):
-        # User-declared specs take precedence over the built-in defaults
-        user_spec = super().attribute_spec(catalog, key)
-        if user_spec is not None:
-            return user_spec
-        from SciQLop.core.knobs import IntKnob, StringKnob, StringListKnob
-        if key == "rating":
-            return IntKnob(name=key, min=1, max=5, default=3,
-                           description="Event rating (1-5)")
-        if key == "author":
-            return StringKnob(name=key, default="",
-                              description="Event author")
-        if key == "tags":
-            return StringListKnob(name=key, default=(),
-                                  description="Free-form tags")
-        return None
-
     def create_catalog(self, name: str, path: list[str] | None = None) -> Catalog:
         import uuid as _uuid
         self._ensure_clean_session()
@@ -390,7 +373,12 @@ class TscatCatalogProvider(CatalogProvider):
         if catalog.uuid in self._events:
             self._loading_uuids.discard(catalog.uuid)
             return
-        if catalog_model.rowCount() > 0:
+        try:
+            row_count = catalog_model.rowCount()
+        except RuntimeError:
+            self._loading_uuids.discard(catalog.uuid)
+            return
+        if row_count > 0:
             self._loading_uuids.discard(catalog.uuid)
             self._read_events_from_model(catalog, catalog_model)
         elif retries > 0:
