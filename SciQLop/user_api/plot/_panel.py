@@ -283,8 +283,19 @@ class PlotPanel:
             return self.plot_data(*args, **kwargs)
         return None
 
-    def remove_plot(self, plot_index):
-        pass
+    @on_main_thread
+    def remove_plot(self, plot_index: int) -> None:
+        from SciQLopPlots import SciQLopPlot
+        impl = self._get_impl_or_raise()
+        plots = impl.plots()
+        if not 0 <= plot_index < len(plots):
+            raise IndexError(f"plot_index {plot_index} out of range (0..{len(plots) - 1})")
+        target_name = plots[plot_index].objectName()
+        for child in impl.findChildren(SciQLopPlot):
+            if child.objectName() == target_name:
+                impl.remove_plot(child)
+                return
+        raise RuntimeError(f"plot at index {plot_index} not found among children")
 
     @property
     @on_main_thread
@@ -341,7 +352,7 @@ class PlotPanel:
             else:
                 return None
 
-        return list(filter(lambda p: p is not None, map(wrap_plot, self._impl.plots())))
+        return list(filter(lambda p: p is not None, map(wrap_plot, self._get_impl_or_raise().plots())))
 
     @on_main_thread
     def save(self, path: str) -> None:

@@ -2,58 +2,22 @@ import importlib
 import importlib.metadata
 import os
 import traceback
-from typing import List
+from typing import List, Optional
 from types import SimpleNamespace
 from SciQLop.components.sciqlop_logging import getLogger
-
-from PySide6.QtCore import QRunnable, Slot, Signal, QThreadPool, QObject, QThread
 
 loaded_plugins = SimpleNamespace()
 
 log = getLogger(__name__)
 
 
-def plugins_folders() -> List[str]:
+def plugins_folders(settings: Optional["SciQLopPluginsSettings"] = None) -> List[str]:
     from SciQLop import plugins
     from ..settings import SciQLopPluginsSettings, USER_PLUGINS_FOLDERS
     bundled = os.path.dirname(os.path.realpath(plugins.__file__))
-    return [bundled, USER_PLUGINS_FOLDERS] + list(SciQLopPluginsSettings().extra_plugins_folders)
-
-
-class WorkerSignals(QObject):
-    result = Signal(object, object)
-
-
-class Worker(QRunnable):
-    '''
-    Worker thread
-
-    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
-
-    :param callback: The function callback to run on this worker thread. Supplied args and
-                     kwargs will be passed through to the runner.
-    :type callback: function
-    :param args: Arguments to pass to the callback function
-    :param kwargs: Keywords to pass to the callback function
-
-    '''
-
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-        log.info(f"Loading {fn.__name__} args={args} kwargs={kwargs}")
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = WorkerSignals()
-
-    @Slot()
-    def run(self):
-        try:
-            log.info(f"Loading {self.fn.__name__}")
-            self.signals.result.emit(*self.fn(*self.args, **self.kwargs))
-        except Exception as e:
-            log.error(f"Oups can't load {self.fn.__name__} , {e}")
-            log.error(f"Traceback: {traceback.format_exc()}")
+    if settings is None:
+        settings = SciQLopPluginsSettings()
+    return [bundled, USER_PLUGINS_FOLDERS] + list(settings.extra_plugins_folders)
 
 
 def import_from_path(module_name, file_path):
@@ -93,13 +57,6 @@ def load_plugin(path, name, main_window):
             log.error(f"Traceback: {traceback.format_exc()}")
     else:
         log.error(f"Oups can't load {name} , {mod}")
-
-
-def background_load(plugin, main_window):
-    log.info(f"Loading {plugin}")
-    w = Worker(load_module, plugin)
-    w.signals.result.connect(lambda name, mod: load_plugin(name, mod, main_window))
-    return QThreadPool.globalInstance().start(w)
 
 
 def list_plugins_as_modules(plugin_path):
@@ -145,7 +102,7 @@ def load_all(main_window):
     plugin_list = []
     ep_plugins = _discover_entry_point_plugins()
     with SciQLopPluginsSettings() as settings:
-        for folder in plugins_folders():
+        for folder in plugins_folders(settings):
             plugins = list_plugins(folder)
             log.info(f"Plugins found: {plugins}")
             for plugin in plugins:

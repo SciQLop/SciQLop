@@ -30,7 +30,7 @@ def _to_float64(a):
 
 
 def ensure_arrays_of_double(*args):
-    return (_to_float64(a) for a in args)
+    return tuple(_to_float64(a) for a in args)
 
 class Graph(Plottable):
     def __init__(self, impl):

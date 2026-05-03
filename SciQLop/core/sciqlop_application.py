@@ -96,6 +96,11 @@ def sciqlop_app() -> SciQLopApp:
         app = SciQLopApp(sys.argv)
     else:
         app = QtWidgets.QApplication.instance()
+    if not isinstance(app, SciQLopApp):
+        raise TypeError(
+            f"QApplication is {type(app).__name__}, expected SciQLopApp. "
+            "A foreign QApplication was created before SciQLop initialized."
+        )
     return app
 
 

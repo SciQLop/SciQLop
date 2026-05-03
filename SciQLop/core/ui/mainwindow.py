@@ -18,7 +18,7 @@ from SciQLop.components.plotting.ui.panel_container import PanelContainer
 from SciQLop.components.welcome import WelcomePage
 from SciQLop.core import TimeRange
 from SciQLop.core.sciqlop_application import sciqlop_app
-from SciQLop.core.unique_names import auto_name
+from SciQLop.core.unique_names import auto_name, release_name
 from SciQLop.components.workspaces import Workspace
 from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle
 from SciQLop.core.ui import Metrics
@@ -336,6 +336,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if panel:
             dw = self.dock_manager.findDockWidget(panel.name)
             if dw:
+                release_name(panel.name)
                 container = dw.takeWidget()
                 dw.closeDockWidget()
                 container.deleteLater()

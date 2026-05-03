@@ -27,10 +27,12 @@ def _ensure_migrated(ws_dir: str) -> bool:
     """Migrate workspace.json → workspace.sciqlop if needed. Returns True if manifest exists."""
     from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace, restore_legacy_json
     manifest_path = os.path.join(ws_dir, "workspace.sciqlop")
+    legacy_path = os.path.join(ws_dir, "workspace.json")
     if os.path.exists(manifest_path):
-        restore_legacy_json(ws_dir)
+        if not os.path.exists(legacy_path):
+            restore_legacy_json(ws_dir)
         return True
-    if os.path.exists(os.path.join(ws_dir, "workspace.json")):
+    if os.path.exists(legacy_path):
         migrate_workspace(ws_dir)
         return os.path.exists(manifest_path)
     return False
@@ -184,15 +186,16 @@ class WorkspaceManager(QObject):
         shutil.rmtree(workspace, ignore_errors=True)
 
     @Slot(str)
-    def duplicate_workspace(self, workspace: str, background: bool = False):
-        def duplicate(directory: str):
-            copy_dir = directory + "_copy"
-            shutil.copytree(directory, copy_dir)
-            manifest_path = os.path.join(copy_dir, "workspace.sciqlop")
-            manifest = WorkspaceManifest.load(manifest_path)
-            manifest.name = f"Copy of {manifest.name}"
-            manifest.save(manifest_path)
-        duplicate(workspace)
+    def duplicate_workspace(self, workspace: str):
+        copy_dir = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, uuid.uuid4().hex)
+        shutil.copytree(workspace, copy_dir)
+        manifest_path = os.path.join(copy_dir, "workspace.sciqlop")
+        manifest = WorkspaceManifest.load(manifest_path)
+        manifest.name = f"Copy of {manifest.name}"
+        manifest.default = False
+        manifest.save(manifest_path)
+        from SciQLop.sciqlop_app import switch_workspace
+        switch_workspace(copy_dir)
 
     @property
     def workspace(self) -> Workspace:

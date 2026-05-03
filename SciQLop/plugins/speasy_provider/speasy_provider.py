@@ -1,5 +1,5 @@
 import os
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from PySide6.QtGui import QIcon
 import threading
 import traceback
@@ -81,23 +81,32 @@ def _current_thread_id():
 
 
 class ThreadStorage:
-    _storage: Dict[int, Dict[str, Any]] = {}
+    """Drop-in replacement for threading.local() that survives thread death.
+
+    Works around https://github.com/grantjenks/python-diskcache/issues/295:
+    diskcache stores per-thread SQLite connections on `_cache._data._local`,
+    and recycled pool threads (same native id, fresh threading.local state)
+    cause connection thrash and SQLite lock races. Keying off
+    threading.get_native_id() in a process-global dict lets the connection
+    persist across thread death and be reused.
+
+    diskcache only sets `pid` and `con` here — that's all the surface needed.
+    """
 
     def __init__(self):
-        self._storage = {}
+        object.__setattr__(self, "_storage", {})
 
     def __getattr__(self, item):
-        return self._storage.get(_current_thread_id(), {}).get(item, None)
+        return self._storage.get(_current_thread_id(), {}).get(item)
 
     def __setattr__(self, key, value):
-        tid = _current_thread_id()
-        storage = self._storage
-        if tid not in storage:
-            storage[tid] = {}
-        storage[tid][key] = value
+        self._storage.setdefault(_current_thread_id(), {})[key] = value
+
+    def __delattr__(self, key):
+        self._storage.get(_current_thread_id(), {}).pop(key, None)
 
 
-def get_components(param: ParameterIndex) -> List[str] or None:
+def get_components(param: ParameterIndex) -> Optional[List[str]]:
     import ast
     if param.spz_provider() == 'amda':
         components = list(

@@ -9,12 +9,21 @@ def reserve_name(name: str) -> None:
     _all_reserved_names_.add(name)
 
 
+def release_name(name: str) -> None:
+    """
+    Release a previously reserved name so it can be reused.
+    """
+    _all_reserved_names_.discard(name)
+
+
 def make_simple_incr_name(base: str, sep: str = "") -> str:
     index = _used_names_.get(base, 0)
     while f'{base}{sep}{index}' in _all_reserved_names_:
         index += 1
+    name = f'{base}{sep}{index}'
     _used_names_[base] = index + 1
-    return f'{base}{sep}{index}'
+    _all_reserved_names_.add(name)
+    return name
 
 
 def auto_name(base: str, sep: str = "", name=None) -> str:

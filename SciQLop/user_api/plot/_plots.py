@@ -439,22 +439,30 @@ class ProjectionPlot:
 
     def __init__(self, impl):
         assert is_projection_plot(impl)
-        self._impl = impl
+        self._impl: Optional[_SciQLopNDProjectionPlot] = impl
+        self._impl.destroyed.connect(self._on_destroyed)
+
+    def _on_destroyed(self):
+        self._impl = None
 
     def _get_impl_or_raise(self) -> _SciQLopNDProjectionPlot:
         if self._impl is None:
             raise ValueError("The plot does not exist anymore.")
         return self._impl
 
+    @on_main_thread
     def set_x_range(self, min: float, max: float):
         pass
 
+    @on_main_thread
     def set_y_range(self, min: float, max: float):
         pass
 
+    @on_main_thread
     def set_x_scale_type(self, scale: ScaleType):
         pass
 
+    @on_main_thread
     def set_y_scale_type(self, scale: ScaleType):
         pass
 

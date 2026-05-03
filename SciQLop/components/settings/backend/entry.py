@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from enum import Enum
 import yaml
 from platformdirs import *
@@ -107,6 +107,8 @@ class ConfigEntry(BaseModel):
 
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
+        if not getattr(self, "_initialized_", False):
+            return
         if name in self.__class__.model_fields:
             self.__class__._notifier.changed.emit(name, value)
 
@@ -145,7 +147,13 @@ class ConfigEntry(BaseModel):
                 log.error(f"Error loading settings from {config_file}: {e}")
         if self.__class__._keyring_ is not None:
             _load_keyring(self.__class__._keyring_, data)
-        super().__init__(**data)
+        try:
+            super().__init__(**data)
+        except ValidationError as e:
+            log.warning(f"Invalid settings in {config_file}, falling back to defaults: {e}")
+            super().__init__()
+            save = True
+        object.__setattr__(self, "_initialized_", True)
         if save:
             self.save()
 

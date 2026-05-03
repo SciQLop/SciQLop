@@ -498,20 +498,30 @@ class PluginsDictDelegate(SettingDelegate):
         self._inner_layout = layout
         self._load_plugin_descriptions()
 
-    def _load_plugin_descriptions(self):
+    _DESCRIPTIONS_CACHE: dict[str, str] | None = None
+
+    @classmethod
+    def _build_descriptions_cache(cls) -> dict[str, str]:
         from SciQLop.components.plugins.backend.loader.loader import plugins_folders, list_plugins, _discover_entry_point_plugins
         from SciQLop.components.plugins.backend.loader.plugin_desc import PluginDesc
         import os
+        cache: dict[str, str] = {}
         for folder in plugins_folders():
             for name in list_plugins(folder):
                 try:
                     desc = PluginDesc.from_json(os.path.join(folder, name, "plugin.json"))
-                    self._descriptions[name] = desc.description
+                    cache[name] = desc.description
                 except Exception:
                     pass
         for name, ep in _discover_entry_point_plugins().items():
-            if name not in self._descriptions:
-                self._descriptions[name] = f"Installed package: {ep.value}"
+            cache.setdefault(name, f"Installed package: {ep.value}")
+        return cache
+
+    def _load_plugin_descriptions(self):
+        cls = type(self)
+        if cls._DESCRIPTIONS_CACHE is None:
+            cls._DESCRIPTIONS_CACHE = cls._build_descriptions_cache()
+        self._descriptions = dict(cls._DESCRIPTIONS_CACHE)
 
     def _add_plugin_row(self, plugin_name: str, enabled: bool):
         desc = self._descriptions.get(plugin_name, "")
