@@ -1,36 +1,41 @@
 from tests.helpers import *
-import os
-import pytest
 from PySide6.QtWidgets import QTreeView
-from PySide6.QtCore import Qt
 
 
 class TestDragAndDropWorkflow:
-    """Open product tree, drag a product onto a plot panel."""
+    """Drop a product onto a plot panel via the registered DnD callback.
 
-    @pytest.mark.xfail(
-        reason="Drag-and-drop simulation is unreliable and test_plugin is disabled by default",
-        strict=False,
-    )
-    @pytest.mark.skipif(
-        "GITHUB_ACTIONS" in os.environ,
-        reason="Drag and drop does not work in GitHub Actions",
-    )
-    def test_drag_product_to_panel(self, qapp, main_window, qtbot, plot_panel):
-        from PySide6QtAds import ads
+    Skips the OS-level mouse/QDrag handshake (which is racy under Xvfb and
+    blocks the test event loop once QDrag.exec() opens its modal pump) and
+    exercises the rest of the chain end-to-end: ProductsModel.mimeData()
+    encodes the dragged index, the panel's ProductDnDCallback decodes it,
+    looks up the product node, and dispatches to plot_product.
+    """
 
-        b = main_window.dock_manager.autoHideSideBar(ads.SideBarLocation.SideBarLeft).tab(0)
-        qtbot.mouseClick(b, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, b.rect().center())
-        qtbot.wait(100)
+    def test_drag_product_to_panel(self, qapp, main_window, qtbot, plot_panel, test_plugin):
+        from SciQLopPlots import PlotType, ProductsModel
 
         tree: QTreeView = main_window.productTree.findChild(QTreeView)
         tree.expandAll()
+        qtbot.wait(50)
+        proxy = tree.model()
+        proxy.setFilterFixedString("TestMultiComponent")
+        qtbot.wait(50)
+        proxy_index = proxy.index(0, 0, proxy.index(0, 0))
+        assert proxy_index.isValid(), "filter did not match TestMultiComponent — is test_plugin loaded?"
+        src_index = proxy.mapToSource(proxy_index)
+        # Use ProductsModel.instance() rather than proxy.sourceModel(): the
+        # latter returns a Python wrapper that takes ownership and deleteLaters
+        # the singleton C++ object when it goes out of scope, which corrupts
+        # subsequent tests that rely on the global ProductsModel.
+        mime = ProductsModel.instance().mimeData([src_index])
+        assert mime is not None and mime.formats(), "mimeData returned nothing for the product index"
+
+        panel_impl = plot_panel._impl
+        panel_impl.create_plot(0, PlotType.TimeSeries)
+        qtbot.wait(50)
+        target_plot = panel_impl.plots()[0]
+        panel_impl._product_plot_callback.call(target_plot, mime)
         qtbot.wait(100)
-        model = tree.model()
-        model.setFilterFixedString("TestMultiComponent")
-        qtbot.wait(100)
-        index = model.index(0, 0, model.index(0, 0))
-        drag_and_drop(qapp, qtbot, tree, index, plot_panel._impl)
-        for _ in range(10):
-            qtbot.wait(10)
+
         assert len(plot_panel.plots) > 0
