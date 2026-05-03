@@ -105,13 +105,16 @@ def _get_or_create_registry(plot) -> Optional["_PlotHintsRegistry"]:
     if key is None:
         return _PlotHintsRegistry(plot)
     reg = _PLOT_REGISTRIES.get(key)
+    if reg is not None and not shiboken6.isValid(reg._plot):
+        _PLOT_REGISTRIES.pop(key, None)
+        reg = None
     if reg is None:
         reg = _PlotHintsRegistry(plot)
         _PLOT_REGISTRIES[key] = reg
         try:
             plot.destroyed.connect(lambda *_, k=key: _PLOT_REGISTRIES.pop(k, None))
         except (AttributeError, RuntimeError):
-            log.debug("plot has no destroyed signal; registry leaks until app exit")
+            log.debug("plot has no destroyed signal; relying on isValid eviction")
     return reg
 
 
@@ -148,7 +151,11 @@ class _PostFetchHintsApplier:
         self._applied = True
 
 
-class _plot_product_callback:
+class _ProductCallbackBase:
+    """Shared state for product-fetch callbacks: provider, node, optional
+    post-fetch hints applier, knob state. Subclasses override ``__call__``
+    to shape the returned data and handle errors with the right empty value."""
+
     def __init__(self, provider: DataProvider, node,
                  post_fetch: Optional["_PostFetchHintsApplier"] = None,
                  knob_state=None):
@@ -156,18 +163,26 @@ class _plot_product_callback:
         self.node = node
         self._post_fetch = post_fetch
         self.knob_state = knob_state
-        self.on_data_fetched = None
 
     def _knob_values(self):
         return self.knob_state.values if self.knob_state is not None else None
 
+    def _fetch(self, start, stop):
+        observer = self._post_fetch.observe if self._post_fetch is not None else None
+        return self.provider._get_data(self.node, start, stop,
+                                       on_variable=observer,
+                                       knobs=self._knob_values())
+
+
+class _plot_product_callback(_ProductCallbackBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.on_data_fetched = None
+
     def __call__(self, start, stop):
         t0 = _time.monotonic() if self.on_data_fetched is not None else 0
         try:
-            observer = self._post_fetch.observe if self._post_fetch is not None else None
-            result = self.provider._get_data(self.node, start, stop,
-                                             on_variable=observer,
-                                             knobs=self._knob_values())
+            result = self._fetch(start, stop)
         except Exception as e:
             log.error(f"Error getting data for {self.node}: {e}")
             return []
@@ -188,18 +203,10 @@ def _y_is_descending(y):
         return None
 
 
-class _specgram_callback:
-    def __init__(self, provider: DataProvider, node,
-                 post_fetch: Optional["_PostFetchHintsApplier"] = None,
-                 knob_state=None):
-        self.provider = provider
-        self.node = node
+class _specgram_callback(_ProductCallbackBase):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._y_is_descending_ = None
-        self._post_fetch = post_fetch
-        self.knob_state = knob_state
-
-    def _knob_values(self):
-        return self.knob_state.values if self.knob_state is not None else None
 
     def _y_is_descending(self, y):
         if self._y_is_descending_ is None:
@@ -209,10 +216,7 @@ class _specgram_callback:
 
     def __call__(self, start, stop):
         try:
-            observer = self._post_fetch.observe if self._post_fetch is not None else None
-            x, y, z = self.provider._get_data(self.node, start, stop,
-                                              on_variable=observer,
-                                              knobs=self._knob_values())
+            x, y, z = self._fetch(start, stop)
             if self._y_is_descending(y):
                 if len(y.shape) == 1:
                     y = y[::-1].copy()
@@ -222,7 +226,8 @@ class _specgram_callback:
             return x, y, z
         except Exception as e:
             log.error(f"Error getting data for {self.node}: {e}")
-            return []
+            empty = np.empty(0, dtype=np.float64)
+            return empty, empty, empty
 
 
 def _theme_from_palette(palette: dict[str, str], parent=None) -> SciQLopTheme:
@@ -313,9 +318,9 @@ def _attach_knob_state(provider, node, callback, r, target=None):
     refetch_slot = lambda *_: _trigger_refetch(graph)
     graph._knobs_slot = refetch_slot
     state.knobs_changed.connect(refetch_slot)
-    graph._visual_knob_items = []
+    graph._visual_knob_dispose = None
     if plot is not None:
-        graph._visual_knob_items = create_plot_items(plot, state)
+        graph._visual_knob_dispose = create_plot_items(plot, state)
     if hasattr(graph, "add_inspector_extension"):
         ext = KnobInspectorExtension(state, parent=graph)
         graph._knob_inspector_ext = ext
@@ -328,12 +333,10 @@ def _dispose_graph_knobs(graph):
 
     Removes the on-plot knob handles (drag spans/lines) and disconnects the
     re-fetch slot. Leaves the graph itself alone — only its parameter UI goes."""
-    for item in getattr(graph, "_visual_knob_items", None) or []:
-        try:
-            item.cleanup()
-        except Exception:
-            log.debug("plot item cleanup failed", exc_info=True)
-    graph._visual_knob_items = []
+    dispose = getattr(graph, "_visual_knob_dispose", None)
+    if dispose is not None:
+        dispose()
+    graph._visual_knob_dispose = None
     state = getattr(graph, "_knob_state", None)
     slot = getattr(graph, "_knobs_slot", None)
     if state is not None and slot is not None:
@@ -398,43 +401,45 @@ def _resolve_plot_target(p, kwargs):
     return p, None
 
 
+def _post_plot(r, provider, node, callback, target, product_path_str, existing_plot):
+    if not hasattr(r, '__iter__') and existing_plot is not None:
+        r = (existing_plot, r)
+    _set_product_path(r, product_path_str)
+    callback._post_fetch = _register_graph_hints(provider, node, r, target)
+    _attach_knob_state(provider, node, callback, r, target)
+    return r
+
+
 def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):
-    if isinstance(product, list):
-        node = ProductsModel.node(product)
-        if node is not None:
-            provider = providers.get(node.provider())
-            log.debug(f"Provider: {provider}")
-            if provider is not None:
-                product_path_str = "//".join(product)
-                target, existing_plot = _resolve_plot_target(p, kwargs)
-                log.debug(f"Parameter type: {node.parameter_type()}")
-                if node.parameter_type() in (ParameterType.Scalar, ParameterType.Vector, ParameterType.Multicomponents):
-                    callback = _plot_product_callback(provider, node)
-                    labels = listify(provider.labels(node))
-                    log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
-                    r = target.plot(callback, labels=labels, **kwargs)
-                    if hasattr(r, '__iter__'):
-                        r[1].set_name(node.name())
-                    else:
-                        r.set_name(node.name())
-                        if existing_plot is not None:
-                            r = (existing_plot, r)
-                    _set_product_path(r, product_path_str)
-                    callback._post_fetch = _register_graph_hints(provider, node, r, target)
-                    _attach_knob_state(provider, node, callback, r, target)
-                    return r
-                elif node.parameter_type() == ParameterType.Spectrogram:
-                    callback = _specgram_callback(provider, node)
-                    log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
-                    r = target.plot(callback, name=node.name(), graph_type=GraphType.ColorMap, y_log_scale=True,
-                                    z_log_scale=True, **kwargs)
-                    if not hasattr(r, '__iter__') and existing_plot is not None:
-                        r = (existing_plot, r)
-                    _set_product_path(r, product_path_str)
-                    callback._post_fetch = _register_graph_hints(provider, node, r, target)
-                    _attach_knob_state(provider, node, callback, r, target)
-                    return r
-    log.debug(f"Product not found: {product}")
+    if not isinstance(product, list):
+        return None
+    node = ProductsModel.node(product)
+    if node is None:
+        log.debug(f"Product not found: {product}")
+        return None
+    provider = providers.get(node.provider())
+    log.debug(f"Provider: {provider}")
+    if provider is None:
+        return None
+    product_path_str = "//".join(product)
+    target, existing_plot = _resolve_plot_target(p, kwargs)
+    log.debug(f"Parameter type: {node.parameter_type()}")
+    if node.parameter_type() in (ParameterType.Scalar, ParameterType.Vector, ParameterType.Multicomponents):
+        callback = _plot_product_callback(provider, node)
+        labels = listify(provider.labels(node))
+        log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
+        r = target.plot(callback, labels=labels, **kwargs)
+        if hasattr(r, '__iter__'):
+            r[1].set_name(node.name())
+        else:
+            r.set_name(node.name())
+        return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot)
+    if node.parameter_type() == ParameterType.Spectrogram:
+        callback = _specgram_callback(provider, node)
+        log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
+        r = target.plot(callback, name=node.name(), graph_type=GraphType.ColorMap,
+                        y_log_scale=True, z_log_scale=True, **kwargs)
+        return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot)
     return None
 
 
@@ -495,7 +500,7 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None,
 
     renderer = LayerRenderer(target, func, data_type=data_type,
                              scope=scope, panel=panel, parent=target)
-    renderer._visual_knob_items = []
+    renderer._visual_knob_dispose = None
     title = getattr(func, "__name__", "Layer")
     knob_host = panel if scope == "panel" and panel is not None else target
     ext = None
@@ -514,7 +519,7 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None,
             ext = KnobInspectorExtension(state, parent=renderer, title=title)
             renderer._knob_inspector_ext = ext
             knob_host.add_inspector_extension(ext)
-        renderer._visual_knob_items = create_plot_items(target, state)
+        renderer._visual_knob_dispose = create_plot_items(target, state)
     else:
         if hasattr(knob_host, "add_inspector_extension"):
             ext = LayerExtension(parent=renderer, title=title)
@@ -548,12 +553,10 @@ def _dispose_layer(renderer, target):
 
     Tears down visual knob items, the renderer's spans/hlines/markers, and
     drops the renderer from the plot's bookkeeping list."""
-    for item in getattr(renderer, "_visual_knob_items", None) or []:
-        try:
-            item.cleanup()
-        except Exception:
-            log.debug("plot item cleanup failed", exc_info=True)
-    renderer._visual_knob_items = []
+    dispose = getattr(renderer, "_visual_knob_dispose", None)
+    if dispose is not None:
+        dispose()
+    renderer._visual_knob_dispose = None
     renderers = getattr(target, "_layer_renderers", None)
     if renderers is not None and renderer in renderers:
         renderers.remove(renderer)

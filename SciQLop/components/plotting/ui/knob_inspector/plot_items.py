@@ -42,7 +42,10 @@ def _find_panel(plot) -> SciQLopMultiPlotPanel | None:
     while node is not None:
         if isinstance(node, SciQLopMultiPlotPanel):
             return node
-        node = node.parent()
+        try:
+            node = node.parent()
+        except RuntimeError:
+            return None
     return None
 
 
@@ -137,6 +140,11 @@ class _DataSpan:
                 self._reentry = False
 
     def cleanup(self):
+        if self._fraction is not None:
+            try:
+                self._panel.time_range_changed.disconnect(self._on_panel_range_changed)
+            except (RuntimeError, TypeError):
+                pass
         self._span.deleteLater()
 
 
@@ -180,7 +188,8 @@ class _MovableHLine:
 def create_plot_items(plot, state: GraphKnobState, panel=None):
     """Scan specs for visual knobs, create plot items, wire bidirectional sync.
     When `panel` is provided, TimeRangeKnobs become panel-wide spans visible
-    on every plot in the panel. Returns a list of items (for lifecycle management)."""
+    on every plot in the panel. Returns a `dispose` callable that tears down
+    the items AND disconnects them from `state.knobs_changed`."""
     items = []
     for spec in state.specs:
         if isinstance(spec, TimeRangeKnob):
@@ -188,10 +197,25 @@ def create_plot_items(plot, state: GraphKnobState, panel=None):
         elif isinstance(spec, ThresholdKnob):
             items.append(_MovableHLine(plot, spec, state))
 
+    slot = None
     if items:
         def _on_state_changed(values):
             for item in items:
                 item.update_from_state(values)
-        state.knobs_changed.connect(_on_state_changed)
+        slot = _on_state_changed
+        state.knobs_changed.connect(slot)
 
-    return items
+    def dispose():
+        if slot is not None:
+            try:
+                state.knobs_changed.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+        for item in items:
+            try:
+                item.cleanup()
+            except Exception:
+                log.debug("plot item cleanup failed", exc_info=True)
+        items.clear()
+
+    return dispose

@@ -144,7 +144,10 @@ class LayerRenderer(QObject):
 
     def _disconnect_watchers(self):
         if self._graph_list_connection is not None:
-            self._plot.graph_list_changed.disconnect(self._on_graph_list_changed)
+            try:
+                self._plot.graph_list_changed.disconnect(self._on_graph_list_changed)
+            except (RuntimeError, TypeError):
+                pass
             self._graph_list_connection = None
         self._clear_pending_connections()
 
