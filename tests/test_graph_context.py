@@ -267,3 +267,37 @@ def test_update_knobs_no_op_when_no_context(qtbot):
     g = _FakeGraph("g_no_ctx")
     update_knobs(g, {"a": 1})
     assert g.meta_data() == {}
+
+
+def test_graph_tooltip_speasy(qtbot):
+    from SciQLop.core.graph_context import attach_context, graph_tooltip
+    g = _FakeGraph("g_tt_speasy")
+    ctx = GraphContext(
+        kind="speasy", graph_id="g_tt_speasy", panel_name="P", plot_index=0,
+        graph_type="Line", speasy_id="amda/imf", provider_name="Speasy",
+        knobs={"resolution": "high"},
+    )
+    attach_context(g, ctx)
+    tip = graph_tooltip(g)
+    assert "amda/imf" in tip
+    assert "Speasy" in tip
+    assert "resolution='high'" in tip
+
+
+def test_graph_tooltip_no_context(qtbot):
+    from SciQLop.core.graph_context import graph_tooltip
+    g = _FakeGraph("g_tt_none")
+    assert graph_tooltip(g) == ""
+
+
+def test_graph_tooltip_vp(qtbot):
+    from SciQLop.core.graph_context import attach_context, graph_tooltip
+    g = _FakeGraph("g_tt_vp")
+    ctx = GraphContext(
+        kind="vp", graph_id="g_tt_vp", panel_name="P", plot_index=0,
+        graph_type="Line", vp_path="root/my_vp", provider_name="my_vp-1",
+    )
+    attach_context(g, ctx)
+    tip = graph_tooltip(g)
+    assert "root/my_vp" in tip
+    assert "Virtual" in tip

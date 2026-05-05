@@ -18,6 +18,7 @@ from SciQLop.components.plotting.backend.easy_provider import EasyProvider
 from SciQLop.core.graph_context import (
     attach_context, build_speasy_ctx, build_vp_ctx,
     build_static_ctx, build_function_ctx, GraphRichRefs,
+    graph_tooltip, update_knobs,
 )
 import weakref
 
@@ -324,6 +325,9 @@ def _attach_knob_state(provider, node, callback, r, target=None):
     refetch_slot = lambda *_: _trigger_refetch(graph)
     graph._knobs_slot = refetch_slot
     state.knobs_changed.connect(refetch_slot)
+    state.knobs_changed.connect(
+        lambda values, g=graph: update_knobs(g, dict(values))
+    )
     graph._visual_knob_dispose = None
     if plot is not None:
         graph._visual_knob_dispose = create_plot_items(plot, state)
@@ -417,6 +421,35 @@ def _post_plot(r, provider, node, callback, target, product_path_str, existing_p
     return r
 
 
+def _install_graph_context_ui(plot, graph) -> None:
+    """After attach_context: refresh the plot tooltip with the envelope summary
+    and (best-effort) wire data_changed → tooltip refresh, plus add the
+    GraphContextExtension to the graph's inspector node.
+    """
+    try:
+        tip = graph_tooltip(graph)
+        if tip and plot is not None and hasattr(plot, "setToolTip"):
+            plot.setToolTip(tip)
+        if hasattr(graph, "data_changed") and plot is not None and hasattr(plot, "setToolTip"):
+            try:
+                graph.data_changed.connect(
+                    lambda *_, p=plot, g=graph: p.setToolTip(graph_tooltip(g))
+                )
+            except Exception:
+                pass
+    except Exception:
+        log.debug("graph_context tooltip install failed", exc_info=True)
+    try:
+        from SciQLop.components.plotting.ui.graph_context_inspector import (
+            GraphContextExtension,
+        )
+        if hasattr(graph, "add_inspector_extension"):
+            ext = GraphContextExtension(graph, parent=graph)
+            graph.add_inspector_extension(ext)
+    except Exception:
+        log.debug("graph_context inspector install failed", exc_info=True)
+
+
 def _attach_graph_context(r, provider, node, target):
     """Attach a GraphContext + rich refs to the graph just produced.
 
@@ -445,6 +478,7 @@ def _attach_graph_context(r, provider, node, target):
             rich = GraphRichRefs(callback=provider._callback,
                                  knobs_model=provider._knobs_model)
             attach_context(graph, ctx, rich)
+            _install_graph_context_ui(plot, graph)
             return
         if getattr(provider, "name", None) == "Speasy":
             speasy_id = ""
@@ -456,6 +490,7 @@ def _attach_graph_context(r, provider, node, target):
                 knobs=knobs,
             )
             attach_context(graph, ctx)
+            _install_graph_context_ui(plot, graph)
             return
         log.debug("graph_context: unknown provider %r — skipping attach",
                   type(provider).__name__)
@@ -514,6 +549,7 @@ def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProje
                                plot_index=plot_index,
                                graph_type=type(graph).__name__)
         attach_context(graph, ctx)
+        _install_graph_context_ui(plot, graph)
     except Exception:
         log.debug("attach_context for static data failed", exc_info=True)
     return r
@@ -535,6 +571,7 @@ def plot_function(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
                                   callback=f,
                                   graph_type=type(graph).__name__)
         attach_context(graph, ctx, GraphRichRefs(callback=f))
+        _install_graph_context_ui(plot, graph)
     except Exception:
         log.debug("attach_context for function plot failed", exc_info=True)
     return r

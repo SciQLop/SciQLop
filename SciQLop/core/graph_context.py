@@ -95,7 +95,10 @@ def context_of(graph) -> Optional[GraphContext]:
     """Reconstruct GraphContext from graph.meta_data, filtering unknown fields
     so a newer SciQLop's extra fields don't blow up older readers.
     """
-    raw = graph.meta_data() or {}
+    try:
+        raw = graph.meta_data() or {}
+    except AttributeError:
+        return None
     if not raw or "kind" not in raw:
         return None
     known = {k: v for k, v in raw.items() if k in GraphContext.model_fields}
@@ -193,3 +196,48 @@ def build_static_ctx(graph, *, panel_name: str, plot_index: int,
         graph_type=graph_type,
         provider_name=None,
     )
+
+
+def _last_fetch_line(graph) -> str:
+    """Best-effort 'N points · dtype' from graph.data() for the tooltip."""
+    try:
+        d = graph.data()
+        if d is None:
+            return ""
+        if hasattr(d, "__len__") and len(d) > 0 and hasattr(d[0], "__len__"):
+            arr = d[0]
+            n = len(arr)
+            dtype = getattr(arr, "dtype", "")
+            return f"{n} points · {dtype}".rstrip(" ·")
+    except Exception:
+        pass
+    return ""
+
+
+def graph_tooltip(graph) -> str:
+    """Render a per-graph tooltip from the attached context.
+
+    Returns "" if the graph has no context attached — caller should leave the
+    target widget's tooltip untouched in that case.
+    """
+    ctx = context_of(graph)
+    if ctx is None:
+        return ""
+    name = graph.name() if hasattr(graph, "name") else graph.objectName()
+    if ctx.kind == "speasy":
+        title = f"{name}: {ctx.speasy_id} — Speasy"
+    elif ctx.kind == "vp":
+        title = f"{name}: {ctx.vp_path} — Virtual"
+    elif ctx.kind == "function":
+        cb = f"{ctx.callback_module}.{ctx.callback_qualname}".strip(".")
+        title = f"{name}: function {cb}"
+    else:
+        title = f"{name}: static data"
+    lines = [title]
+    if ctx.knobs:
+        knob_str = ", ".join(f"{k}={v!r}" for k, v in ctx.knobs.items())
+        lines.append(f"Knobs: {knob_str}")
+    last = _last_fetch_line(graph)
+    if last:
+        lines.append(last)
+    return "\n".join(lines)

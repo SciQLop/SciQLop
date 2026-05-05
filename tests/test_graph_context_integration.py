@@ -347,3 +347,61 @@ def test_all_graphs_returns_meta_data_capable_children(qtbot):
     assert len(graphs) == 2
     for g in graphs:
         assert hasattr(g, "meta_data") and hasattr(g, "set_meta_data")
+
+
+def test_graph_context_section_renders_with_speasy_ctx(qtbot, monkeypatch):
+    """GraphContextSection builds, fills labels, and exposes working buttons."""
+    from PySide6.QtCore import QObject
+    from SciQLop.core.graph_context import attach_context, build_speasy_ctx
+    from SciQLop.components.plotting.ui.graph_context_inspector.section import (
+        GraphContextSection,
+    )
+    from SciQLop.components.plotting.backend.data_provider import providers
+
+    class _FakeGraph(QObject):
+        def __init__(self, name):
+            super().__init__(); self.setObjectName(name); self._md = {}
+        def meta_data(self): return dict(self._md)
+        def set_meta_data(self, d): self._md = dict(d)
+        def name(self): return self.objectName()
+
+    class _FakeProvider:
+        name = "FakeSpeasy3"
+        def python_snippet(self, ctx):
+            return "import speasy as spz"
+        def extended_metadata(self, ctx):
+            return {"speasy_id": ctx.speasy_id, "inventory": {"x": 1}}
+
+    g = _FakeGraph("g_sec")
+    ctx = build_speasy_ctx(g, panel_name="P", plot_index=0,
+                           speasy_id="x/y", graph_type="Line")
+    ctx.provider_name = "FakeSpeasy3"
+    g.set_meta_data(ctx.to_meta_data())
+    providers["FakeSpeasy3"] = _FakeProvider()
+    try:
+        section = GraphContextSection(g)
+        qtbot.addWidget(section)
+        assert "Speasy" in section._labels["Source"].text()
+        assert "x/y" in section._labels["Source"].text()
+        assert section._copy_btn.isEnabled()
+        assert section._show_btn.isEnabled()
+    finally:
+        providers.pop("FakeSpeasy3", None)
+
+
+def test_graph_context_section_no_context_disables_buttons(qtbot):
+    from PySide6.QtCore import QObject
+    from SciQLop.components.plotting.ui.graph_context_inspector.section import (
+        GraphContextSection,
+    )
+
+    class _FakeGraph(QObject):
+        def __init__(self, name):
+            super().__init__(); self.setObjectName(name); self._md = {}
+        def meta_data(self): return dict(self._md)
+
+    g = _FakeGraph("g_sec_empty")
+    section = GraphContextSection(g)
+    qtbot.addWidget(section)
+    assert not section._copy_btn.isEnabled()
+    assert not section._show_btn.isEnabled()
