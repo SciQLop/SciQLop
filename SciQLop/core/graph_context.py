@@ -116,3 +116,64 @@ def provider_for(ctx: GraphContext) -> Optional[DataProvider]:
         return None
     from SciQLop.components.plotting.backend.data_provider import providers
     return providers.get(ctx.provider_name)
+
+
+def _build_speasy_ctx(graph, *, panel_name: str, plot_index: int,
+                      speasy_id: str, graph_type: str,
+                      knobs: Optional[dict] = None) -> GraphContext:
+    return GraphContext(
+        kind="speasy",
+        graph_id=graph.objectName(),
+        panel_name=panel_name,
+        plot_index=plot_index,
+        graph_type=graph_type,
+        speasy_id=speasy_id,
+        provider_name="Speasy",
+        knobs=knobs or {},
+    )
+
+
+def _build_vp_ctx(graph, *, panel_name: str, plot_index: int,
+                  vp_path: "str | list[str] | tuple[str, ...]",
+                  provider_name: str, callback: Callable,
+                  graph_type: str,
+                  knobs: Optional[dict] = None) -> GraphContext:
+    vp_path_str = "/".join(vp_path) if isinstance(vp_path, (list, tuple)) else str(vp_path)
+    return GraphContext(
+        kind="vp",
+        graph_id=graph.objectName(),
+        panel_name=panel_name,
+        plot_index=plot_index,
+        graph_type=graph_type,
+        vp_path=vp_path_str,
+        provider_name=provider_name,
+        callback_qualname=getattr(callback, "__qualname__", None),
+        callback_module=getattr(callback, "__module__", None),
+        knobs=knobs or {},
+    )
+
+
+def _build_function_ctx(graph, *, panel_name: str, plot_index: int,
+                        callback: Callable, graph_type: str) -> GraphContext:
+    return GraphContext(
+        kind="function",
+        graph_id=graph.objectName(),
+        panel_name=panel_name,
+        plot_index=plot_index,
+        graph_type=graph_type,
+        provider_name=None,
+        callback_qualname=getattr(callback, "__qualname__", None),
+        callback_module=getattr(callback, "__module__", None),
+    )
+
+
+def _build_static_ctx(graph, *, panel_name: str, plot_index: int,
+                      graph_type: str) -> GraphContext:
+    return GraphContext(
+        kind="static",
+        graph_id=graph.objectName(),
+        panel_name=panel_name,
+        plot_index=plot_index,
+        graph_type=graph_type,
+        provider_name=None,
+    )

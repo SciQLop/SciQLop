@@ -190,3 +190,57 @@ def test_is_importable_aliased_false():
 
 def test_is_importable_unknown_module_false():
     assert _is_importable("definitely_not_a_module", "x", lambda: 0) is False
+
+
+def test_build_speasy_ctx():
+    from SciQLop.core.graph_context import _build_speasy_ctx
+    g = _FakeGraph("g_speasy")
+    ctx = _build_speasy_ctx(g, panel_name="P", plot_index=2,
+                             speasy_id="amda/imf", graph_type="Line",
+                             knobs={"k": 1})
+    assert ctx.kind == "speasy"
+    assert ctx.graph_id == "g_speasy"
+    assert ctx.panel_name == "P"
+    assert ctx.plot_index == 2
+    assert ctx.speasy_id == "amda/imf"
+    assert ctx.provider_name == "Speasy"
+    assert ctx.knobs == {"k": 1}
+
+
+def test_build_vp_ctx():
+    from SciQLop.core.graph_context import _build_vp_ctx
+    g = _FakeGraph("g_vp")
+
+    def my_cb(start, stop): return None
+
+    ctx = _build_vp_ctx(g, panel_name="P", plot_index=0,
+                         vp_path=["root", "x"], provider_name="my_vp-1",
+                         callback=my_cb, graph_type="Line", knobs={})
+    assert ctx.kind == "vp"
+    assert ctx.vp_path == "root/x"
+    assert ctx.callback_qualname == my_cb.__qualname__
+    assert ctx.callback_module == my_cb.__module__
+    assert ctx.provider_name == "my_vp-1"
+
+
+def test_build_function_ctx():
+    from SciQLop.core.graph_context import _build_function_ctx
+    g = _FakeGraph("g_fn")
+
+    def fn(start, stop): return None
+
+    ctx = _build_function_ctx(g, panel_name="P", plot_index=1,
+                                callback=fn, graph_type="Line")
+    assert ctx.kind == "function"
+    assert ctx.provider_name is None
+    assert ctx.callback_qualname == fn.__qualname__
+
+
+def test_build_static_ctx():
+    from SciQLop.core.graph_context import _build_static_ctx
+    g = _FakeGraph("g_static")
+    ctx = _build_static_ctx(g, panel_name="P", plot_index=0,
+                             graph_type="Line")
+    assert ctx.kind == "static"
+    assert ctx.provider_name is None
+    assert ctx.speasy_id is None
