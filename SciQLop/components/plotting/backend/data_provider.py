@@ -1,10 +1,11 @@
-from typing import Tuple, List, Union
+from typing import Optional, Tuple, List, Union
 
 import traceback
 import numpy as np
 
 from SciQLop.core.enums import DataOrder, GraphType
 from SciQLop.core.plot_hints import PlotHints
+from SciQLop.core import tracing
 from SciQLop.components import sciqlop_logging
 from speasy.products import SpeasyVariable, VariableAxis
 from speasy.core import datetime64_to_epoch
@@ -19,6 +20,26 @@ providers = {}
 
 def _ensure_contiguous(v):
     return np.ascontiguousarray(v)
+
+
+def _node_label(node) -> str:
+    try:
+        path = node.path()
+        if path:
+            return "/".join(path) if isinstance(path, (list, tuple)) else str(path)
+    except Exception:
+        pass
+    try:
+        return str(node.name())
+    except Exception:
+        return repr(node)
+
+
+def _variable_volume(v) -> tuple:
+    try:
+        return int(len(v.time)), int(v.values.nbytes)
+    except Exception:
+        return 0, 0
 
 
 def _filter_axis_numeric_axes(axes: List[VariableAxis]) -> List[VariableAxis]:
@@ -84,25 +105,39 @@ class DataProvider:
 
     def _get_data(self, node, start, stop, on_variable=None, knobs=None) -> Union[
         List[np.ndarray], Tuple[np.ndarray, np.ndarray], Tuple[np.ndarray, np.ndarray, np.ndarray]]:
+        product = _node_label(node)
         try:
-            v = self.get_data(node, start, stop, knobs=knobs) if knobs is not None \
-                else self.get_data(node, start, stop)
-            if v is not None and on_variable is not None:
-                try:
-                    on_variable(v)
-                except Exception:
-                    log.debug("on_variable callback failed", exc_info=True)
-            if v is None:
-                return []
-            if isinstance(v, list) or isinstance(v, tuple):
-                return v
-            if not np.all(np.diff(v.time) >= 0):
-                v = _sort_variable_by_time(v)
-            time = datetime64_to_epoch(v.time)
-            axes = _filter_axis_numeric_axes(v.axes[1:])
-            if len(axes) == 0 or self.graph_type(node) in (GraphType.MultiLines, GraphType.SingleLine):
-                return [time, _ensure_contiguous(v.values)]
-            return [time, _ensure_contiguous(axes[0].values), _ensure_contiguous(v.values)]
+            with tracing.zone("provider._get_data", cat="data",
+                              provider=self._name, product=product,
+                              start=float(start), stop=float(stop)):
+                with tracing.zone("provider.get_data", cat="data",
+                                  provider=self._name, product=product,
+                                  start=float(start), stop=float(stop)):
+                    v = self.get_data(node, start, stop, knobs=knobs) if knobs is not None \
+                        else self.get_data(node, start, stop)
+                if v is not None and on_variable is not None:
+                    try:
+                        on_variable(v)
+                    except Exception:
+                        log.debug("on_variable callback failed", exc_info=True)
+                if v is None:
+                    tracing.counter("provider.points", 0, cat="data")
+                    return []
+                if isinstance(v, list) or isinstance(v, tuple):
+                    return v
+                n_points, n_bytes = _variable_volume(v)
+                tracing.counter("provider.points", n_points, cat="data")
+                tracing.counter("provider.bytes", n_bytes, cat="data")
+                with tracing.zone("provider.post_process", cat="data",
+                                  provider=self._name, product=product,
+                                  n_points=n_points, n_bytes=n_bytes):
+                    if not np.all(np.diff(v.time) >= 0):
+                        v = _sort_variable_by_time(v)
+                    time = datetime64_to_epoch(v.time)
+                    axes = _filter_axis_numeric_axes(v.axes[1:])
+                    if len(axes) == 0 or self.graph_type(node) in (GraphType.MultiLines, GraphType.SingleLine):
+                        return [time, _ensure_contiguous(v.values)]
+                    return [time, _ensure_contiguous(axes[0].values), _ensure_contiguous(v.values)]
         except Exception:
             log.error(
                 f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")
@@ -110,3 +145,19 @@ class DataProvider:
 
     def get_data(self, node, start: float, stop: float, knobs=None) -> DataProviderReturnType:
         pass
+
+    def python_snippet(self, ctx) -> Optional[str]:
+        """Return a Python snippet that reproduces this graph's fetch, or None.
+
+        Default returns None, meaning the menu hides the 'Copy Python code'
+        action. Providers that can produce a reproducible snippet override
+        this method.
+        """
+        return None
+
+    def extended_metadata(self, ctx) -> dict:
+        """Return rich metadata about the graph's source. Format is
+        per-provider; consumers (inspector dialog, tooltip) treat it as
+        opaque.
+        """
+        return {}
