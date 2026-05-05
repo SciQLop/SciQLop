@@ -1,5 +1,6 @@
 import pytest
 from pydantic import ValidationError
+from PySide6.QtCore import QObject
 
 from SciQLop.core.graph_context import GraphContext, GraphRichRefs, _is_importable
 
@@ -61,6 +62,103 @@ def test_graph_rich_refs_defaults_none():
 
 def _module_level_function():
     return 42
+
+
+class _FakeGraph(QObject):
+    """Minimal stand-in for SciQLopPlots.SciQLopGraphInterface for tests."""
+    def __init__(self, name="fakegraph"):
+        super().__init__()
+        self._md = {}
+        self.setObjectName(name)
+
+    def meta_data(self):
+        return dict(self._md)
+
+    def set_meta_data(self, d):
+        self._md = dict(d)
+
+
+def test_attach_context_writes_meta_data(qtbot):
+    from SciQLop.core.graph_context import attach_context
+    g = _FakeGraph("g1")
+    ctx = GraphContext(
+        kind="speasy", graph_id="g1", panel_name="P", plot_index=0,
+        graph_type="Line", speasy_id="amda/imf", provider_name="Speasy",
+    )
+    attach_context(g, ctx)
+    assert g.meta_data()["kind"] == "speasy"
+    assert g.meta_data()["speasy_id"] == "amda/imf"
+
+
+def test_context_of_round_trip(qtbot):
+    from SciQLop.core.graph_context import attach_context, context_of
+    g = _FakeGraph("g2")
+    ctx = GraphContext(
+        kind="vp", graph_id="g2", panel_name="P", plot_index=0,
+        graph_type="Line", vp_path="my/vp", provider_name="my_vp-1",
+        callback_qualname="cb", callback_module="m",
+    )
+    attach_context(g, ctx)
+    out = context_of(g)
+    assert out is not None
+    assert out.kind == "vp"
+    assert out.vp_path == "my/vp"
+
+
+def test_context_of_empty_returns_none(qtbot):
+    from SciQLop.core.graph_context import context_of
+    g = _FakeGraph("g3")
+    assert context_of(g) is None
+
+
+def test_context_of_garbage_returns_none(qtbot):
+    from SciQLop.core.graph_context import context_of
+    g = _FakeGraph("g4")
+    g.set_meta_data({"kind": "speasy", "graph_id": "x",
+                      "panel_name": "P", "plot_index": "not-an-int",
+                      "graph_type": "Line"})
+    assert context_of(g) is None
+
+
+def test_context_of_filters_unknown_fields_for_forward_compat(qtbot):
+    from SciQLop.core.graph_context import context_of
+    g = _FakeGraph("g5")
+    g.set_meta_data({
+        "kind": "speasy", "graph_id": "g5", "panel_name": "P",
+        "plot_index": 0, "graph_type": "Line", "speasy_id": "x/y",
+        "future_field_we_dont_know": "value",
+    })
+    out = context_of(g)
+    assert out is not None
+    assert out.speasy_id == "x/y"
+
+
+def test_rich_of_returns_refs(qtbot):
+    from SciQLop.core.graph_context import attach_context, rich_of
+    g = _FakeGraph("g6")
+    ctx = GraphContext(
+        kind="vp", graph_id="g6", panel_name="P", plot_index=0,
+        graph_type="Line", vp_path="x", provider_name="vp-1",
+    )
+    cb = lambda s, e: None
+    refs = GraphRichRefs(callback=cb)
+    attach_context(g, ctx, refs)
+    out = rich_of("g6")
+    assert out is refs
+
+
+def test_destroy_evicts_rich_refs(qtbot):
+    from SciQLop.core.graph_context import attach_context, rich_of
+    g = _FakeGraph("g7")
+    ctx = GraphContext(
+        kind="vp", graph_id="g7", panel_name="P", plot_index=0,
+        graph_type="Line", vp_path="x", provider_name="vp-1",
+    )
+    attach_context(g, ctx, GraphRichRefs(callback=lambda s, e: None))
+    assert rich_of("g7") is not None
+    g.deleteLater()
+    qtbot.wait(50)
+    assert rich_of("g7") is None
 
 
 def test_is_importable_module_level_true():
