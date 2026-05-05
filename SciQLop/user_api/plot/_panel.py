@@ -6,6 +6,7 @@ from ..gui import get_main_window as _get_main_window
 from .._annotations import experimental_api
 from PySide6.QtCore import Qt as _Qt
 from SciQLop.core import TimeRange
+from SciQLop.core import tracing as _tracing
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from SciQLopPlots import PlotType as _PlotType, GraphType as _GraphType, SciQLopMultiPlotPanel as _SciQLopMultiPlotPanel
 from SciQLop.components.plotting.ui.time_sync_panel import (TimeSyncPanel as _ImplTimeSyncPanel,
@@ -115,6 +116,7 @@ class PlotPanel:
         return PlotPanel(_panel)
 
     @on_main_thread
+    @_tracing.traced("PlotPanel.plot_product", cat="plot")
     def plot_product(self, product: AnyProductType, plot_index=-1, **kwargs) -> Tuple[
         ProjectionPlot | TimeSeriesPlot, Plottable]:
         """Plot a product in the panel.
@@ -144,6 +146,7 @@ class PlotPanel:
         return to_plot(_p), to_plottable(_g)
 
     @on_main_thread
+    @_tracing.traced("PlotPanel.plot_data", cat="plot")
     def plot_data(self, x, y=None, z=None, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
         """Plot static data or a SpeasyVariable in the panel.
         Parameters
@@ -180,6 +183,7 @@ class PlotPanel:
         return to_plot(_p), to_plottable(_g)
 
     @on_main_thread
+    @_tracing.traced("PlotPanel.plot_function", cat="plot")
     def plot_function(self, f, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
         kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
         if kwargs["plot_type"] != _PlotType.TimeSeries:
@@ -306,10 +310,16 @@ class PlotPanel:
     @on_main_thread
     def time_range(self, time_range: TimeRange):
         impl = self._get_impl_or_raise()
-        impl.set_time_axis_range(time_range)
-        for plot in impl.plots():
-            if hasattr(plot, 'set_time_range'):
-                plot.set_time_range(time_range)
+        plots = impl.plots()
+        t0, t1 = float(time_range.start()), float(time_range.stop())
+        with _tracing.zone("panel.set_time_range", cat="panel",
+                           n_plots=len(plots), t0=t0, t1=t1, dt=t1 - t0):
+            with _tracing.zone("panel.set_time_axis_range", cat="panel", t0=t0, t1=t1):
+                impl.set_time_axis_range(time_range)
+            for plot in plots:
+                if hasattr(plot, 'set_time_range'):
+                    with _tracing.zone("plot.set_time_range", cat="panel", t0=t0, t1=t1):
+                        plot.set_time_range(time_range)
 
     def _get_time_range_bar(self):
         return getattr(self._get_impl_or_raise(), '_time_range_bar', None)

@@ -4,6 +4,7 @@ from typing import Optional, Union, List
 from ..virtual_products import VirtualProduct
 from SciQLopPlots import SciQLopHistogram2D as _SciQLopHistogram2D
 from ._thread_safety import on_main_thread
+from SciQLop.core import tracing as _tracing
 
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 
@@ -32,13 +33,25 @@ def _to_float64(a):
 def ensure_arrays_of_double(*args):
     return tuple(_to_float64(a) for a in args)
 
+
+def _len_safe(a):
+    try:
+        return int(len(a))
+    except TypeError:
+        return 0
+
+
 class Graph(Plottable):
     def __init__(self, impl):
         self._impl = impl
 
     @on_main_thread
     def set_data(self, x, y):
-        self._impl.set_data(*ensure_arrays_of_double(x, y))
+        with _tracing.zone("Graph.set_data", cat="plot", n_points=_len_safe(x)):
+            with _tracing.zone("ensure_arrays_of_double", cat="plot"):
+                arrays = ensure_arrays_of_double(x, y)
+            with _tracing.zone("impl.set_data", cat="plot"):
+                self._impl.set_data(*arrays)
 
     @property
     @on_main_thread
@@ -78,7 +91,12 @@ class ColorMap(Plottable):
 
     @on_main_thread
     def set_data(self, x, y, z):
-        self._impl.set_data(*ensure_arrays_of_double(x, y, z))
+        with _tracing.zone("ColorMap.set_data", cat="plot",
+                           nx=_len_safe(x), ny=_len_safe(y)):
+            with _tracing.zone("ensure_arrays_of_double", cat="plot"):
+                arrays = ensure_arrays_of_double(x, y, z)
+            with _tracing.zone("impl.set_data", cat="plot"):
+                self._impl.set_data(*arrays)
 
     @property
     @on_main_thread
@@ -120,7 +138,11 @@ class Histogram2D(Plottable):
 
     @on_main_thread
     def set_data(self, x, y):
-        self._impl.set_data(*ensure_arrays_of_double(x, y))
+        with _tracing.zone("Histogram2D.set_data", cat="plot", n_points=_len_safe(x)):
+            with _tracing.zone("ensure_arrays_of_double", cat="plot"):
+                arrays = ensure_arrays_of_double(x, y)
+            with _tracing.zone("impl.set_data", cat="plot"):
+                self._impl.set_data(*arrays)
 
     @property
     @on_main_thread
