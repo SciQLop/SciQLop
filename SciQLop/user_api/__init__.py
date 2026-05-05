@@ -5,5 +5,6 @@ All functions and classes are simplified Facades to the internal API, and are de
 
 from SciQLop.core import TimeRange
 from . import dsp
+from . import tracing
 
-__all__ = ["TimeRange", "dsp"]
+__all__ = ["TimeRange", "dsp", "tracing"]

@@ -60,6 +60,8 @@ def start_sciqlop():
     print(str(QtPrintSupport) + str(QtQml))
 
     app = sciqlop_app()
+    from SciQLop.core import tracing as _tracing
+    _tracing.set_thread_name("Qt-Main")
     qInitResources()
     from SciQLop.components.theming.icons import flush_deferred_icons
     flush_deferred_icons()
