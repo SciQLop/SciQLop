@@ -15,7 +15,10 @@ from SciQLop.core import listify
 from SciQLop.components import sciqlop_logging
 from SciQLop.components.plotting.backend.data_provider import providers, DataProvider
 from SciQLop.components.plotting.backend.easy_provider import EasyProvider
-from SciQLop.core.graph_context import attach_context, build_speasy_ctx, build_vp_ctx, GraphRichRefs
+from SciQLop.core.graph_context import (
+    attach_context, build_speasy_ctx, build_vp_ctx,
+    build_static_ctx, build_function_ctx, GraphRichRefs,
+)
 import weakref
 
 from SciQLop.core.plot_hints import apply_plot_hints, combine_hints, merge_hints, PlotHints
@@ -500,6 +503,18 @@ def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProje
         r = target.plot(x, y, **kwargs)
     if not hasattr(r, '__iter__') and existing_plot is not None:
         r = (existing_plot, r)
+    try:
+        plot, graph = r
+        panel_name = target.windowTitle() if hasattr(target, "windowTitle") else ""
+        plots = target.plots() if hasattr(target, "plots") else []
+        plot_index = next((i for i, _p in enumerate(plots)
+                           if _p.objectName() == plot.objectName()), -1)
+        ctx = build_static_ctx(graph, panel_name=panel_name,
+                               plot_index=plot_index,
+                               graph_type=type(graph).__name__)
+        attach_context(graph, ctx)
+    except Exception:
+        log.debug("attach_context for static data failed", exc_info=True)
     return r
 
 
@@ -508,6 +523,19 @@ def plot_function(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
     r = target.plot(f, **kwargs)
     if not hasattr(r, '__iter__') and existing_plot is not None:
         r = (existing_plot, r)
+    try:
+        plot, graph = r
+        panel_name = target.windowTitle() if hasattr(target, "windowTitle") else ""
+        plots = target.plots() if hasattr(target, "plots") else []
+        plot_index = next((i for i, _p in enumerate(plots)
+                           if _p.objectName() == plot.objectName()), -1)
+        ctx = build_function_ctx(graph, panel_name=panel_name,
+                                  plot_index=plot_index,
+                                  callback=f,
+                                  graph_type=type(graph).__name__)
+        attach_context(graph, ctx, GraphRichRefs(callback=f))
+    except Exception:
+        log.debug("attach_context for function plot failed", exc_info=True)
     return r
 
 

@@ -121,3 +121,73 @@ def test_post_plot_invokes_attach_context_for_vp(qtbot, monkeypatch):
     assert captured["ctx"].callback_qualname == my_vp_callback.__qualname__
     assert captured["rich"] is not None
     assert captured["rich"].callback is my_vp_callback
+
+
+def test_plot_static_data_attaches_static_context(qtbot, monkeypatch):
+    from SciQLop.components.plotting.ui import time_sync_panel as tsp
+    from PySide6.QtCore import QObject
+
+    captured = []
+    monkeypatch.setattr(tsp, "attach_context",
+                        lambda g, ctx, rich=None: captured.append(ctx))
+
+    class _FakeGraph(QObject):
+        def __init__(self):
+            super().__init__()
+            self.setObjectName("sg")
+
+    class _FakePlot(QObject):
+        def __init__(self):
+            super().__init__()
+            self.setObjectName("plot0")
+
+    class _FakeTarget:
+        def plot(self, *a, **kw): return (_FakePlot(), _FakeGraph())
+        def plots(self): return [_FakePlot()]
+        def windowTitle(self): return "P"
+
+    monkeypatch.setattr(tsp, "_resolve_plot_target",
+                         lambda p, kwargs: (_FakeTarget(), None))
+
+    tsp.plot_static_data(None, [1, 2, 3], [4, 5, 6])
+    assert len(captured) == 1
+    assert captured[0].kind == "static"
+    assert captured[0].provider_name is None
+
+
+def test_plot_function_attaches_function_context(qtbot, monkeypatch):
+    from SciQLop.components.plotting.ui import time_sync_panel as tsp
+    from PySide6.QtCore import QObject
+
+    captured = []
+    monkeypatch.setattr(tsp, "attach_context",
+                        lambda g, ctx, rich=None: captured.append((ctx, rich)))
+
+    class _FakeGraph(QObject):
+        def __init__(self):
+            super().__init__()
+            self.setObjectName("fg")
+
+    class _FakePlot(QObject):
+        def __init__(self):
+            super().__init__()
+            self.setObjectName("plot0")
+
+    class _FakeTarget:
+        def plot(self, *a, **kw): return (_FakePlot(), _FakeGraph())
+        def plots(self): return [_FakePlot()]
+        def windowTitle(self): return "P"
+
+    monkeypatch.setattr(tsp, "_resolve_plot_target",
+                         lambda p, kwargs: (_FakeTarget(), None))
+
+    def my_func(start, stop): return ([0], [0])
+    tsp.plot_function(None, my_func)
+
+    assert len(captured) == 1
+    ctx, rich = captured[0]
+    assert ctx.kind == "function"
+    # qualname will be "test_plot_function_attaches_function_context.<locals>.my_func"
+    assert "my_func" in ctx.callback_qualname
+    assert rich is not None
+    assert rich.callback is my_func
