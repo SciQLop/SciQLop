@@ -191,3 +191,108 @@ def test_plot_function_attaches_function_context(qtbot, monkeypatch):
     assert "my_func" in ctx.callback_qualname
     assert rich is not None
     assert rich.callback is my_func
+
+
+def test_add_graph_context_actions_shows_copy_for_speasy(qtbot, monkeypatch):
+    from PySide6.QtCore import QObject
+    from PySide6.QtWidgets import QMenu
+    from SciQLop.components.plotting.ui.graph_context_menu import (
+        add_graph_context_actions,
+    )
+    from SciQLop.core.graph_context import build_speasy_ctx
+    from SciQLop.components.plotting.backend.data_provider import providers
+
+    class _FakeGraph(QObject):
+        def __init__(self, name):
+            super().__init__(); self.setObjectName(name)
+        _md = {}
+        def meta_data(self): return dict(self._md)
+        def set_meta_data(self, d): self._md = dict(d)
+        def name(self): return self.objectName()
+
+    class _FakeProvider:
+        name = "FakeSpeasy"
+        def python_snippet(self, ctx):
+            return f"# snippet for {ctx.speasy_id}"
+
+    g = _FakeGraph("g_menu")
+    ctx = build_speasy_ctx(g, panel_name="P", plot_index=0,
+                           speasy_id="a/b", graph_type="Line")
+    ctx.provider_name = "FakeSpeasy"
+    g.set_meta_data(ctx.to_meta_data())
+
+    providers["FakeSpeasy"] = _FakeProvider()
+    try:
+        menu = QMenu()
+        add_graph_context_actions(menu, [g])
+        labels = [a.text() for a in menu.actions()]
+        assert any("Copy Python code" in lbl for lbl in labels)
+    finally:
+        providers.pop("FakeSpeasy", None)
+
+
+def test_add_graph_context_actions_omits_when_no_snippet(qtbot, monkeypatch):
+    from PySide6.QtCore import QObject
+    from PySide6.QtWidgets import QMenu
+    from SciQLop.components.plotting.ui.graph_context_menu import (
+        add_graph_context_actions,
+    )
+    from SciQLop.core.graph_context import build_static_ctx
+
+    class _FakeGraph(QObject):
+        def __init__(self, name):
+            super().__init__(); self.setObjectName(name)
+        _md = {}
+        def meta_data(self): return dict(self._md)
+        def set_meta_data(self, d): self._md = dict(d)
+        def name(self): return self.objectName()
+
+    g = _FakeGraph("g_static")
+    ctx = build_static_ctx(g, panel_name="P", plot_index=0,
+                            graph_type="Line")
+    g.set_meta_data(ctx.to_meta_data())
+
+    menu = QMenu()
+    add_graph_context_actions(menu, [g])
+    labels = [a.text() for a in menu.actions()]
+    assert not any("Copy Python code" in lbl for lbl in labels)
+
+
+def test_add_graph_context_actions_clipboard(qtbot, monkeypatch):
+    from PySide6.QtCore import QObject
+    from PySide6.QtWidgets import QMenu, QApplication
+    from SciQLop.components.plotting.ui.graph_context_menu import (
+        add_graph_context_actions,
+    )
+    from SciQLop.core.graph_context import build_speasy_ctx
+    from SciQLop.components.plotting.backend.data_provider import providers
+
+    class _FakeGraph(QObject):
+        def __init__(self, name):
+            super().__init__(); self.setObjectName(name)
+        _md = {}
+        def meta_data(self): return dict(self._md)
+        def set_meta_data(self, d): self._md = dict(d)
+        def name(self): return self.objectName()
+
+    class _FakeProvider:
+        name = "FakeSpeasy2"
+        def python_snippet(self, ctx):
+            return "PASTE_ME"
+
+    g = _FakeGraph("g_clip")
+    ctx = build_speasy_ctx(g, panel_name="P", plot_index=0,
+                           speasy_id="x/y", graph_type="Line")
+    ctx.provider_name = "FakeSpeasy2"
+    g.set_meta_data(ctx.to_meta_data())
+    providers["FakeSpeasy2"] = _FakeProvider()
+    try:
+        menu = QMenu()
+        add_graph_context_actions(menu, [g])
+        for a in menu.actions():
+            if "Copy Python code" in a.text():
+                a.trigger()
+                break
+        assert QApplication.clipboard().text() == "PASTE_ME"
+    finally:
+        providers.pop("FakeSpeasy2", None)
