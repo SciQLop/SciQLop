@@ -4,12 +4,12 @@ from SciQLop.components.plotting.backend.data_provider import DataProvider, Data
 from SciQLop.core.graph_context import GraphContext
 
 
-def test_data_provider_default_snippet_returns_none():
+def test_data_provider_default_snippets_empty():
     p = DataProvider("test", DataOrder.X_FIRST)
     ctx = GraphContext(kind="speasy", graph_id="g", panel_name="P",
                        plot_index=0, graph_type="Line",
                        speasy_id="x/y", provider_name="test")
-    assert p.python_snippet(ctx) is None
+    assert p.python_snippets(ctx) == {}
 
 
 def test_data_provider_default_extended_metadata_empty():
@@ -20,22 +20,50 @@ def test_data_provider_default_extended_metadata_empty():
     assert p.extended_metadata(ctx) == {}
 
 
-def test_speasy_python_snippet_basic():
+def test_speasy_python_snippets_has_two_variants():
     from SciQLop.plugins.speasy_provider.speasy_provider import SpeasyPlugin
-    p = SpeasyPlugin.__new__(SpeasyPlugin)  # bypass __init__ (heavy)
+    p = SpeasyPlugin.__new__(SpeasyPlugin)
     p._name = "Speasy"
     ctx = GraphContext(kind="speasy", graph_id="g", panel_name="P",
                        plot_index=0, graph_type="Line",
                        speasy_id="amda/imf", provider_name="Speasy")
-    snippet = p.python_snippet(ctx)
-    assert snippet is not None
-    assert "import speasy as spz" in snippet
-    assert "amda/imf" in snippet
-    assert "spz.get_data" in snippet
-    assert "product_inputs" not in snippet
+    snippets = p.python_snippets(ctx)
+    assert set(snippets.keys()) == {"Reproduce in SciQLop", "Notebook (matplotlib)"}
 
 
-def test_speasy_python_snippet_with_knobs():
+def test_speasy_sciqlop_snippet_uses_create_plot_panel():
+    from SciQLop.plugins.speasy_provider.speasy_provider import SpeasyPlugin
+    p = SpeasyPlugin.__new__(SpeasyPlugin)
+    p._name = "Speasy"
+    ctx = GraphContext(kind="speasy", graph_id="g", panel_name="P",
+                       plot_index=0, graph_type="Line",
+                       speasy_id="amda/imf", provider_name="Speasy",
+                       product_path=["speasy", "amda", "imf"])
+    s = p.python_snippets(ctx)["Reproduce in SciQLop"]
+    assert "from SciQLop.user_api.plot import create_plot_panel" in s
+    assert "create_plot_panel()" in s
+    assert "panel.time_range = TimeRange" in s
+    assert "panel.plot_product" in s
+    # Either the speasy_id or the tree path appears
+    assert "amda" in s
+
+
+def test_speasy_matplotlib_snippet_imports_pyplot_and_plots():
+    from SciQLop.plugins.speasy_provider.speasy_provider import SpeasyPlugin
+    p = SpeasyPlugin.__new__(SpeasyPlugin)
+    p._name = "Speasy"
+    ctx = GraphContext(kind="speasy", graph_id="g", panel_name="P",
+                       plot_index=0, graph_type="Line",
+                       speasy_id="amda/imf", provider_name="Speasy")
+    s = p.python_snippets(ctx)["Notebook (matplotlib)"]
+    assert "import speasy as spz" in s
+    assert "import matplotlib.pyplot as plt" in s
+    assert "spz.get_data" in s
+    assert "v.plot(ax=ax)" in s
+    assert "plt.show()" in s
+
+
+def test_speasy_sciqlop_snippet_includes_knobs_when_set():
     from SciQLop.plugins.speasy_provider.speasy_provider import SpeasyPlugin
     p = SpeasyPlugin.__new__(SpeasyPlugin)
     p._name = "Speasy"
@@ -43,18 +71,33 @@ def test_speasy_python_snippet_with_knobs():
                        plot_index=0, graph_type="Line",
                        speasy_id="cda/mms", provider_name="Speasy",
                        knobs={"resolution": "high"})
-    snippet = p.python_snippet(ctx)
-    assert "product_inputs={'resolution': 'high'}" in snippet
+    s = p.python_snippets(ctx)["Reproduce in SciQLop"]
+    assert "product_inputs={'resolution': 'high'}" in s
 
 
-def test_speasy_python_snippet_returns_none_for_non_speasy_kind():
+def test_speasy_snippets_uses_iso_now_minus_1d_to_now_when_no_graph():
+    """Without a live graph, the snippet should include ISO timestamps for
+    roughly the last 24h, not a hardcoded 2020 placeholder."""
+    from SciQLop.plugins.speasy_provider.speasy_provider import SpeasyPlugin
+    from datetime import datetime, timezone
+    p = SpeasyPlugin.__new__(SpeasyPlugin)
+    p._name = "Speasy"
+    ctx = GraphContext(kind="speasy", graph_id="g", panel_name="P",
+                       plot_index=0, graph_type="Line",
+                       speasy_id="amda/imf", provider_name="Speasy")
+    s = p.python_snippets(ctx)["Notebook (matplotlib)"]
+    this_year = str(datetime.now(timezone.utc).year)
+    assert this_year in s, f"snippet should reflect the current year ({this_year}); got: {s[:200]}"
+
+
+def test_speasy_snippets_empty_for_non_speasy_kind():
     from SciQLop.plugins.speasy_provider.speasy_provider import SpeasyPlugin
     p = SpeasyPlugin.__new__(SpeasyPlugin)
     p._name = "Speasy"
     ctx = GraphContext(kind="vp", graph_id="g", panel_name="P",
                        plot_index=0, graph_type="Line",
                        vp_path="x", provider_name="vp-1")
-    assert p.python_snippet(ctx) is None
+    assert p.python_snippets(ctx) == {}
 
 
 def test_speasy_extended_metadata_unknown_id():
@@ -89,7 +132,7 @@ def _tested_module_level_vp_callback(start, stop, knobs=None):
     return None
 
 
-def test_easy_provider_snippet_module_level_callback(qtbot):
+def test_easy_provider_snippets_module_level_callback(qtbot):
     from SciQLop.components.plotting.backend.easy_provider import EasyProvider
     p = EasyProvider.__new__(EasyProvider)
     p._path = ["root", "my_vp"]
@@ -100,15 +143,18 @@ def test_easy_provider_snippet_module_level_callback(qtbot):
                        vp_path="root/my_vp", provider_name="my_vp-1",
                        callback_qualname=_tested_module_level_vp_callback.__qualname__,
                        callback_module=_tested_module_level_vp_callback.__module__,
+                       product_path=["root", "my_vp"],
                        knobs={"k": 0.5})
-    snippet = p.python_snippet(ctx)
-    assert snippet is not None
-    assert f"from {_tested_module_level_vp_callback.__module__} import" in snippet
-    assert _tested_module_level_vp_callback.__qualname__ in snippet
-    assert "knobs={'k': 0.5}" in snippet
+    out = p.python_snippets(ctx)
+    assert "Reproduce in SciQLop" in out
+    s = out["Reproduce in SciQLop"]
+    assert "from SciQLop.user_api.plot import create_plot_panel" in s
+    assert f"from {_tested_module_level_vp_callback.__module__} import" in s
+    assert _tested_module_level_vp_callback.__qualname__ in s
+    assert "knobs={'k': 0.5}" in s
 
 
-def test_easy_provider_snippet_lambda_returns_stub(qtbot):
+def test_easy_provider_snippets_lambda_returns_stub(qtbot):
     from SciQLop.components.plotting.backend.easy_provider import EasyProvider
     p = EasyProvider.__new__(EasyProvider)
     p._path = ["root", "my_vp"]
@@ -119,21 +165,22 @@ def test_easy_provider_snippet_lambda_returns_stub(qtbot):
                        vp_path="root/my_vp", provider_name="my_vp-1",
                        callback_qualname=p._callback.__qualname__,
                        callback_module=p._callback.__module__)
-    snippet = p.python_snippet(ctx)
-    assert snippet is not None
-    assert "not importable" in snippet
-    assert "root/my_vp" in snippet
+    out = p.python_snippets(ctx)
+    s = out["Reproduce in SciQLop"]
+    assert "not importable" in s
+    assert "root/my_vp" in s
 
 
-def test_easy_provider_snippet_kind_mismatch_returns_none(qtbot):
+def test_easy_provider_snippets_empty_for_non_vp_kind(qtbot):
     from SciQLop.components.plotting.backend.easy_provider import EasyProvider
     p = EasyProvider.__new__(EasyProvider)
     p._callback = _tested_module_level_vp_callback
     p._path = ["x"]
+    p._knobs_kwarg_name = "knobs"
     ctx = GraphContext(kind="speasy", graph_id="g", panel_name="P",
                        plot_index=0, graph_type="Line",
                        speasy_id="x/y", provider_name="Speasy")
-    assert p.python_snippet(ctx) is None
+    assert p.python_snippets(ctx) == {}
 
 
 def test_easy_provider_extended_metadata_with_model(qtbot):

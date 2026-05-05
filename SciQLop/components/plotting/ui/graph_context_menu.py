@@ -1,5 +1,6 @@
 """Menu helper that adds per-graph 'Copy Python code' actions to a panel-level
-context menu.
+context menu — one action per (graph × snippet variant) returned by the
+graph's provider.
 """
 from typing import Iterable
 
@@ -9,11 +10,12 @@ from SciQLop.core.graph_context import context_of, provider_for
 
 
 def add_graph_context_actions(menu, graphs: Iterable) -> None:
-    """For each graph that has both a context and a provider that can produce
-    a snippet, add a 'Copy Python code: <name>' (or just 'Copy Python code'
-    when there is only one graph) action to `menu`.
+    """For each graph that has a context and whose provider returns at least
+    one snippet variant, append 'Copy Python code [variant]' actions to the
+    menu (or 'Copy Python code [variant]: <graph>' when more than one graph
+    is eligible).
     """
-    eligible = []
+    eligible = []  # list of (graph, variant_label, snippet)
     for g in graphs:
         ctx = context_of(g)
         if ctx is None:
@@ -21,27 +23,26 @@ def add_graph_context_actions(menu, graphs: Iterable) -> None:
         provider = provider_for(ctx)
         if provider is None:
             continue
-        snippet = None
         try:
-            snippet = provider.python_snippet(ctx)
+            variants = provider.python_snippets(ctx, graph=g)
         except Exception:
             continue
-        if not snippet:
+        if not variants:
             continue
-        eligible.append((g, snippet))
+        for variant_label, snippet in variants.items():
+            if snippet:
+                eligible.append((g, variant_label, snippet))
     if not eligible:
         return
     menu.addSeparator()
-    if len(eligible) == 1:
-        g, snippet = eligible[0]
-        act = menu.addAction("Copy Python code")
-        act.triggered.connect(
-            lambda _checked=False, s=snippet: QGuiApplication.clipboard().setText(s)
-        )
-        return
-    for g, snippet in eligible:
-        label = g.name() if hasattr(g, "name") else g.objectName()
-        act = menu.addAction(f"Copy Python code: {label}")
+    multi_graph = len({g for g, _, _ in eligible}) > 1
+    for g, variant_label, snippet in eligible:
+        if multi_graph:
+            label = g.name() if hasattr(g, "name") else g.objectName()
+            text = f"Copy Python code [{variant_label}]: {label}"
+        else:
+            text = f"Copy Python code [{variant_label}]"
+        act = menu.addAction(text)
         act.triggered.connect(
             lambda _checked=False, s=snippet: QGuiApplication.clipboard().setText(s)
         )

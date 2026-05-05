@@ -32,6 +32,7 @@ class GraphContext(BaseModel):
     vp_path: Optional[str] = None
     callback_qualname: Optional[str] = None
     callback_module: Optional[str] = None
+    product_path: Optional[list[str]] = None
 
     provider_name: Optional[str] = None
     knobs: dict[str, Any] = Field(default_factory=dict)
@@ -139,6 +140,7 @@ def update_knobs(graph, knobs: dict) -> None:
 
 def build_speasy_ctx(graph, *, panel_name: str, plot_index: int,
                      speasy_id: str, graph_type: str,
+                     product_path: Optional[list] = None,
                      knobs: Optional[dict] = None) -> GraphContext:
     return GraphContext(
         kind="speasy",
@@ -148,6 +150,7 @@ def build_speasy_ctx(graph, *, panel_name: str, plot_index: int,
         graph_type=graph_type,
         speasy_id=speasy_id,
         provider_name="Speasy",
+        product_path=list(product_path) if product_path else None,
         knobs=knobs or {},
     )
 
@@ -156,8 +159,10 @@ def build_vp_ctx(graph, *, panel_name: str, plot_index: int,
                  vp_path: "str | list[str] | tuple[str, ...]",
                  provider_name: str, callback: Callable,
                  graph_type: str,
+                 product_path: Optional[list] = None,
                  knobs: Optional[dict] = None) -> GraphContext:
-    vp_path_str = "/".join(vp_path) if isinstance(vp_path, (list, tuple)) else str(vp_path)
+    vp_path_list = list(vp_path) if isinstance(vp_path, (list, tuple)) else [str(vp_path)]
+    vp_path_str = "/".join(vp_path_list)
     return GraphContext(
         kind="vp",
         graph_id=graph.objectName(),
@@ -168,6 +173,7 @@ def build_vp_ctx(graph, *, panel_name: str, plot_index: int,
         provider_name=provider_name,
         callback_qualname=getattr(callback, "__qualname__", None),
         callback_module=getattr(callback, "__module__", None),
+        product_path=list(product_path) if product_path else vp_path_list,
         knobs=knobs or {},
     )
 
@@ -196,6 +202,20 @@ def build_static_ctx(graph, *, panel_name: str, plot_index: int,
         graph_type=graph_type,
         provider_name=None,
     )
+
+
+def graph_time_range(graph) -> Optional[tuple]:
+    """Best-effort read of the live (start, stop) epoch-second range from the
+    graph's parent plot's time axis. Returns None if unavailable.
+    """
+    try:
+        plot = graph.parent() if hasattr(graph, "parent") else None
+        if plot is None or not hasattr(plot, "time_axis"):
+            return None
+        r = plot.time_axis().range()
+        return float(r.start()), float(r.stop())
+    except Exception:
+        return None
 
 
 def _last_fetch_line(graph) -> str:

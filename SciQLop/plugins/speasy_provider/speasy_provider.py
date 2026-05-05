@@ -214,6 +214,66 @@ def explore_nodes(inventory_node, product_node: ProductsModelNode, provider):
                     product_node.add_child(cur_prod)
 
 
+def _resolve_iso_range(graph) -> tuple:
+    """Return (start_iso, stop_iso) for the snippet. Reads the live time-
+    axis range from the graph's parent plot when available, falling back
+    to "now − 1d → now" UTC.
+    """
+    from datetime import datetime, timedelta, timezone
+    rng = None
+    if graph is not None:
+        try:
+            from SciQLop.core.graph_context import graph_time_range
+            rng = graph_time_range(graph)
+        except Exception:
+            rng = None
+    if rng is not None:
+        t0, t1 = rng
+        start = datetime.fromtimestamp(t0, tz=timezone.utc).replace(microsecond=0).isoformat()
+        stop = datetime.fromtimestamp(t1, tz=timezone.utc).replace(microsecond=0).isoformat()
+        return start, stop
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    return (now - timedelta(days=1)).isoformat(), now.isoformat()
+
+
+def _speasy_sciqlop_snippet(ctx, graph=None) -> str:
+    """Snippet that recreates the panel + plot inside SciQLop using the
+    live panel time range when available."""
+    start_iso, stop_iso = _resolve_iso_range(graph)
+    product_arg = repr(ctx.product_path) if ctx.product_path else f'"{ctx.speasy_id}"'
+    knobs_kw = f", product_inputs={ctx.knobs!r}" if ctx.knobs else ""
+    return (
+        "from datetime import datetime\n"
+        "from SciQLop.user_api.plot import create_plot_panel\n"
+        "from SciQLop.core import TimeRange\n"
+        "\n"
+        "panel = create_plot_panel()\n"
+        f'start = datetime.fromisoformat("{start_iso}")\n'
+        f'stop  = datetime.fromisoformat("{stop_iso}")\n'
+        "panel.time_range = TimeRange(start.timestamp(), stop.timestamp())\n"
+        f"panel.plot_product({product_arg}{knobs_kw})\n"
+    )
+
+
+def _speasy_matplotlib_snippet(ctx, graph=None) -> str:
+    """Standalone notebook snippet: speasy.get_data + matplotlib plot."""
+    start_iso, stop_iso = _resolve_iso_range(graph)
+    knobs_kw = f", product_inputs={ctx.knobs!r}" if ctx.knobs else ""
+    return (
+        "import speasy as spz\n"
+        "import matplotlib.pyplot as plt\n"
+        "\n"
+        f'start = "{start_iso}"\n'
+        f'stop  = "{stop_iso}"\n'
+        f'v = spz.get_data("{ctx.speasy_id}", start, stop{knobs_kw})\n'
+        "\n"
+        "fig, ax = plt.subplots()\n"
+        "v.plot(ax=ax)\n"
+        "fig.autofmt_xdate()\n"
+        "plt.show()\n"
+    )
+
+
 def _index_to_dict(index) -> dict:
     """Best-effort flatten of a speasy ParameterIndex into a JSON-friendly dict.
 
@@ -348,18 +408,13 @@ class SpeasyPlugin(DataProvider):
             log.debug("plot_hints_from_variable failed for %s", node, exc_info=True)
             return PlotHints()
 
-    def python_snippet(self, ctx) -> Optional[str]:
+    def python_snippets(self, ctx, graph=None) -> dict:
         if ctx.kind != "speasy" or not ctx.speasy_id:
-            return None
-        knobs_arg = (
-            f", product_inputs={ctx.knobs!r}" if ctx.knobs else ""
-        )
-        return (
-            "import speasy as spz\n"
-            'start = "2020-01-01T00:00:00"  # adjust\n'
-            'stop  = "2020-01-02T00:00:00"  # adjust\n'
-            f'data = spz.get_data("{ctx.speasy_id}", start, stop{knobs_arg})\n'
-        )
+            return {}
+        return {
+            "Reproduce in SciQLop": _speasy_sciqlop_snippet(ctx, graph),
+            "Notebook (matplotlib)": _speasy_matplotlib_snippet(ctx, graph),
+        }
 
     def extended_metadata(self, ctx) -> dict:
         if ctx.kind != "speasy" or not ctx.speasy_id:

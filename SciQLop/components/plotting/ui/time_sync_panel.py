@@ -468,11 +468,20 @@ def _attach_graph_context(r, provider, node, target):
                       plot.objectName())
         graph_type = type(graph).__name__
         knobs = {}
+        product_path = None
+        try:
+            if hasattr(node, "path"):
+                p = node.path()
+                if p:
+                    product_path = list(p) if isinstance(p, (list, tuple)) else [str(p)]
+        except Exception:
+            product_path = None
         if isinstance(provider, EasyProvider):
             ctx = build_vp_ctx(
                 graph, panel_name=panel_name, plot_index=plot_index,
                 vp_path=provider._path, provider_name=provider.name,
                 callback=provider._callback, graph_type=graph_type,
+                product_path=product_path,
                 knobs=knobs,
             )
             rich = GraphRichRefs(callback=provider._callback,
@@ -487,6 +496,7 @@ def _attach_graph_context(r, provider, node, target):
             ctx = build_speasy_ctx(
                 graph, panel_name=panel_name, plot_index=plot_index,
                 speasy_id=speasy_id, graph_type=graph_type,
+                product_path=product_path,
                 knobs=knobs,
             )
             attach_context(graph, ctx)

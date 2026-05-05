@@ -146,14 +146,16 @@ class DataProvider:
     def get_data(self, node, start: float, stop: float, knobs=None) -> DataProviderReturnType:
         pass
 
-    def python_snippet(self, ctx) -> Optional[str]:
-        """Return a Python snippet that reproduces this graph's fetch, or None.
+    def python_snippets(self, ctx, graph=None) -> dict:
+        """Return a {label: snippet} dict of paste-ready Python variants
+        that reproduce this graph's data fetch and plot.
 
-        Default returns None, meaning the menu hides the 'Copy Python code'
-        action. Providers that can produce a reproducible snippet override
-        this method.
+        `graph` is the live SciQLopPlots graph (when available), so the
+        provider can read the panel's current time range. Default returns
+        {} — the consumer adds no actions. Providers override to offer
+        named variants like "Reproduce in SciQLop" and "Notebook (matplotlib)".
         """
-        return None
+        return {}
 
     def extended_metadata(self, ctx) -> dict:
         """Return rich metadata about the graph's source. Format is

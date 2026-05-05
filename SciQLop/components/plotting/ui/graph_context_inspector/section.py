@@ -4,10 +4,10 @@ from __future__ import annotations
 from typing import Any
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QGuiApplication, QStandardItem, QStandardItemModel
+from PySide6.QtGui import QAction, QGuiApplication, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
-    QDialog, QFormLayout, QHBoxLayout, QLabel, QPushButton, QSizePolicy,
-    QTreeView, QVBoxLayout, QWidget,
+    QDialog, QFormLayout, QHBoxLayout, QLabel, QMenu, QPushButton, QSizePolicy,
+    QToolButton, QTreeView, QVBoxLayout, QWidget,
 )
 
 from SciQLop.core.graph_context import context_of, provider_for, _last_fetch_line
@@ -68,6 +68,17 @@ def _leaf_item(v: Any) -> QStandardItem:
     return item
 
 
+_FIELD_TOOLTIPS = {
+    "Source": "What this graph plots — speasy product UID, virtual product "
+              "path, or callable qualname.",
+    "Plot": "Panel and plot index this graph belongs to, plus the graph type.",
+    "Knobs": "Current knob values for this graph. Updated live when you edit "
+             "knobs in the Parameters section.",
+    "Last fetch": "Number of points and dtype of the last data set on this "
+                  "graph (read live from graph.data()).",
+}
+
+
 class GraphContextSection(QWidget):
     """Read-only graph identity panel + 'Show full metadata…' / 'Copy Python code' buttons.
 
@@ -82,17 +93,31 @@ class GraphContextSection(QWidget):
         self._form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
         self._labels: dict[str, QLabel] = {}
         for field in ("Source", "Plot", "Knobs", "Last fetch"):
+            key = QLabel(field + ":", self)
+            key.setToolTip(_FIELD_TOOLTIPS[field])
             lbl = QLabel("—", self)
             lbl.setWordWrap(True)
             lbl.setSizePolicy(QSizePolicy.Policy.Expanding,
                               QSizePolicy.Policy.Preferred)
+            lbl.setToolTip(_FIELD_TOOLTIPS[field])
             self._labels[field] = lbl
-            self._form.addRow(QLabel(field + ":", self), lbl)
+            self._form.addRow(key, lbl)
 
         buttons = QHBoxLayout()
-        self._copy_btn = QPushButton("Copy Python code", self)
-        self._copy_btn.clicked.connect(self._copy_snippet)
+        self._copy_btn = QToolButton(self)
+        self._copy_btn.setText("Copy Python code")
+        self._copy_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._copy_btn.setToolTip(
+            "Copy a paste-ready Python snippet that reproduces this graph. "
+            "Pick a target — SciQLop or a standalone notebook."
+        )
+        self._copy_menu = QMenu(self._copy_btn)
+        self._copy_btn.setMenu(self._copy_menu)
         self._show_btn = QPushButton("Show full metadata…", self)
+        self._show_btn.setToolTip(
+            "Open the full provider-supplied metadata (ISTP attrs for speasy "
+            "products, knobs schema for VPs, etc.) in a tree dialog."
+        )
         self._show_btn.clicked.connect(self._show_full)
         buttons.addWidget(self._copy_btn)
         buttons.addWidget(self._show_btn)
@@ -128,28 +153,26 @@ class GraphContextSection(QWidget):
         self._labels["Last fetch"].setText(last or "(no data yet)")
 
         provider = provider_for(ctx)
-        snippet = None
+        variants = {}
         if provider is not None:
             try:
-                snippet = provider.python_snippet(ctx)
+                variants = provider.python_snippets(ctx, graph=self._graph) or {}
             except Exception:
-                snippet = None
-        self._copy_btn.setEnabled(bool(snippet))
+                variants = {}
+        self._rebuild_copy_menu(variants)
+        self._copy_btn.setEnabled(bool(variants))
         self._show_btn.setEnabled(provider is not None)
 
-    def _copy_snippet(self) -> None:
-        ctx = context_of(self._graph)
-        if ctx is None:
-            return
-        provider = provider_for(ctx)
-        if provider is None:
-            return
-        try:
-            snippet = provider.python_snippet(ctx)
-        except Exception:
-            snippet = None
-        if snippet:
-            QGuiApplication.clipboard().setText(snippet)
+    def _rebuild_copy_menu(self, variants: dict) -> None:
+        self._copy_menu.clear()
+        for label, snippet in variants.items():
+            if not snippet:
+                continue
+            act = QAction(label, self._copy_menu)
+            act.triggered.connect(
+                lambda _checked=False, s=snippet: QGuiApplication.clipboard().setText(s)
+            )
+            self._copy_menu.addAction(act)
 
     def _show_full(self) -> None:
         ctx = context_of(self._graph)

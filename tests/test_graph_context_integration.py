@@ -212,8 +212,8 @@ def test_add_graph_context_actions_shows_copy_for_speasy(qtbot, monkeypatch):
 
     class _FakeProvider:
         name = "FakeSpeasy"
-        def python_snippet(self, ctx):
-            return f"# snippet for {ctx.speasy_id}"
+        def python_snippets(self, ctx, graph=None):
+            return {"Reproduce in SciQLop": f"# snippet for {ctx.speasy_id}"}
 
     g = _FakeGraph("g_menu")
     ctx = build_speasy_ctx(g, panel_name="P", plot_index=0,
@@ -277,8 +277,8 @@ def test_add_graph_context_actions_clipboard(qtbot, monkeypatch):
 
     class _FakeProvider:
         name = "FakeSpeasy2"
-        def python_snippet(self, ctx):
-            return "PASTE_ME"
+        def python_snippets(self, ctx, graph=None):
+            return {"Reproduce in SciQLop": "PASTE_ME"}
 
     g = _FakeGraph("g_clip")
     ctx = build_speasy_ctx(g, panel_name="P", plot_index=0,
@@ -367,8 +367,8 @@ def test_graph_context_section_renders_with_speasy_ctx(qtbot, monkeypatch):
 
     class _FakeProvider:
         name = "FakeSpeasy3"
-        def python_snippet(self, ctx):
-            return "import speasy as spz"
+        def python_snippets(self, ctx, graph=None):
+            return {"Reproduce in SciQLop": "import speasy as spz"}
         def extended_metadata(self, ctx):
             return {"speasy_id": ctx.speasy_id, "inventory": {"x": 1}}
 
