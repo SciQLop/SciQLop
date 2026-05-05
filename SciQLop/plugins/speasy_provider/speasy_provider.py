@@ -12,6 +12,7 @@ from SciQLop.components.theming import register_icon, get_icon
 from SciQLop.components import sciqlop_logging
 from SciQLop.core.enums import ParameterType, GraphType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder
+from SciQLop.core import tracing
 from SciQLop.core.plot_hints import PlotHints
 from SciQLop.core.istp_hints import istp_metadata_to_hints
 from SciQLop.core.speasy_hints import variable_as_istp_meta
@@ -213,6 +214,30 @@ def explore_nodes(inventory_node, product_node: ProductsModelNode, provider):
                     product_node.add_child(cur_prod)
 
 
+def _index_to_dict(index) -> dict:
+    """Best-effort flatten of a speasy ParameterIndex into a JSON-friendly dict.
+
+    Walks public attributes; skips callables and underscore-prefixed names.
+    Falls back to `{"__repr__": repr(index)}` if attribute access raises.
+    """
+    out = {}
+    try:
+        for attr in dir(index):
+            if attr.startswith("_"):
+                continue
+            try:
+                value = getattr(index, attr)
+            except Exception:
+                continue
+            if callable(value):
+                continue
+            if isinstance(value, (str, int, float, bool, list, dict, type(None))):
+                out[attr] = value
+    except Exception:
+        out["__repr__"] = repr(index)
+    return out
+
+
 def build_product_tree(root_node: ProductsModelNode, provider):
     ws_icons = {
         "amda": "amda",
@@ -275,9 +300,20 @@ class SpeasyPlugin(DataProvider):
         try:
             speasy_id = product.metadata("speasy_id") if hasattr(product, "metadata") else product
             kwargs = {"product_inputs": dict(knobs)} if knobs else {}
-            v: SpeasyVariable = spz.get_data(speasy_id, start, stop, **kwargs)
+            with tracing.zone("speasy.get_data", cat="speasy",
+                              speasy_id=str(speasy_id),
+                              start=float(start), stop=float(stop),
+                              n_seconds=float(stop) - float(start)):
+                v: SpeasyVariable = spz.get_data(speasy_id, start, stop, **kwargs)
+            n_points = int(len(v)) if v is not None else 0
+            n_bytes = int(v.values.nbytes) if v is not None else 0
+            tracing.counter("speasy.points", n_points, cat="speasy")
+            tracing.counter("speasy.bytes", n_bytes, cat="speasy")
             if v:
-                return v.replace_fillval_by_nan(inplace=True, convert_to_float=True)
+                with tracing.zone("speasy.fill_nan", cat="speasy",
+                                  speasy_id=str(speasy_id),
+                                  n_points=n_points, n_bytes=n_bytes):
+                    return v.replace_fillval_by_nan(inplace=True, convert_to_float=True)
         except Exception:
             log.error(f"Error getting data for {product} between {start} and {stop}: {traceback.format_exc()}")
             return None
@@ -311,6 +347,32 @@ class SpeasyPlugin(DataProvider):
         except Exception:
             log.debug("plot_hints_from_variable failed for %s", node, exc_info=True)
             return PlotHints()
+
+    def python_snippet(self, ctx) -> Optional[str]:
+        if ctx.kind != "speasy" or not ctx.speasy_id:
+            return None
+        knobs_arg = (
+            f", product_inputs={ctx.knobs!r}" if ctx.knobs else ""
+        )
+        return (
+            "import speasy as spz\n"
+            'start = "2020-01-01T00:00:00"  # adjust\n'
+            'stop  = "2020-01-02T00:00:00"  # adjust\n'
+            f'data = spz.get_data("{ctx.speasy_id}", start, stop{knobs_arg})\n'
+        )
+
+    def extended_metadata(self, ctx) -> dict:
+        if ctx.kind != "speasy" or not ctx.speasy_id:
+            return {}
+        index = self._resolve_index(ctx.speasy_id)
+        if index is None:
+            return {}
+        return {
+            "speasy_id": ctx.speasy_id,
+            "inventory": _index_to_dict(index),
+            "parameter_type": (str(getattr(index, "parameter_type", ""))
+                                or None),
+        }
 
 
 def load(*args):
