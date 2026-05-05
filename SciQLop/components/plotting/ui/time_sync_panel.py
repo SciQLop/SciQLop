@@ -14,6 +14,8 @@ from SciQLop.core import TimeRange
 from SciQLop.core import listify
 from SciQLop.components import sciqlop_logging
 from SciQLop.components.plotting.backend.data_provider import providers, DataProvider
+from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+from SciQLop.core.graph_context import attach_context, build_speasy_ctx, build_vp_ctx, GraphRichRefs
 import weakref
 
 from SciQLop.core.plot_hints import apply_plot_hints, combine_hints, merge_hints, PlotHints
@@ -407,7 +409,54 @@ def _post_plot(r, provider, node, callback, target, product_path_str, existing_p
     _set_product_path(r, product_path_str)
     callback._post_fetch = _register_graph_hints(provider, node, r, target)
     _attach_knob_state(provider, node, callback, r, target)
+    _attach_graph_context(r, provider, node, target)
     return r
+
+
+def _attach_graph_context(r, provider, node, target):
+    """Attach a GraphContext + rich refs to the graph just produced.
+
+    Only acts on recognized provider types (EasyProvider, Speasy).
+    Unknown DataProvider subclasses are skipped — better to attach no
+    context than mislabel one.
+    """
+    try:
+        plot, graph = r
+        panel_name = target.windowTitle() if hasattr(target, "windowTitle") else ""
+        plots = target.plots() if hasattr(target, "plots") else []
+        plot_index = next((i for i, p in enumerate(plots)
+                           if p.objectName() == plot.objectName()), -1)
+        if plot_index == -1:
+            log.debug("graph_context: plot %r not in target.plots() — using -1",
+                      plot.objectName())
+        graph_type = type(graph).__name__
+        knobs = {}
+        if isinstance(provider, EasyProvider):
+            ctx = build_vp_ctx(
+                graph, panel_name=panel_name, plot_index=plot_index,
+                vp_path=provider._path, provider_name=provider.name,
+                callback=provider._callback, graph_type=graph_type,
+                knobs=knobs,
+            )
+            rich = GraphRichRefs(callback=provider._callback,
+                                 knobs_model=provider._knobs_model)
+            attach_context(graph, ctx, rich)
+            return
+        if getattr(provider, "name", None) == "Speasy":
+            speasy_id = ""
+            if hasattr(node, "metadata"):
+                speasy_id = node.metadata("speasy_id") or ""
+            ctx = build_speasy_ctx(
+                graph, panel_name=panel_name, plot_index=plot_index,
+                speasy_id=speasy_id, graph_type=graph_type,
+                knobs=knobs,
+            )
+            attach_context(graph, ctx)
+            return
+        log.debug("graph_context: unknown provider %r — skipping attach",
+                  type(provider).__name__)
+    except Exception:
+        log.debug("attach_graph_context failed", exc_info=True)
 
 
 def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):

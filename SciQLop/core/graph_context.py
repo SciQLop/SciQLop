@@ -118,9 +118,9 @@ def provider_for(ctx: GraphContext) -> Optional[DataProvider]:
     return providers.get(ctx.provider_name)
 
 
-def _build_speasy_ctx(graph, *, panel_name: str, plot_index: int,
-                      speasy_id: str, graph_type: str,
-                      knobs: Optional[dict] = None) -> GraphContext:
+def build_speasy_ctx(graph, *, panel_name: str, plot_index: int,
+                     speasy_id: str, graph_type: str,
+                     knobs: Optional[dict] = None) -> GraphContext:
     return GraphContext(
         kind="speasy",
         graph_id=graph.objectName(),
@@ -133,11 +133,11 @@ def _build_speasy_ctx(graph, *, panel_name: str, plot_index: int,
     )
 
 
-def _build_vp_ctx(graph, *, panel_name: str, plot_index: int,
-                  vp_path: "str | list[str] | tuple[str, ...]",
-                  provider_name: str, callback: Callable,
-                  graph_type: str,
-                  knobs: Optional[dict] = None) -> GraphContext:
+def build_vp_ctx(graph, *, panel_name: str, plot_index: int,
+                 vp_path: "str | list[str] | tuple[str, ...]",
+                 provider_name: str, callback: Callable,
+                 graph_type: str,
+                 knobs: Optional[dict] = None) -> GraphContext:
     vp_path_str = "/".join(vp_path) if isinstance(vp_path, (list, tuple)) else str(vp_path)
     return GraphContext(
         kind="vp",
@@ -153,8 +153,8 @@ def _build_vp_ctx(graph, *, panel_name: str, plot_index: int,
     )
 
 
-def _build_function_ctx(graph, *, panel_name: str, plot_index: int,
-                        callback: Callable, graph_type: str) -> GraphContext:
+def build_function_ctx(graph, *, panel_name: str, plot_index: int,
+                       callback: Callable, graph_type: str) -> GraphContext:
     return GraphContext(
         kind="function",
         graph_id=graph.objectName(),
@@ -167,8 +167,8 @@ def _build_function_ctx(graph, *, panel_name: str, plot_index: int,
     )
 
 
-def _build_static_ctx(graph, *, panel_name: str, plot_index: int,
-                      graph_type: str) -> GraphContext:
+def build_static_ctx(graph, *, panel_name: str, plot_index: int,
+                     graph_type: str) -> GraphContext:
     return GraphContext(
         kind="static",
         graph_id=graph.objectName(),

@@ -1,0 +1,123 @@
+"""End-to-end tests for graph context attachment via the producer paths.
+
+Heavier than test_graph_context.py — these go through real
+SciQLopMultiPlotPanel + plot_product / plot_static_data / plot_function
+paths.
+"""
+import pytest
+
+
+def test_post_plot_invokes_attach_context_for_speasy(qtbot, monkeypatch):
+    """When _post_plot runs on a speasy provider, attach_context is called
+    with kind='speasy'."""
+    from SciQLop.components.plotting.ui import time_sync_panel as tsp
+    from PySide6.QtCore import QObject
+
+    captured = {}
+
+    def _capture_attach(graph, ctx, rich=None):
+        captured["graph"] = graph
+        captured["ctx"] = ctx
+        captured["rich"] = rich
+
+    monkeypatch.setattr(tsp, "attach_context", _capture_attach)
+    monkeypatch.setattr(tsp, "_set_product_path", lambda *a, **kw: None)
+    monkeypatch.setattr(tsp, "_register_graph_hints", lambda *a, **kw: None)
+    monkeypatch.setattr(tsp, "_attach_knob_state", lambda *a, **kw: None)
+
+    class _FakeNode:
+        def name(self): return "imf"
+        def metadata(self, key=None):
+            if key == "speasy_id":
+                return "amda/imf"
+            return {}
+
+    class _FakeProvider:
+        name = "Speasy"
+
+    class _FakeGraph(QObject):
+        def __init__(self, name):
+            super().__init__()
+            self.setObjectName(name)
+
+        def set_name(self, n): self.setObjectName(n)
+        def name(self): return self.objectName()
+
+    class _FakePlot(QObject):
+        def __init__(self):
+            super().__init__()
+            self.setObjectName("plot0")
+
+    class _FakeTarget:
+        def plots(self): return [_FakePlot()]
+        def windowTitle(self): return "PanelX"
+
+    callback = type("C", (), {"_post_fetch": None})()
+    plot, graph = _FakePlot(), _FakeGraph("g0")
+    tsp._post_plot((plot, graph), _FakeProvider(), _FakeNode(),
+                   callback, _FakeTarget(),
+                   "amda//imf", existing_plot=None)
+
+    assert captured["ctx"].kind == "speasy"
+    assert captured["ctx"].speasy_id == "amda/imf"
+    assert captured["ctx"].provider_name == "Speasy"
+
+
+def test_post_plot_invokes_attach_context_for_vp(qtbot, monkeypatch):
+    """When _post_plot runs on an EasyProvider (VP), attach_context is
+    called with kind='vp' and rich refs containing the callback."""
+    from SciQLop.components.plotting.ui import time_sync_panel as tsp
+    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+    from PySide6.QtCore import QObject
+
+    captured = {}
+
+    def _capture_attach(graph, ctx, rich=None):
+        captured["graph"] = graph
+        captured["ctx"] = ctx
+        captured["rich"] = rich
+
+    monkeypatch.setattr(tsp, "attach_context", _capture_attach)
+    monkeypatch.setattr(tsp, "_set_product_path", lambda *a, **kw: None)
+    monkeypatch.setattr(tsp, "_register_graph_hints", lambda *a, **kw: None)
+    monkeypatch.setattr(tsp, "_attach_knob_state", lambda *a, **kw: None)
+
+    def my_vp_callback(start, stop):
+        return None
+
+    class _FakeNode:
+        def name(self): return "vp_node"
+        def metadata(self, key=None): return None if key else {}
+
+    fake_provider = EasyProvider.__new__(EasyProvider)
+    fake_provider._path = ["root", "my_vp"]
+    fake_provider._name = "my_vp_callback-1"
+    fake_provider._callback = my_vp_callback
+    fake_provider._knobs_model = None
+
+    class _FakeGraph(QObject):
+        def __init__(self, name):
+            super().__init__()
+            self.setObjectName(name)
+
+    class _FakePlot(QObject):
+        def __init__(self):
+            super().__init__()
+            self.setObjectName("plot0")
+
+    class _FakeTarget:
+        def plots(self): return [_FakePlot()]
+        def windowTitle(self): return "PanelY"
+
+    callback = type("C", (), {"_post_fetch": None})()
+    plot, graph = _FakePlot(), _FakeGraph("g_vp")
+    tsp._post_plot((plot, graph), fake_provider, _FakeNode(),
+                   callback, _FakeTarget(),
+                   "root//my_vp", existing_plot=None)
+
+    assert captured["ctx"].kind == "vp"
+    assert captured["ctx"].vp_path == "root/my_vp"
+    assert captured["ctx"].provider_name == "my_vp_callback-1"
+    assert captured["ctx"].callback_qualname == my_vp_callback.__qualname__
+    assert captured["rich"] is not None
+    assert captured["rich"].callback is my_vp_callback
