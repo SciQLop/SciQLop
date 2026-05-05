@@ -118,6 +118,22 @@ def provider_for(ctx: GraphContext) -> Optional[DataProvider]:
     return providers.get(ctx.provider_name)
 
 
+def update_knobs(graph, knobs: dict) -> None:
+    """Refresh the knobs dict on a graph's meta_data slot.
+
+    Called when the user changes knob values in the inspector. No-op if no
+    context was attached to this graph.
+    """
+    ctx = context_of(graph)
+    if ctx is None:
+        return
+    ctx.knobs = dict(knobs)
+    try:
+        graph.set_meta_data(ctx.to_meta_data())
+    except Exception:
+        log.debug("update_knobs set_meta_data failed", exc_info=True)
+
+
 def build_speasy_ctx(graph, *, panel_name: str, plot_index: int,
                      speasy_id: str, graph_type: str,
                      knobs: Optional[dict] = None) -> GraphContext:

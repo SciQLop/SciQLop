@@ -244,3 +244,26 @@ def test_build_static_ctx():
     assert ctx.kind == "static"
     assert ctx.provider_name is None
     assert ctx.speasy_id is None
+
+
+def test_update_knobs_refreshes_meta_data(qtbot):
+    from SciQLop.core.graph_context import attach_context, context_of, update_knobs
+    g = _FakeGraph("g_knob")
+    ctx = GraphContext(
+        kind="vp", graph_id="g_knob", panel_name="P", plot_index=0,
+        graph_type="Line", vp_path="x", provider_name="vp-1",
+        knobs={"a": 1},
+    )
+    attach_context(g, ctx, GraphRichRefs(callback=lambda s, e: None))
+
+    update_knobs(g, {"a": 99, "b": "x"})
+
+    refreshed = context_of(g)
+    assert refreshed.knobs == {"a": 99, "b": "x"}
+
+
+def test_update_knobs_no_op_when_no_context(qtbot):
+    from SciQLop.core.graph_context import update_knobs
+    g = _FakeGraph("g_no_ctx")
+    update_knobs(g, {"a": 1})
+    assert g.meta_data() == {}
