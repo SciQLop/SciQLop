@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from SciQLop.core.graph_context import GraphContext, GraphRichRefs
+from SciQLop.core.graph_context import GraphContext, GraphRichRefs, _is_importable
 
 
 def test_speasy_context_minimal():
@@ -57,3 +57,38 @@ def test_graph_rich_refs_defaults_none():
     refs = GraphRichRefs()
     assert refs.callback is None
     assert refs.knobs_model is None
+
+
+def _module_level_function():
+    return 42
+
+
+def test_is_importable_module_level_true():
+    assert _is_importable(_module_level_function.__module__,
+                          _module_level_function.__qualname__,
+                          _module_level_function) is True
+
+
+def test_is_importable_lambda_false():
+    f = lambda: 0
+    assert _is_importable(f.__module__, f.__qualname__, f) is False
+
+
+def test_is_importable_closure_false():
+    def outer():
+        def inner(): return 0
+        return inner
+    f = outer()
+    assert "<locals>" in f.__qualname__
+    assert _is_importable(f.__module__, f.__qualname__, f) is False
+
+
+def test_is_importable_aliased_false():
+    other = lambda: 1
+    assert _is_importable(_module_level_function.__module__,
+                          _module_level_function.__qualname__,
+                          other) is False
+
+
+def test_is_importable_unknown_module_false():
+    assert _is_importable("definitely_not_a_module", "x", lambda: 0) is False

@@ -1,6 +1,7 @@
 """Per-graph metadata envelope. See docs/plans/2026-05-05-graph-context-metadata.md."""
 from __future__ import annotations
 
+import importlib
 from dataclasses import dataclass
 from typing import Any, Callable, Literal, Optional
 
@@ -37,3 +38,23 @@ class GraphRichRefs:
     """Python-only references that can't go in the C++ meta_data slot."""
     callback: Optional[Callable] = None
     knobs_model: Optional[type] = None
+
+
+def _is_importable(module_name: str, qualname: str, obj: object) -> bool:
+    """Return True iff `qualname` resolves from `module_name` to exactly `obj`.
+
+    Used by VP snippet generation to decide whether the callback can be
+    imported by name in a fresh Python session.
+    """
+    try:
+        mod = importlib.import_module(module_name)
+        target = mod
+        for part in qualname.split("."):
+            if part == "<locals>":
+                return False
+            target = getattr(target, part, None)
+            if target is None:
+                return False
+        return target is obj
+    except Exception:
+        return False
