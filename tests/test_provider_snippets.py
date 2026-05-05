@@ -82,3 +82,93 @@ def test_speasy_extended_metadata_known_id():
     assert out["speasy_id"] == "amda/imf"
     assert out["parameter_type"] == "Vector"
     assert "inventory" in out
+
+
+# Module-level callback for the importable case
+def _tested_module_level_vp_callback(start, stop, knobs=None):
+    return None
+
+
+def test_easy_provider_snippet_module_level_callback(qtbot):
+    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+    p = EasyProvider.__new__(EasyProvider)
+    p._path = ["root", "my_vp"]
+    p._callback = _tested_module_level_vp_callback
+    p._knobs_kwarg_name = "knobs"
+    ctx = GraphContext(kind="vp", graph_id="g", panel_name="P",
+                       plot_index=0, graph_type="Line",
+                       vp_path="root/my_vp", provider_name="my_vp-1",
+                       callback_qualname=_tested_module_level_vp_callback.__qualname__,
+                       callback_module=_tested_module_level_vp_callback.__module__,
+                       knobs={"k": 0.5})
+    snippet = p.python_snippet(ctx)
+    assert snippet is not None
+    assert f"from {_tested_module_level_vp_callback.__module__} import" in snippet
+    assert _tested_module_level_vp_callback.__qualname__ in snippet
+    assert "knobs={'k': 0.5}" in snippet
+
+
+def test_easy_provider_snippet_lambda_returns_stub(qtbot):
+    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+    p = EasyProvider.__new__(EasyProvider)
+    p._path = ["root", "my_vp"]
+    p._callback = lambda s, e: None
+    p._knobs_kwarg_name = "knobs"
+    ctx = GraphContext(kind="vp", graph_id="g", panel_name="P",
+                       plot_index=0, graph_type="Line",
+                       vp_path="root/my_vp", provider_name="my_vp-1",
+                       callback_qualname=p._callback.__qualname__,
+                       callback_module=p._callback.__module__)
+    snippet = p.python_snippet(ctx)
+    assert snippet is not None
+    assert "not importable" in snippet
+    assert "root/my_vp" in snippet
+
+
+def test_easy_provider_snippet_kind_mismatch_returns_none(qtbot):
+    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+    p = EasyProvider.__new__(EasyProvider)
+    p._callback = _tested_module_level_vp_callback
+    p._path = ["x"]
+    ctx = GraphContext(kind="speasy", graph_id="g", panel_name="P",
+                       plot_index=0, graph_type="Line",
+                       speasy_id="x/y", provider_name="Speasy")
+    assert p.python_snippet(ctx) is None
+
+
+def test_easy_provider_extended_metadata_with_model(qtbot):
+    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+    from pydantic import BaseModel
+
+    class Knobs(BaseModel):
+        k: float = 0.0
+
+    p = EasyProvider.__new__(EasyProvider)
+    p._path = ["root", "x"]
+    p._callback = _tested_module_level_vp_callback
+    p._knobs_model = Knobs
+    p._knob_specs = []
+
+    ctx = GraphContext(kind="vp", graph_id="g", panel_name="P",
+                       plot_index=0, graph_type="Line",
+                       vp_path="root/x", provider_name="x-1")
+    out = p.extended_metadata(ctx)
+    assert out["vp_path"] == "root/x"
+    assert out["callback"]["qualname"] == _tested_module_level_vp_callback.__qualname__
+    assert "k" in out["knobs_schema"]["properties"]
+    assert out["knob_specs"] == []
+
+
+def test_easy_provider_extended_metadata_without_model(qtbot):
+    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+    p = EasyProvider.__new__(EasyProvider)
+    p._path = ["root", "y"]
+    p._callback = _tested_module_level_vp_callback
+    p._knobs_model = None
+    p._knob_specs = []
+
+    ctx = GraphContext(kind="vp", graph_id="g", panel_name="P",
+                       plot_index=0, graph_type="Line",
+                       vp_path="root/y", provider_name="y-1")
+    out = p.extended_metadata(ctx)
+    assert out["knobs_schema"] is None

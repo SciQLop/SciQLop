@@ -10,6 +10,7 @@ from SciQLop.core.unique_names import make_simple_incr_name
 from SciQLop.core.models import products, ProductsModelNode, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder, DataProviderReturnType
+from SciQLop.core import tracing
 from SciQLop.components.theming import register_icon
 from SciQLop.components import sciqlop_logging
 from inspect import signature
@@ -154,16 +155,19 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
             kwargs = {self._knobs_kwarg_name: model}
         else:
             kwargs = dict(knobs or {})
-        if self._debug:
-            from SciQLop.user_api.virtual_products.validation import validate_and_call
-            result = validate_and_call(self._callback, *rng, None, None, **kwargs)
-            for d in result.diagnostics:
-                if d.level == "error":
-                    log.error(f"{self.name}: {d.message}")
-                elif d.level == "warning":
-                    log.warning(f"{self.name}: {d.message}")
-            return result.data
-        return self._callback(*rng, **kwargs)
+        with tracing.zone("vp.callback", cat="vp",
+                          vp=self.name, n_knobs=len(kwargs),
+                          start=float(start), stop=float(stop)):
+            if self._debug:
+                from SciQLop.user_api.virtual_products.validation import validate_and_call
+                result = validate_and_call(self._callback, *rng, None, None, **kwargs)
+                for d in result.diagnostics:
+                    if d.level == "error":
+                        log.error(f"{self.name}: {d.message}")
+                    elif d.level == "warning":
+                        log.warning(f"{self.name}: {d.message}")
+                return result.data
+            return self._callback(*rng, **kwargs)
 
     def get_data(self, product, start: float, stop: float, knobs=None) -> DataProviderReturnType:
         return self._invoke_callback(start, stop, knobs)
@@ -174,6 +178,47 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
 
     def labels(self, node) -> List[str]:
         return node.metadata().get("components", "").split(';')
+
+    def python_snippet(self, ctx) -> Optional[str]:
+        if ctx.kind != "vp" or self._callback is None:
+            return None
+        cb = self._callback
+        mod_name = getattr(cb, "__module__", None)
+        qualname = getattr(cb, "__qualname__", None)
+        if not (mod_name and qualname):
+            return None
+        from SciQLop.core.graph_context import _is_importable
+        if _is_importable(mod_name, qualname, cb):
+            knobs_kw = (
+                f", {self._knobs_kwarg_name}={ctx.knobs!r}"
+                if ctx.knobs else ""
+            )
+            return (
+                f"from {mod_name} import {qualname}\n"
+                "start = ...  # datetime or float\n"
+                "stop  = ...\n"
+                f"data = {qualname}(start, stop{knobs_kw})\n"
+            )
+        return (
+            f"# Virtual product '{'/'.join(self._path)}'\n"
+            f"# callback '{mod_name}.{qualname}' is not importable from this module.\n"
+            f"# Re-execute the cell that registered it before fetching.\n"
+        )
+
+    def extended_metadata(self, ctx) -> dict:
+        return {
+            "vp_path": "/".join(self._path),
+            "callback": {
+                "module": getattr(self._callback, "__module__", None),
+                "qualname": getattr(self._callback, "__qualname__", None),
+            },
+            "knobs_schema": (
+                self._knobs_model.model_json_schema()
+                if self._knobs_model is not None else None
+            ),
+            "knob_specs": [s.model_dump() if hasattr(s, "model_dump") else s
+                           for s in self._knob_specs],
+        }
 
 
 class EasyScalar(EasyProvider):
