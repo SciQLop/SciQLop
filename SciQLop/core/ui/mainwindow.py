@@ -120,6 +120,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._menubar.addMenu(self.toolsMenu)
         self.toolsMenu.addAction("Open JupyterLab", self.open_jupyterlab_widget)
 
+        from SciQLop.components.profiling import ProfilingMenu
+        self._profiling_menu = ProfilingMenu(self)
+        self.toolsMenu.addMenu(self._profiling_menu.menu)
+
     def _setup_side_panels(self):
         self.productTree = ProductsView(self)
         self.productTree.setWindowIcon(theme_icon("tree"))
