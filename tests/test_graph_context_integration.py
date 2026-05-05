@@ -296,3 +296,54 @@ def test_add_graph_context_actions_clipboard(qtbot, monkeypatch):
         assert QApplication.clipboard().text() == "PASTE_ME"
     finally:
         providers.pop("FakeSpeasy2", None)
+
+
+def test_show_context_menu_wires_add_graph_context_actions():
+    """The _show_context_menu method invokes add_graph_context_actions on
+    the panel's graphs.
+
+    We don't drive the menu live — QMenu.exec() enters a native modal loop
+    that pytest can't unblock (Shiboken dispatches it through the C++ vtable,
+    bypassing any Python-level monkeypatch). Verifying the wiring via source
+    inspection is sufficient: both add_graph_context_actions and _all_graphs
+    have their own behavioral tests.
+    """
+    import inspect
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    src = inspect.getsource(TimeSyncPanel._show_context_menu)
+    assert "add_graph_context_actions" in src
+    assert "_all_graphs(self)" in src
+
+
+def test_all_graphs_returns_meta_data_capable_children(qtbot):
+    """_all_graphs walks panel.plots() children and returns those with both
+    meta_data() and set_meta_data() — i.e., SciQLopPlots' graph interfaces.
+    """
+    from PySide6.QtCore import QObject
+    from SciQLop.components.plotting.ui.time_sync_panel import _all_graphs
+
+    class _GraphLike(QObject):
+        def meta_data(self): return {}
+        def set_meta_data(self, d): pass
+
+    class _NotAGraph(QObject):
+        pass
+
+    class _FakePlot(QObject):
+        def __init__(self):
+            super().__init__()
+            self.setObjectName("plot0")
+            self._g1 = _GraphLike(parent=self)
+            self._g2 = _NotAGraph(parent=self)
+            self._g3 = _GraphLike(parent=self)
+
+    class _FakePanel:
+        def __init__(self):
+            self._plot = _FakePlot()
+        def plots(self):
+            return [self._plot]
+
+    graphs = _all_graphs(_FakePanel())
+    assert len(graphs) == 2
+    for g in graphs:
+        assert hasattr(g, "meta_data") and hasattr(g, "set_meta_data")

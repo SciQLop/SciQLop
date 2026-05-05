@@ -27,6 +27,7 @@ from SciQLop.core.mime import decode_mime
 from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE, CATALOG_LIST_MIME_TYPE
 from SciQLop.components.plotting.backend.palette import Palette, make_color_list
 from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
+from SciQLop.components.plotting.ui.graph_context_menu import add_graph_context_actions
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -698,6 +699,15 @@ class CatalogDnDCallback(PlotDragNDropCallback):
             manager.add_catalog(cat)
 
 
+def _all_graphs(panel) -> list:
+    out = []
+    for plot in panel.plots():
+        for child in plot.children():
+            if hasattr(child, "set_meta_data") and hasattr(child, "meta_data"):
+                out.append(child)
+    return out
+
+
 class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None,
@@ -792,6 +802,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         menu.addAction("Save as template\u2026", self._quick_save_template)
         menu.addAction("Export template\u2026", self._export_template)
         self._append_knob_reset_actions(menu)
+        add_graph_context_actions(menu, _all_graphs(self))
         menu.exec(global_pos)
 
     def _append_knob_reset_actions(self, menu):
