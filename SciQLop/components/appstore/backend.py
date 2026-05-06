@@ -7,10 +7,12 @@ import threading
 import urllib.request
 from importlib.metadata import PackageNotFoundError, distribution
 
+import packaging.specifiers
 import packaging.version
 
 from PySide6.QtCore import QObject, Signal, Slot
 
+import SciQLop
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.components.workspaces.backend.uv import uv_command
 
@@ -19,12 +21,41 @@ log = getLogger(__name__)
 DEFAULT_STORE_URL = "https://sciqlop.github.io/sciqlop-appstore/index.json"
 
 _PEP440_SPLIT = re.compile(r"[><=!~;@\s]")
+_SCIQLOP_VERSION = packaging.version.parse(SciQLop.__version__)
 
 
 def _fetch_index(url: str) -> list[dict]:
     req = urllib.request.Request(url, headers={"Accept": "application/json"})
     with urllib.request.urlopen(req, timeout=10) as resp:
         return json.loads(resp.read())
+
+
+def _is_compatible(version_entry: dict) -> bool:
+    """True if `version_entry["sciqlop"]` is missing/empty or matches our version."""
+    spec = (version_entry.get("sciqlop") or "").strip()
+    if not spec:
+        return True
+    try:
+        return _SCIQLOP_VERSION in packaging.specifiers.SpecifierSet(spec, prereleases=True)
+    except packaging.specifiers.InvalidSpecifier:
+        return True
+
+
+def _compatible_versions(plugin: dict) -> list[dict]:
+    return [v for v in plugin.get("versions", []) if _is_compatible(v)]
+
+
+def _filter_packages(packages: list[dict]) -> list[dict]:
+    """Drop incompatible versions, then drop plugins with no compatible version."""
+    out: list[dict] = []
+    for pkg in packages:
+        compatible = _compatible_versions(pkg)
+        if not compatible:
+            continue
+        filtered = dict(pkg)
+        filtered["versions"] = compatible
+        out.append(filtered)
+    return out
 
 
 def _latest_version(plugin: dict) -> dict | None:
@@ -113,7 +144,7 @@ class AppStoreBackend(QObject):
     def fetch_packages(self) -> None:
         def _fetch():
             try:
-                self._packages = _fetch_index(DEFAULT_STORE_URL)
+                self._packages = _filter_packages(_fetch_index(DEFAULT_STORE_URL))
                 self.packages_ready.emit(json.dumps(self._packages))
             except Exception as e:
                 log.error(f"Failed to fetch appstore index: {e}")
