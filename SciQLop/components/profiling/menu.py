@@ -12,12 +12,14 @@ from PySide6.QtWidgets import QFileDialog, QMenu, QMessageBox, QWidget
 
 from SciQLop.core import tracing
 from .perfetto import open_trace_in_perfetto
+from .speasy_tracing import install as install_speasy_tracing
 
 
 class ProfilingMenu(QObject):
     def __init__(self, host: QWidget):
         super().__init__(host)
         self._host = host
+        install_speasy_tracing()
         self.menu = QMenu("Profiling", host)
         self._start = self.menu.addAction("Start trace…", self._on_start)
         self._stop = self.menu.addAction("Stop trace", self._on_stop)
