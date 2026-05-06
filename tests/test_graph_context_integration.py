@@ -193,160 +193,206 @@ def test_plot_function_attaches_function_context(qtbot, monkeypatch):
     assert rich.callback is my_func
 
 
-def test_add_graph_context_actions_shows_copy_for_speasy(qtbot, monkeypatch):
-    from PySide6.QtCore import QObject
+def test_add_graph_context_actions_builds_hierarchical_submenu(qtbot, monkeypatch):
+    """The right-click submenu has a single 'Copy Python code' entry that
+    contains panel/plot/per-graph items underneath.
+    """
+    import numpy as np
     from PySide6.QtWidgets import QMenu
+    from SciQLop.components.plotting.ui.time_sync_panel import (
+        TimeSyncPanel, plot_static_data,
+    )
     from SciQLop.components.plotting.ui.graph_context_menu import (
         add_graph_context_actions,
     )
-    from SciQLop.core.graph_context import build_speasy_ctx
+    from SciQLop.core.graph_context import build_speasy_ctx, attach_context
     from SciQLop.components.plotting.backend.data_provider import providers
 
-    class _FakeGraph(QObject):
-        def __init__(self, name):
-            super().__init__(); self.setObjectName(name)
-        _md = {}
-        def meta_data(self): return dict(self._md)
-        def set_meta_data(self, d): self._md = dict(d)
-        def name(self): return self.objectName()
-
     class _FakeProvider:
-        name = "FakeSpeasy"
+        name = "FakeProv"
         def python_snippets(self, ctx, graph=None):
-            return {"Reproduce in SciQLop": f"# snippet for {ctx.speasy_id}"}
+            return {"Reproduce in SciQLop": f"# {ctx.speasy_id}",
+                    "Notebook (matplotlib)": f"# nb {ctx.speasy_id}"}
 
-    g = _FakeGraph("g_menu")
-    ctx = build_speasy_ctx(g, panel_name="P", plot_index=0,
-                           speasy_id="a/b", graph_type="Line")
-    ctx.provider_name = "FakeSpeasy"
-    g.set_meta_data(ctx.to_meta_data())
-
-    providers["FakeSpeasy"] = _FakeProvider()
+    providers["FakeProv"] = _FakeProvider()
+    panel = TimeSyncPanel('hier', show_search_overlay=False)
+    qtbot.addWidget(panel)
+    _, graph = plot_static_data(panel, np.array([0.0, 1.0]), np.array([0.0, 1.0]))
+    ctx = build_speasy_ctx(graph, panel_name='hier', plot_index=0,
+                           speasy_id='x/y', graph_type='Line',
+                           product_path=['x', 'y'])
+    ctx.provider_name = "FakeProv"
+    attach_context(graph, ctx)
     try:
         menu = QMenu()
-        add_graph_context_actions(menu, [g])
-        labels = [a.text() for a in menu.actions()]
-        assert any("Copy Python code" in lbl for lbl in labels)
+        add_graph_context_actions(menu, panel)
+        # Expect exactly one submenu titled "Copy Python code"
+        copy_actions = [a for a in menu.actions()
+                        if a.menu() and a.text() == "Copy Python code"]
+        assert len(copy_actions) == 1
+        sub = copy_actions[0].menu()
+        labels = [a.text() for a in sub.actions() if a.text()]
+        # Direct items: Panel "<title>" and Plot 0 (...)
+        assert any('Panel "hier"' in l for l in labels)
+        assert any(l.startswith("Plot 0") for l in labels)
+        # Per-graph submenu titled with the graph name
+        graph_subs = [a for a in sub.actions() if a.menu() and a.menu().actions()]
+        assert graph_subs, "expected per-graph submenu"
+        graph_sub = graph_subs[0].menu()
+        graph_labels = [a.text() for a in graph_sub.actions()]
+        assert "Reproduce in SciQLop" in graph_labels
+        assert "Notebook (matplotlib)" in graph_labels
     finally:
-        providers.pop("FakeSpeasy", None)
+        providers.pop("FakeProv", None)
 
 
-def test_add_graph_context_actions_omits_when_no_snippet(qtbot, monkeypatch):
-    from PySide6.QtCore import QObject
+def test_add_graph_context_actions_omits_when_no_snippets(qtbot):
+    """No source-bound graphs and no per-graph snippets → no submenu added."""
+    import numpy as np
     from PySide6.QtWidgets import QMenu
+    from SciQLop.components.plotting.ui.time_sync_panel import (
+        TimeSyncPanel, plot_static_data,
+    )
     from SciQLop.components.plotting.ui.graph_context_menu import (
         add_graph_context_actions,
     )
-    from SciQLop.core.graph_context import build_static_ctx
 
-    class _FakeGraph(QObject):
-        def __init__(self, name):
-            super().__init__(); self.setObjectName(name)
-        _md = {}
-        def meta_data(self): return dict(self._md)
-        def set_meta_data(self, d): self._md = dict(d)
-        def name(self): return self.objectName()
-
-    g = _FakeGraph("g_static")
-    ctx = build_static_ctx(g, panel_name="P", plot_index=0,
-                            graph_type="Line")
-    g.set_meta_data(ctx.to_meta_data())
-
+    panel = TimeSyncPanel('empty', show_search_overlay=False)
+    qtbot.addWidget(panel)
+    plot_static_data(panel, np.array([0.0, 1.0]), np.array([0.0, 1.0]))
     menu = QMenu()
-    add_graph_context_actions(menu, [g])
-    labels = [a.text() for a in menu.actions()]
-    assert not any("Copy Python code" in lbl for lbl in labels)
+    add_graph_context_actions(menu, panel)
+    titles = [a.text() for a in menu.actions()]
+    assert "Copy Python code" not in titles
 
 
-def test_add_graph_context_actions_clipboard(qtbot, monkeypatch):
-    from PySide6.QtCore import QObject
-    from PySide6.QtWidgets import QMenu, QApplication
+def test_add_graph_context_actions_clipboard(qtbot):
+    """Triggering a per-graph variant action puts the snippet on the clipboard."""
+    import numpy as np
+    from PySide6.QtWidgets import QApplication, QMenu
+    from SciQLop.components.plotting.ui.time_sync_panel import (
+        TimeSyncPanel, plot_static_data,
+    )
     from SciQLop.components.plotting.ui.graph_context_menu import (
         add_graph_context_actions,
     )
-    from SciQLop.core.graph_context import build_speasy_ctx
+    from SciQLop.core.graph_context import build_speasy_ctx, attach_context
     from SciQLop.components.plotting.backend.data_provider import providers
 
-    class _FakeGraph(QObject):
-        def __init__(self, name):
-            super().__init__(); self.setObjectName(name)
-        _md = {}
-        def meta_data(self): return dict(self._md)
-        def set_meta_data(self, d): self._md = dict(d)
-        def name(self): return self.objectName()
-
     class _FakeProvider:
-        name = "FakeSpeasy2"
+        name = "ClipProv"
         def python_snippets(self, ctx, graph=None):
             return {"Reproduce in SciQLop": "PASTE_ME"}
 
-    g = _FakeGraph("g_clip")
-    ctx = build_speasy_ctx(g, panel_name="P", plot_index=0,
-                           speasy_id="x/y", graph_type="Line")
-    ctx.provider_name = "FakeSpeasy2"
-    g.set_meta_data(ctx.to_meta_data())
-    providers["FakeSpeasy2"] = _FakeProvider()
+    providers["ClipProv"] = _FakeProvider()
+    panel = TimeSyncPanel('clip', show_search_overlay=False)
+    qtbot.addWidget(panel)
+    _, graph = plot_static_data(panel, np.array([0.0, 1.0]), np.array([0.0, 1.0]))
+    ctx = build_speasy_ctx(graph, panel_name='clip', plot_index=0,
+                           speasy_id='x/y', graph_type='Line',
+                           product_path=['x', 'y'])
+    ctx.provider_name = "ClipProv"
+    attach_context(graph, ctx)
     try:
-        menu = QMenu()
-        add_graph_context_actions(menu, [g])
-        for a in menu.actions():
-            if "Copy Python code" in a.text():
-                a.trigger()
-                break
+        menu = QMenu(panel)  # parent keeps the submenu graph alive across the test
+        add_graph_context_actions(menu, panel)
+        sub_actions = list(menu.actions())
+        sub = next(a.menu() for a in sub_actions
+                   if a.menu() and a.text() == "Copy Python code")
+        sub_inner_actions = list(sub.actions())
+        graph_sub = next(a.menu() for a in sub_inner_actions
+                         if a.menu() and a.menu().actions())
+        graph_sub.actions()[0].trigger()
         assert QApplication.clipboard().text() == "PASTE_ME"
     finally:
-        providers.pop("FakeSpeasy2", None)
+        providers.pop("ClipProv", None)
 
 
 def test_show_context_menu_wires_add_graph_context_actions():
-    """The _show_context_menu method invokes add_graph_context_actions on
-    the panel's graphs.
+    """_show_context_menu calls add_graph_context_actions(menu, self).
 
-    We don't drive the menu live — QMenu.exec() enters a native modal loop
-    that pytest can't unblock (Shiboken dispatches it through the C++ vtable,
-    bypassing any Python-level monkeypatch). Verifying the wiring via source
-    inspection is sufficient: both add_graph_context_actions and _all_graphs
-    have their own behavioral tests.
+    Verified via source inspection — QMenu.exec() enters a native modal loop
+    we can't unblock from Python.
     """
     import inspect
     from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
     src = inspect.getsource(TimeSyncPanel._show_context_menu)
-    assert "add_graph_context_actions" in src
-    assert "_all_graphs(self)" in src
+    assert "add_graph_context_actions(menu, self)" in src
 
 
-def test_all_graphs_returns_meta_data_capable_children(qtbot):
-    """_all_graphs walks panel.plots() children and returns those with both
-    meta_data() and set_meta_data() — i.e., SciQLopPlots' graph interfaces.
+def test_inspector_tree_tooltip_renders_on_graph_row(qtbot):
+    """The tree's tooltip filter consumes the ToolTip event for graph rows
+    (which have an attached context) and lets it through for non-graph rows
+    (panels, plots, axes) that have no per-graph context.
     """
-    from PySide6.QtCore import QObject
-    from SciQLop.components.plotting.ui.time_sync_panel import _all_graphs
+    import numpy as np
+    from PySide6.QtCore import QModelIndex, QEvent
+    from PySide6.QtGui import QHelpEvent
+    from SciQLop.components.plotting.ui.time_sync_panel import (
+        TimeSyncPanel, plot_static_data,
+    )
+    from SciQLopPlots import PropertiesPanel, PlotsTreeView
+    from SciQLop.components.plotting.ui.graph_context_inspector import (
+        install_inspector_tree_tooltips,
+    )
 
-    class _GraphLike(QObject):
-        def meta_data(self): return {}
-        def set_meta_data(self, d): pass
+    panel = TimeSyncPanel('tree_tt', show_search_overlay=False)
+    qtbot.addWidget(panel); panel.show()
+    plot_static_data(panel, np.array([0.0, 1.0, 2.0]),
+                     np.array([0.0, 1.0, 2.0]))
+    prop = PropertiesPanel(); qtbot.addWidget(prop); prop.show()
+    install_inspector_tree_tooltips(prop)
+    tree = prop.findChild(PlotsTreeView)
+    tree.expandAll()
+    qtbot.waitExposed(tree)
 
-    class _NotAGraph(QObject):
-        pass
+    flt = tree.viewport()._graph_context_tooltip_filter
 
-    class _FakePlot(QObject):
-        def __init__(self):
-            super().__init__()
-            self.setObjectName("plot0")
-            self._g1 = _GraphLike(parent=self)
-            self._g2 = _NotAGraph(parent=self)
-            self._g3 = _GraphLike(parent=self)
+    def fire(name) -> bool:
+        m = tree.model()
+        def find(parent=QModelIndex()):
+            for r in range(m.rowCount(parent)):
+                idx = m.index(r, 0, parent)
+                if idx.data() == name:
+                    return idx
+                sub = find(idx)
+                if sub.isValid():
+                    return sub
+            return QModelIndex()
+        idx = find()
+        center = tree.visualRect(idx).center()
+        ev = QHelpEvent(QEvent.Type.ToolTip, center,
+                        tree.viewport().mapToGlobal(center))
+        return flt.eventFilter(tree.viewport(), ev)
 
-    class _FakePanel:
-        def __init__(self):
-            self._plot = _FakePlot()
-        def plots(self):
-            return [self._plot]
+    assert fire('Line') is True, "graph row consumed by filter"
+    assert fire('X Axis') is False, "axis row passes through"
 
-    graphs = _all_graphs(_FakePanel())
-    assert len(graphs) == 2
-    for g in graphs:
-        assert hasattr(g, "meta_data") and hasattr(g, "set_meta_data")
+
+def test_install_graph_context_ui_keeps_extension_alive(qtbot):
+    """The GraphContextExtension must survive Python GC after being added.
+
+    Regression: ``parent=graph`` alone is insufficient for Python subclasses of
+    Shiboken-bound types — see shiboken-python-subclass-gc-pitfall.md.
+    """
+    import gc
+    import numpy as np
+    from SciQLop.components.plotting.ui.time_sync_panel import (
+        TimeSyncPanel, plot_static_data,
+    )
+    from SciQLop.components.plotting.ui.graph_context_inspector import (
+        GraphContextExtension,
+    )
+
+    panel = TimeSyncPanel('gc_keepalive', show_search_overlay=False)
+    qtbot.addWidget(panel)
+    _, graph = plot_static_data(panel, np.array([0.0, 1.0, 2.0]),
+                                 np.array([0.0, 1.0, 2.0]))
+    gc.collect()
+    exts = [e for e in graph.inspector_extensions()
+            if isinstance(e, GraphContextExtension)]
+    assert len(exts) == 1
+    assert exts[0].build_widget(None) is not None
 
 
 def test_graph_context_section_renders_with_speasy_ctx(qtbot, monkeypatch):

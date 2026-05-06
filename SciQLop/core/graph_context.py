@@ -204,6 +204,20 @@ def build_static_ctx(graph, *, panel_name: str, plot_index: int,
     )
 
 
+def graph_name(graph) -> str:
+    """Display name for a graph. Real SciQLopPlots graphs expose ``name`` as a
+    string property; legacy/test stand-ins expose it as a method. Falls back to
+    ``objectName()`` when neither yields anything usable.
+    """
+    n = getattr(graph, "name", None)
+    if callable(n):
+        try:
+            n = n()
+        except Exception:
+            n = None
+    return n or graph.objectName()
+
+
 def graph_time_range(graph) -> Optional[tuple]:
     """Best-effort read of the live (start, stop) epoch-second range from the
     graph's parent plot's time axis. Returns None if unavailable.
@@ -235,15 +249,15 @@ def _last_fetch_line(graph) -> str:
 
 
 def graph_tooltip(graph) -> str:
-    """Render a per-graph tooltip from the attached context.
-
-    Returns "" if the graph has no context attached — caller should leave the
-    target widget's tooltip untouched in that case.
+    """Multi-line summary of a graph's attached context: title, knobs, last
+    fetch volume. Used by the inspector tree's hover tooltip. Returns "" when
+    the graph has no context attached so the caller can leave the existing
+    tooltip untouched.
     """
     ctx = context_of(graph)
     if ctx is None:
         return ""
-    name = graph.name() if hasattr(graph, "name") else graph.objectName()
+    name = graph_name(graph)
     if ctx.kind == "speasy":
         title = f"{name}: {ctx.speasy_id} — Speasy"
     elif ctx.kind == "vp":
@@ -261,3 +275,5 @@ def graph_tooltip(graph) -> str:
     if last:
         lines.append(last)
     return "\n".join(lines)
+
+

@@ -1,4 +1,9 @@
-"""Read-only summary panel + Show full metadata… dialog for a graph context."""
+"""Read-only summary panel + Show full metadata… dialog for a graph context.
+
+The layout is a vertical stack of {bold name} → {value} pairs with word-wrap
+on values, so it stays readable in narrow inspector docks. Buttons sit in a
+horizontal row at the bottom and stretch to match available width.
+"""
 from __future__ import annotations
 
 from typing import Any
@@ -6,8 +11,8 @@ from typing import Any
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QGuiApplication, QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
-    QDialog, QFormLayout, QHBoxLayout, QLabel, QMenu, QPushButton, QSizePolicy,
-    QToolButton, QTreeView, QVBoxLayout, QWidget,
+    QDialog, QHBoxLayout, QLabel, QMenu, QPushButton, QSizePolicy, QToolButton,
+    QTreeView, QVBoxLayout, QWidget,
 )
 
 from SciQLop.core.graph_context import context_of, provider_for, _last_fetch_line
@@ -69,67 +74,84 @@ def _leaf_item(v: Any) -> QStandardItem:
 
 
 _FIELD_TOOLTIPS = {
-    "Source": "What this graph plots — speasy product UID, virtual product "
+    "Source": "What this graph plots — Speasy product UID, virtual product "
               "path, or callable qualname.",
     "Plot": "Panel and plot index this graph belongs to, plus the graph type.",
-    "Knobs": "Current knob values for this graph. Updated live when you edit "
-             "knobs in the Parameters section.",
-    "Last fetch": "Number of points and dtype of the last data set on this "
-                  "graph (read live from graph.data()).",
+    "Parameters": "Current parameter values for this graph. Updated live when "
+                  "you edit them in the Parameters section above.",
+    "Last loaded": "Number of points and dtype of the last data set on this "
+                   "graph (read live from graph.data()).",
 }
 
 
 class GraphContextSection(QWidget):
-    """Read-only graph identity panel + 'Show full metadata…' / 'Copy Python code' buttons.
+    """Read-only graph identity panel + 'Copy Python code' / 'Show metadata…'.
 
-    Reads the live envelope each time it's built (and on graph.data_changed).
+    Vertical stack of bold field names above word-wrapped values — stays
+    readable in narrow inspector docks. Refreshes on graph.data_changed.
     """
 
     def __init__(self, graph, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._graph = graph
-        self._form = QFormLayout(self)
-        self._form.setContentsMargins(0, 0, 0, 0)
-        self._form.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(8)
+
         self._labels: dict[str, QLabel] = {}
-        for field in ("Source", "Plot", "Knobs", "Last fetch"):
-            key = QLabel(field + ":", self)
-            key.setToolTip(_FIELD_TOOLTIPS[field])
-            lbl = QLabel("—", self)
-            lbl.setWordWrap(True)
-            lbl.setSizePolicy(QSizePolicy.Policy.Expanding,
-                              QSizePolicy.Policy.Preferred)
-            lbl.setToolTip(_FIELD_TOOLTIPS[field])
-            self._labels[field] = lbl
-            self._form.addRow(key, lbl)
+        for field in ("Source", "Plot", "Parameters", "Last loaded"):
+            layout.addLayout(self._build_field(field))
 
-        buttons = QHBoxLayout()
-        self._copy_btn = QToolButton(self)
-        self._copy_btn.setText("Copy Python code")
-        self._copy_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self._copy_btn.setToolTip(
-            "Copy a paste-ready Python snippet that reproduces this graph. "
-            "Pick a target — SciQLop or a standalone notebook."
-        )
-        self._copy_menu = QMenu(self._copy_btn)
-        self._copy_btn.setMenu(self._copy_menu)
-        self._show_btn = QPushButton("Show full metadata…", self)
-        self._show_btn.setToolTip(
-            "Open the full provider-supplied metadata (ISTP attrs for speasy "
-            "products, knobs schema for VPs, etc.) in a tree dialog."
-        )
-        self._show_btn.clicked.connect(self._show_full)
-        buttons.addWidget(self._copy_btn)
-        buttons.addWidget(self._show_btn)
-        buttons.addStretch(1)
-        self._form.addRow(buttons)
-
+        layout.addLayout(self._build_buttons())
         self._refresh()
         if hasattr(graph, "data_changed"):
             try:
                 graph.data_changed.connect(self._refresh)
             except Exception:
                 pass
+
+    def _build_field(self, name: str) -> QVBoxLayout:
+        block = QVBoxLayout()
+        block.setSpacing(2)
+        title = QLabel(name, self)
+        title.setStyleSheet("font-weight: 600;")
+        title.setToolTip(_FIELD_TOOLTIPS[name])
+        value = QLabel("—", self)
+        value.setWordWrap(True)
+        value.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        value.setSizePolicy(QSizePolicy.Policy.Expanding,
+                            QSizePolicy.Policy.Preferred)
+        value.setToolTip(_FIELD_TOOLTIPS[name])
+        block.addWidget(title)
+        block.addWidget(value)
+        self._labels[name] = value
+        return block
+
+    def _build_buttons(self) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        self._copy_btn = QToolButton(self)
+        self._copy_btn.setText("Copy Python code")
+        self._copy_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
+        self._copy_btn.setSizePolicy(QSizePolicy.Policy.Expanding,
+                                     QSizePolicy.Policy.Fixed)
+        self._copy_btn.setToolTip(
+            "Copy a paste-ready Python snippet that reproduces this graph."
+        )
+        self._copy_menu = QMenu(self._copy_btn)
+        self._copy_btn.setMenu(self._copy_menu)
+        self._show_btn = QPushButton("Show full metadata…", self)
+        self._show_btn.setSizePolicy(QSizePolicy.Policy.Expanding,
+                                     QSizePolicy.Policy.Fixed)
+        self._show_btn.setToolTip(
+            "Open provider-supplied metadata (ISTP attrs for Speasy products, "
+            "knobs schema for virtual products) in a tree dialog."
+        )
+        self._show_btn.clicked.connect(self._show_full)
+        row.addWidget(self._copy_btn)
+        row.addWidget(self._show_btn)
+        return row
 
     def _refresh(self) -> None:
         ctx = context_of(self._graph)
@@ -144,13 +166,13 @@ class GraphContextSection(QWidget):
             f'Panel "{ctx.panel_name}" · plot {ctx.plot_index} ({ctx.graph_type})'
         )
         if ctx.knobs:
-            self._labels["Knobs"].setText(
+            self._labels["Parameters"].setText(
                 ", ".join(f"{k}={v!r}" for k, v in ctx.knobs.items())
             )
         else:
-            self._labels["Knobs"].setText("(none)")
+            self._labels["Parameters"].setText("(none)")
         last = _last_fetch_line(self._graph)
-        self._labels["Last fetch"].setText(last or "(no data yet)")
+        self._labels["Last loaded"].setText(last or "(no data yet)")
 
         provider = provider_for(ctx)
         variants = {}

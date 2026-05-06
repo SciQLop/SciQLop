@@ -157,6 +157,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.properties_panel = PropertiesPanel(self)
         self.properties_panel.setWindowIcon(theme_adapted_icon("plot_properties"))
         self.add_side_pan(self.properties_panel)
+        from SciQLop.components.plotting.ui.graph_context_inspector import (
+            install_inspector_tree_tooltips,
+        )
+        install_inspector_tree_tooltips(self.properties_panel)
 
 
     def _setup_toolbar(self):

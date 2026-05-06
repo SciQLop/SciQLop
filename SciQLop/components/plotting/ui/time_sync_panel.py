@@ -18,7 +18,7 @@ from SciQLop.components.plotting.backend.easy_provider import EasyProvider
 from SciQLop.core.graph_context import (
     attach_context, build_speasy_ctx, build_vp_ctx,
     build_static_ctx, build_function_ctx, GraphRichRefs,
-    graph_tooltip, update_knobs,
+    update_knobs,
 )
 import weakref
 
@@ -422,32 +422,21 @@ def _post_plot(r, provider, node, callback, target, product_path_str, existing_p
 
 
 def _install_graph_context_ui(plot, graph) -> None:
-    """After attach_context: refresh the plot tooltip with the envelope summary
-    and (best-effort) wire data_changed → tooltip refresh, plus add the
-    GraphContextExtension to the graph's inspector node.
+    """After attach_context: add the GraphContextExtension to the graph's
+    inspector node so the read-only "Graph" section appears under it.
     """
-    try:
-        tip = graph_tooltip(graph)
-        if tip and plot is not None and hasattr(plot, "setToolTip"):
-            plot.setToolTip(tip)
-        if hasattr(graph, "data_changed") and plot is not None and hasattr(plot, "setToolTip"):
-            try:
-                graph.data_changed.connect(
-                    lambda *_, p=plot, g=graph: p.setToolTip(graph_tooltip(g))
-                )
-            except Exception:
-                pass
-    except Exception:
-        log.debug("graph_context tooltip install failed", exc_info=True)
     try:
         from SciQLop.components.plotting.ui.graph_context_inspector import (
             GraphContextExtension,
         )
         if hasattr(graph, "add_inspector_extension"):
             ext = GraphContextExtension(graph, parent=graph)
+            # Shiboken Python-subclass keepalive: parent= alone is not enough,
+            # see memory shiboken-python-subclass-gc-pitfall.md.
+            graph._graph_context_ext = ext
             graph.add_inspector_extension(ext)
     except Exception:
-        log.debug("graph_context inspector install failed", exc_info=True)
+        log.warning("graph_context inspector install failed", exc_info=True)
 
 
 def _attach_graph_context(r, provider, node, target):
@@ -505,7 +494,7 @@ def _attach_graph_context(r, provider, node, target):
         log.debug("graph_context: unknown provider %r — skipping attach",
                   type(provider).__name__)
     except Exception:
-        log.debug("attach_graph_context failed", exc_info=True)
+        log.warning("attach_graph_context failed", exc_info=True)
 
 
 def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):
@@ -561,7 +550,7 @@ def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProje
         attach_context(graph, ctx)
         _install_graph_context_ui(plot, graph)
     except Exception:
-        log.debug("attach_context for static data failed", exc_info=True)
+        log.warning("attach_context for static data failed", exc_info=True)
     return r
 
 
@@ -583,7 +572,7 @@ def plot_function(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         attach_context(graph, ctx, GraphRichRefs(callback=f))
         _install_graph_context_ui(plot, graph)
     except Exception:
-        log.debug("attach_context for function plot failed", exc_info=True)
+        log.warning("attach_context for function plot failed", exc_info=True)
     return r
 
 
@@ -746,15 +735,6 @@ class CatalogDnDCallback(PlotDragNDropCallback):
             manager.add_catalog(cat)
 
 
-def _all_graphs(panel) -> list:
-    out = []
-    for plot in panel.plots():
-        for child in plot.children():
-            if hasattr(child, "set_meta_data") and hasattr(child, "meta_data"):
-                out.append(child)
-    return out
-
-
 class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def __init__(self, name: str, parent=None, time_range: Optional[TimeRange] = None,
@@ -849,7 +829,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         menu.addAction("Save as template\u2026", self._quick_save_template)
         menu.addAction("Export template\u2026", self._export_template)
         self._append_knob_reset_actions(menu)
-        add_graph_context_actions(menu, _all_graphs(self))
+        add_graph_context_actions(menu, self)
         menu.exec(global_pos)
 
     def _append_knob_reset_actions(self, menu):
