@@ -384,9 +384,16 @@ class CocatCatalogProvider(CatalogProvider):
         if cocat_cat is None:
             return
         room = self._room_for_catalog(catalog)
+        # cocat splits typed params (tags/products/rating) from free-form
+        # `attributes`; preserve both on import (e.g. drag-and-drop from
+        # speasy), otherwise the columns disappear on the next restart.
+        meta = dict(event.meta or {})
+        typed = {k: meta.pop(k) for k in ("tags", "products", "rating") if k in meta}
         cocat_event = room.db.create_event(
             start=event.start, stop=event.stop, author="SciQLop",
             uuid=event.uuid,
+            attributes=meta or None,
+            **typed,
         )
         wrapped = self._wrap_event(cocat_event)
         self._add_event(catalog, wrapped)

@@ -963,8 +963,18 @@ class _FakeRoomDB:
             cb(cat)
         return cat
 
-    def create_event(self, start, stop, author, uuid=None):
-        ev = _FakeCocatEvent(uuid or f"ev-{len(self._events_by_uuid)}", start, stop)
+    def create_event(self, start, stop, author, uuid=None,
+                     tags=None, products=None, rating=None, attributes=None):
+        ev = _FakeCocatEvent(
+            uuid or f"ev-{len(self._events_by_uuid)}", start, stop,
+            attributes=attributes,
+        )
+        if tags is not None:
+            ev.tags = list(tags)
+        if products is not None:
+            ev.products = list(products)
+        if rating is not None:
+            ev.rating = rating
         self._events_by_uuid[ev.uuid] = ev
         return ev
 

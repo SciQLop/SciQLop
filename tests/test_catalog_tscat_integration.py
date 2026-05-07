@@ -167,6 +167,51 @@ class TestTrackedActionExceptionSafety:
         assert tscat_provider._pending_actions == before
 
 
+def test_add_event_persists_meta_to_tscat_backend(qapp, tscat_provider):
+    """Regression: when an event is added with arbitrary metadata (the case
+    of a drag-and-drop import from speasy), every meta key must reach the
+    tscat backend, not just live in the in-memory mirror. Before the fix
+    the imported columns disappeared on the next SciQLop restart because
+    tscat.add_event ignored event.meta. We verify by inspecting the tscat
+    entity directly via _extract_meta — that's the same path the provider
+    uses on cold reload."""
+    from SciQLop.plugins.tscat_catalogs.tscat_provider import _extract_meta
+    from tscat_gui.tscat_driver.model import tscat_model
+    from tscat_gui.model_base.constants import EntityRole
+
+    cat = tscat_provider.create_catalog("t_meta_persist")
+    _process_events(qapp)
+    ev = CatalogEvent(
+        uuid=str(_uuid.uuid4()),
+        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+        meta={
+            "tags": ["imported", "speasy"],
+            "rating": 3,
+            "custom_column": "custom_value",
+            "another": 42,
+        },
+    )
+    tscat_provider.add_event(cat, ev)
+    _process_events(qapp, rounds=30)
+
+    # Reading via provider.events triggers the GetCatalogueAction load that
+    # populates the catalog model from the orm. We then introspect the
+    # underlying tscat entity to confirm meta survived the persist path.
+    tscat_provider._events.pop(cat.uuid, None)
+    tscat_provider.events(cat)
+    _process_events(qapp, rounds=30)
+    catalog_model = tscat_model.catalog(cat.uuid)
+    assert catalog_model.rowCount() == 1
+    entity = catalog_model.index(0, 0).data(EntityRole)
+    persisted = _extract_meta(entity)
+
+    assert persisted.get("custom_column") == "custom_value"
+    assert persisted.get("another") == 42
+    assert persisted.get("rating") == 3
+    assert "imported" in persisted.get("tags", [])
+
+
 def test_set_event_meta_updates_local_mirror(qapp, tscat_provider):
     """provider.set_event_meta must update event.meta synchronously and persist via tscat."""
     cat = tscat_provider.create_catalog("t_meta_edit")

@@ -292,12 +292,22 @@ class TscatCatalogProvider(CatalogProvider):
                 catalogue_uuid=catalog.uuid,
             ))
 
+        # tscat._Event.__init__ accepts arbitrary **kwargs as metadata; the
+        # named params (tags, products, rating) auto-route from the same dict.
+        # Without this, drag-and-drop imports drop every per-event attribute
+        # column on backend reload (visible in-memory until SciQLop restart).
+        args = dict(start=event.start, stop=event.stop, author="SciQLop",
+                    uuid=event.uuid)
+        meta = event.meta or {}
+        for key, value in meta.items():
+            if key not in args:
+                args[key] = value
+
         with self._tracked_action():
             tscat_model.do(CreateEntityAction(
                 user_callback=_link_to_catalog,
                 cls=tscat._Event,
-                args=dict(start=event.start, stop=event.stop, author="SciQLop",
-                          uuid=event.uuid),
+                args=args,
             ))
         self._add_event(catalog, event)
         self.mark_dirty(catalog)
