@@ -43,11 +43,26 @@ def switch_workspace(workspace_name: str) -> None:
     QApplication.exit(EXIT_SWITCH_WORKSPACE)
 
 
-def _signal_ready() -> None:
-    """Write the ready-file so the launcher knows the main window is up."""
+def _signal_ready_and_wait_for_splash(timeout: float = 5.0) -> None:
+    """Write the ready-file so the launcher knows the main window is built,
+    then wait for the launcher to acknowledge (by deleting the file) before
+    returning. The acknowledgement means the splash window has been closed,
+    so the main window can be shown next without flashing on top of it.
+
+    Falls through after `timeout` seconds so a stuck launcher cannot hang
+    SciQLop startup — the worst case is a brief splash/main overlap.
+    """
+    import time
     ready_path = os.environ.get("SCIQLOP_STARTUP_READY_FILE")
-    if ready_path:
-        Path(ready_path).touch()
+    if not ready_path:
+        return
+    ready_file = Path(ready_path)
+    ready_file.touch()
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        if not ready_file.exists():
+            return
+        time.sleep(0.05)
 
 
 def start_sciqlop():
@@ -71,8 +86,6 @@ def start_sciqlop():
     from SciQLop.components.plugins import load_all, loaded_plugins
     app.processEvents()
     main_windows = SciQLopMainWindow()
-
-    main_windows.show()
     app.processEvents()
     load_all(main_windows)
 
@@ -85,7 +98,9 @@ def start_sciqlop():
     main_windows.push_variables_to_console({"plugins": loaded_plugins})
 
     app.processEvents()
-    _signal_ready()
+    _signal_ready_and_wait_for_splash()
+    main_windows.show()
+    app.processEvents()
     return main_windows
 
 def main():

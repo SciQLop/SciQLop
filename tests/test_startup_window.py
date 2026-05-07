@@ -73,3 +73,9 @@ class TestWindowFlags:
         flags = window.windowFlags()
         assert flags & Qt.SplashScreen
         assert flags & Qt.FramelessWindowHint
+
+    def test_stays_on_top(self, window):
+        """Splash must stay above the main window (in a separate process)
+        until the launcher closes it; otherwise Z-order races make the
+        not-yet-shown main window flash above the splash."""
+        assert window.windowFlags() & Qt.WindowStaysOnTopHint

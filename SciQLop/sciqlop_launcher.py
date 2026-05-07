@@ -189,6 +189,11 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     def check_ready():
         if ready_file.exists():
             window.close()
+            app.processEvents()
+            try:
+                ready_file.unlink()
+            except OSError:
+                pass
             app.quit()
         elif proc.poll() is not None:
             timer.stop()

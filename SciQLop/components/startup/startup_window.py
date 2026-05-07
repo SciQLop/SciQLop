@@ -24,7 +24,9 @@ class StartupWindow(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint)
+        self.setWindowFlags(
+            Qt.SplashScreen | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+        )
         self._background = QPixmap(_SPLASH_PATH)
         self._show_background = True
         self._build_ui()
