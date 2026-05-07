@@ -47,6 +47,10 @@
 - Zones instrumented in the data path: `plot.replot`, `plot.replot.dispatch`, `provider._get_data`, `provider.get_data`, `provider.post_process`, `speasy.get_data`, `speasy.fill_nan`, plus `set_data` conversion vs. C++ submission split.
 - Speasy internals are now traced via runtime monkey-patches (no speasy fork required): `speasy.cache.{with_cache, fetch_fragment_group, wait_pending}`, `speasy.cache.unversioned.{with_cache, split_fragments}`, `speasy.proxy.{is_up, version, get_product, get_inventory}`, `speasy.http.urlopen`, `speasy.file.{open, fetch_remote, list}`, `speasy.cdf.{read, load_variable, load_variables}`, `speasy.archive.get_product`, and `speasy.cda.{dl_variable, direct_archive}`. Each zone carries the matched product / URL / dataset as Perfetto args, splitting the formerly opaque `speasy.get_data` bar into a per-layer flame graph (cache vs. proxy vs. HTTP vs. CDF parse).
 
+### Startup performance
+
+- Splash window now paints almost immediately after launch instead of waiting for workspace resolution. The launcher used to import `SciQLop.components.workspaces.backend.settings` *before* showing the splash, which transitively pulled in `SciQLop.core`, `speasy.core`, matplotlib, scipy and IPython through an eager re-export chain in `workspaces/__init__.py`. The launcher now defers `resolve_workspace_dir` until after `window.show()`, and the `workspaces` package re-exports its public names lazily via PEP 562 `__getattr__`. The leaf settings import drops from ~3 s to ~140 ms (Linux warm cache) and importing the launcher loads zero heavy modules — the splash paints before any settings/speasy work runs (closes #119).
+
 ### AppStore
 
 - AppStore now filters plugin entries by SciQLop version: each version's PEP 440 `sciqlop` specifier is matched against the running `SciQLop.__version__`. Incompatible versions disappear from the per-plugin version list, and a plugin with no compatible version is dropped from the listing entirely. Missing or malformed specifiers stay permissive so a broken metadata entry does not silently hide a plugin.
