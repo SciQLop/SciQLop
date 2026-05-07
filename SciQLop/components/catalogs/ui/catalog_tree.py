@@ -209,10 +209,11 @@ class CatalogTreeModel(QAbstractItemModel):
         self.endRemoveRows()
 
     def _on_dirty_changed(self, provider: CatalogProvider, pnode: _Node, catalog: object, is_dirty: bool) -> None:
-        cat_node = self._find_catalog_node(pnode, catalog)
-        if cat_node is not None:
-            idx = self.createIndex(cat_node.row(), 0, cat_node)
-            self.dataChanged.emit(idx, idx, [int(Qt.ItemDataRole.DisplayRole)])
+        if catalog is not None:
+            cat_node = self._find_catalog_node(pnode, catalog)
+            if cat_node is not None:
+                idx = self.createIndex(cat_node.row(), 0, cat_node)
+                self.dataChanged.emit(idx, idx, [int(Qt.ItemDataRole.DisplayRole)])
         pnode_idx = self.createIndex(pnode.row(), 0, pnode)
         self.dataChanged.emit(pnode_idx, pnode_idx, [int(Qt.ItemDataRole.DisplayRole), DIRTY_PROVIDER_ROLE])
 
@@ -430,12 +431,15 @@ class CatalogTreeModel(QAbstractItemModel):
                     return custom
             name = node.name
             if node.provider is not None:
-                if node.catalog is not None:
-                    if node.provider.is_dirty(node.catalog):
-                        name += " *"
-                elif node.parent is self._root:
-                    if node.provider.is_dirty():
-                        name += " *"
+                from ..backend.provider import Capability
+                has_save = Capability.SAVE in node.provider.capabilities()
+                if has_save:
+                    if node.catalog is not None:
+                        if node.provider.is_dirty(node.catalog):
+                            name += " *"
+                    elif node.parent is self._root:
+                        if node.provider.is_dirty():
+                            name += " *"
             return name
         if role == Qt.ItemDataRole.FontRole:
             node = index.internalPointer()

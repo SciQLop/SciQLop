@@ -150,6 +150,70 @@ def test_tree_clears_dirty_on_save(qtbot, qapp):
     assert not provider_name.endswith(" *")
 
 
+def test_remove_catalog_marks_provider_dirty(qtbot, qapp):
+    """Regression: deleting a catalog from the UI must flag the provider as
+    dirty (so the `*` indicator appears on the provider node and Save is
+    enabled), not just discard the catalog from the dirty set. Otherwise
+    the deletion can never be persisted via the UI."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+
+    assert not provider.is_dirty()
+
+    received: list[tuple] = []
+    provider.dirty_changed.connect(lambda c, d: received.append((c, d)))
+
+    provider.remove_catalog(cat)
+
+    assert provider.is_dirty()
+    assert (None, True) in received
+
+    provider.save()
+    assert not provider.is_dirty()
+    assert (None, False) in received
+
+
+def test_remove_catalog_provider_dirty_persists_with_other_dirty_catalogs(qtbot, qapp):
+    """Even when other catalogs were already dirty, deleting one must keep
+    the provider-level dirty flag distinct so a partial save_catalog() of
+    a surviving catalog does not silently drop the deletion."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from datetime import datetime, timezone
+
+    provider = DummyProvider(num_catalogs=2, events_per_catalog=3)
+    cat_a, cat_b = provider.catalogs()
+    provider.events(cat_a)[0].start = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    assert provider.is_dirty(cat_a)
+
+    provider.remove_catalog(cat_b)
+    assert provider.is_dirty()
+    assert provider.is_dirty(cat_a)
+    assert provider._provider_dirty
+
+
+def test_tree_shows_dirty_after_remove_catalog(qtbot, qapp):
+    """End-to-end: after a catalog deletion the provider node must render
+    with the `*` suffix. Before the fix, deleting the only modified catalog
+    cleared the dirty set entirely and the indicator disappeared."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import Qt
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    cat = provider.catalogs()[0]
+    model = CatalogTreeModel()
+
+    provider_idx = model.index(model.rowCount() - 1, 0)
+    assert not model.data(provider_idx, Qt.ItemDataRole.DisplayRole).endswith(" *")
+
+    provider.remove_catalog(cat)
+
+    name_after = model.data(provider_idx, Qt.ItemDataRole.DisplayRole)
+    assert name_after.endswith(" *")
+
+
 def test_full_dirty_save_cycle(qtbot, qapp):
     """End-to-end: edit event -> dirty -> save -> clean."""
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider

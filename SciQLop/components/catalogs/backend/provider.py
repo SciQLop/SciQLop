@@ -127,6 +127,7 @@ class CatalogProvider(QObject):
         self._name = name
         self._events: dict[str, list[CatalogEvent]] = {}
         self._dirty_catalogs: set[str] = set()
+        self._provider_dirty: bool = False
         self._needs_sort: set[str] = set()
         self._range_connections: dict[str, list[tuple]] = {}
         self._attribute_specs: dict[str, dict[str, "KnobSpec"]] = {}  # catalog_uuid → {key: spec}
@@ -355,6 +356,7 @@ class CatalogProvider(QObject):
         self._dirty_catalogs.discard(catalog.uuid)
         self._needs_sort.discard(catalog.uuid)
         self.catalog_removed.emit(catalog)
+        self.mark_provider_dirty()
 
     def _on_event_range_changed(self, event: CatalogEvent, catalog: Catalog) -> None:
         event_list = self._events.get(catalog.uuid, [])
@@ -367,18 +369,31 @@ class CatalogProvider(QObject):
             self._dirty_catalogs.add(catalog.uuid)
             self.dirty_changed.emit(catalog, True)
 
+    def mark_provider_dirty(self) -> None:
+        """Flag the provider as having pending changes that aren't tied to a
+        single surviving catalog (e.g. a catalog deletion). The `*` indicator
+        on the provider node tracks this in addition to per-catalog dirty.
+        """
+        if not self._provider_dirty:
+            self._provider_dirty = True
+            self.dirty_changed.emit(None, True)
+
     def is_dirty(self, catalog: Catalog | None = None) -> bool:
         if catalog is None:
-            return len(self._dirty_catalogs) > 0
+            return self._provider_dirty or len(self._dirty_catalogs) > 0
         return catalog.uuid in self._dirty_catalogs
 
     def save(self) -> None:
         self._do_save()
         dirty_uuids = set(self._dirty_catalogs)
         self._dirty_catalogs.clear()
+        was_provider_dirty = self._provider_dirty
+        self._provider_dirty = False
         for cat in self.catalogs():
             if cat.uuid in dirty_uuids:
                 self.dirty_changed.emit(cat, False)
+        if was_provider_dirty:
+            self.dirty_changed.emit(None, False)
 
     def save_catalog(self, catalog: Catalog) -> None:
         self._do_save_catalog(catalog)
