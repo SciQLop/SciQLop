@@ -120,3 +120,35 @@ class TestEdgeCases:
             f.write(": : : not valid yaml [[[")
         instance = cls()
         assert instance.value == 99
+
+    def test_stale_field_type_uses_defaults(self, tmp_config_dir):
+        """A YAML file from an older schema where a field has the wrong type
+        for the current model must not break the settings load. The instance
+        should fall back to defaults and overwrite the stale file on save."""
+        from typing import Literal
+
+        class StaleTypeEntry(ConfigEntry):
+            category: str = "test"
+            subcategory: str = "sub"
+            mode: Literal["fast", "slow"] = "fast"
+
+        with open(StaleTypeEntry.config_file(), 'w') as f:
+            yaml.safe_dump({"mode": "obsolete-value-removed-in-new-version"}, f)
+        instance = StaleTypeEntry()
+        assert instance.mode == "fast"
+        with open(StaleTypeEntry.config_file()) as f:
+            persisted = yaml.safe_load(f)
+        assert persisted["mode"] == "fast"
+
+    def test_validation_error_recovers_with_save(self, tmp_config_dir):
+        """A YAML field whose value fails Pydantic validation (e.g. wrong
+        scalar type for an int field) must trigger fallback-to-defaults
+        and re-save, not propagate ValidationError to the caller."""
+        cls = _make_entry_cls("ValidationFallback", tmp_config_dir, count=7)
+        with open(cls.config_file(), 'w') as f:
+            yaml.safe_dump({"count": [1, 2, 3]}, f)
+        instance = cls()
+        assert instance.count == 7
+        with open(cls.config_file()) as f:
+            persisted = yaml.safe_load(f)
+        assert persisted["count"] == 7

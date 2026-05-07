@@ -516,3 +516,41 @@ def test_create_plot_items_empty_for_non_visual_specs(sciqlop_plot, qtbot):
     dispose = create_plot_items(sciqlop_plot, state)
     assert callable(dispose)
     dispose()
+
+
+def test_create_plot_items_dispose_disconnects_knobs_changed(sciqlop_panel, sciqlop_plot, qtbot):
+    """Regression: `dispose()` must disconnect the items from `state.knobs_changed`
+    so a later signal emission does not reach a destroyed Qt widget. Before the
+    refactor that introduced the dispose handle, the `_on_state_changed` lambda
+    stayed connected and tried to `set_range(...)` on a deleted span, raising
+    `RuntimeError`."""
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import create_plot_items
+
+    specs = [
+        TimeRangeKnob(name="window"),
+        ThresholdKnob(name="thr", default=5.0),
+    ]
+    state = GraphKnobState(specs)
+    dispose = create_plot_items(sciqlop_plot, state, panel=sciqlop_panel)
+
+    dispose()
+    state.set_value("thr", 9.5)
+    state.set_value("window", SciQLopPlotRange(110.0, 190.0))
+    qtbot.wait(20)
+
+
+def test_data_span_cleanup_disconnects_panel_time_range(sciqlop_panel, sciqlop_plot, qtbot):
+    """Regression: `_DataSpan.cleanup()` must disconnect from
+    `panel.time_range_changed` for fractional defaults. Otherwise the orphan
+    `_on_panel_range_changed` callback fires `set_range` on a deleted span on
+    the next pan."""
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
+
+    spec = TimeRangeKnob(name="window", default=SciQLopPlotRange(0.3, 0.7))
+    state = GraphKnobState([spec])
+    span = _DataSpan(sciqlop_plot, spec, state, panel=sciqlop_panel)
+    span.cleanup()
+    sciqlop_panel.set_time_axis_range(SciQLopPlotRange(500.0, 600.0))
+    qtbot.wait(20)
