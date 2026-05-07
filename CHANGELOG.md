@@ -78,7 +78,7 @@
 
 - PySide6 / shiboken6 6.11.0
 - PySide6-QtAds 4.5.0.3
-- SciQLopPlots 0.23.0 (was 0.21.0 in v0.11.4)
+- SciQLopPlots 0.24.0 (was 0.21.0 in v0.11.4)
 
 ## [v0.11.4](https://github.com/SciQlop/SciQLop/tree/v0.11.4) (2026-04-14)
 
