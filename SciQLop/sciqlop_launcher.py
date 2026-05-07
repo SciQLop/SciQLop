@@ -105,7 +105,7 @@ def check_xcb_cursor() -> str | None:
         )
 
 
-def _run_with_startup_window(workspace_dir: Path, default_python: Path, prepare_fn) -> int:
+def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | None) -> tuple[int, Path | None]:
     from PySide6.QtCore import QEventLoop, QTimer
     from PySide6.QtWidgets import QApplication
     from SciQLop.resources import qInitResources
@@ -118,6 +118,22 @@ def _run_with_startup_window(workspace_dir: Path, default_python: Path, prepare_
     window = StartupWindow()
     window.center_on_screen()
     window.show()
+    window.set_phase("Initializing...")
+    app.processEvents()
+
+    workspace_dir = resolve_workspace_dir(workspace_name, sciqlop_file)
+    dev_mode = _is_editable_install()
+    default_python = Path(sys.executable)
+
+    if dev_mode:
+        def prepare_fn(on_output):
+            _prepare_workspace_dev(workspace_dir, on_output=on_output)
+            return None
+    else:
+        def prepare_fn(on_output):
+            from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+            return prepare_workspace(workspace_dir, on_output=on_output)
+
     window.set_phase("Preparing workspace...")
     app.processEvents()
 
@@ -133,7 +149,7 @@ def _run_with_startup_window(workspace_dir: Path, default_python: Path, prepare_
         import traceback
         window.show_error(traceback.format_exc())
         app.exec()
-        return 1
+        return 1, workspace_dir
 
     xcb_warning = check_xcb_cursor()
     if xcb_warning:
@@ -191,8 +207,8 @@ def _run_with_startup_window(workspace_dir: Path, default_python: Path, prepare_
     shutil.rmtree(ready_dir, ignore_errors=True)
 
     if proc.poll() is None:
-        return proc.wait()
-    return proc.returncode
+        return proc.wait(), workspace_dir
+    return proc.returncode, workspace_dir
 
 
 def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
@@ -231,29 +247,19 @@ def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    workspace_dir = resolve_workspace_dir(args.workspace, args.sciqlop_file)
-    dev_mode = _is_editable_install()
+    workspace_name = args.workspace
+    sciqlop_file = args.sciqlop_file
 
     while True:
-        if dev_mode:
-            def prepare_fn(on_output):
-                _prepare_workspace_dev(workspace_dir, on_output=on_output)
-                return None
-            exit_code = _run_with_startup_window(workspace_dir, Path(sys.executable), prepare_fn)
-        else:
-            def prepare_fn(on_output):
-                from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
-                return prepare_workspace(workspace_dir, on_output=on_output)
-            exit_code = _run_with_startup_window(workspace_dir, Path(sys.executable), prepare_fn)
+        exit_code, workspace_dir = _run_with_startup_window(workspace_name, sciqlop_file)
+        sciqlop_file = None  # only consumed once, on the first iteration
 
         if exit_code == EXIT_RESTART:
             continue
         elif exit_code == EXIT_SWITCH_WORKSPACE:
-            target = _read_switch_target(workspace_dir)
+            target = _read_switch_target(workspace_dir) if workspace_dir else None
             if target:
-                workspace_dir = resolve_workspace_dir(
-                    workspace_name=target, sciqlop_file=None
-                )
+                workspace_name = target
                 continue
             print("Switch-workspace requested but no target found — exiting", file=sys.stderr)
             return exit_code
