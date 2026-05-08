@@ -105,6 +105,19 @@ def check_xcb_cursor() -> str | None:
         )
 
 
+def _last_launch_log_path() -> Path:
+    """Stable on-disk log location for the most recent SciQLop subprocess.
+
+    The bundled Windows launcher (``launcher.c``) spawns the Python entry
+    point with ``CREATE_NO_WINDOW``, so any output written to stdout/stderr
+    is otherwise lost.  Tee the subprocess output here so users (and bug
+    reports) have something to point to when SciQLop fails to start.
+    """
+    from platformdirs import user_data_dir
+    log_dir = Path(user_data_dir(appname="sciqlop", appauthor="LPP", ensure_exists=True))
+    return log_dir / "last-launch.log"
+
+
 def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | None) -> tuple[int, Path | None]:
     from PySide6.QtCore import QEventLoop, QTimer
     from PySide6.QtWidgets import QApplication
@@ -170,21 +183,33 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     env["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
     env[READY_FILE_ENV] = str(ready_file)
 
+    log_path = _last_launch_log_path()
+    log_file = open(log_path, "w", encoding="utf-8", errors="replace")
+    log_file.write(f"$ {python_path} -m SciQLop.sciqlop_app\n")
+    log_file.flush()
+
     proc = subprocess.Popen(
         [str(python_path), "-m", "SciQLop.sciqlop_app"],
         env=env,
+        stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
     )
-    # Drain stderr in a background thread to prevent pipe buffer deadlock
     import threading
     stderr_lines: list[str] = []
 
-    def _drain_stderr():
-        for line in proc.stderr:
-            stderr_lines.append(line)
+    def _drain(stream, label: str, capture: list[str] | None):
+        for line in stream:
+            if capture is not None:
+                capture.append(line)
+            try:
+                log_file.write(f"[{label}] {line}")
+                log_file.flush()
+            except Exception:
+                pass
 
-    threading.Thread(target=_drain_stderr, daemon=True).start()
+    threading.Thread(target=_drain, args=(proc.stdout, "out", None), daemon=True).start()
+    threading.Thread(target=_drain, args=(proc.stderr, "err", stderr_lines), daemon=True).start()
 
     def check_ready():
         if ready_file.exists():
@@ -199,6 +224,7 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
             timer.stop()
             window.show_error(
                 f"SciQLop process exited with code {proc.returncode}.\n\n"
+                f"Full output: {log_path}\n\n"
                 f"{''.join(stderr_lines)}"
             )
 
@@ -209,6 +235,7 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     app.exec()
     timer.stop()
 
+    log_file.close()
     shutil.rmtree(ready_dir, ignore_errors=True)
 
     if proc.poll() is None:

@@ -28,6 +28,17 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
+; Wipe the previous payload before extracting the new bundle.  Without this,
+; Inno Setup overlays files in {app} and never deletes ones that have moved
+; to a different name in the new bundle (e.g. pyside6-6.10.2.dist-info →
+; pyside6-6.11.0.dist-info), leaving two parallel installs side-by-side and
+; producing ABI mismatches at import time.  User data lives in
+; %LOCALAPPDATA%\LPP\sciqlop and is untouched.
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\python"
+Type: filesandordirs; Name: "{app}\node"
+Type: filesandordirs; Name: "{app}\uv"
+
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 

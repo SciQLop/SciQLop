@@ -28,6 +28,16 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
+; Wipe the previous payload before install.ps1 runs uv pip install.  Without
+; this, re-running the installer leaves stale dist-info dirs from the older
+; versions side-by-side with the new ones (uv does not always evict them),
+; producing ABI mismatches at runtime.  User data lives in
+; %LOCALAPPDATA%\LPP\sciqlop and is untouched.
+[InstallDelete]
+Type: filesandordirs; Name: "{app}\python"
+Type: filesandordirs; Name: "{app}\node"
+Type: filesandordirs; Name: "{app}\uv"
+
 [Files]
 Source: "{#LauncherExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ScriptDir}\install.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall

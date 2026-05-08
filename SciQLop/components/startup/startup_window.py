@@ -150,7 +150,17 @@ class StartupWindow(QWidget):
             "  padding: 6px 16px; }"
             "QPushButton:hover { background: #555; }"
         )
+        # Splash-screen windows have no taskbar entry and don't accept focus,
+        # so a hidden splash showing an error is invisible to users.  Switch
+        # to a regular top-level window with a title and force it to the
+        # front so failed launches can't disappear silently.
+        self.hide()
+        self.setWindowFlags(Qt.Window | Qt.WindowStaysOnTopHint)
+        self.setWindowTitle("SciQLop — startup failed")
         self.center_on_screen()
+        self.show()
+        self.raise_()
+        self.activateWindow()
         self.update()
 
     def _copy_error(self) -> None:
