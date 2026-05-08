@@ -21,6 +21,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 SetupIconFile={#ScriptDir}\..\..\SciQLop\resources\icons\SciQLop.ico
 UninstallDisplayIcon={app}\python\Lib\site-packages\SciQLop\resources\icons\SciQLop.ico
+; Force-close any SciQLop / bundled python.exe using files in {app} via the
+; Windows Restart Manager before [InstallDelete] and install.ps1 run.
+CloseApplications=force
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"

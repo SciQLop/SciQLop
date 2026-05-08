@@ -21,6 +21,11 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 SetupIconFile={#SourceDir}\python\Lib\site-packages\SciQLop\resources\icons\SciQLop.ico
 UninstallDisplayIcon={app}\python\Lib\site-packages\SciQLop\resources\icons\SciQLop.ico
+; Force-close any SciQLop / bundled python.exe using files in {app} via the
+; Windows Restart Manager before [InstallDelete] and [Files] run.  Without
+; this, an upgrade install over a running SciQLop fails with "access denied"
+; on python.exe / SciQLop.exe.
+CloseApplications=force
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -49,3 +54,12 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch SciQLop"; Flags: nowait postinstall skipifsilent
+
+; Inno Setup only tracks files extracted by [Files], so __pycache__ and any
+; other runtime-generated artifacts inside {app}\python are left behind on
+; uninstall.  Wipe the whole bundled-runtime tree to guarantee a clean
+; uninstall.  User data in %LOCALAPPDATA%\LPP\sciqlop is untouched.
+[UninstallDelete]
+Type: filesandordirs; Name: "{app}\python"
+Type: filesandordirs; Name: "{app}\node"
+Type: filesandordirs; Name: "{app}\uv"
