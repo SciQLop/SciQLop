@@ -22,7 +22,11 @@ def venv(workspace_dir):
 
 class TestPythonPath:
     def test_returns_correct_path(self, venv, workspace_dir):
-        assert venv.python_path == workspace_dir / ".venv" / "bin" / "python"
+        if sys.platform == "win32":
+            expected = workspace_dir / ".venv" / "Scripts" / "python.exe"
+        else:
+            expected = workspace_dir / ".venv" / "bin" / "python"
+        assert venv.python_path == expected
 
 
 class TestExists:
@@ -34,7 +38,7 @@ class TestExists:
         assert venv.exists is False
 
     def test_true_when_venv_and_python_exist(self, venv, workspace_dir):
-        python_path = workspace_dir / ".venv" / "bin" / "python"
+        python_path = venv.python_path
         python_path.parent.mkdir(parents=True)
         python_path.touch()
         assert venv.exists is True

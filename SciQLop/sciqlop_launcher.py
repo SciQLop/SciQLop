@@ -184,63 +184,98 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     env[READY_FILE_ENV] = str(ready_file)
 
     log_path = _last_launch_log_path()
-    log_file = open(log_path, "w", encoding="utf-8", errors="replace")
-    log_file.write(f"$ {python_path} -m SciQLop.sciqlop_app\n")
-    log_file.flush()
+    try:
+        log_file = open(log_path, "w", encoding="utf-8", errors="replace")
+    except OSError:
+        # If we can't open the log file, fall back to a sink that drops writes
+        # rather than crash the launcher.
+        import io
+        log_file = io.StringIO()
+        log_path = None
+    proc: subprocess.Popen | None = None
+    try:
+        log_file.write(f"$ {python_path} -m SciQLop.sciqlop_app\n")
+        log_file.flush()
 
-    proc = subprocess.Popen(
-        [str(python_path), "-m", "SciQLop.sciqlop_app"],
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    import threading
-    stderr_lines: list[str] = []
+        proc = subprocess.Popen(
+            [str(python_path), "-m", "SciQLop.sciqlop_app"],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
 
-    def _drain(stream, label: str, capture: list[str] | None):
-        for line in stream:
-            if capture is not None:
-                capture.append(line)
-            try:
-                log_file.write(f"[{label}] {line}")
-                log_file.flush()
-            except Exception:
-                pass
+        import threading
+        stderr_lines: list[str] = []
+        drain_threads: list[threading.Thread] = []
 
-    threading.Thread(target=_drain, args=(proc.stdout, "out", None), daemon=True).start()
-    threading.Thread(target=_drain, args=(proc.stderr, "err", stderr_lines), daemon=True).start()
+        def _drain(stream, label: str, capture: list[str] | None):
+            for line in stream:
+                if capture is not None:
+                    capture.append(line)
+                try:
+                    log_file.write(f"[{label}] {line}")
+                    log_file.flush()
+                except Exception:
+                    pass
 
-    def check_ready():
-        if ready_file.exists():
-            window.close()
-            app.processEvents()
-            try:
-                ready_file.unlink()
-            except OSError:
-                pass
-            app.quit()
-        elif proc.poll() is not None:
-            timer.stop()
-            window.show_error(
-                f"SciQLop process exited with code {proc.returncode}.\n\n"
-                f"Full output: {log_path}\n\n"
-                f"{''.join(stderr_lines)}"
-            )
+        for stream, label, capture in (
+            (proc.stdout, "out", None),
+            (proc.stderr, "err", stderr_lines),
+        ):
+            t = threading.Thread(target=_drain, args=(stream, label, capture), daemon=True)
+            t.start()
+            drain_threads.append(t)
 
-    timer = QTimer()
-    timer.timeout.connect(check_ready)
-    timer.start(100)
+        def check_ready():
+            if ready_file.exists():
+                window.close()
+                app.processEvents()
+                try:
+                    ready_file.unlink()
+                except OSError:
+                    pass
+                app.quit()
+            elif proc.poll() is not None:
+                timer.stop()
+                window.show_error(
+                    f"SciQLop process exited with code {proc.returncode}.\n\n"
+                    f"Full output: {log_path}\n\n"
+                    f"{''.join(stderr_lines)}"
+                )
 
-    app.exec()
-    timer.stop()
+        timer = QTimer()
+        timer.timeout.connect(check_ready)
+        timer.start(100)
 
-    log_file.close()
-    shutil.rmtree(ready_dir, ignore_errors=True)
+        app.exec()
+        timer.stop()
 
-    if proc.poll() is None:
-        return proc.wait(), workspace_dir
-    return proc.returncode, workspace_dir
+        # Wait for the subprocess to exit before closing the log so that any
+        # output produced after the splash window closed (i.e. for the rest of
+        # the SciQLop session) still lands in last-launch.log.
+        exit_code = proc.wait() if proc.poll() is None else proc.returncode
+        for t in drain_threads:
+            t.join(timeout=2.0)
+        return exit_code, workspace_dir
+    except Exception:
+        # If anything in the subprocess setup raised, surface it to the user
+        # rather than letting the launcher crash silently.
+        import traceback
+        try:
+            window.show_error(traceback.format_exc())
+            app.exec()
+        except Exception:
+            pass
+        if proc is not None and proc.poll() is None:
+            proc.kill()
+        return 1, workspace_dir
+    finally:
+        try:
+            log_file.close()
+        except Exception:
+            pass
+        shutil.rmtree(ready_dir, ignore_errors=True)
 
 
 def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:

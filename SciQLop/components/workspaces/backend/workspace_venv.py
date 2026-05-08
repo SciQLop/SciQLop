@@ -120,11 +120,22 @@ class WorkspaceVenv:
         except OSError:
             return ""
 
-    def _write_fingerprint(self) -> None:
+    def _write_fingerprint(self, on_output: Callable[[str], None] | None = None) -> None:
         try:
             self._fingerprint_path.write_text(_system_packages_fingerprint())
-        except OSError:
-            pass
+        except OSError as exc:
+            # If we can't persist the marker, _needs_recreate() will keep
+            # returning True on every launch and recreate the venv in a loop.
+            # Surface the error so the user can fix the underlying problem
+            # (read-only workspace, permissions, disk full, ...).
+            msg = (
+                f"Warning: failed to write venv fingerprint at "
+                f"{self._fingerprint_path}: {exc}.  The workspace venv may "
+                "be recreated on every launch until this is resolved."
+            )
+            print(msg, file=sys.stderr)
+            if on_output is not None:
+                on_output(msg)
 
     def _needs_recreate(self) -> bool:
         if not self.exists:
@@ -151,4 +162,4 @@ class WorkspaceVenv:
             if self._venv_dir.exists():
                 shutil.rmtree(self._venv_dir)
             self.create(on_output=on_output)
-            self._write_fingerprint()
+            self._write_fingerprint(on_output=on_output)
