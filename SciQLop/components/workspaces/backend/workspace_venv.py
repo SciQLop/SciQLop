@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import shutil
 import subprocess
 import sys
+import sysconfig
 from collections.abc import Callable
 from pathlib import Path
 
@@ -13,6 +15,32 @@ from SciQLop.core.common.python import get_python
 from SciQLop.components.workspaces.backend.uv import uv_command
 
 _WINDOWS = os.name == "nt"
+_SYSTEM_FINGERPRINT_FILENAME = ".sciqlop_system_fingerprint"
+
+
+def _system_packages_fingerprint() -> str:
+    """Hash the dist-info directory names in the bundled Python's site-packages.
+
+    A workspace venv created with --system-site-packages inherits whatever is
+    installed in the system layer.  When a SciQLop upgrade replaces the
+    bundled PySide6 / SciQLopPlots binaries underneath an existing venv, the
+    venv's own pinned copies and the system's new copies collide at import
+    time (different ABIs).  This fingerprint changes whenever any package is
+    added, removed, or re-versioned in the system layer, so the venv can be
+    rebuilt against the new stack.
+    """
+    purelib = Path(sysconfig.get_paths()["purelib"])
+    if not purelib.is_dir():
+        return ""
+    names = sorted(
+        p.name for p in purelib.iterdir()
+        if p.is_dir() and p.suffix == ".dist-info"
+    )
+    h = hashlib.sha256()
+    for name in names:
+        h.update(name.encode("utf-8"))
+        h.update(b"\n")
+    return h.hexdigest()
 
 
 def _run_uv(cmd: list[str], on_output: Callable[[str], None] | None = None, **kwargs) -> None:
@@ -82,6 +110,22 @@ class WorkspaceVenv:
                 result[key.strip()] = value.strip()
         return result
 
+    @property
+    def _fingerprint_path(self) -> Path:
+        return self._venv_dir / _SYSTEM_FINGERPRINT_FILENAME
+
+    def _read_fingerprint(self) -> str:
+        try:
+            return self._fingerprint_path.read_text().strip()
+        except OSError:
+            return ""
+
+    def _write_fingerprint(self) -> None:
+        try:
+            self._fingerprint_path.write_text(_system_packages_fingerprint())
+        except OSError:
+            pass
+
     def _needs_recreate(self) -> bool:
         if not self.exists:
             return True
@@ -97,6 +141,8 @@ class WorkspaceVenv:
             return True
         if python.is_symlink() and str(python.resolve()) != str(Path(get_python()).resolve()):
             return True
+        if self._read_fingerprint() != _system_packages_fingerprint():
+            return True
         return False
 
     def ensure(self, on_output: Callable[[str], None] | None = None) -> None:
@@ -105,3 +151,4 @@ class WorkspaceVenv:
             if self._venv_dir.exists():
                 shutil.rmtree(self._venv_dir)
             self.create(on_output=on_output)
+            self._write_fingerprint()
