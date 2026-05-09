@@ -220,13 +220,20 @@ def graph_name(graph) -> str:
 
 def graph_time_range(graph) -> Optional[tuple]:
     """Best-effort read of the live (start, stop) epoch-second range from the
-    graph's parent plot's time axis. Returns None if unavailable.
+    graph's owning SciQLopPlot's time axis. Returns None if unavailable.
+
+    Graphs are NOT direct Qt children of SciQLopPlot — they parent to its
+    inner QRhiWidget render surface (see ``sciqlopplots-plot-widget-
+    composition.md``). Walk ancestors until we find one that exposes
+    ``time_axis``.
     """
     try:
-        plot = graph.parent() if hasattr(graph, "parent") else None
-        if plot is None or not hasattr(plot, "time_axis"):
+        node = graph.parent() if hasattr(graph, "parent") else None
+        while node is not None and not hasattr(node, "time_axis"):
+            node = node.parent() if hasattr(node, "parent") else None
+        if node is None:
             return None
-        r = plot.time_axis().range()
+        r = node.time_axis().range()
         return float(r.start()), float(r.stop())
     except Exception:
         return None

@@ -269,3 +269,31 @@ def test_update_knobs_no_op_when_no_context(qtbot):
     assert g.meta_data() == {}
 
 
+def test_graph_time_range_walks_past_qrhi_to_plot(qtbot):
+    """Regression: graphs are NOT direct Qt children of SciQLopPlot — they
+    parent to its QRhiWidget render surface. The helper must walk ancestors
+    until it finds something with ``time_axis``, otherwise the snippet
+    falls back to "now − 1d → now" and the user gets the wrong range.
+    """
+    import numpy as np
+    from SciQLop.components.plotting.ui.time_sync_panel import (
+        TimeSyncPanel, plot_static_data,
+    )
+    from SciQLop.core import TimeRange
+    from SciQLop.core.graph_context import graph_time_range
+
+    panel = TimeSyncPanel('time_range', show_search_overlay=False)
+    qtbot.addWidget(panel)
+    _, graph = plot_static_data(
+        panel,
+        np.array([100.0, 200.0, 300.0]),
+        np.array([1.0, 2.0, 3.0]),
+    )
+    panel.time_range = TimeRange(1000.0, 2000.0)
+
+    rng = graph_time_range(graph)
+    assert rng is not None, "fallback to None means parent walk gave up too early"
+    assert abs(rng[0] - 1000.0) < 1.0
+    assert abs(rng[1] - 2000.0) < 1.0
+
+
