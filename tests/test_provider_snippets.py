@@ -219,3 +219,27 @@ def test_easy_provider_extended_metadata_without_model(qtbot):
                        vp_path="root/y", provider_name="y-1")
     out = p.extended_metadata(ctx)
     assert out["knobs_schema"] is None
+
+def test_speasy_notebook_uses_string_path_no_root_via_template(qtbot):
+    """The matplotlib notebook snippet must use the slash-joined product
+    path (no list literal, no ``root`` prefix). Regression: emitting
+    ``ctx.product_path`` via ``repr`` produced ['root', 'speasy', ...].
+    """
+    from SciQLop.core.graph_context import build_speasy_ctx
+    from SciQLop.plugins.speasy_provider.speasy_provider import (
+        _speasy_matplotlib_snippet,
+    )
+    from PySide6.QtCore import QObject
+
+    class _G(QObject):
+        def __init__(self): super().__init__(); self.setObjectName("g")
+
+    ctx = build_speasy_ctx(
+        _G(), panel_name="P", plot_index=0,
+        speasy_id="amda/ACE/b_gsm", graph_type="Line",
+        product_path=["root", "speasy", "amda", "ACE", "b_gsm"],
+    )
+    out = _speasy_matplotlib_snippet(ctx, graph=None)
+    assert "[\x27root\x27" not in out, "list-literal product path leaked"
+    assert "\x22amda/ACE/b_gsm\x22" in out, f"expected slash form; got: {out!r}"
+

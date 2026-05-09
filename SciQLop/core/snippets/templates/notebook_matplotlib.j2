@@ -1,0 +1,11 @@
+import speasy as spz
+import matplotlib.pyplot as plt
+
+start = "{{ start_iso }}"
+stop  = "{{ stop_iso }}"
+v = spz.get_data("{{ speasy_id }}", start, stop{% if knobs %}, product_inputs={{ knobs }}{% endif %})
+
+fig, ax = plt.subplots()
+v.plot(ax=ax)
+fig.autofmt_xdate()
+plt.show()

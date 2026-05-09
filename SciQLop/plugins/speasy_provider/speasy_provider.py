@@ -257,20 +257,14 @@ def _speasy_sciqlop_snippet(ctx, graph=None) -> str:
 
 def _speasy_matplotlib_snippet(ctx, graph=None) -> str:
     """Standalone notebook snippet: speasy.get_data + matplotlib plot."""
+    from SciQLop.core.snippets import render_snippet
     start_iso, stop_iso = _resolve_iso_range(graph)
-    knobs_kw = f", product_inputs={ctx.knobs!r}" if ctx.knobs else ""
-    return (
-        "import speasy as spz\n"
-        "import matplotlib.pyplot as plt\n"
-        "\n"
-        f'start = "{start_iso}"\n'
-        f'stop  = "{stop_iso}"\n'
-        f'v = spz.get_data("{ctx.speasy_id}", start, stop{knobs_kw})\n'
-        "\n"
-        "fig, ax = plt.subplots()\n"
-        "v.plot(ax=ax)\n"
-        "fig.autofmt_xdate()\n"
-        "plt.show()\n"
+    return render_snippet(
+        "notebook_matplotlib.j2",
+        start_iso=start_iso,
+        stop_iso=stop_iso,
+        speasy_id=ctx.speasy_id,
+        knobs=repr(ctx.knobs) if ctx.knobs else None,
     )
 
 
