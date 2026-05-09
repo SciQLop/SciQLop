@@ -239,19 +239,15 @@ def _resolve_iso_range(graph) -> tuple:
 def _speasy_sciqlop_snippet(ctx, graph=None) -> str:
     """Snippet that recreates the panel + plot inside SciQLop using the
     live panel time range when available."""
+    from SciQLop.core.snippets import render_snippet, format_product_path
     start_iso, stop_iso = _resolve_iso_range(graph)
-    product_arg = repr(ctx.product_path) if ctx.product_path else f'"{ctx.speasy_id}"'
-    knobs_kw = f", product_inputs={ctx.knobs!r}" if ctx.knobs else ""
-    return (
-        "from datetime import datetime\n"
-        "from SciQLop.user_api.plot import create_plot_panel\n"
-        "from SciQLop.core import TimeRange\n"
-        "\n"
-        "panel = create_plot_panel()\n"
-        f'start = datetime.fromisoformat("{start_iso}")\n'
-        f'stop  = datetime.fromisoformat("{stop_iso}")\n'
-        "panel.time_range = TimeRange(start.timestamp(), stop.timestamp())\n"
-        f"panel.plot_product({product_arg}{knobs_kw})\n"
+    product_path = format_product_path(ctx.product_path) or ctx.speasy_id
+    return render_snippet(
+        "sciqlop_reproducer.j2",
+        start_iso=start_iso,
+        stop_iso=stop_iso,
+        product_path=product_path,
+        knobs=repr(ctx.knobs) if ctx.knobs else None,
     )
 
 

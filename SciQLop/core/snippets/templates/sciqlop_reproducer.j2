@@ -1,0 +1,2 @@
+{% include "sciqlop_panel.j2" %}
+panel.plot_product("{{ product_path }}"{% if knobs %}, product_inputs={{ knobs }}{% endif %})

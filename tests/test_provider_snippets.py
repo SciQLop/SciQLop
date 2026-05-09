@@ -243,3 +243,23 @@ def test_speasy_notebook_uses_string_path_no_root_via_template(qtbot):
     assert "[\x27root\x27" not in out, "list-literal product path leaked"
     assert "\x22amda/ACE/b_gsm\x22" in out, f"expected slash form; got: {out!r}"
 
+
+def test_speasy_sciqlop_reproducer_emits_slash_path_no_root():
+    from SciQLop.core.graph_context import build_speasy_ctx
+    from SciQLop.plugins.speasy_provider.speasy_provider import (
+        _speasy_sciqlop_snippet,
+    )
+    from PySide6.QtCore import QObject
+
+    class _G(QObject):
+        def __init__(self): super().__init__(); self.setObjectName("g")
+
+    ctx = build_speasy_ctx(
+        _G(), panel_name="P", plot_index=0,
+        speasy_id="amda/ACE/b_gsm", graph_type="Line",
+        product_path=["root", "speasy", "amda", "ACE", "b_gsm"],
+    )
+    out = _speasy_sciqlop_snippet(ctx, graph=None)
+    assert "[\x27root\x27" not in out
+    assert 'panel.plot_product("speasy/amda/ACE/b_gsm")' in out
+
