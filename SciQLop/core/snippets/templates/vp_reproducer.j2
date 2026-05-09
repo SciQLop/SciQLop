@@ -1,0 +1,5 @@
+{% include "sciqlop_panel.j2" %}
+from {{ module }} import {{ qualname }}
+
+# Manual fetch: data = {{ qualname }}(start, stop{% if knobs %}, {{ knobs_kwarg }}={{ knobs }}{% endif %})
+panel.plot_product("{{ product_path }}")

@@ -168,7 +168,7 @@ def test_easy_provider_snippets_lambda_returns_stub(qtbot):
     out = p.python_snippets(ctx)
     s = out["Reproduce in SciQLop"]
     assert "not importable" in s
-    assert "root/my_vp" in s
+    assert "my_vp" in s
 
 
 def test_easy_provider_snippets_empty_for_non_vp_kind(qtbot):
@@ -262,4 +262,21 @@ def test_speasy_sciqlop_reproducer_emits_slash_path_no_root():
     out = _speasy_sciqlop_snippet(ctx, graph=None)
     assert "[\x27root\x27" not in out
     assert 'panel.plot_product("speasy/amda/ACE/b_gsm")' in out
+
+
+def test_easy_provider_snippet_uses_slash_path(qtbot):
+    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+    p = EasyProvider.__new__(EasyProvider)
+    p._path = ["root", "my_vp"]
+    p._callback = _tested_module_level_vp_callback
+    p._knobs_kwarg_name = "knobs"
+    ctx = GraphContext(kind="vp", graph_id="g", panel_name="P",
+                       plot_index=0, graph_type="Line",
+                       vp_path="root/my_vp", provider_name="my_vp-1",
+                       callback_qualname=_tested_module_level_vp_callback.__qualname__,
+                       callback_module=_tested_module_level_vp_callback.__module__,
+                       product_path=["root", "my_vp"])
+    s = p.python_snippets(ctx)["Reproduce in SciQLop"]
+    assert "[\x27root\x27" not in s, f"list literal leaked: {s!r}"
+    assert 'panel.plot_product("my_vp")' in s, f"expected slash form; got: {s!r}"
 

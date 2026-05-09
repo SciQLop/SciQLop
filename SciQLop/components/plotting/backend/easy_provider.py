@@ -188,15 +188,16 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
         if not (mod_name and qualname):
             return {}
         from SciQLop.core.graph_context import _is_importable
+        from SciQLop.core.snippets import render_snippet, format_product_path
         from datetime import datetime, timedelta, timezone
+
+        rng = None
         if graph is not None:
             try:
                 from SciQLop.core.graph_context import graph_time_range
                 rng = graph_time_range(graph)
             except Exception:
                 rng = None
-        else:
-            rng = None
         if rng is not None:
             t0, t1 = rng
             start_iso = datetime.fromtimestamp(t0, tz=timezone.utc).replace(microsecond=0).isoformat()
@@ -205,42 +206,19 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
             now = datetime.now(timezone.utc).replace(microsecond=0)
             start_iso, stop_iso = (now - timedelta(days=1)).isoformat(), now.isoformat()
 
-        product_arg = repr(ctx.product_path) if ctx.product_path else repr(self._path)
-        if _is_importable(mod_name, qualname, cb):
-            knobs_kw = (
-                f", {self._knobs_kwarg_name}={ctx.knobs!r}"
-                if ctx.knobs else ""
-            )
-            snippet = (
-                "from datetime import datetime\n"
-                "from SciQLop.user_api.plot import create_plot_panel\n"
-                "from SciQLop.core import TimeRange\n"
-                f"from {mod_name} import {qualname}\n"
-                "\n"
-                f'start = datetime.fromisoformat("{start_iso}")\n'
-                f'stop  = datetime.fromisoformat("{stop_iso}")\n'
-                "\n"
-                "panel = create_plot_panel()\n"
-                "panel.time_range = TimeRange(start.timestamp(), stop.timestamp())\n"
-                f"# Manual fetch: data = {qualname}(start, stop{knobs_kw})\n"
-                f"panel.plot_product({product_arg})\n"
-            )
-        else:
-            snippet = (
-                f"# Virtual product '{'/'.join(self._path)}'\n"
-                f"# callback '{mod_name}.{qualname}' is not importable from this module.\n"
-                f"# Re-execute the cell that registered the VP before running this snippet,\n"
-                "# then:\n"
-                "from datetime import datetime\n"
-                "from SciQLop.user_api.plot import create_plot_panel\n"
-                "from SciQLop.core import TimeRange\n"
-                "\n"
-                f'start = datetime.fromisoformat("{start_iso}")\n'
-                f'stop  = datetime.fromisoformat("{stop_iso}")\n'
-                "panel = create_plot_panel()\n"
-                "panel.time_range = TimeRange(start.timestamp(), stop.timestamp())\n"
-                f"panel.plot_product({product_arg})\n"
-            )
+        product_path = format_product_path(ctx.product_path) or format_product_path(self._path)
+        template = ("vp_reproducer.j2" if _is_importable(mod_name, qualname, cb)
+                    else "vp_reproducer_unimportable.j2")
+        snippet = render_snippet(
+            template,
+            start_iso=start_iso,
+            stop_iso=stop_iso,
+            module=mod_name,
+            qualname=qualname,
+            product_path=product_path,
+            knobs=repr(ctx.knobs) if ctx.knobs else None,
+            knobs_kwarg=self._knobs_kwarg_name,
+        )
         return {"Reproduce in SciQLop": snippet}
 
     def extended_metadata(self, ctx) -> dict:
