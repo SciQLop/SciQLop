@@ -9,17 +9,18 @@ __all__ = ["format_product_path", "render_snippet"]
 
 
 def format_product_path(path: Optional[Iterable[str]]) -> str:
-    """Render a product-tree path as ``"a/b/c"``, dropping the implicit
+    """Render a product-tree path as ``"a//b//c"``, dropping the implicit
     ``"root"`` prefix.
 
+    Uses ``//`` rather than ``/`` because segment names can themselves
+    contain ``/`` (e.g. AMDA's ``"final / prelim"``). ``to_product_path``
+    (user_api) prefers ``//`` when present so the round-trip stays lossless;
     ``ProductsModel::node`` (SciQLopPlots) strips a leading ``"root"`` when
-    looking up by name, and ``to_product_path`` (user_api) splits on ``/``
-    or ``//`` — so the receiver accepts this form unchanged. The list-literal
-    form was harder to read in clipboard output.
+    looking up by name.
     """
     if not path:
         return ""
     segments = [str(s) for s in path]
     if segments and segments[0] == "root":
         segments = segments[1:]
-    return "/".join(segments)
+    return "//".join(segments)

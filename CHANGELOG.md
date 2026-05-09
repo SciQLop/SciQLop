@@ -5,7 +5,7 @@
 ### Snippet generation refactor (Jinja2 templates)
 
 - "Copy Python code" snippets (Speasy notebook + reproducer, VP reproducer, panel/plot reproducers) are now rendered from Jinja2 templates under `SciQLop/core/snippets/templates/` instead of inline string concatenation. Public surface: `SciQLop.core.snippets.render_snippet` and `SciQLop.core.snippets.format_product_path`.
-- Generated snippets emit the slash-joined product path (`"speasy/amda/ACE/b_gsm"`) instead of a Python list literal, and drop the implicit `"root"` prefix. The receiving `panel.plot_product` already accepts both forms via `to_product_path`, and `ProductsModel::node` strips a leading `"root"` — purely a producer-side cleanup.
+- Generated snippets emit the double-slash-joined product path (`"speasy//amda//ACE//b_gsm"`) instead of a Python list literal, and drop the implicit `"root"` prefix. `//` is required because product names can contain `/` (e.g. AMDA's `"final / prelim"`); `to_product_path` prefers `//` when present so the round-trip stays lossless. `ProductsModel::node` strips a leading `"root"` — purely a producer-side cleanup.
 
 ### Editable event metadata in the catalog browser
 

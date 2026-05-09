@@ -261,7 +261,7 @@ def test_speasy_sciqlop_reproducer_emits_slash_path_no_root():
     )
     out = _speasy_sciqlop_snippet(ctx, graph=None)
     assert "[\x27root\x27" not in out
-    assert 'panel.plot_product("speasy/amda/ACE/b_gsm")' in out
+    assert 'panel.plot_product("speasy//amda//ACE//b_gsm")' in out
 
 
 def test_easy_provider_snippet_uses_slash_path(qtbot):
@@ -294,7 +294,7 @@ def test_aggregate_snippet_product_path_is_quoted_string():
         provider_name="Speasy",
         product_path=["root", "speasy", "amda", "ACE", "b_gsm"],
     )
-    assert _product_path_arg(speasy_ctx) == '"speasy/amda/ACE/b_gsm"'
+    assert _product_path_arg(speasy_ctx) == '"speasy//amda//ACE//b_gsm"'
 
     vp_ctx = GraphContext(
         kind="vp", graph_id="g", panel_name="P", plot_index=0,
@@ -302,7 +302,7 @@ def test_aggregate_snippet_product_path_is_quoted_string():
         provider_name="custom",
         product_path=["root", "custom", "my_vp"],
     )
-    assert _product_path_arg(vp_ctx) == '"custom/my_vp"'
+    assert _product_path_arg(vp_ctx) == '"custom//my_vp"'
 
     static_ctx = GraphContext(
         kind="static", graph_id="g", panel_name="P", plot_index=0,

@@ -522,4 +522,4 @@ def test_copy_python_snippets_emit_slash_path():
     assert "['root'" not in notebook
     sciqlop_repro = snippets["Reproduce in SciQLop"]
     assert "['root'" not in sciqlop_repro
-    assert 'panel.plot_product("speasy/amda/ACE/b_gsm")' in sciqlop_repro
+    assert 'panel.plot_product("speasy//amda//ACE//b_gsm")' in sciqlop_repro
