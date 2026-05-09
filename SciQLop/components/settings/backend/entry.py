@@ -94,14 +94,22 @@ class ConfigEntry(BaseModel):
     _notifier: ClassVar[_SettingsNotifier]
     _keyring_: ClassVar[KeyringMapping | None] = None
 
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
+    @classmethod
+    def __pydantic_init_subclass__(cls, **kwargs):
+        super().__pydantic_init_subclass__(**kwargs)
         if cls.__name__ in cls._entries_:
             raise ValueError(f"Duplicate entry name: {cls.__name__}")
-        if not hasattr(cls, 'category') or not isinstance(cls.category, str) or cls.category == "":
-            raise ValueError(f"Entry class {cls.__name__} must have a string 'category' attribute")
-        if not hasattr(cls, 'subcategory') or not isinstance(cls.subcategory, str) or cls.subcategory == "":
-            raise ValueError(f"Entry class {cls.__name__} must have a string 'subcategory' attribute")
+        for attr in ("category", "subcategory"):
+            if attr in cls.model_fields:
+                raise TypeError(
+                    f"Entry class {cls.__name__}: '{attr}' is declared as a model field "
+                    f"(plain annotation like `{attr}: str = ...`). It must be a class "
+                    f"variable — declare it as `{attr}: ClassVar[str] = ...` or as a bare "
+                    f"assignment `{attr} = ...`."
+                )
+            value = getattr(cls, attr, None)
+            if not isinstance(value, str) or value == "":
+                raise ValueError(f"Entry class {cls.__name__} must have a non-empty string '{attr}' attribute")
         cls._notifier = _SettingsNotifier()
         cls._entries_[cls.__name__] = cls
 

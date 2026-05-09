@@ -62,6 +62,20 @@ class TestInitSubclass:
         with pytest.raises(ValueError, match="Duplicate"):
             _make_entry_cls("UniqueEntry", tmp_config_dir, val="y")
 
+    def test_category_as_model_field_raises(self):
+        """`category: str = ...` makes Pydantic promote it to a model field, which
+        breaks `cls.category` access at runtime. Reject at class creation."""
+        with pytest.raises(TypeError, match="ClassVar"):
+            class BadCategoryAsField(ConfigEntry):
+                category: str = "test"
+                subcategory: str = "sub"
+
+    def test_subcategory_as_model_field_raises(self):
+        with pytest.raises(TypeError, match="ClassVar"):
+            class BadSubcategoryAsField(ConfigEntry):
+                category = "test"
+                subcategory: str = "sub"
+
 
 class TestSaveAndLoad:
     def test_saves_on_first_creation(self, tmp_config_dir):
@@ -125,11 +139,11 @@ class TestEdgeCases:
         """A YAML file from an older schema where a field has the wrong type
         for the current model must not break the settings load. The instance
         should fall back to defaults and overwrite the stale file on save."""
-        from typing import Literal
+        from typing import ClassVar, Literal
 
         class StaleTypeEntry(ConfigEntry):
-            category: str = "test"
-            subcategory: str = "sub"
+            category: ClassVar[str] = "test"
+            subcategory: ClassVar[str] = "sub"
             mode: Literal["fast", "slow"] = "fast"
 
         with open(StaleTypeEntry.config_file(), 'w') as f:
