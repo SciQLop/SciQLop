@@ -12,19 +12,24 @@ class GraphContextExtension(InspectorExtension):
     identity (speasy uid / vp path / callback) plus 'Copy Python code' and
     'Show full metadata…' actions. Knob *editing* stays in
     KnobInspectorExtension — this extension only displays current values.
+
+    State (graph ref, title) is read from Qt-side storage on every call —
+    ``self.parent()`` and ``self.objectName()`` — so the extension keeps
+    working after Shiboken recreates the Python wrapper from the surviving
+    C++ object. Stashing them as Python instance attributes silently broke
+    the section: the wrapper got GC'd alongside the graph wrapper, and the
+    fresh wrapper PropertyDelegateBase saw had empty ``__dict__``.
     """
 
     def __init__(self, graph, parent=None, title: str = "Graph"):
-        super().__init__(parent)
+        super().__init__(parent if parent is not None else graph)
         self.setObjectName(title)
-        self._graph = graph
-        self._title = title
 
     def section_title(self) -> str:
-        return self._title
+        return self.objectName()
 
     def priority(self) -> int:
         return 50
 
     def build_widget(self, parent: QWidget) -> QWidget:
-        return GraphContextSection(self._graph, parent=parent)
+        return GraphContextSection(self.parent(), parent=parent)

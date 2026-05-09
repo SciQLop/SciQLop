@@ -395,6 +395,53 @@ def test_install_graph_context_ui_keeps_extension_alive(qtbot):
     assert exts[0].build_widget(None) is not None
 
 
+def test_extension_survives_graph_wrapper_recreation(qtbot):
+    """The GraphContextExtension must keep working after Shiboken recreates
+    its Python wrapper — i.e. when the user holds no Python ref to the graph.
+
+    Regression: storing state in Python instance attributes (``self._graph``,
+    ``self._title``) silently broke the inspector section. PySide6 doesn't
+    keep a parent's *Python wrapper* alive just because C++ holds the QObject;
+    the graph wrapper got GC'd, taking ``graph._graph_context_ext`` with it,
+    and the fresh wrapper PropertyDelegateBase saw later had an empty
+    ``__dict__`` — ``build_widget`` raised ``AttributeError``, the QGroupBox
+    rendered empty. Mirrors the live "metadata node not showing" symptom.
+    """
+    import gc
+    import numpy as np
+    from SciQLop.components.plotting.ui.time_sync_panel import (
+        TimeSyncPanel, plot_static_data,
+    )
+    from SciQLop.components.plotting.ui.graph_context_inspector import (
+        GraphContextExtension,
+    )
+    from SciQLopPlots import SciQLopGraphInterface, SciQLopPlot
+
+    panel = TimeSyncPanel('wrapper_recreation', show_search_overlay=False)
+    qtbot.addWidget(panel)
+    plot_static_data(panel, np.array([0.0, 1.0, 2.0]),
+                     np.array([0.0, 1.0, 2.0]))
+    for _ in range(3):
+        gc.collect()
+
+    plot_ptr = panel.plots()[0]
+    real_plot = next(c for c in panel.findChildren(SciQLopPlot)
+                     if c.objectName() == plot_ptr.objectName())
+    graph = real_plot.findChildren(SciQLopGraphInterface)[0]
+    assert "_graph_context_ext" not in graph.__dict__, (
+        "test must exercise the wrapper-recreation path — got the original "
+        "wrapper back, GC didn't run on it"
+    )
+
+    exts = [e for e in graph.inspector_extensions()
+            if isinstance(e, GraphContextExtension)]
+    assert len(exts) == 1
+    assert exts[0].section_title() == "Graph"
+    widget = exts[0].build_widget(None)
+    assert widget is not None
+    qtbot.addWidget(widget)
+
+
 def test_graph_context_section_renders_with_speasy_ctx(qtbot, monkeypatch):
     """GraphContextSection builds, fills labels, and exposes working buttons."""
     from PySide6.QtCore import QObject
