@@ -498,3 +498,28 @@ def test_graph_context_section_no_context_disables_buttons(qtbot):
     qtbot.addWidget(section)
     assert not section._copy_btn.isEnabled()
     assert not section._show_btn.isEnabled()
+
+
+def test_copy_python_snippets_emit_slash_path():
+    """End-to-end: SpeasyPlugin's 'Notebook (matplotlib)' + 'Reproduce in
+    SciQLop' snippets must emit the slash-joined product path (no list
+    literal, no implicit 'root' prefix). Mirrors the live "Copy Python
+    code → ..." menu actions.
+    """
+    from SciQLop.plugins.speasy_provider.speasy_provider import SpeasyPlugin
+    from SciQLop.core.graph_context import GraphContext
+
+    p = SpeasyPlugin.__new__(SpeasyPlugin)
+    p._name = "Speasy"
+    ctx = GraphContext(
+        kind="speasy", graph_id="g", panel_name="P", plot_index=0,
+        graph_type="Line", speasy_id="amda/ACE/b_gsm",
+        provider_name="Speasy",
+        product_path=["root", "speasy", "amda", "ACE", "b_gsm"],
+    )
+    snippets = p.python_snippets(ctx, graph=None)
+    notebook = snippets["Notebook (matplotlib)"]
+    assert "['root'" not in notebook
+    sciqlop_repro = snippets["Reproduce in SciQLop"]
+    assert "['root'" not in sciqlop_repro
+    assert 'panel.plot_product("speasy/amda/ACE/b_gsm")' in sciqlop_repro
