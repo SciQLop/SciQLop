@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### Snippet generation refactor (Jinja2 templates)
+
+- "Copy Python code" snippets (Speasy notebook + reproducer, VP reproducer, panel/plot reproducers) are now rendered from Jinja2 templates under `SciQLop/core/snippets/templates/` instead of inline string concatenation. Public surface: `SciQLop.core.snippets.render_snippet` and `SciQLop.core.snippets.format_product_path`.
+- Generated snippets emit the slash-joined product path (`"speasy/amda/ACE/b_gsm"`) instead of a Python list literal, and drop the implicit `"root"` prefix. The receiving `panel.plot_product` already accepts both forms via `to_product_path`, and `ProductsModel::node` strips a leading `"root"` — purely a producer-side cleanup.
+
 ### Editable event metadata in the catalog browser
 
 - Made the event table the primary surface for inspecting *and* editing per-event metadata. Cells become editable when the provider declares `Capability.EDIT_EVENTS`; tscat and cocat write through to their respective backends (tscat via `SetAttributeAction`, cocat via CRDT `set_attributes`). Speasy events stay read-only.
