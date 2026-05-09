@@ -104,6 +104,40 @@ def test_manager_interaction_mode(qtbot, qapp):
     assert manager.mode == InteractionMode.EDIT
 
 
+def test_chrome_combo_drives_manager_mode(qtbot, qapp):
+    """Selecting a mode in the catalog chrome drives the manager's mode."""
+    from SciQLop.components.catalogs.backend.panel_manager import InteractionMode
+    from SciQLop.components.plotting.ui.panel_container import PanelContainer
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+
+    panel = TimeSyncPanel("test-panel", time_range=TimeRange(1_000_000.0, 1_086_400.0))
+    container = PanelContainer(panel)
+    qtbot.addWidget(container)
+
+    panel.catalog_manager._catalog_chrome()  # ensure chrome is wired
+    assert container.catalog_chrome.mode == "view"
+
+    container.catalog_chrome.mode_changed.emit("edit")
+    assert panel.catalog_manager.mode == InteractionMode.EDIT
+
+
+def test_manager_mode_change_reflected_in_chrome_combo(qtbot, qapp):
+    """Setting the manager's mode programmatically updates the chrome combo."""
+    from SciQLop.components.catalogs.backend.panel_manager import InteractionMode
+    from SciQLop.components.plotting.ui.panel_container import PanelContainer
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+
+    panel = TimeSyncPanel("test-panel", time_range=TimeRange(1_000_000.0, 1_086_400.0))
+    container = PanelContainer(panel)
+    qtbot.addWidget(container)
+    panel.catalog_manager._catalog_chrome()  # ensure chrome is wired
+
+    panel.catalog_manager.mode = InteractionMode.JUMP
+    assert container.catalog_chrome.mode == "jump"
+
+
 def test_panel_has_catalog_manager(qtbot, qapp):
     from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
 
@@ -258,9 +292,9 @@ def test_edit_mode_updates_catalog_combo(qtbot, qapp):
     manager.add_catalog(cats[1])
     manager.mode = InteractionMode.EDIT
 
-    bar = panel._time_range_bar
-    assert bar._catalog_combo.count() == 2
-    assert not bar._catalog_combo.isHidden()
+    chrome = panel._catalog_chrome
+    assert chrome._target_combo.count() == 2
+    assert not chrome._target_combo.isHidden()
 
 
 def test_view_mode_hides_catalog_combo(qtbot, qapp):
@@ -284,8 +318,8 @@ def test_view_mode_hides_catalog_combo(qtbot, qapp):
     manager.mode = InteractionMode.EDIT
     manager.mode = InteractionMode.VIEW
 
-    bar = panel._time_range_bar
-    assert bar._catalog_combo.isHidden()
+    chrome = panel._catalog_chrome
+    assert chrome._target_combo.isHidden()
 
 
 def test_span_created_adds_event_to_target_catalog(qtbot, qapp):
@@ -395,8 +429,8 @@ def test_removing_catalog_updates_combo(qtbot, qapp):
     manager.add_catalog(cats[1])
     manager.mode = InteractionMode.EDIT
 
-    bar = panel._time_range_bar
-    assert bar._catalog_combo.count() == 2
+    chrome = panel._catalog_chrome
+    assert chrome._target_combo.count() == 2
 
     manager.remove_catalog(cats[0])
-    assert bar._catalog_combo.count() == 1
+    assert chrome._target_combo.count() == 1

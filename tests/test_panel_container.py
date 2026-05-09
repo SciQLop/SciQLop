@@ -44,3 +44,32 @@ def test_panel_change_updates_bar(container):
     container.panel.time_range = TimeRange(start, start + 86400)
     bar_tr = container.time_range_bar.time_range
     assert abs(bar_tr.start() - start) < 1
+
+
+def test_crosshair_toggle_propagates_to_existing_plots(container):
+    """Toggling the crosshair button should disable/enable crosshair on all plots."""
+    from SciQLopPlots import PlotType
+    panel = container.panel
+    panel.create_plot(0, PlotType.TimeSeries)
+    panel.create_plot(1, PlotType.TimeSeries)
+    plots = panel.plots()
+    assert len(plots) == 2
+    assert all(p.crosshair_enabled() for p in plots)
+
+    container.crosshair_toggle.toggle()
+    assert container.crosshair_toggle.isChecked() is False
+    assert not any(p.crosshair_enabled() for p in panel.plots())
+
+    container.crosshair_toggle.toggle()
+    assert all(p.crosshair_enabled() for p in panel.plots())
+
+
+def test_crosshair_state_applied_to_new_plots(container):
+    """Plots added after toggling should inherit the current crosshair state."""
+    from SciQLopPlots import PlotType
+    container.crosshair_toggle.toggle()
+    assert container.crosshair_toggle.isChecked() is False
+    container.panel.create_plot(0, PlotType.TimeSeries)
+    plots = container.panel.plots()
+    assert len(plots) == 1
+    assert plots[0].crosshair_enabled() is False

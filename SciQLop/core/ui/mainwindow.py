@@ -36,6 +36,8 @@ register_icon("view_list", QtGui.QIcon(f"{__here__}/../../resources/icons/view_l
 register_icon("home", QtGui.QIcon(f"{__here__}/../../resources/icons/home.png"))
 
 register_icon("plot_properties", QtGui.QIcon(f"{__here__}/../../resources/icons/plot_properties.svg"))
+register_icon("my_location", QtGui.QIcon(f"{__here__}/../../resources/icons/my_location.svg"))
+register_icon("location_disabled", QtGui.QIcon(f"{__here__}/../../resources/icons/location_disabled.svg"))
 
 log = getLogger(__name__)
 

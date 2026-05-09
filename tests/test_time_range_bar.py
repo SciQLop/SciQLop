@@ -94,47 +94,6 @@ def test_no_signal_during_set_range(bar, qtbot):
     assert len(signals) == 0
 
 
-def test_catalog_combo_hidden_by_default(bar):
-    assert bar._catalog_combo.isHidden() is True
-
-
-def test_set_catalog_choices_shows_combo(bar):
-    bar.set_catalog_choices([("MyCatalog", "uuid-1")])
-    assert bar._catalog_combo.isHidden() is False
-    assert bar._catalog_combo.count() == 1
-    assert bar._catalog_combo.currentText() == "MyCatalog"
-
-
-def test_set_catalog_choices_auto_selects_first(bar):
-    bar.set_catalog_choices([("Cat-A", "uuid-a"), ("Cat-B", "uuid-b")])
-    assert bar.selected_catalog_uuid() == "uuid-a"
-
-
-def test_selected_catalog_uuid_returns_item_data(bar):
-    bar.set_catalog_choices([("Cat-A", "uuid-a"), ("Cat-B", "uuid-b")])
-    bar._catalog_combo.setCurrentIndex(1)
-    assert bar.selected_catalog_uuid() == "uuid-b"
-
-
-def test_selected_catalog_uuid_none_when_empty(bar):
-    assert bar.selected_catalog_uuid() is None
-
-
-def test_clear_catalog_choices_hides_combo(bar):
-    bar.set_catalog_choices([("MyCatalog", "uuid-1")])
-    bar.clear_catalog_choices()
-    assert bar._catalog_combo.isHidden() is True
-    assert bar._catalog_combo.count() == 0
-    assert bar.selected_catalog_uuid() is None
-
-
-def test_catalog_choice_changed_signal(bar, qtbot):
-    bar.set_catalog_choices([("Cat-A", "uuid-a"), ("Cat-B", "uuid-b")])
-    with qtbot.waitSignal(bar.catalog_choice_changed, timeout=1000) as blocker:
-        bar._catalog_combo.setCurrentIndex(1)
-    assert blocker.args == ["uuid-b"]
-
-
 # --- Zoom limit combo tests ---
 
 ZOOM_LIMIT_PRESETS = [("1h", 3600), ("1d", 86400), ("1w", 604800), ("1y", 365.25 * 86400), ("Unlimited", 0)]

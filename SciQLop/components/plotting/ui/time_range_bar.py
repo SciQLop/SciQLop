@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, Signal, QDateTime, QTimeZone, Property, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, Signal, QDateTime, QTimeZone, Property, QPropertyAnimation
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QDateTimeEdit, QComboBox, QPushButton, QLabel
 
 from SciQLop.core import TimeRange
@@ -52,8 +52,9 @@ def _closest_duration_index(seconds):
 
 
 class TimeRangeBar(QWidget):
+    """Time-navigation chrome: start picker, duration, step buttons, zoom-out limit."""
+
     range_changed = Signal(TimeRange)
-    catalog_choice_changed = Signal(str)
     limit_changed = Signal(float)
 
     def __init__(self, parent=None):
@@ -62,9 +63,8 @@ class TimeRangeBar(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(2, 0, 2, 0)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
-        self.setMaximumHeight(Metrics.ex(2.5))
 
         self._start_picker = _make_start_picker(self)
         self._duration_combo = _make_duration_combo(self)
@@ -74,20 +74,16 @@ class TimeRangeBar(QWidget):
         self._fast_forward_btn = _make_nav_button("▶|", self)
         self._zoom_limit_combo = _make_zoom_limit_combo(self)
         self._zoom_limit_label = QLabel("Max:", self)
-        self._catalog_combo = QComboBox(self)
-        self._catalog_combo.setVisible(False)
 
-        layout.addStretch(1)
         layout.addWidget(self._fast_backward_btn)
         layout.addWidget(self._backward_btn)
         layout.addWidget(self._start_picker)
         layout.addWidget(self._duration_combo)
         layout.addWidget(self._forward_btn)
         layout.addWidget(self._fast_forward_btn)
+        layout.addSpacing(Metrics.em(0.5))
         layout.addWidget(self._zoom_limit_label)
         layout.addWidget(self._zoom_limit_combo)
-        layout.addWidget(self._catalog_combo)
-        layout.addStretch(1)
 
         self._start_picker.dateTimeChanged.connect(self._on_user_changed)
         self._duration_combo.currentTextChanged.connect(self._on_user_changed)
@@ -96,7 +92,6 @@ class TimeRangeBar(QWidget):
         self._fast_backward_btn.clicked.connect(lambda: self.step(-5))
         self._fast_forward_btn.clicked.connect(lambda: self.step(5))
         self._zoom_limit_combo.currentTextChanged.connect(self._on_zoom_limit_changed)
-        self._catalog_combo.currentIndexChanged.connect(self._on_catalog_choice_changed)
 
     @property
     def _duration_seconds(self):
@@ -140,28 +135,6 @@ class TimeRangeBar(QWidget):
             self._suppressing = False
         self.range_changed.emit(self.time_range)
 
-    def set_catalog_choices(self, items: list[tuple[str, str]]) -> None:
-        self._catalog_combo.blockSignals(True)
-        self._catalog_combo.clear()
-        for name, uuid in items:
-            self._catalog_combo.addItem(name, userData=uuid)
-        self._catalog_combo.blockSignals(False)
-        fit_combo_to_content(self._catalog_combo)
-        self._catalog_combo.setVisible(len(items) > 0)
-        if items:
-            self._on_catalog_choice_changed(0)
-
-    def clear_catalog_choices(self) -> None:
-        self._catalog_combo.blockSignals(True)
-        self._catalog_combo.clear()
-        self._catalog_combo.blockSignals(False)
-        self._catalog_combo.setVisible(False)
-
-    def selected_catalog_uuid(self) -> str | None:
-        if self._catalog_combo.count() == 0:
-            return None
-        return self._catalog_combo.currentData()
-
     @property
     def max_range_seconds(self) -> float:
         return dict(ZOOM_LIMIT_PRESETS).get(self._zoom_limit_combo.currentText(), 0.0)
@@ -176,11 +149,6 @@ class TimeRangeBar(QWidget):
 
     def _on_zoom_limit_changed(self, _text: str):
         self.limit_changed.emit(self.max_range_seconds)
-
-    def _on_catalog_choice_changed(self, index: int) -> None:
-        uuid = self._catalog_combo.itemData(index)
-        if uuid is not None:
-            self.catalog_choice_changed.emit(uuid)
 
     def _get_highlight(self):
         return getattr(self, '_highlight_value', 0.0)

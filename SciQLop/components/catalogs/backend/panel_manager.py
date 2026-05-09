@@ -62,6 +62,9 @@ class PanelCatalogManager(QObject):
                 overlay.read_only = True
         self._update_creation_target_choices()
         self._apply_span_creation_state()
+        chrome = getattr(self._panel, '_catalog_chrome', None)
+        if chrome is not None:
+            chrome.mode = value.value
 
     def add_catalog(self, catalog: Catalog) -> None:
         if catalog.uuid in self._overlays:
@@ -156,28 +159,36 @@ class PanelCatalogManager(QObject):
                 result.append(cat)
         return result
 
-    def _time_range_bar(self):
-        bar = getattr(self._panel, '_time_range_bar', None)
-        if bar is not None and not self._bar_connected:
-            bar.catalog_choice_changed.connect(lambda _: self._apply_span_creation_state())
+    def _catalog_chrome(self):
+        chrome = getattr(self._panel, '_catalog_chrome', None)
+        if chrome is not None and not self._bar_connected:
+            chrome.target_changed.connect(lambda _: self._apply_span_creation_state())
+            chrome.mode_changed.connect(self._on_chrome_mode_changed)
+            chrome.mode = self._mode.value
             self._bar_connected = True
-        return bar
+        return chrome
+
+    def _on_chrome_mode_changed(self, value: str) -> None:
+        try:
+            self.mode = InteractionMode(value)
+        except ValueError:
+            pass
 
     def _update_creation_target_choices(self) -> None:
-        bar = self._time_range_bar()
-        if bar is None:
+        chrome = self._catalog_chrome()
+        if chrome is None:
             return
         if self._mode != InteractionMode.EDIT:
-            bar.clear_catalog_choices()
+            chrome.clear_targets()
             return
         editable = self._editable_catalogs()
-        bar.set_catalog_choices([(c.name, c.uuid) for c in editable])
+        chrome.set_targets([(c.name, c.uuid) for c in editable])
 
     def _apply_span_creation_state(self) -> None:
-        bar = self._time_range_bar()
-        if bar is None:
+        chrome = self._catalog_chrome()
+        if chrome is None:
             return
-        uuid = bar.selected_catalog_uuid()
+        uuid = chrome.selected_target()
         enabled = self._mode == InteractionMode.EDIT and uuid is not None
         self._panel.set_span_creation_enabled(enabled)
         if enabled:
@@ -186,11 +197,11 @@ class PanelCatalogManager(QObject):
             self._panel.set_span_creation_color(color_for_catalog(uuid))
 
     def _on_span_created(self, raw_span) -> None:
-        bar = self._time_range_bar()
-        if self._mode != InteractionMode.EDIT or bar is None:
+        chrome = self._catalog_chrome()
+        if self._mode != InteractionMode.EDIT or chrome is None:
             raw_span.deleteLater()
             return
-        target_uuid = bar.selected_catalog_uuid()
+        target_uuid = chrome.selected_target()
         if target_uuid is None:
             raw_span.deleteLater()
             return
