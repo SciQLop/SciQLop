@@ -3,6 +3,10 @@ from __future__ import annotations
 
 from typing import Iterable, Optional
 
+from ._renderer import render_snippet
+
+__all__ = ["format_product_path", "render_snippet"]
+
 
 def format_product_path(path: Optional[Iterable[str]]) -> str:
     """Render a product-tree path as ``"a/b/c"``, dropping the implicit

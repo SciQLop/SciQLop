@@ -1,3 +1,6 @@
+import pytest
+
+
 def test_format_product_path_joins_with_slash():
     from SciQLop.core.snippets import format_product_path
     assert format_product_path(["root", "speasy", "amda", "ACE", "b_gsm"]) \
@@ -20,3 +23,16 @@ def test_format_product_path_single_segment():
     from SciQLop.core.snippets import format_product_path
     assert format_product_path(["root"]) == ""
     assert format_product_path(["b_gsm"]) == "b_gsm"
+
+
+def test_render_snippet_loads_template_and_substitutes():
+    from SciQLop.core.snippets import render_snippet
+    out = render_snippet("_smoke.j2", name="world")
+    assert out == "hello world\n"
+
+
+def test_render_snippet_unknown_template_raises():
+    import jinja2
+    from SciQLop.core.snippets import render_snippet
+    with pytest.raises(jinja2.TemplateNotFound):
+        render_snippet("does_not_exist.j2")
