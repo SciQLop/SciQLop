@@ -280,3 +280,33 @@ def test_easy_provider_snippet_uses_slash_path(qtbot):
     assert "[\x27root\x27" not in s, f"list literal leaked: {s!r}"
     assert 'panel.plot_product("my_vp")' in s, f"expected slash form; got: {s!r}"
 
+
+
+def test_aggregate_snippet_product_path_is_quoted_string():
+    """Unit-level: ``_product_path_arg`` returns a quoted slash-joined
+    string (no list literal, no implicit ``root`` prefix)."""
+    from SciQLop.components.plotting.ui.graph_context_snippets import (
+        _product_path_arg,
+    )
+    speasy_ctx = GraphContext(
+        kind="speasy", graph_id="g", panel_name="P", plot_index=0,
+        graph_type="Line", speasy_id="amda/ACE/b_gsm",
+        provider_name="Speasy",
+        product_path=["root", "speasy", "amda", "ACE", "b_gsm"],
+    )
+    assert _product_path_arg(speasy_ctx) == '"speasy/amda/ACE/b_gsm"'
+
+    vp_ctx = GraphContext(
+        kind="vp", graph_id="g", panel_name="P", plot_index=0,
+        graph_type="Line", vp_path="custom/my_vp",
+        provider_name="custom",
+        product_path=["root", "custom", "my_vp"],
+    )
+    assert _product_path_arg(vp_ctx) == '"custom/my_vp"'
+
+    static_ctx = GraphContext(
+        kind="static", graph_id="g", panel_name="P", plot_index=0,
+        graph_type="Line",
+    )
+    assert _product_path_arg(static_ctx) is None
+

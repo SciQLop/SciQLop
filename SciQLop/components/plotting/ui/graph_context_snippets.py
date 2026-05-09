@@ -49,21 +49,22 @@ def _iso_range(panel) -> tuple[str, str]:
 
 
 def _product_path_arg(ctx) -> Optional[str]:
-    """Return a Python literal for ``plot_product``'s product argument, or
-    None if this graph isn't reproducible from a path.
+    """Return a quoted Python string for ``plot_product``'s product
+    argument (slash-joined, no implicit ``root``), or None if this graph
+    isn't reproducible from a path.
     """
+    from SciQLop.core.snippets import format_product_path
     if ctx.kind == "speasy":
-        if ctx.product_path:
-            return repr(ctx.product_path)
-        if ctx.speasy_id:
-            return f'["{ctx.speasy_id}"]'
-        return None
+        path = format_product_path(ctx.product_path) or (ctx.speasy_id or "")
+        return f'"{path}"' if path else None
     if ctx.kind == "vp":
         if ctx.product_path:
-            return repr(ctx.product_path)
-        if ctx.vp_path:
-            return repr(ctx.vp_path.split("/"))
-        return None
+            path = format_product_path(ctx.product_path)
+        elif ctx.vp_path:
+            path = format_product_path(ctx.vp_path.split("/"))
+        else:
+            path = ""
+        return f'"{path}"' if path else None
     return None
 
 
@@ -92,51 +93,36 @@ def _plot_product_lines(graphs: Iterable, plot_index: int) -> tuple[list[str], l
     return lines, skipped
 
 
-def _header(panel) -> list[str]:
-    start_iso, stop_iso = _iso_range(panel)
-    return [
-        "from datetime import datetime",
-        "from SciQLop.user_api.plot import create_plot_panel",
-        "from SciQLop.core import TimeRange",
-        "",
-        f'start = datetime.fromisoformat("{start_iso}")',
-        f'stop  = datetime.fromisoformat("{stop_iso}")',
-        "",
-        "panel = create_plot_panel()",
-        "panel.time_range = TimeRange(start.timestamp(), stop.timestamp())",
-        "",
-    ]
-
-
 def panel_reproducer_snippet(panel) -> Optional[str]:
     """Reproduce every plot+graph in ``panel`` as one SciQLop script.
 
     Returns None if the panel has no reproducible graphs (e.g., only static
     data or function plots) — caller should hide the menu entry in that case.
     """
+    from SciQLop.core.snippets import render_snippet
     plots = ordered_plots(panel)
-    body: list[str] = []
-    all_skipped: list[str] = []
+    plot_lines: list[str] = []
+    skipped: list[str] = []
     for i, plot in enumerate(plots):
         graphs = list(plot.findChildren(SciQLopGraphInterface))
         if not graphs:
             continue
-        lines, skipped = _plot_product_lines(graphs, plot_index=i)
-        body.extend(lines)
-        all_skipped.extend(skipped)
-    if not body:
+        lines, plot_skipped = _plot_product_lines(graphs, plot_index=i)
+        plot_lines.extend(lines)
+        skipped.extend(plot_skipped)
+    if not plot_lines:
         return None
-    out = _header(panel) + body
-    if all_skipped:
-        out.append("")
-        out.append("# Not included in this snippet:")
-        for s in all_skipped:
-            out.append(f"#   - {s}")
-    return "\n".join(out) + "\n"
+    start_iso, stop_iso = _iso_range(panel)
+    return render_snippet(
+        "panel_reproducer.j2",
+        start_iso=start_iso, stop_iso=stop_iso,
+        plot_lines=plot_lines, skipped=skipped,
+    )
 
 
 def plot_reproducer_snippet(panel, plot_index: int) -> Optional[str]:
     """Reproduce a single plot (by index) as one SciQLop script."""
+    from SciQLop.core.snippets import render_snippet
     plots = ordered_plots(panel)
     if not (0 <= plot_index < len(plots)):
         return None
@@ -146,10 +132,9 @@ def plot_reproducer_snippet(panel, plot_index: int) -> Optional[str]:
     lines, skipped = _plot_product_lines(graphs, plot_index=0)
     if not lines:
         return None
-    out = _header(panel) + lines
-    if skipped:
-        out.append("")
-        out.append("# Not included in this snippet:")
-        for s in skipped:
-            out.append(f"#   - {s}")
-    return "\n".join(out) + "\n"
+    start_iso, stop_iso = _iso_range(panel)
+    return render_snippet(
+        "plot_reproducer.j2",
+        start_iso=start_iso, stop_iso=stop_iso,
+        plot_lines=lines, skipped=skipped,
+    )

@@ -1,0 +1,11 @@
+{% include "sciqlop_panel.j2" %}
+{% for line in plot_lines %}
+{{ line }}
+{% endfor %}
+{% if skipped %}
+
+# Not included in this snippet:
+{% for s in skipped %}
+#   - {{ s }}
+{% endfor %}
+{% endif %}
