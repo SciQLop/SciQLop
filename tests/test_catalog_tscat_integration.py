@@ -294,3 +294,28 @@ def test_set_event_meta_distinguishes_absent_from_none(qapp, tscat_provider):
     assert "note" in ev.meta
     assert ev.meta["note"] is None
     assert received == ["note"]
+
+
+def test_provider_action_opens_dedicated_editor(qapp, tscat_provider):
+    """Right-click on the provider root surfaces a "Open in TSCat editor" action."""
+    actions = tscat_provider.actions(None)
+    assert len(actions) == 1
+    assert "TSCat editor" in actions[0].name
+    assert tscat_provider._editor_window is None
+
+    actions[0].callback(None)
+    assert tscat_provider._editor_window is not None
+    assert tscat_provider._editor_window.isVisible()
+
+    first = tscat_provider._editor_window
+    actions[0].callback(None)
+    assert tscat_provider._editor_window is first
+
+    tscat_provider._editor_window.close()
+
+
+def test_provider_action_returns_nothing_for_specific_catalog(qapp, tscat_provider):
+    """The dedicated-editor action is a provider-level entry, not per-catalog."""
+    cat = tscat_provider.create_catalog("t_no_per_catalog_action")
+    _process_events(qapp)
+    assert tscat_provider.actions(cat) == []

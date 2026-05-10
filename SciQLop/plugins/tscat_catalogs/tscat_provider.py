@@ -11,7 +11,7 @@ from SciQLop.components.catalogs import (
     CatalogEvent,
     CatalogProvider,
 )
-from SciQLop.components.catalogs.backend.provider import _SENTINEL
+from SciQLop.components.catalogs.backend.provider import _SENTINEL, ProviderAction
 
 from tscat_gui.tscat_driver.model import tscat_model
 from tscat_gui.tscat_driver.actions import (
@@ -109,11 +109,35 @@ class TscatCatalogProvider(CatalogProvider):
         self._pending_paths: dict[str, list[str]] = {}
         self._pending_actions = 0
         self._root_model = tscat_model.tscat_root()
+        self._editor_window = None
         super().__init__(name="My Catalogs", parent=parent)
         tscat_model.action_done.connect(self._on_action_done)
         self._root_model.rowsInserted.connect(self._on_root_rows_changed)
         self._root_model.rowsRemoved.connect(self._on_root_rows_changed)
         self._root_model.modelReset.connect(self._on_root_rows_changed)
+
+    def actions(self, catalog: Catalog | None = None) -> list[ProviderAction]:
+        if catalog is not None:
+            return []
+        from SciQLop.components.theming import theme_icon
+        return [ProviderAction(
+            name="Open in TSCat editor…",
+            callback=lambda _: self._show_editor_window(),
+            icon=theme_icon("catalogue"),
+        )]
+
+    def _show_editor_window(self) -> None:
+        from tscat_gui import TSCatGUI
+        if self._editor_window is None:
+            self._editor_window = TSCatGUI()
+            self._editor_window.destroyed.connect(self._on_editor_window_destroyed)
+        self._editor_window.show()
+        self._editor_window.raise_()
+        self._editor_window.activateWindow()
+
+    @Slot()
+    def _on_editor_window_destroyed(self) -> None:
+        self._editor_window = None
 
     @contextmanager
     def _tracked_action(self):
