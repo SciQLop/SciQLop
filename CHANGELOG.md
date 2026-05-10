@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Bug fixes
+
+- Fixed SciQLop aborting startup with an error dialog when the workspace dependency sync cannot reach the network (closes #115). `prepare_workspace` now treats a `uv sync` failure as a recoverable warning when the workspace venv exists, so users can still launch offline (e.g. on a plane) and use bundled features such as the CDF plugin and local files. A real venv breakage (no `python` executable) still propagates as before.
+
 ### Snippet generation refactor (Jinja2 templates)
 
 - "Copy Python code" snippets (Speasy notebook + reproducer, VP reproducer, panel/plot reproducers) are now rendered from Jinja2 templates under `SciQLop/core/snippets/templates/` instead of inline string concatenation. Public surface: `SciQLop.core.snippets.render_snippet` and `SciQLop.core.snippets.format_product_path`.

@@ -100,6 +100,18 @@ def prepare_workspace(
     # Step 5: Ensure venv exists and sync
     venv = WorkspaceVenv(workspace_dir)
     venv.ensure(on_output=on_output)
-    venv.sync(locked=locked, on_output=on_output)
+    try:
+        venv.sync(locked=locked, on_output=on_output)
+    except Exception as exc:
+        if not venv.python_path.exists():
+            raise
+        # Offline / unreachable index (#115): keep starting with the existing
+        # venv so the user can still use bundled features (CDF, local files).
+        log.warning("Workspace dependency sync failed: %s", exc)
+        if on_output is not None:
+            on_output(
+                "Warning: workspace dependency sync failed; continuing with "
+                "existing venv. Run with network to install missing packages."
+            )
 
     return venv.python_path

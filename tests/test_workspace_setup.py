@@ -151,6 +151,41 @@ class TestPrepareWorkspaceCallback:
         patches["venv"].sync.assert_called_once_with(locked=False, on_output=None)
 
 
+class TestPrepareWorkspaceOffline:
+    """Issue #115: SciQLop must not abort startup when sync fails offline."""
+
+    def test_sync_failure_is_tolerated_when_python_exists(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        python_path = tmp_path / ".venv" / "bin" / "python"
+        python_path.parent.mkdir(parents=True)
+        python_path.write_text("")
+        venv.python_path = python_path
+        venv.sync.side_effect = RuntimeError(
+            "uv command failed (exit 2):\n  uv sync\nNetwork is unreachable"
+        )
+
+        cb = MagicMock()
+        result = prepare_workspace(workspace_dir, workspace_name="Test", on_output=cb)
+
+        assert result == python_path
+        cb.assert_any_call(
+            "Warning: workspace dependency sync failed; continuing with existing venv. "
+            "Run with network to install missing packages."
+        )
+
+    def test_sync_failure_propagates_when_python_missing(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        venv.python_path = tmp_path / "missing" / "python"
+        venv.sync.side_effect = RuntimeError("uv venv failed")
+
+        with pytest.raises(RuntimeError):
+            prepare_workspace(workspace_dir, workspace_name="Test")
+
+
 class TestCollectPluginDepsArgs:
     def test_passes_workspace_overrides_to_collect(self, workspace_dir):
         """Verify that manifest plugin overrides are passed to collect_plugin_dependencies."""
