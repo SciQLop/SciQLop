@@ -299,16 +299,17 @@ def test_set_event_meta_distinguishes_absent_from_none(qapp, tscat_provider):
 def test_provider_action_opens_dedicated_editor(qapp, tscat_provider):
     """Right-click on the provider root surfaces a "Open in TSCat editor" action."""
     actions = tscat_provider.actions(None)
-    assert len(actions) == 1
-    assert "TSCat editor" in actions[0].name
+    assert len(actions) == 2
+    editor_action = next((a for a in actions if "TSCat editor" in a.name), None)
+    assert editor_action is not None
     assert tscat_provider._editor_window is None
 
-    actions[0].callback(None)
+    editor_action.callback(None)
     assert tscat_provider._editor_window is not None
     assert tscat_provider._editor_window.isVisible()
 
     first = tscat_provider._editor_window
-    actions[0].callback(None)
+    editor_action.callback(None)
     assert tscat_provider._editor_window is first
 
     tscat_provider._editor_window.close()
@@ -319,6 +320,13 @@ def test_provider_action_returns_nothing_for_specific_catalog(qapp, tscat_provid
     cat = tscat_provider.create_catalog("t_no_per_catalog_action")
     _process_events(qapp)
     assert tscat_provider.actions(cat) == []
+
+
+def test_provider_action_offers_orphan_cleanup(qapp, tscat_provider):
+    actions = tscat_provider.actions(None)
+    names = {a.name for a in actions}
+    assert "Clean up orphan events…" in names
+    assert "Open in TSCat editor…" in names
 
 
 def test_tscat_handle_event_drop_link_uses_add_events_not_create(qapp, tscat_provider):

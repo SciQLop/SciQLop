@@ -109,23 +109,42 @@ class TscatCatalogProvider(CatalogProvider):
         self._stale_events: dict[str, list[CatalogEvent]] = {}
         self._pending_paths: dict[str, list[str]] = {}
         self._pending_actions = 0
+        self._orphan_events: list[CatalogEvent] = []
+        self._orphan_node_visible = False
         self._root_model = tscat_model.tscat_root()
         self._editor_window = None
         super().__init__(name="My Catalogs", parent=parent)
+        # Debounce orphan refreshes: a single cross-provider catalog import
+        # fans out to 2N+1 driver actions (catalog create + N event create +
+        # N add-to-catalogue), each in our refresh-trigger list. Without
+        # debouncing we'd queue 2N+1 full-DB walks; with it we coalesce them
+        # into one quiet-period dispatch.
+        self._orphan_refresh_timer = QTimer(self)
+        self._orphan_refresh_timer.setSingleShot(True)
+        self._orphan_refresh_timer.setInterval(250)
+        self._orphan_refresh_timer.timeout.connect(self._do_dispatch_orphan_refresh)
         tscat_model.action_done.connect(self._on_action_done)
         self._root_model.rowsInserted.connect(self._on_root_rows_changed)
         self._root_model.rowsRemoved.connect(self._on_root_rows_changed)
         self._root_model.modelReset.connect(self._on_root_rows_changed)
+        self._dispatch_orphan_refresh()
 
     def actions(self, catalog: Catalog | None = None) -> list[ProviderAction]:
         if catalog is not None:
             return []
         from SciQLop.components.theming import theme_icon
-        return [ProviderAction(
-            name="Open in TSCat editor…",
-            callback=lambda _: self._show_editor_window(),
-            icon=theme_icon("catalogue"),
-        )]
+        return [
+            ProviderAction(
+                name="Open in TSCat editor…",
+                callback=lambda _: self._show_editor_window(),
+                icon=theme_icon("catalogue"),
+            ),
+            ProviderAction(
+                name="Clean up orphan events…",
+                callback=lambda _: self._show_orphan_cleanup_dialog(),
+                icon=theme_icon("trash"),
+            ),
+        ]
 
     def _show_editor_window(self) -> None:
         from tscat_gui import TSCatGUI
@@ -135,6 +154,11 @@ class TscatCatalogProvider(CatalogProvider):
         self._editor_window.show()
         self._editor_window.raise_()
         self._editor_window.activateWindow()
+
+    def _show_orphan_cleanup_dialog(self) -> None:
+        from .orphan_cleanup_dialog import OrphanCleanupDialog
+        dialog = OrphanCleanupDialog(provider=self)
+        dialog.exec()
 
     @Slot()
     def _on_editor_window_destroyed(self) -> None:
@@ -156,9 +180,24 @@ class TscatCatalogProvider(CatalogProvider):
             return get_icon("folder_open")
         return None
 
+    def _make_orphan_catalog(self) -> Catalog:
+        from .orphans import ORPHAN_CATALOG_UUID, ORPHAN_CATALOG_NAME
+        return Catalog(uuid=ORPHAN_CATALOG_UUID, name=ORPHAN_CATALOG_NAME,
+                       provider=self, path=[])
+
+    def _with_orphan_node(self, catalogs: list[Catalog]) -> list[Catalog]:
+        """Append the synthetic orphan-events row when the cached state says
+        orphans exist. Reads ``self._orphan_node_visible`` only — never queries
+        tscat. The cache is refreshed off-thread via ``GetOrphanEventsAction``
+        (see ``_dispatch_orphan_refresh``).
+        """
+        if self._orphan_node_visible:
+            return catalogs + [self._make_orphan_catalog()]
+        return catalogs
+
     def catalogs(self) -> list[Catalog]:
         if self._catalog_cache is not None:
-            return list(self._catalog_cache)
+            return self._with_orphan_node(list(self._catalog_cache))
         self._catalog_cache = []
         self._known_uuids = set()
         for cat_node in self._root_model.catalogue_nodes(in_trash=False):
@@ -178,7 +217,7 @@ class TscatCatalogProvider(CatalogProvider):
             self._load_persisted_specs(entity, entity.uuid)
             self._catalog_cache.append(cat)
             self._known_uuids.add(entity.uuid)
-        return list(self._catalog_cache)
+        return self._with_orphan_node(list(self._catalog_cache))
 
     def _load_persisted_specs(self, entity, catalog_uuid: str) -> None:
         import json
@@ -217,11 +256,18 @@ class TscatCatalogProvider(CatalogProvider):
 
     def events(self, catalog: Catalog, start: datetime | None = None,
                stop: datetime | None = None) -> list[CatalogEvent]:
+        from .orphans import ORPHAN_CATALOG_UUID
+        if catalog.uuid == ORPHAN_CATALOG_UUID:
+            # Cached list, refreshed off-thread via GetOrphanEventsAction.
+            return list(self._orphan_events)
         if catalog.uuid not in self._events:
             self._load_events(catalog, emit=False)
         return super().events(catalog, start, stop)
 
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
+        from .orphans import ORPHAN_CATALOG_UUID
+        if catalog is not None and catalog.uuid == ORPHAN_CATALOG_UUID:
+            return {Capability.DELETE_EVENTS}
         return {
             Capability.EDIT_EVENTS,
             Capability.CREATE_EVENTS,
@@ -506,15 +552,63 @@ class TscatCatalogProvider(CatalogProvider):
         AddEventsToCatalogueAction, RemoveEventsFromCatalogueAction,
     )
 
+    @staticmethod
+    def _is_orphan_refresh_trigger(action) -> bool:
+        from .orphans import BulkDeleteOrphanEventsAction
+        return isinstance(action, (
+            CreateEntityAction, RemoveEntitiesAction,
+            AddEventsToCatalogueAction, RemoveEventsFromCatalogueAction,
+            BulkDeleteOrphanEventsAction,
+        ))
+
+    def _dispatch_orphan_refresh(self) -> None:
+        """Schedule a driver-thread refresh of the orphan-events cache.
+
+        Debounced: starting/restarting the single-shot timer collapses bursty
+        callers (e.g. a cross-provider catalog import that fires N create-
+        event + N link-to-catalogue actions in quick succession) into a
+        single dispatch after the quiet period.
+        """
+        self._orphan_refresh_timer.start()
+
+    @Slot()
+    def _do_dispatch_orphan_refresh(self) -> None:
+        """Actually queue the driver action. Wired to the debounce timer."""
+        from .orphans import GetOrphanEventsAction
+        tscat_model.do(GetOrphanEventsAction(user_callback=self._on_orphan_query_done))
+
+    @Slot(object)
+    def _on_orphan_query_done(self, action) -> None:
+        from .orphans import GetOrphanEventsAction
+        if not isinstance(action, GetOrphanEventsAction):
+            return
+        wrapped = [TscatEvent(ev, parent=self) for ev in action.events]
+        self._orphan_events = wrapped
+        had_node = self._orphan_node_visible
+        has_orphans = bool(wrapped)
+        if has_orphans and not had_node:
+            self._orphan_node_visible = True
+            self.catalog_added.emit(self._make_orphan_catalog())
+        elif not has_orphans and had_node:
+            self._orphan_node_visible = False
+            self.catalog_removed.emit(self._make_orphan_catalog())
+        # Always notify content listeners (cleanup dialog, event table)
+        # so they re-read from the freshly updated cache — including the
+        # "deleted everything" case where the node disappears.
+        self.events_changed.emit(self._make_orphan_catalog())
+
     @Slot()
     def _on_action_done(self, action) -> None:
-        if isinstance(action, SetAttributeAction):
+        from .orphans import GetOrphanEventsAction
+        if isinstance(action, (SetAttributeAction, GetOrphanEventsAction)):
             return
         is_ours = isinstance(action, self._TRACKED_ACTIONS) and self._pending_actions > 0
         if is_ours:
             self._pending_actions -= 1
             if self._pending_actions == 0:
                 self._refresh_catalogs_and_notify()
+            if self._is_orphan_refresh_trigger(action):
+                self._dispatch_orphan_refresh()
             return
         if self._pending_actions > 0:
             return
@@ -524,3 +618,5 @@ class TscatCatalogProvider(CatalogProvider):
             if catalog.uuid in self._events:
                 self._stale_events[catalog.uuid] = self._events.pop(catalog.uuid)
                 self.events_changed.emit(catalog)
+        if self._is_orphan_refresh_trigger(action):
+            self._dispatch_orphan_refresh()
