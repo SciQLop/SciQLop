@@ -108,7 +108,7 @@ def test_pydantic_model_to_specs():
 def test_extract_callback_with_unresolvable_forward_ref_returns_empty():
     # get_type_hints raises NameError for unresolvable forward refs;
     # introspection should swallow and produce no knobs (no crash).
-    def f(start, stop, x: "NoSuchType" = 1): ...
+    def f(start, stop, x: "NoSuchType" = 1): ...  # noqa: F821 — intentional unresolvable forward ref
     specs = extract_specs_from_callback(f)
     # bare `int` default fallback can still produce an IntKnob
     # because the param.annotation (string "NoSuchType") falls through

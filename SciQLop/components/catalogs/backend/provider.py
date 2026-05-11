@@ -4,9 +4,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from speasy.core import make_utc_datetime
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QIcon
+
+if TYPE_CHECKING:
+    from SciQLop.core.knobs import KnobSpec  # noqa: F401  forward-ref target
 
 
 _SENTINEL = object()

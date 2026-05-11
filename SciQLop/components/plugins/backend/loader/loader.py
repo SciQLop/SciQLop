@@ -2,9 +2,12 @@ import importlib
 import importlib.metadata
 import os
 import traceback
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 from types import SimpleNamespace
 from SciQLop.components.sciqlop_logging import getLogger
+
+if TYPE_CHECKING:
+    from ..settings import SciQLopPluginsSettings  # noqa: F401  forward-ref target
 
 loaded_plugins = SimpleNamespace()
 
