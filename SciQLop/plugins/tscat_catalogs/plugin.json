@@ -12,7 +12,7 @@
   "license": "MIT",
   "python_dependencies": [
     "tscat>=0.4.0",
-    "tscat_gui>=0.6.0"
+    "tscat_gui>=0.7.0"
   ],
   "dependencies": []
 }
