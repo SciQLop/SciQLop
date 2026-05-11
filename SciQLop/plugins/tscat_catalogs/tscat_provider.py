@@ -315,6 +315,12 @@ class TscatCatalogProvider(CatalogProvider):
         return cat
 
     def remove_catalog(self, catalog: Catalog) -> None:
+        from .orphans import ORPHAN_CATALOG_UUID
+        if catalog.uuid == ORPHAN_CATALOG_UUID:
+            # The orphan virtual catalog is a query view, not a real tscat
+            # entity — silently refuse. The browser also gates the menu
+            # entry by per-catalog capabilities, this is the defensive layer.
+            return
         with self._tracked_action():
             tscat_model.do(RemoveEntitiesAction(
                 user_callback=None,
@@ -327,6 +333,9 @@ class TscatCatalogProvider(CatalogProvider):
         super().remove_catalog(catalog)
 
     def move_catalog(self, catalog: Catalog, new_path: list[str]) -> None:
+        from .orphans import ORPHAN_CATALOG_UUID
+        if catalog.uuid == ORPHAN_CATALOG_UUID:
+            return
         if list(catalog.path) == list(new_path):
             return
         self._ensure_clean_session()

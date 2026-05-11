@@ -693,7 +693,12 @@ class CatalogBrowser(QWidget):
         if node.provider is None:
             return
 
+        # `caps` is the provider-level set, used for folder/provider-node
+        # decisions. For per-catalog decisions (Save Catalog, Delete Catalog,
+        # rename, …) use `node_caps`, which lets a provider opt out of those
+        # for synthetic rows like the tscat orphan-events virtual catalog.
         caps = node.provider.capabilities()
+        node_caps = node.provider.capabilities(node.catalog) if node.catalog is not None else caps
         menu = QMenu(self)
 
         # Provider-level actions (provider node = parent is root)
@@ -728,7 +733,7 @@ class CatalogBrowser(QWidget):
 
         if Capability.SAVE in caps and node.provider.is_dirty():
             if (node.catalog is not None
-                    and Capability.SAVE_CATALOG in caps
+                    and Capability.SAVE_CATALOG in node_caps
                     and node.provider.is_dirty(node.catalog)):
                 save_action = menu.addAction("Save Catalog")
                 save_action.triggered.connect(lambda: node.provider.save_catalog(node.catalog))
@@ -736,7 +741,7 @@ class CatalogBrowser(QWidget):
                 save_action = menu.addAction("Save")
                 save_action.triggered.connect(lambda: node.provider.save())
 
-        if node.catalog is not None and Capability.DELETE_CATALOGS in caps:
+        if node.catalog is not None and Capability.DELETE_CATALOGS in node_caps:
             delete_action = menu.addAction("Delete Catalog")
             delete_action.triggered.connect(lambda: self._delete_catalog(node))
 
@@ -820,7 +825,7 @@ class CatalogBrowser(QWidget):
         node = self._tree_model.node_from_index(self._proxy_model.mapToSource(index))
         if node.catalog is None or node.provider is None:
             return
-        if Capability.DELETE_CATALOGS not in node.provider.capabilities():
+        if Capability.DELETE_CATALOGS not in node.provider.capabilities(node.catalog):
             return
         self._delete_catalog(node)
 

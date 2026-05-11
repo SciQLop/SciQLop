@@ -180,6 +180,29 @@ def test_orphan_node_disappears_when_last_orphan_is_attached(qapp):
     assert not any(c.uuid == ORPHAN_CATALOG_UUID for c in provider.catalogs())
 
 
+def test_orphan_virtual_catalog_remove_is_a_noop(qapp):
+    """The virtual orphan row is a query view, not a tscat entity. Calling
+    remove_catalog on it must NOT dispatch a tscat-side delete (which would
+    blow up on the unknown UUID) and the orphan events themselves must
+    stay put."""
+    from SciQLop.plugins.tscat_catalogs.tscat_provider import TscatCatalogProvider
+
+    e = _create_orphan_event(qapp, "orph-not-deletable")
+    provider = TscatCatalogProvider()
+    _process(qapp)
+    orph_cat = next(c for c in provider.catalogs() if c.uuid == ORPHAN_CATALOG_UUID)
+
+    before = {ev.uuid for ev in _query_orphans(qapp)}
+    assert e.uuid in before
+
+    provider.remove_catalog(orph_cat)
+    _process(qapp)
+
+    after = {ev.uuid for ev in _query_orphans(qapp)}
+    assert e.uuid in after, "orphan event must not be removed by remove_catalog"
+    assert ORPHAN_CATALOG_UUID in {c.uuid for c in provider.catalogs()}
+
+
 def test_bulk_delete_action_removes_targeted_orphans(qapp):
     from SciQLop.plugins.tscat_catalogs.orphans import BulkDeleteOrphanEventsAction
 

@@ -532,7 +532,7 @@ class CatalogTreeModel(QAbstractItemModel):
         if node.catalog is not None:
             base |= Qt.ItemFlag.ItemIsDragEnabled
             if (node.provider is not None
-                    and Capability.RENAME_CATALOG in node.provider.capabilities()):
+                    and Capability.RENAME_CATALOG in node.provider.capabilities(node.catalog)):
                 base |= Qt.ItemFlag.ItemIsEditable
         if node.provider is not None and self._node_accepts_drop(node):
             base |= Qt.ItemFlag.ItemIsDropEnabled
@@ -599,7 +599,10 @@ class CatalogTreeModel(QAbstractItemModel):
             node = parent.internalPointer()
             if node.catalog is None or node.provider is None:
                 return False
-            caps = node.provider.capabilities()
+            # Per-catalog caps so synthetic rows (e.g. the tscat orphan
+            # virtual catalog, which only allows DELETE_EVENTS) reject the
+            # drop instead of letting the driver action explode.
+            caps = node.provider.capabilities(node.catalog)
             return Capability.CREATE_EVENTS in caps or Capability.EDIT_EVENTS in caps
         if not data.hasFormat(CATALOG_LIST_MIME_TYPE):
             return False
