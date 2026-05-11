@@ -434,5 +434,33 @@ def _ensure_agent_menu_entry(main_window, dock) -> None:
     if tools_menu is None:
         return
     from SciQLop.components.theming import theme_icon
-    action = tools_menu.addAction(theme_icon("chat"), "Agent Chat", dock.show)
+    action = tools_menu.addAction(
+        theme_icon("chat"), "Agent Chat",
+        lambda: _reveal_agent_dock(main_window, dock),
+    )
     setattr(main_window, _MENU_ENTRY_ATTR, action)
+
+
+def _reveal_agent_dock(main_window, dock) -> None:
+    """Bring the agents dock into view.
+
+    The dock is wrapped in a QtAds CDockWidget by the first backend plugin
+    to load (``main_window.addWidgetIntoDock(...)``); plain ``dock.show()``
+    on the inner widget is a no-op once the wrapping CDockWidget has been
+    hidden via ``toggleView(False)``. Find the CDockWidget that holds our
+    inner ``dock`` and toggle it visible + raise it.
+    """
+    dock_manager = getattr(main_window, "dock_manager", None)
+    if dock_manager is not None:
+        for cdw in dock_manager.dockWidgets():
+            try:
+                if cdw.widget() is dock:
+                    cdw.toggleView(True)
+                    cdw.raise_()
+                    return
+            except RuntimeError:
+                # CDockWidget has been deleted on the C++ side — skip.
+                continue
+    # Fallback: at minimum show the inner widget.
+    dock.show()
+    dock.raise_()
