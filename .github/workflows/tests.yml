@@ -38,6 +38,13 @@ jobs:
           SCIQLOP_DEBUG: 1
           GITHUB_ACTIONS: 1
           SCIQLOP_TEST_REPORTS: test-reports
+          # SciQLopMainWindow embeds a QWebEngineView (welcome page) which
+          # spawns a Chromium subprocess. Inside CI's xvfb that subprocess
+          # segfaults during init without these flags. Locally reproduced
+          # under `xvfb-run pytest`; identical 1250-pass result to a
+          # `--no-xvfb` run.
+          QTWEBENGINE_DISABLE_SANDBOX: 1
+          QTWEBENGINE_CHROMIUM_FLAGS: "--disable-gpu --no-sandbox --disable-software-rasterizer --disable-dev-shm-usage"
         run: |
           pip install pytest pytest-cov
           # tests/fuzzing/ runs hypothesis-driven UI stories through the
