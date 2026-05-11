@@ -75,6 +75,13 @@ dev = [
     "pytest-qt",
     "hypothesis",
     'pytest-xvfb; platform_system == "Linux"',
+    # tscat / tscat_gui are runtime plugin deps (declared in
+    # SciQLop/plugins/tscat_catalogs/plugin.json) installed by the workspace
+    # launcher in production. CI doesn't take that path, but the test suite's
+    # conftest preloads tscat to dodge a known thread race — so it must be
+    # available at test time.
+    "tscat>=0.4.0",
+    "tscat_gui>=0.7.0",
 ]
 
 [project.gui-scripts]
