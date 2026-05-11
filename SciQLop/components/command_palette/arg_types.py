@@ -3,7 +3,20 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from SciQLop.components.command_palette.backend.registry import CommandArg, Completion
-from SciQLop.user_api.magics.completions import _normalize_product_path
+
+
+def _palette_product_path(raw: str) -> str:
+    """Normalize a flat-model mime path for use as a palette completion value.
+
+    Strips the ``root//`` prefix but keeps ``//`` separators so
+    ``to_product_path`` can split unambiguously even when a product's display
+    name contains ``/`` (AMDA's ``"final / prelim"`` is the historical reason
+    the snippet generator stopped using single-slash too — see
+    ``snippet-templates-system`` memory).
+    """
+    if raw.startswith("root//"):
+        raw = raw[len("root//"):]
+    return raw
 
 
 @dataclass
@@ -75,7 +88,7 @@ class ProductArg(CommandArg):
             mime = flat.mimeData(indexes)
             if mime and mime.text():
                 for path_text in mime.text().strip().split("\n"):
-                    product_path = _normalize_product_path(path_text)
+                    product_path = _palette_product_path(path_text)
                     description = _node_stable_id(ProductsModel, product_path)
                     items.append(Completion(value=product_path, display=product_path, description=description))
         return items

@@ -418,6 +418,17 @@ def _post_plot(r, provider, node, callback, target, product_path_str, existing_p
     callback._post_fetch = _register_graph_hints(provider, node, r, target)
     _attach_knob_state(provider, node, callback, r, target)
     _attach_graph_context(r, provider, node, target)
+    # Pin the ProductsModelNode's Python wrapper to the graph's lifetime.
+    # Shiboken can otherwise GC the wrapper between plot setup and the
+    # first async data-fetch, taking the C++ node with it (see
+    # shiboken-python-subclass-gc-pitfall memory). The callback already
+    # references the node via self.node, but the callback's own lifetime
+    # depends on the C++ graph holding it, which in turn depends on the
+    # graph wrapper surviving; pinning here is the belt-and-suspenders.
+    graph = _graph_from_result(r)
+    if graph is not None:
+        graph._product_node_keepalive = node
+        graph._product_callback_keepalive = callback
     return r
 
 
