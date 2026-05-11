@@ -407,6 +407,7 @@ class AgentChatDock(QWidget):
 
 
 _DOCK_ATTR = "_sciqlop_agent_dock"
+_MENU_ENTRY_ATTR = "_sciqlop_agent_menu_entry"
 
 
 def ensure_agent_dock(main_window) -> AgentChatDock:
@@ -416,4 +417,22 @@ def ensure_agent_dock(main_window) -> AgentChatDock:
         setattr(main_window, _DOCK_ATTR, dock)
     else:
         dock.refresh_backends()
+    _ensure_agent_menu_entry(main_window, dock)
     return dock
+
+
+def _ensure_agent_menu_entry(main_window, dock) -> None:
+    """Add a single "Agent Chat" entry to the Tools menu (idempotent).
+
+    Backend plugins (sciqlop_claude, sciqlop_albert, sciqlop_copilot, …) all
+    open the same dock, so the menu entry must be shared too — otherwise the
+    Tools menu grows one duplicate per installed backend.
+    """
+    if getattr(main_window, _MENU_ENTRY_ATTR, None) is not None:
+        return
+    tools_menu = getattr(main_window, "toolsMenu", None)
+    if tools_menu is None:
+        return
+    from SciQLop.components.theming import theme_icon
+    action = tools_menu.addAction(theme_icon("chat"), "Agent Chat", dock.show)
+    setattr(main_window, _MENU_ENTRY_ATTR, action)
