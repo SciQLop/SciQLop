@@ -83,3 +83,79 @@ def test_knob_name_matches_speasy_template_key(qapp, sciqlop_resources):
     assert knob.name == "side", "knob.name must be arg.key for product_inputs dispatch"
     assert knob.label == "Side", "knob.label carries the human-readable name"
     assert knob.default == "0"
+
+
+def test_get_knobs_synthesizes_coordinate_system_for_ssc(qapp, sciqlop_resources, monkeypatch):
+    """SSC products expose a coordinate_system ChoiceKnob even though speasy
+    doesn't declare it as an ArgumentListIndex."""
+    from SciQLop.plugins.speasy_provider import speasy_provider as sp_mod
+
+    class FakeSSCIndex:
+        def spz_provider(self): return "ssc"
+
+    plugin = sp_mod.SpeasyPlugin.__new__(sp_mod.SpeasyPlugin)
+    monkeypatch.setattr(plugin, "_resolve_index",
+                        lambda product: FakeSSCIndex(), raising=False)
+
+    knobs = plugin.get_knobs("ssc/wind")
+    names = {k.name: k for k in knobs}
+    assert "coordinate_system" in names
+    spec = names["coordinate_system"]
+    assert isinstance(spec, ChoiceKnob)
+    assert spec.default == "gse"
+    values = {v for _label, v in spec.choices}
+    assert {"gse", "gsm", "sm"} <= values
+
+
+def test_get_knobs_does_not_synthesize_for_non_ssc(qapp, sciqlop_resources, monkeypatch):
+    from SciQLop.plugins.speasy_provider import speasy_provider as sp_mod
+
+    class FakeAmdaIndex:
+        def spz_provider(self): return "amda"
+
+    plugin = sp_mod.SpeasyPlugin.__new__(sp_mod.SpeasyPlugin)
+    monkeypatch.setattr(plugin, "_resolve_index",
+                        lambda product: FakeAmdaIndex(), raising=False)
+    monkeypatch.setattr(sp_mod, "_find_argument_list", lambda idx: None)
+
+    knobs = plugin.get_knobs("amda/something")
+    assert "coordinate_system" not in {k.name for k in knobs}
+
+
+def test_get_data_routes_coordinate_system_top_level(monkeypatch, qapp, sciqlop_resources):
+    """coordinate_system from knobs must travel as a top-level spz.get_data
+    kwarg, NOT inside product_inputs (which is reserved for AMDA template
+    parameters)."""
+    from SciQLop.plugins.speasy_provider import speasy_provider as sp_mod
+
+    captured = {}
+
+    def fake_get_data(speasy_id, start, stop, **kwargs):
+        captured["speasy_id"] = speasy_id
+        captured["kwargs"] = kwargs
+        return None
+
+    monkeypatch.setattr(sp_mod.spz, "get_data", fake_get_data)
+
+    plugin = sp_mod.SpeasyPlugin.__new__(sp_mod.SpeasyPlugin)
+    plugin.get_data("ssc/wind", 0.0, 1.0, knobs={"coordinate_system": "gsm"})
+
+    assert captured["kwargs"].get("coordinate_system") == "gsm"
+    assert "product_inputs" not in captured["kwargs"]
+
+
+def test_get_data_does_not_pass_coordinate_system_for_non_ssc(monkeypatch, qapp, sciqlop_resources):
+    from SciQLop.plugins.speasy_provider import speasy_provider as sp_mod
+
+    captured = {}
+    monkeypatch.setattr(sp_mod.spz, "get_data",
+                        lambda s, a, b, **kw: captured.setdefault("kw", kw) or None)
+
+    plugin = sp_mod.SpeasyPlugin.__new__(sp_mod.SpeasyPlugin)
+    # AMDA product, but knobs accidentally include coordinate_system —
+    # should NOT be forwarded.
+    plugin.get_data("amda/something", 0.0, 1.0,
+                    knobs={"coordinate_system": "gsm", "alt": "high"})
+
+    assert "coordinate_system" not in captured["kw"]
+    assert captured["kw"].get("product_inputs") == {"alt": "high"}

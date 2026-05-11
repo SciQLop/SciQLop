@@ -33,6 +33,15 @@ def _register_icons():
     register_icon("cloud", lambda: QIcon(f"{__here__}/../../resources/icons/cloud.png"))
 
 
+def _is_ssc_index(index) -> bool:
+    provider = getattr(index, "spz_provider", None)
+    return bool(provider) and provider() == "ssc"
+
+
+def _speasy_id_is_ssc(speasy_id) -> bool:
+    return isinstance(speasy_id, str) and speasy_id.split("/", 1)[0] == "ssc"
+
+
 def _find_argument_list(index) -> Optional[ArgumentListIndex]:
     if isinstance(index, ArgumentListIndex):
         return index
@@ -336,20 +345,39 @@ class SpeasyPlugin(DataProvider):
         index = self._resolve_index(product)
         if index is None:
             return []
-        args_node = _find_argument_list(index)
-        if args_node is None:
-            return []
         out = []
-        for arg in args_node:
-            spec = _argument_to_knob(arg)
-            if spec is not None:
-                out.append(spec)
+        # SSC products take a top-level `coordinate_system` kwarg in
+        # `spz.get_data` (default 'gse'); speasy doesn't model it as an
+        # ArgumentListIndex, so we synthesize the knob ourselves.
+        if _is_ssc_index(index):
+            out.append(ChoiceKnob(
+                name="coordinate_system", label="Coordinate system",
+                default="gse",
+                choices=(("GSE", "gse"), ("GSM", "gsm"), ("SM", "sm"),
+                         ("GEO", "geo"), ("GM", "gm"),
+                         ("GEI_TOD", "gei_tod"), ("GEI_J_2000", "gei_j_2000")),
+            ))
+        args_node = _find_argument_list(index)
+        if args_node is not None:
+            for arg in args_node:
+                spec = _argument_to_knob(arg)
+                if spec is not None:
+                    out.append(spec)
         return out
 
     def get_data(self, product, start, stop, knobs=None):
         try:
             speasy_id = product.metadata("speasy_id") if hasattr(product, "metadata") else product
-            kwargs = {"product_inputs": dict(knobs)} if knobs else {}
+            kwargs = {}
+            knob_values = dict(knobs) if knobs else {}
+            # Pull top-level speasy kwargs (currently only SSC's
+            # coordinate_system) out of the knob dict so they're not
+            # smuggled into product_inputs (AMDA template parameters).
+            coord = knob_values.pop("coordinate_system", None)
+            if coord is not None and _speasy_id_is_ssc(speasy_id):
+                kwargs["coordinate_system"] = coord
+            if knob_values:
+                kwargs["product_inputs"] = knob_values
             with tracing.zone("speasy.get_data", cat="speasy",
                               speasy_id=str(speasy_id),
                               start=float(start), stop=float(stop),
