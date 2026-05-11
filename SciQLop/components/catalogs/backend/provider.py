@@ -237,6 +237,46 @@ class CatalogProvider(QObject):
         """Actions available on an explicit folder node (e.g. room join/leave)."""
         return []
 
+    def handle_event_drop(
+        self,
+        target_catalog: Catalog,
+        events: list[CatalogEvent],
+        action: str = "link",
+        source_catalog: Catalog | None = None,
+    ) -> None:
+        """Receive an event drop on a catalog of this provider.
+
+        action ∈ {"link", "move", "duplicate"}:
+        - "link":      add the same UUID to target (no-op for events already there)
+        - "move":      add to target then remove from source
+        - "duplicate": insert a fresh UUID copy into target
+        """
+        if not events:
+            return
+        caps = self.capabilities()
+        if Capability.CREATE_EVENTS not in caps and action != "link":
+            raise PermissionError(f"{self.name} does not allow CREATE_EVENTS")
+        existing_uuids = {e.uuid for e in self._events.get(target_catalog.uuid, [])}
+        for ev in events:
+            if action == "duplicate":
+                self.add_event(target_catalog, self._copy_event(ev))
+            elif action == "link" and ev.uuid in existing_uuids:
+                continue  # already in target — no-op per docstring
+            else:
+                self.add_event(target_catalog, ev)
+        if action == "move" and source_catalog is not None:
+            for ev in events:
+                self.remove_event(source_catalog, ev)
+
+    @staticmethod
+    def _copy_event(ev: CatalogEvent) -> CatalogEvent:
+        import uuid as _uuid
+        return CatalogEvent(
+            uuid=str(_uuid.uuid4()),
+            start=ev.start, stop=ev.stop,
+            meta=dict(ev.meta),
+        )
+
     def folder_display_name(self, path: list[str]) -> str | None:
         """Custom display name for an explicit folder. Return None to use the default."""
         return None

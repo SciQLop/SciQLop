@@ -319,3 +319,59 @@ def test_provider_action_returns_nothing_for_specific_catalog(qapp, tscat_provid
     cat = tscat_provider.create_catalog("t_no_per_catalog_action")
     _process_events(qapp)
     assert tscat_provider.actions(cat) == []
+
+
+def test_tscat_handle_event_drop_link_uses_add_events_not_create(qapp, tscat_provider):
+    """Linking an existing tscat event must not try to CREATE a duplicate UUID."""
+    cat_a = tscat_provider.create_catalog("link-src")
+    cat_b = tscat_provider.create_catalog("link-dst")
+    _process_events(qapp)
+
+    ev = CatalogEvent(
+        uuid=str(_uuid.uuid4()),
+        start=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2024, 1, 1, 1, tzinfo=timezone.utc),
+        meta={},
+    )
+    tscat_provider.add_event(cat_a, ev)
+    _process_events(qapp)
+
+    tscat_provider.handle_event_drop(
+        target_catalog=cat_b, events=[ev], action="link", source_catalog=cat_a,
+    )
+    _process_events(qapp)
+
+    a_uuids = {e.uuid for e in tscat_provider.events(cat_a)}
+    b_uuids = {e.uuid for e in tscat_provider.events(cat_b)}
+    assert ev.uuid in a_uuids, "source catalog should keep the event"
+    assert ev.uuid in b_uuids, "target catalog should now have the event"
+
+
+def test_tscat_handle_event_drop_move_keeps_event_entity(qapp, tscat_provider):
+    """Moving a tscat event must change membership, not delete the entity."""
+    cat_a = tscat_provider.create_catalog("move-src")
+    cat_b = tscat_provider.create_catalog("move-dst")
+    _process_events(qapp)
+
+    ev = CatalogEvent(
+        uuid=str(_uuid.uuid4()),
+        start=datetime(2024, 2, 1, tzinfo=timezone.utc),
+        stop=datetime(2024, 2, 1, 1, tzinfo=timezone.utc),
+        meta={},
+    )
+    tscat_provider.add_event(cat_a, ev)
+    _process_events(qapp)
+
+    tscat_provider.handle_event_drop(
+        target_catalog=cat_b, events=[ev], action="move", source_catalog=cat_a,
+    )
+    _process_events(qapp)
+
+    a_uuids = {e.uuid for e in tscat_provider.events(cat_a)}
+    b_uuids = {e.uuid for e in tscat_provider.events(cat_b)}
+    assert ev.uuid not in a_uuids, "source should no longer reference the event"
+    assert ev.uuid in b_uuids, "target should reference the event"
+
+    import tscat
+    all_events_uuids = {e.uuid for e in tscat.get_events()}
+    assert ev.uuid in all_events_uuids, "move must not permanently delete the event entity"

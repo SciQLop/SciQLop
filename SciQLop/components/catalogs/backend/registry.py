@@ -41,6 +41,12 @@ class CatalogRegistry(QObject):
     def providers(self) -> list[CatalogProvider]:
         return list(self._providers)
 
+    def provider_by_name(self, name: str) -> "CatalogProvider | None":
+        for provider in self._providers:
+            if provider.name == name:
+                return provider
+        return None
+
     def all_catalogs(self) -> list[Catalog]:
         result: list[Catalog] = []
         for provider in self._providers:

@@ -199,6 +199,8 @@ class CatalogBrowser(QWidget):
         self._event_table.selectionModel().currentChanged.connect(self._on_event_selected)
         self._event_table.setSelectionBehavior(QTableView.SelectionBehavior.SelectRows)
         self._event_table.setSelectionMode(QTableView.SelectionMode.ExtendedSelection)
+        self._event_table.setDragEnabled(True)
+        self._event_table.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
 
         self._propagating_bulk_edit = False
         self._event_model.dataChanged.connect(self._on_event_data_changed)

@@ -12,8 +12,9 @@ class DummyProvider(CatalogProvider):
 
     def __init__(self, num_catalogs: int = 1, events_per_catalog: int = 100,
                  paths: list[list[str]] | None = None,
+                 name: str = "DummyProvider",
                  parent: QObject | None = None):
-        super().__init__(name="DummyProvider", parent=parent)
+        super().__init__(name=name, parent=parent)
         self._catalogs: list[Catalog] = []
         base = datetime(2020, 1, 1, tzinfo=timezone.utc)
         for c in range(num_catalogs):

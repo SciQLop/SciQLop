@@ -9,6 +9,7 @@
 ### Catalogs
 
 - Removed the standalone "Open Catalogue Explorer" toolbar action shipped by the tscat plugin. The embedded TSCatGUI window duplicated functionality already covered (and surpassed) by SciQLop's native catalog browser, and was misleading for users who expected the two surfaces to stay in sync. The dedicated TSCatGUI window is still reachable on demand via right-click on the *My Catalogs* row in the catalog browser → "Open in TSCat editor…", routed through the existing `CatalogProvider.actions()` extension point so any provider can publish its own backend-specific UI the same way.
+- Drag & drop events between catalogs. Default = link (event appears in both catalogs, single UUID; tscat's many-to-many is honored). Hold **Shift** to move (remove from source). Hold **Ctrl** to duplicate (new UUID, independent copy). Cross-provider drops always duplicate. Implemented via a new `EVENT_LIST_MIME_TYPE`, a `CatalogProvider.handle_event_drop(target_catalog, events, action, source_catalog)` hook, and a dispatcher in the catalog tree that derives the action from the keyboard modifiers held during the drop.
 
 ### Snippet generation refactor (Jinja2 templates)
 

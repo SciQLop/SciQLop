@@ -16,7 +16,8 @@ from SciQLop.components.catalogs.backend.provider import _SENTINEL, ProviderActi
 from tscat_gui.tscat_driver.model import tscat_model
 from tscat_gui.tscat_driver.actions import (
     SetAttributeAction, CreateEntityAction, RemoveEntitiesAction,
-    AddEventsToCatalogueAction, DeleteAttributeAction,
+    AddEventsToCatalogueAction, RemoveEventsFromCatalogueAction,
+    DeleteAttributeAction,
 )
 import tscat
 from tscat_gui.model_base.constants import EntityRole
@@ -345,6 +346,43 @@ class TscatCatalogProvider(CatalogProvider):
             ))
         super().remove_event(catalog, event)
 
+    def handle_event_drop(
+        self,
+        target_catalog: Catalog,
+        events: list[CatalogEvent],
+        action: str = "link",
+        source_catalog: Catalog | None = None,
+    ) -> None:
+        if not events:
+            return
+        if action == "duplicate":
+            super().handle_event_drop(target_catalog, events, action, source_catalog)
+            return
+
+        # link / move: the events already exist in tscat, only catalog
+        # membership changes. AddEventsToCatalogueAction already filters out
+        # events that are already in the target (idempotent).
+        with self._tracked_action():
+            tscat_model.do(AddEventsToCatalogueAction(
+                user_callback=None,
+                uuids=[ev.uuid for ev in events],
+                catalogue_uuid=target_catalog.uuid,
+            ))
+        for ev in events:
+            self._add_event(target_catalog, ev)
+        self.mark_dirty(target_catalog)
+
+        if action == "move" and source_catalog is not None:
+            with self._tracked_action():
+                tscat_model.do(RemoveEventsFromCatalogueAction(
+                    user_callback=None,
+                    uuids=[ev.uuid for ev in events],
+                    catalogue_uuid=source_catalog.uuid,
+                ))
+            for ev in events:
+                self._remove_event(source_catalog, ev)
+            self.mark_dirty(source_catalog)
+
     def set_event_meta(self, catalog: Catalog, event: CatalogEvent, key: str, value: Any) -> None:
         if event.meta.get(key, _SENTINEL) == value:
             return
@@ -463,7 +501,10 @@ class TscatCatalogProvider(CatalogProvider):
             return
         self._refresh_catalogs_and_notify()
 
-    _TRACKED_ACTIONS = (CreateEntityAction, RemoveEntitiesAction, AddEventsToCatalogueAction)
+    _TRACKED_ACTIONS = (
+        CreateEntityAction, RemoveEntitiesAction,
+        AddEventsToCatalogueAction, RemoveEventsFromCatalogueAction,
+    )
 
     @Slot()
     def _on_action_done(self, action) -> None:

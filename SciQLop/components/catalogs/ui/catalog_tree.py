@@ -547,8 +547,8 @@ class CatalogTreeModel(QAbstractItemModel):
         return Capability.CREATE_CATALOGS in caps or Capability.MOVE_CATALOG in caps
 
     def mimeTypes(self) -> list[str]:
-        from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE
-        return [CATALOG_LIST_MIME_TYPE]
+        from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE, EVENT_LIST_MIME_TYPE
+        return [CATALOG_LIST_MIME_TYPE, EVENT_LIST_MIME_TYPE]
 
     def mimeData(self, indexes):
         from SciQLop.core.mime import encode_mime
@@ -591,8 +591,16 @@ class CatalogTreeModel(QAbstractItemModel):
         return provider_node, sub_path
 
     def canDropMimeData(self, data, action, row, column, parent) -> bool:
-        from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE
+        from SciQLop.core.mime.types import CATALOG_LIST_MIME_TYPE, EVENT_LIST_MIME_TYPE
         from ..backend.provider import Capability
+        if data.hasFormat(EVENT_LIST_MIME_TYPE):
+            if not parent.isValid():
+                return False
+            node = parent.internalPointer()
+            if node.catalog is None or node.provider is None:
+                return False
+            caps = node.provider.capabilities()
+            return Capability.CREATE_EVENTS in caps or Capability.EDIT_EVENTS in caps
         if not data.hasFormat(CATALOG_LIST_MIME_TYPE):
             return False
         target = self._resolve_drop_target(parent)
@@ -610,6 +618,11 @@ class CatalogTreeModel(QAbstractItemModel):
         log = getLogger(__name__)
         if action == Qt.DropAction.IgnoreAction:
             return True
+
+        from SciQLop.core.mime.types import EVENT_LIST_MIME_TYPE
+        if data.hasFormat(EVENT_LIST_MIME_TYPE):
+            return self._drop_events(data, parent, log)
+
         catalogs = decode_mime(data)
         if not catalogs:
             return False
@@ -647,6 +660,57 @@ class CatalogTreeModel(QAbstractItemModel):
                             source_cat.name, dest_sub_path, e)
         # Return False so Qt does not also call removeRows() on the source —
         # provider signals (move/remove/add) drive tree updates instead.
+        return False
+
+    def _drop_events(self, data, parent, log) -> bool:
+        from PySide6.QtCore import Qt
+        from PySide6.QtWidgets import QApplication
+        from ..backend.event_mime import decode_event_list
+        from ..backend.registry import CatalogRegistry
+
+        payload = decode_event_list(data)
+        if payload is None or not parent.isValid():
+            return False
+        target_node = parent.internalPointer()
+        target_catalog = target_node.catalog
+        if target_catalog is None or target_node.provider is None:
+            return False
+
+        registry = CatalogRegistry.instance()
+        source_provider = registry.provider_by_name(payload.provider)
+        source_catalog = None
+        source_events = []
+        if source_provider is not None and payload.catalog_uuid is not None:
+            for c in source_provider.catalogs():
+                if c.uuid == payload.catalog_uuid:
+                    source_catalog = c
+                    break
+            if source_catalog is not None:
+                by_uuid = {e.uuid: e for e in source_provider.events(source_catalog)}
+                source_events = [by_uuid[u] for u in payload.event_uuids if u in by_uuid]
+        if not source_events:
+            return False
+
+        mods = QApplication.keyboardModifiers()
+        cross_provider = source_provider is not target_node.provider
+        if cross_provider:
+            drop_action = "duplicate"
+        elif mods & Qt.KeyboardModifier.ShiftModifier:
+            drop_action = "move"
+        elif mods & Qt.KeyboardModifier.ControlModifier:
+            drop_action = "duplicate"
+        else:
+            drop_action = "link"
+
+        try:
+            target_node.provider.handle_event_drop(
+                target_catalog=target_catalog,
+                events=source_events,
+                action=drop_action,
+                source_catalog=source_catalog,
+            )
+        except Exception as e:
+            log.warning("Event drop failed: %s", e)
         return False
 
     def _unique_catalog_name(self, provider, sub_path: list[str], base: str) -> str:

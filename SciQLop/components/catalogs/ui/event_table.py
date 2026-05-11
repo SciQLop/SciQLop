@@ -166,9 +166,36 @@ class EventTableModel(QAbstractTableModel):
 
     def flags(self, index: QModelIndex) -> Qt.ItemFlag:
         base = super().flags(index)
-        if not index.isValid() or not self._editable:
+        if not index.isValid():
             return base
-        return base | Qt.ItemFlag.ItemIsEditable
+        if self._editable:
+            base |= Qt.ItemFlag.ItemIsEditable
+        base |= Qt.ItemFlag.ItemIsDragEnabled
+        return base
+
+    def mimeTypes(self):
+        from SciQLop.core.mime.types import EVENT_LIST_MIME_TYPE
+        return [EVENT_LIST_MIME_TYPE]
+
+    def mimeData(self, indexes):
+        from SciQLop.components.catalogs.backend.event_mime import encode_event_list
+        if self._catalog is None:
+            return None
+        seen: set[str] = set()
+        events = []
+        for idx in indexes:
+            if not idx.isValid():
+                continue
+            row = idx.row()
+            if 0 <= row < len(self._events):
+                ev = self._events[row]
+                if ev.uuid not in seen:
+                    seen.add(ev.uuid)
+                    events.append(ev)
+        if not events:
+            return None
+        provider_name = self._catalog.provider.name if self._catalog.provider else ""
+        return encode_event_list(provider_name, self._catalog.uuid, events)
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
