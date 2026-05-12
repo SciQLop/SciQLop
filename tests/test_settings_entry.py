@@ -166,3 +166,38 @@ class TestEdgeCases:
         with open(cls.config_file()) as f:
             persisted = yaml.safe_load(f)
         assert persisted["count"] == 7
+
+
+class TestPathFieldSerialization:
+    """pathlib.Path values in ConfigEntry fields must survive yaml.safe_dump.
+
+    The default SafeDumper raises `cannot represent an object` on PosixPath;
+    `entry.py` registers a multi-representer so plugins can declare
+    `Path`-typed settings naturally (e.g. cache_dir, output_dir).
+    """
+
+    def test_path_field_saves_and_reloads(self, tmp_config_dir):
+        from pathlib import Path
+        from pydantic import Field
+
+        # Pydantic accepts Path fields by default; the issue is only at
+        # YAML serialization time, which is what the representer fixes.
+        ns = {
+            "__annotations__": {"cache_dir": Path},
+            "cache_dir": Field(default_factory=lambda: tmp_config_dir / "cache"),
+            "category": "test",
+            "subcategory": "paths",
+        }
+        cls = type("PathFieldEntry", (ConfigEntry,), ns)
+        instance = cls()
+
+        assert os.path.exists(cls.config_file())
+        with open(cls.config_file()) as f:
+            data = yaml.safe_load(f)
+        assert data["cache_dir"] == str(tmp_config_dir / "cache"), \
+            "Path should serialize to its string form"
+
+        reloaded = cls()
+        assert isinstance(reloaded.cache_dir, Path), \
+            "Path coerces back from str on Pydantic load"
+        assert reloaded.cache_dir == tmp_config_dir / "cache"

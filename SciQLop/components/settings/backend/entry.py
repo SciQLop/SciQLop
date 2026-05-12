@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ValidationError
 from enum import Enum
 import yaml
+from pathlib import PurePath
 from platformdirs import *
 import os
 from typing import TypeVar, ClassVar, Type
@@ -8,6 +9,19 @@ from PySide6.QtCore import QObject, Signal
 from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
+
+
+# Teach yaml.SafeDumper to handle pathlib.PurePath subclasses (Path,
+# PosixPath, WindowsPath, PurePosixPath, PureWindowsPath). Plugins
+# naturally model directory/file fields as `Path`; without this
+# representer the default SafeDumper raises
+# `cannot represent an object: PosixPath(...)` at save time.
+# Pydantic accepts str for Path fields on load, so the round-trip works
+# without a custom loader.
+yaml.SafeDumper.add_multi_representer(
+    PurePath,
+    lambda dumper, data: dumper.represent_str(str(data)),
+)
 
 SCIQLOP_CONFIG_DIR = str(user_config_dir(appname="sciqlop", appauthor="LPP", ensure_exists=True))
 
