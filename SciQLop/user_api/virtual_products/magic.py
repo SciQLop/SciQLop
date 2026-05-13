@@ -154,7 +154,7 @@ def vp_magic(line: str, cell: str, local_ns=None):
     func_name = func.__name__
 
     try:
-        return_ann = func.__annotations__.get("return")
+        return_ann = inspect.get_annotations(inspect.unwrap(func)).get("return")
         type_info = extract_vp_type_info(return_ann)
     except Exception:
         type_info = None

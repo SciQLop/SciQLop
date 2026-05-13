@@ -1,3 +1,4 @@
+import inspect
 import warnings
 
 import numpy as np
@@ -74,7 +75,7 @@ def _name_callable(callback: VirtualProductCallback) -> str:
 
 
 def _returns_speasy_variable(callback: VirtualProductCallback):
-    return callback.__annotations__.get("return") == SpeasyVariable
+    return inspect.get_annotations(inspect.unwrap(callback)).get("return") == SpeasyVariable
 
 
 def _to_datetime(start: float, stop: float) -> Tuple[datetime, datetime]:

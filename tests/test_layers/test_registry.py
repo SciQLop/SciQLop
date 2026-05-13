@@ -30,6 +30,23 @@ class TestMutableCallback:
         result = w(0.0, 1000.0)
         assert result[0].time == 200.0
 
+    def test_annotations_recoverable_after_wrapping(self):
+        """Python 3.14 (PEP 749) doesn't expose __annotations__ as a plain
+        attribute on instances wrapped with functools.update_wrapper. Callers
+        must reach the underlying function via inspect.unwrap to read return
+        type hints; this test pins that contract so the layer/VP type-inference
+        paths keep working under 3.14."""
+        import inspect
+        from SciQLop.user_api.layers.registry import MutableCallback
+
+        def annotated(start: float, stop: float) -> list:
+            return []
+
+        w = MutableCallback(annotated)
+        target = inspect.unwrap(w)
+        ann = inspect.get_annotations(target)
+        assert ann.get("return") is list
+
 
 class TestLayerRegistry:
     def test_register_new(self):

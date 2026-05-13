@@ -1,4 +1,5 @@
 """LayerProvider — registers annotation layers in the product tree."""
+import inspect
 from typing import Callable, Optional
 
 from SciQLop.core.unique_names import make_simple_incr_name
@@ -41,7 +42,8 @@ class LayerProvider:
         _layer_providers[self.name] = self
 
     def _infer_type(self) -> str:
-        ann = self._callback.__annotations__.get("return")
+        target = inspect.unwrap(self._callback)
+        ann = inspect.get_annotations(target).get("return")
         return infer_type_from_annotation(ann) or "mixed"
 
     def resolve_scope(self) -> str:
