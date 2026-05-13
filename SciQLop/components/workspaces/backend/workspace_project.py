@@ -8,6 +8,7 @@ into one coherent environment.
 from __future__ import annotations
 
 import importlib.metadata
+import logging
 import os
 import re
 import sys
@@ -15,6 +16,8 @@ from pathlib import Path
 from typing import List, Sequence, Union
 
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+
+log = logging.getLogger(__name__)
 
 # Packages whose version must match the base Python environment exactly.
 # These are C extensions or tightly coupled libraries that break if the
@@ -147,8 +150,17 @@ def generate_pyproject_toml(
     # present under sys.prefix, which is the venv directory at runtime.
     implicit_deps = ["jupyqt", "jupyterlab"]
     raw_deps = [_normalize_url_requirement(r) for r in implicit_deps + list(manifest.requires) + list(plugin_deps)]
-    raw_deps = [r for r in raw_deps if _extract_package_name(r) not in _HOST_PROVIDED_PACKAGES]
-    all_deps = _deduplicate_requirements(raw_deps)
+    filtered = []
+    for r in raw_deps:
+        if _extract_package_name(r) in _HOST_PROVIDED_PACKAGES:
+            log.warning(
+                "Dropping host-provided requirement from workspace pyproject: %r "
+                "(provided by the SciQLop install)",
+                r,
+            )
+            continue
+        filtered.append(r)
+    all_deps = _deduplicate_requirements(filtered)
     slug = _slugify(manifest.name)
 
     # Format the dependencies list

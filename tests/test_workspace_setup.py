@@ -229,6 +229,24 @@ class TestStaleLockfileInvalidation:
 
         assert lockfile.exists()
 
+    def test_lockfile_preserved_in_locked_mode(self, workspace_dir, patches):
+        """Archive imports pass locked=True and ship their own lockfile;
+        invalidating it would force re-resolution and contradict the archive's
+        promise of reproducibility."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        patches["generate_pyproject_toml"].side_effect = self._make_pyproject_writer()
+        workspace_dir.mkdir(parents=True)
+        lockfile = workspace_dir / "uv.lock"
+        lockfile.write_text("archive lock")
+        import os, time
+        old_mtime = time.time() - 3600
+        os.utime(lockfile, (old_mtime, old_mtime))
+
+        prepare_workspace(workspace_dir, workspace_name="Test", locked=True)
+
+        assert lockfile.exists()
+
 
 class TestCollectPluginDepsArgs:
     def test_passes_workspace_overrides_to_collect(self, workspace_dir):

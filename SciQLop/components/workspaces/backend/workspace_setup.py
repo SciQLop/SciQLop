@@ -105,12 +105,19 @@ def prepare_workspace(
     # resolutions and quietly fail to install newly added deps.
     lockfile = workspace_dir / "uv.lock"
     if (
-        lockfile.exists()
+        not locked
+        and lockfile.exists()
         and pyproject_path.exists()
         and lockfile.stat().st_mtime < pyproject_path.stat().st_mtime
     ):
         log.info("Removing stale uv.lock (older than pyproject.toml)")
-        lockfile.unlink()
+        try:
+            lockfile.unlink()
+        except OSError as exc:
+            # Windows: antivirus, OneDrive, or a leftover uv process can hold
+            # the file open. Don't crash the launcher — uv sync will either
+            # cope with the stale lock or surface its own error.
+            log.warning("Could not remove stale uv.lock: %s", exc)
 
     # Step 5: Ensure venv exists and sync
     venv = WorkspaceVenv(workspace_dir)
