@@ -32,6 +32,14 @@ _PINNED_BASE_PACKAGES = (
     "jupyterlab",
 )
 
+# Packages that the workspace venv inherits from the host SciQLop install
+# (via --system-site-packages) and must never appear in the workspace
+# dependency list, because the dev cycle uses .dev versions that don't
+# exist on PyPI and would make uv sync unsatisfiable. Plugins that declare
+# these in their python_dependencies are over-specifying — the host
+# install is always the source of truth.
+_HOST_PROVIDED_PACKAGES = frozenset({"sciqlop"})
+
 # PEP 508 package name: letters, digits, hyphens, underscores, dots.
 # We capture the base name (before any extras bracket or version specifier).
 _PKG_NAME_RE = re.compile(r"^([A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?)")
@@ -139,6 +147,7 @@ def generate_pyproject_toml(
     # present under sys.prefix, which is the venv directory at runtime.
     implicit_deps = ["jupyqt", "jupyterlab"]
     raw_deps = [_normalize_url_requirement(r) for r in implicit_deps + list(manifest.requires) + list(plugin_deps)]
+    raw_deps = [r for r in raw_deps if _extract_package_name(r) not in _HOST_PROVIDED_PACKAGES]
     all_deps = _deduplicate_requirements(raw_deps)
     slug = _slugify(manifest.name)
 

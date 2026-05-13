@@ -11,6 +11,7 @@ from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceMa
 from SciQLop.components.workspaces.backend.workspace_project import (
     _base_constraints,
     _deduplicate_requirements,
+    _extract_package_name,
     _normalize_url_requirement,
     _slugify,
     generate_pyproject_toml,
@@ -235,6 +236,28 @@ class TestGeneratePyprojectToml:
             output = os.path.join(tmpdir, "pyproject.toml")
             generate_pyproject_toml(manifest, [], output)
             assert os.path.exists(output)
+
+    def test_host_provided_packages_are_filtered_out(self):
+        """SciQLop itself must never appear in workspace deps — it's provided
+        by the host install via --system-site-packages, and the dev cycle uses
+        .dev versions that aren't on PyPI."""
+        manifest = WorkspaceManifest(
+            name="Host Filter",
+            requires=["SciQLop>=0.12.0", "numpy>=1.24"],
+        )
+        plugin_deps = ["SciQLop>=0.12.0", "matplotlib>=3.8"]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "pyproject.toml"
+            generate_pyproject_toml(manifest, plugin_deps, output)
+
+            import tomllib
+            with open(output, "rb") as f:
+                data = tomllib.load(f)
+            deps = data["project"]["dependencies"]
+            assert not any(_extract_package_name(d) == "sciqlop" for d in deps)
+            assert "numpy>=1.24" in deps
+            assert "matplotlib>=3.8" in deps
 
     def test_environments_restricted_to_supported_platforms(self):
         try:
