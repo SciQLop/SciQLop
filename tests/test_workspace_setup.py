@@ -171,8 +171,11 @@ class TestPrepareWorkspaceOffline:
 
         assert result == python_path
         cb.assert_any_call(
-            "Warning: workspace dependency sync failed; continuing with existing venv. "
-            "Run with network to install missing packages."
+            "Workspace dependency sync failed: "
+            "uv command failed (exit 2):\n  uv sync\nNetwork is unreachable"
+        )
+        cb.assert_any_call(
+            "Continuing with existing venv. Run with network to install missing packages."
         )
 
     def test_sync_failure_propagates_when_python_missing(self, workspace_dir, patches, tmp_path):
@@ -184,6 +187,47 @@ class TestPrepareWorkspaceOffline:
 
         with pytest.raises(RuntimeError):
             prepare_workspace(workspace_dir, workspace_name="Test")
+
+
+class TestStaleLockfileInvalidation:
+    """A uv.lock older than pyproject.toml is stale and must be removed."""
+
+    def _make_pyproject_writer(self, content="dummy"):
+        def writer(manifest, deps, output_path):
+            Path(output_path).write_text(content)
+        return writer
+
+    def test_stale_lockfile_is_removed(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        patches["generate_pyproject_toml"].side_effect = self._make_pyproject_writer()
+        workspace_dir.mkdir(parents=True)
+        lockfile = workspace_dir / "uv.lock"
+        lockfile.write_text("old lock")
+        import os, time
+        old_mtime = time.time() - 3600
+        os.utime(lockfile, (old_mtime, old_mtime))
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert not lockfile.exists()
+
+    def test_fresh_lockfile_is_kept(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        patches["generate_pyproject_toml"].side_effect = self._make_pyproject_writer()
+        workspace_dir.mkdir(parents=True)
+        pyproject = workspace_dir / "pyproject.toml"
+        pyproject.write_text("dummy")
+        lockfile = workspace_dir / "uv.lock"
+        lockfile.write_text("fresh lock")
+        import os, time
+        future = time.time() + 3600
+        os.utime(lockfile, (future, future))
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert lockfile.exists()
 
 
 class TestCollectPluginDepsArgs:

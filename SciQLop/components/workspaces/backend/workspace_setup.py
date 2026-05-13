@@ -97,6 +97,21 @@ def prepare_workspace(
     pyproject_path = workspace_dir / "pyproject.toml"
     generate_pyproject_toml(manifest, plugin_deps + appstore_deps, pyproject_path)
 
+    # Invalidate uv.lock when it predates pyproject.toml.  generate_pyproject_toml
+    # is idempotent, so pyproject.toml's mtime only advances when its content
+    # changes (manifest edits, plugin enable/disable, appstore install/remove,
+    # or a SciQLop upgrade that ships a new generator).  A lockfile older than
+    # the current pyproject would otherwise force uv sync to honor stale
+    # resolutions and quietly fail to install newly added deps.
+    lockfile = workspace_dir / "uv.lock"
+    if (
+        lockfile.exists()
+        and pyproject_path.exists()
+        and lockfile.stat().st_mtime < pyproject_path.stat().st_mtime
+    ):
+        log.info("Removing stale uv.lock (older than pyproject.toml)")
+        lockfile.unlink()
+
     # Step 5: Ensure venv exists and sync
     venv = WorkspaceVenv(workspace_dir)
     venv.ensure(on_output=on_output)
@@ -109,9 +124,10 @@ def prepare_workspace(
         # venv so the user can still use bundled features (CDF, local files).
         log.warning("Workspace dependency sync failed: %s", exc)
         if on_output is not None:
+            on_output(f"Workspace dependency sync failed: {exc}")
             on_output(
-                "Warning: workspace dependency sync failed; continuing with "
-                "existing venv. Run with network to install missing packages."
+                "Continuing with existing venv. Run with network to install "
+                "missing packages."
             )
 
     return venv.python_path

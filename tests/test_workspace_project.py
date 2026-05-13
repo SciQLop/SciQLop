@@ -235,3 +235,25 @@ class TestGeneratePyprojectToml:
             output = os.path.join(tmpdir, "pyproject.toml")
             generate_pyproject_toml(manifest, [], output)
             assert os.path.exists(output)
+
+    def test_environments_restricted_to_supported_platforms(self):
+        try:
+            import tomllib
+        except ImportError:
+            pytest.skip("tomllib not available")
+
+        manifest = WorkspaceManifest(name="Envs")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "pyproject.toml"
+            generate_pyproject_toml(manifest, [], output)
+
+            with open(output, "rb") as f:
+                data = tomllib.load(f)
+
+            environments = data["tool"]["uv"]["environments"]
+            assert set(environments) == {
+                "sys_platform == 'linux'",
+                "sys_platform == 'darwin'",
+                "sys_platform == 'win32'",
+            }

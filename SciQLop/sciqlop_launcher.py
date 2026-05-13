@@ -182,6 +182,7 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     env["SCIQLOP_WORKSPACE_DIR"] = str(workspace_dir)
     env["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
     env[READY_FILE_ENV] = str(ready_file)
+    env["PYTHONNOUSERSITE"] = "1"
 
     log_path = _last_launch_log_path()
     try:
