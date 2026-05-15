@@ -69,7 +69,13 @@ if ($ExternallyManaged) { Remove-Item $ExternallyManaged.FullName -Force }
 ########################################
 
 Write-Host "Installing SciQLop..."
-& $UvBin pip install --system --python $PythonBin --link-mode=copy --reinstall --no-cache "$SciQLopRoot\"
+# NB: pass $SciQLopRoot bare. Quoting with a trailing backslash ("$Path\") trips
+# PowerShell's native-arg escaping when $Path contains spaces — the resulting
+# command line ends with \" which uv interprets as an escaped quote and the
+# install fails with "filename, directory name, or volume label syntax is
+# incorrect". CI paths have no spaces so this only bites local dev.
+& $UvBin pip install --system --python $PythonBin --link-mode=copy --reinstall --no-cache $SciQLopRoot
+if ($LASTEXITCODE -ne 0) { throw "uv pip install (SciQLop root) failed with exit $LASTEXITCODE" }
 
 ########################################
 # Plugin dependencies
@@ -80,6 +86,7 @@ $PluginDeps = ($PluginDepsRaw -join " ") -split '\s+' | Where-Object { $_ }
 if ($PluginDeps) {
     Write-Host "Installing plugin dependencies: $PluginDeps"
     & $UvBin pip install --system --python $PythonBin --link-mode=copy @PluginDeps
+    if ($LASTEXITCODE -ne 0) { throw "uv pip install (plugin deps) failed with exit $LASTEXITCODE" }
 }
 
 ########################################
@@ -87,6 +94,7 @@ if ($PluginDeps) {
 ########################################
 
 & $UvBin pip install --system --python $PythonBin --link-mode=copy certifi
+if ($LASTEXITCODE -ne 0) { throw "uv pip install (certifi) failed with exit $LASTEXITCODE" }
 
 ########################################
 # Dev speasy override (non-release only)
@@ -94,6 +102,7 @@ if ($PluginDeps) {
 
 if (-not $env:RELEASE) {
     & $UvBin pip install --system --python $PythonBin --link-mode=copy --upgrade "git+https://github.com/SciQLop/speasy"
+    if ($LASTEXITCODE -ne 0) { throw "uv pip install (speasy dev override) failed with exit $LASTEXITCODE" }
 }
 
 ########################################
