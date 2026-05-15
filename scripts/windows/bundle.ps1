@@ -113,7 +113,11 @@ Move-Item "$Dist\node-v$NodeVersion-win-x64" "$PackageDir\node"
 ########################################
 
 Write-Host "Compiling launcher..."
-& cl /nologo /O2 /Fe:"$PackageDir\SciQLop.exe" "$ScriptDir\launcher.c" `
+# Compile the resource (DPI-awareness + supportedOS manifest embedded as RT_MANIFEST id 1).
+# Without this, WACK's DPIAwarenessValidation flags the launcher as DPI-unaware.
+& rc /nologo /fo "$ScriptDir\launcher.res" "$ScriptDir\launcher.rc"
+if ($LASTEXITCODE -ne 0) { throw "rc.exe failed compiling launcher.rc" }
+& cl /nologo /O2 /Fe:"$PackageDir\SciQLop.exe" "$ScriptDir\launcher.c" "$ScriptDir\launcher.res" `
     /link user32.lib kernel32.lib /SUBSYSTEM:WINDOWS
 
 ########################################
@@ -136,6 +140,30 @@ Get-ChildItem -Path $PackageDir -Recurse |
 # Remove Unix artifacts that trip the Windows Store pre-processing scanner (0x800700C1)
 Get-ChildItem -Path $PackageDir -Recurse -Include *.a,*.o,*.so,*.dylib |
     Remove-Item -Force
+
+# Strip test-data archives flagged by WACK Package Sanity > Archive files usage.
+# These are unit-test fixtures, not runtime data. Keep dateutil-zoneinfo.tar.gz
+# (loaded by dateutil.tz.gettz at runtime).
+$ArchiveStripRoots = @(
+    "$PackageDir\python\Lib\site-packages\astropy",
+    "$PackageDir\python\Lib\site-packages\matplotlib\mpl-data\sample_data"
+)
+foreach ($root in $ArchiveStripRoots) {
+    if (-not (Test-Path $root)) { continue }
+    Get-ChildItem -Path $root -Recurse -File -Include *.gz,*.bz2,*.Z -EA SilentlyContinue |
+        Where-Object {
+            $_.FullName -notmatch '\\dateutil\\zoneinfo\\' -and
+            (
+                $_.FullName -match '\\tests\\data\\' -or
+                $_.FullName -match '\\sample_data\\' -or
+                $_.FullName -match '\\io\\votable\\validator\\data\\'
+            )
+        } |
+        ForEach-Object {
+            Write-Host "Removing test-data archive: $($_.FullName)"
+            Remove-Item -LiteralPath $_.FullName -Force
+        }
+}
 
 # Strip astroquery.jplspec and astroquery.linelists — both ship plain-text data
 # files with a .cat extension (catdir.cat, partfunc.cat) which collide with
