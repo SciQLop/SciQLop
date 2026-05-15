@@ -20,3 +20,7 @@ documentation/*
 *.swp
 .serena/
 .superpowers/
+.local-msix-build.ps1
+.local-wack-run.ps1
+launcher.obj
+launcher.res
