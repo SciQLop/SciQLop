@@ -2,7 +2,8 @@ $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $SciQLopRoot = Resolve-Path "$ScriptDir\..\.."
-$Dist = "D:\dist"
+# CI uses D:\ (large scratch drive on Azure runners). Local dev overrides via $env:SCIQLOP_DIST_DIR.
+$Dist = if ($env:SCIQLOP_DIST_DIR) { $env:SCIQLOP_DIST_DIR } else { "D:\dist" }
 $PackageDir = "$Dist\S"
 $RepoDist = "$SciQLopRoot\dist"
 
