@@ -157,6 +157,35 @@ def test_to_float64_datetime64(qapp):
     assert len(result) == 2
 
 
+def test_to_float64_non_contiguous_float64_is_made_contiguous(qapp):
+    """Reverse-strided float64 views slip past dtype-only checks and crash
+    inside SciQLopPlots' PyBuffer ctor (SystemError: longobject.c:1487).
+    `_to_float64` must return a C-contiguous array regardless of input layout.
+    """
+    from SciQLop.user_api.plot._graphs import _to_float64
+    a = np.arange(10, dtype=np.float64)[::-1]
+    assert not a.flags["C_CONTIGUOUS"]
+    result = _to_float64(a)
+    assert result.flags["C_CONTIGUOUS"]
+    assert result.dtype == np.float64
+    np.testing.assert_array_equal(result, a)
+
+
+def test_to_float64_non_contiguous_2d_slice(qapp):
+    from SciQLop.user_api.plot._graphs import _to_float64
+    a = np.arange(24, dtype=np.float64).reshape(4, 6)[:, ::2]
+    assert not a.flags["C_CONTIGUOUS"]
+    result = _to_float64(a)
+    assert result.flags["C_CONTIGUOUS"]
+    np.testing.assert_array_equal(result, a)
+
+
+def test_to_float64_already_contiguous_float64_passthrough(qapp):
+    from SciQLop.user_api.plot._graphs import _to_float64
+    a = np.array([1.0, 2.0], dtype=np.float64)
+    assert _to_float64(a) is a
+
+
 # --- _graphs.py: ensure_arrays_of_double ---
 
 def test_ensure_arrays_of_double(qapp):

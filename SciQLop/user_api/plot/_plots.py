@@ -1,6 +1,8 @@
 from .enums import ScaleType
 from .protocol import Plot
-from ._graphs import Graph, ColorMap, Histogram2D, to_plottable, ensure_arrays_of_double, _create_histogram2d
+from ._graphs import (Graph, ColorMap, Histogram2D, to_plottable,
+                      ensure_arrays_of_double, _create_histogram2d,
+                      _reject_if_colormap_already_present)
 from ._graphic_primitives import HorizontalLine
 from typing import Optional, Union, List, Any
 from ..virtual_products import VirtualProduct
@@ -18,6 +20,8 @@ from .._annotations import experimental_api
 from PySide6.QtGui import QColor as _QColor, QPen as _QPen
 
 from speasy.core import AnyDateTimeType
+
+_AxisName = str  # one of "x", "y", "y2", "z"
 
 log = _getLogger(__name__)
 
@@ -74,6 +78,18 @@ def _set_axis_scale_type(scale_type: ScaleType, axis: _SciQLopPlotAxis):
         axis.set_log(True)
     else:
         raise ValueError(f"Unknown scale type {scale_type}")
+
+
+def _reject_zero_width_range(axis_name: str, lo: float, hi: float) -> None:
+    """SciQLopPlots silently no-ops on `set_range(t, t)`, leaving the axis at
+    its previous range with no indication anything went wrong. Reject up
+    front so callers see the bug immediately."""
+    if lo == hi:
+        raise ValueError(
+            f"zero-width {axis_name}-axis range ({lo} == {hi}); "
+            "widen by at least one epsilon, or skip the call to keep the "
+            "existing range"
+        )
 
 
 def to_product_path(product: AnyProductType) -> List[str]:
@@ -171,6 +187,72 @@ class _BasePlot(Plot):
             raise ValueError("The graph does not exist anymore.")
         self._get_impl_or_raise().remove_plottable(graph._impl)
 
+    @on_main_thread
+    def rescale_axes(self) -> None:
+        """Auto-fit axes to the currently visible data.
+
+        Note
+        ----
+        For time-series and XY plots this fits the y axis to data inside the
+        **currently visible x window**, not the full data extent. Set the time
+        range (or x range) *before* calling ``rescale_axes`` — calling it
+        before the data x window is set leaves y at its default range.
+        """
+        self._get_impl_or_raise().rescale_axes()
+
+    def _resolve_axis(self, axis: _AxisName):
+        impl = self._get_impl_or_raise()
+        getter_name = f"{axis}_axis"
+        getter = getattr(impl, getter_name, None)
+        if getter is None:
+            raise ValueError(
+                f"axis {axis!r} not available on this plot "
+                f"(expected one of: x, y, y2, z)"
+            )
+        return getter()
+
+    @on_main_thread
+    def apply_hints(self, hints) -> None:
+        """Apply a :class:`SciQLop.core.plot_hints.PlotHints` bundle.
+
+        Sets axis labels, units, and scales declaratively. Only fields set on
+        the hints object are written. This is the supported way to push
+        ISTP/HAPI metadata onto a plot from a plugin or notebook — prefer it
+        over reaching through ``plot._impl``.
+        """
+        from SciQLop.core.plot_hints import apply_plot_hints as _apply
+        _apply(self._get_impl_or_raise(), hints)
+
+    @on_main_thread
+    def set_axis_label(self, axis: _AxisName, label: str,
+                       unit: Optional[str] = None) -> None:
+        """Set a single axis label (with optional unit).
+
+        Parameters
+        ----------
+        axis : {"x", "y", "y2", "z"}
+            Which axis to label.
+        label : str
+            Axis label text.
+        unit : str, optional
+            Unit string, appended as " [unit]" if provided.
+        """
+        text = f"{label} [{unit}]" if unit else label
+        self._resolve_axis(axis).set_label(text)
+
+    @on_main_thread
+    def set_axis_scale(self, axis: _AxisName, scale: ScaleType) -> None:
+        """Set a single axis scale (linear or logarithmic).
+
+        Parameters
+        ----------
+        axis : {"x", "y", "y2", "z"}
+            Which axis to update.
+        scale : ScaleType
+            Linear or Logarithmic.
+        """
+        _set_axis_scale_type(scale, self._resolve_axis(axis))
+
 
 class XYPlot(_BasePlot):
     """A class representing a 2D XY plot where the x-axis and y-axis can represent any type of data.
@@ -199,13 +281,14 @@ class XYPlot(_BasePlot):
         elif len(args) == 2:
             return Graph(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
         elif len(args) == 3:
+            _reject_if_colormap_already_present(self._get_impl_or_raise())
             return ColorMap(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
         return None
 
     @experimental_api()
     @on_main_thread
     def histogram2d(self, x, y, *, name: str = "histogram",
-                    key_bins: int = 100, value_bins: int = 100,
+                    x_bins: int = 100, y_bins: int = 100,
                     z_log_scale: bool = False) -> Histogram2D:
         """Add a 2D density histogram to this plot.
 
@@ -215,7 +298,7 @@ class XYPlot(_BasePlot):
             Scatter data to bin.
         name : str
             Histogram label.
-        key_bins, value_bins : int
+        x_bins, y_bins : int
             Bin counts along X and Y.
         z_log_scale : bool
             Use a logarithmic color scale.
@@ -226,8 +309,8 @@ class XYPlot(_BasePlot):
             The histogram plottable.
         """
         return _create_histogram2d(self._get_impl_or_raise(), x, y,
-                                   name=name, key_bins=key_bins,
-                                   value_bins=value_bins,
+                                   name=name, x_bins=x_bins,
+                                   y_bins=y_bins,
                                    z_log_scale=z_log_scale)
 
     @on_main_thread
@@ -242,7 +325,8 @@ class XYPlot(_BasePlot):
             The maximum value of the x-axis range.
         """
         xmin, xmax = min(xmin, xmax), max(xmin, xmax)
-        self._impl.set_x_range(xmin, xmax)
+        _reject_zero_width_range("x", xmin, xmax)
+        self._get_impl_or_raise().x_axis().set_range(xmin, xmax)
 
     @on_main_thread
     def set_y_range(self, ymin: float, ymax: float):
@@ -256,7 +340,8 @@ class XYPlot(_BasePlot):
             The maximum value of the y-axis range.
         """
         ymin, ymax = min(ymin, ymax), max(ymin, ymax)
-        self._impl.set_y_range(ymin, ymax)
+        _reject_zero_width_range("y", ymin, ymax)
+        self._get_impl_or_raise().y_axis().set_range(ymin, ymax)
 
     @property
     @on_main_thread
@@ -336,18 +421,20 @@ class TimeSeriesPlot(_BasePlot):
             else:
                 return to_plottable(_plot_product(self._get_impl_or_raise(), to_product_path(args[0]), **kwargs))
         elif 3 >= len(args) >= 2:
+            if len(args) == 3:
+                _reject_if_colormap_already_present(self._get_impl_or_raise())
             return to_plottable(self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs))
         raise ValueError("Invalid arguments")
 
     @experimental_api()
     @on_main_thread
     def histogram2d(self, x, y, *, name: str = "histogram",
-                    key_bins: int = 100, value_bins: int = 100,
+                    x_bins: int = 100, y_bins: int = 100,
                     z_log_scale: bool = False) -> Histogram2D:
         """Add a 2D density histogram to this plot. See XYPlot.histogram2d."""
         return _create_histogram2d(self._get_impl_or_raise(), x, y,
-                                   name=name, key_bins=key_bins,
-                                   value_bins=value_bins,
+                                   name=name, x_bins=x_bins,
+                                   y_bins=y_bins,
                                    z_log_scale=z_log_scale)
 
     @on_main_thread
@@ -381,6 +468,7 @@ class TimeSeriesPlot(_BasePlot):
         """
         s_y_min = min(ymin, ymax)
         s_y_max = max(ymin, ymax)
+        _reject_zero_width_range("y", s_y_min, s_y_max)
         self._get_impl_or_raise().y_axis().set_range(s_y_min, s_y_max)
 
     @on_main_thread

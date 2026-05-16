@@ -89,6 +89,25 @@ def _maybe_callable(*args, **kwargs) -> Option[callable]:
     return Nothing
 
 
+def _normalize_plot_kwargs(kwargs: dict) -> dict:
+    """Normalize panel-level plot kwargs: resolve plot_type, derive graph_type
+    for non-time-series. Keeps the conversion consistent across plot_product
+    / plot_data / plot_function.
+
+    Note: ``plot_type`` is still forwarded to ``SciQLopMultiPlotPanel.plot``
+    because the C++ side needs it to choose subplot type. The panel's
+    internal dispatcher may forward it further into ``line()``/``colormap()``;
+    that residual leak is a SciQLopPlots concern (the C++ panel should pop
+    plot_type after consuming it).
+    """
+    kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
+    if kwargs["plot_type"] != _PlotType.TimeSeries:
+        kwargs["graph_type"] = _GraphType.ParametricCurve
+    elif "graph_type" in kwargs:
+        kwargs["graph_type"] = _to_sqp_graph_type(kwargs["graph_type"])
+    return kwargs
+
+
 class PlotPanel:
     """A class representing a plot panel in the SciQLop application.
     This class provides methods to create and manage plots within the panel.
@@ -137,11 +156,7 @@ class PlotPanel:
         Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]
             A tuple containing the plot and the graph object.
         """
-        kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
-        if kwargs["plot_type"] != _PlotType.TimeSeries:
-            kwargs["graph_type"] = _GraphType.ParametricCurve
-        elif "graph_type" in kwargs:
-            kwargs["graph_type"] = _to_sqp_graph_type(kwargs["graph_type"])
+        kwargs = _normalize_plot_kwargs(kwargs)
         _p, _g = _plot_product(self._get_impl_or_raise(), to_product_path(product), index=plot_index, **kwargs)
         return to_plot(_p), to_plottable(_g)
 
@@ -175,9 +190,7 @@ class PlotPanel:
             x, y = arrays[0], arrays[1]
             z = arrays[2] if len(arrays) == 3 else None
 
-        kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
-        if kwargs["plot_type"] != _PlotType.TimeSeries:
-            kwargs["graph_type"] = _GraphType.ParametricCurve
+        kwargs = _normalize_plot_kwargs(kwargs)
         _p, _g = _plot_static_data(self._get_impl_or_raise(), *ensure_arrays_of_double(x, y, z), index=plot_index,
                                    **kwargs)
         return to_plot(_p), to_plottable(_g)
@@ -185,16 +198,14 @@ class PlotPanel:
     @on_main_thread
     @_tracing.traced("PlotPanel.plot_function", cat="plot")
     def plot_function(self, f, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
-        kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
-        if kwargs["plot_type"] != _PlotType.TimeSeries:
-            kwargs["graph_type"] = _GraphType.ParametricCurve
+        kwargs = _normalize_plot_kwargs(kwargs)
         _p, _g = _plot_function(self._get_impl_or_raise(), f, index=plot_index, **kwargs)
         return to_plot(_p), to_plottable(_g)
 
     @experimental_api()
     @on_main_thread
     def histogram2d(self, *args, name: str = "histogram",
-                    key_bins: int = 100, value_bins: int = 100,
+                    x_bins: int = 100, y_bins: int = 100,
                     z_log_scale: bool = False, gradient=None,
                     plot_index: int = -1):
         """Add a 2D density histogram in a new plot.
@@ -208,10 +219,10 @@ class PlotPanel:
             Both paths create an XY plot.
         name : str
             Histogram label (shown in legend).
-        key_bins : int
-            Number of bins along the key (X) axis.
-        value_bins : int
-            Number of bins along the value (Y) axis.
+        x_bins : int
+            Number of bins along the X axis.
+        y_bins : int
+            Number of bins along the Y axis.
         z_log_scale : bool
             Use a logarithmic color scale.
         gradient
@@ -227,7 +238,7 @@ class PlotPanel:
         impl = self._get_impl_or_raise()
         plot_impl = impl.create_plot(plot_index, _PlotType.BasicXY)
         hist = _create_histogram2d(plot_impl, *args, name=name,
-                                   key_bins=key_bins, value_bins=value_bins,
+                                   x_bins=x_bins, y_bins=y_bins,
                                    z_log_scale=z_log_scale, gradient=gradient)
         if len(args) == 1 and callable(args[0]):
             impl.time_range_changed.connect(hist._impl.set_range)
@@ -336,6 +347,27 @@ class PlotPanel:
         bar = self._get_time_range_bar()
         if bar:
             bar.duration_text = value
+
+    @property
+    @on_main_thread
+    def zoom_limit_seconds(self) -> float:
+        """Maximum allowed time-axis span, in seconds. 0 means unlimited.
+
+        Time-axis ranges larger than this are centered-and-clipped to this
+        size by SciQLopPlots. Plugins pushing fixed-window data (CDF files,
+        archival records, …) should bump this before setting
+        ``panel.time_range`` so a multi-day variable isn't collapsed to the
+        default 1-day window.
+        """
+        bar = self._get_time_range_bar()
+        return float(bar.max_range_seconds) if bar else 0.0
+
+    @zoom_limit_seconds.setter
+    @on_main_thread
+    def zoom_limit_seconds(self, value: float):
+        bar = self._get_time_range_bar()
+        if bar:
+            bar.max_range_seconds = float(value)
 
     @on_main_thread
     def step_forward(self, n: int = 1):

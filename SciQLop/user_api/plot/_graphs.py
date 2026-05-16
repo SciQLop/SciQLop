@@ -3,6 +3,7 @@ from .protocol import Plot, Plottable
 from typing import Optional, Union, List
 from ..virtual_products import VirtualProduct
 from SciQLopPlots import SciQLopHistogram2D as _SciQLopHistogram2D
+from SciQLopPlots import SciQLopColorMapBase as _SciQLopColorMapBase
 from ._thread_safety import on_main_thread
 from SciQLop.core import tracing as _tracing
 
@@ -23,11 +24,11 @@ def _to_float64(a):
     if a is None:
         return None
     if is_array_of_double(a):
-        return a
+        return np.ascontiguousarray(a)
     if hasattr(a, 'dtype') and np.issubdtype(a.dtype, np.datetime64):
         from speasy.core import datetime64_to_epoch
-        return datetime64_to_epoch(a)
-    return np.array(a, dtype=np.float64)
+        return np.ascontiguousarray(datetime64_to_epoch(a))
+    return np.ascontiguousarray(np.asarray(a, dtype=np.float64))
 
 
 def ensure_arrays_of_double(*args):
@@ -126,7 +127,7 @@ class ColorMap(Plottable):
 
 
 class Histogram2D(Plottable):
-    """A 2D density histogram. Bins (x, y) scatter into a key_bins x value_bins grid."""
+    """A 2D density histogram. Bins (x, y) scatter into an x_bins x y_bins grid."""
 
     def __init__(self, impl):
         self._impl: _SciQLopHistogram2D = impl
@@ -191,16 +192,32 @@ class Histogram2D(Plottable):
             p.text(f"Histogram2D({self._impl})")
 
 
+def _reject_if_colormap_already_present(plot_impl) -> None:
+    """A plot has a single color-scale axis, so it can host at most one
+    colormap-style plottable (ColorMap, Histogram2D, Waterfall). Reject up
+    front rather than silently creating a second one that fights the first
+    for the color scale."""
+    existing = plot_impl.plottables() or []
+    for p in existing:
+        if isinstance(p, _SciQLopColorMapBase):
+            raise RuntimeError(
+                "this plot already contains a colormap-style plottable "
+                f"({type(p).__name__}); a plot can host only one. "
+                "Call panel.histogram2d(...) to create a new plot instead."
+            )
+
+
 def _create_histogram2d(plot_impl, *args, name: str = "histogram",
-                        key_bins: int = 100, value_bins: int = 100,
+                        x_bins: int = 100, y_bins: int = 100,
                         z_log_scale: bool = False, gradient=None) -> Histogram2D:
+    _reject_if_colormap_already_present(plot_impl)
     if len(args) == 1 and callable(args[0]):
         impl = plot_impl.histogram2d(args[0], name=name,
-                                     key_bins=key_bins, value_bins=value_bins)
+                                     key_bins=x_bins, value_bins=y_bins)
     elif len(args) == 2:
         x, y = ensure_arrays_of_double(*args)
         impl = plot_impl.histogram2d(x, y, name=name,
-                                     key_bins=key_bins, value_bins=value_bins)
+                                     key_bins=x_bins, value_bins=y_bins)
     else:
         raise TypeError("histogram2d expects (callable,) or (x, y)")
     hist = Histogram2D(impl)

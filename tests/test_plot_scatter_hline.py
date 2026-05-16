@@ -106,3 +106,93 @@ class TestRemoveGraph:
         y = np.sin(x)
         plot, graph = plot_panel.plot_data(x, y, plot_type=PlotType.TimeSeries)
         plot.remove_graph(graph)
+
+
+class TestRescaleAxes:
+    def test_rescale_axes_on_xy_plot(self, xy_plot):
+        xy_plot.rescale_axes()
+
+    def test_rescale_axes_on_time_series_plot(self, time_series_plot):
+        time_series_plot.rescale_axes()
+
+
+class TestApplyHints:
+    def test_apply_hints_sets_labels(self, time_series_plot):
+        from SciQLop.core.plot_hints import PlotHints, AxisHints
+        hints = PlotHints(y=AxisHints(label="B", unit="nT"))
+        time_series_plot.apply_hints(hints)
+        assert time_series_plot._impl.y_axis().label() == "B [nT]"
+
+    def test_apply_hints_sets_log_scale(self, time_series_plot):
+        from SciQLop.core.plot_hints import PlotHints, AxisHints
+        hints = PlotHints(y=AxisHints(scale="log"))
+        time_series_plot.apply_hints(hints)
+        assert time_series_plot._impl.y_axis().log() is True
+
+    def test_set_axis_label_no_unit(self, time_series_plot):
+        time_series_plot.set_axis_label("y", "velocity")
+        assert time_series_plot._impl.y_axis().label() == "velocity"
+
+    def test_set_axis_label_with_unit(self, time_series_plot):
+        time_series_plot.set_axis_label("y", "velocity", unit="km/s")
+        assert time_series_plot._impl.y_axis().label() == "velocity [km/s]"
+
+    def test_set_axis_label_unknown_axis_raises(self, time_series_plot):
+        with pytest.raises(ValueError, match="axis 'bogus'"):
+            time_series_plot.set_axis_label("bogus", "x")
+
+    def test_set_axis_scale_log(self, time_series_plot):
+        from SciQLop.user_api.plot import ScaleType
+        time_series_plot.set_axis_scale("y", ScaleType.Logarithmic)
+        assert time_series_plot._impl.y_axis().log() is True
+
+    def test_set_axis_scale_linear(self, time_series_plot):
+        from SciQLop.user_api.plot import ScaleType
+        time_series_plot.set_axis_scale("y", ScaleType.Logarithmic)
+        time_series_plot.set_axis_scale("y", ScaleType.Linear)
+        assert time_series_plot._impl.y_axis().log() is False
+
+    def test_apply_hints_on_xy_plot(self, xy_plot):
+        from SciQLop.core.plot_hints import PlotHints, AxisHints
+        hints = PlotHints(x=AxisHints(label="t", unit="s"),
+                          y=AxisHints(label="signal"))
+        xy_plot.apply_hints(hints)
+        assert xy_plot._impl.x_axis().label() == "t [s]"
+        assert xy_plot._impl.y_axis().label() == "signal"
+
+
+class TestZeroWidthRangeRejected:
+    def test_xy_set_x_range_equal_raises(self, xy_plot):
+        with pytest.raises(ValueError, match="zero-width x-axis range"):
+            xy_plot.set_x_range(1.0, 1.0)
+
+    def test_xy_set_y_range_equal_raises(self, xy_plot):
+        with pytest.raises(ValueError, match="zero-width y-axis range"):
+            xy_plot.set_y_range(0.0, 0.0)
+
+    def test_time_series_set_y_range_equal_raises(self, time_series_plot):
+        with pytest.raises(ValueError, match="zero-width y-axis range"):
+            time_series_plot.set_y_range(2.0, 2.0)
+
+    def test_xy_set_x_range_non_zero_ok(self, xy_plot):
+        xy_plot.set_x_range(0.0, 1.0)
+
+
+class TestSecondColormapRejected:
+    def test_second_colormap_via_plot_raises_on_xy(self, plot_panel):
+        from SciQLop.user_api.plot import PlotType
+        nx, ny = 8, 6
+        x = np.linspace(0, 1, nx)
+        y = np.linspace(0, 1, ny)
+        z = np.random.rand(nx, ny)
+        plot, _ = plot_panel.plot_data(x, y, z, plot_type=PlotType.XY)
+        with pytest.raises(RuntimeError, match="colormap-style plottable"):
+            plot.plot(x, y, z)
+
+    def test_second_colormap_via_plot_raises_on_time_series(self, plot_panel):
+        x = np.linspace(0, 100, 8)
+        y = np.linspace(0, 1, 6)
+        z = np.random.rand(8, 6)
+        plot, _ = plot_panel.plot_data(x, y, z)
+        with pytest.raises(RuntimeError, match="colormap-style plottable"):
+            plot.plot(x, y, z)
