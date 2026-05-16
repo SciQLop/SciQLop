@@ -64,6 +64,37 @@ def test_crosshair_toggle_propagates_to_existing_plots(container):
     assert all(p.crosshair_enabled() for p in panel.plots())
 
 
+def test_large_time_range_clamped_by_default_zoom_limit(container):
+    """Default Max=1d clamps multi-day spans pushed by plugins (CDF, radio…)."""
+    from SciQLopPlots import PlotType
+    container.time_range_bar.max_range_seconds = 86400.0
+    container.panel.create_plot(0, PlotType.TimeSeries)
+    container.panel.time_range = TimeRange(0.0, 5 * 86400.0)
+    span = container.panel.time_range.stop() - container.panel.time_range.start()
+    assert abs(span - 86400.0) < 1.0, f"expected clamp to 86400s, got {span}"
+
+
+def test_zoom_limit_setter_unblocks_large_time_range(container):
+    """Setting bar.max_range_seconds to 0 (Unlimited) lets large spans through."""
+    from SciQLopPlots import PlotType
+    container.panel.create_plot(0, PlotType.TimeSeries)
+    container.time_range_bar.max_range_seconds = 0.0
+    container.panel.time_range = TimeRange(0.0, 5 * 86400.0)
+    span = container.panel.time_range.stop() - container.panel.time_range.start()
+    assert abs(span - 5 * 86400.0) < 1.0
+
+
+def test_zoom_limit_setter_snaps_up_to_preset(container):
+    """Non-preset values should snap to smallest preset >= value, not 'Unlimited'."""
+    bar = container.time_range_bar
+    bar.max_range_seconds = 7200.0
+    assert bar.max_range_seconds == 86400.0  # next preset >= 7200 is 1d
+    bar.max_range_seconds = 3600.0
+    assert bar.max_range_seconds == 3600.0  # exact match
+    bar.max_range_seconds = 10 * 365.25 * 86400.0
+    assert bar.max_range_seconds == 0.0  # nothing fits → Unlimited
+
+
 def test_crosshair_state_applied_to_new_plots(container):
     """Plots added after toggling should inherit the current crosshair state."""
     from SciQLopPlots import PlotType

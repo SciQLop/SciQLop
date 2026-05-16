@@ -141,11 +141,15 @@ class TimeRangeBar(QWidget):
 
     @max_range_seconds.setter
     def max_range_seconds(self, value: float):
-        for label, secs in ZOOM_LIMIT_PRESETS:
-            if secs == value:
-                self._zoom_limit_combo.setCurrentText(label)
-                return
-        self._zoom_limit_combo.setCurrentText("Unlimited")
+        if value <= 0.0:
+            self._zoom_limit_combo.setCurrentText("Unlimited")
+            return
+        bounded = [(lbl, s) for lbl, s in ZOOM_LIMIT_PRESETS if s > 0.0 and s >= value]
+        if bounded:
+            label = min(bounded, key=lambda kv: kv[1])[0]
+            self._zoom_limit_combo.setCurrentText(label)
+        else:
+            self._zoom_limit_combo.setCurrentText("Unlimited")
 
     def _on_zoom_limit_changed(self, _text: str):
         self.limit_changed.emit(self.max_range_seconds)
