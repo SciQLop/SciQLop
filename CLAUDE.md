@@ -108,3 +108,7 @@ Each plugin's `load(main_window)` is called at startup. Enabled/disabled state i
 ### Testing
 
 Tests use `pytest-qt` for Qt widget testing and `pytest-xvfb` on Linux (auto-configured in `conftest.py` at 2560x1440). Test helpers and fixtures are in `tests/fixtures.py` and `tests/helpers.py`.
+
+### Qt/PySide6 lifetime rules
+
+Wiring signals across QObject lifetimes (layers, extensions, plugins observing a plot or its axes) follows specific rules — see `docs/qt-lifetime-patterns.md`. Short version: **never call methods on a parent from a slot wired to one of its children's `destroyed` signals**. Use `signal.connect(context, slot)` with a receiver-context, or cache references at connect time, or expose an explicit `dispose()` — never `self._plot.x_axis()` during teardown. SIGSEGV inside `QWidget::sharedPainter()` from a Shiboken wrapper is the signature symptom of breaking this rule (see commit `293a7afa`).
