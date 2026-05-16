@@ -85,8 +85,15 @@ class _DataSpan:
         self._state.set_value(spec.name, initial)
         self._span.range_changed.connect(self._on_span_dragged)
 
+        # Cache the signal at connect time so cleanup() can disconnect without
+        # going through the panel's Shiboken wrapper — cleanup runs from
+        # ext.destroyed during the panel-destroy cascade, when `self._panel`
+        # is mid-destruction and a wrapper call would segfault inside
+        # QWidget::sharedPainter (see docs/qt-lifetime-patterns.md).
+        self._panel_time_range_changed = None
         if self._fraction is not None:
-            panel.time_range_changed.connect(self._on_panel_range_changed)
+            self._panel_time_range_changed = panel.time_range_changed
+            self._panel_time_range_changed.connect(self._on_panel_range_changed)
 
     @staticmethod
     def _resolve_initial(default: SciQLopPlotRange, panel) -> SciQLopPlotRange:
@@ -140,11 +147,12 @@ class _DataSpan:
                 self._reentry = False
 
     def cleanup(self):
-        if self._fraction is not None:
+        if self._panel_time_range_changed is not None:
             try:
-                self._panel.time_range_changed.disconnect(self._on_panel_range_changed)
+                self._panel_time_range_changed.disconnect(self._on_panel_range_changed)
             except (RuntimeError, TypeError):
                 pass
+            self._panel_time_range_changed = None
         self._span.deleteLater()
 
 
