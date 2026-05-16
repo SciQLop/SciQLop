@@ -9,5 +9,5 @@
     "virtual-product",
     "spectro"
   ],
-  "dependencies": []
+  "dependencies": ["ipympl"]
 }
