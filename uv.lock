@@ -2551,6 +2551,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/9b/37/36c9a0f63dec4531ced7d6f561ad06e49e31a4d0cd7bac2082668bfcf8c8/pycdfpp-0.9.3-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:1e90dcaa972965b05e9dbc26253ff2eae854f069e3fe23a06b38fbae2e46a9bd", size = 988591, upload-time = "2026-04-10T10:11:12.86Z" },
     { url = "https://files.pythonhosted.org/packages/c4/21/86ba4c0cc6b10d599586a5607dbd099e124f93705885da34aad3fea526c9/pycdfpp-0.9.3-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:4fe44f2568e4cdb75cb0a657ece19de78024afd8c08b6f5f82a14e90f6f86686", size = 1833921, upload-time = "2026-04-10T10:11:14.658Z" },
     { url = "https://files.pythonhosted.org/packages/d8/1d/a787fd5bd64b4ece306c122b35c1096bfacbbca16f0b88e495dcf48a3400/pycdfpp-0.9.3-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:f4160cd9285096f78b9fe5137b70576a8afd925813e9ee410f69436aba86e4c7", size = 1941663, upload-time = "2026-04-10T10:11:16.491Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/f8/6fa95c772b116177cbf1ec09d665b98d0473f88fcd1eee9fd6395a632229/pycdfpp-0.9.3-cp313-cp313-pyemscripten_2025_0_wasm32.whl", hash = "sha256:991ee508003c6c220a27141593159b039f65012f6ae0cb5b666cb09644fc53bd", size = 250734, upload-time = "2026-05-15T20:48:05.636Z" },
     { url = "https://files.pythonhosted.org/packages/ff/ad/2cc79b62471b24076cd4823395b48601b6c24c9257c41b3c0fb445913825/pycdfpp-0.9.3-cp313-cp313-win_amd64.whl", hash = "sha256:0ad8407a99806d9c6db3bf505873f5c333bdaa070673373e5755632df062c0e4", size = 494866, upload-time = "2026-04-10T10:11:18.415Z" },
     { url = "https://files.pythonhosted.org/packages/eb/65/7945a6184ca2b6a011d7a0d25bc21e2e503c46ed931b32f8885646052480/pycdfpp-0.9.3-cp313-cp313t-macosx_13_0_arm64.whl", hash = "sha256:715f61d850711a3d13042570820febde8a9e7818873b3f17c23980bf2ce0f7e6", size = 829729, upload-time = "2026-04-10T10:11:20.073Z" },
     { url = "https://files.pythonhosted.org/packages/4c/28/ad8edea208bf864dcbf61510931b77a41f13d845a471e82b4594d40e7a27/pycdfpp-0.9.3-cp313-cp313t-macosx_13_0_x86_64.whl", hash = "sha256:0f53f17505180ba96566acc56bcd09c207787f16b6833fa93680b111af3ba63c", size = 872544, upload-time = "2026-04-10T10:11:22.007Z" },
@@ -3482,7 +3483,7 @@ wheels = [
 
 [[package]]
 name = "sciqlop"
-version = "0.11.4"
+version = "0.12.0.dev0"
 source = { editable = "." }
 dependencies = [
     { name = "expression" },
