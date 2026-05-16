@@ -7,7 +7,7 @@ from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from ._plots import XYPlot, TimeSeriesPlot, ProjectionPlot, TimeRange
 from ._graphs import Histogram2D
 from ._panel import PlotPanel, create_plot_panel, plot_panel
-from ._graphic_primitives import Ellipse, Text, CurvedLine, HorizontalLine
+from ._graphic_primitives import Pixmap, Ellipse, Text, CurvedLine, HorizontalLine, LineTermination
 from ._overlay import Overlay
 from . import _fluent as fluent
 from SciQLop.user_api.layers import Marker, Span, HLine
@@ -16,6 +16,7 @@ from SciQLop.user_api.data_types import Scalar, Vector, MultiComponent, Spectrog
 log = _getLogger(__name__)
 
 __all__ = ['ScaleType', 'PlotType', 'Plot', 'Plottable', 'Histogram2D', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
-           'create_plot_panel', 'plot_panel', 'TimeRange', 'Ellipse', 'HorizontalLine', 'fluent',
+           'create_plot_panel', 'plot_panel', 'TimeRange', 'Pixmap', 'Ellipse', 'Text', 'CurvedLine', 'HorizontalLine',
+           'LineTermination', 'fluent',
            'Overlay', 'OverlayLevel', 'OverlaySizeMode', 'OverlayPosition',
            'Marker', 'Span', 'HLine', 'Scalar', 'Vector', 'MultiComponent', 'Spectrogram']
