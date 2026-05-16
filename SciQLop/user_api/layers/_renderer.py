@@ -267,19 +267,29 @@ class LayerRenderer(QObject):
         """Tear down all visual items and signal connections.
 
         Idempotent. After dispose(), no further updates will fire and the
-        renderer schedules its own deletion."""
+        renderer schedules its own deletion.
+
+        Note
+        ----
+        ``ext.destroyed`` fires while the parent plot is mid ~QWidget
+        (its child InspectorExtensions are being deleted by ~QObject's
+        deleteChildren). Going through ``self._plot.x_axis()`` then
+        segfaults inside ``QWidget::sharedPainter()``. We use the
+        ``_x_axis`` reference cached at connect time so we never hit
+        the wrapper during teardown, and only attempt the disconnect at
+        all when a ``range_changed`` slot was actually connected
+        (data-aware layers don't connect it).
+        """
         if self._disposed:
             return
         self._disposed = True
         self._disconnect_watchers()
         self._safe_disconnect(self._data_source, "data_changed", self._data_slot)
         self._data_slot = None
-        try:
-            x_axis = self._plot.x_axis()
-        except RuntimeError:
-            x_axis = None
-        self._safe_disconnect(x_axis, "range_changed", self._range_slot)
-        self._range_slot = None
+        if self._range_slot is not None:
+            self._safe_disconnect(getattr(self, "_x_axis", None),
+                                  "range_changed", self._range_slot)
+            self._range_slot = None
         if self._knob_state is not None:
             self._safe_disconnect(self._knob_state, "knobs_changed", self._knobs_slot)
             self._knobs_slot = None

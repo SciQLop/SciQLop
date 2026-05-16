@@ -655,7 +655,12 @@ def wire_layer_renderer(target, func, specs=None, initial_knobs=None,
         renderer.setup_data_binding()
     else:
         renderer._range_slot = lambda new_range: renderer.update(new_range.start(), new_range.stop())
-        target.x_axis().range_changed.connect(renderer._range_slot)
+        # Cache the x_axis QObject here, while the plot is alive. During
+        # the panel-destroy cascade `target.x_axis()` would go through
+        # the Shiboken wrapper that calls QWidget::sharedPainter() on a
+        # half-destructed plot and segfaults — see LayerRenderer.dispose.
+        renderer._x_axis = target.x_axis()
+        renderer._x_axis.range_changed.connect(renderer._range_slot)
 
     if not hasattr(target, "_layer_renderers"):
         target._layer_renderers = []
