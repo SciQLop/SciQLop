@@ -16,7 +16,7 @@ class TestPanelHistogram2D:
         from SciQLop.user_api.plot import Histogram2D, XYPlot
         x, y = _scatter()
         plot, hist = plot_panel.histogram2d(x, y, name="density",
-                                            key_bins=64, value_bins=32)
+                                            x_bins=64, y_bins=32)
         assert isinstance(plot, XYPlot)
         assert isinstance(hist, Histogram2D)
 
@@ -49,8 +49,16 @@ class TestPanelHistogram2D:
 
 class TestXYPlotHistogram2D:
     def test_adds_histogram_to_existing_plot(self, plot_panel):
-        from SciQLop.user_api.plot import Histogram2D
+        from SciQLop.user_api.plot import Histogram2D, PlotType
+        from SciQLop.user_api.plot.enums import GraphType
+        x, y = _scatter()
+        plot, _scatter_graph = plot_panel.plot_data(
+            x, y, plot_type=PlotType.XY, graph_type=GraphType.Scatter)
+        hist = plot.histogram2d(x, y, name="density", x_bins=20, y_bins=20)
+        assert isinstance(hist, Histogram2D)
+
+    def test_rejects_second_histogram_on_same_plot(self, plot_panel):
         x, y = _scatter()
         plot, _h1 = plot_panel.histogram2d(x, y, name="h1")
-        h2 = plot.histogram2d(x, y, name="h2", key_bins=20, value_bins=20)
-        assert isinstance(h2, Histogram2D)
+        with pytest.raises(RuntimeError, match="colormap-style plottable"):
+            plot.histogram2d(x, y, name="h2")
