@@ -29,6 +29,7 @@
 ### Speasy integration
 
 - Speasy SSC products now publish their `coordinate_system` parameter as a runtime `ChoiceKnob`, so users can switch between GSE / GSM / SM / GEI / GEO / MAG without re-issuing the plot.
+- Each Speasy `ConfigSection` is now exposed as a SciQLop `ConfigEntry` subclass: fields, types, defaults, and descriptions are read from Speasy at import time and rendered in the Settings UI through the existing delegate registry. Loading and saving go through Speasy's config rather than a parallel YAML file, so the Settings UI now controls Speasy's runtime configuration directly (proxy URL, cache retention, preferred CDA access method, ...).
 
 ### Graphic primitives (`SciQLop.user_api.plot`)
 
@@ -51,7 +52,13 @@
 
 - Removed the standalone "Open Catalogue Explorer" toolbar action shipped by the tscat plugin. The embedded TSCatGUI window duplicated functionality already covered (and surpassed) by SciQLop's native catalog browser, and was misleading for users who expected the two surfaces to stay in sync. The dedicated TSCatGUI window is still reachable on demand via right-click on the *My Catalogs* row in the catalog browser → "Open in TSCat editor…", routed through the existing `CatalogProvider.actions()` extension point so any provider can publish its own backend-specific UI the same way.
 - Drag & drop events between catalogs. Default = link (event appears in both catalogs, single UUID; tscat's many-to-many is honored). Hold **Shift** to move (remove from source). Hold **Ctrl** to duplicate (new UUID, independent copy). Cross-provider drops always duplicate. Implemented via a new `EVENT_LIST_MIME_TYPE`, a `CatalogProvider.handle_event_drop(target_catalog, events, action, source_catalog)` hook, and a dispatcher in the catalog tree that derives the action from the keyboard modifiers held during the drop.
+- Drag & drop catalogs within the catalog browser tree (cross-provider copy + same-provider move). Cocat catalogs can be moved within the same room via a CRDT attribute mutation (`MOVE_CATALOG`); cross-room moves still need a cocat library primitive and remain unsupported.
+- Drag & drop a catalog from the browser onto a plot panel adds it as an overlay — same gesture as drag-from-tree, no menu round-trip.
 - Surfaced tscat orphan events (events with no catalogue membership) as a virtual *🗑 Orphan events* row under *My Catalogs*. The row is delete-only (no rename, no color-by); dragging an orphan onto a real catalog gives it a parent and the orphan query stops listing it. The row appears/disappears live as orphan presence changes. Plus a right-click "Clean up orphan events…" action on the provider that opens a focused cleanup dialog (check-and-delete + "Delete all"). Implementation routes everything through the tscat-gui driver: a `GetOrphanEventsAction` runs the `tscat.get_events()` / `tscat.get_catalogues()` query on the driver QThread (never on the main thread, where it would race the SQLAlchemy session and silently break catalog loading), the provider caches the result, and `catalogs()` reads only the cached boolean — so the catalog hot path stays O(1) and works correctly even with tens of thousands of orphan events.
+- New `CatalogProvider.attribute_spec` API for typed metadata schemas: providers can publish per-attribute types and constraints (rating, author, tags) that the event table delegate honors. Tscat and cocat ship default attribute_specs for `rating`/`author`/`tags`. User-added attribute schemas are persisted via catalog attributes (cocat-syncable) with a precedence chain (catalog override → provider default).
+- New chip-style tag list editor for `list[str]` metadata columns; integrates with the existing `EventTableDelegate`.
+- Cell display uses scientific notation for very small / very large floats (`< 1e-3` or `>= 1e6`) so wide floating-point values no longer break column auto-fit. Column auto-fit also samples a bounded number of rows instead of measuring every cell.
+- Centralized default `attribute_spec` (rating/author/tags) on `CatalogProvider` so providers no longer redeclare them; browser/edit polish includes natural editing behavior on selected cells and a `+ Attribute` dialog with explicit type selection.
 
 ### Snippet generation refactor (Jinja2 templates)
 
@@ -111,23 +118,10 @@
 
 - AppStore now filters plugin entries by SciQLop version: each version's PEP 440 `sciqlop` specifier is matched against the running `SciQLop.__version__`. Incompatible versions disappear from the per-plugin version list, and a plugin with no compatible version is dropped from the listing entirely. Missing or malformed specifiers stay permissive so a broken metadata entry does not silently hide a plugin.
 
-### Catalogs
-
-- Drag & drop catalogs within the catalog browser tree (cross-provider copy + same-provider move). Cocat catalogs can be moved within the same room via a CRDT attribute mutation (`MOVE_CATALOG`); cross-room moves still need a cocat library primitive and remain unsupported.
-- Drag & drop a catalog from the browser onto a plot panel adds it as an overlay — same gesture as drag-from-tree, no menu round-trip.
-- New `CatalogProvider.attribute_spec` API for typed metadata schemas: providers can publish per-attribute types and constraints (rating, author, tags) that the event table delegate honors. Tscat and cocat ship default attribute_specs for `rating`/`author`/`tags`. User-added attribute schemas are persisted via catalog attributes (cocat-syncable) with a precedence chain (catalog override → provider default).
-- New chip-style tag list editor for `list[str]` metadata columns; integrates with the existing `EventTableDelegate`.
-- Cell display uses scientific notation for very small / very large floats (`< 1e-3` or `>= 1e6`) so wide floating-point values no longer break column auto-fit. Column auto-fit also samples a bounded number of rows instead of measuring every cell.
-- Centralized default `attribute_spec` (rating/author/tags) on `CatalogProvider` so providers no longer redeclare them; browser/edit polish includes natural editing behavior on selected cells and a `+ Attribute` dialog with explicit type selection.
-
 ### Plotting & providers
 
 - `PlotHints` are now provider-driven and aggregate across multiple products: when a plot panel hosts graphs from several providers, hints are merged via `provider.plot_hints(node)` per-graph rather than read once from the panel. Speasy graphs gain `SpeasyVariable.attrs` as ISTP fallback when the inventory metadata is sparse — labels and units now fall back to the variable's own attributes if the dataset metadata doesn't supply them.
 - `_plot_items` now returns a `dispose` handle, and product callbacks have been factored to share a common base (Scalar/Vector vs. Spectrogram dispatch lives in one place).
-
-### Speasy provider integration
-
-- Each Speasy `ConfigSection` is now exposed as a SciQLop `ConfigEntry` subclass: fields, types, defaults, and descriptions are read from Speasy at import time and rendered in the Settings UI through the existing delegate registry. Loading and saving go through Speasy's config rather than a parallel YAML file, so the Settings UI now controls Speasy's runtime configuration directly (proxy URL, cache retention, preferred CDA access method, ...).
 
 ### Cleanups
 
