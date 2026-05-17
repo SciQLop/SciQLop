@@ -64,6 +64,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         QtWidgets.QMainWindow.__init__(self)
         self.setObjectName("SciQLopMainWindow")
+        self._initial_geometry_applied = False
         self._setup_ui()
         sciqlop_app().panels_list_changed.connect(self.panels_list_changed)
         sciqlop_app().main_window = self
@@ -88,7 +89,16 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolsMenu.addAction("Plugin Store", self._show_appstore)
         self.welcome.backend.appstore_requested.connect(self._show_appstore)
 
-        self._center_and_maximise_on_screen()
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Apply the initial geometry on first show — running this from __init__
+        # is unreliable on macOS: setGeometry() before the native NSWindow
+        # exists is silently ignored and the window comes up at Qt's default
+        # ~640×480 (which looks like ~1/4 of a Retina screen). showEvent fires
+        # AFTER the platform window is created so the geometry actually sticks.
+        if not self._initial_geometry_applied:
+            self._initial_geometry_applied = True
+            self._center_and_maximise_on_screen()
 
     def _setup_dock_manager(self):
         QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FocusHighlighting, True)
