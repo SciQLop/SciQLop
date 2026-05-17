@@ -84,14 +84,14 @@ class StartupWindow(QWidget):
 
         self._phase_label = QLabel()
         self._phase_label.setStyleSheet(
-            "color: #ffffff; font-size: 16px; font-weight: bold; background: transparent;"
+            "color: #ffffff; font-size: 17px; font-weight: bold; background: transparent;"
         )
         text_layout.addWidget(self._phase_label)
 
         self._detail_label = QLabel()
         self._detail_label.setWordWrap(True)
         self._detail_label.setStyleSheet(
-            "color: #d8dbe0; font-size: 12px; background: transparent;"
+            "color: #f0f2f5; font-size: 14px; background: transparent;"
         )
         text_layout.addWidget(self._detail_label)
 
