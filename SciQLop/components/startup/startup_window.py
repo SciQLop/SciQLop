@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 _SPLASH_PATH = ":/splash.png"
+_SPLASH_BASE_WIDTH = 900  # logical px at DPR 1.0
 
 
 class StartupWindow(QWidget):
@@ -40,18 +41,23 @@ class StartupWindow(QWidget):
 
     def _apply_size(self) -> None:
         dpr = self._screen_dpr()
-        # Scale so the splash is legible on HiDPI — at least 1.5x on >2x DPR
+        # Scale so the splash is legible on HiDPI — at least 1.5x on >2x DPR.
+        # Always start from a fixed logical width so a large source image
+        # (1920x1168 in current resources) doesn't make the splash fill the
+        # whole screen.
         scale = max(1.0, dpr * 0.75)
+        base_w = _SPLASH_BASE_WIDTH
         if not self._background.isNull():
-            w = int(self._background.width() * scale)
-            h = int(self._background.height() * scale)
+            aspect = self._background.height() / self._background.width()
+            base_h = int(base_w * aspect)
         else:
-            w, h = int(600 * scale), int(316 * scale)
-        self.setFixedSize(w, h)
+            base_h = int(base_w * 316 / 600)
+        self.setFixedSize(int(base_w * scale), int(base_h * scale))
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 8, 12, 8)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
 
         layout.addStretch()
 
@@ -59,23 +65,37 @@ class StartupWindow(QWidget):
         self._warning_banner.setWordWrap(True)
         self._warning_banner.setTextInteractionFlags(Qt.TextSelectableByMouse)
         self._warning_banner.setStyleSheet(
-            "background: #e6a817; color: #222; padding: 8px; font-weight: bold;"
+            "background: #e6a817; color: #222;"
+            "padding: 10px 16px; font-size: 14px; font-weight: bold;"
         )
         layout.addWidget(self._warning_banner)
 
+        # Solid dark bar at the bottom of the splash holds all progress text.
+        # A scrim is the only reliable way to keep labels readable against a
+        # variable image background (the new screenshot has bright colormap
+        # bands in the bottom-right that wash out any semi-transparent text).
+        self._text_bar = QWidget(self)
+        self._text_bar.setStyleSheet(
+            "QWidget { background: rgba(15, 17, 22, 230); }"
+        )
+        text_layout = QVBoxLayout(self._text_bar)
+        text_layout.setContentsMargins(16, 10, 16, 12)
+        text_layout.setSpacing(4)
+
         self._phase_label = QLabel()
         self._phase_label.setStyleSheet(
-            "color: white; font-size: 14px; font-weight: bold;"
-            "background: rgba(0, 0, 0, 120); padding: 4px;"
+            "color: #ffffff; font-size: 16px; font-weight: bold; background: transparent;"
         )
-        layout.addWidget(self._phase_label)
+        text_layout.addWidget(self._phase_label)
 
         self._detail_label = QLabel()
+        self._detail_label.setWordWrap(True)
         self._detail_label.setStyleSheet(
-            "color: #ccc; font-size: 11px;"
-            "background: rgba(0, 0, 0, 80); padding: 2px;"
+            "color: #d8dbe0; font-size: 12px; background: transparent;"
         )
-        layout.addWidget(self._detail_label)
+        text_layout.addWidget(self._detail_label)
+
+        layout.addWidget(self._text_bar)
 
         btn_row = QHBoxLayout()
         self._continue_btn = QPushButton("Continue")
@@ -109,6 +129,7 @@ class StartupWindow(QWidget):
         super().paintEvent(event)
 
     def _enter_progress_state(self) -> None:
+        self._text_bar.setVisible(True)
         self._phase_label.setVisible(True)
         self._detail_label.setVisible(True)
         self._warning_banner.setVisible(False)
@@ -136,6 +157,7 @@ class StartupWindow(QWidget):
     def show_error(self, traceback_text: str) -> None:
         self._show_background = False
         self._enter_progress_state()
+        self._text_bar.setVisible(False)
         self._phase_label.setVisible(False)
         self._detail_label.setVisible(False)
         self._error_text.setPlainText(traceback_text)
