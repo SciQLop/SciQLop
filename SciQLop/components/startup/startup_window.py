@@ -142,7 +142,11 @@ class StartupWindow(QWidget):
         self._phase_label.setText(text)
 
     def set_detail(self, text: str) -> None:
+        text = text.strip()
         self._detail_label.setText(text)
+        # Hide the label entirely when there's nothing to show so the dark bar
+        # collapses to just the phase line instead of leaving a blank slot.
+        self._detail_label.setVisible(bool(text))
 
     def show_warning(self, message: str) -> None:
         self._warning_banner.setText(message)
