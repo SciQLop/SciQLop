@@ -1,10 +1,51 @@
 # Changelog
 
-## Unreleased
+## v0.12.0 — 2026-05-17
 
 ### Bug fixes
 
 - Fixed SciQLop aborting startup with an error dialog when the workspace dependency sync cannot reach the network (closes #115). `prepare_workspace` now treats a `uv sync` failure as a recoverable warning when the workspace venv exists, so users can still launch offline (e.g. on a plane) and use bundled features such as the CDF plugin and local files. A real venv breakage (no `python` executable) still propagates as before.
+- Fixed two SIGSEGV crash classes during plot/panel teardown caused by Shiboken wrappers calling methods on half-destructed C++ objects (`QWidget::sharedPainter` segfault). `LayerRenderer.dispose` and `_DataSpan.cleanup` now cache the relevant axis/panel signals at connect time and disconnect against the cached reference instead of reaching back through `self._plot.x_axis()` / `self._panel.time_range_changed` from a `destroyed` slot. The rule is documented in `docs/qt-lifetime-patterns.md` for plugin and layer authors.
+- Fixed the time-range bar's zoom-limit setter snapping to "Unlimited" whenever the requested value didn't exactly match a preset (so a plugin pushing `max_range_seconds=7200` silently disabled the clamp). Non-preset values now snap up to the smallest preset `>= value` and only fall through to "Unlimited" when no preset fits.
+- Fixed the macOS main window opening at the default ~640×480 (≈¼ of a Retina screen). `setGeometry()` from `__init__` is unreliable before the native NSWindow exists — initial geometry is now applied from the first `showEvent` so it actually takes effect across Linux, Windows, *and* macOS.
+- Fixed the crosshair toggle button on macOS rendering its icon larger than the button bezel. Switched the toggle from `QPushButton` to `QToolButton` (Qt's intended widget for icon-only toggles) so `iconSize` is respected exactly on every platform.
+- Fixed callback knob introspection failing under Python 3.14 lazy annotations when the callback was decorated with `functools.wraps`: annotation lookup now goes through `inspect.unwrap` + `inspect.get_annotations` so wrapper chains stay transparent.
+- Fixed `Pydantic` swallowing `ConfigEntry` subclasses' `category` / `subcategory` class attributes as model fields when annotated with `str`; `ConfigEntry.__pydantic_init_subclass__` now rejects that shape early with a clear error message so the misconfiguration cannot reach runtime silently.
+- Fixed `yaml.SafeDumper` choking on `pathlib.Path` values inside `ConfigEntry` fields; SciQLop registers a multi-representer so any `Path` subclass round-trips through the settings YAML.
+- Fixed the command palette `plot.product` action failing on products whose name contains a `/` (e.g. AMDA's `final / prelim`). Snippet generation already uses `//` as the tree separator; the command palette path now follows the same convention so product names round-trip losslessly.
+- Fixed `Tools › Agent Chat` opening multiple entries (one per registered backend) and failing to raise an already-docked Agent Chat tab. The menu now publishes a single entry that focuses (and shows) the wrapping `CDockWidget` regardless of which backend is currently active.
+- Fixed catalog-level actions appearing on providers/catalogs that don't support them — actions are now gated on the catalog's `Capability` bitmask so providers can publish only the operations they actually implement.
+- Fixed several silent failures in the `user_api` plot wrappers (`x_axis`/`y_axis`/`color_scale` accessors raising opaque `RuntimeError`s after the underlying `SciQLopPlot` was deleted); calls now go through `_get_impl_or_raise` so callers see a clear "the plot does not exist anymore" message.
+
+### macOS polish
+
+- Refreshed the startup splash with the current SciQLop dashboard screenshot and moved the phase + detail text into a solid dark bar at the bottom of the splash. The previous semi-transparent overlays were unreadable against bright colormap regions in the new image. Detail lines collapse when empty so the bar shrinks to a single phase row when there's nothing to report.
+- macOS bundles now derive their `Info.plist` `CFBundleShortVersionString` and `CFBundleVersion` from `pyproject.toml`, so the version reported by Finder / `mdls` matches the installed SciQLop.
+
+### Per-panel crosshair toggle
+
+- New per-panel chrome button that toggles the crosshair + hover tooltip on every plot in the panel at once. Catalog interaction is now a separate explicit mode that disables crosshair while it's active so the two gestures (click-to-select-event vs. crosshair value readout) no longer fight each other. State is per-panel — new plots inherit the panel's current toggle.
+
+### Speasy integration
+
+- Speasy SSC products now publish their `coordinate_system` parameter as a runtime `ChoiceKnob`, so users can switch between GSE / GSM / SM / GEI / GEO / MAG without re-issuing the plot.
+
+### Graphic primitives (`SciQLop.user_api.plot`)
+
+- `Pixmap`, `Ellipse`, `Text`, and `CurvedLine` gained keyword-only styling args (`line_color` / `line_width` / `line_style`, `fill_color`, `color`, `font_size` / `font_family`, `start_termination` / `stop_termination`, `start_direction` / `stop_direction`). Defaults now follow the plot's palette `WindowText` so primitives stay legible on both light and dark themes — passing `color=` / `line_color=` overrides explicitly.
+- `Pixmap` accepts an existing `QPixmap` in addition to a path or raw bytes.
+- `CurvedLine` seeds its Bezier control handles along the straight start→stop segment by default; the previous default of `(0, 0)` made the curve sweep toward 1970 on a time axis. `start_direction` / `stop_direction` kwargs still let callers add curvature.
+- Re-exports for `SciQLopPlotRange` (from `SciQLop.user_api.knobs`) and `Pixmap` / `Text` / `CurvedLine` / `LineTermination` (from `SciQLop.user_api.plot`) so notebook users no longer have to reach into `SciQLopPlots`.
+
+### Windows packaging
+
+- Fixed SciQLop's install silently failing on Windows when the source repository path contained spaces.
+- Embedded a DPI-awareness manifest in the launcher so the Windows installer renders correctly on HiDPI displays; the MSIX bundle no longer ships the multi-hundred-MB test-data archives.
+- Honored `SCIQLOP_DIST_DIR` to override the hardcoded `D:\dist` location used by the Windows build pipeline.
+
+### Documentation
+
+- Rewrote the bundled tutorial suite. Dropped the parallel `solutions/` tree, folded the standalone fluent-API tutorial into the basic plot panel chapter (tutorial 8 removed), reordered chapters, and added consistent "What you'll learn" / "Prerequisites" / "Next step" headers plus a shared glossary. `example.json` now declares `ipympl` so matplotlib cells render interactively in the embedded JupyterLab.
 
 ### Catalogs
 

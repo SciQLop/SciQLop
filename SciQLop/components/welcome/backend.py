@@ -82,14 +82,13 @@ def _discover_examples() -> list[Example]:
 
 
 _MOCK_NEWS = [
-    {"icon": "\U0001f4c2", "title": "Catalog Browser \u2014 browse, create, edit and overlay catalogs on plots", "date": "2026-04-10"},
-    {"icon": "\U0001f6cd\ufe0f", "title": "App Store \u2014 discover and install community plugins", "date": "2026-04-10"},
-    {"icon": "\u2318", "title": "Command Palette \u2014 press Ctrl+K to search and execute any action", "date": "2026-04-10"},
-    {"icon": "\U0001f3a8", "title": "New dark & neutral themes with runtime switching", "date": "2026-04-10"},
-    {"icon": "\U0001f4d3", "title": "Workspace overhaul \u2014 TOML manifests, uv venvs, examples & templates", "date": "2026-04-10"},
-    {"icon": "\U0001f50c", "title": "Plugin system \u2014 entry-point discovery, dependency resolution, product context menus", "date": "2026-04-10"},
-    {"icon": "\U0001f9ea", "title": "Expanded user API \u2014 catalog service, %plot / %%vp magics, fluent API, graphic primitives", "date": "2026-04-10"},
-    {"icon": "\U0001f4e6", "title": "Packaging \u2014 AppImage, Windows installer, Flatpak, and macOS DMG with notarization", "date": "2026-04-10"},
+    {"icon": "\U0001f39b\ufe0f", "title": "Parameterized data products \u2014 tune virtual products and speasy templated parameters live with knobs (sliders, choices, threshold lines, time-range spans)", "date": "2026-05-17"},
+    {"icon": "\U0001f4cd", "title": "Annotation layers \u2014 draw markers / spans / hlines from a callback with the @register_layer decorator, the %%layer magic, or drag-and-drop from the product tree", "date": "2026-05-17"},
+    {"icon": "\U0001f4cb", "title": "Copy Python code \u2014 right-click any plot to grab a runnable Speasy or SciQLop snippet that reproduces its graphs", "date": "2026-05-17"},
+    {"icon": "\U0001f4ca", "title": "2D density histograms + DSP toolbox \u2014 panel.histogram2d(...) and SciQLop.user_api.dsp (filters, FFT, spectrograms, segmentation) with SpeasyVariable round-trip", "date": "2026-05-17"},
+    {"icon": "\U0001f9ed", "title": "Editable event tables \u2014 inline metadata editing with type-aware widgets, bulk edit across selected rows, custom attribute columns, and drag-and-drop events between catalogs", "date": "2026-05-17"},
+    {"icon": "\U0001f50d", "title": "Runtime profiling \u2014 Tools \u203a Profiling captures a Chrome / Perfetto trace including speasy cache / proxy / HTTP / CDF layers, viewable in ui.perfetto.dev", "date": "2026-05-17"},
+    {"icon": "\u26a1", "title": "Faster, snappier startup \u2014 the splash paints before workspace resolution, plus per-panel crosshair toggle and catalog interaction mode", "date": "2026-05-17"},
 ]
 
 _APPSTORE_URL = "https://sciqlop.github.io/sciqlop-appstore/index.json"
