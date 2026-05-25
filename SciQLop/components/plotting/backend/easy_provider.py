@@ -12,6 +12,9 @@ from SciQLop.core.models import products, ProductsModelNode, ProductsModelNodeTy
 from SciQLop.core.enums import ParameterType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder, DataProviderReturnType
 from SciQLop.core import tracing
+from SciQLop.core.istp_hints import istp_metadata_to_hints
+from SciQLop.core.plot_hints import PlotHints
+from SciQLop.core.speasy_hints import variable_as_istp_meta
 from SciQLop.components.theming import register_icon
 from SciQLop.components import sciqlop_logging
 from inspect import signature
@@ -106,6 +109,7 @@ class EasyProvider(DataProvider):
                               None)
         )
         self._callback = callback
+        self._parameter_type = parameter_type
         self._debug = debug
         self._knobs_model = knobs_model
         self._knobs_kwarg_name = knobs_kwarg_name
@@ -221,6 +225,18 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
             knobs_kwarg=self._knobs_kwarg_name,
         )
         return {"Reproduce in SciQLop": snippet}
+
+    def plot_hints_from_variable(self, node, variable) -> PlotHints:
+        if not isinstance(variable, SpeasyVariable):
+            return PlotHints()
+        try:
+            meta = variable_as_istp_meta(variable)
+            if self._parameter_type == ParameterType.Spectrogram:
+                meta.setdefault("DISPLAY_TYPE", "spectrogram")
+            return istp_metadata_to_hints(meta)
+        except Exception:
+            log.debug("plot_hints_from_variable failed for %s", self.name, exc_info=True)
+            return PlotHints()
 
     def extended_metadata(self, ctx) -> dict:
         return {
