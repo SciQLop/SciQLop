@@ -116,6 +116,18 @@ Findings from a multi-agent review of `user_api/`, `components/{catalogs,plottin
 
 - [ ] ~~**A4. Drop the redundant `findChildren` re-lookup in `add_layer`**~~ — **withdrawn after API truth-check**: verified at runtime that `panel.plots()` returns `SciQLopPlotInterfacePtr` (interface), while `findChildren(SciQLopPlot)` returns the patched `SciQLopPlot` instance. The loop is load-bearing.
 
+### Follow-ups from the y2-axis work (2026-05-19)
+
+_The secondary-y-axis surface landed (`set_y2_range`, `y2_scale_type`, `y2_visible`, generic `set_axis_range`, `Graph.y_axis` retarget, `plot(..., y_axis="y2")`) with `tests/test_plot_y2_axis.py`. These were flagged while in there but scoped out._
+
+- [ ] **A5. `add_hline(value, axis="y2")`** — `_BasePlot.add_hline` always binds the line to the primary y-axis. `SciQLopHorizontalLine` exposes no `set_y_axis`, so a y2 horizontal line needs an upstream SciQLopPlots change first. **Blocked on SciQLopPlots** (see its backlog). Once unblocked, add an `axis` kwarg to `add_hline` and to `HorizontalLine.__init__`.
+
+- [ ] **A6. Axis label / scale getters** — `_BasePlot` has `set_axis_label` / `set_axis_scale` / `set_axis_range` (setters) but no symmetric getters. Add `axis_label(axis)`, `axis_scale(axis)`, `axis_range(axis)` reading through `_resolve_axis`. Backwards-compatible.
+
+- [ ] **A7. `Graph` accessors for name / color / pen** — the wrapper exposes only `data` / `visible` / `y_axis`, while the underlying plottable supports `set_name`, `set_color`, and component pens (`set_marker_pen`). Add `Graph.name`, `Graph.color` (and decide whether per-component pens belong here or on a component sub-handle). Verify each attr against the impl per the API-truth-check protocol before exposing.
+
+- [ ] **A8. Move `replot()` to `_BasePlot`** — `XYPlot.replot` and `TimeSeriesPlot.replot` are byte-identical except for the `_impl` vs `_get_impl_or_raise()` access. Hoist one copy onto `_BasePlot` (using `_get_impl_or_raise()`) and drop both subclass overrides.
+
 ## Tier 5 — Hygiene
 
 - [ ] **H1. Type-hint bug** — `speasy_provider.py:100` uses `List[str] or None` (always evaluates to `List[str]`). Should be `Optional[List[str]]`.

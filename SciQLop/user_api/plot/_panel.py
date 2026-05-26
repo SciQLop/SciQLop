@@ -158,7 +158,8 @@ class PlotPanel:
         """
         kwargs = _normalize_plot_kwargs(kwargs)
         _p, _g = _plot_product(self._get_impl_or_raise(), to_product_path(product), index=plot_index, **kwargs)
-        return to_plot(_p), to_plottable(_g)
+        wrapped_plot = to_plot(_p)
+        return wrapped_plot, to_plottable(_g, plot=wrapped_plot)
 
     @on_main_thread
     @_tracing.traced("PlotPanel.plot_data", cat="plot")
@@ -193,14 +194,16 @@ class PlotPanel:
         kwargs = _normalize_plot_kwargs(kwargs)
         _p, _g = _plot_static_data(self._get_impl_or_raise(), *ensure_arrays_of_double(x, y, z), index=plot_index,
                                    **kwargs)
-        return to_plot(_p), to_plottable(_g)
+        wrapped_plot = to_plot(_p)
+        return wrapped_plot, to_plottable(_g, plot=wrapped_plot)
 
     @on_main_thread
     @_tracing.traced("PlotPanel.plot_function", cat="plot")
     def plot_function(self, f, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
         kwargs = _normalize_plot_kwargs(kwargs)
         _p, _g = _plot_function(self._get_impl_or_raise(), f, index=plot_index, **kwargs)
-        return to_plot(_p), to_plottable(_g)
+        wrapped_plot = to_plot(_p)
+        return wrapped_plot, to_plottable(_g, plot=wrapped_plot)
 
     @experimental_api()
     @on_main_thread

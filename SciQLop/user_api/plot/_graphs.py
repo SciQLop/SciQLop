@@ -42,9 +42,42 @@ def _len_safe(a):
         return 0
 
 
+_VALID_Y_AXES = ("y", "y2")
+
+
 class Graph(Plottable):
-    def __init__(self, impl):
+    def __init__(self, impl, plot=None):
         self._impl = impl
+        self._plot = plot
+
+    @property
+    @on_main_thread
+    def y_axis(self) -> Optional[str]:
+        """Which y-axis this graph is attached to: ``"y"`` or ``"y2"``.
+
+        Returns ``None`` if the parent plot reference is not available
+        (e.g. graphs created through low-level paths that don't carry it).
+        """
+        if self._plot is None:
+            return None
+        plot_impl = self._plot._get_impl_or_raise()
+        current = self._impl.y_axis()
+        if current is plot_impl.y2_axis():
+            return "y2"
+        return "y"
+
+    @y_axis.setter
+    @on_main_thread
+    def y_axis(self, name: str) -> None:
+        if name not in _VALID_Y_AXES:
+            raise ValueError(
+                f"axis {name!r} not valid for a graph (expected one of: y, y2)"
+            )
+        if self._plot is None:
+            raise RuntimeError(
+                "cannot retarget this graph: its parent plot reference is unset"
+            )
+        self._impl.set_y_axis(self._plot._resolve_axis(name))
 
     @on_main_thread
     def set_data(self, x, y):
@@ -228,12 +261,12 @@ def _create_histogram2d(plot_impl, *args, name: str = "histogram",
     return hist
 
 
-def to_plottable(impl) -> Optional[Plottable]:
+def to_plottable(impl, plot=None) -> Optional[Plottable]:
     if impl is None:
         return None
     if isinstance(impl, _SciQLopHistogram2D):
         return Histogram2D(impl)
     if hasattr(impl, "gradient"):
         return ColorMap(impl)
-    return Graph(impl)
+    return Graph(impl, plot=plot)
 

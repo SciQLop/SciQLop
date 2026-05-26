@@ -80,6 +80,19 @@ def _set_axis_scale_type(scale_type: ScaleType, axis: _SciQLopPlotAxis):
         raise ValueError(f"Unknown scale type {scale_type}")
 
 
+def _bind_y_axis(plottable, y_axis: str):
+    """Retarget a freshly created plottable to the given y axis name.
+
+    No-op when the target is the default (``"y"``) or when the plottable is
+    not a line/curve/scatter Graph (colormaps share the plot's z scale and
+    cannot live on a different y axis)."""
+    if plottable is None or y_axis == "y":
+        return plottable
+    if isinstance(plottable, Graph):
+        plottable.y_axis = y_axis
+    return plottable
+
+
 def _reject_zero_width_range(axis_name: str, lo: float, hi: float) -> None:
     """SciQLopPlots silently no-ops on `set_range(t, t)`, leaving the axis at
     its previous range with no indication anything went wrong. Reject up
@@ -146,9 +159,13 @@ class _BasePlot(Plot):
         """
         impl = self._get_impl_or_raise()
         kwargs.setdefault('marker', _GraphMarkerShape.FilledCircle)
+        y_axis = kwargs.pop("y_axis", "y")
         graph = impl.scatter(*ensure_arrays_of_double(x, y), **kwargs)
         _fix_scatter_marker_pen(graph)
-        return Graph(graph)
+        wrapped = Graph(graph, plot=self)
+        if y_axis != "y":
+            wrapped.y_axis = y_axis
+        return wrapped
 
     @experimental_api()
     @on_main_thread
@@ -253,6 +270,64 @@ class _BasePlot(Plot):
         """
         _set_axis_scale_type(scale, self._resolve_axis(axis))
 
+    @on_main_thread
+    def set_axis_range(self, axis: _AxisName, lo: float, hi: float) -> None:
+        """Set a single axis range.
+
+        Parameters
+        ----------
+        axis : {"x", "y", "y2", "z"}
+            Which axis to update.
+        lo, hi : float
+            Range bounds. Swapped automatically when ``lo > hi``.
+
+        Raises
+        ------
+        ValueError
+            If the range is zero-width or the axis name is unknown.
+        """
+        lo, hi = min(lo, hi), max(lo, hi)
+        _reject_zero_width_range(axis, lo, hi)
+        self._resolve_axis(axis).set_range(lo, hi)
+
+    @experimental_api()
+    @on_main_thread
+    def set_y2_range(self, ymin: float, ymax: float) -> None:
+        """Set the secondary y-axis range.
+
+        Parameters
+        ----------
+        ymin, ymax : float
+            Range bounds. Swapped automatically when ``ymin > ymax``.
+        """
+        self.set_axis_range("y2", ymin, ymax)
+
+    @property
+    @experimental_api()
+    @on_main_thread
+    def y2_scale_type(self) -> ScaleType:
+        """Scale type (linear/log) of the secondary y-axis."""
+        return _get_axis_scale_type(self._resolve_axis("y2"))
+
+    @y2_scale_type.setter
+    @experimental_api()
+    @on_main_thread
+    def y2_scale_type(self, scale_type: ScaleType) -> None:
+        _set_axis_scale_type(scale_type, self._resolve_axis("y2"))
+
+    @property
+    @experimental_api()
+    @on_main_thread
+    def y2_visible(self) -> bool:
+        """Visibility of the secondary y-axis."""
+        return self._resolve_axis("y2").visible()
+
+    @y2_visible.setter
+    @experimental_api()
+    @on_main_thread
+    def y2_visible(self, value: bool) -> None:
+        self._resolve_axis("y2").set_visible(bool(value))
+
 
 class XYPlot(_BasePlot):
     """A class representing a 2D XY plot where the x-axis and y-axis can represent any type of data.
@@ -271,15 +346,23 @@ class XYPlot(_BasePlot):
 
     @on_main_thread
     def plot(self, *args, **kwargs):
-        """Plot data on the plot, either two vectors or a product path or a function"""
+        """Plot data on the plot, either two vectors or a product path or a function.
+
+        Pass ``y_axis="y2"`` to bind the resulting graph to the secondary
+        y-axis (line / curve / scatter only — not colormaps).
+        """
         kwargs["graph_type"] = kwargs.get("graph_type", _GraphType.ParametricCurve)
+        y_axis = kwargs.pop("y_axis", "y")
         if len(args) == 1:
             if callable(args[0]):
-                return Graph(self._impl.plot(*args, **kwargs))
+                return _bind_y_axis(Graph(self._impl.plot(*args, **kwargs), plot=self), y_axis)
             else:
                 raise ValueError("Invalid arguments")
         elif len(args) == 2:
-            return Graph(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
+            return _bind_y_axis(
+                Graph(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs), plot=self),
+                y_axis,
+            )
         elif len(args) == 3:
             _reject_if_colormap_already_present(self._get_impl_or_raise())
             return ColorMap(self._impl.plot(*ensure_arrays_of_double(*args), **kwargs))
@@ -415,15 +498,24 @@ class TimeSeriesPlot(_BasePlot):
             If the arguments are not valid.
 
         """
+        y_axis = kwargs.pop("y_axis", "y")
         if len(args) == 1:
             if callable(args[0]):
-                return to_plottable(self._impl.plot(*args, **kwargs))
+                return _bind_y_axis(to_plottable(self._impl.plot(*args, **kwargs), plot=self), y_axis)
             else:
-                return to_plottable(_plot_product(self._get_impl_or_raise(), to_product_path(args[0]), **kwargs))
+                return _bind_y_axis(
+                    to_plottable(_plot_product(self._get_impl_or_raise(), to_product_path(args[0]), **kwargs),
+                                 plot=self),
+                    y_axis,
+                )
         elif 3 >= len(args) >= 2:
             if len(args) == 3:
                 _reject_if_colormap_already_present(self._get_impl_or_raise())
-            return to_plottable(self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs))
+            return _bind_y_axis(
+                to_plottable(self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs),
+                             plot=self),
+                y_axis,
+            )
         raise ValueError("Invalid arguments")
 
     @experimental_api()
