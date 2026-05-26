@@ -33,6 +33,9 @@ Findings from a multi-agent review of `user_api/`, `components/{catalogs,plottin
 - [ ] **C10. `Worker`/`background_load` is broken** *(plugins, conf 92)*
   Same file, lines 53, 101 — `result.emit(*self.fn(...))` over a non-tuple return. Either fix to emit `(name, module)` or remove the dead path.
 
+- [ ] **C13. `_create_workspace` ignores `QFile.copy` return, chmods unconditionally** *(workspaces, conf 95)*
+  `SciQLop/components/workspaces/backend/workspaces_manager.py:124-127` — `QFile.copy(":/splash.png", dest)` returns `False` silently when the resource bundle isn't registered (or for any other copy failure); the next line `os.chmod(dest, 0o644)` then raises a cryptic `FileNotFoundError: …/workspaces/default/image.png` instead of "splash resource missing". Surfaced by sciqlop-plugins' compat smoke workflow which built `SciQLopMainWindow()` without going through `sciqlop_app.py`/`sciqlop_launcher.py` (where `qInitResources()` is called). Fix: check the return value, raise a clear error, and consider auto-registering resources from `SciQLop.__init__` so direct `SciQLopMainWindow()` use doesn't depend on the launcher.
+
 - [ ] **C11. `ThreadStorage` implementation hazards (NOT a functional bug — it's a deliberate `threading.local()` workaround)** *(speasy_provider)*
   `SciQLop/plugins/speasy_provider/speasy_provider.py:83-97` — exists to work around [diskcache#295](https://github.com/grantjenks/python-diskcache/issues/295) (recycled pool threads thrash SQLite connections). Functional in production but:
   (a) class-level `_storage = {}` makes all instances share the same dict (latent, only one instance today);
