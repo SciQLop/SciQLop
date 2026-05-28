@@ -776,6 +776,10 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self.installEventFilter(self)
         self.plot_added.connect(self._install_filter_on_plot)
         self.plot_added.connect(self._apply_theme_to_plot)
+        from SciQLop.components.plotting.backend.autoscale_percentile import (
+            apply_defaults_to_plot,
+        )
+        self.plot_added.connect(apply_defaults_to_plot)
 
         self._search_overlay = None
         if show_search_overlay:
