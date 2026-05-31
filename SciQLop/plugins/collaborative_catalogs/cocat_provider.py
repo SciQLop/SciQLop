@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import os
 from datetime import datetime, timezone
 from typing import Any, Optional
 import uuid as _uuid
 
 from PySide6.QtCore import QObject, QTimer
-from PySide6.QtGui import QIcon
 
 from SciQLop.components.catalogs import (
     Capability,
@@ -16,7 +14,6 @@ from SciQLop.components.catalogs import (
     ProviderAction,
 )
 from SciQLop.components.catalogs.backend.provider import _SENTINEL
-from SciQLop.components.theming import register_icon
 from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
@@ -35,11 +32,6 @@ def _decode_subpath(value) -> list[str]:
     if isinstance(value, str):
         return [s for s in value.split("/") if s]
     return [str(s) for s in value if s]
-
-
-__here__ = os.path.dirname(__file__)
-register_icon("link", lambda: QIcon(os.path.join(__here__, "..", "..", "resources", "icons", "link.png")))
-register_icon("link_off", lambda: QIcon(os.path.join(__here__, "..", "..", "resources", "icons", "link_off.png")))
 
 
 class CocatEvent(CatalogEvent):

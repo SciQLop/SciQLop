@@ -30,7 +30,6 @@ def _register_icons():
     register_icon("cluster", QIcon(":/icons/Cluster_mission_logo_pillars.jpg"))
     register_icon("archive", QIcon(":/icons/theme/dataSourceRoot.png"))
     register_icon("uiowaephtool", QIcon(f"{__here__}/../../resources/icons/Iowa_Hawkeyes_logo.svg"))
-    register_icon("cloud", lambda: QIcon(f"{__here__}/../../resources/icons/cloud.png"))
 
 
 def _is_ssc_index(index) -> bool:

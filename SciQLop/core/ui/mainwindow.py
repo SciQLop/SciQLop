@@ -30,14 +30,6 @@ from SciQLop.components.catalogs.ui import CatalogBrowser
 __here__ = os.path.dirname(__file__)
 
 register_icon("plot_panel", QtGui.QIcon("://icons/plot_panel_128.png"))
-register_icon("tree", QtGui.QIcon(f"{__here__}/../../resources/icons/tree.png"))
-register_icon("settings", QtGui.QIcon(f"{__here__}/../../resources/icons/settings.png"))
-register_icon("view_list", QtGui.QIcon(f"{__here__}/../../resources/icons/view_list.png"))
-register_icon("home", QtGui.QIcon(f"{__here__}/../../resources/icons/home.png"))
-
-register_icon("plot_properties", QtGui.QIcon(f"{__here__}/../../resources/icons/plot_properties.svg"))
-register_icon("my_location", QtGui.QIcon(f"{__here__}/../../resources/icons/my_location.svg"))
-register_icon("location_disabled", QtGui.QIcon(f"{__here__}/../../resources/icons/location_disabled.svg"))
 
 log = getLogger(__name__)
 
@@ -368,6 +360,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if widget is not None:
             doc = QtAds.CDockWidget(widget.windowTitle())
             doc.setWidget(widget)
+            if not widget.windowIcon().isNull():
+                doc.setIcon(widget.windowIcon())
             if size_hint_from_content:
                 doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
             dock_area = None

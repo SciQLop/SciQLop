@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import PySide6QtAds as QtAds
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
@@ -18,9 +19,12 @@ from PySide6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
+    QSplitter,
     QVBoxLayout,
     QWidget,
 )
+
+from SciQLop.components.theming import get_icon
 
 from .backend import AgentBackend, BackendContext
 from .chat import ChatInput, ChatMessage, ImageBlock, TextBlock, TranscriptView
@@ -38,6 +42,8 @@ class _AgentSession:
 class AgentChatDock(QWidget):
     def __init__(self, main_window, parent=None):
         super().__init__(parent)
+        self.setWindowTitle("Agents")
+        self.setWindowIcon(get_icon("assistant"))
         self._main_window = main_window
         self._tools = build_sciqlop_tools(main_window)
         self._tempdir = Path(tempfile.mkdtemp(prefix="sciqlop_agents_"))
@@ -88,23 +94,33 @@ class AgentChatDock(QWidget):
         header.addWidget(self._status_label, 1)
         layout.addLayout(header)
 
-        self._transcript = TranscriptView(self)
-        layout.addWidget(self._transcript, 1)
+        self._splitter = QSplitter(Qt.Orientation.Vertical, self)
+        self._splitter.setChildrenCollapsible(False)
 
-        input_row = QHBoxLayout()
-        self._input = ChatInput(self._tempdir / "pasted", self)
-        self._input.setFixedHeight(90)
+        self._transcript = TranscriptView(self._splitter)
+        self._splitter.addWidget(self._transcript)
+
+        input_panel = QWidget(self._splitter)
+        input_row = QHBoxLayout(input_panel)
+        input_row.setContentsMargins(0, 0, 0, 0)
+        self._input = ChatInput(self._tempdir / "pasted", input_panel)
+        self._input.setMinimumHeight(60)
         input_row.addWidget(self._input, 1)
 
-        self._send_btn = QPushButton("Send")
+        self._send_btn = QPushButton("Send", input_panel)
         self._send_btn.clicked.connect(self._on_send)
         input_row.addWidget(self._send_btn)
 
-        self._stop_btn = QPushButton("Stop")
+        self._stop_btn = QPushButton("Stop", input_panel)
         self._stop_btn.setVisible(False)
         self._stop_btn.clicked.connect(self._on_stop)
         input_row.addWidget(self._stop_btn)
-        layout.addLayout(input_row)
+        self._splitter.addWidget(input_panel)
+
+        self._splitter.setStretchFactor(0, 1)
+        self._splitter.setStretchFactor(1, 0)
+        self._splitter.setSizes([400, 90])
+        layout.addWidget(self._splitter, 1)
 
         QShortcut(QKeySequence("Ctrl+Return"), self._input, activated=self._on_send)
         QShortcut(QKeySequence("Ctrl+Enter"), self._input, activated=self._on_send)
@@ -407,49 +423,82 @@ class AgentChatDock(QWidget):
 
 
 _DOCK_ATTR = "_sciqlop_agent_dock"
-_MENU_ENTRY_ATTR = "_sciqlop_agent_menu_entry"
+_UI_READY_ATTR = "_sciqlop_agent_ui_ready"
+_DOCK_TITLE = "Agents"
 
 
 def ensure_agent_dock(main_window) -> AgentChatDock:
+    """Return the single shared agent chat dock, creating it and registering
+    its whole UI (docked panel, toolbar button, Tools-menu entry) on first
+    call.
+
+    Backend plugins (sciqlop_claude, sciqlop_albert, sciqlop_copilot,
+    sciqlop_opencode, …) must only ``register_agent_backend(...)`` and call
+    this — they must NOT register any UI themselves. The chat UI is central
+    and owned by core, so it appears exactly once no matter how many backends
+    are installed.
+    """
     dock = getattr(main_window, _DOCK_ATTR, None)
     if dock is None:
         dock = AgentChatDock(main_window=main_window)
         setattr(main_window, _DOCK_ATTR, dock)
     else:
         dock.refresh_backends()
-    _ensure_agent_menu_entry(main_window, dock)
+    _register_agent_ui(main_window, dock)
     return dock
 
 
-def _ensure_agent_menu_entry(main_window, dock) -> None:
-    """Add a single "Agent Chat" entry to the Tools menu (idempotent).
-
-    Backend plugins (sciqlop_claude, sciqlop_albert, sciqlop_copilot, …) all
-    open the same dock, so the menu entry must be shared too — otherwise the
-    Tools menu grows one duplicate per installed backend.
-    """
-    if getattr(main_window, _MENU_ENTRY_ATTR, None) is not None:
+def _register_agent_ui(main_window, dock) -> None:
+    """Register the shared chat UI exactly once, idempotently across repeated
+    ``ensure_agent_dock`` calls from every installed backend plugin."""
+    if getattr(main_window, _UI_READY_ATTR, False):
         return
+    dock_widget = _dock_agent_panel(main_window, dock)
+    if dock_widget is None:
+        return
+    _add_toolbar_toggle(main_window, dock_widget)
+    _add_tools_menu_entry(main_window, dock)
+    setattr(main_window, _UI_READY_ATTR, True)
+
+
+def _dock_agent_panel(main_window, dock):
+    """Dock the chat panel, hidden, with the ``assistant`` tab icon."""
+    dock_manager = getattr(main_window, "dock_manager", None)
+    if dock_manager is None:
+        return None
+    main_window.addWidgetIntoDock(QtAds.DockWidgetArea.RightDockWidgetArea, dock)
+    dock_widget = dock_manager.findDockWidget(_DOCK_TITLE)
+    if dock_widget is not None:
+        dock_widget.setIcon(get_icon("assistant"))
+        dock_widget.toggleView(False)
+    return dock_widget
+
+
+def _add_toolbar_toggle(main_window, dock_widget) -> None:
+    toolbar = getattr(main_window, "toolBar", None)
+    if toolbar is None:
+        return
+    toggle = dock_widget.toggleViewAction()
+    toggle.setIcon(get_icon("assistant"))
+    toggle.setText("Agent Chat")
+    toolbar.addAction(toggle)
+
+
+def _add_tools_menu_entry(main_window, dock) -> None:
     tools_menu = getattr(main_window, "toolsMenu", None)
     if tools_menu is None:
         return
-    from SciQLop.components.theming import theme_icon
-    action = tools_menu.addAction(
-        theme_icon("chat"), "Agent Chat",
+    tools_menu.addAction(
+        get_icon("assistant"), "Agent Chat",
         lambda: _reveal_agent_dock(main_window, dock),
     )
-    setattr(main_window, _MENU_ENTRY_ATTR, action)
 
 
 def _reveal_agent_dock(main_window, dock) -> None:
-    """Bring the agents dock into view.
-
-    The dock is wrapped in a QtAds CDockWidget by the first backend plugin
-    to load (``main_window.addWidgetIntoDock(...)``); plain ``dock.show()``
-    on the inner widget is a no-op once the wrapping CDockWidget has been
-    hidden via ``toggleView(False)``. Find the CDockWidget that holds our
-    inner ``dock`` and toggle it visible + raise it.
-    """
+    """Bring the agents dock into view. ``dock.show()`` on the inner widget is
+    a no-op once the wrapping CDockWidget has been hidden via
+    ``toggleView(False)``, so find that CDockWidget by identity and toggle it
+    visible + raise it."""
     dock_manager = getattr(main_window, "dock_manager", None)
     if dock_manager is not None:
         for cdw in dock_manager.dockWidgets():

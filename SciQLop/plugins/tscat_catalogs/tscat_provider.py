@@ -142,7 +142,7 @@ class TscatCatalogProvider(CatalogProvider):
             ProviderAction(
                 name="Clean up orphan events…",
                 callback=lambda _: self._show_orphan_cleanup_dialog(),
-                icon=theme_icon("trash"),
+                icon=theme_icon("delete"),
             ),
         ]
 

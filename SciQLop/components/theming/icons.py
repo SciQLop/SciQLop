@@ -1,6 +1,6 @@
 from pathlib import Path
 from PySide6.QtGui import QIcon, QIconEngine, QColor, QPixmap, QPainter, QPalette
-from PySide6.QtCore import QSize, QRect
+from PySide6.QtCore import QSize, QRect, QPoint, Qt
 from SciQLopPlots import Icons
 from PySide6.QtWidgets import QApplication
 from SciQLop.components.storage import cache_dir
@@ -49,28 +49,22 @@ def flush_deferred_icons():
         Icons.add_icon(name, factory())
 
 
-def _mutate_icon_color(icon: QIcon, color: QColor) -> QIcon:
-    """Replaces the black pixels of the icon with the given color, while keeping the transparency and the white pixels unchanged
+def _tinted(pixmap: QPixmap, color: QColor) -> QPixmap:
+    """Recolor every opaque pixel of *pixmap* to *color*, preserving the source
+    alpha (so anti-aliased edges stay smooth) and its devicePixelRatio.
 
-    Parameters
-    ----------
-    icon : QIcon
-        The icon to mutate
-    color : QColor
-        The color to replace the black pixels with
+    Resolution-independent and GPU-friendly: a ``CompositionMode_SourceIn``
+    fill instead of a per-pixel Python loop, so it works at any size/DPR.
     """
-    if len(icon.availableSizes()) == 0:
-        size = QSize(24, 24)
-    else:
-        size = icon.availableSizes()[0]
-    pixmap = icon.pixmap(size)
-    image = pixmap.toImage()
-    for x in range(image.width()):
-        for y in range(image.height()):
-            c = image.pixelColor(x, y)
-            if c.alpha() != 0:
-                image.setPixelColor(x, y, color)
-    return QIcon(QPixmap.fromImage(image))
+    out = QPixmap(pixmap.size())
+    out.setDevicePixelRatio(pixmap.devicePixelRatio())
+    out.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(out)
+    painter.drawPixmap(0, 0, pixmap)
+    painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
+    painter.fillRect(out.rect(), color)
+    painter.end()
+    return out
 
 
 def opposite_color(color: QColor) -> QColor:
@@ -133,67 +127,86 @@ def _app_base_color() -> QColor:
 
 
 class _ThemeIconEngine(QIconEngine):
-    """Resolves a named icon against the current palette on every paint call."""
+    """Tints a registered icon to contrast the current palette. All rendering
+    flows through paint(), which draws the source at the painter's device
+    resolution — so a scalable (SVG) source stays crisp at any DPI, per the
+    QIconEngine contract (Qt 6.11)."""
 
-    def __init__(self, name: str, use_style_dir: bool):
+    def __init__(self, name: str):
         super().__init__()
         self._name = name
-        self._use_style_dir = use_style_dir
-
-    def _resolve(self) -> QIcon:
-        if self._use_style_dir:
-            from .settings import SciQLopStyle
-            path = per_palette_icon_dir(SciQLopStyle().color_palette) / f"{self._name}.png"
-            return QIcon(str(path))
-        return _mutate_icon_color(Icons.get_icon(self._name), opposite_color(_app_base_color()))
 
     def paint(self, painter: QPainter, rect: QRect, mode, state):
-        self._resolve().paint(painter, rect, mode, state)
+        dpr = painter.device().devicePixelRatioF()
+        device = QSize(round(rect.width() * dpr), round(rect.height() * dpr))
+        source = Icons.get_icon(self._name).pixmap(device)
+        tinted = _tinted(source, opposite_color(_app_base_color()))
+        tinted.setDevicePixelRatio(dpr)
+        painter.drawPixmap(rect, tinted)
 
     def pixmap(self, size: QSize, mode, state) -> QPixmap:
-        return self._resolve().pixmap(size, mode, state)
+        return self.scaledPixmap(size, mode, state, 1.0)
+
+    def scaledPixmap(self, size: QSize, mode, state, scale: float) -> QPixmap:
+        # `size` is device-independent (Qt >= 6.8); produce a scale-aware target
+        # and let paint() fill it at the right device resolution.
+        pixmap = QPixmap(QSize(round(size.width() * scale), round(size.height() * scale)))
+        pixmap.setDevicePixelRatio(scale)
+        pixmap.fill(Qt.GlobalColor.transparent)
+        painter = QPainter(pixmap)
+        self.paint(painter, QRect(QPoint(0, 0), size), mode, state)
+        painter.end()
+        return pixmap
 
     def clone(self) -> QIconEngine:
-        return _ThemeIconEngine(self._name, self._use_style_dir)
+        return _ThemeIconEngine(self._name)
 
 
 def theme_icon(name: str) -> QIcon:
-    """Return an icon that automatically updates when the theme changes."""
-    return QIcon(_ThemeIconEngine(name, use_style_dir=True))
+    """Return an icon that re-tints to the current palette on every paint and
+    stays crisp at any DPI."""
+    return QIcon(_ThemeIconEngine(name))
 
 
 def theme_adapted_icon(name: str) -> QIcon:
-    """Return a registry icon that auto-adapts its color to the current palette."""
-    return QIcon(_ThemeIconEngine(name, use_style_dir=False))
+    """Alias of :func:`theme_icon`, kept for callers that used the
+    registry-based variant before the two engines were unified."""
+    return QIcon(_ThemeIconEngine(name))
 
 
 def get_icon(name: str, auto_adapt_colors=True) -> QIcon:
-    icon = Icons.get_icon(name)
     if auto_adapt_colors:
-        return _mutate_icon_color(icon,
-                                  opposite_color(_app_base_color()))
-    else:
-        return icon
+        return QIcon(_ThemeIconEngine(name))
+    return Icons.get_icon(name)
 
 
-def _is_theme_icon(name: str) -> bool:
-    return "://icons/theme/" in name or ":/icons/theme/" in name
+def _is_theme_icon(path: str) -> bool:
+    return ":/icons/theme/" in path or "://icons/theme/" in path
 
 
 def build_icon_set_for_palette(palette_name: str, base_color: str or QColor):
-    """Generates a variant of the default icon set with colors adapted to the given palette."""
-    if type(base_color) is str:
+    """Bake palette-recolored PNGs that the stylesheet references via ``url()``
+    (a Qt stylesheet can neither tint nor rescale a registry QIcon). Each theme
+    icon is written at @1x and @2x so the QSS indicators stay crisp on HiDPI;
+    the source extension is irrelevant — SVG sources just render sharper."""
+    if isinstance(base_color, str):
         base_color = QColor(base_color)
     dest_color = opposite_color(base_color)
-    for icon in filter(_is_theme_icon, Icons.icons()):
-        if '/' in icon:
-            name = icon.split("/")[-1].split(".png")[0]
-        else:
-            name = icon.split(":")[-1].split(".png")[0]
-        if 'theme' in name:
-            name = name.split("://icons/theme/")[-1].split(".png")[0]
-        mutated_icon = _mutate_icon_color(get_icon(icon, auto_adapt_colors=False), dest_color)
-        mutated_icon.pixmap(QSize(24, 24)).save(str(per_palette_icon_dir(palette_name) / f"{name}.png"))
+    out_dir = per_palette_icon_dir(palette_name)
+    for path in filter(_is_theme_icon, Icons.icons()):
+        _bake_recolored_icon(Icons.get_icon(path), Path(path).stem, dest_color, out_dir)
+
+
+def _bake_recolored_icon(source: QIcon, name: str, color: QColor, out_dir: Path) -> None:
+    for scale, suffix in ((1, ""), (2, "@2x")):
+        size = QSize(24 * scale, 24 * scale)
+        pixmap = source.pixmap(size)
+        if not pixmap.isNull() and pixmap.size() != size:
+            pixmap = pixmap.scaled(
+                size, Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.SmoothTransformation,
+            )
+        _tinted(pixmap, color).save(str(out_dir / f"{name}{suffix}.png"))
 
 
 def list_icons() -> list[str]:
