@@ -81,6 +81,56 @@ def test_vp_magic_custom_path(qtbot, qapp, main_window):
     assert entry is not None
 
 
+def test_vp_magic_eval_failure_raises_usage_error(qtbot, qapp, main_window):
+    """Without --debug, a failing callback (no return annotation) must surface
+    via UsageError so the notebook cell shows a red traceback instead of a
+    silent log line."""
+    from IPython.core.error import UsageError
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl
+
+    cell = (
+        "def broken(start, stop):\n"
+        "    raise RuntimeError('boom')\n"
+    )
+    with pytest.raises(UsageError, match="boom"):
+        _vp_magic_impl("--start 0 --stop 10", cell)
+
+
+def test_vp_magic_skips_underscore_helpers(qtbot, qapp, main_window):
+    """A cell with helper `_foo` and a public `vp` should register `vp`."""
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry
+
+    cell = (
+        "def _scale(x):\n"
+        "    import numpy as np\n"
+        "    return np.asarray(x) * 2\n"
+        "def with_helper(start: float, stop: float) -> Scalar:\n"
+        "    import numpy as np\n"
+        "    x = np.linspace(start, stop, 50)\n"
+        "    return x, _scale(x)\n"
+    )
+    _vp_magic_impl("", cell)
+    entry = _registry.get("with_helper")
+    assert entry is not None
+    assert entry.product_type == "scalar"
+
+
+def test_vp_magic_multiple_public_functions_raises(qtbot, qapp, main_window):
+    from IPython.core.error import UsageError
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl
+
+    cell = (
+        "def a(start: float, stop: float) -> Scalar:\n"
+        "    import numpy as np\n"
+        "    x = np.linspace(start, stop, 10); return x, x\n"
+        "def b(start: float, stop: float) -> Scalar:\n"
+        "    import numpy as np\n"
+        "    x = np.linspace(start, stop, 10); return x, x\n"
+    )
+    with pytest.raises(UsageError, match="multiple public functions"):
+        _vp_magic_impl("", cell)
+
+
 def test_vp_magic_sees_user_namespace(qtbot, qapp, main_window):
     """Verify that the function can see variables from the user's namespace."""
     from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry

@@ -27,6 +27,8 @@ _load_module("SciQLop.user_api.virtual_products.registry",
 _load_module("SciQLop.user_api.virtual_products.magic",
              "SciQLop/user_api/virtual_products/magic.py")
 
+from IPython.core.error import UsageError
+
 from SciQLop.user_api.virtual_products.magic import (
     MutableCallback, VPRegistry, _extract_function, _infer_type_from_data,
     _infer_multicomponent_labels,
@@ -103,6 +105,32 @@ class TestExtractFunction:
         ns = {"math": math}
         func = _extract_function(cell, ns)
         assert func(0, 0) == math.pi
+
+    def test_skips_underscore_helpers(self):
+        cell = (
+            "def _helper(x):\n    return x * 2\n"
+            "def vp(start, stop):\n    return _helper(start), _helper(stop)\n"
+        )
+        func = _extract_function(cell, {})
+        assert func.__name__ == "vp"
+        assert func(1, 2) == (2, 4)
+
+    def test_multiple_public_functions_raises(self):
+        cell = (
+            "def a(start, stop):\n    return start\n"
+            "def b(start, stop):\n    return stop\n"
+        )
+        with pytest.raises(UsageError, match="multiple public functions"):
+            _extract_function(cell, {})
+
+    def test_only_private_functions_raises(self):
+        cell = "def _hidden(start, stop):\n    return 0\n"
+        with pytest.raises(UsageError, match="no public function"):
+            _extract_function(cell, {})
+
+    def test_no_function_raises(self):
+        with pytest.raises(UsageError, match="no function definition"):
+            _extract_function("x = 1\n", {})
 
 
 class TestInferType:

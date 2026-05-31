@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 import numpy as np
+from IPython.core.error import UsageError
 from IPython.core.magic import needs_local_scope
 
 from SciQLop.user_api.virtual_products.registry import (
@@ -64,13 +65,34 @@ def _parse_args(line: str):
 
 
 def _extract_function(cell: str, user_ns: dict) -> callable:
-    """Execute the cell to define the function, return the first top-level def."""
+    """Run the cell and return the VP function.
+
+    Rules:
+    - Top-level ``def _foo(...)`` are treated as private helpers and skipped.
+    - Exactly one public top-level ``def`` is expected; zero or more than one
+      raises ``UsageError`` with guidance (prefix helpers with ``_``).
+    """
     exec(cell, user_ns)
     tree = ast.parse(cell)
+    public, private = [], []
     for node in tree.body:
         if isinstance(node, ast.FunctionDef):
-            return user_ns[node.name]
-    raise ValueError("No function definition found in cell")
+            (private if node.name.startswith("_") else public).append(node.name)
+    if not public:
+        if private:
+            raise UsageError(
+                "%%vp: no public function defined in cell — all top-level "
+                f"defs start with '_' ({', '.join(private)}). Rename the "
+                "virtual-product callback without the leading underscore."
+            )
+        raise UsageError("%%vp: no function definition found in cell")
+    if len(public) > 1:
+        raise UsageError(
+            "%%vp: cell defines multiple public functions "
+            f"({', '.join(public)}). Keep one VP callback per cell and "
+            "rename helpers with a leading underscore (e.g. `def _helper(...)`)."
+        )
+    return user_ns[public[0]]
 
 
 def _resolve_time_range(args, func):
@@ -180,8 +202,14 @@ def vp_magic(line: str, cell: str, local_ns=None):
             eval_error = e
             cached_data = None
             if not args.debug:
-                _get_log().error(f"Cannot evaluate {func_name}: {e}")
-                return
+                _get_log().error(f"Cannot evaluate {func_name}: {e}", exc_info=True)
+                raise UsageError(
+                    f"%%vp: cannot evaluate `{func_name}` over "
+                    f"[{start}, {stop}]: {type(e).__name__}: {e}. "
+                    "Add `--debug` to see the full traceback and intermediate "
+                    "data, or add a return annotation (e.g. `-> Scalar`, "
+                    "`-> Vector[\"Bx\", \"By\", \"Bz\"]`) to skip the test call."
+                ) from e
         eval_elapsed = _time.monotonic() - t0
 
     # Infer type from data if annotation was missing
