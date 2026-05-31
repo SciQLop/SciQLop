@@ -1,10 +1,15 @@
 """Tests for StartupWindow widget."""
 
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import QApplication
 
 from SciQLop.components.startup.startup_window import StartupWindow
+
+
+def _half_screen() -> QSize:
+    avail = QApplication.primaryScreen().availableGeometry()
+    return QSize(avail.width() // 2, avail.height() // 2)
 
 
 @pytest.fixture
@@ -79,3 +84,31 @@ class TestWindowFlags:
         until the launcher closes it; otherwise Z-order races make the
         not-yet-shown main window flash above the splash."""
         assert window.windowFlags() & Qt.WindowStaysOnTopHint
+
+
+class TestSize:
+    def test_splash_never_exceeds_half_screen(self, window):
+        half = _half_screen()
+        assert window.width() <= half.width() + 1
+        assert window.height() <= half.height() + 1
+
+    def test_error_window_never_exceeds_half_screen(self, window):
+        window.show_error("boom")
+        half = _half_screen()
+        assert window.width() <= half.width() + 1
+        assert window.height() <= half.height() + 1
+
+    def test_fit_within_screen_clamps_oversized_and_keeps_aspect(self):
+        half = _half_screen()
+        oversized = QSize(half.width() * 4, half.height() * 4)
+        fitted = StartupWindow._fit_within_screen(oversized)
+        assert fitted.width() <= half.width() + 1
+        assert fitted.height() <= half.height() + 1
+        assert abs(
+            fitted.width() / fitted.height()
+            - oversized.width() / oversized.height()
+        ) < 0.01
+
+    def test_fit_within_screen_leaves_small_sizes_untouched(self):
+        small = QSize(120, 80)
+        assert StartupWindow._fit_within_screen(small) == small

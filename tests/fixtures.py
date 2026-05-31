@@ -11,12 +11,10 @@ def qapp_cls():
 
 @pytest.fixture(scope="session")
 def sciqlop_resources(qapp):
-    """One-time session setup: Qt resources, icons, event loop."""
-    from SciQLop.resources import qInitResources
+    """One-time session setup: icons, event loop."""
     from SciQLop.components.theming.icons import flush_deferred_icons
     from SciQLop.core.sciqlop_application import sciqlop_event_loop
 
-    qInitResources()
     flush_deferred_icons()
     sciqlop_event_loop()
 

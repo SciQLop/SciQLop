@@ -126,6 +126,51 @@ def test_read_switch_target_missing(tmp_path):
     assert target is None
 
 
+# --- _prepare_on_worker_thread tests ---
+#
+# The splash froze ("stuck") because workspace preparation ran synchronously on
+# the launcher's GUI thread, starving the Qt event loop during uv's silent
+# stretches. Prep must run on a worker thread while the GUI loop keeps spinning.
+
+
+def test_prepare_on_worker_thread_keeps_event_loop_alive(qapp):
+    """While a slow prepare_fn runs, a main-thread timer must still fire — proof
+    the GUI event loop is not blocked (so the splash keeps repainting)."""
+    import time
+    from PySide6.QtCore import QTimer
+    from SciQLop.sciqlop_launcher import _prepare_on_worker_thread
+
+    probe = []
+    QTimer.singleShot(30, lambda: probe.append("fired"))
+
+    def slow_prepare(on_output):
+        on_output("resolving packages…")
+        time.sleep(0.25)  # blocks the WORKER thread, not the GUI thread
+        return Path("/usr/bin/python-from-prep")
+
+    details = []
+    py, err = _prepare_on_worker_thread(slow_prepare, Path("/default/py"), details.append)
+
+    assert err is None
+    assert py == Path("/usr/bin/python-from-prep")  # result propagated
+    assert probe == ["fired"]                       # loop ran during the 0.25s prep
+    assert "resolving packages…" in [d.strip() for d in details]  # output delivered
+
+
+def test_prepare_on_worker_thread_captures_errors(qapp):
+    """A crash in prepare_fn is returned as a traceback, not raised, and the
+    python path falls back to the default."""
+    from SciQLop.sciqlop_launcher import _prepare_on_worker_thread
+
+    def failing_prepare(on_output):
+        raise RuntimeError("uv blew up")
+
+    py, err = _prepare_on_worker_thread(failing_prepare, Path("/default/py"), lambda _: None)
+
+    assert py == Path("/default/py")
+    assert err is not None and "uv blew up" in err
+
+
 # --- check_xcb_cursor tests ---
 
 @patch("SciQLop.sciqlop_launcher.platform.system", return_value="Linux")

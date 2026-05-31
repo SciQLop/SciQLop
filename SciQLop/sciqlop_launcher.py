@@ -118,15 +118,55 @@ def _last_launch_log_path() -> Path:
     return log_dir / "last-launch.log"
 
 
+def _prepare_on_worker_thread(prepare_fn, default_python: Path, on_detail) -> tuple[Path, str | None]:
+    """Run ``prepare_fn(on_output)`` on a worker thread while a local Qt event
+    loop keeps spinning on the GUI thread, so the splash stays responsive during
+    the long, often-silent workspace preparation (uv resolve/download/sync).
+
+    Output lines are delivered to ``on_detail`` on the GUI thread via a queued
+    signal (the worker must never touch widgets directly). Returns
+    ``(python_path, error_traceback)`` — ``error_traceback`` is ``None`` on
+    success, and ``python_path`` falls back to ``default_python`` on failure or
+    when ``prepare_fn`` returns ``None``.
+    """
+    import threading
+    from PySide6.QtCore import QEventLoop, QObject, Signal
+
+    class _Signals(QObject):
+        detail = Signal(str)
+        done = Signal()
+
+    signals = _Signals()
+    state: dict = {"python_path": default_python, "error": None}
+
+    def _work() -> None:
+        try:
+            result = prepare_fn(signals.detail.emit)
+            if result is not None:
+                state["python_path"] = result
+        except Exception:
+            import traceback
+            state["error"] = traceback.format_exc()
+        finally:
+            signals.done.emit()
+
+    loop = QEventLoop()
+    signals.detail.connect(on_detail)  # queued (worker → GUI thread)
+    signals.done.connect(loop.quit)    # queued; pending even if emitted before exec()
+    thread = threading.Thread(target=_work, daemon=True)
+    thread.start()
+    loop.exec()                        # GUI thread spins → splash repaints
+    thread.join(timeout=1.0)
+    return state["python_path"], state["error"]
+
+
 def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | None) -> tuple[int, Path | None]:
     from PySide6.QtCore import QEventLoop, QTimer
     from PySide6.QtWidgets import QApplication
-    from SciQLop.resources import qInitResources
     from SciQLop.components.startup.startup_window import StartupWindow
 
     existing = QApplication.instance()
     app = existing or QApplication(sys.argv[:1])
-    qInitResources()
 
     window = StartupWindow()
     window.center_on_screen()
@@ -150,17 +190,11 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     window.set_phase("Preparing workspace...")
     app.processEvents()
 
-    python_path = default_python
-    try:
-        def on_output(line: str) -> None:
-            window.set_detail(line)
-            app.processEvents()
-        result = prepare_fn(on_output)
-        if result is not None:
-            python_path = result
-    except Exception:
-        import traceback
-        window.show_error(traceback.format_exc())
+    python_path, prep_error = _prepare_on_worker_thread(
+        prepare_fn, default_python, window.set_detail
+    )
+    if prep_error is not None:
+        window.show_error(prep_error)
         app.exec()
         return 1, workspace_dir
 

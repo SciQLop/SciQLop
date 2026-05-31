@@ -1,6 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>splash.png</file>
-        <file>plot_panel_dd_background.png</file>
-    </qresource>
-</RCC>

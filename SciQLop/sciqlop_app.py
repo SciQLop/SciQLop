@@ -70,14 +70,12 @@ def start_sciqlop():
     from PySide6 import QtPrintSupport, QtQml
 
     from SciQLop.core.sciqlop_application import sciqlop_event_loop, sciqlop_app
-    from SciQLop.resources import qInitResources
 
     print(str(QtPrintSupport) + str(QtQml))
 
     app = sciqlop_app()
     from SciQLop.core import tracing as _tracing
     _tracing.set_thread_name("Qt-Main")
-    qInitResources()
     from SciQLop.components.theming.icons import flush_deferred_icons
     flush_deferred_icons()
     sciqlop_event_loop()

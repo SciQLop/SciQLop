@@ -123,7 +123,8 @@ class WorkspaceManager(QObject):
         manifest_path = os.path.join(path, "workspace.sciqlop")
         dest = os.path.join(path, "image.png")
         if not os.path.exists(dest):
-            QFile.copy(":/splash.png", dest)
+            from SciQLop.resources import resource_path
+            QFile.copy(resource_path("splash.png"), dest)
             os.chmod(dest, 0o644)
         manifest.image = "image.png"
         manifest.save(manifest_path)
