@@ -22,6 +22,17 @@ def _ensure_contiguous(v):
     return np.ascontiguousarray(v)
 
 
+def _has_zero_width_component(arrays) -> bool:
+    """True if any array has a zero-length component dimension (e.g. ``(N, 0)``).
+    Such a buffer makes ``stride == 0`` in the C++ row-major multi data source,
+    tripping ``Q_ASSERT(stride > 0)`` and aborting the process. An empty time
+    vector (``rows == 0``) is fine — only non-leading dimensions matter here."""
+    return any(
+        getattr(a, "ndim", 0) >= 2 and 0 in getattr(a, "shape", ())[1:]
+        for a in arrays
+    )
+
+
 def _node_label(node) -> str:
     try:
         path = node.path()
@@ -124,6 +135,10 @@ class DataProvider:
                     tracing.counter("provider.points", 0, cat="data")
                     return []
                 if isinstance(v, list) or isinstance(v, tuple):
+                    if _has_zero_width_component(v):
+                        log.warning(f"{product}: dropping data with a zero-width "
+                                    f"component (shapes {[getattr(a, 'shape', None) for a in v]})")
+                        return []
                     return v
                 n_points, n_bytes = _variable_volume(v)
                 tracing.counter("provider.points", n_points, cat="data")
@@ -136,8 +151,14 @@ class DataProvider:
                     time = datetime64_to_epoch(v.time)
                     axes = _filter_axis_numeric_axes(v.axes[1:])
                     if len(axes) == 0 or self.graph_type(node) in (GraphType.MultiLines, GraphType.SingleLine):
-                        return [time, _ensure_contiguous(v.values)]
-                    return [time, _ensure_contiguous(axes[0].values), _ensure_contiguous(v.values)]
+                        result = [time, _ensure_contiguous(v.values)]
+                    else:
+                        result = [time, _ensure_contiguous(axes[0].values), _ensure_contiguous(v.values)]
+                    if _has_zero_width_component(result):
+                        log.warning(f"{product}: dropping data with a zero-width "
+                                    f"component (shapes {[a.shape for a in result]})")
+                        return []
+                    return result
         except Exception:
             log.error(
                 f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")
