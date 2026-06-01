@@ -11,6 +11,7 @@ Settings are read once at plot-creation time and cached on the plot, so
 later-added colormaps get the same percentiles without re-reading YAML."""
 
 from typing import NamedTuple
+import shiboken6
 from SciQLopPlots import SciQLopColorMapBase
 from SciQLop.components.settings.backend.plot_backend_settings import (
     PlotBackendSettings,
@@ -71,6 +72,11 @@ def apply_defaults_to_plot(plot) -> None:
 
 
 def _on_graph_list_changed(plot) -> None:
+    # The signal can be delivered from a queued emission after the plot's C++
+    # object was destroyed (e.g. during panel teardown), leaving this lambda
+    # connection live. Touching the dead wrapper raises — bail if it's gone.
+    if not shiboken6.isValid(plot):
+        return
     snap = getattr(plot, "_sciqlop_percentile_snapshot", None)
     if snap is None:
         return
