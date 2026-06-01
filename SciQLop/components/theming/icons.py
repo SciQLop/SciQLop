@@ -1,5 +1,5 @@
 from pathlib import Path
-from PySide6.QtGui import QIcon, QIconEngine, QColor, QPixmap, QPainter, QPalette
+from PySide6.QtGui import QIcon, QIconEngine, QColor, QPixmap, QPainter, QPalette, QImage
 from PySide6.QtCore import QSize, QRect, QPoint, Qt
 from SciQLopPlots import Icons
 from PySide6.QtWidgets import QApplication
@@ -49,6 +49,20 @@ def flush_deferred_icons():
         Icons.add_icon(name, factory())
 
 
+def _transparent_argb(size: QSize, dpr: float) -> QPixmap:
+    """A transparent ARGB32 pixmap of *size* device pixels at *dpr*.
+
+    A screen-format ``QPixmap(size)`` inherits the framebuffer's color depth —
+    under a 16-bit display (e.g. headless xvfb) that is RGB16, which has no
+    alpha channel and silently ignores ``setDevicePixelRatio``. Building from an
+    explicit ARGB32 image keeps alpha and DPR regardless of the display depth.
+    """
+    image = QImage(size, QImage.Format.Format_ARGB32_Premultiplied)
+    image.setDevicePixelRatio(dpr)
+    image.fill(Qt.GlobalColor.transparent)
+    return QPixmap.fromImage(image)
+
+
 def _tinted(pixmap: QPixmap, color: QColor) -> QPixmap:
     """Recolor every opaque pixel of *pixmap* to *color*, preserving the source
     alpha (so anti-aliased edges stay smooth) and its devicePixelRatio.
@@ -56,9 +70,7 @@ def _tinted(pixmap: QPixmap, color: QColor) -> QPixmap:
     Resolution-independent and GPU-friendly: a ``CompositionMode_SourceIn``
     fill instead of a per-pixel Python loop, so it works at any size/DPR.
     """
-    out = QPixmap(pixmap.size())
-    out.setDevicePixelRatio(pixmap.devicePixelRatio())
-    out.fill(Qt.GlobalColor.transparent)
+    out = _transparent_argb(pixmap.size(), pixmap.devicePixelRatio())
     painter = QPainter(out)
     painter.drawPixmap(0, 0, pixmap)
     painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
@@ -150,9 +162,8 @@ class _ThemeIconEngine(QIconEngine):
     def scaledPixmap(self, size: QSize, mode, state, scale: float) -> QPixmap:
         # `size` is device-independent (Qt >= 6.8); produce a scale-aware target
         # and let paint() fill it at the right device resolution.
-        pixmap = QPixmap(QSize(round(size.width() * scale), round(size.height() * scale)))
-        pixmap.setDevicePixelRatio(scale)
-        pixmap.fill(Qt.GlobalColor.transparent)
+        device = QSize(round(size.width() * scale), round(size.height() * scale))
+        pixmap = _transparent_argb(device, scale)
         painter = QPainter(pixmap)
         self.paint(painter, QRect(QPoint(0, 0), size), mode, state)
         painter.end()
