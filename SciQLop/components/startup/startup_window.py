@@ -41,8 +41,12 @@ class StartupWindow(QWidget):
         self._apply_size()
 
     def _apply_size(self) -> None:
-        image = self._fit_within_screen(self._preferred_size())
-        self.setFixedSize(image.width(), image.height() + _CAPTION_STRIP_PX)
+        # Clamp the whole window (image + caption strip) so it never exceeds half
+        # the screen; clamping the image alone and then adding the strip overflows
+        # by _CAPTION_STRIP_PX on small screens. paint() reserves the strip again.
+        preferred = self._preferred_size()
+        window = QSize(preferred.width(), preferred.height() + _CAPTION_STRIP_PX)
+        self.setFixedSize(self._fit_within_screen(window))
 
     def _preferred_size(self) -> QSize:
         width = _SPLASH_PREFERRED_WIDTH
