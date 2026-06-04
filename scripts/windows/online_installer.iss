@@ -19,6 +19,10 @@ SolidCompression=yes
 WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+; Per-user install: no UAC prompt and no admin rights required.  {autopf}
+; resolves to %LOCALAPPDATA%\Programs and {group}/{autodesktop} to the user's
+; own Start Menu / Desktop, so nothing is written to a protected location.
+PrivilegesRequired=lowest
 SetupIconFile={#ScriptDir}\..\..\SciQLop\resources\icons\SciQLop.ico
 UninstallDisplayIcon={app}\python\Lib\site-packages\SciQLop\resources\icons\SciQLop.ico
 ; Force-close any SciQLop / bundled python.exe using files in {app} via the
@@ -61,3 +65,7 @@ Filename: "{app}\{#MyAppExeName}"; Description: "Launch SciQLop"; Flags: nowait 
 Type: filesandordirs; Name: "{app}\python"
 Type: filesandordirs; Name: "{app}\node"
 Type: filesandordirs; Name: "{app}\uv"
+
+; Removes any legacy system-wide install left over from before the per-user
+; switch (offers a single UAC prompt during PrepareToInstall).
+#include "migrate_to_per_user.iss"
