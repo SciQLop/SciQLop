@@ -105,6 +105,18 @@ def check_xcb_cursor() -> str | None:
         )
 
 
+def _apply_proxy_settings() -> None:
+    """Inject the configured HTTP proxy into the process environment before any
+    uv / network call.  A GUI-launched SciQLop (desktop shortcut) inherits no
+    shell environment, so without this the bundled uv connects directly and
+    hangs at "Preparing workspace..." behind a corporate proxy.  Setting
+    ``os.environ`` here covers both the in-process uv runs during workspace
+    preparation and the app subprocess, which inherits ``os.environ``.
+    """
+    from SciQLop.components.settings.backend.network import apply_proxy_settings
+    apply_proxy_settings(os.environ)
+
+
 def _last_launch_log_path() -> Path:
     """Stable on-disk log location for the most recent SciQLop subprocess.
 
@@ -173,6 +185,8 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     window.show()
     window.set_phase("Initializing...")
     app.processEvents()
+
+    _apply_proxy_settings()
 
     workspace_dir = resolve_workspace_dir(workspace_name, sciqlop_file)
     dev_mode = _is_editable_install()

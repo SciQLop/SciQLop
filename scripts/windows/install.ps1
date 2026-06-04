@@ -1,5 +1,6 @@
 param(
-    [Parameter(Mandatory)][string]$InstallDir
+    [Parameter(Mandatory)][string]$InstallDir,
+    [string]$Proxy = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -7,6 +8,21 @@ $ErrorActionPreference = "Stop"
 $PythonVersion = "3.14"
 $NodeVersion = "23.11.0"
 $UvVersion = "0.11.2"
+
+########################################
+# HTTP proxy
+########################################
+# At install time SciQLop is not installed yet, so the proxy comes either from
+# the installer wizard (-Proxy) or from an inherited environment variable.
+# Apply it to both Invoke-WebRequest (uv.zip / node.zip) and uv (HTTP_PROXY).
+if (-not $Proxy) { $Proxy = $env:HTTPS_PROXY }
+if (-not $Proxy) { $Proxy = $env:HTTP_PROXY }
+if ($Proxy) {
+    Write-Host "Using HTTP proxy: $Proxy"
+    $env:HTTP_PROXY = $Proxy
+    $env:HTTPS_PROXY = $Proxy
+    $PSDefaultParameterValues['Invoke-WebRequest:Proxy'] = $Proxy
+}
 
 $UvDir = "$InstallDir\uv"
 $PythonDir = "$InstallDir\python"

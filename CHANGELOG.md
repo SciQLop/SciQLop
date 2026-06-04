@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.12.1
+
+### Windows installer
+
+- SciQLop now installs **per-user without administrator rights**. Both the offline and online Inno Setup installers set `PrivilegesRequired=lowest`, so there is no UAC prompt and the install lands in `%LOCALAPPDATA%\Programs\SciQLop` (Start Menu / Desktop shortcuts follow the per-user locations automatically). A migration step detects a leftover system-wide install from an earlier release and offers to remove it with a single UAC prompt; declining (or lacking admin) does not block the per-user install.
+
+### HTTP proxy support
+
+- SciQLop now works behind an HTTP proxy. A new **Settings › Application › Network** entry (`proxy_url`, `no_proxy`) is injected into the environment before workspace preparation, so the bundled `uv`, speasy data downloads, `requests`/`httpx` clients, and the Jupyter server all route through the proxy — fixing the launcher hanging at "Preparing workspace…" when started from a desktop shortcut (which inherits no shell environment). The same value is applied as Qt's application proxy (`QNetworkProxy.setApplicationProxy`) for in-process Qt networking and Qt WebEngine. An explicit in-app setting overrides the environment; when empty, any inherited `HTTP(S)_PROXY` is honored. The online installer also gained a proxy wizard page so its Python/uv/Node downloads can reach the network at install time.
+
 ## v0.12.0 — 2026-05-17
 
 ### Bug fixes

@@ -56,10 +56,35 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 
 [Run]
 Filename: "powershell.exe"; \
-  Parameters: "-ExecutionPolicy Bypass -File ""{tmp}\install.ps1"" -InstallDir ""{app}"""; \
+  Parameters: "-ExecutionPolicy Bypass -File ""{tmp}\install.ps1"" -InstallDir ""{app}"" -Proxy ""{code:ProxyArg}"""; \
   StatusMsg: "Installing SciQLop (downloading dependencies)..."; \
   Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch SciQLop"; Flags: nowait postinstall skipifsilent
+
+; Wizard page asking for an optional HTTP proxy, passed to install.ps1 as
+; -Proxy.  The online installer downloads Python/uv/Node, so on a proxied
+; network the download step would otherwise hang.  Pre-filled from the
+; HTTP_PROXY environment variable when present; blank means a direct
+; connection.
+[Code]
+var
+  ProxyPage: TInputQueryWizardPage;
+
+procedure InitializeWizard();
+begin
+  ProxyPage := CreateInputQueryPage(wpSelectDir,
+    'Network proxy',
+    'Does this computer reach the internet through an HTTP proxy?',
+    'If so, enter the proxy URL used to download SciQLop components ' +
+    '(for example http://proxy.example:8080).  Leave blank for a direct connection.');
+  ProxyPage.Add('HTTP proxy URL:', False);
+  ProxyPage.Values[0] := GetEnv('HTTP_PROXY');
+end;
+
+function ProxyArg(Param: String): String;
+begin
+  Result := Trim(ProxyPage.Values[0]);
+end;
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\python"

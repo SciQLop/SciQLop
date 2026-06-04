@@ -74,6 +74,8 @@ def start_sciqlop():
     print(str(QtPrintSupport) + str(QtQml))
 
     app = sciqlop_app()
+    from SciQLop.components.settings.backend.network import apply_qt_application_proxy
+    apply_qt_application_proxy()
     from SciQLop.core import tracing as _tracing
     _tracing.set_thread_name("Qt-Main")
     from SciQLop.components.theming.icons import flush_deferred_icons
