@@ -215,6 +215,7 @@ function showPackageDetails(pkg) {
     var btn = document.getElementById("install-btn");
     if (btn) {
         btn.addEventListener("click", function() {
+            clearInstallError();
             btn.textContent = "Installing...";
             btn.disabled = true;
             backend.install_package(btn.dataset.name);
@@ -224,6 +225,7 @@ function showPackageDetails(pkg) {
     var unBtn = document.getElementById("uninstall-btn");
     if (unBtn) {
         unBtn.addEventListener("click", function() {
+            clearInstallError();
             unBtn.textContent = "Uninstalling...";
             unBtn.disabled = true;
             backend.uninstall_package(unBtn.dataset.name);
@@ -246,10 +248,29 @@ function onInstallFinished(json_str) {
         btn.textContent = "Installed \u2713";
         btn.className = "install installed";
         btn.disabled = true;
+        clearInstallError();
     } else {
         btn.textContent = "Failed";
         btn.disabled = false;
+        showInstallError(result.error);
     }
+}
+
+function clearInstallError() {
+    var box = document.getElementById("install-error");
+    if (box) box.remove();
+}
+
+function showInstallError(message) {
+    clearInstallError();
+    if (!message) return;
+    var actions = document.querySelector(".details-actions");
+    if (!actions) return;
+    var box = document.createElement("pre");
+    box.id = "install-error";
+    box.className = "install-error";
+    box.textContent = message;
+    actions.parentNode.insertBefore(box, actions.nextSibling);
 }
 
 function onUninstallFinished(json_str) {
@@ -263,9 +284,11 @@ function onUninstallFinished(json_str) {
     if (result.ok) {
         unBtn.textContent = "Uninstalled";
         unBtn.disabled = true;
+        clearInstallError();
     } else {
         unBtn.textContent = "Failed";
         unBtn.disabled = false;
+        showInstallError(result.error);
     }
 }
 

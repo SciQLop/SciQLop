@@ -331,3 +331,18 @@ body {
     opacity: 0.6;
     cursor: wait;
 }
+
+.install-error {
+    margin-top: 8px;
+    padding: 8px 12px;
+    max-height: 180px;
+    overflow: auto;
+    border: 1px solid #da3634;
+    border-radius: 4px;
+    background: #da363418;
+    color: var(--Text);
+    font-family: monospace;
+    font-size: 0.8em;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

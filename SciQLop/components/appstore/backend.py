@@ -85,6 +85,31 @@ def _installed_version(package_name: str) -> str | None:
         return None
 
 
+def _uv_install_cmd(pip_spec: str) -> list[str]:
+    """uv command to install a plugin, trusting the platform certificate store.
+
+    ``--native-tls`` lets uv use the OS certificate store, which is where a
+    corporate proxy's MITM root CA lives — without it uv rejects the proxy's
+    intercepted certificate and the install fails.
+    """
+    return uv_command("pip", "install", "--native-tls", pip_spec)
+
+
+def _uv_uninstall_cmd(dist_name: str) -> list[str]:
+    return uv_command("pip", "uninstall", "--native-tls", dist_name)
+
+
+def _error_detail(exc: Exception) -> str:
+    """Human-readable cause for a failed uv run.
+
+    ``str(CalledProcessError)`` is only "… returned non-zero exit status N";
+    the actual reason (proxy/TLS/auth) is in ``.stderr``. Prefer it so the
+    failure is diagnosable instead of a bare "Failed".
+    """
+    stderr = (getattr(exc, "stderr", None) or "").strip()
+    return stderr or str(exc)
+
+
 def _save_installed_package(appstore_name: str, pip_spec: str, dist_name: str) -> None:
     from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings, InstalledPackage
     with SciQLopPluginsSettings() as settings:
@@ -192,15 +217,15 @@ class AppStoreBackend(QObject):
                 return
             try:
                 pip_spec = latest["pip"]
-                cmd = uv_command("pip", "install", pip_spec)
-                subprocess.run(cmd, check=True, capture_output=True, text=True)
+                subprocess.run(_uv_install_cmd(pip_spec), check=True, capture_output=True, text=True)
                 dist_name = _package_name_from_pip(pip_spec) or name
                 _save_installed_package(name, pip_spec, dist_name)
                 self.install_finished.emit(json.dumps({"name": name, "ok": True, "version": latest["version"]}))
                 self._hot_load_requested.emit(dist_name)
             except Exception as e:
-                log.error(f"Failed to install {name}: {e}")
-                self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": str(e)}))
+                detail = _error_detail(e)
+                log.error(f"Failed to install {name}: {detail}")
+                self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": detail}))
 
         threading.Thread(target=_install, daemon=True).start()
 
@@ -220,12 +245,12 @@ class AppStoreBackend(QObject):
                 if not dist_name:
                     self.uninstall_finished.emit(json.dumps({"name": name, "ok": False, "error": "cannot determine package name"}))
                     return
-                cmd = uv_command("pip", "uninstall", dist_name)
-                subprocess.run(cmd, check=True, capture_output=True, text=True)
+                subprocess.run(_uv_uninstall_cmd(dist_name), check=True, capture_output=True, text=True)
                 _remove_installed_package(name)
                 self.uninstall_finished.emit(json.dumps({"name": name, "ok": True}))
             except Exception as e:
-                log.error(f"Failed to uninstall {name}: {e}")
-                self.uninstall_finished.emit(json.dumps({"name": name, "ok": False, "error": str(e)}))
+                detail = _error_detail(e)
+                log.error(f"Failed to uninstall {name}: {detail}")
+                self.uninstall_finished.emit(json.dumps({"name": name, "ok": False, "error": detail}))
 
         threading.Thread(target=_uninstall, daemon=True).start()
