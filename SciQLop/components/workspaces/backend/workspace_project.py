@@ -37,7 +37,6 @@ _PINNED_BASE_PACKAGES = (
     "speasy",
     "jupyqt",
     "jupyverse",
-    "jupyterlab",
     "ipython",
 )
 
@@ -180,10 +179,15 @@ def generate_pyproject_toml(
     output_path:
         Filesystem path where the generated ``pyproject.toml`` will be written.
     """
-    # jupyqt/jupyverse/jupyterlab must be installed in the workspace venv (not
-    # just inherited from base) so that data files (share/jupyter/lab/) are
-    # present under sys.prefix, which is the venv directory at runtime.
-    implicit_deps = ["jupyqt", "jupyterlab"]
+    # jupyqt must be installed in the workspace venv (not just inherited from
+    # base) so that the lab data files (share/jupyter/lab/) are present under
+    # sys.prefix, which is the venv directory at runtime. jupyqt provides them
+    # via jupyverse → fps-jupyterlab → jupyterlab-js. Do NOT add the real
+    # "jupyterlab" here: it ships the exact same data file paths, and uv's
+    # RECORD-based uninstall (no refcounting) means removing or upgrading
+    # either package guts the other's files (see lab_assets.repair_lab_assets,
+    # which heals venvs already damaged in the field).
+    implicit_deps = ["jupyqt"]
     raw_deps = [_normalize_url_requirement(r) for r in implicit_deps + list(manifest.requires) + list(plugin_deps)]
     filtered = []
     for r in raw_deps:

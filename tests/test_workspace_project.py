@@ -134,9 +134,12 @@ class TestGeneratePyprojectToml:
             content = output.read_text()
             assert "[project]" in content
             assert 'name = "sciqlop-workspace-empty"' in content
-            # jupyqt and jupyterlab are always injected as implicit dependencies
+            # jupyqt is always injected as an implicit dependency; the real
+            # jupyterlab must NOT be — it duplicates jupyterlab-js's data
+            # files and uninstalling either one guts the other (see the
+            # implicit_deps comment in workspace_project.py).
             assert '"jupyqt"' in content
-            assert '"jupyterlab"' in content
+            assert '"jupyterlab"' not in content
 
     def test_deduplication_across_manifest_and_plugins(self):
         manifest = WorkspaceManifest(

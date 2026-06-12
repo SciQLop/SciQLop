@@ -32,11 +32,13 @@ def patches(mock_venv):
         patch(f"{MODULE}.collect_plugin_dependencies", return_value=["numpy>=1.24", "requests"]),
         patch(f"{MODULE}.generate_pyproject_toml") as mock_gen,
         patch(f"{MODULE}.WorkspaceVenv", return_value=mock_venv) as mock_venv_cls,
+        patch(f"{MODULE}.repair_lab_assets") as mock_repair,
     ):
         yield {
             "generate_pyproject_toml": mock_gen,
             "WorkspaceVenv": mock_venv_cls,
             "venv": mock_venv,
+            "repair_lab_assets": mock_repair,
         }
 
 
@@ -130,6 +132,27 @@ class TestPrepareWorkspaceVenv:
 
         result = prepare_workspace(workspace_dir, workspace_name="Test")
         assert result == Path("/fake/.venv/bin/python")
+
+    def test_repairs_lab_assets_after_sync(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        patches["repair_lab_assets"].assert_called_once_with(
+            patches["venv"].venv_dir, on_output=None)
+
+    def test_repairs_lab_assets_even_when_sync_fails(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        python_path = tmp_path / "python"
+        python_path.write_text("")
+        venv.python_path = python_path
+        venv.sync.side_effect = RuntimeError("offline")
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        patches["repair_lab_assets"].assert_called_once()
 
 
 class TestPrepareWorkspaceCallback:

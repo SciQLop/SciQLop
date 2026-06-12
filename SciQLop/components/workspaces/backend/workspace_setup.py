@@ -16,6 +16,7 @@ from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
+from SciQLop.components.workspaces.backend.lab_assets import repair_lab_assets
 from SciQLop.components.workspaces.backend.workspace_project import generate_pyproject_toml
 from SciQLop.components.workspaces.backend.workspace_venv import WorkspaceVenv
 
@@ -136,5 +137,10 @@ def prepare_workspace(
                 "Continuing with existing venv. Run with network to install "
                 "missing packages."
             )
+
+    # Venvs prepared by older SciQLop versions installed both jupyterlab and
+    # jupyterlab-js; the sync above may have just uninstalled jupyterlab and
+    # taken jupyterlab-js's shared data files with it. Heal before launch.
+    repair_lab_assets(venv.venv_dir, on_output=on_output)
 
     return venv.python_path

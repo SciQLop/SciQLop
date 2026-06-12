@@ -70,6 +70,11 @@ class WorkspaceVenv:
         self._venv_dir = self._workspace_dir / ".venv"
 
     @property
+    def venv_dir(self) -> Path:
+        """Path to the venv directory."""
+        return self._venv_dir
+
+    @property
     def python_path(self) -> Path:
         """Path to the venv's Python executable."""
         if _WINDOWS:

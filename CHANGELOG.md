@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.12.2 — unreleased
+
+### Bug fixes
+
+- Fixed the embedded JupyterLab breaking after package updates (white screen with `ChunkLoadError`, or most Lab plugins failing with settings-API 500s). Workspace venvs used to install both the real `jupyterlab` package and `jupyterlab-js` (pulled via jupyqt → jupyverse) — two distributions shipping the exact same `share/jupyter/lab` data files. Removing or upgrading either one (a `%install`, a plugin change, a SciQLop upgrade re-resolving the venv) deleted the shared files out from under the survivor and left orphan empty directories that crashed the Lab settings endpoint. Workspace venvs now install only `jupyterlab-js` (single owner of the data files), and `prepare_workspace` runs a self-heal after every sync that detects gutted `jupyterlab-js` data files (reinstalls them) and prunes orphan empty directories — so venvs already damaged in the field recover automatically on the next launch.
+
 ## v0.12.1 — 2026-08-05
 
 ### Bug fixes
