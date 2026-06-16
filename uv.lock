@@ -2566,6 +2566,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/35/9a/8c0ca0023309c8c822faf6d22485a4c20d9e7b959fa6b69624a6f7f9333f/pycdfpp-0.9.3-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9ebc53e6fcf3dc04aa3342d445c25ecd10906e91725dd7b683829f128ab2e473", size = 988683, upload-time = "2026-04-10T10:11:38.073Z" },
     { url = "https://files.pythonhosted.org/packages/5e/bc/d30ad46e0a29518edf2d21eab1046a8372d9be2307e74c98938b0086f10c/pycdfpp-0.9.3-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:7d28a106f9f3ae9338a9604d1de3ac2b19ab970814ec28ade3a9ca39c4c35d8d", size = 1835835, upload-time = "2026-04-10T10:11:39.674Z" },
     { url = "https://files.pythonhosted.org/packages/68/a4/f23093493ec6558027aefed13a8b92e5333b788f03e8701cb3221bee8aa3/pycdfpp-0.9.3-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:563c76f2781870a5bb0f18ff5dd8e4fb8e3c31fc2effee6caf83f36a31e38b3d", size = 1942186, upload-time = "2026-04-10T10:11:41.754Z" },
+    { url = "https://files.pythonhosted.org/packages/42/36/52ec35ebcbb68db2753217ba591702aef4da441e817272d46f80f6a09565/pycdfpp-0.9.3-cp314-cp314-pyemscripten_2026_0_wasm32.whl", hash = "sha256:e37e82960c6bb327b1d92415486d7103cb5e869e03663b9ad0a66fd5baf1ee05", size = 252105, upload-time = "2026-06-15T21:28:23.028Z" },
     { url = "https://files.pythonhosted.org/packages/dc/08/0b3227b04c9a364293623ac3d89cf6ce67731fe862ba0f0ab7f324754a5e/pycdfpp-0.9.3-cp314-cp314-win_amd64.whl", hash = "sha256:03f8a600c3f160c877a50c218de79eaf22a3934b21574888b4e464c924b06905", size = 510108, upload-time = "2026-04-10T10:11:43.349Z" },
     { url = "https://files.pythonhosted.org/packages/1c/51/9edec5a8a2dc223b131fee8a5adc58fec6b83121e5048b90e24668053852/pycdfpp-0.9.3-cp314-cp314t-macosx_13_0_arm64.whl", hash = "sha256:3ed5d9d3103b7f01a0610066f651d0f025a1d79ed2f1f819b26191089f2af6a1", size = 829738, upload-time = "2026-04-10T10:11:45.058Z" },
     { url = "https://files.pythonhosted.org/packages/ff/1e/3f0eeab1e0663aa1d6bd546394fc62c08a2a82d0339839dcca40b28b20ae/pycdfpp-0.9.3-cp314-cp314t-macosx_13_0_x86_64.whl", hash = "sha256:93d2f82c9d13b7f998e1e4c38f38de5dc81e14bc8bafdc9ded2627f8b2adb871", size = 872588, upload-time = "2026-04-10T10:11:46.758Z" },
@@ -2829,11 +2830,11 @@ wheels = [
 
 [[package]]
 name = "pyjwt"
-version = "2.12.1"
+version = "2.13.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/c2/27/a3b6e5bf6ff856d2509292e95c8f57f0df7017cf5394921fc4e4ef40308a/pyjwt-2.12.1.tar.gz", hash = "sha256:c74a7a2adf861c04d002db713dd85f84beb242228e671280bf709d765b03672b", size = 102564, upload-time = "2026-03-13T19:27:37.25Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/81/58d0ac84e1ef3a3843791d6954d94c0b33d526c75eeb1efbce9d0a4c4077/pyjwt-2.13.0.tar.gz", hash = "sha256:41571c89ca91598c79e8ef18a2d07367d4810fbbd6f637794879baf1b7703423", size = 107515, upload-time = "2026-05-21T19:54:36.618Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/7a/8dd906bd22e79e47397a61742927f6747fe93242ef86645ee9092e610244/pyjwt-2.12.1-py3-none-any.whl", hash = "sha256:28ca37c070cad8ba8cd9790cd940535d40274d22f80ab87f3ac6a713e6e8454c", size = 29726, upload-time = "2026-03-13T19:27:35.677Z" },
+    { url = "https://files.pythonhosted.org/packages/a3/5e/ecf12fdb62546d64385c158514e9b2b671f7832108ef2ecd2020ce0af2d1/pyjwt-2.13.0-py3-none-any.whl", hash = "sha256:66adcc2aff09b3f1bbd95fc1e1577df8ac8723c978552fd43304c8a290ac5728", size = 31274, upload-time = "2026-05-21T19:54:35.362Z" },
 ]
 
 [package.optional-dependencies]
