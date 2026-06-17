@@ -275,14 +275,14 @@ wheels = [
 
 [[package]]
 name = "bleach"
-version = "6.3.0"
+version = "6.4.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "webencodings" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/07/18/3c8523962314be6bf4c8989c79ad9531c825210dd13a8669f6b84336e8bd/bleach-6.3.0.tar.gz", hash = "sha256:6f3b91b1c0a02bb9a78b5a454c92506aa0fdf197e1d5e114d2e00c6f64306d22", size = 203533, upload-time = "2025-10-27T17:57:39.211Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/48/3c/e12ac860709702bd5ebeb9b56a4fe334f1001246ee1b8f2b7ee28912df7d/bleach-6.4.0.tar.gz", hash = "sha256:4202482733d85cedd04e59fcb2f89f4e4c7c385a78d3c3c23c30446843a37452", size = 204857, upload-time = "2026-06-05T13:01:13.734Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/cd/3a/577b549de0cc09d95f11087ee63c739bba856cd3952697eec4c4bb91350a/bleach-6.3.0-py3-none-any.whl", hash = "sha256:fe10ec77c93ddf3d13a73b035abaac7a9f5e436513864ccdad516693213c65d6", size = 164437, upload-time = "2025-10-27T17:57:37.538Z" },
+    { url = "https://files.pythonhosted.org/packages/58/9d/40b6267367182187139a4000b82a3b287d84d745bccd808e75d916920e9d/bleach-6.4.0-py3-none-any.whl", hash = "sha256:4b6b6a54fff2e69a3dde9d21cc6301220bee3c3cb792187d11403fd795031081", size = 165109, upload-time = "2026-06-05T13:01:12.504Z" },
 ]
 
 [package.optional-dependencies]
@@ -2566,6 +2566,7 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/35/9a/8c0ca0023309c8c822faf6d22485a4c20d9e7b959fa6b69624a6f7f9333f/pycdfpp-0.9.3-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9ebc53e6fcf3dc04aa3342d445c25ecd10906e91725dd7b683829f128ab2e473", size = 988683, upload-time = "2026-04-10T10:11:38.073Z" },
     { url = "https://files.pythonhosted.org/packages/5e/bc/d30ad46e0a29518edf2d21eab1046a8372d9be2307e74c98938b0086f10c/pycdfpp-0.9.3-cp314-cp314-musllinux_1_2_aarch64.whl", hash = "sha256:7d28a106f9f3ae9338a9604d1de3ac2b19ab970814ec28ade3a9ca39c4c35d8d", size = 1835835, upload-time = "2026-04-10T10:11:39.674Z" },
     { url = "https://files.pythonhosted.org/packages/68/a4/f23093493ec6558027aefed13a8b92e5333b788f03e8701cb3221bee8aa3/pycdfpp-0.9.3-cp314-cp314-musllinux_1_2_x86_64.whl", hash = "sha256:563c76f2781870a5bb0f18ff5dd8e4fb8e3c31fc2effee6caf83f36a31e38b3d", size = 1942186, upload-time = "2026-04-10T10:11:41.754Z" },
+    { url = "https://files.pythonhosted.org/packages/42/36/52ec35ebcbb68db2753217ba591702aef4da441e817272d46f80f6a09565/pycdfpp-0.9.3-cp314-cp314-pyemscripten_2026_0_wasm32.whl", hash = "sha256:e37e82960c6bb327b1d92415486d7103cb5e869e03663b9ad0a66fd5baf1ee05", size = 252105, upload-time = "2026-06-15T21:28:23.028Z" },
     { url = "https://files.pythonhosted.org/packages/dc/08/0b3227b04c9a364293623ac3d89cf6ce67731fe862ba0f0ab7f324754a5e/pycdfpp-0.9.3-cp314-cp314-win_amd64.whl", hash = "sha256:03f8a600c3f160c877a50c218de79eaf22a3934b21574888b4e464c924b06905", size = 510108, upload-time = "2026-04-10T10:11:43.349Z" },
     { url = "https://files.pythonhosted.org/packages/1c/51/9edec5a8a2dc223b131fee8a5adc58fec6b83121e5048b90e24668053852/pycdfpp-0.9.3-cp314-cp314t-macosx_13_0_arm64.whl", hash = "sha256:3ed5d9d3103b7f01a0610066f651d0f025a1d79ed2f1f819b26191089f2af6a1", size = 829738, upload-time = "2026-04-10T10:11:45.058Z" },
     { url = "https://files.pythonhosted.org/packages/ff/1e/3f0eeab1e0663aa1d6bd546394fc62c08a2a82d0339839dcca40b28b20ae/pycdfpp-0.9.3-cp314-cp314t-macosx_13_0_x86_64.whl", hash = "sha256:93d2f82c9d13b7f998e1e4c38f38de5dc81e14bc8bafdc9ded2627f8b2adb871", size = 872588, upload-time = "2026-04-10T10:11:46.758Z" },
