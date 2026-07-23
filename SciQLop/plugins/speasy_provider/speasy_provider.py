@@ -190,7 +190,7 @@ def get_node_meta(node):
     return meta
 
 
-def make_product(name, node: ParameterIndex, provider):
+def make_product(name, node: ParameterIndex, provider, instrument_description: str = ""):
     p_type = data_serie_type(node)
     meta = get_node_meta(node)
     meta["uid"] = node.spz_uid()
@@ -198,10 +198,20 @@ def make_product(name, node: ParameterIndex, provider):
     meta["provider"] = node.spz_provider()
     meta["speasy_id"] = f"{node.spz_provider()}/{node.spz_uid()}"
     meta["stable_id"] = meta["speasy_id"]
+    if instrument_description:
+        meta["instrument_description"] = instrument_description
     return ProductsModelNode(name, provider, meta, ProductsModelNodeType.PARAMETER, p_type)
 
 
-def explore_nodes(inventory_node, product_node: ProductsModelNode, provider):
+def explore_nodes(inventory_node, product_node: ProductsModelNode, provider, instrument_description: str = ""):
+    """instrument_description accumulates every ancestor folder's own
+    "description" (mission/spacecraft/instrument/dataset) down to each leaf.
+    CDAWeb leaf metadata (CATDESC/FIELDNAM) only ever spells out an
+    instrument's full name inconsistently -- e.g. MMS's Search Coil
+    Magnetometer leaves say only "SCM" -- while speasy's own inventory
+    already carries the spelled-out name on the ancestor SCM folder node,
+    previously used only for that folder's own tooltip and otherwise
+    discarded. Folding it into the leaf's metadata makes it searchable."""
     for name, child in inventory_node.__dict__.items():
         if name and child:
             if hasattr(child, "name") and child.name != "AMDA":
@@ -209,15 +219,17 @@ def explore_nodes(inventory_node, product_node: ProductsModelNode, provider):
             if isinstance(child, (CatalogIndex, TimetableIndex)):
                 continue
             elif isinstance(child, ParameterIndex):
-                product_node.add_child(make_product(name, child, provider=provider))
+                product_node.add_child(make_product(
+                    name, child, provider=provider,
+                    instrument_description=instrument_description))
             elif hasattr(child, "__dict__"):
-                meta = {}
-                if hasattr(child, "desc"):
-                    meta = {"description": child.desc}
-                elif hasattr(child, "description"):
-                    meta = {"description": child.description}
+                desc = getattr(child, "desc", None) or getattr(child, "description", None)
+                meta = {"description": desc} if desc else {}
                 cur_prod = ProductsModelNode(name, meta)
-                explore_nodes(child, cur_prod, provider=provider)
+                child_instrument_description = (
+                    f"{instrument_description} {desc}".strip() if desc else instrument_description)
+                explore_nodes(child, cur_prod, provider=provider,
+                              instrument_description=child_instrument_description)
                 if cur_prod.children_count() > 0:
                     product_node.add_child(cur_prod)
 
