@@ -21,6 +21,8 @@ _KNOWN_FAILING = {
     "MMS1 spacecraft magnetic field",
     "MMS1 trajectory",
     "MMS1 electrons",
+    "MMS1 ion",       # FPI DIS missing -- see cases.py's comment for this case
+    "MMS1 ion flux",  # same gap
 }
 
 
