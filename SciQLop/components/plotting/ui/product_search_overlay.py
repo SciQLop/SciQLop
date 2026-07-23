@@ -4,7 +4,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QListView, QLabel,
     QSpacerItem, QSizePolicy, QFrame,
 )
-from SciQLopPlots import ProductsFlatFilterModel, ProductsModel, QueryParser, ProductsModelNodeType
+from SciQLopPlots import (
+    ProductsFlatFilterModel, ProductsModel, QueryParser, ProductsModelNodeType,
+    ScoreMergeStrategy,
+)
 
 from SciQLop.core.mime import decode_mime
 from SciQLop.core.ui import Metrics
@@ -164,7 +167,16 @@ class ProductSearchOverlay(QWidget):
         QThreadPool.globalInstance().start(_QueryTask())
 
     def _apply_smart_search_scores(self, scores: dict) -> None:
+        # Override, not the default Max: blending smart_search with the
+        # native fuzzy scorer lets a leaf that's merely the corpus's best
+        # NATIVE match (e.g. a coincidental literal-phrase match) tie at the
+        # same normalized ceiling as smart_search's genuinely best match --
+        # and since the underlying sort isn't stable, the relevant match can
+        # end up buried behind an unrelated one. Once smart_search has an
+        # opinion, it should be the sole authority.
         self._filter_model.set_signal_enabled("smart_search", True)
+        self._filter_model.set_score_merge_strategy(ScoreMergeStrategy.Override)
+        self._filter_model.set_override_signal("smart_search")
         self._filter_model.set_external_scores("smart_search", scores)
 
     def _on_filter_ready(self):

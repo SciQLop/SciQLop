@@ -6,6 +6,7 @@ external-score passthrough (SciQLopPlots >= 0.31.1). See docs/superpowers/
 specs/2026-07-21-productsview-score-passthrough-design.md."""
 import shiboken6
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
+from SciQLopPlots import ScoreMergeStrategy
 
 from SciQLop.components import smart_search
 from SciQLop.components.sciqlop_logging import getLogger
@@ -26,6 +27,7 @@ class _SidebarSmartSearchController(QObject):
 
     def _on_query_changed(self, tokens: list) -> None:
         if not tokens:
+            self._view.set_score_merge_strategy(ScoreMergeStrategy.Max)
             self._view.set_signal_enabled(_SIGNAL_NAME, False)
             return
         if smart_search.is_enabled():
@@ -44,7 +46,16 @@ class _SidebarSmartSearchController(QObject):
         QThreadPool.globalInstance().start(_QueryTask())
 
     def _apply_scores(self, scores: dict) -> None:
+        # Override, not the default Max: blending smart_search with the
+        # native fuzzy scorer lets a leaf that's merely the corpus's best
+        # NATIVE match (e.g. a coincidental literal-phrase match) tie at the
+        # same normalized ceiling as smart_search's genuinely best match --
+        # and since the underlying sort isn't stable, the relevant match can
+        # end up buried behind an unrelated one. Once smart_search has an
+        # opinion, it should be the sole authority.
         self._view.set_signal_enabled(_SIGNAL_NAME, True)
+        self._view.set_score_merge_strategy(ScoreMergeStrategy.Override)
+        self._view.set_override_signal(_SIGNAL_NAME)
         self._view.set_external_scores(_SIGNAL_NAME, scores)
 
 

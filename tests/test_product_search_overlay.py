@@ -1,3 +1,4 @@
+import uuid
 from unittest.mock import patch, MagicMock
 import pytest
 
@@ -211,6 +212,58 @@ class TestProductSearchOverlaySmartSearch:
         names = [overlay._filter_model.data(overlay._filter_model.index(i, 0))
                  for i in range(overlay._filter_model.rowCount())]
         assert "acronym_only" in names
+
+    def test_smart_search_scores_use_override_not_max(self, qtbot):
+        # Regression: default Max merge normalizes each signal independently
+        # to its OWN max in the current result set, so a leaf that's the
+        # single best NATIVE fuzzy match (e.g. literally contains the query
+        # words) ties at the same merged score (100) as smart_search's own
+        # best match, even when they're unrelated -- and since the C++ sort
+        # isn't stable, the genuinely-relevant smart_search match can be
+        # buried behind the coincidental native match. Verified live
+        # (2026-07-21): "MMS spacecraft 1 magnetic field" surfaced 32 REACH
+        # cubesats (literal-phrase-match in shared metadata) tied with 4 MMS
+        # entries at 100%, MMS invisible in the visible slice. Override
+        # (smart_search as the sole authority once it has an opinion) fixes
+        # this: a leaf with NO smart_search score is excluded outright
+        # instead of competing via its native score.
+        import SciQLop.components.plotting.ui.product_search_overlay as overlay_mod
+        from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
+        from SciQLopPlots import (
+            ProductsModel, ProductsModelNode, ProductsModelNodeType,
+            ParameterType, QueryParser,
+        )
+
+        token = uuid.uuid4().hex[:8]
+        model = ProductsModel.instance()
+        root = ProductsModelNode(f"OverrideRoot_{token}")
+        # The corpus's single best NATIVE fuzzy match for this query -- gets
+        # no smart_search score at all.
+        native_best = ProductsModelNode(
+            "native_best", "test", {"description": f"{token} magnetic field spacecraft"},
+            ProductsModelNodeType.PARAMETER, ParameterType.Scalar)
+        # smart_search's target -- unrelated native text, but a decisive
+        # external score.
+        target = ProductsModelNode(
+            "smart_target", "test", {"description": f"{token} totally unrelated text"},
+            ProductsModelNodeType.PARAMETER, ParameterType.Scalar)
+        root.add_child(native_best)
+        root.add_child(target)
+        model.add_node([], root)
+        target_key = " ".join(target.path())
+
+        overlay = ProductSearchOverlay()
+        qtbot.addWidget(overlay)
+        overlay._apply_smart_search_scores({target_key: 100.0})
+        overlay._filter_model.set_query(QueryParser.parse(f"{token} magnetic field spacecraft"))
+        from PySide6.QtCore import QCoreApplication
+        for _ in range(10):
+            QCoreApplication.processEvents()
+
+        names = [overlay._filter_model.data(overlay._filter_model.index(i, 0))
+                 for i in range(overlay._filter_model.rowCount())]
+        assert "smart_target" in names
+        assert "native_best" not in names
 
     def test_smart_search_scores_not_applied_when_overlay_destroyed(self, qtbot):
         from PySide6.QtCore import QThreadPool
