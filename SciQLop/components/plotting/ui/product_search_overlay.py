@@ -42,11 +42,14 @@ class ProductSearchOverlay(QWidget):
     """Overlay shown on empty plot panels with a product search box."""
 
     product_selected = Signal(list)
-    _smart_search_scores_ready = Signal(dict)
+    _smart_search_scores_ready = Signal(int, dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
+        self._latest_smart_search_request_id = 0
+        self._smart_search_busy = False
+        self._smart_search_pending_text = None
 
         self._filter_model = ProductsFlatFilterModel(ProductsModel.instance())
         self._list_model = QStringListModel()
@@ -138,6 +141,8 @@ class ProductSearchOverlay(QWidget):
     def _on_text_changed(self, text: str):
         if len(text.strip()) < _MIN_QUERY_LENGTH:
             self._debounce.stop()
+            self._smart_search_pending_text = None
+            self._latest_smart_search_request_id += 1  # invalidate any in-flight/pending query
             self._show_results(False)
             self._result_paths.clear()
             self._list_model.setStringList([])
@@ -150,11 +155,28 @@ class ProductSearchOverlay(QWidget):
             return
         self._filter_model.set_query(QueryParser.parse(text))
         if smart_search.is_enabled():
-            self._dispatch_smart_search(text)
+            self._request_smart_search(text)
+
+    def _request_smart_search(self, text: str) -> None:
+        # Single-flight, like SmartSearchRegistry's own reindex-job dispatch
+        # (_trigger_reindex's job_id-busy-gate + dirty-flag-coalesce): at
+        # most one query actually runs at a time. A request that arrives
+        # while busy just replaces any earlier still-pending one instead of
+        # spawning a second concurrent task -- real score_query() calls take
+        # ~150-210ms against the real corpus, comfortably longer than the UI
+        # debounce, so without this an edit spaced just past the debounce
+        # but inside that window used to race a still-running older query.
+        if self._smart_search_busy:
+            self._smart_search_pending_text = text
+            return
+        self._dispatch_smart_search(text)
 
     def _dispatch_smart_search(self, text: str) -> None:
         from PySide6.QtCore import QThreadPool, QRunnable
 
+        self._smart_search_busy = True
+        self._latest_smart_search_request_id += 1
+        request_id = self._latest_smart_search_request_id
         overlay = self
         emit_ready = self._smart_search_scores_ready.emit
 
@@ -162,11 +184,18 @@ class ProductSearchOverlay(QWidget):
             def run(self):
                 scores = smart_search.query("products", text)
                 if shiboken6.isValid(overlay):
-                    emit_ready(scores)
+                    emit_ready(request_id, scores)
 
         QThreadPool.globalInstance().start(_QueryTask())
 
-    def _apply_smart_search_scores(self, scores: dict) -> None:
+    def _apply_smart_search_scores(self, request_id: int, scores: dict) -> None:
+        self._smart_search_busy = False
+        if self._smart_search_pending_text is not None:
+            pending, self._smart_search_pending_text = self._smart_search_pending_text, None
+            self._dispatch_smart_search(pending)
+            return
+        if request_id < self._latest_smart_search_request_id:
+            return  # superseded (e.g. query cleared) while in flight
         # Override, not the default Max: blending smart_search with the
         # native fuzzy scorer lets a leaf that's merely the corpus's best
         # NATIVE match (e.g. a coincidental literal-phrase match) tie at the

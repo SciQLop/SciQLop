@@ -175,7 +175,7 @@ class TestProductSearchOverlaySmartSearch:
         overlay = ProductSearchOverlay()
         qtbot.addWidget(overlay)
 
-        overlay._apply_smart_search_scores({})
+        overlay._apply_smart_search_scores(0, {})
 
     def test_smart_search_scores_actually_surface_matches(self, qtbot):
         # Regression: SciQLopPlots 0.31.0 defaults every named external
@@ -203,7 +203,7 @@ class TestProductSearchOverlaySmartSearch:
 
         overlay = ProductSearchOverlay()
         qtbot.addWidget(overlay)
-        overlay._apply_smart_search_scores({path_key: 100.0})
+        overlay._apply_smart_search_scores(0, {path_key: 100.0})
         overlay._filter_model.set_query(QueryParser.parse("magnetic field"))
         from PySide6.QtCore import QCoreApplication
         for _ in range(10):
@@ -254,7 +254,7 @@ class TestProductSearchOverlaySmartSearch:
 
         overlay = ProductSearchOverlay()
         qtbot.addWidget(overlay)
-        overlay._apply_smart_search_scores({target_key: 100.0})
+        overlay._apply_smart_search_scores(0, {target_key: 100.0})
         overlay._filter_model.set_query(QueryParser.parse(f"{token} magnetic field spacecraft"))
         from PySide6.QtCore import QCoreApplication
         for _ in range(10):
@@ -297,4 +297,103 @@ class TestProductSearchOverlaySmartSearch:
 
         assert errors == []
         mock_query.assert_called_once_with("products", "mms fgm")
+        overlay._filter_model.set_external_scores.assert_not_called()
+
+    def test_rapid_edits_while_busy_coalesce_to_only_the_latest(self, qtbot):
+        # Real bug report: editing a query quickly enough to space edits
+        # further apart than the debounce (~150ms) but closer together
+        # than score_query()'s own real latency (~150-210ms, measured
+        # against the real corpus) let multiple concurrent dispatches
+        # race, and whichever one *completed* last won regardless of
+        # dispatch order -- e.g. toggling "MMS1 ion flux" <-> "MMS1 ions
+        # flux". Fix: single-flight dispatch, mirroring
+        # SmartSearchRegistry's own reindex-job pattern
+        # (_trigger_reindex's job_id-busy-gate + dirty-flag-coalesce) --
+        # at most one query actually runs at a time; anything requested
+        # while busy replaces any earlier still-pending request instead of
+        # spawning a second concurrent task, and only the latest pending
+        # text is ever dispatched once the current one finishes. Same
+        # reproducer as sidebar_smart_search.py's test of the same name
+        # (both files shared the identical bug).
+        from PySide6.QtCore import QThreadPool, QCoreApplication
+        from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
+        import SciQLop.components.plotting.ui.product_search_overlay as overlay_mod
+        from SciQLopPlots import ProductsModel, ProductsModelNode, ProductsModelNodeType, ParameterType
+
+        token = uuid.uuid4().hex[:8]
+        model = ProductsModel.instance()
+        root = ProductsModelNode(f"OverlayCoalesceRoot_{token}")
+        mid_leaf = ProductsModelNode(
+            "mid_leaf", "test", {"description": "totally unrelated text"},
+            ProductsModelNodeType.PARAMETER, ParameterType.Scalar)
+        final_leaf = ProductsModelNode(
+            "final_leaf", "test", {"description": "totally unrelated text"},
+            ProductsModelNodeType.PARAMETER, ParameterType.Scalar)
+        root.add_child(mid_leaf)
+        root.add_child(final_leaf)
+        model.add_node([], root)
+        mid_key = " ".join(mid_leaf.path())
+        final_key = " ".join(final_leaf.path())
+
+        overlay = ProductSearchOverlay()
+        qtbot.addWidget(overlay)
+
+        queued = []
+        queried_texts = []
+        responses = {"aa": {"a_key_unused": 1.0}, "aab": {mid_key: 100.0}, "aabc": {final_key: 100.0}}
+
+        def fake_query(domain, text):
+            queried_texts.append(text)
+            return responses[text]
+
+        with patch.object(overlay_mod.smart_search, "is_enabled", return_value=True), \
+             patch.object(overlay_mod.smart_search, "query", side_effect=fake_query), \
+             patch.object(QThreadPool.globalInstance(), "start", side_effect=lambda r: queued.append(r)):
+            overlay._search_box.setText("aa")
+            qtbot.wait(overlay._debounce.interval() + 50)
+            assert len(queued) == 1  # first dispatch goes out immediately
+
+            overlay._search_box.setText("aab")
+            qtbot.wait(overlay._debounce.interval() + 50)
+            overlay._search_box.setText("aabc")
+            qtbot.wait(overlay._debounce.interval() + 50)
+            assert len(queued) == 1  # "aab"/"aabc" coalesced into pending, no new dispatch yet
+
+            queued[0].run()  # the in-flight "aa" query finishes
+            assert len(queued) == 2  # its completion immediately dispatches the latest pending
+            queued[1].run()
+            for _ in range(10):
+                QCoreApplication.processEvents()
+
+        assert queried_texts == ["aa", "aabc"]  # "aab" was superseded before ever being queried
+        names = [overlay._filter_model.data(overlay._filter_model.index(i, 0))
+                 for i in range(overlay._filter_model.rowCount())]
+        assert "final_leaf" in names
+        assert "mid_leaf" not in names
+
+    def test_clearing_query_while_in_flight_discards_the_stale_result(self, qtbot):
+        # If the query is cleared (e.g. user deletes all text) while a
+        # smart search request is still in flight, the eventually-arriving
+        # result must not resurrect scores for a query that's no longer
+        # active.
+        from PySide6.QtCore import QThreadPool
+        from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
+        import SciQLop.components.plotting.ui.product_search_overlay as overlay_mod
+
+        overlay = ProductSearchOverlay()
+        qtbot.addWidget(overlay)
+        overlay._filter_model = MagicMock()
+
+        queued = []
+        with patch.object(overlay_mod.smart_search, "is_enabled", return_value=True), \
+             patch.object(overlay_mod.smart_search, "query", return_value={"a": 99.0}), \
+             patch.object(QThreadPool.globalInstance(), "start", side_effect=lambda r: queued.append(r)):
+            overlay._search_box.setText("magnetic field")
+            qtbot.wait(overlay._debounce.interval() + 50)
+            assert len(queued) == 1
+
+            overlay._search_box.setText("")
+
+            queued[0].run()  # the now-superseded (cleared) query finishes late
+
         overlay._filter_model.set_external_scores.assert_not_called()

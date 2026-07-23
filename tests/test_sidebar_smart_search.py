@@ -152,6 +152,109 @@ class TestSidebarSmartSearchWiring:
             _flush(qtbot)
             assert view.signal_enabled("smart_search") is False
 
+    def test_rapid_edits_while_busy_coalesce_to_only_the_latest(self, qtbot):
+        # Real bug report: editing a query quickly enough to space edits
+        # further apart than the debounce (~150ms) but closer together
+        # than score_query()'s own real latency (~150-210ms, measured
+        # against the real corpus) let multiple concurrent dispatches
+        # race, and whichever one *completed* last won regardless of
+        # dispatch order -- e.g. toggling "MMS1 ion flux" <-> "MMS1 ions
+        # flux". Fix: single-flight dispatch, mirroring
+        # SmartSearchRegistry's own reindex-job pattern
+        # (_trigger_reindex's job_id-busy-gate + dirty-flag-coalesce) --
+        # at most one query actually runs at a time; anything requested
+        # while busy replaces any earlier still-pending request instead of
+        # spawning a second concurrent task, and only the latest pending
+        # text is ever dispatched once the current one finishes.
+        token = uuid.uuid4().hex[:8]
+        model = ProductsModel.instance()
+        root = ProductsModelNode(f"CoalesceRoot_{token}")
+        mid_leaf = ProductsModelNode(
+            "mid_leaf", "test", {"description": "totally unrelated text"},
+            ProductsModelNodeType.PARAMETER, ParameterType.Scalar)
+        final_leaf = ProductsModelNode(
+            "final_leaf", "test", {"description": "totally unrelated text"},
+            ProductsModelNodeType.PARAMETER, ParameterType.Scalar)
+        root.add_child(mid_leaf)
+        root.add_child(final_leaf)
+        model.add_node([], root)
+        mid_key = " ".join(mid_leaf.path())
+        final_key = " ".join(final_leaf.path())
+
+        view = ProductsView()
+        qtbot.addWidget(view)
+        mod.setup_sidebar_smart_search(view)
+
+        queued = []
+        queried_texts = []
+        responses = {"a": {"a_key_unused": 1.0}, "ab": {mid_key: 100.0}, "abc": {final_key: 100.0}}
+
+        def fake_query(domain, text):
+            queried_texts.append(text)
+            return responses[text]
+
+        with patch.object(mod.smart_search, "is_enabled", return_value=True), \
+             patch.object(mod.smart_search, "query", side_effect=fake_query), \
+             patch.object(QThreadPool.globalInstance(), "start", side_effect=lambda r: queued.append(r)):
+            bar = view.findChild(QTextEdit)
+            bar.setPlainText("a")
+            _flush(qtbot)
+            assert len(queued) == 1  # first dispatch goes out immediately
+
+            bar.setPlainText("ab")
+            _flush(qtbot)
+            bar.setPlainText("abc")
+            _flush(qtbot)
+            assert len(queued) == 1  # "ab"/"abc" coalesced into pending, no new dispatch yet
+
+            queued[0].run()  # the in-flight "a" query finishes
+            assert len(queued) == 2  # its completion immediately dispatches the latest pending
+            queued[1].run()
+            _flush(qtbot)
+
+        assert queried_texts == ["a", "abc"]  # "ab" was superseded before ever being queried
+        names = _visible_names(_list_view_model(view))
+        assert "final_leaf" in names
+        assert "mid_leaf" not in names
+
+    def test_clearing_query_while_in_flight_discards_the_stale_result(self, qtbot):
+        # If the query is cleared (e.g. user deletes all text) while a
+        # smart search request is still in flight, the eventually-arriving
+        # result must not resurrect scores for a query that's no longer
+        # active.
+        token = uuid.uuid4().hex[:8]
+        model = ProductsModel.instance()
+        root = ProductsModelNode(f"ClearWhileBusyRoot_{token}")
+        leaf = ProductsModelNode(
+            "leaf", "test", {"description": "totally unrelated text"},
+            ProductsModelNodeType.PARAMETER, ParameterType.Scalar)
+        root.add_child(leaf)
+        model.add_node([], root)
+        path_key = " ".join(leaf.path())
+
+        view = ProductsView()
+        qtbot.addWidget(view)
+        mod.setup_sidebar_smart_search(view)
+
+        queued = []
+        with patch.object(mod.smart_search, "is_enabled", return_value=True), \
+             patch.object(mod.smart_search, "query", return_value={path_key: 100.0}), \
+             patch.object(QThreadPool.globalInstance(), "start", side_effect=lambda r: queued.append(r)):
+            bar = view.findChild(QTextEdit)
+            bar.setPlainText("magnetic field")
+            _flush(qtbot)
+            assert len(queued) == 1
+
+            bar.setPlainText("")
+            _flush(qtbot)
+
+            queued[0].run()  # the now-superseded (cleared) query finishes late
+
+        # Clearing the query already reverts these two; the point of this
+        # test is that the late stale result must not flip them back.
+        assert view.score_merge_strategy() == ScoreMergeStrategy.Max
+        assert view.signal_enabled("smart_search") is False
+
     def test_scores_not_applied_when_view_destroyed(self, qtbot):
         view = ProductsView()
         qtbot.addWidget(view)
