@@ -137,3 +137,27 @@ def test_worker_applies_knobs_to_callback():
     np.testing.assert_array_equal(y, [3.0, 6.0])
     shm.close()
     main.send((P.SHUTDOWN,))
+
+
+def test_serve_exits_quietly_when_parent_closes_pipe_mid_reply():
+    # Shutdown race reproduced from a real close: SciQLop tears down the pipe
+    # while the worker is mid-request (e.g. having just parsed 64 e-Callisto
+    # files), then conn.send() of the reply hits a pipe whose read end is
+    # already gone -> BrokenPipeError. That used to propagate unhandled out of
+    # serve()/_main() and dump a traceback to stderr on every close. The parent
+    # going away is normal; the worker must stop serving quietly instead.
+    class _PipeBrokenOnSend:
+        def __init__(self, queued):
+            self._q = list(queued)
+        def recv(self):
+            return self._q.pop(0)
+        def poll(self, timeout=0):
+            return bool(self._q)
+        def send(self, msg):
+            raise BrokenPipeError(32, "Broken pipe")
+
+    conn = _PipeBrokenOnSend([
+        (P.INSTALL, 1, cloudpickle.dumps(lambda s, e: None), 2),
+        (P.REQUEST, 1, 1, 0.0, 1.0, {}),
+    ])
+    serve(conn)  # must return cleanly, not raise BrokenPipeError

@@ -116,18 +116,25 @@ def _serve_request(conn, state, channel_id, req_id, start, stop, knobs) -> None:
 
 def serve(conn) -> None:
     state = _WorkerState()
-    while True:
-        try:
-            first = conn.recv()
-        except EOFError:
-            break
-        if first[0] == P.SHUTDOWN:
-            break
-        latest = _coalesce(_drain(conn, first), state, conn)
-        for channel_id, (req_id, start, stop, knobs) in latest.items():
-            _serve_request(conn, state, channel_id, req_id, start, stop, knobs)
-    for ch in list(state.pools):
-        state.release(ch)
+    try:
+        while True:
+            try:
+                first = conn.recv()
+            except EOFError:
+                break
+            if first[0] == P.SHUTDOWN:
+                break
+            latest = _coalesce(_drain(conn, first), state, conn)
+            for channel_id, (req_id, start, stop, knobs) in latest.items():
+                _serve_request(conn, state, channel_id, req_id, start, stop, knobs)
+    except (EOFError, ConnectionError):
+        # The parent closed the pipe (normal SciQLop shutdown) while we were
+        # mid-request; there is nothing left to reply to. Stop serving quietly
+        # instead of letting a BrokenPipeError dump a traceback on every close.
+        pass
+    finally:
+        for ch in list(state.pools):
+            state.release(ch)
 
 
 def _parse_startup_payload(raw: bytes) -> Tuple[bytes, str]:
