@@ -72,6 +72,70 @@ def test_health_counters_emitted_around_request_response_cycle(qtbot, monkeypatc
         assert ("remote.worker_alive", 0, "remote") in calls
 
 
+def test_worker_can_import_callable_from_extra_plugins_folder(qtbot, tmp_path):
+    # cloudpickle.dumps/loads here exercises the worker's real IPC path --
+    # same single-trust-domain boundary documented in worker.py's module
+    # docstring (blob originates from this same SciQLop process over a
+    # private pipe, never from an untrusted source).
+    #
+    # Real bug report: a callable that lives in a SciQLop folder-plugin
+    # (extra_plugins_folders / user plugins dir) is loaded via
+    # loader.import_from_path(), which registers it into sys.modules
+    # WITHOUT ever adding its directory to sys.path -- fine within the
+    # main process, but the worker is spawned as a brand-new
+    # `sys.executable -m ...` interpreter that never runs SciQLop's
+    # plugin loader. Before the fix, cloudpickle.loads() on the worker
+    # side raises ModuleNotFoundError trying to resolve the plugin
+    # module, which is unhandled in worker.serve() and kills the whole
+    # worker subprocess outright. Mirrors the real loader's folder-plugin
+    # path exactly (loader.import_from_path) rather than assuming a
+    # simplified import mechanism.
+    plugin_folder = tmp_path / "extra_plugins"
+    plugin_folder.mkdir()
+    pkg_dir = plugin_folder / "fake_radio_plugin"
+    pkg_dir.mkdir()
+    (pkg_dir / "__init__.py").write_text(
+        "def make_wave(start, stop):\n"
+        "    import numpy as np\n"
+        "    x = np.linspace(start, stop, 4)\n"
+        "    return (x, x)\n"
+    )
+
+    from SciQLop.components.plugins.backend.loader.loader import import_from_path
+    from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
+    module = import_from_path("fake_radio_plugin", str(pkg_dir / "__init__.py"))
+
+    with SciQLopPluginsSettings() as settings:
+        settings.extra_plugins_folders = [str(plugin_folder)]
+    try:
+        worker = RemoteWorker(plugin_key="test_plugin_folder_import")
+        worker.start()
+        try:
+            pipe = CollectingPipeline()
+            from SciQLop.components.plotting.backend.remote.channel import RemoteChannel
+            ch = RemoteChannel(pipeline=pipe, channel_id=1, transport=worker)
+            worker.register_channel(ch)
+            worker.install(1, cloudpickle.dumps(module.make_wave), arity=2)
+            ch.on_data_requested_values(0.0, 6.28)
+            # worker._conn is reset to None by _on_worker_died() the moment
+            # the subprocess dies, so this is race-safe (unlike polling
+            # worker._proc, which _on_worker_died() may already have set to
+            # None by the time we get here).
+            qtbot.waitUntil(
+                lambda: len(pipe.results) == 1 or worker._conn is None,
+                timeout=5000)
+            assert worker._conn is not None, (
+                "worker subprocess crashed -- likely ModuleNotFoundError "
+                "unpickling the INSTALL blob for a folder-plugin callable")
+            x, y = pipe.results[0]
+            assert x.shape == (4,)
+        finally:
+            worker.shutdown()
+    finally:
+        with SciQLopPluginsSettings() as settings:
+            settings.extra_plugins_folders = []
+
+
 def test_derive_worker_trace_path_empty_when_no_session_active(monkeypatch):
     monkeypatch.setattr(tracing, "current_path", lambda: None)
     worker = RemoteWorker(plugin_key="test_plugin")

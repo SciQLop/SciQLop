@@ -19,6 +19,7 @@ from typing import Dict, Optional, Tuple
 from PySide6.QtCore import QObject, QSocketNotifier
 
 from SciQLop.core import tracing
+from SciQLop.components.plugins.backend.loader.loader import plugins_folders
 from . import protocol as P
 
 log = logging.getLogger(__name__)
@@ -38,6 +39,28 @@ class RemoteWorker(QObject):
         # so a newer send_request for a channel simply replaces its entry.
         self._pending: Dict[int, Tuple[int, float]] = {}  # channel_id -> (req_id, sent_at)
 
+    def _worker_env(self) -> Dict[str, str]:
+        # A folder-plugin (extra_plugins_folders / the user plugins dir) is
+        # loaded in THIS process via loader.import_from_path(), which
+        # registers it into sys.modules without ever adding its directory
+        # to sys.path -- fine here, but the worker below is a brand-new
+        # `sys.executable -m ...` interpreter that never runs SciQLop's own
+        # plugin loader. A callable from such a plugin cloudpickles fine
+        # (by module-name reference) but the worker can't resolve the
+        # import on the other end. Put those folders on the worker's
+        # PYTHONPATH so a plain `import <plugin>` there works the same way
+        # it would for any normal on-disk package. Skip the bundled plugins
+        # folder (index 0): those already resolve as SciQLop.plugins.<name>
+        # submodules, which the worker's own SciQLop install already sees.
+        env = os.environ.copy()
+        extra = list(plugins_folders()[1:])
+        existing = env.get("PYTHONPATH")
+        if existing:
+            extra.append(existing)
+        if extra:
+            env["PYTHONPATH"] = os.pathsep.join(extra)
+        return env
+
     # --- lifecycle ----------------------------------------------------------
     def start(self) -> None:
         if self._proc is not None:
@@ -49,6 +72,7 @@ class RemoteWorker(QObject):
             [sys.executable, "-m",
              "SciQLop.components.plotting.backend.remote.worker", address],
             stdin=subprocess.PIPE,
+            env=self._worker_env(),
         )
         trace_path = self._derive_worker_trace_path()
         self._proc.stdin.write(authkey + trace_path.encode("utf-8"))
