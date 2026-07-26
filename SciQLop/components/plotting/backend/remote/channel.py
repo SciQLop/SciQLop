@@ -1,11 +1,29 @@
 """Per-graph main-side state machine driving one SciQLopPlots remote channel.
 
 Owns req_id assignment, stale-reply dropping, and the consumer-side segment
-lifetime: the previous segment is FREEd only once a newer set_data supersedes
-it (so SciQLopPlots never reads a buffer the worker might overwrite)."""
+lifetime: a superseded segment's local mmap is closed and FREEd back to the
+worker only once every numpy view SciQLopPlots was handed for it is truly
+gone -- Python refcount reaching zero, including any C++-side Py_buffer
+export. SciQLopPlots' plottables (colormaps, line graphs) resample new data
+on a background thread; set_data() only queues that job and returns once
+it's merely scheduled, not once it has run, and the buffer stays readable
+synchronously afterward too (e.g. crosshair/tooltip hover reads a colormap's
+raw data source directly, at any later time, not just during the resample
+job). There is no Qt signal that reliably reports "every reader is done" --
+QCPAsyncPipeline's busy()/busy_changed() can go idle while a same-generation
+continuation job is still being dispatched (verified: watching it still let
+a background job read a segment this class had already closed). The
+underlying C++ shared_ptr chain (SciQLopColorMap's _dataHolder) already
+correctly keeps a view's Py_buffer export alive for exactly as long as any
+C++ reference -- including an in-flight resample job's own copy -- needs
+it; weakref.finalize on the views handed into set_data() rides that same
+guarantee instead of re-deriving it. SharedMemory.close() itself is NOT
+protected against outstanding views: closing a segment while something
+still reads through it is an immediate SIGSEGV, not a Python exception."""
 from __future__ import annotations
 
 import logging
+import weakref
 from multiprocessing import shared_memory
 from typing import Optional
 
@@ -50,10 +68,17 @@ class RemoteChannel:
             self._transport.send_free(self.channel_id, shm_name)   # stale: drop + free
             return
         self._close_async_span(req_id)
+        if shm_name == self._held_name:
+            # Re-delivered RESULT naming the segment we already hold: a second
+            # independent mmap of it would release (and FREE) on its own
+            # schedule, possibly before the original mapping's in-flight
+            # reader is done with it. Nothing to do -- we're already using it.
+            return
         shm = shared_memory.SharedMemory(name=shm_name, create=False, track=False)
         views = unpack_arrays(shm.buf, layout)
         self._pipeline.set_data(*views)
-        self._supersede(shm, shm_name)
+        self._register_release(shm, shm_name, views)
+        self._held, self._held_name = shm, shm_name
 
     def on_empty(self, req_id: int) -> None:
         self._close_async_span(req_id)
@@ -68,13 +93,24 @@ class RemoteChannel:
             self._async_handle = None
 
     # --- lifetime -----------------------------------------------------------
-    def _supersede(self, shm, name) -> None:
-        prev, prev_name = self._held, self._held_name
-        self._held, self._held_name = shm, name
-        if prev is not None:
-            prev.close()
-            if prev_name != name:   # never FREE the segment we still hold live
-                self._transport.send_free(self.channel_id, prev_name)
+    def _register_release(self, shm, name, views) -> None:
+        # Fires once ALL views into this segment are gone -- Python-side and,
+        # via SciQLopColorMap's _dataHolder chain, C++-side (any in-flight
+        # resample job holds its own reference until its transform() call
+        # returns). Whichever thread drops the last one, SciQLopPyBuffer's
+        # own release path defers a non-GIL-thread drop onto the main
+        # thread's next GIL acquisition, so this callback always actually
+        # runs there -- safe to touch the Qt transport from it.
+        remaining = [len(views)]
+
+        def _on_view_released():
+            remaining[0] -= 1
+            if remaining[0] == 0:
+                shm.close()
+                self._transport.send_free(self.channel_id, name)
+
+        for v in views:
+            weakref.finalize(v, _on_view_released)
 
     def dispose(self) -> None:
         self._transport.release(self.channel_id)
