@@ -10,11 +10,13 @@ from typing import Tuple, List
 import numpy as np
 
 from SciQLopPlots import dsp as _dsp
+from . import _background
 
 __all__ = [
     'fft', 'filtfilt', 'sosfiltfilt', 'fir_filter', 'iir_sos',
     'resample', 'interpolate_nan', 'rolling_mean', 'rolling_std',
     'spectrogram', 'reduce', 'reduce_axes', 'split_segments',
+    'background_subtract',
 ]
 
 
@@ -107,3 +109,11 @@ def split_segments(x: np.ndarray, y: np.ndarray, *,
                    gap_factor: float = 3.0) -> List[Tuple[int, int]]:
     """Detect gaps and return ``[(start, end), ...]`` index ranges (half-open)."""
     return _dsp.split_segments(x, y, gap_factor=gap_factor)
+
+
+def background_subtract(x: np.ndarray, y: np.ndarray, *,
+                        q: float = 50.0, window=None,
+                        mode: str = 'diff', gap_factor: float = 3.0) -> np.ndarray:
+    """Remove a per-channel background. See ``_background.background_subtract``."""
+    return _background.background_subtract(x, y, q=q, window=window,
+                                           mode=mode, gap_factor=gap_factor)
