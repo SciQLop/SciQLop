@@ -139,7 +139,7 @@ Round 2 (`docs/api-fuzzing-report-round2-2026-06-12.md`):
 
 - New `Histogram2D` plottable + `panel.histogram2d(x, y, ...)` shortcut on `PlotPanel`, plus `histogram2d()` methods on `XYPlot` and `TimeSeriesPlot`. Routed through `to_plottable` so the standard `panel.plot(...)` dispatch picks it up automatically.
 - New `Overlay` wrapper class (`SciQLop.user_api.plot.Overlay`) exposing the C++ overlay surface as a Pythonic property on every plot: `plot.overlay = Overlay(text=..., level=Level.Plot, position=Position.TopLeft, size_mode=SizeMode.Auto)`. Overlay enums (`Level`, `SizeMode`, `Position`) and the `Overlay` class are re-exported from `SciQLop.user_api.plot`.
-- New `dsp` facade (`SciQLop.user_api.dsp`) wrapping 13 SciQLopPlots DSP primitives with `SpeasyVariable` round-trip semantics: `filtfilt`, `sosfiltfilt`, `fir_filter`, `iir_sos`, `interpolate_nan`, `rolling_mean`, `rolling_std`, `resample`, `fft`, `spectrogram`, `reduce`, `reduce_axes`, `split_segments`. A typed `dsp._arrays` pass-through layer is exposed for callers that need ndarray semantics directly. Three new tutorial notebooks cover overlay, histogram2D, and DSP usage.
+- New `dsp` facade (`SciQLop.user_api.dsp`) wrapping 14 SciQLopPlots DSP primitives with `SpeasyVariable` round-trip semantics: `filtfilt`, `sosfiltfilt`, `fir_filter`, `iir_sos`, `interpolate_nan`, `rolling_mean`, `rolling_std`, `resample`, `fft`, `spectrogram`, `reduce`, `reduce_axes`, `split_segments`, `background_subtract`. A typed `dsp._arrays` pass-through layer is exposed for callers that need ndarray semantics directly. Three new tutorial notebooks cover overlay, histogram2D, and DSP usage.
 
 ### Runtime tracing & Perfetto profiling
 

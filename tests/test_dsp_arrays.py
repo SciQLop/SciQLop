@@ -207,3 +207,56 @@ class TestBackgroundSubtractArrays:
         x, y = _flat_spectrogram()
         with pytest.raises(ValueError, match="mode"):
             dsp_arrays.background_subtract(x, y, mode='decibels')
+
+    def test_zero_duration_window_raises(self):
+        x, y = _flat_spectrogram()
+        with pytest.raises(ValueError, match="duration"):
+            dsp_arrays.background_subtract(x, y, window=timedelta(seconds=0))
+
+    def test_negative_duration_window_raises(self):
+        x, y = _flat_spectrogram()
+        with pytest.raises(ValueError, match="duration"):
+            dsp_arrays.background_subtract(x, y, window=timedelta(seconds=-30))
+
+    def test_non_finite_x_with_gap_raises_clear_value_error(self):
+        # A NaN in x used to sort past the end of x_bg in _realign_to_input's
+        # searchsorted, raising a confusing IndexError instead of naming the
+        # real problem (non-finite timestamps). Needs a gap so the gap-aware
+        # pipeline inserts a separator row and the realign path actually runs.
+        x = np.concatenate([np.arange(50.0), np.arange(50.0) + 100.0])
+        x[10] = np.nan
+        y = np.concatenate([np.full(50, 10.0), np.full(50, 50.0)]).reshape(100, 1)
+        with pytest.raises(ValueError, match="finite"):
+            dsp_arrays.background_subtract(x, y, window=11)
+
+
+class TestBackgroundSubtract1D:
+    """The docstring documents 1-D y as supported; exercise all three paths."""
+
+    def test_constant_background_1d(self):
+        x = np.arange(50.0)
+        y = np.full(50, 7.0)
+        out = dsp_arrays.background_subtract(x, y)
+        assert out.shape == y.shape
+        assert_allclose(out, 0.0, atol=1e-9)
+
+    def test_sliding_gapless_1d_removes_drift(self):
+        n = 200
+        x = np.arange(n, dtype=np.float64)
+        drift = np.linspace(0.0, 100.0, n)
+        y = np.full(n, 50.0) + drift
+        out = dsp_arrays.background_subtract(x, y, window=21)
+        assert out.shape == y.shape
+        margin = 25
+        assert np.abs(out[margin:-margin]).max() < np.abs(drift[margin:-margin]).max() / 10.0
+
+    def test_sliding_gapped_1d_realigns_across_a_gap(self):
+        # Exercises _realign_to_input for a 1-D y: the gap-aware pipeline
+        # reassembles segments with an extra NaN separator row per gap, and
+        # the background must still line up row-for-row with the input.
+        x = np.concatenate([np.arange(100.0), np.arange(100.0) + 150.0])
+        y = np.concatenate([np.full(100, 10.0), np.full(100, 50.0)])
+        out = dsp_arrays.background_subtract(x, y, window=11)
+        assert out.shape == y.shape
+        assert np.isfinite(out).all()
+        assert_allclose(out, 0.0, atol=1e-9)

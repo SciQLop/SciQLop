@@ -11,6 +11,7 @@ import numpy as np
 
 from SciQLopPlots import dsp as _dsp
 from . import _background
+from ._background import Window
 
 __all__ = [
     'fft', 'filtfilt', 'sosfiltfilt', 'fir_filter', 'iir_sos',
@@ -112,7 +113,7 @@ def split_segments(x: np.ndarray, y: np.ndarray, *,
 
 
 def background_subtract(x: np.ndarray, y: np.ndarray, *,
-                        q: float = 50.0, window=None,
+                        q: float = 50.0, window: Window = None,
                         mode: str = 'diff', gap_factor: float = 3.0) -> np.ndarray:
     """Remove a per-channel background. See ``_background.background_subtract``."""
     return _background.background_subtract(x, y, q=q, window=window,

@@ -46,6 +46,9 @@ def resolve_window(x: np.ndarray, window: Window) -> Optional[int]:
         raise TypeError("window must be None, an int (samples), or a "
                         f"timedelta/np.timedelta64 (duration), got {type(window).__name__}")
 
+    if seconds <= 0.0:
+        raise ValueError(f"window duration must be positive, got {window!r}")
+
     if x.size < 2:
         raise ValueError("a duration window needs at least 2 samples to infer the cadence")
     median_dt = float(np.median(np.diff(x)))
@@ -67,6 +70,10 @@ def _realign_to_input(x: np.ndarray, x_bg: np.ndarray, bg: np.ndarray) -> np.nda
     """
     if bg.shape[0] == x.shape[0]:
         return bg                                   # no gaps, nothing inserted
+    if not np.all(np.isfinite(x)):
+        raise ValueError("x contains non-finite (NaN/inf) timestamps; a sliding "
+                         "background_subtract window needs finite timestamps to "
+                         "realign the background across gaps")
     return bg[np.searchsorted(x_bg, x)]
 
 
@@ -107,7 +114,9 @@ def background_subtract(x: np.ndarray, y: np.ndarray, *,
     Returns
     -------
     np.ndarray
-        Same shape and dtype as `y`.
+        Same shape and dtype as `y`. For integer `y`, the percentile
+        background is truncated (not rounded) to that integer type, so it
+        can differ slightly from `np.percentile` on the same data.
     """
     if mode not in _MODES:
         raise ValueError(f"mode must be one of {_MODES}, got {mode!r}")

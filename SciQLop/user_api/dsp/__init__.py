@@ -18,6 +18,7 @@ from speasy.products import SpeasyVariable
 from .._annotations import experimental_api
 from . import _arrays as arrays
 from . import _speasy as _sp
+from ._background import Window
 
 
 __all__ = [
@@ -122,7 +123,7 @@ _BACKGROUND_UNITS = {'diff': None, 'ratio': '', 'db': 'dB'}
 
 
 @experimental_api()
-def background_subtract(data, *, q: float = 50.0, window=None,
+def background_subtract(data, *, q: float = 50.0, window: Window = None,
                         mode: str = 'diff', gap_factor: float = 3.0):
     """Remove a per-channel background from a spectrogram.
 
