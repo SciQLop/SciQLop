@@ -25,6 +25,7 @@ __all__ = [
     'fft', 'filtfilt', 'sosfiltfilt', 'fir_filter', 'iir_sos',
     'resample', 'interpolate_nan', 'rolling_mean', 'rolling_std',
     'spectrogram', 'reduce', 'reduce_axes', 'split_segments',
+    'background_subtract',
 ]
 
 
@@ -115,6 +116,40 @@ def rolling_std(data, window: int, *, gap_factor: float = 3.0):
         return _sp.rewrap_time_series(data, y_out, time_epoch=x_out, name_suffix='_rstd')
     raise TypeError("rolling_std(data, ...) requires a SpeasyVariable; "
                     "use SciQLop.user_api.dsp.arrays.rolling_std(x, y, w) for arrays.")
+
+
+_BACKGROUND_UNITS = {'diff': None, 'ratio': '', 'db': 'dB'}
+
+
+@experimental_api()
+def background_subtract(data, *, q: float = 50.0, window=None,
+                        mode: str = 'diff', gap_factor: float = 3.0):
+    """Remove a per-channel background from a spectrogram.
+
+    Estimates a background per frequency channel down the time axis, then
+    expresses each sample relative to it. Returns a new SpeasyVariable with the
+    same time and frequency axes, suffixed ``_bgsub``.
+
+    ``q`` is the percentile of the estimator (50 = median, the default; 5-10
+    when bursts fill much of the window). ``window`` is `None` for a constant
+    background, an `int` for that many samples, or a `timedelta` /
+    `np.timedelta64` for that duration. ``mode`` is ``'diff'`` (default),
+    ``'ratio'`` or ``'db'``; the latter two yield NaN where ``S <= 0`` or
+    ``bg <= 0``.
+
+    For raw arrays, use ``SciQLop.user_api.dsp.arrays.background_subtract``.
+    """
+    if not _is_var(data):
+        raise TypeError("background_subtract(data, ...) requires a SpeasyVariable; "
+                        "use SciQLop.user_api.dsp.arrays.background_subtract(x, y) "
+                        "for arrays.")
+    x, y = _sp.unwrap(data)
+    y_out = arrays.background_subtract(x, y, q=q, window=window,
+                                       mode=mode, gap_factor=gap_factor)
+    units = _BACKGROUND_UNITS[mode]
+    return _sp.rewrap_time_series(
+        data, y_out, name_suffix='_bgsub',
+        meta_overrides=None if units is None else {'UNITS': units})
 
 
 # --- New-axis transforms (resample, fft, spectrogram, split_segments)

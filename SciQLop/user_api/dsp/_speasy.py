@@ -19,7 +19,8 @@ def unwrap(v: SpeasyVariable) -> Tuple[np.ndarray, np.ndarray]:
 
 def rewrap_time_series(template: SpeasyVariable, values: np.ndarray, *,
                        time_epoch: Optional[np.ndarray] = None,
-                       name_suffix: str = "") -> SpeasyVariable:
+                       name_suffix: str = "",
+                       meta_overrides: Optional[dict] = None) -> SpeasyVariable:
     """Build a new SpeasyVariable preserving template's metadata and unit.
 
     Parameters
@@ -33,11 +34,18 @@ def rewrap_time_series(template: SpeasyVariable, values: np.ndarray, *,
         time axis is kept.
     name_suffix : str
         Appended to the template's name (e.g. ``"_filtfilt"``).
+    meta_overrides : dict or None
+        Merged over the template's meta. Transforms that change the physical
+        quantity (e.g. a dB ratio) must override ``UNITS`` here, or the output
+        carries the input's unit and is mislabelled.
     """
     time = template.time if time_epoch is None else epoch_to_datetime64(time_epoch)
     time_axis = VariableTimeAxis(values=time)
     other_axes = list(template.axes[1:])
-    data = DataContainer(values=values, meta=dict(template.meta),
+    meta = dict(template.meta)
+    if meta_overrides:
+        meta.update(meta_overrides)
+    data = DataContainer(values=values, meta=meta,
                          name=template.name + name_suffix)
     return SpeasyVariable(
         axes=[time_axis] + other_axes,
