@@ -128,11 +128,18 @@ class EasyProvider(DataProvider):
                  cacheable=False, debug=False,
                  knobs_model: Optional[type] = None,
                  knobs_kwarg_name: str = "knobs",
-                 out_of_process: bool = False):
+                 out_of_process: bool = False,
+                 display_name: Optional[str] = None):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(_name_callable(callback)), data_order=data_order,
                                            cacheable=cacheable)
         self._path = path.split('/')
-        product_name = self._path[-1]
+        # The node name is the graph label on BOTH plot paths (in-process
+        # `target.plot(..., name=node.name())` and remote
+        # `add_remote_color_map(node.name())`) as well as the product-tree
+        # label. Defaulting it to the path leaf means a product at
+        # `radio/ilofar/X` can only be called "X"; display_name decouples the
+        # two without touching the path, which is the product's identity.
+        product_name = display_name or self._path[-1]
         product_path = self._path[:-1]
 
         # Extract and validate dependencies early, before any side effects
@@ -152,8 +159,8 @@ class EasyProvider(DataProvider):
                     f"resolve dependencies in-process or drop out_of_process")
 
         metadata = {
-            **metadata,
             "description": f"Virtual {parameter_type.name} product built from Python function: {self.name}",
+            **metadata,
             "stable_id": path,
             **({"remote": "True"} if out_of_process else {}),
         }
@@ -418,7 +425,8 @@ class EasyMultiComponent(EasyVector):
 class EasySpectrogram(EasyProvider):
     def __init__(self, path, get_data_callback: VirtualProductCallback, metadata: dict,
                  data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
-                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False):
+                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
+                 display_name: Optional[str] = None):
         super().__init__(path=path, callback=get_data_callback,
                          parameter_type=ParameterType.Spectrogram,
                          metadata={**metadata},
@@ -427,7 +435,8 @@ class EasySpectrogram(EasyProvider):
                          debug=debug,
                          knobs_model=knobs_model,
                          knobs_kwarg_name=knobs_kwarg_name,
-                         out_of_process=out_of_process)
+                         out_of_process=out_of_process,
+                         display_name=display_name)
 
     def get_data(self, product, start, stop, knobs=None) -> Optional[DataProviderReturnType]:
         res = self._invoke_callback(start, stop, knobs)
