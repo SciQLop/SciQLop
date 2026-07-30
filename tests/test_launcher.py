@@ -1,5 +1,6 @@
 # tests/test_launcher.py
 import os
+import sys
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 from SciQLop.sciqlop_launcher import (
@@ -328,3 +329,33 @@ def test_prepare_workspace_dev_strips_host_sciqlop_from_install(tmp_path):
     install_args = cmd[cmd.index("install") + 1:]
     assert not any(_extract_package_name(p) == "sciqlop" for p in install_args), cmd
     assert "matplotlib>=3.8" in install_args
+
+
+def test_prepare_workspace_dev_repairs_lab_assets_on_dev_venv(tmp_path):
+    """Unlike the prod path (workspace_setup.prepare_workspace), dev mode never
+    creates a workspace .venv — it runs JupyterLab straight out of the dev base
+    venv (sys.executable's venv). That venv accumulates the exact same orphan
+    empty dirs / gutted jupyterlab-js data files from routine `uv sync` churn
+    (see jupyterlab-dual-ownership-breakage), but nothing ever heals it because
+    repair_lab_assets() was only wired into the prod prepare_workspace() call.
+    Dev mode must call it too, against sys.executable's venv dir."""
+    from SciQLop.sciqlop_launcher import _prepare_workspace_dev
+
+    captured = {}
+
+    def fake_repair(venv_dir, on_output=None):
+        captured["venv_dir"] = venv_dir
+
+    expected_venv_dir = Path(sys.executable).parent.parent
+
+    with patch("SciQLop.components.plugins.plugin_deps.collect_plugin_dependencies",
+               return_value=[]), \
+         patch("SciQLop.components.workspaces.backend.workspace_setup.get_globally_enabled_plugins",
+               return_value=[]), \
+         patch("SciQLop.components.workspaces.backend.workspace_setup.get_plugin_folders",
+               return_value=[]), \
+         patch("SciQLop.components.workspaces.backend.workspace_migration.migrate_workspace"), \
+         patch("SciQLop.components.workspaces.backend.lab_assets.repair_lab_assets", fake_repair):
+        _prepare_workspace_dev(tmp_path)
+
+    assert captured.get("venv_dir") == expected_venv_dir

@@ -364,6 +364,7 @@ def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
     from SciQLop.components.workspaces.backend.uv import uv_command
     from SciQLop.components.workspaces.backend.workspace_venv import _run_uv
     from SciQLop.components.workspaces.backend.workspace_project import strip_host_provided
+    from SciQLop.components.workspaces.backend.lab_assets import repair_lab_assets
 
     workspace_dir.mkdir(parents=True, exist_ok=True)
     migrate_workspace(workspace_dir)
@@ -388,6 +389,13 @@ def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
             _run_uv(cmd, on_output)
         except Exception as e:
             print(f"Warning: failed to install plugin/workspace deps: {e}")
+
+    # Dev mode never creates a workspace .venv (see module docstring) — it runs
+    # JupyterLab straight out of the dev base venv, so that's the venv that
+    # needs the same jupyterlab/jupyterlab-js self-heal the prod path gets via
+    # prepare_workspace().
+    dev_venv_dir = Path(sys.executable).parent.parent
+    repair_lab_assets(dev_venv_dir, on_output=on_output)
 
 
 def main(argv: list[str] | None = None) -> int:
