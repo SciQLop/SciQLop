@@ -28,7 +28,7 @@ def plot_remote(target, node, provider, product: list, *, plot_type: PlotType = 
     plot = _new_plot(target, plot_type)
     ptype = node.parameter_type()
     if ptype == ParameterType.Spectrogram:
-        graph = plot.add_remote_color_map(node.name())
+        graph = plot.add_remote_color_map(node.display_name())
     else:
         labels = list(provider.labels(node))
         graph = plot.add_remote_line_graph(labels=labels)

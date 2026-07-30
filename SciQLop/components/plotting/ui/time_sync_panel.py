@@ -683,14 +683,14 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
         log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
         r = target.plot(callback, labels=labels, **kwargs)
         if hasattr(r, '__iter__'):
-            r[1].set_name(node.name())
+            r[1].set_name(node.display_name())
         else:
-            r.set_name(node.name())
+            r.set_name(node.display_name())
         return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot)
     if node.parameter_type() == ParameterType.Spectrogram:
         callback = _specgram_callback(provider, node)
         log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
-        r = target.plot(callback, name=node.name(), graph_type=GraphType.ColorMap,
+        r = target.plot(callback, name=node.display_name(), graph_type=GraphType.ColorMap,
                         y_log_scale=True, z_log_scale=True, **kwargs)
         return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot)
     return None

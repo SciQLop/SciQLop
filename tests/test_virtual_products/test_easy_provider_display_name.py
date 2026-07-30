@@ -49,15 +49,20 @@ def test_node_name_defaults_to_the_path_leaf(registered):
     assert registered("test_display/default_leaf").name() == "default_leaf"
 
 
-def test_display_name_overrides_the_path_leaf(registered):
-    assert registered("test_display/override_leaf",
-                      display_name="I-LOFAR X pol").name() == "I-LOFAR X pol"
+def test_display_name_sets_the_label_and_leaves_the_name_alone(registered):
+    """The label is a separate channel from the name. An earlier version of
+    this feature swapped the name for the label, which moved the product out
+    of its own path — see test_display_name_reachability.py."""
+    node = registered("test_display/override_leaf", display_name="I-LOFAR X pol")
+    assert node.display_name() == "I-LOFAR X pol"
+    assert node.name() == "override_leaf"
 
 
 def test_empty_display_name_falls_back_to_the_leaf(registered):
-    """An empty string is 'not supplied', not 'name this product nothing'."""
-    assert registered("test_display/empty_display",
-                      display_name="").name() == "empty_display"
+    """An empty string is 'not supplied', not 'label this product nothing'."""
+    node = registered("test_display/empty_display", display_name="")
+    assert node.display_name() == "empty_display"
+    assert node.name() == "empty_display"
 
 
 def test_supplied_description_survives_registration(registered):
@@ -87,4 +92,5 @@ def test_virtual_spectrogram_forwards_display_name(monkeypatch):
     vp.VirtualSpectrogram("test_display/via_virtual_spectrogram",
                           _spectrogram_callback,
                           display_name="e-CALLISTO BIR 01")
-    assert captured["node"].name() == "e-CALLISTO BIR 01"
+    assert captured["node"].display_name() == "e-CALLISTO BIR 01"
+    assert captured["node"].name() == "via_virtual_spectrogram"

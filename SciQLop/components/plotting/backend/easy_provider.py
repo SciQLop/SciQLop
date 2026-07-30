@@ -133,13 +133,13 @@ class EasyProvider(DataProvider):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(_name_callable(callback)), data_order=data_order,
                                            cacheable=cacheable)
         self._path = path.split('/')
-        # The node name is the graph label on BOTH plot paths (in-process
-        # `target.plot(..., name=node.name())` and remote
-        # `add_remote_color_map(node.name())`) as well as the product-tree
-        # label. Defaulting it to the path leaf means a product at
-        # `radio/ilofar/X` can only be called "X"; display_name decouples the
-        # two without touching the path, which is the product's identity.
-        product_name = display_name or self._path[-1]
+        # The node NAME is the product's identity: `ProductsModel::node(path)`
+        # resolves a path by matching it, so it must stay the path leaf. A
+        # display name is presentation and is set separately below — swapping
+        # the name for it doesn't relabel the product, it moves it, and every
+        # path-based plot route (panel.plot, %plot, saved panels) stops
+        # finding it.
+        product_name = self._path[-1]
         product_path = self._path[:-1]
 
         # Extract and validate dependencies early, before any side effects
@@ -164,11 +164,11 @@ class EasyProvider(DataProvider):
             "stable_id": path,
             **({"remote": "True"} if out_of_process else {}),
         }
-        products.add_node(
-            product_path,
-            ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER, parameter_type, "",
-                              None)
-        )
+        node = ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER,
+                                 parameter_type, "", None)
+        if display_name:
+            node.set_display_name(display_name)
+        products.add_node(product_path, node)
         self._callback = callback
         self._parameter_type = parameter_type
         self._debug = debug
