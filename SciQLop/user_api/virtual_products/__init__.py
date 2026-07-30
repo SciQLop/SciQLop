@@ -87,17 +87,20 @@ class VirtualMultiComponent(VirtualProduct):
 class VirtualSpectrogram(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, debug: Optional[bool] = False,
                  cachable: Optional[bool] = False,
-                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False):
+                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
+                 display_name: Optional[str] = None):
         super(VirtualSpectrogram, self).__init__(path, callback, VirtualProductType.Spectrogram)
         self._impl = _EasySpectrogram(path, callback, metadata={}, debug=debug, cacheable=cachable,
                                       knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                                      out_of_process=out_of_process)
+                                      out_of_process=out_of_process,
+                                      display_name=display_name)
 
 
 def create_virtual_product(path: str, callback: VirtualProductCallback,
                            product_type: VirtualProductType, labels: Optional[List[str]] = None,
                            debug: Optional[bool] = False, cachable: Optional[bool] = False,
-                           knobs_model=None, knobs_kwarg_name="knobs") -> Optional[VirtualProduct]:
+                           knobs_model=None, knobs_kwarg_name="knobs",
+                           display_name: Optional[str] = None) -> Optional[VirtualProduct]:
     """
     Create a new virtual product that will be listed in the product tree.
 
@@ -119,6 +122,9 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
         A Pydantic BaseModel class whose fields define the knobs for this product. When provided, the model instance is passed to the callback under knobs_kwarg_name.
     knobs_kwarg_name : str
         Name of the keyword argument used to pass the knobs model instance to the callback (default: "knobs").
+    display_name : Optional[str]
+        Name shown in the product tree and used as the plot label. Defaults to
+        the last segment of `path`.
     Returns
     -------
     VirtualProduct
@@ -160,7 +166,8 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
         return VirtualMultiComponent(path, callback, labels=labels, debug=debug, cachable=cachable,
                                      knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
     return VirtualSpectrogram(path, callback, debug=debug, cachable=cachable,
-                              knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
+                              knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
+                              display_name=display_name)
 
 
 from SciQLop.user_api.virtual_products.types import Scalar, Vector, MultiComponent, Spectrogram

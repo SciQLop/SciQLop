@@ -128,10 +128,17 @@ class EasyProvider(DataProvider):
                  cacheable=False, debug=False,
                  knobs_model: Optional[type] = None,
                  knobs_kwarg_name: str = "knobs",
-                 out_of_process: bool = False):
+                 out_of_process: bool = False,
+                 display_name: Optional[str] = None):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(_name_callable(callback)), data_order=data_order,
                                            cacheable=cacheable)
         self._path = path.split('/')
+        # The node NAME is the product's identity: `ProductsModel::node(path)`
+        # resolves a path by matching it, so it must stay the path leaf. A
+        # display name is presentation and is set separately below — swapping
+        # the name for it doesn't relabel the product, it moves it, and every
+        # path-based plot route (panel.plot, %plot, saved panels) stops
+        # finding it.
         product_name = self._path[-1]
         product_path = self._path[:-1]
 
@@ -152,16 +159,16 @@ class EasyProvider(DataProvider):
                     f"resolve dependencies in-process or drop out_of_process")
 
         metadata = {
-            **metadata,
             "description": f"Virtual {parameter_type.name} product built from Python function: {self.name}",
+            **metadata,
             "stable_id": path,
             **({"remote": "True"} if out_of_process else {}),
         }
-        products.add_node(
-            product_path,
-            ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER, parameter_type, "",
-                              None)
-        )
+        node = ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER,
+                                 parameter_type, "", None)
+        if display_name:
+            node.set_display_name(display_name)
+        products.add_node(product_path, node)
         self._callback = callback
         self._parameter_type = parameter_type
         self._debug = debug
@@ -418,7 +425,8 @@ class EasyMultiComponent(EasyVector):
 class EasySpectrogram(EasyProvider):
     def __init__(self, path, get_data_callback: VirtualProductCallback, metadata: dict,
                  data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
-                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False):
+                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
+                 display_name: Optional[str] = None):
         super().__init__(path=path, callback=get_data_callback,
                          parameter_type=ParameterType.Spectrogram,
                          metadata={**metadata},
@@ -427,7 +435,8 @@ class EasySpectrogram(EasyProvider):
                          debug=debug,
                          knobs_model=knobs_model,
                          knobs_kwarg_name=knobs_kwarg_name,
-                         out_of_process=out_of_process)
+                         out_of_process=out_of_process,
+                         display_name=display_name)
 
     def get_data(self, product, start, stop, knobs=None) -> Optional[DataProviderReturnType]:
         res = self._invoke_callback(start, stop, knobs)
