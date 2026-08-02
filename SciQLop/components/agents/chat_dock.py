@@ -12,7 +12,6 @@ from typing import Dict, List, Optional
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QFileDialog,
     QHBoxLayout,
@@ -25,6 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.components.theming import get_icon
 
 from .backend import AgentBackend, BackendContext
@@ -37,11 +37,16 @@ from .chat import (
     ToolActivityBlock,
     TranscriptView,
 )
+from .chat.info_bar import ContextBreakdownPopup, SessionInfoBar
 from .chat.session_panel import SessionListPanel
 from .chat.sessions_view import grouped_sessions, all_groups, all_tags
+from .chat.settings_popup import AgentSettingsPopup
+from .chat.usage_refresh import UsageRefresher
 from .registry import available_backends, create_backend
 from .settings import AgentChatSettings, AgentSessionMeta
 from .tools import build_sciqlop_tools
+
+log = getLogger(__name__)
 
 
 @dataclass
@@ -70,6 +75,10 @@ class AgentChatDock(QWidget):
         self._pane_width_timer.setSingleShot(True)
         self._pane_width_timer.setInterval(400)
         self._pane_width_timer.timeout.connect(self._persist_pane_width)
+        self._breakdown_popup: Optional[ContextBreakdownPopup] = None
+        self._resume_task: Optional[asyncio.Task] = None
+        self._usage_refresher = UsageRefresher(
+            self._current_backend, self._apply_usage_snapshot)
 
         self._build_ui()
         self.refresh_backends()
@@ -81,11 +90,6 @@ class AgentChatDock(QWidget):
         self._reset_btn = QPushButton("New session")
         self._reset_btn.clicked.connect(self._on_reset)
         header.addWidget(self._reset_btn)
-
-        self._export_btn = QPushButton("Export ⤓")
-        self._export_btn.setToolTip("Save this transcript as a Markdown file.")
-        self._export_btn.clicked.connect(self._on_export)
-        header.addWidget(self._export_btn)
 
         self._interactive: tuple = ()
 
@@ -100,25 +104,22 @@ class AgentChatDock(QWidget):
         self._sessions_toggle.toggled.connect(self._on_sessions_toggled)
         header.addWidget(self._sessions_toggle)
 
-        self._model_combo = QComboBox()
+        self._settings_popup = AgentSettingsPopup(self)
+        self._settings_btn = QPushButton(get_icon("settings"), "")
+        self._settings_btn.setToolTip("Model, effort, activity and export options.")
+        self._settings_btn.clicked.connect(self._show_settings_popup)
+        header.addWidget(self._settings_btn)
+
+        # Aliases so the pre-existing wiring and `_interactive` keep working
+        # unchanged now that the popup owns construction.
+        self._model_combo = self._settings_popup.model_combo
+        self._verbosity_combo = self._settings_popup.verbosity_combo
+        self._writes_toggle = self._settings_popup.writes_toggle
         self._model_combo.currentIndexChanged.connect(self._on_model_changed)
-        header.addWidget(self._model_combo)
-
-        self._writes_toggle = QCheckBox("Allow write actions")
-        self._writes_toggle.setToolTip(
-            "When enabled, the agent can modify SciQLop state "
-            "(set time range, create panels, exec Python, edit notebooks)."
-        )
-        self._writes_toggle.stateChanged.connect(self._on_writes_toggled)
-        header.addWidget(self._writes_toggle)
-
-        self._verbosity_combo = QComboBox()
-        self._verbosity_combo.addItems(
-            ["Activity: minimal", "Activity: + inputs", "Activity: + results"])
-        self._verbosity_combo.setToolTip(
-            "How much of the agent's tool activity to show in the chat.")
         self._verbosity_combo.currentIndexChanged.connect(self._on_verbosity_changed)
-        header.addWidget(self._verbosity_combo)
+        self._writes_toggle.stateChanged.connect(self._on_writes_toggled)
+        self._settings_popup.export_requested.connect(self._on_export)
+        self._settings_popup.effort_changed.connect(self._on_effort_changed)
 
         self._status_label = QLabel("")
         self._status_label.setStyleSheet("color: gray;")
@@ -133,20 +134,32 @@ class AgentChatDock(QWidget):
         self._init_tool_verbosity()
 
         input_panel = QWidget(self._splitter)
-        input_row = QHBoxLayout(input_panel)
+        input_column = QVBoxLayout(input_panel)
+        input_column.setContentsMargins(0, 0, 0, 0)
+
+        input_row_host = QWidget(input_panel)
+        input_row = QHBoxLayout(input_row_host)
         input_row.setContentsMargins(0, 0, 0, 0)
-        self._input = ChatInput(self._tempdir / "pasted", input_panel)
+
+        self._input = ChatInput(self._tempdir / "pasted", input_row_host)
         self._input.setMinimumHeight(60)
         input_row.addWidget(self._input, 1)
 
-        self._send_btn = QPushButton("Send", input_panel)
+        self._send_btn = QPushButton("Send", input_row_host)
         self._send_btn.clicked.connect(self._on_send)
         input_row.addWidget(self._send_btn)
 
-        self._stop_btn = QPushButton("Stop", input_panel)
+        self._stop_btn = QPushButton("Stop", input_row_host)
         self._stop_btn.setVisible(False)
         self._stop_btn.clicked.connect(self._on_stop)
         input_row.addWidget(self._stop_btn)
+
+        input_column.addWidget(input_row_host)
+
+        self._info_bar = SessionInfoBar(input_panel)
+        self._info_bar.details_requested.connect(self._show_context_breakdown)
+        input_column.addWidget(self._info_bar)
+
         self._splitter.addWidget(input_panel)
 
         self._splitter.setStretchFactor(0, 1)
@@ -198,7 +211,12 @@ class AgentChatDock(QWidget):
             )
             return
         self._set_enabled()
-        target = current if current in names else names[0]
+        # `available_backends()` is sorted, so falling straight to names[0]
+        # always reopens on whichever backend sorts first rather than the one
+        # actually in use — with several installed that is "Albert", which
+        # implements none of the usage protocol, leaving the strip blank.
+        remembered = AgentChatSettings().last_backend
+        target = next((n for n in (current, remembered) if n in names), names[0])
         idx = names.index(target)
         self._backend_combo.setCurrentIndex(idx)
         self._on_backend_changed(idx)
@@ -217,11 +235,66 @@ class AgentChatDock(QWidget):
     def _set_status(self, text: str) -> None:
         self._status_label.setText(text)
 
+    def _show_settings_popup(self) -> None:
+        origin = self._settings_btn.mapToGlobal(
+            self._settings_btn.rect().bottomLeft())
+        self._settings_popup.move(origin)
+        self._settings_popup.show()
+
+    def _show_context_breakdown(self) -> None:
+        if self._breakdown_popup is None:
+            self._breakdown_popup = ContextBreakdownPopup(self)
+        self._breakdown_popup.set_snapshot(self._info_bar.snapshot)
+        origin = self._info_bar.details_button.mapToGlobal(
+            self._info_bar.details_button.rect().topLeft())
+        self._breakdown_popup.move(origin)
+        self._breakdown_popup.show()
+        self._spawn(self._usage_refresher.refresh())
+
+    def _on_effort_changed(self, effort: str) -> None:
+        backend = self._current_backend()
+        if backend is None:
+            return
+        with AgentChatSettings() as cfg:
+            cfg.effort = {**cfg.effort, backend.display_name: effort}
+        self._info_bar.set_effort(effort or None)
+        self._push_effort(backend, effort or None)
+
+    def _populate_effort(self, backend) -> None:
+        values = ()
+        reader = getattr(backend, "effort_values", None)
+        if reader is not None:
+            try:
+                values = reader()
+            except Exception:
+                values = ()
+        stored = AgentChatSettings().effort.get(backend.display_name) or None
+        self._settings_popup.set_effort_values(values, stored)
+        effort = self._settings_popup.current_effort()
+        self._info_bar.set_effort(effort)
+        if effort is not None:
+            # the restored level is only real once the backend runs at it —
+            # showing it in the strip without applying it would assert a state
+            # the backend does not have.
+            self._push_effort(backend, effort)
+
+    def _push_effort(self, backend, effort: Optional[str]) -> None:
+        setter = getattr(backend, "set_effort", None)
+        if setter is not None:
+            self._spawn(setter(effort))
+
+    def _apply_usage_snapshot(self, snapshot) -> None:
+        self._info_bar.set_snapshot(snapshot)
+        if self._breakdown_popup is not None and self._breakdown_popup.isVisible():
+            self._breakdown_popup.set_snapshot(snapshot)
+
     def _on_backend_changed(self, index: int) -> None:
         name = self._backend_combo.itemData(index)
         if not name:
             return
         self._current = name
+        with AgentChatSettings() as cfg:
+            cfg.last_backend = name
         session = self._sessions.get(name) or self._create_session(name)
         self._sessions[name] = session
         self._bind_to_session(session)
@@ -240,20 +313,54 @@ class AgentChatDock(QWidget):
         backend = create_backend(name, ctx)
         return _AgentSession(backend=backend)
 
+    def _clear_effort(self) -> None:
+        """Drop the previous backend's effort levels from the shared popup.
+
+        The repopulate is async (it awaits a registry refresh that can block for
+        ~20s offline) and ⚙ stays reachable throughout, so leaving the old list
+        up would let the user pick a level the new backend does not support.
+        """
+        self._settings_popup.set_effort_values((), None)
+        self._info_bar.set_effort(None)
+
     def _bind_to_session(self, session: _AgentSession) -> None:
         be = session.backend
+        self._clear_effort()
         self._transcript.set_assistant_label(be.display_name)
         self._populate_models(be)
+        self._spawn(self._prepare_session(be))
         self._populate_session_list(be)
         self._transcript.render_messages(session.messages)
         self._transcript.flush_now()
-        self._spawn(self._refresh_completions())
         on_activated = getattr(be, "on_activated", None)
         if on_activated is not None:
             try:
                 on_activated()
             except Exception:
                 pass
+
+    async def _prepare_session(self, backend) -> None:
+        """Settle effort, then connect, then read usage — strictly in order.
+
+        Effort can only be applied when the SDK client is created, so applying
+        it drops any existing client. Run concurrently with the connect step
+        that populates the strip, that teardown races the very connection the
+        usage read depends on: the client comes up for the slash commands, the
+        effort push tears it down, and the read finds nothing. Ordering the
+        three removes the race rather than papering over it.
+        """
+        await self._refresh_capabilities_then_effort(backend)
+        if backend is not self._current_backend():
+            return
+        await self._refresh_completions_then_usage()
+
+    async def _refresh_capabilities_then_effort(self, backend) -> None:
+        from .model_capabilities import ensure_registry_fresh
+
+        await ensure_registry_fresh()
+        if backend is not self._current_backend():
+            return   # the user switched backend while the registry refreshed
+        self._populate_effort(backend)
 
     def reload_backend_models(self) -> None:
         """Re-read `model_choices` from the current backend and repopulate the
@@ -291,8 +398,17 @@ class AgentChatDock(QWidget):
             return
         value = self._model_combo.itemData(index)
         backend = self._sessions[self._current].backend
-        self._spawn(backend.set_model(value))
+        self._spawn(self._apply_model(backend, value))
         self._set_status(f"Model → {self._model_combo.currentText()}")
+
+    async def _apply_model(self, backend, value) -> None:
+        # effort levels are read back *after* the switch lands: `effort_values()`
+        # answers for the model the backend currently holds, so repopulating
+        # before the await would narrow the list against the previous model.
+        await backend.set_model(value)
+        if backend is not self._current_backend():
+            return   # the user switched backend while the model switch landed
+        self._populate_effort(backend)
 
     def _on_writes_toggled(self, state: int) -> None:
         self._allow_writes = state == Qt.CheckState.Checked.value
@@ -331,7 +447,31 @@ class AgentChatDock(QWidget):
         self._transcript.flush_now()
         self._set_status(
             f"Resumed session {session_id[:8]} ({len(session.messages)} messages)")
-        self._spawn(backend.resume(session_id))
+        # Clicking down a session list starts one of these per click; left to
+        # run they race over a single backend and the last to *finish* wins,
+        # which need not be the session now on screen. Only the newest matters.
+        if self._resume_task is not None and not self._resume_task.done():
+            self._resume_task.cancel()
+        self._resume_task = self._spawn(
+            self._resume_then_refresh(backend, session_id))
+
+    async def _resume_then_refresh(self, backend, session_id: str) -> None:
+        """Resume, then rebuild the strip for the session just loaded.
+
+        `resume()` drops the client so the next connect attaches to the resumed
+        session. Nothing reconnected or re-read usage afterwards, so the strip
+        kept whatever the previous session had left there — and if that was
+        nothing, opening a session left it blank for good.
+        """
+        self._info_bar.set_snapshot(None)     # the old session's figures are gone
+        try:
+            await backend.resume(session_id)
+        except Exception as error:
+            log.error("resuming %s failed: %r", session_id, error)
+            return
+        if backend is not self._current_backend():
+            return
+        await self._refresh_completions_then_usage()
 
     def _on_session_rename(self, session_id: str) -> None:
         session = self._sessions.get(self._current)
@@ -521,6 +661,7 @@ class AgentChatDock(QWidget):
                 self._transcript.render_messages(session.messages)
                 self._transcript.flush_now()
             self._set_status("Ready.")
+            self._spawn(self._usage_refresher.refresh())
         except asyncio.CancelledError:
             session.messages.append(
                 ChatMessage(
@@ -663,6 +804,17 @@ class AgentChatDock(QWidget):
         with AgentChatSettings() as s:
             s.tool_verbosity = level
 
+    async def _refresh_completions_then_usage(self) -> None:
+        """Ask for usage only after the backend has had a reason to connect.
+
+        `list_slash_commands` is what first brings the SDK client up, and a
+        backend can only report context once connected. Spawning both at bind
+        let the usage refresh win the race and report nothing, leaving the strip
+        blank until the first turn finished.
+        """
+        await self._refresh_completions()
+        await self._usage_refresher.refresh()
+
     async def _refresh_completions(self) -> None:
         if self._current is None:
             return
@@ -676,10 +828,29 @@ class AgentChatDock(QWidget):
     def _spawn(self, coro) -> asyncio.Task:
         task = asyncio.ensure_future(coro)
         self._bg_tasks.add(task)
-        task.add_done_callback(self._bg_tasks.discard)
+        task.add_done_callback(self._retire_task)
         return task
 
+    def _retire_task(self, task: asyncio.Task) -> None:
+        """Drop the strong reference and consume the task's exception.
+
+        Background tasks are fire-and-forget (effort/model pushes, usage
+        refreshes); an unretrieved exception would only surface as a bare
+        "Task exception was never retrieved" at GC time.
+        """
+        self._bg_tasks.discard(task)
+        if task.cancelled():
+            return
+        error = task.exception()
+        if error is not None:
+            log.error("agent chat background task failed: %r", error)
+
     def closeEvent(self, event):
+        # Continuations touch widgets (settings popup, info strip, breakdown
+        # popup); once the dock is gone those are deleted C++ objects and any
+        # late write raises RuntimeError from Shiboken.
+        for task in list(self._bg_tasks):
+            task.cancel()
         shutil.rmtree(self._tempdir, ignore_errors=True)
         super().closeEvent(event)
 
