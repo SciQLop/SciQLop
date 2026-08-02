@@ -2,9 +2,16 @@
 from .backend import (
     AgentBackend,
     BackendContext,
+    CarbonFootprint,
     ConfirmCallback,
+    ContextCategory,
+    Cost,
+    Quota,
     SessionEntry,
     StreamBlock,
+    TokenCounts,
+    UsageReportingBackend,
+    UsageSnapshot,
 )
 from .chat_dock import AgentChatDock, ensure_agent_dock
 from .registry import (
@@ -18,9 +25,16 @@ __all__ = [
     "AgentBackend",
     "AgentChatDock",
     "BackendContext",
+    "CarbonFootprint",
     "ConfirmCallback",
+    "ContextCategory",
+    "Cost",
+    "Quota",
     "SessionEntry",
     "StreamBlock",
+    "TokenCounts",
+    "UsageReportingBackend",
+    "UsageSnapshot",
     "available_backends",
     "create_backend",
     "ensure_agent_dock",
