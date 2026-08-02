@@ -16,8 +16,20 @@ class AgentChatSettings(ConfigEntry):
         description="How much of the agent's tool activity to show in the chat "
                     "(1 = step names, 2 = + inputs, 3 = + result summaries).",
     )
+    last_backend: str = Field(
+        default="",
+        description="Agent backend to reopen the chat with. Empty selects the "
+                    "first available one.",
+        json_schema_extra={"widget": "hidden"},
+    )
     sessions_pane_visible: bool = Field(default=True, json_schema_extra={"widget": "hidden"})
     sessions_pane_width: int = Field(default=280, json_schema_extra={"widget": "hidden"})
+    effort: Dict[str, str] = Field(
+        default_factory=dict,
+        description="Selected reasoning effort per agent backend, keyed by "
+                    "backend display name. Empty string = backend default.",
+        json_schema_extra={"widget": "hidden"},
+    )
 
 
 class AdsCredentialsSettings(ConfigEntry):
