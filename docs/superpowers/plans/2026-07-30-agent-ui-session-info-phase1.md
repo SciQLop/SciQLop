@@ -2313,8 +2313,23 @@ new regressions but are not.
 
 - [ ] **Step 2: Run the whole plugins suite**
 
-Run: `cd /home/jeandet/Documents/prog/plugins_sciqlop && uv run pytest`
-Expected: PASS.
+Run:
+
+```bash
+cd /home/jeandet/Documents/prog/plugins_sciqlop && \
+PYTHONPATH=/home/jeandet/Documents/prog/plugins_sciqlop/sciqlop_claude \
+uv run --no-sync --project /var/home/jeandet/Documents/prog/SciQLop \
+  pytest sciqlop_claude -v
+```
+
+Expected: PASS with **0 skipped**.
+
+**Do not use a bare `uv run pytest` here.** That resolves the plugins repo's own
+environment, where `SciQLop` is absent and `tests/conftest.py` substitutes a
+`MagicMock`. The usage tests' skip guard then fires and they report `0 passed,
+9 skipped` — a green run that proves nothing. Borrowing SciQLop's venv via
+`--no-sync --project` is what makes the real types importable. Check the skip
+count on every run, not just the exit code.
 
 - [ ] **Step 3: Report, do not push**
 
