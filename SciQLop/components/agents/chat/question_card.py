@@ -61,16 +61,26 @@ class QuestionCard(QFrame):
         buttons: List[tuple] = []
         for i, opt in enumerate(q.get("options", []) or []):
             label = opt.get("label", "")
-            desc = opt.get("description", "")
-            text = f"{label} — {desc}" if desc else label
-            btn = QCheckBox(text) if multi else QRadioButton(text)
+            btn = QCheckBox(label) if multi else QRadioButton(label)
             if group is not None:
                 group.addButton(btn)
                 if i == 0:
                     btn.setChecked(True)  # sensible default for single-select
             layout.addWidget(btn)
+            self._add_description(layout, opt.get("description", ""))
             buttons.append((label, btn))
         self._groups.append((question_text, multi, buttons))
+
+    def _add_description(self, layout: QVBoxLayout, description: str) -> None:
+        """Descriptions get a label of their own: Qt buttons never wrap their
+        text, so a long one is cropped at the dock's width instead."""
+        if not description:
+            return
+        text = QLabel(description)
+        text.setWordWrap(True)
+        text.setIndent(self.fontMetrics().horizontalAdvance("MM"))
+        text.setStyleSheet("color: gray;")
+        layout.addWidget(text)
 
     def _on_send(self) -> None:
         answers: Dict[str, Any] = {}
