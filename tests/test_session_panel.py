@@ -93,6 +93,18 @@ def test_group_header_menu_signals(qtbot):
     assert renamed == ["MMS"] and deleted == ["MMS"]
 
 
+def test_session_menu_offers_delete_and_emits_the_id(qtbot):
+    p = _panel(qtbot)
+    p.set_groups(_groups())
+    deleted = []
+    p.session_delete_requested.connect(deleted.append)
+    menu = p.session_menu(p._tree.topLevelItem(1).child(1))  # "Plain", id b
+    labels = [a.text() for a in menu.actions() if a.text()]
+    assert labels[-1] == "Delete session…"
+    menu.actions()[-1].trigger()
+    assert deleted == ["b"]
+
+
 def test_synthetic_group_collapse_preserved(qtbot):
     p = _panel(qtbot)
     p.set_groups(_groups())

@@ -49,6 +49,7 @@ class SessionListPanel(QWidget):
     pin_toggle_requested = Signal(str)
     move_requested = Signal(str)
     tags_edit_requested = Signal(str)
+    session_delete_requested = Signal(str)
     session_moved = Signal(str, str)
     group_rename_requested = Signal(str)
     group_delete_requested = Signal(str)
@@ -121,22 +122,30 @@ class SessionListPanel(QWidget):
     def _emit_group_delete(self, header) -> None:
         self.group_delete_requested.emit(header.data(0, _GROUP_ROLE))
 
+    def _group_menu(self, header) -> QMenu:
+        menu = QMenu(self)
+        menu.addAction("Rename group…", lambda: self._emit_group_rename(header))
+        menu.addAction("Delete group", lambda: self._emit_group_delete(header))
+        return menu
+
+    def session_menu(self, item) -> QMenu:
+        sid = item.data(0, _ID_ROLE)
+        pinned = bool(item.data(0, _PIN_ROLE))
+        menu = QMenu(self)
+        menu.addAction("Rename…", lambda: self.rename_requested.emit(sid))
+        menu.addAction("Unpin" if pinned else "Pin",
+                       lambda: self.pin_toggle_requested.emit(sid))
+        menu.addAction("Move to group…", lambda: self.move_requested.emit(sid))
+        menu.addAction("Edit tags…", lambda: self.tags_edit_requested.emit(sid))
+        menu.addSeparator()
+        menu.addAction("Delete session…", lambda: self.session_delete_requested.emit(sid))
+        return menu
+
     def _on_menu(self, pos) -> None:
         item = self._tree.itemAt(pos)
         if item is None:
             return
         if item.parent() is None and item.data(0, _KIND_ROLE) != "group":
             return  # no menu for Pinned / Ungrouped headers
-        menu = QMenu(self)
-        if item.parent() is None:
-            menu.addAction("Rename group…", lambda: self._emit_group_rename(item))
-            menu.addAction("Delete group", lambda: self._emit_group_delete(item))
-        else:
-            sid = item.data(0, _ID_ROLE)
-            pinned = bool(item.data(0, _PIN_ROLE))
-            menu.addAction("Rename…", lambda: self.rename_requested.emit(sid))
-            menu.addAction("Unpin" if pinned else "Pin",
-                           lambda: self.pin_toggle_requested.emit(sid))
-            menu.addAction("Move to group…", lambda: self.move_requested.emit(sid))
-            menu.addAction("Edit tags…", lambda: self.tags_edit_requested.emit(sid))
+        menu = self._group_menu(item) if item.parent() is None else self.session_menu(item)
         menu.exec(self._tree.mapToGlobal(pos))

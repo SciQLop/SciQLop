@@ -11,6 +11,7 @@ from typing import (
     List,
     Optional,
     Protocol,
+    Sequence,
     Tuple,
     runtime_checkable,
 )
@@ -155,6 +156,29 @@ class UsageReportingBackend(Protocol):
 
     async def set_effort(self, effort: Optional[str]) -> None:
         """Select an effort level. None restores the backend default."""
+        ...
+
+
+@runtime_checkable
+class SessionArchivingBackend(Protocol):
+    """OPTIONAL companion to `AgentBackend` — implement any subset.
+
+    Agent CLIs prune their own transcripts (Claude Code deletes anything
+    untouched for `cleanupPeriodDays`, 30 by default), which would take with it
+    sessions the user deliberately named or filed away. A backend implementing
+    this keeps those beyond its CLI's retention; the dock probes with `getattr`.
+    """
+
+    def archive_sessions(self, session_ids: Sequence[str]) -> None:
+        """Preserve these sessions indefinitely. Idempotent, called on refresh.
+
+        Additive: a session dropped from later calls keeps its copy, since
+        un-naming a session is not a request to destroy its transcript.
+        """
+        ...
+
+    def delete_session(self, session_id: str) -> None:
+        """Erase a session for good — live transcript and archived copy."""
         ...
 
 

@@ -22,6 +22,12 @@ class AgentChatSettings(ConfigEntry):
                     "first available one.",
         json_schema_extra={"widget": "hidden"},
     )
+    recent_sessions: int = Field(
+        default=30, ge=1,
+        description="How many recent agent sessions to list. Sessions you "
+                    "renamed, pinned, grouped or tagged are always listed, "
+                    "however old they are.",
+    )
     sessions_pane_visible: bool = Field(default=True, json_schema_extra={"widget": "hidden"})
     sessions_pane_width: int = Field(default=280, json_schema_extra={"widget": "hidden"})
     effort: Dict[str, str] = Field(
@@ -84,6 +90,11 @@ class AgentSessionMeta(ConfigEntry):
         entry = self.entries.setdefault(_session_key(backend, session_id), SessionMetaEntry())
         entry.tags = list(tags)
         self.save()
+
+    def forget(self, backend: str, session_id: str) -> None:
+        """Drop every overlay for a session the user deleted."""
+        if self.entries.pop(_session_key(backend, session_id), None) is not None:
+            self.save()
 
     def rename_group(self, backend: str, old: str, new: str) -> None:
         prefix = f"{backend}/"
