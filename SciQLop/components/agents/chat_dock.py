@@ -383,8 +383,7 @@ class AgentChatDock(QWidget):
         if not backend.supports_sessions:
             self._session_panel.set_groups([])
             return
-        session = self._sessions.get(self._current)
-        current_id = session.resume_id if session else None
+        current_id = self._live_session_id(self._sessions.get(self._current))
         entries = backend.list_sessions()
         self._archive_claimed(backend, entries)
         groups = grouped_sessions(entries, AgentSessionMeta(),
@@ -600,8 +599,7 @@ class AgentChatDock(QWidget):
         if delete is None:
             self._set_status(f"{be.display_name} cannot delete sessions")
             return
-        session = self._sessions.get(self._current)
-        if session is not None and session.resume_id == session_id:
+        if self._live_session_id(self._sessions.get(self._current)) == session_id:
             self._set_status("Cannot delete the session you are in")
             return
         name = AgentSessionMeta().get(be.display_name, session_id).name or session_id
@@ -617,6 +615,18 @@ class AgentChatDock(QWidget):
             log.warning("deleting session %s failed: %r", session_id, error)
         AgentSessionMeta().forget(be.display_name, session_id)
         self._populate_session_list(be)
+
+    def _live_session_id(self, session: Optional[_AgentSession]) -> Optional[str]:
+        """Which session is being written to — the backend knows better than the
+        dock, which only learns an id when the user resumes one explicitly."""
+        if session is None:
+            return None
+        reported = getattr(session.backend, "current_session_id", None)
+        try:
+            return (reported() if reported is not None else None) or session.resume_id
+        except Exception as error:
+            log.warning("backend could not report its session: %r", error)
+            return session.resume_id
 
     def _archive_claimed(self, backend: AgentBackend, entries) -> None:
         """Ask the backend to keep the sessions the user claimed. Best effort:
@@ -722,12 +732,17 @@ class AgentChatDock(QWidget):
         finally:
             self._set_running(False)
             self._turn_task = None
-            self._archive_after_turn(session.backend)
+            self._sessions_after_turn(session)
 
-    def _archive_after_turn(self, backend: AgentBackend) -> None:
-        """A claimed session's archived copy must not lag behind its live turns."""
+    def _sessions_after_turn(self, session: _AgentSession) -> None:
+        """A new session reaches disk only once its first turn lands, so without
+        a rebuild here the conversation in progress is missing from the panel —
+        and a claimed session's archived copy would lag a turn behind."""
+        if self._is_current(session):
+            self._populate_session_list(session.backend)  # archives as it goes
+            return
         try:
-            self._archive_claimed(backend, backend.list_sessions())
+            self._archive_claimed(session.backend, session.backend.list_sessions())
         except Exception as error:
             log.warning("listing sessions for archiving failed: %r", error)
 

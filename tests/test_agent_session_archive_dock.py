@@ -21,9 +21,13 @@ class _ArchivingBackend(_FakeBackend):
         self.entries = [_Entry("kept", "Auto kept", 2.0), _Entry("loose", "Auto loose", 1.0)]
         self.archived = None
         self.deleted = []
+        self.live_id = None
 
     def list_sessions(self):
         return list(self.entries)
+
+    def current_session_id(self):
+        return self.live_id
 
     def archive_sessions(self, session_ids):
         self.archived = list(session_ids)
@@ -133,6 +137,35 @@ def test_the_open_session_is_never_deleted_under_the_user(dock, monkeypatch):
     assert _backend(dock).deleted == []
 
 
+def test_a_never_resumed_live_session_is_protected_too(dock, monkeypatch):
+    """A brand-new session has no resume id — only the backend knows which one
+    the CLI is writing to."""
+    from PySide6.QtWidgets import QMessageBox
+
+    monkeypatch.setattr(QMessageBox, "question",
+                        staticmethod(lambda *a, **k: QMessageBox.StandardButton.Yes))
+    backend = _backend(dock)
+    backend.live_id = "kept"
+    assert dock._sessions[dock._current].resume_id is None
+    dock._on_session_delete("kept")
+
+    assert backend.deleted == []
+
+
+def test_the_live_session_is_the_one_selected_in_the_panel(dock):
+    backend = _backend(dock)
+    backend.live_id = "loose"
+    dock._populate_session_list(backend)
+
+    tree = dock._session_panel._tree
+    selected = [tree.topLevelItem(g).child(c)
+                for g in range(tree.topLevelItemCount())
+                for c in range(tree.topLevelItem(g).childCount())
+                if tree.topLevelItem(g).child(c).isSelected()]
+    from PySide6.QtCore import Qt
+    assert [i.data(0, Qt.ItemDataRole.UserRole) for i in selected] == ["loose"]
+
+
 def test_a_finished_turn_refreshes_the_archive(dock, loop):
     from SciQLop.components.agents.chat import TextBlock
     from SciQLop.components.agents.settings import AgentSessionMeta
@@ -149,6 +182,32 @@ def test_a_finished_turn_refreshes_the_archive(dock, loop):
     loop.run_until_complete(dock._run_turn(session, "hi", []))
 
     assert backend.archived == ["kept"]
+
+
+def _listed_ids(dock):
+    from PySide6.QtCore import Qt
+
+    tree = dock._session_panel._tree
+    return {tree.topLevelItem(g).child(c).data(0, Qt.ItemDataRole.UserRole)
+            for g in range(tree.topLevelItemCount())
+            for c in range(tree.topLevelItem(g).childCount())}
+
+
+def test_a_new_session_is_listed_once_its_first_turn_lands(dock, loop):
+    from SciQLop.components.agents.chat import TextBlock
+
+    backend = _backend(dock)
+    dock._populate_session_list(backend)
+    assert "fresh" not in _listed_ids(dock)
+
+    async def _one_block(prompt, image_paths=None):
+        backend.entries.append(_Entry("fresh", "Auto fresh", 3.0))  # the CLI writes it
+        yield TextBlock(text="done")
+
+    backend.ask = _one_block
+    loop.run_until_complete(dock._run_turn(dock._sessions[dock._current], "hi", []))
+
+    assert "fresh" in _listed_ids(dock)
 
 
 def test_a_backend_without_archiving_is_left_alone(qtbot, sciqlop_resources, monkeypatch, loop):

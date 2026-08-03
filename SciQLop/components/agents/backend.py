@@ -181,6 +181,15 @@ class SessionArchivingBackend(Protocol):
         """Erase a session for good — live transcript and archived copy."""
         ...
 
+    def current_session_id(self) -> Optional[str]:
+        """The session the backend is writing to right now, if it knows.
+
+        A session started from the dock has no resume id, so this is the only
+        way to tell which entry is live — the one to select in the list and the
+        one that must never be deleted under the user.
+        """
+        ...
+
 
 @runtime_checkable
 class AgentBackend(Protocol):
