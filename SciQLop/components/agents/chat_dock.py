@@ -38,8 +38,9 @@ from .chat import (
     TranscriptView,
 )
 from .chat.info_bar import ContextBreakdownPopup, SessionInfoBar
+from .chat.popup_placement import place_popup
 from .chat.session_panel import SessionListPanel
-from .chat.sessions_view import grouped_sessions, all_groups, all_tags
+from .chat.sessions_view import grouped_sessions, all_groups, all_tags, claimed_ids
 from .chat.settings_popup import AgentSettingsPopup
 from .chat.usage_refresh import UsageRefresher
 from .registry import available_backends, create_backend
@@ -172,6 +173,7 @@ class AgentChatDock(QWidget):
         self._session_panel.filter_changed.connect(self._on_session_filter)
         self._session_panel.move_requested.connect(self._on_session_move)
         self._session_panel.tags_edit_requested.connect(self._on_session_tags)
+        self._session_panel.session_delete_requested.connect(self._on_session_delete)
         self._session_panel.session_moved.connect(self._on_session_dropped)
         self._session_panel.group_rename_requested.connect(self._on_group_rename)
         self._session_panel.group_delete_requested.connect(self._on_group_delete)
@@ -236,19 +238,13 @@ class AgentChatDock(QWidget):
         self._status_label.setText(text)
 
     def _show_settings_popup(self) -> None:
-        origin = self._settings_btn.mapToGlobal(
-            self._settings_btn.rect().bottomLeft())
-        self._settings_popup.move(origin)
-        self._settings_popup.show()
+        place_popup(self._settings_popup, self._settings_btn)
 
     def _show_context_breakdown(self) -> None:
         if self._breakdown_popup is None:
             self._breakdown_popup = ContextBreakdownPopup(self)
         self._breakdown_popup.set_snapshot(self._info_bar.snapshot)
-        origin = self._info_bar.details_button.mapToGlobal(
-            self._info_bar.details_button.rect().topLeft())
-        self._breakdown_popup.move(origin)
-        self._breakdown_popup.show()
+        place_popup(self._breakdown_popup, self._info_bar.details_button)
         self._spawn(self._usage_refresher.refresh())
 
     def _on_effort_changed(self, effort: str) -> None:
@@ -389,8 +385,11 @@ class AgentChatDock(QWidget):
             return
         session = self._sessions.get(self._current)
         current_id = session.resume_id if session else None
-        groups = grouped_sessions(backend.list_sessions(), AgentSessionMeta(),
-                                  backend.display_name, self._session_filter)
+        entries = backend.list_sessions()
+        self._archive_claimed(backend, entries)
+        groups = grouped_sessions(entries, AgentSessionMeta(),
+                                  backend.display_name, self._session_filter,
+                                  recent_limit=AgentChatSettings().recent_sessions)
         self._session_panel.set_groups(groups, current_id)
 
     def _on_model_changed(self, index: int) -> None:
@@ -593,6 +592,43 @@ class AgentChatDock(QWidget):
             AgentSessionMeta().delete_group(be.display_name, group)
             self._populate_session_list(be)
 
+    def _on_session_delete(self, session_id: str) -> None:
+        be = self._current_backend()
+        if be is None:
+            return
+        delete = getattr(be, "delete_session", None)
+        if delete is None:
+            self._set_status(f"{be.display_name} cannot delete sessions")
+            return
+        session = self._sessions.get(self._current)
+        if session is not None and session.resume_id == session_id:
+            self._set_status("Cannot delete the session you are in")
+            return
+        name = AgentSessionMeta().get(be.display_name, session_id).name or session_id
+        if QMessageBox.question(
+                self, "Delete session",
+                f"Delete '{name}' for good? Its transcript and archived copy "
+                "are erased and cannot be recovered."
+        ) != QMessageBox.StandardButton.Yes:
+            return
+        try:
+            delete(session_id)
+        except Exception as error:
+            log.warning("deleting session %s failed: %r", session_id, error)
+        AgentSessionMeta().forget(be.display_name, session_id)
+        self._populate_session_list(be)
+
+    def _archive_claimed(self, backend: AgentBackend, entries) -> None:
+        """Ask the backend to keep the sessions the user claimed. Best effort:
+        a failure here must never break rendering the list."""
+        archive = getattr(backend, "archive_sessions", None)
+        if archive is None:
+            return
+        try:
+            archive(claimed_ids(entries, AgentSessionMeta(), backend.display_name))
+        except Exception as error:
+            log.warning("archiving sessions failed: %r", error)
+
     def _on_sessions_toggled(self, checked: bool) -> None:
         self._session_panel.setVisible(
             checked and self._current_supports_sessions())
@@ -686,6 +722,14 @@ class AgentChatDock(QWidget):
         finally:
             self._set_running(False)
             self._turn_task = None
+            self._archive_after_turn(session.backend)
+
+    def _archive_after_turn(self, backend: AgentBackend) -> None:
+        """A claimed session's archived copy must not lag behind its live turns."""
+        try:
+            self._archive_claimed(backend, backend.list_sessions())
+        except Exception as error:
+            log.warning("listing sessions for archiving failed: %r", error)
 
     def _is_current(self, session: _AgentSession) -> bool:
         return (
