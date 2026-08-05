@@ -48,13 +48,11 @@ effortlessly — a built-in guided tour walks new users through their first plot
 
 # Try It Now
 
-Grab a ready-to-run build from the [latest release](https://github.com/SciQLop/SciQLop/releases/latest) page
-(Windows installer, macOS app bundle, Linux AppImage), or launch it straight from PyPI with
-[uv](https://github.com/astral-sh/uv):
+Grab a ready-to-run build from the [latest release](https://github.com/SciQLop/SciQLop/releases/latest) page:
 
-```bash
-uvx sciqlop
-```
+- **Windows** — installer
+- **macOS** — app bundle (ARM64 for Apple silicon, x86_64 for Intel)
+- **Linux** — AppImage
 
 See [How to Install SciQLop](#how-to-install-sciqlop) for details.
 
@@ -221,35 +219,16 @@ Download the AppImage from the
 
 A [Flatpak manifest](scripts/flatpak) is also maintained (not yet published on Flathub).
 
-## From PyPI or Sources (recommended: uv)
+## From Sources (for developers)
 
-The easiest way is with [uv](https://github.com/astral-sh/uv), which handles the virtualenv and dependencies
-automatically:
+The installers and AppImages above are the recommended way to use SciQLop. If you want to work on SciQLop
+itself, clone the repository and run it with [uv](https://github.com/astral-sh/uv), which handles the
+virtualenv and dependencies automatically:
 
 ```bash
-# run the latest PyPI release without installing anything
-uvx sciqlop
-
-# or from a clone of this repository
 git clone https://github.com/SciQLop/SciQLop
 cd SciQLop
 uv run sciqlop
-```
-
-Or install into your own environment:
-
-```bash
-# from PyPI
-uv pip install sciqlop
-
-# from the latest source
-uv pip install git+https://github.com/SciQLop/SciQLop
-```
-
-Once installed, the `sciqlop` launcher should be in your PATH:
-
-```bash
-sciqlop
 ```
 
 # Python User API Examples
