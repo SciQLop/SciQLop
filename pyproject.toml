@@ -88,6 +88,12 @@ dev = [
     "tscat>=0.4.0",
     "tscat_gui>=0.7.0",
     "pytest-xdist>=3.8.0",
+    # runtime deps of the ACP layer (SciQLop/components/agents/acp), declared
+    # for end users by the plugins that consume the layer; needed here so its
+    # tests can run.
+    "agent-client-protocol>=0.12.0",
+    "mcp>=1.16.0",
+    "uvicorn>=0.30.0",
 ]
 
 [project.gui-scripts]
