@@ -1,18 +1,28 @@
-<div style="text-align:center">
-<img src="SciQLop/resources/icons/SciQLop.png" alt="sciqlop_logo" style="width: 200px;"/>
-</div>
-<br /><br />
+<p align="center">
+<img src="SciQLop/resources/icons/SciQLop.png" alt="sciqlop_logo" width="200"/>
+</p>
 
-# [**Latest release**](https://github.com/SciQLop/SciQLop/releases/latest)
+<h1 align="center">SciQLop — the in-situ space physics IDE</h1>
+
+<p align="center">
+<a href="https://pypi.org/project/sciqlop/"><img src="https://img.shields.io/pypi/v/sciqlop" alt="PyPI version"/></a>
+<a href="https://pypi.org/project/sciqlop/"><img src="https://img.shields.io/pypi/pyversions/sciqlop" alt="Python versions"/></a>
+<a href="COPYING"><img src="https://img.shields.io/badge/license-GPL--3.0-blue" alt="License: GPL-3.0"/></a>
+<a href="https://doi.org/10.5281/zenodo.7379012"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.7379012.svg" alt="DOI"/></a>
+<a href="https://github.com/SciQLop/SciQLop/actions/workflows/tests.yml"><img src="https://github.com/SciQLop/SciQLop/actions/workflows/tests.yml/badge.svg" alt="Tests"/></a>
+</p>
 
 # What Is SciQLop?
 
 **SciQLop** (**SCI**entific **Q**t application for **L**earning from **O**bservations of **P**lasmas) is a powerful and
-user-friendly tool designed for the visualization and analysis of in-situ space plasma data.
+user-friendly tool designed for the visualization and analysis of in-situ space plasma data: browse, plot, label,
+script, and extend — all in one tool.
 
 Using SciQLop will let you:
 
-- have super easy access to tens of thousands of products from the top main data archives in the world,
+- have super easy access to tens of thousands of products from the top main data archives in the world — MMS,
+  THEMIS/ARTEMIS, Cluster, Solar Orbiter, Parker Solar Probe, Wind, ACE and many more, served by AMDA, NASA CDAWeb,
+  ESA CSA and SSCWeb,
 - explore multivariate time series effortlessly, with lightning-fast and transparent downloads as you scroll, zoom in,
   and zoom out,
 - visualize custom products with simple Python code executed on-the-fly,
@@ -20,11 +30,11 @@ Using SciQLop will let you:
 - collaborate on catalog editing in real time with other users,
 - analyze your data in Jupyter notebooks side by side with interactive plots,
 - extend SciQLop with community plugins from the built-in App Store,
+- get help from an AI assistant that can plot products, fetch data, and inspect your workspace.
 
-<!-- TODO: replace with an up-to-date screenshot of the main SciQLop window showing the current UI (dark theme, panels, catalog overlay, product tree) -->
-<div style="text-align:center">
-<img src="pictures/sciqlop_screenshot.png" alt="SciQLop main window" style="width: 80%;"/>
-</div>
+<p align="center">
+<img src="pictures/sciqlop_screenshot.png" alt="SciQLop main window" width="80%"/>
+</p>
 
 Heliophysicists now benefit from decades of space exploration through many spacecraft missions.
 Exploring this massive amount of data to find events of interest, build catalogs, and conduct statistical multi-mission
@@ -33,36 +43,20 @@ data analysis can be a daunting task without the right tool.
 SciQLop aims at being this tool! A simple lightweight yet powerful graphical interface coupled to the limitless options
 brought by the Jupyter notebook integration, that focuses on providing users with the easiest possible way to explore,
 label and analyze huge amounts of data.
-SciQLop is also the right tool for teaching space physics and in-situ spacecraft data handling to students effortlessly.
+SciQLop is also the right tool for teaching space physics and in-situ spacecraft data handling to students
+effortlessly — a built-in guided tour walks new users through their first plot.
 
-# SciQLop Ecosystem
+# Try It Now
 
-SciQLop is built on top of several libraries developed within the [SciQLop GitHub organization](https://github.com/SciQLop):
+Grab a ready-to-run build from the [latest release](https://github.com/SciQLop/SciQLop/releases/latest) page
+(Windows installer, macOS app bundle, Linux AppImage), or launch it straight from PyPI with
+[uv](https://github.com/astral-sh/uv):
 
-```
-SciQLop
-├── SciQLopPlots      — Scientific plotting widgets with Python bindings
-│   └── NeoQCP        — C++ Qt6 rendering engine (QCustomPlot fork)
-├── Speasy            — Space physics data access (AMDA, CDA, SSC)
-│   ├── CDFpp         — High-performance CDF file reader (C++)
-│   ├── SciQLop-cache — Caching backend (planned replacement for diskcache)
-│   └── speasy_proxy  — Caching proxy server for shared Speasy data access
-├── cocat             — Collaborative catalogs via CRDT
-├── tscat             — Time series catalog Python library
-└── tscat_gui         — Qt GUI components for tscat catalogs
+```bash
+uvx sciqlop
 ```
 
-| Repository | Description | Language |
-|------------|-------------|----------|
-| [SciQLopPlots](https://github.com/SciQLop/SciQLopPlots) | High-level plotting widgets with Shiboken6/PySide6 bindings | C++/Python |
-| [NeoQCP](https://github.com/SciQLop/NeoQCP) | Low-level rendering engine, QCustomPlot fork with QRhi GPU backend | C++ |
-| [Speasy](https://github.com/SciQLop/speasy) | Unified access to space physics data archives | Python |
-| [CDFpp](https://github.com/SciQLop/CDFpp) | Fast CDF (Common Data Format) reader/writer | C++ |
-| [SciQLop-cache](https://github.com/SciQLop/SciQLop-cache) | High-performance caching layer for data requests | C++/Python |
-| [speasy_proxy](https://github.com/SciQLop/speasy_proxy) | Caching proxy server for shared Speasy data access | Python |
-| [cocat](https://github.com/SciQLop/cocat) | Collaborative catalog editing via CRDT/WebSocket | Python |
-| [tscat](https://github.com/SciQLop/tscat) | Time series catalog library (events, catalogs, attributes) | Python |
-| [tscat_gui](https://github.com/SciQLop/tscat_gui) | Qt GUI components for browsing and editing tscat catalogs | Python |
+See [How to Install SciQLop](#how-to-install-sciqlop) for details.
 
 # Main Features
 
@@ -71,17 +65,16 @@ SciQLop
 SciQLop can handle millions of data points without compromising on interactivity.
 Users can scroll, zoom, move, and export plots with ease.
 
-<img src="https://github.com/SciQLop/SciQLopMedia/blob/main/screencasts/SciQLop_MMS.gif" alt="SciQLop smooth navigation" style="width: 80%;"/>
+<img src="https://github.com/SciQLop/SciQLopMedia/blob/main/screencasts/SciQLop_MMS.gif" alt="SciQLop smooth navigation" width="80%"/>
 
 ## Data Access Made Easy
 
 Accessing data in SciQLop is as simple as a drag and drop from the tens of thousands of products readily available.
 New empty panels show a built-in search overlay where you can type to find any product instantly, or drop one from the
-product tree.
+product tree. The sidebar smart search goes further: it combines full-text and semantic ranking, so "magnetic field
+mms burst" finds the right products even when your words don't match the catalog naming exactly.
 
-<!-- TODO: screenshot showing the product search overlay on an empty panel -->
-
-<img src="https://github.com/SciQLop/SciQLopMedia/blob/main/screencasts/SciQLop_DragAndDrop.gif" alt="SciQLop drag and drop" style="width: 80%;"/>
+<img src="https://github.com/SciQLop/SciQLopMedia/blob/main/screencasts/SciQLop_DragAndDrop.gif" alt="SciQLop drag and drop" width="80%"/>
 
 ## Jupyter Notebook Integration
 
@@ -93,11 +86,12 @@ Dedicated IPython magics make common operations one-liners:
 - `%%vp` — define a virtual product from a cell function
 - `%timerange` — get or set the time range of a panel
 - `%install <packages>` — install packages into the workspace venv
+- `%workspace` — inspect and manage the current workspace
+- `%job` — submit, inspect, and cancel background jobs
 
-<!-- TODO: screenshot showing SciQLop with JupyterLab side by side, preferably showing a %plot or %%vp magic in use -->
-<div style="text-align:center">
-<img src="pictures/sciqlop_jupyterlab_plot_side_by_side.png" alt="SciQLop Jupyter integration" style="width: 80%;"/>
-</div>
+<p align="center">
+<img src="pictures/sciqlop_jupyterlab_plot_side_by_side.png" alt="SciQLop Jupyter integration" width="80%"/>
+</p>
 
 ## Catalogs
 
@@ -111,10 +105,9 @@ SciQLop provides a powerful catalog system for labeling and browsing events in y
 - **Full API from notebooks**: `catalogs.list()`, `catalogs.get()`, `catalogs.create()`, `catalogs.save()`,
   `catalogs.add_events()`, `catalogs.remove_events()`
 
-<!-- TODO: screenshot showing the catalog browser alongside a plot panel with color-coded event overlays -->
-<div style="text-align:center">
-<img src="pictures/sciqlop_catalogs.png" alt="SciQLop catalogs" style="width: 80%;"/>
-</div>
+<p align="center">
+<img src="pictures/sciqlop_catalogs.png" alt="SciQLop catalogs" width="80%"/>
+</p>
 
 ## Collaborative Catalog Editing
 
@@ -122,17 +115,20 @@ Multiple users can co-edit catalogs in real time via [cocat](https://github.com/
 synchronization over WebSocket). Create, edit and delete events simultaneously — all changes are merged
 conflict-free across all connected clients.
 
-<!-- TODO: screenshot or short GIF showing two SciQLop instances editing the same catalog -->
+## AI Assistant
+
+SciQLop ships an agent chat dock with pluggable AI backends — Claude Code, GitHub Copilot, OpenCode, and
+Albert — installable from the App Store. The assistant has access to dedicated tools: it can plot products,
+fetch and describe data, run notebook cells, and inspect your workspace, all under your control.
 
 ## Command Palette
 
 Press **Ctrl+K** to open the command palette. It fuzzy-searches all available actions and supports multi-step argument
 chains (e.g., select "Plot product" then pick the product). An LRU history boosts your most-used commands.
 
-<!-- TODO: screenshot showing the command palette open with search results -->
-<div style="text-align:center">
-<img src="pictures/sciqlop_command_palette.png" alt="SciQLop command palette" style="width: 80%;"/>
-</div>
+<p align="center">
+<img src="pictures/sciqlop_command_palette.png" alt="SciQLop command palette" width="80%"/>
+</p>
 
 ## Workspaces
 
@@ -140,10 +136,9 @@ SciQLop organizes your work into **workspaces**, each with its own isolated Pyth
 [uv](https://github.com/astral-sh/uv)), installed packages, enabled plugins, and examples. Workspaces are described
 by `.sciqlop` TOML manifests and managed from the welcome page.
 
-<!-- TODO: screenshot showing the welcome page with workspace cards -->
-<div style="text-align:center">
-<img src="pictures/sciqlop_welcome.png" alt="SciQLop welcome page" style="width: 80%;"/>
-</div>
+<p align="center">
+<img src="pictures/sciqlop_welcome.png" alt="SciQLop welcome page" width="80%"/>
+</p>
 
 ## App Store
 
@@ -151,10 +146,9 @@ Browse and install community plugins directly from within SciQLop. The built-in 
 [live registry](https://github.com/SciQLop/sciqlop-appstore), shows descriptions, tags, and GitHub stars, and
 handles installation and updates via uv. Plugins are hot-loaded into the running application without restart.
 
-<!-- TODO: screenshot showing the App Store panel with plugin cards -->
-<div style="text-align:center">
-<img src="pictures/sciqlop_appstore.png" alt="SciQLop AppStore" style="width: 80%;"/>
-</div>
+<p align="center">
+<img src="pictures/sciqlop_appstore.png" alt="SciQLop AppStore" width="80%"/>
+</p>
 
 ## Virtual Products
 
@@ -189,21 +183,24 @@ Templates are stored as YAML files and can be shared, imported, or instantiated 
 SciQLop ships with four built-in palettes (light, dark, neutral, space) that can be switched at runtime from the
 settings panel. Icons automatically adapt to the current background color.
 
-<!-- TODO: side-by-side screenshot showing dark and light themes -->
-<div style="text-align:center">
-<img src="pictures/sciqlop_theme.png" alt="SciQLop themes" style="width: 80%;"/>
-</div>
-
-## Examples
-
-SciQLop comes with a growing list of bundled examples (Jupyter notebooks) that demonstrate common tasks such as loading
-data, creating plots, defining virtual products, and using the catalog system. Examples are browsable from the welcome
-page and installed into your workspace on first use.
+<p align="center">
+<img src="pictures/sciqlop_theme.png" alt="SciQLop themes" width="80%"/>
+</p>
 
 ## Speasy Plot Backend
 
 SciQLop registers as a [speasy](https://github.com/SciQLop/speasy) plot backend, so calling `speasy.plot()` from
 any notebook renders directly into SciQLop panels.
+
+# Learn SciQLop
+
+- **Guided tour**: on first use, SciQLop walks you through creating your first plot.
+- **Tutorials**: step-by-step tutorials (basic plotting, catalogs, virtual products, plot templates, Python user API)
+  are available on the [SciQLop website](https://sciqlop.github.io/tutorials/).
+- **Bundled examples**: a growing list of Jupyter notebooks demonstrating common tasks, browsable from the welcome
+  page and installed into your workspace on first use — see the [examples](SciQLop/examples) folder.
+- **Workshlop**: our annual hands-on training workshop — see the
+  [Workshlop 2026 page](https://sciqlop.github.io/workshlops/Workshlop-2026) (3rd edition, Sept 15–17, Paris).
 
 # How to Install SciQLop
 
@@ -222,18 +219,24 @@ right architecture for your Mac (ARM64 for Apple M1/2/3/4 chips and x86_64 for I
 Download the AppImage from the
 [latest release](https://github.com/SciQLop/SciQLop/releases/latest) and run it (after making it executable).
 
-A Flatpak manifest is also available for Flathub distribution.
+A [Flatpak manifest](scripts/flatpak) is also maintained (not yet published on Flathub).
 
-## From Sources (recommended: uv)
+## From PyPI or Sources (recommended: uv)
 
-The easiest way to run SciQLop from source is with [uv](https://github.com/astral-sh/uv), which handles the
-virtualenv and dependencies automatically:
+The easiest way is with [uv](https://github.com/astral-sh/uv), which handles the virtualenv and dependencies
+automatically:
 
 ```bash
+# run the latest PyPI release without installing anything
+uvx sciqlop
+
+# or from a clone of this repository
+git clone https://github.com/SciQLop/SciQLop
+cd SciQLop
 uv run sciqlop
 ```
 
-Or install from PyPI / GitHub into your own environment:
+Or install into your own environment:
 
 ```bash
 # from PyPI
@@ -316,10 +319,65 @@ cat = catalogs.get("My Catalogs//my_events")
 
 More examples can be found in the [examples](SciQLop/examples) folder — they are also available from the welcome screen.
 
+# SciQLop Ecosystem
+
+SciQLop is built on top of several libraries developed within the [SciQLop GitHub organization](https://github.com/SciQLop):
+
+```
+SciQLop
+├── SciQLopPlots      — Scientific plotting widgets with Python bindings
+│   └── NeoQCP        — C++ Qt6 rendering engine (QCustomPlot fork)
+├── Speasy            — Space physics data access (AMDA, CDAWeb, CSA, SSCWeb)
+│   ├── CDFpp         — High-performance CDF file reader (C++)
+│   ├── SciQLop-cache — High-performance caching backend
+│   └── speasy_proxy  — Caching proxy server for shared Speasy data access
+├── cocat             — Collaborative catalogs via CRDT
+├── tscat             — Time series catalog Python library
+└── tscat_gui         — Qt GUI components for tscat catalogs
+```
+
+| Repository | Description | Language |
+|------------|-------------|----------|
+| [SciQLopPlots](https://github.com/SciQLop/SciQLopPlots) | High-level plotting widgets with Shiboken6/PySide6 bindings | C++/Python |
+| [NeoQCP](https://github.com/SciQLop/NeoQCP) | Low-level rendering engine, QCustomPlot fork with QRhi GPU backend | C++ |
+| [Speasy](https://github.com/SciQLop/speasy) | Unified access to space physics data archives | Python |
+| [CDFpp](https://github.com/SciQLop/CDFpp) | Fast CDF (Common Data Format) reader/writer | C++ |
+| [SciQLop-cache](https://github.com/SciQLop/SciQLop-cache) | High-performance caching layer for data requests | C++/Python |
+| [speasy_proxy](https://github.com/SciQLop/speasy_proxy) | Caching proxy server for shared Speasy data access | Python |
+| [cocat](https://github.com/SciQLop/cocat) | Collaborative catalog editing via CRDT/WebSocket | Python |
+| [tscat](https://github.com/SciQLop/tscat) | Time series catalog library (events, catalogs, attributes) | Python |
+| [tscat_gui](https://github.com/SciQLop/tscat_gui) | Qt GUI components for browsing and editing tscat catalogs | Python |
+
+# Citing SciQLop
+
+If you use SciQLop in your research, please cite it via its Zenodo DOI
+([10.5281/zenodo.7379012](https://doi.org/10.5281/zenodo.7379012), covering all versions):
+
+```bibtex
+@software{sciqlop,
+  author    = {Jeandet, Alexis and Aunai, Nicolas and Renard, Benjamin and Génot, Vincent and André, Nicolas},
+  title     = {SciQLop},
+  publisher = {Zenodo},
+  doi       = {10.5281/zenodo.7379012},
+  url       = {https://doi.org/10.5281/zenodo.7379012}
+}
+```
+
+Citation metadata is also available in [CITATION.cff](CITATION.cff) (GitHub's "Cite this repository" button).
+
+# Getting Help
+
+- **Bug reports and feature requests**: [GitHub issues](https://github.com/SciQLop/SciQLop/issues)
+- **Contact**: see the [contact page](https://sciqlop.github.io/Contact) on the website
+
 # How to Contribute
 
 Fork the repository, make your changes and submit a pull request. We will be happy to review and merge your changes.
 Reports of bugs and feature requests are also welcome. Do not forget to star the project if you like it!
+
+# License
+
+SciQLop is free software, released under the [GNU General Public License v3.0](COPYING).
 
 # Credits
 
