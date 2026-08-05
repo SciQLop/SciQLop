@@ -1,5 +1,6 @@
 """Tests for SciQLop.components.workspaces.backend.workspace_project — pyproject.toml generator."""
 
+import importlib.metadata
 import os
 import sys
 import tempfile
@@ -10,6 +11,7 @@ import pytest
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 from SciQLop.components.workspaces.backend.workspace_project import (
     _base_constraints,
+    _canonical,
     _deduplicate_requirements,
     _extract_package_name,
     _normalize_url_requirement,
@@ -208,6 +210,32 @@ class TestGeneratePyprojectToml:
             # Every constraint should be an exact pin (==)
             for constraint in _base_constraints():
                 assert f'"{constraint}"' in content
+
+    def test_ipython_is_pinned(self):
+        """IPython 9.16 made ``run_cell_async(transformed_cell=None)`` a TypeError.
+
+        jupyqt calls it that way, so an unpinned IPython in a freshly resolved
+        workspace venv kills the jupyverse kernel module and JupyterLab reports
+        "connection to the Jupyter server could not be established".
+        """
+        pytest.importorskip("IPython")
+        assert any(c.startswith("ipython==") for c in _base_constraints())
+
+    def test_jupyter_server_stack_is_pinned(self):
+        """Every host fps-*/jupyverse-* package must be pinned, not re-resolved.
+
+        jupyqt itself is pinned to the host version, so the release train it
+        drives has to be pinned with it — mixing versions breaks the kernel.
+        """
+        constrained = {_canonical(c.split("==")[0]) for c in _base_constraints()}
+        installed = {
+            _canonical(name)
+            for name in (d.metadata["Name"] for d in importlib.metadata.distributions())
+            if name and _canonical(name).split("-")[0] in ("fps", "jupyverse")
+        }
+        if not installed:
+            pytest.skip("no fps/jupyverse packages installed in this environment")
+        assert installed <= constrained
 
     def test_base_constraints_valid_toml(self):
         try:

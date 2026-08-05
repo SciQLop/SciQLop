@@ -22,6 +22,11 @@ log = logging.getLogger(__name__)
 # Packages whose version must match the base Python environment exactly.
 # These are C extensions or tightly coupled libraries that break if the
 # workspace venv installs a different version via transitive dependencies.
+#
+# ``ipython`` is here because jupyqt drives ``InteractiveShell`` internals:
+# IPython 9.16 turned ``run_cell_async(transformed_cell=None)`` into a hard
+# TypeError, which kills the jupyverse kernel module on the first execute and
+# surfaces as "connection to the Jupyter server could not be established".
 _PINNED_BASE_PACKAGES = (
     "PySide6",
     "PySide6-Essentials",
@@ -33,7 +38,14 @@ _PINNED_BASE_PACKAGES = (
     "jupyqt",
     "jupyverse",
     "jupyterlab",
+    "ipython",
 )
+
+# Distribution-name prefixes of the embedded Jupyter server stack. jupyqt is
+# pinned to the host version, so the fps/jupyverse release train it drives must
+# be pinned with it — these ship as one coordinated set and a workspace venv
+# that re-resolves only part of it gets a kernel that cannot start.
+_PINNED_BASE_TRAINS = ("fps", "jupyverse")
 
 # Packages that the workspace venv inherits from the host SciQLop install
 # (via --system-site-packages) and must never appear in the workspace
@@ -50,15 +62,38 @@ _URL_RE = re.compile(r"^(https?://|git\+https?://)")
 _GITHUB_REPO_RE = re.compile(r"github\.com/[^/]+/([^/]+)")
 
 
+def _canonical(name: str) -> str:
+    """Return the PEP 503 canonical form of a distribution name."""
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _installed_train_packages() -> List[str]:
+    """Return installed distributions belonging to a pinned release train."""
+    found = {}
+    for dist in importlib.metadata.distributions():
+        name = dist.metadata["Name"]
+        if not name:
+            continue
+        canonical = _canonical(name)
+        if canonical.split("-")[0] in _PINNED_BASE_TRAINS:
+            found[canonical] = name
+    return sorted(found.values())
+
+
 def _base_constraints() -> List[str]:
     """Return ``name==version`` pins for base packages present in the running Python."""
     constraints = []
-    for pkg in _PINNED_BASE_PACKAGES:
+    seen = set()
+    for pkg in list(_PINNED_BASE_PACKAGES) + _installed_train_packages():
+        canonical = _canonical(pkg)
+        if canonical in seen:
+            continue
         try:
             version = importlib.metadata.version(pkg)
-            constraints.append(f"{pkg}=={version}")
         except importlib.metadata.PackageNotFoundError:
-            pass
+            continue
+        seen.add(canonical)
+        constraints.append(f"{pkg}=={version}")
     return constraints
 
 

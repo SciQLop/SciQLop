@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.12.1 — unreleased
+
+### Bug fixes
+
+- Fixed JupyterLab failing in **newly created** workspaces with "A connection to the Jupyter server could not be established" while workspaces created around the 0.12.0 release kept working. The generated workspace `pyproject.toml` only pinned nine host packages, so a fresh `uv sync` re-resolved the whole embedded Jupyter stack from PyPI. IPython 9.16 turned `run_cell_async(transformed_cell=None)` into a hard `TypeError` (deprecated since 7.17), and jupyqt calls it exactly that way — the first execute killed the `jupyverse.kernels` module during prepare, tearing down the fps application and dropping the frontend's connection. `ipython` is now pinned to the host version, along with every installed `fps-*` / `jupyverse-*` distribution: jupyqt is already pinned to the host, so the release train it drives has to be pinned with it instead of being re-resolved package by package. Existing broken workspaces heal themselves on the next launch — the new constraint block changes `pyproject.toml`, which invalidates the stale `uv.lock` and forces a fresh resolution.
+
 ## v0.12.0 — 2026-05-17
 
 ### Bug fixes
