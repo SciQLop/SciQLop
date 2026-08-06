@@ -1,9 +1,10 @@
 # Changelog
 
-## v0.12.2 — unreleased
+## v0.12.2 — 2026-08-06
 
 ### Bug fixes
 
+- Fixed code execution silently doing nothing in the embedded JupyterLab and console. The 0.12.1 installers were built with IPython 9.16, whose `run_cell_async` breaking change makes every execute request fail with a `TypeError` that never reaches the notebook UI — cells just hang with no error. SciQLop now requires jupyqt ≥ 0.6.3, which passes `transformed_cell` explicitly; the fixed pair is propagated into workspace venvs by the host-version constraint sweep introduced in 0.12.1.
 - Fixed the embedded JupyterLab breaking after package updates (white screen with `ChunkLoadError`, or most Lab plugins failing with settings-API 500s). Workspace venvs used to install both the real `jupyterlab` package and `jupyterlab-js` (pulled via jupyqt → jupyverse) — two distributions shipping the exact same `share/jupyter/lab` data files. Removing or upgrading either one (a `%install`, a plugin change, a SciQLop upgrade re-resolving the venv) deleted the shared files out from under the survivor and left orphan empty directories that crashed the Lab settings endpoint. Workspace venvs now install only `jupyterlab-js` (single owner of the data files), and `prepare_workspace` runs a self-heal after every sync that detects gutted `jupyterlab-js` data files (reinstalls them) and prunes orphan empty directories — so venvs already damaged in the field recover automatically on the next launch.
 
 ## v0.12.1 — 2026-08-05
