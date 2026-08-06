@@ -924,8 +924,12 @@ def _exec_python_tool() -> Dict[str, Any]:
         "description": (
             "Run arbitrary Python in the SciQLop embedded IPython kernel. "
             "The SciQLop `user_api` (sciqlop.user_api.plot, user_api.gui, user_api.catalogs, "
-            "user_api.virtual_products), speasy, numpy and the main window are all "
-            "importable. Prefer this over bespoke tools for anything SciQLop-related. "
+            "user_api.virtual_products), speasy and numpy are all importable. "
+            "Prefer this over bespoke tools for anything SciQLop-related. "
+            "Cells run on the kernel thread, NOT the Qt GUI thread: touch widgets only "
+            "through `user_api`, or the `main_window` / `app` names already in the "
+            "namespace — those marshal to the GUI thread. Calling Qt directly on a "
+            "widget you got some other way can abort the whole application. "
             "Returns captured stdout/stderr, repr of the last expression, and any exception."
         ),
         "input_schema": {

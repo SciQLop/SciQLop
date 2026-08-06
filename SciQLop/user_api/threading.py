@@ -6,6 +6,10 @@ Lifecycle:
   2. After init_invoker(): delegates to jupyqt's cross-thread invoker.
 
 All user_api and magic code should import from this module.
+
+Two primitives sit on top of the invoker: `@on_main_thread` for functions we own,
+and `MainThreadProxy` for live QObjects handed to kernel-thread code. Both are
+no-ops before `init_invoker()`, when the only caller is the main thread anyway.
 """
 import logging
 from functools import wraps
@@ -32,6 +36,86 @@ def invoke_on_main_thread(func, *args, **kwargs):
     return _invoker(func, *args, **kwargs)
 
 
+def _on_main_thread() -> bool:
+    from PySide6.QtCore import QThread, QCoreApplication
+    app = QCoreApplication.instance()
+    return app is None or QThread.currentThread() == app.thread()
+
+
+class MainThreadProxy:
+    """Wraps a QObject so every attribute access and call runs on the GUI thread.
+
+    Cells run on the jupyqt kernel thread — agent tools and notebook code alike —
+    so a direct Qt call from there is undefined behaviour and routinely aborts the
+    process (`qFatal` inside `QQuickWidget::createFramebufferObject`). Handing out
+    a proxy instead keeps such code alive at the cost of a blocking round-trip.
+
+    Unlike jupyqt's `QtProxy` this also wraps QObjects returned *inside* a list,
+    tuple, set or dict — `app.topLevelWidgets()[0]` is the usual way a raw widget
+    escapes — and leaves signals alone so they stay connectable.
+
+    Only attribute access is marshaled: dunder protocols (`len()`, `obj[i]`, `with`)
+    reach the target directly and are not thread-safe.
+    """
+
+    def __init__(self, target):
+        object.__setattr__(self, "_target", target)
+
+    def __getattr__(self, name):
+        target = object.__getattribute__(self, "_target")
+        attr = invoke_on_main_thread(getattr, target, name)
+
+        from PySide6.QtCore import SignalInstance
+        if isinstance(attr, SignalInstance):
+            return attr  # Qt marshals queued connections itself
+        if callable(attr):
+            def caller(*args, **kwargs):
+                return _wrap_for_main_thread(
+                    invoke_on_main_thread(attr, *unwrap_all(args), **unwrap_all(kwargs))
+                )
+            return caller
+        return _wrap_for_main_thread(attr)
+
+    def __setattr__(self, name, value):
+        target = object.__getattribute__(self, "_target")
+        invoke_on_main_thread(setattr, target, name, unwrap(value))
+
+    def __repr__(self):
+        target = object.__getattribute__(self, "_target")
+        return f"MainThreadProxy({invoke_on_main_thread(repr, target)})"
+
+
+def _wrap_for_main_thread(value):
+    """Proxy a QObject, recursing into the containers Qt commonly returns."""
+    from PySide6.QtCore import QObject
+    if isinstance(value, QObject):
+        return MainThreadProxy(value)
+    if isinstance(value, (list, tuple, set)):
+        return type(value)(_wrap_for_main_thread(v) for v in value)
+    if isinstance(value, dict):
+        return {k: _wrap_for_main_thread(v) for k, v in value.items()}
+    return value
+
+
+def unwrap(obj):
+    """Return the object a MainThreadProxy stands for; any other object as is."""
+    if isinstance(obj, MainThreadProxy):
+        return object.__getattribute__(obj, "_target")
+    return obj
+
+
+def unwrap_all(values):
+    """Unwrap proxies in an args tuple or kwargs dict before crossing into Qt."""
+    if isinstance(values, dict):
+        return {k: unwrap(v) for k, v in values.items()}
+    return tuple(unwrap(v) for v in values)
+
+
+def main_thread_safe(obj):
+    """Return `obj` on the GUI thread, a MainThreadProxy of it anywhere else."""
+    return obj if _on_main_thread() else MainThreadProxy(obj)
+
+
 def on_main_thread(func):
     """Decorator: marshal a call to the Qt main thread if not already there.
 
@@ -39,9 +123,7 @@ def on_main_thread(func):
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
-        from PySide6.QtCore import QThread, QCoreApplication
-        app = QCoreApplication.instance()
-        if app is None or QThread.currentThread() == app.thread():
+        if _on_main_thread():
             return func(*args, **kwargs)
         return invoke_on_main_thread(func, *args, **kwargs)
     return wrapper

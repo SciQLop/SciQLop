@@ -175,8 +175,15 @@ def _construct_jobs_backend(app):
 
 def jobs_backend_instance() -> JobsBackend:
     from SciQLop.core.sciqlop_application import sciqlop_app
+    from SciQLop.user_api.threading import on_main_thread
 
-    app = sciqlop_app()
-    if not hasattr(app, "jobs_backend"):
-        app.jobs_backend = _construct_jobs_backend(app)
-    return app.jobs_backend
+    @on_main_thread
+    def _instance():
+        # On the GUI thread `app` is the real application — the proxy
+        # sciqlop_app() returns to kernel-thread callers can't parent a QObject.
+        app = sciqlop_app()
+        if not hasattr(app, "jobs_backend"):
+            app.jobs_backend = _construct_jobs_backend(app)
+        return app.jobs_backend
+
+    return _instance()

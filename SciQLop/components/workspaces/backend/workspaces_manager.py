@@ -12,6 +12,7 @@ from SciQLop.components.workspaces.backend.workspace import Workspace
 from SciQLop.components.theming.icons import register_icon
 from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.core.sciqlop_application import sciqlop_app
+from SciQLop.user_api.threading import on_main_thread
 from SciQLop.components.jupyter.kernel import KernelManager
 from SciQLop.core.common import background_run
 from SciQLop.components.sciqlop_logging import getLogger
@@ -228,7 +229,10 @@ class WorkspaceManager(QObject):
         self._quit = True
 
 
+@on_main_thread
 def workspaces_manager_instance():
+    # Runs on the GUI thread so `app` is the real application, not the proxy
+    # sciqlop_app() hands to kernel-thread callers — a proxy can't parent a QObject.
     app = sciqlop_app()
     if not hasattr(app, "workspaces_manager"):
         app.workspaces_manager = WorkspaceManager(parent=app)

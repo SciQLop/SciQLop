@@ -101,6 +101,15 @@ class SciQLopApp(QApplication):
 
 
 def sciqlop_app() -> SciQLopApp:
+    """The running SciQLopApp — or a main-thread proxy of it, off the GUI thread.
+
+    Kernel cells (notebook and agent alike) run on the jupyqt kernel thread, and
+    this accessor is their usual door to the whole widget tree. Returning the raw
+    application there made `sciqlop_app().topLevelWidgets()[0].resize(...)` a
+    two-line process abort; the proxy marshals such calls to the GUI thread.
+    """
+    from SciQLop.user_api.threading import main_thread_safe
+
     if QtWidgets.QApplication.instance() is None:
         app = SciQLopApp(sys.argv)
     else:
@@ -110,7 +119,7 @@ def sciqlop_app() -> SciQLopApp:
             f"QApplication is {type(app).__name__}, expected SciQLopApp. "
             "A foreign QApplication was created before SciQLop initialized."
         )
-    return app
+    return main_thread_safe(app)
 
 
 class _SciQLopEventLoop(QEventLoop):
