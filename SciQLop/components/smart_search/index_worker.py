@@ -20,10 +20,13 @@ import logging
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 
 from SciQLop.components.smart_search import bm25_index, model_fetch
 from SciQLop.components.smart_search.domain import NodeSnapshot
+
+if TYPE_CHECKING:
+    import numpy as np
 
 _logger = logging.getLogger(__name__)
 
