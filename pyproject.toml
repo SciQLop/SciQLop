@@ -36,7 +36,7 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Visualization",
 ]
 dependencies = [
-    "SciQLopPlots==0.32.1",
+    "SciQLopPlots==0.33.1",
     "cloudpickle",
     "defusedxml",
     "speasy>=1.6.1",
@@ -47,12 +47,15 @@ dependencies = [
     "scipy",
     "pyside6==6.11.1",
     "shiboken6==6.11.1",
-    "PySide6-QtAds==5.0.0",
+    "PySide6-QtAds==5.0.0.2",
     "ipython",
     "ipywidgets",
     "jupyterlab_widgets",
-    "jupyqt>=0.6.2",
-    "matplotlib==3.10.8",
+    # >=0.6.3: earlier versions call IPython's run_cell_async without
+    # transformed_cell, a hard TypeError since IPython 9.16 — every notebook
+    # execute request then fails silently.
+    "jupyqt>=0.6.3",
+    "matplotlib==3.11.1",
     "qasync",
     "jinja2",
     "pyzstd",
@@ -85,14 +88,22 @@ dev = [
     # launcher in production. CI doesn't take that path, but the test suite's
     # conftest preloads tscat to dodge a known thread race — so it must be
     # available at test time.
-    "tscat>=0.4.0",
+    "tscat>=0.5.1",
     "tscat_gui>=0.7.0",
     "pytest-xdist>=3.8.0",
     # runtime deps of the ACP layer (SciQLop/components/agents/acp), declared
     # for end users by the plugins that consume the layer; needed here so its
     # tests can run.
     "agent-client-protocol>=0.12.0",
-    "mcp>=1.16.0",
+    # >=1.19.0: earlier versions have no branch for a `CallToolResult` returned
+    # by a low-level call_tool handler (the shape claude-agent-sdk's in-process
+    # server produces). Being a pydantic model it satisfies `hasattr(__iter__)`,
+    # so the server does `content=list(result)` and ships the model's
+    # (field, value) tuples — every tool result then fails client-side
+    # validation. See tests/test_mcp_calltoolresult_passthrough.py.
+    # <2: mcp 2.0 dropped the low-level `Server.list_tools()` / `call_tool()`
+    # decorators the ACP tool server is built on.
+    "mcp>=1.19.0,<2",
     "uvicorn>=0.30.0",
 ]
 
