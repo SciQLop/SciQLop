@@ -21,7 +21,7 @@ from ._graphs import (ensure_arrays_of_double, Histogram2D, _create_histogram2d,
                       validate_histogram_bins as _validate_histogram_bins,
                       _UNSET, _with_explicit)
 from ._thread_safety import on_main_thread
-import numpy as _np
+import numpy as np
 from speasy.products import SpeasyVariable as _SpeasyVariable
 from speasy.core import datetime64_to_epoch as _datetime64_to_epoch
 
@@ -71,10 +71,10 @@ def _speasy_variable_to_arrays(v: _SpeasyVariable):
     already float64 and C-contiguous (same convention as
     ``ensure_arrays_of_double``)."""
     time = _datetime64_to_epoch(v.time)
-    values = _np.ascontiguousarray(v.values, dtype=_np.float64)
-    numeric_axes = [ax for ax in v.axes[1:] if _np.issubdtype(ax.values.dtype, _np.number)]
+    values = np.ascontiguousarray(v.values, dtype=np.float64)
+    numeric_axes = [ax for ax in v.axes[1:] if np.issubdtype(ax.values.dtype, np.number)]
     if numeric_axes:
-        return time, _np.ascontiguousarray(numeric_axes[0].values, dtype=_np.float64), values
+        return time, np.ascontiguousarray(numeric_axes[0].values, dtype=np.float64), values
     return time, values
 
 
@@ -309,8 +309,8 @@ class PlotPanel:
     @experimental_api()
     @on_main_thread
     def histogram2d(self, *args, name: str = "histogram",
-                    x_bins: Union[int, _np.ndarray] = 100,
-                    y_bins: Union[int, _np.ndarray] = 100,
+                    x_bins: Union[int, np.ndarray] = 100,
+                    y_bins: Union[int, np.ndarray] = 100,
                     x_bin_strategy: BinStrategy = BinStrategy.Linear,
                     y_bin_strategy: BinStrategy = BinStrategy.Linear,
                     z_log_scale: bool = False, gradient=None,

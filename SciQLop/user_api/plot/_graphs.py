@@ -1,7 +1,9 @@
-import numpy as np
-from .protocol import Plot, Plottable
-from .enums import BinStrategy
 from typing import Optional, Union, List
+
+import numpy as np
+
+from .enums import BinStrategy
+from .protocol import Plot, Plottable
 from ..virtual_products import VirtualProduct
 from SciQLopPlots import SciQLopHistogram2D as _SciQLopHistogram2D
 from SciQLopPlots import SciQLopColorMapBase as _SciQLopColorMapBase
@@ -376,6 +378,13 @@ def _compute_bin_edges(data, bins, strategy: BinStrategy):
     -------
     np.ndarray
         Float64 bin edges.
+
+    Notes
+    -----
+    For ``BinStrategy.Log`` with an integer bin count, SciQLopPlots computes
+    its own log-spaced bins internally when ``x_bins_log=True`` /
+    ``y_bins_log=True`` is passed. The edges returned here are computed
+    independently and may differ slightly from the upstream bins.
     """
     if not isinstance(bins, (int, np.integer)):
         edges = np.asarray(bins, dtype=np.float64)
@@ -395,10 +404,11 @@ def _compute_bin_edges(data, bins, strategy: BinStrategy):
         return np.linspace(lo, hi, bins + 1)
     if strategy == BinStrategy.Log:
         if lo <= 0:
-            # Log spacing requires strictly positive bounds. Shift the lower
-            # bound just above zero while keeping a representable edge at the
-            # original minimum (the caller still sees positive edges).
-            lo = max(np.nextafter(float(0), 1.0), hi / (bins + 1))
+            raise ValueError(
+                "BinStrategy.Log requires strictly positive data range "
+                f"(got min={lo}, max={hi}); use BinStrategy.SymLog for data "
+                "that crosses or touches zero"
+            )
         return np.geomspace(lo, hi, bins + 1)
     if strategy == BinStrategy.SymLog:
         return _symlog_edges(lo, hi, bins)
