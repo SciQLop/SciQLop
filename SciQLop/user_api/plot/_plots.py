@@ -1,4 +1,5 @@
-from .enums import PlotType, ScaleType
+import numpy as np
+from .enums import PlotType, ScaleType, BinStrategy
 from .protocol import Plot
 from ._graphs import (Graph, ColorMap, Histogram2D, to_plottable,
                       ensure_arrays_of_double, _create_histogram2d,
@@ -475,7 +476,10 @@ class XYPlot(_BasePlot):
     @experimental_api()
     @on_main_thread
     def histogram2d(self, x, y, *, name: str = "histogram",
-                    x_bins: int = 100, y_bins: int = 100,
+                    x_bins: Union[int, np.ndarray] = 100,
+                    y_bins: Union[int, np.ndarray] = 100,
+                    x_bin_strategy: BinStrategy = BinStrategy.Linear,
+                    y_bin_strategy: BinStrategy = BinStrategy.Linear,
                     z_log_scale: bool = False) -> Histogram2D:
         """Add a 2D density histogram to this plot.
 
@@ -485,8 +489,10 @@ class XYPlot(_BasePlot):
             Scatter data to bin.
         name : str
             Histogram label.
-        x_bins, y_bins : int
-            Bin counts along X and Y.
+        x_bins, y_bins : int or array-like
+            Bin counts along X and Y, or explicit monotonic bin edges.
+        x_bin_strategy, y_bin_strategy : BinStrategy
+            Spacing strategy used when *x_bins* / *y_bins* are integers.
         z_log_scale : bool
             Use a logarithmic color scale.
 
@@ -498,6 +504,8 @@ class XYPlot(_BasePlot):
         return _create_histogram2d(self._get_impl_or_raise(), x, y,
                                    name=name, x_bins=x_bins,
                                    y_bins=y_bins,
+                                   x_bin_strategy=x_bin_strategy,
+                                   y_bin_strategy=y_bin_strategy,
                                    z_log_scale=z_log_scale)
 
     @on_main_thread
@@ -643,12 +651,17 @@ class TimeSeriesPlot(_BasePlot):
     @experimental_api()
     @on_main_thread
     def histogram2d(self, x, y, *, name: str = "histogram",
-                    x_bins: int = 100, y_bins: int = 100,
+                    x_bins: Union[int, np.ndarray] = 100,
+                    y_bins: Union[int, np.ndarray] = 100,
+                    x_bin_strategy: BinStrategy = BinStrategy.Linear,
+                    y_bin_strategy: BinStrategy = BinStrategy.Linear,
                     z_log_scale: bool = False) -> Histogram2D:
         """Add a 2D density histogram to this plot. See XYPlot.histogram2d."""
         return _create_histogram2d(self._get_impl_or_raise(), x, y,
                                    name=name, x_bins=x_bins,
                                    y_bins=y_bins,
+                                   x_bin_strategy=x_bin_strategy,
+                                   y_bin_strategy=y_bin_strategy,
                                    z_log_scale=z_log_scale)
 
     @on_main_thread

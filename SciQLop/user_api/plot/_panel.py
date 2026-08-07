@@ -1,7 +1,7 @@
 import math as _math
 
 from expression import Nothing, Option, Some
-from .enums import PlotType, Orientation, GraphType
+from .enums import PlotType, Orientation, GraphType, BinStrategy
 from .protocol import Plottable
 from typing import Optional, Tuple, Union, List
 from ..gui import get_main_window as _get_main_window
@@ -309,7 +309,10 @@ class PlotPanel:
     @experimental_api()
     @on_main_thread
     def histogram2d(self, *args, name: str = "histogram",
-                    x_bins: int = 100, y_bins: int = 100,
+                    x_bins: Union[int, _np.ndarray] = 100,
+                    y_bins: Union[int, _np.ndarray] = 100,
+                    x_bin_strategy: BinStrategy = BinStrategy.Linear,
+                    y_bin_strategy: BinStrategy = BinStrategy.Linear,
                     z_log_scale: bool = False, gradient=None,
                     plot_index: int = -1):
         """Add a 2D density histogram in a new plot.
@@ -323,10 +326,11 @@ class PlotPanel:
             Both paths create an XY plot.
         name : str
             Histogram label (shown in legend).
-        x_bins : int
-            Number of bins along the X axis.
-        y_bins : int
-            Number of bins along the Y axis.
+        x_bins, y_bins : int or array-like
+            Number of bins along each axis, or explicit monotonic bin edges.
+        x_bin_strategy, y_bin_strategy : BinStrategy
+            Spacing strategy used when the corresponding bin count is an
+            integer. Ignored when explicit edges are supplied.
         z_log_scale : bool
             Use a logarithmic color scale.
         gradient
@@ -344,6 +348,8 @@ class PlotPanel:
         plot_impl = impl.create_plot(plot_index, _PlotType.BasicXY)
         hist = _create_histogram2d(plot_impl, *args, name=name,
                                    x_bins=x_bins, y_bins=y_bins,
+                                   x_bin_strategy=x_bin_strategy,
+                                   y_bin_strategy=y_bin_strategy,
                                    z_log_scale=z_log_scale, gradient=gradient)
         if len(args) == 1 and callable(args[0]):
             impl.time_range_changed.connect(hist._impl.set_range)
