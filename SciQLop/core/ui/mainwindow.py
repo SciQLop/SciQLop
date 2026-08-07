@@ -654,12 +654,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._onboarding_controller = run_tour(self, tour_id)
 
     def open_jupyterlab_widget(self):
+        # Always re-request the widget, even when the dock exists: Lab's File menu
+        # can shut its own server down or navigate to /logout, and jupyqt only
+        # relaunches/reloads when asked for the widget again (SciQLop/jupyqt#10).
+        jupyter_widget = workspaces_manager_instance().widget()
         existing = self.dock_manager.findDockWidget("SciQLop JupyterLab")
         if existing is not None:
             existing.toggleView(True)
             existing.raise_()
             return
-        jupyter_widget = workspaces_manager_instance().widget()
         if jupyter_widget is not None:
             jupyter_widget.setWindowTitle("SciQLop JupyterLab")
             self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, jupyter_widget,
