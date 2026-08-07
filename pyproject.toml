@@ -54,7 +54,11 @@ dependencies = [
     # >=0.6.3: earlier versions call IPython's run_cell_async without
     # transformed_cell, a hard TypeError since IPython 9.16 — every notebook
     # execute request then fails silently.
-    "jupyqt>=0.6.3",
+    # >=0.6.4: relaunches a JupyterLab server that Lab's own File > Shut Down
+    # killed, and reloads the view only when it isn't already on a Lab page.
+    # open_jupyterlab_widget() re-requests the widget on every open and would
+    # discard a live Lab's state on 0.6.3, which reloaded unconditionally.
+    "jupyqt>=0.6.4",
     "matplotlib==3.11.1",
     "qasync",
     "jinja2",

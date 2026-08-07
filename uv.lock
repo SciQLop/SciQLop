@@ -1431,7 +1431,7 @@ name = "importlib-metadata"
 version = "9.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp", marker = "python_full_version < '3.14'" },
+    { name = "zipp", marker = "python_full_version < '3.12'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/a9/01/15bb152d77b21318514a96f43af312635eb2500c96b55398d020c93d86ea/importlib_metadata-9.0.0.tar.gz", hash = "sha256:a4f57ab599e6a2e3016d7595cfd72eb4661a5106e787a95bcc90c7105b831efc", size = 56405, upload-time = "2026-03-20T06:42:56.999Z" }
 wheels = [
@@ -1637,7 +1637,7 @@ wheels = [
 
 [[package]]
 name = "jupyqt"
-version = "0.6.3"
+version = "0.6.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1647,9 +1647,9 @@ dependencies = [
     { name = "jupyverse", extra = ["jupyterlab"] },
     { name = "pyside6" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c6/7e/9a8c1537e806e5c189fc1336364434a636694d4ae836704f2b9a2784c994/jupyqt-0.6.3.tar.gz", hash = "sha256:62f9bc79fda105e4cf5b862afd50e957a32634ab8c70afa5d664b93b3fa64975", size = 76918, upload-time = "2026-08-06T13:26:45.394Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ab/b6/26fcade38567cc15e2bf0143020c67ec9bde3568bf11b69a2d8ab64a9aa5/jupyqt-0.6.4.tar.gz", hash = "sha256:24efedf3a5249817c9a033877e44755ca962497caf175656bd756ecc0a5df3ba", size = 80088, upload-time = "2026-08-07T09:46:03.935Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/9e/ba7fb1f0e5f50587f0ef2b09b98893efd5ee3334794c1d57797946c5f3a3/jupyqt-0.6.3-py3-none-any.whl", hash = "sha256:db0b1735c5a380657f5f20b19477cd31ba4d918464a75111ad450e9b78c95dde", size = 30882, upload-time = "2026-08-06T13:26:44.13Z" },
+    { url = "https://files.pythonhosted.org/packages/57/92/b27e8b0486206d8ee7a69d33d8dc81b66d6958681355fc884b04846751b2/jupyqt-0.6.4-py3-none-any.whl", hash = "sha256:096bc45c59323f072136cdff8a750f0ba8acdd90050978669435745acb6a8a61", size = 32022, upload-time = "2026-08-07T09:46:02.679Z" },
 ]
 
 [[package]]
@@ -2687,7 +2687,7 @@ name = "pexpect"
 version = "4.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "ptyprocess" },
+    { name = "ptyprocess", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
@@ -3364,8 +3364,8 @@ name = "pytest-xvfb"
 version = "3.1.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pytest" },
-    { name = "pyvirtualdisplay" },
+    { name = "pytest", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "pyvirtualdisplay", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b6/ce/b3444c98eab123b7348d55d4705c2f1095a6bdf8dae85bc6a34ab5222845/pytest_xvfb-3.1.1.tar.gz", hash = "sha256:90593634427d974b272e845793e4533f5b827c9d84c051879013624504175e44", size = 9022, upload-time = "2025-03-12T12:35:07.533Z" }
 wheels = [
@@ -4018,7 +4018,7 @@ requires-dist = [
     { name = "ipython" },
     { name = "ipywidgets" },
     { name = "jinja2" },
-    { name = "jupyqt", specifier = ">=0.6.3" },
+    { name = "jupyqt", specifier = ">=0.6.4" },
     { name = "jupyterlab-widgets" },
     { name = "keyring" },
     { name = "matplotlib", specifier = "==3.11.1" },
@@ -4108,8 +4108,8 @@ name = "secretstorage"
 version = "3.5.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "cryptography" },
-    { name = "jeepney" },
+    { name = "cryptography", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
+    { name = "jeepney", marker = "sys_platform != 'emscripten' and sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1c/03/e834bcd866f2f8a49a85eaff47340affa3bfa391ee9912a952a1faa68c7b/secretstorage-3.5.0.tar.gz", hash = "sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be", size = 19884, upload-time = "2025-11-23T19:02:53.191Z" }
 wheels = [
