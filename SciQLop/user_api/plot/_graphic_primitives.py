@@ -4,9 +4,13 @@ from SciQLopPlots import (SciQLopPixmapItem as _SciQLopPixmapItem,
                           SciQLopTextItem as _SciQLopTextItem,
                           SciQLopCurvedLineItem as _SciQLopCurvedLineItem,
                           SciQLopHorizontalLine as _SciQLopHorizontalLine,
+                          SciQLopVerticalLine as _SciQLopVerticalLine,
+                          SciQLopStraightLine as _SciQLopStraightLine,
+                          SciQLopRectangularSpan as _SciQLopRectangularSpan,
+                          SciQLopHorizontalSpan as _SciQLopHorizontalSpan,
                           )
 
-from SciQLopPlots import (Coordinates as _Coordinates, LineTermination)
+from SciQLopPlots import (Coordinates as _Coordinates, LineTermination, SciQLopPlotRange as _SciQLopPlotRange)
 
 from .protocol import Plot, Item
 from .enums import CoordinateSystem
@@ -15,7 +19,8 @@ from ._thread_safety import on_main_thread
 from PySide6.QtCore import QRectF, QPointF
 from PySide6.QtGui import QColor, QBrush, QFont, QPalette, QPixmap, Qt
 
-__all__ = ['Pixmap', 'Ellipse', 'Text', 'CurvedLine', 'HorizontalLine', 'LineTermination']
+__all__ = ['Pixmap', 'Ellipse', 'Text', 'CurvedLine', 'HorizontalLine', 'VerticalLine', 'StraightLine',
+           'RectangularSpan', 'HorizontalSpan', 'LineTermination']
 
 
 def _coordinate_system_to_sqp(coordinate_system: CoordinateSystem) -> _Coordinates:
@@ -574,3 +579,470 @@ class HorizontalLine:
         if self._impl is not None:
             self._impl.deleteLater()
             self._impl = None
+
+
+class VerticalLine(_PlotItem):
+    """A vertical line at a fixed X value on a plot.
+
+    The default line colour follows the plot's palette so the line stays
+    visible on both light and dark themes.
+
+    Parameters
+    ----------
+    plot : Plot
+        The plot to which the line belongs.
+    value : float
+        The X-axis position of the line.
+    color : str or QColor, optional
+        Line colour. Defaults to the plot's palette text colour.
+    line_width : float, optional
+        Line width.
+    line_style : Qt.PenStyle, optional
+        Line style (``Qt.SolidLine``, ``Qt.DashLine``, ...).
+    coordinate_system : CoordinateSystem
+        ``Data`` (default) or ``Pixel``.
+    movable : bool
+        Whether the user can drag the line. Defaults to False.
+    """
+
+    @on_main_thread
+    def __init__(self, plot: Plot, value: float, *,
+                 color: Optional[Union[str, QColor]] = None,
+                 line_width: Optional[float] = None,
+                 line_style: Optional[Qt.PenStyle] = None,
+                 coordinate_system: CoordinateSystem = CoordinateSystem.Data,
+                 movable: bool = False):
+        impl = plot._get_impl_or_raise()
+        self._impl: _SciQLopVerticalLine = _SciQLopVerticalLine(
+            impl, value, movable, _coordinate_system_to_sqp(coordinate_system))
+        self.color = color if color is not None else _default_foreground(impl)
+        if line_width is not None:
+            self.line_width = line_width
+        if line_style is not None:
+            self.line_style = line_style
+
+    @property
+    @on_main_thread
+    def value(self) -> float:
+        return self._get_impl_or_raise().position
+
+    @value.setter
+    @on_main_thread
+    def value(self, v: float):
+        self._get_impl_or_raise().set_position(v)
+
+    @property
+    @on_main_thread
+    def color(self) -> QColor:
+        return self._get_impl_or_raise().color()
+
+    @color.setter
+    @on_main_thread
+    def color(self, c: Union[str, QColor]):
+        self._get_impl_or_raise().set_color(QColor(c))
+
+    @property
+    @on_main_thread
+    def line_width(self) -> float:
+        return self._get_impl_or_raise().line_width()
+
+    @line_width.setter
+    @on_main_thread
+    def line_width(self, w: float):
+        self._get_impl_or_raise().set_line_width(w)
+
+    @property
+    @on_main_thread
+    def line_style(self) -> Qt.PenStyle:
+        return self._get_impl_or_raise().line_style()
+
+    @line_style.setter
+    @on_main_thread
+    def line_style(self, style: Qt.PenStyle):
+        self._get_impl_or_raise().set_line_style(style)
+
+
+class StraightLine(_PlotItem):
+    """A straight reference line on a plot.
+
+    The public API accepts two endpoints, but the upstream
+    ``SciQLopStraightLine`` only supports axis-aligned infinite lines. The
+    wrapper therefore interprets the endpoints heuristically: true horizontal
+    or vertical lines keep their orientation; for diagonal inputs it falls
+    back to an axis-aligned line through the bounding-box centre along the
+    dominant axis.
+
+    The default line colour follows the plot's palette.
+
+    Parameters
+    ----------
+    plot : Plot
+        The plot to which the line belongs.
+    x1, y1, x2, y2 : float
+        Two points describing the line. For axis-aligned lines the line is
+        placed at the corresponding constant coordinate; for diagonal lines a
+        best-effort axis-aligned approximation is used.
+    color : str or QColor, optional
+        Line colour. Defaults to the plot's palette text colour.
+    line_width : float, optional
+        Line width.
+    line_style : Qt.PenStyle, optional
+        Line style (``Qt.SolidLine``, ``Qt.DashLine``, ...).
+    coordinate_system : CoordinateSystem
+        ``Data`` (default) or ``Pixel``.
+    movable : bool
+        Whether the user can drag the line. Defaults to False.
+    """
+
+    @on_main_thread
+    def __init__(self, plot: Plot, x1: float, y1: float, x2: float, y2: float, *,
+                 color: Optional[Union[str, QColor]] = None,
+                 line_width: Optional[float] = None,
+                 line_style: Optional[Qt.PenStyle] = None,
+                 coordinate_system: CoordinateSystem = CoordinateSystem.Data,
+                 movable: bool = False):
+        impl = plot._get_impl_or_raise()
+        dx = x2 - x1
+        dy = y2 - y1
+        if abs(dx) < 1e-12:
+            self._orientation = Qt.Orientation.Vertical
+            position = float(x1)
+        elif abs(dy) < 1e-12:
+            self._orientation = Qt.Orientation.Horizontal
+            position = float(y1)
+        elif abs(dx) >= abs(dy):
+            self._orientation = Qt.Orientation.Horizontal
+            position = float((y1 + y2) / 2.0)
+        else:
+            self._orientation = Qt.Orientation.Vertical
+            position = float((x1 + x2) / 2.0)
+
+        self._impl: _SciQLopStraightLine = _SciQLopStraightLine(
+            impl, position, movable, _coordinate_system_to_sqp(coordinate_system), self._orientation)
+        self.color = color if color is not None else _default_foreground(impl)
+        if line_width is not None:
+            self.line_width = line_width
+        if line_style is not None:
+            self.line_style = line_style
+
+    @property
+    def orientation(self) -> Qt.Orientation:
+        return self._orientation
+
+    @property
+    @on_main_thread
+    def value(self) -> float:
+        return self._get_impl_or_raise().position
+
+    @value.setter
+    @on_main_thread
+    def value(self, v: float):
+        self._get_impl_or_raise().set_position(v)
+
+    @property
+    @on_main_thread
+    def color(self) -> QColor:
+        return self._get_impl_or_raise().color()
+
+    @color.setter
+    @on_main_thread
+    def color(self, c: Union[str, QColor]):
+        self._get_impl_or_raise().set_color(QColor(c))
+
+    @property
+    @on_main_thread
+    def line_width(self) -> float:
+        return self._get_impl_or_raise().line_width()
+
+    @line_width.setter
+    @on_main_thread
+    def line_width(self, w: float):
+        self._get_impl_or_raise().set_line_width(w)
+
+    @property
+    @on_main_thread
+    def line_style(self) -> Qt.PenStyle:
+        return self._get_impl_or_raise().line_style()
+
+    @line_style.setter
+    @on_main_thread
+    def line_style(self, style: Qt.PenStyle):
+        self._get_impl_or_raise().set_line_style(style)
+
+
+def _default_span_color(plot_impl) -> QColor:
+    """A semi-transparent variant of the palette foreground for span fills."""
+    color = QColor(_default_foreground(plot_impl))
+    color.setAlphaF(0.3)
+    return color
+
+
+class RectangularSpan(_PlotItem):
+    """A rectangular span drawn between two X and two Y values.
+
+    The default fill colour is a semi-transparent variant of the plot's
+    palette foreground.
+
+    Parameters
+    ----------
+    plot : Plot
+        The plot to which the span belongs.
+    x1, y1, x2, y2 : float
+        Corners of the rectangle.
+    color : str or QColor, optional
+        Fill and border colour. Defaults to a transparent palette colour.
+    borders_color : str or QColor, optional
+        Border colour. Defaults to the same as ``color``.
+    line_width : float, optional
+        Border width.
+    line_style : Qt.PenStyle, optional
+        Border style.
+    read_only : bool
+        Whether the span is read-only. Defaults to False.
+    visible : bool
+        Whether the span is visible. Defaults to True.
+    tool_tip : str
+        Tooltip text.
+    """
+
+    @on_main_thread
+    def __init__(self, plot: Plot, x1: float, y1: float, x2: float, y2: float, *,
+                 color: Optional[Union[str, QColor]] = None,
+                 borders_color: Optional[Union[str, QColor]] = None,
+                 line_width: Optional[float] = None,
+                 line_style: Optional[Qt.PenStyle] = None,
+                 read_only: bool = False,
+                 visible: bool = True,
+                 tool_tip: str = ""):
+        impl = plot._get_impl_or_raise()
+        default_color = _default_span_color(impl)
+        self._impl: _SciQLopRectangularSpan = _SciQLopRectangularSpan(
+            impl, _SciQLopPlotRange(x1, x2), _SciQLopPlotRange(y1, y2),
+            color or default_color, read_only, visible, tool_tip)
+        self.borders_color = borders_color if borders_color is not None else (color if color is not None else default_color)
+        if line_width is not None:
+            self.line_width = line_width
+        if line_style is not None:
+            self.line_style = line_style
+
+    @property
+    @on_main_thread
+    def color(self) -> QColor:
+        return self._get_impl_or_raise().color()
+
+    @color.setter
+    @on_main_thread
+    def color(self, c: Union[str, QColor]):
+        self._get_impl_or_raise().set_color(QColor(c))
+
+    @property
+    @on_main_thread
+    def borders_color(self) -> QColor:
+        return self._get_impl_or_raise().borders_color()
+
+    @borders_color.setter
+    @on_main_thread
+    def borders_color(self, c: Union[str, QColor]):
+        self._get_impl_or_raise().set_borders_color(QColor(c))
+
+    @property
+    @on_main_thread
+    def line_width(self) -> float:
+        return self._get_impl_or_raise().line_width()
+
+    @line_width.setter
+    @on_main_thread
+    def line_width(self, w: float):
+        self._get_impl_or_raise().set_line_width(w)
+
+    @property
+    @on_main_thread
+    def line_style(self) -> Qt.PenStyle:
+        return self._get_impl_or_raise().line_style()
+
+    @line_style.setter
+    @on_main_thread
+    def line_style(self, style: Qt.PenStyle):
+        self._get_impl_or_raise().set_line_style(style)
+
+    @property
+    @on_main_thread
+    def key_range(self) -> Tuple[float, float]:
+        r = self._get_impl_or_raise().key_range()
+        return r.start(), r.stop()
+
+    @key_range.setter
+    @on_main_thread
+    def key_range(self, key_range: Tuple[float, float]):
+        self._get_impl_or_raise().set_key_range(_SciQLopPlotRange(*key_range))
+
+    @property
+    @on_main_thread
+    def value_range(self) -> Tuple[float, float]:
+        r = self._get_impl_or_raise().value_range()
+        return r.start(), r.stop()
+
+    @value_range.setter
+    @on_main_thread
+    def value_range(self, value_range: Tuple[float, float]):
+        self._get_impl_or_raise().set_value_range(_SciQLopPlotRange(*value_range))
+
+    @property
+    @on_main_thread
+    def read_only(self) -> bool:
+        return self._get_impl_or_raise().read_only()
+
+    @read_only.setter
+    @on_main_thread
+    def read_only(self, read_only: bool):
+        self._get_impl_or_raise().set_read_only(read_only)
+
+    @property
+    @on_main_thread
+    def visible(self) -> bool:
+        return self._get_impl_or_raise().visible()
+
+    @visible.setter
+    @on_main_thread
+    def visible(self, visible: bool):
+        self._get_impl_or_raise().set_visible(visible)
+
+    @property
+    @on_main_thread
+    def tool_tip(self) -> str:
+        return self._get_impl_or_raise().tool_tip()
+
+    @tool_tip.setter
+    @on_main_thread
+    def tool_tip(self, tool_tip: str):
+        self._get_impl_or_raise().set_tool_tip(tool_tip)
+
+
+class HorizontalSpan(_PlotItem):
+    """A horizontal span between two Y values.
+
+    The default fill colour is a semi-transparent variant of the plot's
+    palette foreground.
+
+    Parameters
+    ----------
+    plot : Plot
+        The plot to which the span belongs.
+    y1, y2 : float
+        Vertical extents of the span.
+    color : str or QColor, optional
+        Fill and border colour. Defaults to a transparent palette colour.
+    borders_color : str or QColor, optional
+        Border colour. Defaults to the same as ``color``.
+    line_width : float, optional
+        Border width.
+    line_style : Qt.PenStyle, optional
+        Border style.
+    read_only : bool
+        Whether the span is read-only. Defaults to False.
+    visible : bool
+        Whether the span is visible. Defaults to True.
+    tool_tip : str
+        Tooltip text.
+    """
+
+    @on_main_thread
+    def __init__(self, plot: Plot, y1: float, y2: float, *,
+                 color: Optional[Union[str, QColor]] = None,
+                 borders_color: Optional[Union[str, QColor]] = None,
+                 line_width: Optional[float] = None,
+                 line_style: Optional[Qt.PenStyle] = None,
+                 read_only: bool = False,
+                 visible: bool = True,
+                 tool_tip: str = ""):
+        impl = plot._get_impl_or_raise()
+        default_color = _default_span_color(impl)
+        self._impl: _SciQLopHorizontalSpan = _SciQLopHorizontalSpan(
+            impl, _SciQLopPlotRange(y1, y2),
+            color or default_color, read_only, visible, tool_tip)
+        self.borders_color = borders_color if borders_color is not None else (color if color is not None else default_color)
+        if line_width is not None:
+            self.line_width = line_width
+        if line_style is not None:
+            self.line_style = line_style
+
+    @property
+    @on_main_thread
+    def color(self) -> QColor:
+        return self._get_impl_or_raise().color()
+
+    @color.setter
+    @on_main_thread
+    def color(self, c: Union[str, QColor]):
+        self._get_impl_or_raise().set_color(QColor(c))
+
+    @property
+    @on_main_thread
+    def borders_color(self) -> QColor:
+        return self._get_impl_or_raise().borders_color()
+
+    @borders_color.setter
+    @on_main_thread
+    def borders_color(self, c: Union[str, QColor]):
+        self._get_impl_or_raise().set_borders_color(QColor(c))
+
+    @property
+    @on_main_thread
+    def line_width(self) -> float:
+        return self._get_impl_or_raise().line_width()
+
+    @line_width.setter
+    @on_main_thread
+    def line_width(self, w: float):
+        self._get_impl_or_raise().set_line_width(w)
+
+    @property
+    @on_main_thread
+    def line_style(self) -> Qt.PenStyle:
+        return self._get_impl_or_raise().line_style()
+
+    @line_style.setter
+    @on_main_thread
+    def line_style(self, style: Qt.PenStyle):
+        self._get_impl_or_raise().set_line_style(style)
+
+    @property
+    @on_main_thread
+    def range(self) -> Tuple[float, float]:
+        r = self._get_impl_or_raise().range()
+        return r.start(), r.stop()
+
+    @range.setter
+    @on_main_thread
+    def range(self, vertical_range: Tuple[float, float]):
+        self._get_impl_or_raise().set_range(_SciQLopPlotRange(*vertical_range))
+
+    @property
+    @on_main_thread
+    def read_only(self) -> bool:
+        return self._get_impl_or_raise().read_only()
+
+    @read_only.setter
+    @on_main_thread
+    def read_only(self, read_only: bool):
+        self._get_impl_or_raise().set_read_only(read_only)
+
+    @property
+    @on_main_thread
+    def visible(self) -> bool:
+        return self._get_impl_or_raise().visible()
+
+    @visible.setter
+    @on_main_thread
+    def visible(self, visible: bool):
+        self._get_impl_or_raise().set_visible(visible)
+
+    @property
+    @on_main_thread
+    def tool_tip(self) -> str:
+        return self._get_impl_or_raise().tool_tip()
+
+    @tool_tip.setter
+    @on_main_thread
+    def tool_tip(self, tool_tip: str):
+        self._get_impl_or_raise().set_tool_tip(tool_tip)

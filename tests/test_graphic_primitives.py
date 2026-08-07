@@ -11,6 +11,7 @@ construction so both paths behave identically.
 from .fixtures import *  # noqa: F401,F403 — qapp/main_window/plot_panel fixtures
 import numpy as np
 import pytest
+from SciQLop.user_api.plot import VerticalLine, StraightLine, RectangularSpan, HorizontalSpan
 
 
 @pytest.fixture
@@ -89,3 +90,27 @@ def test_add_hline(any_plot):
     from SciQLop.user_api.plot._graphic_primitives import HorizontalLine
 
     assert isinstance(any_plot.add_hline(1.0), HorizontalLine)
+
+
+def test_vertical_line_can_be_added_and_removed(any_plot):
+    line = VerticalLine(any_plot, 5.0)
+    assert line is not None
+    line.remove()
+
+
+def test_straight_line_can_be_added_and_removed(any_plot):
+    line = StraightLine(any_plot, 0.0, 0.0, 9.0, 9.0)
+    assert line is not None
+    line.remove()
+
+
+def test_rectangular_span_can_be_added_and_removed(any_plot):
+    span = RectangularSpan(any_plot, 2.0, 2.0, 7.0, 7.0)
+    assert span is not None
+    span.remove()
+
+
+def test_horizontal_span_can_be_added_and_removed(any_plot):
+    span = HorizontalSpan(any_plot, 2.0, 7.0)
+    assert span is not None
+    span.remove()
