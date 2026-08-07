@@ -62,6 +62,13 @@ def _preserve_speasy_dirs():
     os.environ["XDG_CACHE_HOME"] = str(cache_dir)
 
 
+# trylast so pytest-xvfb's own pytest_configure — which starts Xvfb and exports
+# DISPLAY — has already run: conftest hooks are called before installed plugins',
+# and the QApplication built at the end of this hook aborts the whole process
+# ("could not connect to display", exit 134) when no display exists yet. Only CI
+# hits it; a dev shell has a real DISPLAY, and the canonical local run passes
+# --no-xvfb. Reproduce with: env -u DISPLAY -u WAYLAND_DISPLAY uv run pytest
+@pytest.hookimpl(trylast=True)
 def pytest_configure(config):
     # These env vars MUST be set before any SciQLop or speasy import.
     # pytest_configure runs before collection, so no test module is imported yet.
