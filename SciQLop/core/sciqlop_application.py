@@ -90,6 +90,10 @@ class SciQLopApp(QApplication):
         self._update_plot_themes()
         self.theme_changed.emit(palette_name)
 
+    def current_theme(self) -> str:
+        """Return the name of the active color palette."""
+        return self._current_palette_name
+
     def _update_plot_themes(self):
         from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
         for widget in self.allWidgets():
