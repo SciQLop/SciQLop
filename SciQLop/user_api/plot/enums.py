@@ -19,10 +19,31 @@ class GraphType(Enum):
     Curve = 1
     ColorMap = 2
     Scatter = 3
+    Waterfall = 4
 
 class ScaleType(Enum):
     Linear = 0
     Logarithmic = 1
+
+
+class BinStrategy(Enum):
+    Linear = "linear"
+    Log = "log"
+    SymLog = "symlog"
+
+
+class GraphLineStyle(Enum):
+    Solid = 0
+    Dash = 1
+    Dot = 2
+    DashDot = 3
+    DashDotDot = 4
+
+
+class AxisType(Enum):
+    Linear = 0
+    Logarithmic = 1
+    DateTime = 2
 
 
 class CoordinateSystem(Enum):
