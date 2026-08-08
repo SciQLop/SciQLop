@@ -7,12 +7,15 @@ from .protocol import Plot, Plottable
 from ..virtual_products import VirtualProduct
 from SciQLopPlots import SciQLopHistogram2D as _SciQLopHistogram2D
 from SciQLopPlots import SciQLopColorMapBase as _SciQLopColorMapBase
+from SciQLopPlots import SciQLopWaterfallGraph as _SciQLopWaterfallGraph
+from SciQLopPlots import WaterfallOffsetMode as _WaterfallOffsetMode
+from PySide6.QtGui import QColor as _QColor
 from ._thread_safety import on_main_thread
 from SciQLop.core import tracing as _tracing
 
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 
-__all__ = ['Graph', 'ColorMap', 'Histogram2D']
+__all__ = ['Graph', 'ColorMap', 'Histogram2D', 'Waterfall']
 
 log = _getLogger(__name__)
 
@@ -290,6 +293,165 @@ class Histogram2D(Plottable):
             p.text(f"Histogram2D({self._impl})")
 
 
+class Waterfall(Plottable):
+    """A waterfall graph: stacked line plots sharing the same x-axis.
+
+    SciQLopPlots stores the 2-D data as ``(len(x), n_lines)``; this wrapper
+    exposes the more natural ``(n_lines, len(x))`` layout to callers and
+    transposes automatically.
+    """
+
+    def __init__(self, impl):
+        self._impl: _SciQLopWaterfallGraph = impl
+        _wire_destroyed(self, impl)
+
+    def _on_destroyed(self):
+        self._impl = None
+
+    def _get_impl_or_raise(self):
+        if self._impl is None:
+            raise ValueError("The waterfall graph does not exist anymore.")
+        return self._impl
+
+    @on_main_thread
+    def set_data(self, x, y, z):
+        """Set new data.
+
+        Parameters
+        ----------
+        x : array-like, shape (N,)
+            Shared x-axis values.
+        y : array-like, shape (M,)
+            Per-line y-axis values (used only for shape validation).
+        z : array-like, shape (M, N)
+            Data matrix: one row per line, one column per x value.
+        """
+        with _tracing.zone("Waterfall.set_data", cat="plot",
+                           nx=_len_safe(x), ny=_len_safe(y)):
+            arrays = ensure_arrays_of_double(x, y, z)
+            _validate_waterfall_shapes(*arrays)
+            x_arr, _, z_arr = arrays
+            self._get_impl_or_raise().set_data(x_arr, z_arr.T)
+
+    @property
+    @on_main_thread
+    def data(self):
+        x, z = self._get_impl_or_raise().data()
+        return x, z.T
+
+    @data.setter
+    @on_main_thread
+    def data(self, data):
+        self.set_data(*data)
+
+    @property
+    @on_main_thread
+    def visible(self) -> bool:
+        return self._get_impl_or_raise().visible()
+
+    @visible.setter
+    @on_main_thread
+    def visible(self, visible):
+        self._get_impl_or_raise().set_visible(visible)
+
+    @property
+    @on_main_thread
+    def offsets(self):
+        return self._get_impl_or_raise().offsets()
+
+    @offsets.setter
+    @on_main_thread
+    def offsets(self, offsets):
+        if offsets is None:
+            self._get_impl_or_raise().set_offset_mode(_WaterfallOffsetMode.Uniform)
+            self._get_impl_or_raise().set_uniform_spacing(1.0)
+        elif isinstance(offsets, (int, float)):
+            self._get_impl_or_raise().set_offset_mode(_WaterfallOffsetMode.Uniform)
+            self._get_impl_or_raise().set_uniform_spacing(float(offsets))
+        else:
+            arr = np.asarray(offsets, dtype=np.float64).ravel()
+            self._get_impl_or_raise().set_offset_mode(_WaterfallOffsetMode.Custom)
+            self._get_impl_or_raise().set_offsets(arr)
+
+    @property
+    @on_main_thread
+    def gain(self) -> float:
+        return self._get_impl_or_raise().gain()
+
+    @gain.setter
+    @on_main_thread
+    def gain(self, gain: float):
+        self._get_impl_or_raise().set_gain(float(gain))
+
+    @property
+    @on_main_thread
+    def normalize(self) -> bool:
+        return self._get_impl_or_raise().normalize()
+
+    @normalize.setter
+    @on_main_thread
+    def normalize(self, normalize: bool):
+        self._get_impl_or_raise().set_normalize(bool(normalize))
+
+    @property
+    @on_main_thread
+    def colors(self):
+        return self._get_impl_or_raise().colors()
+
+    @colors.setter
+    @on_main_thread
+    def colors(self, colors):
+        self._get_impl_or_raise().set_colors(_to_qcolor_list(colors, self.line_count))
+
+    @property
+    @on_main_thread
+    def color(self):
+        colors = self.colors
+        if not colors:
+            return None
+        return colors[0]
+
+    @color.setter
+    @on_main_thread
+    def color(self, color):
+        self.colors = _to_qcolor_list(color, self.line_count)
+
+    @property
+    @on_main_thread
+    def line_count(self) -> int:
+        return self._get_impl_or_raise().line_count()
+
+    def _repr_pretty_(self, p, cycle):
+        if cycle:
+            p.text("Waterfall(...)")
+        else:
+            p.text(f"Waterfall({self._impl})")
+
+
+def _to_qcolor_list(colors, line_count: int) -> List[_QColor]:
+    """Expand a single color or sequence into a QColor list of *line_count*."""
+    if colors is None:
+        return []
+    if isinstance(colors, (str, _QColor)):
+        return [_QColor(colors)] * line_count
+    seq = list(colors)
+    if len(seq) == 1:
+        return [_QColor(seq[0])] * line_count
+    return [_QColor(c) for c in seq]
+
+
+def _validate_waterfall_shapes(x, y, z):
+    """Ensure z has shape (len(y), len(x))."""
+    z_arr = np.asarray(z)
+    if z_arr.ndim != 2:
+        raise ValueError(f"z must be 2-D, got ndim={z_arr.ndim}")
+    expected = (len(y), len(x))
+    if z_arr.shape != expected:
+        raise ValueError(
+            f"z shape {z_arr.shape} does not match (len(y), len(x)) {expected}"
+        )
+
+
 def _reject_if_colormap_already_present(plot_impl) -> None:
     """A plot has a single color-scale axis, so it can host at most one
     colormap-style plottable (ColorMap, Histogram2D, Waterfall). Reject up
@@ -297,7 +459,7 @@ def _reject_if_colormap_already_present(plot_impl) -> None:
     for the color scale."""
     existing = plot_impl.plottables() or []
     for p in existing:
-        if isinstance(p, _SciQLopColorMapBase):
+        if isinstance(p, (_SciQLopColorMapBase, _SciQLopWaterfallGraph)):
             raise RuntimeError(
                 "this plot already contains a colormap-style plottable "
                 f"({type(p).__name__}); a plot can host only one. "
@@ -415,6 +577,33 @@ def _compute_bin_edges(data, bins, strategy: BinStrategy):
     raise ValueError(f"Unknown bin strategy {strategy}")
 
 
+def _create_waterfall(plot_impl, x, y, z, *, name=_UNSET, offsets=_UNSET,
+                      gain=_UNSET, normalize=_UNSET, color=_UNSET) -> Waterfall:
+    """Create a :class:`Waterfall` on *plot_impl*.
+
+    The public API expects ``z`` with shape ``(len(y), len(x))``; upstream
+    expects ``(len(x), n_lines)``, so the matrix is transposed here.
+    """
+    _reject_if_colormap_already_present(plot_impl)
+    x_arr, y_arr, z_arr = ensure_arrays_of_double(x, y, z)
+    _validate_waterfall_shapes(x_arr, y_arr, z_arr)
+
+    kwargs = {"labels": [], "colors": []}
+    raw = plot_impl.waterfall(x_arr, z_arr.T, **kwargs)
+    if name is not _UNSET and name is not None:
+        raw.set_name(name)
+    wf = Waterfall(raw)
+    if offsets is not _UNSET:
+        wf.offsets = offsets
+    if gain is not _UNSET:
+        wf.gain = gain
+    if normalize is not _UNSET:
+        wf.normalize = normalize
+    if color is not _UNSET and color is not None:
+        wf.color = color
+    return wf
+
+
 def _create_histogram2d(plot_impl, *args, name: str = "histogram",
                         x_bins=100, y_bins=100,
                         x_bin_strategy: BinStrategy = BinStrategy.Linear,
@@ -463,6 +652,8 @@ def to_plottable(impl, plot=None) -> Optional[Plottable]:
         return None
     if isinstance(impl, _SciQLopHistogram2D):
         return Histogram2D(impl)
+    if isinstance(impl, _SciQLopWaterfallGraph):
+        return Waterfall(impl)
     if hasattr(impl, "gradient"):
         return ColorMap(impl)
     return Graph(impl, plot=plot)

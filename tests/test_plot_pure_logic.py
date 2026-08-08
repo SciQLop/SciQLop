@@ -416,3 +416,40 @@ def test_speasy_variable_to_arrays_2d(qapp):
     result = _speasy_variable_to_arrays(var)
     assert len(result) == 3
     assert result[2].dtype == np.float64
+
+
+# --- _graphs.py: _validate_waterfall_shapes ---
+
+def test_validate_waterfall_shapes_ok(qapp):
+    from SciQLop.user_api.plot._graphs import _validate_waterfall_shapes
+    x = np.linspace(0, 10, 50)
+    y = np.linspace(0, 5, 10)
+    z = np.ones((10, 50))
+    _validate_waterfall_shapes(x, y, z)
+
+
+def test_validate_waterfall_shapes_wrong_y_length(qapp):
+    from SciQLop.user_api.plot._graphs import _validate_waterfall_shapes
+    x = np.linspace(0, 10, 50)
+    y = np.linspace(0, 5, 10)
+    z = np.ones((9, 50))
+    with pytest.raises(ValueError):
+        _validate_waterfall_shapes(x, y, z)
+
+
+def test_validate_waterfall_shapes_wrong_x_length(qapp):
+    from SciQLop.user_api.plot._graphs import _validate_waterfall_shapes
+    x = np.linspace(0, 10, 50)
+    y = np.linspace(0, 5, 10)
+    z = np.ones((10, 49))
+    with pytest.raises(ValueError):
+        _validate_waterfall_shapes(x, y, z)
+
+
+# --- _panel.py: _to_sqp_graph_type ---
+
+def test_to_sqp_graph_type_waterfall(qapp):
+    from SciQLop.user_api.plot._panel import _to_sqp_graph_type
+    from SciQLop.user_api.plot.enums import GraphType
+    from SciQLopPlots import GraphType as _GraphType
+    assert _to_sqp_graph_type(GraphType.Waterfall) == _GraphType.Waterfall

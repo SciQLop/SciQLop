@@ -17,7 +17,8 @@ from SciQLop.components.plotting.ui.time_sync_panel import (TimeSyncPanel as _Im
 from SciQLop.components.plotting.backend.palette import Palette as _Palette, make_color_list as _make_color_list
 from ._plots import to_product_path, plot_product_or_raise, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
     is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product
-from ._graphs import (ensure_arrays_of_double, Histogram2D, _create_histogram2d,
+from ._graphs import (ensure_arrays_of_double, Histogram2D, Waterfall,
+                      _create_histogram2d, _create_waterfall,
                       validate_histogram_bins as _validate_histogram_bins,
                       _UNSET, _with_explicit)
 from ._thread_safety import on_main_thread
@@ -51,6 +52,8 @@ def _to_sqp_graph_type(graph_type: Union[GraphType, _GraphType]) -> _GraphType:
         return _GraphType.ColorMap
     elif graph_type == GraphType.Scatter:
         return _GraphType.Scatter
+    elif graph_type == GraphType.Waterfall:
+        return _GraphType.Waterfall
     else:
         raise ValueError(f"Unknown graph type {graph_type}")
 
@@ -357,6 +360,46 @@ class PlotPanel:
 
     @experimental_api()
     @on_main_thread
+    def waterfall(self, x, y, z, *, plot_index: int = -1, name=None,
+                  offsets=None, gain=1.0, normalize=False,
+                  color=None) -> Waterfall:
+        """Add a waterfall graph in a new or existing plot.
+
+        Parameters
+        ----------
+        x : array-like, shape (N,)
+            Shared x-axis values.
+        y : array-like, shape (M,)
+            Per-line y-axis values (used for shape validation only).
+        z : array-like, shape (M, N)
+            Data matrix: one row per line, one column per x value.
+        plot_index : int, optional
+            Existing subplot to draw into. -1 appends a new TimeSeries plot.
+        name : str, optional
+            Graph name.
+        offsets : float or array-like, optional
+            Vertical spacing between lines.
+        gain : float, optional
+            Amplitude scaling factor. Defaults to 1.0.
+        normalize : bool, optional
+            Normalize each line independently. Defaults to False.
+        color : str, QColor or sequence, optional
+            Line color(s).
+
+        Returns
+        -------
+        Waterfall
+            The waterfall plottable.
+        """
+        impl = self._get_impl_or_raise()
+        plot_impl = impl.create_plot(plot_index, _PlotType.TimeSeries)
+        return _create_waterfall(plot_impl, x, y, z,
+                                 name=name, offsets=offsets,
+                                 gain=gain, normalize=normalize,
+                                 color=color)
+
+    @experimental_api()
+    @on_main_thread
     def add_layer(self, func, plot_index: int = 0, scope: str = "auto",
                   **initial_knobs):
         """Attach an annotation layer to an existing plot in this panel.
@@ -407,6 +450,7 @@ class PlotPanel:
           (``str`` / list of ``str`` / ``VirtualProduct``)
         - ``plot(callable, ...)``                → :meth:`plot_function`
         - ``plot(x, y[, z], ...)``               → :meth:`plot_data`
+        - ``plot(x, y, z, graph_type=Waterfall)`` → :meth:`waterfall`
 
         For documented, discoverable options (``labels``, ``name``,
         ``plot_type``, ``graph_type``, ``colors``, ``y_log_scale``,
@@ -437,6 +481,14 @@ class PlotPanel:
                 "path (str, list of str or VirtualProduct), a callable "
                 "f(start, stop), a SpeasyVariable, or data arrays (x, y[, z])")
         # static data plot (x, y, [z])
+        graph_type = kwargs.get("graph_type")
+        if graph_type in (GraphType.Waterfall, _GraphType.Waterfall):
+            x, y, z = args
+            wf_kwargs = {k: kwargs.pop(k) for k in
+                         ("name", "offsets", "gain", "normalize", "color")
+                         if k in kwargs}
+            wf = self.waterfall(x, y, z, plot_index=plot_index, **wf_kwargs)
+            return self.plots[-1], wf
         return self.plot_data(*args, plot_index=plot_index, **kwargs)
 
     @on_main_thread

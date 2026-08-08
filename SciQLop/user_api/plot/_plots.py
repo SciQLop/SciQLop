@@ -1,9 +1,10 @@
 import numpy as np
 from .enums import PlotType, ScaleType, BinStrategy
 from .protocol import Plot
-from ._graphs import (Graph, ColorMap, Histogram2D, to_plottable,
+from ._graphs import (Graph, ColorMap, Histogram2D, Waterfall, to_plottable,
                       ensure_arrays_of_double, _create_histogram2d,
-                      _reject_if_colormap_already_present, _UNSET, _with_explicit)
+                      _create_waterfall, _reject_if_colormap_already_present,
+                      _UNSET, _with_explicit)
 from ._graphic_primitives import HorizontalLine
 from typing import Optional, Union, List, Any
 from ..virtual_products import VirtualProduct
@@ -550,6 +551,42 @@ class XYPlot(_BasePlot):
                                    y_bin_strategy=y_bin_strategy,
                                    z_log_scale=z_log_scale)
 
+    @experimental_api()
+    @on_main_thread
+    def waterfall(self, x, y, z, *, name=None, offsets=None,
+                  gain=1.0, normalize=False, color=None) -> Waterfall:
+        """Add a waterfall graph to this plot.
+
+        Parameters
+        ----------
+        x : array-like, shape (N,)
+            Shared x-axis values.
+        y : array-like, shape (M,)
+            Per-line y-axis values (used for shape validation only).
+        z : array-like, shape (M, N)
+            Data matrix: one row per line, one column per x value.
+        name : str, optional
+            Graph name.
+        offsets : float or array-like, optional
+            Vertical spacing between lines. A scalar enables uniform spacing;
+            an array sets custom per-line offsets.
+        gain : float, optional
+            Amplitude scaling factor. Defaults to 1.0.
+        normalize : bool, optional
+            Normalize each line independently. Defaults to False.
+        color : str, QColor or sequence, optional
+            Line color(s). A single value is expanded to all lines.
+
+        Returns
+        -------
+        Waterfall
+            The waterfall plottable.
+        """
+        return _create_waterfall(self._get_impl_or_raise(), x, y, z,
+                                 name=name, offsets=offsets,
+                                 gain=gain, normalize=normalize,
+                                 color=color)
+
     @on_main_thread
     def set_x_range(self, xmin: float, xmax: float):
         """Set the x-axis range of the plot and replot.
@@ -705,6 +742,41 @@ class TimeSeriesPlot(_BasePlot):
                                    x_bin_strategy=x_bin_strategy,
                                    y_bin_strategy=y_bin_strategy,
                                    z_log_scale=z_log_scale)
+
+    @experimental_api()
+    @on_main_thread
+    def waterfall(self, x, y, z, *, name=None, offsets=None,
+                  gain=1.0, normalize=False, color=None) -> Waterfall:
+        """Add a waterfall graph to this time-series plot.
+
+        Parameters
+        ----------
+        x : array-like, shape (N,)
+            Shared x-axis values (usually time).
+        y : array-like, shape (M,)
+            Per-line y-axis values (used for shape validation only).
+        z : array-like, shape (M, N)
+            Data matrix: one row per line, one column per x value.
+        name : str, optional
+            Graph name.
+        offsets : float or array-like, optional
+            Vertical spacing between lines.
+        gain : float, optional
+            Amplitude scaling factor. Defaults to 1.0.
+        normalize : bool, optional
+            Normalize each line independently. Defaults to False.
+        color : str, QColor or sequence, optional
+            Line color(s).
+
+        Returns
+        -------
+        Waterfall
+            The waterfall plottable.
+        """
+        return _create_waterfall(self._get_impl_or_raise(), x, y, z,
+                                 name=name, offsets=offsets,
+                                 gain=gain, normalize=normalize,
+                                 color=color)
 
     @on_main_thread
     def set_x_range(self, xmin: AnyDateTimeType, xmax: AnyDateTimeType):
