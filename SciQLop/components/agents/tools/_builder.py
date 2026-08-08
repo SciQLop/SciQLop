@@ -16,7 +16,6 @@ from typing import Any, Callable, Dict, List, Optional
 
 from SciQLop.user_api.threading import on_main_thread
 from SciQLop.user_api import jobs as user_api_jobs
-from SciQLop.user_api.plot import PlotPanel
 from SciQLop.user_api import screenshot as screenshot_api
 
 from . import context
@@ -311,12 +310,18 @@ def _fetch_paper_tool() -> Dict[str, Any]:
 
 
 def _wait_for_plot_data_tool(main_window) -> Dict[str, Any]:
+    import time
+
     async def _wait(name: Optional[str], timeout: float) -> Dict[str, Any]:
         panel = context._panel(name) if name else context._active_panel(main_window)
         if panel is None:
             return _error_content(f"panel not found: {name!r}" if name else "no active panel")
-        if panel.wait_for_data(timeout=timeout):
-            return {"content": [{"type": "text", "text": "ok: all plottables settled"}]}
+        # Poll via the public is_busy() helper so the asyncio loop stays responsive.
+        deadline = time.monotonic() + max(0.1, float(timeout))
+        while time.monotonic() < deadline:
+            if not panel.is_busy():
+                return {"content": [{"type": "text", "text": "ok: all plottables settled"}]}
+            await asyncio.sleep(0.2)
         return {"content": [{"type": "text", "text": f"timeout after {timeout:.1f}s — plottables still busy"}]}
 
     return _text_tool(
