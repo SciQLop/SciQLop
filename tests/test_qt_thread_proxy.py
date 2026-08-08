@@ -137,3 +137,52 @@ def test_qobject_identity_is_reachable_through_the_proxy(qapp, qtbot, invoker, p
     assert unwrap(qapp) is qapp
     assert unwrap(probe) is probe
     assert isinstance(unwrap(QObject()), QObject)
+
+
+def test_proxy_hides_private_target_from_user_code(qapp, qtbot, invoker):
+    """The raw QObject must not be reachable through normal attribute access.
+
+    The previous crash path was `gui.get_main_window()._target`, which let
+    agent code call `CDockWidget.closeDockWidget()` directly from the kernel
+    thread and abort the process. `_target` is an implementation detail; the
+    public escape hatch is `unwrap()`.
+    """
+    from SciQLop.user_api.threading import MainThreadProxy
+
+    proxy = MainThreadProxy(probe := QWidget())
+
+    assert "_target" not in proxy.__dict__
+    assert "_target" not in dir(proxy)
+    with pytest.raises(AttributeError):
+        _ = proxy._target
+    with pytest.raises(AttributeError):
+        getattr(proxy, "_target")
+
+
+def test_find_children_return_proxies(qapp, qtbot, invoker):
+    """`findChildren()` on a proxied QObject must return more proxies, not raw widgets."""
+    from SciQLop.user_api.threading import MainThreadProxy
+
+    parent = QWidget()
+    parent.setObjectName("ProxyFindChildrenParent")
+    child = QWidget(parent)
+    child.setObjectName("ProxyFindChildrenChild")
+    qtbot.addWidget(parent)
+
+    def work():
+        proxy = MainThreadProxy(parent)
+        found = proxy.findChildren(QWidget)
+        if not found:
+            return "no children found"
+        first = found[0]
+        if not isinstance(first, MainThreadProxy):
+            return f"raw child: {type(first)}"
+        # Calling a method on the returned proxy must work from the worker thread.
+        first.setObjectName("renamed-from-worker")
+        return "ok"
+
+    t, box = _in_worker(work)
+    qtbot.waitUntil(lambda: not t.is_alive(), timeout=5000)
+    assert "error" not in box, box.get("error")
+    assert box["result"] == "ok"
+    assert child.objectName() == "renamed-from-worker"

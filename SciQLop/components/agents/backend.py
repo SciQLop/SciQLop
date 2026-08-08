@@ -34,6 +34,13 @@ class BackendContext:
     write_mode: str = "confirm"
     ask_question_cb: Optional[AskQuestionCallback] = None
 
+    @property
+    def allow_writes(self) -> bool:
+        """Backward compatibility for plugins that predate the three-state
+        write mode. New code should use :attr:`write_mode`."""
+        from .settings import AgentWriteMode
+        return self.write_mode not in (AgentWriteMode.NONE, AgentWriteMode.NONE.value)
+
 
 @dataclass
 class SessionEntry:

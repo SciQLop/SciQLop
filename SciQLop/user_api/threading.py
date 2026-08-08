@@ -70,10 +70,33 @@ class MainThreadProxy:
 
     Only attribute access is marshaled: dunder protocols (`len()`, `obj[i]`, `with`)
     reach the target directly and are not thread-safe.
+
+    The wrapped QObject is intentionally not exposed as a public attribute.
+    User code that needs the raw object can use `unwrap()`; normal attribute
+    access to the raw target is blocked to prevent accidental cross-thread Qt
+    calls.
     """
+
+    __slots__ = ("_target", "__dict__", "__weakref__")
 
     def __init__(self, target):
         object.__setattr__(self, "_target", target)
+
+    def __getattribute__(self, name):
+        if name == "_target":
+            raise AttributeError(
+                "MainThreadProxy._target is private; use "
+                "SciQLop.user_api.threading.unwrap() if you need the raw QObject."
+            )
+        return object.__getattribute__(self, name)
+
+    def __dir__(self):
+        names = list(object.__getattribute__(self, "__dict__").keys())
+        names.extend(
+            s for s in object.__getattribute__(self, "__class__").__slots__
+            if s != "_target"
+        )
+        return sorted(set(names))
 
     def __getattr__(self, name):
         target = object.__getattribute__(self, "_target")

@@ -101,6 +101,7 @@ class AgentChatDock(QWidget):
 
         self._build_ui()
         self._set_writes_combo(self._write_mode)
+        self._on_write_mode_changed(0)  # ensure badge text/style is set
         self.refresh_backends()
 
     def _build_ui(self) -> None:
@@ -140,6 +141,14 @@ class AgentChatDock(QWidget):
         self._writes_combo.currentIndexChanged.connect(self._on_write_mode_changed)
         self._settings_popup.export_requested.connect(self._on_export)
         self._settings_popup.effort_changed.connect(self._on_effort_changed)
+
+        self._writes_badge = QPushButton(self)
+        self._writes_badge.setFlat(True)
+        self._writes_badge.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._writes_badge.setToolTip(
+            "Current write-permission mode. Click to open settings.")
+        self._writes_badge.clicked.connect(self._show_settings_popup)
+        header.addWidget(self._writes_badge)
 
         self._status_label = QLabel("")
         self._status_label.setStyleSheet("color: gray;")
@@ -215,6 +224,7 @@ class AgentChatDock(QWidget):
             self._writes_combo,
             self._model_combo,
             self._sessions_toggle,
+            self._writes_badge,
         )
 
     def _set_writes_combo(self, mode: str) -> None:
@@ -436,15 +446,27 @@ class AgentChatDock(QWidget):
         mode = self._writes_combo.currentData() or AgentWriteMode.CONFIRM
         self._write_mode = mode
         for session in self._sessions.values():
-            session.backend.set_write_mode(mode)
+            backend = session.backend
+            if hasattr(backend, "set_write_mode"):
+                backend.set_write_mode(mode)
+            elif hasattr(backend, "set_allow_writes"):
+                # Older plugins: keep binary compatibility.
+                backend.set_allow_writes(mode != AgentWriteMode.NONE)
         with AgentChatSettings() as cfg:
             cfg.write_mode = mode
-        labels = {
-            AgentWriteMode.NONE: "Writes disabled.",
-            AgentWriteMode.CONFIRM: "Writes: confirm each action.",
-            AgentWriteMode.YOLO: "Yolo mode: writes auto-approved.",
+
+        badge_texts = {
+            AgentWriteMode.NONE: "Writes disabled",
+            AgentWriteMode.CONFIRM: "Writes: confirm",
+            AgentWriteMode.YOLO: "Yolo",
         }
-        self._set_status(labels.get(mode, f"Write mode: {mode}"))
+        badge_styles = {
+            AgentWriteMode.NONE: "color: #7f8c8d; border: 1px solid #7f8c8d; border-radius: 4px; padding: 2px 8px;",
+            AgentWriteMode.CONFIRM: "color: #f39c12; border: 1px solid #f39c12; border-radius: 4px; padding: 2px 8px;",
+            AgentWriteMode.YOLO: "color: #e74c3c; border: 1px solid #e74c3c; border-radius: 4px; padding: 2px 8px;",
+        }
+        self._writes_badge.setText(badge_texts.get(mode, f"Writes: {mode}"))
+        self._writes_badge.setStyleSheet(badge_styles.get(mode, ""))
 
     def _on_reset(self) -> None:
         if self._current is None:

@@ -4,6 +4,7 @@ The dock keeps four controls in its header; model, effort, activity verbosity,
 write-actions and export moved into the settings popup, and session usage is
 reported by a strip under the input.
 """
+import os
 import pytest
 
 from .fixtures import qapp_cls, sciqlop_resources  # noqa: F401 — fixtures
@@ -107,7 +108,35 @@ def _header_widgets(dock):
 def test_header_keeps_only_four_controls_and_the_status_label(dock):
     assert _header_widgets(dock) == [
         dock._reset_btn, dock._backend_combo, dock._sessions_toggle,
-        dock._settings_btn, dock._status_label]
+        dock._settings_btn, dock._writes_badge, dock._status_label]
+
+
+def test_writes_badge_is_initialized_even_when_saved_mode_is_none(
+    tmp_path, qtbot, sciqlop_resources, monkeypatch
+):
+    """The badge must show text/style on first paint, not only after a combo change."""
+    import SciQLop.components.settings.backend.entry as entry_mod
+    from SciQLop.components.agents import model_capabilities
+    from SciQLop.components.agents.chat_dock import AgentChatDock
+    from SciQLop.components.agents.registry import (
+        register_agent_backend, unregister_agent_backend)
+    from SciQLop.components.agents.settings import AgentChatSettings, AgentWriteMode
+
+    async def _no_network():
+        return None
+
+    monkeypatch.setattr(entry_mod, "SCIQLOP_CONFIG_DIR", str(tmp_path))
+    monkeypatch.setattr(model_capabilities, "ensure_registry_fresh", _no_network)
+    register_agent_backend(_FakeBackend)
+    with AgentChatSettings() as cfg:
+        cfg.write_mode = AgentWriteMode.NONE
+    try:
+        dock = AgentChatDock(main_window=None)
+        qtbot.addWidget(dock)
+        assert dock._writes_badge.text() == "Writes disabled"
+        assert "#7f8c8d" in dock._writes_badge.styleSheet()
+    finally:
+        unregister_agent_backend(_FAKE)
 
 
 def test_relocated_controls_live_in_the_popup(dock):
@@ -147,21 +176,24 @@ def test_write_mode_combo_reaches_the_backend_and_persists(dock):
     assert dock._write_mode == AgentWriteMode.YOLO
     assert backend.write_mode == AgentWriteMode.YOLO
     assert AgentChatSettings().write_mode == AgentWriteMode.YOLO
-    assert "Yolo" in dock._status_label.text()
+    assert "Yolo" in dock._writes_badge.text()
+    assert "#e74c3c" in dock._writes_badge.styleSheet()
 
     # switch to none
     combo.setCurrentIndex(combo.findData(AgentWriteMode.NONE))
     assert dock._write_mode == AgentWriteMode.NONE
     assert backend.write_mode == AgentWriteMode.NONE
     assert AgentChatSettings().write_mode == AgentWriteMode.NONE
-    assert "disabled" in dock._status_label.text()
+    assert "disabled" in dock._writes_badge.text().lower()
+    assert "#7f8c8d" in dock._writes_badge.styleSheet()
 
     # switch back to confirm
     combo.setCurrentIndex(combo.findData(AgentWriteMode.CONFIRM))
     assert dock._write_mode == AgentWriteMode.CONFIRM
     assert backend.write_mode == AgentWriteMode.CONFIRM
     assert AgentChatSettings().write_mode == AgentWriteMode.CONFIRM
-    assert "confirm" in dock._status_label.text().lower()
+    assert "confirm" in dock._writes_badge.text().lower()
+    assert "#f39c12" in dock._writes_badge.styleSheet()
 
 
 def test_export_still_reaches_the_dock_from_the_popup(dock, monkeypatch):

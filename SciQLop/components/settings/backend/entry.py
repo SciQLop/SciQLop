@@ -181,7 +181,7 @@ class ConfigEntry(BaseModel):
 
     def save(self):
         config_file = self.config_file()
-        dump = self.model_dump()
+        dump = self.model_dump(mode="json")
         keyring_fields = self._keyring_field_names()
         if keyring_fields and self.__class__._keyring_ is not None:
             _save_keyring(self.__class__._keyring_, dump)
