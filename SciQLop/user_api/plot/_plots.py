@@ -773,19 +773,65 @@ class ProjectionPlot:
 
     @on_main_thread
     def set_x_range(self, min: float, max: float):
-        pass
+        """Set the x-axis range of every projection subplot.
+
+        The SciQLopNDProjectionPlot axes are range-coupled by default, so
+        setting the first subplot propagates across the others; we still write
+        the value to every subplot to stay robust if coupling is disabled.
+
+        Parameters
+        ----------
+        min : float
+            The minimum value of the x-axis range.
+        max : float
+            The maximum value of the x-axis range.
+        """
+        impl = self._get_impl_or_raise()
+        for i in range(impl.subplot_count()):
+            impl.subplot(i).x_axis().set_range(min, max)
 
     @on_main_thread
     def set_y_range(self, min: float, max: float):
-        pass
+        """Set the y-axis range of every projection subplot.
+
+        Parameters
+        ----------
+        min : float
+            The minimum value of the y-axis range.
+        max : float
+            The maximum value of the y-axis range.
+        """
+        impl = self._get_impl_or_raise()
+        for i in range(impl.subplot_count()):
+            impl.subplot(i).y_axis().set_range(min, max)
 
     @on_main_thread
     def set_x_scale_type(self, scale: ScaleType):
-        pass
+        """Set the scale type (linear/log) of the x-axis on every projection
+        subplot.
+
+        Parameters
+        ----------
+        scale : ScaleType
+            The scale type.
+        """
+        impl = self._get_impl_or_raise()
+        for i in range(impl.subplot_count()):
+            _set_axis_scale_type(scale, impl.subplot(i).x_axis())
 
     @on_main_thread
     def set_y_scale_type(self, scale: ScaleType):
-        pass
+        """Set the scale type (linear/log) of the y-axis on every projection
+        subplot.
+
+        Parameters
+        ----------
+        scale : ScaleType
+            The scale type.
+        """
+        impl = self._get_impl_or_raise()
+        for i in range(impl.subplot_count()):
+            _set_axis_scale_type(scale, impl.subplot(i).y_axis())
 
     @on_main_thread
     def plot(self, product: Union[str, VirtualProduct], **kwargs) -> Optional[Graph]:
