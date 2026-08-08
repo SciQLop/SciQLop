@@ -566,6 +566,13 @@ class XYPlot(_BasePlot):
             scatter only — not colormaps).
         **kwargs
             Forwarded to SciQLopPlots.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> x = np.linspace(-5, 5, 100)
+        >>> y = x ** 2
+        >>> graph = plot.plot(x, y, name="parabola")
         """
         kwargs = _with_explicit(kwargs, labels=labels, colors=colors,
                                 graph_type=graph_type, y_log_scale=y_log_scale,
@@ -784,6 +791,13 @@ class TimeSeriesPlot(_BasePlot):
         provider's own value and raises ``TypeError`` (verified against
         SciQLopPlots 0.29.2). ``name`` is safe on every path: it is applied
         via ``set_name()`` on the created graph rather than forwarded.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> t = np.arange(100)
+        >>> y = np.sin(t / 10.0)
+        >>> graph = plot.plot(t, y, name="sine wave")
         """
         kwargs = _with_explicit(kwargs, labels=labels, colors=colors,
                                 graph_type=graph_type, y_log_scale=y_log_scale,
@@ -979,6 +993,10 @@ class ProjectionPlot:
             The minimum value of the x-axis range.
         max : float
             The maximum value of the x-axis range.
+
+        Examples
+        --------
+        >>> plot.set_x_range(-10, 10)
         """
         impl = self._get_impl_or_raise()
         for i in range(impl.subplot_count()):
@@ -994,6 +1012,10 @@ class ProjectionPlot:
             The minimum value of the y-axis range.
         max : float
             The maximum value of the y-axis range.
+
+        Examples
+        --------
+        >>> plot.set_y_range(-5, 5)
         """
         impl = self._get_impl_or_raise()
         for i in range(impl.subplot_count()):
@@ -1008,6 +1030,10 @@ class ProjectionPlot:
         ----------
         scale : ScaleType
             The scale type.
+
+        Examples
+        --------
+        >>> plot.set_x_scale_type(ScaleType.Logarithmic)
         """
         impl = self._get_impl_or_raise()
         for i in range(impl.subplot_count()):
@@ -1022,6 +1048,10 @@ class ProjectionPlot:
         ----------
         scale : ScaleType
             The scale type.
+
+        Examples
+        --------
+        >>> plot.set_y_scale_type(ScaleType.Linear)
         """
         impl = self._get_impl_or_raise()
         for i in range(impl.subplot_count()):
@@ -1115,6 +1145,14 @@ class ProjectionPlot:
             is unknown/unsupported.
         RuntimeError
             If the upstream plot refuses to create the curve.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> t = np.linspace(0, 1, 200)
+        >>> x = np.cos(2 * np.pi * t)
+        >>> y = np.sin(2 * np.pi * t)
+        >>> curve = plot.plot_time_colored_curve(x, y, t, name="orbit", colormap="viridis")
         """
         x, y, t = ensure_arrays_of_double(x, y, t)
         if not (len(x) == len(y) == len(t)):
