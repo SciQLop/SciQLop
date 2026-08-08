@@ -82,6 +82,10 @@ def add_catalog_overlay(
     ------
     KeyError
         If the provider or catalog is not found.
+
+    Examples
+    --------
+    >>> overlay = add_catalog_overlay(panel, "My Catalogs//events", override_color="red")
     """
     provider, catalog = _resolve_catalog(catalog_path)
     impl = panel._get_impl_or_raise()
