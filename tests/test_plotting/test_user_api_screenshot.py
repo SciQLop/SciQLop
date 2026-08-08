@@ -24,3 +24,23 @@ def test_wait_for_data_returns_true_when_idle(qtbot, main_window):
 
     panel = create_plot_panel()
     assert panel.wait_for_data(timeout=1.0) is True
+
+
+def test_show_product_tree_raises_dock(qtbot, main_window):
+    from SciQLop.user_api.gui import show_product_tree
+
+    show_product_tree()
+    qtbot.wait(50)
+    dw = main_window.dock_manager.findDockWidget("Products")
+    assert dw is not None
+    assert dw.isVisible()
+
+
+def test_show_inspector_raises_dock(qtbot, main_window):
+    from SciQLop.user_api.gui import show_inspector
+
+    show_inspector()
+    qtbot.wait(50)
+    dw = main_window.dock_manager.findDockWidget("Properties")
+    assert dw is not None
+    assert dw.isVisible()
