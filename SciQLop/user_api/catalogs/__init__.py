@@ -45,6 +45,11 @@ from typing import Any, Iterable, Union
 from speasy.products.catalog import Catalog as SpeasyCatalog
 
 from SciQLop.user_api.catalogs._service import CatalogService
+from SciQLop.user_api.catalogs._overlay import (
+    CatalogOverlay,
+    add_catalog_overlay,
+    remove_catalog_overlay,
+)
 
 DateTimeLike = Any
 CatalogInput = Union[
@@ -55,4 +60,10 @@ CatalogInput = Union[
 
 catalogs = CatalogService()
 
-__all__ = ["catalogs", "CatalogInput"]
+__all__ = [
+    "catalogs",
+    "CatalogInput",
+    "CatalogOverlay",
+    "add_catalog_overlay",
+    "remove_catalog_overlay",
+]

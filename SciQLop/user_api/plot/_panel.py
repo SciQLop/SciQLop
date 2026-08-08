@@ -439,6 +439,42 @@ class PlotPanel:
                                     initial_knobs=initial_knobs or None,
                                     panel=impl, scope=scope)
 
+    @experimental_api()
+    @on_main_thread
+    def add_catalog_overlay(self, catalog_path: str, *, override_color=None, label=None):
+        """Attach a catalog overlay to this panel.
+
+        Parameters
+        ----------
+        catalog_path : str
+            Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
+        override_color : str, optional
+            Reserved display color for the overlay.
+        label : str, optional
+            Human-readable label for the overlay.
+
+        Returns
+        -------
+        CatalogOverlay
+            Handle for the attached overlay.
+        """
+        from SciQLop.user_api.catalogs._overlay import add_catalog_overlay
+        return add_catalog_overlay(self, catalog_path,
+                                   override_color=override_color, label=label)
+
+    @experimental_api()
+    @on_main_thread
+    def remove_catalog_overlay(self, overlay) -> None:
+        """Detach a catalog overlay from this panel.
+
+        Parameters
+        ----------
+        overlay : CatalogOverlay
+            Overlay handle returned by :meth:`add_catalog_overlay`.
+        """
+        from SciQLop.user_api.catalogs._overlay import remove_catalog_overlay
+        remove_catalog_overlay(self, overlay)
+
     @on_main_thread
     def plot(self, *args, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable] | None:
         """Omnibus plotting entry point — dispatches on argument type.
