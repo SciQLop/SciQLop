@@ -144,6 +144,61 @@ def acp_list_sessions(command: List[str], cwd: Optional[Path] = None) -> List[Se
         return []
 
 
+async def async_acp_load_session_messages(
+    command: List[str],
+    session_id: str,
+    image_tempdir: Path,
+    cwd: Optional[Path] = None,
+) -> List[ChatMessage]:
+    """Replay a session's history into ChatMessages via session/load.
+
+    This is the coroutine variant; it must run on the qasync event loop so the
+    GUI stays responsive while the short-lived replay agent starts up.
+    """
+    import acp
+    from acp.schema import (
+        ClientCapabilities,
+        FileSystemCapabilities,
+        Implementation,
+    )
+
+    collected: list = []
+
+    proc = await asyncio.create_subprocess_exec(
+        *command,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.DEVNULL,
+    )
+
+    class _Client:
+        async def session_update(self, session_id, update, **kwargs):
+            collected.append(update)
+
+        def on_connect(self, conn):
+            pass
+
+    conn = acp.connect_to_agent(_Client(), proc.stdin, proc.stdout)
+    try:
+        await conn.initialize(
+            protocol_version=acp.PROTOCOL_VERSION,
+            client_capabilities=ClientCapabilities(
+                fs=FileSystemCapabilities(read_text_file=False, write_text_file=False),
+                terminal=False,
+            ),
+            client_info=Implementation(name="sciqlop", title="SciQLop", version="1.0"),
+        )
+        await conn.load_session(
+            cwd=str(cwd or current_workspace_dir()),
+            session_id=session_id,
+            mcp_servers=[],
+        )
+    finally:
+        await _kill(proc, conn)
+
+    return replay_to_messages(collected, Path(image_tempdir))
+
+
 def acp_load_session_messages(
     command: List[str],
     session_id: str,
@@ -151,53 +206,14 @@ def acp_load_session_messages(
     cwd: Optional[Path] = None,
 ) -> List[ChatMessage]:
     """Replay a session's history into ChatMessages via session/load."""
-    collected: list = []
-
-    async def _load():
-        import acp
-        from acp.schema import (
-            ClientCapabilities,
-            FileSystemCapabilities,
-            Implementation,
-        )
-
-        proc = await asyncio.create_subprocess_exec(
-            *command,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.DEVNULL,
-        )
-
-        class _Client:
-            async def session_update(self, session_id, update, **kwargs):
-                collected.append(update)
-
-            def on_connect(self, conn):
-                pass
-
-        conn = acp.connect_to_agent(_Client(), proc.stdin, proc.stdout)
-        try:
-            await conn.initialize(
-                protocol_version=acp.PROTOCOL_VERSION,
-                client_capabilities=ClientCapabilities(
-                    fs=FileSystemCapabilities(read_text_file=False, write_text_file=False),
-                    terminal=False,
-                ),
-                client_info=Implementation(name="sciqlop", title="SciQLop", version="1.0"),
-            )
-            await conn.load_session(
-                cwd=str(cwd or current_workspace_dir()),
-                session_id=session_id,
-                mcp_servers=[],
-            )
-        finally:
-            await _kill(proc, conn)
-
     try:
-        _run_async(_load)
+        return _run_async(
+            lambda: async_acp_load_session_messages(
+                command, session_id, image_tempdir, cwd
+            )
+        )
     except Exception:
         return []
-    return replay_to_messages(collected, Path(image_tempdir))
 
 
 def replay_to_messages(updates: list, image_tempdir: Path) -> List[ChatMessage]:

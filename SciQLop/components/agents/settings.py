@@ -60,6 +60,7 @@ class SessionMetaEntry(BaseModel):
     pinned: bool = False
     group: str = ""
     tags: List[str] = Field(default_factory=list)
+    sciqlop_version: str = ""
 
 
 class AgentSessionMeta(ConfigEntry):
@@ -90,6 +91,14 @@ class AgentSessionMeta(ConfigEntry):
         entry = self.entries.setdefault(_session_key(backend, session_id), SessionMetaEntry())
         entry.tags = list(tags)
         self.save()
+
+    def set_sciqlop_version(self, backend: str, session_id: str, version: str) -> None:
+        entry = self.entries.setdefault(_session_key(backend, session_id), SessionMetaEntry())
+        entry.sciqlop_version = version
+        self.save()
+
+    def get_sciqlop_version(self, backend: str, session_id: str) -> str:
+        return self.entries.get(_session_key(backend, session_id), SessionMetaEntry()).sciqlop_version
 
     def forget(self, backend: str, session_id: str) -> None:
         """Drop every overlay for a session the user deleted."""

@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from SciQLop import __version__ as _SCIQLop_VERSION
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.components.theming import get_icon
 
@@ -55,6 +56,9 @@ _AGENT_ALIGNMENT = (
     "- Be concise, factual, and plain-spoken. Avoid marketing language.\n"
     "- Prefer the public API under SciQLop.user_api (plot, catalogs, themes, virtual_products).\n"
     "- Before writing code, call sciqlop_api_reference('<module>') for the relevant module.\n"
+    "- SciQLop's public API changes between releases. Never assume an API limitation "
+    "from earlier in this conversation; verify the current API with sciqlop_api_reference "
+    "before claiming something is impossible.\n"
     "- Keep code examples minimal, correct, and idiomatic. Use real science intervals when possible.\n"
     "- Do not guess method names or internal module paths.\n"
 )
@@ -66,6 +70,7 @@ class _AgentSession:
     messages: List[ChatMessage] = field(default_factory=list)
     resume_id: Optional[str] = None
     alignment_sent: bool = False
+    version_reminder: Optional[str] = None
 
 
 class AgentChatDock(QWidget):
@@ -88,7 +93,9 @@ class AgentChatDock(QWidget):
         self._pane_width_timer.setInterval(400)
         self._pane_width_timer.timeout.connect(self._persist_pane_width)
         self._breakdown_popup: Optional[ContextBreakdownPopup] = None
+        self._load_task: Optional[asyncio.Task] = None
         self._resume_task: Optional[asyncio.Task] = None
+        self._loop = asyncio.get_event_loop()
         self._usage_refresher = UsageRefresher(
             self._current_backend, self._apply_usage_snapshot)
 
@@ -451,14 +458,53 @@ class AgentChatDock(QWidget):
         session.resume_id = session_id
         self._purge_replay_tempdir(self._current)
         replay_dir = self._tempdir / self._current / "session_replay"
-        session.messages = backend.load_session(session_id, replay_dir)
-        self._transcript.render_messages(session.messages)
+        self._set_status(f"Loading session {session_id[:8]}…")
+        # Session replay can take seconds (it spawns an agent process). Keep it
+        # off the Qt main thread so the GUI stays responsive and a later click
+        # can supersede the still-running load.
+        if self._load_task is not None and not self._load_task.done():
+            self._load_task.cancel()
+        self._load_task = self._spawn(
+            self._load_session_then_render(backend, session_id, replay_dir, session))
+
+    async def _load_session_then_render(
+        self,
+        backend: AgentBackend,
+        session_id: str,
+        replay_dir: Path,
+        session: _AgentSession,
+    ) -> None:
+        """Replay a session off the main thread, then render and resume."""
+        loader = getattr(backend, "async_load_session", None)
+        try:
+            if loader is not None:
+                messages = await loader(session_id, replay_dir)
+            else:
+                messages = await self._loop.run_in_executor(
+                    None, backend.load_session, session_id, replay_dir)
+        except Exception as error:
+            log.error("loading session %s failed: %r", session_id, error)
+            return
+        # Drop the result if the user switched away or clicked another session.
+        if session is not self._sessions.get(self._current):
+            return
+        if session.resume_id != session_id:
+            return
+        session.messages = messages
+        stored_version = AgentSessionMeta().get_sciqlop_version(
+            backend.display_name, session_id)
+        if stored_version and stored_version != _SCIQLop_VERSION:
+            session.version_reminder = (
+                f"Note: SciQLop was updated from {stored_version} to "
+                f"{_SCIQLop_VERSION} since this session started. API capabilities "
+                "may have changed; verify the current API with sciqlop_api_reference "
+                "before assuming limitations.\n"
+            )
+        self._transcript.render_messages(messages)
         self._transcript.flush_now()
         self._set_status(
-            f"Resumed session {session_id[:8]} ({len(session.messages)} messages)")
-        # Clicking down a session list starts one of these per click; left to
-        # run they race over a single backend and the last to *finish* wins,
-        # which need not be the session now on screen. Only the newest matters.
+            f"Resumed session {session_id[:8]} ({len(messages)} messages)")
+        # Now reconnect the live backend on the resumed session and refresh usage.
         if self._resume_task is not None and not self._resume_task.done():
             self._resume_task.cancel()
         self._resume_task = self._spawn(
@@ -709,6 +755,9 @@ class AgentChatDock(QWidget):
         if not session.alignment_sent:
             prompt = f"{_AGENT_ALIGNMENT}\n{prompt}"
             session.alignment_sent = True
+        if session.version_reminder:
+            prompt = f"{session.version_reminder}{prompt}"
+            session.version_reminder = None
         assistant = ChatMessage(role="assistant", blocks=[], done=False)
         session.messages.append(assistant)
         try:
@@ -720,6 +769,10 @@ class AgentChatDock(QWidget):
             if self._is_current(session):
                 self._transcript.render_messages(session.messages)
                 self._transcript.flush_now()
+            session_id = session.backend.current_session_id()
+            if session_id is not None:
+                AgentSessionMeta().set_sciqlop_version(
+                    session.backend.display_name, session_id, _SCIQLop_VERSION)
             self._set_status("Ready.")
             self._spawn(self._usage_refresher.refresh())
         except asyncio.CancelledError:

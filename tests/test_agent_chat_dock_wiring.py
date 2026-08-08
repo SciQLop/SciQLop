@@ -55,6 +55,9 @@ class _FakeBackend:
     async def resume(self, session_id):
         pass
 
+    def current_session_id(self):
+        return None
+
     def ask(self, prompt, image_paths=None):
         raise NotImplementedError
 
@@ -511,6 +514,70 @@ def test_a_failed_resume_still_leaves_the_strip_consistent(dock, qtbot):
     assert dock._info_bar.text() == ""
 
 
+def test_loading_a_session_does_not_block_the_gui(dock, qtbot):
+    """`load_session` may spawn a subprocess and block for seconds. The dock
+    must return to the Qt event loop immediately and render the messages once
+    the load finishes."""
+    import time
+
+    from SciQLop.components.agents.chat.view import ChatMessage
+
+    backend = dock._current_backend()
+    backend.supports_sessions = True
+    loaded = []
+
+    def _slow_load(session_id, image_tempdir):
+        time.sleep(0.15)                       # blocks the worker thread, not Qt
+        loaded.append(session_id)
+        return [ChatMessage(role="assistant", blocks=[], done=True)]
+
+    backend.load_session = _slow_load
+
+    dock._on_session_selected("sess-block")
+    # The handler must return instantly; the loading status is already visible.
+    assert "Loading" in dock._status_label.text()
+    assert dock._load_task is not None and not dock._load_task.done()
+
+    qtbot.waitUntil(lambda: "Resumed" in dock._status_label.text(), timeout=3000)
+    assert loaded == ["sess-block"]
+    assert len(dock._sessions[dock._current].messages) == 1
+
+
+def test_switching_session_supersedes_the_previous_load(dock, qtbot):
+    """Clicking another session while the first is still loading must cancel
+    the first load and show the second one."""
+    import time
+
+    from SciQLop.components.agents.chat.view import ChatMessage
+
+    backend = dock._current_backend()
+    backend.supports_sessions = True
+    started, finished = [], []
+
+    def _load(session_id, image_tempdir):
+        started.append(session_id)
+        if session_id == "first":
+            time.sleep(0.5)                    # still loading when second lands
+        finished.append(session_id)
+        return [ChatMessage(role="assistant", blocks=[], done=True)]
+
+    backend.load_session = _load
+
+    dock._on_session_selected("first")
+    _settle(qtbot)
+    first_task = dock._load_task
+    assert not first_task.done()
+
+    dock._on_session_selected("second")
+    qtbot.waitUntil(
+        lambda: dock._status_label.text().startswith("Resumed"), timeout=3000)
+
+    assert started == ["first", "second"]
+    assert finished == ["second"]             # superseded load never completed
+    assert first_task.cancelled()
+    assert dock._sessions[dock._current].messages
+
+
 def test_switching_session_again_supersedes_the_previous_load(dock, qtbot):
     """Clicking down a session list starts a resume per click. Left running,
     they race over one backend and whichever finishes last wins — which is not
@@ -546,3 +613,80 @@ def test_switching_session_again_supersedes_the_previous_load(dock, qtbot):
     assert started == ["first", "second"]
     assert finished == ["second"]             # the superseded one never completed
     assert first_task.cancelled()
+
+
+def test_alignment_prompt_warns_against_stale_api_assumptions():
+    from SciQLop.components.agents import chat_dock as mod
+    assert "verify the current API" in mod._AGENT_ALIGNMENT
+    assert "sciqlop_api_reference" in mod._AGENT_ALIGNMENT
+
+
+def test_version_reminder_is_prefixed_on_next_turn_after_resume(dock, qtbot):
+    from SciQLop.components.agents.chat_dock import _AgentSession
+    from SciQLop.components.agents.settings import AgentSessionMeta
+    import SciQLop
+
+    captured = []
+
+    class _CapturingBackend:
+        display_name = _FAKE
+        model_choices = []
+        supports_sessions = True
+        snapshot = None
+
+        def current_session_id(self):
+            return "session-123"
+
+        async def ask(self, prompt, image_paths=None):
+            captured.append(prompt)
+            if False:
+                yield None
+
+        async def usage_snapshot(self):
+            return None
+
+        def effort_values(self):
+            return ()
+
+        async def set_effort(self, effort):
+            pass
+
+        async def set_model(self, model):
+            pass
+
+        def set_allow_writes(self, allow):
+            pass
+
+        async def list_slash_commands(self):
+            return []
+
+        def list_sessions(self):
+            return []
+
+        def load_session(self, session_id, image_tempdir):
+            return []
+
+        async def reset(self):
+            pass
+
+        async def cancel(self):
+            pass
+
+        async def resume(self, session_id):
+            pass
+
+    session = _AgentSession(backend=_CapturingBackend())
+    session.version_reminder = (
+        "Note: SciQLop was updated from 0.11.0 to 0.12.0 since this session started. "
+        "API capabilities may have changed; verify the current API with "
+        "sciqlop_api_reference before assuming limitations.\n"
+    )
+    dock._sessions[dock._current] = session
+
+    dock._spawn(dock._run_turn(session, "plot something", []))
+    _settle(qtbot)
+
+    assert len(captured) == 1
+    assert captured[0].startswith("Note: SciQLop was updated from 0.11.0 to 0.12.0")
+    assert "plot something" in captured[0]
+    assert AgentSessionMeta().get_sciqlop_version(_FAKE, "session-123") == SciQLop.__version__

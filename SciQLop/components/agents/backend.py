@@ -224,4 +224,12 @@ class AgentBackend(Protocol):
         ...
 
     def load_session(self, session_id: str, image_tempdir: Path) -> List[ChatMessage]:
+        """Replay a saved session's transcript into ChatMessages.
+
+        This method is part of the required sync protocol, but it may block for
+        seconds while spawning an agent process. Backends that can load without
+        blocking the GUI thread should also implement ``async_load_session``
+        with the same signature; the chat dock prefers that coroutine when
+        available and falls back to running this method in a worker thread.
+        """
         ...

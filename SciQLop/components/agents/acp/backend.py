@@ -255,7 +255,14 @@ class AcpAgentBackend:
     def list_sessions(self) -> List[SessionEntry]:
         return _acp_sessions.acp_list_sessions(self.acp_command())
 
+    async def async_load_session(self, session_id: str, image_tempdir: Path) -> List[ChatMessage]:
+        """Non-blocking replay of a saved session; preferred by the chat dock."""
+        return await _acp_sessions.async_acp_load_session_messages(
+            self.acp_command(), session_id, image_tempdir,
+        )
+
     def load_session(self, session_id: str, image_tempdir: Path) -> List[ChatMessage]:
+        """Synchronous fallback for callers that are not on the async event loop."""
         return _acp_sessions.acp_load_session_messages(
             self.acp_command(), session_id, image_tempdir,
         )
