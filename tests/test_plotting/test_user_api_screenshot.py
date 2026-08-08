@@ -72,3 +72,50 @@ def test_capture_panel_creates_png(panel, tmp_path):
     assert result == path
     assert path.exists()
     assert path.stat().st_size > 0
+
+
+class _GraphMock:
+    def __init__(self, busy: bool = False):
+        self._busy = busy
+
+    def property(self, name: str):
+        if name == "busy":
+            return self._busy
+        return None
+
+
+class _PlotMock:
+    def __init__(self, graphs):
+        self._graphs = graphs
+
+    def plottables(self):
+        return self._graphs
+
+
+class _ImplMock:
+    def __init__(self, plots):
+        self._plots = plots
+
+    def plots(self):
+        return self._plots
+
+
+@pytest.fixture
+def busy_panel():
+    """A PlotPanel whose single graph reports busy=True (Qt-free)."""
+    from SciQLop.user_api.plot import PlotPanel
+
+    panel = PlotPanel.__new__(PlotPanel)
+    panel._impl = _ImplMock([_PlotMock([_GraphMock(busy=True)])])
+    return panel
+
+
+def test_panel_is_busy_true_when_graph_busy(busy_panel):
+    assert busy_panel.is_busy() is True
+
+
+def test_wait_for_data_returns_false_when_busy_timeout(busy_panel, monkeypatch):
+    from PySide6.QtCore import QCoreApplication
+
+    monkeypatch.setattr(QCoreApplication, "processEvents", lambda *args, **kwargs: None)
+    assert busy_panel.wait_for_data(timeout=0.05, poll_interval=0.001) is False

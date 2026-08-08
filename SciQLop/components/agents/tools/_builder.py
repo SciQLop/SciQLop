@@ -317,20 +317,30 @@ def _wait_for_plot_data_tool(main_window) -> Dict[str, Any]:
         if panel is None:
             return _error_content(f"panel not found: {name!r}" if name else "no active panel")
         # Poll via the public is_busy() helper so the asyncio loop stays responsive.
-        deadline = time.monotonic() + max(0.1, float(timeout))
-        while time.monotonic() < deadline:
+        has_plottables = False
+        for plot in panel._get_impl_or_raise().plots() or []:
+            if plot.plottables():
+                has_plottables = True
+                break
+        if not has_plottables:
+            return _error_content("panel has no plottables — call plot_product first")
+        deadline = time.monotonic() + max(0.0, float(timeout))
+        while True:
             if not panel.is_busy():
                 return {"content": [{"type": "text", "text": "ok: all plottables settled"}]}
+            if time.monotonic() >= deadline:
+                break
             await asyncio.sleep(0.2)
         return {"content": [{"type": "text", "text": f"timeout after {timeout:.1f}s — plottables still busy"}]}
 
     return _text_tool(
         "sciqlop_wait_for_plot_data",
         (
-            "Block until all plottables on a panel have finished fetching data "
-            "(polls the `busy` flag of every graph). Call this right after "
-            "`plot_product` and before `sciqlop_screenshot_panel`, otherwise "
-            "the screenshot captures an empty plot. Default timeout 10 seconds."
+            "Block until all plottables on a panel have finished fetching data. "
+            "Polls the `busy` flag of every graph and reports when the panel has "
+            "no plottables. Call this right after `plot_product` and before "
+            "`sciqlop_screenshot_panel`, otherwise the screenshot captures an "
+            "empty plot. Default timeout 10 seconds."
         ),
         {
             "type": "object",

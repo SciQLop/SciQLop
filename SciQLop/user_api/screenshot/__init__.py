@@ -1,6 +1,8 @@
 """Screenshot helpers for SciQLop."""
 from __future__ import annotations
 
+__all__ = ["capture_window", "capture_panel"]
+
 from pathlib import Path
 from typing import TYPE_CHECKING
 

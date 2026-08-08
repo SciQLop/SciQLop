@@ -715,14 +715,14 @@ class PlotPanel:
 
     @on_main_thread
     def save(self, path: str) -> None:
-        """Save the panel as an image (PNG, PDF, JPG, or BMP).
+        """Save the panel as an image (PNG, PDF, JPG, JPEG, or BMP).
 
         The format is inferred from the file extension.
 
         Parameters
         ----------
         path : str
-            Destination file path. Supported extensions: .png, .pdf, .jpg, .bmp
+            Destination file path. Supported extensions: .png, .pdf, .jpg, .jpeg, .bmp
         """
         import os
         impl = self._get_impl_or_raise()
