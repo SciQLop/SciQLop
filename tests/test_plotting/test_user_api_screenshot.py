@@ -1,5 +1,6 @@
 """Tests for screenshot-automation helpers in SciQLop.user_api."""
 import pytest
+from tests.fixtures import *  # noqa: F401, F403
 
 
 @pytest.fixture
@@ -9,8 +10,9 @@ def panel(qtbot, main_window):
     yield p
     try:
         p.close()
-    except Exception:
-        pass
+    except ValueError as exc:
+        if "The plot panel does not exist anymore." not in str(exc):
+            raise
 
 
 def test_panel_close_removes_panel(qtbot, main_window):
@@ -62,7 +64,7 @@ def test_capture_window_creates_png(qtbot, main_window, tmp_path):
     assert path.stat().st_size > 0
 
 
-def test_capture_panel_creates_png(qtbot, panel, tmp_path):
+def test_capture_panel_creates_png(panel, tmp_path):
     from SciQLop.user_api.screenshot import capture_panel
 
     path = tmp_path / "panel.png"
