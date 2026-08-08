@@ -16,6 +16,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 from SciQLop.user_api.threading import on_main_thread
 from SciQLop.user_api import jobs as user_api_jobs
+from SciQLop.user_api.plot import PlotPanel
+from SciQLop.user_api import screenshot as screenshot_api
 
 from . import context
 
@@ -153,7 +155,7 @@ def _screenshot_panel_tool(main_window) -> Dict[str, Any]:
         panel = context._panel(name) if name else context._active_panel(main_window)
         if panel is None:
             return _error_content(f"panel not found: {name!r}" if name else "no active panel")
-        return _screenshot_to_content(panel._get_impl_or_raise().save_png)
+        return _screenshot_to_content(lambda path: screenshot_api.capture_panel(panel, path))
 
     return {
         "name": "sciqlop_screenshot_panel",
@@ -309,33 +311,12 @@ def _fetch_paper_tool() -> Dict[str, Any]:
 
 
 def _wait_for_plot_data_tool(main_window) -> Dict[str, Any]:
-    import time
-
-    @on_main_thread
-    def _poll_once(name: Optional[str]) -> Optional[bool]:
+    async def _wait(name: Optional[str], timeout: float) -> Dict[str, Any]:
         panel = context._panel(name) if name else context._active_panel(main_window)
         if panel is None:
-            return None
-        any_plot = False
-        for plot in panel.plots or []:
-            impl = getattr(plot, "_impl", None)
-            if impl is None:
-                continue
-            for graph in impl.plottables() or []:
-                any_plot = True
-                if bool(graph.property("busy")):
-                    return False
-        return any_plot
-
-    async def _wait(name: Optional[str], timeout: float) -> Dict[str, Any]:
-        deadline = time.monotonic() + max(0.1, float(timeout))
-        while time.monotonic() < deadline:
-            state = _poll_once(name)
-            if state is None:
-                return _error_content(f"panel not found: {name!r}" if name else "no active panel")
-            if state:
-                return {"content": [{"type": "text", "text": "ok: all plottables settled"}]}
-            await asyncio.sleep(0.2)
+            return _error_content(f"panel not found: {name!r}" if name else "no active panel")
+        if panel.wait_for_data(timeout=timeout):
+            return {"content": [{"type": "text", "text": "ok: all plottables settled"}]}
         return {"content": [{"type": "text", "text": f"timeout after {timeout:.1f}s — plottables still busy"}]}
 
     return _text_tool(
