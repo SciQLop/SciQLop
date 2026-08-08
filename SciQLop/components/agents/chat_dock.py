@@ -50,11 +50,22 @@ from .tools import build_sciqlop_tools
 log = getLogger(__name__)
 
 
+_AGENT_ALIGNMENT = (
+    "You are assisting a space-plasma scientist inside SciQLop.\n"
+    "- Be concise, factual, and plain-spoken. Avoid marketing language.\n"
+    "- Prefer the public API under SciQLop.user_api (plot, catalogs, themes, virtual_products).\n"
+    "- Before writing code, call sciqlop_api_reference('<module>') for the relevant module.\n"
+    "- Keep code examples minimal. Use real science intervals when possible.\n"
+    "- Do not guess method names or internal module paths.\n"
+)
+
+
 @dataclass
 class _AgentSession:
     backend: AgentBackend
     messages: List[ChatMessage] = field(default_factory=list)
     resume_id: Optional[str] = None
+    alignment_sent: bool = False
 
 
 class AgentChatDock(QWidget):
@@ -695,6 +706,9 @@ class AgentChatDock(QWidget):
     ) -> None:
         self._set_running(True)
         self._set_status("Thinking…")
+        if not session.alignment_sent:
+            prompt = f"{_AGENT_ALIGNMENT}\n{prompt}"
+            session.alignment_sent = True
         assistant = ChatMessage(role="assistant", blocks=[], done=False)
         session.messages.append(assistant)
         try:
