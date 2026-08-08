@@ -44,3 +44,25 @@ def test_show_inspector_raises_dock(qtbot, main_window):
     dw = main_window.dock_manager.findDockWidget("Properties")
     assert dw is not None
     assert dw.isVisible()
+
+
+def test_capture_window_creates_png(qtbot, main_window, tmp_path):
+    from SciQLop.user_api.screenshot import capture_window
+
+    path = tmp_path / "window.png"
+    result = capture_window(path)
+    assert result == path
+    assert path.exists()
+    assert path.stat().st_size > 0
+
+
+def test_capture_panel_creates_png(qtbot, main_window, tmp_path):
+    from SciQLop.user_api.plot import create_plot_panel
+    from SciQLop.user_api.screenshot import capture_panel
+
+    panel = create_plot_panel()
+    path = tmp_path / "panel.png"
+    result = capture_panel(panel, path)
+    assert result == path
+    assert path.exists()
+    assert path.stat().st_size > 0
