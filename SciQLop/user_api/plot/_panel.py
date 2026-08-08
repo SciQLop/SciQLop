@@ -142,6 +142,13 @@ class PlotPanel:
             raise ValueError("The plot panel does not exist anymore.")
         return self._impl
 
+    @property
+    @experimental_api()
+    @on_main_thread
+    def name(self) -> str:
+        """The panel's unique name."""
+        return self._get_impl_or_raise().name
+
     @experimental_api()
     @on_main_thread
     def add_sub_panel(self, orientation: Orientation = Orientation.Horizontal) -> "PlotPanel":
@@ -149,6 +156,21 @@ class PlotPanel:
                                         synchronize_time=True, orientation=_to_sqp_orientation(orientation))
         self._impl.add_panel(_panel)
         return PlotPanel(_panel)
+
+    @experimental_api()
+    @on_main_thread
+    def close(self) -> None:
+        """Safely close and destroy this plot panel.
+
+        This is the public equivalent of
+        ``SciQLopMainWindow.remove_panel(panel.name)``. Calling the internal
+        ``CDockWidget.closeDockWidget()`` path directly can crash SciQLop
+        because it skips Python-side cleanup of the PanelContainer and the
+        destroyed-signal handlers.
+        """
+        impl = self._get_impl_or_raise()
+        name = impl.name
+        _get_main_window().remove_panel(name)
 
     @on_main_thread
     @_tracing.traced("PlotPanel.plot_product", cat="plot")
