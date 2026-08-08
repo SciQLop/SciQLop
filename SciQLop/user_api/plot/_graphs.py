@@ -230,6 +230,20 @@ class Histogram2D(Plottable):
 
     @on_main_thread
     def set_data(self, x, y):
+        """Set the scatter data to bin into a 2D histogram.
+
+        Parameters
+        ----------
+        x, y : array-like
+            1-D scatter data of equal length.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> x = np.random.randn(500)
+        >>> y = np.random.randn(500)
+        >>> hist.set_data(x, y)
+        """
         with _tracing.zone("Histogram2D.set_data", cat="plot", n_points=_len_safe(x)):
             with _tracing.zone("ensure_arrays_of_double", cat="plot"):
                 arrays = ensure_arrays_of_double(x, y)
@@ -326,6 +340,14 @@ class Waterfall(Plottable):
             Per-line y-axis values (used only for shape validation).
         z : array-like, shape (M, N)
             Data matrix: one row per line, one column per x value.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> x = np.linspace(0, 10, 50)
+        >>> y = np.linspace(0, 5, 10)
+        >>> z = np.sin(x) * np.exp(-y[:, None])
+        >>> wf.set_data(x, y, z)
         """
         with _tracing.zone("Waterfall.set_data", cat="plot",
                            nx=_len_safe(x), ny=_len_safe(y)):
