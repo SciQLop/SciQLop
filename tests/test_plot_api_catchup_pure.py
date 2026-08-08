@@ -97,6 +97,12 @@ class _MockWaterfallImpl:
         self._z = np.asarray(z)
         self._line_count = z.shape[1] if z.ndim == 2 else 1
 
+    def offset_mode(self):
+        return self._offset_mode
+
+    def uniform_spacing(self):
+        return self._uniform_spacing
+
     def offsets(self):
         if self._offset_mode == _WaterfallOffsetMode.Uniform:
             return self._uniform_spacing

@@ -32,6 +32,38 @@ def _register_icons():
     register_icon("uiowaephtool", QIcon(f"{__here__}/../../resources/icons/Iowa_Hawkeyes_logo.svg"))
 
 
+# speasy's ProviderInventory._register_nodes walks the provider inventory tree
+# recursively. Deep trees can exhaust the C stack (SIGSEGV), and cyclic
+# back-references in the inventory make it recurse forever. Replace it with an
+# iterative, cycle-safe traversal before we trigger provider initialisation.
+_speasy_register_nodes_patched = False
+
+
+def _patch_speasy_inventory_registration():
+    global _speasy_register_nodes_patched
+    if _speasy_register_nodes_patched:
+        return
+    from speasy.core.inventory import ProviderInventory, SpeasyIndex
+
+    def _register_nodes_iterative(self, node):
+        stack = [node]
+        visited = set()
+        while stack:
+            current = stack.pop()
+            if not isinstance(current, SpeasyIndex):
+                continue
+            node_id = id(current)
+            if node_id in visited:
+                continue
+            visited.add(node_id)
+            for child in current.__dict__.values():
+                self._type_lookup.get(type(child), lambda _: None)(child)
+                stack.append(child)
+
+    ProviderInventory._register_nodes = _register_nodes_iterative
+    _speasy_register_nodes_patched = True
+
+
 def _is_ssc_index(index) -> bool:
     provider = getattr(index, "spz_provider", None)
     return bool(provider) and provider() == "ssc"
@@ -331,6 +363,7 @@ class SpeasyPlugin(DataProvider):
         from speasy.core.requests_scheduling.request_dispatch import init_providers
         import speasy.core.http as http
         http.USER_AGENT = f"SciQLop/{sciqlop_version}/{http.USER_AGENT}"
+        _patch_speasy_inventory_registration()
         init_providers()
         root_node = ProductsModelNode("speasy", icon="speasy")
         build_product_tree(root_node, provider=self.name)

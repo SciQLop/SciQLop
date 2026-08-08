@@ -359,26 +359,30 @@ class Waterfall(Plottable):
     @property
     @on_main_thread
     def offsets(self):
-        return self._get_impl_or_raise().offsets()
+        impl = self._get_impl_or_raise()
+        if impl.offset_mode() == _WaterfallOffsetMode.Uniform:
+            return impl.uniform_spacing()
+        return impl.offsets()
 
     @offsets.setter
     @on_main_thread
     def offsets(self, offsets):
+        impl = self._get_impl_or_raise()
         if offsets is None:
-            self._get_impl_or_raise().set_offset_mode(_WaterfallOffsetMode.Uniform)
+            impl.set_offset_mode(_WaterfallOffsetMode.Uniform)
             spacing = 1.0
             if self._y is not None and len(self._y) > 1:
                 spacing = float(np.mean(np.diff(self._y)))
                 if spacing == 0 or not np.isfinite(spacing):
                     spacing = 1.0
-            self._get_impl_or_raise().set_uniform_spacing(spacing)
+            impl.set_uniform_spacing(spacing)
         elif isinstance(offsets, (int, float)):
-            self._get_impl_or_raise().set_offset_mode(_WaterfallOffsetMode.Uniform)
-            self._get_impl_or_raise().set_uniform_spacing(float(offsets))
+            impl.set_offset_mode(_WaterfallOffsetMode.Uniform)
+            impl.set_uniform_spacing(float(offsets))
         else:
             arr = np.asarray(offsets, dtype=np.float64).ravel()
-            self._get_impl_or_raise().set_offset_mode(_WaterfallOffsetMode.Custom)
-            self._get_impl_or_raise().set_offsets(arr)
+            impl.set_offset_mode(_WaterfallOffsetMode.Custom)
+            impl.set_offsets(arr)
 
     @property
     @on_main_thread
@@ -600,6 +604,7 @@ def _create_waterfall(plot_impl, x, y, z, *, name=_UNSET, offsets=_UNSET,
     if name is not _UNSET and name is not None:
         raw.set_name(name)
     wf = Waterfall(raw)
+    wf._y = y_arr
     if offsets is not _UNSET:
         wf.offsets = offsets
     if gain is not _UNSET:
