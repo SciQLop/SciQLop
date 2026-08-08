@@ -1,28 +1,34 @@
-from tests.fixtures import *  # noqa: F401,F403 — qapp/main_window/qtbot fixtures
+"""Tests for screenshot-automation helpers in SciQLop.user_api."""
+import pytest
+
+
+@pytest.fixture
+def panel(qtbot, main_window):
+    from SciQLop.user_api.plot import create_plot_panel
+    p = create_plot_panel()
+    yield p
+    try:
+        p.close()
+    except Exception:
+        pass
 
 
 def test_panel_close_removes_panel(qtbot, main_window):
     from SciQLop.user_api.plot import create_plot_panel, plot_panel
 
-    panel = create_plot_panel()
-    name = panel.name
+    p = create_plot_panel()
+    name = p.name
     assert plot_panel(name) is not None
 
-    panel.close()
+    p.close()
     qtbot.waitUntil(lambda: plot_panel(name) is None, timeout=2000)
 
 
-def test_panel_is_busy_false_when_idle(qtbot, main_window):
-    from SciQLop.user_api.plot import create_plot_panel
-
-    panel = create_plot_panel()
+def test_panel_is_busy_false_when_idle(panel):
     assert not panel.is_busy()
 
 
-def test_wait_for_data_returns_true_when_idle(qtbot, main_window):
-    from SciQLop.user_api.plot import create_plot_panel
-
-    panel = create_plot_panel()
+def test_wait_for_data_returns_true_when_idle(panel):
     assert panel.wait_for_data(timeout=1.0) is True
 
 
@@ -56,11 +62,9 @@ def test_capture_window_creates_png(qtbot, main_window, tmp_path):
     assert path.stat().st_size > 0
 
 
-def test_capture_panel_creates_png(qtbot, main_window, tmp_path):
-    from SciQLop.user_api.plot import create_plot_panel
+def test_capture_panel_creates_png(qtbot, panel, tmp_path):
     from SciQLop.user_api.screenshot import capture_panel
 
-    panel = create_plot_panel()
     path = tmp_path / "panel.png"
     result = capture_panel(panel, path)
     assert result == path
