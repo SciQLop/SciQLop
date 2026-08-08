@@ -31,7 +31,7 @@ class BackendContext:
     tools: List[dict]
     tempdir: Path
     confirm_cb: ConfirmCallback
-    allow_writes: bool = False
+    write_mode: str = "confirm"
     ask_question_cb: Optional[AskQuestionCallback] = None
 
 
@@ -214,7 +214,7 @@ class AgentBackend(Protocol):
     async def set_model(self, model: Optional[str]) -> None:
         ...
 
-    def set_allow_writes(self, allow: bool) -> None:
+    def set_write_mode(self, mode: str) -> None:
         ...
 
     async def list_slash_commands(self) -> List[str]:

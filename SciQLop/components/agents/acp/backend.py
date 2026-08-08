@@ -26,6 +26,7 @@ from typing import AsyncIterator, List, Optional
 
 from ..backend import BackendContext, SessionEntry, StreamBlock
 from ..chat import ChatMessage
+from ..settings import AgentWriteMode
 from . import sessions as _acp_sessions
 from .client import AcpClientHandler, permission_answer
 from .stream import AcpStreamTranslator, raw_input_dict
@@ -72,13 +73,13 @@ class AcpAgentBackend:
         self._tempdir = Path(ctx.tempdir)
         self._tempdir.mkdir(parents=True, exist_ok=True)
         self._confirm_cb = ctx.confirm_cb
-        self._allow_writes = ctx.allow_writes
+        self._write_mode = ctx.write_mode
         self._model: Optional[str] = None
         self._resume: Optional[str] = None
         self._lock = asyncio.Lock()
         self._mcp = SciqlopToolServer(
             self._tools, self._gated_names,
-            is_write_allowed=lambda: self._allow_writes,
+            write_mode=lambda: self._write_mode,
             confirm_cb=self._confirm_cb,
         )
         self._proc: Optional[asyncio.subprocess.Process] = None
@@ -171,7 +172,13 @@ class AcpAgentBackend:
         if short in self._tool_names:
             if short not in self._gated_names:
                 return permission_answer(options, allow=True)
-            if not self._allow_writes or self._confirm_cb is None:
+            mode = self._write_mode
+            if mode == AgentWriteMode.NONE:
+                return permission_answer(options, allow=False)
+            if mode == AgentWriteMode.YOLO:
+                return permission_answer(options, allow=True)
+            # confirm mode
+            if self._confirm_cb is None:
                 return permission_answer(options, allow=False)
             try:
                 allowed = await self._confirm_cb(
@@ -246,8 +253,8 @@ class AcpAgentBackend:
             self._model = model
             await self._apply_model()
 
-    def set_allow_writes(self, allow: bool) -> None:
-        self._allow_writes = allow
+    def set_write_mode(self, mode: str) -> None:
+        self._write_mode = mode
 
     async def list_slash_commands(self) -> List[str]:
         return list(self._slash_commands)

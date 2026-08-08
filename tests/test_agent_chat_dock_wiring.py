@@ -19,7 +19,7 @@ class _FakeBackend:
     def __init__(self, ctx=None):
         self.model = None
         self.effort = "unset"
-        self.allow_writes = None
+        self.write_mode = None
         self.snapshot = None
 
     async def usage_snapshot(self):
@@ -34,8 +34,8 @@ class _FakeBackend:
     async def set_model(self, model):
         self.model = model
 
-    def set_allow_writes(self, allow):
-        self.allow_writes = allow
+    def set_write_mode(self, mode):
+        self.write_mode = mode
 
     async def list_slash_commands(self):
         return []
@@ -114,10 +114,10 @@ def test_relocated_controls_live_in_the_popup(dock):
     popup = dock._settings_popup
     assert dock._model_combo is popup.model_combo
     assert dock._verbosity_combo is popup.verbosity_combo
-    assert dock._writes_toggle is popup.writes_toggle
+    assert dock._writes_combo is popup.writes_combo
     # the enable/disable contract still points at live widgets
     assert dock._model_combo in dock._interactive
-    assert dock._writes_toggle in dock._interactive
+    assert dock._writes_combo in dock._interactive
 
 
 def test_no_backend_disables_the_relocated_controls_too(dock):
@@ -136,12 +136,32 @@ def test_verbosity_still_drives_the_settings_from_the_popup(dock):
     assert AgentChatSettings().tool_verbosity == 1
 
 
-def test_write_actions_toggle_still_reaches_the_backend(dock):
+def test_write_mode_combo_reaches_the_backend_and_persists(dock):
+    from SciQLop.components.agents.settings import AgentChatSettings, AgentWriteMode
+
     backend = dock._current_backend()
-    dock._writes_toggle.setChecked(True)
-    assert dock._allow_writes is True and backend.allow_writes is True
-    dock._writes_toggle.setChecked(False)
-    assert dock._allow_writes is False and backend.allow_writes is False
+    combo = dock._writes_combo
+
+    # switch to yolo
+    combo.setCurrentIndex(combo.findData(AgentWriteMode.YOLO))
+    assert dock._write_mode == AgentWriteMode.YOLO
+    assert backend.write_mode == AgentWriteMode.YOLO
+    assert AgentChatSettings().write_mode == AgentWriteMode.YOLO
+    assert "Yolo" in dock._status_label.text()
+
+    # switch to none
+    combo.setCurrentIndex(combo.findData(AgentWriteMode.NONE))
+    assert dock._write_mode == AgentWriteMode.NONE
+    assert backend.write_mode == AgentWriteMode.NONE
+    assert AgentChatSettings().write_mode == AgentWriteMode.NONE
+    assert "disabled" in dock._status_label.text()
+
+    # switch back to confirm
+    combo.setCurrentIndex(combo.findData(AgentWriteMode.CONFIRM))
+    assert dock._write_mode == AgentWriteMode.CONFIRM
+    assert backend.write_mode == AgentWriteMode.CONFIRM
+    assert AgentChatSettings().write_mode == AgentWriteMode.CONFIRM
+    assert "confirm" in dock._status_label.text().lower()
 
 
 def test_export_still_reaches_the_dock_from_the_popup(dock, monkeypatch):
@@ -654,7 +674,7 @@ def test_version_reminder_is_prefixed_on_next_turn_after_resume(dock, qtbot):
         async def set_model(self, model):
             pass
 
-        def set_allow_writes(self, allow):
+        def set_write_mode(self, mode):
             pass
 
         async def list_slash_commands(self):

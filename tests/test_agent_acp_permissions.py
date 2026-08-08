@@ -33,13 +33,13 @@ def _tool_call(title, raw_input=None):
     return SimpleNamespace(title=title, raw_input=raw_input or {})
 
 
-def _backend(tools, allow_writes=False, confirm_cb=None):
+def _backend(tools, write_mode="none", confirm_cb=None):
     backend = AcpAgentBackend.__new__(AcpAgentBackend)
     backend._tools = tools
     backend._tool_names = {t["name"] for t in tools}
     backend._gated_names = {t["name"] for t in tools if t.get("gated")}
     backend._confirm_cb = confirm_cb
-    backend._allow_writes = allow_writes
+    backend._write_mode = write_mode
     return backend
 
 
@@ -59,20 +59,26 @@ def test_read_tool_auto_approves():
     assert _selected_option_id(resp) == "allow-once"
 
 
-def test_gated_tool_rejected_when_writes_disabled():
-    backend = _backend([_tool(gated=True)], allow_writes=False)
+def test_gated_tool_rejected_in_none_mode():
+    backend = _backend([_tool(gated=True)], write_mode="none")
     resp = asyncio.run(backend._decide_permission(_options(), _tool_call("sciqlop_dummy")))
     assert _selected_option_id(resp) == "reject-once"
 
 
-def test_gated_tool_asks_user_when_writes_enabled():
+def test_gated_tool_auto_approved_in_yolo_mode():
+    backend = _backend([_tool(gated=True)], write_mode="yolo")
+    resp = asyncio.run(backend._decide_permission(_options(), _tool_call("sciqlop_dummy")))
+    assert _selected_option_id(resp) == "allow-once"
+
+
+def test_gated_tool_asks_user_in_confirm_mode():
     seen = {}
 
     async def confirm(name, args):
         seen.update(name=name, args=args)
         return True
 
-    backend = _backend([_tool(gated=True)], allow_writes=True, confirm_cb=confirm)
+    backend = _backend([_tool(gated=True)], write_mode="confirm", confirm_cb=confirm)
     resp = asyncio.run(backend._decide_permission(
         _options(), _tool_call("mcp__sciqlop__sciqlop_dummy", {"code": "1+1"})))
     assert _selected_option_id(resp) == "allow-once"
@@ -80,17 +86,17 @@ def test_gated_tool_asks_user_when_writes_enabled():
     assert seen["args"] == {"code": "1+1"}
 
 
-def test_gated_tool_denied_by_user():
+def test_gated_tool_denied_by_user_in_confirm_mode():
     async def confirm(name, args):
         return False
 
-    backend = _backend([_tool(gated=True)], allow_writes=True, confirm_cb=confirm)
+    backend = _backend([_tool(gated=True)], write_mode="confirm", confirm_cb=confirm)
     resp = asyncio.run(backend._decide_permission(_options(), _tool_call("sciqlop_dummy")))
     assert _selected_option_id(resp) == "reject-once"
 
 
 def test_builtin_tools_are_rejected():
-    backend = _backend([_tool()], allow_writes=True)
+    backend = _backend([_tool()], write_mode="yolo")
     for title in ("Shell", "WriteFile", "StrReplaceFile"):
         resp = asyncio.run(backend._decide_permission(_options(), _tool_call(title)))
         assert _selected_option_id(resp) == "reject-once", title
@@ -108,11 +114,11 @@ mcp = pytest.importorskip("mcp")
 from SciQLop.components.agents.acp.tool_server import SciqlopToolServer
 
 
-def _server(tools, allow_writes=False, confirm_cb=None):
+def _server(tools, write_mode="none", confirm_cb=None):
     return SciqlopToolServer(
         tools,
         {t["name"] for t in tools if t.get("gated")},
-        is_write_allowed=lambda: allow_writes,
+        write_mode=lambda: write_mode,
         confirm_cb=confirm_cb,
     )
 
@@ -141,21 +147,28 @@ def test_dispatch_converts_images():
     assert images and images[0].data == "QUJD" and images[0].mimeType == "image/png"
 
 
-def test_dispatch_blocks_gated_tool_when_writes_disabled():
+def test_dispatch_blocks_gated_tool_in_none_mode():
     called = []
     tool = {**_tool(gated=True), "handler": lambda args: called.append(args) or "ok"}
-    server = _server([tool], allow_writes=False)
+    server = _server([tool], write_mode="none")
     out = asyncio.run(server._dispatch("sciqlop_dummy", {}))
     assert "disabled" in _texts(out)[0]
     assert called == []
 
 
-def test_dispatch_gated_tool_needs_confirmation():
+def test_dispatch_gated_tool_runs_in_yolo_mode():
+    tool = {**_tool(gated=True), "handler": lambda args: "ran"}
+    server = _server([tool], write_mode="yolo")
+    out = asyncio.run(server._dispatch("sciqlop_dummy", {}))
+    assert _texts(out) == ["ran"]
+
+
+def test_dispatch_gated_tool_needs_confirmation_in_confirm_mode():
     async def confirm(name, args):
         return True
 
     tool = {**_tool(gated=True), "handler": lambda args: "ran"}
-    server = _server([tool], allow_writes=True, confirm_cb=confirm)
+    server = _server([tool], write_mode="confirm", confirm_cb=confirm)
     out = asyncio.run(server._dispatch("sciqlop_dummy", {}))
     assert _texts(out) == ["ran"]
 

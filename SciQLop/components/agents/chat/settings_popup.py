@@ -11,7 +11,6 @@ from typing import Optional, Sequence
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QCheckBox,
     QComboBox,
     QFormLayout,
     QFrame,
@@ -53,11 +52,15 @@ class AgentSettingsPopup(QWidget):
             "How much of the agent's tool activity to show in the chat.")
         form.addRow("Activity", self.verbosity_combo)
 
-        self.writes_toggle = QCheckBox("Allow write actions", self)
-        self.writes_toggle.setToolTip(
-            "When enabled, the agent can modify SciQLop state "
-            "(set time range, create panels, exec Python, edit notebooks).")
-        form.addRow("", self.writes_toggle)
+        self.writes_combo = QComboBox(self)
+        self.writes_combo.addItem("No writes", "none")
+        self.writes_combo.addItem("Confirm writes", "confirm")
+        self.writes_combo.addItem("Yolo (auto-approve)", "yolo")
+        self.writes_combo.setToolTip(
+            "No writes: gated tools are denied. "
+            "Confirm writes: ask before each gated tool. "
+            "Yolo: run gated tools without asking.")
+        form.addRow("Writes", self.writes_combo)
 
         separator = QFrame(self)
         separator.setFrameShape(QFrame.Shape.HLine)

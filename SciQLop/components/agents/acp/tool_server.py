@@ -26,14 +26,14 @@ class SciqlopToolServer:
         self,
         tools: List[Dict[str, Any]],
         gated_names: set,
-        is_write_allowed: Callable[[], bool],
+        write_mode: Callable[[], str],
         confirm_cb,
         server_name: str = "sciqlop",
     ):
         self._tools = tools
         self._handlers = {t["name"]: t["handler"] for t in tools}
         self._gated_names = gated_names
-        self._is_write_allowed = is_write_allowed
+        self._write_mode = write_mode
         self._confirm_cb = confirm_cb
         self.url: Optional[str] = None
         self._manager: Optional[StreamableHTTPSessionManager] = None
@@ -60,18 +60,20 @@ class SciqlopToolServer:
 
     async def _dispatch(self, name: str, args: dict) -> list:
         if name in self._gated_names:
-            if not self._is_write_allowed():
+            mode = self._write_mode()
+            if mode == "none":
                 return [_text(
-                    "write actions are disabled — toggle 'Allow write actions' "
-                    "in the SciQLop chat dock"
+                    "write actions are disabled — select a write mode in the "
+                    "SciQLop chat dock settings"
                 )]
-            if self._confirm_cb is not None:
+            if mode == "confirm" and self._confirm_cb is not None:
                 try:
                     allowed = await self._confirm_cb(name, args)
                 except Exception as e:
                     return [_text(f"approval callback failed: {e}")]
                 if not allowed:
                     return [_text("user denied the tool call")]
+            # mode == "yolo" falls through to the handler without confirmation.
         handler = self._handlers.get(name)
         if handler is None:
             return [_text(f"unknown tool: {name}")]

@@ -45,7 +45,7 @@ from .chat.sessions_view import grouped_sessions, all_groups, all_tags, claimed_
 from .chat.settings_popup import AgentSettingsPopup
 from .chat.usage_refresh import UsageRefresher
 from .registry import available_backends, create_backend
-from .settings import AgentChatSettings, AgentSessionMeta
+from .settings import AgentChatSettings, AgentSessionMeta, AgentWriteMode
 from .tools import build_sciqlop_tools
 
 log = getLogger(__name__)
@@ -83,7 +83,7 @@ class AgentChatDock(QWidget):
         self._tempdir = Path(tempfile.mkdtemp(prefix="sciqlop_agents_"))
         self._sessions: Dict[str, _AgentSession] = {}
         self._current: Optional[str] = None
-        self._allow_writes = False
+        self._write_mode = AgentChatSettings().write_mode
         self._session_filter = ""
         self._turn_task: Optional[asyncio.Task] = None
         self._bg_tasks: set[asyncio.Task] = set()
@@ -100,6 +100,7 @@ class AgentChatDock(QWidget):
             self._current_backend, self._apply_usage_snapshot)
 
         self._build_ui()
+        self._set_writes_combo(self._write_mode)
         self.refresh_backends()
 
     def _build_ui(self) -> None:
@@ -133,10 +134,10 @@ class AgentChatDock(QWidget):
         # unchanged now that the popup owns construction.
         self._model_combo = self._settings_popup.model_combo
         self._verbosity_combo = self._settings_popup.verbosity_combo
-        self._writes_toggle = self._settings_popup.writes_toggle
+        self._writes_combo = self._settings_popup.writes_combo
         self._model_combo.currentIndexChanged.connect(self._on_model_changed)
         self._verbosity_combo.currentIndexChanged.connect(self._on_verbosity_changed)
-        self._writes_toggle.stateChanged.connect(self._on_writes_toggled)
+        self._writes_combo.currentIndexChanged.connect(self._on_write_mode_changed)
         self._settings_popup.export_requested.connect(self._on_export)
         self._settings_popup.effort_changed.connect(self._on_effort_changed)
 
@@ -211,10 +212,15 @@ class AgentChatDock(QWidget):
             self._input,
             self._send_btn,
             self._reset_btn,
-            self._writes_toggle,
+            self._writes_combo,
             self._model_combo,
             self._sessions_toggle,
         )
+
+    def _set_writes_combo(self, mode: str) -> None:
+        index = self._writes_combo.findData(mode)
+        if index >= 0:
+            self._writes_combo.setCurrentIndex(index)
 
     def refresh_backends(self) -> None:
         names = available_backends()
@@ -321,7 +327,7 @@ class AgentChatDock(QWidget):
             tools=self._tools,
             tempdir=be_tempdir,
             confirm_cb=self._confirm_tool_call,
-            allow_writes=self._allow_writes,
+            write_mode=self._write_mode,
             ask_question_cb=self._ask_question,
         )
         backend = create_backend(name, ctx)
@@ -426,13 +432,19 @@ class AgentChatDock(QWidget):
             return   # the user switched backend while the model switch landed
         self._populate_effort(backend)
 
-    def _on_writes_toggled(self, state: int) -> None:
-        self._allow_writes = state == Qt.CheckState.Checked.value
+    def _on_write_mode_changed(self, index: int) -> None:
+        mode = self._writes_combo.currentData() or AgentWriteMode.CONFIRM
+        self._write_mode = mode
         for session in self._sessions.values():
-            session.backend.set_allow_writes(self._allow_writes)
-        self._set_status(
-            "Write actions enabled." if self._allow_writes else "Write actions disabled."
-        )
+            session.backend.set_write_mode(mode)
+        with AgentChatSettings() as cfg:
+            cfg.write_mode = mode
+        labels = {
+            AgentWriteMode.NONE: "Writes disabled.",
+            AgentWriteMode.CONFIRM: "Writes: confirm each action.",
+            AgentWriteMode.YOLO: "Yolo mode: writes auto-approved.",
+        }
+        self._set_status(labels.get(mode, f"Write mode: {mode}"))
 
     def _on_reset(self) -> None:
         if self._current is None:

@@ -10,7 +10,7 @@ def test_popup_owns_the_relocated_controls(qtbot):
     popup = AgentSettingsPopup()
     qtbot.addWidget(popup)
     for name in ("model_combo", "effort_combo", "verbosity_combo",
-                 "writes_toggle", "export_button"):
+                 "writes_combo", "export_button"):
         widget = getattr(popup, name)
         assert widget is not None
         assert widget.parent() is popup

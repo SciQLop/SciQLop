@@ -1,4 +1,5 @@
 """Persisted settings for the agent chat dock."""
+from enum import StrEnum
 from typing import ClassVar, Dict, List
 
 from pydantic import BaseModel, Field
@@ -6,6 +7,12 @@ from pydantic import BaseModel, Field
 from SciQLop.components.settings import SettingsCategory
 from SciQLop.components.settings.backend import ConfigEntry
 from SciQLop.components.settings.backend.entry import KeyringMapping
+
+
+class AgentWriteMode(StrEnum):
+    NONE = "none"           # gated tools are denied
+    CONFIRM = "confirm"     # gated tools ask per-call confirmation
+    YOLO = "yolo"           # gated tools auto-approved
 
 
 class AgentChatSettings(ConfigEntry):
@@ -34,6 +41,12 @@ class AgentChatSettings(ConfigEntry):
         default_factory=dict,
         description="Selected reasoning effort per agent backend, keyed by "
                     "backend display name. Empty string = backend default.",
+        json_schema_extra={"widget": "hidden"},
+    )
+    write_mode: str = Field(
+        default=AgentWriteMode.CONFIRM,
+        description="Agent write permission: 'none' (deny gated tools), "
+                    "'confirm' (ask per call), or 'yolo' (auto-approve).",
         json_schema_extra={"widget": "hidden"},
     )
 
