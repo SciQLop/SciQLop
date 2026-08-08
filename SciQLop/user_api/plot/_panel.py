@@ -172,6 +172,37 @@ class PlotPanel:
         name = impl.name
         _get_main_window().remove_panel(name)
 
+    @experimental_api()
+    @on_main_thread
+    def is_busy(self) -> bool:
+        """Return True if any graph in this panel is still fetching data."""
+        impl = self._get_impl_or_raise()
+        for plot in impl.plots() or []:
+            for graph in plot.plottables() or []:
+                if graph.property("busy"):
+                    return True
+        return False
+
+    @experimental_api()
+    @on_main_thread
+    def wait_for_data(self, timeout: float = 10.0, poll_interval: float = 0.1) -> bool:
+        """Block until no graph in this panel is busy, or until timeout.
+
+        Processes Qt events while polling so the asynchronous data fetch
+        continues and the UI stays responsive. Returns True if all graphs
+        settled before the timeout, False otherwise.
+        """
+        import time
+        from PySide6.QtCore import QCoreApplication
+
+        deadline = time.time() + max(0.0, float(timeout))
+        while time.time() < deadline:
+            if not self.is_busy():
+                return True
+            QCoreApplication.processEvents()
+            time.sleep(max(0.001, float(poll_interval)))
+        return False
+
     @on_main_thread
     @_tracing.traced("PlotPanel.plot_product", cat="plot")
     def plot_product(self, product: AnyProductType, plot_index=-1, *,
