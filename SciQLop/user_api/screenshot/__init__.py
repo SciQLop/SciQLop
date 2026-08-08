@@ -36,5 +36,6 @@ def capture_panel(panel: "PlotPanel", path: str | Path) -> Path:
     Supported extensions: .png, .pdf, .jpg, .jpeg, .bmp.
     """
     path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
     panel.save(str(path))
     return path
