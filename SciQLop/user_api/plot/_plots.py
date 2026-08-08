@@ -14,6 +14,7 @@ from SciQLopPlots import SciQLopTimeSeriesPlot as _SciQLopTimeSeriesPlot
 from SciQLopPlots import SciQLopPlotAxis as _SciQLopPlotAxis
 from SciQLopPlots import SciQLopNDProjectionPlot as _SciQLopNDProjectionPlot
 from SciQLopPlots import GraphType as _GraphType, GraphMarkerShape as _GraphMarkerShape
+from SciQLopPlots import ColorGradient as _ColorGradient
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot_product
 from ._thread_safety import on_main_thread
 from ._overlay import Overlay
@@ -122,6 +123,47 @@ def _reject_zero_width_range(axis_name: str, lo: float, hi: float) -> None:
             "widen by at least one epsilon, or skip the call to keep the "
             "existing range"
         )
+
+
+_COLOR_GRADIENT_MAP = {
+    _ColorGradient.Hot: "hot",
+    _ColorGradient.Cold: "cool",
+    _ColorGradient.Candy: "spring",
+    _ColorGradient.Polar: "seismic",
+}
+
+
+def _resolve_time_colormap(colormap):
+    """Convert a colormap name or SciQLopPlots ``ColorGradient`` to a
+    ``(start, end)`` :class:`QColor` pair.
+
+    SciQLopNDProjectionPlot's time-color API uses a two-color gradient
+    (``set_time_color_gradient(start, end)``). Named matplotlib colormaps are
+    sampled at their extremes and :class:`SciQLopPlots.ColorGradient` presets
+    are mapped to representative matplotlib colormaps.
+    """
+    import matplotlib.pyplot as plt
+
+    if isinstance(colormap, _ColorGradient):
+        cmap_name = _COLOR_GRADIENT_MAP.get(colormap)
+        if cmap_name is None:
+            raise ValueError(
+                f"unsupported ColorGradient combination {colormap!r}; "
+                f"use one of {list(_COLOR_GRADIENT_MAP)}"
+            )
+        colormap = cmap_name
+
+    try:
+        cmap = plt.colormaps[colormap]
+    except Exception as exc:
+        raise ValueError(f"unknown colormap {colormap!r}") from exc
+
+    start = cmap(0.0)
+    end = cmap(1.0)
+    return (
+        _QColor(int(start[0] * 255), int(start[1] * 255), int(start[2] * 255)),
+        _QColor(int(end[0] * 255), int(end[1] * 255), int(end[2] * 255)),
+    )
 
 
 def to_product_path(product: AnyProductType) -> List[str]:
@@ -849,6 +891,60 @@ class ProjectionPlot:
         """
         return to_plottable(
             plot_product_or_raise(self._get_impl_or_raise(), product, graph_type=_GraphType.ParametricCurve))
+
+    @experimental_api()
+    @on_main_thread
+    def plot_time_colored_curve(
+        self,
+        x, y, t,
+        *,
+        name: str | None = None,
+        colormap: str | _ColorGradient = "viridis",
+        line_width: float = 2.0,
+    ) -> Graph:
+        """Plot a parametric curve colored by time on this projection plot.
+
+        Parameters
+        ----------
+        x, y, t : array-like
+            1-D arrays of equal length. The curve follows ``(x, y)`` and is
+            colored by ``t``.
+        name : str, optional
+            Graph name.
+        colormap : str or SciQLopPlots.ColorGradient, optional
+            Colormap used for the time gradient. Defaults to ``"viridis"``.
+            A :class:`SciQLopPlots.ColorGradient` preset is mapped to a
+            representative matplotlib colormap.
+        line_width : float, optional
+            Reserved for API compatibility. The current upstream projection
+            curve implementation does not expose per-curve line-width control.
+
+        Returns
+        -------
+        Graph
+            The created time-colored curve graph.
+
+        Raises
+        ------
+        ValueError
+            If ``x``, ``y`` and ``t`` have different lengths or the colormap
+            is unknown/unsupported.
+        RuntimeError
+            If the upstream plot refuses to create the curve.
+        """
+        x, y, t = ensure_arrays_of_double(x, y, t)
+        if not (len(x) == len(y) == len(t)):
+            raise ValueError("x, y and t must have the same length")
+        impl = self._get_impl_or_raise()
+        curve = impl.add_reference_curve([x, y, t])
+        if curve is None:
+            raise RuntimeError("upstream refused to create projection curve")
+        if name is not None:
+            curve.set_name(name)
+        start_color, end_color = _resolve_time_colormap(colormap)
+        impl.set_time_color_enabled(True)
+        impl.set_time_color_gradient(start_color, end_color)
+        return Graph(curve, plot=self)
 
     def _repr_pretty_(self, p, cycle):
         if cycle:
