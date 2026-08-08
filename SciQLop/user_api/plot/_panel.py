@@ -1,7 +1,7 @@
 import math as _math
 
 from expression import Nothing, Option, Some
-from .enums import PlotType, Orientation, GraphType, BinStrategy
+from .enums import PlotType, Orientation, GraphType, BinStrategy, GraphLineStyle
 from .protocol import Plottable
 from typing import Optional, Tuple, Union, List
 from ..gui import get_main_window as _get_main_window
@@ -16,7 +16,7 @@ from SciQLop.components.plotting.ui.time_sync_panel import (TimeSyncPanel as _Im
                                                             plot_function as _plot_function)
 from SciQLop.components.plotting.backend.palette import Palette as _Palette, make_color_list as _make_color_list
 from ._plots import to_product_path, plot_product_or_raise, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
-    is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product
+    is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product, _apply_line_style
 from ._graphs import (ensure_arrays_of_double, Histogram2D, Waterfall,
                       _create_histogram2d, _create_waterfall,
                       validate_histogram_bins as _validate_histogram_bins,
@@ -186,7 +186,8 @@ class PlotPanel:
     @_tracing.traced("PlotPanel.plot_data", cat="plot")
     def plot_data(self, x, y=None, z=None, plot_index=-1, *, labels=_UNSET,
                   name=_UNSET, plot_type=_UNSET, graph_type=_UNSET, colors=_UNSET,
-                  y_log_scale=_UNSET, z_log_scale=_UNSET, **kwargs) -> Tuple[
+                  y_log_scale=_UNSET, z_log_scale=_UNSET, line_style=_UNSET,
+                  **kwargs) -> Tuple[
             ProjectionPlot | TimeSeriesPlot, Plottable]:
         """Plot static data or a SpeasyVariable in the panel.
 
@@ -213,6 +214,8 @@ class PlotPanel:
             Per-component colors; defaults to the panel palette.
         y_log_scale, z_log_scale : bool, optional
             Use a logarithmic Y / Z scale.
+        line_style : GraphLineStyle, optional
+            Line style for the created graph. Defaults to upstream style.
         **kwargs
             Forwarded to SciQLopPlots.
 
@@ -245,6 +248,7 @@ class PlotPanel:
                                    **kwargs)
         if name is not _UNSET:
             _g.set_name(name)
+        _apply_line_style(_g, line_style)
         wrapped_plot = to_plot(_p)
         return wrapped_plot, to_plottable(_g, plot=wrapped_plot)
 

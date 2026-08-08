@@ -1,5 +1,5 @@
 import numpy as np
-from .enums import PlotType, ScaleType, BinStrategy
+from .enums import PlotType, ScaleType, BinStrategy, GraphLineStyle, AxisType
 from .protocol import Plot
 from ._graphs import (Graph, ColorMap, Histogram2D, Waterfall, to_plottable,
                       ensure_arrays_of_double, _create_histogram2d,
@@ -20,6 +20,7 @@ from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot
 from ._thread_safety import on_main_thread
 from ._overlay import Overlay
 from .._annotations import experimental_api
+from PySide6.QtCore import Qt as _Qt
 from PySide6.QtGui import QColor as _QColor, QPen as _QPen
 
 from speasy.core import AnyDateTimeType
@@ -94,6 +95,43 @@ def _bind_y_axis(plottable, y_axis: str):
     if isinstance(plottable, Graph):
         plottable.y_axis = y_axis
     return plottable
+
+
+_LINE_STYLE_TO_QT = {
+    GraphLineStyle.Solid: _Qt.PenStyle.SolidLine,
+    GraphLineStyle.Dash: _Qt.PenStyle.DashLine,
+    GraphLineStyle.Dot: _Qt.PenStyle.DotLine,
+    GraphLineStyle.DashDot: _Qt.PenStyle.DashDotLine,
+    GraphLineStyle.DashDotDot: _Qt.PenStyle.DashDotDotLine,
+}
+
+
+def _apply_line_style(plottable, line_style):
+    """Apply a SciQLop ``GraphLineStyle`` to a freshly created upstream graph.
+
+    The installed SciQLopPlots 0.34.0 exposes a ``GraphLineStyle`` flag enum
+    that only covers step/no-line styles, not dash/dot patterns. To preserve
+    the intended user-visible dash/solid/dot behaviour we set the pen style on
+    each graph component.
+    """
+    if line_style is _UNSET or line_style is None:
+        return
+    if not isinstance(line_style, GraphLineStyle):
+        raise TypeError(
+            f"line_style must be a GraphLineStyle, got {type(line_style).__name__}"
+        )
+    qt_style = _LINE_STYLE_TO_QT.get(line_style)
+    if qt_style is None:
+        raise ValueError(f"Unsupported GraphLineStyle {line_style!r}")
+
+    impl = plottable._get_impl_or_raise() if isinstance(plottable, Graph) else plottable
+    components = getattr(impl, "components", None)
+    if components is None or not callable(components):
+        return
+    for comp in components():
+        pen = comp.pen()
+        pen.setStyle(qt_style)
+        comp.set_pen(pen)
 
 
 def _apply_name(raw_plottable, name):
@@ -408,6 +446,36 @@ class _BasePlot(Plot):
         _reject_zero_width_range(axis, lo, hi)
         self._resolve_axis(axis).set_range(lo, hi)
 
+    @on_main_thread
+    def set_axis_type(self, axis: _AxisName, axis_type: AxisType) -> None:
+        """Set a single axis type (linear, logarithmic, or datetime).
+
+        Parameters
+        ----------
+        axis : {"x", "y", "y2", "z"}
+            Which axis to update.
+        axis_type : AxisType
+            Linear, Logarithmic, or DateTime.
+
+        Notes
+        -----
+        SciQLopPlots 0.34.0 does not expose a single ``set_axis_type`` method;
+        the requested type is realised through ``set_log`` and
+        ``set_is_time_axis`` on the underlying axis object.
+        """
+        axis_impl = self._resolve_axis(axis)
+        if axis_type == AxisType.Linear:
+            axis_impl.set_log(False)
+        elif axis_type == AxisType.Logarithmic:
+            axis_impl.set_log(True)
+        elif axis_type == AxisType.DateTime:
+            axis_impl.set_is_time_axis(True)
+        else:
+            raise ValueError(
+                f"Unknown axis type {axis_type!r}; expected one of "
+                f"{list(AxisType)}"
+            )
+
     @experimental_api()
     @on_main_thread
     def set_y2_range(self, ymin: float, ymax: float) -> None:
@@ -471,7 +539,7 @@ class XYPlot(_BasePlot):
     @on_main_thread
     def plot(self, *args, labels=_UNSET, name=_UNSET, colors=_UNSET,
              graph_type=_UNSET, y_log_scale=_UNSET, z_log_scale=_UNSET,
-             y_axis="y", **kwargs):
+             line_style=_UNSET, y_axis="y", **kwargs):
         """Plot on this XY plot: two vectors ``(x, y)``, three ``(x, y, z)`` →
         colormap, or a callback ``f(start, stop) -> (x, y)``. Product paths are
         not accepted here — use ``PlotPanel.plot_product`` or
@@ -489,6 +557,8 @@ class XYPlot(_BasePlot):
             Defaults to ``ParametricCurve`` for XY plots.
         y_log_scale, z_log_scale : bool, optional
             Logarithmic Y / Z scale.
+        line_style : GraphLineStyle, optional
+            Line style for the created graph. Defaults to upstream style.
         y_axis : {"y", "y2"}
             Bind the graph to the primary or secondary y-axis (line / curve /
             scatter only — not colormaps).
@@ -502,17 +572,20 @@ class XYPlot(_BasePlot):
         if len(args) == 1:
             if callable(args[0]):
                 raw = _apply_name(self._get_impl_or_raise().plot(*args, **kwargs), name)
+                _apply_line_style(raw, line_style)
                 return _bind_y_axis(Graph(raw, plot=self), y_axis)
             else:
                 raise ValueError("Invalid arguments")
         elif len(args) == 2:
             raw = _apply_name(
                 self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs), name)
+            _apply_line_style(raw, line_style)
             return _bind_y_axis(Graph(raw, plot=self), y_axis)
         elif len(args) == 3:
             _reject_if_colormap_already_present(self._get_impl_or_raise())
             raw = _apply_name(
                 self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs), name)
+            _apply_line_style(raw, line_style)
             return ColorMap(raw)
         return None
 
@@ -675,7 +748,7 @@ class TimeSeriesPlot(_BasePlot):
     @on_main_thread
     def plot(self, *args, labels=_UNSET, name=_UNSET, colors=_UNSET,
              graph_type=_UNSET, y_log_scale=_UNSET, z_log_scale=_UNSET,
-             y_axis="y", **kwargs):
+             line_style=_UNSET, y_axis="y", **kwargs):
         """Plot on this time-series plot: two/three vectors ``(x, y[, z])``, a
         product path, or a callback ``f(start, stop) -> (x, y[, z])``.
 
@@ -691,6 +764,8 @@ class TimeSeriesPlot(_BasePlot):
             Line (default), Curve, ColorMap or Scatter.
         y_log_scale, z_log_scale : bool, optional
             Logarithmic Y / Z scale.
+        line_style : GraphLineStyle, optional
+            Line style for the created graph. Defaults to upstream style.
         y_axis : {"y", "y2"}
             Bind the graph to the primary or secondary y-axis.
         **kwargs
@@ -714,16 +789,19 @@ class TimeSeriesPlot(_BasePlot):
         if len(args) == 1:
             if callable(args[0]):
                 raw = _apply_name(self._get_impl_or_raise().plot(*args, **kwargs), name)
+                _apply_line_style(raw, line_style)
                 return _bind_y_axis(to_plottable(raw, plot=self), y_axis)
             else:
                 raw = _apply_name(
                     plot_product_or_raise(self._get_impl_or_raise(), args[0], **kwargs), name)
+                _apply_line_style(raw, line_style)
                 return _bind_y_axis(to_plottable(raw, plot=self), y_axis)
         elif 3 >= len(args) >= 2:
             if len(args) == 3:
                 _reject_if_colormap_already_present(self._get_impl_or_raise())
             raw = _apply_name(
                 self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs), name)
+            _apply_line_style(raw, line_style)
             return _bind_y_axis(to_plottable(raw, plot=self), y_axis)
         raise ValueError("Invalid arguments")
 
@@ -946,6 +1024,38 @@ class ProjectionPlot:
         impl = self._get_impl_or_raise()
         for i in range(impl.subplot_count()):
             _set_axis_scale_type(scale, impl.subplot(i).y_axis())
+
+    @on_main_thread
+    def set_axis_type(self, axis: str, axis_type: AxisType) -> None:
+        """Set the axis type (linear, logarithmic, or datetime) on every
+        projection subplot.
+
+        Parameters
+        ----------
+        axis : {"x", "y"}
+            Which axis to update.
+        axis_type : AxisType
+            Linear, Logarithmic, or DateTime.
+        """
+        if axis not in ("x", "y"):
+            raise ValueError(
+                f"axis {axis!r} not available on projection plots "
+                f"(expected one of: x, y)"
+            )
+        impl = self._get_impl_or_raise()
+        for i in range(impl.subplot_count()):
+            axis_impl = getattr(impl.subplot(i), f"{axis}_axis")()
+            if axis_type == AxisType.Linear:
+                axis_impl.set_log(False)
+            elif axis_type == AxisType.Logarithmic:
+                axis_impl.set_log(True)
+            elif axis_type == AxisType.DateTime:
+                axis_impl.set_is_time_axis(True)
+            else:
+                raise ValueError(
+                    f"Unknown axis type {axis_type!r}; expected one of "
+                    f"{list(AxisType)}"
+                )
 
     @on_main_thread
     def plot(self, product: Union[str, VirtualProduct], **kwargs) -> Optional[Graph]:

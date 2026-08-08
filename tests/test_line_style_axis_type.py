@@ -1,4 +1,6 @@
+import numpy as np
 import pytest
+from SciQLop.user_api.plot import create_plot_panel
 from SciQLop.user_api.plot.enums import GraphType, BinStrategy, GraphLineStyle, AxisType
 
 
@@ -20,3 +22,19 @@ def test_graph_line_style_values():
 def test_axis_type_values():
     assert AxisType.Linear.value == 0
     assert AxisType.Logarithmic.value == 1
+
+
+def test_plot_data_accepts_line_style(qapp):
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+    SciQLopMainWindow()
+    panel = create_plot_panel()
+    _, graph = panel.plot_data(np.arange(10), np.arange(10), line_style=GraphLineStyle.Dash)
+    # Upstream may not expose a getter; the call must not raise.
+
+
+def test_set_axis_type(qapp):
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+    SciQLopMainWindow()
+    panel = create_plot_panel()
+    plot, _ = panel.plot_data(np.arange(10), np.arange(10))
+    plot.set_axis_type("y", AxisType.Logarithmic)
