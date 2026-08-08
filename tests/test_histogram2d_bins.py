@@ -20,15 +20,15 @@ def test_log_bins_are_monotonic(data, plot_panel):
     assert edges[0] > 0
 
 
-def test_explicit_edges_ignore_strategy(data, plot_panel):
+def test_explicit_edges_are_rejected(data, plot_panel):
     x, y = data
     edges = np.linspace(x.min(), x.max(), 11)
-    _, hist = plot_panel.histogram2d(x, y, x_bins=edges, x_bin_strategy=BinStrategy.Log)
-    np.testing.assert_array_almost_equal(hist.x_bin_edges, edges)
+    with pytest.raises(NotImplementedError):
+        plot_panel.histogram2d(x, y, x_bins=edges, x_bin_strategy=BinStrategy.Log)
 
 
-def test_symlog_does_not_crash_with_negatives(data, plot_panel):
+def test_symlog_is_rejected_with_negatives(data, plot_panel):
     x, y = data
     x_with_neg = np.concatenate([x, -x])
-    _, hist = plot_panel.histogram2d(x_with_neg, y, x_bins=20, x_bin_strategy=BinStrategy.SymLog)
-    assert hist.x_bin_edges is not None
+    with pytest.raises(NotImplementedError):
+        plot_panel.histogram2d(x_with_neg, y, x_bins=20, x_bin_strategy=BinStrategy.SymLog)

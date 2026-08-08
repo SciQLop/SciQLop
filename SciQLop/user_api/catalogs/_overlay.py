@@ -11,8 +11,8 @@ from SciQLop.user_api.threading import on_main_thread
 class CatalogOverlay:
     """User-facing handle for a catalog overlay attached to a plot panel.
 
-    Holds the catalog path and display options (``override_color`` and
-    ``label``) and delegates attach/detach operations to the panel's
+    Holds the catalog path and display options (``override_color``) and
+    delegates attach/detach operations to the panel's
     ``PanelCatalogManager``.
 
     Attributes
@@ -21,8 +21,6 @@ class CatalogOverlay:
         Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
     override_color : str or None
         Optional color override for the overlay spans.
-    label : str or None
-        Optional human-readable label for the overlay.
     """
 
     def __init__(
@@ -31,13 +29,11 @@ class CatalogOverlay:
         catalog: Catalog,
         panel,
         override_color: Optional[str] = None,
-        label: Optional[str] = None,
     ):
         self._catalog_path = catalog_path
         self._catalog = catalog
         self._panel = panel
         self._override_color = override_color
-        self._label = label
 
     @property
     def catalog_path(self) -> str:
@@ -46,10 +42,6 @@ class CatalogOverlay:
     @property
     def override_color(self) -> Optional[str]:
         return self._override_color
-
-    @property
-    def label(self) -> Optional[str]:
-        return self._label
 
     @on_main_thread
     def remove(self) -> None:
@@ -69,7 +61,6 @@ def add_catalog_overlay(
     catalog_path: str,
     *,
     override_color: Optional[str] = None,
-    label: Optional[str] = None,
 ) -> CatalogOverlay:
     """Attach a catalog overlay to ``panel``.
 
@@ -80,9 +71,7 @@ def add_catalog_overlay(
     catalog_path : str
         Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
     override_color : str, optional
-        Reserved display color for the overlay.
-    label : str, optional
-        Human-readable label for the overlay.
+        Display color for the overlay spans.
 
     Returns
     -------
@@ -98,12 +87,15 @@ def add_catalog_overlay(
     impl = panel._get_impl_or_raise()
     manager: PanelCatalogManager = impl.catalog_manager
     manager.add_catalog(catalog)
+    if override_color is not None:
+        overlay = manager.overlay(catalog.uuid)
+        if overlay is not None:
+            overlay.color = override_color
     return CatalogOverlay(
         catalog_path=catalog_path,
         catalog=catalog,
         panel=panel,
         override_color=override_color,
-        label=label,
     )
 
 

@@ -303,6 +303,7 @@ class Waterfall(Plottable):
 
     def __init__(self, impl):
         self._impl: _SciQLopWaterfallGraph = impl
+        self._y = None
         _wire_destroyed(self, impl)
 
     def _on_destroyed(self):
@@ -330,14 +331,15 @@ class Waterfall(Plottable):
                            nx=_len_safe(x), ny=_len_safe(y)):
             arrays = ensure_arrays_of_double(x, y, z)
             _validate_waterfall_shapes(*arrays)
-            x_arr, _, z_arr = arrays
+            x_arr, y_arr, z_arr = arrays
+            self._y = y_arr
             self._get_impl_or_raise().set_data(x_arr, z_arr.T)
 
     @property
     @on_main_thread
     def data(self):
         x, z = self._get_impl_or_raise().data()
-        return x, z.T
+        return x, self._y, z.T
 
     @data.setter
     @on_main_thread
@@ -364,7 +366,12 @@ class Waterfall(Plottable):
     def offsets(self, offsets):
         if offsets is None:
             self._get_impl_or_raise().set_offset_mode(_WaterfallOffsetMode.Uniform)
-            self._get_impl_or_raise().set_uniform_spacing(1.0)
+            spacing = 1.0
+            if self._y is not None and len(self._y) > 1:
+                spacing = float(np.mean(np.diff(self._y)))
+                if spacing == 0 or not np.isfinite(spacing):
+                    spacing = 1.0
+            self._get_impl_or_raise().set_uniform_spacing(spacing)
         elif isinstance(offsets, (int, float)):
             self._get_impl_or_raise().set_offset_mode(_WaterfallOffsetMode.Uniform)
             self._get_impl_or_raise().set_uniform_spacing(float(offsets))
@@ -615,12 +622,21 @@ def _create_histogram2d(plot_impl, *args, name: str = "histogram",
     x_is_edges = not isinstance(x_bins, (int, np.integer))
     y_is_edges = not isinstance(y_bins, (int, np.integer))
 
+    if x_is_edges or y_is_edges:
+        raise NotImplementedError(
+            "SciQLopPlots 0.34.0 histogram2d only accepts integer bin counts; "
+            "explicit bin edges are not supported"
+        )
+    if x_bin_strategy == BinStrategy.SymLog or y_bin_strategy == BinStrategy.SymLog:
+        raise NotImplementedError(
+            "SciQLopPlots 0.34.0 histogram2d does not support SymLog binning"
+        )
+
     def _upstream_kwargs(x_count, y_count):
         kwargs = {"name": name, "x_bins": x_count, "y_bins": y_count}
-        # Explicit edges override the strategy: the caller chose the spacing.
-        if not x_is_edges and x_bin_strategy == BinStrategy.Log:
+        if x_bin_strategy == BinStrategy.Log:
             kwargs["x_bins_log"] = True
-        if not y_is_edges and y_bin_strategy == BinStrategy.Log:
+        if y_bin_strategy == BinStrategy.Log:
             kwargs["y_bins_log"] = True
         return kwargs
 

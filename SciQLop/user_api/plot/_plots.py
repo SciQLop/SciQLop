@@ -466,8 +466,10 @@ class _BasePlot(Plot):
         axis_impl = self._resolve_axis(axis)
         if axis_type == AxisType.Linear:
             axis_impl.set_log(False)
+            axis_impl.set_is_time_axis(False)
         elif axis_type == AxisType.Logarithmic:
             axis_impl.set_log(True)
+            axis_impl.set_is_time_axis(False)
         elif axis_type == AxisType.DateTime:
             axis_impl.set_is_time_axis(True)
         else:

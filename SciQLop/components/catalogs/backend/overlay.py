@@ -85,6 +85,24 @@ class CatalogOverlay(QObject):
         return self._catalog
 
     @property
+    def color(self) -> str:
+        return self._color
+
+    @color.setter
+    def color(self, color: str) -> None:
+        self._color = color
+        # Redraw existing spans with the new color.
+        all_events = list(self._event_by_span_id.values())
+        self._event_colors = self._mapper(all_events, self._color)
+        for uuid in list(self._event_connections):
+            self._disconnect_event(uuid)
+        for span in self._span_collection.spans():
+            self._span_collection.delete_span(span)
+        self._event_by_span_id.clear()
+        for event in all_events:
+            self._add_span(event)
+
+    @property
     def span_count(self) -> int:
         return len(self._event_by_span_id)
 

@@ -445,7 +445,7 @@ class PlotPanel:
 
     @experimental_api()
     @on_main_thread
-    def add_catalog_overlay(self, catalog_path: str, *, override_color=None, label=None):
+    def add_catalog_overlay(self, catalog_path: str, *, override_color=None):
         """Attach a catalog overlay to this panel.
 
         Parameters
@@ -453,9 +453,7 @@ class PlotPanel:
         catalog_path : str
             Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
         override_color : str, optional
-            Reserved display color for the overlay.
-        label : str, optional
-            Human-readable label for the overlay.
+            Display color for the overlay spans.
 
         Returns
         -------
@@ -464,7 +462,7 @@ class PlotPanel:
         """
         from SciQLop.user_api.catalogs._overlay import add_catalog_overlay
         return add_catalog_overlay(self, catalog_path,
-                                   override_color=override_color, label=label)
+                                   override_color=override_color)
 
     @experimental_api()
     @on_main_thread

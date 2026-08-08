@@ -38,3 +38,17 @@ def test_set_axis_type(qapp):
     panel = create_plot_panel()
     plot, _ = panel.plot_data(np.arange(10), np.arange(10))
     plot.set_axis_type("y", AxisType.Logarithmic)
+
+
+def test_set_axis_type_resets_time_axis(qapp):
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+    SciQLopMainWindow()
+    panel = create_plot_panel()
+    plot, _ = panel.plot_data(np.arange(10), np.arange(10))
+    plot.set_axis_type("x", AxisType.DateTime)
+    assert plot._resolve_axis("x").is_time_axis() is True
+    plot.set_axis_type("x", AxisType.Linear)
+    assert plot._resolve_axis("x").is_time_axis() is False
+    plot.set_axis_type("x", AxisType.DateTime)
+    plot.set_axis_type("x", AxisType.Logarithmic)
+    assert plot._resolve_axis("x").is_time_axis() is False

@@ -74,6 +74,6 @@ def test_add_and_remove_catalog_overlay(overlay_provider, overlay_panel):
 
 def test_remove_via_helper(overlay_provider, overlay_panel):
     path = "OverlayTest//room1//events"
-    overlay = add_catalog_overlay(overlay_panel, path, label="events")
-    assert overlay.label == "events"
+    overlay = add_catalog_overlay(overlay_panel, path, override_color="#00ff00")
+    assert overlay.override_color == "#00ff00"
     overlay_panel.remove_catalog_overlay(overlay)
