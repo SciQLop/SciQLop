@@ -219,4 +219,36 @@ def _one_line_doc(obj) -> str:
 
 
 def _trim_doc(doc: str) -> str:
-    return trim_lines(doc, _MAX_DOC_LINES)
+    """Return a token-cheap docstring excerpt that preserves Examples sections.
+
+    Most docstrings keep the first ``_MAX_DOC_LINES`` lines. If an
+    ``Examples`` section is present, it is included even when it falls past
+    that limit, because agents rely on those snippets to use the API
+    correctly.
+    """
+    lines = doc.splitlines()
+    if len(lines) <= _MAX_DOC_LINES:
+        return doc
+
+    try:
+        examples_idx = next(
+            i for i, line in enumerate(lines) if line.strip().lower() == "examples"
+        )
+    except StopIteration:
+        return trim_lines(doc, _MAX_DOC_LINES)
+
+    # Keep the normal head, then append the Examples block.
+    example_lines = [lines[examples_idx]]
+    for line in lines[examples_idx + 1 :]:
+        stripped = line.strip()
+        # Stop at the next top-level section header (no leading spaces, alphabetic).
+        if (
+            stripped
+            and not line.startswith(" ")
+            and stripped[0].isalpha()
+            and len(stripped) < 40
+        ):
+            break
+        example_lines.append(line)
+
+    return "\n".join(lines[:_MAX_DOC_LINES] + ["", "..."] + example_lines)
