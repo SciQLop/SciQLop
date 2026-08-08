@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from SciQLop.user_api.plot import PlotPanel
-from SciQLop.user_api.plot.enums import BinStrategy, GraphType, LineTermination
+from SciQLop.user_api.plot import LineTermination, PlotPanel
+from SciQLop.user_api.plot.enums import BinStrategy, GraphType
 from SciQLop.user_api.plot._graphic_primitives import (
     CurvedLine,
     HorizontalSpan,
