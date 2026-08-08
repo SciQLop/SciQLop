@@ -10,9 +10,23 @@ All user_api and magic code should import from this module.
 Two primitives sit on top of the invoker: `@on_main_thread` for functions we own,
 and `MainThreadProxy` for live QObjects handed to kernel-thread code. Both are
 no-ops before `init_invoker()`, when the only caller is the main thread anyway.
+
+When you need the real QObject behind a proxy (for example to pass it to a Qt
+helper the proxy cannot handle), use `unwrap(obj)`. Most user-facing helpers are
+already `@on_main_thread`, so you rarely need this.
 """
 import logging
 from functools import wraps
+
+__all__ = [
+    "init_invoker",
+    "invoke_on_main_thread",
+    "on_main_thread",
+    "MainThreadProxy",
+    "unwrap",
+    "unwrap_all",
+    "main_thread_safe",
+]
 
 _log = logging.getLogger(__name__)
 
