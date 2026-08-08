@@ -83,7 +83,7 @@ class AgentChatDock(QWidget):
         self._tempdir = Path(tempfile.mkdtemp(prefix="sciqlop_agents_"))
         self._sessions: Dict[str, _AgentSession] = {}
         self._current: Optional[str] = None
-        self._allow_writes = False
+        self._allow_writes = AgentChatSettings().allow_writes
         self._session_filter = ""
         self._turn_task: Optional[asyncio.Task] = None
         self._bg_tasks: set[asyncio.Task] = set()
@@ -134,6 +134,7 @@ class AgentChatDock(QWidget):
         self._model_combo = self._settings_popup.model_combo
         self._verbosity_combo = self._settings_popup.verbosity_combo
         self._writes_toggle = self._settings_popup.writes_toggle
+        self._writes_toggle.setChecked(self._allow_writes)
         self._model_combo.currentIndexChanged.connect(self._on_model_changed)
         self._verbosity_combo.currentIndexChanged.connect(self._on_verbosity_changed)
         self._writes_toggle.stateChanged.connect(self._on_writes_toggled)
@@ -430,8 +431,10 @@ class AgentChatDock(QWidget):
         self._allow_writes = state == Qt.CheckState.Checked.value
         for session in self._sessions.values():
             session.backend.set_allow_writes(self._allow_writes)
+        with AgentChatSettings() as cfg:
+            cfg.allow_writes = self._allow_writes
         self._set_status(
-            "Write actions enabled." if self._allow_writes else "Write actions disabled."
+            "Yolo mode enabled." if self._allow_writes else "Yolo mode disabled."
         )
 
     def _on_reset(self) -> None:

@@ -53,10 +53,11 @@ class AgentSettingsPopup(QWidget):
             "How much of the agent's tool activity to show in the chat.")
         form.addRow("Activity", self.verbosity_combo)
 
-        self.writes_toggle = QCheckBox("Allow write actions", self)
+        self.writes_toggle = QCheckBox("Yolo mode (auto-approve)", self)
         self.writes_toggle.setToolTip(
-            "When enabled, the agent can modify SciQLop state "
-            "(set time range, create panels, exec Python, edit notebooks).")
+            "When enabled, the agent can run gated tools — set time range, "
+            "create panels, exec Python, edit notebooks, install packages — "
+            "without asking for confirmation each time.")
         form.addRow("", self.writes_toggle)
 
         separator = QFrame(self)
