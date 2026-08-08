@@ -349,6 +349,14 @@ class PlotPanel:
         -------
         Tuple[XYPlot, Histogram2D]
             The newly created plot and the histogram plottable.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> panel = create_plot_panel()
+        >>> x = np.random.randn(1000)
+        >>> y = np.random.randn(1000)
+        >>> plot, hist = panel.histogram2d(x, y, x_bins=50, y_bins=50, name="density")
         """
         _validate_histogram_bins(x_bins, y_bins)
         impl = self._get_impl_or_raise()
@@ -394,6 +402,15 @@ class PlotPanel:
         -------
         Waterfall
             The waterfall plottable.
+
+        Examples
+        --------
+        >>> import numpy as np
+        >>> panel = create_plot_panel()
+        >>> x = np.linspace(0, 10, 100)
+        >>> y = np.linspace(0, 5, 20)
+        >>> z = np.sin(x) * np.exp(-y[:, None])
+        >>> wf = panel.waterfall(x, y, z, name="spectrogram stack")
         """
         impl = self._get_impl_or_raise()
         plot_impl = impl.create_plot(plot_index, _PlotType.TimeSeries)
