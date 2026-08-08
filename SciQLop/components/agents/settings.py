@@ -36,12 +36,6 @@ class AgentChatSettings(ConfigEntry):
                     "backend display name. Empty string = backend default.",
         json_schema_extra={"widget": "hidden"},
     )
-    allow_writes: bool = Field(
-        default=False,
-        description="When true, the agent can run gated (write) tools without "
-                    "per-call confirmation.",
-        json_schema_extra={"widget": "hidden"},
-    )
 
 
 class AdsCredentialsSettings(ConfigEntry):

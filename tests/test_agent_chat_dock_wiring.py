@@ -615,47 +615,6 @@ def test_switching_session_again_supersedes_the_previous_load(dock, qtbot):
     assert first_task.cancelled()
 
 
-def _run_async(coro):
-    import asyncio
-    loop = asyncio.new_event_loop()
-    try:
-        return loop.run_until_complete(coro)
-    finally:
-        loop.close()
-
-
-def test_gated_tool_blocked_when_yolo_off():
-    from SciQLop.components.agents.acp.tool_server import SciqlopToolServer
-
-    tools = [{
-        "name": "gated",
-        "description": "",
-        "input_schema": {},
-        "handler": lambda _: {"content": [{"type": "text", "text": "done"}]},
-    }]
-    server = SciqlopToolServer(tools, {"gated"}, is_write_allowed=lambda: False, confirm_cb=None)
-    result = _run_async(server._dispatch("gated", {}))
-    assert "disabled" in result[0].text
-
-
-async def _should_not_be_called(_name, _args):
-    raise AssertionError("confirm_cb should not be called in yolo mode")
-
-
-def test_gated_tool_auto_approved_when_yolo_on():
-    from SciQLop.components.agents.acp.tool_server import SciqlopToolServer
-
-    tools = [{
-        "name": "gated",
-        "description": "",
-        "input_schema": {},
-        "handler": lambda _: {"content": [{"type": "text", "text": "done"}]},
-    }]
-    server = SciqlopToolServer(tools, {"gated"}, is_write_allowed=lambda: True, confirm_cb=_should_not_be_called)
-    result = _run_async(server._dispatch("gated", {}))
-    assert result[0].text == "done"
-
-
 def test_alignment_prompt_warns_against_stale_api_assumptions():
     from SciQLop.components.agents import chat_dock as mod
     assert "verify the current API" in mod._AGENT_ALIGNMENT

@@ -171,8 +171,14 @@ class AcpAgentBackend:
         if short in self._tool_names:
             if short not in self._gated_names:
                 return permission_answer(options, allow=True)
-            # Yolo mode: auto-approve gated tools. Otherwise deny.
-            return permission_answer(options, allow=bool(self._allow_writes))
+            if not self._allow_writes or self._confirm_cb is None:
+                return permission_answer(options, allow=False)
+            try:
+                allowed = await self._confirm_cb(
+                    short, raw_input_dict(getattr(tool_call, "raw_input", None)))
+            except Exception:
+                allowed = False
+            return permission_answer(options, allow=allowed)
         return permission_answer(options, allow=False)
 
     # ------------------------------------------------------------- protocol

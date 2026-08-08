@@ -62,10 +62,16 @@ class SciqlopToolServer:
         if name in self._gated_names:
             if not self._is_write_allowed():
                 return [_text(
-                    "write actions are disabled — toggle 'Yolo mode' "
+                    "write actions are disabled — toggle 'Allow write actions' "
                     "in the SciQLop chat dock"
                 )]
-            # In yolo mode, gated tools run without per-call confirmation.
+            if self._confirm_cb is not None:
+                try:
+                    allowed = await self._confirm_cb(name, args)
+                except Exception as e:
+                    return [_text(f"approval callback failed: {e}")]
+                if not allowed:
+                    return [_text("user denied the tool call")]
         handler = self._handlers.get(name)
         if handler is None:
             return [_text(f"unknown tool: {name}")]
