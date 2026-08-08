@@ -278,6 +278,10 @@ class Text(_PlotItem):
             Font family. Defaults to the current QCP font family.
         coordinate_system : CoordinateSystem
             ``Data`` (default) or ``Pixel``.
+
+        Examples
+        --------
+        >>> label = Text(plot, "shock crossing", x=0.5, y=0.9)
         """
         impl = plot._get_impl_or_raise()
         self._impl: _SciQLopTextItem = _SciQLopTextItem(
@@ -391,6 +395,14 @@ class CurvedLine(_PlotItem):
             giving an almost-straight curve (override to add curvature).
         coordinate_system : CoordinateSystem
             ``Data`` (default) or ``Pixel``.
+
+        Examples
+        --------
+        >>> arrow = CurvedLine(
+        ...     plot, start=(0.0, 0.0), stop=(1.0, 1.0),
+        ...     start_termination=LineTermination.NoneTermination,
+        ...     stop_termination=LineTermination.Arrow,
+        ... )
         """
         impl = plot._get_impl_or_raise()
         self._impl: _SciQLopCurvedLineItem = _SciQLopCurvedLineItem(
@@ -803,6 +815,10 @@ class RectangularSpan(_PlotItem):
         Whether the span is visible. Defaults to True.
     tool_tip : str
         Tooltip text.
+
+    Examples
+    --------
+    >>> span = RectangularSpan(plot, x1=1.0, y1=-1.0, x2=2.0, y2=1.0, color="rgba(200, 50, 50, 0.3)")
     """
 
     @on_main_thread
@@ -944,6 +960,10 @@ class HorizontalSpan(_PlotItem):
         Whether the span is visible. Defaults to True.
     tool_tip : str
         Tooltip text.
+
+    Examples
+    --------
+    >>> band = HorizontalSpan(plot, y1=-1.0, y2=1.0, color="rgba(50, 150, 200, 0.3)")
     """
 
     @on_main_thread
