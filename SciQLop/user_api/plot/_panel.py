@@ -179,7 +179,7 @@ class PlotPanel:
         impl = self._get_impl_or_raise()
         for plot in impl.plots() or []:
             for graph in plot.plottables() or []:
-                if graph.property("busy"):
+                if bool(graph.property("busy")):
                     return True
         return False
 
@@ -195,8 +195,8 @@ class PlotPanel:
         import time
         from PySide6.QtCore import QCoreApplication
 
-        deadline = time.time() + max(0.0, float(timeout))
-        while time.time() < deadline:
+        deadline = time.monotonic() + max(0.0, float(timeout))
+        while time.monotonic() < deadline:
             if not self.is_busy():
                 return True
             QCoreApplication.processEvents()
