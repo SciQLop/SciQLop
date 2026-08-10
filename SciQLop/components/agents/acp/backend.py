@@ -24,7 +24,7 @@ import shutil
 from pathlib import Path
 from typing import AsyncIterator, List, Optional
 
-from ..backend import BackendContext, SessionEntry, StreamBlock
+from ..backend import BackendContext, Cost, SessionEntry, StreamBlock, UsageSnapshot
 from ..chat import ChatMessage
 from ..settings import AgentWriteMode
 from . import sessions as _acp_sessions
@@ -41,6 +41,7 @@ try:
         FileSystemCapabilities,
         HttpMcpServer,
         Implementation,
+        UsageUpdate,
     )
 
     _ACP_AVAILABLE = True
@@ -87,6 +88,7 @@ class AcpAgentBackend:
         self._session_id: Optional[str] = None
         self._updates: Optional[asyncio.Queue] = None
         self._slash_commands: List[str] = []
+        self._usage = None
 
     # -------------------------------------------------------- subclass hooks
 
@@ -162,9 +164,30 @@ class AcpAgentBackend:
                 "/" + c.name.lstrip("/") for c in update.available_commands
             ]
             return
+        if isinstance(update, UsageUpdate):
+            self._usage = update
+            return
         queue = self._updates
         if queue is not None:
             queue.put_nowait(update)
+
+    async def usage_snapshot(self) -> Optional[UsageSnapshot]:
+        """Last reported context/cost for this session (`UsageReportingBackend`).
+
+        ACP reports usage once per turn as a session update, so this is the
+        state as of the last turn — no I/O, and None until one has run.
+        """
+        usage = self._usage
+        if usage is None:
+            return None
+        cost = getattr(usage, "cost", None)
+        return UsageSnapshot(
+            model=self._model,
+            context_tokens=usage.used,
+            context_max=usage.size,
+            cost=(Cost(amount=cost.amount, unit=cost.currency)
+                  if cost is not None else None),
+        )
 
     async def _decide_permission(self, options, tool_call):
         """Answer the agent's permission prompts (see client.py for the policy)."""

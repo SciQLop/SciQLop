@@ -11,7 +11,6 @@ tool calls attach to the current assistant message.
 from __future__ import annotations
 
 import asyncio
-import os
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
@@ -26,23 +25,17 @@ from ..chat import (
     ToolActivityBlock,
     write_b64_image,
 )
+from ..workspace import current_workspace_dir
 from .stream import raw_input_dict, tool_output
 
-
-def current_workspace_dir() -> Path:
-    try:
-        from SciQLop.components.workspaces import workspaces_manager_instance
-        mgr = workspaces_manager_instance()
-        ws = getattr(mgr, "workspace", None)
-        wdir = getattr(ws, "workspace_dir", None) if ws is not None else None
-        if wdir:
-            return Path(wdir).resolve()
-    except Exception:
-        pass
-    env = os.environ.get("SCIQLOP_WORKSPACE_DIR")
-    if env:
-        return Path(env).resolve()
-    return Path.cwd().resolve()
+__all__ = [
+    "acp_config_options",
+    "acp_list_sessions",
+    "acp_load_session_messages",
+    "async_acp_load_session_messages",
+    "current_workspace_dir",
+    "replay_to_messages",
+]
 
 
 def _run_async(coro_factory, timeout: float = 20.0):
@@ -142,6 +135,42 @@ def acp_list_sessions(command: List[str], cwd: Optional[Path] = None) -> List[Se
         return _run_async(_list)
     except Exception:
         return []
+
+
+def acp_config_options(
+    command: List[str], cwd: Optional[Path] = None
+) -> dict[str, list[tuple[str, str]]]:
+    """`{config_id: [(label, value), …]}` for the agent's session config options.
+
+    ACP only reports these on a live session, but the model dropdown is built at
+    plugin load — so this opens a throwaway session purely to read them. Costs
+    one short-lived agent process; the payoff is a model list that inherits the
+    agent's own provider filtering instead of a plugin re-deriving it from
+    config files that drift.
+    """
+    work_dir = str(cwd or current_workspace_dir())
+
+    async def _read():
+        proc, conn = await _spawn_agent(command)
+        try:
+            resp = await conn.new_session(cwd=work_dir, mcp_servers=[])
+            options: dict[str, list[tuple[str, str]]] = {}
+            for opt in getattr(resp, "config_options", None) or []:
+                choices = [
+                    (str(getattr(o, "name", "") or getattr(o, "value", "")),
+                     str(getattr(o, "value", "")))
+                    for o in getattr(opt, "options", None) or []
+                ]
+                if choices:
+                    options[str(getattr(opt, "id", ""))] = choices
+            return options
+        finally:
+            await _kill(proc, conn)
+
+    try:
+        return _run_async(_read, timeout=30.0)
+    except Exception:
+        return {}
 
 
 async def async_acp_load_session_messages(

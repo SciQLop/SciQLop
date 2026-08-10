@@ -44,9 +44,11 @@ from .chat.session_panel import SessionListPanel
 from .chat.sessions_view import grouped_sessions, all_groups, all_tags, claimed_ids
 from .chat.settings_popup import AgentSettingsPopup
 from .chat.usage_refresh import UsageRefresher
+from .guidance import load_guidance
 from .registry import available_backends, create_backend
 from .settings import AgentChatSettings, AgentSessionMeta, AgentWriteMode
 from .tools import build_sciqlop_tools
+from .workspace import current_workspace_dir
 
 log = getLogger(__name__)
 
@@ -332,6 +334,9 @@ class AgentChatDock(QWidget):
     def _create_session(self, name: str) -> _AgentSession:
         be_tempdir = self._tempdir / name / "tool_images"
         be_tempdir.mkdir(parents=True, exist_ok=True)
+        # Publish before the backend exists: the CLI agents read AGENTS.md when
+        # they create a session, not when they answer a prompt.
+        guidance = load_guidance(current_workspace_dir())
         ctx = BackendContext(
             main_window=self._main_window,
             tools=self._tools,
@@ -339,6 +344,7 @@ class AgentChatDock(QWidget):
             confirm_cb=self._confirm_tool_call,
             write_mode=self._write_mode,
             ask_question_cb=self._ask_question,
+            guidance=guidance,
         )
         backend = create_backend(name, ctx)
         return _AgentSession(backend=backend)

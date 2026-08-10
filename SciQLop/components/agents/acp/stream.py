@@ -6,8 +6,10 @@ the activity block; ToolCallProgress with content yields a result-only
 activity block the dock merges by tool_call_id, plus ImageBlocks for inline
 screenshots.
 
-Note: this covers agents that stream *deltas* (kimi). Agents that stream
-*accumulated snapshots* (opencode's ACP) need a diffing translator instead —
+Note: chunks are deltas on the wire for both kimi and opencode (verified
+2026-08-10 against `opencode acp` 1.18.15 — the accumulation the old
+opencode-agent-sdk exposed was its own `_text_buffer`, not the protocol). An
+agent that ever streams *accumulated snapshots* needs a diffing translator —
 subclass or wrap this one rather than piling a mode flag in here.
 """
 from __future__ import annotations

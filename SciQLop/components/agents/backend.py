@@ -33,6 +33,12 @@ class BackendContext:
     confirm_cb: ConfirmCallback
     write_mode: str = "confirm"
     ask_question_cb: Optional[AskQuestionCallback] = None
+    # The workspace `AGENTS.md` — SciQLop's operating guidance plus whatever the
+    # user added for this workspace. Backends that spawn a CLI in the workspace
+    # dir (claude, kimi, opencode) already read the file themselves and should
+    # ignore this; backends talking to a plain HTTP API (albert, copilot) must
+    # send it as their system prompt, or the user's rules never reach them.
+    guidance: str = ""
 
     @property
     def allow_writes(self) -> bool:
