@@ -7,6 +7,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(SCIQLOP_LAUNCHER_BUILD_TESTS "Build launcher unit tests" ON)
 
+# Static CRT so the shipped binary needs no VC++ redistributable. This must be
+# set before any target (including the FetchContent subprojects) is defined, and
+# FLTK additionally defaults to the DLL runtime through its own option — mixing
+# the two is a hard LNK2038 at link time.
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    set(FLTK_MSVC_RUNTIME_DLL OFF CACHE BOOL "" FORCE)
+endif()
+
 include(FetchContent)
 
 # FLTK is linked statically and builds its own png/zlib/jpeg, so the only system
@@ -55,12 +64,6 @@ add_executable(sciqlop-launcher WIN32
     src/ui_fltk.cpp
 )
 target_link_libraries(sciqlop-launcher PRIVATE launcher_core fltk::fltk fltk::images)
-
-if(MSVC)
-    # Static CRT: the shipped binary must not need the VC++ redistributable.
-    set_property(TARGET sciqlop-launcher launcher_core
-        PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
 
 if(SCIQLOP_LAUNCHER_BUILD_TESTS)
     enable_testing()
