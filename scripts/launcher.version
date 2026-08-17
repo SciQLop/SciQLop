@@ -1,0 +1,15 @@
+# Pinned SciQLop launcher release, consumed by the installer build scripts the
+# same way UV_VERSION and NODE_VERSION are. Bump the version and the matching
+# digest together — fetch_launcher refuses to install an unverified binary.
+#
+# Digests come from the launcher-v<version> release assets (*.sha256).
+# TODO: fill in once launcher-v0.1.0 is tagged; the placeholders below are not
+# real digests and will (deliberately) fail verification.
+
+LAUNCHER_VERSION=0.1.0
+LAUNCHER_REPO=SciQLop/SciQLop
+
+LAUNCHER_SHA256_linux_x86_64=0000000000000000000000000000000000000000000000000000000000000000
+LAUNCHER_SHA256_macos_arm64=0000000000000000000000000000000000000000000000000000000000000000
+LAUNCHER_SHA256_macos_x86_64=0000000000000000000000000000000000000000000000000000000000000000
+LAUNCHER_SHA256_windows_x86_64=0000000000000000000000000000000000000000000000000000000000000000

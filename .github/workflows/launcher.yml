@@ -1,0 +1,104 @@
+name: Launcher
+
+# The launcher is versioned and released independently of SciQLop: it changes
+# rarely, and the installer build scripts consume its prebuilt binaries the same
+# way they consume uv and node. Tag `launcher-v*` to publish a set.
+on:
+  push:
+    tags: ['launcher-v*']
+  pull_request:
+    paths: ['launcher/**', '.github/workflows/launcher.yml']
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.artifact }}
+    runs-on: ${{ matrix.runs-on }}
+    container: ${{ matrix.container }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # AlmaLinux 8 / glibc 2.28 so the binary runs on every distro the
+          # AppImage targets. Building on the ubuntu-latest runner directly
+          # would raise the floor to its own (much newer) glibc.
+          - artifact: sciqlop-launcher-linux-x86_64
+            runs-on: ubuntu-latest
+            container: quay.io/pypa/manylinux_2_28_x86_64
+          - artifact: sciqlop-launcher-macos-arm64
+            runs-on: macos-14
+          - artifact: sciqlop-launcher-macos-x86_64
+            runs-on: macos-15-intel
+          - artifact: sciqlop-launcher-windows-x86_64
+            runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install X11 build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          dnf install -y cmake libX11-devel libXext-devel libXft-devel \
+            libXinerama-devel libXfixes-devel libXcursor-devel libXrender-devel \
+            fontconfig-devel
+
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Configure
+        working-directory: launcher
+        env:
+          # Matches the oldest macOS the DMG supports; without it the binary
+          # inherits the runner's SDK floor.
+          MACOSX_DEPLOYMENT_TARGET: '11.0'
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        working-directory: launcher
+        run: cmake --build build --config Release -j 4
+
+      - name: Test
+        working-directory: launcher
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Stage binary
+        shell: bash
+        working-directory: launcher
+        run: |
+          mkdir -p dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp build/Release/sciqlop-launcher.exe "dist/${{ matrix.artifact }}.exe"
+          else
+            cp build/sciqlop-launcher "dist/${{ matrix.artifact }}"
+            strip "dist/${{ matrix.artifact }}"
+          fi
+          cd dist && (sha256sum * > "${{ matrix.artifact }}.sha256" 2>/dev/null || \
+                      shasum -a 256 * > "${{ matrix.artifact }}.sha256")
+          cat "${{ matrix.artifact }}.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: launcher/dist/*
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/launcher-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          body: |
+            Prebuilt SciQLop launcher binaries.
+
+            Consumed by the SciQLop installer build scripts via
+            `scripts/launcher.version`; pin the version and the sha256 there.

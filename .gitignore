@@ -28,3 +28,6 @@ launcher.res
 .flatpak-builder/
 test-reports/
 docs/screenshots/output/
+
+# Launcher build tree
+launcher/build/
