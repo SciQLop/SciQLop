@@ -35,10 +35,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The manylinux image already provides cmake (/usr/local/bin) and
+      # gcc-toolset on PATH; only the X11/fontconfig headers are missing.
       - name: Install X11 build dependencies
         if: runner.os == 'Linux'
         run: |
-          dnf install -y cmake libX11-devel libXext-devel libXft-devel \
+          dnf install -y libX11-devel libXext-devel libXft-devel \
             libXinerama-devel libXfixes-devel libXcursor-devel libXrender-devel \
             fontconfig-devel
 
@@ -62,20 +64,51 @@ jobs:
         working-directory: launcher
         run: ctest --test-dir build --output-on-failure -C Release
 
+      # ctest only covers the pure logic. This drives the real binary against a
+      # stub uv and a stub app under Xvfb, which is the only place the splash,
+      # the ready-file handshake and the restart/switch protocol get exercised.
+      - name: Headless smoke test
+        if: runner.os == 'Linux'
+        working-directory: launcher
+        run: |
+          dnf install -y xorg-x11-server-Xvfb > /dev/null
+          tests/smoke_test.sh build/sciqlop-launcher
+
+      # A binary built here but linked against a newer glibc than the oldest
+      # supported distro would only fail at a user's launch, so assert the
+      # floor rather than trusting the container tag.
+      - name: Verify glibc floor
+        if: runner.os == 'Linux'
+        working-directory: launcher
+        run: |
+          highest=$(objdump -T build/sciqlop-launcher \
+                    | grep -oE 'GLIBC_[0-9]+\.[0-9]+' | sort -uV | tail -1)
+          echo "highest required symbol version: $highest"
+          [ "$highest" = "GLIBC_2.28" ] || {
+            echo "::error::expected a GLIBC_2.28 floor, got $highest"; exit 1; }
+
       - name: Stage binary
         shell: bash
         working-directory: launcher
+        env:
+          ARTIFACT: ${{ matrix.artifact }}
         run: |
           mkdir -p dist
           if [ "${{ runner.os }}" = "Windows" ]; then
-            cp build/Release/sciqlop-launcher.exe "dist/${{ matrix.artifact }}.exe"
+            cp build/Release/sciqlop-launcher.exe "dist/$ARTIFACT.exe"
+            binary="$ARTIFACT.exe"
           else
-            cp build/sciqlop-launcher "dist/${{ matrix.artifact }}"
-            strip "dist/${{ matrix.artifact }}"
+            cp build/sciqlop-launcher "dist/$ARTIFACT"
+            strip "dist/$ARTIFACT"
+            binary="$ARTIFACT"
           fi
-          cd dist && (sha256sum * > "${{ matrix.artifact }}.sha256" 2>/dev/null || \
-                      shasum -a 256 * > "${{ matrix.artifact }}.sha256")
-          cat "${{ matrix.artifact }}.sha256"
+          cd dist
+          if command -v sha256sum >/dev/null; then
+            sha256sum "$binary" > "$ARTIFACT.sha256"
+          else
+            shasum -a 256 "$binary" > "$ARTIFACT.sha256"
+          fi
+          cat "$ARTIFACT.sha256"
 
       - uses: actions/upload-artifact@v4
         with:

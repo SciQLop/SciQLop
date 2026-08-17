@@ -26,7 +26,12 @@ if (-not $expected) { throw "No pinned digest for $Platform in launcher.version"
 
 $version = $pins["LAUNCHER_VERSION"]
 $repo = $pins["LAUNCHER_REPO"]
-$asset = "sciqlop-launcher-$($Platform -replace '_', '-').exe"
+
+# Must match the artifact names published by .github/workflows/launcher.yml.
+$assets = @{ "windows_x86_64" = "sciqlop-launcher-windows-x86_64.exe" }
+$asset = $assets[$Platform]
+if (-not $asset) { throw "Unknown launcher platform: $Platform" }
+
 $url = "https://github.com/$repo/releases/download/launcher-v$version/$asset"
 
 Write-Host "Downloading launcher $version ($Platform)..."

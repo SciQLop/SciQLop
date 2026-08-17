@@ -47,7 +47,10 @@ if(NOT WIN32)
     target_link_libraries(launcher_core PUBLIC ${CMAKE_DL_LIBS})
 endif()
 
-add_executable(sciqlop-launcher WIN32 MACOSX_BUNDLE
+# WIN32 suppresses the console window. Deliberately NOT MACOSX_BUNDLE: the
+# launcher is installed inside the existing SciQLop.app by make_dmg.sh, so a
+# nested bundle would be wrong (and would move the binary the CI job stages).
+add_executable(sciqlop-launcher WIN32
     src/main.cpp
     src/ui_fltk.cpp
 )
