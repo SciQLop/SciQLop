@@ -60,11 +60,12 @@ rm -f $PYTHON_DIR/lib/python${PYTHON_VERSION}/EXTERNALLY-MANAGED
 # Install SciQLop
 ########################################
 
+# [all] is the application; the bare package is only the launcher.
 $UV_BIN pip install \
     --python $PYTHON_BIN \
     --reinstall \
     --no-cache \
-    "$SCIQLOP_ROOT"
+    "$SCIQLOP_ROOT[all]"
 
 ########################################
 # Plugin dependencies

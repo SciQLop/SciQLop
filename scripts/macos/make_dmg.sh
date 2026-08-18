@@ -135,7 +135,8 @@ find $PREFIX_ABS/lib -maxdepth 2 -name EXTERNALLY-MANAGED -delete
 ########################################
 
 echo "Installing SciQLop into bundle..."
-$UV_BIN pip install -q --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROOT/"
+# [all] is the application; the bare package is only the launcher.
+$UV_BIN pip install -q --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROOT/[all]"
 
 ########################################
 # Plugin dependencies

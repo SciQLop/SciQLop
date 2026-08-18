@@ -35,14 +35,30 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Visualization",
 ]
+# Only what the launcher needs to prepare a workspace: read the manifest and
+# settings, then drive uv. The application itself is the `all` extra and gets
+# installed into the workspace venv, so `pip install SciQLop` stays small and a
+# workspace can pin its own SciQLop version.
+# tests/test_launcher_thin_imports.py enforces that nothing on the launcher's
+# path imports the GUI stack.
 dependencies = [
+    "platformdirs",
+    "pydantic",
+    "pyyaml",
+    "tomli_w",
+    "uv",
+]
+
+[project.optional-dependencies]
+# The application. `pip install SciQLop[all]` is what an end user wants, and
+# what a workspace venv installs.
+all = [
     "SciQLopPlots==0.34.0",
     "cloudpickle",
     "defusedxml",
     "speasy>=1.6.1",
     "qtconsole",
     "humanize",
-    "platformdirs",
     "seaborn",
     "scipy",
     "pyside6==6.11.1",
@@ -66,22 +82,17 @@ dependencies = [
     "PyGitHub",
     "numpy",
     "expression",
-    "pydantic",
     "keyring",
     "pypdf",
-    "uv",
-    "tomli_w",
-    "pyyaml",
     "psutil",
     "model2vec",
     "huggingface_hub"
 ]
-[project.urls]
-homepage = "https://github.com/SciQLop/SciQLop"
-bug_tracker = "https://github.com/SciQLop/SciQLop/issues"
 
-[project.optional-dependencies]
 dev = [
+    # The test suite drives the GUI, so it needs the application, not just the
+    # launcher.
+    "SciQLop[all]",
     "pytest",
     "pytest-cov",
     "pytest-qt",
@@ -110,6 +121,21 @@ dev = [
     "mcp>=1.19.0,<2",
     "uvicorn>=0.30.0",
 ]
+
+# `uv run` installs the project's dependencies, which are now only the
+# launcher's. Without this it would prune the GUI stack out of the dev venv on
+# the first `uv run pytest`. Declaring dev as a default group (it pulls the
+# `dev` extra, so the list lives in one place) keeps a dev checkout complete,
+# while `pip install -e ".[dev]"` still works for CI and for pip users.
+[dependency-groups]
+dev = ["SciQLop[dev]"]
+
+[tool.uv]
+default-groups = ["dev"]
+
+[project.urls]
+homepage = "https://github.com/SciQLop/SciQLop"
+bug_tracker = "https://github.com/SciQLop/SciQLop/issues"
 
 [project.gui-scripts]
 sciqlop = "SciQLop.app:main"

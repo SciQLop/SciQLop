@@ -355,6 +355,60 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
         shutil.rmtree(ready_dir, ignore_errors=True)
 
 
+def _qt_available() -> bool:
+    """Whether the GUI stack is installed.
+
+    ``pip install sciqlop`` provides only the launcher; the application (and
+    PySide6 with it) is installed into the workspace venv. There is no splash
+    to show in that case, so the launcher reports progress on the console it
+    was started from.
+    """
+    try:
+        import PySide6  # noqa: F401
+        return True
+    except ImportError:
+        return False
+
+
+def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tuple[int, Path | None]:
+    """Prepare the workspace and run SciQLop with no splash.
+
+    Output goes straight to the terminal rather than a log file: the user is
+    already looking at one, and it keeps this path free of the tee/ready-file
+    machinery the windowed path needs to close its splash at the right moment.
+    """
+    _apply_proxy_settings()
+    workspace_dir = resolve_workspace_dir(workspace_name, sciqlop_file)
+
+    print(f"Preparing workspace {workspace_dir} ...", flush=True)
+    try:
+        if _is_editable_install():
+            _prepare_workspace_dev(workspace_dir, on_output=print)
+            python_path = Path(sys.executable)
+        else:
+            from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+            python_path = prepare_workspace(workspace_dir, on_output=print)
+    except Exception:
+        import traceback
+        print("Workspace preparation failed:\n" + traceback.format_exc(), file=sys.stderr)
+        return 1, workspace_dir
+
+    if warning := check_xcb_cursor():
+        print(warning, file=sys.stderr)
+
+    env = os.environ.copy()
+    env["SCIQLOP_WORKSPACE_DIR"] = str(workspace_dir)
+    env["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
+    env["PYTHONNOUSERSITE"] = "1"
+    # No SCIQLOP_STARTUP_READY_FILE: with no splash to close, the app must not
+    # wait for an acknowledgement that will never come.
+
+    print("Starting SciQLop ...", flush=True)
+    return subprocess.run(
+        [str(python_path), "-m", "SciQLop.sciqlop_app"], env=env
+    ).returncode, workspace_dir
+
+
 def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
     """Set up workspace directory, metadata, and install plugin deps in dev mode."""
     from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
@@ -403,8 +457,10 @@ def main(argv: list[str] | None = None) -> int:
     workspace_name = args.workspace
     sciqlop_file = args.sciqlop_file
 
+    run_session = _run_with_startup_window if _qt_available() else _run_on_console
+
     while True:
-        exit_code, workspace_dir = _run_with_startup_window(workspace_name, sciqlop_file)
+        exit_code, workspace_dir = run_session(workspace_name, sciqlop_file)
         sciqlop_file = None  # only consumed once, on the first iteration
 
         if exit_code == EXIT_RESTART:

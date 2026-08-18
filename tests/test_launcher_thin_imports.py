@@ -48,8 +48,18 @@ _PROBE = textwrap.dedent(
     sys.meta_path.insert(0, _Blocker())
     sys.path.insert(0, {repo_root!r})
 
-    # The launcher entry point itself.
-    from SciQLop.sciqlop_launcher import parse_args, resolve_workspace_dir
+    # The launcher entry point itself, including the console front end it uses
+    # when the GUI stack is absent and the proxy setup it runs before uv.
+    from SciQLop.sciqlop_launcher import (
+        parse_args,
+        resolve_workspace_dir,
+        _qt_available,
+        _run_on_console,
+        _apply_proxy_settings,
+    )
+
+    assert _qt_available() is False, "the probe must look like a thin install"
+    _apply_proxy_settings()
 
     # Workspace preparation: manifest, plugin discovery, pyproject, venv, sync.
     from SciQLop.components.workspaces.backend.workspace_setup import (

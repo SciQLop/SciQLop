@@ -74,7 +74,8 @@ Write-Host "Installing SciQLop..."
 # command line ends with \" which uv interprets as an escaped quote and the
 # install fails with "filename, directory name, or volume label syntax is
 # incorrect". CI paths have no spaces so this only bites local dev.
-& $UvBin pip install --system --python $PythonBin --link-mode=copy --reinstall --no-cache $SciQLopRoot
+# [all] is the application; the bare package is only the launcher.
+& $UvBin pip install --system --python $PythonBin --link-mode=copy --reinstall --no-cache "$SciQLopRoot[all]"
 if ($LASTEXITCODE -ne 0) { throw "uv pip install (SciQLop root) failed with exit $LASTEXITCODE" }
 
 ########################################

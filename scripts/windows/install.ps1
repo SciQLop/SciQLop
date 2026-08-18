@@ -65,7 +65,8 @@ Get-ChildItem -Path $PythonDir -Recurse -Filter "EXTERNALLY-MANAGED" -ErrorActio
 ########################################
 
 Write-Host "Installing SciQLop..."
-& $UvBin pip install --system --python $PythonBin --link-mode=copy sciqlop
+# [all] is the application; the bare package is only the launcher.
+& $UvBin pip install --system --python $PythonBin --link-mode=copy "sciqlop[all]"
 
 ########################################
 # Install plugin dependencies
