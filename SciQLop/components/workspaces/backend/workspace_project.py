@@ -114,6 +114,31 @@ def host_provided_overrides() -> List[str]:
     return [f"{pkg} ; python_version < '0'" for pkg in sorted(_HOST_PROVIDED_PACKAGES)]
 
 
+def running_sciqlop_version() -> str:
+    """Version of the SciQLop the launcher itself came from, or ""."""
+    try:
+        return importlib.metadata.version("SciQLop")
+    except importlib.metadata.PackageNotFoundError:
+        return ""
+
+
+def sciqlop_requirement(pinned_version: str = "") -> str:
+    """The workspace's SciQLop dependency.
+
+    ``[all]`` because the bare package is only the launcher — a workspace venv
+    that installed it would have nothing to run.
+
+    A development version is deliberately left unpinned: ``0.13.0.dev0`` does
+    not exist on PyPI, so pinning it would make every workspace unresolvable in
+    a dev build. Released versions pin exactly, which is what makes a workspace
+    reproducible.
+    """
+    version = pinned_version or running_sciqlop_version()
+    if not version or ".dev" in version:
+        return "sciqlop[all]"
+    return f"sciqlop[all]=={version}"
+
+
 def _slugify(name: str) -> str:
     """Convert a human-readable name to a URL/package-safe slug.
 
@@ -225,9 +250,9 @@ def generate_pyproject_toml(
     # RECORD-based uninstall (no refcounting) means removing or upgrading
     # either package guts the other's files (see lab_assets.repair_lab_assets,
     # which heals venvs already damaged in the field).
-    implicit_deps = ["jupyqt"]
+    implicit_deps = [sciqlop_requirement(manifest.sciqlop_version), "jupyqt"]
     raw_deps = [_normalize_url_requirement(r) for r in implicit_deps + list(manifest.requires) + list(plugin_deps)]
-    all_deps = _deduplicate_requirements(strip_host_provided(raw_deps))
+    all_deps = _deduplicate_requirements(raw_deps)
     slug = _slugify(manifest.name)
 
     # Format the dependencies list
@@ -237,19 +262,10 @@ def generate_pyproject_toml(
     else:
         deps_block = "dependencies = [\n]"
 
-    constraints = _base_constraints()
-    if constraints:
-        constraint_lines = "\n".join(f'    "{c}",' for c in constraints)
-        constraint_block = f"constraint-dependencies = [\n{constraint_lines}\n]"
-    else:
-        constraint_block = ""
-
-    overrides = host_provided_overrides()
-    if overrides:
-        override_lines = "\n".join(f'    "{o}",' for o in overrides)
-        override_block = f"override-dependencies = [\n{override_lines}\n]"
-    else:
-        override_block = ""
+    # No constraint or override blocks: the workspace owns its whole stack now,
+    # so there is no host environment to pin against or to hide SciQLop from.
+    constraint_block = ""
+    override_block = ""
 
     # Restrict uv resolution to platforms SciQLop actually targets so that
     # marker splits like sys_platform == 'emscripten' (which has no wheels for

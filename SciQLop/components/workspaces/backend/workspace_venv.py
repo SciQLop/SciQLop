@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
 import shutil
 import subprocess
 import sys
-import sysconfig
 from collections.abc import Callable
 from pathlib import Path
 
@@ -15,32 +13,6 @@ from SciQLop.core.common.python import get_python
 from SciQLop.components.workspaces.backend.uv import uv_command
 
 _WINDOWS = os.name == "nt"
-_SYSTEM_FINGERPRINT_FILENAME = ".sciqlop_system_fingerprint"
-
-
-def _system_packages_fingerprint() -> str:
-    """Hash the dist-info directory names in the bundled Python's site-packages.
-
-    A workspace venv created with --system-site-packages inherits whatever is
-    installed in the system layer.  When a SciQLop upgrade replaces the
-    bundled PySide6 / SciQLopPlots binaries underneath an existing venv, the
-    venv's own pinned copies and the system's new copies collide at import
-    time (different ABIs).  This fingerprint changes whenever any package is
-    added, removed, or re-versioned in the system layer, so the venv can be
-    rebuilt against the new stack.
-    """
-    purelib = Path(sysconfig.get_paths()["purelib"])
-    if not purelib.is_dir():
-        return ""
-    names = sorted(
-        p.name for p in purelib.iterdir()
-        if p.is_dir() and p.suffix == ".dist-info"
-    )
-    h = hashlib.sha256()
-    for name in names:
-        h.update(name.encode("utf-8"))
-        h.update(b"\n")
-    return h.hexdigest()
 
 
 def _run_uv(cmd: list[str], on_output: Callable[[str], None] | None = None, **kwargs) -> None:
@@ -87,11 +59,16 @@ class WorkspaceVenv:
         return self._venv_dir.exists() and self.python_path.exists()
 
     def create(self, on_output: Callable[[str], None] | None = None) -> None:
-        """Create the workspace venv with --system-site-packages."""
+        """Create a self-contained workspace venv.
+
+        Deliberately *not* --system-site-packages: the workspace installs its
+        own SciQLop, so inheriting the launcher's environment would shadow it
+        with a second copy and reintroduce the C-extension mismatches that the
+        base-package pinning used to guard against.
+        """
         cmd = uv_command(
             "venv",
             str(self._venv_dir),
-            "--system-site-packages",
             "--clear",
             "--python",
             get_python(),
@@ -115,32 +92,13 @@ class WorkspaceVenv:
                 result[key.strip()] = value.strip()
         return result
 
-    @property
-    def _fingerprint_path(self) -> Path:
-        return self._venv_dir / _SYSTEM_FINGERPRINT_FILENAME
+    def _inherits_system_site_packages(self) -> bool:
+        """Whether this venv predates self-contained workspaces.
 
-    def _read_fingerprint(self) -> str:
-        try:
-            return self._fingerprint_path.read_text().strip()
-        except OSError:
-            return ""
-
-    def _write_fingerprint(self, on_output: Callable[[str], None] | None = None) -> None:
-        try:
-            self._fingerprint_path.write_text(_system_packages_fingerprint())
-        except OSError as exc:
-            # If we can't persist the marker, _needs_recreate() will keep
-            # returning True on every launch and recreate the venv in a loop.
-            # Surface the error so the user can fix the underlying problem
-            # (read-only workspace, permissions, disk full, ...).
-            msg = (
-                f"Warning: failed to write venv fingerprint at "
-                f"{self._fingerprint_path}: {exc}.  The workspace venv may "
-                "be recreated on every launch until this is resolved."
-            )
-            print(msg, file=sys.stderr)
-            if on_output is not None:
-                on_output(msg)
+        Such a venv has no SciQLop of its own — it read one out of the host —
+        so it has to be rebuilt rather than synced into the new layout.
+        """
+        return self._read_pyvenv_cfg().get("include-system-site-packages", "").lower() == "true"
 
     def _needs_recreate(self) -> bool:
         if not self.exists:
@@ -157,14 +115,18 @@ class WorkspaceVenv:
             return True
         if python.is_symlink() and str(python.resolve()) != str(Path(get_python()).resolve()):
             return True
-        if self._read_fingerprint() != _system_packages_fingerprint():
+        if self._inherits_system_site_packages():
             return True
         return False
 
     def ensure(self, on_output: Callable[[str], None] | None = None) -> None:
-        """Create the venv if missing, wrong version, or stale paths."""
+        """Create the venv if missing, wrong version, stale paths, or legacy."""
         if self._needs_recreate():
             if self._venv_dir.exists():
+                if self._inherits_system_site_packages() and on_output is not None:
+                    on_output(
+                        "Rebuilding this workspace so it holds its own SciQLop "
+                        "(one-time; it previously shared the application's)."
+                    )
                 shutil.rmtree(self._venv_dir)
             self.create(on_output=on_output)
-            self._write_fingerprint(on_output=on_output)

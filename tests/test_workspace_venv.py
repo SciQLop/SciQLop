@@ -47,19 +47,21 @@ class TestExists:
 class TestCreate:
     @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
     @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command")
-    def test_calls_uv_venv_with_system_site_packages(self, mock_uv_cmd, mock_run, venv, workspace_dir):
+    def test_creates_a_self_contained_venv(self, mock_uv_cmd, mock_run, venv, workspace_dir):
+        """No --system-site-packages: the workspace installs its own SciQLop,
+        and inheriting the launcher's would shadow it with a second copy."""
         mock_uv_cmd.return_value = ["uv", "venv", str(workspace_dir / ".venv"),
-                                     "--system-site-packages", "--python", sys.executable]
+                                     "--python", sys.executable]
         venv.create()
 
         mock_uv_cmd.assert_called_once_with(
             "venv",
             str(workspace_dir / ".venv"),
-            "--system-site-packages",
             "--clear",
             "--python",
             sys.executable,
         )
+        assert "--system-site-packages" not in mock_uv_cmd.call_args.args
         mock_run.assert_called_once_with(mock_uv_cmd.return_value, check=True)
 
 
@@ -144,40 +146,28 @@ class TestEnsure:
         venv.ensure()
         mock_create.assert_called_once()
 
-    @patch.object(WorkspaceVenv, "create")
-    def test_skips_create_when_venv_exists(self, mock_create, venv, workspace_dir):
-        from SciQLop.components.workspaces.backend.workspace_venv import (
-            _system_packages_fingerprint,
-            _SYSTEM_FINGERPRINT_FILENAME,
-        )
-        # Use the venv's own platform-aware python_path so this works on
-        # both POSIX (.venv/bin/python) and Windows (.venv/Scripts/python.exe).
+    def _make_venv(self, venv, workspace_dir, system_site_packages: bool):
         venv_dir = workspace_dir / ".venv"
         python_path = venv.python_path
         python_path.parent.mkdir(parents=True)
         python_path.touch()
         version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-        (venv_dir / "pyvenv.cfg").write_text(f"version_info = {version}\n")
-        (venv_dir / _SYSTEM_FINGERPRINT_FILENAME).write_text(_system_packages_fingerprint())
+        cfg = f"version_info = {version}\n"
+        if system_site_packages:
+            cfg += "include-system-site-packages = true\n"
+        (venv_dir / "pyvenv.cfg").write_text(cfg)
 
+    @patch.object(WorkspaceVenv, "create")
+    def test_skips_create_when_venv_exists(self, mock_create, venv, workspace_dir):
+        self._make_venv(venv, workspace_dir, system_site_packages=False)
         venv.ensure()
         mock_create.assert_not_called()
 
     @patch.object(WorkspaceVenv, "create")
-    def test_recreates_when_system_fingerprint_changed(self, mock_create, venv, workspace_dir):
-        from SciQLop.components.workspaces.backend.workspace_venv import (
-            _SYSTEM_FINGERPRINT_FILENAME,
-        )
-        venv_dir = workspace_dir / ".venv"
-        python_path = venv.python_path
-        python_path.parent.mkdir(parents=True)
-        python_path.touch()
-        version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-        (venv_dir / "pyvenv.cfg").write_text(f"version_info = {version}\n")
-        # Stale fingerprint: simulates a SciQLop upgrade adding/removing
-        # packages in the bundled Python's site-packages after this venv
-        # was created.
-        (venv_dir / _SYSTEM_FINGERPRINT_FILENAME).write_text("stale-hash-from-previous-version")
-
+    def test_rebuilds_a_venv_that_inherited_the_host(self, mock_create, venv, workspace_dir):
+        """Workspaces created before self-contained venvs have no SciQLop of
+        their own — they read one out of the host — so they must be rebuilt
+        rather than synced into the new layout."""
+        self._make_venv(venv, workspace_dir, system_site_packages=True)
         venv.ensure()
         mock_create.assert_called_once()

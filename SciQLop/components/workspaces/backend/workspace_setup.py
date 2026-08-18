@@ -17,7 +17,10 @@ from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
 from SciQLop.components.workspaces.backend.lab_assets import repair_lab_assets
-from SciQLop.components.workspaces.backend.workspace_project import generate_pyproject_toml
+from SciQLop.components.workspaces.backend.workspace_project import (
+    generate_pyproject_toml,
+    running_sciqlop_version,
+)
 from SciQLop.components.workspaces.backend.workspace_venv import WorkspaceVenv
 
 log = logging.getLogger(__name__)
@@ -77,6 +80,12 @@ def prepare_workspace(
         name = workspace_name or workspace_dir.name
         log.info("Creating default manifest for workspace %r", name)
         manifest = WorkspaceManifest.default_manifest(name)
+        # Pin the SciQLop this workspace was created against, so it keeps
+        # resolving the same environment once the launcher moves on. Left empty
+        # for development builds, whose version does not exist on any index.
+        version = running_sciqlop_version()
+        if version and ".dev" not in version:
+            manifest.sciqlop_version = version
         manifest.save(manifest_path)
 
     # Step 2: Gather plugin information

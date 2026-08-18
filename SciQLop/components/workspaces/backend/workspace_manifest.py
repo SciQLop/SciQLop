@@ -43,6 +43,10 @@ class WorkspaceManifest:
     """Dataclass representing a .sciqlop workspace manifest."""
 
     name: str
+    # Which SciQLop the workspace's venv installs. Recorded when the workspace
+    # is created so the environment stays reproducible as the launcher moves on;
+    # empty means "whatever the launcher currently provides".
+    sciqlop_version: str = ""
     description: str = ""
     image: str = ""
     default: bool = False
@@ -94,6 +98,7 @@ class WorkspaceManifest:
 
         manifest = cls(
             name=workspace["name"],
+            sciqlop_version=workspace.get("sciqlop_version", ""),
             description=workspace.get("description", ""),
             image=workspace.get("image", ""),
             default=workspace.get("default", False),
@@ -115,6 +120,8 @@ class WorkspaceManifest:
                 "description": self.description,
             },
         }
+        if self.sciqlop_version:
+            data["workspace"]["sciqlop_version"] = self.sciqlop_version
         if self.image:
             data["workspace"]["image"] = self.image
         if self.default:

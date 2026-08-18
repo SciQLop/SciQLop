@@ -202,64 +202,46 @@ class TestGeneratePyprojectToml:
             assert '"speasy>=1.6"' in content
             assert '"spok @ https://github.com/LaboratoryOfPlasmaPhysics/spok/archive/refs/heads/main.zip"' in content
 
-    def test_base_constraints_included(self):
-        manifest = WorkspaceManifest(name="Constrained", requires=["numpy>=1.24"])
+    def test_workspace_installs_its_own_sciqlop(self):
+        """The workspace venv is self-contained, so SciQLop is a dependency of
+        it rather than something inherited from the launcher's environment.
+        [all] matters: the bare package is only the launcher."""
+        manifest = WorkspaceManifest(name="Owned", requires=["numpy>=1.24"])
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output = Path(tmpdir) / "pyproject.toml"
             generate_pyproject_toml(manifest, [], output)
 
-            content = output.read_text()
-            assert "constraint-dependencies" in content
-            # Every constraint should be an exact pin (==)
-            for constraint in _base_constraints():
-                assert f'"{constraint}"' in content
-
-    def test_ipython_is_pinned(self):
-        """IPython 9.16 made ``run_cell_async(transformed_cell=None)`` a TypeError.
-
-        jupyqt calls it that way, so an unpinned IPython in a freshly resolved
-        workspace venv kills the jupyverse kernel module and JupyterLab reports
-        "connection to the Jupyter server could not be established".
-        """
-        pytest.importorskip("IPython")
-        assert any(c.startswith("ipython==") for c in _base_constraints())
-
-    def test_jupyter_server_stack_is_pinned(self):
-        """Every host fps-*/jupyverse-* package must be pinned, not re-resolved.
-
-        jupyqt itself is pinned to the host version, so the release train it
-        drives has to be pinned with it — mixing versions breaks the kernel.
-        """
-        constrained = {_canonical(c.split("==")[0]) for c in _base_constraints()}
-        installed = {
-            _canonical(name)
-            for name in (d.metadata["Name"] for d in importlib.metadata.distributions())
-            if name and _canonical(name).split("-")[0] in ("fps", "jupyverse")
-        }
-        if not installed:
-            pytest.skip("no fps/jupyverse packages installed in this environment")
-        assert installed <= constrained
-
-    def test_base_constraints_valid_toml(self):
-        try:
             import tomllib
-        except ImportError:
-            pytest.skip("tomllib not available")
-
-        manifest = WorkspaceManifest(name="TOML Constraints", requires=["numpy>=1.24"])
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output = Path(tmpdir) / "pyproject.toml"
-            generate_pyproject_toml(manifest, [], output)
-
             with open(output, "rb") as f:
                 data = tomllib.load(f)
-
+            deps = data["project"]["dependencies"]
+            assert any(d.startswith("sciqlop[all]") for d in deps), deps
+            # Nothing to pin against or hide any more.
             uv_config = data.get("tool", {}).get("uv", {})
-            constraints = uv_config.get("constraint-dependencies", [])
-            assert len(constraints) > 0
-            assert all("==" in c for c in constraints)
+            assert "constraint-dependencies" not in uv_config
+            assert "override-dependencies" not in uv_config
+
+    def test_sciqlop_pin_follows_the_manifest(self):
+        manifest = WorkspaceManifest(name="Pinned", sciqlop_version="0.13.0")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "pyproject.toml"
+            generate_pyproject_toml(manifest, [], output)
+
+            import tomllib
+            with open(output, "rb") as f:
+                data = tomllib.load(f)
+            assert "sciqlop[all]==0.13.0" in data["project"]["dependencies"]
+
+    def test_dev_versions_are_left_unpinned(self):
+        """A .dev version exists on no index; pinning it would make every
+        workspace unresolvable in a development build."""
+        from SciQLop.components.workspaces.backend.workspace_project import (
+            sciqlop_requirement,
+        )
+        assert sciqlop_requirement("0.13.0.dev0") == "sciqlop[all]"
+        assert sciqlop_requirement("0.13.0") == "sciqlop[all]==0.13.0"
 
     def test_accepts_path_as_string(self):
         manifest = WorkspaceManifest(name="StrPath")
@@ -269,41 +251,13 @@ class TestGeneratePyprojectToml:
             generate_pyproject_toml(manifest, [], output)
             assert os.path.exists(output)
 
-    def test_host_provided_packages_are_filtered_out(self):
-        """SciQLop itself must never appear in workspace deps — it's provided
-        by the host install via --system-site-packages, and the dev cycle uses
-        .dev versions that aren't on PyPI."""
-        manifest = WorkspaceManifest(
-            name="Host Filter",
-            requires=["SciQLop>=0.12.0", "numpy>=1.24"],
-        )
-        plugin_deps = ["SciQLop>=0.12.0", "matplotlib>=3.8"]
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            output = Path(tmpdir) / "pyproject.toml"
-            generate_pyproject_toml(manifest, plugin_deps, output)
-
-            import tomllib
-            with open(output, "rb") as f:
-                data = tomllib.load(f)
-            deps = data["project"]["dependencies"]
-            assert not any(_extract_package_name(d) == "sciqlop" for d in deps)
-            assert "numpy>=1.24" in deps
-            assert "matplotlib>=3.8" in deps
-
-    def test_transitive_host_packages_overridden_out(self):
-        """A plugin wheel's transitive ``Requires-Dist: SciQLop`` must be dropped
-        via ``override-dependencies`` — direct-dep stripping doesn't reach it, so
-        without the override uv pulls a mismatched SciQLop (and its pyside6/
-        speasy/shiboken6 stack) from PyPI into the venv on a .dev build."""
-        try:
-            import tomllib
-        except ImportError:
-            pytest.skip("tomllib not available")
+    def test_plugin_requiring_sciqlop_is_no_longer_overridden(self):
+        """A plugin wheel that declares Requires-Dist: SciQLop used to be
+        neutralised with an always-false marker because the host owned SciQLop.
+        The workspace installs it now, so the requirement must simply resolve."""
+        import tomllib
 
         manifest = WorkspaceManifest(name="Transitive")
-        # A wheel-URL plugin whose base name is NOT "sciqlop" (so it survives the
-        # direct-dep filter) but which transitively requires SciQLop.
         plugin_deps = [
             "https://github.com/SciQLop/sciqlop-plugins/releases/download/"
             "sciqlop_claude/v0.1.0/sciqlop_claude-0.1.0-py3-none-any.whl"
@@ -315,12 +269,7 @@ class TestGeneratePyprojectToml:
 
             with open(output, "rb") as f:
                 data = tomllib.load(f)
-
-            overrides = data["tool"]["uv"]["override-dependencies"]
-            assert any(o.startswith("sciqlop ") for o in overrides)
-            # Each override must carry an always-false marker so it is dropped.
-            sciqlop_override = next(o for o in overrides if o.startswith("sciqlop "))
-            assert "python_version < '0'" in sciqlop_override
+            assert "override-dependencies" not in data.get("tool", {}).get("uv", {})
 
     def test_strip_host_provided_drops_sciqlop_keeps_rest(self):
         """The shared filter drops SciQLop (any specifier form) and keeps
