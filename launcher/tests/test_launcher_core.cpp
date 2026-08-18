@@ -155,10 +155,23 @@ void test_parse_args() {
 }
 
 void test_resolve_workspace_dir_prefers_explicit_over_mru() {
+    // "/absolute/workspace" is NOT absolute on Windows — without a drive letter
+    // it is root-relative — so the literal has to differ per platform.
+#ifdef _WIN32
+    const std::string absolute = "C:/absolute/workspace";
+#else
+    const std::string absolute = "/absolute/workspace";
+#endif
     sciqlop::Options options;
-    options.workspace = "/absolute/workspace";
-    check(sciqlop::resolve_workspace_dir(options) == fs::path("/absolute/workspace"),
+    options.workspace = absolute;
+    check(sciqlop::resolve_workspace_dir(options) == fs::path(absolute),
           "absolute --workspace used as-is");
+
+    sciqlop::Options named;
+    named.workspace = "study";
+    const fs::path resolved = sciqlop::resolve_workspace_dir(named);
+    check(resolved.filename() == "study" && resolved.has_parent_path(),
+          "a bare workspace name resolves under the workspaces root");
 
     sciqlop::Options from_file;
     from_file.sciqlop_file = "/data/ws/workspace.sciqlop";
