@@ -1,10 +1,20 @@
 import os
 from typing import AnyStr
 import asyncio
-from qasync import QThreadExecutor
 import functools
 
-from .signal_rate_limiter import SignalRateLimiter
+# qasync and SignalRateLimiter both need Qt, which a thin (launcher-only)
+# install does not have — and the launcher imports .python from this package to
+# locate an interpreter. Both are resolved on use instead.
+# See tests/test_launcher_thin_imports.py.
+__all__ = ["SignalRateLimiter"]
+
+
+def __getattr__(name):
+    if name == "SignalRateLimiter":
+        from .signal_rate_limiter import SignalRateLimiter
+        return SignalRateLimiter
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 def insort(a, x, lo=0, hi=None, key=None):
@@ -39,6 +49,7 @@ def ensure_dir_exists(path: AnyStr):
 
 
 async def background_run(function, *args, **kwargs):
+    from qasync import QThreadExecutor
     loop = asyncio.get_running_loop()
     with QThreadExecutor(1) as ex:
         r = await loop.run_in_executor(ex, functools.partial(function, **kwargs), *args)

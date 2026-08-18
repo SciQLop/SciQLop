@@ -5,7 +5,14 @@ from pathlib import PurePath
 from platformdirs import *
 import os
 from typing import TypeVar, ClassVar, Type
-from PySide6.QtCore import QObject, Signal
+# Settings must load without Qt so the launcher can read them in a thin
+# install. See tests/test_launcher_thin_imports.py.
+try:
+    from PySide6.QtCore import QObject, Signal
+    _HAS_QT = True
+except ImportError:
+    _HAS_QT = False
+
 from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
@@ -28,8 +35,23 @@ SCIQLOP_CONFIG_DIR = str(user_config_dir(appname="sciqlop", appauthor="LPP", ens
 T = TypeVar('T', bound='ConfigEntry')
 
 
-class _SettingsNotifier(QObject):
-    changed = Signal(str, object)
+if _HAS_QT:
+    class _SettingsNotifier(QObject):
+        changed = Signal(str, object)
+else:
+    class _SettingsNotifier:
+        """Settings still load and save without Qt; nothing observes changes in
+        a thin install, so the notification is dropped rather than emitted."""
+
+        class _NullSignal:
+            def emit(self, *args, **kwargs): pass
+
+            def connect(self, *args, **kwargs): pass
+
+            def disconnect(self, *args, **kwargs): pass
+
+        def __init__(self):
+            self.changed = self._NullSignal()
 
 
 class SettingsCategory(str, Enum):

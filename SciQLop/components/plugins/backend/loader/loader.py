@@ -6,21 +6,16 @@ from typing import TYPE_CHECKING, List, Optional
 from types import SimpleNamespace
 from SciQLop.components.sciqlop_logging import getLogger
 
+# Re-exported: plugins_folders lives in a Qt-free module so the launcher can
+# reach it without importing this one, which pulls in the GUI stack.
+from ..folders import plugins_folders  # noqa: F401
+
 if TYPE_CHECKING:
     from ..settings import SciQLopPluginsSettings  # noqa: F401  forward-ref target
 
 loaded_plugins = SimpleNamespace()
 
 log = getLogger(__name__)
-
-
-def plugins_folders(settings: Optional["SciQLopPluginsSettings"] = None) -> List[str]:
-    from SciQLop import plugins
-    from ..settings import SciQLopPluginsSettings, USER_PLUGINS_FOLDERS
-    bundled = os.path.dirname(os.path.realpath(plugins.__file__))
-    if settings is None:
-        settings = SciQLopPluginsSettings()
-    return [bundled, USER_PLUGINS_FOLDERS] + list(settings.extra_plugins_folders)
 
 
 def import_from_path(module_name, file_path):

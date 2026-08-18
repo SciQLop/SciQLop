@@ -11,7 +11,7 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
-from SciQLop.components.plugins.backend.loader.loader import plugins_folders
+from SciQLop.components.plugins.backend.folders import plugins_folders
 from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
