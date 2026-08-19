@@ -151,8 +151,10 @@ ads--CAutoHideDockContainer ads--CTitleBarButton:pressed {
 /*****************************************************************************
  * CAutoHideSideBar
  *****************************************************************************/
+/* palette(window), not palette(base): the side bar is chrome, not content, and
+   on the dark palette a highlight-filled tab only clears 3:1 against window. */
 ads--CAutoHideSideBar {
-    background: palette(base);
+    background: palette(window);
     border: none;
     qproperty-spacing: 12;
 }
@@ -221,30 +223,48 @@ ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"] {
 
 
 ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="0"],
-ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="2"],
-ads--CAutoHideTab[iconOnly="false"][sideBarLocation="0"][activeTab="true"],
-ads--CAutoHideTab[iconOnly="false"][sideBarLocation="2"][activeTab="true"] {
-    border-top: 0.2ex solid palette(highlight);
+ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="2"] {
+    border-top: 0.2ex solid {{ palette('highlight') | alpha(140) }};
 }
 
 
 ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="1"],
-ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="3"],
+ads--CAutoHideTab:hover[iconOnly="false"][sideBarLocation="3"] {
+    border-bottom: 0.2ex solid {{ palette('highlight') | alpha(140) }};
+}
+
+
+/* Opened panel — must outrank :hover, otherwise the two states look alike. */
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="0"][activeTab="true"],
+ads--CAutoHideTab[iconOnly="false"][sideBarLocation="2"][activeTab="true"] {
+    border-top: 0.2ex solid palette(highlight);
+    background: {{ palette('highlight') | alpha(90) }};
+}
+
+
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="1"][activeTab="true"],
 ads--CAutoHideTab[iconOnly="false"][sideBarLocation="3"][activeTab="true"] {
     border-bottom: 0.2ex solid palette(highlight);
+    background: {{ palette('highlight') | alpha(90) }};
 }
 
 ads--CAutoHideTab[iconOnly="true"] {
     padding: 0.6ex;
     margin: 0.2ex;
+    border: 0.15ex solid transparent;
     border-radius: 0.4ex;
 }
 
 ads--CAutoHideTab[iconOnly="true"]:hover {
-    background: {{ palette('highlight') | alpha(30) }};
+    background: {{ palette('highlight') | alpha(80) }};
+    border-color: {{ palette('highlight') | alpha(140) }};
 }
 
-ads--CAutoHideTab[iconOnly="true"][activeTab="true"] {
-    background: {{ palette('highlight') | alpha(50) }};
+/* Opened panel. The icon is tinted against palette(base) and never against this
+   fill, so the fill is the only "open" cue — keep it solid. A translucent wash
+   sits at ~1.2:1 against the side bar on every palette, which reads as "off". */
+ads--CAutoHideTab[iconOnly="true"][activeTab="true"],
+ads--CAutoHideTab[iconOnly="true"][activeTab="true"]:hover {
+    background: palette(highlight);
+    border-color: palette(highlight);
 }
