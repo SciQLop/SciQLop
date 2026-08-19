@@ -44,7 +44,18 @@ def _default_foreground(plot_impl) -> QColor:
 
 class _PlotItem(Item):
     """Shared concrete surface for plot items: visibility toggle, removal,
-    and a friendly error once the underlying C++ item is gone."""
+    and a friendly error once the underlying C++ item is gone.
+
+    .. warning::
+       Plot items are owned by Python, not by the plot -- that is what makes
+       ``del item`` erase the drawing. The flip side is that an item created as
+       a bare statement is collected right away and never appears::
+
+           Text(plot, "hello", 1.0, 2.0)          # drawn, then immediately gone
+           label = Text(plot, "hello", 1.0, 2.0)  # stays as long as `label` does
+
+       Keep the handle for as long as the item should be visible.
+    """
 
     _impl = None
 
