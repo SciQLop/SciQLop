@@ -8,7 +8,7 @@ from seaborn import color_palette
 
 import SciQLop
 from SciQLop.components.sciqlop_logging import getLogger
-from .palette import SCIQLOP_PALETTE
+from .palette import current_palette
 
 log = getLogger(__name__)
 
@@ -38,10 +38,11 @@ def _palette(palette: QtGui.QPalette, name: str):
         b = getattr(palette, name)()
         if isinstance(b, QtGui.QBrush):
             return b.color().name()
-    if name in SCIQLOP_PALETTE:
-        return SCIQLOP_PALETTE[name]
-    if name.lower() in SCIQLOP_PALETTE:
-        return SCIQLOP_PALETTE[name.lower()]
+    colors = current_palette()
+    if name in colors:
+        return colors[name]
+    if name.lower() in colors:
+        return colors[name.lower()]
     return palette.base().color().name()
 
 

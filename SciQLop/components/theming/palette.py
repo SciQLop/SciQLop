@@ -34,6 +34,16 @@ def _load_palette(palette: str) -> dict[str, str]:
 SCIQLOP_PALETTE = _load_palette(SciQLopStyle().color_palette)
 
 
+def current_palette() -> dict[str, str]:
+    """The palette dict of the active theme.
+
+    Always call this instead of importing `SCIQLOP_PALETTE` at module level:
+    `setup_palette()` rebinds the global to a *new* dict on every theme change,
+    so an imported reference is frozen at the startup theme.
+    """
+    return SCIQLOP_PALETTE
+
+
 def build_palette(palette: dict[str, str]) -> QtGui.QPalette:
     qpalette = QtGui.QPalette()
     for role, color in palette.items():
