@@ -5,6 +5,9 @@ against `palette(Base)` regardless of the tab they sit on — so the tab
 background is the *only* open/closed cue. It has to clear the WCAG 3:1 floor for
 non-text UI state against the side bar background (`palette(Window)`, see
 QtAds.qss.j2), in every palette.
+
+The QtAds rules live in their own sheet, assigned to CDockManager — see
+`qtads_stylesheet` for why they cannot sit in the application stylesheet.
 """
 import re
 
@@ -13,7 +16,7 @@ import pytest
 from PySide6.QtGui import QColor
 
 from SciQLop.components.theming import palette as palette_module
-from SciQLop.components.theming.stylesheet import load_stylesheets
+from SciQLop.components.theming.stylesheet import qtads_stylesheet
 
 PALETTES = ["light", "dark", "neutral", "space"]
 ACTIVE_TAB_RULE = r'ads--CAutoHideTab\[iconOnly="true"\]\[activeTab="true"\][^{]*\{([^}]*)\}'
@@ -61,7 +64,7 @@ def _resolve(value: str, colors: dict[str, str]) -> QColor:
 
 
 def _active_tab_background(name: str) -> tuple[QColor, QColor]:
-    qss = load_stylesheets(palette_module.setup_palette(name), name)
+    qss = qtads_stylesheet(palette_module.setup_palette(name), name)
     colors = palette_module.current_palette()
     body = re.search(ACTIVE_TAB_RULE, qss).group(1)
     declared = re.search(r"background:\s*([^;]+);", body).group(1).strip()

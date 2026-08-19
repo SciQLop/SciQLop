@@ -20,7 +20,7 @@ env = Environment(loader=FileSystemLoader(style_sheets_path))
 
 def _list_stylesheets(folders: Optional[List[str]] = None) -> List[str]:
     if folders is None:
-        folders = ["QWidgets", "QtAds"]
+        folders = ["QWidgets"]
     style_sheets = []
     for folder in folders:
         style_sheets.extend(sorted(map(lambda f: f"{folder}/{os.path.basename(f)}",
@@ -52,7 +52,7 @@ def _icon(palette_name: str, name: str) -> str:
     return f"url({(per_palette_icon_dir(palette_name) / f'{name}.png').as_posix()})"
 
 
-def load_stylesheets(palette: QtGui.QPalette, palette_name: str) -> str:
+def _prime_env(palette: QtGui.QPalette, palette_name: str) -> None:
     env.globals['sciqlop_list_templates'] = _list_stylesheets
     env.globals['controls_height'] = '2.4ex'
     env.globals['palette'] = partial(_palette, palette)
@@ -67,4 +67,23 @@ def load_stylesheets(palette: QtGui.QPalette, palette_name: str) -> str:
     env.filters['darker'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()
     env.filters['darken'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()
     env.filters['icon'] = partial(_icon, palette_name)
+
+
+def load_stylesheets(palette: QtGui.QPalette, palette_name: str) -> str:
+    """The application-wide stylesheet. Excludes the QtAds section — see
+    `qtads_stylesheet`."""
+    _prime_env(palette, palette_name)
     return env.get_template("SciQLop.qss.j2").render()
+
+
+def qtads_stylesheet(palette: QtGui.QPalette, palette_name: str) -> str:
+    """The QtAds section, meant for `CDockManager.setStyleSheet`.
+
+    It cannot live in the application stylesheet: QApplication.setPalette()
+    repolishes every widget, after which QtAds widgets stop honouring
+    application-level rules for good (a freshly appended `background: red` is
+    ignored). A *widget*-level sheet is still honoured, so re-assigning this one
+    on every theme change is what keeps the docks themed.
+    """
+    _prime_env(palette, palette_name)
+    return env.get_template("QtAds/QtAds.qss.j2").render()

@@ -21,7 +21,7 @@ from SciQLop.core import TimeRange
 from SciQLop.core.sciqlop_application import sciqlop_app
 from SciQLop.core.unique_names import auto_name, release_name
 from SciQLop.components.workspaces import Workspace
-from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle
+from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle, qtads_stylesheet
 from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.sciqlop_logging import getLogger
@@ -73,6 +73,8 @@ def _confirm_close_with_running_jobs(parent, event, jobs: list) -> bool:
 
 
 class SciQLopMainWindow(QtWidgets.QMainWindow):
+    AUTO_HIDE_TAB_ICON = 2.2  # em — side bar tab icon, set here because
+    # qproperty-iconSize does not survive a theme change (see _apply_dock_theme)
     workspace: Workspace = None
     panels_list_changed = QtCore.Signal(list)
     panel_added = QtCore.Signal(TimeSyncPanel)
@@ -135,8 +137,33 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if "WAYLAND_DISPLAY" in os.environ:
             QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerForceQWidgetTitleBar, True)
         self.dock_manager = QtAds.CDockManager(self)
-        self.dock_manager.setStyleSheet("")
         self.dock_manager.dockAreaCreated.connect(self._on_dock_area_created)
+        self._apply_dock_theme()
+        sciqlop_app().theme_changed.connect(self._schedule_dock_theme)
+
+    def _schedule_dock_theme(self, _palette_name: str = ""):
+        # QApplication.setPalette() *posts* the repolish, so it lands after this
+        # signal. Re-asserting now would just be undone; wait for the queue.
+        QtCore.QTimer.singleShot(0, self._apply_dock_theme)
+
+    def _apply_dock_theme(self):
+        """Re-assert everything QApplication.setPalette() takes away from QtAds.
+
+        A theme change repolishes every widget, after which QtAds widgets ignore
+        the application stylesheet permanently and buttons lose the sizes it gave
+        them. Only a fresh widget-level assignment gets through, so both the sheet
+        and the icon size have to be set again here on every theme change.
+        """
+        app = sciqlop_app()
+        self.dock_manager.setStyleSheet(qtads_stylesheet(app.palette(), app.current_theme()))
+        for tab in self._auto_hide_tabs():
+            tab.setIconSize(Metrics.icon_size(self.AUTO_HIDE_TAB_ICON))
+
+    def _auto_hide_tabs(self):
+        for dock_widget in self.dock_manager.dockWidgetsMap().values():
+            container = dock_widget.autoHideDockContainer()
+            if container is not None:
+                yield container.autoHideTab()
 
     def _setup_menus(self):
         self._menubar = QtWidgets.QMenuBar(self)
@@ -404,6 +431,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             elif widget.windowIcon() is not None:
                 doc.setIcon(widget.windowIcon())
             container = self.dock_manager.addAutoHideDockWidget(location, doc)
+            container.autoHideTab().setIconSize(Metrics.icon_size(self.AUTO_HIDE_TAB_ICON))
             if location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom or location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarTop:
                 container.setSize(widget.sizeHint().height())
             else:
