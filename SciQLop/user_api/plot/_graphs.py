@@ -9,6 +9,7 @@ from SciQLopPlots import SciQLopHistogram2D as _SciQLopHistogram2D
 from SciQLopPlots import SciQLopColorMapBase as _SciQLopColorMapBase
 from SciQLopPlots import SciQLopWaterfallGraph as _SciQLopWaterfallGraph
 from SciQLopPlots import WaterfallOffsetMode as _WaterfallOffsetMode
+from SciQLopPlots import ColorGradient as _ColorGradient
 from PySide6.QtGui import QColor as _QColor
 from ._thread_safety import on_main_thread
 from SciQLop.core import tracing as _tracing
@@ -20,6 +21,26 @@ __all__ = ['Graph', 'ColorMap', 'Histogram2D', 'Waterfall']
 log = _getLogger(__name__)
 
 AnyProductType = Union[str, VirtualProduct, List[str]]
+
+
+_GRADIENTS_BY_NAME = {n.lower(): getattr(_ColorGradient, n)
+                      for n in dir(_ColorGradient) if not n.startswith("_")}
+
+
+def _as_color_gradient(gradient):
+    """A ColorGradient from the enum itself, or from one of its names."""
+    if isinstance(gradient, _ColorGradient):
+        return gradient
+    if isinstance(gradient, str):
+        try:
+            return _GRADIENTS_BY_NAME[gradient.strip().lower()]
+        except KeyError:
+            raise ValueError(
+                f"unknown gradient {gradient!r}; available: "
+                + ", ".join(sorted(n.capitalize() for n in _GRADIENTS_BY_NAME))
+            ) from None
+    raise TypeError("gradient must be a ColorGradient or one of its names, got "
+                    f"{type(gradient).__name__}")
 
 
 def is_array_of_double(a):
@@ -288,7 +309,7 @@ class Histogram2D(Plottable):
     @gradient.setter
     @on_main_thread
     def gradient(self, g):
-        self._get_impl_or_raise().set_gradient(g)
+        self._get_impl_or_raise().set_gradient(_as_color_gradient(g))
 
     @property
     def x_bin_edges(self):

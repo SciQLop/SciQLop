@@ -4,7 +4,7 @@ from datetime import datetime as datetime, timezone as timezone
 # SciQLopPlots and speasy, which a thin (launcher-only) install does not have,
 # and the launcher imports SciQLop.core.common.python through this package.
 # See tests/test_launcher_thin_imports.py.
-_LAZY = ("TimeRange", "make_utc_datetime", "AnyDateTimeType")
+_LAZY = ("TimeRange", "as_time_range", "make_utc_datetime", "AnyDateTimeType")
 
 
 def __getattr__(name):

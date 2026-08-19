@@ -27,3 +27,18 @@ class TimeRange(_SciQLopPlotRange):
 
     def __init__(self, *args):
         super().__init__(*(_to_utc_epoch(a) for a in args))
+
+
+def as_time_range(value) -> TimeRange:
+    """A TimeRange from one, or from a ``(start, stop)`` pair.
+
+    Pair members go through TimeRange, so epoch floats, datetimes and date
+    strings all work. A bare string is rejected: it is a single instant, and
+    iterating it into two characters would parse as garbage.
+    """
+    if isinstance(value, _SciQLopPlotRange):
+        return value
+    if isinstance(value, (list, tuple)) and len(value) == 2:
+        return TimeRange(*value)
+    raise TypeError("expected a TimeRange or a (start, stop) pair, got "
+                    f"{type(value).__name__}")

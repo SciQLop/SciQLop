@@ -7,7 +7,7 @@ from typing import Optional, Tuple, Union, List
 from ..gui import get_main_window as _get_main_window
 from .._annotations import experimental_api
 from PySide6.QtCore import Qt as _Qt
-from SciQLop.core import TimeRange
+from SciQLop.core import TimeRange, as_time_range
 from SciQLop.core import tracing as _tracing
 from SciQLopPlots import PlotType as _PlotType, GraphType as _GraphType, SciQLopMultiPlotPanel as _SciQLopMultiPlotPanel
 from SciQLop.components.plotting.ui.time_sync_panel import (TimeSyncPanel as _ImplTimeSyncPanel,
@@ -625,9 +625,10 @@ class PlotPanel:
 
     @time_range.setter
     @on_main_thread
-    def time_range(self, time_range: TimeRange):
+    def time_range(self, time_range: Union[TimeRange, tuple, list]):
         impl = self._get_impl_or_raise()
         plots = impl.plots()
+        time_range = as_time_range(time_range)
         t0, t1 = float(time_range.start()), float(time_range.stop())
         if not (_math.isfinite(t0) and _math.isfinite(t1)):
             raise ValueError(

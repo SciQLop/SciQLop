@@ -8,7 +8,7 @@ from ._graphs import (Graph, ColorMap, Histogram2D, Waterfall, to_plottable,
 from ._graphic_primitives import HorizontalLine
 from typing import Optional, Union, List, Any
 from ..virtual_products import VirtualProduct
-from SciQLop.core import TimeRange
+from SciQLop.core import TimeRange, as_time_range
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from SciQLopPlots import SciQLopPlot as _SciQLopPlot
 from SciQLopPlots import SciQLopTimeSeriesPlot as _SciQLopTimeSeriesPlot
@@ -922,8 +922,8 @@ class TimeSeriesPlot(_BasePlot):
 
     @time_range.setter
     @on_main_thread
-    def time_range(self, time_range: TimeRange):
-        self._get_impl_or_raise().set_time_range(time_range)
+    def time_range(self, time_range: Union[TimeRange, tuple, list]):
+        self._get_impl_or_raise().set_time_range(as_time_range(time_range))
 
     @property
     @on_main_thread

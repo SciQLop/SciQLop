@@ -242,3 +242,82 @@ class TestHistogram2DRejection:
         )
         assert hist is not None
         assert hist.x_bin_edges is not None
+
+
+class TestHistogram2DGradientNames:
+    """`histogram2d(gradient=...)` took only the ColorGradient enum.
+
+    The keyword is spelled `gradient=None`, which reads like it accepts the
+    same names every other colour argument does, but a string went straight
+    into `set_gradient()` and raised an opaque binding TypeError.
+    """
+
+    @staticmethod
+    def _scatter():
+        rng = np.random.default_rng(0)
+        return rng.normal(size=200), rng.normal(size=200)
+
+    @pytest.mark.parametrize("name", ["Hot", "hot", "COLD", "candy", " polar "])
+    def test_a_named_gradient_is_accepted(self, name):
+        from SciQLopPlots import ColorGradient
+
+        x, y = self._scatter()
+        hist = _create_histogram2d(_MockPlot(), x, y, gradient=name)
+        assert hist.gradient == getattr(ColorGradient, name.strip().capitalize())
+
+    def test_the_enum_is_still_accepted(self):
+        from SciQLopPlots import ColorGradient
+
+        x, y = self._scatter()
+        hist = _create_histogram2d(_MockPlot(), x, y, gradient=ColorGradient.Hot)
+        assert hist.gradient == ColorGradient.Hot
+
+    def test_an_unknown_name_names_the_available_ones(self):
+        x, y = self._scatter()
+        with pytest.raises(ValueError, match="viridis"):
+            _create_histogram2d(_MockPlot(), x, y, gradient="viridis")
+        with pytest.raises(ValueError, match="Candy.*Cold.*Hot.*Polar"):
+            _create_histogram2d(_MockPlot(), x, y, gradient="viridis")
+
+    def test_a_nonsense_type_is_rejected(self):
+        x, y = self._scatter()
+        with pytest.raises(TypeError):
+            _create_histogram2d(_MockPlot(), x, y, gradient=object())
+
+
+class TestAsTimeRange:
+    """`panel.time_range = (start, stop)` died with `'tuple' object has no
+    attribute 'start'`. A pair is the obvious way to write a range, and the
+    members should accept everything TimeRange itself does."""
+
+    def test_a_time_range_passes_through(self):
+        from SciQLop.core.time_range import TimeRange, as_time_range
+
+        tr = TimeRange(10.0, 20.0)
+        assert as_time_range(tr) is tr
+
+    def test_a_float_pair(self):
+        from SciQLop.core.time_range import as_time_range
+
+        got = as_time_range((10.0, 20.0))
+        assert (got.start(), got.stop()) == (10.0, 20.0)
+
+    def test_a_list_pair(self):
+        from SciQLop.core.time_range import as_time_range
+
+        got = as_time_range([10.0, 20.0])
+        assert (got.start(), got.stop()) == (10.0, 20.0)
+
+    def test_a_date_string_pair_is_parsed_as_utc(self):
+        from SciQLop.core.time_range import TimeRange, as_time_range
+
+        got = as_time_range(("2017-09-06", "2017-09-07"))
+        expected = TimeRange("2017-09-06", "2017-09-07")
+        assert (got.start(), got.stop()) == (expected.start(), expected.stop())
+
+    @pytest.mark.parametrize("bad", [10.0, "2017-09-06", (1.0,), (1.0, 2.0, 3.0), None])
+    def test_anything_else_is_a_type_error(self, bad):
+        from SciQLop.core.time_range import as_time_range
+
+        with pytest.raises(TypeError):
+            as_time_range(bad)
