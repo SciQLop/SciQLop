@@ -263,6 +263,39 @@ class _plot_product_callback(_ProductCallbackBase):
         return result
 
 
+class _projection_shaped_callback:
+    """Reshape a product callback's ``(time, values)`` into ``[t, d0 .. dn-1]``.
+
+    A projection plot draws one panel per pair of dimensions and picks how to
+    read its buffers from *how many* it is handed: time plus one per subplot.
+    A product hands back two -- a time array and an (N, k) values array -- which
+    matches nothing, so `set_data` rejected it and the graph drew nothing at
+    all. Splitting the columns is the whole fix; it is what the demo notebooks
+    do by hand when they return ``t, x, y, z`` from a virtual product.
+    """
+
+    def __init__(self, inner):
+        self._inner = inner
+
+    def __getattr__(self, name):          # keep on_data_fetched & friends usable
+        return getattr(self._inner, name)
+
+    def __call__(self, start, stop):
+        result = self._inner(start, stop)
+        if result is None:
+            return result
+        if not isinstance(result, (tuple, list)) or len(result) != 2:
+            return result                  # already shaped, or something we don't know
+        time, values = result
+        values = np.asarray(values)
+        if values.ndim != 2:
+            log.error("a projection plot needs several dimensions; %s is 1-D, "
+                      "so there is nothing to project", getattr(self, "node", "product"))
+            return None
+        return [time] + [np.ascontiguousarray(values[:, i])
+                         for i in range(values.shape[1])]
+
+
 def _y_is_descending(y):
     if len(y.shape) == 1 and len(y) > 1:
         return np.nanargmin(y) > np.nanargmax(y)
@@ -681,6 +714,9 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
         callback = _plot_product_callback(provider, node)
         labels = listify(provider.labels(node))
         log.debug(f"Building plot for {node.name()} with labels: {labels}, kwargs: {kwargs}")
+        from SciQLopPlots import PlotType as _SQPPlotType
+        if kwargs.get("plot_type") == _SQPPlotType.Projections:
+            callback = _projection_shaped_callback(callback)
         r = target.plot(callback, labels=labels, **kwargs)
         if hasattr(r, '__iter__'):
             r[1].set_name(node.display_name())
