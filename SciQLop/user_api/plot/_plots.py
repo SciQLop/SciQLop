@@ -1112,6 +1112,7 @@ class ProjectionPlot:
         self,
         x, y, t,
         *,
+        z=None,
         name: str | None = None,
         colormap: str | _ColorGradient = "viridis",
         line_width: float = 2.0,
@@ -1123,6 +1124,12 @@ class ProjectionPlot:
         x, y, t : array-like
             1-D arrays of equal length. The curve follows ``(x, y)`` and is
             colored by ``t``.
+        z : array-like, optional
+            Third dimension, required when the plot has three subplots -- which
+            is what :meth:`PlotPanel.plot_data` creates. A projection plot draws
+            one panel per pair of dimensions, so it needs as many dimensions as
+            it has panels; there is no honest way to spread a 2-D curve over
+            three of them.
         name : str, optional
             Graph name.
         colormap : str or SciQLopPlots.ColorGradient, optional
@@ -1154,11 +1161,24 @@ class ProjectionPlot:
         >>> y = np.sin(2 * np.pi * t)
         >>> curve = plot.plot_time_colored_curve(x, y, t, name="orbit", colormap="viridis")
         """
-        x, y, t = ensure_arrays_of_double(x, y, t)
-        if not (len(x) == len(y) == len(t)):
-            raise ValueError("x, y and t must have the same length")
+        dims = [x, y] if z is None else [x, y, z]
+        arrays = ensure_arrays_of_double(*dims, t)
+        *dims, t = arrays
+        if len({len(a) for a in arrays}) != 1:
+            raise ValueError("every dimension and t must have the same length")
+
         impl = self._get_impl_or_raise()
-        curve = impl.add_reference_curve([x, y, t])
+        # add_reference_curve reads one buffer per subplot, or time followed by
+        # one per subplot -- and only the second form carries the time it colours
+        # by. So the dimensions have to match the panels: hand it two on a
+        # three-subplot plot and the count lands on the untimed form, which is
+        # how this used to plot t as a spatial axis instead of colouring by it.
+        if len(dims) != impl.subplot_count():
+            raise ValueError(
+                f"this projection plot has {impl.subplot_count()} subplots, so it "
+                f"needs {impl.subplot_count()} dimensions, but got {len(dims)}"
+                + ("; pass z= for the third" if z is None else ""))
+        curve = impl.add_reference_curve([t, *dims])
         if curve is None:
             raise RuntimeError("upstream refused to create projection curve")
         if name is not None:

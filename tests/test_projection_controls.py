@@ -23,5 +23,11 @@ def test_time_colored_curve(qapp, main_window):
     panel = create_plot_panel()
     plot, _graph = panel.plot_data(np.arange(10), np.arange(10), plot_type=PlotType.Projection)
     t = np.linspace(0, 1, 10)
-    graph = plot.plot_time_colored_curve(np.arange(10), np.arange(10), t, colormap="viridis")
+    # A panel builds three-subplot projection plots, so a curve needs three
+    # dimensions; two used to be accepted and silently plotted t as an axis.
+    graph = plot.plot_time_colored_curve(
+        np.arange(10), np.arange(10), t, z=np.arange(10), colormap="viridis")
     assert graph is not None
+
+    with pytest.raises(ValueError, match="3 dimensions"):
+        plot.plot_time_colored_curve(np.arange(10), np.arange(10), t)

@@ -51,10 +51,13 @@ def projection_trajectory(panel: PlotPanel) -> None:
     t = np.linspace(0, 1, 300)
     x = np.cos(2 * np.pi * t)
     y = np.sin(2 * np.pi * t)
+    z = np.linspace(-1, 1, 300)
     # Create an XY/projection plot via the omnibus dispatcher
     plot, _ = panel.plot(x, y, graph_type=GraphType.ParametricCurve)
     if hasattr(plot, "plot_time_colored_curve"):
-        plot.plot_time_colored_curve(x, y, t, name="orbit", colormap="viridis")
+        # A projection plot draws one panel per pair of dimensions, so it needs
+        # as many dimensions as it has panels -- three, as the panel builds them.
+        plot.plot_time_colored_curve(x, y, t, z=z, name="orbit", colormap="viridis")
 
 
 def radio_dynamic_spectrum_before_after(panel: PlotPanel) -> None:
