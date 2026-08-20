@@ -1,8 +1,9 @@
 """Manages C++ annotation items on a SciQLopPlot for a single layer."""
 import numpy as np
+import re
 from typing import Optional
 
-from PySide6.QtCore import QObject, QTimer
+from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtGui import QColor, QPen
 from SciQLopPlots import (SciQLopVerticalSpan, SciQLopPlotRange,
                           SciQLopHorizontalLine, GraphMarkerShape,
@@ -65,14 +66,64 @@ def _partition(items: list[Annotation]) -> dict[str, list]:
     return groups
 
 
+_CSS_RGB = re.compile(
+    r"^\s*rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*"
+    r"(?:,\s*([0-9.]+)\s*)?\)\s*$", re.IGNORECASE)
+
+
+def _css_rgb(text: str) -> Optional[QColor]:
+    """QColor from a CSS ``rgb()``/``rgba()`` string, or None if it is not one.
+
+    QColor does not accept these: it returns an *invalid* colour, which paints
+    nothing, so the annotation simply vanishes with no error anywhere.
+    """
+    m = _CSS_RGB.match(text)
+    if not m:
+        return None
+    r, g, b, a = m.groups()
+    c = QColor(int(float(r)), int(float(g)), int(float(b)))
+    if a is not None:
+        # CSS writes alpha 0..1; accept 0..255 too, since Qt users reach for it
+        av = float(a)
+        c.setAlpha(round(av * 255) if av <= 1.0 else round(av))
+    return c
+
+
 def _parse_color(color_str: Optional[str], default: str, alpha: int = 255):
-    c = QColor(color_str or default)
-    if alpha < 255:
+    """Colour from a Qt name, ``#RRGGBB``/``#AARRGGBB``, or CSS ``rgb()``/``rgba()``.
+
+    ``alpha`` is a *default*: a colour that carries its own opacity keeps it.
+    An unparseable string falls back to ``default`` and says so, rather than
+    painting nothing.
+    """
+    text = (color_str or default).strip()
+    c = _css_rgb(text)
+    carries_alpha = c is not None and c.alpha() < 255
+    if c is None:
+        c = QColor(text)
+        # #AARRGGBB is the Qt spelling for an explicit alpha
+        carries_alpha = c.isValid() and len(text) == 9 and text.startswith("#")
+    if not c.isValid():
+        log.warning("layer: unrecognised colour %r, falling back to %r",
+                    color_str, default)
+        c = QColor(default)
+        carries_alpha = False
+    if alpha < 255 and not carries_alpha:
         c.setAlpha(alpha)
     return c
 
 
+def _callback_name(callback) -> str:
+    inner = getattr(callback, "callback", callback)   # unwrap MutableCallback
+    return getattr(inner, "__qualname__", None) or getattr(inner, "__name__", repr(inner))
+
+
 class LayerRenderer(QObject):
+
+    #: Emitted with "<callback>: <error>" when a layer callback raises. The
+    #: plot cannot show the exception itself, so this is how a caller or a UI
+    #: can tell a failure from a layer that legitimately found nothing.
+    callback_failed = Signal(str)
 
     def __init__(self, plot, callback, knob_state=None, data_type=None,
                  scope: str = "plot", panel=None, parent=None):
@@ -96,6 +147,12 @@ class LayerRenderer(QObject):
         self._hlines: list = []
         self._marker_graph = None
         self._disposed = False
+        self._last_error: Optional[BaseException] = None
+
+    @property
+    def last_error(self) -> Optional[BaseException]:
+        """What the last callback invocation raised, or None if it succeeded."""
+        return self._last_error
 
     @property
     def data_aware(self) -> bool:
@@ -181,9 +238,18 @@ class LayerRenderer(QObject):
                 items = self._callback(data=data, **knobs)
             else:
                 items = self._callback(start, stop, **knobs)
-        except Exception:
-            log.error("layer callback failed", exc_info=True)
-            items = []
+        except Exception as error:
+            # Rendering [] here is why a broken detector reads as "no events
+            # found": the failure and the empty result look identical on the
+            # plot. Keep the plot consistent, but record it and say which
+            # callback it was, so the difference is recoverable.
+            self._last_error = error
+            log.error("layer callback %s failed", _callback_name(self._callback),
+                      exc_info=True)
+            self.callback_failed.emit(f"{_callback_name(self._callback)}: {error}")
+            self._render([])
+            return
+        self._last_error = None
         self._render(items or [])
 
     def _render(self, items: list[Annotation]):
