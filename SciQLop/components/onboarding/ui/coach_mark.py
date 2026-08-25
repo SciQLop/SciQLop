@@ -38,6 +38,17 @@ class CoachMark(QWidget):
         self._skip_link.clicked.connect(self.skip_requested)
         self._dismiss_button = QPushButton("Got it / Next", self._bubble)
         self._dismiss_button.clicked.connect(self.dismiss_clicked)
+        # Plain default styling made it no more prominent than "Skip
+        # tour" despite being the primary way to advance the tour. A
+        # filled palette(highlight) background reads as the primary CTA;
+        # scoped to its own object name for the same reason the bubble's
+        # border is (an unscoped rule would cascade to any styleable
+        # descendant).
+        self._dismiss_button.setObjectName("CoachMarkDismissButton")
+        self._dismiss_button.setStyleSheet(
+            "#CoachMarkDismissButton { background-color: palette(highlight); "
+            "color: palette(highlighted-text); font-weight: bold; border: none; "
+            f"border-radius: 4px; padding: {Metrics.ex(0.4)}px {Metrics.em(1.2)}px; }}")
         buttons.addWidget(self._skip_link)
         buttons.addStretch(1)
         buttons.addWidget(self._dismiss_button)

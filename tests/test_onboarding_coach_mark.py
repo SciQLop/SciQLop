@@ -246,6 +246,25 @@ def test_esc_emits_skip_requested(qtbot):
         qtbot.keyClick(mark, Qt.Key.Key_Escape)
 
 
+def test_dismiss_button_is_styled_as_the_primary_action(qtbot):
+    """Real report: "the next button should also be way more visible" --
+    it was a plain, unstyled QPushButton, no more prominent than "Skip
+    tour" despite being the primary way to advance the tour. Give it a
+    filled palette(highlight) background so it reads as the primary CTA."""
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    host = QMainWindow()
+    qtbot.addWidget(host)
+
+    mark = CoachMark(host)
+    qtbot.addWidget(mark)
+
+    style = mark._dismiss_button.styleSheet()
+    assert mark._dismiss_button.objectName()
+    assert f"#{mark._dismiss_button.objectName()}" in style
+    assert "palette(highlight)" in style
+
+
 def test_dismiss_button_emits_dismiss_clicked(qtbot):
     from SciQLop.components.onboarding.ui.coach_mark import CoachMark
 
