@@ -48,10 +48,18 @@ class CoachMark(QWidget):
         # tone to whatever sits behind or beside it, and the dimmed
         # overlay's highlight ring is drawn around the TARGET's cutout,
         # not the bubble -- an explicit border gives the bubble its own
-        # theme-independent boundary so it doesn't take a moment to spot.
+        # boundary. Scoped to "#CoachMarkBubble" (its object name), not a
+        # bare property list: an unscoped rule is an implicit universal
+        # selector in Qt's style-sheet cascade, so it paints the same box
+        # around every plain-QWidget child too (title, body, buttons) --
+        # confirmed by rendering to a QImage before adding the selector.
+        # palette(highlight) (the same accent the target's spotlight ring
+        # uses) reads reliably in both themes; palette(mid) was too close
+        # to the background to actually stand out.
+        self._bubble.setObjectName("CoachMarkBubble")
         self._bubble.setStyleSheet(
-            "background-color: palette(window); "
-            "border: 1px solid palette(mid); border-radius: 6px;")
+            "#CoachMarkBubble { background-color: palette(window); "
+            "border: 2px solid palette(highlight); border-radius: 6px; }")
         # Metrics.em() DPI/font-scales this width -- a hardcoded pixel
         # value here would stay a fixed size while the rest of the app's
         # text scales with the system font/DPI, making the bubble (and

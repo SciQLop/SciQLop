@@ -81,8 +81,11 @@ def test_bubble_has_a_visible_border_for_contrast_against_its_surroundings(qtbot
     background is palette(window), which can be close in tone to whatever
     sits behind or beside it, and the only other visual anchor on screen
     (the 2px highlight ring) is drawn around the TARGET's cutout, not the
-    bubble itself. An explicit border around the bubble gives it its own
-    theme-independent boundary."""
+    bubble itself. An explicit, high-contrast border around the bubble
+    gives it its own boundary. palette(highlight) (the same accent used
+    for the target's spotlight ring) was chosen over palette(mid) because
+    a follow-up screenshot showed the latter too washed-out to actually
+    stand out."""
     from SciQLop.components.onboarding.ui.coach_mark import CoachMark
 
     host = QMainWindow()
@@ -93,6 +96,63 @@ def test_bubble_has_a_visible_border_for_contrast_against_its_surroundings(qtbot
 
     style = mark._bubble.styleSheet()
     assert "border:" in style
+    assert "palette(highlight)" in style
+
+
+def test_bubble_border_selector_is_scoped_to_the_bubble_object_name(qtbot):
+    """Regression: the first fix set the border via an unscoped QSS
+    declaration (no selector) on the bubble container. Qt's style-sheet
+    cascade treats an unscoped rule as an implicit universal selector, so
+    it painted the same box around every plain-QWidget child too (title,
+    body text, "Skip tour", "Got it / Next") -- not just the bubble's own
+    outer edge, exactly what a follow-up screenshot showed ("weird").
+    Scoping the rule to the bubble's own object name is what keeps it off
+    the children."""
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    host = QMainWindow()
+    qtbot.addWidget(host)
+
+    mark = CoachMark(host)
+    qtbot.addWidget(mark)
+
+    assert mark._bubble.objectName()
+    assert f"#{mark._bubble.objectName()}" in mark._bubble.styleSheet()
+
+
+def test_bubble_border_does_not_leak_onto_child_widgets(qtbot):
+    """Same regression as above, verified by actually rendering the
+    bubble: a leaked border paints the container's own accent-colored
+    border line at each child's edge too, not just the bubble's outer
+    edge. Compares against the widget's own resolved highlight color
+    (rather than a hardcoded RGB triple) so this holds across themes."""
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+    from PySide6.QtGui import QImage
+    from PySide6.QtGui import QPalette
+
+    host = QMainWindow()
+    target = QPushButton("target", host)
+    host.resize(800, 600)
+    qtbot.addWidget(host)
+    host.show()
+
+    mark = CoachMark(host)
+    qtbot.addWidget(mark)
+    mark.show_for(target, "Title", "Body text")
+
+    image = QImage(mark._bubble.size(), QImage.Format.Format_ARGB32)
+    mark._bubble.render(image)
+
+    accent = mark.palette().color(QPalette.ColorRole.Highlight)
+
+    def _close_to_accent(color, tolerance=60):
+        return (abs(color.red() - accent.red()) < tolerance
+                and abs(color.green() - accent.green()) < tolerance
+                and abs(color.blue() - accent.blue()) < tolerance)
+
+    title_rect = mark._title_label.geometry()
+    edge_pixel = image.pixelColor(title_rect.center().x(), title_rect.top())
+    assert not _close_to_accent(edge_pixel)
 
 
 def test_bubble_stays_outside_the_click_through_cutout_for_a_near_full_window_target(qtbot):
