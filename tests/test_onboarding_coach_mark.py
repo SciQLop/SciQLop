@@ -76,6 +76,25 @@ def test_bubble_width_scales_with_metrics_not_a_hardcoded_pixel_value(qtbot):
     assert mark._bubble.width() == Metrics.em(28)
 
 
+def test_bubble_has_a_visible_border_for_contrast_against_its_surroundings(qtbot):
+    """Real report: the bubble can "take a bit of time to find" -- its
+    background is palette(window), which can be close in tone to whatever
+    sits behind or beside it, and the only other visual anchor on screen
+    (the 2px highlight ring) is drawn around the TARGET's cutout, not the
+    bubble itself. An explicit border around the bubble gives it its own
+    theme-independent boundary."""
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    host = QMainWindow()
+    qtbot.addWidget(host)
+
+    mark = CoachMark(host)
+    qtbot.addWidget(mark)
+
+    style = mark._bubble.styleSheet()
+    assert "border:" in style
+
+
 def test_bubble_stays_outside_the_click_through_cutout_for_a_near_full_window_target(qtbot):
     """Reproduces a real report: for overlay_vs_new_subplot, whose target
     (the panel) spans nearly the whole window, the user saw only the

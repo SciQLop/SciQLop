@@ -3,6 +3,9 @@ from PySide6.QtWidgets import QDialog, QVBoxLayout, QListWidget, QListWidgetItem
 
 from SciQLop.components.onboarding.backend.registry import all_tours
 from SciQLop.components.onboarding.backend.settings import OnboardingSettings
+from SciQLop.core.ui import Metrics
+
+_MAX_VISIBLE_ROWS = 8
 
 
 class TourPicker(QDialog):
@@ -36,6 +39,22 @@ class TourPicker(QDialog):
             item.setData(Qt.ItemDataRole.UserRole, tour.id)
             self._list.addItem(item)
             self._items_by_tour_id[tour.id] = item
+        self._size_to_content()
+
+    def _size_to_content(self) -> None:
+        """QListWidget's own sizeHint ignores its items' actual text --
+        without this the dialog opens at that unrelated default size,
+        clipping/eliding a normal tour entry until the user resizes it
+        by hand."""
+        count = self._list.count()
+        fm = self._list.fontMetrics()
+        widest_text = max(
+            (fm.horizontalAdvance(self._list.item(i).text()) for i in range(count)),
+            default=0)
+        width = min(widest_text + Metrics.em(4), Metrics.em(90))
+        row_height = self._list.sizeHintForRow(0) if count else Metrics.ex(2)
+        height = row_height * min(count, _MAX_VISIBLE_ROWS) + Metrics.em(6)
+        self.resize(max(width, Metrics.em(40)), height)
 
     def _start_selected(self) -> None:
         item = self._list.currentItem()

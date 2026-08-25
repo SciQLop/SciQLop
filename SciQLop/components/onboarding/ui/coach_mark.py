@@ -44,8 +44,14 @@ class CoachMark(QWidget):
         layout.addWidget(self._title_label)
         layout.addWidget(self._body_label)
         layout.addLayout(buttons)
+        # The bubble's own background (palette(window)) can be close in
+        # tone to whatever sits behind or beside it, and the dimmed
+        # overlay's highlight ring is drawn around the TARGET's cutout,
+        # not the bubble -- an explicit border gives the bubble its own
+        # theme-independent boundary so it doesn't take a moment to spot.
         self._bubble.setStyleSheet(
-            "background-color: palette(window); border-radius: 6px;")
+            "background-color: palette(window); "
+            "border: 1px solid palette(mid); border-radius: 6px;")
         # Metrics.em() DPI/font-scales this width -- a hardcoded pixel
         # value here would stay a fixed size while the rest of the app's
         # text scales with the system font/DPI, making the bubble (and

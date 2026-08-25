@@ -1,6 +1,27 @@
 from .fixtures import *
 
 
+def test_picker_sizes_itself_to_fit_the_longest_tour_entry(main_window):
+    """Reproduces a real report: the dialog opened at whatever default size
+    QListWidget's own sizeHint gives (unrelated to the actual item text),
+    so a normal tour entry's title+description got clipped/elided and the
+    user had to resize the dialog by hand just to read it."""
+    from SciQLop.components.onboarding.ui.tour_picker import TourPicker
+    from SciQLop.components.onboarding.backend.registry import register_builtin_tours
+    from PySide6.QtGui import QFontMetrics
+
+    register_builtin_tours()
+    picker = TourPicker(main_window)
+    try:
+        widest_item_text = max(
+            (picker._list.item(i).text() for i in range(picker._list.count())),
+            key=len)
+        fm = QFontMetrics(picker._list.font())
+        assert picker.width() >= fm.horizontalAdvance(widest_item_text)
+    finally:
+        picker.close()
+
+
 def test_picker_lists_all_registered_tours(main_window):
     from SciQLop.components.onboarding.ui.tour_picker import TourPicker
     from SciQLop.components.onboarding.backend.registry import register_builtin_tours, all_tours
