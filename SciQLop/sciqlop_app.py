@@ -108,13 +108,35 @@ def start_sciqlop():
     return main_windows
 
 def main():
-    main_windows = start_sciqlop()
-    try:
-        main_windows.start()
-    except Exception as e:
-        print(e)
+    from PySide6.QtCore import QTimer
     from SciQLop.core.sciqlop_application import sciqlop_event_loop
-    sciqlop_event_loop().exec()
+
+    loop = sciqlop_event_loop()
+
+    def _run_startup():
+        main_windows = start_sciqlop()
+        try:
+            main_windows.start()
+        except Exception as e:
+            print(e)
+
+    # Deferred via a zero-delay timer scheduled *before* exec() below, rather
+    # than called directly here: start_sciqlop() builds the whole MainWindow
+    # and loads plugins (pumping Qt events along the way with several
+    # app.processEvents() calls). qasync only marks its loop as "the running
+    # loop" (asyncio.events._set_running_loop) once run_forever()/
+    # run_until_complete() actually runs — i.e. once exec() is reached. A
+    # plugin that eagerly schedules an asyncio Task during startup (e.g. an
+    # agent backend's load() binding a chat session) used to get that Task's
+    # first step dispatched by one of those processEvents() calls while the
+    # loop wasn't marked running yet, raising
+    # "RuntimeError: <loop> is not the running loop" (silently tolerated on
+    # Python 3.13, a hard error on 3.14 — reproduced live on both). Running
+    # the whole startup sequence as the first thing Qt dispatches once exec()
+    # has genuinely entered its running state fixes the ordering at the root
+    # instead of at each individual eager-Task call site.
+    QTimer.singleShot(0, _run_startup)
+    loop.exec()
 
 
 if __name__ == '__main__':
