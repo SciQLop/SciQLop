@@ -87,12 +87,10 @@ $UV_BIN pip install --python $PYTHON_BIN certifi
 
 mkdir -p $APPDIR/opt/launcher
 "$SCIQLOP_ROOT/scripts/fetch_launcher.sh" linux_x86_64 "$APPDIR/opt/launcher/sciqlop-launcher"
-# splash.png beside the binary is optional (ui_fltk.cpp checks is_regular_file
-# before loading it) — no splash artwork has ever been designed for this
-# (docs/superpowers/specs/2026-04-09-launcher-splash-screen-design.md
-# describes the mechanism, not an actual image). Ships without one until
-# real splash art exists; the caption strip (phase/detail/progress) still
-# shows on a plain background.
+# The same splash art the old Python StartupWindow used
+# (SciQLop/resources/splash.png, 1328x800 — same ~1.66:1 aspect ratio as
+# the launcher's 720x434 picture area, so FLTK scales it down cleanly).
+cp "$SCIQLOP_ROOT/SciQLop/resources/splash.png" "$APPDIR/opt/launcher/splash.png"
 
 # Remove symlinks uv creates in opt/ (absolute, break inside AppImage mount)
 # - "python" → cpython-<version>

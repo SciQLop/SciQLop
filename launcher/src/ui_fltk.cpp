@@ -245,6 +245,11 @@ private:
         picture_ = new Fl_Box(0, 0, WIDTH, IMAGE_H);
         if (std::filesystem::is_regular_file(splash_png)) {
             image_ = new Fl_PNG_Image(splash_png.string().c_str());
+            // Fl_Box draws an image at its own native pixel size otherwise —
+            // the real splash art is larger than this box (1328x800 vs
+            // 720x434), so without an explicit scale it would be cropped,
+            // not shrunk to fit.
+            image_->scale(WIDTH, IMAGE_H, 1, 1);
             picture_->image(image_);
         }
 
