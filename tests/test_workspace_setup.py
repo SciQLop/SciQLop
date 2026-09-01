@@ -236,6 +236,80 @@ class TestPrepareWorkspaceOffline:
             prepare_workspace(workspace_dir, workspace_name="Test")
 
 
+class TestPrepareWorkspacePluginIsolation:
+    """A single incompatible plugin/appstore dependency (e.g. a plugin's
+    published release still pinned to an old SciQLop range) must not prevent
+    SciQLop itself from starting: the plugin loader already tolerates one
+    plugin failing to import — it logs and skips just that plugin, see
+    loader.load_plugin — so the workspace should retry with only the core
+    app's own dependencies rather than give up entirely."""
+
+    def test_retries_core_only_and_succeeds(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        venv.sync.side_effect = [RuntimeError("No solution found"), None]
+
+        cb = MagicMock()
+        result = prepare_workspace(workspace_dir, workspace_name="Test", on_output=cb)
+
+        assert result == venv.python_path
+        assert venv.sync.call_count == 2
+        gen = patches["generate_pyproject_toml"]
+        assert gen.call_count == 2
+        # The retry drops plugin/appstore dependencies entirely (empty list).
+        assert gen.call_args_list[1].args[1] == []
+
+    def test_falls_back_to_existing_venv_when_core_only_sync_also_fails(
+        self, workspace_dir, patches, tmp_path
+    ):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        python_path = tmp_path / "python"
+        python_path.write_text("")
+        venv.python_path = python_path
+        venv.has_sciqlop_installed = True
+        venv.sync.side_effect = RuntimeError("still broken")
+
+        result = prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert result == python_path
+        assert venv.sync.call_count == 2
+
+    def test_raises_when_core_only_sync_also_fails_with_nothing_installed(
+        self, workspace_dir, patches, tmp_path
+    ):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        venv.python_path = tmp_path / "missing" / "python"
+        venv.has_sciqlop_installed = False
+        venv.sync.side_effect = RuntimeError("still broken")
+
+        with pytest.raises(RuntimeError, match="still broken"):
+            prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert venv.sync.call_count == 2
+
+    def test_locked_sync_failure_does_not_retry_without_deps(self, workspace_dir, patches, tmp_path):
+        """`locked=True` (importing a workspace archive) is meant to
+        reproduce an exact, previously-working environment — it must not
+        silently drop dependencies to route around a conflict."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        venv.python_path = tmp_path / "missing" / "python"
+        venv.has_sciqlop_installed = False
+        venv.sync.side_effect = RuntimeError("locked resolution failed")
+
+        with pytest.raises(RuntimeError, match="locked resolution failed"):
+            prepare_workspace(workspace_dir, workspace_name="Test", locked=True)
+
+        assert venv.sync.call_count == 1
+        assert patches["generate_pyproject_toml"].call_count == 1
+
+
 class TestStaleLockfileInvalidation:
     """A uv.lock older than pyproject.toml is stale and must be removed."""
 

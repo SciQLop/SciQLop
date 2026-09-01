@@ -39,6 +39,71 @@ def get_plugin_folders() -> list[str]:
     return plugins_folders()
 
 
+def _try_sync(venv: WorkspaceVenv, *, locked: bool, on_output) -> Exception | None:
+    try:
+        venv.sync(locked=locked, on_output=on_output)
+        return None
+    except Exception as exc:
+        return exc
+
+
+def _report_sync_failure(exc: Exception, on_output, *, core_only: bool = False) -> None:
+    label = "Core-only sync" if core_only else "Workspace dependency sync"
+    log.warning("%s failed: %s", label, exc)
+    if on_output is not None:
+        on_output(f"{label} failed: {exc}")
+
+
+def _sync_workspace_venv(
+    venv: WorkspaceVenv,
+    manifest: WorkspaceManifest,
+    optional_deps: list[str],
+    pyproject_path: Path,
+    locked: bool,
+    on_output: Callable[[str], None] | None,
+) -> None:
+    """Sync the workspace venv, isolating a broken plugin/appstore dependency.
+
+    The plugin loader already tolerates one plugin failing to import — it
+    logs and skips just that plugin (see loader.load_plugin) — so a single
+    incompatible plugin or appstore package (e.g. a published release still
+    pinned to an old SciQLop range) must not keep SciQLop itself from
+    starting. If the full dependency set fails to resolve, retry with only
+    the core app's own dependencies so it can still launch; only if even
+    that fails do we fall back to (or give up on) whatever is already in the
+    venv. ``locked`` (importing a workspace archive) skips the retry: it is
+    meant to reproduce an exact, previously-working environment, not degrade
+    around a conflict.
+    """
+    exc = _try_sync(venv, locked=locked, on_output=on_output)
+    if exc is None:
+        return
+    _report_sync_failure(exc, on_output)
+
+    if not locked and optional_deps:
+        if on_output is not None:
+            on_output(
+                "Retrying with just the core app (dropping plugin/appstore "
+                "dependencies)..."
+            )
+        generate_pyproject_toml(manifest, [], pyproject_path)
+        exc = _try_sync(venv, locked=False, on_output=on_output)
+        if exc is None:
+            return
+        _report_sync_failure(exc, on_output, core_only=True)
+
+    if not venv.has_sciqlop_installed:
+        # No working install to fall back to.
+        raise exc
+    # Offline / unreachable index (#115): keep starting with the existing
+    # venv so the user can still use bundled features (CDF, local files).
+    if on_output is not None:
+        on_output(
+            "Continuing with existing venv. Run with network to install "
+            "missing packages."
+        )
+
+
 def prepare_workspace(
     workspace_dir: Path | str,
     workspace_name: str | None = None,
@@ -129,28 +194,12 @@ def prepare_workspace(
             # cope with the stale lock or surface its own error.
             log.warning("Could not remove stale uv.lock: %s", exc)
 
-    # Step 5: Ensure venv exists and sync
+    # Step 6: Ensure venv exists and sync
     venv = WorkspaceVenv(workspace_dir)
     venv.ensure(on_output=on_output)
-    try:
-        venv.sync(locked=locked, on_output=on_output)
-    except Exception as exc:
-        if not venv.has_sciqlop_installed:
-            # No working install to fall back to — a fresh venv (or one an
-            # earlier sync never completed) has an interpreter but no
-            # packages, so silently "continuing" would just crash later with
-            # a confusing ModuleNotFoundError instead of surfacing the real
-            # resolution error.
-            raise
-        # Offline / unreachable index (#115): keep starting with the existing
-        # venv so the user can still use bundled features (CDF, local files).
-        log.warning("Workspace dependency sync failed: %s", exc)
-        if on_output is not None:
-            on_output(f"Workspace dependency sync failed: {exc}")
-            on_output(
-                "Continuing with existing venv. Run with network to install "
-                "missing packages."
-            )
+    _sync_workspace_venv(
+        venv, manifest, plugin_deps + appstore_deps, pyproject_path, locked, on_output,
+    )
 
     # Venvs prepared by older SciQLop versions installed both jupyterlab and
     # jupyterlab-js; the sync above may have just uninstalled jupyterlab and
