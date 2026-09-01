@@ -121,20 +121,43 @@ int run_app(const fs::path& workspace_dir, Ui& ui, std::string& stderr_tail) {
         {},
         {{"SCIQLOP_STARTUP_READY_FILE", ready.marker.string()}}};
 
-    bool splash_closed = false;
     std::ostringstream tail;
+
+    // sciqlop_launcher.py's _run_on_console() prints these two exact lines —
+    // once for the very first launch, and again for every restart or
+    // workspace switch it handles internally within this one subprocess (see
+    // its main() loop). Recognizing them turns the splash from a static
+    // "Preparing workspace" for the whole session into a live reflection of
+    // which of those internal relaunches is happening right now.
+    auto starts_with = [](const std::string& line, const char* prefix) {
+        return line.rfind(prefix, 0) == 0;
+    };
+
+    auto report_line = [&](const std::string& line) {
+        if (starts_with(line, "Preparing workspace")) {
+            ui.post_phase("Preparing workspace");
+        } else if (starts_with(line, "Starting SciQLop")) {
+            ui.post_phase("Starting SciQLop");
+        } else {
+            ui.post_detail(line);
+        }
+    };
 
     const int code = run_supervised(
         app, paths::last_launch_log(),
+        // stdout: sciqlop_launcher.py's own print()s — its "Preparing
+        // workspace"/"Starting SciQLop" phase markers and any uv output
+        // relayed through prepare_workspace()'s on_output callback.
+        report_line,
+        // stderr: warnings and, on a crash, a traceback — also worth
+        // reflecting live, and kept verbatim in `tail` for post_error().
         [&](const std::string& line) {
-            ui.post_detail(line);
+            report_line(line);
             tail << line << '\n';
         },
         [&] {
-            if (splash_closed) return;
             std::error_code ec;
             if (!fs::is_regular_file(ready.marker, ec)) return;
-            splash_closed = true;
             // sciqlop_app.py's _signal_ready_and_wait_for_splash() touches this
             // marker, then polls (up to 5s) for it to be *deleted* before
             // showing its own window — the same handoff the windowed Python
@@ -142,6 +165,14 @@ int run_app(const fs::path& workspace_dir, Ui& ui, std::string& stderr_tail) {
             // ours immediately; without also removing the marker, the app
             // would sit at its self-imposed timeout on every single launch
             // instead of being acknowledged right away.
+            //
+            // No "already dismissed" latch: the middle `SciQLop.app` process
+            // handles a restart (exit 64) or workspace switch (exit 65)
+            // *internally*, re-touching this same marker for every GUI
+            // relaunch within this one native-launcher session — not just the
+            // first. dismiss() is safe to call repeatedly (see ui.hpp), so
+            // acknowledging every occurrence is what keeps a restart/switch
+            // from sitting at that 5s timeout too.
             ui.dismiss();
             fs::remove(ready.marker, ec);
         });

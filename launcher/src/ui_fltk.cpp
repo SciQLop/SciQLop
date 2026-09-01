@@ -159,7 +159,7 @@ private:
 };
 
 /// Messages posted from the worker thread and applied on the UI thread.
-enum class PostKind { Phase, Detail, Progress, Warning, Error, Close };
+enum class PostKind { Phase, Detail, Progress, Warning, Error, Dismiss, Close };
 
 struct Post {
     PostKind kind;
@@ -178,7 +178,10 @@ public:
         build(splash_png);
     }
 
-    ~FltkUi() override { delete window_; }
+    ~FltkUi() override {
+        delete window_;
+        delete keepalive_;
+    }
 
     void set_phase(const std::string& text) { strip_->phase(text); }
     void set_detail(const std::string& text) { strip_->detail(text); }
@@ -199,6 +202,7 @@ public:
         // the user may dismiss it, so the Close posted when work() returns is
         // ignored from here on.
         error_shown_ = true;
+        window_->show();  // re-show: this may follow an earlier dismiss()
         picture_->hide();
         strip_->hide();
         banner_->hide();
@@ -216,10 +220,15 @@ public:
 
     void close() {
         window_->hide();
+        // Also drop the keepalive window here (see build()): this is the one
+        // path that means the whole session is over, so Fl_X::first should be
+        // allowed to actually reach null and let Fl::run() return.
+        keepalive_->hide();
         Fl::flush();
     }
 
     void run_with_worker(std::function<void()> work) override {
+        keepalive_->show();
         window_->show();
         std::thread worker([this, work = std::move(work)] {
             work();
@@ -234,10 +243,16 @@ public:
     void post_progress(double percent) override { post(PostKind::Progress, {}, percent); }
     void post_warning(const std::string& message) override { post(PostKind::Warning, message, 0.0); }
     void post_error(const std::string& text) override { post(PostKind::Error, text, 0.0); }
-    void dismiss() override { post(PostKind::Close, {}, 0.0); }
+    void dismiss() override { post(PostKind::Dismiss, {}, 0.0); }
 
 private:
     void build(const std::filesystem::path& splash_png) {
+        // Never shown to the user (1x1, off-screen) — its only job is to keep
+        // at least one window in FLTK's Fl_X list for the whole session, so
+        // dismiss()'s hide() of the real splash window never leaves Fl::run()
+        // with zero windows and returning early (see the Dismiss case below).
+        keepalive_ = new Fl_Window(-10000, -10000, 1, 1);
+
         window_ = new Fl_Window(WIDTH, IMAGE_H + STRIP_H, "SciQLop \xe2\x80\x94 starting");
         window_->color(rgb(13, 15, 20));
         window_->border(0);
@@ -295,11 +310,34 @@ private:
         std::unique_ptr<Post> message(static_cast<Post*>(data));
         FltkUi* self = message->ui;
         switch (message->kind) {
-            case PostKind::Phase:    self->set_phase(message->text); break;
+            case PostKind::Phase:
+                // A restart or workspace switch re-enters "Preparing
+                // workspace" from inside the one supervised subprocess (see
+                // launcher.cpp's run_app) — re-show so it becomes visible
+                // again after an earlier dismiss().
+                self->window_->show();
+                self->set_phase(message->text);
+                break;
             case PostKind::Detail:   self->set_detail(message->text); break;
             case PostKind::Progress: self->set_progress(message->value); break;
             case PostKind::Warning:  self->show_warning(message->text); break;
             case PostKind::Error:    self->show_error(message->text); break;
+            case PostKind::Dismiss:
+                // Plain hide(), same as close() — but unlike close(), the
+                // keepalive_ window (see build()) stays up, so Fl::run()'s
+                // `while (Fl_X::first) wait(FOREVER)` still has a window to
+                // keep it alive. Without that, hiding the *last* visible
+                // window here would let Fl::run() return and permanently stop
+                // this event pump the first time the splash is dismissed,
+                // even though run_app()'s supervised subprocess keeps running
+                // for the rest of the session (through any later restarts or
+                // workspace switches). iconize() was tried instead of a
+                // second window, but on this desktop a borderless (border(0))
+                // splash simply never became invisible when iconized — many
+                // window managers only animate/track iconify state for
+                // normal, decorated windows.
+                if (!self->error_shown_) self->window_->hide();
+                break;
             case PostKind::Close:
                 if (!self->error_shown_) self->close();
                 break;
@@ -326,6 +364,7 @@ private:
     static void on_quit(Fl_Widget*, void* data) { static_cast<FltkUi*>(data)->close(); }
 
     Fl_Window* window_ = nullptr;
+    Fl_Window* keepalive_ = nullptr;
     Fl_PNG_Image* image_ = nullptr;
     Fl_Box* picture_ = nullptr;
     WarningBanner* banner_ = nullptr;

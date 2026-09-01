@@ -167,6 +167,7 @@ int run(const Command& command, const OutputSink& on_line) {
 
 int run_supervised(const Command& command,
                    const fs::path& log_file,
+                   const OutputSink& on_stdout,
                    const OutputSink& on_stderr,
                    const std::function<void()>& on_tick) {
     Child child = start(command);
@@ -183,7 +184,10 @@ int run_supervised(const Command& command,
 
     return pump(
         child,
-        [&](const std::string& line) { tee("out", line); },
+        [&](const std::string& line) {
+            tee("out", line);
+            if (on_stdout) on_stdout(line);
+        },
         [&](const std::string& line) {
             tee("err", line);
             if (on_stderr) on_stderr(line);

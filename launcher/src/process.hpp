@@ -26,13 +26,18 @@ struct Command {
 /// Returns the exit code, or -1 if the process could not be started.
 int run(const Command& command, const OutputSink& on_line);
 
-/// Run to completion, tee-ing stdout and stderr to *log_file*. Stderr lines are
-/// also handed to *on_stderr* so the caller can keep a tail for error reporting.
+/// Run to completion, tee-ing stdout and stderr to *log_file*. Both streams are
+/// also handed line by line to *on_stdout* / *on_stderr* — the supervised child
+/// here is SciQLop.app (see sciqlop_launcher.py), whose own progress output
+/// (e.g. "Preparing workspace ...", "Starting SciQLop ...") is plain stdout,
+/// not stderr, so a caller that only wants a crash-report tail should collect
+/// that itself from *on_stderr* rather than assume progress lines land there.
 /// *on_tick* fires roughly every 100 ms while the process lives, which is how
 /// the caller notices the startup-ready marker and closes the splash.
 /// Returns the exit code, or -1 if the process could not be started.
 int run_supervised(const Command& command,
                    const std::filesystem::path& log_file,
+                   const OutputSink& on_stdout,
                    const OutputSink& on_stderr,
                    const std::function<void()>& on_tick);
 
