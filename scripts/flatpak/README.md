@@ -16,24 +16,29 @@ flatpak run com.github.SciQLop.SciQLop
 
 ## Updating dependencies
 
-After changing `pyproject.toml`, regenerate the pip dependency manifest:
+`python-deps.yaml` only covers the **launcher's** own small dependency
+closure (platformdirs, pydantic, pyyaml, tomli_w) — the application itself
+(PySide6, shiboken6, QtAds, SciQLopPlots, matplotlib, speasy, ...) is not
+bundled into `/app` at all. It's installed into a per-user workspace venv
+at first launch by `prepare_workspace()`, the same as the AppImage/macOS/
+Windows installers — see `pip install sciqlop` vs `sciqlop[all]` in the
+root `pyproject.toml`.
+
+After changing the bare `dependencies` list in `pyproject.toml`, regenerate:
 
 ```bash
-# Requires: pip install flatpak-pip-generator
+# Requires: pip (for downloading wheels), PyYAML
 ./scripts/flatpak/update-deps.sh
 ```
 
-This updates `python-deps.yaml` (auto-generated, ~23 modules).
-
-`pyside6-deps.yaml` must be updated **manually** when changing PySide6, shiboken6, or PySide6-QtAds versions — get the wheel URLs and sha256 hashes from PyPI.
+This updates `python-deps.yaml` (auto-generated, currently ~8 modules).
 
 ## File layout
 
 | File | Description |
 |---|---|
 | `com.github.SciQLop.SciQLop.yaml` | Main Flatpak manifest |
-| `python-deps.yaml` | Auto-generated pip deps (via `update-deps.sh`) |
-| `pyside6-deps.yaml` | PySide6/shiboken6/QtAds/SciQLopPlots x86_64 wheels (manual) |
+| `python-deps.yaml` | Auto-generated launcher deps (via `update-deps.sh`) |
 | `update-deps.sh` | Regenerates `python-deps.yaml` |
 
 ## Sandbox permissions

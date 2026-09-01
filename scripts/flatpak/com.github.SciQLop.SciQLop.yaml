@@ -51,13 +51,21 @@ modules:
       - cd src && make -j$(nproc)
       - cd src && make install
 
-  # PySide6 + shiboken6 + QtAds (arch-specific wheels)
-  - pyside6-deps.yaml
-
-  # All other Python dependencies (auto-generated)
+  # The launcher's own small dependency closure (platformdirs, pydantic,
+  # pyyaml, tomli_w — auto-generated). The application itself (PySide6,
+  # shiboken6, QtAds, SciQLopPlots, matplotlib, speasy, ...) is NOT bundled
+  # here: it's installed into a per-user workspace venv at first launch by
+  # prepare_workspace(), via the uv module above — the whole point of the
+  # `sciqlop` (launcher) / `sciqlop[all]` (app) split. --share=network and
+  # --filesystem=home in finish-args exist specifically to support that.
   - python-deps.yaml
 
-  # SciQLop itself
+  # hatchling (pyproject.toml's [build-system].requires) — the build sandbox
+  # has no network access, so pip can't fetch the build backend on demand;
+  # --no-build-isolation below relies on it already being importable.
+  - hatchling-deps.yaml
+
+  # SciQLop itself (launcher only — no [all] extra)
   - name: sciqlop
     buildsystem: simple
     build-commands:
