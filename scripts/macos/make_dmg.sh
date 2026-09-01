@@ -134,27 +134,16 @@ find $PREFIX_ABS/lib -maxdepth 2 -name EXTERNALLY-MANAGED -delete
 # Install SciQLop using uv
 ########################################
 
-echo "Installing SciQLop into bundle..."
-# [all] is the application; the bare package is only the launcher.
-$UV_BIN pip install -q --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROOT/[all]"
-
-########################################
-# Plugin dependencies
-########################################
-
-PLUGIN_DEPENDENCIES=$($PYTHON_BIN -I $SCIQLOP_ROOT/scripts/list_plugins_dependencies.py $SCIQLOP_ROOT/SciQLop/plugins)
-if [[ -n "$PLUGIN_DEPENDENCIES" ]]; then
-  echo "Installing plugin dependencies: $PLUGIN_DEPENDENCIES"
-  $UV_BIN pip install -q --python $PYTHON_BIN $PLUGIN_DEPENDENCIES
-fi
-
-########################################
-# Dev speasy override
-########################################
-
-if [[ -z $RELEASE ]]; then
-  $UV_BIN pip install -q --python $PYTHON_BIN --upgrade git+https://github.com/SciQLop/speasy
-fi
+echo "Installing SciQLop launcher into bundle..."
+# The bare package is only the launcher — read the manifest/settings, then
+# drive uv. It never imports the GUI stack (test_launcher_thin_imports.py),
+# so it doesn't need [all] here: the application (and plugin
+# python_dependencies, and — for a .dev version — speasy/SciQLop straight
+# from git main) is installed into each workspace's own venv at first
+# launch by prepare_workspace(). Installing any of that into this bundled
+# Python would bake the whole app into the bundle, defeating the point of
+# the self-contained-workspace split.
+$UV_BIN pip install -q --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROOT"
 
 export PATH=$SAVED_PATH
 

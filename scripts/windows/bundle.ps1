@@ -68,27 +68,22 @@ if ($ExternallyManaged) { Remove-Item $ExternallyManaged.FullName -Force }
 # Install SciQLop
 ########################################
 
-Write-Host "Installing SciQLop..."
+Write-Host "Installing SciQLop launcher..."
 # NB: pass $SciQLopRoot bare. Quoting with a trailing backslash ("$Path\") trips
 # PowerShell's native-arg escaping when $Path contains spaces — the resulting
 # command line ends with \" which uv interprets as an escaped quote and the
 # install fails with "filename, directory name, or volume label syntax is
 # incorrect". CI paths have no spaces so this only bites local dev.
-# [all] is the application; the bare package is only the launcher.
-& $UvBin pip install --system --python $PythonBin --link-mode=copy --reinstall --no-cache "$SciQLopRoot[all]"
+# The bare package is only the launcher — read the manifest/settings, then
+# drive uv. It never imports the GUI stack (test_launcher_thin_imports.py),
+# so it doesn't need [all] here: the application (and plugin
+# python_dependencies, and — for a .dev version — speasy/SciQLop straight
+# from git main) is installed into each workspace's own venv at first
+# launch by prepare_workspace(). Installing any of that into this bundled
+# Python would bake the whole app into the bundle, defeating the point of
+# the self-contained-workspace split.
+& $UvBin pip install --system --python $PythonBin --link-mode=copy --reinstall --no-cache "$SciQLopRoot"
 if ($LASTEXITCODE -ne 0) { throw "uv pip install (SciQLop root) failed with exit $LASTEXITCODE" }
-
-########################################
-# Plugin dependencies
-########################################
-
-$PluginDepsRaw = & $PythonBin -I "$SciQLopRoot\scripts\list_plugins_dependencies.py" "$SciQLopRoot\SciQLop\plugins"
-$PluginDeps = ($PluginDepsRaw -join " ") -split '\s+' | Where-Object { $_ }
-if ($PluginDeps) {
-    Write-Host "Installing plugin dependencies: $PluginDeps"
-    & $UvBin pip install --system --python $PythonBin --link-mode=copy @PluginDeps
-    if ($LASTEXITCODE -ne 0) { throw "uv pip install (plugin deps) failed with exit $LASTEXITCODE" }
-}
 
 ########################################
 # SSL certificates
@@ -96,15 +91,6 @@ if ($PluginDeps) {
 
 & $UvBin pip install --system --python $PythonBin --link-mode=copy certifi
 if ($LASTEXITCODE -ne 0) { throw "uv pip install (certifi) failed with exit $LASTEXITCODE" }
-
-########################################
-# Dev speasy override (non-release only)
-########################################
-
-if (-not $env:RELEASE) {
-    & $UvBin pip install --system --python $PythonBin --link-mode=copy --upgrade "git+https://github.com/SciQLop/speasy"
-    if ($LASTEXITCODE -ne 0) { throw "uv pip install (speasy dev override) failed with exit $LASTEXITCODE" }
-}
 
 ########################################
 # Bundle Node.js

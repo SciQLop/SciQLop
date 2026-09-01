@@ -64,37 +64,15 @@ Get-ChildItem -Path $PythonDir -Recurse -Filter "EXTERNALLY-MANAGED" -ErrorActio
 # Install SciQLop
 ########################################
 
-Write-Host "Installing SciQLop..."
-# [all] is the application; the bare package is only the launcher.
-& $UvBin pip install --system --python $PythonBin --link-mode=copy "sciqlop[all]"
-
-########################################
-# Install plugin dependencies
-########################################
-
-$ListScript = "$PythonDir\Lib\site-packages\SciQLop\..\..\..\..\scripts\list_plugins_dependencies.py"
-$PluginsDir = "$PythonDir\Lib\site-packages\SciQLop\plugins"
-
-if (Test-Path $PluginsDir) {
-    # Use the installed SciQLop's own plugin list
-    $PluginDepsRaw = & $PythonBin -c "
-import json, os, sys
-plugins_dir = r'$PluginsDir'
-deps = []
-for p in os.listdir(plugins_dir):
-    pj = os.path.join(plugins_dir, p, 'plugin.json')
-    if os.path.exists(pj):
-        with open(pj) as f:
-            info = json.load(f)
-        deps.extend(info.get('dependencies', []))
-print(' '.join(deps))
-"
-    $PluginDeps = ($PluginDepsRaw -join " ") -split '\s+' | Where-Object { $_ }
-    if ($PluginDeps) {
-        Write-Host "Installing plugin dependencies: $PluginDeps"
-        & $UvBin pip install --system --python $PythonBin --link-mode=copy @PluginDeps
-    }
-}
+Write-Host "Installing SciQLop launcher..."
+# The bare package is only the launcher — read the manifest/settings, then
+# drive uv. It never imports the GUI stack (test_launcher_thin_imports.py),
+# so it doesn't need [all] here: the application (and plugin
+# python_dependencies) is installed into each workspace's own venv at first
+# launch by prepare_workspace(). Installing either into this bundled Python
+# would bake the whole app into the install, defeating the point of the
+# self-contained-workspace split.
+& $UvBin pip install --system --python $PythonBin --link-mode=copy "sciqlop"
 
 ########################################
 # SSL certificates
