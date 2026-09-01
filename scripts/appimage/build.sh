@@ -57,29 +57,22 @@ ln -sf python$PYTHON_VERSION $PYTHON_DIR/bin/python3
 rm -f $PYTHON_DIR/lib/python${PYTHON_VERSION}/EXTERNALLY-MANAGED
 
 ########################################
-# Install SciQLop
+# Install SciQLop (launcher only)
 ########################################
 
-# [all] is the application; the bare package is only the launcher.
+# The bare package is only the launcher — read the manifest/settings, then
+# drive uv. It never imports the GUI stack (test_launcher_thin_imports.py),
+# so it doesn't need [all] here: the application is installed into each
+# workspace's own venv at first launch by prepare_workspace(), which also
+# resolves plugin python_dependencies (SciQLop/plugins/*/plugin.json) into
+# that same venv. Installing [all] or plugin deps into this bundled Python
+# would bake the whole app into the AppImage, defeating the point of the
+# self-contained-workspace split.
 $UV_BIN pip install \
     --python $PYTHON_BIN \
     --reinstall \
     --no-cache \
-    "$SCIQLOP_ROOT[all]"
-
-########################################
-# Plugin dependencies
-########################################
-
-PLUGIN_DEPENDENCIES=$(
-    $PYTHON_BIN -I \
-    $SCIQLOP_ROOT/scripts/list_plugins_dependencies.py \
-    $SCIQLOP_ROOT/SciQLop/plugins
-)
-
-if [ -n "$PLUGIN_DEPENDENCIES" ]; then
-    $UV_BIN pip install --python $PYTHON_BIN $PLUGIN_DEPENDENCIES
-fi
+    "$SCIQLOP_ROOT"
 
 ########################################
 # SSL certificates (for distros without /etc/ssl/cert.pem)
