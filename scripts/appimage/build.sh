@@ -88,7 +88,11 @@ $UV_BIN pip install --python $PYTHON_BIN certifi
 mkdir -p $APPDIR/opt/launcher
 "$SCIQLOP_ROOT/scripts/fetch_launcher.sh" linux_x86_64 "$APPDIR/opt/launcher/sciqlop-launcher"
 # splash.png beside the binary is optional (ui_fltk.cpp checks is_regular_file
-# before loading it) — none shipped yet, the splash just shows text for now.
+# before loading it). No dedicated splash artwork exists yet — the app icon
+# is a placeholder (FLTK draws it centered/unscaled in the picture area, not
+# stretched, so the square icon doesn't distort) until real splash art is
+# designed.
+cp "$SCIQLOP_ROOT/SciQLop/resources/icons/SciQLop.png" "$APPDIR/opt/launcher/splash.png"
 
 # Remove symlinks uv creates in opt/ (absolute, break inside AppImage mount)
 # - "python" → cpython-<version>

@@ -28,6 +28,13 @@ public:
     /// Terminal state: replaces the splash and keeps the window up until the
     /// user quits, so a failed launch can never disappear silently.
     virtual void post_error(const std::string& text) = 0;
+
+    /// Hide the splash immediately — e.g. once the real app window is up —
+    /// without waiting for run_with_worker's *work* to return (which only
+    /// happens once the supervised app process exits entirely). Safe to call
+    /// more than once; a no-op after post_error(), since only the user may
+    /// dismiss an error.
+    virtual void dismiss() = 0;
 };
 
 }  // namespace sciqlop

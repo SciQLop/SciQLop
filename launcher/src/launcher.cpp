@@ -135,8 +135,15 @@ int run_app(const fs::path& workspace_dir, Ui& ui, std::string& stderr_tail) {
             std::error_code ec;
             if (!fs::is_regular_file(ready.marker, ec)) return;
             splash_closed = true;
-            ui.post_progress(100);
-            ui.post_phase("");  // window is about to close; avoid a stale caption
+            // sciqlop_app.py's _signal_ready_and_wait_for_splash() touches this
+            // marker, then polls (up to 5s) for it to be *deleted* before
+            // showing its own window — the same handoff the windowed Python
+            // splash's check_ready() already implements. dismiss() alone hides
+            // ours immediately; without also removing the marker, the app
+            // would sit at its self-imposed timeout on every single launch
+            // instead of being acknowledged right away.
+            ui.dismiss();
+            fs::remove(ready.marker, ec);
         });
 
     stderr_tail = tail.str();

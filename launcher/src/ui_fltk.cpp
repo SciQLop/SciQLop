@@ -214,7 +214,10 @@ public:
         window_->redraw();
     }
 
-    void close() { window_->hide(); }
+    void close() {
+        window_->hide();
+        Fl::flush();
+    }
 
     void run_with_worker(std::function<void()> work) override {
         window_->show();
@@ -231,6 +234,7 @@ public:
     void post_progress(double percent) override { post(PostKind::Progress, {}, percent); }
     void post_warning(const std::string& message) override { post(PostKind::Warning, message, 0.0); }
     void post_error(const std::string& text) override { post(PostKind::Error, text, 0.0); }
+    void dismiss() override { post(PostKind::Close, {}, 0.0); }
 
 private:
     void build(const std::filesystem::path& splash_png) {
