@@ -40,6 +40,14 @@ _PINNED_BASE_PACKAGES = (
     "ipython",
 )
 
+# Where a dev (`.dev`) build's workspace venv gets SciQLop from: there is no
+# such thing as a released `.dev` version, so a bare "sciqlop[all]" would
+# resolve the latest actual release from PyPI instead — silently testing the
+# installer against old code. Installing from the tip of main instead lets a
+# pre-release build exercise the workspace/install flow against the code it
+# was actually built from.
+_DEV_BUILD_REQUIREMENT = "sciqlop[all] @ git+https://github.com/SciQLop/SciQLop.git@main"
+
 # Distribution-name prefixes of the embedded Jupyter server stack. jupyqt is
 # pinned to the host version, so the fps/jupyverse release train it drives must
 # be pinned with it — these ship as one coordinated set and a workspace venv
@@ -128,14 +136,16 @@ def sciqlop_requirement(pinned_version: str = "") -> str:
     ``[all]`` because the bare package is only the launcher — a workspace venv
     that installed it would have nothing to run.
 
-    A development version is deliberately left unpinned: ``0.13.0.dev0`` does
-    not exist on PyPI, so pinning it would make every workspace unresolvable in
-    a dev build. Released versions pin exactly, which is what makes a workspace
+    A development version installs from the tip of ``main`` instead of being
+    pinned: ``0.13.0.dev0`` does not exist on PyPI, and leaving it unpinned
+    would silently resolve the latest *released* version, which defeats using
+    a dev build to test the installer/workspace flow ahead of a release.
+    Released versions pin exactly, which is what makes a workspace
     reproducible.
     """
     version = pinned_version or running_sciqlop_version()
     if not version or ".dev" in version:
-        return "sciqlop[all]"
+        return _DEV_BUILD_REQUIREMENT
     return f"sciqlop[all]=={version}"
 
 

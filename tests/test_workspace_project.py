@@ -234,13 +234,18 @@ class TestGeneratePyprojectToml:
                 data = tomllib.load(f)
             assert "sciqlop[all]==0.13.0" in data["project"]["dependencies"]
 
-    def test_dev_versions_are_left_unpinned(self):
-        """A .dev version exists on no index; pinning it would make every
-        workspace unresolvable in a development build."""
+    def test_dev_versions_install_from_git_main(self):
+        """A .dev version exists on no index, so pinning it or leaving it
+        fully unpinned (which would resolve the latest PyPI release) both
+        defeat testing a pre-release build: install straight from the
+        project's main branch instead, so a dev launcher exercises the
+        workspace/install flow against the code it was actually built from."""
         from SciQLop.components.workspaces.backend.workspace_project import (
             sciqlop_requirement,
         )
-        assert sciqlop_requirement("0.13.0.dev0") == "sciqlop[all]"
+        assert sciqlop_requirement("0.13.0.dev0") == (
+            "sciqlop[all] @ git+https://github.com/SciQLop/SciQLop.git@main"
+        )
         assert sciqlop_requirement("0.13.0") == "sciqlop[all]==0.13.0"
 
     def test_accepts_path_as_string(self):
