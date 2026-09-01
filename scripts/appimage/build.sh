@@ -80,6 +80,16 @@ $UV_BIN pip install \
 
 $UV_BIN pip install --python $PYTHON_BIN certifi
 
+########################################
+# Bundle native launcher (splash while the bundled Python above prepares the
+# workspace and starts the app — see launcher/src/launcher.cpp)
+########################################
+
+mkdir -p $APPDIR/opt/launcher
+"$SCIQLOP_ROOT/scripts/fetch_launcher.sh" linux_x86_64 "$APPDIR/opt/launcher/sciqlop-launcher"
+# splash.png beside the binary is optional (ui_fltk.cpp checks is_regular_file
+# before loading it) — none shipped yet, the splash just shows text for now.
+
 # Remove symlinks uv creates in opt/ (absolute, break inside AppImage mount)
 # - "python" → cpython-<version>
 # - "cpython-3.14-<arch>" → cpython-3.14.3-<arch> (minor-only alias)

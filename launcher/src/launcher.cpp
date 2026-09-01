@@ -1,11 +1,9 @@
 #include "launcher.hpp"
 
-#include "manifest.hpp"
+#include "manifest.hpp"  // most_recently_used()
 #include "paths.hpp"
 #include "process.hpp"
-#include "project.hpp"
 
-#include <deque>
 #include <fstream>
 #include <sstream>
 
@@ -22,30 +20,18 @@ namespace fs = std::filesystem;
 namespace sciqlop {
 namespace {
 
-/// Interpreter series used when a workspace does not pin one. Only ever applied
-/// to *new* workspaces; an existing one keeps whatever it recorded.
-constexpr const char* DEFAULT_PYTHON_VERSION = "3.14";
 constexpr const char* SWITCH_TARGET_FILE = ".sciqlop_switch_target";
-constexpr const char* READY_FILE_ENV = "SCIQLOP_STARTUP_READY_FILE";
 
+/// AppRun (Linux/macOS bundles) and the Windows/macOS installers all put the
+/// bundled interpreter's directory on PATH before running this launcher —
+/// the same PATH the launcher's own bundled uv is found through today. A dev
+/// checkout without that bundling still resolves this to whatever `python3`
+/// is on the ambient PATH.
 #ifdef _WIN32
-constexpr const char* UV_EXECUTABLE = "uv.exe";
-constexpr const char* VENV_PYTHON = ".venv/Scripts/python.exe";
+constexpr const char* PYTHON_EXECUTABLE = "python.exe";
 #else
-constexpr const char* UV_EXECUTABLE = "uv";
-constexpr const char* VENV_PYTHON = ".venv/bin/python";
+constexpr const char* PYTHON_EXECUTABLE = "python3";
 #endif
-
-/// Bundled uv sits beside the launcher; falling back to PATH keeps development
-/// checkouts working without a bundle layout.
-std::string uv_command() {
-    std::error_code ec;
-    for (const fs::path& candidate : {paths::executable_dir() / UV_EXECUTABLE,
-                                      paths::executable_dir() / "uv" / UV_EXECUTABLE}) {
-        if (fs::is_regular_file(candidate, ec)) return candidate.string();
-    }
-    return UV_EXECUTABLE;
-}
 
 std::string read_file(const fs::path& path) {
     std::ifstream in(path, std::ios::binary);
@@ -75,37 +61,12 @@ fs::path workspaces_root() {
     return paths::workspaces_root();
 }
 
-/// Bounded tail of a command's output, so a failure message can quote the part
-/// that matters without holding a whole `uv sync` transcript in memory.
-class LineTail {
-public:
-    void push(const std::string& line) {
-        lines_.push_back(line);
-        if (lines_.size() > CAPACITY) lines_.pop_front();
-    }
-
-    std::string text() const {
-        std::ostringstream out;
-        for (const auto& line : lines_) out << line << '\n';
-        return out.str();
-    }
-
-private:
-    static constexpr size_t CAPACITY = 40;
-    std::deque<std::string> lines_;
-};
-
 /// One log per launch, appended to by every subprocess of that session, so the
 /// path quoted in an error message always holds the failure that caused it.
 void start_session_log(const fs::path& workspace_dir) {
     std::ofstream log(paths::last_launch_log(), std::ios::binary | std::ios::trunc);
     log << "SciQLop launcher " << SCIQLOP_LAUNCHER_VERSION << '\n'
         << "workspace: " << workspace_dir.string() << "\n\n";
-}
-
-void log_line(const char* label, const std::string& line) {
-    std::ofstream log(paths::last_launch_log(), std::ios::binary | std::ios::app);
-    log << '[' << label << "] " << line << '\n';
 }
 
 struct ReadyFile {
@@ -125,61 +86,50 @@ struct ReadyFile {
     }
 };
 
-/// Everything uv prints goes three places: the splash detail line (progress),
-/// the session log (post-mortem), and a bounded tail (the error box). Losing
-/// any one of them is how a failed sync turns into an unexplained empty venv.
-int run_uv(const Command& command, Ui& ui, LineTail& tail) {
-    return run(command, [&](const std::string& line) {
-        ui.post_detail(line);
-        log_line("uv", line);
-        tail.push(line);
-    });
-}
-
-int sync_workspace(const fs::path& workspace_dir, const Manifest& manifest, Ui& ui,
-                   LineTail& tail) {
-    const std::string python_version =
-        manifest.python_version.empty() ? DEFAULT_PYTHON_VERSION : manifest.python_version;
-
-    ui.post_phase("Preparing workspace");
-    ui.post_progress(10);
-
-    std::error_code ec;
-    if (!fs::is_regular_file(workspace_dir / VENV_PYTHON, ec)) {
-        ui.post_detail("Creating environment (Python " + python_version + ")");
-        const Command create{{uv_command(), "venv", "--python", python_version, ".venv"},
-                             workspace_dir,
-                             {}};
-        if (const int code = run_uv(create, ui, tail); code != 0) return code;
-    }
-
-    ui.post_progress(35);
-    ui.post_detail("Resolving dependencies");
-    const Command sync{{uv_command(), "sync"}, workspace_dir, {}};
-    return run_uv(sync, ui, tail);
-}
-
-int supervise_app(const fs::path& workspace_dir, Ui& ui, std::string& stderr_tail) {
+/// Runs the whole workspace-prepare-and-supervise sequence in ONE subprocess:
+/// the bundled thin `sciqlop` launcher package (no [all] extra — the same
+/// binary `build.sh` installs, importable without PySide6) already does
+/// everything here via `SciQLop.sciqlop_launcher.main()` — resolve the
+/// workspace, prepare it (plugin/appstore dependencies, dev-build git-main
+/// installs, the offline/plugin-isolation sync retries — see
+/// `prepare_workspace()` in the Python codebase), then spawn the real GUI
+/// once the workspace venv is ready.
+///
+/// This launcher's only job is showing a native splash *while* that already
+/// correct, already tested Python code runs — reimplementing workspace/venv
+/// setup here (as an earlier version of this function did, calling `uv venv`
+/// / `uv sync` directly) would just be a second copy to keep in sync, and it
+/// had already drifted: no plugin/appstore dependency support, no dev-build
+/// git-main install, no retry-on-a-broken-plugin. `--sciqlop-version` isn't
+/// forwarded (Python's CLI doesn't parse it yet) — a pre-existing gap, not
+/// a regression, since this launcher was never wired into an installer.
+///
+/// The readiness handoff (`SCIQLOP_STARTUP_READY_FILE`) is the same protocol
+/// `sciqlop_app.py`'s `_signal_ready_and_wait_for_splash()` already
+/// implements for the windowed Python splash — it just flows through
+/// unchanged env-var inheritance down to the actual GUI process, so nothing
+/// on the Python side needs to change for this launcher to use it too.
+int run_app(const fs::path& workspace_dir, Ui& ui, std::string& stderr_tail) {
     const ReadyFile ready(workspace_dir);
 
-    ui.post_phase("Starting SciQLop");
+    ui.post_phase("Preparing workspace");
     ui.post_detail("");
-    ui.post_progress(90);
+    ui.post_progress(10);
 
     const Command app{
-        {(workspace_dir / VENV_PYTHON).string(), "-m", "SciQLop.sciqlop_app"},
-        workspace_dir,
-        {{"SCIQLOP_WORKSPACE_DIR", workspace_dir.string()},
-         {"SPEASY_SKIP_INIT_PROVIDERS", "1"},
-         {"PYTHONNOUSERSITE", "1"},
-         {READY_FILE_ENV, ready.marker.string()}}};
+        {PYTHON_EXECUTABLE, "-I", "-m", "SciQLop.app", "--workspace", workspace_dir.string()},
+        {},
+        {{"SCIQLOP_STARTUP_READY_FILE", ready.marker.string()}}};
 
     bool splash_closed = false;
     std::ostringstream tail;
 
     const int code = run_supervised(
         app, paths::last_launch_log(),
-        [&tail](const std::string& line) { tail << line << '\n'; },
+        [&](const std::string& line) {
+            ui.post_detail(line);
+            tail << line << '\n';
+        },
         [&] {
             if (splash_closed) return;
             std::error_code ec;
@@ -240,28 +190,8 @@ SessionResult run_session(const Options& options, Ui& ui) {
         if (const std::string warning = xcb_cursor_warning(); !warning.empty())
             ui.post_warning(warning);
 
-        Manifest manifest = read_manifest(workspace_dir)
-                                .value_or(Manifest{workspace_dir.filename().string(), "", ""});
-        if (!options.sciqlop_version.empty()) manifest.sciqlop_version = options.sciqlop_version;
-        if (!fs::is_regular_file(workspace_dir / Manifest::filename, ec))
-            write_manifest(workspace_dir, manifest);
-
-        write_pyproject_if_missing(
-            workspace_dir,
-            {manifest.name, manifest.sciqlop_version,
-             manifest.python_version.empty() ? DEFAULT_PYTHON_VERSION : manifest.python_version});
-
-        LineTail uv_output;
-        if (const int code = sync_workspace(workspace_dir, manifest, ui, uv_output); code != 0) {
-            ui.post_error("Workspace preparation failed \xe2\x80\x94 uv exited with " +
-                          std::to_string(code) + ".\n\n" + uv_output.text() +
-                          "\nFull output: " + paths::last_launch_log().string());
-            result.exit_code = 1;
-            return;
-        }
-
         std::string stderr_tail;
-        result.exit_code = supervise_app(workspace_dir, ui, stderr_tail);
+        result.exit_code = run_app(workspace_dir, ui, stderr_tail);
         if (result.exit_code != 0 && result.exit_code != EXIT_RESTART &&
             result.exit_code != EXIT_SWITCH_WORKSPACE) {
             ui.post_error("SciQLop exited with code " + std::to_string(result.exit_code) +

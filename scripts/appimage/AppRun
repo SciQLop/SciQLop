@@ -52,4 +52,12 @@ esac
 ############################################
 
 #export SCIQLOP_DEBUG="1"
+# The native launcher shows a splash while the bundled python above (already
+# on PATH) prepares the workspace and starts the app — see
+# launcher/src/launcher.cpp. Falls back to the old direct exec if the
+# binary isn't bundled (e.g. an AppImage built before it was wired in).
+LAUNCHER="${APPDIR}/opt/launcher/sciqlop-launcher"
+if [ -x "$LAUNCHER" ]; then
+    exec "$LAUNCHER" "$@"
+fi
 exec "$PYTHON" -I -m SciQLop.app "$@"
