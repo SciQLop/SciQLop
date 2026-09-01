@@ -44,6 +44,31 @@ class TestExists:
         assert venv.exists is True
 
 
+class TestHasSciqlopInstalled:
+    """A freshly created venv has a Python interpreter but no packages yet —
+    ``exists``/``python_path`` can't tell that apart from a venv whose last
+    sync actually succeeded, which is what prepare_workspace's offline
+    fallback needs to know before deciding to "keep running the old app"."""
+
+    def test_false_when_venv_missing(self, venv):
+        assert venv.has_sciqlop_installed is False
+
+    def test_false_when_site_packages_has_no_sciqlop(self, venv, workspace_dir):
+        site = workspace_dir / ".venv" / "lib" / "python3.13" / "site-packages"
+        (site / "numpy-2.0.0.dist-info").mkdir(parents=True)
+        assert venv.has_sciqlop_installed is False
+
+    def test_true_when_sciqlop_dist_info_present(self, venv, workspace_dir):
+        site = workspace_dir / ".venv" / "lib" / "python3.13" / "site-packages"
+        (site / "sciqlop-0.13.0.dev0.dist-info").mkdir(parents=True)
+        assert venv.has_sciqlop_installed is True
+
+    def test_true_on_windows_site_packages_layout(self, venv, workspace_dir):
+        site = workspace_dir / ".venv" / "Lib" / "site-packages"
+        (site / "sciqlop-0.13.0.dev0.dist-info").mkdir(parents=True)
+        assert venv.has_sciqlop_installed is True
+
+
 class TestCreate:
     @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
     @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command")

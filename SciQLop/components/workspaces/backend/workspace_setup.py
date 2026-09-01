@@ -135,7 +135,12 @@ def prepare_workspace(
     try:
         venv.sync(locked=locked, on_output=on_output)
     except Exception as exc:
-        if not venv.python_path.exists():
+        if not venv.has_sciqlop_installed:
+            # No working install to fall back to — a fresh venv (or one an
+            # earlier sync never completed) has an interpreter but no
+            # packages, so silently "continuing" would just crash later with
+            # a confusing ModuleNotFoundError instead of surfacing the real
+            # resolution error.
             raise
         # Offline / unreachable index (#115): keep starting with the existing
         # venv so the user can still use bundled features (CDF, local files).

@@ -175,9 +175,10 @@ class TestPrepareWorkspaceCallback:
 
 
 class TestPrepareWorkspaceOffline:
-    """Issue #115: SciQLop must not abort startup when sync fails offline."""
+    """Issue #115: SciQLop must not abort startup when sync fails offline —
+    but only when there is an actual working install to fall back to."""
 
-    def test_sync_failure_is_tolerated_when_python_exists(self, workspace_dir, patches, tmp_path):
+    def test_sync_failure_is_tolerated_when_sciqlop_is_installed(self, workspace_dir, patches, tmp_path):
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         venv = patches["venv"]
@@ -185,6 +186,7 @@ class TestPrepareWorkspaceOffline:
         python_path.parent.mkdir(parents=True)
         python_path.write_text("")
         venv.python_path = python_path
+        venv.has_sciqlop_installed = True
         venv.sync.side_effect = RuntimeError(
             "uv command failed (exit 2):\n  uv sync\nNetwork is unreachable"
         )
@@ -206,9 +208,31 @@ class TestPrepareWorkspaceOffline:
 
         venv = patches["venv"]
         venv.python_path = tmp_path / "missing" / "python"
+        venv.has_sciqlop_installed = False
         venv.sync.side_effect = RuntimeError("uv venv failed")
 
         with pytest.raises(RuntimeError):
+            prepare_workspace(workspace_dir, workspace_name="Test")
+
+    def test_sync_failure_propagates_on_a_venv_that_never_synced(self, workspace_dir, patches, tmp_path):
+        """The bug this guards: a brand-new venv has a real interpreter (so
+        the old `python_path.exists()` check let it through) but no packages
+        at all — swallowing the real uv resolution error here used to leave
+        the launcher spawning a subprocess doomed to crash with a confusing
+        ModuleNotFoundError instead of showing the actual dependency conflict."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        python_path = tmp_path / ".venv" / "bin" / "python"
+        python_path.parent.mkdir(parents=True)
+        python_path.write_text("")
+        venv.python_path = python_path
+        venv.has_sciqlop_installed = False
+        venv.sync.side_effect = RuntimeError(
+            "No solution found when resolving dependencies"
+        )
+
+        with pytest.raises(RuntimeError, match="No solution found"):
             prepare_workspace(workspace_dir, workspace_name="Test")
 
 

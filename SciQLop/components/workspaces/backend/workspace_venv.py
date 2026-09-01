@@ -58,6 +58,24 @@ class WorkspaceVenv:
         """Whether the venv directory and its Python executable exist."""
         return self._venv_dir.exists() and self.python_path.exists()
 
+    @property
+    def has_sciqlop_installed(self) -> bool:
+        """Whether a ``sync`` has ever actually installed SciQLop here.
+
+        ``create()`` produces a working interpreter with no packages at all,
+        so ``exists``/``python_path`` can't distinguish that from a venv whose
+        last sync succeeded. The offline-sync fallback in ``prepare_workspace``
+        needs this distinction: falling back to "keep running the existing
+        venv" only makes sense when there is an existing app to keep running.
+        """
+        for site in (
+            *self._venv_dir.glob("lib/python*/site-packages"),
+            self._venv_dir / "Lib" / "site-packages",
+        ):
+            if site.is_dir() and any(site.glob("sciqlop-*.dist-info")):
+                return True
+        return False
+
     def create(self, on_output: Callable[[str], None] | None = None) -> None:
         """Create a self-contained workspace venv.
 
