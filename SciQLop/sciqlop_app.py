@@ -11,12 +11,6 @@ if platform.system() == 'Windows':
 else:
     os.environ['QT_API'] = 'PySide6'  # breaks ipython kernel event loop on windows
 
-# QtADS drag-and-drop relies on QCursor::pos() which returns garbage on
-# native Wayland.  Force XCB (XWayland) unless the user explicitly opts in
-# to native Wayland via SCIQLOP_NATIVE_WAYLAND=1.
-if platform.system() == 'Linux' and not os.environ.get('SCIQLOP_NATIVE_WAYLAND', ''):
-    os.environ['QT_QPA_PLATFORM'] = 'xcb'
-
 print("Forcing TZ to UTC")
 os.environ['TZ'] = 'UTC'
 
