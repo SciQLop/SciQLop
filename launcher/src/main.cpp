@@ -8,8 +8,9 @@
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
-#include <shellapi.h>
 #include <windows.h>
+// shellapi.h needs windows.h's types first; keep this order.
+#include <shellapi.h>
 #endif
 
 namespace fs = std::filesystem;
