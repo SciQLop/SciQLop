@@ -12,8 +12,16 @@ PYTHON_DIR=$(find "${APPDIR}/opt" -maxdepth 1 -type d -name "cpython-*" | head -
 PYTHON_DIR="${PYTHON_DIR:-${APPDIR}/opt/python}"
 PYTHON="${PYTHON_DIR}/bin/python3"
 
+if [ ! -x "$PYTHON" ]; then
+    echo "AppRun: bundled python not found or not executable: $PYTHON" >&2
+    exit 1
+fi
+
 export SCIQLOP_BUNDLED="1"
-export SSL_CERT_FILE=$($PYTHON -c "import certifi; print(certifi.where())")
+SSL_CERT_FILE=$("$PYTHON" -c "import certifi; print(certifi.where())" 2>/dev/null || true)
+if [ -n "$SSL_CERT_FILE" ]; then
+    export SSL_CERT_FILE
+fi
 export PATH="${APPDIR}/opt/uv:${PYTHON_DIR}/bin:${APPDIR}/usr/local/bin:${PATH}"
 
 ############################################
@@ -22,7 +30,9 @@ export PATH="${APPDIR}/opt/uv:${PYTHON_DIR}/bin:${APPDIR}/usr/local/bin:${PATH}"
 
 case "$1" in
     --appimage-extract|--appimage-mount|--appimage-version)
-        exec "$APPIMAGE" "$@"
+        if [ -n "$APPIMAGE" ]; then
+            exec "$APPIMAGE" "$@"
+        fi
         ;;
 esac
 

@@ -44,13 +44,14 @@ cat <<'EOT' > $DIST/SciQLop.app/Contents/MacOS/SciQLop
 export HERE=$(dirname "$BASH_SOURCE")
 export RESOURCES="$HERE/../Resources"
 export PATH="$RESOURCES/opt/uv:$RESOURCES/usr/local/bin/:/usr/bin:/bin:/usr/sbin:/sbin"
-export QT_PATH="$("$RESOURCES/usr/local/bin/python3" -c "import PySide6,os;print(os.path.dirname(PySide6.__file__));")/Qt"
 export LD_LIBRARY_PATH="$RESOURCES/usr/local/lib"
-export DYLD_LIBRARY_PATH="$RESOURCES/usr/local/lib:$RESOURCES/usr/local/bin/:$QT_PATH/lib"
-export QT_PLUGIN_PATH="$QT_PATH/plugins"
+export DYLD_LIBRARY_PATH="$RESOURCES/usr/local/lib:$RESOURCES/usr/local/bin/"
 export QTWEBENGINE_CHROMIUM_FLAGS="--single-process"
-export SSL_CERT_FILE=$("$RESOURCES/usr/local/bin/python3" -m certifi)
-export REQUESTS_CA_BUNDLE="${SSL_CERT_FILE}"
+SSL_CERT_FILE=$("$RESOURCES/usr/local/bin/python3" -m certifi 2>/dev/null || true)
+if [ -n "$SSL_CERT_FILE" ]; then
+    export SSL_CERT_FILE
+    export REQUESTS_CA_BUNDLE="$SSL_CERT_FILE"
+fi
 export SCIQLOP_BUNDLED="1"
 exec "$RESOURCES/usr/local/bin/python3" -m SciQLop.app
 EOT
@@ -144,6 +145,12 @@ echo "Installing SciQLop launcher into bundle..."
 # Python would bake the whole app into the bundle, defeating the point of
 # the self-contained-workspace split.
 $UV_BIN pip install -q --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROOT"
+
+########################################
+# SSL certificates (for systems without a usable system CA bundle)
+########################################
+
+$UV_BIN pip install --python $PYTHON_BIN certifi
 
 export PATH=$SAVED_PATH
 

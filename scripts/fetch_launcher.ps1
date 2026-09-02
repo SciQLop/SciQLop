@@ -25,6 +25,14 @@ $expected = $pins["LAUNCHER_SHA256_$Platform"]
 if (-not $expected) { throw "No pinned digest for $Platform in launcher.version" }
 
 $version = $pins["LAUNCHER_VERSION"]
+
+# All-zero digest is the placeholder launcher.version ships until a real
+# launcher-v$version release exists — skip instead of 404ing CI.
+if ($expected -match '^0+$') {
+    Write-Host "launcher $version not pinned for $Platform (placeholder digest) — skipping"
+    exit 0
+}
+
 $repo = $pins["LAUNCHER_REPO"]
 
 # Must match the artifact names published by .github/workflows/launcher.yml.

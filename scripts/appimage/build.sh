@@ -87,10 +87,17 @@ $UV_BIN pip install --python $PYTHON_BIN certifi
 
 mkdir -p $APPDIR/opt/launcher
 "$SCIQLOP_ROOT/scripts/fetch_launcher.sh" linux_x86_64 "$APPDIR/opt/launcher/sciqlop-launcher"
-# The same splash art the old Python StartupWindow used
-# (SciQLop/resources/splash.png, 1328x800 — same ~1.66:1 aspect ratio as
-# the launcher's 720x434 picture area, so FLTK scales it down cleanly).
-cp "$SCIQLOP_ROOT/SciQLop/resources/splash.png" "$APPDIR/opt/launcher/splash.png"
+# fetch_launcher.sh skips (no file, exit 0) when the launcher isn't released
+# yet — AppRun falls back to a direct python exec, so only bundle the
+# launcher dir (and its splash) when there's actually a binary to bundle.
+if [ -f "$APPDIR/opt/launcher/sciqlop-launcher" ]; then
+    # The same splash art the old Python StartupWindow used
+    # (SciQLop/resources/splash.png, 1328x800 — same ~1.66:1 aspect ratio as
+    # the launcher's 720x434 picture area, so FLTK scales it down cleanly).
+    cp "$SCIQLOP_ROOT/SciQLop/resources/splash.png" "$APPDIR/opt/launcher/splash.png"
+else
+    rmdir "$APPDIR/opt/launcher"
+fi
 
 # Remove symlinks uv creates in opt/ (absolute, break inside AppImage mount)
 # - "python" → cpython-<version>

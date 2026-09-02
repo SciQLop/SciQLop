@@ -38,6 +38,16 @@ if [ -z "$EXPECTED" ]; then
     exit 1
 fi
 
+# All-zero digest is the placeholder launcher.version ships until a real
+# launcher-v$LAUNCHER_VERSION release exists — skip instead of 404ing CI.
+case "$EXPECTED" in
+    *[!0]*) ;;
+    *)
+        echo "launcher $LAUNCHER_VERSION not pinned for $PLATFORM (placeholder digest) — skipping"
+        exit 0
+        ;;
+esac
+
 URL="https://github.com/$LAUNCHER_REPO/releases/download/launcher-v$LAUNCHER_VERSION/$ASSET"
 echo "Downloading launcher $LAUNCHER_VERSION ($PLATFORM)..."
 curl -fsSL -o "$DEST" "$URL"

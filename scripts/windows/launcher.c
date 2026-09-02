@@ -1,7 +1,7 @@
 /* Tiny MSIX entry-point launcher for SciQLop.
  *
  * Sets the environment variables that the bundled app expects
- * (SCIQLOP_BUNDLED, PATH with node/uv, SSL certs) then execs
+ * (SCIQLOP_BUNDLED, PATH with node/uv) then execs
  * python.exe -m SciQLop.app, forwarding all arguments.
  *
  * Compiled on CI with: cl /Fe:SciQLop.exe launcher.c
@@ -28,7 +28,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     wchar_t python_path[MAX_PATH];
     wchar_t node_path[MAX_PATH];
     wchar_t uv_path[MAX_PATH];
-    wchar_t certifi_cmd[MAX_PATH];
 
     _snwprintf(python_path, MAX_PATH, L"%s\\python", root);
     _snwprintf(node_path, MAX_PATH, L"%s\\node", root);
@@ -44,9 +43,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
     _snwprintf(new_path, 32767, L"%s;%s;%s\\Scripts;%s",
                node_path, uv_path, python_path, old_path);
     SetEnvironmentVariableW(L"PATH", new_path);
-
-    /* Resolve SSL_CERT_FILE via certifi (best-effort) */
-    _snwprintf(certifi_cmd, MAX_PATH, L"%s\\python.exe", python_path);
 
     /* Launch python -m SciQLop.app */
     wchar_t cmd[32767];
