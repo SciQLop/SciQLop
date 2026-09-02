@@ -140,6 +140,9 @@ bug_tracker = "https://github.com/SciQLop/SciQLop/issues"
 [project.gui-scripts]
 sciqlop = "SciQLop.app:main"
 
+[project.scripts]
+sciqlop-console = "SciQLop.app:main"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 qt_api = "pyside6"

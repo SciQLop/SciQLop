@@ -1,7 +1,8 @@
 """SciQLop launcher — workspace-aware supervisor process.
 
-In production (PyPI, AppImage, DMG, MSIX), the launcher creates a workspace
-venv with --system-site-packages and spawns the Qt app as a subprocess.
+In production (PyPI, AppImage, DMG, MSIX), the launcher creates a
+self-contained workspace venv (no --system-site-packages, since e564d6aaf)
+and spawns the Qt app as a subprocess.
 
 In development mode (editable install), the launcher still sets up the
 workspace directory and metadata but uses the current Python (sys.executable)
@@ -81,7 +82,7 @@ def resolve_workspace_dir(
     from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
 
     settings = SciQLopWorkspacesSettings()
-    workspaces_root = Path(settings.workspaces_dir)
+    workspaces_root = Path(settings.workspaces_dir).expanduser()
 
     if sciqlop_file:
         sciqlop_path = Path(sciqlop_file)
@@ -95,7 +96,7 @@ def resolve_workspace_dir(
             return target_dir
 
     if workspace_name:
-        candidate = Path(workspace_name)
+        candidate = Path(workspace_name).expanduser()
         if candidate.is_absolute():
             return candidate
         return workspaces_root / workspace_name
@@ -200,6 +201,86 @@ def _prepare_on_worker_thread(prepare_fn, default_python: Path, on_detail) -> tu
     return state["python_path"], state["error"]
 
 
+def _spawn_app_logged(
+    python_path: Path, env: dict, echo: bool = False
+) -> tuple[subprocess.Popen, list[str], Path | None]:
+    """Start the SciQLop subprocess, tee-ing its stdout/stderr into
+    last-launch.log on background threads.
+
+    Returns the process, the stderr lines captured so far (mutated in place as
+    more arrive — used to show an error if the process exits early), and the
+    log path (``None`` if it could not be opened, in which case output is
+    silently dropped rather than crashing the launcher).
+
+    ``echo``, when true, also writes each line to the real console
+    (stdout lines to ``sys.stdout``, stderr lines to ``sys.stderr``) as it
+    arrives — used by the console entry point, which has no splash to show
+    progress on.
+
+    simplify: the caller isn't given the drain threads to join, so a return
+    right after the subprocess exits can race a few lines of trailing output
+    still being flushed to last-launch.log (each drain thread closes the log
+    itself once its stream hits EOF). Upgrade to returning the threads too, if
+    last-launch.log is ever seen truncated.
+    """
+    import threading
+
+    log_path = _last_launch_log_path()
+    try:
+        log_file = open(log_path, "w", encoding="utf-8", errors="replace")
+    except OSError:
+        import io
+        log_file = io.StringIO()
+        log_path = None
+
+    log_file.write(f"$ {python_path} -m SciQLop.sciqlop_app\n")
+    log_file.flush()
+
+    proc = subprocess.Popen(
+        [str(python_path), "-m", "SciQLop.sciqlop_app"],
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    stderr_lines: list[str] = []
+    streams = ((proc.stdout, "out", None), (proc.stderr, "err", stderr_lines))
+    remaining = [len(streams)]
+    close_lock = threading.Lock()
+
+    def _drain(stream, label: str, capture: list[str] | None):
+        console = sys.stdout if label == "out" else sys.stderr
+        try:
+            for line in stream:
+                if capture is not None:
+                    capture.append(line)
+                if echo:
+                    try:
+                        console.write(line)
+                        console.flush()
+                    except Exception:
+                        pass
+                try:
+                    log_file.write(f"[{label}] {line}")
+                    log_file.flush()
+                except Exception:
+                    pass
+        finally:
+            with close_lock:
+                remaining[0] -= 1
+                if remaining[0] == 0:
+                    try:
+                        log_file.close()
+                    except Exception:
+                        pass
+
+    for stream, label, capture in streams:
+        threading.Thread(target=_drain, args=(stream, label, capture), daemon=True).start()
+
+    return proc, stderr_lines, log_path
+
+
 def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | None) -> tuple[int, Path | None]:
     from PySide6.QtCore import QEventLoop, QTimer
     from PySide6.QtWidgets import QApplication
@@ -216,7 +297,15 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
 
     _apply_proxy_settings()
 
-    workspace_dir = resolve_workspace_dir(workspace_name, sciqlop_file)
+    workspace_dir = None
+    try:
+        workspace_dir = resolve_workspace_dir(workspace_name, sciqlop_file)
+    except Exception:
+        import traceback
+        window.show_error(traceback.format_exc())
+        app.exec()
+        return 1, workspace_dir
+
     dev_mode = _is_editable_install()
     default_python = Path(sys.executable)
 
@@ -260,49 +349,9 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     env[READY_FILE_ENV] = str(ready_file)
     env["PYTHONNOUSERSITE"] = "1"
 
-    log_path = _last_launch_log_path()
-    try:
-        log_file = open(log_path, "w", encoding="utf-8", errors="replace")
-    except OSError:
-        # If we can't open the log file, fall back to a sink that drops writes
-        # rather than crash the launcher.
-        import io
-        log_file = io.StringIO()
-        log_path = None
     proc: subprocess.Popen | None = None
     try:
-        log_file.write(f"$ {python_path} -m SciQLop.sciqlop_app\n")
-        log_file.flush()
-
-        proc = subprocess.Popen(
-            [str(python_path), "-m", "SciQLop.sciqlop_app"],
-            env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-
-        import threading
-        stderr_lines: list[str] = []
-        drain_threads: list[threading.Thread] = []
-
-        def _drain(stream, label: str, capture: list[str] | None):
-            for line in stream:
-                if capture is not None:
-                    capture.append(line)
-                try:
-                    log_file.write(f"[{label}] {line}")
-                    log_file.flush()
-                except Exception:
-                    pass
-
-        for stream, label, capture in (
-            (proc.stdout, "out", None),
-            (proc.stderr, "err", stderr_lines),
-        ):
-            t = threading.Thread(target=_drain, args=(stream, label, capture), daemon=True)
-            t.start()
-            drain_threads.append(t)
+        proc, stderr_lines, log_path = _spawn_app_logged(python_path, env)
 
         def check_ready():
             if ready_file.exists():
@@ -328,12 +377,7 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
         app.exec()
         timer.stop()
 
-        # Wait for the subprocess to exit before closing the log so that any
-        # output produced after the splash window closed (i.e. for the rest of
-        # the SciQLop session) still lands in last-launch.log.
         exit_code = proc.wait() if proc.poll() is None else proc.returncode
-        for t in drain_threads:
-            t.join(timeout=2.0)
         return exit_code, workspace_dir
     except Exception:
         # If anything in the subprocess setup raised, surface it to the user
@@ -348,40 +392,58 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
             proc.kill()
         return 1, workspace_dir
     finally:
-        try:
-            log_file.close()
-        except Exception:
-            pass
         shutil.rmtree(ready_dir, ignore_errors=True)
 
 
 def _qt_available() -> bool:
-    """Whether the GUI stack is installed.
+    """Whether the GUI stack is usable: importable, and — on Linux — able to
+    reach a display server.
 
     ``pip install sciqlop`` provides only the launcher; the application (and
     PySide6 with it) is installed into the workspace venv. There is no splash
     to show in that case, so the launcher reports progress on the console it
-    was started from.
+    was started from. A headless Linux session (no DISPLAY, WAYLAND_DISPLAY,
+    or QT_QPA_PLATFORM) hits the same fallback even when PySide6 IS
+    importable, since constructing a QApplication would just abort.
     """
     try:
-        import PySide6  # noqa: F401
-        return True
+        import PySide6.QtCore  # noqa: F401
+        import PySide6.QtWidgets  # noqa: F401
     except ImportError:
         return False
+    if platform.system() == "Linux":
+        return bool(
+            os.environ.get("DISPLAY")
+            or os.environ.get("WAYLAND_DISPLAY")
+            or os.environ.get("QT_QPA_PLATFORM")
+        )
+    return True
+
+
+def _choose_run_session():
+    """Pick the launcher path: the startup-window splash, or the console.
+
+    An already-set READY_FILE_ENV means the native C++ launcher spawned this
+    process itself and owns the splash — the console path must be used
+    regardless of Qt availability, or two splashes would race each other.
+    """
+    if READY_FILE_ENV in os.environ:
+        return _run_on_console
+    return _run_with_startup_window if _qt_available() else _run_on_console
 
 
 def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tuple[int, Path | None]:
     """Prepare the workspace and run SciQLop with no splash.
 
-    Output goes straight to the terminal rather than a log file: the user is
-    already looking at one, and it keeps this path free of the tee/ready-file
-    machinery the windowed path needs to close its splash at the right moment.
+    Output goes straight to the terminal (and last-launch.log) rather than
+    only a log file: the user is already looking at one.
     """
     _apply_proxy_settings()
-    workspace_dir = resolve_workspace_dir(workspace_name, sciqlop_file)
 
-    print(f"Preparing workspace {workspace_dir} ...", flush=True)
+    workspace_dir = None
     try:
+        workspace_dir = resolve_workspace_dir(workspace_name, sciqlop_file)
+        print(f"Preparing workspace {workspace_dir} ...", flush=True)
         if _is_editable_install():
             _prepare_workspace_dev(workspace_dir, on_output=print)
             python_path = Path(sys.executable)
@@ -390,7 +452,12 @@ def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tup
             python_path = prepare_workspace(workspace_dir, on_output=print)
     except Exception:
         import traceback
-        print("Workspace preparation failed:\n" + traceback.format_exc(), file=sys.stderr)
+        message = "Workspace preparation failed:\n" + traceback.format_exc()
+        print(message, file=sys.stderr)
+        try:
+            _last_launch_log_path().write_text(message, encoding="utf-8")
+        except OSError:
+            pass
         return 1, workspace_dir
 
     if warning := check_xcb_cursor():
@@ -400,13 +467,21 @@ def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tup
     env["SCIQLOP_WORKSPACE_DIR"] = str(workspace_dir)
     env["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
     env["PYTHONNOUSERSITE"] = "1"
-    # No SCIQLOP_STARTUP_READY_FILE: with no splash to close, the app must not
-    # wait for an acknowledgement that will never come.
+    # This path neither sets nor strips READY_FILE_ENV: when this launcher
+    # picked the console path itself (no Qt / headless), there's no splash to
+    # close so it's simply absent from os.environ. When a native C++ launcher
+    # forced this path (M15), READY_FILE_ENV is already set in os.environ and
+    # is inherited as-is — the child does wait on it, and the native launcher
+    # (not this process) is the one that owns and closes the splash.
 
     print("Starting SciQLop ...", flush=True)
-    return subprocess.run(
-        [str(python_path), "-m", "SciQLop.sciqlop_app"], env=env
-    ).returncode, workspace_dir
+    proc, _stderr_lines, log_path = _spawn_app_logged(
+        python_path, env, echo=sys.stdout is not None
+    )
+    exit_code = proc.wait()
+    if exit_code != 0:
+        print(f"SciQLop exited with code {exit_code}. Full output: {log_path}", file=sys.stderr)
+    return exit_code, workspace_dir
 
 
 def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
@@ -457,7 +532,7 @@ def main(argv: list[str] | None = None) -> int:
     workspace_name = args.workspace
     sciqlop_file = args.sciqlop_file
 
-    run_session = _run_with_startup_window if _qt_available() else _run_on_console
+    run_session = _choose_run_session()
 
     while True:
         exit_code, workspace_dir = run_session(workspace_name, sciqlop_file)

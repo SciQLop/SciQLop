@@ -22,9 +22,7 @@ os.environ['TZ'] = 'UTC'
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-
-EXIT_SWITCH_WORKSPACE = 65
-SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"
+from SciQLop.sciqlop_launcher import EXIT_SWITCH_WORKSPACE, SWITCH_WORKSPACE_FILE
 
 
 def switch_workspace(workspace_name: str) -> None:
@@ -109,16 +107,25 @@ def start_sciqlop():
 
 def main():
     from PySide6.QtCore import QTimer
+    from PySide6.QtWidgets import QApplication
     from SciQLop.core.sciqlop_application import sciqlop_event_loop
 
     loop = sciqlop_event_loop()
 
     def _run_startup():
-        main_windows = start_sciqlop()
         try:
-            main_windows.start()
-        except Exception as e:
-            print(e)
+            main_windows = start_sciqlop()
+            try:
+                main_windows.start()
+            except Exception as e:
+                print(e)
+        except Exception:
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            app = QApplication.instance()
+            if app is not None:
+                app._sciqlop_exit_code = 1
+            QApplication.exit(1)
 
     # Deferred via a zero-delay timer scheduled *before* exec() below, rather
     # than called directly here: start_sciqlop() builds the whole MainWindow
@@ -144,6 +151,4 @@ if __name__ == '__main__':
     from PySide6.QtWidgets import QApplication
     app = QApplication.instance()
     exit_code = getattr(app, '_sciqlop_exit_code', 0) if app else 0
-    if os.environ.get("RESTART_SCIQLOP", None) is not None:
-        exit_code = 64
     sys.exit(exit_code)

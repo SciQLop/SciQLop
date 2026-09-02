@@ -1,6 +1,8 @@
 # tests/test_launcher.py
 import os
 import sys
+import time
+import tomllib
 from unittest.mock import patch, MagicMock
 from pathlib import Path
 from SciQLop.sciqlop_launcher import (
@@ -11,6 +13,17 @@ from SciQLop.sciqlop_launcher import (
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 
 MODULE = "SciQLop.sciqlop_launcher"
+
+
+def _wait_for(predicate, timeout=2.0):
+    """Poll until predicate() is true, for asserting on background-thread work
+    (the log/echo drain threads in _spawn_app_logged) without a blind sleep."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if predicate():
+            return True
+        time.sleep(0.01)
+    return False
 
 
 def test_parse_args_default():
@@ -359,3 +372,254 @@ def test_prepare_workspace_dev_repairs_lab_assets_on_dev_venv(tmp_path):
         _prepare_workspace_dev(tmp_path)
 
     assert captured.get("venv_dir") == expected_venv_dir
+
+
+# --- H5: _qt_available must also check for a usable display on Linux ---
+
+@patch(f"{MODULE}.platform.system", return_value="Linux")
+def test_qt_available_false_when_pyside6_missing(mock_sys, monkeypatch):
+    from SciQLop.sciqlop_launcher import _qt_available
+    monkeypatch.setitem(sys.modules, "PySide6", None)
+    assert _qt_available() is False
+
+
+@patch(f"{MODULE}.platform.system", return_value="Linux")
+def test_qt_available_false_when_headless_linux(mock_sys, monkeypatch):
+    from SciQLop.sciqlop_launcher import _qt_available
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.delenv("QT_QPA_PLATFORM", raising=False)
+    assert _qt_available() is False
+
+
+@patch(f"{MODULE}.platform.system", return_value="Linux")
+def test_qt_available_true_linux_with_display(mock_sys, monkeypatch):
+    from SciQLop.sciqlop_launcher import _qt_available
+    monkeypatch.setenv("DISPLAY", ":0")
+    assert _qt_available() is True
+
+
+@patch(f"{MODULE}.platform.system", return_value="Linux")
+def test_qt_available_true_linux_with_qt_qpa_platform_only(mock_sys, monkeypatch):
+    from SciQLop.sciqlop_launcher import _qt_available
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    assert _qt_available() is True
+
+
+@patch(f"{MODULE}.platform.system", return_value="Windows")
+def test_qt_available_true_non_linux_without_display_env(mock_sys, monkeypatch):
+    from SciQLop.sciqlop_launcher import _qt_available
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.delenv("QT_QPA_PLATFORM", raising=False)
+    assert _qt_available() is True
+
+
+# --- M15: an externally-provided ready file must force the console path ---
+
+def test_choose_run_session_forces_console_when_ready_file_env_set(monkeypatch):
+    from SciQLop.sciqlop_launcher import _choose_run_session, _run_on_console
+    monkeypatch.setenv(READY_FILE_ENV, "/tmp/some-ready-file")
+    with patch(f"{MODULE}._qt_available", return_value=True):
+        assert _choose_run_session() is _run_on_console
+
+
+def test_choose_run_session_uses_startup_window_when_qt_available(monkeypatch):
+    from SciQLop.sciqlop_launcher import _choose_run_session, _run_with_startup_window
+    monkeypatch.delenv(READY_FILE_ENV, raising=False)
+    with patch(f"{MODULE}._qt_available", return_value=True):
+        assert _choose_run_session() is _run_with_startup_window
+
+
+def test_choose_run_session_falls_back_to_console_when_qt_unavailable(monkeypatch):
+    from SciQLop.sciqlop_launcher import _choose_run_session, _run_on_console
+    monkeypatch.delenv(READY_FILE_ENV, raising=False)
+    with patch(f"{MODULE}._qt_available", return_value=False):
+        assert _choose_run_session() is _run_on_console
+
+
+# --- M9 / C3: workspace resolution failure must reach the console error
+# surface (stderr + last-launch.log), and the return tuple's workspace_dir
+# must be None ---
+
+def test_run_on_console_resolution_failure_returns_1_and_logs(monkeypatch, tmp_path, capsys):
+    from SciQLop.sciqlop_launcher import _run_on_console
+
+    def _boom(workspace_name, sciqlop_file):
+        raise RuntimeError("resolution exploded")
+
+    log_path = tmp_path / "last-launch.log"
+    monkeypatch.setattr(f"{MODULE}._apply_proxy_settings", lambda: None)
+    monkeypatch.setattr(f"{MODULE}.resolve_workspace_dir", _boom)
+    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+
+    exit_code, workspace_dir = _run_on_console(None, None)
+
+    assert exit_code == 1
+    assert workspace_dir is None
+    captured = capsys.readouterr()
+    assert "Workspace preparation failed" in captured.err
+    assert "resolution exploded" in captured.err
+    assert log_path.exists()
+    assert "resolution exploded" in log_path.read_text()
+
+
+def test_run_with_startup_window_resolution_failure_shows_error_and_returns_1(monkeypatch, qapp):
+    """Mirrors the console-path test above: a resolver that raises must show
+    the traceback in the startup window and return (1, None), instead of the
+    exception escaping resolve_workspace_dir() unhandled (M9).
+
+    StartupWindow is mocked out (there's nothing to visually verify here), and
+    QApplication is mocked too so the except branch's real app.exec() call
+    can't block the test — it's a MagicMock, so exec() just returns.
+    """
+    from SciQLop.sciqlop_launcher import _run_with_startup_window
+
+    def _boom(workspace_name, sciqlop_file):
+        raise RuntimeError("resolution exploded")
+
+    fake_window = MagicMock()
+    fake_app = MagicMock()
+    fake_qapplication_cls = MagicMock()
+    fake_qapplication_cls.instance.return_value = fake_app
+
+    monkeypatch.setattr(f"{MODULE}._apply_proxy_settings", lambda: None)
+    monkeypatch.setattr(f"{MODULE}.resolve_workspace_dir", _boom)
+    monkeypatch.setattr(
+        "SciQLop.components.startup.startup_window.StartupWindow",
+        MagicMock(return_value=fake_window),
+    )
+    monkeypatch.setattr("PySide6.QtWidgets.QApplication", fake_qapplication_cls)
+
+    exit_code, workspace_dir = _run_with_startup_window(None, None)
+
+    assert exit_code == 1
+    assert workspace_dir is None
+    fake_window.show_error.assert_called_once()
+    shown_message = fake_window.show_error.call_args[0][0]
+    assert "resolution exploded" in shown_message
+    fake_app.exec.assert_called_once()
+
+
+# --- L12: resolve_workspace_dir must expand ~ ---
+
+def test_resolve_workspace_dir_expands_user_in_workspaces_root(monkeypatch, tmp_path):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    with _settings_module("~/sciqlop-workspaces", reopen=False):
+        d = resolve_workspace_dir(workspace_name=None, sciqlop_file=None)
+    assert d == tmp_path / "sciqlop-workspaces" / "default"
+
+
+def test_resolve_workspace_dir_expands_user_in_workspace_name(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    with _settings_module(tmp_path / "workspaces", reopen=False):
+        d = resolve_workspace_dir(workspace_name="~/x", sciqlop_file=None)
+    assert d == tmp_path / "x"
+
+
+# --- C3: _spawn_app_logged (Popen + drain-threads + last-launch.log) ---
+
+class _FakePopen:
+    """Stand-in for subprocess.Popen: fixed stdout/stderr lines, no real process."""
+
+    def __init__(self, *args, **kwargs):
+        self.stdout = ["hello out\n"]
+        self.stderr = ["hello err\n"]
+        self.returncode = 0
+
+    def poll(self):
+        return self.returncode
+
+    def wait(self):
+        return self.returncode
+
+
+def test_spawn_app_logged_writes_log_and_captures_stderr(tmp_path, monkeypatch):
+    from SciQLop.sciqlop_launcher import _spawn_app_logged
+
+    log_path = tmp_path / "last-launch.log"
+    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakePopen)
+
+    proc, stderr_lines, returned_log_path = _spawn_app_logged(Path("/usr/bin/python3"), {})
+
+    assert returned_log_path == log_path
+    assert _wait_for(lambda: log_path.exists() and "[err]" in log_path.read_text())
+    assert stderr_lines == ["hello err\n"]
+    content = log_path.read_text()
+    assert "[out] hello out" in content
+    assert "[err] hello err" in content
+
+
+def test_spawn_app_logged_echoes_to_console_when_requested(tmp_path, monkeypatch, capsys):
+    from SciQLop.sciqlop_launcher import _spawn_app_logged
+
+    log_path = tmp_path / "last-launch.log"
+    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakePopen)
+
+    _spawn_app_logged(Path("/usr/bin/python3"), {}, echo=True)
+
+    assert _wait_for(lambda: log_path.exists() and "[err]" in log_path.read_text())
+    captured = capsys.readouterr()
+    assert "hello out" in captured.out
+    assert "hello err" in captured.err
+
+
+def test_spawn_app_logged_does_not_echo_by_default(tmp_path, monkeypatch, capsys):
+    from SciQLop.sciqlop_launcher import _spawn_app_logged
+
+    log_path = tmp_path / "last-launch.log"
+    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakePopen)
+
+    _spawn_app_logged(Path("/usr/bin/python3"), {})
+
+    assert _wait_for(lambda: log_path.exists() and "[err]" in log_path.read_text())
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+
+# --- C3: _run_on_console uses _spawn_app_logged, echoes, and reports a
+# non-zero exit with a pointer to the log file ---
+
+class _FakeFailingPopen(_FakePopen):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.returncode = 3
+
+
+def test_run_on_console_reports_nonzero_exit_with_log_pointer(monkeypatch, tmp_path, capsys):
+    from SciQLop.sciqlop_launcher import _run_on_console
+
+    workspace_dir = tmp_path / "ws"
+    log_path = tmp_path / "last-launch.log"
+    monkeypatch.setattr(f"{MODULE}._apply_proxy_settings", lambda: None)
+    monkeypatch.setattr(f"{MODULE}.resolve_workspace_dir", lambda *a, **k: workspace_dir)
+    monkeypatch.setattr(f"{MODULE}._is_editable_install", lambda: True)
+    monkeypatch.setattr(f"{MODULE}._prepare_workspace_dev", lambda *a, **k: None)
+    monkeypatch.setattr(f"{MODULE}.check_xcb_cursor", lambda: None)
+    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakeFailingPopen)
+
+    exit_code, returned_workspace = _run_on_console(None, None)
+    _wait_for(lambda: log_path.exists() and "[err]" in log_path.read_text())
+    captured = capsys.readouterr()
+
+    assert exit_code == 3
+    assert returned_workspace == workspace_dir
+    assert "hello out" in captured.out
+    assert "hello err" in captured.err
+    assert f"SciQLop exited with code 3. Full output: {log_path}" in captured.err
+
+
+# --- C3: pyproject.toml exposes a console entry point alongside the GUI one ---
+
+def test_pyproject_has_console_script(pytestconfig):
+    pyproject = pytestconfig.rootpath / "pyproject.toml"
+    data = tomllib.loads(pyproject.read_text())
+    assert data["project"]["scripts"]["sciqlop-console"] == "SciQLop.app:main"
+    assert data["project"]["gui-scripts"]["sciqlop"] == "SciQLop.app:main"
