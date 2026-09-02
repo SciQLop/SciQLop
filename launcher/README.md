@@ -1,41 +1,41 @@
 # SciQLop launcher
 
-A small, statically-linked C++ binary that prepares a workspace and starts
-SciQLop. It ships in the installers alongside `uv` and `node`; SciQLop itself is
-not bundled, it is installed from PyPI into the workspace venv on first launch.
+A small, statically-linked C++ binary that shows a native splash while
+SciQLop starts. It ships in the installers alongside `uv` and `node`; SciQLop
+itself is not bundled, it is installed from PyPI into the workspace venv on
+first launch.
 
 ## Why it is separate from the app
 
 The launcher runs *before* SciQLop exists on the machine, so it cannot import
-anything from it. That constraint is the point: one launcher binary must be able
-to start every SciQLop version, old and new, which means its knowledge of the
-app has to stay frozen and tiny.
+anything from it. That constraint is the point: one launcher binary must be
+able to start every SciQLop version, old and new, which means its knowledge of
+the app has to stay frozen and tiny.
 
 Everything the launcher knows:
 
 | Contract | Detail |
 |---|---|
-| Manifest keys it reads | `[workspace] name`, `sciqlop_version`, `python_version` |
-| File it may create | `pyproject.toml`, **only when absent** — an existing one is the app's |
-| How it starts the app | `.venv/bin/python -m SciQLop.sciqlop_app` |
-| Environment it sets | `SCIQLOP_WORKSPACE_DIR`, `SCIQLOP_STARTUP_READY_FILE`, `SPEASY_SKIP_INIT_PROVIDERS=1`, `PYTHONNOUSERSITE=1` |
+| How it starts the app | forwards its own argv untouched to `python3 -I -m SciQLop.app <argv>` |
+| Environment it sets | `SCIQLOP_STARTUP_READY_FILE` |
 | Startup handshake | app touches the ready file → splash closes |
-| Exit protocol | `64` restart same workspace, `65` switch to the name in `.sciqlop_switch_target` |
+| Exit code | whatever Python's own `main()` finally returns |
 
-Plugin dependencies, appstore packages and workspace `requires` are deliberately
-*not* here. The app owns the full `pyproject.toml`: it rewrites the file once
-running and asks for a restart (`64`) when the contents changed.
+Workspace resolution (`--workspace`/`-w`, a `.sciqlop`/`.sciqlop-archive`
+file, the reopen-last-workspace setting), venv/dependency preparation, and the
+restart (`64`)/switch-workspace (`65`) loop are entirely Python's
+(`SciQLop/sciqlop_launcher.py`). Duplicating that here would just be a second
+copy of already-tested logic to keep in sync — the launcher's only job is
+forwarding argv and showing a splash while that code runs.
 
 ## Layout
 
 ```
 src/ui.hpp            the whole UI contract — six methods
-src/ui_fltk.cpp       FLTK implementation (swap this file to change toolkit)
-src/launcher.cpp      toolkit-independent: resolve, sync, supervise
-src/process_*.cpp     subprocess + line-streamed output (POSIX / Win32)
-src/manifest.cpp      the three manifest keys, and MRU workspace selection
-src/project.cpp       bootstrap pyproject.toml
-tests/                unit tests for the pure logic
+src/ui_fltk.cpp        FLTK implementation (swap this file to change toolkit)
+src/launcher.cpp       toolkit-independent: forward argv, supervise, classify phase lines
+src/process_*.cpp      subprocess + line-streamed output (POSIX / Win32)
+tests/                 unit tests for the pure logic, plus the end-to-end smoke test
 ```
 
 ## Build
@@ -44,10 +44,11 @@ tests/                unit tests for the pure logic
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
 ctest --test-dir build --output-on-failure
+tests/smoke_test.sh build/sciqlop-launcher
 ```
 
-FLTK and toml++ are fetched by CMake. On Linux the only system dependencies are
-the X11/fontconfig headers (`libX11 libXext libXft libXinerama libXfixes
+FLTK is fetched by CMake. On Linux the only system dependencies are the
+X11/fontconfig headers (`libX11 libXext libXft libXinerama libXfixes
 libXcursor libXrender fontconfig`); macOS and Windows need none.
 
 ## Release and consumption
@@ -88,5 +89,14 @@ sh "$SCRIPT_DIR/../fetch_launcher.sh" "macos_$ARCH" "$MACOS_BIN/sciqlop-launcher
 & "$ScriptDir\..\fetch_launcher.ps1" -Destination "$PackageDir\SciQLop.exe"
 ```
 
-The launcher looks for `uv` and `splash.png` beside its own binary, so it must
-be installed in the same directory as the bundled uv.
+The launcher looks for `splash.png` beside its own binary, so it must be
+installed in the same directory as the bundled uv.
+
+## Startup-ready handshake
+
+The ready-file marker lives in its own per-process temp directory
+(`$TMPDIR/sciqlop-launcher-<pid>/ready`), never inside a workspace — the
+launcher no longer resolves or even knows the workspace directory, and two
+concurrent launcher instances would otherwise fight over the same file. The
+directory is created fresh per session and removed entirely once the session
+ends.

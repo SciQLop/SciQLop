@@ -294,6 +294,8 @@ private:
         copy_->hide();
         quit_->hide();
 
+        window_->callback(on_window_close, this);
+
         window_->end();
         centre();
     }
@@ -362,6 +364,18 @@ private:
     }
 
     static void on_quit(Fl_Widget*, void* data) { static_cast<FltkUi*>(data)->close(); }
+
+    /// The WM's own close button (or Alt+F4, or a WM_DELETE_WINDOW client
+    /// message) reaches here. Without this callback FLTK's default behaviour
+    /// is to just hide() the window — invisible but keepalive_ still keeps
+    /// Fl::run() spinning forever. Only an error state may be dismissed this
+    /// way; the borderless splash shown during startup has no decorations to
+    /// click in the first place, so ignoring it here is defence in depth, not
+    /// the primary guard.
+    static void on_window_close(Fl_Widget*, void* data) {
+        auto* self = static_cast<FltkUi*>(data);
+        if (self->error_shown_) self->close();
+    }
 
     Fl_Window* window_ = nullptr;
     Fl_Window* keepalive_ = nullptr;

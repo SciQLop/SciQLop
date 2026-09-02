@@ -35,23 +35,15 @@ FetchContent_Declare(fltk
     URL_HASH SHA256=19725f687146610976a1a43ef448feeba212a7eca88ad5897d22f6adaf3af45b
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE)
 
-FetchContent_Declare(tomlplusplus
-    GIT_REPOSITORY https://github.com/marzer/tomlplusplus.git
-    GIT_TAG v3.4.0
-    GIT_SHALLOW TRUE)
-
-FetchContent_MakeAvailable(fltk tomlplusplus)
+FetchContent_MakeAvailable(fltk)
 
 add_library(launcher_core STATIC
     src/paths.cpp
-    src/manifest.cpp
-    src/project.cpp
     src/launcher.cpp
     $<$<BOOL:${WIN32}>:src/process_win32.cpp>
     $<$<NOT:$<BOOL:${WIN32}>>:src/process_posix.cpp>
 )
 target_include_directories(launcher_core PUBLIC src)
-target_link_libraries(launcher_core PUBLIC tomlplusplus::tomlplusplus)
 if(NOT WIN32)
     target_link_libraries(launcher_core PUBLIC ${CMAKE_DL_LIBS})
 endif()
@@ -63,7 +55,10 @@ add_executable(sciqlop-launcher WIN32
     src/main.cpp
     src/ui_fltk.cpp
 )
-target_link_libraries(sciqlop-launcher PRIVATE launcher_core fltk::fltk fltk::images)
+# CommandLineToArgvW (main.cpp's utf8_argv(), C6) lives in shell32, which
+# FLTK's own Windows link set (comctl32/ws2_32/gdiplus) does not pull in.
+target_link_libraries(sciqlop-launcher PRIVATE launcher_core fltk::fltk fltk::images
+    $<$<BOOL:${WIN32}>:shell32>)
 
 if(SCIQLOP_LAUNCHER_BUILD_TESTS)
     enable_testing()

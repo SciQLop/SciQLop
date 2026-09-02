@@ -46,11 +46,7 @@ fs::path user_data_dir() {
 #endif
 }
 
-fs::path workspaces_root() { return user_data_dir() / "workspaces"; }
-
 fs::path last_launch_log() { return user_data_dir() / "last-launch.log"; }
-
-fs::path launcher_config() { return user_data_dir() / "launcher.json"; }
 
 fs::path executable_dir() {
     std::error_code ec;

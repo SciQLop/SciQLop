@@ -1,18 +1,22 @@
 #include "launcher.hpp"
 
-#include "manifest.hpp"  // most_recently_used()
 #include "paths.hpp"
 #include "process.hpp"
 
 #include <fstream>
 #include <sstream>
+#include <string_view>
 
 #ifndef SCIQLOP_LAUNCHER_VERSION
 #define SCIQLOP_LAUNCHER_VERSION "dev"
 #endif
 
-#ifndef _WIN32
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
 #include <dlfcn.h>
+#include <unistd.h>
 #endif
 
 namespace fs = std::filesystem;
@@ -20,61 +24,48 @@ namespace fs = std::filesystem;
 namespace sciqlop {
 namespace {
 
-constexpr const char* SWITCH_TARGET_FILE = ".sciqlop_switch_target";
-
 /// AppRun (Linux/macOS bundles) and the Windows/macOS installers all put the
-/// bundled interpreter's directory on PATH before running this launcher —
-/// the same PATH the launcher's own bundled uv is found through today. A dev
-/// checkout without that bundling still resolves this to whatever `python3`
-/// is on the ambient PATH.
+/// bundled interpreter's directory on PATH before running this launcher — the
+/// same PATH a dev checkout without that bundling resolves to whatever
+/// `python3` is on the ambient PATH.
 #ifdef _WIN32
 constexpr const char* PYTHON_EXECUTABLE = "python.exe";
 #else
 constexpr const char* PYTHON_EXECUTABLE = "python3";
 #endif
 
-std::string read_file(const fs::path& path) {
-    std::ifstream in(path, std::ios::binary);
-    std::ostringstream out;
-    out << in.rdbuf();
-    return out.str();
+/// A path's bytes as UTF-8, independent of the platform's native/ANSI
+/// encoding — the only form that survives unchanged through Command's argv
+/// and extra_env into process_win32.cpp's UTF-8-decoding widen().
+std::string to_utf8(const fs::path& path) {
+    const auto encoded = path.u8string();
+    return std::string(encoded.begin(), encoded.end());
 }
 
-std::string trim(std::string value) {
-    const auto first = value.find_first_not_of(" \t\r\n");
-    if (first == std::string::npos) return {};
-    const auto last = value.find_last_not_of(" \t\r\n");
-    return value.substr(first, last - first + 1);
-}
-
-/// Workspaces root, overridable through the launcher-owned config file the app
-/// writes when the corresponding setting changes.
-fs::path workspaces_root() {
-    const std::string config = read_file(paths::launcher_config());
-    const auto key = config.find("\"workspaces_dir\"");
-    if (key != std::string::npos) {
-        const auto open = config.find('"', config.find(':', key) + 1);
-        const auto close = config.find('"', open + 1);
-        if (open != std::string::npos && close != std::string::npos)
-            return fs::path(config.substr(open + 1, close - open - 1));
-    }
-    return paths::workspaces_root();
-}
+#ifdef _WIN32
+unsigned long current_pid() { return GetCurrentProcessId(); }
+#else
+long current_pid() { return static_cast<long>(getpid()); }
+#endif
 
 /// One log per launch, appended to by every subprocess of that session, so the
 /// path quoted in an error message always holds the failure that caused it.
-void start_session_log(const fs::path& workspace_dir) {
+void start_session_log() {
     std::ofstream log(paths::last_launch_log(), std::ios::binary | std::ios::trunc);
-    log << "SciQLop launcher " << SCIQLOP_LAUNCHER_VERSION << '\n'
-        << "workspace: " << workspace_dir.string() << "\n\n";
+    log << "SciQLop launcher " << SCIQLOP_LAUNCHER_VERSION << "\n\n";
 }
 
+/// The startup-ready handshake file, in its own per-process temp directory —
+/// not the workspace dir, which the launcher no longer resolves and which two
+/// concurrent instances would otherwise share.
 struct ReadyFile {
     fs::path directory;
     fs::path marker;
 
-    explicit ReadyFile(const fs::path& workspace_dir)
-        : directory(workspace_dir / ".sciqlop_startup"), marker(directory / "ready") {
+    ReadyFile()
+        : directory(fs::temp_directory_path() /
+                    ("sciqlop-launcher-" + std::to_string(current_pid()))),
+          marker(directory / "ready") {
         std::error_code ec;
         fs::create_directories(directory, ec);
         fs::remove(marker, ec);
@@ -89,37 +80,35 @@ struct ReadyFile {
 /// Runs the whole workspace-prepare-and-supervise sequence in ONE subprocess:
 /// the bundled thin `sciqlop` launcher package (no [all] extra — the same
 /// binary `build.sh` installs, importable without PySide6) already does
-/// everything here via `SciQLop.sciqlop_launcher.main()` — resolve the
-/// workspace, prepare it (plugin/appstore dependencies, dev-build git-main
-/// installs, the offline/plugin-isolation sync retries — see
+/// everything here via `SciQLop.sciqlop_launcher.main()` — parse argv,
+/// resolve the workspace, prepare it (plugin/appstore dependencies, dev-build
+/// git-main installs, the offline/plugin-isolation sync retries — see
 /// `prepare_workspace()` in the Python codebase), then spawn the real GUI
-/// once the workspace venv is ready.
+/// once the workspace venv is ready, looping internally on exit 64
+/// (restart)/65 (switch workspace).
 ///
 /// This launcher's only job is showing a native splash *while* that already
-/// correct, already tested Python code runs — reimplementing workspace/venv
-/// setup here (as an earlier version of this function did, calling `uv venv`
-/// / `uv sync` directly) would just be a second copy to keep in sync, and it
-/// had already drifted: no plugin/appstore dependency support, no dev-build
-/// git-main install, no retry-on-a-broken-plugin. `--sciqlop-version` isn't
-/// forwarded (Python's CLI doesn't parse it yet) — a pre-existing gap, not
-/// a regression, since this launcher was never wired into an installer.
+/// correct, already tested Python code runs, and forwarding its own argv
+/// untouched — reimplementing workspace resolution or venv setup here (as an
+/// earlier version of this function did) would just be a second copy of that
+/// logic to keep in sync.
 ///
 /// The readiness handoff (`SCIQLOP_STARTUP_READY_FILE`) is the same protocol
 /// `sciqlop_app.py`'s `_signal_ready_and_wait_for_splash()` already
 /// implements for the windowed Python splash — it just flows through
 /// unchanged env-var inheritance down to the actual GUI process, so nothing
 /// on the Python side needs to change for this launcher to use it too.
-int run_app(const fs::path& workspace_dir, Ui& ui, std::string& stderr_tail) {
-    const ReadyFile ready(workspace_dir);
+int run_app(const std::vector<std::string>& forwarded_args, Ui& ui, std::string& stderr_tail) {
+    const ReadyFile ready;
 
     ui.post_phase("Preparing workspace");
     ui.post_detail("");
     ui.post_progress(10);
 
-    const Command app{
-        {PYTHON_EXECUTABLE, "-I", "-m", "SciQLop.app", "--workspace", workspace_dir.string()},
-        {},
-        {{"SCIQLOP_STARTUP_READY_FILE", ready.marker.string()}}};
+    std::vector<std::string> argv{PYTHON_EXECUTABLE, "-I", "-m", "SciQLop.app"};
+    argv.insert(argv.end(), forwarded_args.begin(), forwarded_args.end());
+
+    const Command app{argv, {}, {{"SCIQLOP_STARTUP_READY_FILE", to_utf8(ready.marker)}}};
 
     std::ostringstream tail;
 
@@ -129,32 +118,24 @@ int run_app(const fs::path& workspace_dir, Ui& ui, std::string& stderr_tail) {
     // its main() loop). Recognizing them turns the splash from a static
     // "Preparing workspace" for the whole session into a live reflection of
     // which of those internal relaunches is happening right now.
-    auto starts_with = [](const std::string& line, const char* prefix) {
-        return line.rfind(prefix, 0) == 0;
-    };
-
-    auto report_line = [&](const std::string& line) {
-        if (starts_with(line, "Preparing workspace")) {
-            ui.post_phase("Preparing workspace");
-        } else if (starts_with(line, "Starting SciQLop")) {
-            ui.post_phase("Starting SciQLop");
+    auto report_stdout = [&](const std::string& line) {
+        if (const auto phase = phase_for_line(line)) {
+            ui.post_phase(*phase);
         } else {
             ui.post_detail(line);
         }
     };
 
+    // stderr never carries a phase marker — only warnings and, on a crash, a
+    // traceback — so it always goes to the detail line and, kept verbatim, to
+    // post_error()'s tail.
+    auto report_stderr = [&](const std::string& line) {
+        ui.post_detail(line);
+        tail << line << '\n';
+    };
+
     const int code = run_supervised(
-        app, paths::last_launch_log(),
-        // stdout: sciqlop_launcher.py's own print()s — its "Preparing
-        // workspace"/"Starting SciQLop" phase markers and any uv output
-        // relayed through prepare_workspace()'s on_output callback.
-        report_line,
-        // stderr: warnings and, on a crash, a traceback — also worth
-        // reflecting live, and kept verbatim in `tail` for post_error().
-        [&](const std::string& line) {
-            report_line(line);
-            tail << line << '\n';
-        },
+        app, paths::last_launch_log(), report_stdout, report_stderr,
         [&] {
             std::error_code ec;
             if (!fs::is_regular_file(ready.marker, ec)) return;
@@ -183,71 +164,41 @@ int run_app(const fs::path& workspace_dir, Ui& ui, std::string& stderr_tail) {
 
 }  // namespace
 
-Options parse_args(int argc, char** argv) {
-    Options options;
-    for (int i = 1; i < argc; ++i) {
-        const std::string arg = argv[i];
-        const bool has_next = i + 1 < argc;
-        if ((arg == "--workspace" || arg == "-w") && has_next) {
-            options.workspace = argv[++i];
-        } else if (arg == "--sciqlop-version" && has_next) {
-            options.sciqlop_version = argv[++i];
-        } else if (!arg.empty() && arg.front() != '-') {
-            options.sciqlop_file = arg;
-        }
-    }
-    return options;
+Options parse_args(const std::vector<std::string>& args) { return Options{args}; }
+
+std::optional<std::string> phase_for_line(const std::string& line) {
+    if (line == "Starting SciQLop ...") return "Starting SciQLop";
+
+    constexpr std::string_view prefix = "Preparing workspace ";
+    constexpr std::string_view suffix = " ...";
+    const std::string_view view = line;
+    if (view.size() < prefix.size() + suffix.size()) return std::nullopt;
+    if (view.substr(0, prefix.size()) != prefix) return std::nullopt;
+    if (view.substr(view.size() - suffix.size()) != suffix) return std::nullopt;
+    return "Preparing workspace";
 }
 
-fs::path resolve_workspace_dir(const Options& options) {
-    const fs::path root = workspaces_root();
-
-    if (!options.sciqlop_file.empty()) {
-        const fs::path file(options.sciqlop_file);
-        if (file.extension() == ".sciqlop") return file.parent_path();
-    }
-    if (!options.workspace.empty()) {
-        const fs::path candidate(options.workspace);
-        return candidate.is_absolute() ? candidate : root / options.workspace;
-    }
-    if (auto recent = most_recently_used(root)) return *recent;
-    return root / "default";
-}
-
-SessionResult run_session(const Options& options, Ui& ui) {
-    SessionResult result;
-    result.workspace_dir = resolve_workspace_dir(options);
+int run_session(const Options& options, Ui& ui) {
+    int exit_code = 0;
 
     ui.run_with_worker([&] {
-        const fs::path workspace_dir = result.workspace_dir;
         std::error_code ec;
-        fs::create_directories(workspace_dir, ec);
         fs::create_directories(paths::user_data_dir(), ec);
-        start_session_log(workspace_dir);
+        start_session_log();
 
         if (const std::string warning = xcb_cursor_warning(); !warning.empty())
             ui.post_warning(warning);
 
         std::string stderr_tail;
-        result.exit_code = run_app(workspace_dir, ui, stderr_tail);
-        if (result.exit_code != 0 && result.exit_code != EXIT_RESTART &&
-            result.exit_code != EXIT_SWITCH_WORKSPACE) {
-            ui.post_error("SciQLop exited with code " + std::to_string(result.exit_code) +
+        exit_code = run_app(options.forwarded_args, ui, stderr_tail);
+        if (exit_code != 0) {
+            ui.post_error("SciQLop exited with code " + std::to_string(exit_code) +
                           ".\n\nFull output: " + paths::last_launch_log().string() + "\n\n" +
                           stderr_tail);
         }
     });
 
-    return result;
-}
-
-std::string take_switch_target(const fs::path& workspace_dir) {
-    const fs::path file = workspace_dir / SWITCH_TARGET_FILE;
-    std::error_code ec;
-    if (!fs::is_regular_file(file, ec)) return {};
-    const std::string target = trim(read_file(file));
-    fs::remove(file, ec);
-    return target;
+    return exit_code;
 }
 
 std::string xcb_cursor_warning() {
