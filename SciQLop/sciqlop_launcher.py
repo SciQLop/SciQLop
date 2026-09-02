@@ -25,6 +25,7 @@ EXIT_RESTART = 64
 EXIT_SWITCH_WORKSPACE = 65
 SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"
 READY_FILE_ENV = "SCIQLOP_STARTUP_READY_FILE"
+SWITCH_HANDOFF_FILE_ENV = "SCIQLOP_SWITCH_HANDOFF_FILE"
 
 
 def _is_editable_install() -> bool:
@@ -157,6 +158,31 @@ def _last_launch_log_path() -> Path:
     from platformdirs import user_data_dir
     log_dir = Path(user_data_dir(appname="sciqlop", appauthor="LPP", ensure_exists=True))
     return log_dir / "last-launch.log"
+
+
+def _switch_handoff_path() -> Path:
+    """Where a native-mode session (see ``main()``) leaves the target of a
+    workspace switch for the C++ launcher's next round to pick up.
+
+    A per-launcher-process path the native launcher chose itself (sibling of
+    its own ready-marker file — see ``launcher/src/launcher.cpp``'s
+    ``RoundScratchFiles``) and told us about via ``SWITCH_HANDOFF_FILE_ENV``,
+    not a fixed path this module would have to guess: a fixed path can go
+    stale (a launcher killed after this was written but before the next
+    round read it) or collide between two concurrent launcher instances.
+
+    Native mode is only ever entered because the native launcher already set
+    ``READY_FILE_ENV`` (see ``_choose_run_session()``), and it must always set
+    this alongside it — a missing var here is a native-launcher bug, so this
+    raises rather than silently falling back to some other path.
+    """
+    path = os.environ.get(SWITCH_HANDOFF_FILE_ENV)
+    if not path:
+        raise RuntimeError(
+            f"{SWITCH_HANDOFF_FILE_ENV} is not set — the native launcher must set it "
+            f"alongside {READY_FILE_ENV}"
+        )
+    return Path(path)
 
 
 def _prepare_on_worker_thread(prepare_fn, default_python: Path, on_detail) -> tuple[Path, str | None]:
@@ -527,10 +553,37 @@ def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
     repair_lab_assets(dev_venv_dir, on_output=on_output)
 
 
+def _run_single_session_for_native_launcher(workspace_name: str | None, sciqlop_file: str | None) -> int:
+    """Run exactly one session under the native C++ launcher, which owns the
+    restart (64) / workspace-switch (65) round loop itself (see
+    ``launcher/src/main.cpp``) — this must never loop internally, or the two
+    loops would race each other's splash and process supervision.
+
+    A switch target still gets consumed from ``.sciqlop_switch_target`` here
+    (Python already knows the workspace dir it just ran in), but handed to the
+    native launcher's next round via the handoff file instead of being reused
+    for another iteration.
+    """
+    run_session = _choose_run_session()
+    exit_code, workspace_dir = run_session(workspace_name, sciqlop_file)
+
+    if exit_code == EXIT_SWITCH_WORKSPACE:
+        target = _read_switch_target(workspace_dir) if workspace_dir else None
+        if target:
+            _switch_handoff_path().write_text(target + "\n", encoding="utf-8")
+        else:
+            print("Switch-workspace requested but no target found — exiting", file=sys.stderr)
+
+    return exit_code
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     workspace_name = args.workspace
     sciqlop_file = args.sciqlop_file
+
+    if READY_FILE_ENV in os.environ:
+        return _run_single_session_for_native_launcher(workspace_name, sciqlop_file)
 
     run_session = _choose_run_session()
 

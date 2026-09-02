@@ -5,10 +5,13 @@ import time
 import tomllib
 from unittest.mock import patch, MagicMock
 from pathlib import Path
+import pytest
+
 from SciQLop.sciqlop_launcher import (
     parse_args, resolve_workspace_dir, _read_switch_target,
     check_xcb_cursor, _most_recently_used_workspace,
-    EXIT_RESTART, EXIT_SWITCH_WORKSPACE, READY_FILE_ENV,
+    EXIT_RESTART, EXIT_SWITCH_WORKSPACE, READY_FILE_ENV, SWITCH_HANDOFF_FILE_ENV,
+    _switch_handoff_path, main,
 )
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 
@@ -623,3 +626,108 @@ def test_pyproject_has_console_script(pytestconfig):
     data = tomllib.loads(pyproject.read_text())
     assert data["project"]["scripts"]["sciqlop-console"] == "SciQLop.app:main"
     assert data["project"]["gui-scripts"]["sciqlop"] == "SciQLop.app:main"
+
+
+# --- native-launcher mode: main() must run one session, not loop, when the
+# native C++ launcher (SCIQLOP_STARTUP_READY_FILE already set) owns the
+# restart/switch round loop itself. ---
+
+def test_switch_handoff_path_reads_from_env_var(monkeypatch, tmp_path):
+    handoff = tmp_path / "next-workspace"
+    monkeypatch.setenv(SWITCH_HANDOFF_FILE_ENV, str(handoff))
+    assert _switch_handoff_path() == handoff
+
+
+def test_switch_handoff_path_raises_clear_error_when_env_var_missing(monkeypatch):
+    monkeypatch.delenv(SWITCH_HANDOFF_FILE_ENV, raising=False)
+    with pytest.raises(RuntimeError, match=SWITCH_HANDOFF_FILE_ENV):
+        _switch_handoff_path()
+
+
+def test_main_native_mode_restart_calls_run_session_once(monkeypatch, tmp_path):
+    monkeypatch.setenv(READY_FILE_ENV, "/tmp/some-ready-file")
+    calls = []
+
+    def fake_run(workspace_name, sciqlop_file):
+        calls.append((workspace_name, sciqlop_file))
+        return EXIT_RESTART, tmp_path
+
+    monkeypatch.setattr(f"{MODULE}._choose_run_session", lambda: fake_run)
+
+    assert main([]) == EXIT_RESTART
+    assert calls == [(None, None)]  # exactly one call — no internal loop
+
+
+def test_main_native_mode_switch_with_target_writes_handoff(monkeypatch, tmp_path):
+    monkeypatch.setenv(READY_FILE_ENV, "/tmp/some-ready-file")
+    workspace_dir = tmp_path / "ws"
+    workspace_dir.mkdir()
+    (workspace_dir / ".sciqlop_switch_target").write_text("other-workspace\n")
+    handoff = tmp_path / "next-workspace"
+    monkeypatch.setenv(SWITCH_HANDOFF_FILE_ENV, str(handoff))
+    monkeypatch.setattr(f"{MODULE}._choose_run_session",
+                         lambda: (lambda w, f: (EXIT_SWITCH_WORKSPACE, workspace_dir)))
+
+    assert main([]) == EXIT_SWITCH_WORKSPACE
+    assert handoff.read_text() == "other-workspace\n"
+    assert not (workspace_dir / ".sciqlop_switch_target").exists()  # consumed
+
+
+def test_main_native_mode_switch_without_target_writes_no_handoff(monkeypatch, tmp_path, capsys):
+    monkeypatch.setenv(READY_FILE_ENV, "/tmp/some-ready-file")
+    workspace_dir = tmp_path / "ws"
+    workspace_dir.mkdir()
+    handoff = tmp_path / "next-workspace"
+    monkeypatch.setenv(SWITCH_HANDOFF_FILE_ENV, str(handoff))
+    monkeypatch.setattr(f"{MODULE}._choose_run_session",
+                         lambda: (lambda w, f: (EXIT_SWITCH_WORKSPACE, workspace_dir)))
+
+    assert main([]) == EXIT_SWITCH_WORKSPACE
+    assert not handoff.exists()
+    assert "no target found" in capsys.readouterr().err
+
+
+# --- non-native mode: main()'s own loop must be untouched by the above. ---
+
+def test_main_non_native_mode_loops_through_a_restart(monkeypatch):
+    monkeypatch.delenv(READY_FILE_ENV, raising=False)
+    calls = []
+
+    def fake_run(workspace_name, sciqlop_file):
+        calls.append(workspace_name)
+        return (EXIT_RESTART if len(calls) == 1 else 0), None
+
+    monkeypatch.setattr(f"{MODULE}._choose_run_session", lambda: fake_run)
+
+    assert main([]) == 0
+    assert calls == [None, None]  # looped internally, unlike native mode
+
+
+def test_main_non_native_mode_loops_through_a_switch_with_target(monkeypatch, tmp_path):
+    monkeypatch.delenv(READY_FILE_ENV, raising=False)
+    workspace_dir = tmp_path / "ws"
+    workspace_dir.mkdir()
+    (workspace_dir / ".sciqlop_switch_target").write_text("other\n")
+    calls = []
+
+    def fake_run(workspace_name, sciqlop_file):
+        calls.append(workspace_name)
+        if len(calls) == 1:
+            return EXIT_SWITCH_WORKSPACE, workspace_dir
+        return 0, None
+
+    monkeypatch.setattr(f"{MODULE}._choose_run_session", lambda: fake_run)
+
+    assert main([]) == 0
+    assert calls == [None, "other"]
+
+
+def test_main_non_native_mode_switch_without_target_returns_65(monkeypatch, tmp_path, capsys):
+    monkeypatch.delenv(READY_FILE_ENV, raising=False)
+    workspace_dir = tmp_path / "ws"
+    workspace_dir.mkdir()
+    monkeypatch.setattr(f"{MODULE}._choose_run_session",
+                         lambda: (lambda w, f: (EXIT_SWITCH_WORKSPACE, workspace_dir)))
+
+    assert main([]) == EXIT_SWITCH_WORKSPACE
+    assert "no target found" in capsys.readouterr().err

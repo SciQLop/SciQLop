@@ -197,6 +197,73 @@ LAUNCHER_PID=""
 expect "the log names the command it failed to run" file_contains "$LOG" "python3"
 expect "the launcher exits non-zero rather than hanging forever" nonzero "$case3_exit"
 
+# --- case 4: restart round (exit 64, then a normal exit) --------------------
+# The stub tracks its own invocation count across the two rounds the launcher
+# runs it for, entirely within this one launcher process.
+cat > "$ROOT/bin/python3" <<EOF
+#!/usr/bin/env bash
+count_file="$ROOT/case4-count"
+n=0
+[ -f "\$count_file" ] && n=\$(cat "\$count_file")
+n=\$((n + 1))
+echo "\$n" > "\$count_file"
+echo "Preparing workspace /x ..."
+echo "Starting SciQLop ..."
+: > "\$SCIQLOP_STARTUP_READY_FILE"
+for _ in \$(seq 1 50); do
+    [ -e "\$SCIQLOP_STARTUP_READY_FILE" ] || break
+    sleep 0.1
+done
+[ "\$n" -eq 1 ] && exit 64
+exit 0
+EOF
+chmod +x "$ROOT/bin/python3"
+
+echo "case 4: restart round (round 1 exits 64, round 2 exits 0)"
+timeout 30 "$LAUNCHER" --workspace foo
+case4_exit=$?
+
+expect "launcher exits 0 once the restart round finishes cleanly" equals "$case4_exit" 0
+expect "log shows round 1 as a start" file_contains "$LOG" "=== round 1 (start) ==="
+expect "log shows round 2 as a restart" file_contains "$LOG" "=== round 2 (restart) ==="
+
+# --- case 5: workspace-switch round (exit 65, target via the handoff file) --
+# The launcher itself sets SCIQLOP_SWITCH_HANDOFF_FILE per round, pointing at
+# its own per-pid scratch dir (sibling of the ready marker) — the stub just
+# writes there, no path prediction/XDG trick needed on this side.
+cat > "$ROOT/bin/python3" <<EOF
+#!/usr/bin/env bash
+count_file="$ROOT/case5-count"
+n=0
+[ -f "\$count_file" ] && n=\$(cat "\$count_file")
+n=\$((n + 1))
+echo "\$n" > "\$count_file"
+echo "Preparing workspace /x ..."
+echo "Starting SciQLop ..."
+: > "\$SCIQLOP_STARTUP_READY_FILE"
+for _ in \$(seq 1 50); do
+    [ -e "\$SCIQLOP_STARTUP_READY_FILE" ] || break
+    sleep 0.1
+done
+if [ "\$n" -eq 1 ]; then
+    printf 'foo\n' > "\$SCIQLOP_SWITCH_HANDOFF_FILE"
+    exit 65
+fi
+printf '%s\n' "\$@" > "$ROOT/case5-round2-argv"
+exit 0
+EOF
+chmod +x "$ROOT/bin/python3"
+
+echo "case 5: workspace switch (round 1 exits 65 and names 'foo')"
+timeout 30 "$LAUNCHER" bar.sciqlop-archive
+case5_exit=$?
+
+expect "launcher exits 0 once the switch round finishes cleanly" equals "$case5_exit" 0
+expect "round 2 argv ends in --workspace foo" \
+    equals "$(tail -n 2 "$ROOT/case5-round2-argv" 2>/dev/null | tr '\n' ' ')" "--workspace foo "
+expect "round 2 argv drops the original positional file" \
+    bash -c '! grep -q "bar.sciqlop-archive" "$1" 2>/dev/null' _ "$ROOT/case5-round2-argv"
+
 echo
 if [ "$failures" -eq 0 ]; then
     echo "smoke test passed"

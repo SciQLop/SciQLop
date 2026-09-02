@@ -53,11 +53,33 @@ int main(int argc, char** argv) {
 #ifdef _WIN32
     (void)argc;
     (void)argv;
-    const sciqlop::Options options = sciqlop::parse_args(utf8_argv());
+    sciqlop::Options options = sciqlop::parse_args(utf8_argv());
 #else
-    const sciqlop::Options options = sciqlop::parse_args(forwarded_argv(argc, argv));
+    sciqlop::Options options = sciqlop::parse_args(forwarded_argv(argc, argv));
 #endif
 
-    auto ui = sciqlop::make_fltk_ui(splash_path());
-    return sciqlop::run_session(options, *ui);
+    int round = 1;
+    sciqlop::RoundKind kind = sciqlop::RoundKind::Start;
+
+    for (;;) {
+        auto ui = sciqlop::make_fltk_ui(splash_path());
+        const sciqlop::SessionResult result = sciqlop::run_session(options, *ui, round, kind);
+
+        if (result.exit_code == sciqlop::EXIT_RESTART) {
+            ++round;
+            kind = sciqlop::RoundKind::Restart;
+            continue;
+        }
+
+        if (result.exit_code == sciqlop::EXIT_SWITCH_WORKSPACE) {
+            if (result.switch_target.empty()) return result.exit_code;
+            options.workspace = result.switch_target;
+            options.sciqlop_file.clear();
+            ++round;
+            kind = sciqlop::RoundKind::Switch;
+            continue;
+        }
+
+        return result.exit_code;
+    }
 }
