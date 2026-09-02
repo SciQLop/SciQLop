@@ -314,6 +314,54 @@ class TestRepointInterpreter:
         assert f"home = {new_target.parent}" in cfg_text
         assert any("Re-linking workspace interpreter" in line for line in lines)
 
+    def test_repoint_survives_concurrent_symlink_race(self, workspace_dir, tmp_path):
+        """L-w2: a second instance can win the race and repoint the same link
+        between this one's unlink() and symlink_to() — that FileExistsError
+        means the link is already correct, not a real failure."""
+        venv = WorkspaceVenv(workspace_dir)
+        old_target = tmp_path / "old_mount" / "bin" / "python3"
+        new_target = tmp_path / "new_mount" / "bin" / "python3"
+        new_target.parent.mkdir(parents=True)
+        new_target.touch()
+        _make_symlinked_venv(workspace_dir, old_target)
+
+        real_symlink_to = Path.symlink_to
+        calls = {"n": 0}
+
+        def flaky_symlink_to(self, target, *a, **kw):
+            calls["n"] += 1
+            if calls["n"] == 1:
+                raise FileExistsError("raced by another instance")
+            return real_symlink_to(self, target, *a, **kw)
+
+        with patch("SciQLop.components.workspaces.backend.workspace_venv.get_python",
+                   return_value=str(new_target)), \
+             patch.object(Path, "symlink_to", flaky_symlink_to):
+            venv._repoint_interpreter()  # must not raise
+
+        assert calls["n"] >= 1
+
+
+class TestRewritePyvenvHomeAtomic:
+    def test_uses_atomic_write(self, workspace_dir, tmp_path, monkeypatch):
+        """L-w3: pyvenv.cfg must never be left truncated by a crash mid-write."""
+        venv = WorkspaceVenv(workspace_dir)
+        venv_dir = workspace_dir / ".venv"
+        venv_dir.mkdir(parents=True)
+        (venv_dir / "pyvenv.cfg").write_text("home = /old\nversion_info = 3.14.0\n")
+        calls = []
+        monkeypatch.setattr(
+            "SciQLop.components.workspaces.backend.workspace_venv.write_text_atomic",
+            lambda path, text: calls.append((path, text)),
+        )
+
+        venv._rewrite_pyvenv_home(tmp_path / "new_home")
+
+        assert len(calls) == 1
+        path, text = calls[0]
+        assert path == venv_dir / "pyvenv.cfg"
+        assert f"home = {tmp_path / 'new_home'}" in text
+
 
 class TestEnsure:
     @patch.object(WorkspaceVenv, "create")

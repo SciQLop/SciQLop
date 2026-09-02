@@ -9,6 +9,7 @@ import sys
 from collections.abc import Callable
 from pathlib import Path
 
+from SciQLop.core.common.files import write_text_atomic
 from SciQLop.core.common.python import get_python
 from SciQLop.components.workspaces.backend.uv import uv_command
 
@@ -197,7 +198,10 @@ class WorkspaceVenv:
         for entry in bin_dir.glob("python*"):
             if entry.is_symlink():
                 entry.unlink()
-                entry.symlink_to(target)
+                try:
+                    entry.symlink_to(target)
+                except FileExistsError:
+                    pass  # another instance repointed it first; already correct
         self._rewrite_pyvenv_home(target.parent)
 
     def _rewrite_pyvenv_home(self, home: Path) -> None:
@@ -206,7 +210,7 @@ class WorkspaceVenv:
             f"home = {home}" if line.partition("=")[0].strip() == "home" else line
             for line in cfg.read_text().splitlines()
         ]
-        cfg.write_text("\n".join(lines) + "\n")
+        write_text_atomic(cfg, "\n".join(lines) + "\n")
 
     def ensure(self, on_output: Callable[[str], None] | None = None) -> None:
         """Create the venv if missing, wrong version, stale paths, or legacy;

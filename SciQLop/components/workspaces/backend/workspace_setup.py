@@ -233,7 +233,10 @@ def prepare_workspace(
         venv, manifest, plugin_deps + appstore_deps, pyproject_path, effective_locked, on_output,
     )
     if synced and import_marker.exists():
-        import_marker.unlink()
+        try:
+            import_marker.unlink()
+        except OSError as exc:
+            log.warning("Could not remove import marker: %s", exc)
 
     # Venvs prepared by older SciQLop versions installed both jupyterlab and
     # jupyterlab-js; the sync above may have just uninstalled jupyterlab and

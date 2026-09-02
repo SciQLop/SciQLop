@@ -50,6 +50,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Workspace name or path")
     parser.add_argument("sciqlop_file", nargs="?", default=None,
                         help="Path to a .sciqlop or .sciqlop-archive file")
+    parser.add_argument("--sciqlop-version", default=None,
+                        help="reserved; currently ignored")
     return parser.parse_args(argv if argv is not None else sys.argv[1:])
 
 
@@ -243,11 +245,10 @@ def _spawn_app_logged(
     arrives — used by the console entry point, which has no splash to show
     progress on.
 
-    simplify: the caller isn't given the drain threads to join, so a return
-    right after the subprocess exits can race a few lines of trailing output
-    still being flushed to last-launch.log (each drain thread closes the log
-    itself once its stream hits EOF). Upgrade to returning the threads too, if
-    last-launch.log is ever seen truncated.
+    The caller isn't given the drain threads to join, so a return right after
+    the subprocess exits can race a few lines of trailing output still being
+    flushed to last-launch.log (each drain thread closes the log itself once
+    its stream hits EOF).
     """
     import threading
 
@@ -262,13 +263,19 @@ def _spawn_app_logged(
     log_file.write(f"$ {python_path} -m SciQLop.sciqlop_app\n")
     log_file.flush()
 
-    proc = subprocess.Popen(
-        [str(python_path), "-m", "SciQLop.sciqlop_app"],
-        env=env,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+    try:
+        proc = subprocess.Popen(
+            [str(python_path), "-m", "SciQLop.sciqlop_app"],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except Exception:
+        log_file.close()
+        raise
 
     stderr_lines: list[str] = []
     streams = ((proc.stdout, "out", None), (proc.stderr, "err", stderr_lines))
@@ -435,7 +442,7 @@ def _qt_available() -> bool:
     try:
         import PySide6.QtCore  # noqa: F401
         import PySide6.QtWidgets  # noqa: F401
-    except ImportError:
+    except (ImportError, OSError):
         return False
     if platform.system() == "Linux":
         return bool(
@@ -540,7 +547,7 @@ def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
     all_deps = strip_host_provided(plugin_deps + manifest.requires)
     if all_deps:
         try:
-            cmd = uv_command("pip", "install", *all_deps)
+            cmd = uv_command("pip", "install", "--native-tls", *all_deps)
             _run_uv(cmd, on_output)
         except Exception as e:
             print(f"Warning: failed to install plugin/workspace deps: {e}")

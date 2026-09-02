@@ -326,7 +326,7 @@ class WelcomeBackend(QObject):
         if not os.path.exists(manifest_path):
             return json.dumps([])
         from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
-        manifest = WorkspaceManifest.load(manifest_path)
+        manifest = WorkspaceManifest.load_or_repair(manifest_path)
         return json.dumps([{"name": e.name, "version": e.version} for e in manifest.examples])
 
     @Slot(str, str)
@@ -334,7 +334,7 @@ class WelcomeBackend(QObject):
         from SciQLop.components.workspaces.backend.uv import uv_command
         deps = json.loads(dependencies_json)
         manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
-        manifest = WorkspaceManifest.load(manifest_path)
+        manifest = WorkspaceManifest.load_or_repair(manifest_path)
         new_deps = [d for d in deps if d not in manifest.requires]
         if not new_deps:
             return
@@ -376,7 +376,7 @@ class WelcomeBackend(QObject):
     def remove_dependency_from_workspace(self, workspace_dir: str, dependency: str) -> None:
         manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
         try:
-            manifest = WorkspaceManifest.load(manifest_path)
+            manifest = WorkspaceManifest.load_or_repair(manifest_path)
             manifest.requires = [d for d in manifest.requires if d != dependency]
             manifest.save(manifest_path)
         except Exception as e:
@@ -393,7 +393,7 @@ class WelcomeBackend(QObject):
         update = json.loads(field_json)
         manifest_path = os.path.join(directory, "workspace.sciqlop")
         try:
-            manifest = WorkspaceManifest.load(manifest_path)
+            manifest = WorkspaceManifest.load_or_repair(manifest_path)
             field, value = update["field"], update["value"]
             if hasattr(manifest, field):
                 setattr(manifest, field, value)

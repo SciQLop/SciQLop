@@ -156,6 +156,26 @@ class TestLoadOrRepair:
         assert loaded.name == "Recovered"
         assert (tmp_path / "workspace.sciqlop.corrupt").exists()
 
+    def test_non_utf8_manifest_is_repaired(self, tmp_path):
+        path = tmp_path / "workspace.sciqlop"
+        path.write_bytes(b"\xff\xfe garbage")
+
+        loaded = WorkspaceManifest.load_or_repair(path)
+
+        assert loaded.name == tmp_path.name
+        assert (tmp_path / "workspace.sciqlop.corrupt").exists()
+
+    def test_wrong_shape_examples_is_repaired(self, tmp_path):
+        path = tmp_path / "workspace.sciqlop"
+        path.write_text(
+            '[workspace]\nname = "Bad shape"\n\n[examples]\ninstalled = [1, 2, 3]\n'
+        )
+
+        loaded = WorkspaceManifest.load_or_repair(path)
+
+        assert loaded.name == tmp_path.name
+        assert (tmp_path / "workspace.sciqlop.corrupt").exists()
+
 
 class TestLoadAllFields:
     def test_load_full_manifest(self, tmp_path):
@@ -179,3 +199,27 @@ requires = ["numpy>=1.24", "scipy"]
         assert m.plugins_add == ["plugin_a", "plugin_b"]
         assert m.plugins_remove == ["plugin_c"]
         assert m.requires == ["numpy>=1.24", "scipy"]
+
+
+class TestManagerSelfHeals:
+    """R6: app-side manifest reads must self-heal too, not just WorkspaceManifest.load_or_repair
+    itself — otherwise a corrupt default workspace still breaks every launch."""
+
+    def test_corrupt_default_manifest_is_healed_on_startup(self, tmp_path):
+        from unittest.mock import patch
+        from SciQLop.components.workspaces.backend.workspaces_manager import WorkspaceManager
+
+        default_dir = tmp_path / "default"
+        default_dir.mkdir()
+        (default_dir / "workspace.sciqlop").write_text("not valid toml")
+
+        with patch(
+            "SciQLop.components.workspaces.backend.workspaces_manager.SciQLopWorkspacesSettings",
+            create=True,
+        ) as MockSettings:
+            MockSettings.return_value.workspaces_dir = str(tmp_path)
+            manager = WorkspaceManager.__new__(WorkspaceManager)
+            manifest = manager._ensure_default_workspace_exists()
+
+        assert manifest.name == "default"
+        assert (default_dir / "workspace.sciqlop.corrupt").exists()

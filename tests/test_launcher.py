@@ -50,6 +50,11 @@ def test_parse_args_sciqlop_file():
     assert args.sciqlop_file == "study.sciqlop"
 
 
+def test_parse_args_sciqlop_version_ignored():
+    args = parse_args(["--sciqlop-version", "1.2.3"])
+    assert args.workspace is None
+
+
 @patch(f"{MODULE}.SciQLopWorkspacesSettings", create=True)
 def test_resolve_default_workspace(MockSettings):
     MockSettings.return_value.workspaces_dir = "/fake/workspaces"
@@ -347,6 +352,29 @@ def test_prepare_workspace_dev_strips_host_sciqlop_from_install(tmp_path):
     assert "matplotlib>=3.8" in install_args
 
 
+def test_prepare_workspace_dev_pip_install_uses_native_tls(tmp_path):
+    """L-w6: the venv create/sync paths already pass --native-tls (to trust a
+    corporate MITM proxy's root CA); the dev pip-install path must too."""
+    from SciQLop.sciqlop_launcher import _prepare_workspace_dev
+
+    captured = {}
+
+    def fake_run_uv(cmd, on_output=None, **kw):
+        captured["cmd"] = cmd
+
+    with patch("SciQLop.components.plugins.plugin_deps.collect_plugin_dependencies",
+               return_value=["matplotlib>=3.8"]), \
+         patch("SciQLop.components.workspaces.backend.workspace_setup.get_globally_enabled_plugins",
+               return_value=[]), \
+         patch("SciQLop.components.workspaces.backend.workspace_setup.get_plugin_folders",
+               return_value=[]), \
+         patch("SciQLop.components.workspaces.backend.workspace_migration.migrate_workspace"), \
+         patch("SciQLop.components.workspaces.backend.workspace_venv._run_uv", fake_run_uv):
+        _prepare_workspace_dev(tmp_path)
+
+    assert "--native-tls" in captured["cmd"]
+
+
 def test_prepare_workspace_dev_repairs_lab_assets_on_dev_venv(tmp_path):
     """Unlike the prod path (workspace_setup.prepare_workspace), dev mode never
     creates a workspace .venv — it runs JupyterLab straight out of the dev base
@@ -418,6 +446,30 @@ def test_qt_available_true_non_linux_without_display_env(mock_sys, monkeypatch):
     monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
     monkeypatch.delenv("QT_QPA_PLATFORM", raising=False)
     assert _qt_available() is True
+
+
+class _BrokenPySide6Finder:
+    """L-p3: simulates a PySide6 install with missing shared libraries — the
+    import raises OSError, not ImportError."""
+
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == "PySide6" or fullname.startswith("PySide6."):
+            raise OSError("libQt6Core.so.6: cannot open shared object file")
+        return None
+
+
+@patch(f"{MODULE}.platform.system", return_value="Linux")
+def test_qt_available_false_when_pyside6_has_broken_shared_libs(mock_sys, monkeypatch):
+    from SciQLop.sciqlop_launcher import _qt_available
+
+    for name in [n for n in sys.modules if n == "PySide6" or n.startswith("PySide6.")]:
+        monkeypatch.delitem(sys.modules, name, raising=False)
+    finder = _BrokenPySide6Finder()
+    sys.meta_path.insert(0, finder)
+    try:
+        assert _qt_available() is False
+    finally:
+        sys.meta_path.remove(finder)
 
 
 # --- M15: an externally-provided ready file must force the console path ---
@@ -584,6 +636,50 @@ def test_spawn_app_logged_does_not_echo_by_default(tmp_path, monkeypatch, capsys
     captured = capsys.readouterr()
     assert captured.out == ""
     assert captured.err == ""
+
+
+def test_spawn_app_logged_passes_utf8_encoding_to_popen(tmp_path, monkeypatch):
+    """L-p4: subprocess stdout/stderr must decode as UTF-8 with replacement,
+    not the platform default, or a child process emitting non-ASCII output
+    on a C-locale host can crash the drain threads."""
+    from SciQLop.sciqlop_launcher import _spawn_app_logged
+
+    log_path = tmp_path / "last-launch.log"
+    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    captured = {}
+
+    class _CapturingPopen(_FakePopen):
+        def __init__(self, *args, **kwargs):
+            captured.update(kwargs)
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _CapturingPopen)
+
+    _spawn_app_logged(Path("/usr/bin/python3"), {})
+
+    assert captured.get("encoding") == "utf-8"
+    assert captured.get("errors") == "replace"
+
+
+def test_spawn_app_logged_closes_log_file_if_popen_raises(tmp_path, monkeypatch):
+    """L-p4: a Popen failure (e.g. the workspace interpreter vanished) must
+    not leak the already-opened last-launch.log file handle."""
+    from SciQLop.sciqlop_launcher import _spawn_app_logged
+
+    log_path = tmp_path / "last-launch.log"
+    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    fake_file = MagicMock()
+    monkeypatch.setattr(f"{MODULE}.open", lambda *a, **k: fake_file, raising=False)
+
+    def raising_popen(*a, **kw):
+        raise FileNotFoundError("no such interpreter")
+
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", raising_popen)
+
+    with pytest.raises(FileNotFoundError):
+        _spawn_app_logged(Path("/usr/bin/python3"), {})
+
+    fake_file.close.assert_called_once()
 
 
 # --- C3: _run_on_console uses _spawn_app_logged, echoes, and reports a

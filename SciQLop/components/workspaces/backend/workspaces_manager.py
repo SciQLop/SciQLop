@@ -51,7 +51,7 @@ def list_existing_workspaces() -> list[WorkspaceManifest]:
         if not _ensure_migrated(ws_dir):
             continue
         try:
-            results.append(WorkspaceManifest.load(os.path.join(ws_dir, "workspace.sciqlop")))
+            results.append(WorkspaceManifest.load_or_repair(os.path.join(ws_dir, "workspace.sciqlop")))
         except Exception as e:
             log.error(f"Error loading workspace {ws_dir}: {e}")
     return results
@@ -95,14 +95,14 @@ class WorkspaceManager(QObject):
         manifest_path = os.path.join(target, "workspace.sciqlop")
         if os.path.exists(manifest_path):
             log.info(f"Auto-loading workspace: {target}")
-            self.load_workspace(WorkspaceManifest.load(manifest_path))
+            self.load_workspace(WorkspaceManifest.load_or_repair(manifest_path))
 
     def _ensure_default_workspace_exists(self) -> WorkspaceManifest:
         default_dir = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, "default")
         manifest_path = os.path.join(default_dir, "workspace.sciqlop")
         if not os.path.exists(manifest_path):
             return self._create_workspace("default", default_dir, description="Default workspace", default=True)
-        manifest = WorkspaceManifest.load(manifest_path)
+        manifest = WorkspaceManifest.load_or_repair(manifest_path)
         if not manifest.default:
             manifest.default = True
             manifest.save(manifest_path)
@@ -129,7 +129,7 @@ class WorkspaceManager(QObject):
             os.chmod(dest, 0o644)
         manifest.image = "image.png"
         manifest.save(manifest_path)
-        return WorkspaceManifest.load(manifest_path)
+        return WorkspaceManifest.load_or_repair(manifest_path)
 
     def create_workspace(self, name: Optional[str] = None, **kwargs):
         name = name or f"New workspace from {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -146,7 +146,7 @@ class WorkspaceManager(QObject):
         slug = re_sub(r'[^\w\-]', '_', example.name).strip('_')
         dest = os.path.join(workspace_dir, slug)
         manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
-        manifest = WorkspaceManifest.load(manifest_path)
+        manifest = WorkspaceManifest.load_or_repair(manifest_path)
 
         existing = next((e for e in manifest.examples if e.name == example.name), None)
         is_update = existing is not None
@@ -192,7 +192,7 @@ class WorkspaceManager(QObject):
         copy_dir = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, uuid.uuid4().hex)
         shutil.copytree(workspace, copy_dir)
         manifest_path = os.path.join(copy_dir, "workspace.sciqlop")
-        manifest = WorkspaceManifest.load(manifest_path)
+        manifest = WorkspaceManifest.load_or_repair(manifest_path)
         manifest.name = f"Copy of {manifest.name}"
         manifest.default = False
         manifest.save(manifest_path)

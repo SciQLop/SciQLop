@@ -130,7 +130,7 @@ class WorkspaceManifest:
         path = Path(path)
         try:
             return cls.load(path)
-        except (tomllib.TOMLDecodeError, KeyError) as exc:
+        except (tomllib.TOMLDecodeError, KeyError, UnicodeDecodeError, TypeError) as exc:
             log.warning("Corrupt manifest %s (%s), repairing", path, exc)
 
         workspace_dir = path.parent

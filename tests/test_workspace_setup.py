@@ -496,6 +496,32 @@ class TestArchiveImportMarker:
         assert result == python_path
         assert (workspace_dir / IMPORT_MARKER_NAME).exists()
 
+    def test_marker_unlink_failure_does_not_crash_a_successful_prepare(
+        self, workspace_dir, patches, monkeypatch
+    ):
+        """L-w4: mirrors the stale-uv.lock unlink a few lines above — a
+        successful sync must not fail the whole prepare just because the
+        marker file itself couldn't be removed (locked by antivirus, etc.)."""
+        from SciQLop.components.workspaces.backend.workspace_archive import (
+            IMPORT_MARKER_NAME,
+        )
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._make_import_marker(workspace_dir)
+        marker_path = workspace_dir / IMPORT_MARKER_NAME
+        real_unlink = Path.unlink
+
+        def flaky_unlink(self, *a, **kw):
+            if self == marker_path:
+                raise OSError("locked by antivirus")
+            return real_unlink(self, *a, **kw)
+
+        monkeypatch.setattr(Path, "unlink", flaky_unlink)
+
+        result = prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert result == patches["venv"].python_path
+
 
 class TestCollectPluginDepsArgs:
     def test_passes_workspace_overrides_to_collect(self, workspace_dir):
