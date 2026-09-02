@@ -10,6 +10,11 @@ from pathlib import Path
 
 EXCLUDE_PATTERNS = {".venv", "pyproject.toml", "__pycache__"}
 
+# Marker left by import_workspace() so prepare_workspace() knows to sync
+# --locked against the archive's shipped uv.lock, without every caller
+# having to pass locked=True. Removed once a sync actually succeeds.
+IMPORT_MARKER_NAME = ".sciqlop_imported"
+
 
 def _is_excluded(path: Path) -> bool:
     """Return True if any component of *path* matches an exclude pattern."""
@@ -39,5 +44,7 @@ def import_workspace(archive_path: Path | str, target_dir: Path | str) -> Path:
 
     with zipfile.ZipFile(archive_path, "r") as zf:
         zf.extractall(target_dir)
+
+    (target_dir / IMPORT_MARKER_NAME).touch()
 
     return target_dir

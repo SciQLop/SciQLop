@@ -31,8 +31,13 @@ def migrate_workspace(workspace_dir: Path | str) -> bool:
 
     log.info("Migrating old workspace.json in %s", workspace_dir)
 
-    with open(old_path, "r") as f:
-        old_data = json.load(f)
+    try:
+        with open(old_path, "r") as f:
+            old_data = json.load(f)
+    except json.JSONDecodeError as exc:
+        log.warning("Corrupt workspace.json in %s (%s), using defaults", workspace_dir, exc)
+        old_path.replace(workspace_dir / "workspace.json.corrupt")
+        old_data = {}
 
     manifest = WorkspaceManifest(
         name=old_data.get("name", workspace_dir.name),

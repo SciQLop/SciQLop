@@ -500,7 +500,7 @@ def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
 
     manifest_path = workspace_dir / "workspace.sciqlop"
     if manifest_path.exists():
-        manifest = WorkspaceManifest.load(manifest_path)
+        manifest = WorkspaceManifest.load_or_repair(manifest_path)
     else:
         manifest = WorkspaceManifest.default_manifest(workspace_dir.name)
         manifest.save(manifest_path)

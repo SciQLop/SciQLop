@@ -7,6 +7,7 @@ import pytest
 
 from SciQLop.components.workspaces.backend.workspace_archive import (
     EXCLUDE_PATTERNS,
+    IMPORT_MARKER_NAME,
     export_workspace,
     import_workspace,
 )
@@ -137,6 +138,15 @@ class TestImportWorkspace:
         assert not (target / "pyproject.toml").exists()
         assert not (target / "__pycache__").exists()
         assert not (target / "scripts" / "__pycache__").exists()
+
+    def test_writes_import_marker(self, workspace_dir: Path, archive_path: Path, tmp_path: Path):
+        """H4: prepare_workspace() needs a durable way to know a workspace
+        came from an archive import, so it can sync --locked against the
+        shipped uv.lock without every caller having to pass locked=True."""
+        export_workspace(workspace_dir, archive_path)
+        target = tmp_path / "imported"
+        import_workspace(archive_path, target)
+        assert (target / IMPORT_MARKER_NAME).exists()
 
 
 class TestExcludePatterns:

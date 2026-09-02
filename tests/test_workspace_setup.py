@@ -85,6 +85,21 @@ class TestPrepareWorkspaceManifest:
         assert used_manifest.plugins_add == ["extra_plugin"]
         assert used_manifest.requires == ["scipy"]
 
+    def test_corrupt_manifest_is_repaired_instead_of_crashing(self, workspace_dir, patches):
+        """M4: prepare_workspace must use load_or_repair, not load, so a
+        corrupt manifest self-heals instead of crashing the launcher."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        workspace_dir.mkdir(parents=True)
+        manifest_path = workspace_dir / "workspace.sciqlop"
+        manifest_path.write_text("not [ valid toml")
+
+        prepare_workspace(workspace_dir)
+
+        assert (workspace_dir / "workspace.sciqlop.corrupt").exists()
+        loaded = WorkspaceManifest.load(manifest_path)
+        assert loaded.name == workspace_dir.name
+
     def test_default_manifest_uses_dir_name_when_no_name_given(self, workspace_dir, patches):
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
@@ -256,9 +271,14 @@ class TestPrepareWorkspacePluginIsolation:
         assert result == venv.python_path
         assert venv.sync.call_count == 2
         gen = patches["generate_pyproject_toml"]
-        assert gen.call_count == 2
+        # M1: after the core-only retry succeeds, the full pyproject (with
+        # plugin/appstore deps) is regenerated on disk *without* re-syncing,
+        # so the next launch and the appstore see the intended dependency
+        # set again instead of the core-only one the retry wrote.
+        assert gen.call_count == 3
         # The retry drops plugin/appstore dependencies entirely (empty list).
         assert gen.call_args_list[1].args[1] == []
+        assert gen.call_args_list[2].args[1] == ["numpy>=1.24", "requests"]
 
     def test_falls_back_to_existing_venv_when_core_only_sync_also_fails(
         self, workspace_dir, patches, tmp_path
@@ -292,10 +312,14 @@ class TestPrepareWorkspacePluginIsolation:
 
         assert venv.sync.call_count == 2
 
-    def test_locked_sync_failure_does_not_retry_without_deps(self, workspace_dir, patches, tmp_path):
-        """`locked=True` (importing a workspace archive) is meant to
-        reproduce an exact, previously-working environment — it must not
-        silently drop dependencies to route around a conflict."""
+    def test_locked_sync_failure_falls_back_to_unlocked_and_retries(
+        self, workspace_dir, patches, tmp_path
+    ):
+        """H4: a `locked=True` sync (importing a workspace archive) that
+        fails — e.g. the archive was made by another SciQLop version, so
+        ``sciqlop[all]==X`` no longer matches the shipped lock — must fall
+        back to a normal unlocked sync (with the plugin-isolation retry)
+        rather than leaving a fresh venv empty."""
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         venv = patches["venv"]
@@ -303,11 +327,16 @@ class TestPrepareWorkspacePluginIsolation:
         venv.has_sciqlop_installed = False
         venv.sync.side_effect = RuntimeError("locked resolution failed")
 
+        cb = MagicMock()
         with pytest.raises(RuntimeError, match="locked resolution failed"):
-            prepare_workspace(workspace_dir, workspace_name="Test", locked=True)
+            prepare_workspace(workspace_dir, workspace_name="Test", locked=True, on_output=cb)
 
-        assert venv.sync.call_count == 1
-        assert patches["generate_pyproject_toml"].call_count == 1
+        # locked attempt, unlocked full-deps retry, unlocked core-only retry
+        assert venv.sync.call_count == 3
+        assert venv.sync.call_args_list[0].kwargs["locked"] is True
+        assert venv.sync.call_args_list[1].kwargs["locked"] is False
+        assert venv.sync.call_args_list[2].kwargs["locked"] is False
+        cb.assert_any_call("Archive lockfile could not be honored, resolving fresh")
 
 
 class TestStaleLockfileInvalidation:
@@ -367,6 +396,105 @@ class TestStaleLockfileInvalidation:
         prepare_workspace(workspace_dir, workspace_name="Test", locked=True)
 
         assert lockfile.exists()
+
+
+class TestArchiveImportMarker:
+    """H4: import_workspace() marks an imported workspace with
+    `.sciqlop_imported`; prepare_workspace() must honor it as locked=True
+    for this run (without the caller having to pass locked=True), keep the
+    shipped uv.lock, and drop the marker only once a sync actually
+    succeeds."""
+
+    def _make_import_marker(self, workspace_dir):
+        from SciQLop.components.workspaces.backend.workspace_archive import (
+            IMPORT_MARKER_NAME,
+        )
+
+        workspace_dir.mkdir(parents=True)
+        (workspace_dir / IMPORT_MARKER_NAME).touch()
+
+    def test_marker_forces_locked_sync_and_keeps_stale_lockfile(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._make_import_marker(workspace_dir)
+        lockfile = workspace_dir / "uv.lock"
+        lockfile.write_text("archive lock")
+        import os, time
+        old_mtime = time.time() - 3600
+        os.utime(lockfile, (old_mtime, old_mtime))
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        patches["venv"].sync.assert_called_once_with(locked=True, on_output=None)
+        assert lockfile.exists()
+
+    def test_marker_removed_after_successful_sync(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_archive import (
+            IMPORT_MARKER_NAME,
+        )
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._make_import_marker(workspace_dir)
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert not (workspace_dir / IMPORT_MARKER_NAME).exists()
+
+    def test_marker_kept_after_total_failure(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_archive import (
+            IMPORT_MARKER_NAME,
+        )
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._make_import_marker(workspace_dir)
+        venv = patches["venv"]
+        venv.python_path = tmp_path / "missing" / "python"
+        venv.has_sciqlop_installed = False
+        venv.sync.side_effect = RuntimeError("still broken")
+
+        with pytest.raises(RuntimeError, match="still broken"):
+            prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert (workspace_dir / IMPORT_MARKER_NAME).exists()
+
+    def test_marker_locked_failure_falls_back_to_unlocked_sync(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._make_import_marker(workspace_dir)
+        venv = patches["venv"]
+        venv.sync.side_effect = [RuntimeError("archive lock stale"), None]
+
+        cb = MagicMock()
+        prepare_workspace(workspace_dir, workspace_name="Test", on_output=cb)
+
+        assert venv.sync.call_count == 2
+        assert venv.sync.call_args_list[0].kwargs["locked"] is True
+        assert venv.sync.call_args_list[1].kwargs["locked"] is False
+        cb.assert_any_call("Archive lockfile could not be honored, resolving fresh")
+
+    def test_marker_kept_when_falling_back_to_existing_venv(self, workspace_dir, patches, tmp_path):
+        """Regression: every sync attempt fails, but `has_sciqlop_installed`
+        is True, so `_sync_workspace_venv` falls through to "continue with
+        the existing venv" and returns normally instead of raising. No sync
+        ever actually succeeded, so the marker must survive — otherwise a
+        later online retry no longer honors the archive's lock."""
+        from SciQLop.components.workspaces.backend.workspace_archive import (
+            IMPORT_MARKER_NAME,
+        )
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._make_import_marker(workspace_dir)
+        venv = patches["venv"]
+        python_path = tmp_path / "python"
+        python_path.write_text("")
+        venv.python_path = python_path
+        venv.has_sciqlop_installed = True
+        venv.sync.side_effect = RuntimeError("still broken")
+
+        result = prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert result == python_path
+        assert (workspace_dir / IMPORT_MARKER_NAME).exists()
 
 
 class TestCollectPluginDepsArgs:

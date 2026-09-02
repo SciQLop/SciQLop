@@ -14,6 +14,7 @@ from pathlib import Path
 from SciQLop.components.plugins.backend.folders import plugins_folders
 from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
+from SciQLop.components.workspaces.backend.workspace_archive import IMPORT_MARKER_NAME
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
 from SciQLop.components.workspaces.backend.lab_assets import repair_lab_assets
@@ -61,7 +62,7 @@ def _sync_workspace_venv(
     pyproject_path: Path,
     locked: bool,
     on_output: Callable[[str], None] | None,
-) -> None:
+) -> bool:
     """Sync the workspace venv, isolating a broken plugin/appstore dependency.
 
     The plugin loader already tolerates one plugin failing to import — it
@@ -71,16 +72,34 @@ def _sync_workspace_venv(
     starting. If the full dependency set fails to resolve, retry with only
     the core app's own dependencies so it can still launch; only if even
     that fails do we fall back to (or give up on) whatever is already in the
-    venv. ``locked`` (importing a workspace archive) skips the retry: it is
-    meant to reproduce an exact, previously-working environment, not degrade
-    around a conflict.
+    venv.
+
+    ``locked`` (importing a workspace archive) tries to reproduce the exact,
+    previously-working environment first. But an archive can outlive the
+    SciQLop version that made it (e.g. its pinned ``sciqlop[all]==X`` no
+    longer exists), in which case honoring the lock is impossible — a fresh
+    venv must never be left empty because of a stale archive lock, so a
+    failed locked sync falls back to a normal unlocked one (with its own
+    plugin-isolation retry) instead of giving up.
+
+    Returns ``True`` when a sync actually installed the requested
+    dependencies, ``False`` when every attempt failed and this instead fell
+    through to keeping whatever was already in the venv (offline /
+    unreachable index, #115). Callers rely on this to tell "the environment
+    now matches what was asked for" from "we're just limping along on the
+    old one".
     """
     exc = _try_sync(venv, locked=locked, on_output=on_output)
     if exc is None:
-        return
+        return True
     _report_sync_failure(exc, on_output)
 
-    if not locked and optional_deps:
+    if locked:
+        if on_output is not None:
+            on_output("Archive lockfile could not be honored, resolving fresh")
+        return _sync_workspace_venv(venv, manifest, optional_deps, pyproject_path, False, on_output)
+
+    if optional_deps:
         if on_output is not None:
             on_output(
                 "Retrying with just the core app (dropping plugin/appstore "
@@ -89,7 +108,11 @@ def _sync_workspace_venv(
         generate_pyproject_toml(manifest, [], pyproject_path)
         exc = _try_sync(venv, locked=False, on_output=on_output)
         if exc is None:
-            return
+            # M1: put the full dependency set back on disk (not synced) so
+            # the next launch and the appstore see the intended set again,
+            # instead of the core-only one the retry just wrote.
+            generate_pyproject_toml(manifest, optional_deps, pyproject_path)
+            return True
         _report_sync_failure(exc, on_output, core_only=True)
 
     if not venv.has_sciqlop_installed:
@@ -102,6 +125,7 @@ def _sync_workspace_venv(
             "Continuing with existing venv. Run with network to install "
             "missing packages."
         )
+    return False
 
 
 def prepare_workspace(
@@ -121,7 +145,9 @@ def prepare_workspace(
         already exists.  Defaults to the directory name.
     locked:
         If ``True``, pass ``locked=True`` to ``venv.sync()`` (useful when
-        importing from an archive that ships a lock file).
+        importing from an archive that ships a lock file). A workspace
+        carrying the ``.sciqlop_imported`` marker (see ``import_workspace``)
+        is treated as locked for this run regardless of this argument.
 
     Returns
     -------
@@ -140,7 +166,7 @@ def prepare_workspace(
     # Step 1: Load or create manifest
     if manifest_path.exists():
         log.info("Loading existing manifest from %s", manifest_path)
-        manifest = WorkspaceManifest.load(manifest_path)
+        manifest = WorkspaceManifest.load_or_repair(manifest_path)
     else:
         name = workspace_name or workspace_dir.name
         log.info("Creating default manifest for workspace %r", name)
@@ -172,6 +198,12 @@ def prepare_workspace(
     pyproject_path = workspace_dir / "pyproject.toml"
     generate_pyproject_toml(manifest, plugin_deps + appstore_deps, pyproject_path)
 
+    # H4: an archive import ships its own uv.lock and wants it honored
+    # (locked=True) on this first launch, without every caller having to
+    # know that — the marker is how import_workspace() communicates it.
+    import_marker = workspace_dir / IMPORT_MARKER_NAME
+    effective_locked = locked or import_marker.exists()
+
     # Invalidate uv.lock when it predates pyproject.toml.  generate_pyproject_toml
     # is idempotent, so pyproject.toml's mtime only advances when its content
     # changes (manifest edits, plugin enable/disable, appstore install/remove,
@@ -180,7 +212,7 @@ def prepare_workspace(
     # resolutions and quietly fail to install newly added deps.
     lockfile = workspace_dir / "uv.lock"
     if (
-        not locked
+        not effective_locked
         and lockfile.exists()
         and pyproject_path.exists()
         and lockfile.stat().st_mtime < pyproject_path.stat().st_mtime
@@ -197,9 +229,11 @@ def prepare_workspace(
     # Step 6: Ensure venv exists and sync
     venv = WorkspaceVenv(workspace_dir)
     venv.ensure(on_output=on_output)
-    _sync_workspace_venv(
-        venv, manifest, plugin_deps + appstore_deps, pyproject_path, locked, on_output,
+    synced = _sync_workspace_venv(
+        venv, manifest, plugin_deps + appstore_deps, pyproject_path, effective_locked, on_output,
     )
+    if synced and import_marker.exists():
+        import_marker.unlink()
 
     # Venvs prepared by older SciQLop versions installed both jupyterlab and
     # jupyterlab-js; the sync above may have just uninstalled jupyterlab and

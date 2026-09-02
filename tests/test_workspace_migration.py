@@ -69,3 +69,17 @@ def test_migrate_touches_last_used(tmp_path):
     (tmp_path / "workspace.json").write_text(json.dumps(old_spec))
     migrate_workspace(tmp_path)
     assert WorkspaceManifest.last_used(tmp_path) != ""
+
+
+def test_migrate_corrupt_json_uses_default_manifest(tmp_path):
+    """M4: an unparseable workspace.json must not block migration — it is
+    renamed aside and a default manifest named after the directory is used."""
+    (tmp_path / "workspace.json").write_text("{not valid json")
+
+    migrated = migrate_workspace(tmp_path)
+
+    assert migrated is True
+    assert (tmp_path / "workspace.json.corrupt").exists()
+    assert not (tmp_path / "workspace.json").exists()
+    m = WorkspaceManifest.load(tmp_path / "workspace.sciqlop")
+    assert m.name == tmp_path.name

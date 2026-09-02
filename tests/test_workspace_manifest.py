@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 from pathlib import Path
@@ -103,6 +104,57 @@ class TestTimestamps:
         WorkspaceManifest(name="X").save(tmp_path / "workspace.sciqlop")
         WorkspaceManifest.touch_last_used(tmp_path)
         assert WorkspaceManifest.last_used(tmp_path) != ""
+
+
+class TestSaveIsAtomic:
+    def test_save_leaves_no_tmp_file_behind(self, tmp_path):
+        path = tmp_path / "workspace.sciqlop"
+        WorkspaceManifest(name="X").save(path)
+        assert not (tmp_path / "workspace.sciqlop.tmp").exists()
+        assert path.exists()
+
+
+class TestLoadOrRepair:
+    """M4: a corrupt manifest must not keep breaking every future launch —
+    it gets renamed aside and replaced with a working default."""
+
+    def test_valid_manifest_loads_normally(self, tmp_path):
+        path = tmp_path / "workspace.sciqlop"
+        WorkspaceManifest(name="Good").save(path)
+
+        loaded = WorkspaceManifest.load_or_repair(path)
+
+        assert loaded.name == "Good"
+        assert not (tmp_path / "workspace.sciqlop.corrupt").exists()
+
+    def test_invalid_toml_is_repaired(self, tmp_path):
+        path = tmp_path / "workspace.sciqlop"
+        path.write_text("this is not [ valid toml")
+
+        loaded = WorkspaceManifest.load_or_repair(path)
+
+        assert loaded.name == tmp_path.name
+        assert (tmp_path / "workspace.sciqlop.corrupt").exists()
+        assert path.exists()  # a fresh default manifest was written back
+
+    def test_missing_name_key_is_repaired(self, tmp_path):
+        path = tmp_path / "workspace.sciqlop"
+        path.write_text('[workspace]\ndescription = "no name here"\n')
+
+        loaded = WorkspaceManifest.load_or_repair(path)
+
+        assert loaded.name == tmp_path.name
+        assert (tmp_path / "workspace.sciqlop.corrupt").exists()
+
+    def test_repair_reruns_migration_when_workspace_json_exists(self, tmp_path):
+        (tmp_path / "workspace.json").write_text(json.dumps({"name": "Recovered"}))
+        path = tmp_path / "workspace.sciqlop"
+        path.write_text("not valid toml")
+
+        loaded = WorkspaceManifest.load_or_repair(path)
+
+        assert loaded.name == "Recovered"
+        assert (tmp_path / "workspace.sciqlop.corrupt").exists()
 
 
 class TestLoadAllFields:

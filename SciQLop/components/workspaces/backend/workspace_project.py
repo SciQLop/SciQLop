@@ -7,6 +7,7 @@ into one coherent environment.
 
 from __future__ import annotations
 
+import hashlib
 import importlib.metadata
 import logging
 import os
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import List, Sequence, Union
 
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.core.common.files import write_text_atomic
 
 log = logging.getLogger(__name__)
 
@@ -162,6 +164,20 @@ def _slugify(name: str) -> str:
     return slug
 
 
+def _project_slug(name: str) -> str:
+    """Slug used in the generated PEP 508 project name; never empty.
+
+    `_slugify` only keeps a-z0-9-, so a name that is entirely non-ASCII
+    (CJK, Cyrillic, ...) strips to "", producing the invalid project name
+    "sciqlop-workspace-" that uv rejects outright. Fall back to a short
+    hash of the original name so the workspace can still start.
+    """
+    slug = _slugify(name)
+    if slug:
+        return slug
+    return "ws-" + hashlib.sha1(name.encode()).hexdigest()[:8]
+
+
 def _name_from_wheel_url(url: str) -> str | None:
     """Extract the package name from a wheel filename in a URL."""
     filename = url.split("?")[0].split("#")[0].rsplit("/", 1)[-1]
@@ -263,7 +279,7 @@ def generate_pyproject_toml(
     implicit_deps = [sciqlop_requirement(manifest.sciqlop_version), "jupyqt"]
     raw_deps = [_normalize_url_requirement(r) for r in implicit_deps + list(manifest.requires) + list(plugin_deps)]
     all_deps = _deduplicate_requirements(raw_deps)
-    slug = _slugify(manifest.name)
+    slug = _project_slug(manifest.name)
 
     # Format the dependencies list
     if all_deps:
@@ -309,4 +325,4 @@ package = false
     # changes, so its mtime can be used downstream to detect stale lockfiles.
     output = Path(output_path)
     if not output.exists() or output.read_text() != content:
-        output.write_text(content)
+        write_text_atomic(output, content)

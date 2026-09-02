@@ -22,10 +22,17 @@ Manifest format::
 
 from __future__ import annotations
 
+import logging
 import tomllib
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+
+import tomli_w
+
+from SciQLop.core.common.files import write_text_atomic
+
+log = logging.getLogger(__name__)
 
 LAST_USED_MARKER = ".last_used"
 
@@ -110,6 +117,34 @@ class WorkspaceManifest:
         manifest._directory = str(path.parent)
         return manifest
 
+    @classmethod
+    def load_or_repair(cls, path: Path | str) -> WorkspaceManifest:
+        """Load a manifest, self-healing a corrupt file.
+
+        A manifest that fails to parse (bad TOML, or missing the required
+        ``name`` key) would otherwise break every future launch. Instead it
+        is renamed aside as ``<name>.corrupt`` and replaced with either a
+        fresh migration from a sibling ``workspace.json`` (if one exists) or
+        a bare default manifest named after the workspace directory.
+        """
+        path = Path(path)
+        try:
+            return cls.load(path)
+        except (tomllib.TOMLDecodeError, KeyError) as exc:
+            log.warning("Corrupt manifest %s (%s), repairing", path, exc)
+
+        workspace_dir = path.parent
+        path.replace(path.with_name(path.name + ".corrupt"))
+
+        from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
+
+        if migrate_workspace(workspace_dir):
+            return cls.load(path)
+
+        manifest = cls.default_manifest(workspace_dir.name)
+        manifest.save(path)
+        return manifest
+
     def save(self, path: Path | str) -> None:
         """Save the manifest to a TOML file."""
         path = Path(path)
@@ -143,7 +178,4 @@ class WorkspaceManifest:
                               for e in self.examples]
             }
 
-        import tomli_w
-
-        with open(path, "wb") as f:
-            tomli_w.dump(data, f)
+        write_text_atomic(path, tomli_w.dumps(data))

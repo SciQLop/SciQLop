@@ -2,6 +2,7 @@
 
 import importlib.metadata
 import os
+import re
 import sys
 import tempfile
 from pathlib import Path
@@ -39,6 +40,38 @@ class TestSlugify:
 
     def test_underscores_become_hyphens(self):
         assert _slugify("my_study") == "my-study"
+
+    def test_non_ascii_name_slugifies_to_empty(self):
+        """Documents the raw building block M5 works around: `_slugify`
+        only keeps a-z0-9-, so a CJK/Cyrillic-only name strips to nothing."""
+        assert _slugify("日本語") == ""
+
+
+class TestProjectNameNonAsciiFallback:
+    """M5: a non-ASCII workspace name must still produce a valid PEP 508
+    project name. Before the fix, `_slugify("日本語")` == "" made the
+    generated name "sciqlop-workspace-" — invalid, and uv rejected it
+    outright, so the workspace could never start."""
+
+    _NAME_RE = re.compile(r'name = "sciqlop-workspace-([^"]+)"')
+
+    def _generated_slug(self, name: str) -> str:
+        manifest = WorkspaceManifest(name=name)
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "pyproject.toml"
+            generate_pyproject_toml(manifest, [], output)
+            content = output.read_text()
+        match = self._NAME_RE.search(content)
+        assert match, content
+        return match.group(1)
+
+    def test_cjk_name_produces_valid_project_name(self):
+        slug = self._generated_slug("日本語")
+        assert re.match(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", slug)
+
+    def test_cyrillic_name_produces_valid_project_name(self):
+        slug = self._generated_slug("Пример")
+        assert re.match(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", slug)
 
 
 class TestDeduplicateRequirements:
