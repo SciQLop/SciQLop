@@ -21,6 +21,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+# 64 has no producer yet: reserved for a plain restart into the same workspace —
+# after installing an update, or to apply a setting that needs a restart.
 EXIT_RESTART = 64
 EXIT_SWITCH_WORKSPACE = 65
 SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"

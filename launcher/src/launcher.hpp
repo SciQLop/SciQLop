@@ -19,6 +19,8 @@
 namespace sciqlop {
 
 /// Exit codes the application uses to ask the launcher for another round.
+/// 64 has no producer yet: reserved for a plain restart into the same workspace
+/// (after an update, or to apply a setting that needs a restart).
 inline constexpr int EXIT_RESTART = 64;
 inline constexpr int EXIT_SWITCH_WORKSPACE = 65;
 
