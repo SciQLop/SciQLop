@@ -63,7 +63,11 @@ Tagging `launcher-v*` builds four binaries and attaches them to the release
 
 The installer build scripts pin a version and digest in
 `scripts/launcher.version` and fetch through `scripts/fetch_launcher.sh` (or
-`.ps1`), exactly as they already do for `uv` and `node`.
+`.ps1`), exactly as they already do for `uv` and `node`. `fetch_launcher.sh`
+exits `3` (rather than downloading) while `launcher.version` still carries the
+all-zero placeholder digest — `scripts/appimage/build.sh` treats that as fatal
+when `$RELEASE` is set (a real release must not silently ship without the
+launcher) and as a warn-and-continue-without-it otherwise.
 
 To iterate without cutting a release:
 
@@ -73,15 +77,15 @@ SCIQLOP_LAUNCHER_BIN=$PWD/launcher/build/sciqlop-launcher sh scripts/appimage/bu
 
 ### Wiring into the installers
 
-Not yet wired in: there is no launcher release to download, so adding the fetch
-step would break all three builds today. When the distribution split lands, each
-script gains one call next to its existing uv download:
+Wired into the Linux AppImage build (`scripts/appimage/build.sh`): it fetches
+the launcher into `$APPDIR/opt/launcher/sciqlop-launcher` next to its own
+`splash.png`, and `AppRun` execs it when present, falling back to a direct
+`python3 -I -m SciQLop.app` otherwise (e.g. an AppImage built before the
+launcher was released).
 
-```bash
-# scripts/appimage/build.sh
-sh "$SCRIPT_DIR/../fetch_launcher.sh" linux_x86_64 "$APPDIR/usr/bin/sciqlop-launcher"
-cp SciQLop/resources/splash.png "$APPDIR/usr/bin/splash.png"
-```
+Not yet wired into macOS or Windows — `scripts/macos/make_dmg.sh` and
+`scripts/windows/bundle.ps1` still need their own call to
+`fetch_launcher.sh`/`.ps1`, analogous to the AppImage one:
 
 ```bash
 # scripts/macos/make_dmg.sh   ($ARCH is already computed for the uv download)
@@ -115,7 +119,11 @@ next round's `Options` purely from the exit code `run_session()` returns:
 - `0` (or anything else): the loop ends, that code is the launcher's own exit
   code.
 - `64` (restart): another round with the same `Options` — same workspace,
-  positional file and passthrough args as the round that asked for it.
+  positional file and passthrough args as the round that asked for it. Capped
+  at `RESTART_BUDGET` (3) restart rounds inside `RESTART_WINDOW` (60s) —
+  beyond that a restart loop looks identical to a crash loop, so `main.cpp`
+  gives up with an error instead of spinning forever. Workspace switches
+  don't count toward the cap.
 - `65` (switch workspace): `run_app()` reads, trims and deletes the round's
   handoff file (`take_switch_target()`, on the per-pid path it put in
   `SCIQLOP_SWITCH_HANDOFF_FILE` for that round — see above) *before*

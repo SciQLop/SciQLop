@@ -27,10 +27,14 @@ if (-not $expected) { throw "No pinned digest for $Platform in launcher.version"
 $version = $pins["LAUNCHER_VERSION"]
 
 # All-zero digest is the placeholder launcher.version ships until a real
-# launcher-v$version release exists — skip instead of 404ing CI.
+# launcher-v$version release exists. Exit 3 (a distinct code from every other
+# failure here) rather than 404ing CI — build.sh's counterpart tells this
+# apart from "not released yet is fine" vs. "not released yet is fatal" by
+# whether a release build is running.
 if ($expected -match '^0+$') {
+    Remove-Item $Destination -Force -ErrorAction SilentlyContinue
     Write-Host "launcher $version not pinned for $Platform (placeholder digest) — skipping"
-    exit 0
+    exit 3
 }
 
 $repo = $pins["LAUNCHER_REPO"]
@@ -43,7 +47,12 @@ if (-not $asset) { throw "Unknown launcher platform: $Platform" }
 $url = "https://github.com/$repo/releases/download/launcher-v$version/$asset"
 
 Write-Host "Downloading launcher $version ($Platform)..."
-Invoke-WebRequest -Uri $url -OutFile $Destination -UseBasicParsing
+try {
+    Invoke-WebRequest -Uri $url -OutFile $Destination -UseBasicParsing
+} catch {
+    Remove-Item $Destination -Force -ErrorAction SilentlyContinue
+    throw "Failed to download launcher $version ($Platform): $_"
+}
 
 $actual = (Get-FileHash -Path $Destination -Algorithm SHA256).Hash.ToLower()
 if ($actual -ne $expected.ToLower()) {

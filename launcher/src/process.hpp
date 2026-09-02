@@ -1,9 +1,8 @@
 // Subprocess execution with line-streamed output.
 //
-// This is the piece Qt would have given us as QProcess. Two shapes are needed:
-// a blocking run for `uv` (whose stderr drives the splash detail line), and a
-// supervised run for the application itself (whose output is tee'd to a log
-// while the caller watches for the startup-ready marker).
+// This is the piece Qt would have given us as QProcess. Only one shape is
+// needed: a supervised run for the application itself, whose output is tee'd
+// to a log while the caller watches for the startup-ready marker.
 #pragma once
 
 #include <filesystem>
@@ -18,13 +17,8 @@ using OutputSink = std::function<void(const std::string& line)>;
 
 struct Command {
     std::vector<std::string> argv;
-    std::filesystem::path working_dir;             ///< empty => inherit
     std::map<std::string, std::string> extra_env;  ///< merged over the inherited env
 };
-
-/// Run to completion, delivering stderr line by line to *on_line*.
-/// Returns the exit code, or -1 if the process could not be started.
-int run(const Command& command, const OutputSink& on_line);
 
 /// Run to completion, tee-ing stdout and stderr to *log_file*. Both streams are
 /// also handed line by line to *on_stdout* / *on_stderr* — the supervised child

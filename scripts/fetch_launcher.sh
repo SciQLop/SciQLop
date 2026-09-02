@@ -39,18 +39,26 @@ if [ -z "$EXPECTED" ]; then
 fi
 
 # All-zero digest is the placeholder launcher.version ships until a real
-# launcher-v$LAUNCHER_VERSION release exists — skip instead of 404ing CI.
+# launcher-v$LAUNCHER_VERSION release exists. Exit 3 (a distinct code from
+# every other failure here) rather than 404ing CI — callers (build.sh) tell
+# this apart from "not released yet is fine" vs. "not released yet is fatal"
+# by whether a release build is running.
 case "$EXPECTED" in
     *[!0]*) ;;
     *)
+        rm -f "$DEST"
         echo "launcher $LAUNCHER_VERSION not pinned for $PLATFORM (placeholder digest) — skipping"
-        exit 0
+        exit 3
         ;;
 esac
 
 URL="https://github.com/$LAUNCHER_REPO/releases/download/launcher-v$LAUNCHER_VERSION/$ASSET"
 echo "Downloading launcher $LAUNCHER_VERSION ($PLATFORM)..."
-curl -fsSL -o "$DEST" "$URL"
+if ! curl -fsSL -o "$DEST" "$URL"; then
+    rm -f "$DEST"
+    echo "Failed to download launcher $LAUNCHER_VERSION ($PLATFORM)" >&2
+    exit 1
+fi
 
 if command -v sha256sum >/dev/null 2>&1; then
     ACTUAL="$(sha256sum "$DEST" | cut -d' ' -f1)"

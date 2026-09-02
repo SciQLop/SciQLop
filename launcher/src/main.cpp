@@ -60,12 +60,32 @@ int main(int argc, char** argv) {
 
     int round = 1;
     sciqlop::RoundKind kind = sciqlop::RoundKind::Start;
+    std::vector<sciqlop::Clock::time_point> restart_times;
 
     for (;;) {
         auto ui = sciqlop::make_fltk_ui(splash_path());
+
+        // A restart round is indistinguishable from a crash loop until it
+        // has happened a few times — cap it here, before running another
+        // session, rather than spinning forever.
+        if (kind == sciqlop::RoundKind::Restart) {
+            const auto now = sciqlop::Clock::now();
+            restart_times.push_back(now);
+            if (sciqlop::restart_budget_exhausted(restart_times, now)) {
+                const std::string message =
+                    "SciQLop keeps restarting (" + std::to_string(restart_times.size()) +
+                    " times in 60 s); giving up.\n\nFull output: " +
+                    sciqlop::paths::last_launch_log().string();
+                ui->run_with_worker([&] { ui->post_error(message); });
+                return 1;
+            }
+        }
+
         const sciqlop::SessionResult result = sciqlop::run_session(options, *ui, round, kind);
 
         if (result.exit_code == sciqlop::EXIT_RESTART) {
+            options = sciqlop::options_for_next_round(std::move(options), result.exit_code,
+                                                       result.switch_target);
             ++round;
             kind = sciqlop::RoundKind::Restart;
             continue;
@@ -73,8 +93,8 @@ int main(int argc, char** argv) {
 
         if (result.exit_code == sciqlop::EXIT_SWITCH_WORKSPACE) {
             if (result.switch_target.empty()) return result.exit_code;
-            options.workspace = result.switch_target;
-            options.sciqlop_file.clear();
+            options = sciqlop::options_for_next_round(std::move(options), result.exit_code,
+                                                       result.switch_target);
             ++round;
             kind = sciqlop::RoundKind::Switch;
             continue;

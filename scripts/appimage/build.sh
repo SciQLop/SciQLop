@@ -85,12 +85,36 @@ $UV_BIN pip install --python $PYTHON_BIN certifi
 # workspace and starts the app — see launcher/src/launcher.cpp)
 ########################################
 
+# shellcheck source=../launcher.version
+. "$SCIQLOP_ROOT/scripts/launcher.version"
+
 mkdir -p $APPDIR/opt/launcher
+set +e
 "$SCIQLOP_ROOT/scripts/fetch_launcher.sh" linux_x86_64 "$APPDIR/opt/launcher/sciqlop-launcher"
-# fetch_launcher.sh skips (no file, exit 0) when the launcher isn't released
-# yet — AppRun falls back to a direct python exec, so only bundle the
-# launcher dir (and its splash) when there's actually a binary to bundle.
-if [ -f "$APPDIR/opt/launcher/sciqlop-launcher" ]; then
+FETCH_LAUNCHER_STATUS=$?
+set -e
+
+# Exit 3 means launcher.version still carries the placeholder digest (no
+# launcher-v<ver> release exists yet) — fetch_launcher.sh already removed any
+# partial file. A release build must not silently ship without the launcher,
+# so that is fatal when $RELEASE is set (the workflow exports RELEASE=1 on
+# release events); otherwise AppRun's own fallback to a direct python exec
+# makes this a warning, not a build failure. Any other non-zero exit (bad
+# download, digest mismatch, ...) is fatal either way, as before.
+if [ "$FETCH_LAUNCHER_STATUS" -eq 3 ]; then
+    if [ -n "$RELEASE" ]; then
+        echo "launcher-v$LAUNCHER_VERSION is not released: tag it and fill launcher.version before cutting a release" >&2
+        exit 1
+    fi
+    echo "Warning: launcher-v$LAUNCHER_VERSION is not released — building AppImage without the native launcher" >&2
+elif [ "$FETCH_LAUNCHER_STATUS" -ne 0 ]; then
+    echo "fetch_launcher.sh failed (exit $FETCH_LAUNCHER_STATUS)" >&2
+    exit 1
+fi
+
+# Only bundle the launcher dir (and its splash) when there's actually a
+# binary to bundle — AppRun falls back to a direct python exec otherwise.
+if [ -x "$APPDIR/opt/launcher/sciqlop-launcher" ]; then
     # The same splash art the old Python StartupWindow used
     # (SciQLop/resources/splash.png, 1328x800 — same ~1.66:1 aspect ratio as
     # the launcher's 720x434 picture area, so FLTK scales it down cleanly).

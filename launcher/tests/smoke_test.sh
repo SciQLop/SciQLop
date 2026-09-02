@@ -264,6 +264,52 @@ expect "round 2 argv ends in --workspace foo" \
 expect "round 2 argv drops the original positional file" \
     bash -c '! grep -q "bar.sciqlop-archive" "$1" 2>/dev/null' _ "$ROOT/case5-round2-argv"
 
+# --- case 6: restart-budget exhausted (R3) -----------------------------
+# A stub that always asks to restart (exit 64) never stops on its own — the
+# launcher must give up rather than loop forever. 1 initial round + 3
+# tolerated restarts = 4 invocations before the 5th is refused outright
+# (no 5th subprocess launch at all) and the "keeps restarting" error shows.
+cat > "$ROOT/bin/python3" <<EOF
+#!/usr/bin/env bash
+count_file="$ROOT/case6-count"
+n=0
+[ -f "\$count_file" ] && n=\$(cat "\$count_file")
+n=\$((n + 1))
+echo "\$n" > "\$count_file"
+echo "Preparing workspace /x ..."
+echo "Starting SciQLop ..."
+: > "\$SCIQLOP_STARTUP_READY_FILE"
+for _ in \$(seq 1 50); do
+    [ -e "\$SCIQLOP_STARTUP_READY_FILE" ] || break
+    sleep 0.1
+done
+exit 64
+EOF
+chmod +x "$ROOT/bin/python3"
+
+echo "case 6: restart-budget exhausted (app keeps asking to restart)"
+"$LAUNCHER" --workspace loop &
+LAUNCHER_PID=$!
+
+waited=0
+while [ "$(cat "$ROOT/case6-count" 2>/dev/null)" != "4" ]; do
+    sleep 0.1
+    waited=$((waited + 1))
+    [ "$waited" -ge 150 ] && break
+done
+
+close_error_window_or_kill "$LAUNCHER_PID" case6_exit case6_via_xdotool
+LAUNCHER_PID=""
+
+expect "the app was invoked exactly 4 times (1 start + 3 tolerated restarts, no 5th)" \
+    equals "$(cat "$ROOT/case6-count" 2>/dev/null)" "4"
+if [ "$case6_via_xdotool" = "yes" ]; then
+    expect "the restart-budget-exhausted error is shown and quitting exits 1 (R3)" \
+        equals "$case6_exit" 1
+else
+    echo "  skip: restart-budget error window sub-check not exercised (xdotool unavailable or window not found)"
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then
     echo "smoke test passed"

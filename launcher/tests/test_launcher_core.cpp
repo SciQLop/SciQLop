@@ -113,6 +113,63 @@ void test_phase_for_line_ignores_unrelated_lines() {
           "an unrelated line is not a phase line");
 }
 
+// --- options_for_next_round ------------------------------------------------
+
+void test_options_for_next_round_restart_keeps_everything() {
+    sciqlop::Options options;
+    options.workspace = "foo";
+    options.sciqlop_file = "bar.sciqlop-archive";
+    options.passthrough = {"--sciqlop-version", "1.2.3"};
+
+    const sciqlop::Options next =
+        sciqlop::options_for_next_round(options, sciqlop::EXIT_RESTART, "");
+
+    check(next.workspace == "foo", "restart keeps the workspace");
+    check(next.sciqlop_file == "bar.sciqlop-archive", "restart keeps the positional file");
+    check(next.passthrough == options.passthrough, "restart keeps passthrough args");
+}
+
+void test_options_for_next_round_switch_replaces_workspace_and_drops_file() {
+    sciqlop::Options options;
+    options.workspace = "foo";
+    options.sciqlop_file = "bar.sciqlop-archive";
+
+    const sciqlop::Options next = sciqlop::options_for_next_round(
+        options, sciqlop::EXIT_SWITCH_WORKSPACE, "other-workspace");
+
+    check(next.workspace == "other-workspace",
+          "switch replaces the workspace with the handoff target");
+    check(next.sciqlop_file.empty(), "switch drops the positional file");
+}
+
+// --- restart_budget_exhausted -----------------------------------------------
+
+void test_restart_budget_three_in_window_is_fine() {
+    const auto now = sciqlop::Clock::now();
+    const std::vector<sciqlop::Clock::time_point> restarts = {
+        now - std::chrono::seconds(50), now - std::chrono::seconds(20), now};
+    check(!sciqlop::restart_budget_exhausted(restarts, now),
+          "3 restarts within 60s is not exhausted");
+}
+
+void test_restart_budget_fourth_in_window_is_exhausted() {
+    const auto now = sciqlop::Clock::now();
+    const std::vector<sciqlop::Clock::time_point> restarts = {
+        now - std::chrono::seconds(55), now - std::chrono::seconds(40),
+        now - std::chrono::seconds(10), now};
+    check(sciqlop::restart_budget_exhausted(restarts, now),
+          "4th restart within 60s exhausts the budget");
+}
+
+void test_restart_budget_ignores_restarts_outside_window() {
+    const auto now = sciqlop::Clock::now();
+    const std::vector<sciqlop::Clock::time_point> restarts = {
+        now - std::chrono::seconds(120), now - std::chrono::seconds(50),
+        now - std::chrono::seconds(20), now};
+    check(!sciqlop::restart_budget_exhausted(restarts, now),
+          "a restart older than the 60s window is forgotten");
+}
+
 // --- take_switch_target ---------------------------------------------------
 
 std::filesystem::path make_tmp_dir() {
@@ -162,6 +219,11 @@ int main() {
     test_app_argv_switch_round_drops_the_file_and_uses_the_target();
     test_app_argv_keeps_passthrough_ahead_of_workspace_and_file();
     test_app_argv_omits_absent_workspace_and_file();
+    test_options_for_next_round_restart_keeps_everything();
+    test_options_for_next_round_switch_replaces_workspace_and_drops_file();
+    test_restart_budget_three_in_window_is_fine();
+    test_restart_budget_fourth_in_window_is_exhausted();
+    test_restart_budget_ignores_restarts_outside_window();
     test_phase_for_line_matches_starting_exactly();
     test_phase_for_line_matches_preparing_workspace_prefix_and_suffix();
     test_phase_for_line_ignores_unrelated_lines();

@@ -194,13 +194,12 @@ int spawn_and_pump(const Command& command,
 
     std::wstring command_line = build_command_line(command.argv);
     std::wstring environment = build_environment(command.extra_env);
-    const std::wstring working_dir = command.working_dir.wstring();
 
     PROCESS_INFORMATION process{};
     const BOOL started = CreateProcessW(
         nullptr, command_line.data(), nullptr, nullptr, TRUE,
         CREATE_NO_WINDOW | CREATE_UNICODE_ENVIRONMENT, environment.data(),
-        working_dir.empty() ? nullptr : working_dir.c_str(), &startup, &process);
+        nullptr, &startup, &process);
 
     CloseHandle(out_pipe.write);
     CloseHandle(err_pipe.write);
@@ -213,10 +212,6 @@ int spawn_and_pump(const Command& command,
 }
 
 }  // namespace
-
-int run(const Command& command, const OutputSink& on_line) {
-    return spawn_and_pump(command, nullptr, on_line, nullptr);
-}
 
 int run_supervised(const Command& command,
                    const fs::path& log_file,

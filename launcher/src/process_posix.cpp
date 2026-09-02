@@ -1,7 +1,6 @@
 #include "process.hpp"
 
 #include <poll.h>
-#include <spawn.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -94,7 +93,6 @@ Child start(const Command& command) {
     const auto env_strings = merged_environment(command.extra_env);
     auto envp = as_c_array(env_strings);
     auto argv = as_c_array(command.argv);
-    const std::string working_dir = command.working_dir.string();
 
     const pid_t pid = fork();
     if (pid < 0) {
@@ -105,7 +103,6 @@ Child start(const Command& command) {
         dup2(out_pipe[1], STDOUT_FILENO);
         dup2(err_pipe[1], STDERR_FILENO);
         for (int fd : {out_pipe[0], out_pipe[1], err_pipe[0], err_pipe[1]}) close(fd);
-        if (!working_dir.empty() && chdir(working_dir.c_str()) != 0) _exit(126);
         environ = envp.data();
         execvp(argv[0], argv.data());
         _exit(127);
@@ -158,12 +155,6 @@ int pump(Child child,
 }
 
 }  // namespace
-
-int run(const Command& command, const OutputSink& on_line) {
-    Child child = start(command);
-    if (child.pid < 0) return -1;
-    return pump(child, nullptr, on_line, nullptr);
-}
 
 int run_supervised(const Command& command,
                    const fs::path& log_file,

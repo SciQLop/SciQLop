@@ -3,6 +3,7 @@
 #include "paths.hpp"
 #include "process.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string_view>
@@ -166,7 +167,6 @@ int run_app(const Options& options, Ui& ui, int round, RoundKind kind,
     argv.insert(argv.end(), forwarded.begin(), forwarded.end());
 
     const Command app{argv,
-                      {},
                       {{READY_FILE_ENV, to_utf8(scratch.ready_marker)},
                        {SWITCH_HANDOFF_ENV, to_utf8(scratch.switch_handoff)}}};
 
@@ -179,6 +179,7 @@ int run_app(const Options& options, Ui& ui, int round, RoundKind kind,
     auto report_stdout = [&](const std::string& line) {
         if (const auto phase = phase_for_line(line)) {
             ui.post_phase(*phase);
+            ui.post_progress(*phase == "Starting SciQLop" ? 70 : 20);
         } else {
             ui.post_detail(line);
         }
@@ -204,6 +205,7 @@ int run_app(const Options& options, Ui& ui, int round, RoundKind kind,
             // ours immediately; without also removing the marker, the app
             // would sit at its self-imposed timeout instead of being
             // acknowledged right away.
+            ui.post_progress(100);
             ui.dismiss();
             fs::remove(scratch.ready_marker, ec);
         });
@@ -248,6 +250,21 @@ std::vector<std::string> app_argv(const Options& options) {
     }
     if (!options.sciqlop_file.empty()) argv.push_back(options.sciqlop_file);
     return argv;
+}
+
+Options options_for_next_round(Options options, int exit_code, const std::string& switch_target) {
+    if (exit_code == EXIT_SWITCH_WORKSPACE) {
+        options.workspace = switch_target;
+        options.sciqlop_file.clear();
+    }
+    return options;
+}
+
+bool restart_budget_exhausted(const std::vector<Clock::time_point>& restarts, Clock::time_point now) {
+    const auto recent = std::count_if(restarts.begin(), restarts.end(), [&](Clock::time_point t) {
+        return now - t <= RESTART_WINDOW;
+    });
+    return recent > RESTART_BUDGET;
 }
 
 std::optional<std::string> phase_for_line(const std::string& line) {
