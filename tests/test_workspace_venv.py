@@ -61,12 +61,23 @@ class TestHasSciqlopInstalled:
     def test_true_when_sciqlop_dist_info_present(self, venv, workspace_dir):
         site = workspace_dir / ".venv" / "lib" / "python3.13" / "site-packages"
         (site / "sciqlop-0.13.0.dev0.dist-info").mkdir(parents=True)
+        (site / "SciQLop").mkdir()
+        (site / "SciQLop" / "__init__.py").touch()
         assert venv.has_sciqlop_installed is True
 
     def test_true_on_windows_site_packages_layout(self, venv, workspace_dir):
         site = workspace_dir / ".venv" / "Lib" / "site-packages"
         (site / "sciqlop-0.13.0.dev0.dist-info").mkdir(parents=True)
+        (site / "SciQLop").mkdir()
+        (site / "SciQLop" / "__init__.py").touch()
         assert venv.has_sciqlop_installed is True
+
+    def test_false_when_dist_info_present_but_package_dir_missing(self, venv, workspace_dir):
+        """A partial/interrupted install can leave dist-info behind without the
+        actual package — that must not be reported as "installed"."""
+        site = workspace_dir / ".venv" / "lib" / "python3.13" / "site-packages"
+        (site / "sciqlop-0.13.0.dev0.dist-info").mkdir(parents=True)
+        assert venv.has_sciqlop_installed is False
 
 
 class TestCreate:
@@ -83,6 +94,7 @@ class TestCreate:
             "venv",
             str(workspace_dir / ".venv"),
             "--clear",
+            "--native-tls",
             "--python",
             sys.executable,
         )
@@ -97,7 +109,7 @@ class TestSync:
         mock_uv_cmd.return_value = ["uv", "sync"]
         venv.sync()
 
-        mock_uv_cmd.assert_called_once_with("sync")
+        mock_uv_cmd.assert_called_once_with("sync", "--native-tls")
         mock_run.assert_called_once_with(
             mock_uv_cmd.return_value, check=True, cwd=str(workspace_dir)
         )
@@ -108,7 +120,7 @@ class TestSync:
         mock_uv_cmd.return_value = ["uv", "sync", "--locked"]
         venv.sync(locked=True)
 
-        mock_uv_cmd.assert_called_once_with("sync", "--locked")
+        mock_uv_cmd.assert_called_once_with("sync", "--locked", "--native-tls")
         mock_run.assert_called_once_with(
             mock_uv_cmd.return_value, check=True, cwd=str(workspace_dir)
         )
@@ -163,6 +175,144 @@ class TestSyncWithCallback:
             mock_uv_cmd.return_value, stderr=subprocess.PIPE, text=True,
             cwd=str(workspace_dir),
         )
+
+
+class TestNativeTls:
+    """uv needs --native-tls to trust a corporate MITM proxy's root CA,
+    the same reason SciQLop/components/appstore/backend.py passes it."""
+
+    @patch("SciQLop.components.workspaces.backend.workspace_venv._run_uv")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command",
+           side_effect=lambda *args: list(args))
+    def test_create_command_contains_native_tls(self, mock_uv_cmd, mock_run_uv, venv):
+        venv.create()
+
+        cmd = mock_run_uv.call_args.args[0]
+        assert "--native-tls" in cmd
+
+    @patch("SciQLop.components.workspaces.backend.workspace_venv._run_uv")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command",
+           side_effect=lambda *args: list(args))
+    def test_sync_command_contains_native_tls(self, mock_uv_cmd, mock_run_uv, venv):
+        venv.sync()
+
+        cmd = mock_run_uv.call_args.args[0]
+        assert "--native-tls" in cmd
+
+
+def _write_pyvenv_cfg(venv_dir: Path, home: Path, version: str) -> None:
+    (venv_dir / "pyvenv.cfg").write_text(f"home = {home}\nversion_info = {version}\n")
+
+
+def _current_version() -> str:
+    return f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+
+
+def _make_symlinked_venv(workspace_dir: Path, target: Path, home: Path | None = None,
+                          version: str | None = None) -> Path:
+    """A venv whose bin/python* are symlinks to *target*, plus a sentinel file
+    under site-packages to prove a repoint doesn't touch installed packages."""
+    venv_dir = workspace_dir / ".venv"
+    bin_dir = venv_dir / "bin"
+    bin_dir.mkdir(parents=True)
+    (bin_dir / "python").symlink_to(target)
+    (bin_dir / "python3").symlink_to(target)
+    _write_pyvenv_cfg(venv_dir, home or target.parent, version or _current_version())
+    site = venv_dir / f"lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
+    site.mkdir(parents=True)
+    (site / "sentinel.txt").write_text("keep me")
+    return venv_dir
+
+
+class TestNeedsRecreateAndRepoint:
+    def test_dangling_symlink_repoints_instead_of_recreating(self, venv, workspace_dir, tmp_path):
+        old_target = tmp_path / "old_mount" / "bin" / "python3"  # never created: dangling
+        new_target = tmp_path / "new_mount" / "bin" / "python3"
+        new_target.parent.mkdir(parents=True)
+        new_target.touch()
+        _make_symlinked_venv(workspace_dir, old_target)
+
+        with patch("SciQLop.components.workspaces.backend.workspace_venv.get_python",
+                   return_value=str(new_target)):
+            assert venv._needs_recreate() is False
+            assert venv._needs_repoint() is True
+
+    def test_stale_but_existing_symlink_repoints_instead_of_recreating(
+        self, venv, workspace_dir, tmp_path
+    ):
+        """The AppImage case: the old mountpoint still exists (this launch's
+        FUSE mount hasn't been torn down yet) but it's not *this* launch's."""
+        old_target = tmp_path / "old_mount" / "bin" / "python3"
+        old_target.parent.mkdir(parents=True)
+        old_target.touch()
+        new_target = tmp_path / "new_mount" / "bin" / "python3"
+        new_target.parent.mkdir(parents=True)
+        new_target.touch()
+        _make_symlinked_venv(workspace_dir, old_target)
+
+        with patch("SciQLop.components.workspaces.backend.workspace_venv.get_python",
+                   return_value=str(new_target)):
+            assert venv._needs_recreate() is False
+            assert venv._needs_repoint() is True
+
+    def test_version_mismatch_needs_recreate(self, venv, workspace_dir, tmp_path):
+        target = tmp_path / "python3"
+        target.touch()
+        _make_symlinked_venv(workspace_dir, target, version="1.0.0")
+
+        with patch("SciQLop.components.workspaces.backend.workspace_venv.get_python",
+                   return_value=str(target)):
+            assert venv._needs_recreate() is True
+
+    def test_non_symlink_python_without_interpreter_in_home_needs_recreate(
+        self, venv, workspace_dir, tmp_path
+    ):
+        venv_dir = workspace_dir / ".venv"
+        bin_dir = venv_dir / "bin"
+        bin_dir.mkdir(parents=True)
+        (bin_dir / "python").touch()  # a real file, not a symlink (e.g. Windows copy)
+        empty_home = tmp_path / "no_interpreter_here"
+        empty_home.mkdir()
+        _write_pyvenv_cfg(venv_dir, empty_home, _current_version())
+
+        assert venv._needs_recreate() is True
+
+    def test_malformed_version_info_needs_recreate_without_raising(
+        self, venv, workspace_dir, tmp_path
+    ):
+        venv_dir = workspace_dir / ".venv"
+        bin_dir = venv_dir / "bin"
+        bin_dir.mkdir(parents=True)
+        (bin_dir / "python").touch()
+        _write_pyvenv_cfg(venv_dir, tmp_path, "garbage")
+
+        assert venv._needs_recreate() is True
+
+
+class TestRepointInterpreter:
+    def test_ensure_repoints_without_recreating(self, workspace_dir, tmp_path):
+        venv = WorkspaceVenv(workspace_dir)
+        old_target = tmp_path / "old_mount" / "bin" / "python3"
+        new_target = tmp_path / "new_mount" / "bin" / "python3"
+        new_target.parent.mkdir(parents=True)
+        new_target.touch()
+        venv_dir = _make_symlinked_venv(workspace_dir, old_target)
+        sentinel = venv_dir / f"lib/python{sys.version_info.major}.{sys.version_info.minor}" \
+            "/site-packages/sentinel.txt"
+
+        with patch("SciQLop.components.workspaces.backend.workspace_venv.get_python",
+                   return_value=str(new_target)), \
+             patch.object(WorkspaceVenv, "create") as mock_create:
+            lines = []
+            venv.ensure(on_output=lines.append)
+
+        mock_create.assert_not_called()
+        assert sentinel.exists()
+        assert (venv_dir / "bin" / "python").resolve() == new_target.resolve()
+        assert (venv_dir / "bin" / "python3").resolve() == new_target.resolve()
+        cfg_text = (venv_dir / "pyvenv.cfg").read_text()
+        assert f"home = {new_target.parent}" in cfg_text
+        assert any("Re-linking workspace interpreter" in line for line in lines)
 
 
 class TestEnsure:

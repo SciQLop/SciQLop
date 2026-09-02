@@ -67,12 +67,20 @@ class WorkspaceVenv:
         last sync succeeded. The offline-sync fallback in ``prepare_workspace``
         needs this distinction: falling back to "keep running the existing
         venv" only makes sense when there is an existing app to keep running.
+
+        Both the dist-info *and* the package directory are required: an
+        interrupted install can leave dist-info behind with no ``SciQLop``
+        package, which must not be reported as "installed".
         """
         for site in (
             *self._venv_dir.glob("lib/python*/site-packages"),
             self._venv_dir / "Lib" / "site-packages",
         ):
-            if site.is_dir() and any(site.glob("sciqlop-*.dist-info")):
+            if not site.is_dir():
+                continue
+            has_dist_info = any(site.glob("sciqlop-*.dist-info"))
+            has_package = (site / "SciQLop" / "__init__.py").exists()
+            if has_dist_info and has_package:
                 return True
         return False
 
@@ -88,6 +96,7 @@ class WorkspaceVenv:
             "venv",
             str(self._venv_dir),
             "--clear",
+            "--native-tls",
             "--python",
             get_python(),
         )
@@ -95,7 +104,7 @@ class WorkspaceVenv:
 
     def sync(self, locked: bool = False, on_output: Callable[[str], None] | None = None) -> None:
         """Run uv sync in the workspace directory."""
-        args = ("sync", "--locked") if locked else ("sync",)
+        args = ("sync", "--locked", "--native-tls") if locked else ("sync", "--native-tls")
         cmd = uv_command(*args)
         _run_uv(cmd, on_output, cwd=str(self._workspace_dir))
 
@@ -118,27 +127,90 @@ class WorkspaceVenv:
         """
         return self._read_pyvenv_cfg().get("include-system-site-packages", "").lower() == "true"
 
-    def _needs_recreate(self) -> bool:
-        if not self.exists:
-            return True
-        cfg = self._read_pyvenv_cfg()
-        version = cfg.get("version_info", "")
-        parts = version.split(".")
+    def _venv_dir_present(self) -> bool:
+        """Whether the venv has a python entry at all, symlink or not.
+
+        Unlike ``exists``, this doesn't require the entry to *resolve* — a
+        dangling symlink still counts as "present" here, because that's the
+        repointable case C1 exists to handle, not a missing venv.
+        """
+        python = self.python_path
+        return self._venv_dir.exists() and (python.is_symlink() or python.exists())
+
+    def _version_mismatch(self, cfg: dict[str, str]) -> bool:
+        parts = cfg.get("version_info", "").split(".")
         if len(parts) < 2:
             return True
-        if (int(parts[0]), int(parts[1])) != (sys.version_info.major, sys.version_info.minor):
+        try:
+            major, minor = int(parts[0]), int(parts[1])
+        except ValueError:
             return True
-        python = self.python_path
-        if python.is_symlink() and not python.resolve().exists():
+        return (major, minor) != (sys.version_info.major, sys.version_info.minor)
+
+    def _interpreter_name(self) -> str:
+        return "python.exe" if _WINDOWS else "python3"
+
+    def _missing_interpreter_link(self, cfg: dict[str, str]) -> bool:
+        """H3: a copied (non-symlink) python whose ``home`` no longer holds
+        an interpreter — Windows has no symlinks, so this is its equivalent
+        of a dangling link, and unlike one it can't be repaired in place."""
+        if self.python_path.is_symlink():
+            return False
+        home = cfg.get("home", "")
+        if not home:
+            return False
+        return not (Path(home) / self._interpreter_name()).exists()
+
+    def _needs_recreate(self) -> bool:
+        if not self._venv_dir_present():
             return True
-        if python.is_symlink() and str(python.resolve()) != str(Path(get_python()).resolve()):
+        cfg = self._read_pyvenv_cfg()
+        if self._version_mismatch(cfg):
             return True
         if self._inherits_system_site_packages():
             return True
+        if self._missing_interpreter_link(cfg):
+            return True
         return False
 
+    def _needs_repoint(self) -> bool:
+        """The venv is otherwise fine, but its interpreter link (symlink
+        target and/or ``pyvenv.cfg``'s ``home``) no longer points at
+        ``get_python()`` — repair it in place instead of rebuilding."""
+        if not self._venv_dir_present():
+            return False
+        cfg = self._read_pyvenv_cfg()
+        if self._version_mismatch(cfg):
+            return False
+        python = self.python_path
+        if not python.is_symlink():
+            return False
+        target = Path(get_python())
+        if not python.resolve().exists() or python.resolve() != target.resolve():
+            return True
+        home = cfg.get("home", "")
+        return bool(home) and Path(home).resolve() != target.parent.resolve()
+
+    def _repoint_interpreter(self) -> None:
+        target = Path(get_python())
+        bin_dir = self.python_path.parent
+        for entry in bin_dir.glob("python*"):
+            if entry.is_symlink():
+                entry.unlink()
+                entry.symlink_to(target)
+        self._rewrite_pyvenv_home(target.parent)
+
+    def _rewrite_pyvenv_home(self, home: Path) -> None:
+        cfg = self._venv_dir / "pyvenv.cfg"
+        lines = [
+            f"home = {home}" if line.partition("=")[0].strip() == "home" else line
+            for line in cfg.read_text().splitlines()
+        ]
+        cfg.write_text("\n".join(lines) + "\n")
+
     def ensure(self, on_output: Callable[[str], None] | None = None) -> None:
-        """Create the venv if missing, wrong version, stale paths, or legacy."""
+        """Create the venv if missing, wrong version, stale paths, or legacy;
+        just repoint its interpreter link if that's the only thing stale."""
         if self._needs_recreate():
             if self._venv_dir.exists():
                 if self._inherits_system_site_packages() and on_output is not None:
@@ -148,3 +220,7 @@ class WorkspaceVenv:
                     )
                 shutil.rmtree(self._venv_dir)
             self.create(on_output=on_output)
+        elif self._needs_repoint():
+            self._repoint_interpreter()
+            if on_output is not None:
+                on_output(f"Re-linking workspace interpreter to {get_python()}")
