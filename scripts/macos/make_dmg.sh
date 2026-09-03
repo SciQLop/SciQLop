@@ -189,9 +189,12 @@ fi
 
 # Only bundle the splash art when there's actually a launcher to show it —
 # the generated Contents/MacOS/SciQLop wrapper below falls back to a direct
-# python3 exec otherwise.
+# python3 exec otherwise. It goes in Contents/Resources, not next to the
+# binary: codesign rejects any non-code file under Contents/MacOS ("code
+# object is not signed at all ... In subcomponent: .../MacOS/splash.png"),
+# and the launcher (>= 0.1.2) looks in ../Resources when nothing sits beside it.
 if [[ -x "$MACOS_BIN/sciqlop-launcher" ]]; then
-  cp "$SCIQLOP_ROOT/SciQLop/resources/splash.png" "$MACOS_BIN/splash.png"
+  cp "$SCIQLOP_ROOT/SciQLop/resources/splash.png" "$DIST/SciQLop.app/Contents/Resources/splash.png"
 fi
 
 export PATH=$SAVED_PATH

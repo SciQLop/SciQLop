@@ -17,8 +17,16 @@ namespace fs = std::filesystem;
 
 namespace {
 
-/// Splash artwork ships beside the launcher binary.
-fs::path splash_path() { return sciqlop::paths::executable_dir() / "splash.png"; }
+/// Splash artwork ships beside the launcher binary — except in a macOS .app,
+/// where codesign rejects any non-code file under Contents/MacOS, so
+/// make_dmg.sh puts it in Contents/Resources instead.
+fs::path splash_path() {
+    const fs::path exe_dir = sciqlop::paths::executable_dir();
+    const fs::path beside = exe_dir / "splash.png";
+    const fs::path resources = exe_dir / ".." / "Resources" / "splash.png";
+    std::error_code ec;
+    return fs::is_regular_file(beside, ec) ? beside : resources;
+}
 
 #ifdef _WIN32
 std::string narrow_utf8(const wchar_t* wide) {
