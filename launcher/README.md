@@ -31,6 +31,23 @@ launcher owns *when* to run another round: it drives the restart/switch loop
 itself and Python runs exactly one session per round under it (see "Round
 loop" below).
 
+## Finding the interpreter
+
+On Linux/macOS, AppRun / the macOS wrapper script already put a bundled
+interpreter on `PATH` before running this launcher, so it just execs
+`python3`. Windows has no such wrapper — the launcher itself is the package's
+entry point (`SciQLop.exe`, next to `python\`, `node\`, `uv\`) — so it first
+looks for one next to its own binary: `<exe_dir>/python/python.exe` on
+Windows, `<exe_dir>/python/bin/python3` elsewhere
+(`paths::bundled_python()`). When found, it runs that absolute path instead
+of the ambient `python3`/`python.exe`, and prepends `<exe_dir>/node`,
+`<exe_dir>/uv` and the interpreter's own Scripts/bin directory to the child's
+`PATH` (`paths::bundled_path_prefix()`) alongside `SCIQLOP_BUNDLED=1` — the
+same environment `scripts/windows/launcher.c` used to set up by hand. When no
+bundled interpreter is found (a dev checkout, or a bundle whose own wrapper
+already resolves python some other way), this is a no-op and behavior is
+unchanged.
+
 ## Layout
 
 ```
@@ -39,6 +56,8 @@ src/ui_fltk.cpp        FLTK implementation (swap this file to change toolkit)
 src/launcher.cpp       toolkit-independent: argv splitting, one round's supervision, phase-line classifying, the handoff file
 src/main.cpp           the round loop: a fresh Ui per round, decides the next round's options from the exit code
 src/process_*.cpp      subprocess + line-streamed output (POSIX / Win32)
+src/paths.cpp          platform data/executable locations, bundled-interpreter discovery
+src/win/               Windows-only resource: DPI-awareness/supportedOS manifest (WIN32 builds only)
 tests/                 unit tests for the pure logic, plus the end-to-end smoke test
 ```
 
@@ -77,28 +96,26 @@ SCIQLOP_LAUNCHER_BIN=$PWD/launcher/build/sciqlop-launcher sh scripts/appimage/bu
 
 ### Wiring into the installers
 
-Wired into the Linux AppImage build (`scripts/appimage/build.sh`): it fetches
-the launcher into `$APPDIR/opt/launcher/sciqlop-launcher` next to its own
-`splash.png`, and `AppRun` execs it when present, falling back to a direct
-`python3 -I -m SciQLop.app` otherwise (e.g. an AppImage built before the
-launcher was released).
+Wired into all three platforms — each fetches through
+`fetch_launcher.sh`/`.ps1` and places the binary where that platform's app
+already looks for its entry point:
 
-Not yet wired into macOS or Windows — `scripts/macos/make_dmg.sh` and
-`scripts/windows/bundle.ps1` still need their own call to
-`fetch_launcher.sh`/`.ps1`, analogous to the AppImage one:
-
-```bash
-# scripts/macos/make_dmg.sh   ($ARCH is already computed for the uv download)
-sh "$SCRIPT_DIR/../fetch_launcher.sh" "macos_$ARCH" "$MACOS_BIN/sciqlop-launcher"
-```
-
-```powershell
-# scripts/windows/bundle.ps1  (replaces the cl.exe launcher.c compile)
-& "$ScriptDir\..\fetch_launcher.ps1" -Destination "$PackageDir\SciQLop.exe"
-```
+| Platform | Lands at | Splash source |
+|---|---|---|
+| Linux (AppImage) | `$APPDIR/opt/launcher/sciqlop-launcher`, `AppRun` execs it | copied next to it |
+| macOS (`make_dmg.sh`) | `SciQLop.app/Contents/MacOS/sciqlop-launcher`; the generated `Contents/MacOS/SciQLop` wrapper execs it, forwarding `"$@"` | copied next to it |
+| Windows (`bundle.ps1`, `make_online_installer.ps1`) | `SciQLop.exe` at the package root — it *is* the entry point (see installer.iss/make_msix.ps1) | copied next to it |
 
 The launcher looks for `splash.png` beside its own binary, so it must be
-installed in the same directory as the bundled uv.
+installed in the same directory as the launcher itself, on every platform.
+
+On Linux/macOS `AppRun`/the wrapper script fall back to a direct
+`python3 -I -m SciQLop.app` when no launcher binary was fetched (e.g. a build
+made before `launcher-v0.1.0` existed, or a dev iteration with
+`$RELEASE` unset — see `fetch_launcher.sh`'s exit-3 handling). Windows has no
+such fallback — `SciQLop.exe` *is* the package's entry point — so
+`bundle.ps1`/`make_online_installer.ps1` treat a missing launcher as fatal
+unconditionally, rather than warn-and-continue.
 
 ## Startup-ready handshake
 

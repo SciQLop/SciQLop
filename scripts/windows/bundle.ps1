@@ -105,16 +105,37 @@ Expand-Archive -Path "$Dist\node.zip" -DestinationPath $Dist -Force
 Move-Item "$Dist\node-v$NodeVersion-win-x64" "$PackageDir\node"
 
 ########################################
-# Compile launcher
+# Fetch native launcher
+#
+# SciQLop.exe is the package's entry point (installer.iss / make_msix.ps1
+# reference it by that name) — it used to be a tiny hand-compiled launcher.c;
+# now it is the same native C++/FLTK launcher the AppImage bundles (see
+# launcher/README.md), which finds the bundled python\, node\ and uv\ next
+# to itself (launcher/src/paths.cpp's bundled_python()/bundled_path_prefix()).
 ########################################
 
-Write-Host "Compiling launcher..."
-# Compile the resource (DPI-awareness + supportedOS manifest embedded as RT_MANIFEST id 1).
-# Without this, WACK's DPIAwarenessValidation flags the launcher as DPI-unaware.
-& rc /nologo /fo "$ScriptDir\launcher.res" "$ScriptDir\launcher.rc"
-if ($LASTEXITCODE -ne 0) { throw "rc.exe failed compiling launcher.rc" }
-& cl /nologo /O2 /Fe:"$PackageDir\SciQLop.exe" "$ScriptDir\launcher.c" "$ScriptDir\launcher.res" `
-    /link user32.lib kernel32.lib /SUBSYSTEM:WINDOWS
+Write-Host "Fetching native launcher..."
+& "$ScriptDir\..\fetch_launcher.ps1" -Destination "$PackageDir\SciQLop.exe" -Platform windows_x86_64
+
+# fetch_launcher.ps1 throws (terminating, caught by our own
+# $ErrorActionPreference = "Stop") on a real download/verify failure, and
+# removes any partial file before returning on its other non-fatal-looking
+# exit — exit 3, meaning launcher.version still carries the placeholder
+# digest because no launcher-v<ver> release exists yet. Checking for the
+# destination file rather than $LASTEXITCODE covers both uniformly: a
+# just-run *.ps1 child script only updates $LASTEXITCODE when it happens to
+# call `exit`, not on a normal return, so it cannot be trusted as "success".
+# Unlike build.sh/make_dmg.sh, which warn-and-continue on exit 3 because
+# AppRun/the macOS wrapper still have a working python3-exec fallback,
+# Windows has none — SciQLop.exe IS the entry point — so this is always fatal.
+if (-not (Test-Path "$PackageDir\SciQLop.exe")) {
+    throw "Native launcher missing at $PackageDir\SciQLop.exe after fetch_launcher.ps1. " +
+          "Most likely launcher-v<version> is not released yet for windows_x86_64 " +
+          "(see scripts/launcher.version) — tag one and fill in the digest before bundling. " +
+          "SciQLop.exe has no fallback entry point on Windows, so the bundle cannot ship without it."
+}
+
+Copy-Item "$SciQLopRoot\SciQLop\resources\splash.png" "$PackageDir\splash.png" -Force
 
 ########################################
 # Trim bloat

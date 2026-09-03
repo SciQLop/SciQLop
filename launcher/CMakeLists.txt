@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(sciqlop_launcher VERSION 0.1.0 LANGUAGES CXX)
+project(sciqlop_launcher VERSION 0.1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -50,12 +50,13 @@ endif()
 
 # WIN32 suppresses the console window. Deliberately NOT MACOSX_BUNDLE: on
 # macOS the launcher belongs inside the existing SciQLop.app, not as a nested
-# bundle of its own — make_dmg.sh doesn't fetch/install it yet though (only
-# the AppImage build does, via scripts/fetch_launcher.sh; see
-# launcher/README.md).
+# bundle of its own. All three installers (AppImage, make_dmg.sh, bundle.ps1)
+# fetch/install this binary via scripts/fetch_launcher.sh(.ps1) — see
+# launcher/README.md.
 add_executable(sciqlop-launcher WIN32
     src/main.cpp
     src/ui_fltk.cpp
+    $<$<BOOL:${WIN32}>:src/win/launcher.rc>
 )
 # CommandLineToArgvW (main.cpp's utf8_argv(), C6) lives in shell32, which
 # FLTK's own Windows link set (comctl32/ws2_32/gdiplus) does not pull in.

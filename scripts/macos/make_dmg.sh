@@ -53,7 +53,10 @@ if [ -n "$SSL_CERT_FILE" ]; then
     export REQUESTS_CA_BUNDLE="$SSL_CERT_FILE"
 fi
 export SCIQLOP_BUNDLED="1"
-exec "$RESOURCES/usr/local/bin/python3" -m SciQLop.app
+if [ -x "$HERE/sciqlop-launcher" ]; then
+    exec "$HERE/sciqlop-launcher" "$@"
+fi
+exec "$RESOURCES/usr/local/bin/python3" -m SciQLop.app "$@"
 EOT
 
 chmod +x $DIST/SciQLop.app/Contents/MacOS/SciQLop
@@ -151,6 +154,45 @@ $UV_BIN pip install -q --reinstall --no-cache --python $PYTHON_BIN "$SCIQLOP_ROO
 ########################################
 
 $UV_BIN pip install --python $PYTHON_BIN certifi
+
+########################################
+# Bundle native launcher (splash while the bundled Python above prepares the
+# workspace and starts the app — see launcher/src/launcher.cpp)
+########################################
+
+# shellcheck source=../launcher.version
+. "$SCIQLOP_ROOT/scripts/launcher.version"
+
+MACOS_BIN=$DIST/SciQLop.app/Contents/MacOS
+# uname -m already returns "arm64"/"x86_64", matching fetch_launcher.sh's
+# macos_arm64/macos_x86_64 platform names verbatim.
+set +e
+"$SCIQLOP_ROOT/scripts/fetch_launcher.sh" "macos_$ARCH" "$MACOS_BIN/sciqlop-launcher"
+FETCH_LAUNCHER_STATUS=$?
+set -e
+
+# Exit 3 means launcher.version still carries the placeholder digest (no
+# launcher-v<ver> release exists yet) — fetch_launcher.sh already removed any
+# partial file. Fatal on a real release build ($RELEASE set, same convention
+# as scripts/appimage/build.sh), a warning otherwise. Any other non-zero exit
+# (bad download, digest mismatch, ...) is fatal either way.
+if [[ "$FETCH_LAUNCHER_STATUS" -eq 3 ]]; then
+  if [[ -n "$RELEASE" ]]; then
+    echo "launcher-v$LAUNCHER_VERSION is not released: tag it and fill launcher.version before cutting a release" >&2
+    exit 1
+  fi
+  echo "Warning: launcher-v$LAUNCHER_VERSION is not released — building the .app without the native launcher" >&2
+elif [[ "$FETCH_LAUNCHER_STATUS" -ne 0 ]]; then
+  echo "fetch_launcher.sh failed (exit $FETCH_LAUNCHER_STATUS)" >&2
+  exit 1
+fi
+
+# Only bundle the splash art when there's actually a launcher to show it —
+# the generated Contents/MacOS/SciQLop wrapper below falls back to a direct
+# python3 exec otherwise.
+if [[ -x "$MACOS_BIN/sciqlop-launcher" ]]; then
+  cp "$SCIQLOP_ROOT/SciQLop/resources/splash.png" "$MACOS_BIN/splash.png"
+fi
 
 export PATH=$SAVED_PATH
 

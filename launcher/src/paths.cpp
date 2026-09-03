@@ -20,6 +20,27 @@ fs::path env_path(const char* name) {
     return (value != nullptr && *value != '\0') ? fs::path(value) : fs::path();
 }
 
+std::string utf8_string(const fs::path& path) {
+    const auto encoded = path.u8string();
+    return std::string(encoded.begin(), encoded.end());
+}
+
+fs::path bundled_python_candidate(const fs::path& exe_dir) {
+#if defined(_WIN32)
+    return exe_dir / "python" / "python.exe";
+#else
+    return exe_dir / "python" / "bin" / "python3";
+#endif
+}
+
+fs::path bundled_scripts_dir(const fs::path& exe_dir) {
+#if defined(_WIN32)
+    return exe_dir / "python" / "Scripts";
+#else
+    return exe_dir / "python" / "bin";
+#endif
+}
+
 fs::path home() {
 #ifdef _WIN32
     if (auto profile = env_path("USERPROFILE"); !profile.empty()) return profile;
@@ -47,6 +68,18 @@ fs::path user_data_dir() {
 }
 
 fs::path last_launch_log() { return user_data_dir() / "last-launch.log"; }
+
+std::optional<fs::path> bundled_python(const fs::path& exe_dir) {
+    std::error_code ec;
+    const fs::path candidate = bundled_python_candidate(exe_dir);
+    if (fs::is_regular_file(candidate, ec)) return candidate;
+    return std::nullopt;
+}
+
+std::string bundled_path_prefix(const fs::path& exe_dir) {
+    return utf8_string(exe_dir / "node") + PATH_LIST_SEPARATOR + utf8_string(exe_dir / "uv") +
+           PATH_LIST_SEPARATOR + utf8_string(bundled_scripts_dir(exe_dir));
+}
 
 fs::path executable_dir() {
     std::error_code ec;

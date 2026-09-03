@@ -1,0 +1,8 @@
+// DPI-awareness (PerMonitorV2) + supportedOS manifest for sciqlop-launcher.exe.
+// Without this, WACK's DPIAwarenessValidation flags the launcher as DPI-unaware.
+// Moved here from scripts/windows/launcher.rc — that copy compiled the old
+// standalone launcher.c; this one is wired into the sciqlop-launcher CMake
+// target instead (see launcher/CMakeLists.txt's if(WIN32) block).
+#include <winuser.h>
+
+1 RT_MANIFEST "launcher.exe.manifest"

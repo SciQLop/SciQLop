@@ -60,6 +60,13 @@ Options parse_args(const std::vector<std::string>& args);
 /// so command building is unit-testable without spawning a process.
 std::vector<std::string> app_argv(const Options& options);
 
+/// Full argv for this round's supervised process: *executable* (the ambient
+/// `python3`/`python.exe` or an absolute path to a bundled interpreter — see
+/// paths::bundled_python) as argv[0], then `-I -m SciQLop.app`, then
+/// app_argv(options). Exposed so which interpreter ends up in argv[0] is
+/// unit-testable without spawning a process.
+std::vector<std::string> session_argv(const std::string& executable, const Options& options);
+
 /// The Options for the next round, given the previous round's Options and
 /// how it ended. A restart (EXIT_RESTART) replays exactly what was asked
 /// for — same workspace, positional file and passthrough args. A workspace

@@ -4,6 +4,7 @@
 #include <windows.h>
 
 #include <fstream>
+#include <set>
 
 namespace fs = std::filesystem;
 
@@ -55,8 +56,16 @@ std::wstring build_command_line(const std::vector<std::string>& argv) {
 }
 
 /// Null-separated, double-null-terminated block of the inherited environment
-/// with *overrides* applied.
+/// with *overrides* applied. Each override *replaces* its same-named
+/// inherited entry (see process.hpp's Command::extra_env doc) rather than
+/// adding a second entry — matched case-insensitively via env_key_upper()
+/// since Windows env var names are case-insensitive (e.g. the OS's own PATH
+/// entry is actually spelled "Path"), unlike the map key comparison below
+/// which would otherwise miss it.
 std::wstring build_environment(const std::map<std::string, std::string>& overrides) {
+    std::set<std::string> override_keys_upper;
+    for (const auto& [key, value] : overrides) override_keys_upper.insert(env_key_upper(key));
+
     std::wstring block;
     if (LPWCH inherited = GetEnvironmentStringsW(); inherited != nullptr) {
         for (LPWCH entry = inherited; *entry != L'\0';) {
@@ -67,7 +76,7 @@ std::wstring build_environment(const std::map<std::string, std::string>& overrid
             std::wstring key = item.substr(0, eq);
             std::string narrow_key;
             for (wchar_t c : key) narrow_key += static_cast<char>(c);
-            if (overrides.count(narrow_key) != 0) continue;
+            if (override_keys_upper.count(env_key_upper(narrow_key)) != 0) continue;
             block += item;
             block += L'\0';
         }

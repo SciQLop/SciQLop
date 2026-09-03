@@ -4,6 +4,8 @@
 // handshake, the round loop itself) is exercised end to end by
 // smoke_test.sh, not from here.
 #include "launcher.hpp"
+#include "paths.hpp"
+#include "process.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -209,6 +211,76 @@ void test_take_switch_target_trims_and_removes() {
     check(!std::filesystem::exists(handoff), "handoff file is removed after being read");
 }
 
+// --- paths::bundled_python / paths::bundled_path_prefix -------------------
+
+#if defined(_WIN32)
+constexpr const char* PYTHON_RELATIVE_PATH = "python/python.exe";
+constexpr const char* SCRIPTS_DIR_NAME = "Scripts";
+constexpr char PATH_SEP = ';';
+#else
+constexpr const char* PYTHON_RELATIVE_PATH = "python/bin/python3";
+constexpr const char* SCRIPTS_DIR_NAME = "bin";
+constexpr char PATH_SEP = ':';
+#endif
+
+void test_bundled_python_missing_is_nullopt() {
+    const auto dir = make_tmp_dir();
+    check(!sciqlop::paths::bundled_python(dir).has_value(),
+          "no python/ next to the launcher means no bundled interpreter");
+}
+
+void test_bundled_python_found_when_present() {
+    const auto dir = make_tmp_dir();
+    const auto python = dir / PYTHON_RELATIVE_PATH;
+    std::filesystem::create_directories(python.parent_path());
+    write_file(python, "");
+    const auto found = sciqlop::paths::bundled_python(dir);
+    check(found.has_value() && *found == python,
+          "bundled_python finds the interpreter at exe_dir/python/...");
+}
+
+void test_bundled_path_prefix_contents() {
+    const auto dir = make_tmp_dir();
+    const std::string prefix = sciqlop::paths::bundled_path_prefix(dir);
+    const std::string expected = (dir / "node").string() + PATH_SEP + (dir / "uv").string() +
+                                 PATH_SEP + (dir / "python" / SCRIPTS_DIR_NAME).string();
+    check(prefix == expected, "bundled_path_prefix joins node, uv and the scripts dir");
+}
+
+// --- env_key_upper (Windows env-var case-insensitive key matching) --------
+
+void test_env_key_upper_uppercases_ascii() {
+    check(sciqlop::env_key_upper("PATH") == "PATH", "already-upper key is unchanged");
+    check(sciqlop::env_key_upper("Path") == "PATH", "mixed-case key uppercases");
+    check(sciqlop::env_key_upper("path") == "PATH", "lower-case key uppercases");
+}
+
+void test_env_key_upper_makes_differently_cased_keys_match() {
+    // This is the actual bug: process_win32.cpp's build_environment() used to
+    // compare an override's key against each inherited entry's key with a
+    // plain (case-sensitive) map lookup, so an override "PATH" never matched
+    // Windows' own inherited "Path" entry — both ended up in the child's
+    // environment block, with which one wins left undefined.
+    check(sciqlop::env_key_upper("PATH") == sciqlop::env_key_upper("Path"),
+          "PATH and Path compare equal once normalized");
+    check(sciqlop::env_key_upper("Path") == sciqlop::env_key_upper("path"),
+          "Path and path compare equal once normalized");
+}
+
+// --- session_argv -----------------------------------------------------------
+
+void test_session_argv_uses_given_executable_as_argv0() {
+    sciqlop::Options options;
+    options.workspace = "foo";
+    const std::vector<std::string> argv =
+        sciqlop::session_argv("/opt/bundle/python/bin/python3", options);
+    check(!argv.empty() && argv.front() == "/opt/bundle/python/bin/python3",
+          "session_argv uses the given executable as argv[0], bundled interpreter or not");
+    check(argv == std::vector<std::string>{"/opt/bundle/python/bin/python3", "-I", "-m",
+                                            "SciQLop.app", "--workspace", "foo"},
+          "session_argv assembles -I -m SciQLop.app plus app_argv(options)");
+}
+
 }  // namespace
 
 int main() {
@@ -230,6 +302,12 @@ int main() {
     test_take_switch_target_missing_file();
     test_take_switch_target_empty_file_is_removed();
     test_take_switch_target_trims_and_removes();
+    test_bundled_python_missing_is_nullopt();
+    test_bundled_python_found_when_present();
+    test_bundled_path_prefix_contents();
+    test_env_key_upper_uppercases_ascii();
+    test_env_key_upper_makes_differently_cased_keys_match();
+    test_session_argv_uses_given_executable_as_argv0();
 
     if (failures == 0) std::cout << "all launcher core tests passed\n";
     return failures == 0 ? 0 : 1;

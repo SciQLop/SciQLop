@@ -4,6 +4,7 @@
 #include "process.hpp"
 
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <string_view>
@@ -25,10 +26,10 @@ namespace fs = std::filesystem;
 namespace sciqlop {
 namespace {
 
-/// AppRun (Linux/macOS bundles) and the Windows/macOS installers all put the
-/// bundled interpreter's directory on PATH before running this launcher — the
-/// same PATH a dev checkout without that bundling resolves to whatever
-/// `python3` is on the ambient PATH.
+/// Fallback interpreter name, resolved through PATH, used when no bundled
+/// interpreter sits next to this launcher binary (paths::bundled_python) —
+/// AppRun/the macOS wrapper have already put one on PATH in that case, and a
+/// dev checkout just wants whatever `python3` is ambient.
 #ifdef _WIN32
 constexpr const char* PYTHON_EXECUTABLE = "python.exe";
 #else
@@ -162,13 +163,36 @@ int run_app(const Options& options, Ui& ui, int round, RoundKind kind,
     ui.post_detail("");
     ui.post_progress(10);
 
-    std::vector<std::string> argv{PYTHON_EXECUTABLE, "-I", "-m", "SciQLop.app"};
-    const auto forwarded = app_argv(options);
-    argv.insert(argv.end(), forwarded.begin(), forwarded.end());
+    const fs::path exe_dir = paths::executable_dir();
+    const auto bundled_python = paths::bundled_python(exe_dir);
+    const std::string executable = bundled_python ? to_utf8(*bundled_python) : PYTHON_EXECUTABLE;
+    const std::vector<std::string> argv = session_argv(executable, options);
 
-    const Command app{argv,
-                      {{READY_FILE_ENV, to_utf8(scratch.ready_marker)},
-                       {SWITCH_HANDOFF_ENV, to_utf8(scratch.switch_handoff)}}};
+    std::map<std::string, std::string> extra_env{
+        {READY_FILE_ENV, to_utf8(scratch.ready_marker)},
+        {SWITCH_HANDOFF_ENV, to_utf8(scratch.switch_handoff)}};
+    if (bundled_python) {
+        // Command's extra_env *replaces* an inherited entry of the same name
+        // rather than merging into it (see process.hpp's Command::extra_env
+        // doc), so prepending means reading the inherited PATH here and
+        // building the full value ourselves — same shape as
+        // scripts/windows/launcher.c did by hand.
+        extra_env["SCIQLOP_BUNDLED"] = "1";
+        const std::string prefix = paths::bundled_path_prefix(exe_dir);
+        // std::getenv() looks up by exact name on POSIX, but on Windows the
+        // OS environment block itself is case-insensitive (the real entry is
+        // often spelled "Path") and MSVC's CRT getenv() honors that, so
+        // getenv("PATH") finds it regardless of case on either platform —
+        // this "PATH" override then goes through build_environment()'s own
+        // case-insensitive key match (env_key_upper()) to replace whatever
+        // case the inherited entry happened to use.
+        const char* inherited_path = std::getenv("PATH");
+        extra_env["PATH"] = inherited_path != nullptr
+                                ? prefix + paths::PATH_LIST_SEPARATOR + inherited_path
+                                : prefix;
+    }
+
+    const Command app{argv, extra_env};
 
     std::ostringstream tail;
 
@@ -249,6 +273,13 @@ std::vector<std::string> app_argv(const Options& options) {
         argv.push_back(options.workspace);
     }
     if (!options.sciqlop_file.empty()) argv.push_back(options.sciqlop_file);
+    return argv;
+}
+
+std::vector<std::string> session_argv(const std::string& executable, const Options& options) {
+    std::vector<std::string> argv{executable, "-I", "-m", "SciQLop.app"};
+    const auto forwarded = app_argv(options);
+    argv.insert(argv.end(), forwarded.begin(), forwarded.end());
     return argv;
 }
 

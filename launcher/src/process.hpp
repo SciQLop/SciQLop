@@ -5,6 +5,7 @@
 // to a log while the caller watches for the startup-ready marker.
 #pragma once
 
+#include <cctype>
 #include <filesystem>
 #include <functional>
 #include <map>
@@ -17,8 +18,27 @@ using OutputSink = std::function<void(const std::string& line)>;
 
 struct Command {
     std::vector<std::string> argv;
-    std::map<std::string, std::string> extra_env;  ///< merged over the inherited env
+    /// Each entry here *replaces* any inherited environment entry with the
+    /// same name — it does not merge into it (see process_posix.cpp's
+    /// merged_environment() / process_win32.cpp's build_environment()). A
+    /// caller that wants to prepend to e.g. PATH must read the inherited
+    /// value itself and build the full replacement string.
+    std::map<std::string, std::string> extra_env;
 };
+
+/// Uppercases ASCII letters. Environment variable names are case-insensitive
+/// on Windows (the OS itself folds "Path"/"PATH"/"path" to the same entry)
+/// but case-sensitive on POSIX — process_win32.cpp's build_environment()
+/// uses this to compare an override's key against each inherited entry's key
+/// so e.g. an override named "PATH" correctly replaces an inherited "Path"
+/// instead of both ending up in the child's environment block with which one
+/// wins left undefined. Pure and platform-independent so it's unit-testable
+/// without a Windows build; process_posix.cpp has no use for it.
+inline std::string env_key_upper(const std::string& key) {
+    std::string upper = key;
+    for (char& c : upper) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+    return upper;
+}
 
 /// Run to completion, tee-ing stdout and stderr to *log_file*. Both streams are
 /// also handed line by line to *on_stdout* / *on_stderr* — the supervised child
