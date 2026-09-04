@@ -748,6 +748,36 @@ h2 {
     color: var(--HighlightedText);
 }
 
+.core-version-current {
+    font-size: 0.9em;
+    margin-bottom: 6px;
+}
+
+.core-version-select {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Base);
+    color: var(--Text);
+    font-size: 0.9em;
+    margin-bottom: 6px;
+}
+
+.core-version-status {
+    font-size: 0.85em;
+    margin-top: 6px;
+    color: var(--UnselectedText);
+}
+
+.core-version-success {
+    color: #27ae60;
+}
+
+.core-version-error {
+    color: #c0392b;
+}
+
 .details-actions {
     margin-top: auto;
     padding-top: 24px;

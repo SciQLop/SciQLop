@@ -26,6 +26,8 @@ function init() {
         backend.latest_release_ready.connect(showLatestRelease);
         backend.featured_packages_ready.connect(onFeaturedReady);
         backend.dependency_install_finished.connect(onDependencyInstallFinished);
+        backend.core_versions_ready.connect(onCoreVersionsReady);
+        backend.core_update_finished.connect(onCoreUpdateFinished);
         backend.fetch_latest_release();
         backend.fetch_featured_packages();
 
@@ -448,12 +450,14 @@ function showWorkspaceDetails(ws, isActive) {
         : '<span>' + escapeHtml(ws.description || "") + '</span>';
 
     var pkgHtml = buildPackageList(ws, isActive, true);
+    var coreVersionHtml = buildCoreVersionSection(ws);
 
     content.innerHTML =
         '<div class="details-field"><label>Name</label>' + nameHtml + '</div>' +
         '<div class="details-field"><label>Last used</label><span>' + escapeHtml(ws.last_used) + '</span></div>' +
         '<div class="details-field"><label>Last modified</label><span>' + escapeHtml(ws.last_modified) + '</span></div>' +
         '<div class="details-field"><label>Description</label>' + descHtml + '</div>' +
+        '<div class="details-section"><label>SciQLop Core</label>' + coreVersionHtml + '</div>' +
         '<div class="details-section"><label>Packages</label>' + pkgHtml + '</div>' +
         '<div class="details-actions">' +
             (isActive ? '' : '<button class="primary" onclick="tryOpenWorkspace(\'' + escapeAttr(ws.directory) + '\')">Open workspace</button>') +
@@ -491,6 +495,112 @@ function bindFieldEditor(inputId, directory, field, ws, isActive) {
             el.blur();
         }
     });
+}
+
+function buildCoreVersionSection(ws) {
+    var current = ws.sciqlop_version || "";
+    var currentLabel = current ? current : "main (development)";
+    var html = '<div class="core-version-current">Current: <strong>' +
+        escapeHtml(currentLabel) + '</strong></div>';
+    html += '<select id="core-version-select" class="core-version-select">' +
+        '<option value="' + escapeAttr(current) + '">' + escapeHtml(currentLabel) +
+        ' (loading…)</option></select>';
+    html += '<button id="core-version-install-btn" class="secondary">Install</button>';
+    html += '<div id="core-version-status" class="core-version-status"></div>';
+
+    setTimeout(function() {
+        backend.fetch_available_core_versions(ws.directory);
+        var btn = document.getElementById("core-version-install-btn");
+        if (btn) {
+            btn.addEventListener("click", function() {
+                doCoreVersionInstall(ws.directory);
+            });
+        }
+    }, 0);
+
+    return html;
+}
+
+function onCoreVersionsReady(resultJson) {
+    var result = JSON.parse(resultJson);
+    if (_currentDetailsWs && _currentDetailsWs.directory === result.dir) {
+        populateCoreVersionSelect(result);
+    }
+}
+
+function populateCoreVersionSelect(result) {
+    var select = document.getElementById("core-version-select");
+    if (!select) return;
+    var current = (_currentDetailsWs && _currentDetailsWs.sciqlop_version) || "";
+
+    var options = result.ok ? result.versions.slice() : (current ? [current] : []);
+    if (current && options.indexOf(current) === -1) {
+        options.unshift(current);
+    }
+
+    select.innerHTML = "";
+    options.forEach(function(v) {
+        var opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+    });
+    var mainOpt = document.createElement("option");
+    mainOpt.value = "";
+    mainOpt.textContent = "main (development)";
+    select.appendChild(mainOpt);
+    select.value = current;
+
+    var status = document.getElementById("core-version-status");
+    if (status && !result.ok) {
+        status.textContent = "Could not fetch the release list — showing the current pin only.";
+        status.className = "core-version-status core-version-error";
+    }
+}
+
+function doCoreVersionInstall(dir) {
+    var select = document.getElementById("core-version-select");
+    var btn = document.getElementById("core-version-install-btn");
+    var status = document.getElementById("core-version-status");
+    if (!select || !btn) return;
+    var version = select.value;
+    btn.disabled = true;
+    select.disabled = true;
+    if (status) {
+        status.textContent = "Installing…";
+        status.className = "core-version-status";
+    }
+    backend.apply_core_version(dir, version);
+}
+
+function onCoreUpdateFinished(resultJson) {
+    var result = JSON.parse(resultJson);
+    var isCurrentPanel = _currentDetailsWs && _currentDetailsWs.directory === result.dir;
+
+    var select = document.getElementById("core-version-select");
+    var btn = document.getElementById("core-version-install-btn");
+    if (isCurrentPanel && select) select.disabled = false;
+    if (isCurrentPanel && btn) btn.disabled = false;
+
+    if (!isCurrentPanel) return;
+    var status = document.getElementById("core-version-status");
+    if (!status) return;
+
+    if (result.ok) {
+        _currentDetailsWs.sciqlop_version = result.version;
+        var label = document.querySelector(".core-version-current");
+        if (label) {
+            label.innerHTML = "Current: <strong>" +
+                escapeHtml(result.version || "main (development)") + "</strong>";
+        }
+        status.textContent = result.is_active_workspace
+            ? "Installed — restart SciQLop to apply."
+            : "Installed.";
+        status.className = "core-version-status core-version-success";
+    } else {
+        status.textContent = "Update failed: " + (result.error || "unknown error");
+        status.className = "core-version-status core-version-error";
+    }
 }
 
 function buildPackageList(ws, isActive, editable) {
