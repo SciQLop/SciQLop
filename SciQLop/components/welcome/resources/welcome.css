@@ -764,6 +764,21 @@ h2 {
     margin-bottom: 6px;
 }
 
+#core-version-install-btn {
+    padding: 4px 12px;
+    border: 1px solid var(--Borders);
+    border-radius: 4px;
+    background: var(--Button);
+    color: var(--ButtonText);
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+#core-version-install-btn:hover {
+    background: var(--Highlight);
+    color: var(--HighlightedText);
+}
+
 .core-version-status {
     font-size: 0.85em;
     margin-top: 6px;
