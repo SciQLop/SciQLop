@@ -15,6 +15,7 @@ from SciQLop.components.plugins.backend.folders import plugins_folders
 from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
 from SciQLop.components.workspaces.backend.workspace_archive import IMPORT_MARKER_NAME
+from SciQLop.components.workspaces.backend.workspace_lock import workspace_lock
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
 from SciQLop.components.workspaces.backend.lab_assets import repair_lab_assets
@@ -273,3 +274,44 @@ def prepare_workspace(
     repair_lab_assets(venv.venv_dir, on_output=on_output)
 
     return venv.python_path
+
+
+def apply_core_version(workspace_dir: Path | str, version: str) -> Path:
+    """Change the SciQLop version pinned for *workspace_dir* and sync its venv.
+
+    *version* must already be validated by the caller (see
+    ``workspace_project.validate_core_version``) — this trusts it and writes
+    it straight into the manifest's ``sciqlop_version``.
+
+    Reuses ``prepare_workspace`` in strict mode so the full dependency set
+    (plugins + appstore packages, not just SciQLop itself) is preserved, and
+    only saves the manifest change after the sync actually succeeds — a
+    failed update never leaves the manifest pointing at a version that
+    isn't installed. Serializes against other calls for the same
+    *workspace_dir* via ``workspace_lock``.
+
+    Raises ``FileNotFoundError`` if *workspace_dir* has no existing
+    manifest, ``WorkspaceLockError`` if another update is already in
+    progress for it, or whatever ``prepare_workspace`` raises on sync
+    failure. A failure saving the manifest *after* a successful sync (disk
+    full, permissions) is re-raised as a distinctly worded ``RuntimeError``,
+    since at that point the venv genuinely was updated and the failure is
+    not the ordinary "nothing changed" case.
+    """
+    workspace_dir = Path(workspace_dir)
+    manifest_path = workspace_dir / MANIFEST_FILENAME
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"No workspace manifest at {manifest_path}")
+
+    with workspace_lock(workspace_dir):
+        manifest = WorkspaceManifest.load_or_repair(manifest_path)
+        manifest.sciqlop_version = version
+        python_path = prepare_workspace(workspace_dir, manifest=manifest, strict=True)
+        try:
+            manifest.save(manifest_path)
+        except Exception as exc:
+            raise RuntimeError(
+                f"SciQLop {version or 'main'} was installed, but recording it "
+                f"in the workspace manifest failed: {exc}"
+            ) from exc
+    return python_path

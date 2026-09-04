@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch, call
 import pytest
 
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_lock import WorkspaceLockError, workspace_lock
 
 
 MODULE = "SciQLop.components.workspaces.backend.workspace_setup"
@@ -650,3 +651,124 @@ class TestHelperFunctions:
             from SciQLop.components.workspaces.backend.workspace_setup import get_plugin_folders
 
             assert get_plugin_folders() == ["/a", "/b"]
+
+
+class TestApplyCoreVersion:
+    def _make_existing_workspace(self, workspace_dir, sciqlop_version="0.12.0"):
+        workspace_dir.mkdir(parents=True)
+        WorkspaceManifest(name="My Workspace", sciqlop_version=sciqlop_version).save(
+            workspace_dir / "workspace.sciqlop")
+        return workspace_dir
+
+    def test_pins_the_new_version_and_saves_the_manifest(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+
+        self._make_existing_workspace(workspace_dir)
+
+        apply_core_version(workspace_dir, "0.13.0")
+
+        reloaded = WorkspaceManifest.load(workspace_dir / "workspace.sciqlop")
+        assert reloaded.sciqlop_version == "0.13.0"
+
+    def test_preserves_plugin_and_appstore_dependencies_in_the_generated_project(self, workspace_dir, patches):
+        """The bug an earlier design draft had: generating the pyproject
+        with only SciQLop would silently drop plugin/appstore dependencies
+        from the workspace on every core update."""
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+
+        self._make_existing_workspace(workspace_dir)
+
+        apply_core_version(workspace_dir, "0.13.0")
+
+        gen = patches["generate_pyproject_toml"]
+        gen.assert_called_once()
+        assert gen.call_args[0][1] == ["numpy>=1.24", "requests"]
+
+    def test_returns_the_venv_python_path(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+
+        self._make_existing_workspace(workspace_dir)
+
+        result = apply_core_version(workspace_dir, "0.13.0")
+        assert result == patches["venv"].python_path
+
+    def test_empty_string_pins_to_main(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+
+        self._make_existing_workspace(workspace_dir)
+
+        apply_core_version(workspace_dir, "")
+
+        reloaded = WorkspaceManifest.load(workspace_dir / "workspace.sciqlop")
+        assert reloaded.sciqlop_version == ""
+
+    def test_sync_failure_leaves_the_on_disk_manifest_unchanged(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+
+        self._make_existing_workspace(workspace_dir)
+        patches["venv"].sync.side_effect = RuntimeError("uv sync failed")
+
+        with pytest.raises(RuntimeError, match="uv sync failed"):
+            apply_core_version(workspace_dir, "0.13.0")
+
+        reloaded = WorkspaceManifest.load(workspace_dir / "workspace.sciqlop")
+        assert reloaded.sciqlop_version == "0.12.0"
+
+    def test_sync_failure_is_never_swallowed_even_if_a_venv_already_exists(self, workspace_dir, patches):
+        """apply_core_version must call prepare_workspace in strict mode --
+        the ordinary launcher-startup tolerance for an offline sync failure
+        (keep whatever's already installed, report success) would silently
+        lie about a user-requested version change."""
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+
+        self._make_existing_workspace(workspace_dir)
+        patches["venv"].has_sciqlop_installed = True
+        patches["venv"].sync.side_effect = RuntimeError("offline")
+
+        with pytest.raises(RuntimeError, match="offline"):
+            apply_core_version(workspace_dir, "0.13.0")
+
+    def test_missing_manifest_raises_file_not_found(self, tmp_path, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+
+        empty_dir = tmp_path / "no_manifest_here"
+        empty_dir.mkdir()
+
+        with pytest.raises(FileNotFoundError):
+            apply_core_version(empty_dir, "0.13.0")
+
+    def test_concurrent_call_for_the_same_workspace_raises_lock_error(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+
+        self._make_existing_workspace(workspace_dir)
+
+        with workspace_lock(workspace_dir):
+            with pytest.raises(WorkspaceLockError):
+                apply_core_version(workspace_dir, "0.13.0")
+
+        # The lock was held by the test itself, not by apply_core_version,
+        # so no sync should have been attempted.
+        patches["venv"].sync.assert_not_called()
+
+    def test_manifest_save_failure_after_a_successful_sync_is_a_distinct_error(
+        self, workspace_dir, patches, monkeypatch
+    ):
+        """The venv was actually updated at this point -- this must not look
+        like an ordinary sync failure (which the manifest-unchanged test
+        above covers), since here the manifest is the thing left behind.
+
+        _make_existing_workspace's own save() call happens before the
+        monkeypatch below is applied, so the only save() call that runs
+        through flaky_save is apply_core_version's final, post-sync one."""
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+        from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest as WM
+
+        self._make_existing_workspace(workspace_dir)
+
+        def flaky_save(self, path):
+            raise OSError("No space left on device")
+
+        monkeypatch.setattr(WM, "save", flaky_save)
+
+        with pytest.raises(RuntimeError, match="recording it in the workspace manifest failed"):
+            apply_core_version(workspace_dir, "0.13.0")
