@@ -306,7 +306,10 @@ def apply_core_version(workspace_dir: Path | str, version: str) -> Path:
     with workspace_lock(workspace_dir):
         manifest = WorkspaceManifest.load_or_repair(manifest_path)
         manifest.sciqlop_version = version
-        python_path = prepare_workspace(workspace_dir, manifest=manifest, strict=True)
+        output_lines: list[str] = []
+        python_path = prepare_workspace(
+            workspace_dir, manifest=manifest, strict=True, on_output=output_lines.append,
+        )
         try:
             manifest.save(manifest_path)
         except Exception as exc:

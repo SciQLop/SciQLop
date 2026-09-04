@@ -79,6 +79,7 @@ _HOST_PROVIDED_PACKAGES = frozenset({"sciqlop"})
 _PKG_NAME_RE = re.compile(r"^([A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?)")
 _URL_RE = re.compile(r"^(https?://|git\+https?://)")
 _GITHUB_REPO_RE = re.compile(r"github\.com/[^/]+/([^/]+)")
+_RELEASE_VERSION_RE = re.compile(r"^\d+(\.\d+){0,3}$")
 
 
 def _canonical(name: str) -> str:
@@ -350,38 +351,43 @@ def fetch_available_versions(*, timeout: float = 5.0) -> List[str]:
     try:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.loads(resp.read())
+        releases = data.get("releases", {})
+        versions: List[packaging.version.Version] = []
+        for raw, files in releases.items():
+            if not files or all(f.get("yanked", False) for f in files):
+                continue
+            try:
+                parsed = packaging.version.Version(raw)
+            except packaging.version.InvalidVersion:
+                continue
+            if parsed.is_prerelease:
+                continue
+            versions.append(parsed)
+        versions.sort(reverse=True)
+        return [str(v) for v in versions[:_MAX_LISTED_VERSIONS]]
     except Exception as exc:
         log.debug("Could not fetch PyPI release list: %s", exc)
         return []
-
-    releases = data.get("releases", {})
-    versions: List[packaging.version.Version] = []
-    for raw, files in releases.items():
-        if not files or all(f.get("yanked", False) for f in files):
-            continue
-        try:
-            parsed = packaging.version.Version(raw)
-        except packaging.version.InvalidVersion:
-            continue
-        if parsed.is_prerelease:
-            continue
-        versions.append(parsed)
-
-    versions.sort(reverse=True)
-    return [str(v) for v in versions[:_MAX_LISTED_VERSIONS]]
 
 
 def validate_core_version(version: str, available: Sequence[str]) -> bool:
     """True if *version* is safe to write into a workspace manifest.
 
-    Accepts only the empty string (installs from ``git+...@main``, see
-    ``sciqlop_requirement``) or an exact match against *available* -- which
-    must come from ``fetch_available_versions()``, never from unvalidated
-    caller input. This is the real security boundary: the dropdown a user
-    picks from in the UI is not one, since a QWebChannel caller can invoke
-    the backend slot with an arbitrary string, and the value is later
-    interpolated into ``sciqlop_requirement()``'s output.
+    Accepts the empty string (installs from ``git+...@main`` -- see
+    ``sciqlop_requirement``), an exact match against *available* (which
+    should come from ``fetch_available_versions()``), or any string shaped
+    like a bare release version (digits and dots only) even when it isn't
+    in *available* -- covers a workspace whose pin is older than the
+    recent-N window, or a PyPI fetch that failed entirely. This is the real
+    security boundary: the dropdown a user picks from in the UI is not one,
+    since a QWebChannel caller can invoke the backend slot with an
+    arbitrary string, and the value is later interpolated into
+    ``sciqlop_requirement()``'s output -- nothing containing whitespace,
+    quotes, ``@``, ``/``, or PEP 440 specifier/URL/VCS syntax can match the
+    bare-version pattern.
     """
     if version == "":
         return True
-    return version in available
+    if version in available:
+        return True
+    return bool(_RELEASE_VERSION_RE.match(version))

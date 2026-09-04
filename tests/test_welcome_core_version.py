@@ -60,6 +60,14 @@ class TestFetchAvailableCoreVersionsSlot:
         payload = json.loads(blocker.args[0])
         assert payload["ok"] is False
 
+    def test_unexpected_exception_still_emits_a_signal(self, qtbot, tmp_path):
+        backend = _make_backend()
+        with patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", side_effect=RuntimeError("boom")):
+            with qtbot.waitSignal(backend.core_versions_ready, timeout=2000) as blocker:
+                backend.fetch_available_core_versions(str(tmp_path))
+        payload = json.loads(blocker.args[0])
+        assert payload["ok"] is False
+
 
 class TestApplyCoreVersionSlot:
     def test_success_emits_ok_with_version_and_dir(self, qtbot, tmp_path):

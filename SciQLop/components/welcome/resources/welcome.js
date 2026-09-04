@@ -503,8 +503,7 @@ function buildCoreVersionSection(ws) {
     var html = '<div class="core-version-current">Current: <strong>' +
         escapeHtml(currentLabel) + '</strong></div>';
     html += '<select id="core-version-select" class="core-version-select">' +
-        '<option value="' + escapeAttr(current) + '">' + escapeHtml(currentLabel) +
-        ' (loading…)</option></select>';
+        '<option>' + escapeHtml(currentLabel) + ' (loading…)</option></select>';
     html += '<button id="core-version-install-btn" class="secondary">Install</button>';
     html += '<div id="core-version-status" class="core-version-status"></div>';
 
@@ -549,7 +548,11 @@ function populateCoreVersionSelect(result) {
     mainOpt.value = "";
     mainOpt.textContent = "main (development)";
     select.appendChild(mainOpt);
-    select.value = current;
+
+    var defaultSelection = current === ""
+        ? ""
+        : (result.ok && result.versions.length > 0 ? result.versions[0] : current);
+    select.value = defaultSelection;
 
     var status = document.getElementById("core-version-status");
     if (status && !result.ok) {

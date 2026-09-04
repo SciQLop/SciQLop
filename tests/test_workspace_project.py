@@ -433,6 +433,15 @@ class TestFetchAvailableVersions:
         with patch("urllib.request.urlopen", return_value=resp):
             assert fetch_available_versions() == []
 
+    def test_non_object_json_top_level_returns_empty_list(self):
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+
+        resp = MagicMock()
+        resp.read.return_value = b"[]"
+        resp.__enter__.return_value = resp
+        with patch("urllib.request.urlopen", return_value=resp):
+            assert fetch_available_versions() == []
+
 
 class TestValidateCoreVersion:
     def test_empty_string_is_always_valid(self):
@@ -446,10 +455,15 @@ class TestValidateCoreVersion:
 
         assert validate_core_version("0.13.0", ["0.13.0", "0.12.0"]) is True
 
-    def test_version_not_in_list_is_rejected(self):
+    def test_non_version_shaped_string_not_in_list_is_rejected(self):
+        # A bare-release-version-shaped string not in `available` is now
+        # accepted (see test_bare_release_version_accepted_even_when_not_in_available
+        # -- Finding 3 of the 2026-09-04 review). What must still be rejected
+        # is a string that is neither an exact match nor shaped like a release
+        # version at all.
         from SciQLop.components.workspaces.backend.workspace_project import validate_core_version
 
-        assert validate_core_version("0.99.0", ["0.13.0"]) is False
+        assert validate_core_version("banana", ["0.13.0"]) is False
 
     @pytest.mark.parametrize("hostile", [
         "0.13.0; rm -rf /",
@@ -463,3 +477,14 @@ class TestValidateCoreVersion:
         from SciQLop.components.workspaces.backend.workspace_project import validate_core_version
 
         assert validate_core_version(hostile, ["0.13.0"]) is False
+
+    def test_bare_release_version_accepted_even_when_not_in_available(self):
+        from SciQLop.components.workspaces.backend.workspace_project import validate_core_version
+
+        assert validate_core_version("0.9.0", ["0.13.0"]) is True
+        assert validate_core_version("0.9.0", []) is True
+
+    def test_multi_segment_bare_version_accepted(self):
+        from SciQLop.components.workspaces.backend.workspace_project import validate_core_version
+
+        assert validate_core_version("0.9.0.1", []) is True

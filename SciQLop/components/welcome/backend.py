@@ -390,12 +390,18 @@ class WelcomeBackend(QObject):
         from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
 
         def _fetch():
-            versions = fetch_available_versions()
-            self.core_versions_ready.emit(json.dumps({
-                "ok": bool(versions),
-                "dir": workspace_dir,
-                "versions": versions,
-            }))
+            try:
+                versions = fetch_available_versions()
+                self.core_versions_ready.emit(json.dumps({
+                    "ok": bool(versions),
+                    "dir": workspace_dir,
+                    "versions": versions,
+                }))
+            except Exception as e:
+                log.error(f"Failed to fetch available SciQLop versions: {e}")
+                self.core_versions_ready.emit(json.dumps({
+                    "ok": False, "dir": workspace_dir, "versions": [],
+                }))
 
         threading.Thread(target=_fetch, daemon=True).start()
 
@@ -413,26 +419,33 @@ class WelcomeBackend(QObject):
         is_active = os.path.realpath(workspace_dir) == os.path.realpath(active_dir)
 
         def _install():
-            available = fetch_available_versions()
-            if not validate_core_version(version, available):
-                self.core_update_finished.emit(json.dumps({
-                    "ok": False, "dir": workspace_dir, "version": version,
-                    "error": f"{version!r} is not an installable SciQLop version",
-                }))
-                return
             try:
-                _apply_core_version(workspace_dir, version)
+                available = fetch_available_versions()
+                if not validate_core_version(version, available):
+                    self.core_update_finished.emit(json.dumps({
+                        "ok": False, "dir": workspace_dir, "version": version,
+                        "error": f"{version!r} is not an installable SciQLop version",
+                    }))
+                    return
+                try:
+                    _apply_core_version(workspace_dir, version)
+                except Exception as e:
+                    log.error(f"Failed to update SciQLop core version: {e}")
+                    self.core_update_finished.emit(json.dumps({
+                        "ok": False, "dir": workspace_dir, "version": version,
+                        "error": error_detail(e),
+                    }))
+                    return
+                self.core_update_finished.emit(json.dumps({
+                    "ok": True, "dir": workspace_dir, "version": version,
+                    "is_active_workspace": is_active,
+                }))
             except Exception as e:
-                log.error(f"Failed to update SciQLop core version: {e}")
+                log.error(f"Unexpected error updating SciQLop core version: {e}")
                 self.core_update_finished.emit(json.dumps({
                     "ok": False, "dir": workspace_dir, "version": version,
-                    "error": error_detail(e),
+                    "error": str(e),
                 }))
-                return
-            self.core_update_finished.emit(json.dumps({
-                "ok": True, "dir": workspace_dir, "version": version,
-                "is_active_workspace": is_active,
-            }))
 
         threading.Thread(target=_install, daemon=True).start()
 
