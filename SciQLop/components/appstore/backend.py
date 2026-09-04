@@ -16,7 +16,7 @@ from PySide6.QtCore import QObject, Signal, Slot
 
 from SciQLop.components.plugins.compat import host_satisfies
 from SciQLop.components.sciqlop_logging import getLogger
-from SciQLop.components.workspaces.backend.uv import uv_command
+from SciQLop.components.workspaces.backend.uv import error_detail, uv_command
 from SciQLop.components.workspaces.backend.workspace_project import (
     _base_constraints,
     host_provided_overrides,
@@ -123,17 +123,6 @@ def _write_requirements_file(directory: str, filename: str, lines: list[str]) ->
 
 def _uv_uninstall_cmd(dist_name: str) -> list[str]:
     return uv_command("pip", "uninstall", "--native-tls", dist_name)
-
-
-def _error_detail(exc: Exception) -> str:
-    """Human-readable cause for a failed uv run.
-
-    ``str(CalledProcessError)`` is only "… returned non-zero exit status N";
-    the actual reason (proxy/TLS/auth) is in ``.stderr``. Prefer it so the
-    failure is diagnosable instead of a bare "Failed".
-    """
-    stderr = (getattr(exc, "stderr", None) or "").strip()
-    return stderr or str(exc)
 
 
 def _save_installed_package(appstore_name: str, pip_spec: str, dist_name: str) -> None:
@@ -255,7 +244,7 @@ class AppStoreBackend(QObject):
                 self.install_finished.emit(json.dumps({"name": name, "ok": True, "version": latest["version"]}))
                 self._hot_load_requested.emit(dist_name)
             except Exception as e:
-                detail = _error_detail(e)
+                detail = error_detail(e)
                 log.error(f"Failed to install {name}: {detail}")
                 self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": detail}))
 
@@ -281,7 +270,7 @@ class AppStoreBackend(QObject):
                 _remove_installed_package(name)
                 self.uninstall_finished.emit(json.dumps({"name": name, "ok": True}))
             except Exception as e:
-                detail = _error_detail(e)
+                detail = error_detail(e)
                 log.error(f"Failed to uninstall {name}: {detail}")
                 self.uninstall_finished.emit(json.dumps({"name": name, "ok": False, "error": detail}))
 

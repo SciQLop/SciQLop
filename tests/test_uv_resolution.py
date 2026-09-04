@@ -67,3 +67,29 @@ class TestUvCommand:
         with patch("SciQLop.components.workspaces.backend.uv.find_uv", return_value=None):
             with pytest.raises(RuntimeError, match="Could not find uv"):
                 uv_command("sync")
+
+
+class TestErrorDetail:
+    def test_prefers_subprocess_stderr(self):
+        import subprocess
+        from SciQLop.components.workspaces.backend.uv import error_detail
+
+        exc = subprocess.CalledProcessError(
+            1, ["uv", "pip", "install"],
+            stderr="error: TLS connect: certificate verify failed (proxy CA)",
+        )
+        detail = error_detail(exc)
+        assert "certificate verify failed" in detail
+        assert "returned non-zero exit status" not in detail
+
+    def test_falls_back_to_str_when_no_stderr(self):
+        from SciQLop.components.workspaces.backend.uv import error_detail
+
+        assert "boom" in error_detail(RuntimeError("boom"))
+
+    def test_ignores_empty_stderr(self):
+        import subprocess
+        from SciQLop.components.workspaces.backend.uv import error_detail
+
+        exc = subprocess.CalledProcessError(1, ["uv"], stderr="")
+        assert error_detail(exc).strip() != ""

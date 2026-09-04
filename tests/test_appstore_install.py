@@ -21,10 +21,9 @@ import pytest
 from SciQLop.components.appstore.backend import (
     _uv_install_cmd,
     _uv_uninstall_cmd,
-    _error_detail,
     _write_requirements_file,
 )
-from SciQLop.components.workspaces.backend.uv import find_uv
+from SciQLop.components.workspaces.backend.uv import error_detail, find_uv
 
 
 @pytest.mark.skipif(find_uv() is None, reason="uv binary not available")
@@ -76,22 +75,3 @@ class TestWriteRequirementsFile:
             path = _write_requirements_file(d, "overrides.txt", ["sciqlop ; python_version < '0'"])
             assert path is not None
             assert Path(path).read_text() == "sciqlop ; python_version < '0'\n"
-
-
-class TestErrorDetail:
-    def test_prefers_subprocess_stderr(self):
-        exc = subprocess.CalledProcessError(
-            1, ["uv", "pip", "install"],
-            stderr="error: TLS connect: certificate verify failed (proxy CA)",
-        )
-        detail = _error_detail(exc)
-        assert "certificate verify failed" in detail
-        assert "returned non-zero exit status" not in detail
-
-    def test_falls_back_to_str_when_no_stderr(self):
-        assert "boom" in _error_detail(RuntimeError("boom"))
-
-    def test_ignores_empty_stderr(self):
-        exc = subprocess.CalledProcessError(1, ["uv"], stderr="")
-        # empty stderr must not produce an empty, useless message
-        assert _error_detail(exc).strip() != ""

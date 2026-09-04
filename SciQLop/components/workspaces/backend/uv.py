@@ -40,3 +40,14 @@ def uv_command(*args: str) -> List[str]:
     if uv_path is None:
         raise RuntimeError("Could not find uv executable")
     return [uv_path, *args]
+
+
+def error_detail(exc: Exception) -> str:
+    """Human-readable cause for a failed uv run.
+
+    ``str(CalledProcessError)`` is only "… returned non-zero exit status N";
+    the actual reason (proxy/TLS/auth) is in ``.stderr``. Prefer it so the
+    failure is diagnosable instead of a bare "Failed".
+    """
+    stderr = (getattr(exc, "stderr", None) or "").strip()
+    return stderr or str(exc)
