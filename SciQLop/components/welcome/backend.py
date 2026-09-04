@@ -57,6 +57,7 @@ def _workspace_to_dict(ws: WorkspaceManifest) -> dict:
         "image": image_path if image_path and os.path.exists(image_path) else "",
         "is_default": ws.default,
         "requires": ws.requires,
+        "sciqlop_version": ws.sciqlop_version,
     }
 
 
@@ -103,6 +104,8 @@ class WelcomeBackend(QObject):
     latest_release_ready = Signal(str)
     templates_changed = Signal()
     dependency_install_finished = Signal(str)
+    core_versions_ready = Signal(str)
+    core_update_finished = Signal(str)
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -381,6 +384,57 @@ class WelcomeBackend(QObject):
             manifest.save(manifest_path)
         except Exception as e:
             log.error(f"Failed to remove dependency: {e}")
+
+    @Slot(str)
+    def fetch_available_core_versions(self, workspace_dir: str) -> None:
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+
+        def _fetch():
+            versions = fetch_available_versions()
+            self.core_versions_ready.emit(json.dumps({
+                "ok": bool(versions),
+                "dir": workspace_dir,
+                "versions": versions,
+            }))
+
+        threading.Thread(target=_fetch, daemon=True).start()
+
+    @Slot(str, str)
+    def apply_core_version(self, workspace_dir: str, version: str) -> None:
+        from SciQLop.components.workspaces.backend.uv import error_detail
+        from SciQLop.components.workspaces.backend.workspace_project import (
+            fetch_available_versions, validate_core_version,
+        )
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            apply_core_version as _apply_core_version,
+        )
+
+        active_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", "")
+        is_active = os.path.realpath(workspace_dir) == os.path.realpath(active_dir)
+
+        def _install():
+            available = fetch_available_versions()
+            if not validate_core_version(version, available):
+                self.core_update_finished.emit(json.dumps({
+                    "ok": False, "dir": workspace_dir, "version": version,
+                    "error": f"{version!r} is not an installable SciQLop version",
+                }))
+                return
+            try:
+                _apply_core_version(workspace_dir, version)
+            except Exception as e:
+                log.error(f"Failed to update SciQLop core version: {e}")
+                self.core_update_finished.emit(json.dumps({
+                    "ok": False, "dir": workspace_dir, "version": version,
+                    "error": error_detail(e),
+                }))
+                return
+            self.core_update_finished.emit(json.dumps({
+                "ok": True, "dir": workspace_dir, "version": version,
+                "is_active_workspace": is_active,
+            }))
+
+        threading.Thread(target=_install, daemon=True).start()
 
     @Slot(str)
     def open_url(self, url: str) -> None:
