@@ -251,6 +251,78 @@ class TestPrepareWorkspaceOffline:
             prepare_workspace(workspace_dir, workspace_name="Test")
 
 
+class TestPrepareWorkspaceWithGivenManifest:
+    def test_uses_the_given_manifest_instead_of_loading_from_disk(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        manifest = WorkspaceManifest(name="InMemory", sciqlop_version="9.9.9")
+
+        prepare_workspace(workspace_dir, manifest=manifest)
+
+        gen_call = patches["generate_pyproject_toml"]
+        gen_call.assert_called_once()
+        assert gen_call.call_args[0][0] is manifest
+
+    def test_does_not_write_a_manifest_file(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        manifest = WorkspaceManifest(name="InMemory")
+        prepare_workspace(workspace_dir, manifest=manifest)
+
+        assert not (workspace_dir / "workspace.sciqlop").exists()
+
+    def test_ignores_an_existing_on_disk_manifest(self, workspace_dir, patches):
+        """A given manifest wins even if workspace_dir already has a
+        different one on disk -- apply_core_version relies on this to stage
+        an in-memory version change without a premature disk write."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        workspace_dir.mkdir(parents=True)
+        WorkspaceManifest(name="OnDisk").save(workspace_dir / "workspace.sciqlop")
+
+        manifest = WorkspaceManifest(name="InMemory")
+        prepare_workspace(workspace_dir, manifest=manifest)
+
+        gen_call = patches["generate_pyproject_toml"]
+        assert gen_call.call_args[0][0].name == "InMemory"
+
+
+class TestPrepareWorkspaceStrictMode:
+    """strict=True is for a user-initiated version change: a sync failure
+    must always be reported as a failure, never silently swallowed by
+    falling back to whatever venv already exists (issue #115's tolerance is
+    correct for ordinary launcher startup, wrong for an explicit update)."""
+
+    def test_strict_raises_even_when_sciqlop_already_installed(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        python_path = tmp_path / "python"
+        python_path.write_text("")
+        venv.python_path = python_path
+        venv.has_sciqlop_installed = True
+        venv.sync.side_effect = RuntimeError("uv command failed: offline")
+
+        with pytest.raises(RuntimeError, match="offline"):
+            prepare_workspace(workspace_dir, workspace_name="Test", strict=True)
+
+    def test_non_strict_still_tolerates_offline_failure(self, workspace_dir, patches, tmp_path):
+        """Default behavior (strict=False) is unchanged from before this
+        parameter existed."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        python_path = tmp_path / "python"
+        python_path.write_text("")
+        venv.python_path = python_path
+        venv.has_sciqlop_installed = True
+        venv.sync.side_effect = RuntimeError("offline")
+
+        result = prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert result == python_path
+
+
 class TestPrepareWorkspacePluginIsolation:
     """A single incompatible plugin/appstore dependency (e.g. a plugin's
     published release still pinned to an old SciQLop range) must not prevent

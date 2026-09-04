@@ -62,6 +62,7 @@ def _sync_workspace_venv(
     pyproject_path: Path,
     locked: bool,
     on_output: Callable[[str], None] | None,
+    strict: bool = False,
 ) -> bool:
     """Sync the workspace venv, isolating a broken plugin/appstore dependency.
 
@@ -82,6 +83,13 @@ def _sync_workspace_venv(
     failed locked sync falls back to a normal unlocked one (with its own
     plugin-isolation retry) instead of giving up.
 
+    ``strict``, when ``True``, disables the final "keep whatever is already
+    installed" fallback below and raises instead. That fallback exists for
+    ordinary launcher startup (issue #115: don't block the app over a
+    transient offline error); a user-initiated version change must fail
+    loudly instead of silently keeping the old version and reporting
+    success (see workspace_setup.apply_core_version).
+
     Returns ``True`` when a sync actually installed the requested
     dependencies, ``False`` when every attempt failed and this instead fell
     through to keeping whatever was already in the venv (offline /
@@ -97,7 +105,9 @@ def _sync_workspace_venv(
     if locked:
         if on_output is not None:
             on_output("Archive lockfile could not be honored, resolving fresh")
-        return _sync_workspace_venv(venv, manifest, optional_deps, pyproject_path, False, on_output)
+        return _sync_workspace_venv(
+            venv, manifest, optional_deps, pyproject_path, False, on_output, strict,
+        )
 
     if optional_deps:
         if on_output is not None:
@@ -115,8 +125,9 @@ def _sync_workspace_venv(
             return True
         _report_sync_failure(exc, on_output, core_only=True)
 
-    if not venv.has_sciqlop_installed:
-        # No working install to fall back to.
+    if strict or not venv.has_sciqlop_installed:
+        # No working install to fall back to (or the caller demanded strict
+        # failure regardless).
         raise exc
     # Offline / unreachable index (#115): keep starting with the existing
     # venv so the user can still use bundled features (CDF, local files).
@@ -133,6 +144,8 @@ def prepare_workspace(
     workspace_name: str | None = None,
     locked: bool = False,
     on_output: Callable[[str], None] | None = None,
+    manifest: WorkspaceManifest | None = None,
+    strict: bool = False,
 ) -> Path:
     """Prepare a workspace: ensure manifest, generate pyproject.toml, sync venv.
 
@@ -148,6 +161,19 @@ def prepare_workspace(
         importing from an archive that ships a lock file). A workspace
         carrying the ``.sciqlop_imported`` marker (see ``import_workspace``)
         is treated as locked for this run regardless of this argument.
+    manifest:
+        A pre-loaded manifest to use instead of loading/creating one from
+        disk. When given, *workspace_dir*'s on-disk manifest (if any) is
+        never read — the caller owns loading and (if desired) saving it.
+        Used by ``apply_core_version`` to stage an in-memory version change
+        and only persist it after a successful sync.
+    strict:
+        If ``True``, a sync failure always raises instead of falling back
+        to whatever is already installed in the venv. The default
+        (permissive) behavior exists so ordinary launcher startup can still
+        start offline with a stale-but-working venv; that permissiveness is
+        wrong for an explicit, user-requested version change, which must
+        fail loudly rather than silently keep the old version.
 
     Returns
     -------
@@ -163,8 +189,10 @@ def prepare_workspace(
 
     manifest_path = workspace_dir / MANIFEST_FILENAME
 
-    # Step 1: Load or create manifest
-    if manifest_path.exists():
+    # Step 1: Use the given manifest, or load/create one
+    if manifest is not None:
+        pass
+    elif manifest_path.exists():
         log.info("Loading existing manifest from %s", manifest_path)
         manifest = WorkspaceManifest.load_or_repair(manifest_path)
     else:
@@ -231,6 +259,7 @@ def prepare_workspace(
     venv.ensure(on_output=on_output)
     synced = _sync_workspace_venv(
         venv, manifest, plugin_deps + appstore_deps, pyproject_path, effective_locked, on_output,
+        strict=strict,
     )
     if synced and import_marker.exists():
         try:
