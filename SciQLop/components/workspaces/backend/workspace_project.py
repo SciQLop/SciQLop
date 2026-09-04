@@ -9,12 +9,16 @@ from __future__ import annotations
 
 import hashlib
 import importlib.metadata
+import json
 import logging
 import os
 import re
 import sys
+import urllib.request
 from pathlib import Path
 from typing import List, Sequence, Union
+
+import packaging.version
 
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 from SciQLop.core.common.files import write_text_atomic
@@ -49,6 +53,12 @@ _PINNED_BASE_PACKAGES = (
 # pre-release build exercise the workspace/install flow against the code it
 # was actually built from.
 _DEV_BUILD_REQUIREMENT = "sciqlop[all] @ git+https://github.com/SciQLop/SciQLop.git@main"
+
+# Source of truth for what SciQLop version a workspace can actually install
+# -- GitHub release tags (used by the read-only "update available" banner in
+# the welcome pane) are not assumed to correspond 1:1 with PyPI releases.
+_PYPI_JSON_URL = "https://pypi.org/pypi/SciQLop/json"
+_MAX_LISTED_VERSIONS = 15
 
 # Distribution-name prefixes of the embedded Jupyter server stack. jupyqt is
 # pinned to the host version, so the fps/jupyverse release train it drives must
@@ -326,3 +336,52 @@ package = false
     output = Path(output_path)
     if not output.exists() or output.read_text() != content:
         write_text_atomic(output, content)
+
+
+def fetch_available_versions(*, timeout: float = 5.0) -> List[str]:
+    """Recent installable SciQLop releases from PyPI, newest first.
+
+    Excludes yanked and prerelease/dev releases: a workspace's
+    ``sciqlop_version`` must be exact-pinnable and reproducible, and neither
+    kind of release satisfies that. Returns an empty list on any
+    network/parsing failure -- callers decide the UI fallback.
+    """
+    req = urllib.request.Request(_PYPI_JSON_URL, headers={"Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read())
+    except Exception as exc:
+        log.debug("Could not fetch PyPI release list: %s", exc)
+        return []
+
+    releases = data.get("releases", {})
+    versions: List[packaging.version.Version] = []
+    for raw, files in releases.items():
+        if not files or all(f.get("yanked", False) for f in files):
+            continue
+        try:
+            parsed = packaging.version.Version(raw)
+        except packaging.version.InvalidVersion:
+            continue
+        if parsed.is_prerelease:
+            continue
+        versions.append(parsed)
+
+    versions.sort(reverse=True)
+    return [str(v) for v in versions[:_MAX_LISTED_VERSIONS]]
+
+
+def validate_core_version(version: str, available: Sequence[str]) -> bool:
+    """True if *version* is safe to write into a workspace manifest.
+
+    Accepts only the empty string (installs from ``git+...@main``, see
+    ``sciqlop_requirement``) or an exact match against *available* -- which
+    must come from ``fetch_available_versions()``, never from unvalidated
+    caller input. This is the real security boundary: the dropdown a user
+    picks from in the UI is not one, since a QWebChannel caller can invoke
+    the backend slot with an arbitrary string, and the value is later
+    interpolated into ``sciqlop_requirement()``'s output.
+    """
+    if version == "":
+        return True
+    return version in available

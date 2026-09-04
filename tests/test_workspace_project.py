@@ -1,11 +1,13 @@
 """Tests for SciQLop.components.workspaces.backend.workspace_project — pyproject.toml generator."""
 
 import importlib.metadata
+import json
 import os
 import re
 import sys
 import tempfile
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -354,3 +356,110 @@ class TestGeneratePyprojectToml:
                 "sys_platform == 'darwin'",
                 "sys_platform == 'win32'",
             }
+
+
+class TestFetchAvailableVersions:
+    MODULE = "SciQLop.components.workspaces.backend.workspace_project"
+
+    def _pypi_response(self, releases):
+        resp = MagicMock()
+        resp.read.return_value = json.dumps({"releases": releases}).encode()
+        resp.__enter__.return_value = resp
+        return resp
+
+    def test_sorts_newest_first(self):
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+
+        releases = {
+            "0.12.0": [{"yanked": False}],
+            "0.13.0": [{"yanked": False}],
+            "0.11.0": [{"yanked": False}],
+        }
+        with patch("urllib.request.urlopen", return_value=self._pypi_response(releases)):
+            assert fetch_available_versions() == ["0.13.0", "0.12.0", "0.11.0"]
+
+    def test_excludes_yanked_releases(self):
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+
+        releases = {
+            "0.13.0": [{"yanked": False}],
+            "0.12.0": [{"yanked": True}],
+        }
+        with patch("urllib.request.urlopen", return_value=self._pypi_response(releases)):
+            assert fetch_available_versions() == ["0.13.0"]
+
+    def test_excludes_prerelease_and_dev_releases(self):
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+
+        releases = {
+            "0.13.0": [{"yanked": False}],
+            "0.13.0rc1": [{"yanked": False}],
+            "0.13.0.dev0": [{"yanked": False}],
+        }
+        with patch("urllib.request.urlopen", return_value=self._pypi_response(releases)):
+            assert fetch_available_versions() == ["0.13.0"]
+
+    def test_excludes_releases_with_no_files(self):
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+
+        releases = {"0.13.0": [{"yanked": False}], "0.12.0": []}
+        with patch("urllib.request.urlopen", return_value=self._pypi_response(releases)):
+            assert fetch_available_versions() == ["0.13.0"]
+
+    def test_caps_to_recent_n(self):
+        from SciQLop.components.workspaces.backend.workspace_project import (
+            _MAX_LISTED_VERSIONS,
+            fetch_available_versions,
+        )
+
+        releases = {f"0.{i}.0": [{"yanked": False}] for i in range(30)}
+        with patch("urllib.request.urlopen", return_value=self._pypi_response(releases)):
+            result = fetch_available_versions()
+            assert len(result) == _MAX_LISTED_VERSIONS
+            assert result[0] == "0.29.0"
+
+    def test_network_failure_returns_empty_list(self):
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+
+        with patch("urllib.request.urlopen", side_effect=OSError("unreachable")):
+            assert fetch_available_versions() == []
+
+    def test_malformed_json_returns_empty_list(self):
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+
+        resp = MagicMock()
+        resp.read.return_value = b"not json"
+        resp.__enter__.return_value = resp
+        with patch("urllib.request.urlopen", return_value=resp):
+            assert fetch_available_versions() == []
+
+
+class TestValidateCoreVersion:
+    def test_empty_string_is_always_valid(self):
+        from SciQLop.components.workspaces.backend.workspace_project import validate_core_version
+
+        assert validate_core_version("", []) is True
+        assert validate_core_version("", ["0.13.0"]) is True
+
+    def test_exact_match_is_valid(self):
+        from SciQLop.components.workspaces.backend.workspace_project import validate_core_version
+
+        assert validate_core_version("0.13.0", ["0.13.0", "0.12.0"]) is True
+
+    def test_version_not_in_list_is_rejected(self):
+        from SciQLop.components.workspaces.backend.workspace_project import validate_core_version
+
+        assert validate_core_version("0.99.0", ["0.13.0"]) is False
+
+    @pytest.mark.parametrize("hostile", [
+        "0.13.0; rm -rf /",
+        "0.13.0 @ https://evil.example/x.whl",
+        "0.13.0\nsciqlop[all] @ git+https://evil.example/repo",
+        "../../etc/passwd",
+        "0.13.0'",
+        "sciqlop[all]==0.13.0",
+    ])
+    def test_hostile_strings_are_rejected(self, hostile):
+        from SciQLop.components.workspaces.backend.workspace_project import validate_core_version
+
+        assert validate_core_version(hostile, ["0.13.0"]) is False
