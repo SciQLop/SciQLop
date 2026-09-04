@@ -413,6 +413,7 @@ class WelcomeBackend(QObject):
         )
         from SciQLop.components.workspaces.backend.workspace_setup import (
             apply_core_version as _apply_core_version,
+            pin_core_version as _pin_core_version,
         )
 
         active_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", "")
@@ -428,7 +429,10 @@ class WelcomeBackend(QObject):
                     }))
                     return
                 try:
-                    _apply_core_version(workspace_dir, version)
+                    if is_active:
+                        _pin_core_version(workspace_dir, version)
+                    else:
+                        _apply_core_version(workspace_dir, version)
                 except Exception as e:
                     log.error(f"Failed to update SciQLop core version: {e}")
                     self.core_update_finished.emit(json.dumps({

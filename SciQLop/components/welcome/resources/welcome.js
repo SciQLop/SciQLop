@@ -597,7 +597,7 @@ function onCoreUpdateFinished(resultJson) {
                 escapeHtml(result.version || "main (development)") + "</strong>";
         }
         status.textContent = result.is_active_workspace
-            ? "Installed — restart SciQLop to apply."
+            ? "Pinned — restart SciQLop to install and apply."
             : "Installed.";
         status.className = "core-version-status core-version-success";
     } else {

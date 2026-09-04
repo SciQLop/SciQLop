@@ -75,7 +75,8 @@ class TestApplyCoreVersionSlot:
         with (
             patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.13.0"]),
             patch(f"{WORKSPACE_PROJECT_MODULE}.validate_core_version", return_value=True),
-            patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version", return_value=tmp_path / "python"),
+            patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version", return_value=tmp_path / "python") as mock_apply,
+            patch(f"{WORKSPACE_SETUP_MODULE}.pin_core_version") as mock_pin,
         ):
             with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
                 backend.apply_core_version(str(tmp_path), "0.13.0")
@@ -83,6 +84,9 @@ class TestApplyCoreVersionSlot:
         assert payload["ok"] is True
         assert payload["dir"] == str(tmp_path)
         assert payload["version"] == "0.13.0"
+        assert payload["is_active_workspace"] is False
+        mock_apply.assert_called_once_with(str(tmp_path), "0.13.0")
+        mock_pin.assert_not_called()
 
     def test_invalid_version_never_calls_apply_and_reports_error(self, qtbot, tmp_path):
         backend = _make_backend()
@@ -111,15 +115,19 @@ class TestApplyCoreVersionSlot:
         assert payload["ok"] is False
         assert "uv sync failed" in payload["error"]
 
-    def test_active_workspace_flag_reflects_env_var(self, qtbot, tmp_path, monkeypatch):
+    def test_active_workspace_calls_pin_not_apply(self, qtbot, tmp_path, monkeypatch):
         monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
         backend = _make_backend()
         with (
             patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.13.0"]),
             patch(f"{WORKSPACE_PROJECT_MODULE}.validate_core_version", return_value=True),
-            patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version", return_value=tmp_path / "python"),
+            patch(f"{WORKSPACE_SETUP_MODULE}.pin_core_version") as mock_pin,
+            patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version") as mock_apply,
         ):
             with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
                 backend.apply_core_version(str(tmp_path), "0.13.0")
         payload = json.loads(blocker.args[0])
         assert payload["is_active_workspace"] is True
+        assert payload["ok"] is True
+        mock_pin.assert_called_once_with(str(tmp_path), "0.13.0")
+        mock_apply.assert_not_called()

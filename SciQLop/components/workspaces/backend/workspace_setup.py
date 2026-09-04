@@ -318,3 +318,28 @@ def apply_core_version(workspace_dir: Path | str, version: str) -> Path:
                 f"in the workspace manifest failed: {exc}"
             ) from exc
     return python_path
+
+
+def pin_core_version(workspace_dir: Path | str, version: str) -> None:
+    """Update *workspace_dir*'s pinned SciQLop version without syncing now.
+
+    For the workspace the running process itself launched from: syncing its
+    venv while the interpreter is using it would rewrite the running
+    process's own site-packages underneath it. This only updates the
+    manifest -- the actual venv sync happens naturally the next time this
+    workspace launches, through the ordinary (non-strict) prepare_workspace()
+    call every startup already makes.
+
+    Raises ``FileNotFoundError`` if *workspace_dir* has no existing
+    manifest, ``WorkspaceLockError`` if another update is already in
+    progress for it.
+    """
+    workspace_dir = Path(workspace_dir)
+    manifest_path = workspace_dir / MANIFEST_FILENAME
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"No workspace manifest at {manifest_path}")
+
+    with workspace_lock(workspace_dir):
+        manifest = WorkspaceManifest.load_or_repair(manifest_path)
+        manifest.sciqlop_version = version
+        manifest.save(manifest_path)

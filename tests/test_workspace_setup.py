@@ -772,3 +772,59 @@ class TestApplyCoreVersion:
 
         with pytest.raises(RuntimeError, match="recording it in the workspace manifest failed"):
             apply_core_version(workspace_dir, "0.13.0")
+
+
+class TestPinCoreVersion:
+    def _make_existing_workspace(self, workspace_dir, sciqlop_version="0.12.0"):
+        workspace_dir.mkdir(parents=True)
+        WorkspaceManifest(name="My Workspace", sciqlop_version=sciqlop_version).save(
+            workspace_dir / "workspace.sciqlop")
+        return workspace_dir
+
+    def test_updates_and_saves_the_manifest(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
+
+        self._make_existing_workspace(workspace_dir)
+        pin_core_version(workspace_dir, "0.13.0")
+
+        reloaded = WorkspaceManifest.load(workspace_dir / "workspace.sciqlop")
+        assert reloaded.sciqlop_version == "0.13.0"
+
+    def test_empty_string_pins_to_main(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
+
+        self._make_existing_workspace(workspace_dir)
+        pin_core_version(workspace_dir, "")
+
+        reloaded = WorkspaceManifest.load(workspace_dir / "workspace.sciqlop")
+        assert reloaded.sciqlop_version == ""
+
+    def test_does_not_sync_the_venv(self, workspace_dir, patches):
+        """The whole point: no uv sync, no pyproject.toml regeneration --
+        only the manifest changes."""
+        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
+
+        self._make_existing_workspace(workspace_dir)
+        pin_core_version(workspace_dir, "0.13.0")
+
+        patches["generate_pyproject_toml"].assert_not_called()
+        patches["venv"].sync.assert_not_called()
+
+    def test_missing_manifest_raises_file_not_found(self, tmp_path, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
+
+        empty_dir = tmp_path / "no_manifest_here"
+        empty_dir.mkdir()
+
+        with pytest.raises(FileNotFoundError):
+            pin_core_version(empty_dir, "0.13.0")
+
+    def test_concurrent_call_for_the_same_workspace_raises_lock_error(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_lock import workspace_lock
+        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
+
+        self._make_existing_workspace(workspace_dir)
+
+        with workspace_lock(workspace_dir):
+            with pytest.raises(WorkspaceLockError):
+                pin_core_version(workspace_dir, "0.13.0")
