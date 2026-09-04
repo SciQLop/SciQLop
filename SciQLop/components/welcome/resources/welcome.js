@@ -51,7 +51,7 @@ function loadHero() {
         }
         hero.classList.remove("hidden");
         var heroImgHtml = ws.image
-            ? '<img class="hero-thumbnail" src="file://' + ws.image + '">'
+            ? '<img class="hero-thumbnail" src="' + escapeHtmlAttr("file://" + ws.image) + '">'
             : '<div class="hero-thumbnail hero-thumbnail-placeholder">\uD83D\uDCC1</div>';
         hero.innerHTML =
             heroImgHtml +
@@ -172,7 +172,7 @@ function loadTemplates() {
             card.className = "card";
             card.dataset.name = t.name.toLowerCase();
             var imgHtml = t.image
-                ? '<img class="card-preview" src="file://' + t.image + '">'
+                ? '<img class="card-preview" src="' + escapeHtmlAttr("file://" + t.image) + '">'
                 : '';
             card.innerHTML = imgHtml +
                 '<div class="card-header">' +
@@ -270,7 +270,7 @@ function showLatestRelease(json_str) {
         container.className = isNewer ? "release-update" : "release-current";
         container.innerHTML = isNewer
             ? '<span class="release-label">\u2B06\uFE0F Update available!</span>' +
-              '<a class="release-link" href="' + escapeAttr(release.url) + '">' +
+              '<a class="release-link" href="' + escapeHtmlAttr(release.url) + '">' +
                   escapeHtml(release.name || release.tag) +
               '</a>' +
               '<span class="release-current-version">Current: ' + escapeHtml(currentVersion) + '</span>'
@@ -309,7 +309,7 @@ function createWorkspaceCard(ws, activeDir) {
 
     let imageHtml;
     if (ws.image) {
-        imageHtml = '<img class="card-image" src="file://' + ws.image + '">';
+        imageHtml = '<img class="card-image" src="' + escapeHtmlAttr("file://" + ws.image) + '">';
     } else {
         imageHtml = '<div class="card-image placeholder">\uD83D\uDCC1</div>';
     }
@@ -349,7 +349,7 @@ function createExampleCard(ex) {
 
     let imageHtml;
     if (ex.image) {
-        imageHtml = '<img class="card-image" src="file://' + ex.image + '">';
+        imageHtml = '<img class="card-image" src="' + escapeHtmlAttr("file://" + ex.image) + '">';
     } else {
         imageHtml = '<div class="card-image placeholder">\uD83D\uDCD6</div>';
     }
@@ -400,7 +400,7 @@ function createFeaturedCard(pkg) {
     var versions = pkg.versions || [];
     var latest = versions.length > 0 ? versions[versions.length - 1] : null;
     var versionStr = latest ? "v" + latest.version : "";
-    var starsStr = pkg.stars != null ? "\u2B50 " + pkg.stars : "";
+    var starsStr = pkg.stars != null ? "\u2B50 " + escapeHtml(pkg.stars) : "";
 
     card.innerHTML =
         '<div class="card-image-wrapper"><div class="card-image placeholder">' + icon + '</div></div>' +
@@ -442,7 +442,7 @@ function showWorkspaceDetails(ws, isActive) {
     const content = document.getElementById("details-content");
 
     var nameHtml = metaEditable
-        ? '<input id="ws-name-input" type="text" value="' + escapeAttr(ws.name) + '">'
+        ? '<input id="ws-name-input" type="text" value="' + escapeHtmlAttr(ws.name) + '">'
         : '<span>' + escapeHtml(ws.name) + '</span>';
 
     var descHtml = metaEditable
@@ -460,11 +460,11 @@ function showWorkspaceDetails(ws, isActive) {
         '<div class="details-section"><label>SciQLop Core</label>' + coreVersionHtml + '</div>' +
         '<div class="details-section"><label>Packages</label>' + pkgHtml + '</div>' +
         '<div class="details-actions">' +
-            (isActive ? '' : '<button class="primary" onclick="tryOpenWorkspace(\'' + escapeAttr(ws.directory) + '\')">Open workspace</button>') +
+            (isActive ? '' : '<button class="primary" onclick="tryOpenWorkspace(\'' + escapeJsStringAttr(ws.directory) + '\')">Open workspace</button>') +
             '<div class="details-actions-row">' +
-                '<button class="secondary" onclick="backend.duplicate_workspace(\'' + escapeAttr(ws.directory) + '\')">Clone</button>' +
+                '<button class="secondary" onclick="backend.duplicate_workspace(\'' + escapeJsStringAttr(ws.directory) + '\')">Clone</button>' +
                 (ws.is_default || isActive ? '' :
-                    '<button class="secondary danger" onclick="confirmDelete(\'' + escapeAttr(ws.directory) + '\', \'' + escapeAttr(ws.name) + '\')">Delete</button>') +
+                    '<button class="secondary danger" onclick="confirmDelete(\'' + escapeJsStringAttr(ws.directory) + '\', \'' + escapeJsStringAttr(ws.name) + '\')">Delete</button>') +
             '</div>' +
         '</div>';
 
@@ -612,8 +612,8 @@ function buildPackageList(ws, isActive, editable) {
     requires.forEach(function(dep) {
         html += '<li><span class="pkg-name">' + escapeHtml(dep) + '</span>';
         if (editable) {
-            html += '<button class="pkg-remove" data-dep="' + escapeAttr(dep) +
-                '" data-dir="' + escapeAttr(ws.directory) + '">&times;</button>';
+            html += '<button class="pkg-remove" data-dep="' + escapeHtmlAttr(dep) +
+                '" data-dir="' + escapeHtmlAttr(ws.directory) + '">&times;</button>';
         }
         html += '</li>';
     });
@@ -679,7 +679,7 @@ function showExampleDetails(ex) {
         (ex.version ? '<div class="details-field"><label>Version</label><span>' + escapeHtml(ex.version) + '</span></div>' : '') +
         statusHtml +
         '<div class="details-actions">' +
-            '<button class="' + buttonClass + '" onclick="openExample(\'' + escapeAttr(ex.directory) + '\')">' + buttonLabel + '</button>' +
+            '<button class="' + buttonClass + '" onclick="openExample(\'' + escapeJsStringAttr(ex.directory) + '\')">' + buttonLabel + '</button>' +
         '</div>';
 
     panel.classList.remove("hidden");
@@ -694,7 +694,7 @@ function showFeaturedDetails(pkg) {
     var versions = pkg.versions || [];
     var latest = versions.length > 0 ? versions[versions.length - 1] : null;
     var versionStr = latest ? latest.version : "\u2014";
-    var starsHtml = pkg.stars != null ? "\u2B50 " + pkg.stars : "\u2014";
+    var starsHtml = pkg.stars != null ? "\u2B50 " + escapeHtml(pkg.stars) : "\u2014";
 
     var tagsHtml = (pkg.tags || []).map(function(t) {
         return '<span class="card-badge">' + escapeHtml(t) + '</span>';
@@ -877,7 +877,7 @@ function showWorkspacePicker(onPicked) {
         listHtml += '<div class="modal-ws-item" data-action="new">' +
             '<span class="ws-name">+ Create new workspace</span></div>';
         workspaces.forEach(function(ws) {
-            listHtml += '<div class="modal-ws-item" data-dir="' + escapeAttr(ws.directory) + '">' +
+            listHtml += '<div class="modal-ws-item" data-dir="' + escapeHtmlAttr(ws.directory) + '">' +
                 '<span class="ws-name">' + escapeHtml(ws.name) + '</span>' +
                 '<span class="ws-sub">' + escapeHtml(ws.last_used) + '</span>' +
                 '</div>';
@@ -963,14 +963,34 @@ function showToast(message, className) {
 
 // --- Utilities ---
 
+// Text-node context: <span>…</span>. Escapes & < > only — NOT quotes
+// (https://html.spec.whatwg.org/multipage/parsing.html#escapingString), so never use bare
+// inside attr="…".
 function escapeHtml(str) {
     var div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
 }
 
-function escapeAttr(str) {
-    return str.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+// Double-quoted HTML attribute value context: attr="…".
+function escapeHtmlAttr(str) {
+    return escapeHtml(str).replace(/"/g, "&quot;");
+}
+
+// Single-quoted JS string literal context: '…'. Only ever used through
+// escapeJsStringAttr — inline handlers are the only place this page embeds JS.
+function escapeJsString(str) {
+    return String(str)
+        .replace(/\\/g, "\\\\")
+        .replace(/'/g, "\\'")
+        .replace(/\r/g, "\\r")
+        .replace(/\n/g, "\\n");
+}
+
+// onclick="fn('…')": JS escaping is the inner layer, attribute escaping the outer one,
+// because the HTML parser decodes the attribute before the JS parser sees the literal.
+function escapeJsStringAttr(str) {
+    return escapeHtmlAttr(escapeJsString(str));
 }
 
 function relativeTime(dateStr) {
