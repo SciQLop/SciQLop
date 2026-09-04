@@ -42,6 +42,7 @@ classifiers = [
 # tests/test_launcher_thin_imports.py enforces that nothing on the launcher's
 # path imports the GUI stack.
 dependencies = [
+    "packaging",
     "platformdirs",
     "pydantic",
     "pyyaml",
