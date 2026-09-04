@@ -12,7 +12,6 @@ Two regressions guarded here:
    real cause (proxy/TLS/auth) is in ``.stderr``; the appstore must surface it
    instead of a bare "Failed", otherwise the failure is undiagnosable.
 """
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -23,7 +22,7 @@ from SciQLop.components.appstore.backend import (
     _uv_uninstall_cmd,
     _write_requirements_file,
 )
-from SciQLop.components.workspaces.backend.uv import error_detail, find_uv
+from SciQLop.components.workspaces.backend.uv import find_uv
 
 
 @pytest.mark.skipif(find_uv() is None, reason="uv binary not available")
