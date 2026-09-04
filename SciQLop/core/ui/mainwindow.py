@@ -138,6 +138,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             QtAds.CDockManager.setConfigFlag(QtAds.CDockManager.FloatingContainerForceQWidgetTitleBar, True)
         self.dock_manager = QtAds.CDockManager(self)
         self.dock_manager.dockAreaCreated.connect(self._on_dock_area_created)
+        self.dock_manager.focusedDockWidgetChanged.connect(self._on_focused_dock_widget_changed)
         self._apply_dock_theme()
         sciqlop_app().theme_changed.connect(self._schedule_dock_theme)
 
@@ -164,6 +165,21 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             container = dock_widget.autoHideDockContainer()
             if container is not None:
                 yield container.autoHideTab()
+
+    def _on_focused_dock_widget_changed(self, old, now):
+        """QtAds' FocusHighlighting tags the docked widget's own inner tab with
+        `focused`, not its side-bar icon — mirror it there so the panel that is
+        "on top" among several simultaneously-open ones gets its own cue."""
+        for dock_widget, is_focused in ((old, False), (now, True)):
+            if dock_widget is None:
+                continue
+            container = dock_widget.autoHideDockContainer()
+            if container is None:
+                continue
+            tab = container.autoHideTab()
+            tab.setProperty("focused", is_focused)
+            tab.style().unpolish(tab)
+            tab.style().polish(tab)
 
     def _setup_menus(self):
         self._menubar = QtWidgets.QMenuBar(self)

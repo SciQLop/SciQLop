@@ -20,6 +20,7 @@ from SciQLop.components.theming.stylesheet import qtads_stylesheet
 
 PALETTES = ["light", "dark", "neutral", "space"]
 ACTIVE_TAB_RULE = r'ads--CAutoHideTab\[iconOnly="true"\]\[activeTab="true"\][^{]*\{([^}]*)\}'
+FOCUSED_TAB_RULE = r'ads--CAutoHideTab\[iconOnly="true"\]\[activeTab="true"\]\[focused="true"\][^{]*\{([^}]*)\}'
 MIN_CONTRAST = 3.0
 
 
@@ -95,4 +96,22 @@ def test_icon_stays_legible_on_the_open_tab(qapp, restore_palette, name):
     assert ratio >= MIN_CONTRAST, (
         f"{name}: icon {icon.name()} on the open tab {active.name()} is "
         f"{ratio:.2f}:1, below {MIN_CONTRAST}:1"
+    )
+
+
+@pytest.mark.parametrize("name", PALETTES)
+def test_focused_open_tab_contour_stands_out_from_its_fill(qapp, restore_palette, name):
+    """Several panels can be open at once (one per side bar edge), all filled
+    with the same highlight — the focused one's contour must still read
+    against that fill, not just against the side bar."""
+    qss = qtads_stylesheet(palette_module.setup_palette(name), name)
+    colors = palette_module.current_palette()
+    active, _side_bar = _active_tab_background(name)
+    body = re.search(FOCUSED_TAB_RULE, qss).group(1)
+    declared = re.search(r"border-color:\s*([^;]+);", body).group(1).strip()
+    contour = _resolve(declared, colors)
+    ratio = _contrast(contour, active)
+    assert ratio >= MIN_CONTRAST, (
+        f"{name}: focused-tab contour {contour.name()} on the open fill "
+        f"{active.name()} is {ratio:.2f}:1, below {MIN_CONTRAST}:1"
     )

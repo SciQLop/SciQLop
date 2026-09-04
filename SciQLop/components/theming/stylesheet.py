@@ -52,6 +52,13 @@ def _icon(palette_name: str, name: str) -> str:
     return f"url({(per_palette_icon_dir(palette_name) / f'{name}.png').as_posix()})"
 
 
+def _contrast(color: str) -> str:
+    """Black or white, whichever contrasts better against `color` — for text or
+    a contour drawn on top of a background whose lightness varies per palette."""
+    from .icons import opposite_color
+    return opposite_color(QtGui.QColor(color)).name()
+
+
 def _prime_env(palette: QtGui.QPalette, palette_name: str) -> None:
     env.globals['sciqlop_list_templates'] = _list_stylesheets
     env.globals['controls_height'] = '2.4ex'
@@ -67,6 +74,7 @@ def _prime_env(palette: QtGui.QPalette, palette_name: str) -> None:
     env.filters['darker'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()
     env.filters['darken'] = lambda color, factor: QtGui.QColor(color).darker(factor).name()
     env.filters['icon'] = partial(_icon, palette_name)
+    env.filters['contrast'] = _contrast
 
 
 def load_stylesheets(palette: QtGui.QPalette, palette_name: str) -> str:

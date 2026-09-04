@@ -267,3 +267,12 @@ ads--CAutoHideTab[iconOnly="true"][activeTab="true"]:hover {
     background: palette(highlight);
     border-color: palette(highlight);
 }
+
+/* Several panels can be open at once (one per side bar edge) — the one that
+   currently holds focus is "on top". QtAds' FocusHighlighting only tags the
+   docked widget's own inner tab with `focused`, not this side-bar icon, so
+   SciQLopMainWindow forwards CDockManager.focusedDockWidgetChanged onto it. */
+ads--CAutoHideTab[iconOnly="true"][activeTab="true"][focused="true"],
+ads--CAutoHideTab[iconOnly="true"][activeTab="true"][focused="true"]:hover {
+    border-color: {{ palette('highlight') | contrast }};
+}
