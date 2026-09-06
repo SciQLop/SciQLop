@@ -1785,11 +1785,13 @@ def test_tree_catalog_icon_is_the_color_swatch(qtbot, qapp):
     """The catalog row's icon is now a colored dot matching color_for_catalog
     -- the same color drawn on the plot overlay -- instead of a generic
     'catalogue' icon that carried no per-catalog information (2026-09-06
-    review: cheapest legend for 'which color is which catalog')."""
+    review: cheapest legend for 'which color is which catalog'). Compares
+    rendered pixels, not cache/object identity: the swatch icon is
+    deliberately uncached (a QIconEngine, not a baked pixmap)."""
     from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
-    from SciQLop.components.catalogs.backend.color_palette import catalog_swatch_icon
-    from PySide6.QtCore import Qt
+    from SciQLop.components.catalogs.backend.color_palette import color_for_catalog
+    from PySide6.QtCore import Qt, QSize
 
     provider = DummyProvider(num_catalogs=1)
     cat = provider.catalogs()[0]
@@ -1801,7 +1803,10 @@ def test_tree_catalog_icon_is_the_color_swatch(qtbot, qapp):
         if node.provider is provider:
             cat_idx = model.index(0, 0, idx)
             icon = model.data(cat_idx, Qt.ItemDataRole.DecorationRole)
-            assert icon.cacheKey() == catalog_swatch_icon(cat.uuid).cacheKey()
+            center = icon.pixmap(QSize(16, 16)).toImage().pixelColor(8, 8)
+            expected = color_for_catalog(cat.uuid)
+            assert (center.red(), center.green(), center.blue()) == \
+                   (expected.red(), expected.green(), expected.blue())
             return
     pytest.fail("Provider node not found")
 

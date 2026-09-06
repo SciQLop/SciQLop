@@ -1,8 +1,8 @@
 from functools import lru_cache
 from hashlib import md5
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
+from PySide6.QtCore import QRect, Qt
+from PySide6.QtGui import QColor, QIcon, QIconEngine, QPainter
 
 # 12 distinguishable colors with 80 alpha for span fill
 _PALETTE = [
@@ -28,10 +28,33 @@ def color_for_catalog(uuid: str) -> QColor:
     return QColor(_PALETTE[index])
 
 
-_SWATCH_SIZE = 14
+class _CatalogSwatchIconEngine(QIconEngine):
+    """Paints a filled dot in a catalog's color, at the painter's device
+    resolution -- like theming/icons.py's _ThemeIconEngine, rendering
+    on demand keeps this crisp at any DPI without baking a fixed-size
+    pixmap (and needs no cache: the engine itself holds only a QColor)."""
+
+    def __init__(self, color: QColor):
+        super().__init__()
+        self._color = color
+
+    def paint(self, painter: QPainter, rect: QRect, mode, state):
+        # No custom pixmap()/scaledPixmap(): QIconEngine's default pixmap()
+        # already builds a proper ARGB32_Premultiplied buffer and calls
+        # paint() on it -- exactly the DPR-safe pattern
+        # theming/icons.py's _transparent_argb exists to guarantee by hand.
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(self._color)
+        margin = max(1, min(rect.width(), rect.height()) // 12)
+        painter.drawEllipse(rect.adjusted(margin, margin, -margin, -margin))
+        painter.restore()
+
+    def clone(self) -> QIconEngine:
+        return _CatalogSwatchIconEngine(self._color)
 
 
-@lru_cache(maxsize=None)
 def catalog_swatch_icon(uuid: str) -> QIcon:
     """A small filled dot in this catalog's color, for the tree row --
     cheap legend so 'which color is which catalog' is answerable without
@@ -39,12 +62,4 @@ def catalog_swatch_icon(uuid: str) -> QIcon:
     before this)."""
     color = QColor(color_for_catalog(uuid))
     color.setAlpha(255)
-    pixmap = QPixmap(_SWATCH_SIZE, _SWATCH_SIZE)
-    pixmap.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.setBrush(color)
-    painter.drawEllipse(1, 1, _SWATCH_SIZE - 2, _SWATCH_SIZE - 2)
-    painter.end()
-    return QIcon(pixmap)
+    return QIcon(_CatalogSwatchIconEngine(color))

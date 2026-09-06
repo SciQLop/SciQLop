@@ -49,8 +49,49 @@ def test_catalog_swatch_icon_is_not_null(qapp):
     assert not icon.isNull()
 
 
-def test_catalog_swatch_icon_is_consistent(qapp):
+def test_catalog_swatch_icon_renders_the_catalog_color(qapp):
+    """Rendered pixels, not object/cache identity: the swatch is a QIconEngine
+    (deliberately uncached, see color_palette.py) so two calls for the same
+    uuid are different QIcon instances by design -- what must be identical
+    is what they actually paint."""
+    from PySide6.QtCore import QSize
+    from SciQLop.components.catalogs.backend.color_palette import (
+        catalog_swatch_icon, color_for_catalog,
+    )
+
+    uuid = "uuid-swatch-2"
+    icon = catalog_swatch_icon(uuid)
+    pixmap = icon.pixmap(QSize(16, 16))
+    center = pixmap.toImage().pixelColor(8, 8)
+
+    expected = color_for_catalog(uuid)
+    assert (center.red(), center.green(), center.blue()) == (expected.red(), expected.green(), expected.blue())
+    assert center.alpha() == 255  # opaque swatch, unlike the plot overlay's alpha-80 fill
+
+
+def test_catalog_swatch_icon_is_high_dpi_aware(qapp):
+    """Rendering through paint() (no baked fixed-size pixmap) means the
+    engine draws at whatever device resolution is requested -- a 2x request
+    must not just look like the 1x pixmap stretched."""
+    from PySide6.QtCore import QSize
     from SciQLop.components.catalogs.backend.color_palette import catalog_swatch_icon
-    a = catalog_swatch_icon("uuid-swatch-2")
-    b = catalog_swatch_icon("uuid-swatch-2")
-    assert a.cacheKey() == b.cacheKey()
+
+    icon = catalog_swatch_icon("uuid-swatch-dpi")
+    small = icon.pixmap(QSize(16, 16))
+    large = icon.pixmap(QSize(32, 32))
+    assert small.size() == QSize(16, 16)
+    assert large.size() == QSize(32, 32)
+    # A stretched 16px pixmap would have a visibly larger relative margin;
+    # the 2x render's opaque disc should cover materially more than 4x the
+    # opaque pixel count of the 1x render only if it was drawn fresh at
+    # that resolution rather than upscaled from a fixed small pixmap.
+    def opaque_pixels(pm):
+        img = pm.toImage()
+        return sum(
+            1 for y in range(img.height()) for x in range(img.width())
+            if img.pixelColor(x, y).alpha() > 0
+        )
+    small_opaque = opaque_pixels(small)
+    large_opaque = opaque_pixels(large)
+    ratio = large_opaque / small_opaque
+    assert 3.5 <= ratio <= 4.5, f"expected ~4x opaque pixels at 2x size, got {ratio:.2f}x"
