@@ -715,8 +715,14 @@ class CatalogTreeModel(QAbstractItemModel):
         cross_provider = source_provider is not target_node.provider
         if cross_provider:
             drop_action = "duplicate"
+        elif action in self._DROP_ACTION_NAMES:
+            drop_action = self._DROP_ACTION_NAMES[action]
         else:
-            drop_action = self._DROP_ACTION_NAMES.get(action, "link")
+            # dropMimeData is a public model entry point: an unrecognized or
+            # composite action (not a single concrete Link/Move/Copy) must
+            # fail closed, not default to "link" -- a mutating operation.
+            log.warning("Event drop with unrecognized action %r ignored", action)
+            return False
 
         try:
             target_node.provider.handle_event_drop(

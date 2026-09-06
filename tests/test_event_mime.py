@@ -80,9 +80,15 @@ def test_event_table_drag_also_carries_a_time_range(qtbot, qapp):
 
     md = model.mimeData([model.index(0, 0), model.index(1, 0)])
     assert md.hasFormat(TIME_RANGE_MIME_TYPE)
+    assert md.hasFormat(EVENT_LIST_MIME_TYPE)
     decoded = decode_mime(md)
     assert decoded.start() == e1.start.timestamp()
     assert decoded.stop() == e2.stop.timestamp()
+
+    from SciQLop.components.catalogs.backend.event_mime import decode_event_list
+    event_payload = decode_event_list(md)
+    assert set(event_payload.event_uuids) == {"e1", "e2"}
+    assert TIME_RANGE_MIME_TYPE in model.mimeTypes()
 
 
 def _ev_at(uuid, start, stop) -> CatalogEvent:

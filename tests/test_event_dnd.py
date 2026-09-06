@@ -224,3 +224,23 @@ def test_catalog_tree_declares_link_as_a_supported_drop_action(qapp):
     assert actions & Qt.DropAction.LinkAction
     assert actions & Qt.DropAction.MoveAction
     assert actions & Qt.DropAction.CopyAction
+
+
+def test_dropmime_dispatch_rejects_unrecognized_action(tree_with_two_catalogs):
+    """opencode review: dropMimeData is a public model entry point: a
+    composite/unexpected action value must not silently fall back to
+    'link' (a mutating, destination-altering operation) -- it must fail
+    closed, matching how IgnoreAction is already handled."""
+    from PySide6.QtCore import Qt
+    from SciQLop.components.catalogs.backend.event_mime import encode_event_list
+
+    model, provider, src, dst, ev = tree_with_two_catalogs
+    md = encode_event_list(provider.name, src.uuid, [ev])
+    target_idx = _find_catalog_index(model, provider, dst)
+    assert target_idx.isValid()
+
+    composite = Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
+    model.dropMimeData(md, composite, -1, -1, target_idx)
+
+    assert any(x.uuid == "u-dispatcher" for x in provider.events(src))
+    assert not any(x.uuid == "u-dispatcher" for x in provider.events(dst))

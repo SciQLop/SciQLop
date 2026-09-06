@@ -174,8 +174,8 @@ class EventTableModel(QAbstractTableModel):
         return base
 
     def mimeTypes(self):
-        from SciQLop.core.mime.types import EVENT_LIST_MIME_TYPE
-        return [EVENT_LIST_MIME_TYPE]
+        from SciQLop.core.mime.types import EVENT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE
+        return [EVENT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE]
 
     def supportedDragActions(self) -> Qt.DropAction:
         # Default is CopyAction only, which would cap the tree's DnD

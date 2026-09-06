@@ -1016,6 +1016,8 @@ class TimeRangeDnDCallback(PlotDragNDropCallback):
 
     def call(self, plot, mime_data: QMimeData):
         time_range = decode_mime(mime_data)
+        if time_range is None:
+            return
         plot.time_axis().set_range(time_range)
 
 
