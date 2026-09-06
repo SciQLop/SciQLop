@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QPushButton, QMainWindow
+from PySide6.QtWidgets import QPushButton, QMainWindow, QLabel
 from PySide6.QtCore import Qt
 
 
@@ -227,6 +227,101 @@ def test_bubble_grows_tall_enough_to_fit_wrapped_body_text(qtbot):
     assert mark._body_label.height() >= needed, (
         f"body label clipped: rendered height={mark._body_label.height()}, "
         f"needed={needed}")
+
+
+def test_bubble_reserves_descent_slack_below_the_wrapped_body_text(qtbot):
+    """Real report: the body text was still "cropped a bit" after the
+    heightForWidth() fix (8b510cf2) sized the label to its exact computed
+    height, with zero slack. Verified empirically that this exact-fit sizing
+    leaves 1px of slack at scale 1.0 but exactly ZERO slack at fractional DPI
+    scale factors (1.25x/1.5x/2x) -- one more pixel of real-display
+    font-hinting rounding then shaves off descenders (g/y/p/q/j). The label
+    must be given its own descent worth of headroom beyond heightForWidth,
+    not just a taller bubble (a box layout with no expanding item is free to
+    put surplus bubble height anywhere in the column, not necessarily on
+    this label)."""
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    host = QMainWindow()
+    host.resize(1820, 1068)
+    target = QPushButton("target", host)
+    target.setGeometry(42, 56, 1778, 946)
+    qtbot.addWidget(host)
+    host.show()
+
+    mark = CoachMark(host)
+    qtbot.addWidget(mark)
+    body = ("Adding more data: drop a product in the middle of a graph to "
+            "overlay it there, or near its top/bottom edge (watch for the "
+            "blue highlight) to stack it as a new plot in this panel.")
+    mark.show_for(target, "Adding more data", body)
+
+    margins = mark._bubble.layout().contentsMargins()
+    body_width = mark._bubble.width() - margins.left() - margins.right()
+    # QLabel.heightForWidth() is not a pure function of text+width -- it
+    # clamps to the label's OWN current minimumHeight (which _reposition_bubble
+    # sets to exactly the value under test), so measuring the "natural" need
+    # off mark._body_label itself would be circular. An independent label
+    # with the same font/wrap settings gives an uncontaminated reading.
+    reference = QLabel()
+    reference.setWordWrap(True)
+    reference.setFont(mark._body_label.font())
+    reference.setText(body)
+    needed = reference.heightForWidth(body_width)
+    descent = reference.fontMetrics().descent()
+    assert mark._body_label.height() >= needed + descent, (
+        f"no descent slack reserved: rendered height={mark._body_label.height()}, "
+        f"needed={needed}, descent={descent}")
+
+
+def test_descent_slack_does_not_carry_over_from_a_previous_taller_step(qtbot):
+    """Regression for a bug in the descent-slack fix itself: QLabel.heightForWidth()
+    clamps to the label's own current minimumHeight (see the test above), and a
+    CoachMark instance is reused across every step of a tour (TourController calls
+    show_for() repeatedly on the same instance). Setting the body label's
+    minimumHeight for a long step and never resetting it would make a later,
+    much shorter step inherit that stale, oversized minimum instead of shrinking
+    to fit its own short text."""
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    host = QMainWindow()
+    host.resize(1820, 1068)
+    target = QPushButton("target", host)
+    target.setGeometry(42, 56, 1778, 946)
+    qtbot.addWidget(host)
+    host.show()
+
+    mark = CoachMark(host)
+    qtbot.addWidget(mark)
+    long_body = ("The quickest way to label an interval: switch this panel to "
+                 "'Edit' mode (bottom toolbar, or right-click → Catalogs → "
+                 "Mode), then hold Shift, click to start, and click again to "
+                 "finish drawing a new event on the overlaid catalog.")
+    mark.show_for(target, "Label a time interval", long_body)
+    tall_height = mark._body_label.height()
+
+    mark.show_for(target, "Short", "Short tip.")
+
+    assert mark._body_label.height() < tall_height
+
+
+def test_bubble_background_uses_a_distinct_palette_role_from_the_window(qtbot):
+    """Real report: even with the high-contrast border (see the test above),
+    the bubble's background matched ordinary window chrome (palette(window)),
+    so it still blended into whatever sat behind or beside it. palette(tooltip-base)
+    is a QPalette role purpose-built for overlay callouts and reads as
+    visibly different from every other panel/toolbar in the window, in both
+    themes, with no hardcoded color."""
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    host = QMainWindow()
+    qtbot.addWidget(host)
+
+    mark = CoachMark(host)
+    qtbot.addWidget(mark)
+
+    style = mark._bubble.styleSheet()
+    assert "palette(tooltip-base)" in style
 
 
 def test_esc_emits_skip_requested(qtbot):

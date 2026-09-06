@@ -55,21 +55,25 @@ class CoachMark(QWidget):
         layout.addWidget(self._title_label)
         layout.addWidget(self._body_label)
         layout.addLayout(buttons)
-        # The bubble's own background (palette(window)) can be close in
-        # tone to whatever sits behind or beside it, and the dimmed
-        # overlay's highlight ring is drawn around the TARGET's cutout,
-        # not the bubble -- an explicit border gives the bubble its own
-        # boundary. Scoped to "#CoachMarkBubble" (its object name), not a
-        # bare property list: an unscoped rule is an implicit universal
-        # selector in Qt's style-sheet cascade, so it paints the same box
-        # around every plain-QWidget child too (title, body, buttons) --
-        # confirmed by rendering to a QImage before adding the selector.
-        # palette(highlight) (the same accent the target's spotlight ring
-        # uses) reads reliably in both themes; palette(mid) was too close
-        # to the background to actually stand out.
+        # The bubble sits beside/over ordinary application chrome that
+        # also uses palette(window) -- a matching background made it blend
+        # into whatever's behind or beside it, so the highlight border was
+        # doing all the contrast work alone. palette(tooltip-base) is a
+        # distinct QPalette role purpose-built for exactly this kind of
+        # overlay callout, themes correctly in light/dark without a
+        # hardcoded color, and reads as visibly different from every other
+        # panel/toolbar in the window. Scoped to "#CoachMarkBubble" (its
+        # object name), not a bare property list: an unscoped rule is an
+        # implicit universal selector in Qt's style-sheet cascade, so it
+        # paints the same box around every plain-QWidget child too (title,
+        # body, buttons) -- confirmed by rendering to a QImage before
+        # adding the selector. palette(highlight) (the same accent the
+        # target's spotlight ring uses) reads reliably in both themes;
+        # palette(mid) was too close to the background to actually stand
+        # out.
         self._bubble.setObjectName("CoachMarkBubble")
         self._bubble.setStyleSheet(
-            "#CoachMarkBubble { background-color: palette(window); "
+            "#CoachMarkBubble { background-color: palette(tooltip-base); "
             "border: 2px solid palette(highlight); border-radius: 6px; }")
         # Metrics.em() DPI/font-scales this width -- a hardcoded pixel
         # value here would stay a fixed size while the rest of the app's
@@ -166,6 +170,28 @@ class CoachMark(QWidget):
         # bubble is actually constrained to, which is the number that
         # matters here.
         bubble_width = self._bubble.width()
+        # heightForWidth() leaves shrinking slack for the wrapped body
+        # label's last line at scale 1.0, but that slack shrinks to exactly
+        # zero pixels at fractional DPI scale factors (1.25x/1.5x/2x,
+        # verified empirically) -- one more pixel of rounding on a real,
+        # scaled display then shaves off descenders (g/y/p/q/j), which is
+        # what "text is cropped a bit" looks like. Reserving the font's own
+        # descent as a minimum height on the label itself (not just on the
+        # bubble as a whole) is what actually protects it: a taller bubble
+        # alone doesn't guarantee the label gets the extra space, since a
+        # box layout with no expanding item is free to leave surplus space
+        # anywhere in the column, not necessarily on this item.
+        margins = self._bubble.layout().contentsMargins()
+        body_width = bubble_width - margins.left() - margins.right()
+        # QLabel.heightForWidth() is not a pure function of text+width -- it
+        # clamps to the label's OWN current minimumHeight (verified
+        # empirically), which is exactly the value this method sets below.
+        # Reset it first so a step with short text doesn't inherit a
+        # previous, taller step's minimum on this same, reused CoachMark.
+        self._body_label.setMinimumHeight(0)
+        body_needed = (self._body_label.heightForWidth(body_width)
+                        + self._body_label.fontMetrics().descent())
+        self._body_label.setMinimumHeight(body_needed)
         self._bubble.resize(bubble_width, self._bubble.layout().heightForWidth(bubble_width))
         rect = self._target_rect()
         if rect is not None:
