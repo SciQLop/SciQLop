@@ -273,8 +273,24 @@ class EventTableModel(QAbstractTableModel):
 
 
 class EventSortProxy(QSortFilterProxyModel):
-    """Sorts by numeric timestamps for start/stop columns."""
+    """Sorts by numeric timestamps for start/stop columns, and filters by a
+    case-insensitive substring against every column (not just one -- the
+    default QSortFilterProxyModel filterKeyColumn), so a catalog with many
+    meta columns can be searched without knowing which column has the
+    match."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setSortRole(EventTableModel.SortRole)
+
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
+        pattern = self.filterRegularExpression().pattern()
+        if not pattern:
+            return True
+        model = self.sourceModel()
+        pattern_lower = pattern.lower()
+        for col in range(model.columnCount()):
+            text = model.data(model.index(source_row, col, source_parent), Qt.ItemDataRole.DisplayRole)
+            if text and pattern_lower in str(text).lower():
+                return True
+        return False

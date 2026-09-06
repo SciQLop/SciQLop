@@ -85,6 +85,48 @@ def test_delete_action_trigger_confirms_before_bulk_delete(qtbot, qapp, monkeypa
     assert len(provider.events(cat)) == initial - 2
 
 
+def test_event_table_context_menu_offers_open_link_for_a_url_cell(qtbot, qapp):
+    """No metadata value in SciQLop's catalog event table was ever
+    clickable (2026-09-06 review) -- a right-click "Open Link" action on a
+    URL-looking cell is the mechanism least likely to conflict with
+    editing (unlike double-click, which already opens the cell editor)."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from datetime import datetime, timezone
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=0, name="UrlLinkProv")
+    cat = provider.catalogs()[0]
+    event = CatalogEvent(
+        uuid="u1",
+        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+        meta={"reference": "https://example.org/report", "note": "not a link"},
+    )
+    provider.add_event(cat, event)
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    browser._current_provider = provider
+    browser._current_catalog = cat
+    browser._event_model.set_context(provider, cat)
+    browser._event_model.set_events(provider.events(cat))
+
+    ref_col = len(browser._event_model._FIXED_COLUMNS) + browser._event_model._meta_keys.index("reference")
+    note_col = len(browser._event_model._FIXED_COLUMNS) + browser._event_model._meta_keys.index("note")
+
+    url_menu = browser._build_event_context_menu(url="https://example.org/report")
+    assert any(a.text() == "Open Link" for a in url_menu.actions())
+
+    no_url_menu = browser._build_event_context_menu(url=None)
+    assert not any(a.text() == "Open Link" for a in no_url_menu.actions())
+
+    ref_proxy_idx = browser._sort_proxy.mapFromSource(browser._event_model.index(0, ref_col))
+    note_proxy_idx = browser._sort_proxy.mapFromSource(browser._event_model.index(0, note_col))
+    assert browser._url_at(ref_proxy_idx) == "https://example.org/report"
+    assert browser._url_at(note_proxy_idx) is None
+
+
 def test_event_table_context_menu_has_delete_and_add_attribute(qtbot, qapp):
     from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
 

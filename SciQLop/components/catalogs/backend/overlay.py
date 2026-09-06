@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from html import escape
+
 from PySide6.QtCore import QObject, Signal, Qt, QTimer
 from datetime import datetime, timezone
 
@@ -18,11 +20,11 @@ log = getLogger(__name__)
 
 def _format_tooltip(event: CatalogEvent, catalog_name: str) -> str:
     lines = [
-        f"<b>{catalog_name}</b>",
+        f"<b>{escape(catalog_name)}</b>",
         f"{event.start.strftime('%Y-%m-%d %H:%M:%S')} — {event.stop.strftime('%Y-%m-%d %H:%M:%S')}",
     ]
     for key, value in event.meta.items():
-        lines.append(f"<b>{key}:</b> {value}")
+        lines.append(f"<b>{escape(str(key))}:</b> {escape(str(value))}")
     return "<br>".join(lines)
 
 

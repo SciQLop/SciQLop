@@ -3,6 +3,29 @@ import pytest
 from datetime import datetime, timezone, timedelta
 
 
+def test_format_tooltip_escapes_meta_values(qapp):
+    """Meta values (and the catalog name) go straight into an HTML tooltip
+    string -- a value containing '&' or '<' must not corrupt the markup or
+    be interpreted as a tag (2026-09-06 review)."""
+    from SciQLop.components.catalogs.backend.overlay import _format_tooltip
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+
+    event = CatalogEvent(
+        uuid="u1",
+        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+        meta={"note": "Q&A <important>", "<injected>": "x"},
+    )
+    html = _format_tooltip(event, "R&D <catalog>")
+
+    assert "<important>" not in html
+    assert "&lt;important&gt;" in html
+    assert "R&D" not in html or "R&amp;D" in html
+    assert "&amp;D" in html
+    assert "<injected>" not in html
+    assert "&lt;injected&gt;" in html
+
+
 def test_overlay_creates_spans(qtbot, qapp):
     from SciQLop.components.catalogs.backend.overlay import CatalogOverlay
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider

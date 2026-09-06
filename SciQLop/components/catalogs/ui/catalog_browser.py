@@ -155,6 +155,7 @@ class CatalogBrowser(QWidget):
         # --- filter bar ---
         self._filter_bar = QLineEdit()
         self._filter_bar.setPlaceholderText("Filter catalogs...")
+        self._filter_bar.setClearButtonEnabled(True)
 
         # --- tree view (left) ---
         self._tree_model = CatalogTreeModel()
@@ -260,10 +261,16 @@ class CatalogBrowser(QWidget):
         self._event_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._event_table.customContextMenuRequested.connect(self._on_event_table_context_menu)
 
+        self._event_filter_bar = QLineEdit()
+        self._event_filter_bar.setPlaceholderText("Filter events...")
+        self._event_filter_bar.setClearButtonEnabled(True)
+        self._event_filter_bar.textChanged.connect(self._sort_proxy.setFilterFixedString)
+
         event_panel = QWidget()
         event_layout = QVBoxLayout(event_panel)
         event_layout.setContentsMargins(0, 0, 0, 0)
         event_layout.addWidget(self._event_toolbar)
+        event_layout.addWidget(self._event_filter_bar)
         event_layout.addWidget(self._event_table, 1)
 
         # --- splitter ---
@@ -311,6 +318,8 @@ class CatalogBrowser(QWidget):
         self._proxy_model.setFilterFixedString(text)
         if text:
             self._catalog_tree.expandAll()
+        else:
+            self._catalog_tree.collapseAll()
 
     def _on_tree_double_clicked(self, proxy_index: QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(proxy_index)
@@ -326,6 +335,7 @@ class CatalogBrowser(QWidget):
             return
         if node.catalog is not None and node.catalog is self._current_catalog:
             return
+        self._event_filter_bar.clear()
         # Disconnect from previously connected provider
         if self._events_changed_provider is not None:
             try:
@@ -754,8 +764,23 @@ class CatalogBrowser(QWidget):
             return
         self._event_model.set_events(events_after)
 
-    def _build_event_context_menu(self) -> QMenu:
+    def _url_at(self, proxy_index) -> str | None:
+        """The cell's display text, if it looks like a clickable URL."""
+        if not proxy_index.isValid():
+            return None
+        text = self._sort_proxy.data(proxy_index, Qt.ItemDataRole.DisplayRole)
+        if isinstance(text, str) and text.strip().startswith(("http://", "https://")):
+            return text.strip()
+        return None
+
+    def _build_event_context_menu(self, url: str | None = None) -> QMenu:
         menu = QMenu(self)
+        if url is not None:
+            from PySide6.QtGui import QDesktopServices
+            from PySide6.QtCore import QUrl
+            open_action = menu.addAction("Open Link")
+            open_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
+            menu.addSeparator()
         if self._delete_action.isVisible():
             menu.addAction(self._delete_action)
         if self._add_attr_action.isVisible():
@@ -767,7 +792,8 @@ class CatalogBrowser(QWidget):
         return menu
 
     def _on_event_table_context_menu(self, pos) -> None:
-        menu = self._build_event_context_menu()
+        url = self._url_at(self._event_table.indexAt(pos))
+        menu = self._build_event_context_menu(url)
         if menu.isEmpty():
             return
         menu.exec(self._event_table.viewport().mapToGlobal(pos))

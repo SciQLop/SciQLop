@@ -616,6 +616,50 @@ def test_catalog_browser_has_filter_bar(qtbot, qapp):
     assert isinstance(browser._filter_bar, QLineEdit)
 
 
+def test_catalog_filter_bar_has_clear_button(qtbot, qapp):
+    """Every other filter/search box in the app has this (setting_panel.py,
+    product_search_overlay.py, session_panel.py) -- the catalog tree's was
+    the odd one out (2026-09-06 review)."""
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    assert browser._filter_bar.isClearButtonEnabled()
+
+
+def test_catalog_filter_collapses_tree_when_cleared(qtbot, qapp):
+    """_on_filter_changed expandAll()'d on every keystroke but never
+    collapsed back when the filter was cleared -- after one search the
+    whole tree stayed expanded forever (2026-09-06 review)."""
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtCore import QModelIndex
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=0,
+                              paths=[["folder"]], name="CollapseFilterProv")
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+
+    def _provider_proxy_idx():
+        model = browser._tree_model
+        for row in range(model.rowCount(QModelIndex())):
+            idx = model.index(row, 0, QModelIndex())
+            if model.node_from_index(idx).provider is provider:
+                return browser._proxy_model.mapFromSource(idx)
+        raise AssertionError("provider node not found")
+
+    prov_idx = _provider_proxy_idx()
+    assert not browser._catalog_tree.isExpanded(prov_idx)
+
+    browser._filter_bar.setText("folder")
+    prov_idx = _provider_proxy_idx()
+    assert browser._catalog_tree.isExpanded(prov_idx)
+
+    browser._filter_bar.setText("")
+    prov_idx = _provider_proxy_idx()
+    assert not browser._catalog_tree.isExpanded(prov_idx)
+
+
 def test_catalog_browser_has_splitter(qtbot, qapp):
     from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
     from PySide6.QtWidgets import QSplitter
