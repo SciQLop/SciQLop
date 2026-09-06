@@ -565,10 +565,19 @@ class CatalogBrowser(QWidget):
             self._columns_action.setVisible(False)
             self._add_attr_action.setVisible(False)
             return
+        self._columns_action.setVisible(self._event_model.columnCount() > 0)
+        if self._current_catalog is None:
+            # These are catalog-scoped operations. Without a target catalog
+            # (e.g. a provider/folder node is selected) they'd stay visible
+            # yet inert -- including in the table's right-click menu, which
+            # would offer Delete/+Attribute over an empty table.
+            self._add_event_action.setVisible(False)
+            self._delete_action.setVisible(False)
+            self._add_attr_action.setVisible(False)
+            return
 
         caps = self._current_provider.capabilities(self._current_catalog)
         self._add_event_action.setVisible(Capability.CREATE_EVENTS in caps)
-        self._columns_action.setVisible(self._event_model.columnCount() > 0)
         self._delete_action.setVisible(Capability.DELETE_EVENTS in caps)
         self._add_attr_action.setVisible(Capability.EDIT_EVENTS in caps)
 
@@ -770,7 +779,7 @@ class CatalogBrowser(QWidget):
 
         # Provider-level actions (provider node = parent is root)
         if node.parent is self._tree_model._root:
-            for action in node.provider.actions(None):
+            for action in node.provider.actions(None) or ():
                 a = menu.addAction(action.name)
                 if action.icon is not None:
                     a.setIcon(action.icon)
@@ -780,7 +789,7 @@ class CatalogBrowser(QWidget):
         # per-catalog custom operations; the tree is the single surface for
         # every provider action, provider- or catalog-level)
         if node.catalog is not None:
-            for action in node.provider.actions(node.catalog):
+            for action in node.provider.actions(node.catalog) or ():
                 a = menu.addAction(action.name)
                 if action.icon is not None:
                     a.setIcon(action.icon)

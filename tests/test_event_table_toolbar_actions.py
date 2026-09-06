@@ -152,6 +152,46 @@ def test_actions_toolbutton_removed_in_favor_of_tree_context_menu(qtbot, qapp):
     assert not hasattr(browser, "_actions_menu")
 
 
+def test_event_actions_hidden_when_selection_moves_off_the_catalog(qtbot, qapp):
+    """opencode review finding #2: _update_toolbar only ever checked
+    _current_provider is None, so switching from a catalog to its provider
+    (or a folder) node left Delete/+Attribute/Add-Event visible -- and now
+    that those same actions drive the table's right-click menu, an empty
+    table would offer inert Delete/+Attribute entries."""
+    from PySide6.QtCore import QModelIndex
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=1, name="ToggleProv")
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+
+    model = browser._tree_model
+    prov_source_idx = None
+    for row in range(model.rowCount(QModelIndex())):
+        idx = model.index(row, 0, QModelIndex())
+        if model.node_from_index(idx).provider is provider:
+            prov_source_idx = idx
+            break
+    assert prov_source_idx is not None
+    cat_source_idx = model.index(0, 0, prov_source_idx)
+
+    browser._catalog_tree.setCurrentIndex(browser._proxy_model.mapFromSource(cat_source_idx))
+    assert browser._delete_action.isVisible()
+    assert browser._add_attr_action.isVisible()
+
+    browser._catalog_tree.setCurrentIndex(browser._proxy_model.mapFromSource(prov_source_idx))
+    assert browser._current_catalog is None
+    assert not browser._add_event_action.isVisible()
+    assert not browser._delete_action.isVisible()
+    assert not browser._add_attr_action.isVisible()
+
+    menu = browser._build_event_context_menu()
+    texts = [a.text() for a in menu.actions()]
+    assert "Delete" not in texts
+    assert "+ Attribute" not in texts
+
+
 def test_tree_context_menu_shows_catalog_scoped_actions(qtbot, qapp):
     from PySide6.QtCore import QModelIndex
     from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
@@ -182,3 +222,32 @@ def test_tree_context_menu_shows_catalog_scoped_actions(qtbot, qapp):
     menu = browser._build_tree_context_menu(proxy_index)
     texts = [a.text() for a in menu.actions()]
     assert "Frobnicate" in texts
+
+
+def test_tree_context_menu_tolerates_actions_returning_none(qtbot, qapp):
+    """opencode review finding #1: actions() is a provider extension point
+    with no runtime-enforced contract; a provider returning None instead of
+    [] (for either the provider-level or the catalog-scoped call) must not
+    crash menu building."""
+    from PySide6.QtCore import QModelIndex
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    class _NoneActions(DummyProvider):
+        def actions(self, catalog=None):
+            return None
+
+    provider = _NoneActions(num_catalogs=1, events_per_catalog=0, name="NoneActionsProv")
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+
+    model = browser._tree_model
+    prov_node = model._provider_node(provider)
+    prov_index = model.createIndex(prov_node.row(), 0, prov_node)
+    prov_proxy = browser._proxy_model.mapFromSource(prov_index)
+    browser._build_tree_context_menu(prov_proxy)  # must not raise
+
+    cat_node = next(c for c in prov_node.children if c.catalog is not None)
+    cat_index = model.createIndex(cat_node.row(), 0, cat_node)
+    cat_proxy = browser._proxy_model.mapFromSource(cat_index)
+    browser._build_tree_context_menu(cat_proxy)  # must not raise
