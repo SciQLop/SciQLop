@@ -14,7 +14,9 @@ def _make_mode_combo(parent):
         w.addItem(label, userData=value)
     w.setToolTip(rich_tooltip(
         "Catalog interaction mode",
-        "How clicks on this panel interact with catalog events."))
+        "View: click an event to select it. Jump: click an event to "
+        "center the panel on it. Edit: hold Shift and click to start a "
+        "new event, move, then click again to finish (Esc cancels)."))
     fit_combo_to_content(w)
     return w
 

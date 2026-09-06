@@ -41,3 +41,16 @@ def test_different_uuids_can_differ(qapp):
     colors = {color_for_catalog(f"uuid-{i}").name() for i in range(12)}
     # at least several distinct colors from 12 different UUIDs
     assert len(colors) >= 6
+
+
+def test_catalog_swatch_icon_is_not_null(qapp):
+    from SciQLop.components.catalogs.backend.color_palette import catalog_swatch_icon
+    icon = catalog_swatch_icon("uuid-swatch-1")
+    assert not icon.isNull()
+
+
+def test_catalog_swatch_icon_is_consistent(qapp):
+    from SciQLop.components.catalogs.backend.color_palette import catalog_swatch_icon
+    a = catalog_swatch_icon("uuid-swatch-2")
+    b = catalog_swatch_icon("uuid-swatch-2")
+    assert a.cacheKey() == b.cacheKey()

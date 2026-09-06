@@ -66,3 +66,14 @@ def test_target_changed_signal(chrome, qtbot):
     with qtbot.waitSignal(chrome.target_changed, timeout=1000) as blocker:
         chrome._target_combo.setCurrentIndex(1)
     assert blocker.args == ["uuid-b"]
+
+
+def test_mode_combo_tooltip_documents_the_edit_gesture(chrome):
+    """It's not Shift+drag -- it's NeoQCP's click-anchor/move/click-commit
+    state machine (item-creation-state.cpp: state==Drawing alone satisfies
+    creationActive, so only the *first* click needs the modifier). The
+    onboarding tour already describes this correctly; the tooltip didn't
+    (2026-09-06 review)."""
+    tooltip = chrome._mode_combo.toolTip()
+    assert "Shift" in tooltip
+    assert "click again" in tooltip

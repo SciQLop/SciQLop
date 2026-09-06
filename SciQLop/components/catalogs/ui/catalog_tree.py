@@ -468,10 +468,12 @@ class CatalogTreeModel(QAbstractItemModel):
                 custom = node.provider.node_icon(node_type, self._folder_path(node) if node_type == NodeType.FOLDER else None)
                 if custom is not None:
                     return custom
+            if node_type == NodeType.CATALOG:
+                from ..backend.color_palette import catalog_swatch_icon
+                return catalog_swatch_icon(node.catalog.uuid)
             icon_map = {
                 NodeType.PROVIDER: "dataSourceRoot",
                 NodeType.FOLDER: "folder_open",
-                NodeType.CATALOG: "catalogue",
             }
             icon_name = icon_map.get(node_type)
             return get_icon(icon_name) if icon_name else None

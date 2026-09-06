@@ -1781,6 +1781,60 @@ def test_tree_icon_catalog_node(qtbot, qapp):
     pytest.fail("Provider node not found")
 
 
+def test_tree_catalog_icon_is_the_color_swatch(qtbot, qapp):
+    """The catalog row's icon is now a colored dot matching color_for_catalog
+    -- the same color drawn on the plot overlay -- instead of a generic
+    'catalogue' icon that carried no per-catalog information (2026-09-06
+    review: cheapest legend for 'which color is which catalog')."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.color_palette import catalog_swatch_icon
+    from PySide6.QtCore import Qt
+
+    provider = DummyProvider(num_catalogs=1)
+    cat = provider.catalogs()[0]
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            cat_idx = model.index(0, 0, idx)
+            icon = model.data(cat_idx, Qt.ItemDataRole.DecorationRole)
+            assert icon.cacheKey() == catalog_swatch_icon(cat.uuid).cacheKey()
+            return
+    pytest.fail("Provider node not found")
+
+
+def test_tree_catalog_icon_prefers_provider_custom_icon_over_swatch(qtbot, qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.provider import NodeType
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QIcon
+
+    custom_icon = QIcon()
+
+    class _CustomIconProvider(DummyProvider):
+        def node_icon(self, node_type, path=None):
+            if node_type == NodeType.CATALOG:
+                return custom_icon
+            return None
+
+    provider = _CustomIconProvider(num_catalogs=1, name="CustomIconProv")
+    model = CatalogTreeModel()
+
+    for i in range(model.rowCount()):
+        idx = model.index(i, 0)
+        node = model.node_from_index(idx)
+        if node.provider is provider:
+            cat_idx = model.index(0, 0, idx)
+            icon = model.data(cat_idx, Qt.ItemDataRole.DecorationRole)
+            assert icon is custom_icon
+            return
+    pytest.fail("Provider node not found")
+
+
 def test_tree_icon_folder_node(qtbot, qapp):
     """Folder nodes should have a DecorationRole icon."""
     from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
