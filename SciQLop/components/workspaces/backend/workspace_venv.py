@@ -103,9 +103,26 @@ class WorkspaceVenv:
         )
         _run_uv(cmd, on_output)
 
-    def sync(self, locked: bool = False, on_output: Callable[[str], None] | None = None) -> None:
-        """Run uv sync in the workspace directory."""
+    def sync(
+        self,
+        locked: bool = False,
+        on_output: Callable[[str], None] | None = None,
+        upgrade_package: str | None = None,
+    ) -> None:
+        """Run uv sync in the workspace directory.
+
+        ``upgrade_package`` re-resolves just that one dependency instead of
+        honoring uv.lock's existing pin for it -- needed for a ``git+...@main``
+        requirement, whose literal text never changes between pushes, so a
+        plain sync would otherwise keep installing whatever commit was first
+        resolved forever (see workspace_project.is_dev_build_version). Never
+        pass it together with ``locked=True``: uv rejects combining
+        ``--locked`` with ``--upgrade-package``, and an archive import's
+        locked sync means to reproduce the shipped lock exactly anyway.
+        """
         args = ("sync", "--locked", "--native-tls") if locked else ("sync", "--native-tls")
+        if upgrade_package:
+            args += ("--upgrade-package", upgrade_package)
         cmd = uv_command(*args)
         _run_uv(cmd, on_output, cwd=str(self._workspace_dir))
 

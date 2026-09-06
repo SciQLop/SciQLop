@@ -134,7 +134,9 @@ class TestPrepareWorkspaceVenv:
 
         patches["WorkspaceVenv"].assert_called_once_with(workspace_dir)
         patches["venv"].ensure.assert_called_once_with(on_output=None)
-        patches["venv"].sync.assert_called_once_with(locked=False, on_output=None)
+        patches["venv"].sync.assert_called_once_with(
+            locked=False, on_output=None, upgrade_package="sciqlop"
+        )
 
     def test_locked_sync(self, workspace_dir, patches):
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
@@ -179,7 +181,9 @@ class TestPrepareWorkspaceCallback:
         prepare_workspace(workspace_dir, workspace_name="Test", on_output=cb)
 
         patches["venv"].ensure.assert_called_once_with(on_output=cb)
-        patches["venv"].sync.assert_called_once_with(locked=False, on_output=cb)
+        patches["venv"].sync.assert_called_once_with(
+            locked=False, on_output=cb, upgrade_package="sciqlop"
+        )
 
     def test_no_callback_by_default(self, workspace_dir, patches):
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
@@ -187,7 +191,50 @@ class TestPrepareWorkspaceCallback:
         prepare_workspace(workspace_dir, workspace_name="Test")
 
         patches["venv"].ensure.assert_called_once_with(on_output=None)
+        patches["venv"].sync.assert_called_once_with(
+            locked=False, on_output=None, upgrade_package="sciqlop"
+        )
+
+
+class TestPrepareWorkspaceDevBuildUpgrade:
+    """A dev build's workspace pins SciQLop to `git+...@main`
+    (workspace_project.sciqlop_requirement) -- a requirement string that
+    never changes between pushes, so plain `uv sync` keeps honoring whatever
+    commit was first resolved into uv.lock forever, no matter how many new
+    commits land on main afterward (see
+    memory/pitfall-uv-lock-freezes-git-main-forever.md). `--upgrade-package`
+    is what forces uv to re-fetch main's current tip on every launch."""
+
+    def test_dev_build_workspace_upgrades_the_pinned_git_main_commit(
+        self, workspace_dir, patches
+    ):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        # No manifest.sciqlop_version pin -- the running dev checkout leaves
+        # it empty (see prepare_workspace's default-manifest step).
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        patches["venv"].sync.assert_called_once_with(
+            locked=False, on_output=None, upgrade_package="sciqlop"
+        )
+
+    def test_pinned_release_workspace_does_not_force_an_upgrade(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        manifest = WorkspaceManifest(name="Pinned", sciqlop_version="0.13.0")
+
+        prepare_workspace(workspace_dir, manifest=manifest)
+
         patches["venv"].sync.assert_called_once_with(locked=False, on_output=None)
+
+    def test_locked_sync_never_gets_the_upgrade_flag(self, workspace_dir, patches):
+        """Even for a dev-build workspace, an archive import's locked sync
+        must reproduce the shipped lock exactly, not fetch a newer main."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        prepare_workspace(workspace_dir, workspace_name="Test", locked=True)
+
+        patches["venv"].sync.assert_called_once_with(locked=True, on_output=None)
 
 
 class TestPrepareWorkspaceOffline:

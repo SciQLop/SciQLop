@@ -143,6 +143,19 @@ def running_sciqlop_version() -> str:
         return ""
 
 
+def is_dev_build_version(pinned_version: str) -> bool:
+    """Whether *pinned_version* resolves to the git-main dev-build requirement.
+
+    An empty version (no pin yet) or one containing ``.dev`` both mean the
+    workspace has no real PyPI release to install, so it installs from
+    ``git+...@main`` instead -- see ``sciqlop_requirement``. Exposed
+    separately because callers outside pyproject generation (workspace_setup's
+    ``uv sync --upgrade-package``, see
+    ``pitfall-uv-lock-freezes-git-main-forever``) need the same test.
+    """
+    return not pinned_version or ".dev" in pinned_version
+
+
 def sciqlop_requirement(pinned_version: str = "") -> str:
     """The workspace's SciQLop dependency.
 
@@ -157,7 +170,7 @@ def sciqlop_requirement(pinned_version: str = "") -> str:
     reproducible.
     """
     version = pinned_version or running_sciqlop_version()
-    if not version or ".dev" in version:
+    if is_dev_build_version(version):
         return _DEV_BUILD_REQUIREMENT
     return f"sciqlop[all]=={version}"
 

@@ -125,6 +125,23 @@ class TestSync:
             mock_uv_cmd.return_value, check=True, cwd=str(workspace_dir)
         )
 
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command")
+    def test_calls_uv_sync_with_upgrade_package(self, mock_uv_cmd, mock_run, venv, workspace_dir):
+        """A `git+...@main` dependency's requirement string never changes,
+        so plain `uv sync` keeps honoring whatever commit was first resolved
+        forever -- `--upgrade-package` is what forces uv to re-fetch main's
+        current tip."""
+        mock_uv_cmd.return_value = ["uv", "sync", "--upgrade-package", "sciqlop"]
+        venv.sync(upgrade_package="sciqlop")
+
+        mock_uv_cmd.assert_called_once_with(
+            "sync", "--native-tls", "--upgrade-package", "sciqlop"
+        )
+        mock_run.assert_called_once_with(
+            mock_uv_cmd.return_value, check=True, cwd=str(workspace_dir)
+        )
+
 
 class TestCreateWithCallback:
     @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.Popen")

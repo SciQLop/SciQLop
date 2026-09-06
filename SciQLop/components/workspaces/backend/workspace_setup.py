@@ -21,6 +21,7 @@ from SciQLop.components.workspaces.backend.workspace_migration import migrate_wo
 from SciQLop.components.workspaces.backend.lab_assets import repair_lab_assets
 from SciQLop.components.workspaces.backend.workspace_project import (
     generate_pyproject_toml,
+    is_dev_build_version,
     running_sciqlop_version,
 )
 from SciQLop.components.workspaces.backend.workspace_venv import WorkspaceVenv
@@ -41,9 +42,14 @@ def get_plugin_folders() -> list[str]:
     return plugins_folders()
 
 
-def _try_sync(venv: WorkspaceVenv, *, locked: bool, on_output) -> Exception | None:
+def _try_sync(
+    venv: WorkspaceVenv, *, locked: bool, upgrade_package: str | None, on_output
+) -> Exception | None:
+    # A locked sync (archive import) means to reproduce the shipped lock
+    # exactly, so it never requests an upgrade -- see WorkspaceVenv.sync.
+    kwargs = {"upgrade_package": upgrade_package} if upgrade_package and not locked else {}
     try:
-        venv.sync(locked=locked, on_output=on_output)
+        venv.sync(locked=locked, on_output=on_output, **kwargs)
         return None
     except Exception as exc:
         return exc
@@ -64,6 +70,7 @@ def _sync_workspace_venv(
     locked: bool,
     on_output: Callable[[str], None] | None,
     strict: bool = False,
+    upgrade_package: str | None = None,
 ) -> bool:
     """Sync the workspace venv, isolating a broken plugin/appstore dependency.
 
@@ -98,7 +105,7 @@ def _sync_workspace_venv(
     now matches what was asked for" from "we're just limping along on the
     old one".
     """
-    exc = _try_sync(venv, locked=locked, on_output=on_output)
+    exc = _try_sync(venv, locked=locked, upgrade_package=upgrade_package, on_output=on_output)
     if exc is None:
         return True
     _report_sync_failure(exc, on_output)
@@ -108,6 +115,7 @@ def _sync_workspace_venv(
             on_output("Archive lockfile could not be honored, resolving fresh")
         return _sync_workspace_venv(
             venv, manifest, optional_deps, pyproject_path, False, on_output, strict,
+            upgrade_package,
         )
 
     if optional_deps:
@@ -117,7 +125,7 @@ def _sync_workspace_venv(
                 "dependencies)..."
             )
         generate_pyproject_toml(manifest, [], pyproject_path)
-        exc = _try_sync(venv, locked=False, on_output=on_output)
+        exc = _try_sync(venv, locked=False, upgrade_package=upgrade_package, on_output=on_output)
         if exc is None:
             # M1: put the full dependency set back on disk (not synced) so
             # the next launch and the appstore see the intended set again,
@@ -258,9 +266,16 @@ def prepare_workspace(
     # Step 6: Ensure venv exists and sync
     venv = WorkspaceVenv(workspace_dir)
     venv.ensure(on_output=on_output)
+    # A dev-build workspace's SciQLop dependency is `git+...@main` -- text
+    # that never changes between pushes, so plain `uv sync` would otherwise
+    # keep honoring whatever commit uv.lock first resolved, forever (see
+    # pitfall-uv-lock-freezes-git-main-forever). Force a fresh resolve of
+    # just that one package on every launch instead.
+    resolved_version = manifest.sciqlop_version or running_sciqlop_version()
+    upgrade_package = "sciqlop" if is_dev_build_version(resolved_version) else None
     synced = _sync_workspace_venv(
         venv, manifest, plugin_deps + appstore_deps, pyproject_path, effective_locked, on_output,
-        strict=strict,
+        strict=strict, upgrade_package=upgrade_package,
     )
     if synced and import_marker.exists():
         try:
