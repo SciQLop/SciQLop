@@ -177,6 +177,13 @@ class EventTableModel(QAbstractTableModel):
         from SciQLop.core.mime.types import EVENT_LIST_MIME_TYPE
         return [EVENT_LIST_MIME_TYPE]
 
+    def supportedDragActions(self) -> Qt.DropAction:
+        # Default is CopyAction only, which would cap the tree's DnD
+        # semantics (link/move/duplicate) to "copy" regardless of what
+        # CatalogTreeModel.supportedDropActions declares -- Qt only offers
+        # an action present on *both* sides.
+        return Qt.DropAction.LinkAction | Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
+
     def mimeData(self, indexes):
         from SciQLop.components.catalogs.backend.event_mime import encode_event_list
         if self._catalog is None:
@@ -195,7 +202,16 @@ class EventTableModel(QAbstractTableModel):
         if not events:
             return None
         provider_name = self._catalog.provider.name if self._catalog.provider else ""
-        return encode_event_list(provider_name, self._catalog.uuid, events)
+        md = encode_event_list(provider_name, self._catalog.uuid, events)
+        # Also tag the drag with a time range covering the selection, so
+        # dropping event(s) on a plot panel (which already accepts
+        # TIME_RANGE_MIME_TYPE) jumps there -- free of any plot-side change.
+        import json
+        from SciQLop.core.mime.types import TIME_RANGE_MIME_TYPE
+        start = min(e.start for e in events).timestamp()
+        stop = max(e.stop for e in events).timestamp()
+        md.setData(TIME_RANGE_MIME_TYPE, json.dumps({"start": start, "stop": stop}).encode("utf-8"))
+        return md
 
     def data(self, index: QModelIndex, role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():

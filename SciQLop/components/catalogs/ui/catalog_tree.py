@@ -568,7 +568,12 @@ class CatalogTreeModel(QAbstractItemModel):
         return encode_mime(catalogs)
 
     def supportedDropActions(self) -> Qt.DropAction:
-        return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
+        # LinkAction is only ever offered for event drops (the source,
+        # EventTableModel, is the one that declares it in its own
+        # supportedDragActions -- catalog-node drags never resolve to Link
+        # since CatalogTreeModel's own supportedDragActions below doesn't
+        # include it).
+        return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction | Qt.DropAction.LinkAction
 
     def supportedDragActions(self) -> Qt.DropAction:
         return Qt.DropAction.MoveAction | Qt.DropAction.CopyAction
@@ -626,7 +631,7 @@ class CatalogTreeModel(QAbstractItemModel):
 
         from SciQLop.core.mime.types import EVENT_LIST_MIME_TYPE
         if data.hasFormat(EVENT_LIST_MIME_TYPE):
-            return self._drop_events(data, parent, log)
+            return self._drop_events(data, action, parent, log)
 
         catalogs = decode_mime(data)
         if not catalogs:
@@ -669,9 +674,13 @@ class CatalogTreeModel(QAbstractItemModel):
         # provider signals (move/remove/add) drive tree updates instead.
         return False
 
-    def _drop_events(self, data, parent, log) -> bool:
-        from PySide6.QtCore import Qt
-        from PySide6.QtWidgets import QApplication
+    _DROP_ACTION_NAMES = {
+        Qt.DropAction.LinkAction: "link",
+        Qt.DropAction.MoveAction: "move",
+        Qt.DropAction.CopyAction: "duplicate",
+    }
+
+    def _drop_events(self, data, action, parent, log) -> bool:
         from ..backend.event_mime import decode_event_list
         from ..backend.registry import CatalogRegistry
 
@@ -698,16 +707,16 @@ class CatalogTreeModel(QAbstractItemModel):
         if not source_events:
             return False
 
-        mods = QApplication.keyboardModifiers()
+        # Cross-provider always duplicates regardless of the requested
+        # action: "move"/"link" would insert the source provider's event
+        # object directly into the destination provider's bookkeeping
+        # (dirty-tracking, uuid lookups, backend persistence), which only
+        # makes sense within one provider's own data model.
         cross_provider = source_provider is not target_node.provider
         if cross_provider:
             drop_action = "duplicate"
-        elif mods & Qt.KeyboardModifier.ShiftModifier:
-            drop_action = "move"
-        elif mods & Qt.KeyboardModifier.ControlModifier:
-            drop_action = "duplicate"
         else:
-            drop_action = "link"
+            drop_action = self._DROP_ACTION_NAMES.get(action, "link")
 
         try:
             target_node.provider.handle_event_drop(

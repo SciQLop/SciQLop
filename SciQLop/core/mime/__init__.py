@@ -52,3 +52,31 @@ def _register_product_list_decoder():
     _MIME_DECODERS_[PRODUCT_LIST_MIME_TYPE] = ProductsModel.decode_mime_data
 
 _register_product_list_decoder()
+
+
+def _register_time_range_codec():
+    """TIME_RANGE_MIME_TYPE (declared in types.py, accepted by
+    TimeRangeDnDCallback on every plot panel) had no producer and no
+    registered decoder anywhere -- dropping anything tagged with it was a
+    guaranteed no-op. Registered here, matching _register_product_list_decoder,
+    so any future drag source can just encode_mime(a TimeRange)."""
+    import json
+    from .types import TIME_RANGE_MIME_TYPE
+    from SciQLop.core.time_range import TimeRange
+
+    def _encode(tr) -> QMimeData:
+        md = QMimeData()
+        md.setData(TIME_RANGE_MIME_TYPE,
+                  json.dumps({"start": tr.start(), "stop": tr.stop()}).encode("utf-8"))
+        return md
+
+    def _decode(mime_data: QMimeData):
+        raw = bytes(mime_data.data(TIME_RANGE_MIME_TYPE))
+        if not raw:
+            return None
+        payload = json.loads(raw.decode("utf-8"))
+        return TimeRange(payload["start"], payload["stop"])
+
+    register_mime(TimeRange, TIME_RANGE_MIME_TYPE, _encode, _decode)
+
+_register_time_range_codec()

@@ -66,9 +66,11 @@ def test_handle_event_drop_duplicate_assigns_new_uuid(qapp, provider):
     assert len(dst_uuids) == 1
 
 
-def test_cross_provider_drop_always_duplicates(qapp, monkeypatch):
+def test_cross_provider_drop_always_duplicates(qapp):
+    """Cross-provider always duplicates regardless of the requested action --
+    even a Link request must not try to insert the source provider's event
+    object directly into the destination provider's bookkeeping."""
     from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QApplication
     from SciQLop.components.catalogs.backend.event_mime import encode_event_list
     from SciQLop.components.catalogs.backend.registry import CatalogRegistry
     from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
@@ -86,8 +88,7 @@ def test_cross_provider_drop_always_duplicates(qapp, monkeypatch):
         assert b_idx.isValid()
 
         md = encode_event_list("A", cat_a.uuid, [e])
-        monkeypatch.setattr(QApplication, "keyboardModifiers", _StubModifiers())
-        model.dropMimeData(md, Qt.DropAction.MoveAction, -1, -1, b_idx)
+        model.dropMimeData(md, Qt.DropAction.LinkAction, -1, -1, b_idx)
 
         b_events = b.events(cat_b)
         assert len(b_events) == 1
@@ -98,20 +99,6 @@ def test_cross_provider_drop_always_duplicates(qapp, monkeypatch):
         for p in (a, b):
             if p in registry._providers:
                 registry._providers.remove(p)
-
-
-class _StubModifiers:
-    def __init__(self, shift=False, ctrl=False):
-        from PySide6.QtCore import Qt
-        m = Qt.KeyboardModifier.NoModifier
-        if shift:
-            m |= Qt.KeyboardModifier.ShiftModifier
-        if ctrl:
-            m |= Qt.KeyboardModifier.ControlModifier
-        self._m = m
-
-    def __call__(self):
-        return self._m
 
 
 def _find_catalog_index(model, provider, catalog):
@@ -145,9 +132,14 @@ def tree_with_two_catalogs(qapp):
         registry._providers.remove(p)
 
 
-def test_dropmime_dispatch_link_default(tree_with_two_catalogs, monkeypatch):
+def test_dropmime_dispatch_honors_link_action(tree_with_two_catalogs):
+    """dropMimeData must derive link/move/duplicate from Qt's own resolved
+    `action` argument, not raw keyboard modifiers re-sampled independently
+    of what the OS/Qt drag manager actually negotiated (2026-09-06 review:
+    that mismatch is exactly what made the shown cursor and the real
+    behavior disagree on macOS, where Option -- not Ctrl -- is the copy
+    modifier)."""
     from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QApplication
     from SciQLop.components.catalogs.backend.event_mime import encode_event_list
 
     model, provider, src, dst, ev = tree_with_two_catalogs
@@ -156,16 +148,14 @@ def test_dropmime_dispatch_link_default(tree_with_two_catalogs, monkeypatch):
     target_idx = _find_catalog_index(model, provider, dst)
     assert target_idx.isValid()
 
-    monkeypatch.setattr(QApplication, "keyboardModifiers", _StubModifiers())
-    handled = model.dropMimeData(md, Qt.DropAction.MoveAction, -1, -1, target_idx)
+    handled = model.dropMimeData(md, Qt.DropAction.LinkAction, -1, -1, target_idx)
     assert handled is False
     assert any(x.uuid == "u-dispatcher" for x in provider.events(src))
     assert any(x.uuid == "u-dispatcher" for x in provider.events(dst))
 
 
-def test_dropmime_dispatch_move_with_shift(tree_with_two_catalogs, monkeypatch):
+def test_dropmime_dispatch_honors_move_action(tree_with_two_catalogs):
     from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QApplication
     from SciQLop.components.catalogs.backend.event_mime import encode_event_list
 
     model, provider, src, dst, ev = tree_with_two_catalogs
@@ -174,15 +164,13 @@ def test_dropmime_dispatch_move_with_shift(tree_with_two_catalogs, monkeypatch):
     target_idx = _find_catalog_index(model, provider, dst)
     assert target_idx.isValid()
 
-    monkeypatch.setattr(QApplication, "keyboardModifiers", _StubModifiers(shift=True))
     model.dropMimeData(md, Qt.DropAction.MoveAction, -1, -1, target_idx)
     assert not any(x.uuid == "u-dispatcher" for x in provider.events(src))
     assert any(x.uuid == "u-dispatcher" for x in provider.events(dst))
 
 
-def test_dropmime_dispatch_duplicate_with_ctrl(tree_with_two_catalogs, monkeypatch):
+def test_dropmime_dispatch_honors_copy_action(tree_with_two_catalogs):
     from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QApplication
     from SciQLop.components.catalogs.backend.event_mime import encode_event_list
 
     model, provider, src, dst, ev = tree_with_two_catalogs
@@ -191,8 +179,7 @@ def test_dropmime_dispatch_duplicate_with_ctrl(tree_with_two_catalogs, monkeypat
     target_idx = _find_catalog_index(model, provider, dst)
     assert target_idx.isValid()
 
-    monkeypatch.setattr(QApplication, "keyboardModifiers", _StubModifiers(ctrl=True))
-    model.dropMimeData(md, Qt.DropAction.MoveAction, -1, -1, target_idx)
+    model.dropMimeData(md, Qt.DropAction.CopyAction, -1, -1, target_idx)
     src_uuids = {x.uuid for x in provider.events(src)}
     dst_uuids = {x.uuid for x in provider.events(dst)}
     assert "u-dispatcher" in src_uuids
@@ -212,3 +199,28 @@ def test_handle_event_drop_link_is_idempotent(qapp, provider):
 
     dst_events = [x for x in provider.events(dst) if x.uuid == "u-link-twice"]
     assert len(dst_events) == 1, f"link must dedupe, got {len(dst_events)} copies"
+
+
+def test_event_table_declares_link_as_a_supported_drag_action(qapp):
+    """Default QAbstractItemModel.supportedDragActions is CopyAction only,
+    which would cap every event drag to 'duplicate' regardless of what
+    CatalogTreeModel.supportedDropActions declares -- Qt only ever resolves
+    to an action present on both the source's drag actions and the
+    destination's drop actions."""
+    from SciQLop.components.catalogs.ui.event_table import EventTableModel
+    from PySide6.QtCore import Qt
+
+    actions = EventTableModel().supportedDragActions()
+    assert actions & Qt.DropAction.LinkAction
+    assert actions & Qt.DropAction.MoveAction
+    assert actions & Qt.DropAction.CopyAction
+
+
+def test_catalog_tree_declares_link_as_a_supported_drop_action(qapp):
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from PySide6.QtCore import Qt
+
+    actions = CatalogTreeModel().supportedDropActions()
+    assert actions & Qt.DropAction.LinkAction
+    assert actions & Qt.DropAction.MoveAction
+    assert actions & Qt.DropAction.CopyAction

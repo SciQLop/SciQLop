@@ -204,6 +204,10 @@ class CatalogBrowser(QWidget):
         self._event_table.setSelectionMode(QTableView.SelectionMode.ExtendedSelection)
         self._event_table.setDragEnabled(True)
         self._event_table.setDragDropMode(QAbstractItemView.DragDropMode.DragOnly)
+        # Matches the pre-existing "no modifier = link" default; Shift/Ctrl
+        # (Option/Cmd on macOS) now come from Qt's own action resolution
+        # instead of being re-derived from raw keyboard modifiers.
+        self._event_table.setDefaultDropAction(Qt.DropAction.LinkAction)
 
         self._propagating_bulk_edit = False
         self._event_model.dataChanged.connect(self._on_event_data_changed)
