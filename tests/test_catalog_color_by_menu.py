@@ -84,3 +84,35 @@ def test_color_by_menu_uses_the_right_clicked_catalogs_own_columns(qtbot, qapp):
     columns = _color_by_columns(menu)
     assert "beta_only_column" in columns
     assert "alpha_only_column" not in columns
+
+
+def test_color_by_menu_reports_instead_of_raising_on_provider_failure(qtbot, qapp, monkeypatch):
+    """The fix above reads catalog.provider.events(catalog) -- a real
+    backend call, unlike the old in-memory self._event_model._events read
+    it replaced. A provider failure while building a right-click menu must
+    not crash menu construction (opencode review of c7d5e682)."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=0, name="ColorByFailProv")
+    cat = provider.catalogs()[0]
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+
+    def _raise(*a, **k):
+        raise RuntimeError("backend down")
+    monkeypatch.setattr(provider, "events", _raise)
+
+    cat_proxy_idx = _catalog_tree_index(browser, cat)
+    with qtbot.waitSignal(browser.provider_error, timeout=1000) as blocker:
+        menu = browser._build_tree_context_menu(cat_proxy_idx)  # must not raise
+    assert "backend down" in blocker.args[0]
+
+    # The menu itself stays usable -- just without a per-column list.
+    color_menu = None
+    for a in menu.actions():
+        if a.text() == "Color by...":
+            color_menu = a.menu()
+            break
+    assert color_menu is not None
+    assert any(a.text() == "Uniform (default)" for a in color_menu.actions())

@@ -39,6 +39,11 @@ log = getLogger(__name__)
 
 
 def _extract_panel(dock_widget):
+    # dock_widget itself can be a dead Shiboken wrapper (e.g. queried from
+    # the dock manager during teardown) -- same class of hazard as the
+    # w.panel check below, just one level up.
+    if dock_widget is None or not shiboken6.isValid(dock_widget):
+        return None
     w = dock_widget.widget()
     if isinstance(w, PanelContainer):
         # the panel can die without going through remove_panel (e.g. user code
@@ -46,7 +51,7 @@ def _extract_panel(dock_widget):
         # panel enumeration
         return w.panel if shiboken6.isValid(w.panel) else None
     if isinstance(w, SciQLopMultiPlotPanel):
-        return w
+        return w if shiboken6.isValid(w) else None
     return None
 
 

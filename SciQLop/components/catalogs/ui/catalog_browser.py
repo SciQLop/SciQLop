@@ -922,11 +922,15 @@ class CatalogBrowser(QWidget):
 
         # From the catalog itself, not self._event_model._events: the menu
         # is built for whichever catalog was right-clicked, which is not
-        # necessarily the one currently open in the event table.
+        # necessarily the one currently open in the event table. Unlike
+        # that in-memory read, this is a real backend call and can raise.
         columns: set[str] = set()
         if catalog.provider is not None:
-            for event in catalog.provider.events(catalog)[:200]:
-                columns.update(event.meta.keys())
+            try:
+                for event in catalog.provider.events(catalog)[:200]:
+                    columns.update(event.meta.keys())
+            except Exception as e:
+                self._report_failure(f"Could not load columns for '{catalog.name}'", e)
 
         if columns:
             color_menu.addSeparator()
