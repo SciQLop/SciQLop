@@ -421,7 +421,48 @@ class CatalogBrowser(QWidget):
         """Refresh event table when async loading completes for the selected catalog."""
         if self._current_catalog is not None and catalog.uuid == self._current_catalog.uuid:
             events = self._current_provider.events(self._current_catalog)
-            self._event_model.set_events(events)
+            self._set_events_preserving_selection(events)
+
+    def _row_for_uuid(self, uuid: str) -> int:
+        for row in range(self._event_model.rowCount()):
+            ev = self._event_model.event_at(row)
+            if ev is not None and ev.uuid == uuid:
+                return row
+        return -1
+
+    def _set_events_preserving_selection(self, events) -> None:
+        """set_events() is a full model reset, which drops the table's
+        selection -- surprising for a refresh the user didn't ask for (an
+        async load completing, or a peer's edit landing in a shared cocat
+        catalog), and for _on_add_event's own explicit refresh right after
+        adding. Re-select whichever previously-selected events still exist
+        by uuid afterward."""
+        sm = self._event_table.selectionModel()
+        selected_uuids = []
+        if sm is not None:
+            for proxy_idx in sm.selectedRows():
+                source_idx = self._sort_proxy.mapToSource(proxy_idx)
+                ev = self._event_model.event_at(source_idx.row())
+                if ev is not None:
+                    selected_uuids.append(ev.uuid)
+
+        self._event_model.set_events(events)
+
+        if sm is None or not selected_uuids:
+            return
+        first_proxy_idx = None
+        for uuid in selected_uuids:
+            row = self._row_for_uuid(uuid)
+            if row < 0:
+                continue
+            proxy_idx = self._sort_proxy.mapFromSource(self._event_model.index(row, 0))
+            if not proxy_idx.isValid():
+                continue
+            sm.select(proxy_idx, QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows)
+            if first_proxy_idx is None:
+                first_proxy_idx = proxy_idx
+        if first_proxy_idx is not None:
+            sm.setCurrentIndex(first_proxy_idx, QItemSelectionModel.SelectionFlag.NoUpdate)
 
     _COLUMN_FIT_SAMPLE_ROWS = 50
     _COLUMN_FIT_PADDING_PX = 16
@@ -624,15 +665,38 @@ class CatalogBrowser(QWidget):
         except RuntimeError:
             pass
 
+    def _focused_panel(self):
+        """The connected panel currently focused/on top among several open
+        ones, or None if none of self._panels is focused. Used to place a
+        new event where the user is actually looking, not wherever the
+        first-ever-connected panel happens to be."""
+        import shiboken6
+        from SciQLop.core.sciqlop_application import sciqlop_app
+        win = getattr(sciqlop_app(), "main_window", None)
+        if win is None or not shiboken6.isValid(win):
+            return None
+        dock_manager = getattr(win, "dock_manager", None)
+        if dock_manager is None:
+            return None
+        focused_dock = dock_manager.focusedDockWidget()
+        if focused_dock is None:
+            return None
+        from SciQLop.core.ui.mainwindow import _extract_panel
+        focused_panel = _extract_panel(focused_dock)
+        return focused_panel if focused_panel in self._panels else None
+
     def _on_add_event(self) -> None:
         if self._current_provider is None or self._current_catalog is None:
             return
         caps = self._current_provider.capabilities(self._current_catalog)
         if Capability.CREATE_EVENTS not in caps:
             return
-        # Use the first connected panel's visible range to place the new event
-        if self._panels:
-            tr = self._panels[0].time_range
+        # Use the focused connected panel's visible range to place the new
+        # event, falling back to the first connected panel if none of them
+        # is currently focused.
+        target_panel = self._focused_panel() or (self._panels[0] if self._panels else None)
+        if target_panel is not None:
+            tr = target_panel.time_range
             center = (tr.start() + tr.stop()) / 2.0
             half_span = (tr.stop() - tr.start()) * 0.05  # 10% of visible range
             start = datetime.fromtimestamp(center - half_span, tz=timezone.utc)
@@ -652,7 +716,7 @@ class CatalogBrowser(QWidget):
         except Exception as e:
             self._report_failure("Could not add event", e)
             return
-        self._event_model.set_events(events)
+        self._set_events_preserving_selection(events)
 
     def _on_delete(self) -> None:
         if self._current_provider is None or self._current_catalog is None:
@@ -856,9 +920,13 @@ class CatalogBrowser(QWidget):
             lambda: self._apply_color_mapper(catalog, ColorMapper())
         )
 
+        # From the catalog itself, not self._event_model._events: the menu
+        # is built for whichever catalog was right-clicked, which is not
+        # necessarily the one currently open in the event table.
         columns: set[str] = set()
-        for event in self._event_model._events[:200]:
-            columns.update(event.meta.keys())
+        if catalog.provider is not None:
+            for event in catalog.provider.events(catalog)[:200]:
+                columns.update(event.meta.keys())
 
         if columns:
             color_menu.addSeparator()
