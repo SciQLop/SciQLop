@@ -93,3 +93,77 @@ def test_warn_if_jobs_running_fails_open_on_backend_error(qapp, monkeypatch):
     cancelled = SciQLopMainWindow._warn_if_jobs_running(win, event)
     assert cancelled is False
     event.ignore.assert_not_called()
+
+
+def test_confirm_close_no_dirty_catalogs_proceeds(qapp):
+    from SciQLop.core.ui.mainwindow import _confirm_close_with_dirty_catalogs
+    event = MagicMock()
+    cancelled = _confirm_close_with_dirty_catalogs(None, event, [])
+    assert cancelled is False
+    event.ignore.assert_not_called()
+
+
+def test_confirm_close_dirty_catalogs_user_says_no_cancels(qapp, monkeypatch):
+    from SciQLop.core.ui.mainwindow import _confirm_close_with_dirty_catalogs
+    from PySide6.QtWidgets import QMessageBox
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.No)
+    event = MagicMock()
+    cancelled = _confirm_close_with_dirty_catalogs(None, event, ["DummyProvider"])
+    assert cancelled is True
+    event.ignore.assert_called_once()
+
+
+def test_confirm_close_dirty_catalogs_user_says_yes_proceeds(qapp, monkeypatch):
+    from SciQLop.core.ui.mainwindow import _confirm_close_with_dirty_catalogs
+    from PySide6.QtWidgets import QMessageBox
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.Yes)
+    event = MagicMock()
+    cancelled = _confirm_close_with_dirty_catalogs(None, event, ["DummyProvider"])
+    assert cancelled is False
+    event.ignore.assert_not_called()
+
+
+def test_warn_if_catalogs_dirty_fails_open_on_backend_error(qapp, monkeypatch):
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+
+    def _raise(*a, **k):
+        raise RuntimeError("registry unavailable")
+
+    monkeypatch.setattr(
+        "SciQLop.components.catalogs.backend.registry.CatalogRegistry.instance", _raise)
+
+    win = SciQLopMainWindow.__new__(SciQLopMainWindow)  # bypass __init__, we only need the method
+    event = MagicMock()
+    cancelled = SciQLopMainWindow._warn_if_catalogs_dirty(win, event)
+    assert cancelled is False
+    event.ignore.assert_not_called()
+
+
+def test_warn_if_catalogs_dirty_detects_dirty_provider(qapp, monkeypatch):
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtWidgets import QMessageBox
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=1)
+    cat = provider.catalogs()[0]
+    provider.mark_dirty(cat)
+
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.No)
+    win = SciQLopMainWindow.__new__(SciQLopMainWindow)
+    event = MagicMock()
+    cancelled = SciQLopMainWindow._warn_if_catalogs_dirty(win, event)
+    assert cancelled is True
+    event.ignore.assert_called_once()
+
+
+def test_warn_if_catalogs_dirty_ignores_clean_provider(qapp):
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+
+    DummyProvider(num_catalogs=1, events_per_catalog=1)
+
+    win = SciQLopMainWindow.__new__(SciQLopMainWindow)
+    event = MagicMock()
+    cancelled = SciQLopMainWindow._warn_if_catalogs_dirty(win, event)
+    assert cancelled is False
+    event.ignore.assert_not_called()

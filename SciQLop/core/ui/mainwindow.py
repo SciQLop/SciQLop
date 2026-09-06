@@ -72,6 +72,23 @@ def _confirm_close_with_running_jobs(parent, event, jobs: list) -> bool:
     return False
 
 
+def _confirm_close_with_dirty_catalogs(parent, event, dirty_providers: list) -> bool:
+    """Warn if any catalog provider has unsaved changes. Returns True if the
+    close was cancelled (event.ignore() already called)."""
+    if not dirty_providers:
+        return False
+    names = ", ".join(dirty_providers)
+    reply = QMessageBox.question(
+        parent, "Unsaved catalog changes",
+        f"The following catalog source(s) have unsaved changes that will be "
+        f"lost: {names}. Close anyway?",
+        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+    if reply == QMessageBox.No:
+        event.ignore()
+        return True
+    return False
+
+
 class SciQLopMainWindow(QtWidgets.QMainWindow):
     AUTO_HIDE_TAB_ICON = 2.2  # em — side bar tab icon, set here because
     # qproperty-iconSize does not survive a theme change (see _apply_dock_theme)
@@ -334,6 +351,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         self._statusbar.addPermanentWidget(self._stats_toggle)
         self._statusbar.addPermanentWidget(self._stats_container)
+
+        self.catalogs_browser.provider_error.connect(
+            lambda msg: self._statusbar.showMessage(msg, 8000))
 
         self._refresh_mem_timer = QtCore.QTimer(self)
         self._refresh_mem_timer.timeout.connect(self._update_usage)
@@ -606,6 +626,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def closeEvent(self, event: QCloseEvent):
         if not getattr(self, '_closing', False) and self._warn_if_jobs_running(event):
             return
+        if not getattr(self, '_closing', False) and self._warn_if_catalogs_dirty(event):
+            return
         if not getattr(self, '_closing', False):
             self._closing = True
             if self._schedule_async_close():
@@ -622,6 +644,18 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         except Exception:
             return False
         return _confirm_close_with_running_jobs(self, event, jobs)
+
+    def _warn_if_catalogs_dirty(self, event: QCloseEvent) -> bool:
+        from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+        from SciQLop.components.catalogs.backend.provider import Capability
+        try:
+            dirty = [
+                p.name for p in CatalogRegistry.instance().providers()
+                if Capability.SAVE in p.capabilities() and p.is_dirty()
+            ]
+        except Exception:
+            return False
+        return _confirm_close_with_dirty_catalogs(self, event, dirty)
 
     @staticmethod
     def _usable_event_loop():

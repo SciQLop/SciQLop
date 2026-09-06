@@ -3,7 +3,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, TYPE_CHECKING
 
-from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal
 
 from ..backend.provider import Catalog, CatalogProvider
 from ..backend.registry import CatalogRegistry
@@ -56,6 +56,8 @@ class _Node:
 
 class CatalogTreeModel(QAbstractItemModel):
     """Qt item model: root -> provider -> catalog."""
+
+    operation_failed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -661,6 +663,8 @@ class CatalogTreeModel(QAbstractItemModel):
             except Exception as e:
                 log.warning("Catalog drop failed for %r → %r: %s",
                             source_cat.name, dest_sub_path, e)
+                self.operation_failed.emit(
+                    f"Could not move/copy catalog '{source_cat.name}': {e}")
         # Return False so Qt does not also call removeRows() on the source —
         # provider signals (move/remove/add) drive tree updates instead.
         return False
@@ -714,6 +718,7 @@ class CatalogTreeModel(QAbstractItemModel):
             )
         except Exception as e:
             log.warning("Event drop failed: %s", e)
+            self.operation_failed.emit(f"Could not {drop_action} event(s): {e}")
         return False
 
     def _unique_catalog_name(self, provider, sub_path: list[str], base: str) -> str:

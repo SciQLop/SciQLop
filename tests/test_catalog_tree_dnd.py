@@ -206,3 +206,71 @@ def test_drop_on_catalog_routes_to_parent_folder(qtbot, qapp):
     cats_in_folder = [c for c in dst.catalogs() if c.path == ["folder"]]
     assert len(cats_in_folder) == 2
     assert {c.name for c in cats_in_folder} == {"Existing", src_cat.name}
+
+
+def test_catalog_drop_failure_emits_operation_failed(qtbot, qapp, monkeypatch):
+    """A raising create_catalog/move_catalog must not just be log.warning'd —
+    the UI needs a signal to surface it (2026-09-06 review)."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.core.mime import encode_mime
+    from PySide6.QtCore import QModelIndex, Qt
+
+    src = _rw_provider(name="Src", num_catalogs=1, events_per_catalog=1)
+    dst = _rw_provider(name="Dst")
+    src_cat = src.catalogs()[0]
+
+    model = CatalogTreeModel()
+    dst_idx = None
+    for row in range(model.rowCount(QModelIndex())):
+        idx = model.index(row, 0, QModelIndex())
+        if model.node_from_index(idx).provider is dst:
+            dst_idx = idx
+            break
+    assert dst_idx is not None
+
+    def _raise(*a, **k):
+        raise RuntimeError("create refused")
+    monkeypatch.setattr(dst, "create_catalog", _raise)
+
+    mime = encode_mime([src_cat])
+    with qtbot.waitSignal(model.operation_failed, timeout=1000) as blocker:
+        model.dropMimeData(mime, Qt.DropAction.CopyAction, -1, -1, dst_idx)
+    assert "create refused" in blocker.args[0]
+
+
+def test_event_drop_failure_emits_operation_failed(qtbot, qapp):
+    """handle_event_drop can raise PermissionError (dest lacks CREATE_EVENTS
+    for a move/duplicate) — that must surface, not just log.warning."""
+    from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel
+    from SciQLop.components.catalogs.backend.event_mime import encode_event_list
+    from PySide6.QtCore import QModelIndex, Qt
+
+    src = _rw_provider(name="Src", num_catalogs=0, events_per_catalog=0)
+    src_cat = src.create_catalog("src")
+    ev = src.events(src_cat)  # empty; add one directly via provider API
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+    from datetime import datetime, timezone
+    event = CatalogEvent(uuid=str(_uuid.uuid4()),
+                          start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+                          stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc))
+    src.add_event(src_cat, event)
+
+    dst = _read_only_provider(num_catalogs=1, events_per_catalog=0)
+    dst_cat = dst.catalogs()[0]
+
+    model = CatalogTreeModel()
+    dst_idx = None
+    for row in range(model.rowCount(QModelIndex())):
+        idx = model.index(row, 0, QModelIndex())
+        if model.node_from_index(idx).provider is dst:
+            for crow in range(model.rowCount(idx)):
+                cidx = model.index(crow, 0, idx)
+                if model.node_from_index(cidx).catalog is dst_cat:
+                    dst_idx = cidx
+                    break
+    assert dst_idx is not None
+
+    mime = encode_event_list(src.name, src_cat.uuid, [event])
+    with qtbot.waitSignal(model.operation_failed, timeout=1000) as blocker:
+        model.dropMimeData(mime, Qt.DropAction.CopyAction, -1, -1, dst_idx)
+    assert blocker.args[0]

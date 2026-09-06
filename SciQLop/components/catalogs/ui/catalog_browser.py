@@ -142,6 +142,7 @@ class CatalogBrowser(QWidget):
     """Dock-ready widget: tree of providers/catalogs + event table."""
 
     event_selected = Signal(object)
+    provider_error = Signal(str)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -158,6 +159,8 @@ class CatalogBrowser(QWidget):
 
         # --- tree view (left) ---
         self._tree_model = CatalogTreeModel()
+        self._tree_model.operation_failed.connect(self.provider_error)
+        self._wire_provider_error_reporting()
         self._proxy_model = _CatalogFilterProxy()
         self._proxy_model.setSourceModel(self._tree_model)
         self._catalog_tree = QTreeView()
@@ -279,6 +282,23 @@ class CatalogBrowser(QWidget):
         layout.addWidget(self._filter_bar)
         layout.addWidget(self._splitter, 1)
         layout.addLayout(actions_toolbar)
+
+    # ---- error reporting ----
+
+    def _wire_provider_error_reporting(self) -> None:
+        """Forward every provider's error_occurred to provider_error, for
+        providers registered before and after this browser is constructed."""
+        from ..backend.registry import CatalogRegistry
+        registry = CatalogRegistry.instance()
+        for provider in registry.providers():
+            provider.error_occurred.connect(self.provider_error)
+        registry.provider_registered.connect(
+            lambda p: p.error_occurred.connect(self.provider_error))
+
+    def _report_failure(self, description: str, exc: Exception) -> None:
+        from SciQLop.components.sciqlop_logging import getLogger
+        getLogger(__name__).warning("%s: %s", description, exc)
+        self.provider_error.emit(f"{description}: {exc}")
 
     # ---- slots ----
 
@@ -624,7 +644,11 @@ class CatalogBrowser(QWidget):
             start=start,
             stop=stop,
         )
-        self._current_provider.add_event(self._current_catalog, event)
+        try:
+            self._current_provider.add_event(self._current_catalog, event)
+        except Exception as e:
+            self._report_failure("Could not add event", e)
+            return
         # Refresh event table
         events = self._current_provider.events(self._current_catalog)
         self._event_model.set_events(events)
@@ -644,8 +668,11 @@ class CatalogBrowser(QWidget):
             ev = self._event_model.event_at(source_idx.row())
             if ev is not None:
                 events.append(ev)
-        for ev in events:
-            self._current_provider.remove_event(self._current_catalog, ev)
+        try:
+            for ev in events:
+                self._current_provider.remove_event(self._current_catalog, ev)
+        except Exception as e:
+            self._report_failure("Could not delete event", e)
         events_after = self._current_provider.events(self._current_catalog)
         self._event_model.set_events(events_after)
 
@@ -682,7 +709,10 @@ class CatalogBrowser(QWidget):
         source_index = self._proxy_model.mapToSource(proxy_index)
         node = self._tree_model.node_from_index(source_index)
         if node.provider is not None:
-            node.provider.save()
+            try:
+                node.provider.save()
+            except Exception as e:
+                self._report_failure(f"Could not save '{node.provider.name}'", e)
 
     def _folder_path(self, node) -> list[str]:
         return self._tree_model._folder_path(node)
