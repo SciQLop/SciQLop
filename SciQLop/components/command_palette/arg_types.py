@@ -94,29 +94,44 @@ class ProductArg(CommandArg):
         return items
 
 
+def catalog_arg_value(provider_name: str, catalog_uuid: str) -> str:
+    """Value format shared with resolve_catalog_arg -- provider name and
+    catalog uuid, not a display path: catalog names aren't unique across
+    folders, and the tree's DisplayRole decorates dirty catalogs with a
+    trailing ' *', neither of which round-trips safely as an identifier."""
+    return f"{provider_name}::{catalog_uuid}"
+
+
+def resolve_catalog_arg(value: str):
+    """Resolve a CatalogArg completion value back to a Catalog, or None."""
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    provider_name, _, uuid = value.partition("::")
+    if not uuid:
+        return None
+    provider = CatalogRegistry.instance().provider_by_name(provider_name)
+    if provider is None:
+        return None
+    for catalog in provider.catalogs():
+        if catalog.uuid == uuid:
+            return catalog
+    return None
+
+
 @dataclass
 class CatalogArg(CommandArg):
     name: str = "catalog"
 
     def completions(self, context: dict) -> list[Completion]:
-        from SciQLop.core.sciqlop_application import sciqlop_app
-        win = sciqlop_app().main_window
-        browser = win.catalogs_browser
-        model = browser._tree_model
+        from SciQLop.components.catalogs.backend.registry import CatalogRegistry
         items = []
-        for i in range(model.rowCount()):
-            _collect_tree_items(model, model.index(i, 0), items, "")
+        for provider in CatalogRegistry.instance().providers():
+            for catalog in provider.catalogs():
+                path = "/".join([provider.name, *catalog.path, catalog.name])
+                items.append(Completion(
+                    value=catalog_arg_value(provider.name, catalog.uuid),
+                    display=path,
+                ))
         return items
-
-
-def _collect_tree_items(model, parent_index, items, prefix):
-    text = model.data(parent_index)
-    path = f"{prefix}/{text}" if prefix else text
-    if model.rowCount(parent_index) == 0:
-        items.append(Completion(value=path, display=path))
-    else:
-        for row in range(model.rowCount(parent_index)):
-            _collect_tree_items(model, model.index(row, 0, parent_index), items, path)
 
 
 @dataclass
@@ -125,10 +140,10 @@ class ProviderArg(CommandArg):
 
     def completions(self, context: dict) -> list[Completion]:
         from SciQLop.components.catalogs.backend.registry import CatalogRegistry
-        from SciQLop.components.catalogs.backend.catalog_provider import CatalogProviderCapabilities
+        from SciQLop.components.catalogs.backend.provider import Capability
         items = []
         for provider in CatalogRegistry.instance().providers():
-            if CatalogProviderCapabilities.CREATE_CATALOGS in provider.capabilities:
+            if Capability.CREATE_CATALOGS in provider.capabilities():
                 items.append(Completion(value=provider.name, display=provider.name))
         return items
 

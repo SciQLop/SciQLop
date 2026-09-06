@@ -48,6 +48,65 @@ def _do_switch_workspace(workspace: str = ""):
     switch_workspace(workspace)
 
 
+def _reveal_catalogs_browser(win):
+    browser = win.catalogs_browser
+    dw = win.dock_manager.findDockWidget(browser.windowTitle())
+    if dw is not None:
+        dw.toggleView(True)
+        dw.raise_()
+    return browser
+
+
+def _find_provider_node(tree_model, provider):
+    from PySide6.QtCore import QModelIndex
+    for row in range(tree_model.rowCount(QModelIndex())):
+        idx = tree_model.index(row, 0, QModelIndex())
+        if tree_model.node_from_index(idx).provider is provider:
+            return tree_model.node_from_index(idx)
+    return None
+
+
+def _do_create_catalog(provider: str = ""):
+    """Reuse the tree's own "New Catalog" inline-edit flow -- same UX as
+    right-clicking the provider in the browser, just reached from the
+    palette."""
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    from SciQLop.components.catalogs.ui.catalog_tree import _PlaceholderType
+    target = CatalogRegistry.instance().provider_by_name(provider)
+    if target is None:
+        return
+    win = _get_win()
+    browser = _reveal_catalogs_browser(win)
+    node = _find_provider_node(browser._tree_model, target)
+    if node is None:
+        return
+    placeholder = next(
+        (c for c in node.children if c.placeholder_type == _PlaceholderType.CATALOG), None)
+    if placeholder is None:
+        return
+    browser._trigger_placeholder_edit(placeholder)
+
+
+def _do_open_catalog(catalog: str = ""):
+    from SciQLop.components.command_palette.arg_types import resolve_catalog_arg
+    cat = resolve_catalog_arg(catalog)
+    if cat is None:
+        return
+    win = _get_win()
+    browser = _reveal_catalogs_browser(win)
+    node = _find_provider_node(browser._tree_model, cat.provider)
+    if node is None:
+        return
+    cat_node = next((c for c in node.children
+                      if c.catalog is not None and c.catalog.uuid == cat.uuid), None)
+    if cat_node is None:
+        return
+    source_index = browser._tree_model.createIndex(cat_node.row(), 0, cat_node)
+    proxy_index = browser._proxy_model.mapFromSource(source_index)
+    browser._catalog_tree.setCurrentIndex(proxy_index)
+    browser._catalog_tree.scrollTo(proxy_index)
+
+
 def register_builtin_commands(registry):
     registry.register(PaletteCommand(
         id="plot.new_panel",
@@ -85,7 +144,7 @@ def register_builtin_commands(registry):
         id="catalog.create",
         name="Create catalog",
         description="Create a new catalog",
-        callback=lambda provider="": None,
+        callback=_do_create_catalog,
         args=[ProviderArg()],
     ))
 
@@ -93,7 +152,7 @@ def register_builtin_commands(registry):
         id="catalog.open",
         name="Open catalog",
         description="Open a catalog in the browser",
-        callback=lambda catalog="": None,
+        callback=_do_open_catalog,
         args=[CatalogArg()],
     ))
 
