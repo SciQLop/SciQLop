@@ -85,7 +85,7 @@ def test_delete_action_trigger_confirms_before_bulk_delete(qtbot, qapp, monkeypa
     assert len(provider.events(cat)) == initial - 2
 
 
-def test_event_table_context_menu_offers_open_link_for_a_url_cell(qtbot, qapp):
+def test_event_table_context_menu_offers_open_link_for_a_url_cell(qtbot, qapp, monkeypatch):
     """No metadata value in SciQLop's catalog event table was ever
     clickable (2026-09-06 review) -- a right-click "Open Link" action on a
     URL-looking cell is the mechanism least likely to conflict with
@@ -125,6 +125,61 @@ def test_event_table_context_menu_offers_open_link_for_a_url_cell(qtbot, qapp):
     note_proxy_idx = browser._sort_proxy.mapFromSource(browser._event_model.index(0, note_col))
     assert browser._url_at(ref_proxy_idx) == "https://example.org/report"
     assert browser._url_at(note_proxy_idx) is None
+
+    open_action = next(a for a in url_menu.actions() if a.text() == "Open Link")
+    opened = []
+    from PySide6.QtGui import QDesktopServices
+    monkeypatch.setattr(QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
+    open_action.trigger()
+    assert opened == ["https://example.org/report"]
+
+
+def test_on_event_table_context_menu_resolves_the_url_at_the_click_position(qtbot, qapp, monkeypatch):
+    """Exercises the real slot's pos -> indexAt -> _url_at chain (opencode
+    review: the narrower tests above call _build_event_context_menu and
+    _url_at directly and wouldn't catch a regression in how the slot wires
+    them together, e.g. indexAt(pos) not being used, or the wrong index
+    passed through). _build_event_context_menu is a plain Python method,
+    so monkeypatching it to return an empty QMenu short-circuits before
+    .exec() -- no blocking modal, and no need to fake Qt's own event loop."""
+    from PySide6.QtWidgets import QMenu
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from datetime import datetime, timezone
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=0, name="UrlPosProv")
+    cat = provider.catalogs()[0]
+    event = CatalogEvent(
+        uuid="u1",
+        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+        meta={"reference": "https://example.org/report", "note": "not a link"},
+    )
+    provider.add_event(cat, event)
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    browser._current_provider = provider
+    browser._current_catalog = cat
+    browser._event_model.set_context(provider, cat)
+    browser._event_model.set_events(provider.events(cat))
+
+    ref_col = len(browser._event_model._FIXED_COLUMNS) + browser._event_model._meta_keys.index("reference")
+    note_col = len(browser._event_model._FIXED_COLUMNS) + browser._event_model._meta_keys.index("note")
+    ref_pos = browser._event_table.visualRect(
+        browser._sort_proxy.mapFromSource(browser._event_model.index(0, ref_col))).center()
+    note_pos = browser._event_table.visualRect(
+        browser._sort_proxy.mapFromSource(browser._event_model.index(0, note_col))).center()
+
+    seen_urls = []
+    monkeypatch.setattr(browser, "_build_event_context_menu",
+                         lambda url=None: seen_urls.append(url) or QMenu(browser))
+
+    browser._on_event_table_context_menu(ref_pos)
+    browser._on_event_table_context_menu(note_pos)
+
+    assert seen_urls == ["https://example.org/report", None]
 
 
 def test_event_table_context_menu_has_delete_and_add_attribute(qtbot, qapp):

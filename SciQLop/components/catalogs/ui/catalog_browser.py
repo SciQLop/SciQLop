@@ -264,7 +264,17 @@ class CatalogBrowser(QWidget):
         self._event_filter_bar = QLineEdit()
         self._event_filter_bar.setPlaceholderText("Filter events...")
         self._event_filter_bar.setClearButtonEnabled(True)
-        self._event_filter_bar.textChanged.connect(self._sort_proxy.setFilterFixedString)
+        # simplify: filterAcceptsRow is an O(rows x columns) scan (plus
+        # per-cell display formatting) run on every keystroke -- fine up to
+        # the thousands-of-events catalogs this targets, but a debounce is
+        # cheap insurance. Upgrade path if that's ever not enough: cache a
+        # lowercased searchable string per row, invalidated by dataChanged.
+        self._event_filter_debounce = QTimer(self)
+        self._event_filter_debounce.setSingleShot(True)
+        self._event_filter_debounce.setInterval(200)
+        self._event_filter_debounce.timeout.connect(
+            lambda: self._sort_proxy.setFilterFixedString(self._event_filter_bar.text()))
+        self._event_filter_bar.textChanged.connect(lambda _: self._event_filter_debounce.start())
 
         event_panel = QWidget()
         event_layout = QVBoxLayout(event_panel)
@@ -335,7 +345,7 @@ class CatalogBrowser(QWidget):
             return
         if node.catalog is not None and node.catalog is self._current_catalog:
             return
-        self._event_filter_bar.clear()
+        self._clear_event_filter_immediately()
         # Disconnect from previously connected provider
         if self._events_changed_provider is not None:
             try:
@@ -426,6 +436,15 @@ class CatalogBrowser(QWidget):
                 )
         finally:
             self._propagating_bulk_edit = False
+
+    def _clear_event_filter_immediately(self) -> None:
+        """Bypass the debounce: a catalog switch is a discrete navigation
+        action, not a keystroke in the middle of typing, and delaying it
+        would leave the OLD catalog's filter briefly applied to the NEW
+        catalog's (just-loaded) events."""
+        self._event_filter_bar.clear()  # emits textChanged, (re)starts the debounce
+        self._event_filter_debounce.stop()
+        self._sort_proxy.setFilterFixedString("")
 
     def _on_events_changed(self, catalog: Catalog) -> None:
         """Refresh event table when async loading completes for the selected catalog."""

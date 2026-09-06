@@ -70,6 +70,35 @@ def test_catalog_browser_has_event_filter_bar(qtbot, qapp):
     assert browser._event_filter_bar.isClearButtonEnabled()
 
 
+def test_event_filter_bar_debounces_rapid_typing(qtbot, qapp):
+    """opencode review: EventSortProxy.filterAcceptsRow is an O(rows *
+    columns) scan (plus per-cell display formatting), run synchronously on
+    every keystroke -- exactly the catalogs this feature targets (AMDA
+    shared catalogs, thousands of events x dozens of meta columns) are the
+    ones documented elsewhere as perf-sensitive to that shape of work. A
+    debounce (matching the existing 200ms idiom in overlay.py) means
+    filterAcceptsRow doesn't re-run per keystroke while typing."""
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+
+    calls = []
+    real = browser._sort_proxy.setFilterFixedString
+
+    def spy(text):
+        calls.append(text)
+        return real(text)
+    browser._sort_proxy.setFilterFixedString = spy
+
+    for ch in "magneto":
+        browser._event_filter_bar.setText(browser._event_filter_bar.text() + ch)
+    assert calls == [], "filtering must not run synchronously per keystroke"
+
+    qtbot.wait(300)
+    assert calls == ["magneto"], "exactly one filter pass once typing settles"
+
+
 def test_catalog_browser_event_filter_bar_filters_the_table(qtbot, qapp):
     from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
@@ -88,7 +117,7 @@ def test_catalog_browser_event_filter_bar_filters_the_table(qtbot, qapp):
 
     assert browser._sort_proxy.rowCount() == 2
     browser._event_filter_bar.setText("magneto")
-    assert browser._sort_proxy.rowCount() == 1
+    qtbot.waitUntil(lambda: browser._sort_proxy.rowCount() == 1, timeout=1000)
 
 
 def test_event_filter_bar_clears_when_switching_catalog(qtbot, qapp):
@@ -122,7 +151,7 @@ def test_event_filter_bar_clears_when_switching_catalog(qtbot, qapp):
     assert browser._current_catalog is cat_a
 
     browser._event_filter_bar.setText("nonexistent-text")
-    assert browser._sort_proxy.rowCount() == 0
+    qtbot.waitUntil(lambda: browser._sort_proxy.rowCount() == 0, timeout=1000)
 
     for row in range(model.rowCount(prov_idx)):
         cat_idx = model.index(row, 0, prov_idx)
