@@ -26,7 +26,14 @@ def mock_venv():
 
 @pytest.fixture
 def patches(mock_venv):
-    """Patch external dependencies used by prepare_workspace."""
+    """Patch external dependencies used by prepare_workspace.
+
+    ``running_sciqlop_version`` is pinned to a dev version so tests don't
+    depend on whatever SciQLop happens to be installed in the environment
+    actually running the suite (e.g. a release-prep commit where pyproject's
+    version has no ``.dev`` suffix would silently flip the dev/release
+    branches these tests assert on).
+    """
     with (
         patch(f"{MODULE}.get_globally_enabled_plugins", return_value=["pluginA", "pluginB"]),
         patch(f"{MODULE}.get_plugin_folders", return_value=["/plugins/builtin", "/plugins/user"]),
@@ -34,12 +41,14 @@ def patches(mock_venv):
         patch(f"{MODULE}.generate_pyproject_toml") as mock_gen,
         patch(f"{MODULE}.WorkspaceVenv", return_value=mock_venv) as mock_venv_cls,
         patch(f"{MODULE}.repair_lab_assets") as mock_repair,
+        patch(f"{MODULE}.running_sciqlop_version", return_value="0.13.0.dev0") as mock_version,
     ):
         yield {
             "generate_pyproject_toml": mock_gen,
             "WorkspaceVenv": mock_venv_cls,
             "venv": mock_venv,
             "repair_lab_assets": mock_repair,
+            "running_sciqlop_version": mock_version,
         }
 
 
@@ -235,6 +244,39 @@ class TestPrepareWorkspaceDevBuildUpgrade:
         prepare_workspace(workspace_dir, workspace_name="Test", locked=True)
 
         patches["venv"].sync.assert_called_once_with(locked=True, on_output=None)
+
+    def test_core_only_retry_still_upgrades_the_pinned_commit(self, workspace_dir, patches):
+        """The plugin-isolation retry only drops plugin/appstore deps -- the
+        SciQLop requirement itself is unchanged, so the retry must still
+        request the upgrade, or it would silently re-pin whatever stale
+        commit is already sitting in uv.lock."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        venv.sync.side_effect = [RuntimeError("No solution found"), None]
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert venv.sync.call_count == 2
+        assert venv.sync.call_args_list[1].kwargs.get("upgrade_package") == "sciqlop"
+
+    def test_locked_fallback_to_unlocked_still_upgrades_the_pinned_commit(
+        self, workspace_dir, patches
+    ):
+        """A failed archive-lock sync falls back to a fresh unlocked resolve
+        -- for a dev-build workspace that fresh resolve must target main's
+        current tip, not silently keep the stale commit the unhonorable
+        shipped lock was pinned to."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv = patches["venv"]
+        venv.sync.side_effect = [RuntimeError("archive lock stale"), None]
+
+        prepare_workspace(workspace_dir, workspace_name="Test", locked=True)
+
+        assert venv.sync.call_count == 2
+        assert venv.sync.call_args_list[0].kwargs.get("upgrade_package") is None
+        assert venv.sync.call_args_list[1].kwargs.get("upgrade_package") == "sciqlop"
 
 
 class TestPrepareWorkspaceOffline:

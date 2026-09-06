@@ -283,26 +283,6 @@ class TestGeneratePyprojectToml:
         )
         assert sciqlop_requirement("0.13.0") == "sciqlop[all]==0.13.0"
 
-
-class TestIsDevBuildVersion:
-    """A ``git+...@main`` requirement string never changes between pushes,
-    so uv's lockfile treats it as already resolved and never re-fetches new
-    commits on its own (see workspace_setup's ``upgrade_package``). Callers
-    need to know, from a manifest's pinned version alone, whether the
-    workspace is on that never-changing git-main requirement."""
-
-    def test_empty_version_is_a_dev_build(self):
-        from SciQLop.components.workspaces.backend.workspace_project import is_dev_build_version
-        assert is_dev_build_version("") is True
-
-    def test_dot_dev_version_is_a_dev_build(self):
-        from SciQLop.components.workspaces.backend.workspace_project import is_dev_build_version
-        assert is_dev_build_version("0.13.0.dev0") is True
-
-    def test_released_version_is_not_a_dev_build(self):
-        from SciQLop.components.workspaces.backend.workspace_project import is_dev_build_version
-        assert is_dev_build_version("0.13.0") is False
-
     def test_accepts_path_as_string(self):
         manifest = WorkspaceManifest(name="StrPath")
 
@@ -376,6 +356,26 @@ class TestIsDevBuildVersion:
                 "sys_platform == 'darwin'",
                 "sys_platform == 'win32'",
             }
+
+
+class TestIsDevBuildVersion:
+    """A ``git+...@main`` requirement string never changes between pushes,
+    so uv's lockfile treats it as already resolved and never re-fetches new
+    commits on its own (see workspace_setup's ``upgrade_package``). Callers
+    need to know, from a manifest's pinned version alone, whether the
+    workspace is on that never-changing git-main requirement."""
+
+    def test_empty_version_is_a_dev_build(self):
+        from SciQLop.components.workspaces.backend.workspace_project import is_dev_build_version
+        assert is_dev_build_version("") is True
+
+    def test_dot_dev_version_is_a_dev_build(self):
+        from SciQLop.components.workspaces.backend.workspace_project import is_dev_build_version
+        assert is_dev_build_version("0.13.0.dev0") is True
+
+    def test_released_version_is_not_a_dev_build(self):
+        from SciQLop.components.workspaces.backend.workspace_project import is_dev_build_version
+        assert is_dev_build_version("0.13.0") is False
 
 
 class TestFetchAvailableVersions:

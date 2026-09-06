@@ -43,7 +43,7 @@ def get_plugin_folders() -> list[str]:
 
 
 def _try_sync(
-    venv: WorkspaceVenv, *, locked: bool, upgrade_package: str | None, on_output
+    venv: WorkspaceVenv, *, locked: bool, upgrade_package: str | None = None, on_output
 ) -> Exception | None:
     # A locked sync (archive import) means to reproduce the shipped lock
     # exactly, so it never requests an upgrade -- see WorkspaceVenv.sync.
