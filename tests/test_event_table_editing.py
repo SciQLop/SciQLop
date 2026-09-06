@@ -306,8 +306,9 @@ def test_bulk_edit_no_loop_when_propagating(qtbot, qapp):
     assert len(propagation_calls) == 1
 
 
-def test_bulk_delete_removes_all_selected(qtbot, qapp):
+def test_bulk_delete_removes_all_selected(qtbot, qapp, monkeypatch):
     from PySide6.QtCore import QItemSelectionModel
+    from PySide6.QtWidgets import QMessageBox
     from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
 
     browser = CatalogBrowser()
@@ -325,6 +326,10 @@ def test_bulk_delete_removes_all_selected(qtbot, qapp):
             browser._sort_proxy.index(row, 0),
             QItemSelectionModel.SelectionFlag.Select | QItemSelectionModel.SelectionFlag.Rows,
         )
+
+    # Deleting more than one event confirms first -- see
+    # test_bulk_delete_confirmation_* for the confirmation contract itself.
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.StandardButton.Yes)
 
     initial = len(provider.events(cat))
     browser._on_delete()

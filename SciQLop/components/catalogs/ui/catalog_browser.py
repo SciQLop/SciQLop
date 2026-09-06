@@ -3,13 +3,11 @@ from __future__ import annotations
 from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent, QItemSelectionModel, QTimer
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QHBoxLayout,
     QLineEdit,
-    QPushButton,
     QSplitter,
     QStyledItemDelegate,
     QTableView,
-    QToolButton,
+    QToolBar,
     QTreeView,
     QVBoxLayout,
     QWidget,
@@ -17,8 +15,9 @@ from PySide6.QtWidgets import (
     QMenu,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon, QKeySequence, QPen, QColor, QShortcut
+from PySide6.QtGui import QAction, QKeySequence, QPen, QColor, QShortcut
 from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.components.theming.icons import get_icon
 
 import math
 from datetime import datetime, timezone, timedelta
@@ -72,7 +71,7 @@ class _SaveButtonDelegate(QStyledItemDelegate):
 
     def _get_icon(self):
         if self._icon is None:
-            self._icon = QIcon.fromTheme("document-save")
+            self._icon = get_icon("save")
         return self._icon
 
     def _tick_spinner(self):
@@ -214,48 +213,53 @@ class CatalogBrowser(QWidget):
         self._event_table.setItemDelegate(self._event_delegate)
 
         # --- event toolbar (above table) ---
-        self._add_event_btn = QPushButton("Add Event")
-        self._add_event_btn.setVisible(False)
-        self._add_event_btn.clicked.connect(self._on_add_event)
-        self._add_event_btn.setToolTip(rich_tooltip(
+        self._add_event_action = QAction(get_icon("add"), "Add Event", self)
+        self._add_event_action.setVisible(False)
+        self._add_event_action.triggered.connect(self._on_add_event)
+        self._add_event_action.setToolTip(rich_tooltip(
             "Add event",
             "Create a new event in the target catalog."))
 
-        self._delete_btn = QPushButton("Delete")
-        self._delete_btn.setVisible(False)
-        self._delete_btn.clicked.connect(self._on_delete)
-        self._delete_btn.setToolTip(rich_tooltip(
+        self._delete_action = QAction(get_icon("delete"), "Delete", self)
+        self._delete_action.setVisible(False)
+        self._delete_action.setShortcut(QKeySequence.StandardKey.Delete)
+        self._delete_action.setShortcutContext(Qt.ShortcutContext.WidgetShortcut)
+        self._delete_action.triggered.connect(self._on_delete)
+        self._delete_action.setToolTip(rich_tooltip(
             "Delete",
             "Delete the selected events from the catalog."))
 
-        self._columns_btn = QToolButton()
-        self._columns_btn.setText("Columns")
-        self._columns_btn.setToolTip(rich_tooltip(
+        self._columns_action = QAction(get_icon("view_list"), "Columns", self)
+        self._columns_action.setToolTip(rich_tooltip(
             "Columns",
             "Show, hide, or reorder the event-table columns."))
-        self._columns_btn.setAutoRaise(True)
-        self._columns_btn.clicked.connect(lambda: self._open_column_popover())
+        self._columns_action.triggered.connect(lambda: self._open_column_popover())
 
-        self._add_attr_btn = QToolButton()
-        self._add_attr_btn.setText("+ Attribute")
-        self._add_attr_btn.setToolTip(rich_tooltip(
+        self._add_attr_action = QAction("+ Attribute", self)
+        self._add_attr_action.setVisible(False)
+        self._add_attr_action.setToolTip(rich_tooltip(
             "Add attribute",
             "Add a metadata attribute to the selected events"
             " (or all events if none are selected)."))
-        self._add_attr_btn.setAutoRaise(True)
-        self._add_attr_btn.clicked.connect(self._on_add_attribute_clicked)
+        self._add_attr_action.triggered.connect(self._on_add_attribute_clicked)
 
-        event_toolbar = QHBoxLayout()
-        event_toolbar.addWidget(self._add_event_btn)
-        event_toolbar.addWidget(self._delete_btn)
-        event_toolbar.addWidget(self._columns_btn)
-        event_toolbar.addWidget(self._add_attr_btn)
-        event_toolbar.addStretch()
+        self._event_toolbar = QToolBar()
+        self._event_toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self._event_toolbar.addAction(self._add_event_action)
+        self._event_toolbar.addAction(self._delete_action)
+        self._event_toolbar.addAction(self._columns_action)
+        self._event_toolbar.addAction(self._add_attr_action)
+
+        # Shortcut fires only with the table focused; same actions also
+        # populate the table's own right-click menu (_build_event_context_menu).
+        self._event_table.addAction(self._delete_action)
+        self._event_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self._event_table.customContextMenuRequested.connect(self._on_event_table_context_menu)
 
         event_panel = QWidget()
         event_layout = QVBoxLayout(event_panel)
         event_layout.setContentsMargins(0, 0, 0, 0)
-        event_layout.addLayout(event_toolbar)
+        event_layout.addWidget(self._event_toolbar)
         event_layout.addWidget(self._event_table, 1)
 
         # --- splitter ---
@@ -265,23 +269,10 @@ class CatalogBrowser(QWidget):
         self._splitter.setStretchFactor(0, 1)
         self._splitter.setStretchFactor(1, 3)
 
-        # --- actions toolbar (bottom) ---
-        self._actions_btn = QToolButton()
-        self._actions_btn.setText("Actions")
-        self._actions_btn.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
-        self._actions_menu = QMenu(self._actions_btn)
-        self._actions_btn.setMenu(self._actions_menu)
-        self._actions_btn.setVisible(False)
-
-        actions_toolbar = QHBoxLayout()
-        actions_toolbar.addStretch()
-        actions_toolbar.addWidget(self._actions_btn)
-
         # --- layout ---
         layout = QVBoxLayout(self)
         layout.addWidget(self._filter_bar)
         layout.addWidget(self._splitter, 1)
-        layout.addLayout(actions_toolbar)
 
     # ---- error reporting ----
 
@@ -539,7 +530,7 @@ class CatalogBrowser(QWidget):
         popover.reorder_requested.connect(self._on_column_reorder_requested)
         popover.reset_requested.connect(self._on_columns_reset)
         if at_header_pos is None:
-            anchor = self._columns_btn
+            anchor = self._event_toolbar.widgetForAction(self._columns_action)
             global_pos = anchor.mapToGlobal(anchor.rect().bottomLeft())
         else:
             global_pos = self._event_table.horizontalHeader().mapToGlobal(at_header_pos)
@@ -569,29 +560,17 @@ class CatalogBrowser(QWidget):
 
     def _update_toolbar(self) -> None:
         if self._current_provider is None:
-            self._add_event_btn.setVisible(False)
-            self._delete_btn.setVisible(False)
-            self._columns_btn.setVisible(False)
-            self._add_attr_btn.setVisible(False)
-            self._actions_btn.setVisible(False)
+            self._add_event_action.setVisible(False)
+            self._delete_action.setVisible(False)
+            self._columns_action.setVisible(False)
+            self._add_attr_action.setVisible(False)
             return
 
         caps = self._current_provider.capabilities(self._current_catalog)
-        self._add_event_btn.setVisible(Capability.CREATE_EVENTS in caps)
-        self._columns_btn.setVisible(self._event_model.columnCount() > 0)
-        self._delete_btn.setVisible(Capability.DELETE_EVENTS in caps)
-        self._add_attr_btn.setVisible(Capability.EDIT_EVENTS in caps)
-
-        # Populate custom actions menu
-        self._actions_menu.clear()
-        actions = self._current_provider.actions(self._current_catalog)
-        self._actions_btn.setVisible(len(actions) > 0)
-        for action in actions:
-            menu_action = self._actions_menu.addAction(action.name)
-            if action.icon is not None:
-                menu_action.setIcon(action.icon)
-            cat = self._current_catalog
-            menu_action.triggered.connect(lambda checked, cb=action.callback, c=cat: cb(c))
+        self._add_event_action.setVisible(Capability.CREATE_EVENTS in caps)
+        self._columns_action.setVisible(self._event_model.columnCount() > 0)
+        self._delete_action.setVisible(Capability.DELETE_EVENTS in caps)
+        self._add_attr_action.setVisible(Capability.EDIT_EVENTS in caps)
 
     def highlight_event(self, event) -> None:
         """Select the row in the event table matching the given event."""
@@ -677,6 +656,18 @@ class CatalogBrowser(QWidget):
             ev = self._event_model.event_at(source_idx.row())
             if ev is not None:
                 events.append(ev)
+        if not events:
+            return
+        if len(events) > 1:
+            from PySide6.QtWidgets import QMessageBox
+            reply = QMessageBox.question(
+                self, "Delete Events",
+                f"Delete {len(events)} selected events?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
         try:
             for ev in events:
                 self._current_provider.remove_event(self._current_catalog, ev)
@@ -685,6 +676,24 @@ class CatalogBrowser(QWidget):
             self._report_failure("Could not delete event", e)
             return
         self._event_model.set_events(events_after)
+
+    def _build_event_context_menu(self) -> QMenu:
+        menu = QMenu(self)
+        if self._delete_action.isVisible():
+            menu.addAction(self._delete_action)
+        if self._add_attr_action.isVisible():
+            menu.addAction(self._add_attr_action)
+        if self._current_catalog is not None:
+            if not menu.isEmpty():
+                menu.addSeparator()
+            self._build_color_by_menu(menu, self._current_catalog)
+        return menu
+
+    def _on_event_table_context_menu(self, pos) -> None:
+        menu = self._build_event_context_menu()
+        if menu.isEmpty():
+            return
+        menu.exec(self._event_table.viewport().mapToGlobal(pos))
 
     def _on_add_attribute_clicked(self) -> None:
         if self._current_provider is None or self._current_catalog is None:
@@ -738,12 +747,18 @@ class CatalogBrowser(QWidget):
 
     def _on_tree_context_menu(self, pos) -> None:
         proxy_index = self._catalog_tree.indexAt(pos)
-        if not proxy_index.isValid():
+        menu = self._build_tree_context_menu(proxy_index)
+        if menu is None or menu.isEmpty():
             return
+        menu.exec(self._catalog_tree.viewport().mapToGlobal(pos))
+
+    def _build_tree_context_menu(self, proxy_index) -> QMenu | None:
+        if not proxy_index.isValid():
+            return None
         source_index = self._proxy_model.mapToSource(proxy_index)
         node = self._tree_model.node_from_index(source_index)
         if node.provider is None:
-            return
+            return None
 
         # `caps` is the provider-level set, used for folder/provider-node
         # decisions. For per-catalog decisions (Save Catalog, Delete Catalog,
@@ -760,6 +775,16 @@ class CatalogBrowser(QWidget):
                 if action.icon is not None:
                     a.setIcon(action.icon)
                 a.triggered.connect(lambda checked, cb=action.callback: cb(None))
+
+        # Catalog-scoped actions (own place for a provider to expose
+        # per-catalog custom operations; the tree is the single surface for
+        # every provider action, provider- or catalog-level)
+        if node.catalog is not None:
+            for action in node.provider.actions(node.catalog):
+                a = menu.addAction(action.name)
+                if action.icon is not None:
+                    a.setIcon(action.icon)
+                a.triggered.connect(lambda checked, cb=action.callback, c=node.catalog: cb(c))
 
         # Explicit folder actions (room nodes)
         if node.is_explicit_folder:
@@ -800,9 +825,7 @@ class CatalogBrowser(QWidget):
         if node.catalog is not None:
             self._build_color_by_menu(menu, node.catalog)
 
-        if menu.isEmpty():
-            return
-        menu.exec(self._catalog_tree.viewport().mapToGlobal(pos))
+        return menu
 
     def _build_color_by_menu(self, parent_menu: QMenu, catalog: Catalog) -> None:
         from SciQLop.components.catalogs.backend.color_mapper import ColorMapper

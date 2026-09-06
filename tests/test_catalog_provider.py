@@ -660,9 +660,9 @@ def test_catalog_browser_toolbar_visibility(qtbot, qapp):
             tree.setCurrentIndex(cat_idx)
             break
 
-    # Toolbar buttons should be hidden for read-only provider
-    assert not browser._add_event_btn.isVisible()
-    assert not browser._delete_btn.isVisible()
+    # Toolbar actions should be hidden for read-only provider
+    assert not browser._add_event_action.isVisible()
+    assert not browser._delete_action.isVisible()
 
 
 # --- Task 4: Prune empty folders on catalog removal ---
