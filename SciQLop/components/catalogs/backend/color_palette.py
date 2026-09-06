@@ -4,20 +4,21 @@ from hashlib import md5
 from PySide6.QtCore import QRect, Qt
 from PySide6.QtGui import QColor, QIcon, QIconEngine, QPainter
 
-# 12 distinguishable colors with 80 alpha for span fill
+# Paul Tol's colorblind-safe "muted" qualitative scheme (9 colors, 80 alpha
+# for span fill). Replaces a tab10-derived set that paired a near-pure red
+# (214,39,40) with a near-pure green (44,160,44) -- the classic red-green
+# confusion pair, with real odds of both landing on-screen at once (~40%
+# with just 4 hash-assigned catalogs). See https://sronpersonalpages.nl/~pault/
 _PALETTE = [
-    QColor(31, 119, 180, 80),
-    QColor(255, 127, 14, 80),
-    QColor(44, 160, 44, 80),
-    QColor(214, 39, 40, 80),
-    QColor(148, 103, 189, 80),
-    QColor(140, 86, 75, 80),
-    QColor(227, 119, 194, 80),
-    QColor(127, 127, 127, 80),
-    QColor(188, 189, 34, 80),
-    QColor(23, 190, 207, 80),
-    QColor(174, 199, 232, 80),
-    QColor(255, 187, 120, 80),
+    QColor(51, 34, 136, 80),    # indigo
+    QColor(136, 204, 238, 80),  # cyan
+    QColor(68, 170, 153, 80),   # teal
+    QColor(17, 119, 51, 80),    # green
+    QColor(153, 153, 51, 80),   # olive
+    QColor(221, 204, 119, 80),  # sand
+    QColor(204, 102, 119, 80),  # rose
+    QColor(136, 34, 85, 80),    # wine
+    QColor(170, 68, 153, 80),   # purple
 ]
 
 

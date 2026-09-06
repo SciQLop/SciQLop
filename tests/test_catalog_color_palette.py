@@ -43,6 +43,26 @@ def test_different_uuids_can_differ(qapp):
     assert len(colors) >= 6
 
 
+def test_palette_does_not_pair_pure_red_and_green(qapp):
+    """The original 12-color set (tab10-derived) included a near-pure red
+    (214,39,40) and a near-pure green (44,160,44) -- the classic red-green
+    colorblind confusion pair, with ~40% odds two of four hash-assigned
+    catalogs would land on them. Replaced with Paul Tol's colorblind-safe
+    'muted' qualitative palette (2026-09-06 review)."""
+    from SciQLop.components.catalogs.backend.color_palette import _PALETTE
+
+    def is_pure_red(c):
+        return c.red() > 180 and c.green() < 80 and c.blue() < 80
+
+    def is_pure_green(c):
+        return c.green() > 130 and c.red() < 80 and c.blue() < 80
+
+    reds = [c for c in _PALETTE if is_pure_red(c)]
+    greens = [c for c in _PALETTE if is_pure_green(c)]
+    assert not (reds and greens), \
+        f"palette still pairs a pure red {reds} with a pure green {greens}"
+
+
 def test_catalog_swatch_icon_is_not_null(qapp):
     from SciQLop.components.catalogs.backend.color_palette import catalog_swatch_icon
     icon = catalog_swatch_icon("uuid-swatch-1")
