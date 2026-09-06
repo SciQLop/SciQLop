@@ -65,9 +65,17 @@ def test_catalog_arg_completions_use_provider_and_uuid(qapp):
 
     provider = DummyProvider(num_catalogs=1, events_per_catalog=0, name="ArgProv")
     cat = provider.catalogs()[0]
+    provider.mark_dirty(cat)
     arg = CatalogArg()
-    values = {c.value for c in arg.completions({})}
+    completions = arg.completions({})
+    values = {c.value for c in completions}
+    displays = {c.display for c in completions}
     assert f"ArgProv::{cat.uuid}" in values
+    # Old bug: the tree-walk picked up "New Catalog..."/"New Folder..."
+    # placeholder rows as if they were real catalogs, and a dirty catalog's
+    # DisplayRole " *" suffix leaked into the value used for lookup.
+    assert not any("New Catalog" in d or "New Folder" in d for d in displays)
+    assert not any(v.endswith(" *") for v in values)
 
 
 def test_create_catalog_command_triggers_placeholder_edit(qapp, monkeypatch):
@@ -118,3 +126,50 @@ def test_open_catalog_command_unknown_value_is_a_noop(qapp, bare_main_window):
     from SciQLop.components.command_palette.commands import _do_open_catalog
     _do_open_catalog(catalog="NoSuchProvider::nope")  # must not raise
     _do_open_catalog(catalog="garbage-no-separator")  # must not raise
+
+
+def test_open_catalog_command_finds_folder_nested_catalog(qapp):
+    """opencode review finding #1: the lookup only scanned the provider
+    node's direct children, missing every catalog with a non-empty path --
+    the common case for real (tscat/cocat) providers."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.command_palette.commands import _do_open_catalog
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=0,
+                              paths=[["folder"]], name="NestedProv")
+    cat = provider.catalogs()[0]
+    mw, previous = _make_bare_main_window(qapp)
+
+    try:
+        _do_open_catalog(catalog=f"NestedProv::{cat.uuid}")
+        browser = mw.catalogs_browser
+        assert browser._current_catalog is not None
+        assert browser._current_catalog.uuid == cat.uuid
+    finally:
+        mw.close()
+        qapp.main_window = previous
+
+
+def test_open_catalog_command_clears_filter_and_does_not_deselect(qapp):
+    """opencode review finding #2: with an active filter hiding the target,
+    mapFromSource returns an invalid index and setCurrentIndex(invalid)
+    clears whatever was previously selected -- a failed open must not
+    destroy the user's current selection."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.command_palette.commands import _do_open_catalog
+
+    provider = DummyProvider(num_catalogs=2, events_per_catalog=0, name="FilterProv")
+    first, second = provider.catalogs()
+    first.name, second.name = "Alpha", "Beta"
+    mw, previous = _make_bare_main_window(qapp)
+
+    try:
+        browser = mw.catalogs_browser
+        browser._filter_bar.setText("Alpha")
+        _do_open_catalog(catalog=f"FilterProv::{second.uuid}")
+        assert browser._current_catalog is not None
+        assert browser._current_catalog.uuid == second.uuid
+        assert browser._filter_bar.text() == ""
+    finally:
+        mw.close()
+        qapp.main_window = previous

@@ -57,15 +57,6 @@ def _reveal_catalogs_browser(win):
     return browser
 
 
-def _find_provider_node(tree_model, provider):
-    from PySide6.QtCore import QModelIndex
-    for row in range(tree_model.rowCount(QModelIndex())):
-        idx = tree_model.index(row, 0, QModelIndex())
-        if tree_model.node_from_index(idx).provider is provider:
-            return tree_model.node_from_index(idx)
-    return None
-
-
 def _do_create_catalog(provider: str = ""):
     """Reuse the tree's own "New Catalog" inline-edit flow -- same UX as
     right-clicking the provider in the browser, just reached from the
@@ -77,7 +68,7 @@ def _do_create_catalog(provider: str = ""):
         return
     win = _get_win()
     browser = _reveal_catalogs_browser(win)
-    node = _find_provider_node(browser._tree_model, target)
+    node = browser._tree_model._provider_node(target)
     if node is None:
         return
     placeholder = next(
@@ -94,15 +85,18 @@ def _do_open_catalog(catalog: str = ""):
         return
     win = _get_win()
     browser = _reveal_catalogs_browser(win)
-    node = _find_provider_node(browser._tree_model, cat.provider)
-    if node is None:
+    tree_model = browser._tree_model
+    provider_node = tree_model._provider_node(cat.provider)
+    if provider_node is None:
         return
-    cat_node = next((c for c in node.children
-                      if c.catalog is not None and c.catalog.uuid == cat.uuid), None)
+    cat_node = tree_model._find_catalog_node(provider_node, cat)
     if cat_node is None:
         return
-    source_index = browser._tree_model.createIndex(cat_node.row(), 0, cat_node)
+    browser._filter_bar.clear()
+    source_index = tree_model.createIndex(cat_node.row(), 0, cat_node)
     proxy_index = browser._proxy_model.mapFromSource(source_index)
+    if not proxy_index.isValid():
+        return
     browser._catalog_tree.setCurrentIndex(proxy_index)
     browser._catalog_tree.scrollTo(proxy_index)
 
