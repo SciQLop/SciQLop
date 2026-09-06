@@ -648,13 +648,19 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def _warn_if_catalogs_dirty(self, event: QCloseEvent) -> bool:
         from SciQLop.components.catalogs.backend.registry import CatalogRegistry
         from SciQLop.components.catalogs.backend.provider import Capability
+        from SciQLop.components.sciqlop_logging import getLogger
         try:
-            dirty = [
-                p.name for p in CatalogRegistry.instance().providers()
-                if Capability.SAVE in p.capabilities() and p.is_dirty()
-            ]
+            providers = CatalogRegistry.instance().providers()
         except Exception:
             return False
+        dirty = []
+        for p in providers:
+            try:
+                if Capability.SAVE in p.capabilities() and p.is_dirty():
+                    dirty.append(p.name)
+            except Exception:
+                getLogger(__name__).warning(
+                    "Could not check dirty state of provider %r", p, exc_info=True)
         return _confirm_close_with_dirty_catalogs(self, event, dirty)
 
     @staticmethod

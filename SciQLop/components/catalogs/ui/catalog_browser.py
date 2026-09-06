@@ -287,13 +287,23 @@ class CatalogBrowser(QWidget):
 
     def _wire_provider_error_reporting(self) -> None:
         """Forward every provider's error_occurred to provider_error, for
-        providers registered before and after this browser is constructed."""
+        providers registered before and after this browser is constructed.
+
+        Connects a bound method, not a lambda closing over self, to the
+        process-lifetime CatalogRegistry singleton — per
+        docs/qt-lifetime-patterns.md pattern 1, Qt auto-disconnects a bound
+        QObject method when its receiver is destroyed. A lambda has no
+        identifiable receiver, so it would stay connected forever and call
+        into this (possibly destroyed) browser on every future registration.
+        """
         from ..backend.registry import CatalogRegistry
         registry = CatalogRegistry.instance()
         for provider in registry.providers():
             provider.error_occurred.connect(self.provider_error)
-        registry.provider_registered.connect(
-            lambda p: p.error_occurred.connect(self.provider_error))
+        registry.provider_registered.connect(self._on_future_provider_registered)
+
+    def _on_future_provider_registered(self, provider) -> None:
+        provider.error_occurred.connect(self.provider_error)
 
     def _report_failure(self, description: str, exc: Exception) -> None:
         from SciQLop.components.sciqlop_logging import getLogger
@@ -646,11 +656,10 @@ class CatalogBrowser(QWidget):
         )
         try:
             self._current_provider.add_event(self._current_catalog, event)
+            events = self._current_provider.events(self._current_catalog)
         except Exception as e:
             self._report_failure("Could not add event", e)
             return
-        # Refresh event table
-        events = self._current_provider.events(self._current_catalog)
         self._event_model.set_events(events)
 
     def _on_delete(self) -> None:
@@ -671,9 +680,10 @@ class CatalogBrowser(QWidget):
         try:
             for ev in events:
                 self._current_provider.remove_event(self._current_catalog, ev)
+            events_after = self._current_provider.events(self._current_catalog)
         except Exception as e:
             self._report_failure("Could not delete event", e)
-        events_after = self._current_provider.events(self._current_catalog)
+            return
         self._event_model.set_events(events_after)
 
     def _on_add_attribute_clicked(self) -> None:

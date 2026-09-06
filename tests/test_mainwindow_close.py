@@ -156,6 +156,31 @@ def test_warn_if_catalogs_dirty_detects_dirty_provider(qapp, monkeypatch):
     event.ignore.assert_called_once()
 
 
+def test_warn_if_catalogs_dirty_isolates_a_bad_provider(qapp, monkeypatch):
+    """One provider whose capabilities()/is_dirty() raises must not mask a
+    real dirty provider elsewhere -- that would silently discard the
+    healthy provider's unsaved changes with no warning at all."""
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from PySide6.QtWidgets import QMessageBox
+
+    bad = DummyProvider(num_catalogs=0, events_per_catalog=0, name="Bad")
+
+    def _raise(*a, **k):
+        raise RuntimeError("backend down")
+    monkeypatch.setattr(bad, "capabilities", _raise)
+
+    good = DummyProvider(num_catalogs=1, events_per_catalog=0, name="Good")
+    good.mark_dirty(good.catalogs()[0])
+
+    monkeypatch.setattr(QMessageBox, "question", lambda *a, **k: QMessageBox.No)
+    win = SciQLopMainWindow.__new__(SciQLopMainWindow)
+    event = MagicMock()
+    cancelled = SciQLopMainWindow._warn_if_catalogs_dirty(win, event)
+    assert cancelled is True
+    event.ignore.assert_called_once()
+
+
 def test_warn_if_catalogs_dirty_ignores_clean_provider(qapp):
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
