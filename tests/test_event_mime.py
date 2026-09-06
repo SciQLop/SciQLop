@@ -44,6 +44,26 @@ def test_decode_returns_none_for_unrelated_mime(qapp):
     assert decode_event_list(md) is None
 
 
+def test_decode_returns_none_for_malformed_payload(qapp):
+    """decode_event_list is reached from CatalogTreeModel._drop_events, a
+    public Qt drop-target entry point, before the later try/except that
+    wraps the actual provider operation -- a foreign or malformed drag
+    merely advertising EVENT_LIST_MIME_TYPE must not raise out of it, same
+    contract as the sibling TimeRange mime decoder added in this same
+    review (2026-09-06 final review)."""
+    from SciQLop.components.catalogs.backend.event_mime import decode_event_list
+    from SciQLop.core.mime.types import EVENT_LIST_MIME_TYPE
+
+    def _mime_with(raw: bytes) -> QMimeData:
+        md = QMimeData()
+        md.setData(EVENT_LIST_MIME_TYPE, raw)
+        return md
+
+    assert decode_event_list(_mime_with(b"not json")) is None
+    assert decode_event_list(_mime_with(b'{"catalog_uuid": "c1"}')) is None  # missing "provider"
+    assert decode_event_list(_mime_with(b"\xff\xfe\x00")) is None  # invalid utf-8
+
+
 def test_decode_handles_missing_catalog_uuid(qapp):
     """Orphan-bucket drags carry catalog_uuid=None."""
     from SciQLop.components.catalogs.backend.event_mime import (

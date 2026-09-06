@@ -33,14 +33,23 @@ def encode_event_list(
 
 
 def decode_event_list(mime: QMimeData) -> EventDropPayload | None:
+    # This is reached from CatalogTreeModel._drop_events, a public Qt
+    # drop-target entry point, before the try/except that wraps the actual
+    # provider operation -- a foreign/malformed drag merely advertising
+    # EVENT_LIST_MIME_TYPE must decode to None, not raise. Same contract as
+    # the sibling TimeRange mime codec (core/mime/__init__.py).
     if not mime.hasFormat(EVENT_LIST_MIME_TYPE):
         return None
     raw = bytes(mime.data(EVENT_LIST_MIME_TYPE))
     if not raw:
         return None
-    data = json.loads(raw.decode("utf-8"))
+    try:
+        data = json.loads(raw.decode("utf-8"))
+        provider = data["provider"]
+    except (json.JSONDecodeError, UnicodeDecodeError, KeyError, TypeError):
+        return None
     return EventDropPayload(
-        provider=data["provider"],
+        provider=provider,
         catalog_uuid=data.get("catalog_uuid"),
         event_uuids=list(data.get("event_uuids", [])),
     )

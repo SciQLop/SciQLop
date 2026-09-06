@@ -5,6 +5,16 @@ from pathlib import Path
 
 import pytest
 
+# Captured at collection time, before any fixture or test can run --
+# Workspace.activate() (workspaces/backend/workspace.py) deliberately
+# os.chdir()s into the workspace directory whenever a real
+# SciQLopMainWindow is constructed (several test files do this directly,
+# and the session-scoped `main_window` fixture in fixtures.py does too),
+# so relative paths resolve inside the active workspace. Restored by
+# _restore_cwd below after every test, so that behavior can't leak into a
+# later test that resolves a path relative to the original cwd.
+_ORIGINAL_CWD = os.getcwd()
+
 # Temp root created early (before fixtures) for env var paths.
 # Using tempfile directly because tmp_path_factory isn't available in hooks.
 _test_tmp = Path(tempfile.mkdtemp(prefix="sciqlop_test_"))
@@ -151,6 +161,19 @@ def _cleanup_vp_state():
     if app is not None:
         app.processEvents()
         app.processEvents()
+
+
+@pytest.fixture(autouse=True)
+def _restore_cwd():
+    """Undo Workspace.activate()'s os.chdir() (see _ORIGINAL_CWD above) after
+    every test, regardless of which test -- or which session-scoped fixture
+    -- triggered it. A per-test-file fixture only restores to whatever cwd
+    happened to be current when that file's tests started, which can
+    already be a leaked workspace directory from an earlier test; this
+    restores the one true baseline captured at collection time instead.
+    """
+    yield
+    os.chdir(_ORIGINAL_CWD)
 
 
 @pytest.fixture(autouse=True)

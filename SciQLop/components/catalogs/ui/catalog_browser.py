@@ -447,10 +447,16 @@ class CatalogBrowser(QWidget):
         self._sort_proxy.setFilterFixedString("")
 
     def _on_events_changed(self, catalog: Catalog) -> None:
-        """Refresh event table when async loading completes for the selected catalog."""
-        if self._current_catalog is not None and catalog.uuid == self._current_catalog.uuid:
+        """Refresh event table when async loading completes for the selected
+        catalog, or a peer's edit lands in a shared cocat catalog."""
+        if self._current_catalog is None or catalog.uuid != self._current_catalog.uuid:
+            return
+        try:
             events = self._current_provider.events(self._current_catalog)
-            self._set_events_preserving_selection(events)
+        except Exception as e:
+            self._report_failure("Could not refresh events", e)
+            return
+        self._set_events_preserving_selection(events)
 
     def _row_for_uuid(self, uuid: str) -> int:
         for row in range(self._event_model.rowCount()):
@@ -740,12 +746,13 @@ class CatalogBrowser(QWidget):
             stop=stop,
         )
         try:
+            # add_event() synchronously emits events_changed (provider.py's
+            # _emit_events_changed), which the connected _on_events_changed
+            # turns into the refresh -- no separate explicit read here, that
+            # would just do the same model reset a second time.
             self._current_provider.add_event(self._current_catalog, event)
-            events = self._current_provider.events(self._current_catalog)
         except Exception as e:
             self._report_failure("Could not add event", e)
-            return
-        self._set_events_preserving_selection(events)
 
     def _on_delete(self) -> None:
         if self._current_provider is None or self._current_catalog is None:
@@ -775,13 +782,16 @@ class CatalogBrowser(QWidget):
             if reply != QMessageBox.StandardButton.Yes:
                 return
         try:
-            for ev in events:
-                self._current_provider.remove_event(self._current_catalog, ev)
-            events_after = self._current_provider.events(self._current_catalog)
+            # batch_events_update coalesces remove_event's per-call
+            # events_changed into a single emission on exit, so a bulk
+            # delete refreshes the table once, not once per event; the
+            # connected _on_events_changed does that refresh -- no separate
+            # explicit read/reset here.
+            with self._current_provider.batch_events_update(self._current_catalog):
+                for ev in events:
+                    self._current_provider.remove_event(self._current_catalog, ev)
         except Exception as e:
             self._report_failure("Could not delete event", e)
-            return
-        self._event_model.set_events(events_after)
 
     def _url_at(self, proxy_index) -> str | None:
         """The cell's display text, if it looks like a clickable URL."""

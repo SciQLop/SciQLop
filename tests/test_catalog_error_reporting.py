@@ -107,29 +107,14 @@ def test_destroyed_browser_is_forgotten_by_future_provider_registration(qtbot, q
     DummyProvider(num_catalogs=0, events_per_catalog=0)
 
 
-def _fail_on_nth_call(real_fn, fail_at: int, message: str):
-    """First `fail_at - 1` calls behave normally, the `fail_at`-th raises.
-
-    Used to isolate a specific unguarded call site from an unrelated,
-    out-of-scope one that happens to run first via signal delivery (e.g.
-    add_event's own events_changed → _on_events_changed → events() call,
-    which fires before CatalogBrowser's own explicit refresh call).
-    """
-    calls = [0]
-
-    def _wrapped(*a, **k):
-        calls[0] += 1
-        if calls[0] >= fail_at:
-            raise RuntimeError(message)
-        return real_fn(*a, **k)
-    return _wrapped
-
-
 def test_add_event_refresh_failure_reports_instead_of_raising(qtbot, qapp, monkeypatch):
-    """The explicit refresh read in _on_add_event must be guarded too, not
-    just the write -- a backend that fails to refresh must still report
-    instead of raising. (_on_events_changed's own separate, pre-existing
-    unguarded read is out of scope here -- see review notes in backlog.md.)"""
+    """add_event() synchronously emits events_changed, which
+    _on_events_changed (itself guarded, see the signal-failure test below)
+    turns into the one and only refresh read -- _on_add_event no longer
+    does its own second, redundant read (2026-09-06 final review: the two
+    reads used to run back-to-back for every add/delete, doing the
+    expensive model reset twice). A backend that fails on that refresh
+    must still report instead of raising."""
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
     from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
 
@@ -137,8 +122,9 @@ def test_add_event_refresh_failure_reports_instead_of_raising(qtbot, qapp, monke
     browser = CatalogBrowser()
     _select_first_catalog(browser, provider)
 
-    monkeypatch.setattr(provider, "events", _fail_on_nth_call(
-        provider.events, fail_at=2, message="refresh failed"))
+    def _raise(*a, **k):
+        raise RuntimeError("refresh failed")
+    monkeypatch.setattr(provider, "events", _raise)
 
     with qtbot.waitSignal(browser.provider_error, timeout=1000) as blocker:
         browser._on_add_event()
@@ -154,12 +140,83 @@ def test_delete_refresh_failure_reports_instead_of_raising(qtbot, qapp, monkeypa
     _select_first_catalog(browser, provider)
     browser._event_table.selectRow(0)
 
-    monkeypatch.setattr(provider, "events", _fail_on_nth_call(
-        provider.events, fail_at=2, message="refresh failed"))
+    def _raise(*a, **k):
+        raise RuntimeError("refresh failed")
+    monkeypatch.setattr(provider, "events", _raise)
 
     with qtbot.waitSignal(browser.provider_error, timeout=1000) as blocker:
         browser._on_delete()
     assert "refresh failed" in blocker.args[0]
+
+
+def test_add_event_refreshes_the_table_exactly_once(qtbot, qapp, monkeypatch):
+    """add_event() already synchronously emits events_changed (provider.py's
+    _emit_events_changed), which the connected browser turns into a refresh
+    via _on_events_changed -- _on_add_event's own extra explicit read+reset
+    right after was a second, redundant one for every single add
+    (2026-09-06 final review, found by holistically re-reviewing the whole
+    8-step span rather than each commit in isolation)."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=0)
+    browser = CatalogBrowser()
+    _select_first_catalog(browser, provider)
+
+    calls = []
+    real = provider.events
+    def _counting(*a, **k):
+        calls.append(1)
+        return real(*a, **k)
+    monkeypatch.setattr(provider, "events", _counting)
+
+    browser._on_add_event()
+
+    assert len(calls) == 1, f"expected exactly one refresh read, got {len(calls)}"
+
+
+def test_delete_refreshes_the_table_exactly_once(qtbot, qapp, monkeypatch):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3)
+    browser = CatalogBrowser()
+    _select_first_catalog(browser, provider)
+    browser._event_table.selectRow(0)
+
+    calls = []
+    real = provider.events
+    def _counting(*a, **k):
+        calls.append(1)
+        return real(*a, **k)
+    monkeypatch.setattr(provider, "events", _counting)
+
+    browser._on_delete()
+
+    assert len(calls) == 1, f"expected exactly one refresh read, got {len(calls)}"
+
+
+def test_events_changed_signal_failure_reports_instead_of_raising(qtbot, qapp, monkeypatch):
+    """_on_events_changed is a standalone signal slot (fires on async load
+    completion or a peer's edit in a shared cocat catalog, not just as a
+    side effect of a local browser action) and had no guard at all --
+    unlike _on_add_event/_on_delete, which happen to catch synchronously
+    because their own provider call is inside a try (2026-09-06 final
+    review, found by holistically re-reviewing the whole 8-step span)."""
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=1)
+    browser = CatalogBrowser()
+    _select_first_catalog(browser, provider)
+
+    def _raise(*a, **k):
+        raise RuntimeError("peer sync failed")
+    monkeypatch.setattr(provider, "events", _raise)
+
+    with qtbot.waitSignal(browser.provider_error, timeout=1000) as blocker:
+        browser._on_events_changed(browser._current_catalog)
+    assert "peer sync failed" in blocker.args[0]
 
 
 def test_save_failure_reports_instead_of_raising(qtbot, qapp, monkeypatch):

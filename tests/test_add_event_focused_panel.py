@@ -3,25 +3,7 @@ one (2026-09-06 review): with several panels open, self._panels[0] is
 whichever panel connected first -- not necessarily the one the user is
 looking at.
 """
-import os
-
-import pytest
-
 from .fixtures import *
-
-
-@pytest.fixture(autouse=True)
-def _restore_cwd():
-    """Workspace.__init__ (workspaces/backend/workspace.py) deliberately
-    os.chdir()s to the workspace directory when a real SciQLopMainWindow is
-    constructed, so relative paths resolve inside it -- intentional
-    production behavior, but it leaks into later tests using a
-    cwd-relative path if nothing restores it (found via
-    test_catalog_provider.py's cocat tests failing only when run after
-    this file)."""
-    previous = os.getcwd()
-    yield
-    os.chdir(previous)
 
 
 def test_add_event_targets_the_focused_panel(qtbot, qapp, monkeypatch):
