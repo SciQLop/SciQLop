@@ -44,8 +44,47 @@ def test_vmin_vmax_cannot_hold_invalid_text(qapp):
     text at all -- there's no invalid state to silently swallow."""
     from SciQLop.components.catalogs.ui.colormap_dialog import ColormapDialog
     dialog = ColormapDialog()
+    dialog._vmin_auto.setChecked(False)
     dialog._vmin_spin.setValue(3.25)
     assert dialog.vmin == 3.25
-    # Setting back toward -infinity clamps to the auto sentinel, not a typo.
-    dialog._vmin_spin.setValue(-1e30)
+
+
+def test_vmin_can_represent_an_extreme_value_without_becoming_auto(qapp):
+    """opencode review: an earlier design used a numeric sentinel (-1e18)
+    to mean 'auto', which is itself a legitimate, representable double a
+    user could genuinely want as vmin -- exactly the class of silent
+    misinterpretation this whole redesign exists to prevent. 'Auto' is now
+    a separate checkbox, so every representable double is a real value."""
+    from SciQLop.components.catalogs.ui.colormap_dialog import ColormapDialog
+    dialog = ColormapDialog()
+    dialog._vmin_auto.setChecked(False)
+    dialog._vmin_spin.setValue(-1e18)
+    assert dialog.vmin == -1e18
+
+
+def test_vmin_vmax_auto_checkbox_disables_the_spinbox(qapp):
+    from SciQLop.components.catalogs.ui.colormap_dialog import ColormapDialog
+    dialog = ColormapDialog(current_vmin=5.0)
+    assert not dialog._vmin_auto.isChecked()
+    assert dialog._vmin_spin.isEnabled()
+    dialog._vmin_auto.setChecked(True)
+    assert not dialog._vmin_spin.isEnabled()
     assert dialog.vmin is None
+
+
+def test_dialog_preserves_a_legacy_removed_colormap_if_unchanged(qapp):
+    """opencode review: dropping jet/turbo/hot from the picker must not
+    silently rewrite an existing catalog's persisted colormap the moment
+    someone opens this dialog and clicks OK without touching the combo --
+    that's a destructive change disguised as a no-op."""
+    from SciQLop.components.catalogs.ui.colormap_dialog import ColormapDialog
+    dialog = ColormapDialog(current_colormap="jet")
+    assert dialog.colormap == "jet"
+
+
+def test_dialog_still_offers_the_recommended_colormaps_alongside_a_legacy_one(qapp):
+    from SciQLop.components.catalogs.ui.colormap_dialog import ColormapDialog
+    dialog = ColormapDialog(current_colormap="jet")
+    items = {dialog._cmap_combo.itemText(i) for i in range(dialog._cmap_combo.count())}
+    assert "viridis" in items
+    assert "jet" in items
