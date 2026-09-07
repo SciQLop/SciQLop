@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent, QItemSelectionModel, QTimer
+from PySide6.QtCore import (
+    QModelIndex, QPersistentModelIndex, QSortFilterProxyModel, Signal, QRect, QEvent,
+    QItemSelectionModel, QTimer,
+)
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QLineEdit,
@@ -155,6 +158,8 @@ class CatalogBrowser(QWidget):
         self._events_changed_provider: CatalogProvider | None = None
         self._current_catalog: Catalog | None = None
         self._panels: list = []
+        self._expanded_before_filter: list[QPersistentModelIndex] = []
+        self._manual_widths: dict[str, int] = {}
 
         # --- filter bar ---
         self._filter_bar = QLineEdit()
@@ -199,6 +204,11 @@ class CatalogBrowser(QWidget):
         header = self._event_table.horizontalHeader()
         header.setSectionsMovable(True)
         header.sectionMoved.connect(lambda *_: self._save_view_state())
+        header.sectionResized.connect(self._on_section_resized)
+        self._width_save_timer = QTimer(self)
+        self._width_save_timer.setSingleShot(True)
+        self._width_save_timer.setInterval(250)
+        self._width_save_timer.timeout.connect(self._save_view_state)
         header.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         header.customContextMenuRequested.connect(
             lambda pos: self._open_column_popover(at_header_pos=pos)
@@ -329,11 +339,32 @@ class CatalogBrowser(QWidget):
     # ---- slots ----
 
     def _on_filter_changed(self, text: str) -> None:
+        if text and not self._proxy_model.filterRegularExpression().pattern():
+            self._expanded_before_filter = self._expanded_source_indexes()
         self._proxy_model.setFilterFixedString(text)
         if text:
             self._catalog_tree.expandAll()
         else:
-            self._catalog_tree.collapseAll()
+            self._restore_expansion()
+
+    def _expanded_source_indexes(self) -> list[QPersistentModelIndex]:
+        result = []
+
+        def walk(proxy_parent):
+            for row in range(self._proxy_model.rowCount(proxy_parent)):
+                idx = self._proxy_model.index(row, 0, proxy_parent)
+                if self._catalog_tree.isExpanded(idx):
+                    result.append(QPersistentModelIndex(self._proxy_model.mapToSource(idx)))
+                    walk(idx)
+        walk(QModelIndex())
+        return result
+
+    def _restore_expansion(self) -> None:
+        self._catalog_tree.collapseAll()
+        for source in self._expanded_before_filter:
+            if source.isValid():
+                self._catalog_tree.expand(self._proxy_model.mapFromSource(source))
+        self._expanded_before_filter = []
 
     def _on_tree_double_clicked(self, proxy_index: QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(proxy_index)
@@ -525,7 +556,20 @@ class CatalogBrowser(QWidget):
         header_fm = header.fontMetrics()
         cell_fm = view.fontMetrics()
         sample = min(rows, self._COLUMN_FIT_SAMPLE_ROWS)
-        for col in range(cols):
+        header.blockSignals(True)
+        try:
+            for col in range(cols):
+                self._fit_column(col, sample, header_fm, cell_fm)
+        finally:
+            header.blockSignals(False)
+
+    def _fit_column(self, col: int, sample: int, header_fm, cell_fm) -> None:
+        model = self._event_model
+        header = self._event_table.horizontalHeader()
+        manual = self._manual_widths.get(self._column_key(col))
+        if manual:
+            header.resizeSection(col, manual)
+        else:
             header_text = model.headerData(col, Qt.Orientation.Horizontal) or ""
             width = header_fm.horizontalAdvance(str(header_text))
             for row in range(sample):
@@ -536,6 +580,15 @@ class CatalogBrowser(QWidget):
             width = min(width + self._COLUMN_FIT_PADDING_PX, self._COLUMN_FIT_MAX_WIDTH)
             header.resizeSection(col, width)
 
+    def _on_section_resized(self, logical: int, _old: int, new_size: int) -> None:
+        header = self._event_table.horizontalHeader()
+        is_stretched_last = (header.stretchLastSection()
+                             and header.visualIndex(logical) == header.count() - 1)
+        if new_size <= 0 or is_stretched_last or self._current_catalog is None:
+            return
+        self._manual_widths[self._column_key(logical)] = new_size
+        self._width_save_timer.start()
+
     def _column_key(self, col: int) -> str:
         if col < len(self._event_model._FIXED_COLUMNS):
             return self._event_model._FIXED_COLUMNS[col]
@@ -544,6 +597,7 @@ class CatalogBrowser(QWidget):
     def _apply_view_state(self, catalog) -> None:
         from ..backend.event_table_view_state import get_view_state
         state = get_view_state(catalog.uuid)
+        self._manual_widths = dict(state.column_widths)
         header = self._event_table.horizontalHeader()
         header.blockSignals(True)
         try:
@@ -553,6 +607,7 @@ class CatalogBrowser(QWidget):
             self._reorder_columns(state.column_order)
         finally:
             header.blockSignals(False)
+        self._fit_event_columns()
 
     def _save_view_state(self) -> None:
         if self._current_catalog is None:
@@ -569,7 +624,8 @@ class CatalogBrowser(QWidget):
             for visual in range(self._event_model.columnCount())
         ]
         save_view_state(self._current_catalog.uuid,
-                        CatalogViewState(hidden_columns=hidden, column_order=order))
+                        CatalogViewState(hidden_columns=hidden, column_order=order,
+                                         column_widths=dict(self._manual_widths)))
 
     def _reorder_columns(self, desired_order: list) -> None:
         if not desired_order:
@@ -640,10 +696,12 @@ class CatalogBrowser(QWidget):
         if self._current_catalog is None:
             return
         save_view_state(self._current_catalog.uuid, CatalogViewState())
+        self._manual_widths = {}
         for col in range(self._event_model.columnCount()):
             self._event_table.setColumnHidden(col, False)
         self._reorder_columns(
             [self._column_key(col) for col in range(self._event_model.columnCount())])
+        self._fit_event_columns()
 
     def _update_toolbar(self) -> None:
         if self._current_provider is None:

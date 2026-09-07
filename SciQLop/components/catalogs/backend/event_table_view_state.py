@@ -11,6 +11,7 @@ class CatalogViewState(BaseModel):
     """Per-catalog UI state for the event table."""
     hidden_columns: list[str] = []
     column_order: list[str] = []
+    column_widths: dict[str, int] = {}
 
 
 class EventTableViewState(ConfigEntry):
