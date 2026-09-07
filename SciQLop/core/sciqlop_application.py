@@ -37,6 +37,8 @@ class SciQLopApp(QApplication):
 
     def __init__(self, args):
         from SciQLop.components import sciqlop_logging
+        from SciQLop.core.common.macos import set_bundle_name
+        set_bundle_name("SciQLop")
         super(SciQLopApp, self).__init__(args)
         self.setOrganizationName("LPP")
         self.setOrganizationDomain("lpp.fr")

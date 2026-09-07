@@ -320,7 +320,9 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     from PySide6.QtCore import QEventLoop, QTimer
     from PySide6.QtWidgets import QApplication
     from SciQLop.components.startup.startup_window import StartupWindow
+    from SciQLop.core.common.macos import set_bundle_name
 
+    set_bundle_name("SciQLop")
     existing = QApplication.instance()
     app = existing or QApplication(sys.argv[:1])
 
