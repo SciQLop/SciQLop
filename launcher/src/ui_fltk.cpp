@@ -1,5 +1,7 @@
 #include "ui_fltk.hpp"
 
+#include "dock.hpp"
+
 #include <FL/Fl.H>
 #include <FL/Fl_Box.H>
 #include <FL/Fl_Button.H>
@@ -202,6 +204,7 @@ public:
         // the user may dismiss it, so the Close posted when work() returns is
         // ignored from here on.
         error_shown_ = true;
+        dock::set_visible(true);
         window_->show();  // re-show: this may follow an earlier dismiss()
         picture_->hide();
         strip_->hide();
@@ -317,6 +320,7 @@ private:
                 // workspace" from inside the one supervised subprocess (see
                 // launcher.cpp's run_app) — re-show so it becomes visible
                 // again after an earlier dismiss().
+                dock::set_visible(true);
                 self->window_->show();
                 self->set_phase(message->text);
                 break;
@@ -338,7 +342,10 @@ private:
                 // splash simply never became invisible when iconized — many
                 // window managers only animate/track iconify state for
                 // normal, decorated windows.
-                if (!self->error_shown_) self->window_->hide();
+                if (!self->error_shown_) {
+                    self->window_->hide();
+                    dock::set_visible(false);
+                }
                 break;
             case PostKind::Close:
                 if (!self->error_shown_) self->close();

@@ -57,6 +57,7 @@ src/launcher.cpp       toolkit-independent: argv splitting, one round's supervis
 src/main.cpp           the round loop: a fresh Ui per round, decides the next round's options from the exit code
 src/process_*.cpp      subprocess + line-streamed output (POSIX / Win32)
 src/paths.cpp          platform data/executable locations, bundled-interpreter discovery
+src/dock_*             Dock / Cmd+Tab visibility while the splash is hidden (macOS activation policy; no-op elsewhere)
 src/win/               Windows-only resource: DPI-awareness/supportedOS manifest (WIN32 builds only)
 tests/                 unit tests for the pure logic, plus the end-to-end smoke test
 ```

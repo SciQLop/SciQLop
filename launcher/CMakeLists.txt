@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.24)
-project(sciqlop_launcher VERSION 0.1.2 LANGUAGES CXX)
+project(sciqlop_launcher VERSION 0.1.3 LANGUAGES CXX)
+if(APPLE)
+    enable_language(OBJCXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,12 +59,17 @@ endif()
 add_executable(sciqlop-launcher WIN32
     src/main.cpp
     src/ui_fltk.cpp
+    $<$<BOOL:${APPLE}>:src/dock_macos.mm>
+    $<$<NOT:$<BOOL:${APPLE}>>:src/dock_stub.cpp>
     $<$<BOOL:${WIN32}>:src/win/launcher.rc>
 )
 # CommandLineToArgvW (main.cpp's utf8_argv(), C6) lives in shell32, which
 # FLTK's own Windows link set (comctl32/ws2_32/gdiplus) does not pull in.
 target_link_libraries(sciqlop-launcher PRIVATE launcher_core fltk::fltk fltk::images
     $<$<BOOL:${WIN32}>:shell32>)
+if(APPLE)
+    target_link_libraries(sciqlop-launcher PRIVATE "-framework AppKit")
+endif()
 # src/win/launcher.rc embeds the manifest (DPI awareness, supportedOS) as
 # RT_MANIFEST 1; MSVC's linker would otherwise generate a default one under
 # the same id and CVTRES fails with "duplicate resource".
