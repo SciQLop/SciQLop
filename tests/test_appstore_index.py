@@ -65,6 +65,19 @@ def test_update_only_offers_compatible_versions(monkeypatch):
     assert offered == ["1.0.0"]
 
 
+def test_filter_packages_sorts_versions_ascending():
+    """The JS client reads `versions[versions.length - 1]` as the latest
+    version; `versions` must come out sorted ascending so that agrees with
+    the backend's own `_latest_version` (which uses `max(...)`)."""
+    pkg = _entry(versions=[
+        {"version": "2.0.0", "sciqlop": ""},
+        {"version": "10.0.0", "sciqlop": ""},
+        {"version": "1.0.0", "sciqlop": ""},
+    ])
+    out = _filter_packages([pkg])
+    assert [v["version"] for v in out[0]["versions"]] == ["1.0.0", "2.0.0", "10.0.0"]
+
+
 def test_plugin_with_no_compatible_version_is_hidden(monkeypatch):
     monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
     pkg = {

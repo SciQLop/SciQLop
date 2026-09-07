@@ -50,14 +50,18 @@ def _compatible_versions(plugin: dict) -> list[dict]:
 
 
 def _filter_packages(packages: list[dict]) -> list[dict]:
-    """Drop incompatible versions, then drop plugins with no compatible version."""
+    """Drop incompatible versions, then drop plugins with no compatible version.
+
+    Versions are sorted ascending by parsed version, so the last entry is the
+    latest -- the JS client reads `versions[versions.length - 1]` for that.
+    """
     out: list[dict] = []
     for pkg in packages:
         compatible = _compatible_versions(pkg)
         if not compatible:
             continue
         filtered = dict(pkg)
-        filtered["versions"] = compatible
+        filtered["versions"] = sorted(compatible, key=lambda v: packaging.version.parse(v["version"]))
         out.append(filtered)
     return out
 
@@ -71,14 +75,16 @@ def _latest_version(plugin: dict) -> dict | None:
 
 def _package_name_from_pip(pip_field: str) -> str | None:
     """Extract the distribution name from a pip specifier or wheel URL."""
+    from SciQLop.components.plugins.backend.settings import canonical_package_name
+
     pip_field = pip_field.strip()
     if pip_field.startswith("http://") or pip_field.startswith("https://"):
         filename = __import__("pathlib").PurePosixPath(pip_field.split("?")[0].split("#")[0]).name
         if filename.endswith(".whl"):
-            return filename.split("-")[0].replace("_", "-").lower()
+            return canonical_package_name(filename.split("-")[0])
         return None
     name = _PEP440_SPLIT.split(pip_field, 1)[0].strip()
-    return name.replace("_", "-").lower() if name else None
+    return canonical_package_name(name) if name else None
 
 
 def _installed_version(package_name: str) -> str | None:
@@ -125,16 +131,25 @@ def _uv_uninstall_cmd(dist_name: str) -> list[str]:
     return uv_command("pip", "uninstall", "--native-tls", dist_name)
 
 
-def _save_installed_package(appstore_name: str, pip_spec: str, dist_name: str) -> None:
-    from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings, InstalledPackage
+def _save_installed_package(pip_spec: str, dist_name: str) -> None:
+    from SciQLop.components.plugins.backend.settings import (
+        InstalledPackage, SciQLopPluginsSettings, canonical_package_name,
+    )
     with SciQLopPluginsSettings() as settings:
-        settings.installed_packages[appstore_name] = InstalledPackage(pip=pip_spec, name=dist_name)
+        settings.installed_packages[canonical_package_name(dist_name)] = InstalledPackage(
+            pip=pip_spec, name=dist_name)
 
 
-def _remove_installed_package(appstore_name: str) -> None:
-    from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
+def _remove_installed_package(dist_name: str) -> None:
+    """Drop the entry for *dist_name*, including one left under a legacy
+    display-name key (its `.name` still canonicalises to *dist_name*)."""
+    from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings, canonical_package_name
+    canonical = canonical_package_name(dist_name)
     with SciQLopPluginsSettings() as settings:
-        settings.installed_packages.pop(appstore_name, None)
+        settings.installed_packages = {
+            key: pkg for key, pkg in settings.installed_packages.items()
+            if canonical_package_name(pkg.name) != canonical
+        }
 
 
 def _try_load_plugin(dist_name: str) -> None:
@@ -143,19 +158,22 @@ def _try_load_plugin(dist_name: str) -> None:
     from SciQLop.components.plugins.backend.loader.loader import (
         ENTRY_POINT_GROUP, _load_entry_point_plugin,
     )
-    from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings, PluginConfig
+    from SciQLop.components.plugins.backend.settings import (
+        SciQLopPluginsSettings, PluginConfig, canonical_package_name,
+    )
     from SciQLop.core.sciqlop_application import sciqlop_app
 
     main_window = sciqlop_app().main_window
     if main_window is None:
         return
 
+    canonical_dist_name = canonical_package_name(dist_name)
     for ep in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP):
         try:
             ep_dist = ep.dist.name if ep.dist else None
         except Exception:
             ep_dist = None
-        if ep_dist and ep_dist.lower().replace("_", "-") == dist_name.lower().replace("_", "-"):
+        if ep_dist and canonical_package_name(ep_dist) == canonical_dist_name:
             with SciQLopPluginsSettings() as settings:
                 if ep.name not in settings.plugins:
                     settings.plugins[ep.name] = PluginConfig()
@@ -240,7 +258,7 @@ class AppStoreBackend(QObject):
                     cmd = _uv_install_cmd(pip_spec, override_file, constraint_file)
                     subprocess.run(cmd, check=True, capture_output=True, text=True)
                 dist_name = _package_name_from_pip(pip_spec) or name
-                _save_installed_package(name, pip_spec, dist_name)
+                _save_installed_package(pip_spec, dist_name)
                 self.install_finished.emit(json.dumps({"name": name, "ok": True, "version": latest["version"]}))
                 self._hot_load_requested.emit(dist_name)
             except Exception as e:
@@ -267,7 +285,7 @@ class AppStoreBackend(QObject):
                     self.uninstall_finished.emit(json.dumps({"name": name, "ok": False, "error": "cannot determine package name"}))
                     return
                 subprocess.run(_uv_uninstall_cmd(dist_name), check=True, capture_output=True, text=True)
-                _remove_installed_package(name)
+                _remove_installed_package(dist_name)
                 self.uninstall_finished.emit(json.dumps({"name": name, "ok": True}))
             except Exception as e:
                 detail = error_detail(e)

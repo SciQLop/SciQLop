@@ -62,13 +62,29 @@ function loadTags() {
 
 // --- Install status helpers ---
 
+// Split on ".", compare each segment numerically if both sides are numeric,
+// else as strings; a missing segment counts as 0. Returns <0, 0 or >0.
+function compareVersions(a, b) {
+    var partsA = String(a).split(".");
+    var partsB = String(b).split(".");
+    var len = Math.max(partsA.length, partsB.length);
+    for (var i = 0; i < len; i++) {
+        var pa = partsA[i] || "0";
+        var pb = partsB[i] || "0";
+        var na = parseInt(pa, 10), nb = parseInt(pb, 10);
+        var cmp = (String(na) === pa && String(nb) === pb) ? na - nb : (pa < pb ? -1 : pa > pb ? 1 : 0);
+        if (cmp !== 0) return cmp;
+    }
+    return 0;
+}
+
 function installStatus(pkg) {
     var installed = installedVersions[pkg.name];
     if (!installed) return "not-installed";
     var versions = pkg.versions || [];
     if (!versions.length) return "installed";
     var latest = versions[versions.length - 1].version;
-    return installed === latest ? "installed" : "update-available";
+    return compareVersions(latest, installed) > 0 ? "update-available" : "installed";
 }
 
 // --- Rendering ---

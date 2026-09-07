@@ -14,14 +14,19 @@ Two regressions guarded here:
 """
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+import yaml
 
 from SciQLop.components.appstore.backend import (
+    _remove_installed_package,
+    _save_installed_package,
     _uv_install_cmd,
     _uv_uninstall_cmd,
     _write_requirements_file,
 )
+from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.components.workspaces.backend.uv import find_uv
 
 
@@ -74,3 +79,48 @@ class TestWriteRequirementsFile:
             path = _write_requirements_file(d, "overrides.txt", ["sciqlop ; python_version < '0'"])
             assert path is not None
             assert Path(path).read_text() == "sciqlop ; python_version < '0'\n"
+
+
+@pytest.fixture
+def tmp_config_dir(tmp_path):
+    with patch("SciQLop.components.settings.backend.entry.SCIQLOP_CONFIG_DIR", str(tmp_path)):
+        yield tmp_path
+
+
+def _write_legacy_yaml(display_name: str, dist_name: str, pip_spec: str) -> None:
+    with open(SciQLopPluginsSettings.config_file(), "w") as f:
+        yaml.safe_dump({
+            "installed_packages": {display_name: {"pip": pip_spec, "name": dist_name}},
+        }, f)
+
+
+class TestInstalledPackagesStableKeys:
+    """A store rename must not orphan the installed-package record: it used
+    to be keyed by the store's human display name, so `_remove_installed_package`
+    (given the dist name) popped nothing and the old wheel kept re-syncing on
+    every launch after "uninstall". Keying by canonical distribution name
+    fixes both the fresh-install path and legacy YAML written before the fix.
+    """
+
+    def test_legacy_display_name_key_is_rekeyed_on_load(self, tmp_config_dir):
+        _write_legacy_yaml("My Cool Plugin", "my_cool_plugin", "my_cool_plugin==1.0.0")
+
+        settings = SciQLopPluginsSettings()
+
+        assert "My Cool Plugin" not in settings.installed_packages
+        assert settings.installed_packages["my-cool-plugin"].pip == "my_cool_plugin==1.0.0"
+
+    def test_remove_by_dist_name_drops_legacy_keyed_entry(self, tmp_config_dir):
+        _write_legacy_yaml("My Cool Plugin", "my_cool_plugin", "my_cool_plugin==1.0.0")
+
+        _remove_installed_package("my_cool_plugin")
+
+        assert SciQLopPluginsSettings().installed_packages == {}
+
+    def test_save_then_remove_round_trip_by_dist_name(self, tmp_config_dir):
+        _save_installed_package("some-plugin==2.0.0", "some_plugin")
+        assert "some-plugin" in SciQLopPluginsSettings().installed_packages
+
+        _remove_installed_package("Some_Plugin")
+
+        assert SciQLopPluginsSettings().installed_packages == {}
