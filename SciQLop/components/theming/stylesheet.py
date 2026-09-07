@@ -52,11 +52,12 @@ def _icon(palette_name: str, name: str) -> str:
     return f"url({(per_palette_icon_dir(palette_name) / f'{name}.png').as_posix()})"
 
 
-def _contrast(color: str) -> str:
-    """Black or white, whichever contrasts better against `color` — for text or
-    a contour drawn on top of a background whose lightness varies per palette."""
+def _contrast(color: str, *others: str) -> str:
+    """Black or white, picked to contrast `color` and every color in `others`
+    at once — for a contour that sits between two surfaces (e.g. a fill and
+    the background behind it) whose lightness can rank oppositely per palette."""
     from .icons import opposite_color
-    return opposite_color(QtGui.QColor(color)).name()
+    return opposite_color(QtGui.QColor(color), *(QtGui.QColor(o) for o in others)).name()
 
 
 def _prime_env(palette: QtGui.QPalette, palette_name: str) -> None:

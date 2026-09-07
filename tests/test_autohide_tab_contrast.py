@@ -115,3 +115,22 @@ def test_focused_open_tab_contour_stands_out_from_its_fill(qapp, restore_palette
         f"{name}: focused-tab contour {contour.name()} on the open fill "
         f"{active.name()} is {ratio:.2f}:1, below {MIN_CONTRAST}:1"
     )
+
+
+@pytest.mark.parametrize("name", PALETTES)
+def test_focused_open_tab_contour_also_stands_out_from_the_side_bar(qapp, restore_palette, name):
+    """The contour sits at the tab's outer edge, against the side bar
+    background (`palette(Window)`) -- not just against the fill it encloses.
+    A contour picked only to contrast the fill can vanish into a side bar of
+    similar lightness (e.g. a dark contour on a dark side bar)."""
+    qss = qtads_stylesheet(palette_module.setup_palette(name), name)
+    colors = palette_module.current_palette()
+    side_bar = QColor(colors["window"])
+    body = re.search(FOCUSED_TAB_RULE, qss).group(1)
+    declared = re.search(r"border-color:\s*([^;]+);", body).group(1).strip()
+    contour = _resolve(declared, colors)
+    ratio = _contrast(contour, side_bar)
+    assert ratio >= MIN_CONTRAST, (
+        f"{name}: focused-tab contour {contour.name()} on the side bar "
+        f"{side_bar.name()} is {ratio:.2f}:1, below {MIN_CONTRAST}:1"
+    )

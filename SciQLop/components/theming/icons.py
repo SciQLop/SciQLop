@@ -79,52 +79,51 @@ def _tinted(pixmap: QPixmap, color: QColor) -> QPixmap:
     return out
 
 
-def opposite_color(color: QColor) -> QColor:
-    """Return a color (black or white) that has the best perceived contrast against the
-    provided background `color`.
-
-    This uses the WCAG relative luminance / contrast ratio calculation to pick the
-    color (either opaque black or white) which yields the higher contrast ratio.
-
-    Parameters
-    ----------
-    color : QColor
-        Background color to contrast against.
-
-    Returns
-    -------
-    QColor
-        Either QColor(0, 0, 0) or QColor(255, 255, 255), chosen to maximise contrast.
-    """
-    # Guard: invalid color -> default to black
-    if not color.isValid():
-        return QColor(0, 0, 0)
-
-    # Use sRGB channels in [0,1]
-    r = color.redF()
-    g = color.greenF()
-    b = color.blueF()
-
-    # Convert sRGB to linear RGB for luminance (per WCAG)
+def _relative_luminance(color: QColor) -> float:
+    """WCAG relative luminance of `color`, sRGB channels linearized first."""
     def linearize(c: float) -> float:
         if c <= 0.03928:
             return c / 12.92
         return ((c + 0.055) / 1.055) ** 2.4
 
-    lr = linearize(r)
-    lg = linearize(g)
-    lb = linearize(b)
+    return (0.2126 * linearize(color.redF()) +
+            0.7152 * linearize(color.greenF()) +
+            0.0722 * linearize(color.blueF()))
 
-    # Relative luminance
-    L = 0.2126 * lr + 0.7152 * lg + 0.0722 * lb
 
-    # Contrast ratios with white and black
-    # contrast = (L_lighter + 0.05) / (L_darker + 0.05)
-    contrast_with_white = (1.0 + 0.05) / (L + 0.05)
-    contrast_with_black = (L + 0.05) / (0.0 + 0.05)
+def opposite_color(*colors: QColor) -> QColor:
+    """Return a color (black or white) with the best worst-case perceived
+    contrast against every color in `colors`.
 
-    # Prefer the color with the higher contrast ratio
-    if contrast_with_white >= contrast_with_black:
+    A single color picks whichever of black/white contrasts it best. Several
+    colors (e.g. a fill and the background it sits on) can each favor the
+    opposite choice — a contour drawn only against the fill can vanish into a
+    same-lightness background. Passing every surface the color must read
+    against picks the choice that maximises the *smallest* of the resulting
+    contrast ratios, so it stays legible against all of them at once.
+
+    Uses the WCAG relative luminance / contrast ratio calculation.
+
+    Parameters
+    ----------
+    *colors : QColor
+        Surface color(s) to contrast against.
+
+    Returns
+    -------
+    QColor
+        Either QColor(0, 0, 0) or QColor(255, 255, 255), chosen to maximise
+        the worst-case contrast ratio.
+    """
+    luminances = [_relative_luminance(c) for c in colors if c.isValid()]
+    if not luminances:
+        return QColor(0, 0, 0)
+
+    def worst_case_contrast(candidate_luminance: float) -> float:
+        return min((max(candidate_luminance, L) + 0.05) / (min(candidate_luminance, L) + 0.05)
+                   for L in luminances)
+
+    if worst_case_contrast(1.0) >= worst_case_contrast(0.0):
         return QColor(255, 255, 255)
     return QColor(0, 0, 0)
 

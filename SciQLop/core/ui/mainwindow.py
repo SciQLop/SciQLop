@@ -161,6 +161,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.dock_manager = QtAds.CDockManager(self)
         self.dock_manager.dockAreaCreated.connect(self._on_dock_area_created)
         self.dock_manager.focusedDockWidgetChanged.connect(self._on_focused_dock_widget_changed)
+        self._focused_autohide_widget: Optional[QtAds.CDockWidget] = None
+        self._autohide_focus_order: List[QtAds.CDockWidget] = []
         self._apply_dock_theme()
         sciqlop_app().theme_changed.connect(self._schedule_dock_theme)
 
@@ -202,6 +204,45 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             tab.setProperty("focused", is_focused)
             tab.style().unpolish(tab)
             tab.style().polish(tab)
+            if is_focused:
+                self._focused_autohide_widget = dock_widget
+                if dock_widget in self._autohide_focus_order:
+                    self._autohide_focus_order.remove(dock_widget)
+                self._autohide_focus_order.append(dock_widget)
+            elif self._focused_autohide_widget is dock_widget:
+                self._focused_autohide_widget = None
+
+    def _track_autohide_widget_focus(self, dock_widget):
+        """QtAds only ever assigns focus when an auto-hide panel is *opened*
+        (AutoHideDockContainer::collapseView(false) calls setDockWidgetFocused);
+        collapsing/hiding the focused one leaves it focused, so nothing else
+        ever gets the "on top" cue again once it is. Pick a new one ourselves."""
+        dock_widget.visibilityChanged.connect(
+            lambda visible, dw=dock_widget: self._on_autohide_widget_visibility_changed(dw, visible))
+
+    def _on_autohide_widget_visibility_changed(self, dock_widget, visible):
+        if visible:
+            return
+        if dock_widget in self._autohide_focus_order:
+            self._autohide_focus_order.remove(dock_widget)
+        if self._focused_autohide_widget is not dock_widget:
+            return
+        self._focused_autohide_widget = None
+        candidate = self._next_autohide_focus_candidate()
+        if candidate is not None:
+            self.dock_manager.setDockWidgetFocused(candidate)
+
+    def _next_autohide_focus_candidate(self) -> Optional[QtAds.CDockWidget]:
+        while self._autohide_focus_order:
+            candidate = self._autohide_focus_order[-1]
+            if shiboken6.isValid(candidate) and candidate.isVisible():
+                return candidate
+            self._autohide_focus_order.pop()
+        for dock_widget in self.dock_manager.dockWidgetsMap().values():
+            if (shiboken6.isValid(dock_widget) and dock_widget.isVisible()
+                    and dock_widget.autoHideDockContainer() is not None):
+                return dock_widget
+        return None
 
     def _setup_menus(self):
         self._menubar = QtWidgets.QMenuBar(self)
@@ -473,6 +514,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 doc.setIcon(widget.windowIcon())
             container = self.dock_manager.addAutoHideDockWidget(location, doc)
             container.autoHideTab().setIconSize(Metrics.icon_size(self.AUTO_HIDE_TAB_ICON))
+            self._track_autohide_widget_focus(doc)
             if location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarBottom or location == QtAds.PySide6QtAds.ads.SideBarLocation.SideBarTop:
                 container.setSize(widget.sizeHint().height())
             else:
