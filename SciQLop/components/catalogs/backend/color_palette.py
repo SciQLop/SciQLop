@@ -1,8 +1,11 @@
 from functools import lru_cache
 from hashlib import md5
+from typing import ClassVar
 
-from PySide6.QtCore import QRect, Qt
+from PySide6.QtCore import QObject, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QIcon, QIconEngine, QPainter
+
+from SciQLop.components.settings.backend.entry import ConfigEntry, SettingsCategory
 
 # Paul Tol's colorblind-safe "muted" qualitative scheme (9 colors, 80 alpha
 # for span fill). Replaces a tab10-derived set that paired a near-pure red
@@ -22,11 +25,68 @@ _PALETTE = [
 ]
 
 
+_SPAN_ALPHA = 80
+
+
+class CatalogColors(ConfigEntry):
+    """User-picked catalog colors, keyed by catalog uuid. UI state kept
+    outside the catalog (like EventTableViewState) so read-only providers
+    get it too."""
+    category: ClassVar[str] = SettingsCategory.CATALOGS
+    subcategory: ClassVar[str] = "Colors"
+    colors: dict[str, str] = {}
+
+
+class _CatalogColorNotifier(QObject):
+    changed = Signal(str)
+
+
+_notifier = _CatalogColorNotifier()
+catalog_color_changed = _notifier.changed
+# Loaded once on first use: color_for_catalog runs on every tree repaint,
+# and a ConfigEntry re-reads its YAML file on each construction.
+_overrides: dict[str, str] | None = None
+
+
+def _custom_colors() -> dict[str, str]:
+    global _overrides
+    if _overrides is None:
+        _overrides = dict(CatalogColors().colors)
+    return _overrides
+
+
 @lru_cache(maxsize=None)
-def color_for_catalog(uuid: str) -> QColor:
+def _hash_color(uuid: str) -> QColor:
     # md5 is stable across processes, unlike hash() which is randomized per-process
     index = int.from_bytes(md5(uuid.encode()).digest()[:4], "little") % len(_PALETTE)
-    return QColor(_PALETTE[index])
+    return _PALETTE[index]
+
+
+def color_for_catalog(uuid: str) -> QColor:
+    custom = _custom_colors().get(uuid)
+    if custom is None:
+        return QColor(_hash_color(uuid))
+    color = QColor(custom)
+    color.setAlpha(_SPAN_ALPHA)
+    return color
+
+
+def has_custom_color(uuid: str) -> bool:
+    return uuid in _custom_colors()
+
+
+def set_catalog_color(uuid: str, color: QColor | None) -> None:
+    """Persist a user-picked color for this catalog (None restores the
+    palette default) and notify every tree and panel overlay."""
+    overrides = _custom_colors()
+    with CatalogColors() as settings:
+        if color is None:
+            overrides.pop(uuid, None)
+            settings.colors.pop(uuid, None)
+        else:
+            overrides[uuid] = QColor(color).name()
+            settings.colors[uuid] = overrides[uuid]
+    catalog_color_changed.emit(uuid)
 
 
 class _CatalogSwatchIconEngine(QIconEngine):

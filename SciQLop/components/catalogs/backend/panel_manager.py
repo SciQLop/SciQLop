@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QMenu
 from SciQLop.components.catalogs.backend.provider import Catalog, Capability, CatalogEvent
 from SciQLop.components.catalogs.backend.overlay import CatalogOverlay
 from SciQLop.components.catalogs.backend.registry import CatalogRegistry
-from SciQLop.components.catalogs.backend.color_palette import color_for_catalog
+from SciQLop.components.catalogs.backend.color_palette import color_for_catalog, catalog_color_changed
 
 
 class InteractionMode(Enum):
@@ -35,9 +35,16 @@ class PanelCatalogManager(QObject):
         for provider in registry.providers():
             self._bind_provider(provider)
         registry.provider_registered.connect(self._bind_provider)
+        catalog_color_changed.connect(self._on_catalog_color_changed)
 
     def _bind_provider(self, provider) -> None:
         provider.catalog_removed.connect(self.remove_catalog)
+
+    def _on_catalog_color_changed(self, uuid: str) -> None:
+        overlay = self._overlays.get(uuid)
+        if overlay is not None:
+            overlay.color = color_for_catalog(uuid)
+        self._apply_span_creation_state()
 
     @property
     def panel(self):

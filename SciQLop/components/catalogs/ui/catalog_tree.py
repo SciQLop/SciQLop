@@ -5,6 +5,7 @@ from typing import Any, TYPE_CHECKING
 
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt, Signal
 
+from ..backend.color_palette import catalog_color_changed
 from ..backend.provider import Catalog, CatalogProvider
 from ..backend.registry import CatalogRegistry
 
@@ -76,6 +77,7 @@ class CatalogTreeModel(QAbstractItemModel):
         # Listen for future changes
         self._registry.provider_registered.connect(self._on_provider_registered)
         self._registry.provider_unregistered.connect(self._on_provider_unregistered)
+        catalog_color_changed.connect(self._on_catalog_color_changed)
 
     # ---- internal helpers ----
 
@@ -220,13 +222,22 @@ class CatalogTreeModel(QAbstractItemModel):
         self.dataChanged.emit(pnode_idx, pnode_idx, [int(Qt.ItemDataRole.DisplayRole), DIRTY_PROVIDER_ROLE])
 
     def _find_catalog_node(self, node: _Node, catalog: object) -> _Node | None:
+        return self._find_node_by_uuid(node, catalog.uuid)
+
+    def _find_node_by_uuid(self, node: _Node, uuid: str) -> _Node | None:
         for child in node.children:
-            if child.catalog is not None and child.catalog.uuid == catalog.uuid:
+            if child.catalog is not None and child.catalog.uuid == uuid:
                 return child
-            found = self._find_catalog_node(child, catalog)
+            found = self._find_node_by_uuid(child, uuid)
             if found is not None:
                 return found
         return None
+
+    def _on_catalog_color_changed(self, uuid: str) -> None:
+        cat_node = self._find_node_by_uuid(self._root, uuid)
+        if cat_node is not None:
+            idx = self.createIndex(cat_node.row(), 0, cat_node)
+            self.dataChanged.emit(idx, idx, [int(Qt.ItemDataRole.DecorationRole)])
 
     def _on_catalog_renamed(self, provider: CatalogProvider, pnode: _Node, catalog: object) -> None:
         cat_node = self._find_catalog_node(pnode, catalog)

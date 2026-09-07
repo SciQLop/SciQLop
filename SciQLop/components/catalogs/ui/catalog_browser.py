@@ -726,9 +726,6 @@ class CatalogBrowser(QWidget):
         caps = self._current_provider.capabilities(self._current_catalog)
         if Capability.CREATE_EVENTS not in caps:
             return
-        # Use the focused connected panel's visible range to place the new
-        # event, falling back to the first connected panel if none of them
-        # is currently focused.
         target_panel = self._focused_panel() or (self._panels[0] if self._panels else None)
         if target_panel is not None:
             tr = target_panel.time_range
@@ -955,9 +952,31 @@ class CatalogBrowser(QWidget):
             delete_action.triggered.connect(lambda: self._delete_catalog(node))
 
         if node.catalog is not None:
+            self._add_catalog_color_actions(menu, node.catalog)
             self._build_color_by_menu(menu, node.catalog)
 
         return menu
+
+    def _add_catalog_color_actions(self, menu: QMenu, catalog: Catalog) -> None:
+        from SciQLop.components.catalogs.backend.color_palette import (
+            has_custom_color, set_catalog_color,
+        )
+        set_action = menu.addAction("Set color...")
+        set_action.triggered.connect(lambda: self._pick_catalog_color(catalog))
+        if has_custom_color(catalog.uuid):
+            reset_action = menu.addAction("Reset color")
+            reset_action.triggered.connect(lambda: set_catalog_color(catalog.uuid, None))
+
+    def _pick_catalog_color(self, catalog: Catalog) -> None:
+        from PySide6.QtWidgets import QColorDialog
+        from SciQLop.components.catalogs.backend.color_palette import (
+            color_for_catalog, set_catalog_color,
+        )
+        current = color_for_catalog(catalog.uuid)
+        current.setAlpha(255)
+        color = QColorDialog.getColor(current, self, f"Color for '{catalog.name}'")
+        if color.isValid():
+            set_catalog_color(catalog.uuid, color)
 
     def _build_color_by_menu(self, parent_menu: QMenu, catalog: Catalog) -> None:
         from SciQLop.components.catalogs.backend.color_mapper import ColorMapper

@@ -6,9 +6,7 @@ from typing import Any
 from pydantic import BaseModel
 from PySide6.QtGui import QColor
 
-from .color_palette import _PALETTE
-
-_SPAN_ALPHA = 80
+from .color_palette import _PALETTE, _SPAN_ALPHA
 
 
 def _is_numeric(values: list[Any]) -> bool:
