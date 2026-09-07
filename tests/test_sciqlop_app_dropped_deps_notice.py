@@ -68,3 +68,20 @@ class TestNotifyDroppedDependencies:
         assert "radio-plugin" in boxes[0].text()
         assert "radio_plugin-1.2.0-py3-none-any.whl" not in boxes[0].text()
         assert boxes[0].windowModality() == Qt.WindowModality.NonModal
+
+    def test_non_dict_notice_payload_shows_nothing_instead_of_crashing(
+        self, monkeypatch, tmp_path, parent_widget
+    ):
+        """M3: a notice file holding valid JSON that isn't a dict (e.g. a
+        non-empty list) used to crash startup with
+        TypeError: list indices must be integers, not str, once
+        read_dropped_dependencies handed it straight through. An *empty*
+        list would not reproduce this (falsy, short-circuits before the
+        `notice["dropped"]` lookup) -- this must be non-empty to be a real
+        regression check."""
+        monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
+        (tmp_path / DROPPED_DEPS_FILENAME).write_text('["not", "a", "dict"]')
+
+        _notify_dropped_dependencies(parent_widget)
+
+        assert _message_boxes(parent_widget) == []

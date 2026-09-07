@@ -26,6 +26,7 @@ from SciQLop.components.workspaces.backend.workspace_project import (
     generate_pyproject_toml,
     is_dev_build_version,
     running_sciqlop_version,
+    strip_host_provided,
 )
 from SciQLop.components.workspaces.backend.workspace_venv import WorkspaceVenv
 from SciQLop.core.common.files import write_text_atomic
@@ -85,14 +86,17 @@ def _dropped_deps_path(workspace_dir: Path | str) -> Path:
 def read_dropped_dependencies(workspace_dir: Path | str) -> dict | None:
     """The persisted drop-notice for *workspace_dir*, or None.
 
-    None covers both "no retry ever dropped anything" (no file) and a
-    corrupt/unreadable file -- both cases the caller should treat as
-    "nothing to report".
+    None covers "no retry ever dropped anything" (no file), a
+    corrupt/unreadable file, and a file whose JSON parses but isn't an
+    object (M3: e.g. `[]`) -- callers index the result with
+    ``notice["dropped"]`` and would otherwise crash on a TypeError. All
+    three cases mean "nothing to report" to the caller.
     """
     try:
-        return json.loads(_dropped_deps_path(workspace_dir).read_text())
+        payload = json.loads(_dropped_deps_path(workspace_dir).read_text())
     except (OSError, ValueError):
         return None
+    return payload if isinstance(payload, dict) else None
 
 
 def _write_dropped_dependencies(workspace_dir: Path, dropped: list[str], error_text: str) -> None:
@@ -137,6 +141,7 @@ def _retry_without_culprits(
     venv: WorkspaceVenv,
     manifest: WorkspaceManifest,
     optional_deps: list[str],
+    droppable: list[str],
     pyproject_path: Path,
     on_output: Callable[[str], None] | None,
     upgrade_package: str | None,
@@ -144,14 +149,21 @@ def _retry_without_culprits(
 ) -> list[str] | None:
     """Retry the sync with just the deps ``culprit_dependencies`` names dropped.
 
+    *droppable* is *optional_deps* with the plugin-declared SciQLop
+    compat-gate lines already stripped (``strip_host_provided``) -- those
+    lines name the host itself, so uv's error text always contains them and
+    they must never be picked as the culprit (C1). *optional_deps* is still
+    what the retry's pyproject is generated from, so any of those lines
+    that do survive stay in place for this attempt.
+
     Returns the dropped deps on success, or ``None`` when no single-cause
-    culprit could be pinned down, every optional dep was implicated (no
+    culprit could be pinned down, every droppable dep was implicated (no
     point in a retry identical to the core-only one), or dropping just the
     culprits still didn't fix the sync -- the caller then falls back to
     dropping every optional dep instead.
     """
-    culprits = culprit_dependencies(optional_deps, str(error))
-    if not culprits or len(culprits) >= len(optional_deps):
+    culprits = culprit_dependencies(droppable, str(error))
+    if not culprits or len(culprits) >= len(droppable):
         return None
     remaining = [dep for dep in optional_deps if dep not in culprits]
     if on_output is not None:
@@ -230,8 +242,14 @@ def _sync_workspace_venv(
 
     if optional_deps:
         first_failure = exc
+        # C1: the SciQLop compat-gate lines plugins declare must never be
+        # treated as a culprit or reported as dropped -- they name the host
+        # itself, so uv's error text always contains them (a substring of
+        # both the generated project name and the core sciqlop[all] pin).
+        droppable = strip_host_provided(optional_deps)
         dropped = _retry_without_culprits(
-            venv, manifest, optional_deps, pyproject_path, on_output, upgrade_package, exc,
+            venv, manifest, optional_deps, droppable, pyproject_path, on_output,
+            upgrade_package, exc,
         )
         if dropped is None:
             if on_output is not None:
@@ -242,7 +260,7 @@ def _sync_workspace_venv(
             generate_pyproject_toml(manifest, [], pyproject_path)
             exc = _try_sync(venv, locked=False, upgrade_package=upgrade_package, on_output=on_output)
             if exc is None:
-                dropped = optional_deps
+                dropped = droppable
             else:
                 _report_sync_failure(exc, on_output, core_only=True)
         if dropped is not None:

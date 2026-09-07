@@ -152,8 +152,24 @@ def _remove_installed_package(dist_name: str) -> None:
         }
 
 
-def _try_load_plugin(dist_name: str) -> None:
-    """Attempt to hot-load a newly installed entry-point plugin."""
+def _incompatibility_reason(ep) -> str:
+    """Human-readable reason a gated entry point's host compat check failed."""
+    from SciQLop.components.plugins.compat import host_version, sciqlop_specifier
+
+    requires = ep.dist.requires if ep.dist else None
+    spec = sciqlop_specifier(requires or []) or "(any)"
+    return f"requires SciQLop {spec} but host is {host_version()}"
+
+
+def _try_load_plugin(dist_name: str) -> str | None:
+    """Attempt to hot-load a newly installed entry-point plugin.
+
+    Returns ``None`` when a matching entry point loaded (or there was
+    nothing to hot-load: no matching entry point yet, or the main window
+    isn't up), or a short reason string when the host compat gate refused
+    to load it -- I1: the caller must not report a gated install as a plain
+    success.
+    """
     import importlib.metadata
     from SciQLop.components.plugins.backend.loader.loader import (
         ENTRY_POINT_GROUP, _load_entry_point_plugin, entry_point_host_compatible,
@@ -165,7 +181,7 @@ def _try_load_plugin(dist_name: str) -> None:
 
     main_window = sciqlop_app().main_window
     if main_window is None:
-        return
+        return None
 
     canonical_dist_name = canonical_package_name(dist_name)
     for ep in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP):
@@ -178,9 +194,10 @@ def _try_load_plugin(dist_name: str) -> None:
                 if ep.name not in settings.plugins:
                     settings.plugins[ep.name] = PluginConfig()
             if not entry_point_host_compatible(ep):
-                continue
+                return _incompatibility_reason(ep)
             _load_entry_point_plugin(ep, main_window)
             log.info(f"Hot-loaded plugin {ep.name} from {dist_name}")
+    return None
 
 
 class AppStoreBackend(QObject):
@@ -189,16 +206,28 @@ class AppStoreBackend(QObject):
     packages_ready = Signal(str)
     install_finished = Signal(str)
     uninstall_finished = Signal(str)
-    _hot_load_requested = Signal(str)
+    _hot_load_requested = Signal(str, str, str)  # dist_name, name, version
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
         self._packages: list[dict] = []
         self._hot_load_requested.connect(self._do_hot_load)
 
-    @Slot(str)
-    def _do_hot_load(self, dist_name: str) -> None:
-        _try_load_plugin(dist_name)
+    @Slot(str, str, str)
+    def _do_hot_load(self, dist_name: str, name: str, version: str) -> None:
+        """Hot-load *dist_name* on the GUI thread, then report the outcome.
+
+        Runs after the install itself (see ``install_package``'s worker
+        thread, which only saves the package and hands off here) so
+        ``install_finished`` can carry whether the compat gate actually let
+        it load (I1) instead of reporting a gated install as a plain
+        success.
+        """
+        reason = _try_load_plugin(dist_name)
+        payload = {"name": name, "ok": True, "version": version, "loaded": reason is None}
+        if reason is not None:
+            payload["reason"] = reason
+        self.install_finished.emit(json.dumps(payload))
 
     @Slot()
     def fetch_packages(self) -> None:
@@ -263,8 +292,11 @@ class AppStoreBackend(QObject):
                     subprocess.run(cmd, check=True, capture_output=True, text=True)
                 dist_name = _package_name_from_pip(pip_spec) or canonical_package_name(name)
                 _save_installed_package(pip_spec, dist_name)
-                self.install_finished.emit(json.dumps({"name": name, "ok": True, "version": latest["version"]}))
-                self._hot_load_requested.emit(dist_name)
+                # install_finished is emitted by _do_hot_load, on the GUI
+                # thread, once the hot-load attempt itself is known -- not
+                # here, or a gated wheel would be reported ok:true before
+                # the compat gate ever ran (I1).
+                self._hot_load_requested.emit(dist_name, name, latest["version"])
             except Exception as e:
                 detail = error_detail(e)
                 log.error(f"Failed to install {name}: {detail}")

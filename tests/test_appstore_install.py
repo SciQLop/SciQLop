@@ -12,6 +12,7 @@ Two regressions guarded here:
    real cause (proxy/TLS/auth) is in ``.stderr``; the appstore must surface it
    instead of a bare "Failed", otherwise the failure is undiagnosable.
 """
+import json
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -22,6 +23,7 @@ import yaml
 
 import SciQLop
 from SciQLop.components.appstore.backend import (
+    AppStoreBackend,
     _remove_installed_package,
     _save_installed_package,
     _try_load_plugin,
@@ -128,18 +130,25 @@ class TestInstalledPackagesStableKeys:
 
         assert SciQLopPluginsSettings().installed_packages == {}
 
-    def test_duplicate_canonical_key_keeps_the_later_entry(self, tmp_config_dir):
+    def test_duplicate_canonical_key_keeps_the_canonical_keyed_entry(self, tmp_config_dir):
         """A store rename can leave a stale display-name entry sitting next
-        to a fresh one for the same dist. Both canonicalise to the same key;
-        healing must not silently pick whichever happens to iterate last by
-        chance -- it must deliberately keep the later (freshest) entry."""
+        to a fresh, canonical-keyed one for the same dist. Both canonicalise
+        to the same key; healing must not pick whichever happens to iterate
+        last -- ConfigEntry.save() dumps with sort_keys=True (the default),
+        so on-disk order is alphabetical by the OLD key, not write order, and
+        can't be used to tell which entry is "freshest". The canonical-keyed
+        entry was written by this fixed code, so it wins regardless of where
+        it lands alphabetically -- the display name below is chosen to sort
+        *after* the canonical key, which would flip the outcome under plain
+        last-wins.
+        """
         with open(SciQLopPluginsSettings.config_file(), "w") as f:
             yaml.safe_dump({
                 "installed_packages": {
-                    "My Cool Plugin": {"pip": "my_cool_plugin==1.0.0", "name": "my_cool_plugin"},
-                    "my-cool-plugin-reinstalled": {"pip": "my_cool_plugin==2.0.0", "name": "my_cool_plugin"},
+                    "my-cool-plugin": {"pip": "my_cool_plugin==2.0.0", "name": "my_cool_plugin"},
+                    "zz-legacy-display-name": {"pip": "my_cool_plugin==1.0.0", "name": "my_cool_plugin"},
                 },
-            }, f, sort_keys=False)
+            }, f)
 
         settings = SciQLopPluginsSettings()
 
@@ -173,7 +182,77 @@ class TestTryLoadPluginSettingsBookkeeping:
             lambda ep, main_window: loaded.append(ep.name),
         )
 
-        _try_load_plugin("future-plugin")
+        reason = _try_load_plugin("future-plugin")
 
         assert "future_plugin" in SciQLopPluginsSettings().plugins
         assert loaded == []
+        # I1: the caller (AppStoreBackend._do_hot_load) needs this to tell
+        # the store the wheel installed but was not actually loaded.
+        assert reason is not None
+        assert "SciQLop" in reason
+
+    def test_compatible_plugin_loads_and_returns_none(self, tmp_config_dir, monkeypatch):
+        monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
+
+        ep = SimpleNamespace(
+            name="ok_plugin",
+            dist=SimpleNamespace(name="ok-plugin", requires=["SciQLop>=0.13.0,<0.14.0"]),
+        )
+        monkeypatch.setattr("importlib.metadata.entry_points", lambda group=None: [ep])
+        monkeypatch.setattr(
+            "SciQLop.core.sciqlop_application.sciqlop_app",
+            lambda: SimpleNamespace(main_window=object()),
+        )
+        loaded = []
+        monkeypatch.setattr(
+            "SciQLop.components.plugins.backend.loader.loader._load_entry_point_plugin",
+            lambda ep, main_window: loaded.append(ep.name),
+        )
+
+        reason = _try_load_plugin("ok-plugin")
+
+        assert loaded == ["ok_plugin"]
+        assert reason is None
+
+
+class TestDoHotLoadPayload:
+    """I1: the store used to report `ok: true` immediately, before the
+    hot-load's compat gate even ran -- a gated wheel looked like a
+    successful install with no way to tell the user it silently didn't
+    load. `_do_hot_load` (the GUI-thread slot the worker thread's install
+    hands off to) now builds the `install_finished` payload itself, after
+    attempting the hot-load, so it can carry `loaded`/`reason`."""
+
+    def test_gated_plugin_payload_carries_loaded_false_and_a_reason(self, monkeypatch):
+        monkeypatch.setattr(
+            "SciQLop.components.appstore.backend._try_load_plugin",
+            lambda dist_name: "requires SciQLop >=0.20 but host is 0.13.0.dev0",
+        )
+        backend = AppStoreBackend()
+        received = []
+        backend.install_finished.connect(lambda payload: received.append(json.loads(payload)))
+
+        backend._do_hot_load("future-plugin", "Future Plugin", "1.2.3")
+
+        assert received == [{
+            "name": "Future Plugin",
+            "ok": True,
+            "version": "1.2.3",
+            "loaded": False,
+            "reason": "requires SciQLop >=0.20 but host is 0.13.0.dev0",
+        }]
+
+    def test_compatible_plugin_payload_carries_loaded_true(self, monkeypatch):
+        monkeypatch.setattr(
+            "SciQLop.components.appstore.backend._try_load_plugin",
+            lambda dist_name: None,
+        )
+        backend = AppStoreBackend()
+        received = []
+        backend.install_finished.connect(lambda payload: received.append(json.loads(payload)))
+
+        backend._do_hot_load("ok-plugin", "OK Plugin", "1.0.0")
+
+        assert received == [{
+            "name": "OK Plugin", "ok": True, "version": "1.0.0", "loaded": True,
+        }]

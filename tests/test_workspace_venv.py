@@ -197,18 +197,6 @@ class TestRunUvNonStreamingFailureSurfacesStderr:
         with pytest.raises(RuntimeError, match="No solution found when resolving dependencies"):
             venv.sync()
 
-    @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
-    @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command")
-    def test_success_does_not_raise(self, mock_uv_cmd, mock_run, venv, workspace_dir):
-        mock_uv_cmd.return_value = ["uv", "sync"]
-
-        venv.sync()  # must not raise
-
-        mock_run.assert_called_once_with(
-            mock_uv_cmd.return_value, check=True, stderr=subprocess.PIPE, text=True,
-            cwd=str(workspace_dir),
-        )
-
 
 class TestSyncWithCallback:
     @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.Popen")

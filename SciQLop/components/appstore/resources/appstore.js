@@ -534,8 +534,12 @@ function onInstallFinished(json_str) {
     }
     renderCards();
     if (result.ok) {
-        clearInstallError();
         refreshDetailActions();
+        if (result.loaded === false) {
+            showInstallError("Installed, but not loaded: " + result.reason);
+        } else {
+            clearInstallError();
+        }
         return;
     }
     var btn = document.getElementById("install-btn");
