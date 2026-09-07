@@ -720,13 +720,18 @@ class CatalogBrowser(QWidget):
         focused_panel = _extract_panel(focused_dock)
         return focused_panel if focused_panel in self._panels else None
 
+    def _working_panel(self):
+        """The connected panel the user is working in: the focused one, else
+        the first connected one."""
+        return self._focused_panel() or (self._panels[0] if self._panels else None)
+
     def _on_add_event(self) -> None:
         if self._current_provider is None or self._current_catalog is None:
             return
         caps = self._current_provider.capabilities(self._current_catalog)
         if Capability.CREATE_EVENTS not in caps:
             return
-        target_panel = self._focused_panel() or (self._panels[0] if self._panels else None)
+        target_panel = self._working_panel()
         if target_panel is not None:
             tr = target_panel.time_range
             center = (tr.start() + tr.stop()) / 2.0
@@ -952,10 +957,24 @@ class CatalogBrowser(QWidget):
             delete_action.triggered.connect(lambda: self._delete_catalog(node))
 
         if node.catalog is not None:
+            self._add_panel_toggle_action(menu, node.catalog)
             self._add_catalog_color_actions(menu, node.catalog)
             self._build_color_by_menu(menu, node.catalog)
 
         return menu
+
+    def _add_panel_toggle_action(self, menu: QMenu, catalog: Catalog) -> None:
+        panel = self._working_panel()
+        if panel is None:
+            return
+        manager = panel.catalog_manager
+        title = panel.windowTitle()
+        if catalog.uuid in manager.catalog_uuids:
+            action = menu.addAction(f"Remove from panel '{title}'")
+            action.triggered.connect(lambda: manager.remove_catalog(catalog))
+        else:
+            action = menu.addAction(f"Add to panel '{title}'")
+            action.triggered.connect(lambda: manager.add_catalog(catalog))
 
     def _add_catalog_color_actions(self, menu: QMenu, catalog: Catalog) -> None:
         from SciQLop.components.catalogs.backend.color_palette import (

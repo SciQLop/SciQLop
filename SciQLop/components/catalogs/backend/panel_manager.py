@@ -10,7 +10,9 @@ from PySide6.QtWidgets import QMenu
 from SciQLop.components.catalogs.backend.provider import Catalog, Capability, CatalogEvent
 from SciQLop.components.catalogs.backend.overlay import CatalogOverlay
 from SciQLop.components.catalogs.backend.registry import CatalogRegistry
-from SciQLop.components.catalogs.backend.color_palette import color_for_catalog, catalog_color_changed
+from SciQLop.components.catalogs.backend.color_palette import (
+    color_for_catalog, catalog_color_changed, catalog_swatch_icon,
+)
 
 
 class InteractionMode(Enum):
@@ -119,6 +121,7 @@ class PanelCatalogManager(QObject):
 
     def build_catalogs_menu(self, parent_menu: QMenu) -> QMenu:
         menu = parent_menu.addMenu("Catalogs")
+        self._add_loaded_catalog_entries(menu)
         registry = CatalogRegistry.instance()
         for provider in registry.providers():
             provider_menu = QMenu(provider.name, menu)
@@ -141,6 +144,21 @@ class PanelCatalogManager(QObject):
             action.setChecked(m == self._mode)
             action.triggered.connect(lambda checked, mode=m: setattr(self, 'mode', mode))
         return menu
+
+    def _add_loaded_catalog_entries(self, menu: QMenu) -> None:
+        """Flat, checked list of the catalogs shown on this panel, so removing
+        one is a single uncheck instead of a walk through the provider tree."""
+        if not self._overlays:
+            return
+        for overlay in self._overlays.values():
+            catalog = overlay.catalog
+            action = menu.addAction(catalog_swatch_icon(catalog.uuid), catalog.name)
+            action.setCheckable(True)
+            action.setChecked(True)
+            action.toggled.connect(
+                lambda checked, c=catalog: None if checked else self.remove_catalog(c)
+            )
+        menu.addSeparator()
 
     @staticmethod
     def _get_or_create_submenu(menu: QMenu, path: list[str]) -> QMenu:
