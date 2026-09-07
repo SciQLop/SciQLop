@@ -627,6 +627,33 @@ class TestCulpritDependencies:
         assert culprit_dependencies(deps, error) == deps
 
 
+class TestDroppedPackageNames:
+    """User-facing surfaces (app startup warning, welcome UI) must show
+    package names, not the raw dep strings the persisted JSON schema keeps
+    (which can be a full wheel URL or a versioned PEP 508 requirement)."""
+
+    def test_wheel_url_becomes_the_distribution_name(self):
+        from SciQLop.components.workspaces.backend.workspace_setup import dropped_package_names
+
+        dropped = ["https://example.com/wheels/radio_plugin-1.2.0-py3-none-any.whl"]
+
+        assert dropped_package_names(dropped) == ["radio-plugin"]
+
+    def test_plain_requirement_becomes_the_bare_name(self):
+        from SciQLop.components.workspaces.backend.workspace_setup import dropped_package_names
+
+        dropped = ["sciqlop-radio>=1.0"]
+
+        assert dropped_package_names(dropped) == ["sciqlop-radio"]
+
+    def test_multiple_entries_preserve_order(self):
+        from SciQLop.components.workspaces.backend.workspace_setup import dropped_package_names
+
+        dropped = ["numpy>=1.24", "requests"]
+
+        assert dropped_package_names(dropped) == ["numpy", "requests"]
+
+
 class TestReadDroppedDependencies:
     def test_returns_none_when_file_absent(self, tmp_path):
         from SciQLop.components.workspaces.backend.workspace_setup import read_dropped_dependencies

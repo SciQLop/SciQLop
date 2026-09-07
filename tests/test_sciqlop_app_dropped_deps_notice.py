@@ -50,9 +50,14 @@ class TestNotifyDroppedDependencies:
     def test_shows_a_non_modal_warning_naming_the_dropped_packages(
         self, monkeypatch, tmp_path, parent_widget
     ):
+        """The persisted notice keeps the raw dep string (here a wheel URL);
+        the message shown to the user must be the package name instead."""
         monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
         (tmp_path / DROPPED_DEPS_FILENAME).write_text(
-            json.dumps({"dropped": ["radio-plugin"], "error": "boom"})
+            json.dumps({
+                "dropped": ["https://example.com/wheels/radio_plugin-1.2.0-py3-none-any.whl"],
+                "error": "boom",
+            })
         )
 
         _notify_dropped_dependencies(parent_widget)
@@ -61,4 +66,5 @@ class TestNotifyDroppedDependencies:
         boxes = _message_boxes(parent_widget)
         assert len(boxes) == 1
         assert "radio-plugin" in boxes[0].text()
+        assert "radio_plugin-1.2.0-py3-none-any.whl" not in boxes[0].text()
         assert boxes[0].windowModality() == Qt.WindowModality.NonModal

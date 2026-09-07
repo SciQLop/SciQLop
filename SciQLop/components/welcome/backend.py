@@ -413,6 +413,7 @@ class WelcomeBackend(QObject):
         )
         from SciQLop.components.workspaces.backend.workspace_setup import (
             apply_core_version as _apply_core_version,
+            dropped_package_names,
             pin_core_version as _pin_core_version,
             read_dropped_dependencies,
         )
@@ -431,9 +432,15 @@ class WelcomeBackend(QObject):
                     return
                 try:
                     if is_active:
+                        # Pin only writes the manifest -- it never syncs, so
+                        # any drop-notice on disk predates this call and
+                        # must not be reported as caused by it.
                         _pin_core_version(workspace_dir, version)
+                        dropped = None
                     else:
                         _apply_core_version(workspace_dir, version)
+                        notice = read_dropped_dependencies(workspace_dir)
+                        dropped = dropped_package_names(notice["dropped"]) if notice else []
                 except Exception as e:
                     log.error(f"Failed to update SciQLop core version: {e}")
                     self.core_update_finished.emit(json.dumps({
@@ -441,12 +448,13 @@ class WelcomeBackend(QObject):
                         "error": error_detail(e),
                     }))
                     return
-                notice = read_dropped_dependencies(workspace_dir)
-                self.core_update_finished.emit(json.dumps({
+                result = {
                     "ok": True, "dir": workspace_dir, "version": version,
                     "is_active_workspace": is_active,
-                    "dropped": notice["dropped"] if notice else [],
-                }))
+                }
+                if dropped is not None:
+                    result["dropped"] = dropped
+                self.core_update_finished.emit(json.dumps(result))
             except Exception as e:
                 log.error(f"Unexpected error updating SciQLop core version: {e}")
                 self.core_update_finished.emit(json.dumps({

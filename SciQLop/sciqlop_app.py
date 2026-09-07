@@ -67,11 +67,14 @@ def _notify_dropped_dependencies(parent) -> None:
     workspace_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR")
     if not workspace_dir:
         return
-    from SciQLop.components.workspaces.backend.workspace_setup import read_dropped_dependencies
+    from SciQLop.components.workspaces.backend.workspace_setup import (
+        dropped_package_names, read_dropped_dependencies,
+    )
     notice = read_dropped_dependencies(workspace_dir)
     dropped = notice["dropped"] if notice else []
     if not dropped:
         return
+    names = dropped_package_names(dropped)
 
     from PySide6.QtWidgets import QMessageBox
     from SciQLop.components.workspaces.backend.workspace_project import running_sciqlop_version
@@ -80,7 +83,7 @@ def _notify_dropped_dependencies(parent) -> None:
         QMessageBox.Icon.Warning,
         "Packages left out of this workspace",
         "These packages were left out of this workspace because they could "
-        f"not be installed alongside SciQLop {version}: {', '.join(dropped)}. "
+        f"not be installed alongside SciQLop {version}: {', '.join(names)}. "
         "Update or remove them from the App Store.",
         parent=parent,
     )

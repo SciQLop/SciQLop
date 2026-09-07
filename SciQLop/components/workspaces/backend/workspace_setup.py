@@ -67,6 +67,17 @@ def culprit_dependencies(optional_deps: list[str], error_text: str) -> list[str]
     ]
 
 
+def dropped_package_names(dropped: list[str]) -> list[str]:
+    """Package names for a persisted drop-notice's raw dep strings.
+
+    The persisted JSON keeps the original dep strings (a wheel URL, a full
+    PEP 508 requirement) so a maintainer can see exactly what was in
+    pyproject.toml; user-facing surfaces (the app startup warning, the
+    welcome UI) want just the package name.
+    """
+    return [_extract_package_name(_normalize_url_requirement(dep)) for dep in dropped]
+
+
 def _dropped_deps_path(workspace_dir: Path | str) -> Path:
     return Path(workspace_dir) / DROPPED_DEPS_FILENAME
 
