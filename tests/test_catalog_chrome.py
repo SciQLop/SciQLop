@@ -77,3 +77,15 @@ def test_mode_combo_tooltip_documents_the_edit_gesture(chrome):
     tooltip = chrome._mode_combo.toolTip()
     assert "Shift" in tooltip
     assert "click again" in tooltip
+
+
+def test_cycle_mode_advances_view_jump_edit_view(chrome, qtbot):
+    for expected in ("jump", "edit", "view"):
+        with qtbot.waitSignal(chrome.mode_changed, timeout=1000) as blocker:
+            chrome.cycle_mode()
+        assert chrome.mode == expected
+        assert blocker.args == [expected]
+
+
+def test_mode_combo_tooltip_advertises_shortcut(chrome):
+    assert "Ctrl+Shift+M" in chrome._mode_combo.toolTip()

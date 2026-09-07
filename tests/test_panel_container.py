@@ -104,3 +104,20 @@ def test_crosshair_state_applied_to_new_plots(container):
     plots = container.panel.plots()
     assert len(plots) == 1
     assert plots[0].crosshair_enabled() is False
+
+
+def test_mode_shortcut_is_ctrl_shift_m_scoped_to_container(container):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QKeySequence
+    assert container._mode_shortcut.key() == QKeySequence("Ctrl+Shift+M")
+    assert container._mode_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+
+
+def test_mode_shortcut_cycles_catalog_mode(container):
+    assert container.catalog_chrome.mode == "view"
+    container._mode_shortcut.activated.emit()
+    assert container.catalog_chrome.mode == "jump"
+    container._mode_shortcut.activated.emit()
+    assert container.catalog_chrome.mode == "edit"
+    container._mode_shortcut.activated.emit()
+    assert container.catalog_chrome.mode == "view"

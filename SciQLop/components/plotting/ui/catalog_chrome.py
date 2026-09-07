@@ -16,7 +16,8 @@ def _make_mode_combo(parent):
         "Catalog interaction mode",
         "View: click an event to select it. Jump: click an event to "
         "center the panel on it. Edit: hold Shift and click to start a "
-        "new event, move, then click again to finish (Esc cancels)."))
+        "new event, move, then click again to finish (Esc cancels).",
+        "Ctrl+Shift+M"))
     fit_combo_to_content(w)
     return w
 
@@ -65,6 +66,10 @@ class CatalogChrome(QWidget):
                     self._mode_combo.setCurrentIndex(i)
                     self._mode_combo.blockSignals(False)
                 return
+
+    def cycle_mode(self) -> None:
+        combo = self._mode_combo
+        combo.setCurrentIndex((combo.currentIndex() + 1) % combo.count())
 
     def set_targets(self, items: list[tuple[str, str]]) -> None:
         self._target_combo.blockSignals(True)
