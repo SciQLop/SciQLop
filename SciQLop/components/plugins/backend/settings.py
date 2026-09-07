@@ -1,3 +1,4 @@
+from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.components.settings import SettingsCategory
 
 from SciQLop.components.settings.backend import ConfigEntry
@@ -5,6 +6,8 @@ from pydantic import BaseModel, Field, model_validator
 from platformdirs import user_data_dir
 from typing import List, Dict
 import os
+
+log = getLogger(__name__)
 
 
 def canonical_package_name(name: str) -> str:
@@ -33,10 +36,20 @@ class SciQLopPluginsSettings(ConfigEntry):
     def _rekey_installed_packages_by_canonical_name(self) -> "SciQLopPluginsSettings":
         """Heal entries left keyed by the store's display name (pre-fix
         YAML) so every lookup, on load or on fresh construction, finds them
-        under their canonical distribution name."""
-        self.installed_packages = {
-            canonical_package_name(pkg.name): pkg for pkg in self.installed_packages.values()
-        }
+        under their canonical distribution name.
+
+        Two entries can canonicalise to the same key -- a stale display-name
+        entry left behind next to a fresh one after a store rename. YAML
+        preserves write order, so the later entry is the freshest; it wins,
+        and the collision is logged rather than silently dropped.
+        """
+        rekeyed: Dict[str, InstalledPackage] = {}
+        for pkg in self.installed_packages.values():
+            key = canonical_package_name(pkg.name)
+            if key in rekeyed:
+                log.warning(f"Duplicate installed_packages entry for {key!r}; keeping the later one")
+            rekeyed[key] = pkg
+        self.installed_packages = rekeyed
         return self
 
 

@@ -239,6 +239,8 @@ class AppStoreBackend(QObject):
 
     @Slot(str)
     def install_package(self, name: str) -> None:
+        from SciQLop.components.plugins.backend.settings import canonical_package_name
+
         def _install():
             plugin = next((p for p in self._packages if p["name"] == name), None)
             if not plugin:
@@ -257,7 +259,7 @@ class AppStoreBackend(QObject):
                         isolation_dir, "constraints.txt", _base_constraints())
                     cmd = _uv_install_cmd(pip_spec, override_file, constraint_file)
                     subprocess.run(cmd, check=True, capture_output=True, text=True)
-                dist_name = _package_name_from_pip(pip_spec) or name
+                dist_name = _package_name_from_pip(pip_spec) or canonical_package_name(name)
                 _save_installed_package(pip_spec, dist_name)
                 self.install_finished.emit(json.dumps({"name": name, "ok": True, "version": latest["version"]}))
                 self._hot_load_requested.emit(dist_name)

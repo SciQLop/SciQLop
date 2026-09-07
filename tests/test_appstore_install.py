@@ -124,3 +124,21 @@ class TestInstalledPackagesStableKeys:
         _remove_installed_package("Some_Plugin")
 
         assert SciQLopPluginsSettings().installed_packages == {}
+
+    def test_duplicate_canonical_key_keeps_the_later_entry(self, tmp_config_dir):
+        """A store rename can leave a stale display-name entry sitting next
+        to a fresh one for the same dist. Both canonicalise to the same key;
+        healing must not silently pick whichever happens to iterate last by
+        chance -- it must deliberately keep the later (freshest) entry."""
+        with open(SciQLopPluginsSettings.config_file(), "w") as f:
+            yaml.safe_dump({
+                "installed_packages": {
+                    "My Cool Plugin": {"pip": "my_cool_plugin==1.0.0", "name": "my_cool_plugin"},
+                    "my-cool-plugin-reinstalled": {"pip": "my_cool_plugin==2.0.0", "name": "my_cool_plugin"},
+                },
+            }, f, sort_keys=False)
+
+        settings = SciQLopPluginsSettings()
+
+        assert list(settings.installed_packages.keys()) == ["my-cool-plugin"]
+        assert settings.installed_packages["my-cool-plugin"].pip == "my_cool_plugin==2.0.0"
