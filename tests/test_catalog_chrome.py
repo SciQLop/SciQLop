@@ -89,3 +89,20 @@ def test_cycle_mode_advances_view_jump_edit_view(chrome, qtbot):
 
 def test_mode_combo_tooltip_advertises_shortcut(chrome):
     assert "Ctrl+Shift+M" in chrome._mode_combo.toolTip()
+
+
+def test_set_targets_keeps_the_current_selection_when_still_present(chrome):
+    """Loading one more catalog on the panel rebuilds the target list; the
+    catalog the user picked for new events must survive that, or Shift+click
+    silently creates events in whatever sorts first."""
+    chrome.set_targets([("Cat-A", "uuid-a"), ("Cat-B", "uuid-b")])
+    chrome._target_combo.setCurrentIndex(1)
+    chrome.set_targets([("Cat-A", "uuid-a"), ("Cat-B", "uuid-b"), ("Cat-C", "uuid-c")])
+    assert chrome.selected_target() == "uuid-b"
+
+
+def test_set_targets_falls_back_to_first_when_selection_is_gone(chrome):
+    chrome.set_targets([("Cat-A", "uuid-a"), ("Cat-B", "uuid-b")])
+    chrome._target_combo.setCurrentIndex(1)
+    chrome.set_targets([("Cat-A", "uuid-a"), ("Cat-C", "uuid-c")])
+    assert chrome.selected_target() == "uuid-a"

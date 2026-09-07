@@ -469,3 +469,31 @@ def test_removing_catalog_updates_combo(qtbot, qapp):
 
     manager.remove_catalog(cats[0])
     assert chrome._target_combo.count() == 1
+
+
+def test_edit_target_survives_adding_another_catalog(qtbot, qapp):
+    from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager, InteractionMode
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.plotting.ui.panel_container import PanelContainer
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+
+    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    panel = TimeSyncPanel("target-panel",
+                          time_range=TimeRange(base.timestamp(), (base + timedelta(days=200)).timestamp()))
+    container = PanelContainer(panel)
+    qtbot.addWidget(container)
+    provider = DummyProvider(num_catalogs=3, events_per_catalog=1, name="TargetProv")
+    cat_a, cat_b, cat_c = provider.catalogs()
+
+    manager = panel.catalog_manager
+    manager.add_catalog(cat_a)
+    manager.add_catalog(cat_b)
+    manager.mode = InteractionMode.EDIT
+    chrome = container.catalog_chrome
+    chrome._target_combo.setCurrentIndex(chrome._target_combo.findData(cat_b.uuid))
+    assert chrome.selected_target() == cat_b.uuid
+
+    manager.add_catalog(cat_c)
+
+    assert chrome.selected_target() == cat_b.uuid

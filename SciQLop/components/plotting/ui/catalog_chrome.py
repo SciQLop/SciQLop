@@ -72,15 +72,18 @@ class CatalogChrome(QWidget):
         combo.setCurrentIndex((combo.currentIndex() + 1) % combo.count())
 
     def set_targets(self, items: list[tuple[str, str]]) -> None:
+        previous = self.selected_target()
         self._target_combo.blockSignals(True)
         self._target_combo.clear()
         for name, uuid in items:
             self._target_combo.addItem(name, userData=uuid)
+        index = max(0, self._target_combo.findData(previous))
+        self._target_combo.setCurrentIndex(index)
         self._target_combo.blockSignals(False)
         fit_combo_to_content(self._target_combo)
         self._target_combo.setVisible(len(items) > 0)
         if items:
-            self._on_target_changed(0)
+            self._on_target_changed(index)
 
     def clear_targets(self) -> None:
         self._target_combo.blockSignals(True)
