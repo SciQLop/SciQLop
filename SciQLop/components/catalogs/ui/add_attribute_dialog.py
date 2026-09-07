@@ -49,13 +49,19 @@ class AddAttributeDialog(QDialog):
         hint.setWordWrap(True)
         layout.addRow(hint)
 
-        buttons = QDialogButtonBox(
+        self._buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
             parent=self,
         )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addRow(buttons)
+        self._buttons.accepted.connect(self.accept)
+        self._buttons.rejected.connect(self.reject)
+        layout.addRow(self._buttons)
+        self._name.textChanged.connect(self._sync_ok_button)
+        self._sync_ok_button()
+
+    def _sync_ok_button(self) -> None:
+        ok = self._buttons.button(QDialogButtonBox.StandardButton.Ok)
+        ok.setEnabled(bool(self._name.text().strip()))
 
     def _select_type(self, label: str) -> None:
         index = self._type.findText(label)

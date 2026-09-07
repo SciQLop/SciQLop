@@ -31,13 +31,17 @@ from .event_table import EventTableModel, EventSortProxy
 class _CatalogFilterProxy(QSortFilterProxyModel):
     """Case-insensitive substring filter that keeps ancestors of matching nodes."""
 
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
-        pattern = self.filterRegularExpression().pattern()
-        if not pattern:
+        regex = self.filterRegularExpression()
+        if not regex.pattern():
             return True
         idx = self.sourceModel().index(source_row, 0, source_parent)
         name = self.sourceModel().data(idx, Qt.ItemDataRole.DisplayRole) or ""
-        if pattern.lower() in name.lower():
+        if regex.match(name).hasMatch():
             return True
         # Accept if any child matches (recursive)
         for row in range(self.sourceModel().rowCount(idx)):
@@ -609,6 +613,7 @@ class CatalogBrowser(QWidget):
         popover.visibility_changed.connect(self._on_column_visibility_changed)
         popover.reorder_requested.connect(self._on_column_reorder_requested)
         popover.reset_requested.connect(self._on_columns_reset)
+        popover.reset_requested.connect(popover.close)
         if at_header_pos is None:
             anchor = self._event_toolbar.widgetForAction(self._columns_action)
             global_pos = anchor.mapToGlobal(anchor.rect().bottomLeft())
@@ -637,6 +642,8 @@ class CatalogBrowser(QWidget):
         save_view_state(self._current_catalog.uuid, CatalogViewState())
         for col in range(self._event_model.columnCount()):
             self._event_table.setColumnHidden(col, False)
+        self._reorder_columns(
+            [self._column_key(col) for col in range(self._event_model.columnCount())])
 
     def _update_toolbar(self) -> None:
         if self._current_provider is None:
@@ -952,6 +959,10 @@ class CatalogBrowser(QWidget):
                 save_action = menu.addAction("Save")
                 save_action.triggered.connect(lambda: node.provider.save())
 
+        if node.catalog is not None and Capability.RENAME_CATALOG in node_caps:
+            rename_action = menu.addAction("Rename")
+            rename_action.triggered.connect(lambda: self._catalog_tree.edit(proxy_index))
+
         if node.catalog is not None and Capability.DELETE_CATALOGS in node_caps:
             delete_action = menu.addAction("Delete Catalog")
             delete_action.triggered.connect(lambda: self._delete_catalog(node))
@@ -1013,12 +1024,12 @@ class CatalogBrowser(QWidget):
             lambda: self._apply_color_mapper(catalog, ColorMapper())
         )
 
-        # From the catalog itself, not self._event_model._events: the menu
-        # is built for whichever catalog was right-clicked, which is not
-        # necessarily the one currently open in the event table. Unlike
-        # that in-memory read, this is a real backend call and can raise.
+        # The open catalog's model already knows every meta key; any other
+        # right-clicked catalog needs a real backend call, which can raise.
         columns: set[str] = set()
-        if catalog.provider is not None:
+        if self._current_catalog is not None and catalog.uuid == self._current_catalog.uuid:
+            columns.update(self._event_model._meta_keys)
+        elif catalog.provider is not None:
             try:
                 for event in catalog.provider.events(catalog)[:200]:
                     columns.update(event.meta.keys())
@@ -1088,6 +1099,7 @@ class CatalogBrowser(QWidget):
             self, "Delete Catalog",
             f"Delete catalog '{node.name}'?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
         )
         if reply == QMessageBox.StandardButton.Yes:
             if self._current_catalog is not None and self._current_catalog.uuid == node.catalog.uuid:

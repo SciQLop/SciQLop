@@ -134,3 +134,17 @@ def test_browser_add_attribute_cancel_does_nothing(qtbot, qapp, monkeypatch):
 
     browser._on_add_attribute_clicked()
     assert set(browser._event_model._meta_keys) == initial_keys
+
+
+def test_dialog_ok_disabled_until_name_is_given(qtbot, qapp):
+    from PySide6.QtWidgets import QDialogButtonBox
+    from SciQLop.components.catalogs.ui.add_attribute_dialog import AddAttributeDialog
+
+    dialog = AddAttributeDialog()
+    qtbot.addWidget(dialog)
+    ok = dialog._buttons.button(QDialogButtonBox.StandardButton.Ok)
+    assert not ok.isEnabled()
+    dialog._name.setText("   ")
+    assert not ok.isEnabled()
+    dialog._name.setText("note")
+    assert ok.isEnabled()

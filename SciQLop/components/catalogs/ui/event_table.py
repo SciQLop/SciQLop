@@ -282,15 +282,15 @@ class EventSortProxy(QSortFilterProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setSortRole(EventTableModel.SortRole)
+        self.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
 
     def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
-        pattern = self.filterRegularExpression().pattern()
-        if not pattern:
+        regex = self.filterRegularExpression()
+        if not regex.pattern():
             return True
         model = self.sourceModel()
-        pattern_lower = pattern.lower()
         for col in range(model.columnCount()):
             text = model.data(model.index(source_row, col, source_parent), Qt.ItemDataRole.DisplayRole)
-            if text and pattern_lower in str(text).lower():
+            if text and regex.match(str(text)).hasMatch():
                 return True
         return False
