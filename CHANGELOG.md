@@ -81,6 +81,7 @@ Round 2 (`docs/api-fuzzing-report-round2-2026-06-12.md`):
 
 - Refreshed the startup splash with the current SciQLop dashboard screenshot and moved the phase + detail text into a solid dark bar at the bottom of the splash. The previous semi-transparent overlays were unreadable against bright colormap regions in the new image. Detail lines collapse when empty so the bar shrinks to a single phase row when there's nothing to report.
 - macOS bundles now derive their `Info.plist` `CFBundleShortVersionString` and `CFBundleVersion` from `pyproject.toml`, so the version reported by Finder / `mdls` matches the installed SciQLop.
+- The running SciQLop no longer shows as "Python" in the menu bar, Dock and Cmd+Tab switcher. macOS names a process after the bundle owning the executable it runs, and the GUI is a bare interpreter spawned by the launcher; it is now started through a small `SciQLop.app` written into the workspace (a symlink to the real interpreter plus an `Info.plist`), using CPython's `__PYVENV_LAUNCHER__` hook so the workspace venv and `sys.executable` are unchanged.
 
 ### Per-panel crosshair toggle
 

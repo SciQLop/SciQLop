@@ -231,6 +231,18 @@ def _prepare_on_worker_thread(prepare_fn, default_python: Path, on_detail) -> tu
     return state["python_path"], state["error"]
 
 
+def _gui_command(python_path: Path, env: dict) -> tuple[list[str], dict]:
+    """argv + env for the GUI process; on macOS routed through the workspace's
+    SciQLop.app so the Dock and menu bar name it SciQLop (see core.common.macos)."""
+    from SciQLop.core.common.macos import session_interpreter
+
+    workspace_dir = env.get("SCIQLOP_WORKSPACE_DIR")
+    if not workspace_dir:
+        return [str(python_path), "-m", "SciQLop.sciqlop_app"], env
+    executable, extra_env = session_interpreter(python_path, Path(workspace_dir))
+    return [str(executable), "-m", "SciQLop.sciqlop_app"], {**env, **extra_env}
+
+
 def _spawn_app_logged(
     python_path: Path, env: dict, echo: bool = False
 ) -> tuple[subprocess.Popen, list[str], Path | None]:
@@ -262,12 +274,13 @@ def _spawn_app_logged(
         log_file = io.StringIO()
         log_path = None
 
-    log_file.write(f"$ {python_path} -m SciQLop.sciqlop_app\n")
+    argv, env = _gui_command(python_path, env)
+    log_file.write(f"$ {' '.join(argv)}\n")
     log_file.flush()
 
     try:
         proc = subprocess.Popen(
-            [str(python_path), "-m", "SciQLop.sciqlop_app"],
+            argv,
             env=env,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
