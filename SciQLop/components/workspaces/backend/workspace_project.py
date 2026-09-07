@@ -66,12 +66,11 @@ _MAX_LISTED_VERSIONS = 15
 # that re-resolves only part of it gets a kernel that cannot start.
 _PINNED_BASE_TRAINS = ("fps", "jupyverse")
 
-# Packages that the workspace venv inherits from the host SciQLop install
-# (via --system-site-packages) and must never appear in the workspace
-# dependency list, because the dev cycle uses .dev versions that don't
-# exist on PyPI and would make uv sync unsatisfiable. Plugins that declare
-# these in their python_dependencies are over-specifying — the host
-# install is always the source of truth.
+# Packages the workspace requirement list already owns (sciqlop_requirement)
+# or the dev launcher's environment provides. Plugins declare "SciQLop>=X"
+# in plugin.json for the loader's compat gate, not as an install request:
+# that line must never reach uv, where it would replace the [all] pin or,
+# for a .dev host, demand a version no index has.
 _HOST_PROVIDED_PACKAGES = frozenset({"sciqlop"})
 
 # PEP 508 package name: letters, digits, hyphens, underscores, dots.
@@ -241,20 +240,16 @@ def _extract_package_name(req: str) -> str:
 
 
 def strip_host_provided(reqs: Sequence[str]) -> List[str]:
-    """Drop requirements for packages the running SciQLop install provides.
+    """Drop the SciQLop lines plugins/manifests declare (see _HOST_PROVIDED_PACKAGES).
 
-    The workspace venv inherits them via ``--system-site-packages``. Re-resolving
-    them from an index is both wrong (it would shadow the running host package)
-    and broken for dev builds: a ``0.13.0.dev0`` host does not satisfy a plugin's
-    ``SciQLop>=0.13.0`` under PEP 440, so uv falls back to PyPI — which only has
-    ``<=0.12.0`` — and the whole install fails. See _HOST_PROVIDED_PACKAGES.
+    Used by both the workspace pyproject generator (where the workspace's own
+    ``sciqlop[all]`` requirement is authoritative) and the dev launcher's
+    pip-install path (where the editable checkout is).
     """
     kept: list[str] = []
     for r in reqs:
         if _extract_package_name(r) in _HOST_PROVIDED_PACKAGES:
-            log.warning(
-                "Dropping host-provided requirement %r (provided by the "
-                "SciQLop install)", r)
+            log.debug("Dropping plugin-declared SciQLop requirement %r", r)
             continue
         kept.append(r)
     return kept
@@ -301,7 +296,11 @@ def generate_pyproject_toml(
     # either package guts the other's files (see lab_assets.repair_lab_assets,
     # which heals venvs already damaged in the field).
     implicit_deps = [sciqlop_requirement(manifest.sciqlop_version), "jupyqt"]
-    raw_deps = [_normalize_url_requirement(r) for r in implicit_deps + list(manifest.requires) + list(plugin_deps)]
+    # Strip the SciQLop lines plugins declare for the loader's compat gate:
+    # dedup keeps the last entry per package, so an unstripped
+    # "SciQLop>=X" would replace the workspace's own [all] requirement.
+    user_deps = strip_host_provided(list(manifest.requires) + list(plugin_deps))
+    raw_deps = [_normalize_url_requirement(r) for r in implicit_deps + user_deps]
     all_deps = _deduplicate_requirements(raw_deps)
     slug = _project_slug(manifest.name)
 

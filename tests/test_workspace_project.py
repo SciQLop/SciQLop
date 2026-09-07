@@ -311,6 +311,34 @@ class TestGeneratePyprojectToml:
                 data = tomllib.load(f)
             assert "override-dependencies" not in data.get("tool", {}).get("uv", {})
 
+    @pytest.mark.parametrize("pinned, expected_core", [
+        ("0.13.0", "sciqlop[all]==0.13.0"),
+        ("0.13.0.dev0", "sciqlop[all] @ git+https://github.com/SciQLop/SciQLop.git@main"),
+    ])
+    def test_plugin_json_sciqlop_line_never_replaces_the_core_requirement(
+        self, pinned, expected_core
+    ):
+        """Folder plugins declare `SciQLop>=…` in plugin.json for the loader's
+        compat gate. Deduplication keys on the package name and keeps the last
+        entry, so without stripping that line it silently replaced the
+        workspace's own `sciqlop[all]` requirement: a released pin then
+        installed the launcher-only package (no GUI stack), and a dev build's
+        git-main requirement became an unresolvable PyPI lookup."""
+        import tomllib
+
+        manifest = WorkspaceManifest(name="Gate", sciqlop_version=pinned)
+        plugin_deps = ["sunpy[net]>=7", "SciQLop>=0.13.0,<0.14.0", "numpy"]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "pyproject.toml"
+            generate_pyproject_toml(manifest, plugin_deps, output)
+
+            with open(output, "rb") as f:
+                deps = tomllib.load(f)["project"]["dependencies"]
+            assert expected_core in deps, deps
+            assert "SciQLop>=0.13.0,<0.14.0" not in deps, deps
+            assert "sunpy[net]>=7" in deps and "numpy" in deps
+
     def test_strip_host_provided_drops_sciqlop_keeps_rest(self):
         """The shared filter drops SciQLop (any specifier form) and keeps
         everything else, so both the uv-sync and dev pip-install paths agree."""
