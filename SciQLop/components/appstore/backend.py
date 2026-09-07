@@ -174,11 +174,11 @@ def _try_load_plugin(dist_name: str) -> None:
         except Exception:
             ep_dist = None
         if ep_dist and canonical_package_name(ep_dist) == canonical_dist_name:
-            if not entry_point_host_compatible(ep):
-                continue
             with SciQLopPluginsSettings() as settings:
                 if ep.name not in settings.plugins:
                     settings.plugins[ep.name] = PluginConfig()
+            if not entry_point_host_compatible(ep):
+                continue
             _load_entry_point_plugin(ep, main_window)
             log.info(f"Hot-loaded plugin {ep.name} from {dist_name}")
 

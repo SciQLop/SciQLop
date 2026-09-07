@@ -14,14 +14,17 @@ Two regressions guarded here:
 """
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 import yaml
 
+import SciQLop
 from SciQLop.components.appstore.backend import (
     _remove_installed_package,
     _save_installed_package,
+    _try_load_plugin,
     _uv_install_cmd,
     _uv_uninstall_cmd,
     _write_requirements_file,
@@ -142,3 +145,35 @@ class TestInstalledPackagesStableKeys:
 
         assert list(settings.installed_packages.keys()) == ["my-cool-plugin"]
         assert settings.installed_packages["my-cool-plugin"].pip == "my_cool_plugin==2.0.0"
+
+
+class TestTryLoadPluginSettingsBookkeeping:
+    """Compatibility must never affect enable/disable state -- the settings
+    entry for a freshly-installed entry-point plugin must exist regardless of
+    whether the host gate skips loading it (mirrors load_all, which creates
+    the entry unconditionally before gating)."""
+
+    def test_incompatible_plugin_still_gets_a_settings_entry_but_does_not_load(
+        self, tmp_config_dir, monkeypatch
+    ):
+        monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
+
+        ep = SimpleNamespace(
+            name="future_plugin",
+            dist=SimpleNamespace(name="future-plugin", requires=["SciQLop>=0.20"]),
+        )
+        monkeypatch.setattr("importlib.metadata.entry_points", lambda group=None: [ep])
+        monkeypatch.setattr(
+            "SciQLop.core.sciqlop_application.sciqlop_app",
+            lambda: SimpleNamespace(main_window=object()),
+        )
+        loaded = []
+        monkeypatch.setattr(
+            "SciQLop.components.plugins.backend.loader.loader._load_entry_point_plugin",
+            lambda ep, main_window: loaded.append(ep.name),
+        )
+
+        _try_load_plugin("future-plugin")
+
+        assert "future_plugin" in SciQLopPluginsSettings().plugins
+        assert loaded == []
