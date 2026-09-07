@@ -101,6 +101,7 @@ def test_session_interpreter_keeps_this_venv(tmp_path):
                          capture_output=True, text=True, check=True).stdout.splitlines()
     assert out == [sys.executable, sys.prefix, sys.base_prefix]
     assert stub.parent.parent.parent.name == "SciQLop.app"
+    assert extra_env["CFProcessPath"] == str(stub)
 
 
 def test_gui_command_uses_the_session_interpreter_for_a_workspace(monkeypatch, tmp_path):

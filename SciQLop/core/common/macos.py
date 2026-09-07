@@ -123,4 +123,7 @@ def session_interpreter(python: Path, workspace_dir: Path) -> tuple[Path, dict[s
     except (OSError, subprocess.SubprocessError) as e:
         log.warning("Cannot set up the SciQLop.app session bundle, the process will show as Python: %s", e)
         return python, {}
-    return stub, {"__PYVENV_LAUNCHER__": str(python)}
+    # CFProcessPath: CoreFoundation's own override of the process path, the
+    # documented way to make a symlinked bundle executable resolve to the
+    # bundle (CUPS drivers use it, see https://github.com/apple/cups/issues/2837).
+    return stub, {"__PYVENV_LAUNCHER__": str(python), "CFProcessPath": str(stub)}
