@@ -156,7 +156,7 @@ def _try_load_plugin(dist_name: str) -> None:
     """Attempt to hot-load a newly installed entry-point plugin."""
     import importlib.metadata
     from SciQLop.components.plugins.backend.loader.loader import (
-        ENTRY_POINT_GROUP, _load_entry_point_plugin,
+        ENTRY_POINT_GROUP, _load_entry_point_plugin, entry_point_host_compatible,
     )
     from SciQLop.components.plugins.backend.settings import (
         SciQLopPluginsSettings, PluginConfig, canonical_package_name,
@@ -174,6 +174,8 @@ def _try_load_plugin(dist_name: str) -> None:
         except Exception:
             ep_dist = None
         if ep_dist and canonical_package_name(ep_dist) == canonical_dist_name:
+            if not entry_point_host_compatible(ep):
+                continue
             with SciQLopPluginsSettings() as settings:
                 if ep.name not in settings.plugins:
                     settings.plugins[ep.name] = PluginConfig()

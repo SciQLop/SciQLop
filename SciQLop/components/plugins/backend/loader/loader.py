@@ -115,6 +115,27 @@ def plugin_host_compatible(folder: str, plugin: str) -> bool:
     return False
 
 
+def entry_point_host_compatible(ep: importlib.metadata.EntryPoint) -> bool:
+    """Backstop gate: refuse to load an entry-point plugin whose declared
+    SciQLop requirement the running host doesn't satisfy.
+
+    Mirrors plugin_host_compatible for folder plugins, but reads the
+    requirement from the installed distribution's metadata (Requires-Dist)
+    instead of a plugin.json. Missing dist or no SciQLop requirement means no
+    claim → compatible.
+    """
+    from SciQLop.components.plugins.compat import (
+        plugin_is_compatible, sciqlop_specifier, host_version,
+    )
+    requires = ep.dist.requires if ep.dist else None
+    if plugin_is_compatible(requires or []):
+        return True
+    log.warning(
+        "Skipping plugin %r: requires SciQLop %s but host is %s",
+        ep.name, sciqlop_specifier(requires or []) or "(any)", host_version())
+    return False
+
+
 def _load_entry_point_plugin(ep: importlib.metadata.EntryPoint, main_window):
     try:
         mod = ep.load()
@@ -159,7 +180,8 @@ def load_all(main_window):
             if not settings.plugins[name].enabled:
                 log.info(f"Entry-point plugin {name} is disabled")
                 continue
-            plugin_list.append((None, name))
+            if entry_point_host_compatible(ep):
+                plugin_list.append((None, name))
 
     results = {}
     for folder, plugin in plugin_list:

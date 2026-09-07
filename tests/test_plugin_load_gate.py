@@ -1,8 +1,12 @@
 """Loader backstop: don't load a folder plugin incompatible with the host."""
 import json
+from types import SimpleNamespace
 
 import SciQLop
-from SciQLop.components.plugins.backend.loader.loader import plugin_host_compatible
+from SciQLop.components.plugins.backend.loader import loader
+from SciQLop.components.plugins.backend.loader.loader import (
+    entry_point_host_compatible, plugin_host_compatible,
+)
 
 
 def _make_plugin(folder, name, python_dependencies):
@@ -47,3 +51,37 @@ def test_malformed_plugin_json_is_not_gated_here(tmp_path):
     pdir.mkdir()
     (pdir / "plugin.json").write_text("{ not json")
     assert plugin_host_compatible(str(tmp_path), "broken") is True
+
+
+def _make_entry_point(name, requires):
+    return SimpleNamespace(name=name, dist=SimpleNamespace(requires=requires))
+
+
+def test_incompatible_entry_point_plugin_is_gated_out(monkeypatch):
+    monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
+    warnings = []
+    monkeypatch.setattr(loader.log, "warning", lambda *a, **k: warnings.append(a))
+    ep = _make_entry_point("future_ep_plugin", ["SciQLop>=0.20"])
+    assert entry_point_host_compatible(ep) is False
+    assert warnings == [(
+        "Skipping plugin %r: requires SciQLop %s but host is %s",
+        "future_ep_plugin", ">=0.20", "0.13.0.dev0",
+    )]
+
+
+def test_entry_point_plugin_with_no_sciqlop_requirement_loads(monkeypatch):
+    monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
+    ep = _make_entry_point("no_req_ep_plugin", None)
+    assert entry_point_host_compatible(ep) is True
+
+
+def test_entry_point_without_dist_loads(monkeypatch):
+    monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
+    ep = SimpleNamespace(name="no_dist_plugin", dist=None)
+    assert entry_point_host_compatible(ep) is True
+
+
+def test_dev_build_loads_entry_point_plugin_targeting_its_release(monkeypatch):
+    monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
+    ep = _make_entry_point("dev_ep_plugin", ["SciQLop>=0.13.0,<0.14.0"])
+    assert entry_point_host_compatible(ep) is True
