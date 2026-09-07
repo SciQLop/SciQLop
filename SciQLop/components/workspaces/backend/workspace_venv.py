@@ -16,9 +16,18 @@ from SciQLop.components.workspaces.backend.uv import uv_command
 _WINDOWS = os.name == "nt"
 
 
+def _uv_failure_message(cmd: list[str], returncode: int, stderr_text: str) -> str:
+    return f"uv command failed (exit {returncode}):\n  {' '.join(cmd)}\n\n{stderr_text}"
+
+
 def _run_uv(cmd: list[str], on_output: Callable[[str], None] | None = None, **kwargs) -> None:
     if on_output is None:
-        subprocess.run(cmd, check=True, **kwargs)
+        try:
+            subprocess.run(cmd, check=True, stderr=subprocess.PIPE, text=True, **kwargs)
+        except subprocess.CalledProcessError as exc:
+            raise RuntimeError(
+                _uv_failure_message(cmd, exc.returncode, exc.stderr or "")
+            ) from exc
         return
     stderr_lines: list[str] = []
     proc = subprocess.Popen(cmd, stderr=subprocess.PIPE, text=True, **kwargs)
@@ -28,11 +37,7 @@ def _run_uv(cmd: list[str], on_output: Callable[[str], None] | None = None, **kw
         on_output(stripped)
     rc = proc.wait()
     if rc != 0:
-        stderr = "\n".join(stderr_lines)
-        raise RuntimeError(
-            f"uv command failed (exit {rc}):\n"
-            f"  {' '.join(cmd)}\n\n{stderr}"
-        )
+        raise RuntimeError(_uv_failure_message(cmd, rc, "\n".join(stderr_lines)))
 
 
 class WorkspaceVenv:

@@ -57,6 +57,37 @@ def _signal_ready_and_wait_for_splash(timeout: float = 5.0) -> None:
         time.sleep(0.05)
 
 
+def _notify_dropped_dependencies(parent) -> None:
+    """Warn once at startup when the workspace sync had to leave some
+    plugin/appstore packages out (see workspace_setup's culprit-isolation
+    retry ladder and DROPPED_DEPS_FILENAME) -- the only other notice is a
+    line in the launcher's splash output, which is gone by the time the
+    main window is up.
+    """
+    workspace_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR")
+    if not workspace_dir:
+        return
+    from SciQLop.components.workspaces.backend.workspace_setup import read_dropped_dependencies
+    notice = read_dropped_dependencies(workspace_dir)
+    dropped = notice["dropped"] if notice else []
+    if not dropped:
+        return
+
+    from PySide6.QtWidgets import QMessageBox
+    from SciQLop.components.workspaces.backend.workspace_project import running_sciqlop_version
+    version = running_sciqlop_version() or "main"
+    box = QMessageBox(
+        QMessageBox.Icon.Warning,
+        "Packages left out of this workspace",
+        "These packages were left out of this workspace because they could "
+        f"not be installed alongside SciQLop {version}: {', '.join(dropped)}. "
+        "Update or remove them from the App Store.",
+        parent=parent,
+    )
+    box.setModal(False)
+    box.show()
+
+
 def start_sciqlop():
     os.environ['INSIDE_SCIQLOP'] = '1'
     from PySide6 import QtPrintSupport, QtQml
@@ -97,6 +128,7 @@ def start_sciqlop():
     _signal_ready_and_wait_for_splash()
     main_windows.show()
     app.processEvents()
+    _notify_dropped_dependencies(main_windows)
     return main_windows
 
 def main():

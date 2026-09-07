@@ -599,6 +599,9 @@ function onCoreUpdateFinished(resultJson) {
         status.textContent = result.is_active_workspace
             ? "Pinned — restart SciQLop to install and apply."
             : "Installed.";
+        if (result.dropped && result.dropped.length) {
+            status.textContent += " Left out (incompatible): " + result.dropped.join(", ") + ".";
+        }
         status.className = "core-version-status core-version-success";
     } else {
         status.textContent = "Update failed: " + (result.error || "unknown error");

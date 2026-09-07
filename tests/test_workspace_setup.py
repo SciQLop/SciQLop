@@ -442,6 +442,91 @@ class TestPrepareWorkspacePluginIsolation:
         assert gen.call_args_list[1].args[1] == []
         assert gen.call_args_list[2].args[1] == ["numpy>=1.24", "requests"]
 
+    def test_retries_without_only_the_named_culprit_dependency(self, workspace_dir, patches):
+        """A resolver error naming just one of the two optional deps must
+        only drop that one (M2's isolation), not every plugin/appstore
+        dependency the way the plain core-only retry does."""
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            DROPPED_DEPS_FILENAME, prepare_workspace, read_dropped_dependencies,
+        )
+
+        venv = patches["venv"]
+        venv.sync.side_effect = [
+            RuntimeError(
+                "requests==2.0 depends on SciQLop<0.13, but SciQLop==0.13.0 is installed"
+            ),
+            None,
+        ]
+
+        result = prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert result == venv.python_path
+        assert venv.sync.call_count == 2
+        gen = patches["generate_pyproject_toml"]
+        assert gen.call_count == 3
+        # Only the culprit is dropped from the retry -- "numpy>=1.24" stays.
+        assert gen.call_args_list[1].args[1] == ["numpy>=1.24"]
+        # M1: the full set is restored on disk after the successful retry.
+        assert gen.call_args_list[2].args[1] == ["numpy>=1.24", "requests"]
+
+        assert (workspace_dir / DROPPED_DEPS_FILENAME).exists()
+        notice = read_dropped_dependencies(workspace_dir)
+        assert notice["dropped"] == ["requests"]
+        assert "requests==2.0" in notice["error"]
+
+    def test_culprit_matching_every_optional_dep_skips_to_core_only(self, workspace_dir, patches):
+        """When the error implicates every optional dep, isolating one at a
+        time buys nothing -- go straight to the existing core-only retry."""
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            prepare_workspace, read_dropped_dependencies,
+        )
+
+        venv = patches["venv"]
+        venv.sync.side_effect = [
+            RuntimeError("numpy==1.24 and requests both depend on SciQLop<0.13"),
+            None,
+        ]
+
+        result = prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert result == venv.python_path
+        assert venv.sync.call_count == 2
+        gen = patches["generate_pyproject_toml"]
+        assert gen.call_count == 3
+        assert gen.call_args_list[1].args[1] == []
+        assert gen.call_args_list[2].args[1] == ["numpy>=1.24", "requests"]
+
+        notice = read_dropped_dependencies(workspace_dir)
+        assert notice["dropped"] == ["numpy>=1.24", "requests"]
+
+    def test_dropped_notice_error_field_is_truncated_to_20_lines(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            prepare_workspace, read_dropped_dependencies,
+        )
+
+        long_error = "\n".join(f"line {i} mentions requests" for i in range(30))
+        venv = patches["venv"]
+        venv.sync.side_effect = [RuntimeError(long_error), None]
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        notice = read_dropped_dependencies(workspace_dir)
+        assert notice["error"].splitlines() == [f"line {i} mentions requests" for i in range(20)]
+
+    def test_success_with_nothing_dropped_removes_existing_notice_file(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            DROPPED_DEPS_FILENAME, prepare_workspace,
+        )
+
+        workspace_dir.mkdir(parents=True)
+        (workspace_dir / DROPPED_DEPS_FILENAME).write_text(
+            '{"dropped": ["old-pkg"], "error": "stale"}'
+        )
+
+        prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert not (workspace_dir / DROPPED_DEPS_FILENAME).exists()
+
     def test_falls_back_to_existing_venv_when_core_only_sync_also_fails(
         self, workspace_dir, patches, tmp_path
     ):
@@ -499,6 +584,72 @@ class TestPrepareWorkspacePluginIsolation:
         assert venv.sync.call_args_list[1].kwargs["locked"] is False
         assert venv.sync.call_args_list[2].kwargs["locked"] is False
         cb.assert_any_call("Archive lockfile could not be honored, resolving fresh")
+
+
+class TestCulpritDependencies:
+    """Text matching (see culprit_dependencies' simplify comment) that picks
+    out which optional dep(s) a uv resolver error is actually complaining
+    about, so the retry ladder can drop just those instead of everything."""
+
+    def test_matches_wheel_url_dependency(self):
+        from SciQLop.components.workspaces.backend.workspace_setup import culprit_dependencies
+
+        deps = ["https://example.com/wheels/radio_plugin-1.2.0-py3-none-any.whl"]
+        error = "No solution found because radio-plugin==1.2.0 depends on SciQLop<0.13"
+
+        assert culprit_dependencies(deps, error) == deps
+
+    def test_matches_plain_requirement(self):
+        from SciQLop.components.workspaces.backend.workspace_setup import culprit_dependencies
+
+        deps = ["sciqlop-radio>=1.0"]
+        error = "sciqlop-radio was not found in the package registry"
+
+        assert culprit_dependencies(deps, error) == deps
+
+    def test_no_match_returns_empty(self):
+        from SciQLop.components.workspaces.backend.workspace_setup import culprit_dependencies
+
+        deps = ["numpy>=1.24", "requests"]
+        error = "Network is unreachable"
+
+        assert culprit_dependencies(deps, error) == []
+
+    def test_folded_underscores_still_match(self):
+        """The dep is declared with a hyphen but uv's error text spells the
+        same package with an underscore (or vice versa) -- folding both
+        sides the same way must still catch it."""
+        from SciQLop.components.workspaces.backend.workspace_setup import culprit_dependencies
+
+        deps = ["sciqlop-msa>=2.0"]
+        error = "sciqlop_msa==2.0 depends on SciQLop<0.13, but SciQLop==0.13.0 is installed"
+
+        assert culprit_dependencies(deps, error) == deps
+
+
+class TestReadDroppedDependencies:
+    def test_returns_none_when_file_absent(self, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import read_dropped_dependencies
+
+        assert read_dropped_dependencies(tmp_path) is None
+
+    def test_returns_none_when_file_unparsable(self, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            DROPPED_DEPS_FILENAME, read_dropped_dependencies,
+        )
+
+        (tmp_path / DROPPED_DEPS_FILENAME).write_text("not json")
+
+        assert read_dropped_dependencies(tmp_path) is None
+
+    def test_returns_parsed_payload(self, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            DROPPED_DEPS_FILENAME, read_dropped_dependencies,
+        )
+
+        (tmp_path / DROPPED_DEPS_FILENAME).write_text('{"dropped": ["pkg"], "error": "boom"}')
+
+        assert read_dropped_dependencies(tmp_path) == {"dropped": ["pkg"], "error": "boom"}
 
 
 class TestStaleLockfileInvalidation:

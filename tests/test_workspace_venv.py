@@ -99,7 +99,9 @@ class TestCreate:
             sys.executable,
         )
         assert "--system-site-packages" not in mock_uv_cmd.call_args.args
-        mock_run.assert_called_once_with(mock_uv_cmd.return_value, check=True)
+        mock_run.assert_called_once_with(
+            mock_uv_cmd.return_value, check=True, stderr=subprocess.PIPE, text=True,
+        )
 
 
 class TestSync:
@@ -111,7 +113,8 @@ class TestSync:
 
         mock_uv_cmd.assert_called_once_with("sync", "--native-tls")
         mock_run.assert_called_once_with(
-            mock_uv_cmd.return_value, check=True, cwd=str(workspace_dir)
+            mock_uv_cmd.return_value, check=True, stderr=subprocess.PIPE, text=True,
+            cwd=str(workspace_dir),
         )
 
     @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
@@ -122,7 +125,8 @@ class TestSync:
 
         mock_uv_cmd.assert_called_once_with("sync", "--locked", "--native-tls")
         mock_run.assert_called_once_with(
-            mock_uv_cmd.return_value, check=True, cwd=str(workspace_dir)
+            mock_uv_cmd.return_value, check=True, stderr=subprocess.PIPE, text=True,
+            cwd=str(workspace_dir),
         )
 
     @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
@@ -139,7 +143,8 @@ class TestSync:
             "sync", "--native-tls", "--upgrade-package", "sciqlop"
         )
         mock_run.assert_called_once_with(
-            mock_uv_cmd.return_value, check=True, cwd=str(workspace_dir)
+            mock_uv_cmd.return_value, check=True, stderr=subprocess.PIPE, text=True,
+            cwd=str(workspace_dir),
         )
 
 
@@ -172,6 +177,37 @@ class TestCreateWithCallback:
 
         with pytest.raises(RuntimeError, match="uv command failed"):
             venv.create(on_output=lambda _: None)
+
+
+class TestRunUvNonStreamingFailureSurfacesStderr:
+    """Without an on_output callback, `_run_uv` used to run `check=True`
+    with inherited stderr, so a failure's actual uv resolution text never
+    reached the caller -- just a bare CalledProcessError. It must now raise
+    the same RuntimeError shape as the streaming (on_output) branch."""
+
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command")
+    def test_raises_runtime_error_with_stderr_text(self, mock_uv_cmd, mock_run, venv, workspace_dir):
+        mock_uv_cmd.return_value = ["uv", "sync"]
+        mock_run.side_effect = subprocess.CalledProcessError(
+            returncode=2, cmd=["uv", "sync"],
+            stderr="No solution found when resolving dependencies",
+        )
+
+        with pytest.raises(RuntimeError, match="No solution found when resolving dependencies"):
+            venv.sync()
+
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
+    @patch("SciQLop.components.workspaces.backend.workspace_venv.uv_command")
+    def test_success_does_not_raise(self, mock_uv_cmd, mock_run, venv, workspace_dir):
+        mock_uv_cmd.return_value = ["uv", "sync"]
+
+        venv.sync()  # must not raise
+
+        mock_run.assert_called_once_with(
+            mock_uv_cmd.return_value, check=True, stderr=subprocess.PIPE, text=True,
+            cwd=str(workspace_dir),
+        )
 
 
 class TestSyncWithCallback:

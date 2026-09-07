@@ -88,6 +88,36 @@ class TestApplyCoreVersionSlot:
         mock_apply.assert_called_once_with(str(tmp_path), "0.13.0")
         mock_pin.assert_not_called()
 
+    def test_success_includes_dropped_packages_when_notice_file_exists(self, qtbot, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import DROPPED_DEPS_FILENAME
+
+        backend = _make_backend()
+        (tmp_path / DROPPED_DEPS_FILENAME).write_text(
+            json.dumps({"dropped": ["radio-plugin"], "error": "boom"})
+        )
+        with (
+            patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.13.0"]),
+            patch(f"{WORKSPACE_PROJECT_MODULE}.validate_core_version", return_value=True),
+            patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version", return_value=tmp_path / "python"),
+            patch(f"{WORKSPACE_SETUP_MODULE}.pin_core_version"),
+        ):
+            with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
+                backend.apply_core_version(str(tmp_path), "0.13.0")
+        payload = json.loads(blocker.args[0])
+        assert payload["dropped"] == ["radio-plugin"]
+
+    def test_success_with_no_notice_file_reports_empty_dropped_list(self, qtbot, tmp_path):
+        backend = _make_backend()
+        with (
+            patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.13.0"]),
+            patch(f"{WORKSPACE_PROJECT_MODULE}.validate_core_version", return_value=True),
+            patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version", return_value=tmp_path / "python"),
+        ):
+            with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
+                backend.apply_core_version(str(tmp_path), "0.13.0")
+        payload = json.loads(blocker.args[0])
+        assert payload["dropped"] == []
+
     def test_invalid_version_never_calls_apply_and_reports_error(self, qtbot, tmp_path):
         backend = _make_backend()
         with (

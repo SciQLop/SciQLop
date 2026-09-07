@@ -7,6 +7,7 @@ all in place, then returns the path to the venv's Python executable.
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable
 from pathlib import Path
@@ -20,15 +21,20 @@ from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceMa
 from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
 from SciQLop.components.workspaces.backend.lab_assets import repair_lab_assets
 from SciQLop.components.workspaces.backend.workspace_project import (
+    _extract_package_name,
+    _normalize_url_requirement,
     generate_pyproject_toml,
     is_dev_build_version,
     running_sciqlop_version,
 )
 from SciQLop.components.workspaces.backend.workspace_venv import WorkspaceVenv
+from SciQLop.core.common.files import write_text_atomic
 
 log = logging.getLogger(__name__)
 
 MANIFEST_FILENAME = "workspace.sciqlop"
+DROPPED_DEPS_FILENAME = ".sciqlop_dropped_deps.json"
+_DROPPED_DEPS_ERROR_MAX_LINES = 20
 
 
 def get_globally_enabled_plugins() -> list[str]:
@@ -40,6 +46,60 @@ def get_globally_enabled_plugins() -> list[str]:
 def get_plugin_folders() -> list[str]:
     """Return all plugin search folders."""
     return plugins_folders()
+
+
+def _fold_dep_name(name: str) -> str:
+    return name.replace("_", "-").lower()
+
+
+def culprit_dependencies(optional_deps: list[str], error_text: str) -> list[str]:
+    """Return the *optional_deps* entries uv's resolver error text names.
+
+    simplify: this is text matching on uv's resolver message, not a query of
+    our own -- it can miss a differently-phrased error or over-match a
+    coincidental substring. Upgrade path: probe each optional dep with its
+    own ``uv lock`` call and see which one alone fails to resolve.
+    """
+    folded_error = _fold_dep_name(error_text)
+    return [
+        dep for dep in optional_deps
+        if _fold_dep_name(_extract_package_name(_normalize_url_requirement(dep))) in folded_error
+    ]
+
+
+def _dropped_deps_path(workspace_dir: Path | str) -> Path:
+    return Path(workspace_dir) / DROPPED_DEPS_FILENAME
+
+
+def read_dropped_dependencies(workspace_dir: Path | str) -> dict | None:
+    """The persisted drop-notice for *workspace_dir*, or None.
+
+    None covers both "no retry ever dropped anything" (no file) and a
+    corrupt/unreadable file -- both cases the caller should treat as
+    "nothing to report".
+    """
+    try:
+        return json.loads(_dropped_deps_path(workspace_dir).read_text())
+    except (OSError, ValueError):
+        return None
+
+
+def _write_dropped_dependencies(workspace_dir: Path, dropped: list[str], error_text: str) -> None:
+    payload = {
+        "dropped": dropped,
+        "error": "\n".join(str(error_text).splitlines()[:_DROPPED_DEPS_ERROR_MAX_LINES]),
+    }
+    write_text_atomic(_dropped_deps_path(workspace_dir), json.dumps(payload))
+
+
+def _clear_dropped_dependencies(workspace_dir: Path) -> None:
+    path = _dropped_deps_path(workspace_dir)
+    if not path.exists():
+        return
+    try:
+        path.unlink()
+    except OSError as exc:
+        log.warning("Could not remove dropped-deps notice: %s", exc)
 
 
 def _try_sync(
@@ -62,6 +122,37 @@ def _report_sync_failure(exc: Exception, on_output, *, core_only: bool = False) 
         on_output(f"{label} failed: {exc}")
 
 
+def _retry_without_culprits(
+    venv: WorkspaceVenv,
+    manifest: WorkspaceManifest,
+    optional_deps: list[str],
+    pyproject_path: Path,
+    on_output: Callable[[str], None] | None,
+    upgrade_package: str | None,
+    error: Exception,
+) -> list[str] | None:
+    """Retry the sync with just the deps ``culprit_dependencies`` names dropped.
+
+    Returns the dropped deps on success, or ``None`` when no single-cause
+    culprit could be pinned down, every optional dep was implicated (no
+    point in a retry identical to the core-only one), or dropping just the
+    culprits still didn't fix the sync -- the caller then falls back to
+    dropping every optional dep instead.
+    """
+    culprits = culprit_dependencies(optional_deps, str(error))
+    if not culprits or len(culprits) >= len(optional_deps):
+        return None
+    remaining = [dep for dep in optional_deps if dep not in culprits]
+    if on_output is not None:
+        on_output(f"Retrying without {', '.join(culprits)} (suspected incompatible)...")
+    generate_pyproject_toml(manifest, remaining, pyproject_path)
+    exc = _try_sync(venv, locked=False, upgrade_package=upgrade_package, on_output=on_output)
+    if exc is not None:
+        _report_sync_failure(exc, on_output, core_only=False)
+        return None
+    return culprits
+
+
 def _sync_workspace_venv(
     venv: WorkspaceVenv,
     manifest: WorkspaceManifest,
@@ -78,10 +169,16 @@ def _sync_workspace_venv(
     logs and skips just that plugin (see loader.load_plugin) — so a single
     incompatible plugin or appstore package (e.g. a published release still
     pinned to an old SciQLop range) must not keep SciQLop itself from
-    starting. If the full dependency set fails to resolve, retry with only
-    the core app's own dependencies so it can still launch; only if even
-    that fails do we fall back to (or give up on) whatever is already in the
-    venv.
+    starting. If the full dependency set fails to resolve, this first tries
+    to isolate the culprit (``culprit_dependencies``) and retry with just
+    that dep dropped, so the rest of the plugins/appstore packages survive;
+    only if no culprit can be pinned down, or dropping it still doesn't fix
+    the sync, does it fall back to dropping every optional dep so the core
+    app can still launch. Only if even that fails do we fall back to (or
+    give up on) whatever is already in the venv. Whenever a retry actually
+    drops something, that is recorded to ``DROPPED_DEPS_FILENAME`` (cleared
+    again on a sync that needs no retry) for the app to warn about at
+    startup.
 
     ``locked`` (importing a workspace archive) tries to reproduce the exact,
     previously-working environment first. But an archive can outlive the
@@ -105,8 +202,10 @@ def _sync_workspace_venv(
     now matches what was asked for" from "we're just limping along on the
     old one".
     """
+    workspace_dir = pyproject_path.parent
     exc = _try_sync(venv, locked=locked, upgrade_package=upgrade_package, on_output=on_output)
     if exc is None:
+        _clear_dropped_dependencies(workspace_dir)
         return True
     _report_sync_failure(exc, on_output)
 
@@ -119,20 +218,29 @@ def _sync_workspace_venv(
         )
 
     if optional_deps:
-        if on_output is not None:
-            on_output(
-                "Retrying with just the core app (dropping plugin/appstore "
-                "dependencies)..."
-            )
-        generate_pyproject_toml(manifest, [], pyproject_path)
-        exc = _try_sync(venv, locked=False, upgrade_package=upgrade_package, on_output=on_output)
-        if exc is None:
+        first_failure = exc
+        dropped = _retry_without_culprits(
+            venv, manifest, optional_deps, pyproject_path, on_output, upgrade_package, exc,
+        )
+        if dropped is None:
+            if on_output is not None:
+                on_output(
+                    "Retrying with just the core app (dropping plugin/appstore "
+                    "dependencies)..."
+                )
+            generate_pyproject_toml(manifest, [], pyproject_path)
+            exc = _try_sync(venv, locked=False, upgrade_package=upgrade_package, on_output=on_output)
+            if exc is None:
+                dropped = optional_deps
+            else:
+                _report_sync_failure(exc, on_output, core_only=True)
+        if dropped is not None:
             # M1: put the full dependency set back on disk (not synced) so
             # the next launch and the appstore see the intended set again,
-            # instead of the core-only one the retry just wrote.
+            # instead of the reduced one the retry just wrote.
             generate_pyproject_toml(manifest, optional_deps, pyproject_path)
+            _write_dropped_dependencies(workspace_dir, dropped, str(first_failure))
             return True
-        _report_sync_failure(exc, on_output, core_only=True)
 
     if strict or not venv.has_sciqlop_installed:
         # No working install to fall back to (or the caller demanded strict
