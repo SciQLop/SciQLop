@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
-from PySide6.QtCore import QDateTime, QModelIndex, Qt
+from PySide6.QtCore import QDateTime, QModelIndex, Qt, QTimeZone
 from PySide6.QtWidgets import QStyledItemDelegate, QWidget, QDateTimeEdit
 
 from SciQLop.components.settings.ui.settings_delegates import (
@@ -30,14 +30,20 @@ def _qdatetime_from_iso(value: Any) -> QDateTime | None:
         return None
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
-    qdt = QDateTime.fromSecsSinceEpoch(int(dt.timestamp()))
-    qdt.setTimeSpec(Qt.TimeSpec.UTC)
-    return qdt
+    return QDateTime.fromSecsSinceEpoch(int(dt.timestamp()), QTimeZone.UTC)
 
 
 def _iso_from_qdatetime(qdt: QDateTime) -> str:
     secs = qdt.toSecsSinceEpoch()
     return datetime.fromtimestamp(secs, tz=timezone.utc).isoformat()
+
+
+def _utc_datetime_edit(parent: QWidget) -> QDateTimeEdit:
+    edit = QDateTimeEdit(parent)
+    edit.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
+    edit.setCalendarPopup(True)
+    edit.setTimeZone(QTimeZone.UTC)
+    return edit
 
 
 def _infer_column_type(values: list[Any]) -> type:
@@ -73,10 +79,7 @@ def _editor_from_spec(spec: KnobSpec, parent: QWidget) -> QWidget | None:
     delegate's spec-aware setEditorData/setModelData branches); all other
     specs return SettingDelegate subclasses."""
     if isinstance(spec, DatetimeKnob):
-        edit = QDateTimeEdit(parent)
-        edit.setDisplayFormat("yyyy-MM-dd HH:mm:ss")
-        edit.setCalendarPopup(True)
-        return edit
+        return _utc_datetime_edit(parent)
     if isinstance(spec, BoolKnob):
         return BoolDelegate(parent)
     if isinstance(spec, IntKnob):
@@ -106,8 +109,6 @@ def _editor_from_spec(spec: KnobSpec, parent: QWidget) -> QWidget | None:
 
 class EventTableDelegate(QStyledItemDelegate):
     """Pick an editor per cell, preferring provider.attribute_spec over inference."""
-
-    _DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss"
 
     def __init__(self, source_model, parent=None):
         super().__init__(parent)
@@ -166,10 +167,7 @@ class EventTableDelegate(QStyledItemDelegate):
         col = source_index.column()
 
         if col < self._meta_offset():
-            edit = QDateTimeEdit(parent)
-            edit.setDisplayFormat(self._DATETIME_FORMAT)
-            edit.setCalendarPopup(True)
-            return edit
+            return _utc_datetime_edit(parent)
 
         spec = self._column_spec(col)
         if spec is not None:
@@ -187,7 +185,7 @@ class EventTableDelegate(QStyledItemDelegate):
         if col < self._meta_offset():
             event = self._source_model._events[source_index.row()]
             value = event.start if col == 0 else event.stop
-            editor.setDateTime(QDateTime.fromSecsSinceEpoch(int(value.timestamp())))
+            editor.setDateTime(QDateTime.fromSecsSinceEpoch(int(value.timestamp()), QTimeZone.UTC))
             return
         spec = self._column_spec(col)
         if isinstance(spec, DatetimeKnob):
