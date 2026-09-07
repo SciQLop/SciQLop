@@ -31,3 +31,9 @@ def _live_bundle_name(cf) -> str:
 def test_bundle_name_is_rewritten_on_macos():
     macos.set_bundle_name("SciQLop")
     assert _live_bundle_name(macos._load_core_foundation()) == "SciQLop"
+
+
+@pytest.mark.skipif(sys.platform != "darwin", reason="private LaunchServices SPI")
+def test_launch_services_spi_still_exists():
+    ls = macos._load_launch_services()
+    assert ctypes.c_void_p.in_dll(ls, "_kLSDisplayNameKey").value
