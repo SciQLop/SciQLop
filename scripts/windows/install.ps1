@@ -1,13 +1,16 @@
 param(
     [Parameter(Mandatory)][string]$InstallDir,
+    [Parameter(Mandatory)][string]$Version,
     [string]$Proxy = ""
 )
 
 $ErrorActionPreference = "Stop"
 
+# Keep in step with bundle.ps1 — the offline and online installers must lay
+# down the same python/node/uv next to SciQLop.exe.
 $PythonVersion = "3.14"
-$NodeVersion = "23.11.0"
-$UvVersion = "0.11.2"
+$NodeVersion = "24.17.0"
+$UvVersion = "0.11.21"
 
 ########################################
 # HTTP proxy
@@ -64,7 +67,7 @@ Get-ChildItem -Path $PythonDir -Recurse -Filter "EXTERNALLY-MANAGED" -ErrorActio
 # Install SciQLop
 ########################################
 
-Write-Host "Installing SciQLop launcher..."
+Write-Host "Installing SciQLop launcher $Version..."
 # The bare package is only the launcher — read the manifest/settings, then
 # drive uv. It never imports the GUI stack (test_launcher_thin_imports.py),
 # so it doesn't need [all] here: the application (and plugin
@@ -72,13 +75,29 @@ Write-Host "Installing SciQLop launcher..."
 # launch by prepare_workspace(). Installing either into this bundled Python
 # would bake the whole app into the install, defeating the point of the
 # self-contained-workspace split.
-& $UvBin pip install --system --python $PythonBin --link-mode=copy "sciqlop"
+#
+# Install the SciQLop this installer was built for, never "latest on PyPI":
+# a dev build's version exists on no index, and the native SciQLop.exe
+# shipped alongside needs a launcher package that understands its handoff
+# (SCIQLOP_STARTUP_READY_FILE) — an older release would show its own Python
+# splash on top of the native one. Same rule prepare_workspace() applies to
+# the workspace venv (git main for .dev versions, the pinned release
+# otherwise). The git form needs a `git` on PATH, like the dev workspace
+# install already does.
+if ($Version -match '\.dev') {
+    $SciQLopSpec = "sciqlop @ git+https://github.com/SciQLop/SciQLop@main"
+} else {
+    $SciQLopSpec = "sciqlop==$Version"
+}
+& $UvBin pip install --system --python $PythonBin --link-mode=copy $SciQLopSpec
+if ($LASTEXITCODE -ne 0) { throw "uv pip install ($SciQLopSpec) failed with exit $LASTEXITCODE" }
 
 ########################################
 # SSL certificates
 ########################################
 
 & $UvBin pip install --system --python $PythonBin --link-mode=copy certifi
+if ($LASTEXITCODE -ne 0) { throw "uv pip install (certifi) failed with exit $LASTEXITCODE" }
 
 ########################################
 # Download Node.js

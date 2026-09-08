@@ -47,6 +47,9 @@ Type: filesandordirs; Name: "{app}\uv"
 
 [Files]
 Source: "{#LauncherExe}"; DestDir: "{app}"; Flags: ignoreversion
+; The native launcher looks for its splash art beside itself (launcher/src/main.cpp
+; splash_path()), same as bundle.ps1 lays it out for the offline installer.
+Source: "{#ScriptDir}\..\..\SciQLop\resources\splash.png"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#ScriptDir}\install.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
 [Icons]
@@ -56,7 +59,7 @@ Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilen
 
 [Run]
 Filename: "powershell.exe"; \
-  Parameters: "-ExecutionPolicy Bypass -File ""{tmp}\install.ps1"" -InstallDir ""{app}"" -Proxy ""{code:ProxyArg}"""; \
+  Parameters: "-ExecutionPolicy Bypass -File ""{tmp}\install.ps1"" -InstallDir ""{app}"" -Version ""{#MyAppVersion}"" -Proxy ""{code:ProxyArg}"""; \
   StatusMsg: "Installing SciQLop (downloading dependencies)..."; \
   Flags: runhidden waituntilterminated
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch SciQLop"; Flags: nowait postinstall skipifsilent
