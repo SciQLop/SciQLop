@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, QRect, QSize, QPoint
-from PySide6.QtGui import QImage, QPalette
+from PySide6.QtGui import QImage, QPalette, QColor
 from PySide6.QtWidgets import QPushButton, QMainWindow, QLabel
 
 
@@ -276,3 +276,28 @@ def test_dispose_deletes_the_bubble_too(qtbot):
     mark.dispose()
     qtbot.waitUntil(lambda: not shiboken6.isValid(bubble), timeout=1000)
     assert not mark.isVisible()
+
+
+def test_bubble_actually_paints_its_background_and_border(qtbot):
+    """Live report: the card rendered as free-floating text over the
+    welcome page. A QWidget *subclass* only paints its style-sheet
+    background/border with WA_StyledBackground set; a plain QWidget
+    instance gets that for free, a subclass does not."""
+    host, target = _host(qtbot)
+    mark = _mark(qtbot, host)
+    mark.show_step(target, "Title", "Body text")
+
+    bubble = mark.bubble
+    image = QImage(bubble.size(), QImage.Format.Format_ARGB32)
+    image.fill(QColor(255, 0, 255))
+    bubble.render(image)
+
+    def _close(a, b, tolerance=40):
+        return max(abs(a.red() - b.red()), abs(a.green() - b.green()),
+                   abs(a.blue() - b.blue())) <= tolerance
+
+    mid_y = bubble.height() // 2
+    border_pixel = image.pixelColor(1, mid_y)
+    inside_pixel = image.pixelColor(bubble.layout().contentsMargins().left() // 2, mid_y)
+    assert _close(border_pixel, bubble.palette().color(QPalette.ColorRole.Highlight)), border_pixel
+    assert _close(inside_pixel, bubble.palette().color(QPalette.ColorRole.ToolTipBase)), inside_pixel

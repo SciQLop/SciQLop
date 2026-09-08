@@ -46,9 +46,11 @@ class TourBubble(QWidget):
         super().__init__(parent)
         self.setObjectName("CoachMarkBubble")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        # Scoped to the object name: an unscoped rule cascades to every
-        # plain-QWidget child. tooltip-base stands out from the
-        # palette(window) chrome the bubble sits on, in both themes.
+        # A QWidget subclass paints its style-sheet background only with
+        # this attribute set. The rule is scoped to the object name: an
+        # unscoped rule cascades to every plain-QWidget child. tooltip-base
+        # stands out from the palette(window) chrome, in both themes.
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(
             "#CoachMarkBubble { background-color: palette(tooltip-base); "
             "border: 2px solid palette(highlight); border-radius: 6px; }")
