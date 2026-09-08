@@ -39,6 +39,14 @@ class PanelCatalogManager(QObject):
             self._bind_provider(provider)
         registry.provider_registered.connect(self._bind_provider)
         catalog_color_changed.connect(self._on_catalog_color_changed)
+        from SciQLop.components.catalogs.backend.color_mapper_storage import color_mapper_changed
+        color_mapper_changed.connect(self._on_color_mapper_changed)
+
+    def _on_color_mapper_changed(self, uuid: str) -> None:
+        from SciQLop.components.catalogs.backend.color_mapper_storage import get_color_mapper
+        overlay = self._overlays.get(uuid)
+        if overlay is not None:
+            overlay.update_color_mapper(get_color_mapper(overlay.catalog))
 
     def _bind_provider(self, provider) -> None:
         provider.catalog_removed.connect(self.remove_catalog)
@@ -156,19 +164,25 @@ class PanelCatalogManager(QObject):
         return menu
 
     def _add_loaded_catalog_entries(self, menu: QMenu) -> None:
-        """Flat, checked list of the catalogs shown on this panel, so removing
-        one is a single uncheck instead of a walk through the provider tree."""
+        """One submenu per catalog shown on this panel: remove it, or reach
+        its color actions without a trip to the catalog tree."""
         if not self._overlays:
             return
         for overlay in self._overlays.values():
-            catalog = overlay.catalog
-            action = menu.addAction(catalog_swatch_icon(catalog.uuid), catalog.name)
-            action.setCheckable(True)
-            action.setChecked(True)
-            action.toggled.connect(
-                lambda checked, c=catalog: None if checked else self.remove_catalog(c)
-            )
+            self._add_loaded_catalog_submenu(menu, overlay.catalog)
         menu.addSeparator()
+
+    def _add_loaded_catalog_submenu(self, menu: QMenu, catalog: Catalog) -> None:
+        from SciQLop.components.catalogs.ui.color_menus import (
+            add_catalog_color_actions, build_color_by_menu, sample_events,
+        )
+        sub = menu.addMenu(catalog_swatch_icon(catalog.uuid), catalog.name)
+        sub.setObjectName(f"loaded_catalog_{catalog.uuid}")
+        remove_action = sub.addAction("Remove from panel")
+        remove_action.triggered.connect(lambda: self.remove_catalog(catalog))
+        sub.addSeparator()
+        add_catalog_color_actions(sub, catalog, dialog_parent=self._panel)
+        build_color_by_menu(sub, catalog, sample_events(catalog), dialog_parent=self._panel)
 
     @staticmethod
     def _get_or_create_submenu(menu: QMenu, path: list[str]) -> QMenu:

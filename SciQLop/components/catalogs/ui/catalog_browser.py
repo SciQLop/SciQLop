@@ -1099,127 +1099,28 @@ class CatalogBrowser(QWidget):
             action.triggered.connect(lambda: manager.add_catalog(catalog))
 
     def _add_catalog_color_actions(self, menu: QMenu, catalog: Catalog) -> None:
-        from SciQLop.components.catalogs.backend.color_palette import (
-            has_custom_color, set_catalog_color,
-        )
-        set_action = menu.addAction("Set color...")
-        set_action.triggered.connect(lambda: self._pick_catalog_color(catalog))
-        if has_custom_color(catalog.uuid):
-            reset_action = menu.addAction("Reset color")
-            reset_action.triggered.connect(lambda: set_catalog_color(catalog.uuid, None))
+        from .color_menus import add_catalog_color_actions
+        add_catalog_color_actions(menu, catalog, dialog_parent=self)
 
     def _pick_catalog_color(self, catalog: Catalog) -> None:
-        from PySide6.QtWidgets import QColorDialog
-        from SciQLop.components.catalogs.backend.color_palette import (
-            color_for_catalog, set_catalog_color,
-        )
-        current = color_for_catalog(catalog.uuid)
-        current.setAlpha(255)
-        color = QColorDialog.getColor(current, self, f"Color for '{catalog.name}'")
-        if color.isValid():
-            set_catalog_color(catalog.uuid, color)
+        from .color_menus import pick_catalog_color
+        pick_catalog_color(catalog, dialog_parent=self)
 
     def _build_color_by_menu(self, parent_menu: QMenu, catalog: Catalog) -> QMenu:
-        from SciQLop.components.catalogs.backend.color_mapper import ColorMapper, _is_numeric
-        from SciQLop.components.catalogs.backend.color_mapper_storage import get_color_mapper
-
-        current = get_color_mapper(catalog)
-        color_menu = parent_menu.addMenu("Color by...")
-
-        uniform_action = color_menu.addAction("Uniform (default)")
-        uniform_action.setCheckable(True)
-        uniform_action.setChecked(current.column is None)
-        uniform_action.triggered.connect(
-            lambda: self._apply_color_mapper(catalog, ColorMapper())
-        )
-
-        events = self._events_for_color_menu(catalog)
-        columns = sorted({key for event in events for key in event.meta.keys()})
-        if columns:
-            color_menu.addSeparator()
-        for col in columns:
-            action = color_menu.addAction(col)
-            action.setCheckable(True)
-            action.setChecked(current.column == col)
-            action.triggered.connect(
-                lambda checked, c=col: self._apply_color_mapper(catalog, ColorMapper(column=c))
-            )
-
-        if current.column is None:
-            return color_menu
-        values = [e.meta.get(current.column) for e in events if e.meta.get(current.column) is not None]
-        color_menu.addSeparator()
-        if _is_numeric(values):
-            self._add_colormap_submenu(color_menu, catalog, current)
-            configure_action = color_menu.addAction("Configure colormap...")
-            configure_action.triggered.connect(lambda: self._show_colormap_dialog(catalog, current))
-        else:
-            categories = sorted({str(v) for v in values})
-            categories_action = color_menu.addAction("Category colors...")
-            categories_action.triggered.connect(
-                lambda: self._show_category_colors_dialog(catalog, current, categories))
-        return color_menu
+        from .color_menus import build_color_by_menu
+        return build_color_by_menu(parent_menu, catalog, self._events_for_color_menu(catalog), dialog_parent=self)
 
     def _events_for_color_menu(self, catalog: Catalog) -> list:
         """The open catalog's events are already in memory; any other
-        right-clicked catalog needs a real (sampled) backend call, which
-        can raise."""
+        right-clicked catalog needs a real (sampled) backend call."""
+        from .color_menus import sample_events
         if self._current_catalog is not None and catalog.uuid == self._current_catalog.uuid:
             return list(self._event_model._events)
-        if catalog.provider is None:
-            return []
-        try:
-            return list(catalog.provider.events(catalog)[:200])
-        except Exception as e:
-            self._report_failure(f"Could not load columns for '{catalog.name}'", e)
-            return []
-
-    def _add_colormap_submenu(self, color_menu: QMenu, catalog: Catalog, current) -> None:
-        from .colormap_dialog import _COLORMAPS
-        cmap_menu = color_menu.addMenu("Colormap")
-        cmap_menu.setObjectName("colormap_menu")
-        names = _COLORMAPS if current.colormap in _COLORMAPS else [*_COLORMAPS, current.colormap]
-        for name in names:
-            action = cmap_menu.addAction(name)
-            action.setCheckable(True)
-            action.setChecked(name == current.colormap)
-            action.triggered.connect(
-                lambda checked, n=name: self._apply_color_mapper(
-                    catalog, current.model_copy(update={"colormap": n})))
-
-    def _show_category_colors_dialog(self, catalog: Catalog, current_mapper, categories: list[str]) -> None:
-        from .category_colors_dialog import CategoryColorsDialog
-        from SciQLop.components.catalogs.backend.color_mapper import _hash_color
-        dialog = CategoryColorsDialog(categories, current_mapper.category_colors, _hash_color, parent=self)
-        if dialog.exec() == CategoryColorsDialog.DialogCode.Accepted:
-            self._apply_color_mapper(
-                catalog, current_mapper.model_copy(update={"category_colors": dialog.category_colors}))
-
-    def _show_colormap_dialog(self, catalog: Catalog, current_mapper) -> None:
-        from .colormap_dialog import ColormapDialog
-        from SciQLop.components.catalogs.backend.color_mapper import ColorMapper
-        dialog = ColormapDialog(
-            current_colormap=current_mapper.colormap,
-            current_vmin=current_mapper.vmin,
-            current_vmax=current_mapper.vmax,
-            parent=self,
-        )
-        if dialog.exec() == ColormapDialog.DialogCode.Accepted:
-            mapper = ColorMapper(
-                column=current_mapper.column,
-                colormap=dialog.colormap,
-                vmin=dialog.vmin,
-                vmax=dialog.vmax,
-            )
-            self._apply_color_mapper(catalog, mapper)
+        return sample_events(catalog, self._report_failure)
 
     def _apply_color_mapper(self, catalog: Catalog, mapper) -> None:
         from SciQLop.components.catalogs.backend.color_mapper_storage import set_color_mapper
         set_color_mapper(catalog, mapper)
-        for panel in self._panels:
-            overlay = panel.catalog_manager.overlay(catalog.uuid)
-            if overlay is not None:
-                overlay.update_color_mapper(mapper)
 
     def _on_delete_selected_catalog(self) -> None:
         index = self._catalog_tree.currentIndex()

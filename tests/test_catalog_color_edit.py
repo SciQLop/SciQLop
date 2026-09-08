@@ -125,3 +125,24 @@ def test_tree_context_menu_offers_set_color_and_reset_only_when_custom(qtbot, qa
     palette.set_catalog_color(cat.uuid, QColor("#010203"))
     texts = _action_texts(browser._build_tree_context_menu(proxy_idx))
     assert "Reset color" in texts
+
+
+def test_color_mapper_change_reaches_every_panel_without_the_browser(qtbot, qapp, palette):
+    from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.color_mapper import ColorMapper
+    from SciQLop.components.catalogs.backend.color_mapper_storage import set_color_mapper
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+
+    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    panels = [TimeSyncPanel(f"mapper-panel-{i}", time_range=TimeRange(
+        base.timestamp(), (base + timedelta(days=200)).timestamp())) for i in range(2)]
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3, name="MapperSignal")
+    cat = provider.catalogs()[0]
+    for panel in panels:
+        panel.catalog_manager.add_catalog(cat)
+
+    set_color_mapper(cat, ColorMapper(column="class"))
+
+    assert all(p.catalog_manager.overlay(cat.uuid)._mapper.column == "class" for p in panels)

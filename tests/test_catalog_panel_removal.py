@@ -34,6 +34,18 @@ def _catalogs_submenu(manager):
     return root, manager.build_catalogs_menu(root)
 
 
+def _loaded_submenu(menu, catalog):
+    from PySide6.QtWidgets import QMenu
+    return menu.findChild(QMenu, f"loaded_catalog_{catalog.uuid}")
+
+
+def _action(menu, prefix):
+    for a in menu.actions():
+        if a.text().startswith(prefix):
+            return a
+    return None
+
+
 def test_panel_menu_lists_loaded_catalogs_first(panel, provider):
     cat_a, cat_b = provider.catalogs()
     manager = panel.catalog_manager
@@ -42,20 +54,43 @@ def test_panel_menu_lists_loaded_catalogs_first(panel, provider):
     root, menu = _catalogs_submenu(manager)
     first = menu.actions()[0]
     assert first.text() == cat_b.name
-    assert first.isCheckable() and first.isChecked()
     assert not first.icon().isNull()
+    assert _loaded_submenu(menu, cat_b) is not None
     assert menu.actions()[1].isSeparator()
     assert cat_a.name not in [a.text() for a in menu.actions()[:2]]
 
 
-def test_unchecking_loaded_entry_removes_catalog(panel, provider):
+def test_loaded_entry_offers_removal_and_color_actions(panel, provider):
+    from PySide6.QtWidgets import QMenu
     cat = provider.catalogs()[0]
     manager = panel.catalog_manager
     manager.add_catalog(cat)
 
     root, menu = _catalogs_submenu(manager)
-    menu.actions()[0].setChecked(False)
+    sub = _loaded_submenu(menu, cat)
+    texts = [a.text() for a in sub.actions()]
+    assert texts[0] == "Remove from panel"
+    assert "Set color..." in texts
+    assert sub.findChild(QMenu, "color_by_menu") is not None
+
+    _action(sub, "Remove from panel").trigger()
     assert cat.uuid not in manager.catalog_uuids
+
+
+def test_color_by_from_panel_menu_recolors_the_overlay(panel, provider, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "SciQLop.components.settings.backend.entry.SCIQLOP_CONFIG_DIR", str(tmp_path))
+    from PySide6.QtWidgets import QMenu
+    cat = provider.catalogs()[0]
+    manager = panel.catalog_manager
+    manager.add_catalog(cat)
+    assert manager.overlay(cat.uuid)._mapper.column is None
+
+    root, menu = _catalogs_submenu(manager)
+    color_by = _loaded_submenu(menu, cat).findChild(QMenu, "color_by_menu")
+    _action(color_by, "class").trigger()
+
+    assert manager.overlay(cat.uuid)._mapper.column == "class"
 
 
 def test_panel_menu_has_no_loaded_section_when_empty(panel, provider):
@@ -75,13 +110,6 @@ def _catalog_proxy_index(browser, catalog):
                 if model.node_from_index(cat_idx).catalog is catalog:
                     return browser._proxy_model.mapFromSource(cat_idx)
     raise AssertionError("catalog node not found")
-
-
-def _action(menu, prefix):
-    for a in menu.actions():
-        if a.text().startswith(prefix):
-            return a
-    return None
 
 
 def test_tree_menu_toggles_catalog_on_the_working_panel(qtbot, panel, provider):
