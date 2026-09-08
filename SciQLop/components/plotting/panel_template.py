@@ -140,7 +140,6 @@ class PanelTemplate(BaseModel):
     def apply(self, panel) -> None:
         from SciQLop.components.plotting.ui.time_sync_panel import plot_product
         from SciQLopPlots import PlotType as _PlotType
-        from SciQLop.core import TimeRange as TR
         panel.clear()
         for plot_model in self.plots:
             subplot = None
@@ -162,16 +161,37 @@ class PanelTemplate(BaseModel):
             if subplot is not None:
                 _restore_axis(subplot.y_axis(), plot_model.y_axis)
                 _restore_axis(subplot.z_axis(), plot_model.z_axis)
-        if self.max_zoom_seconds is not None:
-            for plot in panel.plots():
-                plot.time_axis().set_max_range_size(self.max_zoom_seconds)
-            if hasattr(panel, '_time_range_bar') and panel._time_range_bar is not None:
-                panel._time_range_bar.max_range_seconds = self.max_zoom_seconds
+        self._apply_zoom_limit(panel)
         if self.time_range is not None:
-            panel.set_time_axis_range(TR(
-                datetime.fromisoformat(self.time_range.start).timestamp(),
-                datetime.fromisoformat(self.time_range.stop).timestamp(),
-            ))
+            panel.set_time_axis_range(self._time_range())
+
+    def _time_range(self):
+        from SciQLop.core import TimeRange as TR
+        return TR(datetime.fromisoformat(self.time_range.start).timestamp(),
+                  datetime.fromisoformat(self.time_range.stop).timestamp())
+
+    def _apply_zoom_limit(self, panel) -> None:
+        """An explicit limit wins; otherwise the panel's current limit is
+        raised when it would clamp this template's own range (a shared link
+        must restore the view it was taken from)."""
+        limit = self.max_zoom_seconds
+        if limit is None:
+            limit = self._span_beyond_current_limit(panel)
+        if limit is None:
+            return
+        for plot in panel.plots():
+            plot.time_axis().set_max_range_size(limit)
+        bar = getattr(panel, '_time_range_bar', None)
+        if bar is not None:
+            bar.max_range_seconds = limit
+
+    def _span_beyond_current_limit(self, panel) -> float | None:
+        if self.time_range is None:
+            return None
+        current = _read_max_zoom(panel)
+        tr = self._time_range()
+        span = tr.stop() - tr.start()
+        return span if current is not None and span > current else None
 
 
 def _time_range_model(panel) -> Optional[TimeRangeModel]:

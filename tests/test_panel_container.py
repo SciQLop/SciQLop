@@ -150,3 +150,30 @@ def test_bare_panel_context_menu_has_no_crosshair_action(qtbot):
     qtbot.addWidget(panel)
     menu = panel._build_context_menu()
     assert _find_action(menu, "Crosshair") is None
+
+
+def test_template_range_beyond_zoom_limit_raises_the_limit(container, monkeypatch):
+    """A template/proxy link with no zoom limit of its own must restore its
+    full range: the limit is raised to fit instead of clamping the range."""
+    from SciQLopPlots import PlotType
+    from SciQLop.components.plotting.panel_template import (
+        PanelTemplate, PlotModel, ProductModel, TimeRangeModel,
+    )
+    from SciQLop.components.plotting.ui import time_sync_panel
+
+    def fake_plot_product(panel, path, **kwargs):
+        panel.create_plot(len(panel.plots()), PlotType.TimeSeries)
+        return (panel.plots()[-1], "graph")
+
+    monkeypatch.setattr(time_sync_panel, "plot_product", fake_plot_product)
+    container.time_range_bar.max_range_seconds = 86400.0
+    template = PanelTemplate(
+        name="wide",
+        time_range=TimeRangeModel(start="2025-04-12T00:00:00Z", stop="2025-04-19T00:00:00Z"),
+        plots=[PlotModel(products=[ProductModel(path="speasy//amda//imf", kind="speasy")])],
+    )
+    template.apply(container.panel)
+    span = container.panel.time_range.stop() - container.panel.time_range.start()
+    assert abs(span - 7 * 86400.0) < 1.0, f"range clamped to {span / 86400:.1f} days"
+    assert container.time_range_bar.max_range_seconds >= 7 * 86400.0 or \
+        container.time_range_bar.max_range_seconds == 0.0
