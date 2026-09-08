@@ -1,16 +1,139 @@
 import shiboken6
-from PySide6.QtCore import Qt, QRect, Signal, QEvent
-from PySide6.QtGui import QPainter, QColor, QPainterPath, QRegion, QPen
+from PySide6.QtCore import Qt, QRect, QSize, QPoint, Signal, QEvent
+from PySide6.QtGui import QPainter, QColor, QPainterPath, QPen
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from SciQLop.core.ui import Metrics, increase_font_size
 
+_CUTOUT_PADDING = 4
+_BUBBLE_GAP = 12
+_DIM_COLOR = QColor(0, 0, 0, 140)
+
+
+def _clamp(value: int, low: int, high: int) -> int:
+    return max(low, min(value, high))
+
+
+def _bubble_position(target: QRect, bubble: QSize, window: QRect) -> QPoint:
+    """Beside the target when there is room (right, left, above, below),
+    otherwise inside its own top-left corner; never outside the window."""
+    max_x = window.width() - bubble.width()
+    max_y = window.height() - bubble.height()
+    y_beside = _clamp(target.top(), 0, max_y)
+    x_stacked = _clamp(target.left(), 0, max_x)
+    candidates = [
+        QPoint(target.right() + _BUBBLE_GAP, y_beside),
+        QPoint(target.left() - _BUBBLE_GAP - bubble.width(), y_beside),
+        QPoint(x_stacked, target.top() - _BUBBLE_GAP - bubble.height()),
+        QPoint(x_stacked, target.bottom() + _BUBBLE_GAP),
+    ]
+    for position in candidates:
+        if window.contains(QRect(position, bubble)):
+            return position
+    return QPoint(x_stacked, y_beside)
+
+
+class TourBubble(QWidget):
+    """The tour's card: progress, title, body and Skip / Back / Next.
+
+    A sibling of the overlay rather than its child: the overlay is
+    transparent to mouse input, and a child would inherit that."""
+
+    next_clicked = Signal()
+    back_clicked = Signal()
+    skip_clicked = Signal()
+
+    def __init__(self, parent: QWidget):
+        super().__init__(parent)
+        self.setObjectName("CoachMarkBubble")
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        # Scoped to the object name: an unscoped rule cascades to every
+        # plain-QWidget child. tooltip-base stands out from the
+        # palette(window) chrome the bubble sits on, in both themes.
+        self.setStyleSheet(
+            "#CoachMarkBubble { background-color: palette(tooltip-base); "
+            "border: 2px solid palette(highlight); border-radius: 6px; }")
+        self.setFixedWidth(Metrics.em(28))
+
+        self._progress_label = QLabel(self)
+        self._progress_label.setStyleSheet("color: palette(placeholder-text);")
+        self._title_label = QLabel(self)
+        self._title_label.setStyleSheet("font-weight: bold;")
+        increase_font_size(self._title_label, 1.15)
+        self._body_label = QLabel(self)
+        self._body_label.setWordWrap(True)
+        increase_font_size(self._body_label, 1.1)
+
+        self._skip_button = QPushButton("Skip tour", self)
+        self._skip_button.setFlat(True)
+        self._skip_button.clicked.connect(self.skip_clicked)
+        self._back_button = QPushButton("Back", self)
+        self._back_button.setFlat(True)
+        self._back_button.clicked.connect(self.back_clicked)
+        self._next_button = QPushButton("Next", self)
+        self._next_button.setObjectName("CoachMarkNextButton")
+        self._next_button.setStyleSheet(
+            "#CoachMarkNextButton { background-color: palette(highlight); "
+            "color: palette(highlighted-text); font-weight: bold; border: none; "
+            f"border-radius: 4px; padding: {Metrics.ex(0.4)}px {Metrics.em(1.2)}px; }}")
+        self._next_button.clicked.connect(self.next_clicked)
+
+        header = QHBoxLayout()
+        header.addWidget(self._title_label)
+        header.addStretch(1)
+        header.addWidget(self._progress_label)
+        buttons = QHBoxLayout()
+        buttons.addWidget(self._skip_button)
+        buttons.addStretch(1)
+        buttons.addWidget(self._back_button)
+        buttons.addWidget(self._next_button)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(*Metrics.margins(1, 1, 1, 1))
+        layout.setSpacing(Metrics.spacing())
+        layout.addLayout(header)
+        layout.addWidget(self._body_label)
+        layout.addLayout(buttons)
+
+    def set_content(self, title: str, body: str, *, progress: str = "",
+                    can_go_back: bool = False, next_label: str = "Next") -> None:
+        self._title_label.setText(title)
+        self._body_label.setText(body)
+        self._progress_label.setText(progress)
+        self._back_button.setVisible(can_go_back)
+        self._next_button.setText(next_label)
+        self._fit_height()
+
+    def _fit_height(self) -> None:
+        # sizeHint() sizes a wrapped label for its unconstrained width, so
+        # ask for the height at the width the card actually has, and keep
+        # one descent of slack: at fractional DPI scales an exact fit
+        # crops descenders. heightForWidth() clamps to the label's current
+        # minimumHeight, hence the reset before measuring.
+        margins = self.layout().contentsMargins()
+        body_width = self.width() - margins.left() - margins.right()
+        self._body_label.setMinimumHeight(0)
+        needed = (self._body_label.heightForWidth(body_width)
+                  + self._body_label.fontMetrics().descent())
+        self._body_label.setMinimumHeight(needed)
+        self.resize(self.width(), self.layout().heightForWidth(self.width()))
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.skip_clicked.emit()
+        elif event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            self.next_clicked.emit()
+        else:
+            super().keyPressEvent(event)
+
 
 class CoachMark(QWidget):
-    """Dims the main window except a spotlight cutout around a target
-    widget, with an info bubble (title/body/dismiss/skip) beside it."""
+    """Dims the main window except a spotlight around the current target,
+    with a TourBubble beside it. The overlay is transparent to mouse input
+    everywhere: the dimming guides the eye but never blocks a click or a
+    drag, so every tip can be acted on while it is displayed."""
 
     skip_requested = Signal()
-    dismiss_clicked = Signal()
+    next_clicked = Signal()
+    back_clicked = Signal()
     target_destroyed = Signal()
 
     def __init__(self, main_window: QWidget):
@@ -19,109 +142,52 @@ class CoachMark(QWidget):
         self._target: QWidget | None = None
         self._target_local_rect: QRect | None = None
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-
-        self._bubble = QWidget(self)
-        layout = QVBoxLayout(self._bubble)
-        layout.setContentsMargins(*Metrics.margins(1, 1, 1, 1))
-        layout.setSpacing(Metrics.spacing())
-        self._title_label = QLabel(self._bubble)
-        self._title_label.setStyleSheet("font-weight: bold;")
-        increase_font_size(self._title_label, 1.15)
-        self._body_label = QLabel(self._bubble)
-        self._body_label.setWordWrap(True)
-        increase_font_size(self._body_label, 1.1)
-        buttons = QHBoxLayout()
-        self._skip_link = QPushButton("Skip tour", self._bubble)
-        self._skip_link.setFlat(True)
-        self._skip_link.clicked.connect(self.skip_requested)
-        self._dismiss_button = QPushButton("Got it / Next", self._bubble)
-        self._dismiss_button.clicked.connect(self.dismiss_clicked)
-        # Plain default styling made it no more prominent than "Skip
-        # tour" despite being the primary way to advance the tour. A
-        # filled palette(highlight) background reads as the primary CTA;
-        # scoped to its own object name for the same reason the bubble's
-        # border is (an unscoped rule would cascade to any styleable
-        # descendant).
-        self._dismiss_button.setObjectName("CoachMarkDismissButton")
-        self._dismiss_button.setStyleSheet(
-            "#CoachMarkDismissButton { background-color: palette(highlight); "
-            "color: palette(highlighted-text); font-weight: bold; border: none; "
-            f"border-radius: 4px; padding: {Metrics.ex(0.4)}px {Metrics.em(1.2)}px; }}")
-        buttons.addWidget(self._skip_link)
-        buttons.addStretch(1)
-        buttons.addWidget(self._dismiss_button)
-        layout.addWidget(self._title_label)
-        layout.addWidget(self._body_label)
-        layout.addLayout(buttons)
-        # The bubble sits beside/over ordinary application chrome that
-        # also uses palette(window) -- a matching background made it blend
-        # into whatever's behind or beside it, so the highlight border was
-        # doing all the contrast work alone. palette(tooltip-base) is a
-        # distinct QPalette role purpose-built for exactly this kind of
-        # overlay callout, themes correctly in light/dark without a
-        # hardcoded color, and reads as visibly different from every other
-        # panel/toolbar in the window. Scoped to "#CoachMarkBubble" (its
-        # object name), not a bare property list: an unscoped rule is an
-        # implicit universal selector in Qt's style-sheet cascade, so it
-        # paints the same box around every plain-QWidget child too (title,
-        # body, buttons) -- confirmed by rendering to a QImage before
-        # adding the selector. palette(highlight) (the same accent the
-        # target's spotlight ring uses) reads reliably in both themes;
-        # palette(mid) was too close to the background to actually stand
-        # out.
-        self._bubble.setObjectName("CoachMarkBubble")
-        self._bubble.setStyleSheet(
-            "#CoachMarkBubble { background-color: palette(tooltip-base); "
-            "border: 2px solid palette(highlight); border-radius: 6px; }")
-        # Metrics.em() DPI/font-scales this width -- a hardcoded pixel
-        # value here would stay a fixed size while the rest of the app's
-        # text scales with the system font/DPI, making the bubble (and
-        # its wrapped text) look disproportionately cramped on a scaled
-        # display. em(28) matches the previous 280px in the fallback case.
-        self._bubble.setFixedWidth(Metrics.em(28))
-
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self._bubble = TourBubble(main_window)
+        self._bubble.next_clicked.connect(self.next_clicked)
+        self._bubble.back_clicked.connect(self.back_clicked)
+        self._bubble.skip_clicked.connect(self.skip_requested)
         main_window.installEventFilter(self)
         self.hide()
 
-    def show_for(self, target: QWidget, title: str, body: str, *,
-                 rect: QRect | None = None, show_dismiss: bool = True,
-                 block_input: bool = True) -> None:
-        self._detach_target()
-        self._target = target
-        self._target_local_rect = rect
-        target.installEventFilter(self)
-        target.destroyed.connect(self._on_target_destroyed)
-        self._title_label.setText(title)
-        self._body_label.setText(body)
-        self._dismiss_button.setVisible(show_dismiss)
-        # A step whose completion needs a cross-widget drag (pick up the
-        # spotlighted target, drop it elsewhere) can't be satisfied by the
-        # cutout alone -- the drop point stays covered by this overlay
-        # otherwise. WA_TransparentForMouseEvents also affects this widget's
-        # children (the info bubble), so a step opting out of blocking loses
-        # its mouse-clickable Skip/Got it buttons for as long as it's shown;
-        # Escape still works (keyPressEvent isn't mouse input).
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, not block_input)
+    @property
+    def bubble(self) -> TourBubble:
+        return self._bubble
+
+    def show_step(self, target: QWidget | None, title: str, body: str, *,
+                  rect: QRect | None = None, progress: str = "",
+                  can_go_back: bool = False, next_label: str = "Next") -> None:
+        self._attach_target(target, rect)
+        self._bubble.set_content(title, body, progress=progress,
+                                 can_go_back=can_go_back, next_label=next_label)
         self.setGeometry(self._main_window.rect())
         self._reposition_bubble()
         self.show()
         self.raise_()
-        self.setFocus()
+        self._bubble.raise_()
+        self._bubble.setFocus()
+        self.update()
+
+    def setVisible(self, visible: bool) -> None:
+        self._bubble.setVisible(visible)
+        super().setVisible(visible)
 
     def dispose(self) -> None:
-        """Detach from both the current target and `main_window` itself.
-
-        Called exactly once, by TourController._finish(), when the owning
-        tour is truly done. CoachMark has no notion of "the tour is over"
-        on its own, so it must not remove its own main_window event filter
-        anywhere else (e.g. its destructor) — only the controller knows
-        when that's safe."""
+        """Detach from the target and the main window; the owning
+        controller calls this exactly once when the tour is over."""
         self._detach_target()
         if shiboken6.isValid(self._main_window):
             self._main_window.removeEventFilter(self)
         self.hide()
+        self._bubble.deleteLater()
+
+    def _attach_target(self, target: QWidget | None, rect: QRect | None) -> None:
+        self._detach_target()
+        self._target = target
+        self._target_local_rect = rect
+        if target is not None:
+            target.installEventFilter(self)
+            target.destroyed.connect(self._on_target_destroyed)
 
     def _detach_target(self) -> None:
         if self._target is None or not shiboken6.isValid(self._target):
@@ -138,20 +204,12 @@ class CoachMark(QWidget):
         self.target_destroyed.emit()
 
     def eventFilter(self, obj, event):
-        if obj is self._main_window and event.type() in (
-                QEvent.Type.Resize, QEvent.Type.Move):
+        if obj is self._main_window and event.type() in (QEvent.Type.Resize, QEvent.Type.Move):
             self.setGeometry(self._main_window.rect())
             self._reposition_bubble()
-        elif obj is self._target and event.type() in (
-                QEvent.Type.Resize, QEvent.Type.Move):
+        elif obj is self._target and event.type() in (QEvent.Type.Resize, QEvent.Type.Move):
             self._reposition_bubble()
         return False
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Escape:
-            self.skip_requested.emit()
-            return
-        super().keyPressEvent(event)
 
     def _target_rect(self) -> QRect | None:
         if self._target is None:
@@ -160,111 +218,32 @@ class CoachMark(QWidget):
         top_left = self._target.mapTo(self._main_window, local_rect.topLeft())
         return QRect(top_left, local_rect.size())
 
-    def _reposition_bubble(self) -> None:
-        # QWidget.adjustSize()/sizeHint() compute height for the layout's
-        # UNCONSTRAINED preferred width, not the bubble's actual
-        # setFixedWidth(280) -- for a word-wrapped body label that
-        # silently clips the last line or so whenever the text needs more
-        # lines at 280px than it would at its wider "natural" width.
-        # QLayout.heightForWidth() asks for the height at the width the
-        # bubble is actually constrained to, which is the number that
-        # matters here.
-        bubble_width = self._bubble.width()
-        # heightForWidth() leaves shrinking slack for the wrapped body
-        # label's last line at scale 1.0, but that slack shrinks to exactly
-        # zero pixels at fractional DPI scale factors (1.25x/1.5x/2x,
-        # verified empirically) -- one more pixel of rounding on a real,
-        # scaled display then shaves off descenders (g/y/p/q/j), which is
-        # what "text is cropped a bit" looks like. Reserving the font's own
-        # descent as a minimum height on the label itself (not just on the
-        # bubble as a whole) is what actually protects it: a taller bubble
-        # alone doesn't guarantee the label gets the extra space, since a
-        # box layout with no expanding item is free to leave surplus space
-        # anywhere in the column, not necessarily on this item.
-        margins = self._bubble.layout().contentsMargins()
-        body_width = bubble_width - margins.left() - margins.right()
-        # QLabel.heightForWidth() is not a pure function of text+width -- it
-        # clamps to the label's OWN current minimumHeight (verified
-        # empirically), which is exactly the value this method sets below.
-        # Reset it first so a step with short text doesn't inherit a
-        # previous, taller step's minimum on this same, reused CoachMark.
-        self._body_label.setMinimumHeight(0)
-        body_needed = (self._body_label.heightForWidth(body_width)
-                        + self._body_label.fontMetrics().descent())
-        self._body_label.setMinimumHeight(body_needed)
-        self._bubble.resize(bubble_width, self._bubble.layout().heightForWidth(bubble_width))
-        rect = self._target_rect()
-        if rect is not None:
-            bubble_x = rect.right() + 12
-            if bubble_x + bubble_width > self.width():
-                bubble_x = rect.left() - bubble_width - 12
-                if bubble_x < 0:
-                    # Neither side of the target has room -- it spans most of
-                    # the window (e.g. a first plot in an otherwise-empty
-                    # panel). Anchor inside the target's own left edge instead
-                    # of drifting to the window's absolute edge, which can
-                    # land the bubble on top of unrelated UI (e.g. a docked
-                    # side panel) rather than the target it's meant to label.
-                    bubble_x = max(rect.left(), 0)
-            bubble_x = min(bubble_x, self.width() - bubble_width)
-            bubble_y = max(0, min(rect.top(), self.height() - self._bubble.height()))
-            self._bubble.move(bubble_x, bubble_y)
-        # Must run AFTER the bubble's own position is finalized above --
-        # _update_mask() reads the bubble's current geometry (see
-        # _dimmed_path) to keep it out of the click-through cutout, so
-        # computing the mask first would carve the hole around the
-        # bubble's stale, pre-move position instead of its real one.
-        self._update_mask()
-
     def _cutout_rect(self) -> QRect | None:
         rect = self._target_rect()
         if rect is None:
             return None
-        return rect.adjusted(-4, -4, 4, 4)
+        return rect.adjusted(-_CUTOUT_PADDING, -_CUTOUT_PADDING, _CUTOUT_PADDING, _CUTOUT_PADDING)
 
-    def _dimmed_path(self) -> QPainterPath:
-        """The region that should actually block mouse input (and get
-        painted dark): everything except the spotlight cutout around the
-        target, so a click inside the cutout reaches the real widget behind
-        it instead of this overlay.
-
-        The bubble's own rect is carved back OUT of the cutout: per
-        QWidget.setMask's documented contract, only the parts of a widget
-        that overlap the mask are visible or receive mouse events *at
-        all* -- that applies to this widget's children too, not just its
-        own background. A target spanning nearly the whole window (a
-        first plot in an otherwise-empty panel) produces a cutout that
-        wide as well, and _reposition_bubble's fallback anchors the
-        bubble inside the target's own bounds when there's no room on
-        either side -- which, without this exclusion, falls inside that
-        same cutout and silently disappears (invisible, unclickable),
-        not merely mispositioned."""
-        path = QPainterPath()
-        path.addRect(self.rect())
-        cutout_rect = self._cutout_rect()
-        if cutout_rect is not None:
-            cutout = QPainterPath()
-            cutout.addRoundedRect(cutout_rect, 6, 6)
-            bubble_path = QPainterPath()
-            bubble_path.addRect(self._bubble.geometry())
-            cutout = cutout.subtracted(bubble_path)
-            path = path.subtracted(cutout)
-        return path
-
-    def _update_mask(self) -> None:
-        self.setMask(QRegion(self._dimmed_path().toFillPolygon().toPolygon()))
+    def _reposition_bubble(self) -> None:
+        target = self._target_rect()
+        if target is None:
+            self._bubble.move((self.width() - self._bubble.width()) // 2,
+                              (self.height() - self._bubble.height()) // 2)
+        else:
+            self._bubble.move(_bubble_position(target, self._bubble.size(), self.rect()))
 
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.fillPath(self._dimmed_path(), QColor(0, 0, 0, 140))
-        cutout_rect = self._cutout_rect()
-        if cutout_rect is not None:
-            # The mask (see _update_mask) excludes cutout_rect entirely so
-            # clicks pass through it -- a stroke centered on cutout_rect's
-            # own boundary would have its inner half clipped by that mask.
-            # Draw it 1px further out so the full pen width stays on the
-            # dimmed (visible) side.
+        cutout = self._cutout_rect()
+        dimmed = QPainterPath()
+        dimmed.addRect(self.rect())
+        if cutout is not None:
+            hole = QPainterPath()
+            hole.addRoundedRect(cutout, 6, 6)
+            dimmed = dimmed.subtracted(hole)
+        painter.fillPath(dimmed, _DIM_COLOR)
+        if cutout is not None:
             painter.setPen(QPen(self.palette().highlight().color(), 2))
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawRoundedRect(cutout_rect.adjusted(-1, -1, 1, 1), 7, 7)
+            painter.drawRoundedRect(cutout.adjusted(-1, -1, 1, 1), 7, 7)

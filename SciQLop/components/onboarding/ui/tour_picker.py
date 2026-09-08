@@ -26,10 +26,13 @@ class TourPicker(QDialog):
         self._list.itemDoubleClicked.connect(lambda _item: self._start_selected())
 
         start_button = QPushButton("Start", self)
+        start_button.setDefault(True)
         start_button.clicked.connect(self._start_selected)
         layout.addWidget(start_button)
 
         self._populate()
+        if self._list.count():
+            self._list.setCurrentRow(0)
 
     def _populate(self) -> None:
         completed = OnboardingSettings().completed_tours

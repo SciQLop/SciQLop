@@ -1,19 +1,19 @@
+import shiboken6
 from PySide6.QtCore import Qt, QAbstractItemModel, QModelIndex
-from PySide6.QtWidgets import QTreeView, QWidget, QPushButton, QListView
+from PySide6.QtWidgets import QTreeView, QWidget
 
-CANDIDATE_PRODUCT_PATHS: list[list[str]] = [
-    ["speasy", "amda", "Parameters", "ACE", "MFI", "final / prelim", "b_gse"],
-]
+# The products tree is rooted at a single "speasy" node; "final / prelim"
+# is one AMDA-renamed node, not two.
+EXAMPLE_PRODUCT_PATH = ["speasy", "amda", "Parameters", "ACE", "MFI", "final / prelim", "b_gse"]
 
 
 def find_index_by_path(model: QAbstractItemModel, path: list[str],
-                        parent: QModelIndex | None = None) -> QModelIndex | None:
+                       parent: QModelIndex | None = None) -> QModelIndex | None:
     if not path:
         return parent
     parent = parent if parent is not None else QModelIndex()
-    row_count = model.rowCount(parent)
     target = path[0].lower()
-    for row in range(row_count):
+    for row in range(model.rowCount(parent)):
         idx = model.index(row, 0, parent)
         text = model.data(idx, Qt.ItemDataRole.DisplayRole)
         if isinstance(text, str) and text.lower() == target:
@@ -21,34 +21,25 @@ def find_index_by_path(model: QAbstractItemModel, path: list[str],
     return None
 
 
+def _live(widget):
+    return widget if widget is not None and shiboken6.isValid(widget) else None
+
+
 def _products_tree_view(main_window) -> QTreeView | None:
     trees = main_window.productTree.findChildren(QTreeView)
     return trees[0] if trees else None
 
 
-def resolve_add_panel_button(main_window, context) -> QWidget | None:
-    dw = next((dw for dw in main_window.dock_manager.dockWidgets()
-               if dw.widget() is main_window.welcome), None)
-    if dw is None:
-        return None
-    area = dw.dockAreaWidget()
-    if area is None:
-        return None
-    return area.property("sciqlop_add_panel_button")
-
-
-def side_tab_resolver(dock_name: str):
-    def _resolver(main_window, context) -> QWidget | None:
-        dw = main_window.dock_manager.findDockWidget(dock_name)
-        if dw is None:
-            return None
-        return dw.sideTabWidget()
-    return _resolver
+def _panel_container(panel):
+    """The PanelContainer wrapping a TimeSyncPanel (owner of its chrome row)."""
+    panel = _live(panel)
+    container = panel.parentWidget() if panel is not None else None
+    return container if hasattr(container, "chrome_row") else None
 
 
 def _expand_ancestors(tree: QTreeView, index: QModelIndex) -> None:
-    parent = index.parent()
     chain = []
+    parent = index.parent()
     while parent.isValid():
         chain.append(parent)
         parent = parent.parent()
@@ -56,73 +47,68 @@ def _expand_ancestors(tree: QTreeView, index: QModelIndex) -> None:
         tree.setExpanded(ancestor, True)
 
 
-def resolve_first_candidate_product(main_window, context):
-    """Returns (tree, rect) where rect is the matched row's visualRect in
-    the tree's own local coordinates -- CoachMark highlights that sub-region
-    of the tree widget rather than the whole tree."""
+def resolve_add_panel_button(main_window, context) -> QWidget | None:
+    dw = next((dw for dw in main_window.dock_manager.dockWidgets()
+               if dw.widget() is main_window.welcome), None)
+    area = dw.dockAreaWidget() if dw is not None else None
+    return area.property("sciqlop_add_panel_button") if area is not None else None
+
+
+def side_tab_resolver(dock_name: str):
+    def _resolver(main_window, context) -> QWidget | None:
+        dw = main_window.dock_manager.findDockWidget(dock_name)
+        return dw.sideTabWidget() if dw is not None else None
+    return _resolver
+
+
+def in_dock(dock_name: str, resolver):
+    """Open the auto-hide dock the target lives in before resolving it, so
+    a step inside a side panel works even if the user skipped the
+    "click to open it" step."""
+    def _resolver(main_window, context):
+        dw = main_window.dock_manager.findDockWidget(dock_name)
+        if dw is None:
+            return None
+        if not dw.isVisible():
+            dw.toggleView(True)
+        return resolver(main_window, context)
+    return _resolver
+
+
+def resolve_example_product(main_window, context):
+    """The example product's row inside the tree, or the whole tree when
+    that product isn't in the inventory (offline, provider disabled)."""
     tree = _products_tree_view(main_window)
-    if tree is None:
+    if tree is None or tree.model() is None:
         return None
-    model = tree.model()
-    if model is None:
-        return None
-    for path in CANDIDATE_PRODUCT_PATHS:
-        index = find_index_by_path(model, path)
-        if index is not None:
-            _expand_ancestors(tree, index)
-            tree.scrollTo(index)
-            return tree, tree.visualRect(index)
-    return None
-
-
-def resolve_latest_plot_widget(main_window, context) -> QWidget | None:
-    panel = context.get("create_panel")
-    if panel is None:
-        return None
-    plots = panel.plots()
-    return plots[-1] if plots else None
+    index = find_index_by_path(tree.model(), EXAMPLE_PRODUCT_PATH)
+    if index is None:
+        return tree
+    _expand_ancestors(tree, index)
+    tree.scrollTo(index)
+    row = tree.visualRect(index)
+    return (tree, row) if row.isValid() else tree
 
 
 def resolve_panel_widget(main_window, context) -> QWidget | None:
-    return context.get("create_panel")
+    return _live(context.get("create_panel"))
 
 
-def resolve_products_tree_widget(main_window, context) -> QWidget | None:
-    return _products_tree_view(main_window)
+def resolve_search_box(main_window, context) -> QWidget | None:
+    overlay = getattr(_live(context.get("create_panel")), "search_overlay", None)
+    return overlay.search_box if overlay is not None else None
+
+
+def resolve_panel_chrome(main_window, context) -> QWidget | None:
+    container = _panel_container(context.get("create_panel"))
+    return container.chrome_row if container is not None else None
+
+
+def resolve_catalog_chrome(main_window, context) -> QWidget | None:
+    container = _panel_container(context.get("create_panel"))
+    return container.catalog_chrome if container is not None else None
 
 
 def resolve_catalog_tree(main_window, context) -> QTreeView | None:
     trees = main_window.catalogs_browser.findChildren(QTreeView)
     return trees[0] if trees else None
-
-
-def resolve_add_event_button(main_window, context) -> QWidget | None:
-    for button in main_window.catalogs_browser.findChildren(QPushButton):
-        if button.text() == "Add Event" and button.isVisible():
-            return button
-    return None
-
-
-def resolve_catalogs_browser_widget(main_window, context) -> QWidget | None:
-    return main_window.catalogs_browser
-
-
-def resolve_any_plot_with_data(main_window, context) -> QWidget | None:
-    for name in main_window.plot_panels():
-        panel = main_window.plot_panel(name)
-        if panel is None:
-            continue
-        plots = panel.plots()
-        if plots:
-            return plots[-1]
-    return None
-
-
-def resolve_settings_category_list(main_window, context) -> QListView | None:
-    # Not findChildren(QListView)[0]: a setting's own dropdown delegate
-    # (e.g. "Color Palette", a QComboBox) owns an internal QListView for
-    # its popup -- a real, findable QObject even while closed, with a
-    # leftover default geometry unrelated to anything on screen. Find
-    # the intended widget by its object name, not "whichever QListView
-    # happens to be found first".
-    return main_window.settings_panel.findChild(QListView, "SettingsCategories")

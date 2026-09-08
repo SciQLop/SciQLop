@@ -46,6 +46,10 @@ class ProductSearchOverlay(QWidget):
     proxy_config_pasted = Signal(dict)
     _smart_search_scores_ready = Signal(int, dict)
 
+    @property
+    def search_box(self) -> QLineEdit:
+        return self._search_box
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, False)

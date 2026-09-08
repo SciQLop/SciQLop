@@ -1,41 +1,66 @@
 from .fixtures import *
 
 
-def test_full_tour_starts_and_completes_the_first_step_for_real(main_window, qtbot):
-    """Drives create_panel for real (deterministic, no network, no
-    dock-visibility timing dependency). This is deliberately the only
-    step driven through real clicks here: open_products' completion
-    (dock visibilityChanged) does not reliably fire from a synthetic
-    .click() in headless/Xvfb test runs regardless of anything in this
-    tour (confirmed independently -- still stuck after a 1.5s wait), and
-    plot_product no longer auto-advances at all (it's dismiss-only, see
-    tour_getting_started.py's comment on that step) -- so there is no
-    further step in this specific tour that can be reliably driven
-    end-to-end through real widget interaction in this environment.
-    The generic "dismiss-only step advances on Got It" mechanism
-    plot_product now relies on is already covered by
-    test_onboarding_tour_controller.py::test_dismiss_only_step_advances_on_got_it,
-    and this tour's per-step properties (which are dismiss-only, which
-    poll, block_input, etc.) are covered by
-    test_onboarding_tour_getting_started.py."""
+def _open_dock(main_window, name):
+    main_window.dock_manager.findDockWidget(name).toggleView(True)
+
+
+def test_getting_started_walks_end_to_end_headless(main_window, qtbot):
+    """Drives the real, registered tour through every step: the two
+    action steps completable headlessly (create a panel, open a dock) are
+    completed for real, the rest are advanced with Next."""
     from SciQLop.components.onboarding.backend.settings import OnboardingSettings
     from SciQLop.components.onboarding.backend.targets import resolve_add_panel_button
+    from SciQLop.components.onboarding.backend.registry import register_builtin_tours
     from SciQLop.components.onboarding.ui.tour_controller import run_tour
 
     with OnboardingSettings() as s:
         s.completed_tours = {}
-
+    register_builtin_tours()
     controller = run_tour(main_window, "getting_started")
-    try:
-        qtbot.waitUntil(
-            lambda: resolve_add_panel_button(main_window, {}) is not None, timeout=1000)
-        assert controller._current_step().step_id == "create_panel"
-        resolve_add_panel_button(main_window, {}).click()
+    mark = controller._coach_mark
 
-        qtbot.waitUntil(
-            lambda: controller._current_step().step_id == "open_products",
-            timeout=2000)
+    def at(step_id):
+        qtbot.waitUntil(lambda: controller._current_step().step_id == step_id, timeout=3000)
+        qtbot.waitUntil(mark.isVisible, timeout=3000)
+
+    def next_():
+        mark.next_clicked.emit()
+
+    try:
+        at("welcome")
+        next_()
+        at("create_panel")
+        resolve_add_panel_button(main_window, {}).click()
+        at("search_products")
+        next_()
+        at("open_products")
+        _open_dock(main_window, "Products")
+        at("plot_product")
+        next_()
+        at("navigate")
+        next_()
+        at("add_more_data")
+        next_()
+        at("properties")
+        next_()
+        at("open_catalogs")
+        _open_dock(main_window, "Catalog Browser")
+        at("catalog_sources")
+        next_()
+        at("overlay_catalog")
+        next_()
+        at("edit_events")
+        next_()
+        at("settings")
+        next_()
+        at("finish")
+        assert mark.bubble._next_button.text() == "Done"
+        next_()
+        qtbot.waitUntil(lambda: controller.is_finished, timeout=3000)
+        assert OnboardingSettings().completed_tours.get("getting_started") is True
     finally:
-        controller.abort()
+        if not controller.is_finished:
+            controller.abort()
         for name in main_window.plot_panels():
             main_window.remove_panel(main_window.plot_panel(name))

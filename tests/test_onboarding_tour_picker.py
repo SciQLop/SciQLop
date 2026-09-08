@@ -84,3 +84,16 @@ def test_start_selected_with_no_selection_does_nothing(main_window):
         assert main_window._onboarding_controller is None
     finally:
         picker.close()
+
+
+def test_picker_preselects_the_first_tour_so_start_works_immediately(main_window):
+    from SciQLop.components.onboarding.ui.tour_picker import TourPicker
+    from SciQLop.components.onboarding.backend.registry import register_builtin_tours
+
+    register_builtin_tours()
+    picker = TourPicker(main_window)
+    try:
+        assert picker._list.currentItem() is not None
+        assert picker._list.currentRow() == 0
+    finally:
+        picker.close()

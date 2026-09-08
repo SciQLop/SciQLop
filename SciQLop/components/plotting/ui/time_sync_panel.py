@@ -1098,6 +1098,10 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
             self._search_overlay.raise_()
             self._search_overlay.focus_search()
 
+    @property
+    def search_overlay(self) -> ProductSearchOverlay | None:
+        return self._search_overlay
+
     def _on_overlay_product_selected(self, product_path: list[str]):
         from SciQLopPlots import PlotType
         plot_product(self, product_path, plot_type=PlotType.TimeSeries)

@@ -14,18 +14,17 @@ def dock_visible(dock_name):
     return _completion
 
 
+def _is_real_plot(plot) -> bool:
+    # SciQLopPlots inserts a temporary "PlaceHolder" plot while a drag hovers the panel.
+    return plot is not None and plot.objectName() != "PlaceHolder"
+
+
 class _PlotListSettled(QObject):
-    """Bridges panel.plot_list_changed to a single `ready` signal that
-    only fires once the panel's plot list has both (a) contained a real,
-    non-placeholder plot, and (b) stopped changing for a short settle
-    period. Reacting to the FIRST sighting of a real plot (what earlier
-    onboarding fixes did, via panel.plot_added or the plot's own
-    graph_list_changed) was not enough: SciQLopPlots/Wayland's
-    drag-and-drop handling has been observed continuing to churn the
-    panel's plot list (a second placeholder wave, the real plot itself
-    getting destroyed) for a period after that first sighting. Waiting
-    for the list to genuinely settle is robust to whatever that churn
-    turns out to be, rather than needing to fully characterize it."""
+    """Emits `ready(plot)` once the panel holds a real plot and its plot
+    list has stopped changing for _SETTLE_MS. A drag-and-drop keeps
+    churning the list (placeholder waves, a re-created plot) for a while
+    after the first real plot shows up, so reacting to that first
+    sighting fired too early. A panel that already has a plot is ready."""
 
     ready = Signal(object)
 
@@ -38,19 +37,17 @@ class _PlotListSettled(QObject):
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._on_settled)
         panel.plot_list_changed.connect(self._on_plot_list_changed)
-
-    def _has_real_plot(self, plots) -> bool:
-        return any(p is not None and p.objectName() != "PlaceHolder" for p in plots)
+        if any(_is_real_plot(p) for p in panel.plots()):
+            QTimer.singleShot(0, self._on_settled)
 
     def _on_plot_list_changed(self, plots) -> None:
-        if self._has_real_plot(plots):
+        if any(_is_real_plot(p) for p in plots):
             self._timer.start(self._SETTLE_MS)
         else:
             self._timer.stop()
 
     def _on_settled(self) -> None:
-        real_plots = [p for p in self._panel.plots()
-                     if p is not None and p.objectName() != "PlaceHolder"]
+        real_plots = [p for p in self._panel.plots() if _is_real_plot(p)]
         if real_plots:
             self.ready.emit(real_plots[-1])
 
@@ -60,6 +57,5 @@ def plot_settled_in(context_key):
         panel = context.get(context_key)
         if panel is None:
             return None
-        waiter = _PlotListSettled(panel, parent=panel)
-        return waiter.ready
+        return _PlotListSettled(panel, parent=panel).ready
     return _completion

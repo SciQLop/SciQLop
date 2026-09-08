@@ -19,7 +19,7 @@ def test_a_plugin_can_register_a_tour_through_the_public_api(main_window, qtbot)
     from SciQLop.components.onboarding.ui.tour_controller import run_tour
 
     def _fake_plugin_widget_resolver(mw, context):
-        return mw.productTree
+        return mw.dock_manager.findDockWidget("Products").sideTabWidget()
 
     register_tour(Tour(
         id="fake_plugin_tour",

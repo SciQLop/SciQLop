@@ -1,6 +1,5 @@
 import shiboken6
 from PySide6.QtCore import QObject, QTimer
-from PySide6.QtWidgets import QApplication
 
 from SciQLop.components.onboarding.backend.tour import Tour, TourStep
 from SciQLop.components.onboarding.backend.registry import get_tour
@@ -10,15 +9,10 @@ from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
 
-_POLL_INTERVAL_S = 0.25
-
 
 def _log_safely(message: str, level: str = "info") -> None:
-    """Logging must never crash the app. The module-level logger's Qt
-    signal can itself already be torn down if this fires from deep inside
-    an interpreter/QApplication shutdown cascade -- swallow that one,
-    narrow failure mode rather than let a diagnostic log call bring down
-    shutdown."""
+    # The logger's own Qt signal can already be gone when this fires from
+    # an application shutdown cascade; a log call must never crash the app.
     try:
         getattr(log, level)(message)
     except RuntimeError:
@@ -26,9 +20,8 @@ def _log_safely(message: str, level: str = "info") -> None:
 
 
 def _normalize_completion(result):
-    """A step's completion callable returns a bare Signal, a
-    (Signal, predicate) tuple, or None. Normalize to (Signal, predicate)
-    so the controller has one shape to connect."""
+    """A completion returns a bare Signal, a (Signal, predicate) pair, or
+    None; give the controller one shape to connect."""
     if result is None:
         return None
     if isinstance(result, tuple):
@@ -45,37 +38,41 @@ def _store_completion_args(context: dict, step_id: str, args: tuple) -> None:
         context[step_id] = args
 
 
+def _split_target(target):
+    if isinstance(target, tuple):
+        return target
+    return target, None
+
+
+def _is_showable(widget) -> bool:
+    return widget is not None and shiboken6.isValid(widget) and widget.isVisible()
+
+
 class TourController(QObject):
-    """Walks a Tour's steps against a live SciQLopMainWindow, one CoachMark
-    at a time, advancing on each step's completion signal or on the coach
-    mark's own dismiss/skip actions. Carries no knowledge of which specific
-    tour it's running -- every branch is driven by the step's own resolver/
-    completion callables.
+    """Walks a Tour against a live main window, one CoachMark step at a
+    time. A step advances on its completion signal or on Next, Back
+    re-enters the previous step, and a step whose target is missing or
+    hidden is skipped instead of ending the tour. Skip or Escape ends it.
 
-    Every step's completion connection is torn down as soon as that step is
-    left (advance, abort, or replaced by a new step) -- main_window and its
-    dock widgets/panels outlive any single tour run, so a stale connection
-    left dangling past its step would keep firing into a finished
-    controller on a later, unrelated replay.
-    """
-
-    _SHORT_TIMEOUT_FOR_TESTS: float | None = None
+    Each step's completion connection is torn down when the step is left:
+    the main window outlives any tour run, so a stale handler would keep
+    firing into a finished controller on a later replay."""
 
     def __init__(self, main_window, tour: Tour):
         super().__init__(main_window)
         self._main_window = main_window
         self._tour = tour
         self._coach_mark = CoachMark(main_window)
-        self._coach_mark.skip_requested.connect(self._on_skip)
-        self._coach_mark.dismiss_clicked.connect(self._on_dismiss)
+        self._coach_mark.next_clicked.connect(self._advance)
+        self._coach_mark.back_clicked.connect(self._go_back)
+        self._coach_mark.skip_requested.connect(self.abort)
         self._coach_mark.target_destroyed.connect(self._on_target_gone)
         self._step_index = 0
-        self._poll_timer: QTimer | None = None
-        self._poll_deadline_s = 0.0
         self._context: dict = {}
         self._active_signal = None
         self._active_slot = None
         self._finished = False
+        self._moving = False
 
     @property
     def is_finished(self) -> bool:
@@ -86,18 +83,13 @@ class TourController(QObject):
 
     def start(self) -> None:
         self._step_index = 0
-        self._enter_current_step()
+        self._enter_step(+1)
 
-    def abort(self, message: str | None = None) -> None:
-        self._stop_polling()
+    def abort(self) -> None:
         self._disconnect_active_completion()
         self._finish()
-        if message:
-            _log_safely(message)
 
     def _finish(self) -> None:
-        """Mark the tour as over and detach the controller from CoachMark's
-        own signals. Idempotent: safe to call from multiple exit paths."""
         if self._finished:
             return
         self._finished = True
@@ -121,72 +113,62 @@ class TourController(QObject):
 
     def _detach_coach_mark_signals(self) -> None:
         for signal, slot in (
-                (self._coach_mark.skip_requested, self._on_skip),
-                (self._coach_mark.dismiss_clicked, self._on_dismiss),
+                (self._coach_mark.next_clicked, self._advance),
+                (self._coach_mark.back_clicked, self._go_back),
+                (self._coach_mark.skip_requested, self.abort),
                 (self._coach_mark.target_destroyed, self._on_target_gone)):
             try:
                 signal.disconnect(slot)
             except (RuntimeError, TypeError):
                 pass
 
-    def _effective_timeout(self, step: TourStep) -> float | None:
-        if self._SHORT_TIMEOUT_FOR_TESTS is not None:
-            return self._SHORT_TIMEOUT_FOR_TESTS
-        return step.timeout_s
-
-    def _resolve_target(self, step: TourStep):
-        return step.resolver(self._main_window, self._context)
-
-    def _enter_current_step(self) -> None:
+    def _enter_step(self, direction: int) -> None:
+        """Show the step at _step_index, walking in `direction` past any
+        step whose target can't be shown right now."""
+        self._moving = False
         if self._finished:
-            # _advance() defers here via QTimer.singleShot(0, ...); if the
-            # tour was aborted/finished in the meantime (e.g. the user hit
-            # Skip during that one event-loop turn), there is no next step
-            # to enter.
             return
-        step = self._current_step()
-        target = self._resolve_target(step)
-
-        if target is None and not step.poll:
-            QApplication.processEvents()
-            target = self._resolve_target(step)
-
-        if step.poll and target is None:
-            self._start_polling(step)
-            return
-
-        if target is None:
-            _log_safely(f"Onboarding step {step.step_id!r}: target not found, aborting tour",
+        steps = self._tour.steps
+        while 0 <= self._step_index < len(steps):
+            step = steps[self._step_index]
+            target = step.resolver(self._main_window, self._context) if step.resolver else None
+            widget, rect = _split_target(target)
+            if step.resolver is None or _is_showable(widget):
+                self._show_step(step, widget, rect)
+                return
+            _log_safely(f"Onboarding step {step.step_id!r}: target not available, skipping",
                         level="warning")
-            self.abort()
+            self._step_index += direction
+        if self._step_index < 0:
+            self._step_index = 0
+            self._enter_step(+1)
+        else:
+            self._finish()
+
+    def _show_step(self, step: TourStep, widget, rect) -> None:
+        index, count = self._step_index, len(self._tour.steps)
+        self._coach_mark.show_step(
+            widget, step.title, step.body, rect=rect,
+            progress=f"{index + 1} / {count}",
+            can_go_back=index > 0,
+            next_label="Done" if index == count - 1 else "Next")
+        self._connect_completion(step)
+
+    def _connect_completion(self, step: TourStep) -> None:
+        self._disconnect_active_completion()
+        raw = step.completion(self._main_window, self._context) if step.completion else None
+        normalized = _normalize_completion(raw)
+        if normalized is None:
             return
+        signal, predicate = normalized
 
-        self._show_step(step, target)
+        def _slot(*args):
+            if predicate(*args):
+                _store_completion_args(self._context, step.step_id, args)
+                self._advance()
 
-    def _start_polling(self, step: TourStep) -> None:
-        import time
-        self._poll_deadline_s = time.monotonic() + (self._effective_timeout(step) or 0.0)
-        self._poll_timer = QTimer(self)
-        self._poll_timer.setInterval(int(_POLL_INTERVAL_S * 1000))
-        self._poll_timer.timeout.connect(lambda: self._poll_step(step))
-        self._poll_timer.start()
-
-    def _poll_step(self, step: TourStep) -> None:
-        import time
-        target = self._resolve_target(step)
-        if target is not None:
-            self._stop_polling()
-            self._show_step(step, target)
-            return
-        if time.monotonic() >= self._poll_deadline_s:
-            self._stop_polling()
-            self.abort(step.timeout_message)
-
-    def _stop_polling(self) -> None:
-        if self._poll_timer is not None:
-            self._poll_timer.stop()
-            self._poll_timer.deleteLater()
-            self._poll_timer = None
+        self._active_signal, self._active_slot = signal, _slot
+        signal.connect(_slot)
 
     def _disconnect_active_completion(self) -> None:
         if self._active_signal is not None and self._active_slot is not None:
@@ -197,81 +179,34 @@ class TourController(QObject):
         self._active_signal = None
         self._active_slot = None
 
-    def _show_step(self, step: TourStep, target) -> None:
-        if isinstance(target, tuple):
-            widget, local_rect = target
-        else:
-            widget, local_rect = target, None
-
-        show_dismiss = step.completion is None
-        self._coach_mark.show_for(widget, step.title, step.body,
-                                  rect=local_rect, show_dismiss=show_dismiss,
-                                  block_input=step.block_input)
-
-        self._disconnect_active_completion()
-        raw = step.completion(self._main_window, self._context) if step.completion else None
-        normalized = _normalize_completion(raw)
-        if normalized is not None:
-            signal, predicate = normalized
-            self._active_signal = signal
-
-            def _slot(*args, _step=step, _predicate=predicate):
-                if _predicate(*args):
-                    _store_completion_args(self._context, _step.step_id, args)
-                    self._advance()
-
-            self._active_slot = _slot
-            self._active_signal.connect(self._active_slot)
-        else:
-            self._active_signal = None
-            self._active_slot = None
-
-    def _on_dismiss(self) -> None:
-        self._advance()
-
-    def _on_skip(self) -> None:
-        self.abort()
-
-    def _on_target_gone(self) -> None:
-        # A step's target can be destroyed by something entirely outside
-        # this component's control. Advancing to the next step instead of
-        # aborting was tried (commit 9062b444) and reverted: it can leave
-        # the coach mark's dimmed overlay stuck on screen with input still
-        # blocked, because _on_target_gone fires synchronously from deep
-        # inside the target's own QObject destructor
-        # (target.destroyed -> CoachMark._on_target_destroyed ->
-        # target_destroyed.emit() -> here) -- exactly the reentrant
-        # context docs/qt-lifetime-patterns.md warns is unsafe for
-        # further Qt work, deferred or not. abort() is the safe,
-        # well-understood fallback; the actual fix for the observed
-        # instability is not retargeting THIS handler but not targeting
-        # volatile widgets in the first place (see
-        # tour_getting_started.py's overlay_vs_new_subplot step, which
-        # now targets the stable panel instead of the plot that was
-        # observed dying).
-        _log_safely("Onboarding tour target was destroyed mid-step; aborting")
-        self.abort()
-
-    def _advance(self) -> None:
+    def _leave_step(self) -> None:
         self._disconnect_active_completion()
         self._coach_mark.hide()
-        self._step_index += 1
-        if self._step_index >= len(self._tour.steps):
-            self._finish()
+
+    def _advance(self) -> None:
+        self._move(+1)
+
+    def _go_back(self) -> None:
+        self._move(-1)
+
+    def _move(self, direction: int) -> None:
+        # One transition at a time: a repeated Enter or a completion firing
+        # twice must not move the index again before the deferred entry
+        # ran. The deferral itself matters because a completion can fire
+        # from inside a nested event loop (a native drag's QDrag::exec()).
+        if self._moving:
             return
-        # A completion signal can fire from deep inside another
-        # framework's own nested/reentrant call stack -- a native
-        # drag-and-drop's QDrag::exec() runs its own local event loop,
-        # and the drop handler that creates the real plot and emits
-        # plot_added executes from within it. Entering the next step
-        # (resolving its target, showing/raising/focusing a CoachMark)
-        # synchronously in that same call stack risks fighting with
-        # whatever cleanup the nested loop still has to do once it
-        # returns. Defer to a real event-loop turn instead -- the same
-        # reentrancy guard mainwindow.py's _on_dock_area_created already
-        # uses for dockAreaCreated firing from inside CDockAreaWidget's
-        # constructor.
-        QTimer.singleShot(0, self._enter_current_step)
+        self._moving = True
+        self._leave_step()
+        self._step_index += direction
+        QTimer.singleShot(0, lambda: self._enter_step(direction))
+
+    def _on_target_gone(self) -> None:
+        # Fires from inside the target's own destructor (see
+        # docs/qt-lifetime-patterns.md); only this minimal teardown is
+        # safe here, not advancing to another step.
+        _log_safely("Onboarding tour target was destroyed mid-step; aborting")
+        self.abort()
 
 
 def run_tour(main_window, tour_id: str) -> TourController | None:

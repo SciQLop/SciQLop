@@ -24,14 +24,14 @@ class PanelContainer(QWidget):
         panel._catalog_chrome = self.catalog_chrome
         panel._crosshair_toggle = self.crosshair_toggle
 
-        self._chrome = self._build_chrome_row()
+        self.chrome_row = self._build_chrome_row()
         self._current_limit = self.time_range_bar.max_range_seconds
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(panel, 1)
-        layout.addWidget(self._chrome, 0)
+        layout.addWidget(self.chrome_row, 0)
 
         self.setWindowTitle(panel.windowTitle())
         self.setObjectName(panel.objectName())

@@ -3,129 +3,147 @@ from PySide6.QtCore import Qt
 
 
 def _fake_model(tree: dict):
-    """Build a minimal QAbstractItemModel-like mock from a nested dict,
-    e.g. {"cda": {"MMS": {"MMS1": {}}}}."""
+    """A minimal QAbstractItemModel-like mock from a nested dict."""
     model = MagicMock()
-
-    def index(row, col, parent):
-        children = _children_of(parent)
-        idx = MagicMock()
-        idx.isValid.return_value = True
-        idx.row.return_value = row
-        idx.internalPointer.return_value = children[row][0] if row < len(children) else None
-        idx._node = children[row][1] if row < len(children) else None
-        idx._name = children[row][0] if row < len(children) else None
-        return idx
 
     def _children_of(parent):
         node = tree if parent is None or not parent.isValid() else getattr(parent, "_node", tree)
         return list(node.items())
 
-    def row_count(parent):
-        return len(_children_of(parent))
-
-    def data(idx, role):
-        if role == Qt.ItemDataRole.DisplayRole:
-            return idx._name
-        return None
+    def index(row, col, parent):
+        children = _children_of(parent)
+        idx = MagicMock()
+        idx.isValid.return_value = True
+        idx._node = children[row][1] if row < len(children) else None
+        idx._name = children[row][0] if row < len(children) else None
+        return idx
 
     model.index.side_effect = index
-    model.rowCount.side_effect = row_count
-    model.data.side_effect = data
+    model.rowCount.side_effect = lambda parent: len(_children_of(parent))
+    model.data.side_effect = lambda idx, role: idx._name if role == Qt.ItemDataRole.DisplayRole else None
     return model
 
 
 def test_find_index_by_path_found():
     from SciQLop.components.onboarding.backend.targets import find_index_by_path
-    model = _fake_model({"cda": {"MMS": {"MMS1": {}}}})
-    result = find_index_by_path(model, ["cda", "MMS", "MMS1"])
-    assert result is not None
-    assert result._name == "MMS1"
+    result = find_index_by_path(_fake_model({"cda": {"MMS": {"MMS1": {}}}}), ["cda", "MMS", "MMS1"])
+    assert result is not None and result._name == "MMS1"
 
 
 def test_find_index_by_path_not_found():
     from SciQLop.components.onboarding.backend.targets import find_index_by_path
-    model = _fake_model({"cda": {"MMS": {}}})
-    assert find_index_by_path(model, ["cda", "AMDA", "whatever"]) is None
+    assert find_index_by_path(_fake_model({"cda": {"MMS": {}}}), ["cda", "AMDA", "x"]) is None
 
 
 def test_find_index_by_path_case_insensitive():
     from SciQLop.components.onboarding.backend.targets import find_index_by_path
-    model = _fake_model({"CDA": {"mms": {}}})
-    result = find_index_by_path(model, ["cda", "MMS"])
-    assert result is not None
-    assert result._name == "mms"
+    result = find_index_by_path(_fake_model({"CDA": {"mms": {}}}), ["cda", "MMS"])
+    assert result is not None and result._name == "mms"
 
 
-def test_find_index_by_path_matches_the_real_ace_mfi_candidate_path():
-    from SciQLop.components.onboarding.backend.targets import (
-        find_index_by_path, CANDIDATE_PRODUCT_PATHS,
-    )
-    model = _fake_model({
-        "speasy": {"amda": {"Parameters": {"ACE": {"MFI": {
-            "final / prelim": {"b_gse": {}},
-        }}}}},
-    })
-    result = find_index_by_path(model, CANDIDATE_PRODUCT_PATHS[0])
-    assert result is not None
-    assert result._name == "b_gse"
+def test_example_product_path_matches_the_speasy_rooted_ace_mfi_node():
+    from SciQLop.components.onboarding.backend.targets import find_index_by_path, EXAMPLE_PRODUCT_PATH
+    model = _fake_model({"speasy": {"amda": {"Parameters": {"ACE": {"MFI": {
+        "final / prelim": {"b_gse": {}}}}}}}})
+    result = find_index_by_path(model, EXAMPLE_PRODUCT_PATH)
+    assert result is not None and result._name == "b_gse"
 
 
 from .fixtures import *
 
 
-def test_resolve_add_panel_button_accepts_context_arg(main_window):
+def test_resolve_add_panel_button_returns_the_welcome_areas_button(main_window):
     from SciQLop.components.onboarding.backend.targets import resolve_add_panel_button
-    # Must not raise TypeError for the extra positional arg.
-    resolve_add_panel_button(main_window, {})
+    from PySide6.QtWidgets import QToolButton
+    assert isinstance(resolve_add_panel_button(main_window, {}), QToolButton)
 
 
-def test_resolve_products_tree_widget_accepts_context_arg(main_window):
-    from SciQLop.components.onboarding.backend.targets import resolve_products_tree_widget
-    resolve_products_tree_widget(main_window, {})
+def test_resolve_example_product_returns_the_row_when_present(main_window, qtbot):
+    from SciQLop.components.onboarding.backend.targets import resolve_example_product
+    from PySide6.QtWidgets import QTreeView
+    dw = main_window.dock_manager.findDockWidget("Products")
+    dw.toggleView(True)
+    qtbot.waitUntil(dw.isVisible, timeout=1000)
+    qtbot.wait(100)
+    target = resolve_example_product(main_window, {})
+    if isinstance(target, tuple):
+        tree, rect = target
+        assert isinstance(tree, QTreeView) and rect.isValid()
+    else:
+        assert isinstance(target, QTreeView)
 
 
-def test_resolve_first_candidate_product_accepts_context_arg(main_window):
-    from SciQLop.components.onboarding.backend.targets import resolve_first_candidate_product
-    resolve_first_candidate_product(main_window, {})
+def test_resolve_example_product_falls_back_to_the_whole_tree(main_window, monkeypatch):
+    from SciQLop.components.onboarding.backend import targets
+    from PySide6.QtWidgets import QTreeView
+    monkeypatch.setattr(targets, "EXAMPLE_PRODUCT_PATH", ["speasy", "no", "such", "product"])
+    assert isinstance(targets.resolve_example_product(main_window, {}), QTreeView)
 
 
-def test_resolve_latest_plot_widget_reads_panel_from_context(main_window):
-    from SciQLop.components.onboarding.backend.targets import resolve_latest_plot_widget
-    assert resolve_latest_plot_widget(main_window, {}) is None
+def test_in_dock_opens_a_closed_side_dock_before_resolving(main_window, qtbot):
+    from SciQLop.components.onboarding.backend.targets import in_dock
+    dw = main_window.dock_manager.findDockWidget("Catalog Browser")
+    dw.toggleView(False)
+    qtbot.waitUntil(lambda: not dw.isVisible(), timeout=1000)
 
-    fake_panel = type("FakePanel", (), {"plots": lambda self: []})()
-    assert resolve_latest_plot_widget(main_window, {"create_panel": fake_panel}) is None
+    from SciQLop.components.onboarding.backend.targets import resolve_catalog_tree
+    tree = in_dock("Catalog Browser", resolve_catalog_tree)(main_window, {})
+    assert tree is resolve_catalog_tree(main_window, {})
+    assert tree.isVisible(), "the inner widget must be showable right after resolving"
+    assert dw.isVisible()
 
-    fake_widget = object()
-    fake_panel_with_plot = type("FakePanel", (), {"plots": lambda self: [fake_widget]})()
-    assert resolve_latest_plot_widget(
-        main_window, {"create_panel": fake_panel_with_plot}) is fake_widget
+
+def test_in_dock_returns_none_for_an_unknown_dock(main_window):
+    from SciQLop.components.onboarding.backend.targets import in_dock
+    assert in_dock("No Such Dock", lambda mw, ctx: object())(main_window, {}) is None
 
 
 def test_resolve_panel_widget_reads_panel_from_context(main_window):
-    """Targets the panel container itself, not any plot inside it -- a
-    live diagnostic run showed a freshly-created plot getting destroyed
-    moments after overlay_vs_new_subplot targeted it via
-    resolve_latest_plot_widget (root cause outside this component, in
-    SciQLopPlots/Wayland drag-and-drop handling). The panel container
-    has never been observed to die mid-tour the way an individual plot
-    can, so a purely informational tip step (no action required to
-    advance) should anchor on it instead."""
     from SciQLop.components.onboarding.backend.targets import resolve_panel_widget
     assert resolve_panel_widget(main_window, {}) is None
+    panel = main_window.new_plot_panel()
+    try:
+        assert resolve_panel_widget(main_window, {"create_panel": panel}) is panel
+    finally:
+        main_window.remove_panel(panel)
 
-    fake_panel = object()
-    assert resolve_panel_widget(main_window, {"create_panel": fake_panel}) is fake_panel
+
+def test_panel_targets_resolve_the_search_box_chrome_and_catalog_controls(main_window, qtbot):
+    from SciQLop.components.onboarding.backend import targets
+    from PySide6.QtWidgets import QLineEdit
+    panel = main_window.new_plot_panel()
+    context = {"create_panel": panel}
+    try:
+        assert isinstance(targets.resolve_search_box(main_window, context), QLineEdit)
+        chrome = targets.resolve_panel_chrome(main_window, context)
+        assert chrome is panel.parentWidget().chrome_row
+        assert targets.resolve_catalog_chrome(main_window, context) is panel.parentWidget().catalog_chrome
+    finally:
+        main_window.remove_panel(panel)
 
 
-def test_side_tab_resolver_returns_none_for_missing_dock(main_window):
+def test_panel_targets_are_none_without_a_panel(main_window):
+    from SciQLop.components.onboarding.backend import targets
+    assert targets.resolve_search_box(main_window, {}) is None
+    assert targets.resolve_panel_chrome(main_window, {}) is None
+    assert targets.resolve_catalog_chrome(main_window, {}) is None
+
+
+def test_panel_targets_survive_a_deleted_panel(main_window, qtbot):
+    import shiboken6
+    from SciQLop.components.onboarding.backend import targets
+    panel = main_window.new_plot_panel()
+    context = {"create_panel": panel}
+    main_window.remove_panel(panel)
+    qtbot.waitUntil(lambda: not shiboken6.isValid(panel), timeout=2000)
+    assert targets.resolve_panel_widget(main_window, context) is None
+    assert targets.resolve_search_box(main_window, context) is None
+    assert targets.resolve_panel_chrome(main_window, context) is None
+
+
+def test_side_tab_resolver(main_window):
     from SciQLop.components.onboarding.backend.targets import side_tab_resolver
     assert side_tab_resolver("No Such Dock")(main_window, {}) is None
-
-
-def test_side_tab_resolver_returns_products_side_tab(main_window):
-    from SciQLop.components.onboarding.backend.targets import side_tab_resolver
     dw = main_window.dock_manager.findDockWidget("Products")
     assert side_tab_resolver("Products")(main_window, {}) is dw.sideTabWidget()
 
@@ -133,72 +151,4 @@ def test_side_tab_resolver_returns_products_side_tab(main_window):
 def test_resolve_catalog_tree_finds_a_tree_view(main_window):
     from SciQLop.components.onboarding.backend.targets import resolve_catalog_tree
     from PySide6.QtWidgets import QTreeView
-    result = resolve_catalog_tree(main_window, {})
-    assert isinstance(result, QTreeView)
-
-
-def test_resolve_catalogs_browser_widget_returns_the_whole_browser(main_window):
-    from SciQLop.components.onboarding.backend.targets import resolve_catalogs_browser_widget
-    assert resolve_catalogs_browser_widget(main_window, {}) is main_window.catalogs_browser
-
-
-def test_resolve_add_event_button_matches_visibility_state(main_window):
-    """Doesn't assert a specific None/not-None outcome: main_window is a
-    session-scoped fixture shared with unrelated test files, so whether a
-    catalog happens to be selected elsewhere in the session isn't this
-    test's business. What must always hold is the function's own contract:
-    it never returns a hidden button."""
-    from SciQLop.components.onboarding.backend.targets import resolve_add_event_button
-    result = resolve_add_event_button(main_window, {})
-    if result is not None:
-        assert result.isVisible()
-
-
-def test_resolve_any_plot_with_data_returns_none_when_no_plots():
-    from SciQLop.components.onboarding.backend.targets import resolve_any_plot_with_data
-    from unittest.mock import MagicMock
-
-    fake_main_window = MagicMock()
-    fake_main_window.plot_panels.return_value = []
-    assert resolve_any_plot_with_data(fake_main_window, {}) is None
-
-
-def test_resolve_any_plot_with_data_returns_last_plot_of_a_panel_with_plots():
-    from SciQLop.components.onboarding.backend.targets import resolve_any_plot_with_data
-    from unittest.mock import MagicMock
-
-    fake_widget = object()
-    fake_panel = MagicMock()
-    fake_panel.plots.return_value = [fake_widget]
-    fake_main_window = MagicMock()
-    fake_main_window.plot_panels.return_value = ["panel1"]
-    fake_main_window.plot_panel.return_value = fake_panel
-    assert resolve_any_plot_with_data(fake_main_window, {}) is fake_widget
-
-
-def test_resolve_settings_category_list_finds_a_list_view(main_window):
-    from SciQLop.components.onboarding.backend.targets import resolve_settings_category_list
-    from PySide6.QtWidgets import QListView
-    result = resolve_settings_category_list(main_window, {})
-    assert isinstance(result, QListView)
-
-
-def test_resolve_settings_category_list_ignores_a_combobox_delegates_popup_view(main_window):
-    """Real report: the browse_categories coach mark highlighted a random
-    rectangle unrelated to any visible widget. Root cause: the "Color
-    Palette" setting's dropdown delegate is a QComboBox, which
-    internally owns its own QListView for its popup -- a real, findable
-    QObject even while the popup itself is closed, with a leftover
-    (0, 0, 640, 480) default geometry that has nothing to do with any
-    on-screen position. findChildren(QListView)[0] is not guaranteed to
-    return SettingsCategories (the actual, intended target) over this
-    unrelated internal widget -- it must be found by identity, not by
-    "first QListView in the panel"."""
-    from SciQLop.components.onboarding.backend.targets import resolve_settings_category_list
-    from SciQLop.components.settings.ui.setting_panel import SettingsCategories
-
-    main_window.settings_panel.show()
-    main_window.settings_panel._refresh()
-
-    result = resolve_settings_category_list(main_window, {})
-    assert isinstance(result, SettingsCategories)
+    assert isinstance(resolve_catalog_tree(main_window, {}), QTreeView)

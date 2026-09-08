@@ -23,12 +23,9 @@ def all_tours() -> list[Tour]:
 
 
 def register_builtin_tours() -> None:
-    """Import the built-in tour module -- it registers itself as a
-    module-level side effect (and transitively imports tour_catalogs/
-    tour_settings for their step lists, which no longer self-register).
-    Safe to call more than once: Python only executes a module body on
-    its first import."""
-    from SciQLop.components.onboarding.backend import tour_getting_started  # noqa: F401
+    from SciQLop.components.onboarding.backend.getting_started import GETTING_STARTED
+    if get_tour(GETTING_STARTED.id) is None:
+        register_tour(GETTING_STARTED)
 
 
 def _forget_tour_for_tests(tour_id: str) -> None:
