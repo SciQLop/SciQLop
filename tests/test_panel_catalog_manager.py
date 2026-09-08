@@ -525,8 +525,10 @@ def test_zoom_out_spinbox_is_visible_only_in_jump_mode(qtbot, qapp, tmp_path, mo
     panel, container, _ = _jump_setup(qtbot, tmp_path, monkeypatch)
     chrome = container.catalog_chrome
     assert not chrome._zoom_out_spin.isHidden()
+    assert not chrome._zoom_out_label.isHidden()
     panel.catalog_manager.mode = InteractionMode.VIEW
     assert chrome._zoom_out_spin.isHidden()
+    assert chrome._zoom_out_label.isHidden()
     panel.catalog_manager.mode = InteractionMode.EDIT
     assert chrome._zoom_out_spin.isHidden()
 

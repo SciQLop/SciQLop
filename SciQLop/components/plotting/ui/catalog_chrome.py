@@ -65,9 +65,11 @@ class CatalogChrome(QWidget):
             "Catalog that newly created events are added to."))
         self._target_combo.setVisible(False)
         self._zoom_out_spin = _make_zoom_out_spin(self)
+        self._zoom_out_label = QLabel("Zoom out:", self)
 
         layout.addWidget(self._mode_label)
         layout.addWidget(self._mode_combo)
+        layout.addWidget(self._zoom_out_label)
         layout.addWidget(self._zoom_out_spin)
         layout.addWidget(self._target_combo)
 
@@ -82,7 +84,9 @@ class CatalogChrome(QWidget):
         return self._zoom_out_spin.value()
 
     def _sync_zoom_out_visibility(self, *_):
-        self._zoom_out_spin.setVisible(self.mode == "jump")
+        visible = self.mode == "jump"
+        self._zoom_out_label.setVisible(visible)
+        self._zoom_out_spin.setVisible(visible)
 
     @property
     def mode(self) -> str:
