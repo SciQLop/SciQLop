@@ -168,6 +168,56 @@ def test_tour_with_no_showable_step_finishes_cleanly(main_window, qtbot):
     assert OnboardingSettings().completed_tours.get("t_none") is True
 
 
+def test_hidden_target_gets_the_step_re_entered_which_can_bring_it_back(main_window, qtbot):
+    """The drag step's resolver reopens the Products dock (in_dock); when
+    QtAds closes that dock under the tour, re-entering the step brings the
+    highlighted row back instead of leaving a ring over nothing."""
+    from SciQLop.components.onboarding.ui.tour_controller import TourController
+
+    target = QPushButton("reopenable", main_window)
+    target.show()
+
+    def _resolver(mw, ctx):
+        target.show()
+        return target
+
+    tour = _make_tour("t_rehide", [
+        _make_step("only", _resolver),
+        _make_step("after", lambda mw, ctx: _side_tab(mw)),
+    ])
+    controller = TourController(main_window, tour)
+    controller.start()
+    try:
+        qtbot.waitUntil(lambda: controller._coach_mark.isVisible(), timeout=1000)
+        target.hide()
+        qtbot.waitUntil(target.isVisible, timeout=2000)
+        assert controller._current_step().step_id == "only"
+        assert controller._coach_mark._target is target
+    finally:
+        controller.abort()
+        target.deleteLater()
+
+
+def test_hidden_target_that_cannot_come_back_skips_forward(main_window, qtbot):
+    from SciQLop.components.onboarding.ui.tour_controller import TourController
+
+    target = QPushButton("gone for good", main_window)
+    target.show()
+    tour = _make_tour("t_hide_skip", [
+        _make_step("only", lambda mw, ctx: target),
+        _make_step("after", lambda mw, ctx: _side_tab(mw)),
+    ])
+    controller = TourController(main_window, tour)
+    controller.start()
+    try:
+        qtbot.waitUntil(lambda: controller._coach_mark.isVisible(), timeout=1000)
+        target.hide()
+        qtbot.waitUntil(lambda: controller._current_step().step_id == "after", timeout=2000)
+    finally:
+        controller.abort()
+        target.deleteLater()
+
+
 def test_completion_signal_advances_and_stores_single_arg_in_context(main_window, qtbot):
     from SciQLop.components.onboarding.ui.tour_controller import TourController
 

@@ -9,6 +9,10 @@ from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
 
+# QtAds auto-hide docks close 500 ms after the mouse leaves them; give
+# that its time before deciding the target is really gone.
+_RETRY_HIDDEN_TARGET_MS = 300
+
 
 def _log_safely(message: str, level: str = "info") -> None:
     # The logger's own Qt signal can already be gone when this fires from
@@ -52,7 +56,9 @@ class TourController(QObject):
     """Walks a Tour against a live main window, one CoachMark step at a
     time. A step advances on its completion signal or on Next, Back
     re-enters the previous step, and a step whose target is missing or
-    hidden is skipped instead of ending the tour. Only Skip or Escape end it.
+    hidden is skipped instead of ending the tour; a target that hides
+    mid-step gets the step re-entered (which can bring it back). Only
+    Skip or Escape end it.
 
     Each step's completion connection is torn down when the step is left:
     the main window outlives any tour run, so a stale handler would keep
@@ -66,6 +72,7 @@ class TourController(QObject):
         self._coach_mark.next_clicked.connect(self._advance)
         self._coach_mark.back_clicked.connect(self._go_back)
         self._coach_mark.skip_requested.connect(self.abort)
+        self._coach_mark.target_hidden.connect(self._on_target_hidden)
         self._step_index = 0
         self._context: dict = {}
         self._active_signal = None
@@ -114,7 +121,8 @@ class TourController(QObject):
         for signal, slot in (
                 (self._coach_mark.next_clicked, self._advance),
                 (self._coach_mark.back_clicked, self._go_back),
-                (self._coach_mark.skip_requested, self.abort)):
+                (self._coach_mark.skip_requested, self.abort),
+                (self._coach_mark.target_hidden, self._on_target_hidden)):
             try:
                 signal.disconnect(slot)
             except (RuntimeError, TypeError):
@@ -186,6 +194,19 @@ class TourController(QObject):
 
     def _go_back(self) -> None:
         self._move(-1)
+
+    def _on_target_hidden(self, target) -> None:
+        QTimer.singleShot(_RETRY_HIDDEN_TARGET_MS, lambda: self._reenter_if_still_hidden(target))
+
+    def _reenter_if_still_hidden(self, target) -> None:
+        """Re-resolve the current step: a resolver like in_dock brings the
+        target back (the side panel the tip is about gets reopened),
+        otherwise the step is skipped forward."""
+        if self._finished or self._moving or self._coach_mark._target is not target:
+            return
+        if shiboken6.isValid(target) and target.isVisible():
+            return
+        self._enter_step(+1)
 
     def _move(self, direction: int) -> None:
         # One transition at a time: a repeated Enter or a completion firing

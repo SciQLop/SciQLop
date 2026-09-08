@@ -42,10 +42,17 @@ def test_every_body_mentions_what_the_user_can_do(main_window):
         assert step.title and step.title[0].isupper()
 
 
+def test_open_products_tip_matches_the_hover_to_open_side_bar():
+    """The dock manager runs with AutoHideShowOnMouseOver: hovering the
+    tab opens the dock and a click on an open one closes it, so telling
+    the user only to click sends them the wrong way."""
+    assert "Hover" in _steps()["open_products"].body
+
+
 def test_plot_product_resolves_inside_the_products_dock(main_window, qtbot):
     from PySide6.QtWidgets import QTreeView
     dw = main_window.dock_manager.findDockWidget("Products")
-    dw.toggleView(False)
+    dw.autoHideDockContainer().collapseView(True)
     target = _steps()["plot_product"].resolver(main_window, {})
     widget = target[0] if isinstance(target, tuple) else target
     assert isinstance(widget, QTreeView)

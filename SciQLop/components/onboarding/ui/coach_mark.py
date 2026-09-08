@@ -136,6 +136,7 @@ class CoachMark(QWidget):
     skip_requested = Signal()
     next_clicked = Signal()
     back_clicked = Signal()
+    target_hidden = Signal(object)
 
     def __init__(self, main_window: QWidget):
         super().__init__(main_window)
@@ -214,6 +215,8 @@ class CoachMark(QWidget):
             self._reposition_bubble()
         elif obj is self._target and event.type() in (QEvent.Type.Resize, QEvent.Type.Move):
             self._reposition_bubble()
+        elif obj is self._target and event.type() == QEvent.Type.Hide:
+            self.target_hidden.emit(obj)
         return False
 
     def _target_rect(self) -> QRect | None:

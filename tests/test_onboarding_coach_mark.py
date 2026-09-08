@@ -304,3 +304,27 @@ def test_bubble_actually_paints_its_background_and_border(qtbot):
     inside_pixel = image.pixelColor(bubble.layout().contentsMargins().left() // 2, mid_y)
     assert _close(border_pixel, bubble.palette().color(QPalette.ColorRole.Highlight)), border_pixel
     assert _close(inside_pixel, bubble.palette().color(QPalette.ColorRole.ToolTipBase)), inside_pixel
+
+
+def test_hiding_the_target_reports_it_and_a_stale_target_does_not(qtbot):
+    """Live report: QtAds auto-hide docks close on their own (a click on a
+    hover-opened tab toggles it, leaving the tab closes it after 500 ms),
+    so a spotlighted product row can vanish mid-step. The mark must tell
+    its controller which target went away."""
+    host, first = _host(qtbot)
+    second = QPushButton("second", host)
+    second.show()
+    mark = _mark(qtbot, host)
+    hidden = []
+    mark.target_hidden.connect(hidden.append)
+
+    mark.show_step(first, "Title", "Body")
+    first.hide()
+    assert hidden == [first]
+
+    mark.show_step(second, "Title 2", "Body 2")
+    first.show()
+    first.hide()
+    assert hidden == [first], "a previous step's target is not ours any more"
+    second.hide()
+    assert hidden == [first, second]

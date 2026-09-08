@@ -47,7 +47,7 @@ GETTING_STARTED = Tour(
             body=(
                 "The Products browser lists every data provider — AMDA, "
                 "CDAWeb, CSA, SSCWeb and more — organized by mission and "
-                "instrument. Click to open it."
+                "instrument. Hover or click the icon to open it."
             ),
             resolver=targets.side_tab_resolver("Products"),
             completion=completions.dock_visible("Products"),
