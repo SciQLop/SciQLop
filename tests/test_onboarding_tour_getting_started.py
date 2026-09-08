@@ -29,7 +29,7 @@ def test_intro_and_outro_are_centered_tips_without_target():
 def test_action_steps_auto_advance_and_tips_do_not():
     by_id = _steps()
     action_steps = {"create_panel", "search_products", "open_products", "plot_product",
-                    "properties", "open_catalogs", "settings"}
+                    "open_catalogs"}
     for step_id, step in by_id.items():
         assert (step.completion is not None) == (step_id in action_steps), step_id
 
@@ -90,3 +90,27 @@ def test_builtin_tour_comes_back_after_a_registry_reset():
     assert registry.get_tour("getting_started") is None
     registry.register_builtin_tours()
     assert registry.get_tour("getting_started") is not None
+
+
+def test_side_panel_steps_auto_advance_only_when_the_next_step_continues_inside_that_panel():
+    """Hover-open completes a dock step instantly; that is right when the
+    next tip lives inside the panel (Products -> drag a product, Catalogs
+    -> catalog tree) and wrong when it does not (Properties, Settings):
+    the panel opens and the card has already moved on to something else."""
+    by_id = _steps()
+    assert by_id["open_products"].completion is not None
+    assert by_id["open_catalogs"].completion is not None
+    assert by_id["properties"].completion is None
+    assert by_id["settings"].completion is None
+
+
+def test_open_panel_steps_skip_themselves_when_their_panel_is_already_open(main_window, qtbot):
+    by_id = _steps()
+    for step_id, dock_name in (("open_products", "Products"), ("open_catalogs", "Catalog Browser")):
+        dw = main_window.dock_manager.findDockWidget(dock_name)
+        dw.toggleView(True)
+        qtbot.waitUntil(dw.isVisible, timeout=1000)
+        assert by_id[step_id].resolver(main_window, {}) is None, step_id
+        dw.autoHideDockContainer().collapseView(True)
+        qtbot.waitUntil(lambda: not dw.isVisible(), timeout=1000)
+        assert by_id[step_id].resolver(main_window, {}) is dw.sideTabWidget(), step_id

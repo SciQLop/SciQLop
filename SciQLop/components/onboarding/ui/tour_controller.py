@@ -9,9 +9,11 @@ from SciQLop.components.sciqlop_logging import getLogger
 
 log = getLogger(__name__)
 
-# QtAds auto-hide docks close 500 ms after the mouse leaves them; give
-# that its time before deciding the target is really gone.
-_RETRY_HIDDEN_TARGET_MS = 300
+# QtAds auto-hide panels close 500 ms after the mouse leaves them and a
+# drop's settle timer runs 600 ms: retrying a hidden target after 400 ms
+# reopens a panel a tip is about without racing a completion that is
+# about to move the tour on anyway.
+_RETRY_HIDDEN_TARGET_MS = 400
 
 
 def _log_safely(message: str, level: str = "info") -> None:
@@ -202,7 +204,7 @@ class TourController(QObject):
         """Re-resolve the current step: a resolver like in_dock brings the
         target back (the side panel the tip is about gets reopened),
         otherwise the step is skipped forward."""
-        if self._finished or self._moving or self._coach_mark._target is not target:
+        if self._finished or self._moving or self._coach_mark.target is not target:
             return
         if shiboken6.isValid(target) and target.isVisible():
             return

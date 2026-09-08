@@ -152,3 +152,32 @@ def test_resolve_catalog_tree_finds_a_tree_view(main_window):
     from SciQLop.components.onboarding.backend.targets import resolve_catalog_tree
     from PySide6.QtWidgets import QTreeView
     assert isinstance(resolve_catalog_tree(main_window, {}), QTreeView)
+
+
+def test_unless_dock_visible_skips_when_the_panel_is_already_open(main_window, qtbot):
+    """A user who opened the Products panel while reading the previous
+    tip must not be told to open it (a click would close it) -- the step
+    is pointless, skip it."""
+    from SciQLop.components.onboarding.backend.targets import unless_dock_visible, side_tab_resolver
+    dw = main_window.dock_manager.findDockWidget("Products")
+    resolver = unless_dock_visible("Products", side_tab_resolver("Products"))
+
+    dw.toggleView(True)
+    qtbot.waitUntil(dw.isVisible, timeout=1000)
+    assert resolver(main_window, {}) is None
+
+    dw.autoHideDockContainer().collapseView(True)
+    qtbot.waitUntil(lambda: not dw.isVisible(), timeout=1000)
+    assert resolver(main_window, {}) is dw.sideTabWidget()
+
+
+def test_resolve_search_box_gives_the_box_keyboard_focus(main_window, qtbot):
+    """The tip asks the user to type: typing must work right away."""
+    from SciQLop.components.onboarding.backend import targets
+    panel = main_window.new_plot_panel()
+    try:
+        qtbot.waitUntil(panel.isVisible, timeout=1000)
+        box = targets.resolve_search_box(main_window, {"create_panel": panel})
+        assert main_window.focusWidget() is box
+    finally:
+        main_window.remove_panel(panel)

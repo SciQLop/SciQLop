@@ -63,6 +63,18 @@ def side_tab_resolver(dock_name: str):
     return _resolver
 
 
+def unless_dock_visible(dock_name: str, resolver):
+    """Skip an "open this panel" step when the panel is already open: the
+    instruction would be wrong, and a click on an open panel's tab
+    closes it."""
+    def _resolver(main_window, context):
+        dw = main_window.dock_manager.findDockWidget(dock_name)
+        if dw is not None and dw.isVisible():
+            return None
+        return resolver(main_window, context)
+    return _resolver
+
+
 def in_dock(dock_name: str, resolver):
     """Open the auto-hide dock the target lives in before resolving it, so
     a step inside a side panel works even if the user skipped the
@@ -109,7 +121,10 @@ def resolve_panel_widget(main_window, context) -> QWidget | None:
 
 def resolve_search_box(main_window, context) -> QWidget | None:
     overlay = getattr(_live(context.get("create_panel")), "search_overlay", None)
-    return overlay.search_box if overlay is not None else None
+    if overlay is None:
+        return None
+    overlay.focus_search()
+    return overlay.search_box
 
 
 def resolve_panel_chrome(main_window, context) -> QWidget | None:

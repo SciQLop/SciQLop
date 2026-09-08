@@ -49,16 +49,17 @@ GETTING_STARTED = Tour(
                 "CDAWeb, CSA, SSCWeb and more — organized by mission and "
                 "instrument. Hover or click the icon to open it."
             ),
-            resolver=targets.side_tab_resolver("Products"),
+            resolver=targets.unless_dock_visible(
+                "Products", targets.side_tab_resolver("Products")),
             completion=completions.dock_visible("Products"),
         ),
         TourStep(
             step_id="plot_product",
             title="Plot a product",
             body=(
-                "Drag a product onto your empty panel to plot it — the "
-                "highlighted one is a good first pick. The search box above "
-                "the tree filters the whole catalog."
+                "Drag a product onto your empty panel to plot it — ACE's "
+                "magnetic field, highlighted here, is a good first pick. The "
+                "search box above the tree filters the whole catalog."
             ),
             resolver=targets.skip_when_plotted(
                 targets.in_dock("Products", targets.resolve_example_product)),
@@ -91,11 +92,11 @@ GETTING_STARTED = Tour(
             step_id="properties",
             title="Tweak a plot",
             body=(
-                "Click a plot or a curve, then open Properties to change its "
-                "color, line style, markers and more."
+                "Click a plot or a curve, then hover the Properties icon to "
+                "open the inspector and change its color, line style, "
+                "markers and more."
             ),
             resolver=targets.side_tab_resolver("Properties"),
-            completion=completions.dock_visible("Properties"),
         ),
         TourStep(
             step_id="open_catalogs",
@@ -104,7 +105,8 @@ GETTING_STARTED = Tour(
                 "Catalogs are lists of time intervals — events — with their "
                 "own attributes. Click to open the Catalog browser."
             ),
-            resolver=targets.side_tab_resolver("Catalog Browser"),
+            resolver=targets.unless_dock_visible(
+                "Catalog Browser", targets.side_tab_resolver("Catalog Browser")),
             completion=completions.dock_visible("Catalog Browser"),
         ),
         TourStep(
@@ -144,11 +146,10 @@ GETTING_STARTED = Tour(
             title="Make it yours",
             body=(
                 "Themes, plot defaults, plugins and workspaces all live in "
-                "Settings — appearance changes apply instantly. Click to "
-                "open it."
+                "Settings: hover the icon to open it. Appearance changes "
+                "apply instantly."
             ),
             resolver=targets.side_tab_resolver("Settings"),
-            completion=completions.dock_visible("Settings"),
         ),
         TourStep(
             step_id="finish",

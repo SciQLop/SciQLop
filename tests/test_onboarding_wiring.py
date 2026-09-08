@@ -32,7 +32,9 @@ def test_maybe_run_onboarding_tour_starts_when_not_completed(main_window, qtbot)
     main_window._onboarding_controller.abort()
 
 
-def test_starting_tour_twice_in_a_row_does_not_stack_a_second_controller(main_window, qtbot):
+def test_starting_a_tour_while_one_runs_restarts_it(main_window, qtbot):
+    """Tools -> Take a Tour while a tour is running: the old run is
+    aborted and a fresh one starts, never two controllers at once."""
     from SciQLop.components.onboarding.backend.settings import OnboardingSettings
 
     with OnboardingSettings() as s:
@@ -46,7 +48,9 @@ def test_starting_tour_twice_in_a_row_does_not_stack_a_second_controller(main_wi
         main_window._start_tour("getting_started")
         second_controller = main_window._onboarding_controller
 
-        assert second_controller is first_controller
+        assert second_controller is not first_controller
+        assert first_controller.is_finished
+        assert not second_controller.is_finished
     finally:
         if main_window._onboarding_controller is not None:
             main_window._onboarding_controller.abort()

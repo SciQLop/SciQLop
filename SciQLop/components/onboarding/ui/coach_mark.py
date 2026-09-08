@@ -9,6 +9,13 @@ _BUBBLE_GAP = 12
 _DIM_COLOR = QColor(0, 0, 0, 140)
 
 
+def _has_keyboard_focus(widget: QWidget | None) -> bool:
+    # window().focusWidget() also holds while the window isn't active,
+    # unlike hasFocus(); the card must not take a text field's focus away
+    # from a user who was asked to type in it.
+    return widget is not None and widget.window().focusWidget() is widget
+
+
 def _clamp(value: int, low: int, high: int) -> int:
     return max(low, min(value, high))
 
@@ -156,6 +163,10 @@ class CoachMark(QWidget):
     def bubble(self) -> TourBubble:
         return self._bubble
 
+    @property
+    def target(self) -> QWidget | None:
+        return self._target
+
     def show_step(self, target: QWidget | None, title: str, body: str, *,
                   rect: QRect | None = None, progress: str = "",
                   can_go_back: bool = False, next_label: str = "Next") -> None:
@@ -167,7 +178,8 @@ class CoachMark(QWidget):
         self.show()
         self.raise_()
         self._bubble.raise_()
-        self._bubble.setFocus()
+        if not _has_keyboard_focus(target):
+            self._bubble.setFocus()
         self.update()
 
     def setVisible(self, visible: bool) -> None:

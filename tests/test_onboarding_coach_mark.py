@@ -328,3 +328,20 @@ def test_hiding_the_target_reports_it_and_a_stale_target_does_not(qtbot):
     assert hidden == [first], "a previous step's target is not ours any more"
     second.hide()
     assert hidden == [first, second]
+
+
+def test_show_step_does_not_steal_focus_from_a_target_that_has_it(qtbot):
+    from PySide6.QtWidgets import QLineEdit
+    host, target = _host(qtbot)
+    box = QLineEdit(host)
+    box.setGeometry(300, 300, 200, 24)
+    box.show()
+    qtbot.waitUntil(host.isVisible, timeout=1000)
+    mark = _mark(qtbot, host)
+
+    mark.show_step(target, "Title", "Body")
+    assert host.focusWidget() is mark.bubble
+
+    box.setFocus()
+    mark.show_step(box, "Type here", "Body")
+    assert host.focusWidget() is box
