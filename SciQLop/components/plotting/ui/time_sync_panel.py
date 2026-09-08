@@ -3,8 +3,8 @@ from typing import Optional, List, Union
 import math
 import time as _time
 import numpy as np
-from PySide6.QtCore import QMimeData, QObject, QTimer, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QMimeData, QObject, QTimer, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QGuiApplication, QIcon
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QColor
 from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
@@ -519,6 +519,11 @@ def _dispose_graph_knobs(graph):
         except (RuntimeError, TypeError):
             pass
     graph._knobs_slot = None
+
+
+def _speasy_proxy_url() -> str:
+    from speasy.config import proxy
+    return str(proxy.url())
 
 
 def _build_knob_reset_action(state, parent):
@@ -1150,7 +1155,17 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         menu.addMenu(sub)
         sub.addAction("Export as PNG\u2026", self._export_png)
         sub.addAction("Export as PDF\u2026", self._export_pdf)
+        self._add_proxy_share_actions(sub)
         add_graph_context_actions(sub, self)
+
+    def _add_proxy_share_actions(self, menu):
+        from SciQLop.components.plotting.ui.proxy_share import proxy_plot_url
+        url = proxy_plot_url(self, _speasy_proxy_url())
+        if url is None:
+            return
+        menu.addSeparator()
+        menu.addAction("Copy Speasy proxy plot URL", lambda: QGuiApplication.clipboard().setText(url))
+        menu.addAction("Open in Speasy proxy\u2026", lambda: QDesktopServices.openUrl(QUrl(url)))
 
     def _build_templates_menu(self, menu):
         from PySide6.QtWidgets import QMenu
