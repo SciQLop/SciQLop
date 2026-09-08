@@ -185,6 +185,7 @@ class CatalogBrowser(QWidget):
         self._catalog_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._catalog_tree.customContextMenuRequested.connect(self._on_tree_context_menu)
         self._catalog_tree.doubleClicked.connect(self._on_tree_double_clicked)
+        self._catalog_tree.viewport().installEventFilter(self)
         self._catalog_tree.selectionModel().currentChanged.connect(self._on_catalog_selected)
         self._filter_bar.textChanged.connect(self._on_filter_changed)
         delete_shortcut = QShortcut(QKeySequence.StandardKey.Delete, self._catalog_tree)
@@ -365,6 +366,33 @@ class CatalogBrowser(QWidget):
             if source.isValid():
                 self._catalog_tree.expand(self._proxy_model.mapFromSource(source))
         self._expanded_before_filter = []
+
+    def eventFilter(self, obj, event):
+        if (obj is self._catalog_tree.viewport()
+                and event.type() == QEvent.Type.MouseButtonDblClick
+                and self._pick_color_at(event.position().toPoint())):
+            return True
+        return super().eventFilter(obj, event)
+
+    def _swatch_rect(self, proxy_index: QModelIndex) -> QRect:
+        from PySide6.QtWidgets import QStyle
+        tree = self._catalog_tree
+        rect = tree.visualRect(proxy_index)
+        icon = tree.iconSize().width()
+        if icon <= 0:
+            icon = tree.style().pixelMetric(QStyle.PixelMetric.PM_SmallIconSize)
+        margin = tree.style().pixelMetric(QStyle.PixelMetric.PM_FocusFrameHMargin) + 1
+        return QRect(rect.left(), rect.top(), icon + 2 * margin, rect.height())
+
+    def _pick_color_at(self, pos) -> bool:
+        proxy_index = self._catalog_tree.indexAt(pos)
+        if not proxy_index.isValid() or not self._swatch_rect(proxy_index).contains(pos):
+            return False
+        node = self._tree_model.node_from_index(self._proxy_model.mapToSource(proxy_index))
+        if node.catalog is None:
+            return False
+        self._pick_catalog_color(node.catalog)
+        return True
 
     def _on_tree_double_clicked(self, proxy_index: QModelIndex) -> None:
         source_index = self._proxy_model.mapToSource(proxy_index)
@@ -1066,11 +1094,9 @@ class CatalogBrowser(QWidget):
         if color.isValid():
             set_catalog_color(catalog.uuid, color)
 
-    def _build_color_by_menu(self, parent_menu: QMenu, catalog: Catalog) -> None:
-        from SciQLop.components.catalogs.backend.color_mapper import ColorMapper
-        from SciQLop.components.catalogs.backend.color_mapper_storage import (
-            get_color_mapper, set_color_mapper,
-        )
+    def _build_color_by_menu(self, parent_menu: QMenu, catalog: Catalog) -> QMenu:
+        from SciQLop.components.catalogs.backend.color_mapper import ColorMapper, _is_numeric
+        from SciQLop.components.catalogs.backend.color_mapper_storage import get_color_mapper
 
         current = get_color_mapper(catalog)
         color_menu = parent_menu.addMenu("Color by...")
@@ -1082,37 +1108,67 @@ class CatalogBrowser(QWidget):
             lambda: self._apply_color_mapper(catalog, ColorMapper())
         )
 
-        # The open catalog's model already knows every meta key; any other
-        # right-clicked catalog needs a real backend call, which can raise.
-        columns: set[str] = set()
-        if self._current_catalog is not None and catalog.uuid == self._current_catalog.uuid:
-            columns.update(self._event_model._meta_keys)
-        elif catalog.provider is not None:
-            try:
-                for event in catalog.provider.events(catalog)[:200]:
-                    columns.update(event.meta.keys())
-            except Exception as e:
-                self._report_failure(f"Could not load columns for '{catalog.name}'", e)
-
+        events = self._events_for_color_menu(catalog)
+        columns = sorted({key for event in events for key in event.meta.keys()})
         if columns:
             color_menu.addSeparator()
-            for col in sorted(columns):
-                action = color_menu.addAction(col)
-                action.setCheckable(True)
-                action.setChecked(current.column == col)
-                action.triggered.connect(
-                    lambda checked, c=col: self._apply_color_mapper(
-                        catalog, ColorMapper(column=c)
-                    )
-                )
-
-        # Configure colormap... (only meaningful when a column is selected)
-        if current.column is not None:
-            color_menu.addSeparator()
-            configure_action = color_menu.addAction("Configure colormap...")
-            configure_action.triggered.connect(
-                lambda: self._show_colormap_dialog(catalog, current)
+        for col in columns:
+            action = color_menu.addAction(col)
+            action.setCheckable(True)
+            action.setChecked(current.column == col)
+            action.triggered.connect(
+                lambda checked, c=col: self._apply_color_mapper(catalog, ColorMapper(column=c))
             )
+
+        if current.column is None:
+            return color_menu
+        values = [e.meta.get(current.column) for e in events if e.meta.get(current.column) is not None]
+        color_menu.addSeparator()
+        if _is_numeric(values):
+            self._add_colormap_submenu(color_menu, catalog, current)
+            configure_action = color_menu.addAction("Configure colormap...")
+            configure_action.triggered.connect(lambda: self._show_colormap_dialog(catalog, current))
+        else:
+            categories = sorted({str(v) for v in values})
+            categories_action = color_menu.addAction("Category colors...")
+            categories_action.triggered.connect(
+                lambda: self._show_category_colors_dialog(catalog, current, categories))
+        return color_menu
+
+    def _events_for_color_menu(self, catalog: Catalog) -> list:
+        """The open catalog's events are already in memory; any other
+        right-clicked catalog needs a real (sampled) backend call, which
+        can raise."""
+        if self._current_catalog is not None and catalog.uuid == self._current_catalog.uuid:
+            return list(self._event_model._events)
+        if catalog.provider is None:
+            return []
+        try:
+            return list(catalog.provider.events(catalog)[:200])
+        except Exception as e:
+            self._report_failure(f"Could not load columns for '{catalog.name}'", e)
+            return []
+
+    def _add_colormap_submenu(self, color_menu: QMenu, catalog: Catalog, current) -> None:
+        from .colormap_dialog import _COLORMAPS
+        cmap_menu = color_menu.addMenu("Colormap")
+        cmap_menu.setObjectName("colormap_menu")
+        names = _COLORMAPS if current.colormap in _COLORMAPS else [*_COLORMAPS, current.colormap]
+        for name in names:
+            action = cmap_menu.addAction(name)
+            action.setCheckable(True)
+            action.setChecked(name == current.colormap)
+            action.triggered.connect(
+                lambda checked, n=name: self._apply_color_mapper(
+                    catalog, current.model_copy(update={"colormap": n})))
+
+    def _show_category_colors_dialog(self, catalog: Catalog, current_mapper, categories: list[str]) -> None:
+        from .category_colors_dialog import CategoryColorsDialog
+        from SciQLop.components.catalogs.backend.color_mapper import _hash_color
+        dialog = CategoryColorsDialog(categories, current_mapper.category_colors, _hash_color, parent=self)
+        if dialog.exec() == CategoryColorsDialog.DialogCode.Accepted:
+            self._apply_color_mapper(
+                catalog, current_mapper.model_copy(update={"category_colors": dialog.category_colors}))
 
     def _show_colormap_dialog(self, catalog: Catalog, current_mapper) -> None:
         from .colormap_dialog import ColormapDialog

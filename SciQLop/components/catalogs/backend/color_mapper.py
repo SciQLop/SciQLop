@@ -23,6 +23,7 @@ class ColorMapper(BaseModel):
     colormap: str = "viridis"
     vmin: float | None = None
     vmax: float | None = None
+    category_colors: dict[str, str] = {}
 
     def __call__(self, events, catalog_color: QColor) -> dict[str, QColor]:
         if self.column is None:
@@ -63,5 +64,13 @@ class ColorMapper(BaseModel):
             if val is None:
                 result[event.uuid] = QColor(catalog_color)
             else:
-                result[event.uuid] = _hash_color(val)
+                result[event.uuid] = self._category_color(val)
         return result
+
+    def _category_color(self, value) -> QColor:
+        custom = self.category_colors.get(str(value))
+        if custom is None:
+            return _hash_color(value)
+        color = QColor(custom)
+        color.setAlpha(_SPAN_ALPHA)
+        return color

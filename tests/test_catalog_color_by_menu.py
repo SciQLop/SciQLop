@@ -116,3 +116,107 @@ def test_color_by_menu_reports_instead_of_raising_on_provider_failure(qtbot, qap
             break
     assert color_menu is not None
     assert any(a.text() == "Uniform (default)" for a in color_menu.actions())
+
+
+def _submenu(menu, object_name):
+    # findChild, not QAction.menu(): the wrapper QAction.menu() returns is
+    # invalidated as soon as the temporary list from menu.actions() that
+    # held the action is freed (Shiboken parent policy), so it cannot be
+    # returned from a helper.
+    from PySide6.QtWidgets import QMenu
+    return menu.findChild(QMenu, object_name)
+
+
+def _color_by_menu(browser, catalog):
+    # Keep the wrapper the builder returns: re-fetching a submenu through
+    # QAction.menu() across a function boundary trips Shiboken's
+    # "already deleted" guard (see _color_by_columns above).
+    from PySide6.QtWidgets import QMenu
+    root = QMenu(browser)
+    return root, browser._build_color_by_menu(root, catalog)
+
+
+@pytest.fixture
+def colored_catalog(qtbot, qapp, tmp_path, monkeypatch):
+    """A catalog with a numeric 'score' and a discrete 'class' column, opened
+    in a browser, with an isolated settings dir."""
+    monkeypatch.setattr(
+        "SciQLop.components.settings.backend.entry.SCIQLOP_CONFIG_DIR", str(tmp_path))
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=5, name="ColorByCfg")
+    cat = provider.catalogs()[0]
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    return browser, cat
+
+
+def test_numeric_column_offers_a_colormap_submenu(colored_catalog):
+    from SciQLop.components.catalogs.backend.color_mapper import ColorMapper
+    from SciQLop.components.catalogs.backend.color_mapper_storage import get_color_mapper
+    browser, cat = colored_catalog
+    browser._apply_color_mapper(cat, ColorMapper(column="score"))
+
+    root, color_menu = _color_by_menu(browser, cat)
+    cmap_menu = _submenu(color_menu, "colormap_menu")
+    assert cmap_menu is not None
+    checked = [a.text() for a in cmap_menu.actions() if a.isChecked()]
+    assert checked == ["viridis"]
+    assert "Category colors..." not in [a.text() for a in color_menu.actions()]
+
+    plasma = next(a for a in cmap_menu.actions() if a.text() == "plasma")
+    plasma.trigger()
+    assert get_color_mapper(cat).colormap == "plasma"
+    assert get_color_mapper(cat).column == "score"
+
+
+def test_discrete_column_offers_category_colors_not_colormap(colored_catalog):
+    from SciQLop.components.catalogs.backend.color_mapper import ColorMapper
+    browser, cat = colored_catalog
+    browser._apply_color_mapper(cat, ColorMapper(column="class"))
+
+    root, color_menu = _color_by_menu(browser, cat)
+    texts = [a.text() for a in color_menu.actions()]
+    assert "Category colors..." in texts
+    assert _submenu(color_menu, "colormap_menu") is None
+    assert "Configure colormap..." not in texts
+
+
+def test_uniform_offers_neither(colored_catalog):
+    browser, cat = colored_catalog
+    root, color_menu = _color_by_menu(browser, cat)
+    texts = [a.text() for a in color_menu.actions()]
+    assert "Category colors..." not in texts
+    assert _submenu(color_menu, "colormap_menu") is None
+
+
+def test_category_colors_dialog_result_is_stored_and_applied(colored_catalog, monkeypatch):
+    from SciQLop.components.catalogs.backend.color_mapper import ColorMapper
+    from SciQLop.components.catalogs.backend.color_mapper_storage import get_color_mapper
+    from SciQLop.components.catalogs.ui import category_colors_dialog
+    browser, cat = colored_catalog
+    browser._apply_color_mapper(cat, ColorMapper(column="class"))
+
+    seen = {}
+
+    class FakeDialog:
+        def __init__(self, categories, current, default_color, parent=None):
+            seen["categories"] = categories
+            seen["current"] = current
+            assert default_color("x").isValid()
+
+        def exec(self):
+            return category_colors_dialog.CategoryColorsDialog.DialogCode.Accepted
+
+        DialogCode = category_colors_dialog.CategoryColorsDialog.DialogCode
+        category_colors = {"A": "#ff0000"}
+
+    monkeypatch.setattr(category_colors_dialog, "CategoryColorsDialog", FakeDialog)
+    root, color_menu = _color_by_menu(browser, cat)
+    next(a for a in color_menu.actions() if a.text() == "Category colors...").trigger()
+
+    assert seen["current"] == {}
+    assert set(seen["categories"]) == {str(e.meta["class"]) for e in cat.provider.events(cat)}
+    stored = get_color_mapper(cat)
+    assert stored.column == "class"
+    assert stored.category_colors == {"A": "#ff0000"}
