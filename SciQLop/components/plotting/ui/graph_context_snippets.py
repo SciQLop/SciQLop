@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Iterable, Optional
 
-from SciQLopPlots import SciQLopPlot, SciQLopGraphInterface
+from SciQLopPlots import SciQLopPlot, SciQLopPlottableInterface
 
 from SciQLop.core.graph_context import context_of, graph_name
 
@@ -33,6 +33,15 @@ def ordered_plots(panel) -> list:
         if widget is not None:
             out.append(widget)
     return out
+
+
+def plot_graphs(plot) -> list:
+    """Every plottable in ``plot``: line graphs *and* colormaps. Colormaps are
+    not ``SciQLopGraphInterface`` — both derive from
+    ``SciQLopPlottableInterface`` — so filtering on the graph class silently
+    drops spectrograms.
+    """
+    return list(plot.findChildren(SciQLopPlottableInterface))
 
 
 def _iso_range(panel) -> tuple[str, str]:
@@ -104,7 +113,7 @@ def panel_reproducer_snippet(panel) -> Optional[str]:
     plot_lines: list[str] = []
     skipped: list[str] = []
     for i, plot in enumerate(plots):
-        graphs = list(plot.findChildren(SciQLopGraphInterface))
+        graphs = plot_graphs(plot)
         if not graphs:
             continue
         lines, plot_skipped = _plot_product_lines(graphs, plot_index=i)
@@ -126,7 +135,7 @@ def plot_reproducer_snippet(panel, plot_index: int) -> Optional[str]:
     plots = ordered_plots(panel)
     if not (0 <= plot_index < len(plots)):
         return None
-    graphs = list(plots[plot_index].findChildren(SciQLopGraphInterface))
+    graphs = plot_graphs(plots[plot_index])
     if not graphs:
         return None
     lines, skipped = _plot_product_lines(graphs, plot_index=0)

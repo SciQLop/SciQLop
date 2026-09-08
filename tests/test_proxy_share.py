@@ -258,3 +258,38 @@ def test_overlay_emits_config_when_a_proxy_url_is_pasted(qtbot):
     overlay._search_box.setText("https://x/cache/plot?config=" + _encode(_CONFIG))
     assert received == [_CONFIG]
     assert not overlay._debounce.isActive()
+
+
+# --- colormaps are SciQLopPlottableInterface, not SciQLopGraphInterface -----
+
+def _colormap(plot, name, **meta):
+    from SciQLopPlots import SciQLopColorMapInterface
+    base = {"graph_id": name, "panel_name": "P", "plot_index": 0, "graph_type": "SciQLopColorMap"}
+    cm = SciQLopColorMapInterface({**base, **meta}, plot)
+    cm.setObjectName(name)
+    return cm
+
+
+@pytest.fixture
+def colormap_panel(qtbot):
+    plot = SciQLopPlot()
+    plot.setObjectName("plot0")
+    cm = _colormap(plot, "spectro", kind="speasy", speasy_id="cda/DS/spec", provider_name="Speasy")
+    p = _FakePanel([plot], start=1577836800.0, stop=1577923200.0)
+    p._graphs = [cm]
+    qtbot.addWidget(p)
+    return p
+
+
+def test_config_exports_colormap_graphs(colormap_panel):
+    from SciQLop.components.plotting.ui.proxy_share import proxy_plot_config
+    cfg = proxy_plot_config(colormap_panel)
+    assert cfg is not None
+    assert cfg["plots"] == [{"products": [{"path": "cda/DS/spec", "label": "spectro"}],
+                             "y_axis": {"log": False}, "log_z": False}]
+
+
+def test_panel_reproducer_snippet_includes_colormap_graphs(colormap_panel):
+    from SciQLop.components.plotting.ui.graph_context_snippets import panel_reproducer_snippet
+    snippet = panel_reproducer_snippet(colormap_panel)
+    assert snippet is not None and "cda/DS/spec" in snippet

@@ -18,12 +18,12 @@ from datetime import datetime, timezone
 from typing import Iterable, Optional
 from urllib.parse import parse_qs, urlsplit
 
-from SciQLopPlots import ProductsModel, SciQLopGraphInterface, PlotType
+from SciQLopPlots import ProductsModel, PlotType
 
 from SciQLop.components import sciqlop_logging
 from SciQLop.core import TimeRange
 from SciQLop.core.graph_context import context_of, graph_name
-from SciQLop.components.plotting.ui.graph_context_snippets import ordered_plots
+from SciQLop.components.plotting.ui.graph_context_snippets import ordered_plots, plot_graphs
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def proxy_plot_config(panel) -> Optional[dict]:
 
 
 def _plot_config(plot) -> Optional[dict]:
-    graphs = plot.findChildren(SciQLopGraphInterface)
+    graphs = plot_graphs(plot)
     products = [p for p in map(_product, graphs) if p]
     if not products:
         return None

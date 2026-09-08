@@ -19,11 +19,9 @@ from __future__ import annotations
 
 from PySide6.QtGui import QGuiApplication
 
-from SciQLopPlots import SciQLopGraphInterface
-
 from SciQLop.core.graph_context import context_of, graph_name, provider_for
 from SciQLop.components.plotting.ui.graph_context_snippets import (
-    ordered_plots, panel_reproducer_snippet, plot_reproducer_snippet,
+    ordered_plots, panel_reproducer_snippet, plot_graphs, plot_reproducer_snippet,
 )
 
 
@@ -45,7 +43,7 @@ def _per_graph_variants(graph) -> dict:
 
 
 def _plot_label(plot, plot_index: int) -> str:
-    graphs = plot.findChildren(SciQLopGraphInterface)
+    graphs = plot_graphs(plot)
     names = ", ".join(graph_name(g) for g in graphs) or "empty"
     return f"Plot {plot_index} ({names})"
 
@@ -63,7 +61,7 @@ def add_graph_context_actions(menu, panel) -> None:
 
     graph_variants = []
     for plot in plots:
-        for g in plot.findChildren(SciQLopGraphInterface):
+        for g in plot_graphs(plot):
             variants = _per_graph_variants(g)
             if variants:
                 graph_variants.append((g, variants))
