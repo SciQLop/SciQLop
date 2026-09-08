@@ -1,5 +1,4 @@
 from .fixtures import *
-import pytest
 from PySide6.QtCore import QObject, Signal
 from PySide6.QtWidgets import QPushButton
 
@@ -371,11 +370,11 @@ def test_deferred_cleanup_tolerates_coach_mark_and_controller_already_destroyed(
     captured["fn"]()  # must not raise RuntimeError: Internal C++ object already deleted
 
 
-def test_target_destroyed_mid_step_aborts_tour_without_crash(qapp, sciqlop_resources, qtbot):
-    """Fires from inside the target's own destructor (see
-    docs/qt-lifetime-patterns.md): aborting is the only safe reaction.
-    Uses a disposable main window because a widget gets destroyed."""
-    import shiboken6
+def test_target_destroyed_mid_step_keeps_the_tour_going(qapp, sciqlop_resources, qtbot):
+    """The step's own action can destroy its target (selecting a product
+    deletes the search box it was pointing at). The tour must survive it:
+    tip still shown, Next still works. Uses a disposable main window
+    because a widget gets destroyed."""
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
     from SciQLop.components.onboarding.ui.tour_controller import TourController
     from SciQLop.components.onboarding.backend.settings import OnboardingSettings
@@ -388,14 +387,21 @@ def test_target_destroyed_mid_step_aborts_tour_without_crash(qapp, sciqlop_resou
     try:
         target = QPushButton("doomed", mw)
         target.show()
-        tour = _make_tour("t12", [_make_step("only", lambda mw_, ctx: target)])
+        tour = _make_tour("t12", [
+            _make_step("doomed", lambda mw_, ctx: target),
+            _make_step("after", lambda mw_, ctx: mw_.dock_manager.findDockWidget("Products").sideTabWidget()),
+        ])
         controller = TourController(mw, tour)
         controller.start()
         qtbot.waitUntil(lambda: controller._coach_mark.isVisible(), timeout=2000)
 
         target.deleteLater()
-        qtbot.waitUntil(lambda: OnboardingSettings().completed_tours.get("t12") is True, timeout=2000)
-        coach_mark = controller._coach_mark
-        assert not shiboken6.isValid(coach_mark) or not coach_mark.isVisible()
+        qtbot.waitUntil(lambda: controller._coach_mark._target is None, timeout=2000)
+        assert controller.is_finished is False
+        assert controller._coach_mark.bubble.isVisible()
+
+        controller._coach_mark.next_clicked.emit()
+        qtbot.waitUntil(lambda: controller._current_step().step_id == "after", timeout=2000)
+        controller.abort()
     finally:
         mw.close()

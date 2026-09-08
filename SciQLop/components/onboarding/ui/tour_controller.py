@@ -52,7 +52,7 @@ class TourController(QObject):
     """Walks a Tour against a live main window, one CoachMark step at a
     time. A step advances on its completion signal or on Next, Back
     re-enters the previous step, and a step whose target is missing or
-    hidden is skipped instead of ending the tour. Skip or Escape ends it.
+    hidden is skipped instead of ending the tour. Only Skip or Escape end it.
 
     Each step's completion connection is torn down when the step is left:
     the main window outlives any tour run, so a stale handler would keep
@@ -66,7 +66,6 @@ class TourController(QObject):
         self._coach_mark.next_clicked.connect(self._advance)
         self._coach_mark.back_clicked.connect(self._go_back)
         self._coach_mark.skip_requested.connect(self.abort)
-        self._coach_mark.target_destroyed.connect(self._on_target_gone)
         self._step_index = 0
         self._context: dict = {}
         self._active_signal = None
@@ -115,8 +114,7 @@ class TourController(QObject):
         for signal, slot in (
                 (self._coach_mark.next_clicked, self._advance),
                 (self._coach_mark.back_clicked, self._go_back),
-                (self._coach_mark.skip_requested, self.abort),
-                (self._coach_mark.target_destroyed, self._on_target_gone)):
+                (self._coach_mark.skip_requested, self.abort)):
             try:
                 signal.disconnect(slot)
             except (RuntimeError, TypeError):
@@ -200,13 +198,6 @@ class TourController(QObject):
         self._leave_step()
         self._step_index += direction
         QTimer.singleShot(0, lambda: self._enter_step(direction))
-
-    def _on_target_gone(self) -> None:
-        # Fires from inside the target's own destructor (see
-        # docs/qt-lifetime-patterns.md); only this minimal teardown is
-        # safe here, not advancing to another step.
-        _log_safely("Onboarding tour target was destroyed mid-step; aborting")
-        self.abort()
 
 
 def run_tour(main_window, tour_id: str) -> TourController | None:

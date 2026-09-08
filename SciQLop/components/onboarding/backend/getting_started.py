@@ -35,10 +35,11 @@ GETTING_STARTED = Tour(
             body=(
                 "An empty panel offers a search box: type a mission, "
                 "instrument or parameter (ACE MFI, MMS FGM…) and pick a "
-                "result to plot it. A Speasy proxy plot link pasted here "
-                "rebuilds its panel."
+                "result to plot it, or move on to browse the full catalog. "
+                "A Speasy proxy plot link pasted here rebuilds its panel."
             ),
             resolver=targets.resolve_search_box,
+            completion=completions.plot_settled_in("create_panel"),
         ),
         TourStep(
             step_id="open_products",
@@ -59,7 +60,8 @@ GETTING_STARTED = Tour(
                 "highlighted one is a good first pick. The search box above "
                 "the tree filters the whole catalog."
             ),
-            resolver=targets.in_dock("Products", targets.resolve_example_product),
+            resolver=targets.skip_when_plotted(
+                targets.in_dock("Products", targets.resolve_example_product)),
             completion=completions.plot_settled_in("create_panel"),
         ),
         TourStep(

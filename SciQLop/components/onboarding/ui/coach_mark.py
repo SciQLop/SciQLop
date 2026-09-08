@@ -136,7 +136,6 @@ class CoachMark(QWidget):
     skip_requested = Signal()
     next_clicked = Signal()
     back_clicked = Signal()
-    target_destroyed = Signal()
 
     def __init__(self, main_window: QWidget):
         super().__init__(main_window)
@@ -201,9 +200,13 @@ class CoachMark(QWidget):
             pass
 
     def _on_target_destroyed(self, *_):
+        # A step's own action can destroy its target (picking a product
+        # deletes the search box it pointed at): keep the tip, drop the
+        # spotlight. This runs from the target's destructor, so nothing
+        # beyond a repaint request is done here.
         self._target = None
-        self.hide()
-        self.target_destroyed.emit()
+        self._target_local_rect = None
+        self.update()
 
     def eventFilter(self, obj, event):
         if obj is self._main_window and event.type() in (QEvent.Type.Resize, QEvent.Type.Move):

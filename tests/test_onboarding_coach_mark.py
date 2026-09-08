@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QRect, QSize, QPoint
+from PySide6.QtCore import Qt, QRect
 from PySide6.QtGui import QImage, QPalette, QColor
 from PySide6.QtWidgets import QPushButton, QMainWindow, QLabel
 
@@ -197,33 +197,36 @@ def test_show_step_with_rect_highlights_subregion(qtbot):
     assert mark._cutout_rect() == mark._target_rect().adjusted(-4, -4, 4, 4)
 
 
-def test_target_destroyed_emits_signal_and_hides_everything(qtbot):
+def test_target_destroyed_keeps_the_tip_and_drops_the_spotlight(qtbot):
+    """Live report: selecting a product from the empty-panel search box
+    destroys that search box (the spotlighted target) and the tour
+    vanished. A dying target must not end anything: the card stays, only
+    the spotlight goes."""
     host, target = _host(qtbot)
     mark = _mark(qtbot, host)
     mark.show_step(target, "Title", "Body")
 
-    with qtbot.waitSignal(mark.target_destroyed, timeout=1000):
-        target.deleteLater()
+    target.deleteLater()
+    qtbot.waitUntil(lambda: mark._target is None, timeout=1000)
 
-    assert not mark.isVisible()
-    assert not mark.bubble.isVisible()
+    assert mark.isVisible()
+    assert mark.bubble.isVisible()
+    assert mark._cutout_rect() is None
 
 
-def test_stale_target_destroyed_does_not_emit(qtbot):
+def test_stale_target_destroyed_does_not_touch_the_current_step(qtbot):
     host, first = _host(qtbot)
     second = QPushButton("second", host)
     second.show()
     mark = _mark(qtbot, host)
     mark.show_step(first, "Title", "Body")
     mark.show_step(second, "Title 2", "Body 2")
-    fired = []
-    mark.target_destroyed.connect(lambda: fired.append(True))
 
     first.deleteLater()
     qtbot.wait(50)
 
-    assert fired == []
     assert mark._target is second
+    assert mark._cutout_rect() is not None
     assert mark.isVisible()
 
 

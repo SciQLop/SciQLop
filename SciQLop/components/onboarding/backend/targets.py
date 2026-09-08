@@ -2,6 +2,8 @@ import shiboken6
 from PySide6.QtCore import Qt, QAbstractItemModel, QModelIndex
 from PySide6.QtWidgets import QTreeView, QWidget
 
+from SciQLop.components.onboarding.backend.completions import _is_real_plot
+
 # The products tree is rooted at a single "speasy" node; "final / prelim"
 # is one AMDA-renamed node, not two.
 EXAMPLE_PRODUCT_PATH = ["speasy", "amda", "Parameters", "ACE", "MFI", "final / prelim", "b_gse"]
@@ -71,6 +73,17 @@ def in_dock(dock_name: str, resolver):
             return None
         if not dw.isVisible():
             dw.toggleView(True)
+        return resolver(main_window, context)
+    return _resolver
+
+
+def skip_when_plotted(resolver):
+    """Skip the step once the panel already shows something (the user
+    plotted from the search box before reaching the drag step)."""
+    def _resolver(main_window, context):
+        panel = _live(context.get("create_panel"))
+        if panel is not None and any(_is_real_plot(p) for p in panel.plots()):
+            return None
         return resolver(main_window, context)
     return _resolver
 

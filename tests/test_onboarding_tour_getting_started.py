@@ -28,8 +28,8 @@ def test_intro_and_outro_are_centered_tips_without_target():
 
 def test_action_steps_auto_advance_and_tips_do_not():
     by_id = _steps()
-    action_steps = {"create_panel", "open_products", "plot_product", "properties",
-                    "open_catalogs", "settings"}
+    action_steps = {"create_panel", "search_products", "open_products", "plot_product",
+                    "properties", "open_catalogs", "settings"}
     for step_id, step in by_id.items():
         assert (step.completion is not None) == (step_id in action_steps), step_id
 
@@ -50,6 +50,22 @@ def test_plot_product_resolves_inside_the_products_dock(main_window, qtbot):
     widget = target[0] if isinstance(target, tuple) else target
     assert isinstance(widget, QTreeView)
     qtbot.waitUntil(dw.isVisible, timeout=1000)
+
+
+def test_plot_product_is_skipped_once_the_panel_already_shows_something(main_window):
+    """Plotting from the search box at the previous step makes the drag
+    step pointless; it must not show up (nor flash) in that case."""
+    from PySide6.QtCore import QObject
+
+    class _FakePlot(QObject):
+        def __init__(self):
+            super().__init__()
+            self.setObjectName("Plot")
+
+    plot = _FakePlot()
+    panel = type("FakePanel", (), {"plots": lambda self: [plot]})()
+    context = {"create_panel": panel}
+    assert _steps()["plot_product"].resolver(main_window, context) is None
 
 
 def test_getting_started_is_registered_once():

@@ -24,7 +24,7 @@ class _PlotListSettled(QObject):
     list has stopped changing for _SETTLE_MS. A drag-and-drop keeps
     churning the list (placeholder waves, a re-created plot) for a while
     after the first real plot shows up, so reacting to that first
-    sighting fired too early. A panel that already has a plot is ready."""
+    sighting fired too early."""
 
     ready = Signal(object)
 
@@ -37,8 +37,6 @@ class _PlotListSettled(QObject):
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self._on_settled)
         panel.plot_list_changed.connect(self._on_plot_list_changed)
-        if any(_is_real_plot(p) for p in panel.plots()):
-            QTimer.singleShot(0, self._on_settled)
 
     def _on_plot_list_changed(self, plots) -> None:
         if any(_is_real_plot(p) for p in plots):
