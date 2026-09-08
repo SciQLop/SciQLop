@@ -190,7 +190,8 @@ def test_manager_jump_mode_sets_time_range_on_select(qtbot, qapp):
 
     event = provider.events(cat)[0]
     event_duration = event.stop.timestamp() - event.start.timestamp()
-    margin = event_duration * 4.5
+    margin = event_duration * (manager.jump_zoom_out_factor - 1) / 2
+    assert manager.jump_zoom_out_factor == 2.0
 
     manager.select_event(event)
 
@@ -230,11 +231,11 @@ def test_manager_jump_mode_zero_duration_event(qtbot, qapp):
     assert abs(tr.stop() - (t.timestamp() + 3600)) < 1.0
 
 
-def test_manager_jump_mode_zero_duration_event_click(qtbot, qapp):
-    """Reproducer (2026-06-09 review): clicking a zero-duration event's span in
-    JUMP mode computed a zero-width time range, which SciQLopPlots silently
-    ignores — the jump did nothing. Must fall back to a 1h margin like
-    select_event does."""
+def test_manager_jump_mode_does_not_jump_on_span_click(qtbot, qapp):
+    """Jump is for picking an event in the catalog list; clicking a span on
+    the plot must only select it (2026-09-08). Before, the click re-centered
+    the panel on the span under the cursor, which felt like the plot
+    fighting the user."""
     from SciQLop.components.catalogs.backend.panel_manager import (
         PanelCatalogManager, InteractionMode,
     )
@@ -254,15 +255,15 @@ def test_manager_jump_mode_zero_duration_event_click(qtbot, qapp):
     manager.add_catalog(cat)
     manager.mode = InteractionMode.JUMP
 
-    t = datetime(2020, 6, 15, 12, 0, tzinfo=timezone.utc)
-    zero_event = CatalogEvent(uuid="zero-dur-click", start=t, stop=t)
+    before = panel.time_range
+    clicked = []
+    manager.event_clicked.connect(clicked.append)
 
-    manager._on_event_clicked(zero_event)
+    manager._on_event_clicked(provider.events(cat)[0])
 
     tr = panel.time_range
-    assert tr.stop() - tr.start() > 0
-    assert abs(tr.start() - (t.timestamp() - 3600)) < 1.0
-    assert abs(tr.stop() - (t.timestamp() + 3600)) < 1.0
+    assert abs(tr.start() - before.start()) < 1.0 and abs(tr.stop() - before.stop()) < 1.0
+    assert len(clicked) == 1
 
 
 def test_manager_view_mode_does_not_jump(qtbot, qapp):
@@ -497,3 +498,62 @@ def test_edit_target_survives_adding_another_catalog(qtbot, qapp):
     manager.add_catalog(cat_c)
 
     assert chrome.selected_target() == cat_b.uuid
+
+
+def _jump_setup(qtbot, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "SciQLop.components.settings.backend.entry.SCIQLOP_CONFIG_DIR", str(tmp_path))
+    from SciQLop.components.catalogs.backend.panel_manager import InteractionMode
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.plotting.ui.panel_container import PanelContainer
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    panel = TimeSyncPanel("jump-panel",
+                          time_range=TimeRange(base.timestamp(), (base + timedelta(days=200)).timestamp()))
+    container = PanelContainer(panel)
+    qtbot.addWidget(container)
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=3, name="JumpProv")
+    cat = provider.catalogs()[0]
+    panel.catalog_manager.add_catalog(cat)
+    panel.catalog_manager.mode = InteractionMode.JUMP
+    return panel, container, provider.events(cat)[0]
+
+
+def test_zoom_out_spinbox_is_visible_only_in_jump_mode(qtbot, qapp, tmp_path, monkeypatch):
+    from SciQLop.components.catalogs.backend.panel_manager import InteractionMode
+    panel, container, _ = _jump_setup(qtbot, tmp_path, monkeypatch)
+    chrome = container.catalog_chrome
+    assert not chrome._zoom_out_spin.isHidden()
+    panel.catalog_manager.mode = InteractionMode.VIEW
+    assert chrome._zoom_out_spin.isHidden()
+    panel.catalog_manager.mode = InteractionMode.EDIT
+    assert chrome._zoom_out_spin.isHidden()
+
+
+def test_zoom_out_factor_from_chrome_drives_the_jump_and_is_persisted(qtbot, qapp, tmp_path, monkeypatch):
+    from SciQLop.components.catalogs.backend.jump_settings import CatalogJumpSettings
+    panel, container, event = _jump_setup(qtbot, tmp_path, monkeypatch)
+    chrome = container.catalog_chrome
+    chrome._zoom_out_spin.setValue(4.0)
+    assert panel.catalog_manager.jump_zoom_out_factor == 4.0
+
+    panel.catalog_manager.select_event(event)
+
+    duration = event.stop.timestamp() - event.start.timestamp()
+    tr = panel.time_range
+    assert abs((tr.stop() - tr.start()) - 4.0 * duration) < 1.0
+    assert abs((tr.start() + tr.stop()) / 2 - (event.start.timestamp() + event.stop.timestamp()) / 2) < 1.0
+    assert CatalogJumpSettings().zoom_out_factor == 4.0
+
+
+def test_new_chrome_starts_from_the_persisted_zoom_out_factor(qtbot, qapp, tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "SciQLop.components.settings.backend.entry.SCIQLOP_CONFIG_DIR", str(tmp_path))
+    from SciQLop.components.catalogs.backend.jump_settings import CatalogJumpSettings
+    from SciQLop.components.plotting.ui.catalog_chrome import CatalogChrome
+    with CatalogJumpSettings() as s:
+        s.zoom_out_factor = 3.0
+    chrome = CatalogChrome()
+    qtbot.addWidget(chrome)
+    assert chrome.zoom_out_factor == 3.0

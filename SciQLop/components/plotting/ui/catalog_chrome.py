@@ -1,5 +1,5 @@
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QComboBox, QLabel
+from PySide6.QtWidgets import QWidget, QHBoxLayout, QComboBox, QLabel, QDoubleSpinBox
 
 from SciQLop.core.ui import fit_combo_to_content
 from SciQLop.core.ui.tooltips import rich_tooltip
@@ -14,23 +14,42 @@ def _make_mode_combo(parent):
         w.addItem(label, userData=value)
     w.setToolTip(rich_tooltip(
         "Catalog interaction mode",
-        "View: click an event to select it. Jump: click an event to "
-        "center the panel on it. Edit: hold Shift and click to start a "
-        "new event, move, then click again to finish (Esc cancels).",
+        "View: click an event to select it. Jump: picking an event in the "
+        "catalog list sets the panel range to it (zoom-out factor on the "
+        "right). Edit: hold Shift and click to start a new event, move, "
+        "then click again to finish (Esc cancels).",
         "Ctrl+Shift+M"))
     fit_combo_to_content(w)
     return w
 
 
-class CatalogChrome(QWidget):
-    """Per-panel catalog controls: interaction mode + target catalog for span creation.
+def _make_zoom_out_spin(parent):
+    from SciQLop.components.catalogs.backend.jump_settings import CatalogJumpSettings
+    w = QDoubleSpinBox(parent)
+    w.setRange(1.0, 100.0)
+    w.setSingleStep(0.5)
+    w.setDecimals(1)
+    w.setPrefix("\u00d7")
+    w.setValue(CatalogJumpSettings().zoom_out_factor)
+    w.setToolTip(rich_tooltip(
+        "Jump zoom-out factor",
+        "Visible range around the picked event, as a multiple of its "
+        "duration. 1 fills the panel with the event; 2 leaves half an "
+        "event of margin on each side."))
+    return w
 
-    The target combo is shown only while it has content (typically while in
-    edit mode with at least one editable catalog loaded).
+
+class CatalogChrome(QWidget):
+    """Per-panel catalog controls: interaction mode, jump zoom-out factor,
+    target catalog for span creation.
+
+    The zoom-out spinbox is shown only in jump mode; the target combo only
+    while it has content (edit mode with at least one editable catalog).
     """
 
     mode_changed = Signal(str)
     target_changed = Signal(str)
+    zoom_out_changed = Signal(float)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -45,13 +64,25 @@ class CatalogChrome(QWidget):
             "Target catalog",
             "Catalog that newly created events are added to."))
         self._target_combo.setVisible(False)
+        self._zoom_out_spin = _make_zoom_out_spin(self)
 
         layout.addWidget(self._mode_label)
         layout.addWidget(self._mode_combo)
+        layout.addWidget(self._zoom_out_spin)
         layout.addWidget(self._target_combo)
 
         self._mode_combo.currentIndexChanged.connect(self._on_mode_changed)
+        self._mode_combo.currentIndexChanged.connect(self._sync_zoom_out_visibility)
         self._target_combo.currentIndexChanged.connect(self._on_target_changed)
+        self._zoom_out_spin.valueChanged.connect(self.zoom_out_changed)
+        self._sync_zoom_out_visibility()
+
+    @property
+    def zoom_out_factor(self) -> float:
+        return self._zoom_out_spin.value()
+
+    def _sync_zoom_out_visibility(self, *_):
+        self._zoom_out_spin.setVisible(self.mode == "jump")
 
     @property
     def mode(self) -> str:
@@ -65,6 +96,7 @@ class CatalogChrome(QWidget):
                     self._mode_combo.blockSignals(True)
                     self._mode_combo.setCurrentIndex(i)
                     self._mode_combo.blockSignals(False)
+                    self._sync_zoom_out_visibility()
                 return
 
     def cycle_mode(self) -> None:

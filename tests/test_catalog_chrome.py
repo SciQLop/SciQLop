@@ -77,6 +77,7 @@ def test_mode_combo_tooltip_documents_the_edit_gesture(chrome):
     tooltip = chrome._mode_combo.toolTip()
     assert "Shift" in tooltip
     assert "click again" in tooltip
+    assert "list" in tooltip and "center the panel" not in tooltip
 
 
 def test_cycle_mode_advances_view_jump_edit_view(chrome, qtbot):

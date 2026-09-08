@@ -101,13 +101,22 @@ class PanelCatalogManager(QObject):
     def overlay(self, catalog_uuid: str) -> CatalogOverlay | None:
         return self._overlays.get(catalog_uuid)
 
-    def _jump_to_event(self, event: CatalogEvent, margin_factor: float) -> None:
+    @property
+    def jump_zoom_out_factor(self) -> float:
+        """Visible range around a picked event as a multiple of its duration."""
+        chrome = self._catalog_chrome()
+        if chrome is not None:
+            return chrome.zoom_out_factor
+        from SciQLop.components.catalogs.backend.jump_settings import CatalogJumpSettings
+        return CatalogJumpSettings().zoom_out_factor
+
+    def _jump_to_event(self, event: CatalogEvent) -> None:
         from SciQLop.core import TimeRange
         duration = event.stop.timestamp() - event.start.timestamp()
         if duration <= 0:
             margin = 3600.0  # 1 hour fallback for zero-duration events
         else:
-            margin = duration * margin_factor
+            margin = duration * (self.jump_zoom_out_factor - 1) / 2
         self._panel.time_range = TimeRange(
             event.start.timestamp() - margin,
             event.stop.timestamp() + margin,
@@ -117,7 +126,7 @@ class PanelCatalogManager(QObject):
         for overlay in self._overlays.values():
             overlay.select_event(event)
         if self._mode == InteractionMode.JUMP:
-            self._jump_to_event(event, margin_factor=4.5)
+            self._jump_to_event(event)
 
     def build_catalogs_menu(self, parent_menu: QMenu) -> QMenu:
         menu = parent_menu.addMenu("Catalogs")
@@ -191,9 +200,16 @@ class PanelCatalogManager(QObject):
         if chrome is not None and not self._bar_connected:
             chrome.target_changed.connect(lambda _: self._apply_span_creation_state())
             chrome.mode_changed.connect(self._on_chrome_mode_changed)
+            chrome.zoom_out_changed.connect(self._on_zoom_out_changed)
             chrome.mode = self._mode.value
             self._bar_connected = True
         return chrome
+
+    @staticmethod
+    def _on_zoom_out_changed(value: float) -> None:
+        from SciQLop.components.catalogs.backend.jump_settings import CatalogJumpSettings
+        with CatalogJumpSettings() as settings:
+            settings.zoom_out_factor = value
 
     def _on_chrome_mode_changed(self, value: str) -> None:
         try:
@@ -244,6 +260,4 @@ class PanelCatalogManager(QObject):
         cat.provider.add_event(cat, event)
 
     def _on_event_clicked(self, event: CatalogEvent) -> None:
-        if self._mode == InteractionMode.JUMP:
-            self._jump_to_event(event, margin_factor=0.5)
         self.event_clicked.emit(event)
