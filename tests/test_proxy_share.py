@@ -105,18 +105,19 @@ def test_no_speasy_graph_gives_no_url(qtbot):
     assert proxy_plot_url(p, "http://x/cache") is None
 
 
-def test_export_share_menu_gets_proxy_actions(panel, qtbot, monkeypatch):
-    from PySide6.QtGui import QGuiApplication
+def test_export_share_menu_opens_proxy_url_in_browser(panel, qtbot, monkeypatch):
     from PySide6.QtWidgets import QMenu
     from SciQLop.components.plotting.ui import time_sync_panel as tsp
 
+    opened = []
     monkeypatch.setattr(tsp, "_speasy_proxy_url", lambda: "http://proxy/cache")
+    monkeypatch.setattr(tsp.QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
     menu = QMenu()
     tsp.TimeSyncPanel._add_proxy_share_actions(panel, menu)
     labels = [a.text() for a in menu.actions() if not a.isSeparator()]
-    assert labels == ["Copy Speasy proxy plot URL", "Open in Speasy proxy…"]
-    menu.actions()[1].trigger()
-    assert QGuiApplication.clipboard().text().startswith("http://proxy/cache/plot?config=")
+    assert labels == ["Open in Speasy proxy"]
+    menu.actions()[-1].trigger()
+    assert len(opened) == 1 and opened[0].startswith("http://proxy/cache/plot?config=")
 
 
 def test_export_share_menu_hides_proxy_actions_without_speasy_graphs(qtbot, monkeypatch):

@@ -4,7 +4,7 @@ import math
 import time as _time
 import numpy as np
 from PySide6.QtCore import QMimeData, QObject, QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QGuiApplication, QIcon
+from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import QWidget
 from PySide6.QtGui import QColor
 from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
@@ -1172,8 +1172,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         if url is None:
             return
         menu.addSeparator()
-        menu.addAction("Copy Speasy proxy plot URL", lambda: QGuiApplication.clipboard().setText(url))
-        menu.addAction("Open in Speasy proxy\u2026", lambda: QDesktopServices.openUrl(QUrl(url)))
+        menu.addAction("Open in Speasy proxy", lambda: QDesktopServices.openUrl(QUrl(url)))
 
     def _build_templates_menu(self, menu):
         from PySide6.QtWidgets import QMenu
