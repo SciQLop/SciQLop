@@ -254,7 +254,12 @@ private:
         // at least one window in FLTK's Fl_X list for the whole session, so
         // dismiss()'s hide() of the real splash window never leaves Fl::run()
         // with zero windows and returning early (see the Dismiss case below).
+        // border(0) matters as much as the off-screen position: without it
+        // this is a normal decorated top-level window, and Windows pulls
+        // fully off-screen decorated windows back on screen (observed as an
+        // empty title bar stuck in the corner for the whole session).
         keepalive_ = new Fl_Window(-10000, -10000, 1, 1);
+        keepalive_->border(0);
 
         window_ = new Fl_Window(WIDTH, IMAGE_H + STRIP_H, "SciQLop \xe2\x80\x94 starting");
         window_->color(rgb(13, 15, 20));
