@@ -1,11 +1,19 @@
+"""Panel model: the one description of "what is in this panel" shared by
+every exporter (template files, Python reproducer snippets, Speasy proxy
+URL) and importer. ``from_panel`` is the single walker over the Qt objects;
+everything else maps to and from this model.
+"""
 from __future__ import annotations
 
+import math
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Optional
 
 from pydantic import BaseModel, PrivateAttr
 
 from SciQLop.components.sciqlop_logging import getLogger
+from SciQLop.core.graph_context import GraphContext, context_of, graph_name
 
 log = getLogger(__name__)
 
@@ -16,8 +24,19 @@ class TimeRangeModel(BaseModel):
 
 
 class ProductModel(BaseModel):
+    """One plottable. ``path`` is the product-tree path (``a//b//c``), empty
+    when the graph can't be reproduced from a product (static data, function
+    plots). The remaining fields carry the graph's provenance."""
     path: str
     label: str = ""
+    kind: Optional[str] = None
+    speasy_id: Optional[str] = None
+    graph_type: str = ""
+    knobs: dict[str, Any] = {}
+
+    @property
+    def is_colormap(self) -> bool:
+        return "ColorMap" in self.graph_type
 
 
 class AxisModel(BaseModel):
@@ -57,7 +76,7 @@ class PanelTemplate(BaseModel):
     name: str
     description: str = ""
     version: int = 1
-    time_range: TimeRangeModel
+    time_range: Optional[TimeRangeModel] = None
     plots: list[PlotModel]
     intervals: list[IntervalModel] = []
     max_zoom_seconds: float | None = None
@@ -94,30 +113,21 @@ class PanelTemplate(BaseModel):
 
     @staticmethod
     def from_panel(panel) -> PanelTemplate:
-        tr = panel.time_range
-        time_range = TimeRangeModel(
-            start=datetime.fromtimestamp(tr.start(), tz=timezone.utc).isoformat(),
-            stop=datetime.fromtimestamp(tr.stop(), tz=timezone.utc).isoformat(),
-        )
+        from SciQLop.components.plotting.panel_introspection import ordered_plots, plot_graphs
         plots = []
-        for plot in panel.plots():
-            products = []
-            for graph in plot.plottables():
-                path = graph.property("sqp_product_path")
-                if path:
-                    products.append(ProductModel(path=path, label=graph.name))
-                else:
-                    log.warning(f"Skipping graph without sqp_product_path: {graph.name}")
-            if products:
-                y_axis = PanelTemplate._capture_axis(plot.y_axis())
-                z_axis = PanelTemplate._capture_axis(plot.z_axis())
-                plots.append(PlotModel(products=products, y_axis=y_axis, z_axis=z_axis))
-        max_zoom = _read_max_zoom(panel)
+        for plot in ordered_plots(panel):
+            graphs = plot_graphs(plot)
+            if graphs:
+                plots.append(PlotModel(
+                    products=[product_model(g) for g in graphs],
+                    y_axis=PanelTemplate._capture_axis(plot.y_axis()),
+                    z_axis=PanelTemplate._capture_axis(plot.z_axis()),
+                ))
         return PanelTemplate(
             name=panel.windowTitle() or panel.objectName(),
-            time_range=time_range,
+            time_range=_time_range_model(panel),
             plots=plots,
-            max_zoom_seconds=max_zoom,
+            max_zoom_seconds=_read_max_zoom(panel),
         )
 
     def create_panel(self, main_window, source_path: str | None = None):
@@ -135,6 +145,9 @@ class PanelTemplate(BaseModel):
         for plot_model in self.plots:
             subplot = None
             for product in plot_model.products:
+                if not product.path:
+                    log.warning(f"Not reproducible from a product, skipping: {product.label}")
+                    continue
                 resolved = resolve_product_path(product.path)
                 if subplot is None:
                     r = plot_product(panel, resolved, plot_type=_PlotType.TimeSeries)
@@ -154,10 +167,47 @@ class PanelTemplate(BaseModel):
                 plot.time_axis().set_max_range_size(self.max_zoom_seconds)
             if hasattr(panel, '_time_range_bar') and panel._time_range_bar is not None:
                 panel._time_range_bar.max_range_seconds = self.max_zoom_seconds
-        panel.set_time_axis_range(TR(
-            datetime.fromisoformat(self.time_range.start).timestamp(),
-            datetime.fromisoformat(self.time_range.stop).timestamp(),
-        ))
+        if self.time_range is not None:
+            panel.set_time_axis_range(TR(
+                datetime.fromisoformat(self.time_range.start).timestamp(),
+                datetime.fromisoformat(self.time_range.stop).timestamp(),
+            ))
+
+
+def _time_range_model(panel) -> Optional[TimeRangeModel]:
+    """None while the panel has no finite range yet (fresh panel before its
+    first plot)."""
+    r = panel.time_axis_range()
+    start, stop = float(r.start()), float(r.stop())
+    if not (math.isfinite(start) and math.isfinite(stop)):
+        return None
+    return TimeRangeModel(
+        start=datetime.fromtimestamp(start, tz=timezone.utc).isoformat(),
+        stop=datetime.fromtimestamp(stop, tz=timezone.utc).isoformat(),
+    )
+
+
+def product_model(graph) -> ProductModel:
+    ctx = context_of(graph)
+    if ctx is None:
+        return ProductModel(path=graph.property("sqp_product_path") or "",
+                            label=graph_name(graph))
+    return ProductModel(path=context_product_path(ctx), label=graph_name(graph),
+                        kind=ctx.kind, speasy_id=ctx.speasy_id,
+                        graph_type=ctx.graph_type, knobs=dict(ctx.knobs))
+
+
+def context_product_path(ctx: GraphContext) -> str:
+    """Product-tree path (``a//b//c``, no implicit ``root``) a graph can be
+    re-plotted from, or "" for function/static graphs."""
+    from SciQLop.core.snippets import format_product_path
+    if ctx.kind == "speasy":
+        return format_product_path(ctx.product_path) or (ctx.speasy_id or "")
+    if ctx.kind == "vp":
+        if ctx.product_path:
+            return format_product_path(ctx.product_path)
+        return format_product_path(ctx.vp_path.split("/")) if ctx.vp_path else ""
+    return ""
 
 
 _TEMPLATE_EXTENSIONS = ('.json', '.yaml', '.yml')

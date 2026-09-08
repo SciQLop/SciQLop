@@ -20,8 +20,9 @@ from __future__ import annotations
 from PySide6.QtGui import QGuiApplication
 
 from SciQLop.core.graph_context import context_of, graph_name, provider_for
+from SciQLop.components.plotting.panel_introspection import ordered_plots, plot_graphs
 from SciQLop.components.plotting.ui.graph_context_snippets import (
-    ordered_plots, panel_reproducer_snippet, plot_graphs, plot_reproducer_snippet,
+    panel_reproducer_snippet, plot_reproducer_snippet,
 )
 
 

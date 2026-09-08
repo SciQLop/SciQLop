@@ -1,32 +1,33 @@
-"""Share a panel as a speasy-proxy ``/plot?config=…`` URL, and rebuild a
-panel from such a URL.
+"""Speasy proxy ``/plot?config=…`` URLs, both ways, mapped through the shared
+``PanelTemplate`` model.
 
 Schema v1 of the proxy's interactive plot page (see speasy_proxy
 ``docs/plans/2026-03-08-multi-plot-design.md``): a base64url-encoded JSON
 config with the time range and one entry per subplot listing its products.
-Only Speasy-backed graphs are shareable — the proxy can't evaluate virtual
-products, functions or static data, so those graphs are left out.
+Only Speasy-backed products are shareable — the proxy can't evaluate virtual
+products, functions or static data, so those are left out.
 """
 from __future__ import annotations
 
 import base64
 import binascii
 import json
-import math
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Iterable, Optional
 from urllib.parse import parse_qs, urlsplit
 
-from SciQLopPlots import ProductsModel, PlotType
+from SciQLopPlots import ProductsModel
 
 from SciQLop.components import sciqlop_logging
-from SciQLop.core import TimeRange
-from SciQLop.core.graph_context import context_of, graph_name
-from SciQLop.components.plotting.ui.graph_context_snippets import ordered_plots, plot_graphs
+from SciQLop.components.plotting.panel_template import (
+    AxisModel, PanelTemplate, PlotModel, ProductModel, TimeRangeModel,
+)
 
 log = sciqlop_logging.getLogger(__name__)
 
+
+# --- panel → proxy URL ---------------------------------------------------------
 
 def proxy_plot_url(panel, base_url: str) -> Optional[str]:
     config = proxy_plot_config(panel)
@@ -36,49 +37,36 @@ def proxy_plot_url(panel, base_url: str) -> Optional[str]:
 
 
 def proxy_plot_config(panel) -> Optional[dict]:
-    time_range = _iso_range(panel)
-    plots = [cfg for cfg in map(_plot_config, ordered_plots(panel)) if cfg]
-    if time_range is None or not plots:
+    return proxy_config_from_template(PanelTemplate.from_panel(panel))
+
+
+def proxy_config_from_template(template: PanelTemplate) -> Optional[dict]:
+    plots = [cfg for cfg in map(_plot_config, template.plots) if cfg]
+    if template.time_range is None or not plots:
         return None
+    time_range = {"start": _iso_z(template.time_range.start), "stop": _iso_z(template.time_range.stop)}
     return {"version": 1, "time_range": time_range, "plots": plots}
 
 
-def _plot_config(plot) -> Optional[dict]:
-    graphs = plot_graphs(plot)
-    products = [p for p in map(_product, graphs) if p]
+def _plot_config(plot: PlotModel) -> Optional[dict]:
+    products = [_product_config(p) for p in plot.products if p.kind == "speasy" and p.speasy_id]
     if not products:
         return None
-    config = {"products": products, "y_axis": {"log": bool(plot.y_axis().log())}}
-    if any(_is_colormap(g) for g in graphs):
-        config["log_z"] = bool(plot.z_axis().log())
+    config = {"products": products, "y_axis": {"log": plot.y_axis.log}}
+    if any(p.is_colormap for p in plot.products):
+        config["log_z"] = plot.z_axis.log
     return config
 
 
-def _product(graph) -> Optional[dict]:
-    ctx = context_of(graph)
-    if ctx is None or ctx.kind != "speasy" or not ctx.speasy_id:
-        return None
-    product = {"path": ctx.speasy_id, "label": graph_name(graph)}
-    if ctx.knobs:
-        product["product_inputs"] = dict(ctx.knobs)
-    return product
+def _product_config(product: ProductModel) -> dict:
+    config = {"path": product.speasy_id, "label": product.label}
+    if product.knobs:
+        config["product_inputs"] = dict(product.knobs)
+    return config
 
 
-def _is_colormap(graph) -> bool:
-    ctx = context_of(graph)
-    return ctx is not None and "ColorMap" in ctx.graph_type
-
-
-def _iso_range(panel) -> Optional[dict]:
-    """``{"start", "stop"}`` as ISO-8601 Z strings, or None while the panel
-    has no finite range yet (fresh panel before its first plot)."""
-    r = panel.time_axis_range()
-    start, stop = float(r.start()), float(r.stop())
-    if not (math.isfinite(start) and math.isfinite(stop)):
-        return None
-    fmt = "%Y-%m-%dT%H:%M:%SZ"
-    return {"start": datetime.fromtimestamp(start, tz=timezone.utc).strftime(fmt),
-            "stop": datetime.fromtimestamp(stop, tz=timezone.utc).strftime(fmt)}
+def _iso_z(iso: str) -> str:
+    return datetime.fromisoformat(iso).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _base64url(config: dict) -> str:
@@ -86,7 +74,7 @@ def _base64url(config: dict) -> str:
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
 
 
-# --- proxy URL → panel -------------------------------------------------------
+# --- proxy URL → panel ---------------------------------------------------------
 
 def proxy_plot_config_from_text(text: str) -> Optional[dict]:
     """Decode a pasted proxy plot URL (or a bare ``config=…``) into a config
@@ -141,55 +129,38 @@ def speasy_product_paths(speasy_ids: Iterable[str], root=None) -> dict[str, list
 
 
 def apply_proxy_config(panel, config: dict) -> list[str]:
-    """Rebuild ``config`` in ``panel``: set the time range, then one subplot
-    per entry with its products. Returns the speasy ids that could not be
-    plotted (unknown product or provider failure)."""
-    panel.time_range = TimeRange(config["time_range"]["start"], config["time_range"]["stop"])
+    """Rebuild ``config`` in ``panel``. Returns the speasy ids that are not in
+    the product tree (they are left out)."""
+    template, skipped = template_from_proxy_config(config)
+    if skipped:
+        log.warning("proxy config: products not in the tree: %s", ", ".join(skipped))
+    template.apply(panel)
+    return skipped
+
+
+def template_from_proxy_config(config: dict) -> tuple[PanelTemplate, list[str]]:
     ids = [p["path"] for entry in config["plots"] for p in entry.get("products", []) if p.get("path")]
     paths = speasy_product_paths(ids)
-    skipped: list[str] = []
-    for entry in config["plots"]:
-        skipped.extend(_apply_subplot(panel, entry, paths))
-    if skipped:
-        log.warning("proxy config: products not plotted: %s", ", ".join(skipped))
-    return skipped
+    plots = [plot for plot in (_plot_model(entry, paths) for entry in config["plots"]) if plot.products]
+    template = PanelTemplate(
+        name="Speasy proxy",
+        time_range=TimeRangeModel(start=config["time_range"]["start"], stop=config["time_range"]["stop"]),
+        plots=plots,
+    )
+    return template, [i for i in ids if i not in paths]
 
 
-def _apply_subplot(panel, entry: dict, paths: dict[str, list[str]]) -> list[str]:
-    skipped: list[str] = []
-    index: Optional[int] = None
-    for product in entry.get("products", []):
-        speasy_id = product.get("path")
-        path = paths.get(speasy_id)
-        result = _plot_product_on(panel, path, index) if path else None
-        if result is None:
-            skipped.append(speasy_id)
-            continue
-        if index is None:
-            index = len(panel.plots()) - 1
-    if index is not None:
-        _apply_axis_scales(ordered_plots(panel)[index], entry)
-    return skipped
+def _plot_model(entry: dict, paths: dict[str, list[str]]) -> PlotModel:
+    products = [_product_model(p, paths[p["path"]]) for p in entry.get("products", [])
+                if p.get("path") in paths]
+    return PlotModel(
+        products=products,
+        y_axis=AxisModel(log=bool((entry.get("y_axis") or {}).get("log", False))),
+        z_axis=AxisModel(log=bool(entry.get("log_z", False))),
+    )
 
 
-def _plot_product_on(panel, path: list[str], index: Optional[int]):
-    try:
-        if index is None:
-            return _plot_product(panel, path, plot_type=PlotType.TimeSeries)
-        return _plot_product(panel, path, index=index)
-    except Exception:
-        log.warning("proxy config: plotting %s failed", path, exc_info=True)
-        return None
-
-
-def _plot_product(panel, path: list[str], **kwargs):
-    from SciQLop.components.plotting.ui.time_sync_panel import plot_product
-    return plot_product(panel, path, **kwargs)
-
-
-def _apply_axis_scales(plot, entry: dict) -> None:
-    y_log = (entry.get("y_axis") or {}).get("log")
-    if y_log is not None:
-        plot.y_axis().set_log(bool(y_log))
-    if entry.get("log_z") is not None:
-        plot.z_axis().set_log(bool(entry["log_z"]))
+def _product_model(product: dict, path: list[str]) -> ProductModel:
+    return ProductModel(path="//".join(path), label=product.get("label") or product["path"],
+                        kind="speasy", speasy_id=product["path"],
+                        knobs=dict(product.get("product_inputs") or {}))

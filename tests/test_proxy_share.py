@@ -30,6 +30,12 @@ class _FakePanel(QWidget):
     def time_axis_range(self):
         return self._range
 
+    def set_time_axis_range(self, tr):
+        self.time_range = tr
+
+    def clear(self):
+        pass
+
 
 def _graph(plot, name, **meta):
     base = {"graph_id": name, "panel_name": "P", "plot_index": 0, "graph_type": "Line"}
@@ -192,7 +198,7 @@ def test_speasy_product_paths_resolves_ids_in_one_tree_walk():
 
 
 def test_apply_proxy_config_sets_range_and_plots_products(qtbot, monkeypatch):
-    from SciQLop.components.plotting.ui import proxy_share
+    from SciQLop.components.plotting.ui import proxy_share, time_sync_panel
     from SciQLop.components.plotting.ui.proxy_share import apply_proxy_config
 
     panel = _FakePanel([], start=0.0, stop=1.0)
@@ -200,15 +206,15 @@ def test_apply_proxy_config_sets_range_and_plots_products(qtbot, monkeypatch):
     calls = []
 
     def fake_plot_product(target, path, **kwargs):
-        calls.append((path, kwargs))
-        if "index" in kwargs:
+        calls.append((path, target))
+        if target is not panel:
             return ("existing", "graph")
         plot = SciQLopPlot()
         plot.setObjectName(f"plot{len(panel.plots())}")
         plot.setParent(panel)
         return (plot, "graph")
 
-    monkeypatch.setattr(proxy_share, "_plot_product", fake_plot_product)
+    monkeypatch.setattr(time_sync_panel, "plot_product", fake_plot_product)
     monkeypatch.setattr(proxy_share, "speasy_product_paths",
                         lambda ids, root=None: {"amda/imf": ["root", "speasy", "amda", "imf"],
                                                 "cda/DS/spec": ["root", "speasy", "cda", "spec"]})
@@ -218,35 +224,38 @@ def test_apply_proxy_config_sets_range_and_plots_products(qtbot, monkeypatch):
     assert (panel.time_range.start(), panel.time_range.stop()) == (1577836800.0, 1577923200.0)
     assert [c[0] for c in calls] == [["root", "speasy", "amda", "imf"],
                                      ["root", "speasy", "cda", "spec"]]
-    assert "index" not in calls[0][1] and "index" not in calls[1][1]
+    assert all(c[1] is panel for c in calls)
     plots = panel.plots()
     assert [p.y_axis().log() for p in plots] == [True, False]
     assert plots[1].z_axis().log() is True
 
 
 def test_apply_proxy_config_groups_products_on_the_same_subplot(qtbot, monkeypatch):
-    from SciQLop.components.plotting.ui import proxy_share
+    from SciQLop.components.plotting.ui import proxy_share, time_sync_panel
     from SciQLop.components.plotting.ui.proxy_share import apply_proxy_config
 
     panel = _FakePanel([], start=0.0, stop=1.0)
     qtbot.addWidget(panel)
     calls = []
 
-    def fake_plot_product(target, path, **kwargs):
-        calls.append((path[-1], kwargs.get("index")))
-        if "index" not in kwargs:
-            plot = SciQLopPlot()
-            plot.setParent(panel)
-        return ("plot", "graph")
+    plots = []
 
-    monkeypatch.setattr(proxy_share, "_plot_product", fake_plot_product)
+    def fake_plot_product(target, path, **kwargs):
+        if target is panel:
+            plots.append(SciQLopPlot())
+            plots[-1].setParent(panel)
+            target = None
+        calls.append((path[-1], target))
+        return (plots[-1], "graph")
+
+    monkeypatch.setattr(time_sync_panel, "plot_product", fake_plot_product)
     monkeypatch.setattr(proxy_share, "speasy_product_paths",
                         lambda ids, root=None: {i: ["root", "speasy", i] for i in ids})
     config = {"version": 1, "time_range": _CONFIG["time_range"],
               "plots": [{"products": [{"path": "a"}, {"path": "b"}]},
                         {"products": [{"path": "c"}]}]}
     assert apply_proxy_config(panel, config) == []
-    assert calls == [("a", None), ("b", 0), ("c", None)]
+    assert calls == [("a", None), ("b", plots[0]), ("c", None)]
 
 
 def test_overlay_emits_config_when_a_proxy_url_is_pasted(qtbot):
