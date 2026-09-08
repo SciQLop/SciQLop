@@ -206,8 +206,8 @@ class PlotPanel:
     @on_main_thread
     @_tracing.traced("PlotPanel.plot_product", cat="plot")
     def plot_product(self, product: AnyProductType, plot_index=-1, *,
-                     plot_type=_UNSET, graph_type=_UNSET, **kwargs) -> Tuple[
-            ProjectionPlot | TimeSeriesPlot, Plottable]:
+                     plot_type=_UNSET, graph_type=_UNSET, product_inputs=_UNSET,
+                     **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]:
         """Plot a product in the panel.
 
         Parameters
@@ -220,6 +220,10 @@ class PlotPanel:
             TimeSeries (default), Projection or XY.
         graph_type : GraphType, optional
             Line (default), Curve, ColorMap or Scatter.
+        product_inputs : dict, optional
+            Initial values for the product's parameters (the knobs shown in
+            the inspector), e.g. ``{"coordinate_system": "gsm"}`` for an SSC
+            trajectory or AMDA template parameters. Unknown names are ignored.
         **kwargs
             Forwarded to SciQLopPlots. Note: component labels, the graph name
             and log scales are supplied by the product's provider, so passing
@@ -229,7 +233,8 @@ class PlotPanel:
         -------
         Tuple[ProjectionPlot | TimeSeriesPlot, Plottable]
         """
-        kwargs = _with_explicit(kwargs, plot_type=plot_type, graph_type=graph_type)
+        kwargs = _with_explicit(kwargs, plot_type=plot_type, graph_type=graph_type,
+                                product_inputs=product_inputs)
         kwargs = _normalize_plot_kwargs(kwargs)
         _p, _g = plot_product_or_raise(self._get_impl_or_raise(), product, index=plot_index, **kwargs)
         wrapped_plot = to_plot(_p)

@@ -150,7 +150,7 @@ _CONFIG = {
         {"products": [{"path": "amda/imf", "label": "imf"},
                       {"path": "amda/missing", "label": "gone"}],
          "y_axis": {"log": True}},
-        {"products": [{"path": "cda/DS/spec", "label": "spec"}],
+        {"products": [{"path": "cda/DS/spec", "label": "spec", "product_inputs": {"method": "fast"}}],
          "y_axis": {"log": False}, "log_z": True},
     ],
 }
@@ -206,7 +206,7 @@ def test_apply_proxy_config_sets_range_and_plots_products(qtbot, monkeypatch):
     calls = []
 
     def fake_plot_product(target, path, **kwargs):
-        calls.append((path, target))
+        calls.append((path, target, kwargs.get("product_inputs")))
         if target is not panel:
             return ("existing", "graph")
         plot = SciQLopPlot()
@@ -225,6 +225,7 @@ def test_apply_proxy_config_sets_range_and_plots_products(qtbot, monkeypatch):
     assert [c[0] for c in calls] == [["root", "speasy", "amda", "imf"],
                                      ["root", "speasy", "cda", "spec"]]
     assert all(c[1] is panel for c in calls)
+    assert [c[2] for c in calls] == [None, {"method": "fast"}]
     plots = panel.plots()
     assert [p.y_axis().log() for p in plots] == [True, False]
     assert plots[1].z_axis().log() is True
@@ -302,3 +303,9 @@ def test_panel_reproducer_snippet_includes_colormap_graphs(colormap_panel):
     from SciQLop.components.plotting.ui.graph_context_snippets import panel_reproducer_snippet
     snippet = panel_reproducer_snippet(colormap_panel)
     assert snippet is not None and "cda/DS/spec" in snippet
+
+
+def test_panel_reproducer_snippet_passes_knobs_as_product_inputs(panel):
+    from SciQLop.components.plotting.ui.graph_context_snippets import panel_reproducer_snippet
+    snippet = panel_reproducer_snippet(panel)
+    assert 'panel.plot_product("cda/DS/spec", product_inputs={\'method\': \'fast\'})' in snippet

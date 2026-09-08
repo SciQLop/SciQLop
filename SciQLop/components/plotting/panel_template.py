@@ -148,14 +148,15 @@ class PanelTemplate(BaseModel):
                     log.warning(f"Not reproducible from a product, skipping: {product.label}")
                     continue
                 resolved = resolve_product_path(product.path)
+                inputs = {"product_inputs": product.knobs} if product.knobs else {}
                 if subplot is None:
-                    r = plot_product(panel, resolved, plot_type=_PlotType.TimeSeries)
+                    r = plot_product(panel, resolved, plot_type=_PlotType.TimeSeries, **inputs)
                     if r is not None:
                         subplot = r[0] if hasattr(r, '__iter__') else panel.plots()[-1]
                     else:
                         log.warning(f"Product not found, skipping: {product.path}")
                 else:
-                    r = plot_product(subplot, resolved)
+                    r = plot_product(subplot, resolved, **inputs)
                     if r is None:
                         log.warning(f"Product not found, skipping: {product.path}")
             if subplot is not None:

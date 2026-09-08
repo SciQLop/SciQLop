@@ -426,6 +426,19 @@ def _trigger_remote_refetch(graph):
     on_main_thread(_trigger_remote_refetch_impl)(graph)
 
 
+def _seed_product_inputs(graph, node, product_inputs: Optional[dict]) -> None:
+    """Apply caller-supplied parameter values once the graph is fully wired
+    (knob state + context), so the change reaches the data source and the
+    graph context exactly like an inspector edit."""
+    if not product_inputs:
+        return
+    state = getattr(graph, "_knob_state", None)
+    if state is None:
+        log.warning("product_inputs ignored: %s has no parameters", node)
+        return
+    state.set_all(dict(product_inputs))
+
+
 def _attach_knob_state(provider, node, callback, r, target=None):
     specs = []
     try:
@@ -580,13 +593,15 @@ def _resolve_plot_target(p, kwargs):
     return p, None
 
 
-def _post_plot(r, provider, node, callback, target, product_path_str, existing_plot):
+def _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
+               product_inputs: Optional[dict] = None):
     if not hasattr(r, '__iter__') and existing_plot is not None:
         r = (existing_plot, r)
     _set_product_path(r, product_path_str)
     callback._post_fetch = _register_graph_hints(provider, node, r, target)
     _attach_knob_state(provider, node, callback, r, target)
     _attach_graph_context(r, provider, node, target)
+    _seed_product_inputs(_graph_from_result(r), node, product_inputs)
     # Pin the ProductsModelNode's Python wrapper to the graph's lifetime.
     # Shiboken can otherwise GC the wrapper between plot setup and the
     # first async data-fetch, taking the C++ node with it (see
@@ -700,6 +715,8 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
     log.debug(f"Provider: {provider}")
     if provider is None:
         return None
+    # Parameter values for the product (knobs), never a SciQLopPlots kwarg.
+    product_inputs = kwargs.pop("product_inputs", None)
     from SciQLop.components.plotting.backend.remote.registry import remote_registry
     if remote_registry().is_remote(product):
         from SciQLop.components.plotting.backend.remote.plot_remote import plot_remote
@@ -711,6 +728,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
         channel = getattr(graph, "_remote_channel", None) if graph is not None else None
         if channel is not None:
             _attach_remote_knob_state(provider, node, channel, r, target)
+            _seed_product_inputs(graph, node, product_inputs)
         return r
     product_path_str = "//".join(product)
     target, existing_plot = _resolve_plot_target(p, kwargs)
@@ -727,13 +745,15 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
             r[1].set_name(node.display_name())
         else:
             r.set_name(node.display_name())
-        return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot)
+        return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
+                          product_inputs=product_inputs)
     if node.parameter_type() == ParameterType.Spectrogram:
         callback = _specgram_callback(provider, node)
         log.debug(f"Building spectrogram plot for {node.name()} with kwargs: {kwargs}")
         r = target.plot(callback, name=node.display_name(), graph_type=GraphType.ColorMap,
                         y_log_scale=True, z_log_scale=True, **kwargs)
-        return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot)
+        return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
+                          product_inputs=product_inputs)
     return None
 
 

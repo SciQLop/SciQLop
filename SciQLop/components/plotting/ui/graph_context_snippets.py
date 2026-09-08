@@ -36,10 +36,9 @@ def _plot_product_lines(products: list[ProductModel], plot_index: int) -> tuple[
                 "(function/static, not reproducible from a snippet)"
             )
             continue
-        kw = f", plot_index={plot_index}" if lines else ""
+        kw = f", product_inputs={product.knobs!r}" if product.knobs else ""
+        kw += f", plot_index={plot_index}" if lines else ""
         lines.append(f'panel.plot_product("{product.path}"{kw})')
-        if product.knobs:
-            lines.append(f"#   knobs at capture time: {product.knobs!r}")
     return lines, skipped
 
 
