@@ -64,13 +64,61 @@ def _patch_speasy_inventory_registration():
     _speasy_register_nodes_patched = True
 
 
-def _is_ssc_index(index) -> bool:
-    provider = getattr(index, "spz_provider", None)
-    return bool(provider) and provider() == "ssc"
+# Trajectory providers: x/y/z position time series whose per-request options
+# (frame, sampling) are top-level `spz.get_data` kwargs rather than AMDA-style
+# `product_inputs`. speasy doesn't model those options as ArgumentListIndex,
+# so the knobs are synthesized here; the table maps knob name → converter to
+# the value speasy expects.
+_TRAJECTORY_PROVIDERS = ("ssc", "UiowaEphTool", "cdpp3dview")
+_PROVIDER_KWARGS = {
+    "ssc": {"coordinate_system": str},
+    "cdpp3dview": {"coordinate_frame": str, "sampling": lambda v: str(int(v))},
+}
+_SSC_COORDINATE_KNOB = ChoiceKnob(
+    name="coordinate_system", label="Coordinate system", default="gse",
+    choices=(("GSE", "gse"), ("GSM", "gsm"), ("SM", "sm"), ("GEO", "geo"), ("GM", "gm"),
+             ("GEI_TOD", "gei_tod"), ("GEI_J_2000", "gei_j_2000")),
+)
+_3DVIEW_FALLBACK_FRAMES = ("J2000", "ECLIPJ2000", "HEE", "HEEQ", "HCI", "GSE", "GSM", "SM", "MAG",
+                           "GEO", "MSO", "VSO", "JSO", "KSO")
+_3DVIEW_SAMPLING_KNOB = IntKnob(name="sampling", label="Sampling (s)", default=600, min=1)
 
 
-def _speasy_id_is_ssc(speasy_id) -> bool:
-    return isinstance(speasy_id, str) and speasy_id.split("/", 1)[0] == "ssc"
+def _3dview_frames() -> list:
+    """Live frame list from the 3DView service, falling back to the usual
+    frames when the service (or the provider) is unavailable."""
+    provider = getattr(spz, "cdpp3dview", None)
+    try:
+        frames = provider.get_frames() if provider is not None else []
+    except Exception:
+        frames = []
+    return list(frames) or list(_3DVIEW_FALLBACK_FRAMES)
+
+
+def _3dview_frame_knob() -> ChoiceKnob:
+    return ChoiceKnob(name="coordinate_frame", label="Coordinate frame", default="J2000",
+                      choices=tuple((f, f) for f in _3dview_frames()))
+
+
+def _provider_knobs(index) -> List[KnobSpec]:
+    provider = index.spz_provider()
+    if provider == "ssc":
+        return [_SSC_COORDINATE_KNOB]
+    if provider == "cdpp3dview":
+        return [_3dview_frame_knob(), _3DVIEW_SAMPLING_KNOB]
+    return []
+
+
+def speasy_kwargs(speasy_id: str, knobs: Optional[dict]) -> dict:
+    """Split knob values into `spz.get_data` kwargs: provider options go
+    top-level (converted), everything else is an AMDA template parameter
+    under `product_inputs`."""
+    converters = _PROVIDER_KWARGS.get(str(speasy_id).split("/", 1)[0], {})
+    values = dict(knobs or {})
+    kwargs = {k: conv(values.pop(k)) for k, conv in converters.items() if k in values}
+    if values:
+        kwargs["product_inputs"] = values
+    return kwargs
 
 
 def _find_argument_list(index) -> Optional[ArgumentListIndex]:
@@ -168,7 +216,7 @@ def get_components(param: ParameterIndex) -> Optional[List[str]]:
         if param.LABLAXIS.startswith('['):
             return param.LABLAXIS.split(',')
         return [param.LABLAXIS]
-    if param.spz_provider() in ('ssc', 'UiowaEphTool'):
+    if param.spz_provider() in _TRAJECTORY_PROVIDERS:
         return ['x', 'y', 'z']
     return [param.spz_name()]
 
@@ -189,7 +237,7 @@ def data_serie_type(param: ParameterIndex):
         display_type = param.display_type
     elif hasattr(param, "DISPLAY_TYPE"):
         display_type = param.DISPLAY_TYPE
-    elif param.spz_provider() in ('ssc', 'UiowaEphTool'):
+    elif param.spz_provider() in _TRAJECTORY_PROVIDERS:
         display_type = 'timeseries'
     else:
         display_type = None
@@ -307,12 +355,13 @@ def _speasy_matplotlib_snippet(ctx, graph=None) -> str:
     """Standalone notebook snippet: speasy.get_data + matplotlib plot."""
     from SciQLop.core.snippets import render_snippet
     start_iso, stop_iso = _resolve_iso_range(graph)
+    kwargs = speasy_kwargs(ctx.speasy_id, ctx.knobs)
     return render_snippet(
         "notebook_matplotlib.j2",
         start_iso=start_iso,
         stop_iso=stop_iso,
         speasy_id=ctx.speasy_id,
-        knobs=repr(ctx.knobs) if ctx.knobs else None,
+        kwargs=", ".join(f"{k}={v!r}" for k, v in kwargs.items()),
     )
 
 
@@ -389,18 +438,7 @@ class SpeasyPlugin(DataProvider):
         index = self._resolve_index(product)
         if index is None:
             return []
-        out = []
-        # SSC products take a top-level `coordinate_system` kwarg in
-        # `spz.get_data` (default 'gse'); speasy doesn't model it as an
-        # ArgumentListIndex, so we synthesize the knob ourselves.
-        if _is_ssc_index(index):
-            out.append(ChoiceKnob(
-                name="coordinate_system", label="Coordinate system",
-                default="gse",
-                choices=(("GSE", "gse"), ("GSM", "gsm"), ("SM", "sm"),
-                         ("GEO", "geo"), ("GM", "gm"),
-                         ("GEI_TOD", "gei_tod"), ("GEI_J_2000", "gei_j_2000")),
-            ))
+        out = _provider_knobs(index)
         args_node = _find_argument_list(index)
         if args_node is not None:
             for arg in args_node:
@@ -412,16 +450,7 @@ class SpeasyPlugin(DataProvider):
     def get_data(self, product, start, stop, knobs=None):
         try:
             speasy_id = product.metadata("speasy_id") if hasattr(product, "metadata") else product
-            kwargs = {}
-            knob_values = dict(knobs) if knobs else {}
-            # Pull top-level speasy kwargs (currently only SSC's
-            # coordinate_system) out of the knob dict so they're not
-            # smuggled into product_inputs (AMDA template parameters).
-            coord = knob_values.pop("coordinate_system", None)
-            if coord is not None and _speasy_id_is_ssc(speasy_id):
-                kwargs["coordinate_system"] = coord
-            if knob_values:
-                kwargs["product_inputs"] = knob_values
+            kwargs = speasy_kwargs(speasy_id, knobs)
             with tracing.zone("speasy.get_data", cat="speasy",
                               speasy_id=str(speasy_id),
                               start=float(start), stop=float(stop),

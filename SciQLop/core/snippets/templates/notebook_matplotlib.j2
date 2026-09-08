@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 start = "{{ start_iso }}"
 stop  = "{{ stop_iso }}"
-v = spz.get_data("{{ speasy_id }}", start, stop{% if knobs %}, product_inputs={{ knobs }}{% endif %})
+v = spz.get_data("{{ speasy_id }}", start, stop{% if kwargs %}, {{ kwargs }}{% endif %})
 
 fig, ax = plt.subplots()
 v.plot(ax=ax)
