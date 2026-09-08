@@ -22,6 +22,7 @@ class PanelContainer(QWidget):
 
         panel._time_range_bar = self.time_range_bar
         panel._catalog_chrome = self.catalog_chrome
+        panel._crosshair_toggle = self.crosshair_toggle
 
         self._chrome = self._build_chrome_row()
         self._current_limit = self.time_range_bar.max_range_seconds

@@ -1126,11 +1126,21 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
         self._catalog_manager.build_catalogs_menu(menu)
+        self._add_crosshair_action(menu)
         menu.addSeparator()
         self._build_export_share_menu(menu)
         self._build_templates_menu(menu)
         self._append_knob_reset_actions(menu)
         return menu
+
+    def _add_crosshair_action(self, menu):
+        toggle = getattr(self, "_crosshair_toggle", None)
+        if toggle is None:
+            return
+        action = menu.addAction("Crosshair")
+        action.setCheckable(True)
+        action.setChecked(toggle.isChecked())
+        action.toggled.connect(toggle.setChecked)
 
     def _build_export_share_menu(self, menu):
         from PySide6.QtWidgets import QMenu

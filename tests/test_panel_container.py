@@ -121,3 +121,32 @@ def test_mode_shortcut_cycles_catalog_mode(container):
     assert container.catalog_chrome.mode == "edit"
     container._mode_shortcut.activated.emit()
     assert container.catalog_chrome.mode == "view"
+
+
+def _find_action(menu, text):
+    for action in menu.actions():
+        if action.text() == text:
+            return action
+    return None
+
+
+def test_context_menu_has_checked_crosshair_action(container):
+    menu = container.panel._build_context_menu()
+    action = _find_action(menu, "Crosshair")
+    assert action is not None
+    assert action.isCheckable()
+    assert action.isChecked()
+
+
+def test_context_menu_crosshair_action_drives_toggle(container):
+    menu = container.panel._build_context_menu()
+    _find_action(menu, "Crosshair").trigger()
+    assert container.crosshair_toggle.isChecked() is False
+
+
+def test_bare_panel_context_menu_has_no_crosshair_action(qtbot):
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    panel = TimeSyncPanel(name="Bare", time_range=TimeRange(1_000_000.0, 1_086_400.0))
+    qtbot.addWidget(panel)
+    menu = panel._build_context_menu()
+    assert _find_action(menu, "Crosshair") is None
