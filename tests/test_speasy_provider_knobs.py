@@ -2,7 +2,7 @@
 options as knobs, routed to top-level ``spz.get_data`` kwargs."""
 import pytest
 
-from SciQLop.core.knobs import ChoiceKnob, IntKnob
+from SciQLop.core.knobs import ChoiceKnob
 from SciQLop.core.enums import ParameterType
 from SciQLop.plugins.speasy_provider import speasy_provider as sp
 
@@ -40,18 +40,14 @@ def test_3dview_bodies_are_xyz_vectors():
     assert sp.data_serie_type(index) == ParameterType.Vector
 
 
-def test_3dview_knobs_are_frame_choice_and_sampling(monkeypatch):
+def test_3dview_knob_is_a_frame_choice_from_the_live_list(monkeypatch):
     monkeypatch.setattr(sp, "_3dview_frames", lambda: ["J2000", "GSE", "GSM"])
     knobs = _plugin(_Index("cdpp3dview", "ACE")).get_knobs(_Node("cdpp3dview/ACE"))
-    by_name = {k.name: k for k in knobs}
-    assert set(by_name) == {"coordinate_frame", "sampling"}
-    frame = by_name["coordinate_frame"]
+    assert [k.name for k in knobs] == ["coordinate_frame"]
+    frame = knobs[0]
     assert isinstance(frame, ChoiceKnob)
     assert frame.default == "J2000"
     assert [c[1] for c in frame.choices] == ["J2000", "GSE", "GSM"]
-    sampling = by_name["sampling"]
-    assert isinstance(sampling, IntKnob)
-    assert sampling.default == 600 and sampling.min == 1
 
 
 def test_3dview_frames_fall_back_when_the_service_is_unreachable(monkeypatch):
@@ -66,8 +62,7 @@ def test_ssc_knob_unchanged():
 
 
 @pytest.mark.parametrize("speasy_id, knobs, expected", [
-    ("cdpp3dview/ACE", {"coordinate_frame": "GSE", "sampling": 60},
-     {"coordinate_frame": "GSE", "sampling": "60"}),
+    ("cdpp3dview/ACE", {"coordinate_frame": "GSE"}, {"coordinate_frame": "GSE"}),
     ("ssc/ace", {"coordinate_system": "gsm"}, {"coordinate_system": "gsm"}),
     ("amda/imf", {"a": 1}, {"product_inputs": {"a": 1}}),
     ("amda/imf", {}, {}),
@@ -85,15 +80,14 @@ def test_get_data_passes_3dview_options_as_top_level_kwargs(monkeypatch):
 
     monkeypatch.setattr(sp.spz, "get_data", fake_get_data)
     plugin = _plugin(_Index("cdpp3dview", "ACE"))
-    plugin.get_data(_Node("cdpp3dview/ACE"), 0.0, 3600.0,
-                    knobs={"coordinate_frame": "GSM", "sampling": 300})
-    assert calls == [("cdpp3dview/ACE", {"coordinate_frame": "GSM", "sampling": "300"})]
+    plugin.get_data(_Node("cdpp3dview/ACE"), 0.0, 3600.0, knobs={"coordinate_frame": "GSM"})
+    assert calls == [("cdpp3dview/ACE", {"coordinate_frame": "GSM"})]
 
 
 def test_notebook_snippet_renders_provider_kwargs():
     from SciQLop.core.graph_context import GraphContext
     ctx = GraphContext(kind="speasy", graph_id="g", panel_name="P", plot_index=0,
                        graph_type="Line", speasy_id="cdpp3dview/ACE", provider_name="Speasy",
-                       knobs={"coordinate_frame": "GSE", "sampling": 60})
+                       knobs={"coordinate_frame": "GSE"})
     snippet = _plugin(_Index("cdpp3dview", "ACE")).python_snippets(ctx)["Notebook (matplotlib)"]
-    assert 'spz.get_data("cdpp3dview/ACE", start, stop, coordinate_frame=\'GSE\', sampling=\'60\')' in snippet
+    assert 'spz.get_data("cdpp3dview/ACE", start, stop, coordinate_frame=\'GSE\')' in snippet

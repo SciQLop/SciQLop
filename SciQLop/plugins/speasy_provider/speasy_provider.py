@@ -65,14 +65,15 @@ def _patch_speasy_inventory_registration():
 
 
 # Trajectory providers: x/y/z position time series whose per-request options
-# (frame, sampling) are top-level `spz.get_data` kwargs rather than AMDA-style
+# (coordinate frame) are top-level `spz.get_data` kwargs rather than AMDA-style
 # `product_inputs`. speasy doesn't model those options as ArgumentListIndex,
 # so the knobs are synthesized here; the table maps knob name → converter to
-# the value speasy expects.
+# the value speasy expects. 3DView's `sampling` is deliberately not exposed:
+# the speasy proxy drops it, so it would silently do nothing.
 _TRAJECTORY_PROVIDERS = ("ssc", "UiowaEphTool", "cdpp3dview")
 _PROVIDER_KWARGS = {
     "ssc": {"coordinate_system": str},
-    "cdpp3dview": {"coordinate_frame": str, "sampling": lambda v: str(int(v))},
+    "cdpp3dview": {"coordinate_frame": str},
 }
 _SSC_COORDINATE_KNOB = ChoiceKnob(
     name="coordinate_system", label="Coordinate system", default="gse",
@@ -81,7 +82,6 @@ _SSC_COORDINATE_KNOB = ChoiceKnob(
 )
 _3DVIEW_FALLBACK_FRAMES = ("J2000", "ECLIPJ2000", "HEE", "HEEQ", "HCI", "GSE", "GSM", "SM", "MAG",
                            "GEO", "MSO", "VSO", "JSO", "KSO")
-_3DVIEW_SAMPLING_KNOB = IntKnob(name="sampling", label="Sampling (s)", default=600, min=1)
 
 
 def _3dview_frames() -> list:
@@ -105,7 +105,7 @@ def _provider_knobs(index) -> List[KnobSpec]:
     if provider == "ssc":
         return [_SSC_COORDINATE_KNOB]
     if provider == "cdpp3dview":
-        return [_3dview_frame_knob(), _3DVIEW_SAMPLING_KNOB]
+        return [_3dview_frame_knob()]
     return []
 
 
