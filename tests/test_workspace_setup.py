@@ -456,18 +456,24 @@ class TestPrepareWorkspacePluginIsolation:
                 "requests==2.0 depends on SciQLop<0.13, but SciQLop==0.13.0 is installed"
             ),
             None,
+            # Shrink pass confirms "requests" is still genuinely needed.
+            RuntimeError(
+                "requests==2.0 depends on SciQLop<0.13, but SciQLop==0.13.0 is installed"
+            ),
         ]
 
         result = prepare_workspace(workspace_dir, workspace_name="Test")
 
         assert result == venv.python_path
-        assert venv.sync.call_count == 2
+        assert venv.sync.call_count == 3
         gen = patches["generate_pyproject_toml"]
-        assert gen.call_count == 3
+        assert gen.call_count == 4
         # Only the culprit is dropped from the retry -- "numpy>=1.24" stays.
         assert gen.call_args_list[1].args[1] == ["numpy>=1.24"]
-        # M1: the full set is restored on disk after the successful retry.
+        # Shrink pass tries restoring "requests" alone -- still fails.
         assert gen.call_args_list[2].args[1] == ["numpy>=1.24", "requests"]
+        # M1: the full set is restored on disk after the successful retry.
+        assert gen.call_args_list[3].args[1] == ["numpy>=1.24", "requests"]
 
         assert (workspace_dir / DROPPED_DEPS_FILENAME).exists()
         notice = read_dropped_dependencies(workspace_dir)
@@ -655,14 +661,18 @@ class TestSciQLopDeclaredLineNeverACulprit:
                     "requests==2.0 depends on SciQLop<0.13, but SciQLop==0.13.0 is installed"
                 ),
                 None,
+                # Shrink pass confirms "requests" is still genuinely needed.
+                RuntimeError(
+                    "requests==2.0 depends on SciQLop<0.13, but SciQLop==0.13.0 is installed"
+                ),
             ]
 
             result = prepare_workspace(workspace_dir, workspace_name="Test")
 
         assert result == venv.python_path
-        assert venv.sync.call_count == 2
+        assert venv.sync.call_count == 3
         gen = patches["generate_pyproject_toml"]
-        assert gen.call_count == 3
+        assert gen.call_count == 4
         # Only "requests" (the named culprit) is dropped from the retry --
         # the SciQLop compat line stays, so the retry is not byte-identical
         # to the failed first attempt.
@@ -705,6 +715,79 @@ class TestSciQLopDeclaredLineNeverACulprit:
 
         notice = read_dropped_dependencies(workspace_dir)
         assert notice["dropped"] == ["numpy>=1.24", "requests"]
+
+
+class TestOvermatchedCulpritIsShrunkAfterASuccessfulDrop:
+    """culprit_dependencies text-matches uv's whole error message, so it can
+    flag a dependency that is merely *named* while uv explains a conflict
+    actually caused by something else entirely (its own simplify comment
+    admits this). Dropping every matched name together would then throw away
+    a perfectly installable package (e.g. tscat/tscat-gui) alongside the real
+    offender. After the drop-all retry succeeds, each matched name must be
+    tried again on its own -- one that turns out fine must be kept."""
+
+    def test_a_bystander_named_in_the_error_is_restored(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            prepare_workspace, read_dropped_dependencies,
+        )
+
+        with patch(
+            f"{MODULE}.collect_plugin_dependencies",
+            return_value=["numpy>=1.24", "requests", "flask"],
+        ):
+            venv = patches["venv"]
+            venv.sync.side_effect = [
+                # 1: full sync -- error mentions both requests and flask, but
+                #    flask is only named while explaining requests' conflict.
+                RuntimeError(
+                    "No solution found: requests==2.0 depends on SciQLop<0.13, "
+                    "and because flask==3.0 also constrains the same "
+                    "resolution, SciQLop==0.13.0 cannot be installed"
+                ),
+                None,  # 2: drop-all-matched-culprits retry (no requests/flask) succeeds
+                RuntimeError("still: requests==2.0 depends on SciQLop<0.13"),  # 3: restore requests alone -> still broken
+                None,  # 4: restore flask alone -> fine on its own
+            ]
+
+            result = prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert result == venv.python_path
+        assert venv.sync.call_count == 4
+        gen = patches["generate_pyproject_toml"]
+        assert gen.call_count == 5
+        assert gen.call_args_list[1].args[1] == ["numpy>=1.24"]
+        assert gen.call_args_list[2].args[1] == ["numpy>=1.24", "requests"]
+        assert gen.call_args_list[3].args[1] == ["numpy>=1.24", "flask"]
+        assert gen.call_args_list[4].args[1] == ["numpy>=1.24", "requests", "flask"]
+
+        notice = read_dropped_dependencies(workspace_dir)
+        assert notice["dropped"] == ["requests"]
+
+    def test_shrink_never_makes_things_worse_when_nothing_can_be_restored(
+        self, workspace_dir, patches
+    ):
+        """Both matched names are genuinely required to stay out -- the
+        minimized set must equal the original match, not drop even more."""
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            prepare_workspace, read_dropped_dependencies,
+        )
+
+        with patch(
+            f"{MODULE}.collect_plugin_dependencies",
+            return_value=["numpy>=1.24", "requests", "flask"],
+        ):
+            venv = patches["venv"]
+            venv.sync.side_effect = [
+                RuntimeError("requests==2.0 and flask==3.0 both depend on SciQLop<0.13"),
+                None,  # drop-all-matched-culprits retry succeeds
+                RuntimeError("restoring requests still fails"),
+                RuntimeError("restoring flask still fails"),
+            ]
+
+            prepare_workspace(workspace_dir, workspace_name="Test")
+
+        notice = read_dropped_dependencies(workspace_dir)
+        assert notice["dropped"] == ["requests", "flask"]
 
 
 class TestCulpritDependencies:

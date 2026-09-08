@@ -137,6 +137,47 @@ def _report_sync_failure(exc: Exception, on_output, *, core_only: bool = False) 
         on_output(f"{label} failed: {exc}")
 
 
+def _shrink_culprits(
+    venv: WorkspaceVenv,
+    manifest: WorkspaceManifest,
+    optional_deps: list[str],
+    culprits: list[str],
+    pyproject_path: Path,
+    on_output: Callable[[str], None] | None,
+    upgrade_package: str | None,
+) -> list[str]:
+    """Narrow a text-matched culprit list to the ones actually needed.
+
+    ``culprit_dependencies`` text-matches uv's whole error message, so it can
+    flag a dependency that is merely *named* while uv explains a conflict
+    actually caused by something else (its own simplify comment already
+    documents this). The drop-all retry that just succeeded may therefore
+    have thrown away a perfectly installable package along with the real
+    offender. This restores each matched culprit on its own, one at a time
+    -- a dep that turns out fine gets kept; a resolve failure that doesn't
+    install anything (uv aborts before installing on a resolution error)
+    leaves the venv exactly as the previous successful attempt left it, so
+    no extra "undo" sync is needed between candidates.
+
+    simplify: greedy one-at-a-time restoration, not a proper minimal hitting
+    set -- a conflict that only appears when two specific culprits are BOTH
+    present (and resolves if either alone is dropped) can still end up
+    over-dropping. Upgrade path: same as culprit_dependencies' -- probe
+    subsets instead of trusting a single greedy pass.
+    """
+    kept_out = list(culprits)
+    for candidate in culprits:
+        trial_kept_out = [c for c in kept_out if c != candidate]
+        trial_deps = [dep for dep in optional_deps if dep not in trial_kept_out]
+        generate_pyproject_toml(manifest, trial_deps, pyproject_path)
+        exc = _try_sync(venv, locked=False, upgrade_package=upgrade_package, on_output=None)
+        if exc is None:
+            kept_out = trial_kept_out
+            if on_output is not None:
+                on_output(f"{candidate} was not actually the problem, keeping it")
+    return kept_out
+
+
 def _retry_without_culprits(
     venv: WorkspaceVenv,
     manifest: WorkspaceManifest,
@@ -156,11 +197,13 @@ def _retry_without_culprits(
     what the retry's pyproject is generated from, so any of those lines
     that do survive stay in place for this attempt.
 
-    Returns the dropped deps on success, or ``None`` when no single-cause
-    culprit could be pinned down, every droppable dep was implicated (no
-    point in a retry identical to the core-only one), or dropping just the
-    culprits still didn't fix the sync -- the caller then falls back to
-    dropping every optional dep instead.
+    Returns the dropped deps on success -- narrowed by ``_shrink_culprits``
+    to just the ones actually needed, since the initial text match can
+    over-catch -- or ``None`` when no single-cause culprit could be pinned
+    down, every droppable dep was implicated (no point in a retry identical
+    to the core-only one), or dropping the matched culprits still didn't fix
+    the sync -- the caller then falls back to dropping every optional dep
+    instead.
     """
     culprits = culprit_dependencies(droppable, str(error))
     if not culprits or len(culprits) >= len(droppable):
@@ -173,7 +216,9 @@ def _retry_without_culprits(
     if exc is not None:
         _report_sync_failure(exc, on_output, core_only=False)
         return None
-    return culprits
+    return _shrink_culprits(
+        venv, manifest, optional_deps, culprits, pyproject_path, on_output, upgrade_package,
+    )
 
 
 def _sync_workspace_venv(
