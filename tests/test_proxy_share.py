@@ -132,3 +132,128 @@ def test_export_share_menu_hides_proxy_actions_without_speasy_graphs(qtbot, monk
     menu = QMenu()
     tsp.TimeSyncPanel._add_proxy_share_actions(p, menu)
     assert menu.actions() == []
+
+
+# --- reverse direction: pasted proxy URL → panel ---------------------------
+
+_CONFIG = {
+    "version": 1,
+    "time_range": {"start": "2020-01-01T00:00:00Z", "stop": "2020-01-02T00:00:00Z"},
+    "plots": [
+        {"products": [{"path": "amda/imf", "label": "imf"},
+                      {"path": "amda/missing", "label": "gone"}],
+         "y_axis": {"log": True}},
+        {"products": [{"path": "cda/DS/spec", "label": "spec"}],
+         "y_axis": {"log": False}, "log_z": True},
+    ],
+}
+
+
+def _encode(config):
+    return base64.urlsafe_b64encode(json.dumps(config).encode()).decode().rstrip("=")
+
+
+@pytest.mark.parametrize("text", [
+    "https://sciqlop.lpp.polytechnique.fr/cache/plot?config=" + _encode(_CONFIG),
+    "http://localhost:6543/plot?config=" + _encode(_CONFIG) + "#zoom",
+    "config=" + _encode(_CONFIG),
+    "  https://x/cache/plot?foo=1&config=" + _encode(_CONFIG) + "  ",
+])
+def test_config_from_text_accepts_proxy_urls(text):
+    from SciQLop.components.plotting.ui.proxy_share import proxy_plot_config_from_text
+    assert proxy_plot_config_from_text(text) == _CONFIG
+
+
+@pytest.mark.parametrize("text", [
+    "MMS FGM",
+    "https://sciqlop.lpp.polytechnique.fr/cache/plot",
+    "config=not-base64!!",
+    "config=" + _encode({"version": 1, "plots": []}),
+    "config=" + _encode({"version": 1, "time_range": {}, "plots": [{"products": []}]}),
+    "config=" + _encode([1, 2]),
+])
+def test_config_from_text_rejects_non_configs(text):
+    from SciQLop.components.plotting.ui.proxy_share import proxy_plot_config_from_text
+    assert proxy_plot_config_from_text(text) is None
+
+
+def test_speasy_product_paths_resolves_ids_in_one_tree_walk():
+    from SciQLopPlots import ProductsModelNode, ProductsModelNodeType, ParameterType
+    from SciQLop.components.plotting.ui.proxy_share import speasy_product_paths
+    root = ProductsModelNode("speasy")
+    amda = ProductsModelNode("amda")
+    root.add_child(amda)
+    leaf = ProductsModelNode("b_gse", "Speasy", {"speasy_id": "amda/imf"},
+                             ProductsModelNodeType.PARAMETER, ParameterType.Vector)
+    amda.add_child(leaf)
+    paths = speasy_product_paths(["amda/imf", "amda/missing"], root=root)
+    assert paths == {"amda/imf": leaf.path()}
+
+
+def test_apply_proxy_config_sets_range_and_plots_products(qtbot, monkeypatch):
+    from SciQLop.components.plotting.ui import proxy_share
+    from SciQLop.components.plotting.ui.proxy_share import apply_proxy_config
+
+    panel = _FakePanel([], start=0.0, stop=1.0)
+    qtbot.addWidget(panel)
+    calls = []
+
+    def fake_plot_product(target, path, **kwargs):
+        calls.append((path, kwargs))
+        if "index" in kwargs:
+            return ("existing", "graph")
+        plot = SciQLopPlot()
+        plot.setObjectName(f"plot{len(panel.plots())}")
+        plot.setParent(panel)
+        return (plot, "graph")
+
+    monkeypatch.setattr(proxy_share, "_plot_product", fake_plot_product)
+    monkeypatch.setattr(proxy_share, "speasy_product_paths",
+                        lambda ids, root=None: {"amda/imf": ["root", "speasy", "amda", "imf"],
+                                                "cda/DS/spec": ["root", "speasy", "cda", "spec"]})
+    skipped = apply_proxy_config(panel, _CONFIG)
+
+    assert skipped == ["amda/missing"]
+    assert (panel.time_range.start(), panel.time_range.stop()) == (1577836800.0, 1577923200.0)
+    assert [c[0] for c in calls] == [["root", "speasy", "amda", "imf"],
+                                     ["root", "speasy", "cda", "spec"]]
+    assert "index" not in calls[0][1] and "index" not in calls[1][1]
+    plots = panel.plots()
+    assert [p.y_axis().log() for p in plots] == [True, False]
+    assert plots[1].z_axis().log() is True
+
+
+def test_apply_proxy_config_groups_products_on_the_same_subplot(qtbot, monkeypatch):
+    from SciQLop.components.plotting.ui import proxy_share
+    from SciQLop.components.plotting.ui.proxy_share import apply_proxy_config
+
+    panel = _FakePanel([], start=0.0, stop=1.0)
+    qtbot.addWidget(panel)
+    calls = []
+
+    def fake_plot_product(target, path, **kwargs):
+        calls.append((path[-1], kwargs.get("index")))
+        if "index" not in kwargs:
+            plot = SciQLopPlot()
+            plot.setParent(panel)
+        return ("plot", "graph")
+
+    monkeypatch.setattr(proxy_share, "_plot_product", fake_plot_product)
+    monkeypatch.setattr(proxy_share, "speasy_product_paths",
+                        lambda ids, root=None: {i: ["root", "speasy", i] for i in ids})
+    config = {"version": 1, "time_range": _CONFIG["time_range"],
+              "plots": [{"products": [{"path": "a"}, {"path": "b"}]},
+                        {"products": [{"path": "c"}]}]}
+    assert apply_proxy_config(panel, config) == []
+    assert calls == [("a", None), ("b", 0), ("c", None)]
+
+
+def test_overlay_emits_config_when_a_proxy_url_is_pasted(qtbot):
+    from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
+    overlay = ProductSearchOverlay()
+    qtbot.addWidget(overlay)
+    received = []
+    overlay.proxy_config_pasted.connect(received.append)
+    overlay._search_box.setText("https://x/cache/plot?config=" + _encode(_CONFIG))
+    assert received == [_CONFIG]
+    assert not overlay._debounce.isActive()

@@ -1073,6 +1073,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         if show_search_overlay:
             self._search_overlay = ProductSearchOverlay(self.viewport())
             self._search_overlay.product_selected.connect(self._on_overlay_product_selected)
+            self._search_overlay.proxy_config_pasted.connect(self._on_overlay_proxy_config)
             self.plot_added.connect(self._dismiss_search_overlay)
             self._search_overlay.raise_()
             self._search_overlay.focus_search()
@@ -1080,6 +1081,13 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
     def _on_overlay_product_selected(self, product_path: list[str]):
         from SciQLopPlots import PlotType
         plot_product(self, product_path, plot_type=PlotType.TimeSeries)
+
+    def _on_overlay_proxy_config(self, config: dict):
+        from SciQLop.components.plotting.ui.proxy_share import apply_proxy_config
+        skipped = apply_proxy_config(self, config)
+        if skipped and self._search_overlay is not None:
+            self._search_overlay.show_message(
+                "Not found in the product tree: " + ", ".join(skipped))
 
     def _dismiss_search_overlay(self, _plot=None):
         if self._search_overlay is not None:

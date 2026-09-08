@@ -14,6 +14,7 @@ from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components import sciqlop_logging
 from SciQLop.components import smart_search
+from SciQLop.components.plotting.ui.proxy_share import proxy_plot_config_from_text
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ class ProductSearchOverlay(QWidget):
     """Overlay shown on empty plot panels with a product search box."""
 
     product_selected = Signal(list)
+    proxy_config_pasted = Signal(dict)
     _smart_search_scores_ready = Signal(int, dict)
 
     def __init__(self, parent=None):
@@ -78,7 +80,8 @@ class ProductSearchOverlay(QWidget):
             "Search products (e.g. MMS FGM, ACE MAG B_gsm)\u2026")
         self._search_box.setToolTip(rich_tooltip(
             "Search products",
-            "Filter the product tree by name, mission, or instrument."))
+            "Filter the product tree by name, mission, or instrument. "
+            "Paste a Speasy proxy plot URL to rebuild its panel here."))
         self._search_box.setFixedWidth(content_width)
         self._search_box.setStyleSheet("font-size: 14ex; padding: 1ex;")
         self._search_box.setClearButtonEnabled(True)
@@ -139,6 +142,11 @@ class ProductSearchOverlay(QWidget):
         self._drop_section.setVisible(not show)
 
     def _on_text_changed(self, text: str):
+        config = proxy_plot_config_from_text(text)
+        if config is not None:
+            self._debounce.stop()
+            self.proxy_config_pasted.emit(config)
+            return
         if len(text.strip()) < _MIN_QUERY_LENGTH:
             self._debounce.stop()
             self._smart_search_pending_text = None
@@ -239,6 +247,9 @@ class ProductSearchOverlay(QWidget):
             return
         log.debug(f"Product selected from search overlay: {product_path}")
         self.product_selected.emit(product_path)
+
+    def show_message(self, text: str):
+        self._label.setText(text)
 
     def focus_search(self):
         self._search_box.setFocus()
