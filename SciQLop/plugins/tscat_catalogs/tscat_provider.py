@@ -295,6 +295,7 @@ class TscatCatalogProvider(CatalogProvider):
             Capability.DELETE_EVENTS,
             Capability.CREATE_CATALOGS,
             Capability.DELETE_CATALOGS,
+            Capability.RENAME_CATALOG,
             Capability.MOVE_CATALOG,
             Capability.SAVE,
         }
@@ -352,6 +353,22 @@ class TscatCatalogProvider(CatalogProvider):
             self._catalog_cache = [c for c in self._catalog_cache if c.uuid != catalog.uuid]
             self._known_uuids.discard(catalog.uuid)
         super().remove_catalog(catalog)
+
+    def rename_catalog(self, catalog: Catalog, new_name: str) -> None:
+        from .orphans import ORPHAN_CATALOG_UUID
+        if catalog.uuid == ORPHAN_CATALOG_UUID or catalog.name == new_name:
+            return
+        self._ensure_clean_session()
+        with self._tracked_action():
+            tscat_model.do(SetAttributeAction(
+                user_callback=None,
+                uuids=[catalog.uuid],
+                name="name",
+                values=[new_name],
+            ))
+        catalog.name = new_name
+        self.catalog_renamed.emit(catalog)
+        self.mark_dirty(catalog)
 
     def move_catalog(self, catalog: Catalog, new_path: list[str]) -> None:
         from .orphans import ORPHAN_CATALOG_UUID

@@ -392,3 +392,25 @@ def test_tscat_handle_event_drop_move_keeps_event_entity(qapp, tscat_provider):
     import tscat
     all_events_uuids = {e.uuid for e in tscat.get_events()}
     assert ev.uuid in all_events_uuids, "move must not permanently delete the event entity"
+
+
+def test_rename_catalog_persists_to_tscat_backend(qapp, tscat_provider):
+    """Local (tscat) catalogs could never be renamed: the provider declared
+    no RENAME_CATALOG capability and inherited the base no-op
+    rename_catalog, so the tree never offered the editor (2026-09-08)."""
+    from SciQLop.components.catalogs.backend.provider import Capability
+
+    cat = tscat_provider.create_catalog("t_rename_before")
+    _process_events(qapp)
+    assert Capability.RENAME_CATALOG in tscat_provider.capabilities(cat)
+
+    renamed = []
+    tscat_provider.catalog_renamed.connect(renamed.append)
+    tscat_provider.rename_catalog(cat, "t_rename_after")
+    _process_events(qapp, rounds=30)
+
+    assert cat.name == "t_rename_after"
+    assert [c.uuid for c in renamed] == [cat.uuid]
+    tscat_provider._catalog_cache = None
+    reloaded = {c.uuid: c.name for c in tscat_provider.catalogs()}
+    assert reloaded[cat.uuid] == "t_rename_after"
