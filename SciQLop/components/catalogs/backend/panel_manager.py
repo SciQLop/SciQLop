@@ -25,6 +25,7 @@ class PanelCatalogManager(QObject):
     """Manages catalog overlays and interaction mode for one TimeSyncPanel."""
 
     event_clicked = Signal(object)  # CatalogEvent
+    catalog_event_clicked = Signal(object, object)  # Catalog, CatalogEvent
 
     def __init__(self, panel, parent: QObject | None = None):
         super().__init__(parent or panel)
@@ -79,7 +80,7 @@ class PanelCatalogManager(QObject):
         if catalog.uuid in self._overlays:
             return
         overlay = CatalogOverlay(catalog=catalog, panel=self._panel, parent=self)
-        overlay.event_clicked.connect(self._on_event_clicked)
+        overlay.event_clicked.connect(lambda event, c=catalog: self._on_event_clicked(event, c))
         self._overlays[catalog.uuid] = overlay
         # Apply current mode
         if self._mode == InteractionMode.EDIT:
@@ -259,5 +260,6 @@ class PanelCatalogManager(QObject):
         event = CatalogEvent(uuid=str(uuid4()), start=start, stop=stop)
         cat.provider.add_event(cat, event)
 
-    def _on_event_clicked(self, event: CatalogEvent) -> None:
+    def _on_event_clicked(self, event: CatalogEvent, catalog: Catalog | None = None) -> None:
         self.event_clicked.emit(event)
+        self.catalog_event_clicked.emit(catalog, event)

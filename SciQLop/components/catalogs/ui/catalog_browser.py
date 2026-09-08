@@ -159,6 +159,7 @@ class CatalogBrowser(QWidget):
         self._current_catalog: Catalog | None = None
         self._panels: list = []
         self._expanded_before_filter: list[QPersistentModelIndex] = []
+        self._highlighting = False
         self._manual_widths: dict[str, int] = {}
 
         # --- filter bar ---
@@ -433,6 +434,8 @@ class CatalogBrowser(QWidget):
         self._update_toolbar()
 
     def _on_event_selected(self, current: QModelIndex, previous: QModelIndex) -> None:
+        if self._highlighting:
+            return
         if current.isValid():
             source_index = self._sort_proxy.mapToSource(current)
             event = self._event_model.event_at(source_index.row())
@@ -754,15 +757,37 @@ class CatalogBrowser(QWidget):
         self._delete_action.setVisible(Capability.DELETE_EVENTS in caps)
         self._add_attr_action.setVisible(Capability.EDIT_EVENTS in caps)
 
-    def highlight_event(self, event) -> None:
-        """Select the row in the event table matching the given event."""
+    def highlight_event(self, event, catalog=None) -> None:
+        """Reveal *event* in the event table, opening *catalog* first when
+        another one is shown. Selection made here does not re-emit
+        event_selected: the plot is the source, echoing back would jump."""
+        if catalog is not None and (self._current_catalog is None
+                                    or self._current_catalog.uuid != catalog.uuid):
+            self._open_catalog_in_tree(catalog)
         row = self._event_model.row_for_event(event)
-        if row >= 0:
-            source_index = self._event_model.index(row, 0)
-            proxy_index = self._sort_proxy.mapFromSource(source_index)
+        if row < 0:
+            return
+        proxy_index = self._sort_proxy.mapFromSource(self._event_model.index(row, 0))
+        self._highlighting = True
+        try:
             self._event_table.selectionModel().setCurrentIndex(
                 proxy_index, QItemSelectionModel.SelectionFlag.ClearAndSelect | QItemSelectionModel.SelectionFlag.Rows
             )
+            self._event_table.scrollTo(proxy_index)
+        finally:
+            self._highlighting = False
+
+    def _open_catalog_in_tree(self, catalog) -> None:
+        node = self._tree_model._find_node_by_uuid(self._tree_model._root, catalog.uuid)
+        if node is None:
+            return
+        proxy_index = self._proxy_model.mapFromSource(self._tree_model.createIndex(node.row(), 0, node))
+        if proxy_index.isValid():
+            self._catalog_tree.scrollTo(proxy_index)
+            self._catalog_tree.setCurrentIndex(proxy_index)
+
+    def _on_plot_event_clicked(self, catalog, event) -> None:
+        self.highlight_event(event, catalog)
 
     def connect_to_panel(self, panel) -> None:
         """Wire bidirectional event selection between this browser and a panel."""
@@ -771,7 +796,7 @@ class CatalogBrowser(QWidget):
         self._panels.append(panel)
         manager = panel.catalog_manager
         self.event_selected.connect(manager.select_event)
-        manager.event_clicked.connect(self.highlight_event)
+        manager.catalog_event_clicked.connect(self._on_plot_event_clicked)
         panel.destroyed.connect(lambda: self._on_panel_destroyed(panel))
 
     def _on_panel_destroyed(self, panel) -> None:
@@ -789,7 +814,7 @@ class CatalogBrowser(QWidget):
         except RuntimeError:
             pass
         try:
-            manager.event_clicked.disconnect(self.highlight_event)
+            manager.catalog_event_clicked.disconnect(self._on_plot_event_clicked)
         except RuntimeError:
             pass
 
