@@ -64,6 +64,22 @@ def _apply_dock_view_tooltip(doc: QtAds.CDockWidget, action: QtGui.QAction) -> N
     doc.tabWidget().setToolTip(tooltip)
     if doc.isAutoHide():
         doc.sideTabWidget().setToolTip(tooltip)
+        _show_side_tab_tooltip_when_hover_opens(doc)
+
+
+def _cursor_over(widget: QWidget) -> bool:
+    return widget.rect().contains(widget.mapFromGlobal(QtGui.QCursor.pos()))
+
+
+def _show_side_tab_tooltip_when_hover_opens(doc: QtAds.CDockWidget) -> None:
+    """QtAds opens a hovered auto-hide panel with a synthetic mouse press
+    500 ms in, and Qt drops the pending tooltip (700 ms) on any press, so
+    a side tab's tooltip only ever showed when its panel was already open."""
+    def _on_visibility(visible: bool) -> None:
+        tab = doc.sideTabWidget()
+        if visible and tab is not None and _cursor_over(tab):
+            QtWidgets.QToolTip.showText(QtGui.QCursor.pos(), tab.toolTip(), tab)
+    doc.visibilityChanged.connect(_on_visibility)
 
 
 def _extract_panel(dock_widget):

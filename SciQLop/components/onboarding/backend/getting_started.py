@@ -95,7 +95,8 @@ GETTING_STARTED = Tour(
             body=(
                 "Click a plot or a curve, then hover the Properties icon to "
                 "open the inspector and change its color, line style, "
-                "markers and more."
+                "markers and more. There, Delete removes the selected curve "
+                "or plot, and dragging a plot up or down reorders the panel."
             ),
             resolver=targets.side_tab_resolver("Properties"),
         ),
