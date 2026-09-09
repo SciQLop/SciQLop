@@ -345,3 +345,116 @@ def test_show_step_does_not_steal_focus_from_a_target_that_has_it(qtbot):
     box.setFocus()
     mark.show_step(box, "Type here", "Body")
     assert host.focusWidget() is box
+
+
+class _FakeDockManager:
+    """Stands in for QtAds' CDockManager: `_visible_dock_obstacles` only
+    ever calls `.dockWidgetsMap()` on it."""
+
+    def __init__(self, widgets: dict):
+        self._widgets = widgets
+
+    def dockWidgetsMap(self):
+        return self._widgets
+
+
+def test_bubble_position_prefers_a_candidate_that_avoids_an_obstacle(qtbot):
+    """Live report 2026-09-09: the bubble landed right on top of the
+    still-open Products dock -- `_bubble_position` picked the first
+    candidate that fit the window without checking whether something
+    else was already visible there. Put an obstacle exactly where the
+    first candidate (right of the target) would land: a clear
+    candidate (left of the target) exists and must be preferred."""
+    from SciQLop.components.onboarding.ui.coach_mark import _bubble_position
+    from PySide6.QtCore import QSize
+
+    target = QRect(450, 275, 100, 50)
+    window = QRect(0, 0, 1000, 600)
+    bubble = QSize(200, 100)
+    obstacle = QRect(561, 275, 200, 100)  # exactly the "right of target" candidate
+
+    position = _bubble_position(target, bubble, window, obstacles=[obstacle])
+
+    assert not QRect(position, bubble).intersects(obstacle)
+    assert window.contains(QRect(position, bubble))
+
+
+def test_bubble_position_falls_back_to_the_target_corner_when_nothing_clears_every_obstacle(qtbot):
+    """Obstacle-avoidance must not break the pre-existing guarantee: if no
+    candidate clears every obstacle, still land somewhere inside the
+    window rather than give up."""
+    from SciQLop.components.onboarding.ui.coach_mark import _bubble_position
+    from PySide6.QtCore import QSize
+
+    target = QRect(450, 275, 100, 50)
+    window = QRect(0, 0, 1000, 600)
+    bubble = QSize(200, 100)
+    # One obstacle per candidate direction: nothing can clear all of them.
+    obstacles = [
+        QRect(561, 275, 200, 100),   # right
+        QRect(150, 275, 200, 100),   # left
+        QRect(450, 63, 100, 100),    # above
+        QRect(450, 387, 100, 100),   # below
+    ]
+
+    position = _bubble_position(target, bubble, window, obstacles=obstacles)
+
+    assert window.contains(QRect(position, bubble))
+
+
+def test_visible_dock_obstacles_excludes_the_targets_own_dock_and_hidden_docks(qtbot):
+    from SciQLop.components.onboarding.ui.coach_mark import _visible_dock_obstacles
+    from PySide6.QtWidgets import QWidget
+
+    host = QMainWindow()
+    host.resize(800, 600)
+    qtbot.addWidget(host)
+    host.show()
+
+    panel_dock = QWidget(host)
+    panel_dock.setGeometry(200, 0, 600, 600)
+    target = QPushButton("target", panel_dock)  # lives inside its own dock
+
+    products_dock = QWidget(host)
+    products_dock.setGeometry(0, 0, 200, 600)
+    products_dock.show()
+
+    hidden_dock = QWidget(host)
+    hidden_dock.setGeometry(0, 0, 100, 100)
+    hidden_dock.hide()
+
+    host.dock_manager = _FakeDockManager({
+        "Panel": panel_dock, "Products": products_dock, "Hidden": hidden_dock,
+    })
+
+    obstacles = _visible_dock_obstacles(host, target)
+
+    assert obstacles == [QRect(products_dock.mapTo(host, products_dock.rect().topLeft()),
+                                products_dock.size())]
+
+
+def test_visible_dock_obstacles_is_empty_without_a_dock_manager(qtbot):
+    from SciQLop.components.onboarding.ui.coach_mark import _visible_dock_obstacles
+    host, target = _host(qtbot)
+
+    assert _visible_dock_obstacles(host, target) == []
+
+
+def test_bubble_avoids_a_currently_open_side_dock_next_to_a_near_full_window_target(qtbot):
+    """End-to-end: CoachMark actually wires the real dock geometry into
+    the positioning, not just the pure helper. The dock covers the whole
+    right two-thirds of the window -- wide enough to catch the bubble
+    regardless of its exact rendered size -- leaving only its left side
+    free."""
+    from PySide6.QtWidgets import QWidget
+    host, target = _host(qtbot, size=(1000, 600), target_geometry=(450, 275, 100, 50))
+    products_dock = QWidget(host)
+    products_dock.setGeometry(560, 0, 440, 600)
+    products_dock.show()
+    host.dock_manager = _FakeDockManager({"Products": products_dock, "Panel": target})
+    mark = _mark(qtbot, host)
+
+    mark.show_step(target, "Add more data", "Body text")
+
+    assert not mark.bubble.geometry().intersects(products_dock.geometry())
+    assert host.rect().contains(mark.bubble.geometry())

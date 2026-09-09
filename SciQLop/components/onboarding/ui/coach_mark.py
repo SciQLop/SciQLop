@@ -20,8 +20,10 @@ def _clamp(value: int, low: int, high: int) -> int:
     return max(low, min(value, high))
 
 
-def _bubble_position(target: QRect, bubble: QSize, window: QRect) -> QPoint:
+def _bubble_position(target: QRect, bubble: QSize, window: QRect,
+                      obstacles=()) -> QPoint:
     """Beside the target when there is room (right, left, above, below),
+    preferring a spot that doesn't cover another currently-visible dock;
     otherwise inside its own top-left corner; never outside the window."""
     max_x = window.width() - bubble.width()
     max_y = window.height() - bubble.height()
@@ -33,10 +35,33 @@ def _bubble_position(target: QRect, bubble: QSize, window: QRect) -> QPoint:
         QPoint(x_stacked, target.top() - _BUBBLE_GAP - bubble.height()),
         QPoint(x_stacked, target.bottom() + _BUBBLE_GAP),
     ]
-    for position in candidates:
-        if window.contains(QRect(position, bubble)):
+    in_window = [position for position in candidates if window.contains(QRect(position, bubble))]
+    for position in in_window:
+        if not any(QRect(position, bubble).intersects(obstacle) for obstacle in obstacles):
             return position
+    if in_window:
+        return in_window[0]
     return QPoint(x_stacked, y_beside)
+
+
+def _visible_dock_obstacles(main_window: QWidget, target: QWidget | None) -> list[QRect]:
+    """Bounding rects, in main_window coordinates, of every currently
+    visible dock panel other than the target's own -- so the bubble
+    doesn't land on top of a side panel the current step isn't pointing
+    at. `main_window` may not have a `dock_manager` (bare test hosts),
+    in which case there is nothing to avoid."""
+    dock_manager = getattr(main_window, "dock_manager", None)
+    if dock_manager is None:
+        return []
+    obstacles = []
+    for dock_widget in dock_manager.dockWidgetsMap().values():
+        if not shiboken6.isValid(dock_widget) or not dock_widget.isVisible():
+            continue
+        if target is not None and (dock_widget is target or dock_widget.isAncestorOf(target)):
+            continue
+        top_left = dock_widget.mapTo(main_window, QPoint(0, 0))
+        obstacles.append(QRect(top_left, dock_widget.size()))
+    return obstacles
 
 
 class TourBubble(QWidget):
@@ -250,7 +275,8 @@ class CoachMark(QWidget):
             self._bubble.move((self.width() - self._bubble.width()) // 2,
                               (self.height() - self._bubble.height()) // 2)
         else:
-            self._bubble.move(_bubble_position(target, self._bubble.size(), self.rect()))
+            obstacles = _visible_dock_obstacles(self._main_window, self._target)
+            self._bubble.move(_bubble_position(target, self._bubble.size(), self.rect(), obstacles))
 
     def paintEvent(self, event):
         painter = QPainter(self)
