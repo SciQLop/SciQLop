@@ -1152,24 +1152,60 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
     def eventFilter(self, obj, event):
         from PySide6.QtCore import QEvent
         if event.type() == QEvent.Type.ContextMenu:
-            self._show_context_menu(event.globalPos())
+            self._show_context_menu(event.globalPos(), obj)
             return True
         return super().eventFilter(obj, event)
 
-    def _show_context_menu(self, global_pos):
-        self._build_context_menu().exec(global_pos)
+    def _show_context_menu(self, global_pos, source=None):
+        self._build_context_menu(source).exec(global_pos)
 
-    def _build_context_menu(self):
+    def _build_context_menu(self, source=None):
         from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
         self._catalog_manager.build_catalogs_menu(menu)
         self._add_crosshair_action(menu)
+        self._add_layout_actions(menu, source)
         menu.addSeparator()
         self._build_export_share_menu(menu)
         self._build_templates_menu(menu)
         self._append_knob_reset_actions(menu)
         return menu
+
+    def _plot_containing(self, obj):
+        while obj is not None and obj is not self:
+            if hasattr(obj, "rescale_axes"):
+                return obj
+            obj = obj.parentWidget()
+        return None
+
+    def _add_layout_actions(self, menu, source):
+        plots = self.plots()
+        if not plots:
+            return
+        plot_under_cursor = self._plot_containing(source)
+        if plot_under_cursor is not None:
+            action = menu.addAction(
+                "Autoscale this plot", plot_under_cursor.rescale_axes)
+            action.setToolTip(
+                "Auto-fit this plot's axes to the currently visible data.")
+        autoscale_all = menu.addAction(
+            "Autoscale all plots", self._autoscale_all_plots)
+        autoscale_all.setToolTip(
+            "Auto-fit every plot in this panel to the currently visible data.")
+        if len(plots) >= 2:
+            equalize = menu.addAction(
+                "Equalize plot heights", self._equalize_plot_heights)
+            equalize.setToolTip(
+                "Reset all plots in this panel to the same height.")
+
+    def _autoscale_all_plots(self):
+        for plot in self.plots():
+            plot.rescale_axes()
+
+    def _equalize_plot_heights(self):
+        splitter = self.widget()
+        splitter.setSizes([1] * splitter.count())
 
     def _add_crosshair_action(self, menu):
         from SciQLop.core.ui.shortcuts import native_shortcut_text
