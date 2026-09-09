@@ -55,6 +55,17 @@ def _dialog(qtbot, current=None):
     return dialog
 
 
+def test_dialog_swatch_buttons_are_flat(qtbot, qapp):
+    """Every other icon-only QToolButton in the app sets autoRaise so the QSS
+    renders it as a flat icon; without it, QToolButton's default style paints
+    a raised background+border box around the color dot (see
+    QWidgets/QToolButton.qss.j2's un-autoRaise'd rule) -- the "garbage box
+    around the swatch" bug."""
+    dialog = _dialog(qtbot)
+    assert dialog._buttons["a"].autoRaise()
+    assert dialog._buttons["b"].autoRaise()
+
+
 def test_dialog_initial_icons_match_default_and_current(qtbot, qapp):
     dialog = _dialog(qtbot, {"b": "#ff0000"})
     assert dialog.windowTitle() == "Category colors"

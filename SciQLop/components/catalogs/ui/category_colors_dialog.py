@@ -41,6 +41,7 @@ class CategoryColorsDialog(QDialog):
         form = QFormLayout(rows)
         for value in categories:
             button = QToolButton()
+            button.setAutoRaise(True)
             button.clicked.connect(lambda _=False, v=value: self._pick(v))
             self._buttons[value] = button
             form.addRow(button, QLabel(value))
