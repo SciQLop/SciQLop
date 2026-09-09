@@ -402,6 +402,26 @@ def test_bubble_position_falls_back_to_the_target_corner_when_nothing_clears_eve
     assert window.contains(QRect(position, bubble))
 
 
+def test_bubble_position_picks_a_clear_corner_inside_a_target_that_fills_the_window(qtbot):
+    """Second live report 2026-09-09: an auto-hide flyout is drawn over the
+    central area, so a whole-panel target extends under it. No beside
+    candidate fits the window; the fallback must then try the target's
+    other corners instead of blindly taking the top-left one, which is
+    exactly where the flyout sits."""
+    from SciQLop.components.onboarding.ui.coach_mark import _bubble_position
+    from PySide6.QtCore import QSize
+
+    window = QRect(0, 0, 1820, 1068)
+    target = QRect(42, 51, 1778, 962)
+    bubble = QSize(336, 218)
+    flyout = QRect(42, 46, 270, 998)
+
+    position = _bubble_position(target, bubble, window, obstacles=[flyout])
+
+    assert not QRect(position, bubble).intersects(flyout)
+    assert target.contains(QRect(position, bubble))
+
+
 def test_visible_dock_obstacles_excludes_the_targets_own_dock_and_hidden_docks(qtbot):
     from SciQLop.components.onboarding.ui.coach_mark import _visible_dock_obstacles
     from PySide6.QtWidgets import QWidget

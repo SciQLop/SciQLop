@@ -161,3 +161,30 @@ def test_drag_step_reopens_the_products_dock_when_it_closes_under_the_tour(main_
             controller.abort()
         for name in main_window.plot_panels():
             main_window.remove_panel(main_window.plot_panel(name))
+
+
+def test_add_more_data_card_clears_the_open_products_flyout(main_window, qtbot):
+    """Second live report 2026-09-09, same step: the card still sat on the
+    open Products flyout. QtAds draws an auto-hide flyout *over* the
+    central area, so the whole-panel target extends underneath it: no
+    beside-the-target spot fits the window, and the fallback corner is the
+    panel's top-left -- exactly where the flyout is."""
+    from PySide6.QtCore import QPoint, QRect
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    _close_side_docks(main_window)
+    panel = main_window.new_plot_panel()
+    _open_dock(main_window, "Products")
+    products = main_window.dock_manager.findDockWidget("Products")
+    qtbot.waitUntil(products.isVisible, timeout=3000)
+    mark = CoachMark(main_window)
+    try:
+        mark.show_step(panel, "Add more data", "word " * 40)
+        flyout = QRect(products.mapTo(main_window, QPoint(0, 0)), products.size())
+        target = mark._target_rect()
+        assert target.left() < flyout.right(), f"target {target} must extend under the flyout {flyout}"
+        assert not mark.bubble.geometry().intersects(flyout), (
+            f"bubble {mark.bubble.geometry()} covers the flyout {flyout}; target {target}")
+    finally:
+        mark.dispose()
+        main_window.remove_panel(panel)

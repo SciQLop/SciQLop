@@ -23,25 +23,25 @@ def _clamp(value: int, low: int, high: int) -> int:
 def _bubble_position(target: QRect, bubble: QSize, window: QRect,
                       obstacles=()) -> QPoint:
     """Beside the target when there is room (right, left, above, below),
-    preferring a spot that doesn't cover another currently-visible dock;
-    otherwise inside its own top-left corner; never outside the window."""
+    otherwise inside one of its own corners; in both cases a spot that
+    doesn't cover another currently-visible dock wins; never outside the
+    window."""
     max_x = window.width() - bubble.width()
     max_y = window.height() - bubble.height()
-    y_beside = _clamp(target.top(), 0, max_y)
-    x_stacked = _clamp(target.left(), 0, max_x)
-    candidates = [
-        QPoint(target.right() + _BUBBLE_GAP, y_beside),
-        QPoint(target.left() - _BUBBLE_GAP - bubble.width(), y_beside),
-        QPoint(x_stacked, target.top() - _BUBBLE_GAP - bubble.height()),
-        QPoint(x_stacked, target.bottom() + _BUBBLE_GAP),
+    left, top = _clamp(target.left(), 0, max_x), _clamp(target.top(), 0, max_y)
+    right = _clamp(target.right() - bubble.width(), 0, max_x)
+    bottom = _clamp(target.bottom() - bubble.height(), 0, max_y)
+    beside = [
+        QPoint(target.right() + _BUBBLE_GAP, top),
+        QPoint(target.left() - _BUBBLE_GAP - bubble.width(), top),
+        QPoint(left, target.top() - _BUBBLE_GAP - bubble.height()),
+        QPoint(left, target.bottom() + _BUBBLE_GAP),
     ]
-    in_window = [position for position in candidates if window.contains(QRect(position, bubble))]
-    for position in in_window:
-        if not any(QRect(position, bubble).intersects(obstacle) for obstacle in obstacles):
-            return position
-    if in_window:
-        return in_window[0]
-    return QPoint(x_stacked, y_beside)
+    inside = [QPoint(left, top), QPoint(right, top), QPoint(left, bottom), QPoint(right, bottom)]
+    in_window = [p for p in beside if window.contains(QRect(p, bubble))] + inside
+    clear = [p for p in in_window
+             if not any(QRect(p, bubble).intersects(obstacle) for obstacle in obstacles)]
+    return (clear or in_window)[0]
 
 
 def _visible_dock_obstacles(main_window: QWidget, target: QWidget | None) -> list[QRect]:
