@@ -57,20 +57,31 @@ class CatalogChrome(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
 
-        self._mode_label = QLabel("Catalog:", self)
+        self._mode_label = QLabel("Catalog mode:", self)
         self._mode_combo = _make_mode_combo(self)
+        self._mode_label.setToolTip(self._mode_combo.toolTip())
+        self._mode_label.setBuddy(self._mode_combo)
+
         self._target_combo = QComboBox(self)
         self._target_combo.setToolTip(rich_tooltip(
             "Target catalog",
             "Catalog that newly created events are added to."))
         self._target_combo.setVisible(False)
+        self._target_label = QLabel("Add to:", self)
+        self._target_label.setToolTip(self._target_combo.toolTip())
+        self._target_label.setBuddy(self._target_combo)
+        self._target_label.setVisible(False)
+
         self._zoom_out_spin = _make_zoom_out_spin(self)
         self._zoom_out_label = QLabel("Zoom out:", self)
+        self._zoom_out_label.setToolTip(self._zoom_out_spin.toolTip())
+        self._zoom_out_label.setBuddy(self._zoom_out_spin)
 
         layout.addWidget(self._mode_label)
         layout.addWidget(self._mode_combo)
         layout.addWidget(self._zoom_out_label)
         layout.addWidget(self._zoom_out_spin)
+        layout.addWidget(self._target_label)
         layout.addWidget(self._target_combo)
 
         self._mode_combo.currentIndexChanged.connect(self._on_mode_changed)
@@ -117,7 +128,9 @@ class CatalogChrome(QWidget):
         self._target_combo.setCurrentIndex(index)
         self._target_combo.blockSignals(False)
         fit_combo_to_content(self._target_combo)
-        self._target_combo.setVisible(len(items) > 0)
+        visible = len(items) > 0
+        self._target_combo.setVisible(visible)
+        self._target_label.setVisible(visible)
         if items:
             self._on_target_changed(index)
 
@@ -126,6 +139,7 @@ class CatalogChrome(QWidget):
         self._target_combo.clear()
         self._target_combo.blockSignals(False)
         self._target_combo.setVisible(False)
+        self._target_label.setVisible(False)
 
     def selected_target(self) -> str | None:
         if self._target_combo.count() == 0:

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 
 from SciQLop.components.catalogs.backend.color_palette import _CatalogSwatchIconEngine
 from SciQLop.core.ui import Metrics
+from SciQLop.core.ui.tooltips import rich_tooltip
 
 
 def _swatch(color: QColor) -> QIcon:
@@ -54,6 +55,9 @@ class CategoryColorsDialog(QDialog):
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
         self._reset_button = QPushButton("Reset all")
+        self._reset_button.setToolTip(rich_tooltip(
+            "Reset all",
+            "Clear every custom category color; colors fall back to their defaults."))
         buttons.addButton(self._reset_button, QDialogButtonBox.ButtonRole.ResetRole)
         self._reset_button.clicked.connect(self._reset_all)
         buttons.accepted.connect(self.accept)

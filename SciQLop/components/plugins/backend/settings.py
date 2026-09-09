@@ -28,8 +28,15 @@ class InstalledPackage(BaseModel):
 class SciQLopPluginsSettings(ConfigEntry):
     category = SettingsCategory.PLUGINS
     subcategory = "general"
-    extra_plugins_folders: List[str] = Field(default=[], json_schema_extra={"widget": "list_path"})
-    plugins: Dict[str, PluginConfig] = Field(default={}, json_schema_extra={"widget": "plugins_dict"})
+    extra_plugins_folders: List[str] = Field(
+        default=[],
+        description="Additional folders scanned for plugins at startup.",
+        json_schema_extra={"widget": "list_path"})
+    plugins: Dict[str, PluginConfig] = Field(
+        default={},
+        description="Enable or disable installed plugins; changes take "
+                    "effect after restart.",
+        json_schema_extra={"widget": "plugins_dict"})
     installed_packages: Dict[str, InstalledPackage] = Field(default={}, json_schema_extra={"widget": "hidden"})
 
     @model_validator(mode="after")

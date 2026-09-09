@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SciQLop Store</title>
+    <title>Plugin Store</title>
     <style>
         :root {
             {% for name, color in palette.items() %}
@@ -16,14 +16,14 @@
 </head>
 <body>
     <div id="page-nav">
-        <button class="page-btn active" data-page="explore">Explore</button>
-        <button class="page-btn" data-page="installed">Installed</button>
-        <button class="page-btn" data-page="updates">Updates <span id="updates-count"></span></button>
+        <button class="page-btn active" data-page="explore" title="Everything available to install">Explore</button>
+        <button class="page-btn" data-page="installed" title="What is installed in this workspace">Installed</button>
+        <button class="page-btn" data-page="updates" title="Installed items with a newer version">Updates <span id="updates-count"></span></button>
     </div>
 
     <div id="toolbar">
-        <input type="text" id="search-input" placeholder="Search plugins, workspaces, examples...">
-        <select id="sort-select">
+        <input type="text" id="search-input" placeholder="Search plugins, workspaces, examples…" title="Search plugins, workspaces, examples">
+        <select id="sort-select" title="Sort results">
             <option value="stars">Popular</option>
             <option value="name">Name</option>
         </select>
@@ -31,7 +31,7 @@
 
     <div id="tag-chips"></div>
 
-    <div id="loading">Loading...</div>
+    <div id="loading">Loading…</div>
 
     <div id="hero"></div>
 

@@ -409,8 +409,9 @@ function detailThumbsHtml(urls) {
     return '<div class="detail-thumbs">' + items + '</div>';
 }
 
-function factRow(label, value) {
-    return '<div class="detail-fact"><label>' + escapeHtml(label) + '</label><span>' + value + '</span></div>';
+function factRow(label, value, title) {
+    var titleAttr = title ? ' title="' + escapeAttr(title) + '"' : "";
+    return '<div class="detail-fact"' + titleAttr + '><label>' + escapeHtml(label) + '</label><span>' + value + '</span></div>';
 }
 
 function detailActionsHtml(pkg, status, latest) {
@@ -418,14 +419,14 @@ function detailActionsHtml(pkg, status, latest) {
     if (!latest) return "";
     var ver = escapeHtml(latest.version);
     if (status === "installed") {
-        return '<button class="detail-btn installed" disabled>Installed \u2713</button>' +
-            '<button class="detail-btn uninstall" id="uninstall-btn" data-name="' + name + '">Uninstall</button>';
+        return '<button class="detail-btn installed" disabled title="Already installed in this workspace">Installed \u2713</button>' +
+            '<button class="detail-btn uninstall" id="uninstall-btn" data-name="' + name + '" title="Remove this plugin from this workspace">Uninstall</button>';
     }
     if (status === "update-available") {
-        return '<button class="detail-btn update" id="install-btn" data-name="' + name + '">Update to v' + ver + '</button>' +
-            '<button class="detail-btn uninstall" id="uninstall-btn" data-name="' + name + '">Uninstall</button>';
+        return '<button class="detail-btn update" id="install-btn" data-name="' + name + '" title="Update to the latest compatible version">Update to v' + ver + '</button>' +
+            '<button class="detail-btn uninstall" id="uninstall-btn" data-name="' + name + '" title="Remove this plugin from this workspace">Uninstall</button>';
     }
-    return '<button class="detail-btn install" id="install-btn" data-name="' + name + '">Install</button>';
+    return '<button class="detail-btn install" id="install-btn" data-name="' + name + '" title="Install this plugin into this workspace">Install</button>';
 }
 
 function showPackageDetails(pkg) {
@@ -449,7 +450,7 @@ function showPackageDetails(pkg) {
         factRow("License", escapeHtml(pkg.license || "\u2014")) +
         factRow("Version", escapeHtml(versionStr)) +
         (installedVer ? factRow("Installed", "v" + escapeHtml(installedVer)) : "") +
-        factRow("Requires", "SciQLop " + escapeHtml(compatStr)) +
+        factRow("Requires", "SciQLop " + escapeHtml(compatStr), "Minimum SciQLop version") +
         factRow("Stars", escapeHtml(starsHtml)) +
         factRow("Tags", escapeHtml(tagsHtml));
 
@@ -476,7 +477,7 @@ function wireDetailActions() {
     if (btn) {
         btn.addEventListener("click", function() {
             clearInstallError();
-            btn.textContent = "Installing...";
+            btn.textContent = "Installing…";
             btn.disabled = true;
             backend.install_package(btn.dataset.name);
         });
@@ -485,7 +486,7 @@ function wireDetailActions() {
     if (unBtn) {
         unBtn.addEventListener("click", function() {
             clearInstallError();
-            unBtn.textContent = "Uninstalling...";
+            unBtn.textContent = "Uninstalling…";
             unBtn.disabled = true;
             backend.uninstall_package(unBtn.dataset.name);
         });

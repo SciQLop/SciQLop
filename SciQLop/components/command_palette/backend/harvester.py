@@ -11,7 +11,7 @@ def _collect_menu_actions(menu: QMenu, path: str) -> list[tuple[str, str, callab
         submenu = action.menu()
         if submenu:
             results.extend(_collect_menu_actions(submenu, f"{path}.{submenu.title()}"))
-        elif action.text():
+        elif action.text() and action.isEnabled():
             action_id = f"qaction.{path}.{action.text()}"
             results.append((action_id, action.text(), action.trigger))
     return results
@@ -24,6 +24,7 @@ def _suppressed_texts(registry: CommandRegistry) -> set[str]:
 def harvest_qactions(registry: CommandRegistry, main_window: QMainWindow) -> None:
     suppressed = _suppressed_texts(registry)
     existing_ids = {cmd.id for cmd in registry.commands()}
+    existing_names = {cmd.name for cmd in registry.commands()}
     for action in main_window.menuBar().actions():
         menu = action.menu()
         if not menu:
@@ -31,8 +32,9 @@ def harvest_qactions(registry: CommandRegistry, main_window: QMainWindow) -> Non
         for action_id, text, trigger in _collect_menu_actions(menu, menu.title()):
             if action_id in existing_ids:
                 continue
-            if text in suppressed:
+            if text in suppressed or text in existing_names:
                 continue
             registry.register(PaletteCommand(
                 id=action_id, name=text, description=f"Menu: {menu.title()}", callback=trigger,
             ))
+            existing_names.add(text)

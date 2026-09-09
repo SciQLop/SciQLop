@@ -71,10 +71,10 @@ def test_catalog_arg_completions_use_provider_and_uuid(qapp):
     values = {c.value for c in completions}
     displays = {c.display for c in completions}
     assert f"ArgProv::{cat.uuid}" in values
-    # Old bug: the tree-walk picked up "New Catalog..."/"New Folder..."
+    # Old bug: the tree-walk picked up "New catalog…"/"New folder…"
     # placeholder rows as if they were real catalogs, and a dirty catalog's
     # DisplayRole " *" suffix leaked into the value used for lookup.
-    assert not any("New Catalog" in d or "New Folder" in d for d in displays)
+    assert not any("New catalog" in d or "New folder" in d for d in displays)
     assert not any(v.endswith(" *") for v in values)
 
 

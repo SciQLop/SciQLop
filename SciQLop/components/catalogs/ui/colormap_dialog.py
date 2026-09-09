@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QDoubleSpinBox, QCheckBox, QDialogButtonBox, QWidget,
 )
 from SciQLop.core.ui import Metrics, fit_combo_to_content
+from SciQLop.core.ui.tooltips import rich_tooltip
 
 # jet/turbo/hot dropped: not perceptually uniform, the standard objection to
 # "rainbow" colormaps in scientific visualization (misleading apparent
@@ -56,6 +57,9 @@ class ColormapDialog(QDialog):
         cmap_layout = QHBoxLayout()
         cmap_layout.addWidget(QLabel("Colormap:"))
         self._cmap_combo = QComboBox()
+        self._cmap_combo.setToolTip(rich_tooltip(
+            "Colormap",
+            "Perceptually uniform colormaps for numeric attributes."))
         self._cmap_combo.addItems(_COLORMAPS)
         if current_colormap not in _COLORMAPS:
             # A catalog's persisted colormap may be a name that used to be
@@ -71,11 +75,17 @@ class ColormapDialog(QDialog):
         # vmin
         vmin_layout, self._vmin_spin, self._vmin_auto = _make_value_row(current_vmin)
         vmin_layout.insertWidget(0, QLabel("Min value:"))
+        self._vmin_spin.setToolTip(rich_tooltip("Min value", "The colormap's lowest value."))
+        self._vmin_auto.setToolTip(rich_tooltip(
+            "Auto", "Use the smallest and largest values found in the catalog."))
         layout.addLayout(vmin_layout)
 
         # vmax
         vmax_layout, self._vmax_spin, self._vmax_auto = _make_value_row(current_vmax)
         vmax_layout.insertWidget(0, QLabel("Max value:"))
+        self._vmax_spin.setToolTip(rich_tooltip("Max value", "The colormap's highest value."))
+        self._vmax_auto.setToolTip(rich_tooltip(
+            "Auto", "Use the smallest and largest values found in the catalog."))
         layout.addLayout(vmax_layout)
 
         # Buttons

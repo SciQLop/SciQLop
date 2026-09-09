@@ -7,5 +7,6 @@ class SciQLopStyle(ConfigEntry):
     subcategory = "style"
     color_palette: str = Field(
         default="space",
+        description="Color theme of the interface; applies instantly.",
         json_schema_extra={"widget": "combo", "choices": ["light", "dark", "neutral", "space"]},
     )

@@ -16,7 +16,7 @@ class TourPicker(QDialog):
 
     def __init__(self, main_window):
         super().__init__(main_window)
-        self.setWindowTitle("Take a Tour")
+        self.setWindowTitle("Take a tour")
         self._main_window = main_window
         self._items_by_tour_id: dict[str, QListWidgetItem] = {}
 

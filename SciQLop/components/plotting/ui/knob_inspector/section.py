@@ -13,7 +13,8 @@ from SciQLop.components.plotting.ui.knob_inspector.delegates import (
 
 
 class KnobsSection(QWidget):
-    def __init__(self, state: GraphKnobState, debounce_ms: int = 400, parent=None):
+    def __init__(self, state: GraphKnobState, debounce_ms: int = 400,
+                 parent=None, graph_name: str = ""):
         super().__init__(parent)
         self._state = state
         self._debounce_ms = debounce_ms
@@ -29,6 +30,9 @@ class KnobsSection(QWidget):
         form.setContentsMargins(0, 0, 0, 0)
         outer.addLayout(form)
 
+        fallback_tooltip = (
+            f"Adjustable input of {graph_name}" if graph_name
+            else "Adjustable input")
         for spec in state.specs:
             w = delegate_for_spec(spec, parent=self)
             w.set_value(state.values[spec.name])
@@ -36,8 +40,7 @@ class KnobsSection(QWidget):
             if spec.unit:
                 label = f"{label} [{spec.unit}]"
             form.addRow(label, w)
-            if spec.description:
-                w.setToolTip(spec.description)
+            w.setToolTip(spec.description or fallback_tooltip)
             w.value_changed.connect(lambda v, n=spec.name: self._on_widget_changed(n, v))
             self._widgets[spec.name] = w
 
@@ -45,13 +48,15 @@ class KnobsSection(QWidget):
         btn_row.addStretch()
         self._apply_btn = QPushButton("Apply")
         self._apply_btn.setVisible(any(s.apply == "manual" for s in state.specs))
+        self._apply_btn.setToolTip(
+            "Recompute the curve with the values above.")
         self._apply_btn.clicked.connect(self.apply_manual)
         btn_row.addWidget(self._apply_btn)
         self._reset_btn = QPushButton("⟳")
+        self._reset_btn.setAccessibleName("Reset inputs")
         self._reset_btn.setToolTip(rich_tooltip(
-            "Reset parameters",
-            "Restore all parameters in this section to their"
-            " defaults."))
+            "Reset inputs",
+            "Restore all inputs in this section to their defaults."))
         self._reset_btn.clicked.connect(self.reset_to_defaults)
         btn_row.addWidget(self._reset_btn)
         outer.addLayout(btn_row)

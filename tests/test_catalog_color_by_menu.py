@@ -1,4 +1,4 @@
-"""'Color by...' menu must use the right-clicked catalog's own meta
+"""'Color by…' menu must use the right-clicked catalog's own meta
 columns, not whichever catalog happens to be open in the event table
 (2026-09-06 review): right-click catalog B while A is loaded in the table
 used to show A's columns in B's menu.
@@ -44,11 +44,11 @@ def _color_by_columns(menu):
     # Shiboken's "already deleted" guard on the very next call.
     color_menu = None
     for a in menu.actions():
-        if a.text() == "Color by...":
+        if a.text() == "Color by…":
             color_menu = a.menu()
             break
     return {a.text() for a in color_menu.actions()
-            if a.text() not in ("Uniform (default)", "Configure colormap...")} - {""}
+            if a.text() not in ("Uniform (default)", "Configure colormap…")} - {""}
 
 
 def test_color_by_menu_uses_the_right_clicked_catalogs_own_columns(qtbot, qapp):
@@ -111,7 +111,7 @@ def test_color_by_menu_reports_instead_of_raising_on_provider_failure(qtbot, qap
     # The menu itself stays usable -- just without a per-column list.
     color_menu = None
     for a in menu.actions():
-        if a.text() == "Color by...":
+        if a.text() == "Color by…":
             color_menu = a.menu()
             break
     assert color_menu is not None
@@ -162,7 +162,7 @@ def test_numeric_column_offers_a_colormap_submenu(colored_catalog):
     assert cmap_menu is not None
     checked = [a.text() for a in cmap_menu.actions() if a.isChecked()]
     assert checked == ["viridis"]
-    assert "Category colors..." not in [a.text() for a in color_menu.actions()]
+    assert "Category colors…" not in [a.text() for a in color_menu.actions()]
 
     plasma = next(a for a in cmap_menu.actions() if a.text() == "plasma")
     plasma.trigger()
@@ -177,16 +177,16 @@ def test_discrete_column_offers_category_colors_not_colormap(colored_catalog):
 
     root, color_menu = _color_by_menu(browser, cat)
     texts = [a.text() for a in color_menu.actions()]
-    assert "Category colors..." in texts
+    assert "Category colors…" in texts
     assert _submenu(color_menu, "colormap_menu") is None
-    assert "Configure colormap..." not in texts
+    assert "Configure colormap…" not in texts
 
 
 def test_uniform_offers_neither(colored_catalog):
     browser, cat = colored_catalog
     root, color_menu = _color_by_menu(browser, cat)
     texts = [a.text() for a in color_menu.actions()]
-    assert "Category colors..." not in texts
+    assert "Category colors…" not in texts
     assert _submenu(color_menu, "colormap_menu") is None
 
 
@@ -213,7 +213,7 @@ def test_category_colors_dialog_result_is_stored_and_applied(colored_catalog, mo
 
     monkeypatch.setattr(category_colors_dialog, "CategoryColorsDialog", FakeDialog)
     root, color_menu = _color_by_menu(browser, cat)
-    next(a for a in color_menu.actions() if a.text() == "Category colors...").trigger()
+    next(a for a in color_menu.actions() if a.text() == "Category colors…").trigger()
 
     assert seen["current"] == {}
     assert set(seen["categories"]) == {str(e.meta["class"]) for e in cat.provider.events(cat)}

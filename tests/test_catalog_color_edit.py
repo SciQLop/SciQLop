@@ -119,7 +119,7 @@ def test_tree_context_menu_offers_set_color_and_reset_only_when_custom(qtbot, qa
     proxy_idx = browser._proxy_model.mapFromSource(_tree_index(browser._tree_model, cat))
 
     texts = _action_texts(browser._build_tree_context_menu(proxy_idx))
-    assert "Set color..." in texts
+    assert "Set color…" in texts
     assert "Reset color" not in texts
 
     palette.set_catalog_color(cat.uuid, QColor("#010203"))

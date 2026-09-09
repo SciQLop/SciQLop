@@ -121,7 +121,7 @@ def test_export_share_menu_opens_proxy_url_in_browser(panel, qtbot, monkeypatch)
     menu = QMenu()
     tsp.TimeSyncPanel._add_proxy_share_actions(panel, menu)
     labels = [a.text() for a in menu.actions() if not a.isSeparator()]
-    assert labels == ["Open in Speasy proxy"]
+    assert labels == ["Open in Speasy web viewer"]
     menu.actions()[-1].trigger()
     assert len(opened) == 1 and opened[0].startswith("http://proxy/cache/plot?config=")
 

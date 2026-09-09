@@ -578,7 +578,10 @@ def is_field_editable(field_name: str, field_info: FieldInfo) -> bool:
     extra = field_info.json_schema_extra or {}
     if not isinstance(extra, dict):
         extra = {}
-    if extra.get("widget", ""):
+    widget = extra.get("widget", "")
+    if widget == "hidden":
+        return False
+    if widget:
         return True
     annotation = _unwrap_optional(field_info.annotation)
     if get_origin(annotation) is typing.Literal:

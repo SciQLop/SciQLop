@@ -1,5 +1,5 @@
 """Structure of the panel right-click menu: actions are grouped by intention
-into 'Export & Share' and 'Templates' submenus rather than flat at the top
+into 'Export' and 'Panel templates' submenus rather than flat at the top
 level (2026-06-14 readability refactor)."""
 
 
@@ -29,7 +29,7 @@ def _panel(qtbot):
 def test_top_level_is_grouped(qtbot, qapp):
     panel = _panel(qtbot)
     menu = panel._build_context_menu()
-    assert _submenu_titles(menu) == ["Catalogs", "Export & Share", "Templates"]
+    assert _submenu_titles(menu) == ["Catalogs", "Export", "Panel templates"]
     # nothing loose at the top level except separators
     assert _leaf_labels(menu) == []
 
@@ -37,7 +37,7 @@ def test_top_level_is_grouped(qtbot, qapp):
 def test_export_share_group_contents(qtbot, qapp):
     panel = _panel(qtbot)
     menu = panel._build_context_menu()
-    export = _submenu(menu, "Export & Share")
+    export = _submenu(menu, "Export")
     assert export is not None
     labels = _leaf_labels(export)
     assert "Export as PNG…" in labels
@@ -47,7 +47,7 @@ def test_export_share_group_contents(qtbot, qapp):
 def test_templates_group_contents(qtbot, qapp):
     panel = _panel(qtbot)
     menu = panel._build_context_menu()
-    templates = _submenu(menu, "Templates")
+    templates = _submenu(menu, "Panel templates")
     assert templates is not None
     labels = _leaf_labels(templates)
     assert "Save as template…" in labels

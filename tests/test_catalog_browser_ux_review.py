@@ -166,7 +166,7 @@ def test_tree_context_menu_offers_rename_when_capable(qtbot, qapp):
 
     proxy_idx = _catalog_tree_index(browser, cat)
     menu = browser._build_tree_context_menu(proxy_idx)
-    rename = _menu_action(menu, "Rename")
+    rename = _menu_action(menu, "Rename…")
     assert rename is not None
     rename.trigger()
     assert browser._catalog_tree.state() == QAbstractItemView.State.EditingState
@@ -184,8 +184,8 @@ def test_tree_context_menu_hides_rename_without_capability(qtbot, qapp, monkeypa
     browser = _browser_with(qtbot, provider)
 
     menu = browser._build_tree_context_menu(_catalog_tree_index(browser, cat))
-    assert _menu_action(menu, "Rename") is None
-    assert _menu_action(menu, "Delete Catalog") is not None
+    assert _menu_action(menu, "Rename…") is None
+    assert _menu_action(menu, "Delete catalog…") is not None
 
 
 # ---- 7. "Color by..." sees every column of the open catalog ----
@@ -202,6 +202,6 @@ def test_color_by_menu_lists_columns_beyond_the_first_200_events(qtbot, qapp):
     _select_catalog(browser, cat)
 
     menu = browser._build_tree_context_menu(_catalog_tree_index(browser, cat))
-    color_action = _menu_action(menu, "Color by...")
+    color_action = _menu_action(menu, "Color by…")
     color_menu = color_action.menu()
     assert "late_column" in {a.text() for a in color_menu.actions()}

@@ -13,6 +13,7 @@ from SciQLop.components.catalogs.backend.color_palette import (
 )
 from SciQLop.components.catalogs.backend.provider import Catalog
 from SciQLop.components.sciqlop_logging import getLogger
+from SciQLop.core.ui.tooltips import rich_tooltip
 
 log = getLogger(__name__)
 
@@ -43,20 +44,34 @@ def pick_catalog_color(catalog: Catalog, dialog_parent: QWidget | None) -> None:
 
 
 def add_catalog_color_actions(menu: QMenu, catalog: Catalog, dialog_parent: QWidget | None) -> None:
-    set_action = menu.addAction("Set color...")
+    menu.setToolTipsVisible(True)
+    set_action = menu.addAction("Set color…")
+    set_action.setToolTip(rich_tooltip(
+        "Set color…",
+        "Pick one color for every event of this catalog."))
     set_action.triggered.connect(lambda: pick_catalog_color(catalog, dialog_parent))
     if has_custom_color(catalog.uuid):
         reset_action = menu.addAction("Reset color")
+        reset_action.setToolTip(rich_tooltip(
+            "Reset color",
+            "Remove this catalog's custom color."))
         reset_action.triggered.connect(lambda: set_catalog_color(catalog.uuid, None))
 
 
 def build_color_by_menu(parent_menu: QMenu, catalog: Catalog, events: list,
                         dialog_parent: QWidget | None) -> QMenu:
     current = get_color_mapper(catalog)
-    color_menu = parent_menu.addMenu("Color by...")
+    color_menu = parent_menu.addMenu("Color by…")
     color_menu.setObjectName("color_by_menu")
+    color_menu.setToolTipsVisible(True)
+    color_menu.menuAction().setToolTip(rich_tooltip(
+        "Color by…",
+        "Color each event by the value of one of its attributes."))
 
     uniform_action = color_menu.addAction("Uniform (default)")
+    uniform_action.setToolTip(rich_tooltip(
+        "Uniform (default)",
+        "One color for all events."))
     uniform_action.setCheckable(True)
     uniform_action.setChecked(current.column is None)
     uniform_action.triggered.connect(lambda: set_color_mapper(catalog, ColorMapper()))
@@ -77,11 +92,17 @@ def build_color_by_menu(parent_menu: QMenu, catalog: Catalog, events: list,
     color_menu.addSeparator()
     if _is_numeric(values):
         _add_colormap_submenu(color_menu, catalog, current)
-        configure_action = color_menu.addAction("Configure colormap...")
+        configure_action = color_menu.addAction("Configure colormap…")
+        configure_action.setToolTip(rich_tooltip(
+            "Configure colormap…",
+            "Choose the colormap and the value range it spans."))
         configure_action.triggered.connect(lambda: _show_colormap_dialog(catalog, current, dialog_parent))
     else:
         categories = sorted({str(v) for v in values})
-        categories_action = color_menu.addAction("Category colors...")
+        categories_action = color_menu.addAction("Category colors…")
+        categories_action.setToolTip(rich_tooltip(
+            "Category colors…",
+            "Assign a color to each distinct value."))
         categories_action.triggered.connect(
             lambda: _show_category_colors_dialog(catalog, current, categories, dialog_parent))
     return color_menu
@@ -91,6 +112,10 @@ def _add_colormap_submenu(color_menu: QMenu, catalog: Catalog, current: ColorMap
     from .colormap_dialog import _COLORMAPS
     cmap_menu = color_menu.addMenu("Colormap")
     cmap_menu.setObjectName("colormap_menu")
+    cmap_menu.setToolTipsVisible(True)
+    cmap_menu.menuAction().setToolTip(rich_tooltip(
+        "Colormap",
+        "Perceptually uniform colormaps for numeric attributes."))
     names = _COLORMAPS if current.colormap in _COLORMAPS else [*_COLORMAPS, current.colormap]
     for name in names:
         action = cmap_menu.addAction(name)

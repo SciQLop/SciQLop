@@ -134,7 +134,8 @@ class TscatCatalogProvider(CatalogProvider):
         self._orphan_node_visible = False
         self._root_model = tscat_model.tscat_root()
         self._editor_window = None
-        super().__init__(name="My Catalogs", parent=parent)
+        super().__init__(name="My Catalogs", parent=parent,
+                         description="Your own catalogs, stored locally in TSCat files.")
         # Debounce orphan refreshes: a single cross-provider catalog import
         # fans out to 2N+1 driver actions (catalog create + N event create +
         # N add-to-catalogue), each in our refresh-trigger list. Without
@@ -161,7 +162,7 @@ class TscatCatalogProvider(CatalogProvider):
                 icon=theme_icon("catalogue"),
             ),
             ProviderAction(
-                name="Clean up orphan events…",
+                name="Remove events without a catalog…",
                 callback=lambda _: self._show_orphan_cleanup_dialog(),
                 icon=theme_icon("delete"),
             ),

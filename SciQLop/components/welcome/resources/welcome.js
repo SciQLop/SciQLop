@@ -188,9 +188,10 @@ function loadTemplates() {
             });
             container.appendChild(card);
         });
-        // "Import..." card at the end
+        // "Import\u2026" card at the end
         var importCard = document.createElement("div");
         importCard.className = "card card-action";
+        importCard.title = "Import a panel template from a file.";
         importCard.innerHTML = '<span class="card-action-label">Import\u2026</span>';
         importCard.addEventListener("click", function() {
             backend.import_template();
@@ -292,6 +293,8 @@ function showLatestRelease(json_str) {
 function createNewWorkspaceCard() {
     const card = document.createElement("div");
     card.className = "card new-workspace";
+    card.title = "A workspace keeps your panels, catalogs, notebooks and " +
+        "the Python packages they need. Switching workspaces restarts SciQLop.";
     card.innerHTML =
         '<div class="card-image-wrapper"><div class="card-image placeholder">+</div></div>' +
         '<div class="card-body"><span class="card-name">New workspace</span></div>';
@@ -457,14 +460,14 @@ function showWorkspaceDetails(ws, isActive) {
         '<div class="details-field"><label>Last used</label><span>' + escapeHtml(ws.last_used) + '</span></div>' +
         '<div class="details-field"><label>Last modified</label><span>' + escapeHtml(ws.last_modified) + '</span></div>' +
         '<div class="details-field"><label>Description</label>' + descHtml + '</div>' +
-        '<div class="details-section"><label>SciQLop Core</label>' + coreVersionHtml + '</div>' +
-        '<div class="details-section"><label>Packages</label>' + pkgHtml + '</div>' +
+        '<div class="details-section"><label>SciQLop version</label>' + coreVersionHtml + '</div>' +
+        '<div class="details-section"><label>Extra Python packages</label>' + pkgHtml + '</div>' +
         '<div class="details-actions">' +
-            (isActive ? '' : '<button class="primary" onclick="tryOpenWorkspace(\'' + escapeJsStringAttr(ws.directory) + '\')">Open workspace</button>') +
+            (isActive ? '' : '<button class="primary" title="Open this workspace" onclick="tryOpenWorkspace(\'' + escapeJsStringAttr(ws.directory) + '\')">Open workspace</button>') +
             '<div class="details-actions-row">' +
-                '<button class="secondary" onclick="backend.duplicate_workspace(\'' + escapeJsStringAttr(ws.directory) + '\')">Clone</button>' +
+                '<button class="secondary" title="Copy this workspace, including its packages." onclick="backend.duplicate_workspace(\'' + escapeJsStringAttr(ws.directory) + '\')">Duplicate</button>' +
                 (ws.is_default || isActive ? '' :
-                    '<button class="secondary danger" onclick="confirmDelete(\'' + escapeJsStringAttr(ws.directory) + '\', \'' + escapeJsStringAttr(ws.name) + '\')">Delete</button>') +
+                    '<button class="secondary danger" title="Delete this workspace" onclick="confirmDelete(\'' + escapeJsStringAttr(ws.directory) + '\', \'' + escapeJsStringAttr(ws.name) + '\')">Delete</button>') +
             '</div>' +
         '</div>';
 
@@ -502,9 +505,10 @@ function buildCoreVersionSection(ws) {
     var currentLabel = current ? current : "main (development)";
     var html = '<div class="core-version-current">Current: <strong>' +
         escapeHtml(currentLabel) + '</strong></div>';
-    html += '<select id="core-version-select" class="core-version-select">' +
+    html += '<select id="core-version-select" class="core-version-select" ' +
+        'title="Version of SciQLop this workspace runs; \'main (development)\' follows the latest code.">' +
         '<option>' + escapeHtml(currentLabel) + ' (loading…)</option></select>';
-    html += '<button id="core-version-install-btn" class="secondary">Install</button>';
+    html += '<button id="core-version-install-btn" class="secondary" title="Install this version into the workspace">Install</button>';
     html += '<div id="core-version-status" class="core-version-status"></div>';
 
     setTimeout(function() {
@@ -626,8 +630,8 @@ function buildPackageList(ws, isActive, editable) {
     html += '</ul>';
     if (editable) {
         html += '<div class="pkg-add-row">' +
-            '<input id="pkg-add-input" type="text" placeholder="package name...">' +
-            '<button id="pkg-add-btn">Add</button></div>';
+            '<input id="pkg-add-input" type="text" placeholder="PyPI package name…">' +
+            '<button id="pkg-add-btn" title="Install a package from PyPI into this workspace.">Add</button></div>';
     }
 
     setTimeout(function() {

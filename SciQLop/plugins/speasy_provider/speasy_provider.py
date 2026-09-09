@@ -389,6 +389,17 @@ def _index_to_dict(index) -> dict:
     return out
 
 
+DATA_ARCHIVE_DESCRIPTIONS = {
+    "amda": "AMDA — Automated Multi-Dataset Analysis (CDPP, France)",
+    "cda": "CDAWeb — NASA Coordinated Data Analysis Web",
+    "csa": "CSA — ESA Cluster Science Archive",
+    "ssc": "SSCWeb — NASA Satellite Situation Center (orbits)",
+    "archive": "Local archive files",
+    "cdpp3dview": "3DView (CDPP) orbits and ephemeris",
+    "uiowaephtool": "University of Iowa ephemeris tool",
+}
+
+
 def build_product_tree(root_node: ProductsModelNode, provider):
     ws_icons = {
         "amda": "amda",
@@ -400,7 +411,9 @@ def build_product_tree(root_node: ProductsModelNode, provider):
         "uiowaephtool": "uiowaephtool",
     }
     for name, child in spz.inventories.tree.__dict__.items():
-        node = ProductsModelNode(name, icon=ws_icons.get(name))
+        description = DATA_ARCHIVE_DESCRIPTIONS.get(name)
+        metadata = {"description": description} if description else {}
+        node = ProductsModelNode(name, metadata=metadata, icon=ws_icons.get(name))
         root_node.add_child(node)
         explore_nodes(child, node, provider=provider)
     return root_node

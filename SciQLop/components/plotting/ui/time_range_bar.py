@@ -84,7 +84,9 @@ class TimeRangeBar(QWidget):
             "Jump forward",
             "Move forward by 5× the current duration."))
         self._zoom_limit_combo = _make_zoom_limit_combo(self)
-        self._zoom_limit_label = QLabel("Max:", self)
+        self._zoom_limit_label = QLabel("Zoom limit:", self)
+        self._zoom_limit_label.setToolTip(self._zoom_limit_combo.toolTip())
+        self._zoom_limit_label.setBuddy(self._zoom_limit_combo)
 
         self._duration_combo.setToolTip(rich_tooltip(
             "Time window duration",

@@ -106,10 +106,10 @@ class CatalogTreeModel(QAbstractItemModel):
         has_folder_ph = any(c.placeholder_type == _PlaceholderType.FOLDER for c in node.children)
         to_add = []
         if not has_cat_ph:
-            to_add.append(_Node(name="New Catalog...", parent=node, provider=node.provider,
+            to_add.append(_Node(name="New catalog…", parent=node, provider=node.provider,
                                 placeholder_type=_PlaceholderType.CATALOG))
         if not has_folder_ph:
-            to_add.append(_Node(name="New Folder...", parent=node, provider=node.provider,
+            to_add.append(_Node(name="New folder…", parent=node, provider=node.provider,
                                 placeholder_type=_PlaceholderType.FOLDER))
         if to_add:
             start = len(node.children)
@@ -126,9 +126,9 @@ class CatalogTreeModel(QAbstractItemModel):
         for child in node.children:
             if child.catalog is None and not child.is_placeholder:
                 self._add_placeholders_recursive(child, provider)
-        node.children.append(_Node(name="New Catalog...", parent=node, provider=provider,
+        node.children.append(_Node(name="New catalog…", parent=node, provider=provider,
                                     placeholder_type=_PlaceholderType.CATALOG))
-        node.children.append(_Node(name="New Folder...", parent=node, provider=provider,
+        node.children.append(_Node(name="New folder…", parent=node, provider=provider,
                                     placeholder_type=_PlaceholderType.FOLDER))
 
     def _add_provider_node(self, provider: CatalogProvider) -> _Node:
@@ -488,6 +488,11 @@ class CatalogTreeModel(QAbstractItemModel):
             }
             icon_name = icon_map.get(node_type)
             return get_icon(icon_name) if icon_name else None
+        if role == Qt.ItemDataRole.ToolTipRole:
+            node = index.internalPointer()
+            if node.provider is not None and node.parent is self._root:
+                return node.provider.description or None
+            return None
         if role == DIRTY_PROVIDER_ROLE:
             node = index.internalPointer()
             if node.provider is not None and node.parent is self._root:

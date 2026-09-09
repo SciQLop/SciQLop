@@ -16,7 +16,7 @@ GETTING_STARTED = Tour(
             body=(
                 "This short tour shows how to plot real data, navigate it, "
                 "label time intervals and find the tools around them. Use "
-                "Next to move on, Escape to leave, and Tools → Take a Tour "
+                "Next to move on, Escape to leave, and Tools → Take a tour "
                 "to replay it later."
             ),
         ),
@@ -104,11 +104,11 @@ GETTING_STARTED = Tour(
             title="Label time intervals",
             body=(
                 "Catalogs are lists of time intervals — events — with their "
-                "own attributes. Click to open the Catalog browser."
+                "own attributes. Click to open Catalogs."
             ),
             resolver=targets.unless_dock_visible(
-                "Catalog Browser", targets.side_tab_resolver("Catalog Browser")),
-            completion=completions.dock_visible("Catalog Browser"),
+                "Catalogs", targets.side_tab_resolver("Catalogs")),
+            completion=completions.dock_visible("Catalogs"),
         ),
         TourStep(
             step_id="catalog_sources",
@@ -119,7 +119,7 @@ GETTING_STARTED = Tour(
                 "services, and 'Shared' catalogs are edited live with "
                 "collaborators."
             ),
-            resolver=targets.in_dock("Catalog Browser", targets.resolve_catalog_tree),
+            resolver=targets.in_dock("Catalogs", targets.resolve_catalog_tree),
         ),
         TourStep(
             step_id="overlay_catalog",
@@ -129,7 +129,7 @@ GETTING_STARTED = Tour(
                 "right-click the panel → Catalogs. Select a catalog here to "
                 "see its events in the table below and edit them in place."
             ),
-            resolver=targets.in_dock("Catalog Browser", targets.resolve_catalog_tree),
+            resolver=targets.in_dock("Catalogs", targets.resolve_catalog_tree),
         ),
         TourStep(
             step_id="edit_events",
@@ -158,10 +158,10 @@ GETTING_STARTED = Tour(
             title="You're all set",
             body=(
                 f"{native_shortcut_text('Ctrl+K')} opens the command palette: "
-                "every action, searchable. Tools → Open JupyterLab scripts "
-                "this very session from Python, and the Plugin Store adds "
-                "data sources and tools. Replay this tour anytime from "
-                "Tools → Take a Tour."
+                "every action, searchable. Tools → Open JupyterLab lets you "
+                "drive this very session from Python, and the Plugin Store "
+                "adds data sources and tools. Replay this tour anytime from "
+                "Tools → Take a tour."
             ),
         ),
     ],

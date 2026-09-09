@@ -126,9 +126,10 @@ class CatalogProvider(QObject):
     status_changed = Signal()      # provider-level state changed (e.g. connection)
     attribute_spec_changed = Signal(object, str)  # (catalog, key)
 
-    def __init__(self, name: str, parent: QObject | None = None):
+    def __init__(self, name: str, parent: QObject | None = None, description: str = ""):
         super().__init__(parent)
         self._name = name
+        self._description = description
         self._events: dict[str, list[CatalogEvent]] = {}
         self._dirty_catalogs: set[str] = set()
         self._provider_dirty: bool = False
@@ -142,6 +143,10 @@ class CatalogProvider(QObject):
     @property
     def name(self) -> str:
         return self._name
+
+    @property
+    def description(self) -> str:
+        return self._description
 
     def catalogs(self) -> list[Catalog]:
         raise NotImplementedError

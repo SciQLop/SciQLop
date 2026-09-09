@@ -10,6 +10,13 @@ from PySide6.QtGui import QCursor
 from tscat_gui.tscat_driver.model import tscat_model
 
 from .orphans import ORPHAN_CATALOG_UUID, BulkDeleteOrphanEventsAction
+from SciQLop.core.ui.tooltips import rich_tooltip
+
+
+def _orphan_count_text(count: int) -> str:
+    if count == 1:
+        return "1 event without a catalog"
+    return f"{count} events without a catalog"
 
 
 class OrphanCleanupDialog(QDialog):
@@ -25,7 +32,7 @@ class OrphanCleanupDialog(QDialog):
 
     def __init__(self, provider, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Clean up orphan events")
+        self.setWindowTitle("Events without a catalog")
         self._provider = provider
 
         self._list = QListWidget()
@@ -38,8 +45,14 @@ class OrphanCleanupDialog(QDialog):
 
         btns = QHBoxLayout()
         self._delete_selected = QPushButton("Delete checked")
+        self._delete_selected.setToolTip(rich_tooltip(
+            "Delete checked",
+            "Permanently delete the checked events. This cannot be undone."))
         self._delete_selected.clicked.connect(self._on_delete_selected)
         self._delete_all = QPushButton("Delete all")
+        self._delete_all.setToolTip(rich_tooltip(
+            "Delete all",
+            "Permanently delete every event without a catalog. This cannot be undone."))
         self._delete_all.clicked.connect(self._on_delete_all)
         cancel = QPushButton("Close")
         cancel.clicked.connect(self.close)
@@ -60,7 +73,7 @@ class OrphanCleanupDialog(QDialog):
     def _populate(self) -> None:
         self._list.clear()
         events = list(self._provider._orphan_events)
-        self._summary.setText(f"{len(events)} orphan event(s)")
+        self._summary.setText(_orphan_count_text(len(events)))
         for ev in events:
             label = (f"{ev.start.isoformat()} → {ev.stop.isoformat()} "
                      f"(uuid={ev.uuid[:8]}…)")

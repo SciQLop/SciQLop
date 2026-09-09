@@ -541,7 +541,7 @@ def _speasy_proxy_url() -> str:
 
 def _build_knob_reset_action(state, parent):
     from PySide6.QtGui import QAction
-    action = QAction("Reset parameters to defaults", parent)
+    action = QAction("Reset inputs to defaults", parent)
 
     def _do_reset():
         defaults = {s.name: s.default for s in state.specs}
@@ -1162,6 +1162,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
     def _build_context_menu(self):
         from PySide6.QtWidgets import QMenu
         menu = QMenu(self)
+        menu.setToolTipsVisible(True)
         self._catalog_manager.build_catalogs_menu(menu)
         self._add_crosshair_action(menu)
         menu.addSeparator()
@@ -1171,22 +1172,29 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         return menu
 
     def _add_crosshair_action(self, menu):
+        from SciQLop.core.ui.shortcuts import native_shortcut_text
         toggle = getattr(self, "_crosshair_toggle", None)
         if toggle is None:
             return
-        action = menu.addAction("Crosshair")
+        shortcut = native_shortcut_text("Ctrl+Shift+H")
+        action = menu.addAction("Crosshair\t" + shortcut)
         action.setCheckable(True)
         action.setChecked(toggle.isChecked())
+        action.setToolTip(
+            "Show a crosshair and value read-out as you move over plots.")
         action.toggled.connect(toggle.setChecked)
 
     def _build_export_share_menu(self, menu):
         from PySide6.QtWidgets import QMenu
-        # '&&' renders a literal ampersand; a lone '&' would become a mnemonic.
-        # Parent the submenu to `menu` so it stays C++-owned after this returns.
-        sub = QMenu("Export && Share", menu)
+        sub = QMenu("Export", menu)
+        sub.setToolTipsVisible(True)
         menu.addMenu(sub)
-        sub.addAction("Export as PNG\u2026", self._export_png)
-        sub.addAction("Export as PDF\u2026", self._export_pdf)
+        sub.menuAction().setToolTip(
+            "Save this panel as an image, share it, or copy its Python code.")
+        export_png = sub.addAction("Export as PNG\u2026", self._export_png)
+        export_png.setToolTip("Save this panel as a PNG image.")
+        export_pdf = sub.addAction("Export as PDF\u2026", self._export_pdf)
+        export_pdf.setToolTip("Save this panel as a PDF document.")
         self._add_proxy_share_actions(sub)
         add_graph_context_actions(sub, self)
 
@@ -1196,16 +1204,29 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         if url is None:
             return
         menu.addSeparator()
-        menu.addAction("Open in Speasy proxy", lambda: QDesktopServices.openUrl(QUrl(url)))
+        action = menu.addAction(
+            "Open in Speasy web viewer",
+            lambda: QDesktopServices.openUrl(QUrl(url)))
+        action.setToolTip(
+            "Open this panel as a shareable Speasy proxy web page.")
 
     def _build_templates_menu(self, menu):
         from PySide6.QtWidgets import QMenu
-        sub = QMenu("Templates", menu)
+        sub = QMenu("Panel templates", menu)
+        sub.setToolTipsVisible(True)
         menu.addMenu(sub)
+        template_tooltip = (
+            "A panel template stores the plots, products and styling of this "
+            "panel \u2014 not the time range or the workspace.")
+        sub.menuAction().setToolTip(template_tooltip)
         if self._template_source_path:
-            sub.addAction("Update template", self._update_template)
-        sub.addAction("Save as template\u2026", self._quick_save_template)
-        sub.addAction("Export template\u2026", self._export_template)
+            update = sub.addAction("Update template", self._update_template)
+            update.setToolTip(template_tooltip)
+        save = sub.addAction(
+            "Save as template\u2026", self._quick_save_template)
+        save.setToolTip(template_tooltip)
+        export = sub.addAction("Export template\u2026", self._export_template)
+        export.setToolTip(template_tooltip)
 
     def _append_knob_reset_actions(self, menu):
         actions = []
@@ -1215,7 +1236,10 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
                 if state is not None and state.specs:
                     label = child.name() if hasattr(child, "name") else "graph"
                     a = _build_knob_reset_action(state, parent=menu)
-                    a.setText(f"Reset parameters: {label}")
+                    a.setText(f"Reset inputs: {label}")
+                    a.setToolTip(
+                        "Restore this curve's adjustable inputs to their "
+                        "defaults.")
                     actions.append(a)
         if actions:
             menu.addSeparator()

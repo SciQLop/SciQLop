@@ -429,7 +429,7 @@ def test_add_graph_context_actions_clipboard(qtbot):
 
 def test_panel_menu_nests_copy_python_code_under_export_share(qtbot):
     """The panel context menu wires the 'Copy Python code' submenu inside the
-    'Export & Share' group (2026-06-14 grouping refactor)."""
+    'Export' group (2026-06-14 grouping refactor)."""
     import numpy as np
     from SciQLop.components.plotting.ui.time_sync_panel import (
         TimeSyncPanel, plot_static_data,
@@ -454,7 +454,7 @@ def test_panel_menu_nests_copy_python_code_under_export_share(qtbot):
     try:
         menu = panel._build_context_menu()
         export = next(a.menu() for a in menu.actions()
-                      if a.menu() and a.text().replace("&&", "&") == "Export & Share")
+                      if a.menu() and a.text() == "Export")
         copy_titles = [a.text() for a in export.actions()
                        if a.menu() and a.text() == "Copy Python code"]
         assert copy_titles == ["Copy Python code"]

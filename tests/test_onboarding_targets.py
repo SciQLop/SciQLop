@@ -82,12 +82,12 @@ def test_resolve_example_product_falls_back_to_the_whole_tree(main_window, monke
 
 def test_in_dock_opens_a_closed_side_dock_before_resolving(main_window, qtbot):
     from SciQLop.components.onboarding.backend.targets import in_dock
-    dw = main_window.dock_manager.findDockWidget("Catalog Browser")
+    dw = main_window.dock_manager.findDockWidget("Catalogs")
     dw.autoHideDockContainer().collapseView(True)
     qtbot.waitUntil(lambda: not dw.isVisible(), timeout=1000)
 
     from SciQLop.components.onboarding.backend.targets import resolve_catalog_tree
-    tree = in_dock("Catalog Browser", resolve_catalog_tree)(main_window, {})
+    tree = in_dock("Catalogs", resolve_catalog_tree)(main_window, {})
     assert tree is resolve_catalog_tree(main_window, {})
     assert tree.isVisible(), "the inner widget must be showable right after resolving"
     assert dw.isVisible()

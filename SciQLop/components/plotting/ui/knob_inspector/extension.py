@@ -7,7 +7,8 @@ from SciQLop.components.plotting.ui.knob_inspector.section import KnobsSection
 
 
 class KnobInspectorExtension(InspectorExtension):
-    def __init__(self, state: GraphKnobState, parent=None, title: str = "Parameters"):
+    def __init__(self, state: GraphKnobState, parent=None,
+                 title: str = "Adjustable inputs"):
         super().__init__(parent)
         self.setObjectName(title)
         self._state = state
@@ -20,7 +21,10 @@ class KnobInspectorExtension(InspectorExtension):
         return 100
 
     def build_widget(self, parent: QWidget) -> QWidget:
-        return KnobsSection(self._state, parent=parent)
+        from SciQLop.core.graph_context import graph_name
+        graph = self.parent()
+        name = graph_name(graph) if graph is not None else ""
+        return KnobsSection(self._state, graph_name=name, parent=parent)
 
 
 class LayerExtension(InspectorExtension):
@@ -37,4 +41,4 @@ class LayerExtension(InspectorExtension):
         return 100
 
     def build_widget(self, parent: QWidget) -> QWidget:
-        return QLabel("No configurable parameters", parent)
+        return QLabel("No adjustable inputs", parent)

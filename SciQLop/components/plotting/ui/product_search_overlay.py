@@ -22,6 +22,9 @@ _MAX_RESULTS = 50
 _MIN_QUERY_LENGTH = 2
 _DEBOUNCE_MS = 150
 
+_DEFAULT_HEADLINE = "Add a product to this panel"
+_NO_MATCH_HEADLINE = "No product matches — try a mission or instrument name"
+
 _MUTED = "color: palette(placeholder-text); background: transparent; border: none;"
 _DROP_ZONE_STYLE = (
     "border: 3ex dashed palette(mid);"
@@ -74,7 +77,7 @@ class ProductSearchOverlay(QWidget):
         layout = QVBoxLayout(self)
         layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
 
-        self._label = QLabel("Add a product to this panel")
+        self._label = QLabel(_DEFAULT_HEADLINE)
         self._label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._label.setStyleSheet(_MUTED + "font-size: 16ex;")
         layout.addWidget(self._label, 0, Qt.AlignmentFlag.AlignCenter)
@@ -128,6 +131,11 @@ class ProductSearchOverlay(QWidget):
         drop_zone.setStyleSheet(_DROP_ZONE_STYLE)
         drop_zone.setFixedWidth(content_width)
         drop_zone.setMinimumHeight(drop_height)
+        drop_zone.setToolTip(rich_tooltip(
+            "Drop products here",
+            "Drag a product from the Products panel and drop it here. A "
+            "product is one plottable quantity from a data archive: a "
+            "scalar, a vector, or a spectrogram."))
         drop_layout.addWidget(drop_zone, 0, Qt.AlignmentFlag.AlignCenter)
 
         layout.addWidget(self._drop_section, 0, Qt.AlignmentFlag.AlignCenter)
@@ -158,6 +166,7 @@ class ProductSearchOverlay(QWidget):
             self._show_results(False)
             self._result_paths.clear()
             self._list_model.setStringList([])
+            self.show_message(_DEFAULT_HEADLINE)
             return
         self._debounce.start()
 
@@ -229,6 +238,7 @@ class ProductSearchOverlay(QWidget):
             self._show_results(False)
             self._result_paths.clear()
             self._list_model.setStringList([])
+            self.show_message(_NO_MATCH_HEADLINE)
             return
         indices = [self._filter_model.index(i, 0) for i in range(count)]
         mime = self._filter_model.mimeData(indices)
@@ -239,6 +249,7 @@ class ProductSearchOverlay(QWidget):
             return
         self._result_paths = products
         self._list_model.setStringList([_display_path(p) for p in products])
+        self.show_message(_DEFAULT_HEADLINE)
         self._show_results(True)
 
     def _on_result_clicked(self, index: QModelIndex):

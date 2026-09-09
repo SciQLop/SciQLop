@@ -37,6 +37,34 @@ register_icon("plot_panel", QtGui.QIcon("://icons/plot_panel_128.png"))
 
 log = getLogger(__name__)
 
+_DOCK_VIEW_TOOLTIPS = {
+    "Welcome": "Workspaces, examples and templates.",
+    "Products": "Browse every data archive by mission and instrument. Drag a product onto a panel to plot it.",
+    "Catalogs": "Lists of time intervals (events) you can overlay on plots and edit.",
+    "Logs": "Application log messages, useful when something fails.",
+    "Settings": "Themes, plot defaults, plugins and workspaces.",
+    "Properties": "Inspect and style the selected plot or curve.",
+    "Toolbar": "Quick-access buttons for common plotting actions.",
+    "SciQLop JupyterLab": "A notebook interface connected to the same Python session as SciQLop.",
+    "Plugin Store": "Browse and install community plugins.",
+    "Agents": "Chat with an AI assistant that can inspect this session.",
+}
+
+
+def _dock_view_tooltip(title: str) -> Optional[str]:
+    body = _DOCK_VIEW_TOOLTIPS.get(title)
+    return rich_tooltip(title, body) if body else None
+
+
+def _apply_dock_view_tooltip(doc: QtAds.CDockWidget, action: QtGui.QAction) -> None:
+    tooltip = _dock_view_tooltip(doc.windowTitle())
+    if tooltip is None:
+        return
+    action.setToolTip(tooltip)
+    doc.tabWidget().setToolTip(tooltip)
+    if doc.isAutoHide():
+        doc.sideTabWidget().setToolTip(tooltip)
+
 
 def _extract_panel(dock_widget):
     # dock_widget itself can be a dead Shiboken wrapper (e.g. queried from
@@ -260,6 +288,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             "Reload theme",
             "Re-apply the current color palette and refresh all icons."))
 
+        self.fullScreenAction = self.viewMenu.addAction("Full screen")
+        self.fullScreenAction.setCheckable(True)
+        self.fullScreenAction.setShortcut(QtGui.QKeySequence("F11"))
+        self.fullScreenAction.toggled.connect(self._set_full_screen)
+        self.fullScreenAction.setToolTip(rich_tooltip(
+            "Full screen",
+            "Show SciQLop without window decorations.",
+            shortcut="F11"))
+
         self.toolsMenu = QMenu("Tools")
         self.toolsMenu.setToolTipsVisible(True)
         self._menubar.addMenu(self.toolsMenu)
@@ -275,9 +312,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolsMenu.addMenu(self._profiling_menu.menu)
 
         take_a_tour = self.toolsMenu.addAction(
-            "Take a Tour…", self._open_tour_picker)
+            "Take a tour…", self._open_tour_picker)
         take_a_tour.setToolTip(rich_tooltip(
-            "Take a Tour",
+            "Take a tour",
             "Pick a guided walkthrough of a SciQLop feature."))
 
     def _setup_side_panels(self):
@@ -308,8 +345,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         sciqlop_app().add_quickstart_shortcut("JupyterLab", "Open JupyterLab",
                                               Icons.get_icon("Jupyter"),
                                               self.open_jupyterlab_widget)
-        open_browser = self.toolsMenu.addAction(
-            "Open JupyterLab in browser", wm.open_in_browser)
+        open_browser = QtGui.QAction("Open JupyterLab in browser", self.toolsMenu)
+        open_browser.triggered.connect(wm.open_in_browser)
+        self.toolsMenu.insertAction(self._profiling_menu.menu.menuAction(), open_browser)
         open_browser.setToolTip(rich_tooltip(
             "Open JupyterLab in browser",
             "Open the JupyterLab server in your default web browser."))
@@ -342,20 +380,24 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.toolBar.setWindowTitle("Toolbar")
         self.addToolBar(QtCore.Qt.ToolBarArea.TopToolBarArea, self.toolBar)
         self.toolBar.setVisible(False)
-        self.viewMenu.addAction(self.toolBar.toggleViewAction())
+        toolbar_toggle = self.toolBar.toggleViewAction()
+        self.viewMenu.addAction(toolbar_toggle)
+        toolbar_tooltip = _dock_view_tooltip("Toolbar")
+        if toolbar_tooltip:
+            toolbar_toggle.setToolTip(toolbar_tooltip)
 
         self.addTSPanel = QtGui.QAction(self)
         self.addTSPanel.setIcon(theme_icon("add_graph"))
-        self.addTSPanel.setText("Add new plot panel")
+        self.addTSPanel.setText("New plot panel")
         self.addTSPanel.setToolTip(rich_tooltip(
             "New plot panel",
             "Create an empty panel to drop products onto."))
         self.addTSPanel.triggered.connect(lambda: self.new_plot_panel())
         self.toolBar.addAction(self.addTSPanel)
-        sciqlop_app().add_quickstart_shortcut(name="Plot panel", description="Add a new plot panel",
+        sciqlop_app().add_quickstart_shortcut(name="New plot panel", description="Add a new plot panel",
                                               icon=theme_icon("add_graph"), callback=self.new_plot_panel)
         sciqlop_app().add_quickstart_shortcut(
-            name="Take a Tour", description="Pick a guided walkthrough of a SciQLop feature",
+            name="Take a tour", description="Pick a guided walkthrough of a SciQLop feature",
             icon=theme_icon("assistant"), callback=self._open_tour_picker)
 
     def _setup_status_bar(self):
@@ -367,9 +409,15 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._sys_mem = psutil.virtual_memory().total // 1024 ** 2
         self._mem_usage.setMaximum(self._sys_mem)
         self._mem_usage.setFormat(f"System memory usage: %v / {self._sys_mem:.2f} MB")
+        self._mem_usage.setToolTip(rich_tooltip(
+            "Memory usage",
+            "Memory used by SciQLop out of system memory."))
 
         self._cpu_usage = QtWidgets.QProgressBar()
         self._cpu_usage.setFormat("CPU usage: %v%")
+        self._cpu_usage.setToolTip(rich_tooltip(
+            "CPU usage",
+            "CPU used by SciQLop."))
 
         self._network_usage_send_speed = QtWidgets.QLabel()
         self._network_usage_bytes_sent = psutil.net_io_counters().bytes_sent
@@ -426,8 +474,13 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._palette_history = LRUHistory(path=history_path, max_size=palette_settings.max_history_size)
         self._command_palette = CommandPalette(self, sciqlop_app().command_registry, self._palette_history)
 
-        shortcut = QtGui.QShortcut(QtGui.QKeySequence(palette_settings.keybinding), self)
-        shortcut.activated.connect(self._command_palette.toggle)
+        self.commandPaletteAction = self.viewMenu.addAction(
+            "Command palette…", self._command_palette.toggle)
+        self.commandPaletteAction.setShortcut(QtGui.QKeySequence(palette_settings.keybinding))
+        self.commandPaletteAction.setToolTip(rich_tooltip(
+            "Command palette",
+            "Search and run any command, product, panel or catalog.",
+            shortcut=palette_settings.keybinding))
 
     def _show_logs(self):
         dw = self.dock_manager.findDockWidget(self.logs.windowTitle())
@@ -519,7 +572,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 container.setSize(widget.sizeHint().height())
             else:
                 container.setSize(widget.sizeHint().width())
-            self.viewMenu.addAction(doc.toggleViewAction())
+            action = doc.toggleViewAction()
+            self.viewMenu.addAction(action)
+            _apply_dock_view_tooltip(doc, action)
 
     def remove_native_plot_panel(self, panel: TimeSyncPanel):
         dw = self.dock_manager.findDockWidget(panel.name)
@@ -566,7 +621,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                     if hasattr(widget, "delete_me"):
                         widget.delete_me.connect(doc.closeDockWidget)
             else:
-                self.viewMenu.addAction(doc.toggleViewAction())
+                action = doc.toggleViewAction()
+                self.viewMenu.addAction(action)
+                _apply_dock_view_tooltip(doc, action)
             return dock_area
         return None
 
@@ -663,12 +720,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             return _extract_panel(dw)
         return None
 
-    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        if event.key() == QtCore.Qt.Key.Key_F11:
-            if self.isFullScreen():
-                self.showNormal()
-            else:
-                self.showFullScreen()
+    def _set_full_screen(self, full: bool) -> None:
+        self.showFullScreen() if full else self.showNormal()
 
     def closeEvent(self, event: QCloseEvent):
         if not getattr(self, '_closing', False) and self._warn_if_jobs_running(event):

@@ -84,7 +84,7 @@ def _notify_dropped_dependencies(parent) -> None:
         "Packages left out of this workspace",
         "These packages were left out of this workspace because they could "
         f"not be installed alongside SciQLop {version}: {', '.join(names)}. "
-        "Update or remove them from the App Store.",
+        "Update or remove them from the Plugin Store.",
         parent=parent,
     )
     box.setModal(False)

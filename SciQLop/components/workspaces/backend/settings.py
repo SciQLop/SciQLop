@@ -10,5 +10,10 @@ DEFAULT_WORKSPACE_DIR = str(
 class SciQLopWorkspacesSettings(ConfigEntry):
     category = SettingsCategory.WORKSPACES
     subcategory = "general"
-    workspaces_dir: str = Field(default=DEFAULT_WORKSPACE_DIR, json_schema_extra={"widget": "path_dir"})
-    reopen_last_workspace: bool = Field(default=True)
+    workspaces_dir: str = Field(
+        default=DEFAULT_WORKSPACE_DIR,
+        description="Folder where workspaces are created.",
+        json_schema_extra={"widget": "path_dir"})
+    reopen_last_workspace: bool = Field(
+        default=True,
+        description="Start SciQLop in the workspace you used last.")

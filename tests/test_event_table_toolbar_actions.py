@@ -87,7 +87,7 @@ def test_delete_action_trigger_confirms_before_bulk_delete(qtbot, qapp, monkeypa
 
 def test_event_table_context_menu_offers_open_link_for_a_url_cell(qtbot, qapp, monkeypatch):
     """No metadata value in SciQLop's catalog event table was ever
-    clickable (2026-09-06 review) -- a right-click "Open Link" action on a
+    clickable (2026-09-06 review) -- a right-click "Open link" action on a
     URL-looking cell is the mechanism least likely to conflict with
     editing (unlike double-click, which already opens the cell editor)."""
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
@@ -116,17 +116,17 @@ def test_event_table_context_menu_offers_open_link_for_a_url_cell(qtbot, qapp, m
     note_col = len(browser._event_model._FIXED_COLUMNS) + browser._event_model._meta_keys.index("note")
 
     url_menu = browser._build_event_context_menu(url="https://example.org/report")
-    assert any(a.text() == "Open Link" for a in url_menu.actions())
+    assert any(a.text() == "Open link" for a in url_menu.actions())
 
     no_url_menu = browser._build_event_context_menu(url=None)
-    assert not any(a.text() == "Open Link" for a in no_url_menu.actions())
+    assert not any(a.text() == "Open link" for a in no_url_menu.actions())
 
     ref_proxy_idx = browser._sort_proxy.mapFromSource(browser._event_model.index(0, ref_col))
     note_proxy_idx = browser._sort_proxy.mapFromSource(browser._event_model.index(0, note_col))
     assert browser._url_at(ref_proxy_idx) == "https://example.org/report"
     assert browser._url_at(note_proxy_idx) is None
 
-    open_action = next(a for a in url_menu.actions() if a.text() == "Open Link")
+    open_action = next(a for a in url_menu.actions() if a.text() == "Open link")
     opened = []
     from PySide6.QtGui import QDesktopServices
     monkeypatch.setattr(QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
@@ -193,7 +193,7 @@ def test_event_table_context_menu_has_delete_and_add_attribute(qtbot, qapp):
     menu = browser._build_event_context_menu()
     texts = [a.text() for a in menu.actions()]
     assert "Delete" in texts
-    assert "+ Attribute" in texts
+    assert "Add attribute…" in texts
 
 
 def test_event_table_context_menu_hides_actions_for_read_only_provider(qtbot, qapp):
@@ -217,7 +217,7 @@ def test_event_table_context_menu_hides_actions_for_read_only_provider(qtbot, qa
     menu = browser._build_event_context_menu()
     texts = [a.text() for a in menu.actions()]
     assert "Delete" not in texts
-    assert "+ Attribute" not in texts
+    assert "Add attribute…" not in texts
 
 
 def test_columns_action_click_opens_popover_anchored_on_the_toolbar(qtbot, qapp):
@@ -286,7 +286,7 @@ def test_event_actions_hidden_when_selection_moves_off_the_catalog(qtbot, qapp):
     menu = browser._build_event_context_menu()
     texts = [a.text() for a in menu.actions()]
     assert "Delete" not in texts
-    assert "+ Attribute" not in texts
+    assert "Add attribute…" not in texts
 
 
 def test_tree_context_menu_shows_catalog_scoped_actions(qtbot, qapp):

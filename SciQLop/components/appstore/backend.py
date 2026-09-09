@@ -158,7 +158,7 @@ def _incompatibility_reason(ep) -> str:
 
     requires = ep.dist.requires if ep.dist else None
     spec = sciqlop_specifier(requires or []) or "(any)"
-    return f"requires SciQLop {spec} but host is {host_version()}"
+    return f"needs SciQLop {spec}, this workspace has {host_version()}"
 
 
 def _try_load_plugin(dist_name: str) -> str | None:

@@ -15,7 +15,7 @@ def _close_side_docks(main_window):
     """The session main window is shared: start every walk from the same
     closed-docks state, or a dock left open by the previous test makes a
     later 'open it' completion a no-op."""
-    for name in ("Products", "Catalog Browser", "Settings", "Properties"):
+    for name in ("Products", "Catalogs", "Settings", "Properties"):
         _collapse(main_window.dock_manager.findDockWidget(name))
 
 
@@ -66,7 +66,7 @@ def test_getting_started_walks_end_to_end_headless(main_window, qtbot):
         at("properties")
         next_()
         at("open_catalogs")
-        _open_dock(main_window, "Catalog Browser")
+        _open_dock(main_window, "Catalogs")
         at("catalog_sources")
         next_()
         at("overlay_catalog")

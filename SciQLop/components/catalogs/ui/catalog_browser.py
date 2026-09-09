@@ -152,7 +152,7 @@ class CatalogBrowser(QWidget):
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
-        self.setWindowTitle("Catalog Browser")
+        self.setWindowTitle("Catalogs")
 
         self._current_provider: CatalogProvider | None = None
         self._events_changed_provider: CatalogProvider | None = None
@@ -164,8 +164,11 @@ class CatalogBrowser(QWidget):
 
         # --- filter bar ---
         self._filter_bar = QLineEdit()
-        self._filter_bar.setPlaceholderText("Filter catalogs...")
+        self._filter_bar.setPlaceholderText("Filter catalogs…")
         self._filter_bar.setClearButtonEnabled(True)
+        self._filter_bar.setToolTip(rich_tooltip(
+            "Filter catalogs",
+            "Filter the catalog tree by name."))
 
         # --- tree view (left) ---
         self._tree_model = CatalogTreeModel()
@@ -234,7 +237,7 @@ class CatalogBrowser(QWidget):
         self._event_table.setItemDelegate(self._event_delegate)
 
         # --- event toolbar (above table) ---
-        self._add_event_action = QAction(get_icon("add"), "Add Event", self)
+        self._add_event_action = QAction(get_icon("add"), "Add event", self)
         self._add_event_action.setVisible(False)
         self._add_event_action.triggered.connect(self._on_add_event)
         self._add_event_action.setToolTip(rich_tooltip(
@@ -256,10 +259,10 @@ class CatalogBrowser(QWidget):
             "Show, hide, or reorder the event-table columns."))
         self._columns_action.triggered.connect(lambda: self._open_column_popover())
 
-        self._add_attr_action = QAction("+ Attribute", self)
+        self._add_attr_action = QAction("Add attribute…", self)
         self._add_attr_action.setVisible(False)
         self._add_attr_action.setToolTip(rich_tooltip(
-            "Add attribute",
+            "Add attribute…",
             "Add a metadata attribute to the selected events"
             " (or all events if none are selected)."))
         self._add_attr_action.triggered.connect(self._on_add_attribute_clicked)
@@ -278,8 +281,11 @@ class CatalogBrowser(QWidget):
         self._event_table.customContextMenuRequested.connect(self._on_event_table_context_menu)
 
         self._event_filter_bar = QLineEdit()
-        self._event_filter_bar.setPlaceholderText("Filter events...")
+        self._event_filter_bar.setPlaceholderText("Filter events…")
         self._event_filter_bar.setClearButtonEnabled(True)
+        self._event_filter_bar.setToolTip(rich_tooltip(
+            "Filter events",
+            "Filter the event table; matches any column."))
         # simplify: filterAcceptsRow is an O(rows x columns) scan (plus
         # per-cell display formatting) run on every keystroke -- fine up to
         # the thousands-of-events catalogs this targets, but a debounce is
@@ -894,7 +900,7 @@ class CatalogBrowser(QWidget):
         if len(events) > 1:
             from PySide6.QtWidgets import QMessageBox
             reply = QMessageBox.question(
-                self, "Delete Events",
+                self, "Delete events",
                 f"Delete {len(events)} selected events?",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
@@ -924,10 +930,14 @@ class CatalogBrowser(QWidget):
 
     def _build_event_context_menu(self, url: str | None = None) -> QMenu:
         menu = QMenu(self)
+        menu.setToolTipsVisible(True)
         if url is not None:
             from PySide6.QtGui import QDesktopServices
             from PySide6.QtCore import QUrl
-            open_action = menu.addAction("Open Link")
+            open_action = menu.addAction("Open link")
+            open_action.setToolTip(rich_tooltip(
+                "Open link",
+                "Open the URL stored in this cell."))
             open_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
             menu.addSeparator()
         if self._delete_action.isVisible():
@@ -1019,6 +1029,7 @@ class CatalogBrowser(QWidget):
         caps = node.provider.capabilities()
         node_caps = node.provider.capabilities(node.catalog) if node.catalog is not None else caps
         menu = QMenu(self)
+        menu.setToolTipsVisible(True)
 
         # Provider-level actions (provider node = parent is root)
         if node.parent is self._tree_model._root:
@@ -1054,28 +1065,43 @@ class CatalogBrowser(QWidget):
                 cat_ph = next((c for c in node.children if c.placeholder_type == _PlaceholderType.CATALOG), None)
                 folder_ph = next((c for c in node.children if c.placeholder_type == _PlaceholderType.FOLDER), None)
                 if cat_ph is not None:
-                    new_cat_action = menu.addAction("New Catalog")
+                    new_cat_action = menu.addAction("New catalog…")
+                    new_cat_action.setToolTip(rich_tooltip(
+                        "New catalog…",
+                        "Create an empty catalog in this library."))
                     new_cat_action.triggered.connect(lambda checked, ph=cat_ph: self._trigger_placeholder_edit(ph))
                 if folder_ph is not None:
-                    new_folder_action = menu.addAction("New Folder")
+                    new_folder_action = menu.addAction("New folder…")
+                    new_folder_action.setToolTip(rich_tooltip(
+                        "New folder…",
+                        "Create an empty folder in this library."))
                     new_folder_action.triggered.connect(lambda checked, ph=folder_ph: self._trigger_placeholder_edit(ph))
 
         if Capability.SAVE in caps and node.provider.is_dirty():
             if (node.catalog is not None
                     and Capability.SAVE_CATALOG in node_caps
                     and node.provider.is_dirty(node.catalog)):
-                save_action = menu.addAction("Save Catalog")
+                save_action = menu.addAction("Save catalog")
+                save_action.setToolTip(rich_tooltip(
+                    "Save catalog",
+                    "Write the catalog to disk."))
                 save_action.triggered.connect(lambda: node.provider.save_catalog(node.catalog))
             else:
                 save_action = menu.addAction("Save")
                 save_action.triggered.connect(lambda: node.provider.save())
 
         if node.catalog is not None and Capability.RENAME_CATALOG in node_caps:
-            rename_action = menu.addAction("Rename")
+            rename_action = menu.addAction("Rename…")
+            rename_action.setToolTip(rich_tooltip(
+                "Rename…",
+                "Rename this catalog."))
             rename_action.triggered.connect(lambda: self._catalog_tree.edit(proxy_index))
 
         if node.catalog is not None and Capability.DELETE_CATALOGS in node_caps:
-            delete_action = menu.addAction("Delete Catalog")
+            delete_action = menu.addAction("Delete catalog…")
+            delete_action.setToolTip(rich_tooltip(
+                "Delete catalog…",
+                "Delete this catalog and all its events."))
             delete_action.triggered.connect(lambda: self._delete_catalog(node))
 
         if node.catalog is not None:
@@ -1093,9 +1119,15 @@ class CatalogBrowser(QWidget):
         title = panel.windowTitle()
         if catalog.uuid in manager.catalog_uuids:
             action = menu.addAction(f"Remove from panel '{title}'")
+            action.setToolTip(rich_tooltip(
+                f"Remove from panel '{title}'",
+                "Stop showing this catalog's events on the panel."))
             action.triggered.connect(lambda: manager.remove_catalog(catalog))
         else:
             action = menu.addAction(f"Add to panel '{title}'")
+            action.setToolTip(rich_tooltip(
+                f"Add to panel '{title}'",
+                "Overlay this catalog's events on the panel."))
             action.triggered.connect(lambda: manager.add_catalog(catalog))
 
     def _add_catalog_color_actions(self, menu: QMenu, catalog: Catalog) -> None:
@@ -1136,7 +1168,7 @@ class CatalogBrowser(QWidget):
     def _delete_catalog(self, node) -> None:
         from PySide6.QtWidgets import QMessageBox
         reply = QMessageBox.question(
-            self, "Delete Catalog",
+            self, "Delete catalog",
             f"Delete catalog '{node.name}'?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,

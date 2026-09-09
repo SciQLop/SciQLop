@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 from SciQLop.core.knobs import (
     KnobSpec, StringKnob, IntKnob, FloatKnob, BoolKnob, StringListKnob, DatetimeKnob,
 )
+from SciQLop.core.ui.tooltips import rich_tooltip
 
 
 # Order matters: first entry is the default selection.
@@ -35,11 +36,17 @@ class AddAttributeDialog(QDialog):
 
         self._name = QLineEdit()
         self._name.setPlaceholderText("attribute_name")
+        self._name.setToolTip(rich_tooltip(
+            "Name",
+            "The metadata key stored on each event."))
         layout.addRow("Name:", self._name)
 
         self._type = QComboBox()
         for label, _ in _TYPE_OPTIONS:
             self._type.addItem(label)
+        self._type.setToolTip(rich_tooltip(
+            "Type",
+            "The kind of value this attribute holds."))
         layout.addRow("Type:", self._type)
 
         hint = QLabel(

@@ -46,7 +46,8 @@ class SpeasyCatalogProvider(CatalogProvider):
         self._catalog_list: list[Catalog] = []
         self._speasy_ids: dict[str, str] = {}
         self._loading: set[str] = set()
-        super().__init__(name="Remote", parent=parent)
+        super().__init__(name="Remote", parent=parent,
+                         description="Read-only catalogs published by AMDA and other archives.")
         self._build_catalog_list()
         for cat in self._catalog_list:
             self.catalog_added.emit(cat)

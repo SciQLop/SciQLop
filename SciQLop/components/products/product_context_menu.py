@@ -49,11 +49,16 @@ def _build_plot_target_menu(menu: QMenu, product_path: list[str], main_window):
             continue
         panel_menu = menu.addMenu(panel_name)
         panel_menu.setToolTipsVisible(True)
+        panel_menu.menuAction().setToolTip(rich_tooltip(
+            panel_name, "Choose a plot in this panel."))
         plots = panel.plots()
         for i, plot_widget in enumerate(plots):
             graph_names = [g.name for g in plot_widget.plottables()]
             label = ", ".join(graph_names) if graph_names else f"Plot {i + 1}"
-            panel_menu.addAction(label, lambda p=plot_widget, pp=product_path: plot_product(p, pp))
+            plot_action = panel_menu.addAction(
+                label, lambda p=plot_widget, pp=product_path: plot_product(p, pp))
+            plot_action.setToolTip(rich_tooltip(
+                label, "Add this product to this plot as a new curve."))
         panel_menu.addSeparator()
         new_plot = panel_menu.addAction(
             "+ New plot",
@@ -65,10 +70,10 @@ def _build_plot_target_menu(menu: QMenu, product_path: list[str], main_window):
 
     menu.addSeparator()
     new_panel = menu.addAction(
-        "+ New panel",
+        "+ New plot panel",
         lambda pp=product_path: _plot_in_new_panel(pp, main_window))
     new_panel.setToolTip(rich_tooltip(
-        "New panel", "Open this product in a brand-new plot panel."))
+        "New plot panel", "Open this product in a brand-new plot panel."))
 
 
 def _plot_in_new_panel(product_path: list[str], main_window):
@@ -93,7 +98,11 @@ def setup_product_context_menu(product_tree_view, main_window):
 
 def _on_context_menu(tree: QTreeView, pos, main_window):
     index = tree.indexAt(pos)
-    if not index.isValid() or not _is_plottable_index(index):
+    if not index.isValid():
+        return
+
+    if not _is_plottable_index(index):
+        _show_folder_context_menu(tree, pos)
         return
 
     product_path = _product_path_from_index(index)
@@ -104,4 +113,11 @@ def _on_context_menu(tree: QTreeView, pos, main_window):
     menu.setTitle("Plot in...")
     menu.setToolTipsVisible(True)
     _build_plot_target_menu(menu, product_path, main_window)
+    menu.exec(tree.viewport().mapToGlobal(pos))
+
+
+def _show_folder_context_menu(tree: QTreeView, pos):
+    menu = QMenu(tree)
+    action = menu.addAction("Pick a product inside this folder to plot it")
+    action.setEnabled(False)
     menu.exec(tree.viewport().mapToGlobal(pos))

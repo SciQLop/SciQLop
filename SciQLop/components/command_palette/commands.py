@@ -29,8 +29,7 @@ def _do_remove_panel(panel: str = ""):
 
 
 def _toggle_fullscreen():
-    win = _get_win()
-    win.showNormal() if win.isFullScreen() else win.showFullScreen()
+    _get_win().fullScreenAction.toggle()
 
 
 def _do_set_time_range(time_range: str = ""):
@@ -107,7 +106,7 @@ def register_builtin_commands(registry):
         name="New plot panel",
         description="Create a new plot panel",
         callback=lambda: _get_win().new_plot_panel(),
-        replaces_qaction="Add new plot panel",
+        replaces_qaction="New plot panel",
     ))
 
     registry.register(PaletteCommand(
@@ -173,4 +172,5 @@ def register_builtin_commands(registry):
         description="Toggle fullscreen mode (F11)",
         callback=_toggle_fullscreen,
         keywords=["F11"],
+        replaces_qaction="Full screen",
     ))

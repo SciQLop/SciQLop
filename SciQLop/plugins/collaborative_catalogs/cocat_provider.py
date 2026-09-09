@@ -108,7 +108,8 @@ class CocatCatalogProvider(CatalogProvider):
         self._default_room_id: str | None = None
         self._connected = False
         self._client_for_listing = None
-        super().__init__(name="Shared", parent=parent)
+        super().__init__(name="Shared", parent=parent,
+                         description="Catalogs edited live with collaborators on a CoCat server.")
 
     def node_icon(self, node_type, path=None):
         from SciQLop.components.catalogs.backend.provider import NodeType

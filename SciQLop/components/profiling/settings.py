@@ -18,14 +18,19 @@ class ProfilingSettings(ConfigEntry):
         description="Continuously sample all threads' stacks into a ring "
                     "buffer, so a stall dump can show what was running in "
                     "the seconds before it happened.")
-    sample_interval_ms: int = Field(default=200, ge=20, le=5000)
+    sample_interval_ms: int = Field(
+        default=200, ge=20, le=5000,
+        description="Milliseconds between two stack samples.")
     sample_buffer_seconds: int = Field(
         default=60, ge=5, le=600,
         description="How much sampling history to keep before older samples "
                     "are evicted.")
 
     # Watchdog (watchdog.py).
-    watchdog_enabled: bool = Field(default=True)
+    watchdog_enabled: bool = Field(
+        default=True,
+        description="Write a diagnostic dump when the interface stops "
+                    "responding.")
     watchdog_stall_threshold_s: float = Field(
         default=3.0, ge=0.5, le=60.0,
         description="Main-thread unresponsive for longer than this silently "
@@ -39,4 +44,6 @@ class ProfilingSettings(ConfigEntry):
     watchdog_cooldown_s: float = Field(
         default=30.0, ge=1.0, le=600.0,
         description="Minimum time between dumps while still stalled.")
-    watchdog_max_dumps_per_session: int = Field(default=20, ge=1, le=1000)
+    watchdog_max_dumps_per_session: int = Field(
+        default=20, ge=1, le=1000,
+        description="Stop dumping after this many dumps in one session.")

@@ -13,4 +13,7 @@ class CatalogJumpSettings(ConfigEntry):
     centered on the event (1 = the event fills the panel)."""
     category: ClassVar[str] = SettingsCategory.CATALOGS
     subcategory: ClassVar[str] = "Jump"
-    zoom_out_factor: float = Field(default=2.0, ge=1.0, le=100.0)
+    zoom_out_factor: float = Field(
+        default=2.0, ge=1.0, le=100.0,
+        description="Visible range around the picked event, as a multiple "
+                    "of its duration, centered on the event.")

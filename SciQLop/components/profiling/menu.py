@@ -40,6 +40,9 @@ class ProfilingMenu(QObject):
         install_speasy_tracing()
         self.menu = QMenu("Profiling", host)
         self.menu.setToolTipsVisible(True)
+        self.menu.menuAction().setToolTip(rich_tooltip(
+            "Profiling",
+            "Record and inspect where SciQLop spends its time."))
         self._start = self.menu.addAction("Start trace…", self._on_start)
         self._stop = self.menu.addAction("Stop trace", self._on_stop)
         self._start.setToolTip(rich_tooltip(
@@ -59,7 +62,7 @@ class ProfilingMenu(QObject):
             self._hot_threads.setToolTip(rich_tooltip(
                 "Show hot OS threads",
                 "Ranks this process's OS threads by CPU time over a short"
-                " window -- works without a trace running, and without"
+                " window — works without a trace running, and without"
                 " py-spy/perf/root, by reading /proc directly."))
             self._hot_threads_dispatcher = _HotThreadsDispatcher(self)
             self._hot_threads_dispatcher.ready.connect(self._on_hot_threads_ready)
@@ -68,7 +71,7 @@ class ProfilingMenu(QObject):
             self._dump_stacks.setToolTip(rich_tooltip(
                 "Dump thread stacks now",
                 "Writes an all-threads traceback dump to the diagnostics"
-                " directory -- useful when SciQLop feels slow right now."
+                " directory — useful when SciQLop feels slow right now."
                 " The same dump can be triggered from outside the app with"
                 " kill -USR1 <pid>, no elevated privilege needed."))
             self._flush_samples = self.menu.addAction(
@@ -76,7 +79,7 @@ class ProfilingMenu(QObject):
             self._flush_samples.setToolTip(rich_tooltip(
                 "Flush sampling history",
                 "Writes the last minute or so of periodic all-threads stack"
-                " samples to the diagnostics directory -- shows what was"
+                " samples to the diagnostics directory — shows what was"
                 " running even in code nobody hand-instrumented with a trace"
                 " zone. The sampler itself is off by default; enable it in"
                 " Settings > Profiling."))

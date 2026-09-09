@@ -106,7 +106,7 @@ def test_side_panel_steps_auto_advance_only_when_the_next_step_continues_inside_
 
 def test_open_panel_steps_skip_themselves_when_their_panel_is_already_open(main_window, qtbot):
     by_id = _steps()
-    for step_id, dock_name in (("open_products", "Products"), ("open_catalogs", "Catalog Browser")):
+    for step_id, dock_name in (("open_products", "Products"), ("open_catalogs", "Catalogs")):
         dw = main_window.dock_manager.findDockWidget(dock_name)
         dw.toggleView(True)
         qtbot.waitUntil(dw.isVisible, timeout=1000)

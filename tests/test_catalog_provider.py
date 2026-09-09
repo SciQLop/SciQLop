@@ -444,7 +444,7 @@ def test_tree_model_placeholders_added_on_late_folder_event(qtbot, qapp):
     """A provider that gains CREATE_CATALOGS *after* the folder is announced
     (cocat pattern: rooms exist before any is joined) must get placeholders
     when folder_added is re-emitted. Regression for cocat UI bug where rooms
-    never received 'New Catalog...' / 'New Folder...' items."""
+    never received 'New catalog…' / 'New folder…' items."""
     from SciQLop.components.catalogs.ui.catalog_tree import CatalogTreeModel, _PlaceholderType
     from SciQLop.components.catalogs.backend.provider import CatalogProvider, Capability
 
@@ -1339,9 +1339,9 @@ def test_tree_model_placeholder_node(qtbot, qapp):
         if node.provider is provider:
             assert model.rowCount(idx) == 3  # 1 catalog + 2 placeholders
             second_last_idx = model.index(model.rowCount(idx) - 2, 0, idx)
-            assert model.data(second_last_idx) == "New Catalog..."
+            assert model.data(second_last_idx) == "New catalog…"
             last_idx = model.index(model.rowCount(idx) - 1, 0, idx)
-            assert model.data(last_idx) == "New Folder..."
+            assert model.data(last_idx) == "New folder…"
             return
     pytest.fail("Provider not found")
 

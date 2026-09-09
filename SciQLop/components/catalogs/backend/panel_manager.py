@@ -13,12 +13,24 @@ from SciQLop.components.catalogs.backend.registry import CatalogRegistry
 from SciQLop.components.catalogs.backend.color_palette import (
     color_for_catalog, catalog_color_changed, catalog_swatch_icon,
 )
+from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.core.ui.shortcuts import native_shortcut_text
 
 
 class InteractionMode(Enum):
     VIEW = "view"
     JUMP = "jump"
     EDIT = "edit"
+
+
+# Wording split from the chrome-row mode combo's own tooltip
+# (catalog_chrome.py's _make_mode_combo), kept in sync with it.
+_MODE_TOOLTIPS = {
+    InteractionMode.VIEW: "Click an event to select it.",
+    InteractionMode.JUMP: "Picking an event in the catalog list sets the panel range to it.",
+    InteractionMode.EDIT: "Hold Shift and click to start a new event, move, then click "
+                          "again to finish (Esc cancels).",
+}
 
 
 class PanelCatalogManager(QObject):
@@ -139,14 +151,22 @@ class PanelCatalogManager(QObject):
 
     def build_catalogs_menu(self, parent_menu: QMenu) -> QMenu:
         menu = parent_menu.addMenu("Catalogs")
+        menu.setToolTipsVisible(True)
+        menu.menuAction().setToolTip(rich_tooltip(
+            "Catalogs",
+            "Overlay catalog events on this panel."))
         self._add_loaded_catalog_entries(menu)
         registry = CatalogRegistry.instance()
         for provider in registry.providers():
             provider_menu = QMenu(provider.name, menu)
+            provider_menu.setToolTipsVisible(True)
             menu.addMenu(provider_menu)
             for catalog in provider.catalogs():
                 target_menu = self._get_or_create_submenu(provider_menu, catalog.path)
                 action = target_menu.addAction(catalog.name)
+                action.setToolTip(rich_tooltip(
+                    catalog.name,
+                    "Show or hide this catalog's events on the panel."))
                 action.setCheckable(True)
                 action.setChecked(catalog.uuid in self._overlays)
                 action.toggled.connect(
@@ -154,10 +174,13 @@ class PanelCatalogManager(QObject):
                 )
 
         menu.addSeparator()
-        mode_menu = QMenu("Mode", menu)
+        mode_menu = QMenu("Mode\t" + native_shortcut_text("Ctrl+Shift+M"), menu)
+        mode_menu.setToolTipsVisible(True)
         menu.addMenu(mode_menu)
         for m in InteractionMode:
-            action = mode_menu.addAction(m.value.capitalize())
+            label = m.value.capitalize()
+            action = mode_menu.addAction(label)
+            action.setToolTip(rich_tooltip(label, _MODE_TOOLTIPS[m]))
             action.setCheckable(True)
             action.setChecked(m == self._mode)
             action.triggered.connect(lambda checked, mode=m: setattr(self, 'mode', mode))
@@ -178,7 +201,11 @@ class PanelCatalogManager(QObject):
         )
         sub = menu.addMenu(catalog_swatch_icon(catalog.uuid), catalog.name)
         sub.setObjectName(f"loaded_catalog_{catalog.uuid}")
+        sub.setToolTipsVisible(True)
         remove_action = sub.addAction("Remove from panel")
+        remove_action.setToolTip(rich_tooltip(
+            "Remove from panel",
+            "Stop showing this catalog's events on the panel."))
         remove_action.triggered.connect(lambda: self.remove_catalog(catalog))
         sub.addSeparator()
         add_catalog_color_actions(sub, catalog, dialog_parent=self._panel)
@@ -197,6 +224,7 @@ class PanelCatalogManager(QObject):
                 current = existing
             else:
                 submenu = QMenu(segment, current)
+                submenu.setToolTipsVisible(True)
                 current.addMenu(submenu)
                 current = submenu
         return current

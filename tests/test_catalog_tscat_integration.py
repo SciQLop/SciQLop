@@ -334,7 +334,7 @@ def test_provider_action_returns_nothing_for_specific_catalog(qapp, tscat_provid
 def test_provider_action_offers_orphan_cleanup(qapp, tscat_provider):
     actions = tscat_provider.actions(None)
     names = {a.name for a in actions}
-    assert "Clean up orphan events…" in names
+    assert "Remove events without a catalog…" in names
     assert "Open in TSCat editor…" in names
 
 

@@ -299,7 +299,7 @@ def graph_tooltip(graph) -> str:
     lines = [title]
     if ctx.knobs:
         knob_str = ", ".join(f"{k}={v!r}" for k, v in ctx.knobs.items())
-        lines.append(f"Knobs: {knob_str}")
+        lines.append(f"Inputs: {knob_str}")
     last = _last_fetch_line(graph)
     if last:
         lines.append(last)

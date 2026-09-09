@@ -4,7 +4,7 @@ import pytest
 
 def test_tools_menu_has_take_a_tour_action(main_window):
     actions = [a.text() for a in main_window.toolsMenu.actions()]
-    assert "Take a Tour…" in actions
+    assert "Take a tour…" in actions
 
 
 def test_maybe_run_onboarding_tour_skips_when_getting_started_completed(main_window, qtbot):
@@ -63,7 +63,7 @@ def test_start_tour_with_unknown_id_does_not_crash(main_window):
 
 
 def test_take_a_tour_action_opens_the_picker(main_window):
-    action = next(a for a in main_window.toolsMenu.actions() if a.text() == "Take a Tour…")
+    action = next(a for a in main_window.toolsMenu.actions() if a.text() == "Take a tour…")
     action.trigger()
     assert main_window._tour_picker.isVisible()
     main_window._tour_picker.close()
@@ -83,11 +83,11 @@ def test_opening_the_picker_twice_closes_the_first_one(main_window):
 
 
 def test_take_a_tour_quickstart_shortcut_registered(main_window, qapp):
-    assert "Take a Tour" in qapp.quickstart_shortcuts
+    assert "Take a tour" in qapp.quickstart_shortcuts
 
 
 def test_take_a_tour_shortcut_opens_the_picker(main_window, qapp):
-    shortcut = qapp.quickstart_shortcut("Take a Tour")
+    shortcut = qapp.quickstart_shortcut("Take a tour")
     shortcut["callback"]()
     assert main_window._tour_picker.isVisible()
     main_window._tour_picker.close()

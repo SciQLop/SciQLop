@@ -72,6 +72,10 @@ def add_graph_context_actions(menu, panel) -> None:
 
     menu.addSeparator()
     sub = menu.addMenu("Copy Python code")
+    sub.setToolTipsVisible(True)
+    sub.menuAction().setToolTip(
+        "Copy a paste-ready snippet that reproduces the panel, a plot or a "
+        "curve.")
 
     if panel_snippet:
         title = panel.windowTitle() or "Panel"

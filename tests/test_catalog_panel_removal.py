@@ -70,7 +70,7 @@ def test_loaded_entry_offers_removal_and_color_actions(panel, provider):
     sub = _loaded_submenu(menu, cat)
     texts = [a.text() for a in sub.actions()]
     assert texts[0] == "Remove from panel"
-    assert "Set color..." in texts
+    assert "Set color…" in texts
     assert sub.findChild(QMenu, "color_by_menu") is not None
 
     _action(sub, "Remove from panel").trigger()

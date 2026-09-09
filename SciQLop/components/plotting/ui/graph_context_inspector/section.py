@@ -74,13 +74,13 @@ def _leaf_item(v: Any) -> QStandardItem:
 
 
 _FIELD_TOOLTIPS = {
-    "Source": "What this graph plots — Speasy product UID, virtual product "
-              "path, or callable qualname.",
-    "Plot": "Panel and plot index this graph belongs to, plus the graph type.",
-    "Parameters": "Current parameter values for this graph. Updated live when "
-                  "you edit them in the Parameters section above.",
-    "Last loaded": "Number of points and dtype of the last data set on this "
-                   "graph (read live from graph.data()).",
+    "Source": "What this curve plots: the archive product, virtual product, "
+              "or Python function behind it.",
+    "Plot": "Panel and plot this curve belongs to, and its type.",
+    "Current inputs": "Values of the adjustable inputs, updated live as you "
+                      "change them above.",
+    "Last loaded": "Number of points and value type of the data currently "
+                   "shown.",
 }
 
 
@@ -100,7 +100,7 @@ class GraphContextSection(QWidget):
         layout.setSpacing(8)
 
         self._labels: dict[str, QLabel] = {}
-        for field in ("Source", "Plot", "Parameters", "Last loaded"):
+        for field in ("Source", "Plot", "Current inputs", "Last loaded"):
             layout.addLayout(self._build_field(field))
 
         layout.addLayout(self._build_buttons())
@@ -137,7 +137,8 @@ class GraphContextSection(QWidget):
         self._copy_btn.setSizePolicy(QSizePolicy.Policy.Expanding,
                                      QSizePolicy.Policy.Fixed)
         self._copy_btn.setToolTip(
-            "Copy a paste-ready Python snippet that reproduces this graph."
+            "Copy a paste-ready snippet that reproduces the panel, a plot "
+            "or a curve."
         )
         self._copy_menu = QMenu(self._copy_btn)
         self._copy_btn.setMenu(self._copy_menu)
@@ -145,8 +146,8 @@ class GraphContextSection(QWidget):
         self._show_btn.setSizePolicy(QSizePolicy.Policy.Expanding,
                                      QSizePolicy.Policy.Fixed)
         self._show_btn.setToolTip(
-            "Open provider-supplied metadata (ISTP attrs for Speasy products, "
-            "knobs schema for virtual products) in a tree dialog."
+            "Open every attribute the data archive provides for this product "
+            "(or the input definitions of a virtual product)."
         )
         self._show_btn.clicked.connect(self._show_full)
         row.addWidget(self._copy_btn)
@@ -166,11 +167,11 @@ class GraphContextSection(QWidget):
             f'Panel "{ctx.panel_name}" · plot {ctx.plot_index} ({ctx.graph_type})'
         )
         if ctx.knobs:
-            self._labels["Parameters"].setText(
+            self._labels["Current inputs"].setText(
                 ", ".join(f"{k}={v!r}" for k, v in ctx.knobs.items())
             )
         else:
-            self._labels["Parameters"].setText("(none)")
+            self._labels["Current inputs"].setText("(none)")
         last = _last_fetch_line(self._graph)
         self._labels["Last loaded"].setText(last or "(no data yet)")
 
