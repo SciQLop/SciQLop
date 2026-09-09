@@ -67,6 +67,17 @@ GETTING_STARTED = Tour(
             completion=completions.plot_settled_in("create_panel"),
         ),
         TourStep(
+            step_id="add_more_data",
+            title="Add more data",
+            body=(
+                "Drop another product in the middle of a plot to overlay it, "
+                "or near the top or bottom edge (a blue highlight appears) to "
+                "stack it as a new plot. Right-clicking a product offers the "
+                "same choices without dragging."
+            ),
+            resolver=targets.resolve_panel_widget,
+        ),
+        TourStep(
             step_id="navigate",
             title="Navigate in time",
             body=(
@@ -77,17 +88,6 @@ GETTING_STARTED = Tour(
                 f"read-out ({native_shortcut_text('Ctrl+Shift+H')})."
             ),
             resolver=targets.resolve_panel_chrome,
-        ),
-        TourStep(
-            step_id="add_more_data",
-            title="Add more data",
-            body=(
-                "Drop another product in the middle of a plot to overlay it, "
-                "or near the top or bottom edge (a blue highlight appears) to "
-                "stack it as a new plot. Right-clicking a product offers the "
-                "same choices without dragging."
-            ),
-            resolver=targets.resolve_panel_widget,
         ),
         TourStep(
             step_id="properties",

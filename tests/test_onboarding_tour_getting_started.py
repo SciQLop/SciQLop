@@ -2,7 +2,7 @@ from .fixtures import *
 
 STEP_IDS = [
     "welcome", "create_panel", "search_products", "open_products", "plot_product",
-    "navigate", "add_more_data", "properties",
+    "add_more_data", "navigate", "properties",
     "open_catalogs", "catalog_sources", "overlay_catalog", "edit_events",
     "settings", "finish",
 ]
