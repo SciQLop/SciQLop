@@ -1,4 +1,5 @@
 """The rendered QSS must follow the active palette, not the startup one."""
+
 import re
 
 import pytest
@@ -29,8 +30,8 @@ def test_custom_palette_keys_follow_the_active_palette(qapp, restore_palette):
     dark = _render("dark")
 
     assert palette_module.SCIQLOP_PALETTE["Border"].lower() in dark
-    assert palette_module.SCIQLOP_PALETTE["Border"] == "#555555"
-    assert "#c8ced6" in light, "light Border colour missing from the light QSS"
+    assert palette_module.SCIQLOP_PALETTE["Border"] == "#8a8a8a"
+    assert "#848e9c" in light, "light Border colour missing from the light QSS"
 
 
 def test_no_palette_leaks_between_themes(qapp, restore_palette):
@@ -61,8 +62,9 @@ def test_qtads_stylesheet_carries_the_dock_rules(qapp, restore_palette):
     assert 'ads--CDockWidgetTab[activeTab="true"]' in qss
     assert 'ads--CAutoHideTab[iconOnly="true"][activeTab="true"]' in qss
     assert "{{" not in qss, "QtAds sheet must be fully rendered"
-    assert palette_module.current_palette()["Mid"].lower() in qss.lower(), \
+    assert palette_module.current_palette()["Mid"].lower() in qss.lower(), (
         "QtAds sheet must resolve against the active palette"
+    )
 
 
 def test_qtads_sheet_does_not_size_icons(qapp, restore_palette):
@@ -70,6 +72,6 @@ def test_qtads_sheet_does_not_size_icons(qapp, restore_palette):
     applied once, at a widget's first polish, and no repolish brings them back.
     The auto-hide tab icon size is set from Python instead."""
     qss = qtads_stylesheet(palette_module.setup_palette("dark"), "dark")
-    tab_rule = qss[qss.index("ads--CAutoHideTab:hover"):]
-    tab_rule = tab_rule[:tab_rule.index("}")]
+    tab_rule = qss[qss.index("ads--CAutoHideTab:hover") :]
+    tab_rule = tab_rule[: tab_rule.index("}")]
     assert "icon-size" not in tab_rule and "qproperty-iconSize" not in tab_rule

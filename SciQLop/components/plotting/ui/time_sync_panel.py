@@ -340,6 +340,14 @@ class _specgram_callback(_ProductCallbackBase):
             return empty, empty, empty
 
 
+def _mix(a: QColor, b: QColor, t: float) -> QColor:
+    return QColor(
+        round(a.red() + t * (b.red() - a.red())),
+        round(a.green() + t * (b.green() - a.green())),
+        round(a.blue() + t * (b.blue() - a.blue())),
+    )
+
+
 def _theme_from_palette(palette: dict[str, str], parent=None) -> SciQLopTheme:
     is_dark = QColor(palette.get("Window", "#ffffff")).lightnessF() < 0.5
     theme = SciQLopTheme.dark(parent) if is_dark else SciQLopTheme.light(parent)
@@ -347,13 +355,18 @@ def _theme_from_palette(palette: dict[str, str], parent=None) -> SciQLopTheme:
         "set_background": "Base",
         "set_foreground": "Text",
         "set_grid": "Mid",
-        "set_sub_grid": "Midlight",
         "set_selection": "Highlight",
         "set_legend_border": "Border",
     }
     for setter, key in _MAP.items():
         if key in palette:
             getattr(theme, setter)(QColor(palette[key]))
+    if "Mid" in palette and "Base" in palette:
+        # A palette's own `Midlight` is tuned for chrome (QtAds hover fills,
+        # not-quite-Base tones), not for a minor grid line's contrast against
+        # `Base` — halfway to `Mid` reads at a consistent, visible faintness
+        # across every palette instead.
+        theme.set_sub_grid(_mix(QColor(palette["Mid"]), QColor(palette["Base"]), 0.5))
     if "Base" in palette:
         c = QColor(palette["Base"])
         c.setAlpha(200)

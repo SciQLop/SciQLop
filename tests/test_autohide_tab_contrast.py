@@ -9,6 +9,7 @@ QtAds.qss.j2), in every palette.
 The QtAds rules live in their own sheet, assigned to CDockManager — see
 `qtads_stylesheet` for why they cannot sit in the application stylesheet.
 """
+
 import re
 
 import pytest
@@ -18,8 +19,19 @@ from PySide6.QtGui import QColor
 from SciQLop.components.theming import palette as palette_module
 from SciQLop.components.theming.stylesheet import qtads_stylesheet
 
-PALETTES = ["light", "dark", "neutral", "space"]
-ACTIVE_TAB_RULE = r'ads--CAutoHideTab\[iconOnly="true"\]\[activeTab="true"\][^{]*\{([^}]*)\}'
+PALETTES = [
+    "light",
+    "dark",
+    "neutral",
+    "space",
+    "github_light",
+    "nord_light",
+    "catppuccin_latte",
+    "high_contrast_light",
+]
+ACTIVE_TAB_RULE = (
+    r'ads--CAutoHideTab\[iconOnly="true"\]\[activeTab="true"\][^{]*\{([^}]*)\}'
+)
 FOCUSED_TAB_RULE = r'ads--CAutoHideTab\[iconOnly="true"\]\[activeTab="true"\]\[focused="true"\][^{]*\{([^}]*)\}'
 MIN_CONTRAST = 3.0
 
@@ -48,10 +60,16 @@ def _contrast(a: QColor, b: QColor) -> float:
 def _over(color: QColor, background: QColor) -> QColor:
     """Flatten a translucent colour onto an opaque background."""
     a = color.alphaF()
-    return QColor(*(round(bg + a * (fg - bg)) for fg, bg in
-                    ((color.red(), background.red()),
-                     (color.green(), background.green()),
-                     (color.blue(), background.blue()))))
+    return QColor(
+        *(
+            round(bg + a * (fg - bg))
+            for fg, bg in (
+                (color.red(), background.red()),
+                (color.green(), background.green()),
+                (color.blue(), background.blue()),
+            )
+        )
+    )
 
 
 def _resolve(value: str, colors: dict[str, str]) -> QColor:
@@ -118,7 +136,9 @@ def test_focused_open_tab_contour_stands_out_from_its_fill(qapp, restore_palette
 
 
 @pytest.mark.parametrize("name", PALETTES)
-def test_focused_open_tab_contour_also_stands_out_from_the_side_bar(qapp, restore_palette, name):
+def test_focused_open_tab_contour_also_stands_out_from_the_side_bar(
+    qapp, restore_palette, name
+):
     """The contour sits at the tab's outer edge, against the side bar
     background (`palette(Window)`) -- not just against the fill it encloses.
     A contour picked only to contrast the fill can vanish into a side bar of
