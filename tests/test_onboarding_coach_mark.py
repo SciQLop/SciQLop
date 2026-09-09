@@ -458,3 +458,34 @@ def test_bubble_avoids_a_currently_open_side_dock_next_to_a_near_full_window_tar
 
     assert not mark.bubble.geometry().intersects(products_dock.geometry())
     assert host.rect().contains(mark.bubble.geometry())
+
+
+def test_resizing_the_target_repaints_the_spotlight(qtbot):
+    """Live report 2026-09-09 (macOS): resizing a spotlighted side panel
+    left the dimming/cutout stuck at the old geometry until something
+    else forced a repaint (switching full-screen spaces). The bubble
+    itself moved (widgets repaint on their own move/resize) but the
+    overlay's own painted cutout doesn't -- it's redrawn only when
+    something calls update() on the overlay, and the target-resize
+    branch of eventFilter never did."""
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    class _SpyMark(CoachMark):
+        def __init__(self, host):
+            super().__init__(host)
+            self.update_calls = 0
+
+        def update(self):
+            self.update_calls += 1
+            super().update()
+
+    host, target = _host(qtbot)
+    mark = _SpyMark(host)
+    qtbot.addWidget(mark)
+    mark.show_step(target, "Title", "Body")
+    calls_before_resize = mark.update_calls
+
+    target.resize(target.width() + 40, target.height() + 10)
+
+    assert mark.update_calls > calls_before_resize, \
+        "the overlay must repaint itself when its target's geometry changes"

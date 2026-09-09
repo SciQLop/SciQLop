@@ -252,6 +252,7 @@ class CoachMark(QWidget):
             self._reposition_bubble()
         elif obj is self._target and event.type() in (QEvent.Type.Resize, QEvent.Type.Move):
             self._reposition_bubble()
+            self.update()
         elif obj is self._target and event.type() == QEvent.Type.Hide:
             self.target_hidden.emit(obj)
         return False
