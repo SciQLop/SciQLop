@@ -455,6 +455,27 @@ def test_bubble_position_goes_beside_a_flyout_that_hugs_a_side_tab_target(qtbot)
     assert position.x() > flyout.right()
 
 
+def test_bubble_position_stays_above_a_bottom_bar_when_a_flyout_blocks_its_left_end(qtbot):
+    """Fourth live report 2026-09-09: with the Products flyout open, the
+    spot above the full-width chrome row collided with it and the card
+    dropped onto the row itself. Sliding past the flyout must keep the
+    "above" row, not fall back to the bar's own top."""
+    from SciQLop.components.onboarding.ui.coach_mark import _bubble_position
+    from PySide6.QtCore import QSize
+
+    window = QRect(0, 0, 1820, 1068)
+    bar = QRect(42, 1013, 1778, 30)
+    bubble = QSize(336, 218)
+    flyout = QRect(42, 46, 288, 998)
+
+    position = _bubble_position(bar, bubble, window, obstacles=[flyout])
+
+    placed = QRect(position, bubble)
+    assert placed.bottom() < bar.top(), position
+    assert not placed.intersects(flyout), position
+    assert window.contains(placed)
+
+
 def test_visible_dock_obstacles_keeps_only_open_flyouts_other_than_the_targets_own(qtbot):
     """Third live report 2026-09-09: the central dock (welcome page or plot
     area) fills the window, so counting it as an obstacle left no clear

@@ -22,30 +22,38 @@ def _clamp(value: int, low: int, high: int) -> int:
 
 def _bubble_position(target: QRect, bubble: QSize, window: QRect,
                       obstacles=()) -> QPoint:
-    """Beside the target when there is room (right, left, above, below),
-    else beside a dock that is in the way, else inside one of the target's
-    own corners; a spot that doesn't cover a currently-visible dock always
-    wins; never outside the window."""
+    """Beside the target when there is room (right, left, above, below);
+    a beside spot that fits but hits an open flyout slides past that
+    flyout along the same row or column; else inside one of the target's
+    own corners. A spot that covers no flyout always wins; never outside
+    the window."""
     max_x = window.width() - bubble.width()
     max_y = window.height() - bubble.height()
     left, top = _clamp(target.left(), 0, max_x), _clamp(target.top(), 0, max_y)
     right = _clamp(target.right() - bubble.width(), 0, max_x)
     bottom = _clamp(target.bottom() - bubble.height(), 0, max_y)
+
+    def fits(p):
+        return window.contains(QRect(p, bubble))
+
+    def clear(p):
+        return not any(QRect(p, bubble).intersects(o) for o in obstacles)
+
     beside = [
         QPoint(target.right() + _BUBBLE_GAP, top),
         QPoint(target.left() - _BUBBLE_GAP - bubble.width(), top),
         QPoint(left, target.top() - _BUBBLE_GAP - bubble.height()),
         QPoint(left, target.bottom() + _BUBBLE_GAP),
     ]
-    around = [p for o in obstacles for p in (
-        QPoint(o.right() + _BUBBLE_GAP, top),
-        QPoint(o.left() - _BUBBLE_GAP - bubble.width(), top),
+    slid = [q for p in beside if fits(p) and not clear(p) for o in obstacles for q in (
+        QPoint(o.right() + _BUBBLE_GAP, p.y()),
+        QPoint(o.left() - _BUBBLE_GAP - bubble.width(), p.y()),
+        QPoint(p.x(), o.bottom() + _BUBBLE_GAP),
+        QPoint(p.x(), o.top() - _BUBBLE_GAP - bubble.height()),
     )]
     inside = [QPoint(left, top), QPoint(right, top), QPoint(left, bottom), QPoint(right, bottom)]
-    in_window = [p for p in beside + around if window.contains(QRect(p, bubble))] + inside
-    clear = [p for p in in_window
-             if not any(QRect(p, bubble).intersects(obstacle) for obstacle in obstacles)]
-    return (clear or in_window)[0]
+    ranked = [p for p in beside + slid if fits(p)] + inside
+    return next((p for p in ranked if clear(p)), ranked[0])
 
 
 def _dock_widgets(main_window: QWidget) -> list:

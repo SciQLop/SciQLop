@@ -210,3 +210,30 @@ def test_card_moves_out_of_the_way_when_a_dock_opens_over_it(main_window, qtbot)
     finally:
         mark.dispose()
         _collapse(properties)
+
+
+def test_navigate_card_stays_above_the_chrome_row_with_the_products_flyout_open(main_window, qtbot):
+    """Fourth live report 2026-09-09, step 7 (Navigate in time): the card
+    sat on the chrome row it was describing. The spot above the bar is
+    blocked by the open Products flyout, and the "beside the flyout"
+    fallback kept the bar's own top as its y."""
+    from PySide6.QtCore import QPoint, QRect
+    from SciQLop.components.onboarding.backend.targets import resolve_panel_chrome
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    _close_side_docks(main_window)
+    panel = main_window.new_plot_panel()
+    _open_dock(main_window, "Products")
+    products = main_window.dock_manager.findDockWidget("Products")
+    qtbot.waitUntil(products.isVisible, timeout=3000)
+    mark = CoachMark(main_window)
+    try:
+        chrome = resolve_panel_chrome(main_window, {"create_panel": panel})
+        mark.show_step(chrome, "Navigate in time", "word " * 40)
+        flyout = QRect(products.mapTo(main_window, QPoint(0, 0)), products.size())
+        bubble = mark.bubble.geometry()
+        assert bubble.bottom() < mark._target_rect().top(), f"bubble {bubble} on the bar {mark._target_rect()}"
+        assert not bubble.intersects(flyout), f"bubble {bubble} covers the flyout {flyout}"
+    finally:
+        mark.dispose()
+        main_window.remove_panel(panel)
