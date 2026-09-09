@@ -1194,9 +1194,13 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         plot_under_cursor = self._plot_containing(source)
         if plot_under_cursor is not None:
             action = sub.addAction(
-                "Autoscale &this plot", plot_under_cursor.rescale_axes)
+                "Autoscale &this plot\t" + native_shortcut_text("M"),
+                plot_under_cursor.rescale_axes)
             action.setToolTip(
-                "Auto-fit this plot's axes to the currently visible data.")
+                "Auto-fit this plot's axes to the currently visible data.\n"
+                "Same key as hovering the plot and pressing M, which is\n"
+                "more precise: it targets just the axis under the cursor\n"
+                "and skips any axis you've frozen.")
 
         autoscale_all = sub.addAction(
             "Autoscale &all plots\t" + native_shortcut_text("Ctrl+Shift+A"),

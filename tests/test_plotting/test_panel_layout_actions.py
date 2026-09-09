@@ -109,7 +109,7 @@ def test_autoscale_this_plot_only_shown_when_source_is_a_plot(qtbot):
     assert "Equalize plot heights" in labels
 
 
-def test_autoscale_all_and_equalize_show_shortcut_hints(qtbot):
+def test_layout_actions_show_shortcut_hints(qtbot):
     panel, _plots = _panel_with_plots(qtbot, 2)
     menu = panel._build_context_menu()
     sub = _submenu(menu, SUBMENU_TITLE)
@@ -117,11 +117,12 @@ def test_autoscale_all_and_equalize_show_shortcut_hints(qtbot):
     equalize = _find_action(sub, "Equalize plot heights")
     assert "\t" in autoscale_all.text()
     assert "\t" in equalize.text()
-    # "Autoscale this plot" has no fixed keyboard shortcut (it depends on
-    # where the cursor was) so it shouldn't claim to have one.
+    # "Autoscale this plot" mirrors SciQLopPlots' existing per-plot 'M'
+    # QShortcut (SciQLopPlotInterface.hpp) -- surface that hint, don't
+    # invent a new binding for it.
     this_plot = _find_action(_submenu(panel._build_context_menu(source=panel.plots()[0]),
                                        SUBMENU_TITLE), "Autoscale this plot")
-    assert "\t" not in this_plot.text()
+    assert this_plot.text().endswith("\tM")
 
 
 def test_layout_actions_have_distinct_explicit_mnemonics(qtbot):
