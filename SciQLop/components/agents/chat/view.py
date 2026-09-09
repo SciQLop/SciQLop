@@ -33,6 +33,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from SciQLop.core.ui.shortcuts import native_shortcut_text
 from .history import PromptHistory
 
 
@@ -285,7 +286,8 @@ class TranscriptView(QTextBrowser):
 class ChatInput(QTextEdit):
     _DEFAULT_PLACEHOLDER = (
         "Ask about the current SciQLop state… "
-        "(Ctrl+V to paste images, / for commands, ↑↓ history, Ctrl+R search)"
+        f"({native_shortcut_text('Ctrl+V')} to paste images, / for commands, "
+        f"↑↓ history, {native_shortcut_text('Ctrl+R')} search)"
     )
 
     def __init__(self, tempdir: Path, parent=None):

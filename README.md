@@ -121,7 +121,7 @@ fetch and describe data, run notebook cells, and inspect your workspace, all und
 
 ## Command Palette
 
-Press **Ctrl+K** to open the command palette. It fuzzy-searches all available actions and supports multi-step argument
+Press **Ctrl+K** (**Cmd+K** on macOS) to open the command palette. It fuzzy-searches all available actions and supports multi-step argument
 chains (e.g., select "Plot product" then pick the product). An LRU history boosts your most-used commands.
 
 <p align="center">

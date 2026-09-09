@@ -1,5 +1,6 @@
 from SciQLop.components.onboarding.backend.tour import Tour, TourStep
 from SciQLop.components.onboarding.backend import targets, completions
+from SciQLop.core.ui.shortcuts import native_shortcut_text, modifier_key_name
 
 GETTING_STARTED = Tour(
     id="getting_started",
@@ -70,10 +71,10 @@ GETTING_STARTED = Tour(
             title="Navigate in time",
             body=(
                 "Scroll or drag on a plot to move through time and "
-                "Ctrl+scroll to zoom; every plot in the panel follows. Down "
-                "here you can set an exact start time and duration, step "
-                "with the arrows, and toggle the crosshair read-out "
-                "(Ctrl+Shift+H)."
+                f"{modifier_key_name()}+scroll to zoom; every plot in the panel "
+                "follows. Down here you can set an exact start time and "
+                "duration, step with the arrows, and toggle the crosshair "
+                f"read-out ({native_shortcut_text('Ctrl+Shift+H')})."
             ),
             resolver=targets.resolve_panel_chrome,
         ),
@@ -134,7 +135,8 @@ GETTING_STARTED = Tour(
             step_id="edit_events",
             title="Create and jump to events",
             body=(
-                "Switch this panel to Edit mode (Ctrl+Shift+M cycles modes), "
+                "Switch this panel to Edit mode "
+                f"({native_shortcut_text('Ctrl+Shift+M')} cycles modes), "
                 "then Shift+click on a plot to start a new event and click "
                 "again to finish it. Jump mode moves the panel to whichever "
                 "event you pick in the table."
@@ -155,10 +157,11 @@ GETTING_STARTED = Tour(
             step_id="finish",
             title="You're all set",
             body=(
-                "Ctrl+K opens the command palette: every action, searchable. "
-                "Tools → Open JupyterLab scripts this very session from "
-                "Python, and the Plugin Store adds data sources and tools. "
-                "Replay this tour anytime from Tools → Take a Tour."
+                f"{native_shortcut_text('Ctrl+K')} opens the command palette: "
+                "every action, searchable. Tools → Open JupyterLab scripts "
+                "this very session from Python, and the Plugin Store adds "
+                "data sources and tools. Replay this tour anytime from "
+                "Tools → Take a Tour."
             ),
         ),
     ],
