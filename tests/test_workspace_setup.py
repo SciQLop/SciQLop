@@ -253,11 +253,16 @@ class TestPrepareWorkspaceDevBuildUpgrade:
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         venv = patches["venv"]
-        venv.sync.side_effect = [RuntimeError("No solution found"), None]
+        venv.sync.side_effect = [
+            RuntimeError("No solution found"),
+            None,
+            RuntimeError("No solution found"),
+            RuntimeError("No solution found"),
+        ]
 
         prepare_workspace(workspace_dir, workspace_name="Test")
 
-        assert venv.sync.call_count == 2
+        assert venv.sync.call_count == 4
         assert venv.sync.call_args_list[1].kwargs.get("upgrade_package") == "sciqlop"
 
     def test_locked_fallback_to_unlocked_still_upgrades_the_pinned_commit(
@@ -425,22 +430,32 @@ class TestPrepareWorkspacePluginIsolation:
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
         venv = patches["venv"]
-        venv.sync.side_effect = [RuntimeError("No solution found"), None]
+        venv.sync.side_effect = [
+            RuntimeError("No solution found"),
+            None,
+            # Shrink pass tries restoring each dropped dep alone -- both
+            # are genuinely part of the same unresolvable conflict.
+            RuntimeError("No solution found"),
+            RuntimeError("No solution found"),
+        ]
 
         cb = MagicMock()
         result = prepare_workspace(workspace_dir, workspace_name="Test", on_output=cb)
 
         assert result == venv.python_path
-        assert venv.sync.call_count == 2
+        assert venv.sync.call_count == 4
         gen = patches["generate_pyproject_toml"]
         # M1: after the core-only retry succeeds, the full pyproject (with
         # plugin/appstore deps) is regenerated on disk *without* re-syncing,
         # so the next launch and the appstore see the intended dependency
         # set again instead of the core-only one the retry wrote.
-        assert gen.call_count == 3
+        assert gen.call_count == 5
         # The retry drops plugin/appstore dependencies entirely (empty list).
         assert gen.call_args_list[1].args[1] == []
-        assert gen.call_args_list[2].args[1] == ["numpy>=1.24", "requests"]
+        # Shrink pass: restoring either one alone is tried and fails.
+        assert gen.call_args_list[2].args[1] == ["numpy>=1.24"]
+        assert gen.call_args_list[3].args[1] == ["requests"]
+        assert gen.call_args_list[4].args[1] == ["numpy>=1.24", "requests"]
 
     def test_retries_without_only_the_named_culprit_dependency(self, workspace_dir, patches):
         """A resolver error naming just one of the two optional deps must
@@ -482,7 +497,11 @@ class TestPrepareWorkspacePluginIsolation:
 
     def test_culprit_matching_every_optional_dep_skips_to_core_only(self, workspace_dir, patches):
         """When the error implicates every optional dep, isolating one at a
-        time buys nothing -- go straight to the existing core-only retry."""
+        time buys nothing at the narrowed-retry stage -- go straight to the
+        existing core-only retry. The shrink pass that follows a successful
+        core-only retry (TestCoreOnlyFallbackAlsoShrinksBystanders) still
+        gets a chance to recover either one if it turns out fine alone; here
+        both are genuinely part of the same conflict, so neither is."""
         from SciQLop.components.workspaces.backend.workspace_setup import (
             prepare_workspace, read_dropped_dependencies,
         )
@@ -491,16 +510,20 @@ class TestPrepareWorkspacePluginIsolation:
         venv.sync.side_effect = [
             RuntimeError("numpy==1.24 and requests both depend on SciQLop<0.13"),
             None,
+            RuntimeError("numpy==1.24 depends on SciQLop<0.13"),
+            RuntimeError("requests==2.0 depends on SciQLop<0.13"),
         ]
 
         result = prepare_workspace(workspace_dir, workspace_name="Test")
 
         assert result == venv.python_path
-        assert venv.sync.call_count == 2
+        assert venv.sync.call_count == 4
         gen = patches["generate_pyproject_toml"]
-        assert gen.call_count == 3
+        assert gen.call_count == 5
         assert gen.call_args_list[1].args[1] == []
-        assert gen.call_args_list[2].args[1] == ["numpy>=1.24", "requests"]
+        assert gen.call_args_list[2].args[1] == ["numpy>=1.24"]
+        assert gen.call_args_list[3].args[1] == ["requests"]
+        assert gen.call_args_list[4].args[1] == ["numpy>=1.24", "requests"]
 
         notice = read_dropped_dependencies(workspace_dir)
         assert notice["dropped"] == ["numpy>=1.24", "requests"]
@@ -557,9 +580,9 @@ class TestPrepareWorkspacePluginIsolation:
 
     def test_culprit_retry_failing_falls_through_to_core_only(self, workspace_dir, patches):
         """When the isolated-culprit retry itself still fails, the ladder
-        must fall through to the plain core-only retry rather than giving up
-        -- three sync attempts total: full set, culprit dropped, everything
-        optional dropped."""
+        must fall through to the plain core-only retry rather than giving
+        up -- full set, culprit dropped, everything optional dropped, then
+        the shrink pass tries restoring each dropped dep alone."""
         from SciQLop.components.workspaces.backend.workspace_setup import (
             prepare_workspace, read_dropped_dependencies,
         )
@@ -571,19 +594,26 @@ class TestPrepareWorkspacePluginIsolation:
             ),
             RuntimeError("still broken without requests too"),
             None,
+            # Shrink pass: restoring either one alone still fails.
+            RuntimeError("still broken"),
+            RuntimeError("still broken"),
         ]
 
         cb = MagicMock()
         result = prepare_workspace(workspace_dir, workspace_name="Test", on_output=cb)
 
         assert result == venv.python_path
-        assert venv.sync.call_count == 3
+        assert venv.sync.call_count == 5
         gen = patches["generate_pyproject_toml"]
-        # initial, culprit-only retry (fails), core-only retry (succeeds), M1 restore
-        assert gen.call_count == 4
+        # initial, culprit-only retry (fails), core-only retry (succeeds),
+        # shrink tries numpy alone (fails), shrink tries requests alone
+        # (fails), M1 restore
+        assert gen.call_count == 6
         assert gen.call_args_list[1].args[1] == ["numpy>=1.24"]
         assert gen.call_args_list[2].args[1] == []
-        assert gen.call_args_list[3].args[1] == ["numpy>=1.24", "requests"]
+        assert gen.call_args_list[3].args[1] == ["numpy>=1.24"]
+        assert gen.call_args_list[4].args[1] == ["requests"]
+        assert gen.call_args_list[5].args[1] == ["numpy>=1.24", "requests"]
 
         notice = read_dropped_dependencies(workspace_dir)
         assert notice["dropped"] == ["numpy>=1.24", "requests"]
@@ -702,14 +732,22 @@ class TestSciQLopDeclaredLineNeverACulprit:
             venv.sync.side_effect = [
                 RuntimeError("No solution: sciqlop[all]==0.13.0.dev0 conflicts"),
                 None,
+                # Shrink pass: restoring either one alone still fails.
+                RuntimeError("No solution: sciqlop[all]==0.13.0.dev0 conflicts"),
+                RuntimeError("No solution: sciqlop[all]==0.13.0.dev0 conflicts"),
             ]
 
             prepare_workspace(workspace_dir, workspace_name="Test")
 
         gen = patches["generate_pyproject_toml"]
-        assert gen.call_count == 3
+        assert gen.call_count == 5
         assert gen.call_args_list[1].args[1] == []
-        assert gen.call_args_list[2].args[1] == [
+        # The SciQLop compat line is never in `droppable` (C1), so it rides
+        # along in every shrink trial regardless of which candidate is
+        # being restored.
+        assert gen.call_args_list[2].args[1] == ["numpy>=1.24", "SciQLop>=0.13.0,<0.14.0"]
+        assert gen.call_args_list[3].args[1] == ["requests", "SciQLop>=0.13.0,<0.14.0"]
+        assert gen.call_args_list[4].args[1] == [
             "numpy>=1.24", "requests", "SciQLop>=0.13.0,<0.14.0",
         ]
 
@@ -788,6 +826,59 @@ class TestOvermatchedCulpritIsShrunkAfterASuccessfulDrop:
 
         notice = read_dropped_dependencies(workspace_dir)
         assert notice["dropped"] == ["requests", "flask"]
+
+
+class TestCoreOnlyFallbackAlsoShrinksBystanders:
+    """When uv's error text names *every* optional dep, culprit-narrowing
+    gives up immediately (see test_culprit_matching_every_optional_dep_skips_to_core_only)
+    and the code falls straight to the plain core-only drop-everything retry
+    -- which, unlike the narrowed-culprit path above, never got a shrink
+    pass. On a real "old setup" machine this is the likely way tscat/tscat-gui
+    end up dropped: a big resolver error naming many packages matches every
+    optional dep at once, so the narrowed retry is skipped and the blanket
+    drop never tries to recover any of them. The core-only retry needs the
+    same one-at-a-time restoration as the narrowed retry."""
+
+    def test_a_bystander_dropped_by_the_core_only_retry_is_restored(
+        self, workspace_dir, patches
+    ):
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            prepare_workspace, read_dropped_dependencies,
+        )
+
+        with patch(
+            f"{MODULE}.collect_plugin_dependencies",
+            return_value=["numpy>=1.24", "requests", "tscat-gui"],
+        ):
+            venv = patches["venv"]
+            venv.sync.side_effect = [
+                # 1: full sync -- error names all three, so culprit-narrowing
+                #    gives up without even attempting a narrowed retry.
+                RuntimeError(
+                    "numpy==1.24, requests, and tscat-gui all conflict with "
+                    "the installed SciQLop version"
+                ),
+                None,  # 2: core-only (drop everything) retry succeeds
+                None,  # 3: restore numpy alone -> fine on its own
+                RuntimeError("requests==2.0 depends on SciQLop<0.13"),  # 4: restore requests alone -> still broken
+                None,  # 5: restore tscat-gui alone -> fine on its own
+            ]
+
+            result = prepare_workspace(workspace_dir, workspace_name="Test")
+
+        assert result == venv.python_path
+        assert venv.sync.call_count == 5
+        gen = patches["generate_pyproject_toml"]
+        assert gen.call_count == 6
+        assert gen.call_args_list[1].args[1] == []
+        assert gen.call_args_list[2].args[1] == ["numpy>=1.24"]
+        assert gen.call_args_list[3].args[1] == ["numpy>=1.24", "requests"]
+        assert gen.call_args_list[4].args[1] == ["numpy>=1.24", "tscat-gui"]
+        # M1: the full set is restored on disk after the successful retry.
+        assert gen.call_args_list[5].args[1] == ["numpy>=1.24", "requests", "tscat-gui"]
+
+        notice = read_dropped_dependencies(workspace_dir)
+        assert notice["dropped"] == ["requests"]
 
 
 class TestCulpritDependencies:

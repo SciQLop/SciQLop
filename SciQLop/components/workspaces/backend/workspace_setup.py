@@ -305,7 +305,15 @@ def _sync_workspace_venv(
             generate_pyproject_toml(manifest, [], pyproject_path)
             exc = _try_sync(venv, locked=False, upgrade_package=upgrade_package, on_output=on_output)
             if exc is None:
-                dropped = droppable
+                # Same shrink pass as the narrowed-culprit path: uv's error
+                # can name every optional dep at once (a big transitive
+                # conflict explanation), which skips straight here without
+                # ever narrowing -- so a perfectly installable bystander
+                # (e.g. tscat) would otherwise stay dropped for no reason.
+                dropped = _shrink_culprits(
+                    venv, manifest, optional_deps, droppable, pyproject_path,
+                    on_output, upgrade_package,
+                )
             else:
                 _report_sync_failure(exc, on_output, core_only=True)
         if dropped is not None:
