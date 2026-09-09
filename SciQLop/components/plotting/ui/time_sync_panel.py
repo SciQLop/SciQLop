@@ -1265,10 +1265,14 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
         if graph is not None:
             from SciQLop.core.graph_context import graph_name
+
+            def _toggle_visible():
+                graph.set_visible(not graph.visible())
+                plot.replot()
+
             label = "&Hide" if graph.visible() else "&Show"
             action = sub.addAction(
-                label + "\t" + native_shortcut_text("H"),
-                lambda: graph.set_visible(not graph.visible()))
+                label + "\t" + native_shortcut_text("H"), _toggle_visible)
             action.setToolTip(f"Toggle visibility of “{graph_name(graph)}”.")
 
     def _add_crosshair_action(self, menu):

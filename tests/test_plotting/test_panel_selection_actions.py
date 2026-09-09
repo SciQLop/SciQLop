@@ -97,6 +97,23 @@ def test_hide_show_toggles_visibility_and_relabels(qtbot):
     assert find_action(submenu(menu2, SUBMENU_TITLE), "Hide") is None
 
 
+def test_hide_show_forces_a_replot(qtbot):
+    """set_visible() alone doesn't repaint the canvas (matches
+    SciQLopPlot::toggle_selected_objects_visibility()'s explicit replot() in
+    the C++ H shortcut) -- without it the change is invisible until
+    something else (e.g. panning) forces a redraw."""
+    panel, plot, graph = _panel_with_plot(qtbot)
+    graph.components()[0].set_selected(True)
+    calls = []
+    plot.replot = lambda *a, **kw: calls.append(True)
+
+    menu = panel._build_context_menu(source=plot)
+    action = find_action(submenu(menu, SUBMENU_TITLE), "Hide")
+    action.trigger()
+
+    assert calls, "expected plot.replot() to be called after toggling visibility"
+
+
 def test_both_shown_when_axis_and_graph_both_selected(qtbot):
     panel, plot, graph = _panel_with_plot(qtbot)
     plot.y_axis().set_selected(True)
