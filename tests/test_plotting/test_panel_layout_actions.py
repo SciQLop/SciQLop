@@ -3,52 +3,15 @@ heights' context-menu actions, grouped under one 'Autoscale & Layout'
 submenu to keep the top level light. See TimeSyncPanel._add_layout_actions."""
 import numpy as np
 
+from tests.test_plotting._menu_test_helpers import (
+    submenu as _submenu,
+    submenu_titles as _submenu_titles,
+    leaf_labels as _leaf_labels,
+    find_action as _find_action,
+    mnemonic_letter as _mnemonic_letter,
+)
+
 SUBMENU_TITLE = "Autoscale & Layout"
-
-
-def _display_text(raw_text):
-    """QAction.text() as the user reads it: '&&' -> literal '&', a lone
-    '&' (mnemonic marker) dropped, shortcut hint after '\\t' stripped."""
-    body = raw_text.split("\t", 1)[0]
-    return body.replace("&&", "\0").replace("&", "").replace("\0", "&")
-
-
-def _mnemonic_letter(raw_text):
-    """The explicit &-mnemonic letter from a raw QAction text, or None."""
-    body = raw_text.split("\t", 1)[0]
-    i = 0
-    while i < len(body):
-        if body[i] == "&":
-            if body[i:i + 2] == "&&":
-                i += 2
-                continue
-            return body[i + 1].lower() if i + 1 < len(body) else None
-        i += 1
-    return None
-
-
-def _submenu(menu, title):
-    for a in menu.actions():
-        sub = a.menu()
-        if sub is not None and _display_text(a.text()) == title:
-            return sub
-    return None
-
-
-def _submenu_titles(menu):
-    return [_display_text(a.text()) for a in menu.actions() if a.menu() is not None]
-
-
-def _leaf_labels(menu):
-    return [_display_text(a.text()) for a in menu.actions()
-            if a.menu() is None and not a.isSeparator()]
-
-
-def _find_action(menu, text):
-    for a in menu.actions():
-        if _display_text(a.text()) == text:
-            return a
-    return None
 
 
 def _panel_with_plots(qtbot, n):

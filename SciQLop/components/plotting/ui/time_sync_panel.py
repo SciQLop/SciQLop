@@ -1166,6 +1166,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         self._catalog_manager.build_catalogs_menu(menu)
         self._add_crosshair_action(menu)
         self._add_layout_actions(menu, source)
+        self._add_selection_actions(menu, source)
         menu.addSeparator()
         self._build_export_share_menu(menu)
         self._build_templates_menu(menu)
@@ -1222,6 +1223,53 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
     def _equalize_plot_heights(self):
         splitter = self.widget()
         splitter.setSizes([1] * splitter.count())
+
+    def _selected_axis(self, plot):
+        for axis in (plot.x_axis(), plot.y_axis(), plot.y2_axis(),
+                     plot.time_axis(), plot.z_axis()):
+            if axis is not None and axis.selected():
+                return axis
+        return None
+
+    def _selected_graph(self, plot):
+        for graph in plot.plottables():
+            if graph.selected():
+                return graph
+        return None
+
+    def _add_selection_actions(self, menu, source):
+        from PySide6.QtWidgets import QMenu
+        from SciQLop.core.ui.shortcuts import native_shortcut_text
+        plot = self._plot_containing(source)
+        if plot is None:
+            return
+        axis = self._selected_axis(plot)
+        graph = self._selected_graph(plot)
+        if axis is None and graph is None:
+            return
+
+        sub = QMenu("Selection", menu)
+        sub.setToolTipsVisible(True)
+        menu.addMenu(sub)
+        sub.menuAction().setToolTip(
+            "Act on the axis or graph you've selected in this plot.")
+
+        if axis is not None:
+            action = sub.addAction(
+                "&Toggle log scale\t" + native_shortcut_text("L"))
+            action.setCheckable(True)
+            action.setChecked(axis.log())
+            action.setToolTip(
+                "Switch the selected axis between linear and log scale.")
+            action.toggled.connect(axis.set_log)
+
+        if graph is not None:
+            from SciQLop.core.graph_context import graph_name
+            label = "&Hide" if graph.visible() else "&Show"
+            action = sub.addAction(
+                label + "\t" + native_shortcut_text("H"),
+                lambda: graph.set_visible(not graph.visible()))
+            action.setToolTip(f"Toggle visibility of “{graph_name(graph)}”.")
 
     def _add_crosshair_action(self, menu):
         from SciQLop.core.ui.shortcuts import native_shortcut_text
