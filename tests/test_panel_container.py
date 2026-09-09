@@ -123,6 +123,34 @@ def test_mode_shortcut_cycles_catalog_mode(container):
     assert container.catalog_chrome.mode == "view"
 
 
+def test_autoscale_shortcut_is_ctrl_shift_a_scoped_to_container(container):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QKeySequence
+    assert container._autoscale_shortcut.key() == QKeySequence("Ctrl+Shift+A")
+    assert container._autoscale_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+
+
+def test_autoscale_shortcut_triggers_autoscale_all_plots(container, monkeypatch):
+    calls = []
+    monkeypatch.setattr(container.panel, "_autoscale_all_plots", lambda: calls.append(True))
+    container._autoscale_shortcut.activated.emit()
+    assert calls == [True]
+
+
+def test_equalize_shortcut_is_ctrl_shift_e_scoped_to_container(container):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QKeySequence
+    assert container._equalize_shortcut.key() == QKeySequence("Ctrl+Shift+E")
+    assert container._equalize_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+
+
+def test_equalize_shortcut_triggers_equalize_plot_heights(container, monkeypatch):
+    calls = []
+    monkeypatch.setattr(container.panel, "_equalize_plot_heights", lambda: calls.append(True))
+    container._equalize_shortcut.activated.emit()
+    assert calls == [True]
+
+
 def _find_action(menu, text):
     for action in menu.actions():
         if action.text().split("\t", 1)[0] == text:

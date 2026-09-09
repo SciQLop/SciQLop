@@ -73,6 +73,12 @@ class PanelContainer(QWidget):
         self._mode_shortcut = QShortcut(QKeySequence("Ctrl+Shift+M"), self)
         self._mode_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self._mode_shortcut.activated.connect(self.catalog_chrome.cycle_mode)
+        self._autoscale_shortcut = QShortcut(QKeySequence("Ctrl+Shift+A"), self)
+        self._autoscale_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._autoscale_shortcut.activated.connect(self.panel._autoscale_all_plots)
+        self._equalize_shortcut = QShortcut(QKeySequence("Ctrl+Shift+E"), self)
+        self._equalize_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._equalize_shortcut.activated.connect(self.panel._equalize_plot_heights)
 
     def _clamp_initial_range(self, tr: TimeRange):
         limit = self._current_limit
