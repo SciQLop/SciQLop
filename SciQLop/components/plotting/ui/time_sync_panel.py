@@ -1194,19 +1194,19 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         plot_under_cursor = self._plot_containing(source)
         if plot_under_cursor is not None:
             action = sub.addAction(
-                "Autoscale this plot", plot_under_cursor.rescale_axes)
+                "Autoscale &this plot", plot_under_cursor.rescale_axes)
             action.setToolTip(
                 "Auto-fit this plot's axes to the currently visible data.")
 
         autoscale_all = sub.addAction(
-            "Autoscale all plots\t" + native_shortcut_text("Ctrl+Shift+A"),
+            "Autoscale &all plots\t" + native_shortcut_text("Ctrl+Shift+A"),
             self._autoscale_all_plots)
         autoscale_all.setToolTip(
             "Auto-fit every plot in this panel to the currently visible data.")
 
         if len(plots) >= 2:
             equalize = sub.addAction(
-                "Equalize plot heights\t" + native_shortcut_text("Ctrl+Shift+E"),
+                "&Equalize plot heights\t" + native_shortcut_text("Ctrl+Shift+E"),
                 self._equalize_plot_heights)
             equalize.setToolTip(
                 "Reset all plots in this panel to the same height.")

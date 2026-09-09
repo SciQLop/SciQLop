@@ -6,26 +6,47 @@ import numpy as np
 SUBMENU_TITLE = "Autoscale & Layout"
 
 
+def _display_text(raw_text):
+    """QAction.text() as the user reads it: '&&' -> literal '&', a lone
+    '&' (mnemonic marker) dropped, shortcut hint after '\\t' stripped."""
+    body = raw_text.split("\t", 1)[0]
+    return body.replace("&&", "\0").replace("&", "").replace("\0", "&")
+
+
+def _mnemonic_letter(raw_text):
+    """The explicit &-mnemonic letter from a raw QAction text, or None."""
+    body = raw_text.split("\t", 1)[0]
+    i = 0
+    while i < len(body):
+        if body[i] == "&":
+            if body[i:i + 2] == "&&":
+                i += 2
+                continue
+            return body[i + 1].lower() if i + 1 < len(body) else None
+        i += 1
+    return None
+
+
 def _submenu(menu, title):
     for a in menu.actions():
         sub = a.menu()
-        if sub is not None and a.text().replace("&&", "&") == title:
+        if sub is not None and _display_text(a.text()) == title:
             return sub
     return None
 
 
 def _submenu_titles(menu):
-    return [a.text().replace("&&", "&") for a in menu.actions() if a.menu() is not None]
+    return [_display_text(a.text()) for a in menu.actions() if a.menu() is not None]
 
 
 def _leaf_labels(menu):
-    return [a.text().split("\t", 1)[0] for a in menu.actions()
+    return [_display_text(a.text()) for a in menu.actions()
             if a.menu() is None and not a.isSeparator()]
 
 
 def _find_action(menu, text):
     for a in menu.actions():
-        if a.text().split("\t", 1)[0] == text:
+        if _display_text(a.text()) == text:
             return a
     return None
 
@@ -101,6 +122,21 @@ def test_autoscale_all_and_equalize_show_shortcut_hints(qtbot):
     this_plot = _find_action(_submenu(panel._build_context_menu(source=panel.plots()[0]),
                                        SUBMENU_TITLE), "Autoscale this plot")
     assert "\t" not in this_plot.text()
+
+
+def test_layout_actions_have_distinct_explicit_mnemonics(qtbot):
+    """An action with no explicit &-mnemonic gets one invented for it once a
+    sibling shares its first word ('Autoscale this plot' next to 'Autoscale
+    all plots') -- seen live on macOS as an unrelated 'm' mnemonic on
+    'Autoscale this plot'. Giving each an explicit, distinct mnemonic
+    prevents Qt from improvising one."""
+    panel, plots = _panel_with_plots(qtbot, 2)
+    menu = panel._build_context_menu(source=plots[0])
+    sub = _submenu(menu, SUBMENU_TITLE)
+    leaves = [a for a in sub.actions() if a.menu() is None and not a.isSeparator()]
+    mnemonics = [_mnemonic_letter(a.text()) for a in leaves]
+    assert None not in mnemonics, f"missing explicit mnemonic in {mnemonics}"
+    assert len(mnemonics) == len(set(mnemonics)), f"duplicate mnemonics: {mnemonics}"
 
 
 def test_plot_containing_resolves_descendants(qtbot):
