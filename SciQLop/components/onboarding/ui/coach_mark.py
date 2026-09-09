@@ -1,5 +1,5 @@
 import shiboken6
-from PySide6.QtCore import Qt, QRect, QSize, QPoint, Signal, QEvent
+from PySide6.QtCore import Qt, QRect, QSize, QPoint, Signal, QEvent, QTimer
 from PySide6.QtGui import QPainter, QColor, QPainterPath, QPen
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from SciQLop.core.ui import Metrics, increase_font_size
@@ -23,9 +23,9 @@ def _clamp(value: int, low: int, high: int) -> int:
 def _bubble_position(target: QRect, bubble: QSize, window: QRect,
                       obstacles=()) -> QPoint:
     """Beside the target when there is room (right, left, above, below),
-    otherwise inside one of its own corners; in both cases a spot that
-    doesn't cover another currently-visible dock wins; never outside the
-    window."""
+    else beside a dock that is in the way, else inside one of the target's
+    own corners; a spot that doesn't cover a currently-visible dock always
+    wins; never outside the window."""
     max_x = window.width() - bubble.width()
     max_y = window.height() - bubble.height()
     left, top = _clamp(target.left(), 0, max_x), _clamp(target.top(), 0, max_y)
@@ -37,27 +37,36 @@ def _bubble_position(target: QRect, bubble: QSize, window: QRect,
         QPoint(left, target.top() - _BUBBLE_GAP - bubble.height()),
         QPoint(left, target.bottom() + _BUBBLE_GAP),
     ]
+    around = [p for o in obstacles for p in (
+        QPoint(o.right() + _BUBBLE_GAP, top),
+        QPoint(o.left() - _BUBBLE_GAP - bubble.width(), top),
+    )]
     inside = [QPoint(left, top), QPoint(right, top), QPoint(left, bottom), QPoint(right, bottom)]
-    in_window = [p for p in beside if window.contains(QRect(p, bubble))] + inside
+    in_window = [p for p in beside + around if window.contains(QRect(p, bubble))] + inside
     clear = [p for p in in_window
              if not any(QRect(p, bubble).intersects(obstacle) for obstacle in obstacles)]
     return (clear or in_window)[0]
 
 
-def _visible_dock_obstacles(main_window: QWidget, target: QWidget | None) -> list[QRect]:
-    """Bounding rects, in main_window coordinates, of every currently
-    visible dock panel other than the target's own -- so the bubble
-    doesn't land on top of a side panel the current step isn't pointing
-    at. `main_window` may not have a `dock_manager` (bare test hosts),
-    in which case there is nothing to avoid."""
+def _dock_widgets(main_window: QWidget) -> list:
+    """`main_window` may not have a `dock_manager` (bare test hosts)."""
     dock_manager = getattr(main_window, "dock_manager", None)
     if dock_manager is None:
         return []
+    return [dw for dw in dock_manager.dockWidgetsMap().values() if shiboken6.isValid(dw)]
+
+
+def _visible_dock_obstacles(main_window: QWidget, target: QWidget | None) -> list[QRect]:
+    """Bounding rects, in main_window coordinates, of every currently
+    open auto-hide side panel other than the target's own -- so the bubble
+    doesn't land on top of a flyout the current step isn't pointing at.
+    Regular docks (the welcome page, plot panels) fill the window and are
+    what the card is allowed to cover."""
     obstacles = []
-    for dock_widget in dock_manager.dockWidgetsMap().values():
-        if not shiboken6.isValid(dock_widget) or not dock_widget.isVisible():
-            continue
+    for dock_widget in _dock_widgets(main_window):
         if target is not None and (dock_widget is target or dock_widget.isAncestorOf(target)):
+            continue
+        if not dock_widget.isVisible() or not dock_widget.isAutoHide():
             continue
         top_left = dock_widget.mapTo(main_window, QPoint(0, 0))
         obstacles.append(QRect(top_left, dock_widget.size()))
@@ -175,6 +184,7 @@ class CoachMark(QWidget):
         self._main_window = main_window
         self._target: QWidget | None = None
         self._target_local_rect: QRect | None = None
+        self._watched_docks: list = []
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
         self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
         self._bubble = TourBubble(main_window)
@@ -196,6 +206,7 @@ class CoachMark(QWidget):
                   rect: QRect | None = None, progress: str = "",
                   can_go_back: bool = False, next_label: str = "Next") -> None:
         self._attach_target(target, rect)
+        self._watch_docks()
         self._bubble.set_content(title, body, progress=progress,
                                  can_go_back=can_go_back, next_label=next_label)
         self.setGeometry(self._main_window.rect())
@@ -215,10 +226,34 @@ class CoachMark(QWidget):
         """Detach from the target and the main window; the owning
         controller calls this exactly once when the tour is over."""
         self._detach_target()
+        self._unwatch_docks()
         if shiboken6.isValid(self._main_window):
             self._main_window.removeEventFilter(self)
         self.hide()
         self._bubble.deleteLater()
+
+    def _watch_docks(self) -> None:
+        """A side panel opening after the card was placed (the user hovers
+        the very tab a tip points at) can land right where the card is:
+        re-run placement once the panel has its final geometry."""
+        for dock_widget in _dock_widgets(self._main_window):
+            signal = getattr(dock_widget, "visibilityChanged", None)
+            if signal is not None and dock_widget not in self._watched_docks:
+                signal.connect(self._on_dock_visibility_changed)
+                self._watched_docks.append(dock_widget)
+
+    def _unwatch_docks(self) -> None:
+        for dock_widget in self._watched_docks:
+            if shiboken6.isValid(dock_widget):
+                dock_widget.visibilityChanged.disconnect(self._on_dock_visibility_changed)
+        self._watched_docks.clear()
+
+    def _on_dock_visibility_changed(self, _visible: bool) -> None:
+        QTimer.singleShot(0, self._reposition_if_shown)
+
+    def _reposition_if_shown(self) -> None:
+        if shiboken6.isValid(self) and shiboken6.isValid(self._bubble) and self.isVisible():
+            self._reposition_bubble()
 
     def _attach_target(self, target: QWidget | None, rect: QRect | None) -> None:
         self._detach_target()

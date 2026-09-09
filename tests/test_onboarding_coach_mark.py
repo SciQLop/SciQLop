@@ -1,6 +1,6 @@
-from PySide6.QtCore import Qt, QRect
+from PySide6.QtCore import Qt, QRect, Signal
 from PySide6.QtGui import QImage, QPalette, QColor
-from PySide6.QtWidgets import QPushButton, QMainWindow, QLabel
+from PySide6.QtWidgets import QPushButton, QMainWindow, QLabel, QWidget
 
 
 def _host(qtbot, size=(800, 600), target_geometry=(100, 100, 40, 20)):
@@ -347,6 +347,19 @@ def test_show_step_does_not_steal_focus_from_a_target_that_has_it(qtbot):
     assert host.focusWidget() is box
 
 
+class _FakeDock(QWidget):
+    """The slice of QtAds' CDockWidget the coach mark relies on: an
+    auto-hide flyout by default, with the visibility signal it watches."""
+    visibilityChanged = Signal(bool)
+
+    def __init__(self, parent, auto_hide=True):
+        super().__init__(parent)
+        self._auto_hide = auto_hide
+
+    def isAutoHide(self):
+        return self._auto_hide
+
+
 class _FakeDockManager:
     """Stands in for QtAds' CDockManager: `_visible_dock_obstacles` only
     ever calls `.dockWidgetsMap()` on it."""
@@ -422,29 +435,56 @@ def test_bubble_position_picks_a_clear_corner_inside_a_target_that_fills_the_win
     assert target.contains(QRect(position, bubble))
 
 
-def test_visible_dock_obstacles_excludes_the_targets_own_dock_and_hidden_docks(qtbot):
+def test_bubble_position_goes_beside_a_flyout_that_hugs_a_side_tab_target(qtbot):
+    """Third live report 2026-09-09: the card sat beside the Properties side
+    tab, the user hovered the tab, and the flyout opened on that very
+    spot. Every beside-the-tab and inside-the-tab position collides with
+    a flyout flush against the side bar; the card must go past it."""
+    from SciQLop.components.onboarding.ui.coach_mark import _bubble_position
+    from PySide6.QtCore import QSize
+
+    window = QRect(0, 0, 1820, 1068)
+    tab = QRect(0, 147, 42, 29)
+    bubble = QSize(336, 197)
+    flyout = QRect(42, 46, 288, 998)
+
+    position = _bubble_position(tab, bubble, window, obstacles=[flyout])
+
+    assert not QRect(position, bubble).intersects(flyout), position
+    assert window.contains(QRect(position, bubble))
+    assert position.x() > flyout.right()
+
+
+def test_visible_dock_obstacles_keeps_only_open_flyouts_other_than_the_targets_own(qtbot):
+    """Third live report 2026-09-09: the central dock (welcome page or plot
+    area) fills the window, so counting it as an obstacle left no clear
+    spot for a side-tab target and the card stayed on the flyout."""
     from SciQLop.components.onboarding.ui.coach_mark import _visible_dock_obstacles
-    from PySide6.QtWidgets import QWidget
 
     host = QMainWindow()
     host.resize(800, 600)
     qtbot.addWidget(host)
     host.show()
 
-    panel_dock = QWidget(host)
+    panel_dock = _FakeDock(host)
     panel_dock.setGeometry(200, 0, 600, 600)
     target = QPushButton("target", panel_dock)  # lives inside its own dock
 
-    products_dock = QWidget(host)
+    products_dock = _FakeDock(host)
     products_dock.setGeometry(0, 0, 200, 600)
     products_dock.show()
 
-    hidden_dock = QWidget(host)
+    hidden_dock = _FakeDock(host)
     hidden_dock.setGeometry(0, 0, 100, 100)
     hidden_dock.hide()
 
+    central_dock = _FakeDock(host, auto_hide=False)
+    central_dock.setGeometry(0, 0, 800, 600)
+    central_dock.show()
+
     host.dock_manager = _FakeDockManager({
         "Panel": panel_dock, "Products": products_dock, "Hidden": hidden_dock,
+        "Welcome": central_dock,
     })
 
     obstacles = _visible_dock_obstacles(host, target)
@@ -466,9 +506,8 @@ def test_bubble_avoids_a_currently_open_side_dock_next_to_a_near_full_window_tar
     right two-thirds of the window -- wide enough to catch the bubble
     regardless of its exact rendered size -- leaving only its left side
     free."""
-    from PySide6.QtWidgets import QWidget
     host, target = _host(qtbot, size=(1000, 600), target_geometry=(450, 275, 100, 50))
-    products_dock = QWidget(host)
+    products_dock = _FakeDock(host)
     products_dock.setGeometry(560, 0, 440, 600)
     products_dock.show()
     host.dock_manager = _FakeDockManager({"Products": products_dock, "Panel": target})

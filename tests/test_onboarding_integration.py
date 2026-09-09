@@ -188,3 +188,25 @@ def test_add_more_data_card_clears_the_open_products_flyout(main_window, qtbot):
     finally:
         mark.dispose()
         main_window.remove_panel(panel)
+
+
+def test_card_moves_out_of_the_way_when_a_dock_opens_over_it(main_window, qtbot):
+    """Third live report 2026-09-09, step 8: the card is placed beside the
+    Properties side tab while the dock is closed, the user hovers the tab
+    as told, the flyout opens on that very spot -- and the card stays
+    put, because obstacles were only looked at when the step was shown."""
+    from PySide6.QtCore import QPoint, QRect
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+
+    _close_side_docks(main_window)
+    properties = main_window.dock_manager.findDockWidget("Properties")
+    mark = CoachMark(main_window)
+    try:
+        mark.show_step(properties.sideTabWidget(), "Tweak a plot", "word " * 30)
+        _open_dock(main_window, "Properties")
+        qtbot.waitUntil(properties.isVisible, timeout=3000)
+        flyout = QRect(properties.mapTo(main_window, QPoint(0, 0)), properties.size())
+        qtbot.waitUntil(lambda: not mark.bubble.geometry().intersects(flyout), timeout=2000)
+    finally:
+        mark.dispose()
+        _collapse(properties)
