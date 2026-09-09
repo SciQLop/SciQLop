@@ -2,19 +2,22 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import subprocess
 import tempfile
 import threading
-import urllib.request
 from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
 
-import packaging.version
-
 from PySide6.QtCore import QObject, Signal, Slot
 
-from SciQLop.components.plugins.compat import host_satisfies
+from SciQLop.components.plugins.plugin_registry import (
+    DEFAULT_STORE_URL,
+    fetch_index as _fetch_index,
+    filter_packages as _filter_packages,
+    latest_version as _latest_version,
+    package_name_from_pip as _package_name_from_pip,
+)
+from SciQLop.components.plugins.plugin_registry import is_compatible as _is_compatible  # noqa: F401  re-exported for tests
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.components.workspaces.backend.uv import error_detail, uv_command
 from SciQLop.components.workspaces.backend.workspace_project import (
@@ -23,68 +26,6 @@ from SciQLop.components.workspaces.backend.workspace_project import (
 )
 
 log = getLogger(__name__)
-
-DEFAULT_STORE_URL = "https://sciqlop.github.io/sciqlop-appstore/index.json"
-
-_PEP440_SPLIT = re.compile(r"[><=!~;@\s]")
-
-
-def _fetch_index(url: str) -> list[dict]:
-    req = urllib.request.Request(url, headers={"Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=10) as resp:
-        return json.loads(resp.read())
-
-
-def _is_compatible(version_entry: dict) -> bool:
-    """True if `version_entry["sciqlop"]` is missing/empty or matches our version.
-
-    Delegates to the shared, dev-build-aware rule so a 0.13.0.dev0 host is
-    treated as 0.13.0 — the store must not hide the plugin built for the very
-    release the user is running. See components/plugins/compat.py.
-    """
-    return host_satisfies(version_entry.get("sciqlop") or "")
-
-
-def _compatible_versions(plugin: dict) -> list[dict]:
-    return [v for v in plugin.get("versions", []) if _is_compatible(v)]
-
-
-def _filter_packages(packages: list[dict]) -> list[dict]:
-    """Drop incompatible versions, then drop plugins with no compatible version.
-
-    Versions are sorted ascending by parsed version, so the last entry is the
-    latest -- the JS client reads `versions[versions.length - 1]` for that.
-    """
-    out: list[dict] = []
-    for pkg in packages:
-        compatible = _compatible_versions(pkg)
-        if not compatible:
-            continue
-        filtered = dict(pkg)
-        filtered["versions"] = sorted(compatible, key=lambda v: packaging.version.parse(v["version"]))
-        out.append(filtered)
-    return out
-
-
-def _latest_version(plugin: dict) -> dict | None:
-    versions = plugin.get("versions", [])
-    if not versions:
-        return None
-    return max(versions, key=lambda v: packaging.version.parse(v["version"]))
-
-
-def _package_name_from_pip(pip_field: str) -> str | None:
-    """Extract the distribution name from a pip specifier or wheel URL."""
-    from SciQLop.components.plugins.backend.settings import canonical_package_name
-
-    pip_field = pip_field.strip()
-    if pip_field.startswith("http://") or pip_field.startswith("https://"):
-        filename = __import__("pathlib").PurePosixPath(pip_field.split("?")[0].split("#")[0]).name
-        if filename.endswith(".whl"):
-            return canonical_package_name(filename.split("-")[0])
-        return None
-    name = _PEP440_SPLIT.split(pip_field, 1)[0].strip()
-    return canonical_package_name(name) if name else None
 
 
 def _installed_version(package_name: str) -> str | None:

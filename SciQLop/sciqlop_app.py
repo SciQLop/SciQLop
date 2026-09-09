@@ -91,6 +91,36 @@ def _notify_dropped_dependencies(parent) -> None:
     box.show()
 
 
+def _notify_incompatible_plugins(parent) -> None:
+    """Warn once at startup when a SciQLop version change left a plugin with
+    no compatible version to update to (see
+    workspace_setup._sync_appstore_plugin_pins) -- without this the plugin
+    just silently stops loading (the loader's compat gate only logs)."""
+    workspace_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR")
+    if not workspace_dir:
+        return
+    from SciQLop.components.workspaces.backend.workspace_setup import (
+        read_incompatible_plugins_notice,
+    )
+    notice = read_incompatible_plugins_notice(workspace_dir)
+    names = notice["plugins"] if notice else []
+    if not names:
+        return
+
+    from PySide6.QtWidgets import QMessageBox
+    version = notice.get("sciqlop_version") or "this version"
+    box = QMessageBox(
+        QMessageBox.Icon.Warning,
+        "Plugins disabled after update",
+        "These plugins are disabled because no version compatible with "
+        f"SciQLop {version} is available yet: {', '.join(names)}. "
+        "Check the Plugin Store for updates.",
+        parent=parent,
+    )
+    box.setModal(False)
+    box.show()
+
+
 def start_sciqlop():
     os.environ['INSIDE_SCIQLOP'] = '1'
     from PySide6 import QtPrintSupport, QtQml
@@ -132,6 +162,7 @@ def start_sciqlop():
     main_windows.show()
     app.processEvents()
     _notify_dropped_dependencies(main_windows)
+    _notify_incompatible_plugins(main_windows)
     return main_windows
 
 def main():

@@ -15,6 +15,7 @@ from pathlib import Path
 from SciQLop.components.plugins.backend.folders import plugins_folders
 from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
+from SciQLop.components.plugins.plugin_registry import resolve_plugin_updates
 from SciQLop.components.workspaces.backend.workspace_archive import IMPORT_MARKER_NAME
 from SciQLop.components.workspaces.backend.workspace_lock import workspace_lock
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
@@ -36,6 +37,8 @@ log = logging.getLogger(__name__)
 MANIFEST_FILENAME = "workspace.sciqlop"
 DROPPED_DEPS_FILENAME = ".sciqlop_dropped_deps.json"
 _DROPPED_DEPS_ERROR_MAX_LINES = 20
+INCOMPATIBLE_PLUGINS_FILENAME = ".sciqlop_incompatible_plugins.json"
+PLUGINS_CHECKED_VERSION_FILENAME = ".sciqlop_plugins_checked_version"
 
 
 def get_globally_enabled_plugins() -> list[str]:
@@ -79,24 +82,38 @@ def dropped_package_names(dropped: list[str]) -> list[str]:
     return [_extract_package_name(_normalize_url_requirement(dep)) for dep in dropped]
 
 
+def _read_json_notice(path: Path) -> dict | None:
+    """A persisted JSON-object notice at *path*, or None.
+
+    None covers "nothing was ever written" (no file), a corrupt/unreadable
+    file, and a file whose JSON parses but isn't an object (M3: e.g. `[]`)
+    -- callers index the result by key and would otherwise crash on a
+    TypeError. All three cases mean "nothing to report" to the caller.
+    """
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _clear_notice_file(path: Path, kind: str) -> None:
+    if not path.exists():
+        return
+    try:
+        path.unlink()
+    except OSError as exc:
+        log.warning("Could not remove %s notice: %s", kind, exc)
+
+
 def _dropped_deps_path(workspace_dir: Path | str) -> Path:
     return Path(workspace_dir) / DROPPED_DEPS_FILENAME
 
 
 def read_dropped_dependencies(workspace_dir: Path | str) -> dict | None:
-    """The persisted drop-notice for *workspace_dir*, or None.
-
-    None covers "no retry ever dropped anything" (no file), a
-    corrupt/unreadable file, and a file whose JSON parses but isn't an
-    object (M3: e.g. `[]`) -- callers index the result with
-    ``notice["dropped"]`` and would otherwise crash on a TypeError. All
-    three cases mean "nothing to report" to the caller.
-    """
-    try:
-        payload = json.loads(_dropped_deps_path(workspace_dir).read_text())
-    except (OSError, ValueError):
-        return None
-    return payload if isinstance(payload, dict) else None
+    """The persisted drop-notice for *workspace_dir*, or None -- see
+    ``_read_json_notice``."""
+    return _read_json_notice(_dropped_deps_path(workspace_dir))
 
 
 def _write_dropped_dependencies(workspace_dir: Path, dropped: list[str], error_text: str) -> None:
@@ -108,13 +125,77 @@ def _write_dropped_dependencies(workspace_dir: Path, dropped: list[str], error_t
 
 
 def _clear_dropped_dependencies(workspace_dir: Path) -> None:
-    path = _dropped_deps_path(workspace_dir)
-    if not path.exists():
+    _clear_notice_file(_dropped_deps_path(workspace_dir), "dropped-deps")
+
+
+def _incompatible_plugins_path(workspace_dir: Path | str) -> Path:
+    return Path(workspace_dir) / INCOMPATIBLE_PLUGINS_FILENAME
+
+
+def read_incompatible_plugins_notice(workspace_dir: Path | str) -> dict | None:
+    """The persisted notice from the last plugin-compatibility check (see
+    ``_sync_appstore_plugin_pins``), or None -- see ``_read_json_notice``."""
+    return _read_json_notice(_incompatible_plugins_path(workspace_dir))
+
+
+def _write_incompatible_plugins_notice(
+    workspace_dir: Path, plugin_names: list[str], sciqlop_version: str,
+) -> None:
+    payload = {"plugins": plugin_names, "sciqlop_version": sciqlop_version}
+    write_text_atomic(_incompatible_plugins_path(workspace_dir), json.dumps(payload))
+
+
+def _clear_incompatible_plugins_notice(workspace_dir: Path) -> None:
+    _clear_notice_file(_incompatible_plugins_path(workspace_dir), "incompatible-plugins")
+
+
+def _sync_appstore_plugin_pins(
+    workspace_dir: Path, resolved_version: str, on_output: Callable[[str], None] | None,
+) -> None:
+    """Best-effort: when the SciQLop version this workspace targets has
+    changed since the last launch, re-check every appstore-installed plugin
+    against the registry and re-pin it to its latest compatible version --
+    so a SciQLop update quietly keeps plugins working instead of leaving
+    them on a now-incompatible pin (the actual re-install then happens
+    through the ordinary pyproject/uv-sync path, since the caller
+    recomputes ``appstore_deps`` from settings right after this runs). A
+    plugin the registry has no compatible version for at all is left on its
+    old (now broken) pin and reported via ``INCOMPATIBLE_PLUGINS_FILENAME``
+    instead of failing silently -- ``sciqlop_app`` warns about it at
+    startup, the same way it already does for a sync-time drop.
+
+    No-ops (no network) when the version hasn't changed since the last
+    check for this workspace, or when nothing is installed. When the
+    registry can't be reached at all, leaves every pin untouched and does
+    NOT record this version as checked, so a later launch retries -- the
+    same tolerance as any other offline launcher hiccup.
+    """
+    checked_path = workspace_dir / PLUGINS_CHECKED_VERSION_FILENAME
+    if checked_path.exists() and checked_path.read_text().strip() == resolved_version:
         return
-    try:
-        path.unlink()
-    except OSError as exc:
-        log.warning("Could not remove dropped-deps notice: %s", exc)
+
+    installed = SciQLopPluginsSettings().installed_packages
+    if not installed:
+        write_text_atomic(checked_path, resolved_version)
+        return
+
+    result = resolve_plugin_updates(installed)
+    if result is None:
+        return
+
+    if result.updates:
+        with SciQLopPluginsSettings() as settings:
+            for dist_name, new_pip in result.updates.items():
+                if dist_name in settings.installed_packages:
+                    settings.installed_packages[dist_name].pip = new_pip
+                    if on_output is not None:
+                        on_output(f"Updated plugin {dist_name} for SciQLop {resolved_version}")
+
+    if result.unresolvable:
+        _write_incompatible_plugins_notice(workspace_dir, result.unresolvable, resolved_version)
+    else:
+        _clear_incompatible_plugins_notice(workspace_dir)
+    write_text_atomic(checked_path, resolved_version)
 
 
 def _try_sync(
@@ -406,6 +487,8 @@ def prepare_workspace(
             manifest.sciqlop_version = version
         manifest.save(manifest_path)
 
+    resolved_version = manifest.sciqlop_version or running_sciqlop_version()
+
     # Step 2: Gather plugin information
     enabled_plugins = get_globally_enabled_plugins()
     plugin_folders = get_plugin_folders()
@@ -419,6 +502,9 @@ def prepare_workspace(
     )
 
     # Step 4: Collect appstore-installed packages so they survive venv recreation
+    # -- re-pinning any that need it to stay compatible first (see
+    # _sync_appstore_plugin_pins), so this picks up the updated spec.
+    _sync_appstore_plugin_pins(workspace_dir, resolved_version, on_output)
     appstore_deps = [pkg.pip for pkg in SciQLopPluginsSettings().installed_packages.values()]
 
     # Step 5: Generate pyproject.toml
@@ -461,7 +547,6 @@ def prepare_workspace(
     # keep honoring whatever commit uv.lock first resolved, forever (see
     # pitfall-uv-lock-freezes-git-main-forever). Force a fresh resolve of
     # just that one package on every launch instead.
-    resolved_version = manifest.sciqlop_version or running_sciqlop_version()
     upgrade_package = "sciqlop" if is_dev_build_version(resolved_version) else None
     synced = _sync_workspace_venv(
         venv, manifest, plugin_deps + appstore_deps, pyproject_path, effective_locked, on_output,

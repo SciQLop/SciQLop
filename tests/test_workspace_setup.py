@@ -1412,3 +1412,147 @@ class TestPinCoreVersion:
         with workspace_lock(workspace_dir):
             with pytest.raises(WorkspaceLockError):
                 pin_core_version(workspace_dir, "0.13.0")
+
+
+@pytest.fixture
+def tmp_config_dir(tmp_path):
+    """Isolate SciQLopPluginsSettings' on-disk YAML to a scratch dir, so a
+    test's installed_packages mutations never touch (or are polluted by)
+    the shared session-wide config dir other tests read/write. Must be an
+    already-existing directory -- ConfigEntry.save() doesn't create a
+    missing one, it just silently no-ops (see
+    pitfall-configentry-save-unguarded-teardown-logging)."""
+    with patch("SciQLop.components.settings.backend.entry.SCIQLOP_CONFIG_DIR", str(tmp_path)):
+        yield tmp_path
+
+
+class TestSyncAppstorePluginPins:
+    """_sync_appstore_plugin_pins: best-effort re-pin of appstore-installed
+    plugins to a compatible version whenever the SciQLop version this
+    workspace targets changes, so a SciQLop update doesn't silently leave a
+    plugin on a now-incompatible pin -- and reports it when there's truly
+    nothing compatible to pin to instead of failing silently."""
+
+    def test_no_installed_packages_just_writes_the_marker(self, tmp_path, tmp_config_dir):
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            PLUGINS_CHECKED_VERSION_FILENAME, _sync_appstore_plugin_pins,
+        )
+
+        with patch(f"{MODULE}.resolve_plugin_updates") as mock_resolve:
+            _sync_appstore_plugin_pins(tmp_path, "0.14.0", None)
+
+        mock_resolve.assert_not_called()
+        assert (tmp_path / PLUGINS_CHECKED_VERSION_FILENAME).read_text() == "0.14.0"
+
+    def test_unchanged_version_skips_the_check_entirely(self, tmp_path, tmp_config_dir):
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            PLUGINS_CHECKED_VERSION_FILENAME, _sync_appstore_plugin_pins,
+        )
+        (tmp_path / PLUGINS_CHECKED_VERSION_FILENAME).write_text("0.14.0")
+
+        with patch(f"{MODULE}.resolve_plugin_updates") as mock_resolve:
+            _sync_appstore_plugin_pins(tmp_path, "0.14.0", None)
+
+        mock_resolve.assert_not_called()
+
+    def test_offline_leaves_everything_untouched_and_unmarked(self, tmp_path, tmp_config_dir):
+        from SciQLop.components.plugins.backend.settings import InstalledPackage, SciQLopPluginsSettings
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            PLUGINS_CHECKED_VERSION_FILENAME, _sync_appstore_plugin_pins,
+        )
+        with SciQLopPluginsSettings() as settings:
+            settings.installed_packages["demo"] = InstalledPackage(pip="demo==1.0.0", name="demo")
+
+        with patch(f"{MODULE}.resolve_plugin_updates", return_value=None):
+            _sync_appstore_plugin_pins(tmp_path, "0.14.0", None)
+
+        assert not (tmp_path / PLUGINS_CHECKED_VERSION_FILENAME).exists()
+        assert SciQLopPluginsSettings().installed_packages["demo"].pip == "demo==1.0.0"
+
+    def test_update_is_applied_and_persisted(self, tmp_path, tmp_config_dir):
+        from SciQLop.components.plugins.backend.settings import InstalledPackage, SciQLopPluginsSettings
+        from SciQLop.components.plugins.plugin_registry import PluginUpdateCheck
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            PLUGINS_CHECKED_VERSION_FILENAME, _sync_appstore_plugin_pins,
+            read_incompatible_plugins_notice,
+        )
+        with SciQLopPluginsSettings() as settings:
+            settings.installed_packages["demo"] = InstalledPackage(pip="demo==1.0.0", name="demo")
+
+        with patch(
+            f"{MODULE}.resolve_plugin_updates",
+            return_value=PluginUpdateCheck(updates={"demo": "demo==2.0.0"}, unresolvable=[]),
+        ):
+            _sync_appstore_plugin_pins(tmp_path, "0.14.0", None)
+
+        assert SciQLopPluginsSettings().installed_packages["demo"].pip == "demo==2.0.0"
+        assert (tmp_path / PLUGINS_CHECKED_VERSION_FILENAME).read_text() == "0.14.0"
+        assert read_incompatible_plugins_notice(tmp_path) is None
+
+    def test_unresolvable_plugin_is_reported_and_left_on_its_old_pin(self, tmp_path, tmp_config_dir):
+        from SciQLop.components.plugins.backend.settings import InstalledPackage, SciQLopPluginsSettings
+        from SciQLop.components.plugins.plugin_registry import PluginUpdateCheck
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            _sync_appstore_plugin_pins, read_incompatible_plugins_notice,
+        )
+        with SciQLopPluginsSettings() as settings:
+            settings.installed_packages["demo"] = InstalledPackage(pip="demo==1.0.0", name="demo")
+
+        with patch(
+            f"{MODULE}.resolve_plugin_updates",
+            return_value=PluginUpdateCheck(updates={}, unresolvable=["Demo"]),
+        ):
+            _sync_appstore_plugin_pins(tmp_path, "0.14.0", None)
+
+        assert SciQLopPluginsSettings().installed_packages["demo"].pip == "demo==1.0.0"
+        notice = read_incompatible_plugins_notice(tmp_path)
+        assert notice == {"plugins": ["Demo"], "sciqlop_version": "0.14.0"}
+
+    def test_stale_notice_is_cleared_once_everything_resolves_fine(self, tmp_path, tmp_config_dir):
+        """A workspace that previously had an unresolvable plugin, whose
+        author has since shipped a compatible release, must have the stale
+        notice cleared -- not left warning about a problem that's gone."""
+        from SciQLop.components.plugins.backend.settings import InstalledPackage, SciQLopPluginsSettings
+        from SciQLop.components.plugins.plugin_registry import PluginUpdateCheck
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            INCOMPATIBLE_PLUGINS_FILENAME, _sync_appstore_plugin_pins,
+            read_incompatible_plugins_notice,
+        )
+        (tmp_path / INCOMPATIBLE_PLUGINS_FILENAME).write_text(
+            '{"plugins": ["Demo"], "sciqlop_version": "0.13.0"}'
+        )
+        with SciQLopPluginsSettings() as settings:
+            settings.installed_packages["demo"] = InstalledPackage(pip="demo==1.0.0", name="demo")
+
+        with patch(
+            f"{MODULE}.resolve_plugin_updates",
+            return_value=PluginUpdateCheck(updates={"demo": "demo==2.0.0"}, unresolvable=[]),
+        ):
+            _sync_appstore_plugin_pins(tmp_path, "0.14.0", None)
+
+        assert read_incompatible_plugins_notice(tmp_path) is None
+
+
+class TestPrepareWorkspaceAppstorePluginAutoUpdate:
+    """End-to-end: prepare_workspace must feed the *updated* pin into the
+    generated pyproject.toml, not the stale one -- the auto-update has to
+    happen before Step 4 collects appstore_deps, or it never reaches uv."""
+
+    def test_generated_pyproject_uses_the_updated_pin(self, workspace_dir, patches, tmp_config_dir):
+        from SciQLop.components.plugins.backend.settings import InstalledPackage, SciQLopPluginsSettings
+        from SciQLop.components.plugins.plugin_registry import PluginUpdateCheck
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        with SciQLopPluginsSettings() as settings:
+            settings.installed_packages["demo"] = InstalledPackage(pip="demo==1.0.0", name="demo")
+
+        with patch(
+            f"{MODULE}.resolve_plugin_updates",
+            return_value=PluginUpdateCheck(updates={"demo": "demo==2.0.0"}, unresolvable=[]),
+        ):
+            prepare_workspace(workspace_dir, workspace_name="Test")
+
+        gen = patches["generate_pyproject_toml"]
+        deps = gen.call_args_list[0].args[1]
+        assert "demo==2.0.0" in deps
+        assert "demo==1.0.0" not in deps
