@@ -1,7 +1,11 @@
 # Speasy out-of-process fetch — design
 
 **Date:** 2026-09-10
-**Status:** proposed
+**Status:** BLOCKED — independent review (below) found the registration
+mechanism and the "no behavior change" claim both don't hold; needs a real
+redesign of §"Registering a product as remote" and a plan for the
+`_post_plot` gap before an implementation plan can be written from this.
+Paused here at the user's request (2026-09-10); not resumed yet.
 
 ## Problem
 
@@ -172,3 +176,80 @@ registration an explicit plugin_key override.
 - Startup: verify the Speasy worker is alive (`RemoteRegistry`'s worker
   entry populated, or `remote.worker_alive` tracing counter) shortly after
   app init, without requiring a plot to exist first.
+
+## Independent review (2026-09-10, Fable, high effort)
+
+Dispatched a fresh review agent against this spec and the real source (not
+this document alone). Two of its findings were independently re-verified by
+reading the cited code directly, both confirmed real:
+
+- **Registration mechanism doesn't fit Speasy's catalog.**
+  `remote_registry().is_remote(product)` (`time_sync_panel.py:733`) just
+  checks dict membership — a product must already be registered *before*
+  `plot_product` runs. `EasyProvider` satisfies this by registering its
+  whole (small, curated) set of virtual products once at plugin-load time.
+  Speasy's catalog is ~100k products; pre-registering all of them the same
+  way isn't viable, and "register at graph-creation time" (as written in
+  §2 above) is too late — `is_remote()` is checked before any
+  graph-creation-time hook would run. Needs a different mechanism, e.g. a
+  provider-side `remote_spec(node)` protocol checked lazily, not a
+  pre-populated path registry.
+- **"No behavior change" is false.** `plot_product` branches into
+  `plot_remote(...)` and returns directly for a remote product
+  (`time_sync_panel.py:733-745`) — it never reaches `_post_plot`
+  (`time_sync_panel.py:609-631`), which wires up `plot_hints`/
+  `plot_hints_from_variable` (units, labels, log-scale defaults),
+  `data_meta_from_variable`, `_attach_graph_context` (snippets, inspector
+  Graph section), `_set_product_path`, and the shiboken keepalive pins.
+  All of that is silently lost for every Speasy plot as designed. Needs
+  either a protocol change (worker returns hint metadata alongside the
+  array layout) or an explicit decision to accept the loss for v1.
+
+Remaining findings (not independently re-verified line-by-line, but the
+review cited specific file:line evidence for each — worth checking before
+resuming):
+
+1. The closure sketch in §2 skips `speasy_kwargs()` — AMDA template params
+   and SSC/3DView frame knobs would silently fail as written.
+2. `get_data` can't be relocated, only duplicated — `Depends()` resolution
+   (`dependencies.py:97`) still needs the in-process path.
+3. Remote errors/speasy warnings surface via stdlib `logging`
+   (`channel.py:33,88`), not SciQLop's Qt-signal-based `sciqlop_logging` —
+   likely invisible in a GUI/AppImage launch.
+4. Worker crash (`_on_worker_died`, `worker_handle.py:220-226`) permanently
+   silences every open Speasy graph — no re-INSTALL of channels on
+   respawn, only on the *next new* graph's `worker_for()` call.
+5. The worker's `serve()` loop (`worker.py:117-129`) handles one channel at
+   a time — multiple simultaneously-panning Speasy graphs, which overlap
+   their network I/O today, would serialize behind one worker. Could make
+   heavy multi-graph panning worse, not better.
+6. The measured 1.85s/32s cold-start numbers likely reflect `import
+   speasy`'s own inventory-init cost (triggered lazily inside
+   `reduce_result`'s `_is_speasy_variable` check on the *first reply*, not
+   at worker spawn) rather than "worker spawn + connect" as attributed in
+   §"What already exists". Changes what an eager warm-up actually needs to
+   force (a real `import speasy` in the worker, not just a spawned
+   process).
+7. The worker never receives `SpeasyPlugin.__init__`'s three startup
+   patches (inventory-recursion SIGSEGV workaround, User-Agent, cache
+   `ThreadStorage` fix) — needs its own bootstrap hook.
+8. No zero-width-component guard in `reduction.py`, unlike
+   `data_provider.py:25-33,173-176` — SciQLopPlots aborts the process on
+   that shape (`Q_ASSERT(stride > 0)`).
+9. No remote graph factory exists for `PlotType.Projections`
+   (`add_remote_line_graph` is declared only on `SciQLopPlot`, not
+   `SciQLopNDProjectionPlot`) — "always remote" needs a gate for this case.
+10. No shared-memory budget considered — fine on this machine, not
+    necessarily under Flatpak/AppImage's smaller `/dev/shm` defaults.
+11. Reusing `_is_time_sorted`/`_sort_variable_by_time` as proposed imports
+    `data_provider.py` (Qt signals, tracing) into the numpy-only worker —
+    move the two helpers to a shared Qt-free module instead.
+12. `reduction.py`'s `/1e9` and speasy's fixed `*1e-9` differ by 1 ULP on
+    ~43% of sampled values — "bit-identical" in the Testing section should
+    be scoped to reduction's own old formula, or the two should be unified
+    to the same formula.
+
+**Not resumed.** Next session: start from the two confirmed findings above
+(registration mechanism, `_post_plot` gap) — they're load-bearing enough
+that the design likely needs a real rethink of how a product becomes
+"remote" at all, not a patch to §2.
