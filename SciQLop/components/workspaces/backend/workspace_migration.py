@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import json
 import logging
-import shutil
 from pathlib import Path
 
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.core.common.files import remove_tree
 
 log = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def migrate_workspace(workspace_dir: Path | str) -> bool:
     # Remove old dependencies directory
     deps_dir = workspace_dir / "dependencies"
     if deps_dir.exists():
-        shutil.rmtree(deps_dir)
+        remove_tree(deps_dir)
 
     log.info("Migration complete: %s", manifest_path)
     return True

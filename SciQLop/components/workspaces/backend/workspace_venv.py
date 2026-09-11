@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import os
-import shutil
 import subprocess
 import sys
 from collections.abc import Callable
 from pathlib import Path
 
-from SciQLop.core.common.files import write_text_atomic
+from SciQLop.core.common.files import remove_tree, write_text_atomic
 from SciQLop.core.common.python import get_python
 from SciQLop.components.workspaces.backend.uv import uv_command
 
@@ -244,7 +243,7 @@ class WorkspaceVenv:
                         "Rebuilding this workspace so it holds its own SciQLop "
                         "(one-time; it previously shared the application's)."
                     )
-                shutil.rmtree(self._venv_dir)
+                remove_tree(self._venv_dir)
             self.create(on_output=on_output)
         elif self._needs_repoint():
             self._repoint_interpreter()

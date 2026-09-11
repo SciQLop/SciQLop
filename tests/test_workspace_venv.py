@@ -1,5 +1,6 @@
 """Tests for WorkspaceVenv."""
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -8,6 +9,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from SciQLop.components.workspaces.backend.workspace_venv import WorkspaceVenv
+from SciQLop.core.common import files
 
 
 @pytest.fixture
@@ -434,4 +436,23 @@ class TestEnsure:
         rather than synced into the new layout."""
         self._make_venv(venv, workspace_dir, system_site_packages=True)
         venv.ensure()
+        mock_create.assert_called_once()
+
+    @patch.object(WorkspaceVenv, "create")
+    def test_rebuild_survives_transient_rmtree_failure(self, mock_create, venv, workspace_dir):
+        """Windows field report: rmtree of the old .venv raised WinError 145
+        (dir not empty) because a scanner still held a freshly-unlinked file."""
+        self._make_venv(venv, workspace_dir, system_site_packages=True)
+        real = shutil.rmtree
+        calls = []
+
+        def flaky(path, *args, **kwargs):
+            calls.append(path)
+            if len(calls) == 1:
+                raise OSError(41, "Le répertoire n’est pas vide", str(path), 145)
+            real(path, *args, **kwargs)
+
+        with patch.object(shutil, "rmtree", flaky), patch.object(files.time, "sleep"):
+            venv.ensure()
+        assert not venv.venv_dir.exists()
         mock_create.assert_called_once()
