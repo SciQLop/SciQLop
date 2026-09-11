@@ -96,6 +96,36 @@ def test_vp_magic_eval_failure_raises_usage_error(qtbot, qapp, main_window):
         _vp_magic_impl("--start 0 --stop 10", cell)
 
 
+def test_vp_magic_resolves_depends_during_eval(qtbot, qapp, main_window):
+    """A Depends()-annotated parameter must be resolved before the smoke-test
+    call the magic makes to infer the type / render --debug. Without a return
+    annotation (or with --debug), `needs_eval` is True and `vp_magic` used to
+    call the raw callback directly, skipping dependency resolution entirely —
+    crashing with a missing-positional-argument TypeError instead of running
+    the callback, unlike the real EasyProvider fetch path which does resolve
+    Depends()."""
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry
+
+    cell = (
+        "from typing import Annotated\n"
+        "from SciQLop.user_api.virtual_products import Depends\n"
+        "\n"
+        "def _dep_source(start, stop):\n"
+        "    import numpy as np\n"
+        "    x = np.linspace(start, stop, 10)\n"
+        "    return x, np.ones(10)\n"
+        "\n"
+        "def with_dependency(start: float, stop: float,\n"
+        "                     series: Annotated[object, Depends(_dep_source)]):\n"
+        "    return series\n"
+    )
+    _vp_magic_impl("--start 0 --stop 10", cell)
+
+    entry = _registry.get("with_dependency")
+    assert entry is not None
+    assert entry.product_type == "scalar"
+
+
 def test_vp_magic_skips_underscore_helpers(qtbot, qapp, main_window):
     """A cell with helper `_foo` and a public `vp` should register `vp`."""
     from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry

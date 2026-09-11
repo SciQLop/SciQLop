@@ -42,6 +42,19 @@ def _find_knob_state(panel):
     return None
 
 
+def _resolve_vp_dependencies(func, start, stop):
+    """Resolve Depends()-declared parameters into kwargs, same as EasyProvider
+    does at real fetch time — the smoke-test call below must match that or a
+    dependency-using callback fails with a missing-argument TypeError."""
+    from SciQLop.components.plotting.backend.dependencies import (
+        extract_dependencies_from_callback, resolve_dependency,
+    )
+    return {
+        spec.name: resolve_dependency(spec, start, stop)
+        for spec in extract_dependencies_from_callback(func)
+    }
+
+
 def _persisted_knob_values(entry):
     panel = getattr(entry, "panel", None) if entry is not None else None
     if panel is None:
@@ -195,10 +208,11 @@ def vp_magic(line: str, cell: str, local_ns=None):
         preserved = _resolve_range_defaults(func, start, stop, preserved)
         t0 = _time.monotonic()
         try:
+            deps = _resolve_vp_dependencies(func, start, stop)
             try:
-                cached_data = func(start, stop, **preserved)
+                cached_data = func(start, stop, **preserved, **deps)
             except TypeError:
-                cached_data = func(start, stop)
+                cached_data = func(start, stop, **deps)
         except Exception as e:
             eval_error = e
             cached_data = None
