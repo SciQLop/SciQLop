@@ -7,29 +7,19 @@ until the callback returns. This queue keeps unsent frames in user space
 instead, and keeps only the latest unsent REQUEST per channel -- the worker
 drops older ones anyway (see ``worker._coalesce``) -- so memory stays bounded.
 
-Frames are byte-identical to ``multiprocessing.connection.Connection.send``
-(https://github.com/python/cpython/blob/main/Lib/multiprocessing/connection.py,
-``_send_bytes``), so the worker keeps using plain ``conn.recv()``.
+Frames come from ``framing.frame`` (byte-identical to ``Connection.send``),
+so the worker keeps using plain ``conn.recv()``.
 """
 from __future__ import annotations
 
 import itertools
-import pickle
-import struct
 from collections import deque
 from typing import Deque, List, Optional, Tuple
 
 from . import protocol as P
+from .framing import frame
 
 _Entry = Tuple[Optional[tuple], object, bytes]   # (coalesce key, message, frame)
-
-
-def frame(msg) -> bytes:
-    payload = pickle.dumps(msg)
-    n = len(payload)
-    if n > 0x7fffffff:
-        return struct.pack("!i", -1) + struct.pack("!Q", n) + payload
-    return struct.pack("!i", n) + payload
 
 
 def _coalesce_key(msg) -> Optional[tuple]:

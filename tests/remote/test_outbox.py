@@ -5,6 +5,7 @@ from multiprocessing.connection import Connection
 
 
 from SciQLop.components.plotting.backend.remote import protocol as P
+from SciQLop.components.plotting.backend.remote.framing import FrameDecoder, frame
 from SciQLop.components.plotting.backend.remote.outbox import Outbox
 
 
@@ -60,3 +61,21 @@ def test_consume_advances_across_frames():
     assert box.messages() == [(P.FREE, 1, "b")]
     box.consume(len(box.head()))
     assert not box
+
+
+def test_decoder_reassembles_frames_split_at_arbitrary_byte_boundaries():
+    msgs = [(P.RESULT, 1, 7, "seg", [(1, 2)], 2), (P.EMPTY, 1, 8), (P.INSTALL, 2, b"y" * 20000, 3)]
+    stream = b"".join(frame(m) for m in msgs)
+    for chunk in (1, 3, 5, 4096, len(stream)):
+        dec, out = FrameDecoder(), []
+        for i in range(0, len(stream), chunk):
+            out.extend(dec.feed(stream[i:i + chunk]))
+        assert out == msgs, chunk
+
+
+def test_decoder_matches_connection_send_wire_format():
+    a, b = socket.socketpair()
+    Connection(a.detach()).send((P.ERROR, 3, 9, "tb"))
+    dec = FrameDecoder()
+    assert list(dec.feed(b.recv(4096))) == [(P.ERROR, 3, 9, "tb")]
+    b.close()

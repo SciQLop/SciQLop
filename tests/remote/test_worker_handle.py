@@ -210,11 +210,28 @@ def _socketpair_with_tiny_buffers():
     return a, b
 
 
-def test_send_request_never_blocks_gui_thread_when_worker_is_not_reading(qtbot):
+@pytest.mark.parametrize("default_timeout", [None, 30.0],
+                         ids=["no-default-timeout", "global-default-timeout"])
+def test_send_request_never_blocks_gui_thread_when_worker_is_not_reading(qtbot, monkeypatch, default_timeout):
     """The worker only reads its pipe between callbacks. A pan storm while
     it's busy must not stall the GUI thread inside send_request (seen live
-    on macOS: 15 s GUI freezes ending exactly when the worker replied)."""
+    on macOS: 15 s GUI freezes ending exactly when the worker replied).
+
+    The second case mirrors a dependency calling socket.setdefaulttimeout()
+    (drms does, via sunpy.net): a socket built from a file descriptor
+    inherits that timeout, and in timeout mode CPython polls for writability
+    *before* the send, so MSG_DONTWAIT alone no longer prevents the stall."""
+    import socket
     import threading
+    monkeypatch.setattr(socket, "getdefaulttimeout", lambda: default_timeout)
+    monkeypatch.setattr(socket, "setdefaulttimeout", lambda t: None)
+    original_ctor = socket.socket.__init__
+
+    def ctor_with_default_timeout(self, *a, **kw):
+        original_ctor(self, *a, **kw)
+        if default_timeout is not None:
+            self.settimeout(default_timeout)
+    monkeypatch.setattr(socket.socket, "__init__", ctor_with_default_timeout)
     from multiprocessing.connection import Connection
     from SciQLop.components.plotting.backend.remote import protocol as P
 
@@ -223,6 +240,7 @@ def test_send_request_never_blocks_gui_thread_when_worker_is_not_reading(qtbot):
     conn = Connection(a.detach())
     worker._attach(conn)
     n_requests, channels = 5000, (1, 2, 3)
+    b.setblocking(True)   # the patched ctor above put a timeout (=> O_NONBLOCK) on it too
     peer = Connection(b.detach(), writable=False)
     received = []
 
@@ -251,8 +269,7 @@ def test_send_request_never_blocks_gui_thread_when_worker_is_not_reading(qtbot):
     reader = threading.Thread(target=drain, daemon=True)
     reader.start()
     qtbot.waitUntil(lambda: not worker._outbox, timeout=5000)
-    worker._detach()
-    conn.close()
+    worker._detach()      # closes both fds -> EOF for the reader
     reader.join(5.0)
 
     latest = {}

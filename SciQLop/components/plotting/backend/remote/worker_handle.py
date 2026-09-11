@@ -22,6 +22,7 @@ from PySide6.QtCore import QObject, QSocketNotifier
 from SciQLop.core import tracing
 from SciQLop.components.plugins.backend.loader.loader import plugins_folders
 from . import protocol as P
+from .framing import FrameDecoder
 from .outbox import Outbox
 
 log = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class RemoteWorker(QObject):
         self._notifier: QSocketNotifier | None = None
         self._write_notifier: QSocketNotifier | None = None
         self._outbox = Outbox()
+        self._decoder = FrameDecoder()
         self._channels: Dict[int, object] = {}
         self._accept_timeout = 15.0   # seconds to wait for the worker to connect
         # One in-flight request per channel -- matches worker.py's own
@@ -85,11 +87,17 @@ class RemoteWorker(QObject):
         self._attach(self._accept_or_timeout(listener))
 
     def _attach(self, conn) -> None:
-        """Wire an established duplex connection: replies are pumped by a
-        read notifier; outgoing frames go through a non-blocking socket send
-        with a write notifier draining the outbox once the pipe has room."""
+        """Wire an established duplex connection. All I/O goes through a
+        non-blocking socket with our own framing (framing.py) on both
+        directions: a read notifier feeds the decoder, a write notifier
+        drains the outbox once the pipe has room. The GUI thread therefore
+        never waits on the worker -- not in a full-buffer send, and not in a
+        CPython pre-send poll that a global socket.setdefaulttimeout() would
+        otherwise impose on a socket built from a file descriptor."""
         self._conn = conn
         self._sock = socket.socket(fileno=os.dup(conn.fileno()))
+        self._sock.setblocking(False)
+        self._decoder = FrameDecoder()
         self._notifier = QSocketNotifier(conn.fileno(), QSocketNotifier.Type.Read)
         self._notifier.activated.connect(self._on_readable)
         self._write_notifier = QSocketNotifier(conn.fileno(), QSocketNotifier.Type.Write)
@@ -159,6 +167,8 @@ class RemoteWorker(QObject):
                 notifier.setEnabled(False)
         if self._sock is not None:
             self._sock.close()
+        if self._conn is not None:
+            self._conn.close()
         self._conn, self._sock = None, None
         self._notifier, self._write_notifier = None, None
         self._outbox.clear()
@@ -200,7 +210,7 @@ class RemoteWorker(QObject):
     def _flush(self) -> None:
         try:
             while self._outbox:
-                self._outbox.consume(self._sock.send(self._outbox.head(), socket.MSG_DONTWAIT))
+                self._outbox.consume(self._sock.send(self._outbox.head()))
         except BlockingIOError:
             self._write_notifier.setEnabled(True)
             return
@@ -213,10 +223,17 @@ class RemoteWorker(QObject):
     def _on_readable(self) -> None:
         with tracing.zone("RemoteWorker._on_readable", cat="remote"):
             try:
-                while self._conn is not None and self._conn.poll(0):
-                    self._dispatch(self._conn.recv())
-            except (EOFError, OSError):
+                data = self._sock.recv(1 << 16)
+            except BlockingIOError:
+                return
+            except OSError:
                 self._on_worker_died()
+                return
+            if not data:
+                self._on_worker_died()
+                return
+            for msg in self._decoder.feed(data):
+                self._dispatch(msg)
 
     def _dispatch(self, msg) -> None:
         tag = msg[0]
