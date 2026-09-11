@@ -252,10 +252,11 @@ class TestGeneratePyprojectToml:
                 data = tomllib.load(f)
             deps = data["project"]["dependencies"]
             assert any(d.startswith("sciqlop[all]") for d in deps), deps
-            # Nothing to pin against or hide any more.
+            # Nothing to pin against any more; the override only restates
+            # the workspace's own pin over plugin-declared SciQLop ranges.
             uv_config = data.get("tool", {}).get("uv", {})
             assert "constraint-dependencies" not in uv_config
-            assert "override-dependencies" not in uv_config
+            assert uv_config["override-dependencies"] == [d for d in deps if d.startswith("sciqlop[all]")]
 
     def test_sciqlop_pin_follows_the_manifest(self):
         manifest = WorkspaceManifest(name="Pinned", sciqlop_version="0.13.0")
@@ -291,10 +292,12 @@ class TestGeneratePyprojectToml:
             generate_pyproject_toml(manifest, [], output)
             assert os.path.exists(output)
 
-    def test_plugin_requiring_sciqlop_is_no_longer_overridden(self):
+    def test_plugin_requiring_sciqlop_is_not_neutralised_with_an_always_false_marker(self):
         """A plugin wheel that declares Requires-Dist: SciQLop used to be
         neutralised with an always-false marker because the host owned SciQLop.
-        The workspace installs it now, so the requirement must simply resolve."""
+        The workspace installs it now, so the override must name the real
+        requirement (see test_plugin_wheel_sciqlop_requirement_is_overridden_by_workspace_pin),
+        never drop sciqlop from the resolution."""
         import tomllib
 
         manifest = WorkspaceManifest(name="Transitive")
@@ -309,7 +312,34 @@ class TestGeneratePyprojectToml:
 
             with open(output, "rb") as f:
                 data = tomllib.load(f)
-            assert "override-dependencies" not in data.get("tool", {}).get("uv", {})
+            assert data["tool"]["uv"]["override-dependencies"] != ["sciqlop ; python_version < '0'"]
+
+    @pytest.mark.parametrize("pinned", ["0.13.0", "0.13.0.dev0", ""])
+    def test_plugin_wheel_sciqlop_requirement_is_overridden_by_workspace_pin(self, pinned):
+        """Plugin wheels declare ``SciQLop>=X,<Y`` for the loader's compat gate.
+        uv must not enforce it: PEP 440 sorts ``0.13.0.dev0`` *below* the
+        ``>=0.13.0`` floor it targets, so a dev workspace could never resolve a
+        plugin built for the release being developed (seen live 2026-09-11:
+        every optional package dropped on a .dev0 workspace). The workspace's
+        own pin is authoritative and overrides every declaration of sciqlop,
+        extras included -- an override without ``[all]`` drops the extras."""
+        import tomllib
+
+        manifest = WorkspaceManifest(name="Transitive", sciqlop_version=pinned)
+        plugin_deps = [
+            "https://github.com/SciQLop/sciqlop-plugins/releases/download/"
+            "sciqlop_claude/v0.2.0/sciqlop_claude-0.2.0-py3-none-any.whl"
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output = Path(tmpdir) / "pyproject.toml"
+            generate_pyproject_toml(manifest, plugin_deps, output)
+
+            with open(output, "rb") as f:
+                data = tomllib.load(f)
+            core = [d for d in data["project"]["dependencies"] if d.startswith("sciqlop[all]")]
+            assert len(core) == 1
+            assert data["tool"]["uv"]["override-dependencies"] == core
 
     @pytest.mark.parametrize("pinned, expected_core", [
         ("0.13.0", "sciqlop[all]==0.13.0"),

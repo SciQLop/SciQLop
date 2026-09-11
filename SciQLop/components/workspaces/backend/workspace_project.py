@@ -295,7 +295,8 @@ def generate_pyproject_toml(
     # RECORD-based uninstall (no refcounting) means removing or upgrading
     # either package guts the other's files (see lab_assets.repair_lab_assets,
     # which heals venvs already damaged in the field).
-    implicit_deps = [sciqlop_requirement(manifest.sciqlop_version), "jupyqt"]
+    core_requirement = sciqlop_requirement(manifest.sciqlop_version)
+    implicit_deps = [core_requirement, "jupyqt"]
     # Strip the SciQLop lines plugins declare for the loader's compat gate:
     # dedup keeps the last entry per package, so an unstripped
     # "SciQLop>=X" would replace the workspace's own [all] requirement.
@@ -311,10 +312,15 @@ def generate_pyproject_toml(
     else:
         deps_block = "dependencies = [\n]"
 
-    # No constraint or override blocks: the workspace owns its whole stack now,
-    # so there is no host environment to pin against or to hide SciQLop from.
+    # No constraint block: the workspace owns its whole stack, there is no host
+    # environment to pin against. The override keeps uv from enforcing the
+    # `SciQLop>=X,<Y` a plugin wheel declares for the loader's compat gate:
+    # PEP 440 sorts 0.13.0.dev0 *below* the 0.13.0 floor it targets, so a dev
+    # workspace could otherwise never resolve a plugin built for the release
+    # being developed. It must repeat the extras: an override without [all]
+    # silently drops them from the resolution.
     constraint_block = ""
-    override_block = ""
+    override_block = f'override-dependencies = ["{core_requirement}"]'
 
     # Restrict uv resolution to platforms SciQLop actually targets so that
     # marker splits like sys_platform == 'emscripten' (which has no wheels for
