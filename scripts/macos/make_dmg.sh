@@ -450,13 +450,20 @@ echo "Building DMG..."
 # verify the file exists instead of trusting the exit code. Signing is left
 # to the explicit codesign step below (not --codesign here), since it
 # applies to the DMG file regardless of which tool produced it.
+#
+# create-dmg has no HiDPI/@2x support: Finder places the background at its
+# literal pixel size (1 image pixel = 1 point), it does not scale to fit the
+# window. dmg-background.png is pre-scaled to 960x480 for exactly that
+# reason — window-size is set well beyond that (960x600) so the title bar
+# and this Mac's Path Bar/status bar (Finder chrome eats into the window's
+# content height, not accounted for by create-dmg) can't crop the image.
 create-dmg \
   --volname "SciQLop" \
   --background "$DMG_BACKGROUND" \
-  --window-size 887 443 \
+  --window-size 960 600 \
   --icon-size 100 \
-  --icon "SciQLop.app" 250 310 \
-  --app-drop-link 630 310 \
+  --icon "SciQLop.app" 260 330 \
+  --app-drop-link 700 330 \
   --no-internet-enable \
   "SciQLop-$ARCH.dmg" \
   SciQLop.app >/dev/null || true
