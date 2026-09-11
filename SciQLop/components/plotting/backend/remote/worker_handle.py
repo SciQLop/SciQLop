@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import select
 import socket
 import subprocess
 import sys
@@ -147,11 +148,10 @@ class RemoteWorker(QObject):
         return result["conn"]
 
     def shutdown(self) -> None:
-        try:
-            if self._conn is not None:
-                self._conn.send((P.SHUTDOWN,))
-        except Exception:
-            pass
+        self._send((P.SHUTDOWN,))
+        # Give a merely slow worker its clean SHUTDOWN; a wedged one gets EOF
+        # from _detach() instead, which its serve() loop treats the same way.
+        self._flush_until(deadline_s=1.0)
         self._detach()
         if self._proc is not None:
             try:
@@ -180,7 +180,7 @@ class RemoteWorker(QObject):
 
     def install(self, channel_id: int, blob: bytes, arity: int) -> None:
         with tracing.zone("RemoteWorker.install", cat="remote", channel=channel_id):
-            self._conn.send((P.INSTALL, channel_id, blob, arity))
+            self._send((P.INSTALL, channel_id, blob, arity))
 
     # --- transport interface (called by RemoteChannel) ----------------------
     def send_request(self, channel_id: int, req_id: int, start: float, stop: float, knobs: dict) -> None:
@@ -219,7 +219,18 @@ class RemoteWorker(QObject):
             return
         self._write_notifier.setEnabled(False)
 
-    # --- reply pump ---------------------------------------------------------
+    def _flush_until(self, deadline_s: float) -> None:
+        """Blocking best-effort drain of the outbox, bounded by *deadline_s*.
+        Only for shutdown: the GUI thread may wait here, briefly."""
+        end = time.monotonic() + deadline_s
+        while self._outbox and self._sock is not None:
+            remaining = end - time.monotonic()
+            if remaining <= 0:
+                return
+            _, writable, _ = select.select([], [self._sock], [], remaining)
+            if not writable:
+                return
+            self._flush()
     def _on_readable(self) -> None:
         with tracing.zone("RemoteWorker._on_readable", cat="remote"):
             try:

@@ -279,3 +279,54 @@ def test_send_request_never_blocks_gui_thread_when_worker_is_not_reading(qtbot, 
     expected_latest = {channels[i % 3]: i for i in range(n_requests)}
     assert latest == expected_latest
     assert len(received) < n_requests          # coalesced while the peer was stalled
+
+
+def test_install_with_large_blob_never_raises_and_arrives_intact(qtbot):
+    """Regression: install() and shutdown() wrote through Connection.send on
+    the (now shared-non-blocking) descriptor. A cloudpickle blob larger than
+    the socket buffer raised BlockingIOError (errno 35 on macOS) out of the
+    plot call, left a partial frame on the wire, and killed the worker
+    (BrokenPipeError on the next plot). Every message must go through the
+    outbox, in order."""
+    import threading
+    from multiprocessing.connection import Connection
+    from SciQLop.components.plotting.backend.remote import protocol as P
+
+    a, b = _socketpair_with_tiny_buffers()
+    worker = RemoteWorker(plugin_key="big_install")
+    conn = Connection(a.detach())
+    worker._attach(conn)
+    peer = Connection(b.detach(), writable=False)
+    blob = b"x" * 200_000
+
+    worker.install(7, blob, 3)                       # must not raise
+    worker.send_request(7, 1, 0.0, 1.0, {})
+
+    received = []
+
+    def drain():
+        while True:
+            try:
+                received.append(peer.recv())
+            except EOFError:
+                break
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    worker.shutdown()                                # flushes what's queued, then EOF
+    reader.join(5.0)
+    assert received == [(P.INSTALL, 7, blob, 3), (P.REQUEST, 7, 1, 0.0, 1.0, {}), (P.SHUTDOWN,)]
+
+
+def test_shutdown_with_a_stalled_worker_is_bounded_and_does_not_raise(qtbot):
+    from multiprocessing.connection import Connection
+
+    a, b = _socketpair_with_tiny_buffers()
+    worker = RemoteWorker(plugin_key="stalled")
+    worker._attach(Connection(a.detach()))
+    worker.install(1, b"x" * 200_000, 2)
+    started = time.monotonic()
+    worker.shutdown()                                # peer never reads
+    assert time.monotonic() - started < 3.0
+    assert worker._conn is None and worker._sock is None and not worker._outbox
+    b.close()
