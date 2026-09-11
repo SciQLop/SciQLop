@@ -130,6 +130,8 @@ def start_sciqlop():
     print(str(QtPrintSupport) + str(QtQml))
 
     app = sciqlop_app()
+    from SciQLop.core.main_thread_gc import install as install_main_thread_gc
+    install_main_thread_gc(parent=app)
     from SciQLop.components.settings.backend.network import apply_qt_application_proxy
     apply_qt_application_proxy()
     from SciQLop.core import tracing as _tracing
