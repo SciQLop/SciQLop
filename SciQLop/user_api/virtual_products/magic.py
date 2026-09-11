@@ -42,13 +42,23 @@ def _find_knob_state(panel):
     return None
 
 
+class _NoDependencyData(Exception):
+    """Internal signal: a Depends() target resolved to no data (not an error —
+    mirrors EasyProvider's "no data yet" case). Carries the formatted spec
+    identity so the --debug path can name it without re-importing
+    describe_target."""
+
+    def __init__(self, spec, description):
+        super().__init__(f"dependency '{spec.name}' ({description}) resolved to no data")
+
+
 def _resolve_vp_dependencies(func, start, stop):
     """Resolve Depends()-declared parameters into kwargs, same as
     ``EasyProvider._resolve_dependencies`` does at real fetch time — the
     smoke-test call below must match that or a dependency-using callback
-    fails with a missing-argument TypeError. Returns ``None`` if any
-    dependency resolves to no data, mirroring EasyProvider's "no data yet"
-    signal instead of running the callback on a garbage input."""
+    fails with a missing-argument TypeError. Raises ``_NoDependencyData`` if
+    any dependency resolves to no data, mirroring EasyProvider's "no data
+    yet" signal instead of running the callback on a garbage input."""
     from SciQLop.components.plotting.backend.dependencies import (
         extract_dependencies_from_callback, resolve_dependency, describe_target,
     )
@@ -61,7 +71,7 @@ def _resolve_vp_dependencies(func, start, stop):
                 f"{func.__name__}: failed to resolve dependency '{spec.name}' "
                 f"({describe_target(spec.target)}): {e}") from e
         if data is None:
-            return None
+            raise _NoDependencyData(spec, describe_target(spec.target))
         kwargs[spec.name] = data
     return kwargs
 
@@ -219,17 +229,17 @@ def vp_magic(line: str, cell: str, local_ns=None):
         preserved = _resolve_range_defaults(func, start, stop, preserved)
         t0 = _time.monotonic()
         try:
-            deps = _resolve_vp_dependencies(func, start, stop)
-            if deps is None:
-                if args.debug:
-                    raise RuntimeError(
-                        f"{func_name}: a Depends() dependency resolved to no data")
-                cached_data = None
-            else:
+            try:
+                deps = _resolve_vp_dependencies(func, start, stop)
                 try:
                     cached_data = func(start, stop, **preserved, **deps)
                 except TypeError:
                     cached_data = func(start, stop, **deps)
+            except _NoDependencyData as no_data:
+                if not args.debug:
+                    cached_data = None
+                else:
+                    raise RuntimeError(f"{func_name}: {no_data}") from None
         except Exception as e:
             eval_error = e
             cached_data = None

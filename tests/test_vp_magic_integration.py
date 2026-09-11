@@ -173,6 +173,31 @@ def test_vp_magic_debug_flags_dependency_with_no_data(qtbot, qapp, main_window):
     assert entry is not None
 
 
+def test_vp_magic_none_dependency_without_annotation_registers_as_scalar(qtbot, qapp, main_window):
+    """Without --debug or a return annotation, a Depends() target resolving
+    to no data must short-circuit the eval (no callback call, no TypeError)
+    and still register with a scalar fallback type — matching EasyProvider's
+    silent 'no data yet' behavior in non-debug mode."""
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry
+
+    cell = (
+        "from typing import Annotated\n"
+        "from SciQLop.user_api.virtual_products import Depends\n"
+        "\n"
+        "def _empty_dep(start, stop):\n"
+        "    return None\n"
+        "\n"
+        "def with_empty_dependency_unannotated(start: float, stop: float,\n"
+        "                                       series: Annotated[object, Depends(_empty_dep)]):\n"
+        "    return series\n"
+    )
+    _vp_magic_impl("--start 0 --stop 10", cell)
+
+    entry = _registry.get("with_empty_dependency_unannotated")
+    assert entry is not None
+    assert entry.product_type == "scalar"
+
+
 def test_vp_magic_skips_underscore_helpers(qtbot, qapp, main_window):
     """A cell with helper `_foo` and a public `vp` should register `vp`."""
     from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry
