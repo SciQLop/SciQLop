@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -21,6 +22,7 @@ from PySide6.QtCore import QObject, QSocketNotifier
 from SciQLop.core import tracing
 from SciQLop.components.plugins.backend.loader.loader import plugins_folders
 from . import protocol as P
+from .outbox import Outbox
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +33,10 @@ class RemoteWorker(QObject):
         self.plugin_key = plugin_key
         self._proc: subprocess.Popen | None = None
         self._conn = None
+        self._sock: socket.socket | None = None
         self._notifier: QSocketNotifier | None = None
+        self._write_notifier: QSocketNotifier | None = None
+        self._outbox = Outbox()
         self._channels: Dict[int, object] = {}
         self._accept_timeout = 15.0   # seconds to wait for the worker to connect
         # One in-flight request per channel -- matches worker.py's own
@@ -77,9 +82,19 @@ class RemoteWorker(QObject):
         trace_path = self._derive_worker_trace_path()
         self._proc.stdin.write(authkey + trace_path.encode("utf-8"))
         self._proc.stdin.close()
-        self._conn = self._accept_or_timeout(listener)
-        self._notifier = QSocketNotifier(self._conn.fileno(), QSocketNotifier.Type.Read)
+        self._attach(self._accept_or_timeout(listener))
+
+    def _attach(self, conn) -> None:
+        """Wire an established duplex connection: replies are pumped by a
+        read notifier; outgoing frames go through a non-blocking socket send
+        with a write notifier draining the outbox once the pipe has room."""
+        self._conn = conn
+        self._sock = socket.socket(fileno=os.dup(conn.fileno()))
+        self._notifier = QSocketNotifier(conn.fileno(), QSocketNotifier.Type.Read)
         self._notifier.activated.connect(self._on_readable)
+        self._write_notifier = QSocketNotifier(conn.fileno(), QSocketNotifier.Type.Write)
+        self._write_notifier.activated.connect(self._flush)
+        self._write_notifier.setEnabled(False)
         tracing.counter("remote.worker_alive", 1, cat="remote")
 
     def _derive_worker_trace_path(self) -> str:
@@ -129,16 +144,25 @@ class RemoteWorker(QObject):
                 self._conn.send((P.SHUTDOWN,))
         except Exception:
             pass
-        if self._notifier is not None:
-            self._notifier.setEnabled(False)
+        self._detach()
         if self._proc is not None:
             try:
                 self._proc.wait(timeout=5)
             except Exception:
                 self._proc.kill()
-        self._proc, self._conn, self._notifier = None, None, None
-        self._pending.clear()
+        self._proc = None
         tracing.counter("remote.worker_alive", 0, cat="remote")
+
+    def _detach(self) -> None:
+        for notifier in (self._notifier, self._write_notifier):
+            if notifier is not None:
+                notifier.setEnabled(False)
+        if self._sock is not None:
+            self._sock.close()
+        self._conn, self._sock = None, None
+        self._notifier, self._write_notifier = None, None
+        self._outbox.clear()
+        self._pending.clear()
 
     # --- channels -----------------------------------------------------------
     def register_channel(self, channel) -> None:
@@ -151,7 +175,7 @@ class RemoteWorker(QObject):
     # --- transport interface (called by RemoteChannel) ----------------------
     def send_request(self, channel_id: int, req_id: int, start: float, stop: float, knobs: dict) -> None:
         with tracing.zone("RemoteWorker.send_request", cat="remote",
-                          channel=channel_id, req=req_id):
+                          channel=channel_id, req=req_id, start=start, stop=stop):
             self._pending[channel_id] = (req_id, time.monotonic())
             tracing.counter("remote.pending_requests", len(self._pending), cat="remote")
             self._send((P.REQUEST, channel_id, req_id, start, stop, knobs))
@@ -165,14 +189,25 @@ class RemoteWorker(QObject):
         self._send((P.RELEASE, channel_id))
 
     def _send(self, msg) -> None:
-        """Best-effort send. A dead worker (conn closed) degrades quietly so a
-        late data_requested/FREE can't raise out of a Qt slot."""
+        """Queue and flush without ever blocking the calling (GUI) thread. A
+        dead worker (conn closed) degrades quietly so a late
+        data_requested/FREE can't raise out of a Qt slot."""
         if self._conn is None:
             return
+        self._outbox.push(msg)
+        self._flush()
+
+    def _flush(self) -> None:
         try:
-            self._conn.send(msg)
-        except (EOFError, OSError):
+            while self._outbox:
+                self._outbox.consume(self._sock.send(self._outbox.head(), socket.MSG_DONTWAIT))
+        except BlockingIOError:
+            self._write_notifier.setEnabled(True)
+            return
+        except OSError:
             self._on_worker_died()
+            return
+        self._write_notifier.setEnabled(False)
 
     # --- reply pump ---------------------------------------------------------
     def _on_readable(self) -> None:
@@ -219,8 +254,6 @@ class RemoteWorker(QObject):
 
     def _on_worker_died(self) -> None:
         log.warning("remote worker for %s died", self.plugin_key)
-        if self._notifier is not None:
-            self._notifier.setEnabled(False)
-        self._proc, self._conn, self._notifier = None, None, None
-        self._pending.clear()
+        self._detach()
+        self._proc = None
         tracing.counter("remote.worker_alive", 0, cat="remote")

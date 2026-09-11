@@ -197,3 +197,68 @@ def test_worker_subprocess_writes_its_own_trace_with_real_zones(qtbot, tmp_path)
         assert "worker._serve_request" in {e.get("name") for e in main_events}
     finally:
         tracing.disable()
+
+
+def _socketpair_with_tiny_buffers():
+    """Main side gets a ~4 KiB send buffer and the peer a ~4 KiB receive
+    buffer: the smallest the kernel allows, so a burst of small frames
+    fills the pipe the way macOS's 8 KiB AF_UNIX default does."""
+    import socket
+    a, b = socket.socketpair()
+    a.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, 4096)
+    b.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
+    return a, b
+
+
+def test_send_request_never_blocks_gui_thread_when_worker_is_not_reading(qtbot):
+    """The worker only reads its pipe between callbacks. A pan storm while
+    it's busy must not stall the GUI thread inside send_request (seen live
+    on macOS: 15 s GUI freezes ending exactly when the worker replied)."""
+    import threading
+    from multiprocessing.connection import Connection
+    from SciQLop.components.plotting.backend.remote import protocol as P
+
+    a, b = _socketpair_with_tiny_buffers()
+    worker = RemoteWorker(plugin_key="busy_peer")
+    conn = Connection(a.detach())
+    worker._attach(conn)
+    n_requests, channels = 5000, (1, 2, 3)
+    peer = Connection(b.detach(), writable=False)
+    received = []
+
+    def drain():
+        while True:
+            try:
+                received.append(peer.recv())
+            except EOFError:
+                break
+
+    # The storm runs on the GUI thread like the real slot. If it stalls, the
+    # watchdog starts draining so the test fails instead of hanging.
+    storm_done, blocked = threading.Event(), []
+
+    def watchdog():
+        if not storm_done.wait(3.0):
+            blocked.append(True)
+            drain()
+
+    threading.Thread(target=watchdog, daemon=True).start()
+    for i in range(n_requests):
+        worker.send_request(channels[i % 3], i, 0.0, float(i), {})
+    storm_done.set()
+    assert not blocked, "send_request blocked on a full pipe"
+
+    reader = threading.Thread(target=drain, daemon=True)
+    reader.start()
+    qtbot.waitUntil(lambda: not worker._outbox, timeout=5000)
+    worker._detach()
+    conn.close()
+    reader.join(5.0)
+
+    latest = {}
+    for msg in received:
+        assert msg[0] == P.REQUEST
+        latest[msg[1]] = msg[2]
+    expected_latest = {channels[i % 3]: i for i in range(n_requests)}
+    assert latest == expected_latest
+    assert len(received) < n_requests          # coalesced while the peer was stalled
