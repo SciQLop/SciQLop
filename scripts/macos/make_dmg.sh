@@ -241,6 +241,7 @@ python3 scripts/macos/make_bundle_portable.py $DIST/SciQLop.app
 
 APP=$DIST/SciQLop.app
 ENTITLEMENTS=$(realpath $HERE/entitlements.plist)
+DMG_BACKGROUND=$(realpath $HERE/dmg-background.png)
 
 # Redact secrets from any string before printing. Substitutes the literal
 # values of CODESIGN_IDENTITY, APPLE_ID, APPLE_ID_PWD, APPLE_TEAM_ID with
@@ -440,18 +441,26 @@ fi
 
 cd $DIST
 echo "Building DMG..."
-# `create-dmg` auto-detects any codesigning identity in the keychain and
-# attempts to sign the DMG. On PR builds CODESIGN_IDENTITY is empty and
-# whatever it finds will fail with "The specified item could not be found
-# in the keychain", but the DMG file is still produced. Tolerate the
-# non-zero exit on that path and verify the DMG exists instead.
-if [[ -n "$CODESIGN_IDENTITY" ]]; then
-  create-dmg --overwrite --dmg-title=SciQLop SciQLop.app . >/dev/null
-else
-  create-dmg --overwrite --dmg-title=SciQLop SciQLop.app . >/dev/null || true
-  ls SciQLop*.dmg >/dev/null 2>&1 || { echo "ERROR: create-dmg produced no DMG"; exit 1; }
-fi
-mv SciQLop*.dmg SciQLop-$ARCH.dmg
+# Uses create-dmg/create-dmg (Homebrew), not the sindresorhus/create-dmg npm
+# package: that one is deliberately minimal and has no background-image or
+# icon-layout options at all. This tool lays out the Finder window (incl.
+# the background) by driving Finder via AppleScript, which is known to
+# occasionally exit non-zero on the cosmetic step alone ("Can't get disk"
+# (-1728)) even though the DMG was built correctly — tolerate that and
+# verify the file exists instead of trusting the exit code. Signing is left
+# to the explicit codesign step below (not --codesign here), since it
+# applies to the DMG file regardless of which tool produced it.
+create-dmg \
+  --volname "SciQLop" \
+  --background "$DMG_BACKGROUND" \
+  --window-size 887 443 \
+  --icon-size 100 \
+  --icon "SciQLop.app" 250 310 \
+  --app-drop-link 630 310 \
+  --no-internet-enable \
+  "SciQLop-$ARCH.dmg" \
+  SciQLop.app >/dev/null || true
+ls SciQLop-$ARCH.dmg >/dev/null 2>&1 || { echo "ERROR: create-dmg produced no DMG"; exit 1; }
 
 if [[ -n "$CODESIGN_IDENTITY" ]]; then
   echo "Signing DMG..."
