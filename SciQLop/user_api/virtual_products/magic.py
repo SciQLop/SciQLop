@@ -43,16 +43,27 @@ def _find_knob_state(panel):
 
 
 def _resolve_vp_dependencies(func, start, stop):
-    """Resolve Depends()-declared parameters into kwargs, same as EasyProvider
-    does at real fetch time — the smoke-test call below must match that or a
-    dependency-using callback fails with a missing-argument TypeError."""
+    """Resolve Depends()-declared parameters into kwargs, same as
+    ``EasyProvider._resolve_dependencies`` does at real fetch time — the
+    smoke-test call below must match that or a dependency-using callback
+    fails with a missing-argument TypeError. Returns ``None`` if any
+    dependency resolves to no data, mirroring EasyProvider's "no data yet"
+    signal instead of running the callback on a garbage input."""
     from SciQLop.components.plotting.backend.dependencies import (
-        extract_dependencies_from_callback, resolve_dependency,
+        extract_dependencies_from_callback, resolve_dependency, describe_target,
     )
-    return {
-        spec.name: resolve_dependency(spec, start, stop)
-        for spec in extract_dependencies_from_callback(func)
-    }
+    kwargs = {}
+    for spec in extract_dependencies_from_callback(func):
+        try:
+            data = resolve_dependency(spec, start, stop)
+        except Exception as e:
+            raise RuntimeError(
+                f"{func.__name__}: failed to resolve dependency '{spec.name}' "
+                f"({describe_target(spec.target)}): {e}") from e
+        if data is None:
+            return None
+        kwargs[spec.name] = data
+    return kwargs
 
 
 def _persisted_knob_values(entry):
@@ -209,10 +220,16 @@ def vp_magic(line: str, cell: str, local_ns=None):
         t0 = _time.monotonic()
         try:
             deps = _resolve_vp_dependencies(func, start, stop)
-            try:
-                cached_data = func(start, stop, **preserved, **deps)
-            except TypeError:
-                cached_data = func(start, stop, **deps)
+            if deps is None:
+                if args.debug:
+                    raise RuntimeError(
+                        f"{func_name}: a Depends() dependency resolved to no data")
+                cached_data = None
+            else:
+                try:
+                    cached_data = func(start, stop, **preserved, **deps)
+                except TypeError:
+                    cached_data = func(start, stop, **deps)
         except Exception as e:
             eval_error = e
             cached_data = None

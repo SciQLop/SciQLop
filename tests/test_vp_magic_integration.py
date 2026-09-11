@@ -126,6 +126,53 @@ def test_vp_magic_resolves_depends_during_eval(qtbot, qapp, main_window):
     assert entry.product_type == "scalar"
 
 
+def test_vp_magic_depends_failure_raises_usage_error_with_context(qtbot, qapp, main_window):
+    """A Depends() target that fails to resolve must surface with the
+    dependency name/target in the message — matching EasyProvider's
+    RuntimeError wrapping (`easy_provider.py::_resolve_dependencies`) instead
+    of a bare traceback from the target callable."""
+    from IPython.core.error import UsageError
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl
+
+    cell = (
+        "from typing import Annotated\n"
+        "from SciQLop.user_api.virtual_products import Depends\n"
+        "\n"
+        "def _broken_dep(start, stop):\n"
+        "    raise RuntimeError('upstream boom')\n"
+        "\n"
+        "def with_broken_dependency(start: float, stop: float,\n"
+        "                           series: Annotated[object, Depends(_broken_dep)]):\n"
+        "    return series\n"
+    )
+    with pytest.raises(UsageError, match="failed to resolve dependency 'series'"):
+        _vp_magic_impl("--start 0 --stop 10", cell)
+
+
+def test_vp_magic_debug_flags_dependency_with_no_data(qtbot, qapp, main_window):
+    """--debug on a Depends()-using VP whose dependency resolves to no data
+    must record that as an eval error for the debug panel (matching
+    EasyProvider's debug-mode behavior), not silently call the callback with
+    `series=None` and infer a type from garbage."""
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry
+
+    cell = (
+        "from typing import Annotated\n"
+        "from SciQLop.user_api.virtual_products import Depends\n"
+        "\n"
+        "def _empty_dep(start, stop):\n"
+        "    return None\n"
+        "\n"
+        "def with_empty_dependency(start: float, stop: float,\n"
+        "                          series: Annotated[object, Depends(_empty_dep)]) -> Scalar:\n"
+        "    return series\n"
+    )
+    _vp_magic_impl("--start 0 --stop 10 --debug", cell)
+
+    entry = _registry.get("with_empty_dependency")
+    assert entry is not None
+
+
 def test_vp_magic_skips_underscore_helpers(qtbot, qapp, main_window):
     """A cell with helper `_foo` and a public `vp` should register `vp`."""
     from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry
