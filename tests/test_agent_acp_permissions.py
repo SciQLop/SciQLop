@@ -3,9 +3,12 @@
 The permission layer answers the agent's session/request_permission: SciQLop
 MCP tools auto-approve unless gated; gated ones go through the dock's confirm
 dialog when writes are enabled; the agent's built-in tools (shell, file
-edits) are always rejected. The tool server re-checks the same gate inside
-the tool call, so a tool the agent never asks permission for is still blocked.
+edits) follow the dock's write mode, since agents like opencode send a human
+description as title rather than a tool name. The tool server re-checks the
+same gate inside the tool call, so a tool the agent never asks permission for
+is still blocked.
 """
+
 import asyncio
 from types import SimpleNamespace
 
@@ -21,11 +24,18 @@ from SciQLop.components.agents.acp.client import permission_answer
 
 def _options():
     from acp.schema import PermissionOption
+
     return [
         PermissionOption(kind="allow_once", name="Allow once", option_id="allow-once"),
-        PermissionOption(kind="allow_always", name="Always allow", option_id="allow-always"),
-        PermissionOption(kind="reject_once", name="Reject once", option_id="reject-once"),
-        PermissionOption(kind="reject_always", name="Always reject", option_id="reject-always"),
+        PermissionOption(
+            kind="allow_always", name="Always allow", option_id="allow-always"
+        ),
+        PermissionOption(
+            kind="reject_once", name="Reject once", option_id="reject-once"
+        ),
+        PermissionOption(
+            kind="reject_always", name="Always reject", option_id="reject-always"
+        ),
     ]
 
 
@@ -44,9 +54,13 @@ def _backend(tools, write_mode="none", confirm_cb=None):
 
 
 def _tool(name="sciqlop_dummy", gated=False):
-    return {"name": name, "description": "d",
-            "input_schema": {"type": "object", "properties": {}}, "gated": gated,
-            "handler": lambda args: "ok"}
+    return {
+        "name": name,
+        "description": "d",
+        "input_schema": {"type": "object", "properties": {}},
+        "gated": gated,
+        "handler": lambda args: "ok",
+    }
 
 
 def _selected_option_id(response):
@@ -55,19 +69,25 @@ def _selected_option_id(response):
 
 def test_read_tool_auto_approves():
     backend = _backend([_tool()])
-    resp = asyncio.run(backend._decide_permission(_options(), _tool_call("sciqlop_dummy")))
+    resp = asyncio.run(
+        backend._decide_permission(_options(), _tool_call("sciqlop_dummy"))
+    )
     assert _selected_option_id(resp) == "allow-once"
 
 
 def test_gated_tool_rejected_in_none_mode():
     backend = _backend([_tool(gated=True)], write_mode="none")
-    resp = asyncio.run(backend._decide_permission(_options(), _tool_call("sciqlop_dummy")))
+    resp = asyncio.run(
+        backend._decide_permission(_options(), _tool_call("sciqlop_dummy"))
+    )
     assert _selected_option_id(resp) == "reject-once"
 
 
 def test_gated_tool_auto_approved_in_yolo_mode():
     backend = _backend([_tool(gated=True)], write_mode="yolo")
-    resp = asyncio.run(backend._decide_permission(_options(), _tool_call("sciqlop_dummy")))
+    resp = asyncio.run(
+        backend._decide_permission(_options(), _tool_call("sciqlop_dummy"))
+    )
     assert _selected_option_id(resp) == "allow-once"
 
 
@@ -79,8 +99,11 @@ def test_gated_tool_asks_user_in_confirm_mode():
         return True
 
     backend = _backend([_tool(gated=True)], write_mode="confirm", confirm_cb=confirm)
-    resp = asyncio.run(backend._decide_permission(
-        _options(), _tool_call("mcp__sciqlop__sciqlop_dummy", {"code": "1+1"})))
+    resp = asyncio.run(
+        backend._decide_permission(
+            _options(), _tool_call("mcp__sciqlop__sciqlop_dummy", {"code": "1+1"})
+        )
+    )
     assert _selected_option_id(resp) == "allow-once"
     assert seen["name"] == "sciqlop_dummy"
     assert seen["args"] == {"code": "1+1"}
@@ -91,15 +114,63 @@ def test_gated_tool_denied_by_user_in_confirm_mode():
         return False
 
     backend = _backend([_tool(gated=True)], write_mode="confirm", confirm_cb=confirm)
-    resp = asyncio.run(backend._decide_permission(_options(), _tool_call("sciqlop_dummy")))
+    resp = asyncio.run(
+        backend._decide_permission(_options(), _tool_call("sciqlop_dummy"))
+    )
     assert _selected_option_id(resp) == "reject-once"
 
 
-def test_builtin_tools_are_rejected():
+def test_builtin_descriptive_title_allowed_in_yolo_mode():
+    # Live capture: opencode sends a human description as title
+    # ("echo hello-acp-probe"), never a tool name — the write mode must
+    # govern it, or YOLO stalls on every tool call.
     backend = _backend([_tool()], write_mode="yolo")
-    for title in ("Shell", "WriteFile", "StrReplaceFile"):
-        resp = asyncio.run(backend._decide_permission(_options(), _tool_call(title)))
-        assert _selected_option_id(resp) == "reject-once", title
+    resp = asyncio.run(
+        backend._decide_permission(
+            _options(),
+            _tool_call("echo hello-acp-probe", {"command": "echo hello-acp-probe"}),
+        )
+    )
+    assert _selected_option_id(resp) == "allow-once"
+
+
+def test_builtin_descriptive_title_denied_in_none_mode():
+    backend = _backend([_tool()], write_mode="none")
+    resp = asyncio.run(
+        backend._decide_permission(
+            _options(),
+            _tool_call("echo hello-acp-probe", {"command": "echo hello-acp-probe"}),
+        )
+    )
+    assert _selected_option_id(resp) == "reject-once"
+
+
+def test_builtin_descriptive_title_asks_in_confirm_mode():
+    seen = {}
+
+    async def confirm(name, args):
+        seen.update(name=name, args=args)
+        return True
+
+    backend = _backend([_tool()], write_mode="confirm", confirm_cb=confirm)
+    resp = asyncio.run(
+        backend._decide_permission(
+            _options(),
+            _tool_call("echo hello-acp-probe", {"command": "echo hello-acp-probe"}),
+        )
+    )
+    assert _selected_option_id(resp) == "allow-once"
+    assert seen["name"] == "echo hello-acp-probe"
+    assert seen["args"] == {"command": "echo hello-acp-probe"}
+
+
+def test_permission_answer_unknown_kinds_keep_polarity():
+    options = [
+        SimpleNamespace(kind="something-else", name="Other", option_id="other-1")
+    ]
+    assert _selected_option_id(permission_answer(options, allow=True)) == "other-1"
+    resp = permission_answer(options, allow=False)
+    assert getattr(resp.outcome, "outcome", None) == "cancelled"
 
 
 def test_permission_answer_falls_back_to_cancel_without_options():
@@ -135,10 +206,12 @@ def test_dispatch_runs_handler_and_wraps_text():
 
 def test_dispatch_converts_images():
     def handler(args):
-        return {"content": [
-            {"type": "text", "text": "shot"},
-            {"type": "image", "data": "QUJD", "mimeType": "image/png"},
-        ]}
+        return {
+            "content": [
+                {"type": "text", "text": "shot"},
+                {"type": "image", "data": "QUJD", "mimeType": "image/png"},
+            ]
+        }
 
     server = _server([{**_tool(), "handler": handler}])
     out = asyncio.run(server._dispatch("sciqlop_dummy", {}))

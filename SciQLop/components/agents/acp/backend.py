@@ -16,6 +16,7 @@ One known ACP limitation: the protocol has no system-prompt channel, so the
 agent runs with its own persona. SciQLop's tool descriptions carry the
 operational guidance instead.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -65,7 +66,8 @@ class AcpAgentBackend:
     def __init__(self, ctx: BackendContext):
         if not _ACP_AVAILABLE:
             raise RuntimeError(
-                f"agent-client-protocol not importable: {_ACP_IMPORT_ERROR}")
+                f"agent-client-protocol not importable: {_ACP_IMPORT_ERROR}"
+            )
         self.check_prerequisites()
         self._main_window = ctx.main_window
         self._tools = list(ctx.tools)
@@ -79,7 +81,8 @@ class AcpAgentBackend:
         self._resume: Optional[str] = None
         self._lock = asyncio.Lock()
         self._mcp = SciqlopToolServer(
-            self._tools, self._gated_names,
+            self._tools,
+            self._gated_names,
             write_mode=lambda: self._write_mode,
             confirm_cb=self._confirm_cb,
         )
@@ -110,9 +113,14 @@ class AcpAgentBackend:
         if self._conn is not None:
             return
         mcp_url = await self._mcp.start()
-        self._mcp_servers = [HttpMcpServer(
-            name="sciqlop", url=mcp_url, type="http", headers=[],
-        )]
+        self._mcp_servers = [
+            HttpMcpServer(
+                name="sciqlop",
+                url=mcp_url,
+                type="http",
+                headers=[],
+            )
+        ]
         self._proc = await asyncio.create_subprocess_exec(
             *self.acp_command(),
             stdin=asyncio.subprocess.PIPE,
@@ -120,7 +128,9 @@ class AcpAgentBackend:
             stderr=asyncio.subprocess.DEVNULL,
         )
         self._conn = acp.connect_to_agent(
-            AcpClientHandler(self), self._proc.stdin, self._proc.stdout,
+            AcpClientHandler(self),
+            self._proc.stdin,
+            self._proc.stdout,
         )
         await self._conn.initialize(
             protocol_version=acp.PROTOCOL_VERSION,
@@ -132,10 +142,11 @@ class AcpAgentBackend:
         )
 
     async def _apply_model(self) -> None:
-        if (self._model and self._conn is not None
-                and self._session_id is not None):
+        if self._model and self._conn is not None and self._session_id is not None:
             await self._conn.set_config_option(
-                session_id=self._session_id, config_id="model", value=self._model,
+                session_id=self._session_id,
+                config_id="model",
+                value=self._model,
             )
 
     async def _ensure_session(self):
@@ -185,31 +196,44 @@ class AcpAgentBackend:
             model=self._model,
             context_tokens=usage.used,
             context_max=usage.size,
-            cost=(Cost(amount=cost.amount, unit=cost.currency)
-                  if cost is not None else None),
+            cost=(
+                Cost(amount=cost.amount, unit=cost.currency)
+                if cost is not None
+                else None
+            ),
         )
 
     async def _decide_permission(self, options, tool_call):
         """Answer the agent's permission prompts (see client.py for the policy)."""
-        short = str(getattr(tool_call, "title", "") or "").split("__")[-1]
+        title = str(getattr(tool_call, "title", "") or "")
+        short = title.split("__")[-1]
         if short in self._tool_names:
-            if short not in self._gated_names:
-                return permission_answer(options, allow=True)
-            mode = self._write_mode
-            if mode == AgentWriteMode.NONE:
-                return permission_answer(options, allow=False)
-            if mode == AgentWriteMode.YOLO:
-                return permission_answer(options, allow=True)
-            # confirm mode
-            if self._confirm_cb is None:
-                return permission_answer(options, allow=False)
-            try:
-                allowed = await self._confirm_cb(
-                    short, raw_input_dict(getattr(tool_call, "raw_input", None)))
-            except Exception:
-                allowed = False
-            return permission_answer(options, allow=allowed)
-        return permission_answer(options, allow=False)
+            name = short
+            gated = short in self._gated_names
+        else:
+            # Agent built-in tools (shell, file edits, ...): opencode sends a
+            # human description as title, never a tool name, so they always
+            # land here. Denying them unconditionally stalls the agent with no
+            # prompt and no error, so the dock's write mode governs them too.
+            name = title or "agent tool"
+            gated = True
+        if not gated:
+            return permission_answer(options, allow=True)
+        mode = self._write_mode
+        if mode == AgentWriteMode.NONE:
+            return permission_answer(options, allow=False)
+        if mode == AgentWriteMode.YOLO:
+            return permission_answer(options, allow=True)
+        # confirm mode
+        if self._confirm_cb is None:
+            return permission_answer(options, allow=False)
+        try:
+            allowed = await self._confirm_cb(
+                name, raw_input_dict(getattr(tool_call, "raw_input", None))
+            )
+        except Exception:
+            allowed = False
+        return permission_answer(options, allow=allowed)
 
     # ------------------------------------------------------------- protocol
 
@@ -227,9 +251,12 @@ class AcpAgentBackend:
                 except OSError:
                     continue
                 blocks.append(acp_helpers.image_block(data, _mime_for(path)))
-            prompt_task = asyncio.create_task(self._conn.prompt(
-                session_id=self._session_id, prompt=blocks,
-            ))
+            prompt_task = asyncio.create_task(
+                self._conn.prompt(
+                    session_id=self._session_id,
+                    prompt=blocks,
+                )
+            )
             prompt_task.add_done_callback(lambda _t: queue.put_nowait(None))
             stream = AcpStreamTranslator(self._tempdir)
             try:
@@ -285,16 +312,22 @@ class AcpAgentBackend:
     def list_sessions(self) -> List[SessionEntry]:
         return _acp_sessions.acp_list_sessions(self.acp_command())
 
-    async def async_load_session(self, session_id: str, image_tempdir: Path) -> List[ChatMessage]:
+    async def async_load_session(
+        self, session_id: str, image_tempdir: Path
+    ) -> List[ChatMessage]:
         """Non-blocking replay of a saved session; preferred by the chat dock."""
         return await _acp_sessions.async_acp_load_session_messages(
-            self.acp_command(), session_id, image_tempdir,
+            self.acp_command(),
+            session_id,
+            image_tempdir,
         )
 
     def load_session(self, session_id: str, image_tempdir: Path) -> List[ChatMessage]:
         """Synchronous fallback for callers that are not on the async event loop."""
         return _acp_sessions.acp_load_session_messages(
-            self.acp_command(), session_id, image_tempdir,
+            self.acp_command(),
+            session_id,
+            image_tempdir,
         )
 
     def current_session_id(self) -> Optional[str]:

@@ -3,10 +3,13 @@
 The policy is fixed by the SciQLop embedding, not per agent: SciQLop's own
 MCP tools auto-approve unless gated; gated ones go through the dock's
 confirm dialog when writes are enabled; the agent's built-in tools (shell,
-file edits, …) are always rejected — the embedded chat acts on SciQLop,
-never on the user's filesystem. The same gate also runs inside the MCP tool
-dispatch (see tool_server.py), which is authoritative.
+file edits, …) follow the dock's write mode — denied in "none",
+auto-approved in "yolo", confirmed per call otherwise — because agents like
+opencode send a human description as title (never a tool name) and a blanket
+deny stalls them with no prompt and no error. The same gate also runs inside
+the MCP tool dispatch (see tool_server.py), which is authoritative.
 """
+
 from __future__ import annotations
 
 from typing import Any, List
@@ -14,6 +17,7 @@ from typing import Any, List
 try:
     import acp
     from acp.schema import AllowedOutcome, DeniedOutcome, RequestPermissionResponse
+
     _ACP_AVAILABLE = True
 except Exception:  # pragma: no cover
     _ACP_AVAILABLE = False
@@ -21,16 +25,23 @@ except Exception:  # pragma: no cover
 
 def permission_answer(options, allow: bool) -> "RequestPermissionResponse":
     """Pick the best-matching option id (once over always) for an allow/deny."""
-    wanted = ("allow_once", "allow_always") if allow else ("reject_once", "reject_always")
-    ids = {getattr(o, "kind", None): getattr(o, "option_id", None) for o in options or []}
+    wanted = (
+        ("allow_once", "allow_always") if allow else ("reject_once", "reject_always")
+    )
+    ids = {
+        getattr(o, "kind", None): getattr(o, "option_id", None) for o in options or []
+    }
     for kind in wanted:
         if ids.get(kind):
             return RequestPermissionResponse(
-                outcome=AllowedOutcome(outcome="selected", option_id=ids[kind]))
-    if ids:
+                outcome=AllowedOutcome(outcome="selected", option_id=ids[kind])
+            )
+    if allow and ids:
         return RequestPermissionResponse(
             outcome=AllowedOutcome(
-                outcome="selected", option_id=next(iter(ids.values()))))
+                outcome="selected", option_id=next(iter(ids.values()))
+            )
+        )
     # No options to pick from: cancel the request (agent treats it as denied).
     return RequestPermissionResponse(outcome=DeniedOutcome(outcome="cancelled"))
 
