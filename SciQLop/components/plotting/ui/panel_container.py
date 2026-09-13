@@ -65,6 +65,7 @@ class PanelContainer(QWidget):
         self.crosshair_toggle.toggled.connect(self._on_crosshair_toggled)
         self.panel.plot_added.connect(self._apply_limit_to_plot)
         self.panel.plot_added.connect(self._apply_crosshair_to_plot)
+        self.panel.plot_added.connect(self._install_plot_shortcuts)
 
     def _install_shortcuts(self):
         self._toggle_shortcut = QShortcut(QKeySequence("Ctrl+Shift+H"), self)
@@ -79,6 +80,25 @@ class PanelContainer(QWidget):
         self._equalize_shortcut = QShortcut(QKeySequence("Ctrl+Shift+E"), self)
         self._equalize_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
         self._equalize_shortcut.activated.connect(self.panel._equalize_plot_heights)
+        self._organize_shortcut = QShortcut(QKeySequence("O"), self)
+        self._organize_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._organize_shortcut.activated.connect(self.panel.organize_plots)
+        self._deselect_shortcut = QShortcut(QKeySequence("Escape"), self)
+        self._deselect_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        self._deselect_shortcut.activated.connect(self.panel.deselect_all)
+        for plot in self.panel.plots():
+            self._install_plot_shortcuts(plot)
+
+    def _install_plot_shortcuts(self, plot):
+        rescale = QShortcut(QKeySequence("M"), plot)
+        rescale.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        rescale.activated.connect(lambda: plot.rescale_hovered_or_selected_axes())
+        log_scale = QShortcut(QKeySequence("L"), plot)
+        log_scale.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        log_scale.activated.connect(lambda: plot.toggle_log_scale_hovered_or_selected_axes())
+        toggle_visible = QShortcut(QKeySequence("H"), plot)
+        toggle_visible.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        toggle_visible.activated.connect(lambda: plot.toggle_selected_objects_visibility())
 
     def _clamp_initial_range(self, tr: TimeRange):
         limit = self._current_limit

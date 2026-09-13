@@ -1234,8 +1234,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
             plot.rescale_axes()
 
     def _equalize_plot_heights(self):
-        splitter = self.widget()
-        splitter.setSizes([1] * splitter.count())
+        self.organize_plots()
 
     def _selected_axis(self, plot):
         for axis in (plot.x_axis(), plot.y_axis(), plot.y2_axis(),

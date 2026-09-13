@@ -143,6 +143,20 @@ def test_autoscale_all_plots_action_hits_every_plot(qtbot):
     assert sorted(calls) == [0, 1, 2]
 
 
+def test_equalize_plot_heights_delegates_to_organize_plots(qtbot, monkeypatch):
+    """SciQLopPlots 0.36.0 exposed organize_plots() to Python -- reuse it
+    instead of the hand-rolled splitter.setSizes() workaround."""
+    panel, _plots = _panel_with_plots(qtbot, 3)
+    calls = []
+    monkeypatch.setattr(panel, "organize_plots", lambda: calls.append(True))
+
+    menu = panel._build_context_menu()
+    action = _find_action(_submenu(menu, SUBMENU_TITLE), "Equalize plot heights")
+    action.trigger()
+
+    assert calls == [True]
+
+
 def test_equalize_plot_heights_action_evens_out_sizes(qtbot):
     panel, _plots = _panel_with_plots(qtbot, 3)
     panel.resize(400, 900)

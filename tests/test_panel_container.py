@@ -151,6 +151,101 @@ def test_equalize_shortcut_triggers_equalize_plot_heights(container, monkeypatch
     assert calls == [True]
 
 
+def test_organize_shortcut_is_o_scoped_to_container(container):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QKeySequence
+    assert container._organize_shortcut.key() == QKeySequence("O")
+    assert container._organize_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+
+
+def test_organize_shortcut_triggers_organize_plots(container, monkeypatch):
+    calls = []
+    monkeypatch.setattr(container.panel, "organize_plots", lambda: calls.append(True))
+    container._organize_shortcut.activated.emit()
+    assert calls == [True]
+
+
+def test_deselect_shortcut_is_escape_scoped_to_container(container):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QKeySequence
+    assert container._deselect_shortcut.key() == QKeySequence("Escape")
+    assert container._deselect_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+
+
+def test_deselect_shortcut_triggers_deselect_all(container):
+    from SciQLopPlots import PlotType
+    container.panel.create_plot(0, PlotType.TimeSeries)
+    plot = container.panel.plots()[0]
+    axis = plot.y_axis()
+    axis.set_selected(True)
+    assert axis.selected() is True
+
+    container._deselect_shortcut.activated.emit()
+    assert axis.selected() is False
+
+
+def _plot_shortcut(plot, key):
+    from PySide6.QtGui import QShortcut, QKeySequence
+    seq = QKeySequence(key)
+    for sc in plot.findChildren(QShortcut):
+        if sc.key() == seq:
+            return sc
+    return None
+
+
+def test_plots_get_bare_rescale_log_visibility_shortcuts(container):
+    """SciQLopPlots 0.36.0 removed its own hard-coded M/L/H QShortcuts on
+    each plot -- SciQLop now owns them, bound to the newly-public methods."""
+    from PySide6.QtCore import Qt
+    from SciQLopPlots import PlotType
+    container.panel.create_plot(0, PlotType.TimeSeries)
+    plot = container.panel.plots()[0]
+
+    m = _plot_shortcut(plot, "M")
+    l = _plot_shortcut(plot, "L")
+    h = _plot_shortcut(plot, "H")
+    assert m is not None and m.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+    assert l is not None and l.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+    assert h is not None and h.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+
+
+def test_plots_added_after_container_creation_also_get_shortcuts(container):
+    from SciQLopPlots import PlotType
+    container.panel.create_plot(0, PlotType.TimeSeries)
+    plot = container.panel.plots()[0]
+    assert _plot_shortcut(plot, "M") is not None
+    assert _plot_shortcut(plot, "L") is not None
+    assert _plot_shortcut(plot, "H") is not None
+
+
+def test_plot_log_shortcut_flips_selected_axis_log_scale(container):
+    from SciQLopPlots import PlotType
+    container.panel.create_plot(0, PlotType.TimeSeries)
+    plot = container.panel.plots()[0]
+    axis = plot.y_axis()
+    axis.set_selected(True)
+    assert axis.log() is False
+
+    _plot_shortcut(plot, "L").activated.emit()
+    assert axis.log() is True
+
+
+def test_plot_visibility_shortcut_does_not_raise(container):
+    import numpy as np
+    from SciQLop.components.plotting.ui.time_sync_panel import plot_static_data
+    plot, graph = plot_static_data(
+        container.panel, np.array([0.0, 1.0, 2.0]), np.array([0.0, 1.0, 0.0]))
+    graph.components()[0].set_selected(True)
+    _plot_shortcut(plot, "H").activated.emit()
+
+
+def test_plot_rescale_shortcut_does_not_raise(container):
+    from SciQLopPlots import PlotType
+    container.panel.create_plot(0, PlotType.TimeSeries)
+    plot = container.panel.plots()[0]
+    _plot_shortcut(plot, "M").activated.emit()
+
+
 def _find_action(menu, text):
     for action in menu.actions():
         if action.text().split("\t", 1)[0] == text:
