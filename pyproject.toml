@@ -54,7 +54,7 @@ dependencies = [
 # The application. `pip install SciQLop[all]` is what an end user wants, and
 # what a workspace venv installs.
 all = [
-    "SciQLopPlots==0.36.0",
+    "SciQLopPlots==0.36.1",
     "cloudpickle",
     "defusedxml",
     "speasy>=1.8.0",
@@ -68,6 +68,7 @@ all = [
     "ipython",
     "ipywidgets",
     "jupyterlab_widgets",
+    "ipympl==0.10.0",
     # >=0.6.3: earlier versions call IPython's run_cell_async without
     # transformed_cell, a hard TypeError since IPython 9.16 — every notebook
     # execute request then fails silently.
@@ -76,7 +77,7 @@ all = [
     # open_jupyterlab_widget() re-requests the widget on every open and would
     # discard a live Lab's state on 0.6.3, which reloaded unconditionally.
     "jupyqt>=0.6.4",
-    "matplotlib==3.11.1",
+    "matplotlib==3.11.2",
     "qasync",
     "jinja2",
     "pyzstd",
