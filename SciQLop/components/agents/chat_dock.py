@@ -424,7 +424,7 @@ class AgentChatDock(QWidget):
             self._session_panel.set_groups([])
             return
         current_id = self._live_session_id(self._sessions.get(self._current))
-        entries = backend.list_sessions()
+        entries = self._list_sessions(backend)
         self._archive_claimed(backend, entries)
         groups = grouped_sessions(entries, AgentSessionMeta(),
                                   backend.display_name, self._session_filter,
@@ -610,7 +610,7 @@ class AgentChatDock(QWidget):
         if be is None:
             return
         meta = AgentSessionMeta()
-        groups = all_groups(be.list_sessions(), meta, be.display_name)
+        groups = all_groups(self._list_sessions(be), meta, be.display_name)
         current = meta.get(be.display_name, session_id).group
         choices = groups + [""] if "" not in groups else groups
         idx = choices.index(current) if current in choices else 0
@@ -626,7 +626,7 @@ class AgentChatDock(QWidget):
             return
         meta = AgentSessionMeta()
         current = meta.get(be.display_name, session_id).tags
-        known = all_tags(be.list_sessions(), meta, be.display_name)
+        known = all_tags(self._list_sessions(be), meta, be.display_name)
         text = self._prompt_tags(", ".join(current), known)
         if text is None:
             return
@@ -724,6 +724,17 @@ class AgentChatDock(QWidget):
         except Exception as error:
             log.warning("backend could not report its session: %r", error)
             return session.resume_id
+
+    def _list_sessions(self, backend: AgentBackend):
+        """Session listing is auxiliary: a backend whose CLI is not installed
+        yet raises here (its acp_command() raises until then), and degrading to
+        an empty list must never break the caller — least of all the bind that
+        carries the on_activated install offer."""
+        try:
+            return backend.list_sessions()
+        except Exception as error:
+            log.warning("listing sessions failed: %r", error)
+            return []
 
     def _archive_claimed(self, backend: AgentBackend, entries) -> None:
         """Ask the backend to keep the sessions the user claimed. Best effort:
@@ -848,10 +859,7 @@ class AgentChatDock(QWidget):
         if self._is_current(session):
             self._populate_session_list(session.backend)  # archives as it goes
             return
-        try:
-            self._archive_claimed(session.backend, session.backend.list_sessions())
-        except Exception as error:
-            log.warning("listing sessions for archiving failed: %r", error)
+        self._archive_claimed(session.backend, self._list_sessions(session.backend))
 
     def _is_current(self, session: _AgentSession) -> bool:
         return (

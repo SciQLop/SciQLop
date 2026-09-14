@@ -335,6 +335,30 @@ def test_binding_a_new_backend_clears_the_previous_effort_row(dock, qtbot):
     assert "high" not in dock._info_bar.text()
 
 
+def test_a_backend_that_cannot_list_sessions_still_activates(dock, qtbot):
+    """A CLI-less ACP backend cannot list sessions at bind time — its
+    `acp_command()` raises until the CLI is installed. Session listing is
+    auxiliary, so it must not abort the bind and swallow the `on_activated`
+    hook that offers to install the CLI."""
+    from SciQLop.components.agents.chat_dock import _AgentSession
+
+    activated = []
+
+    class _Unlistable(_FakeBackend):
+        supports_sessions = True
+
+        def list_sessions(self):
+            raise RuntimeError("opencode CLI not found")
+
+        def on_activated(self):
+            activated.append(True)
+
+    backend = _Unlistable()
+    assert dock._list_sessions(backend) == []
+    dock._bind_to_session(_AgentSession(backend=backend))
+    assert activated == [True]
+
+
 def test_closing_the_dock_cancels_its_background_tasks(dock, qtbot):
     """A continuation that resumes after teardown writes to deleted C++ objects
     (RuntimeError from Shiboken, surfacing as an unretrieved task exception)."""
