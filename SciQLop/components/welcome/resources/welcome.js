@@ -299,7 +299,7 @@ function createNewWorkspaceCard() {
         '<div class="card-image-wrapper"><div class="card-image placeholder">+</div></div>' +
         '<div class="card-body"><span class="card-name">New workspace</span></div>';
     card.addEventListener("click", function() {
-        backend.create_workspace();
+        showNewWorkspaceDialog();
     });
     return card;
 }
@@ -850,6 +850,42 @@ function hideModal() {
     document.getElementById("modal-overlay").classList.add("hidden");
 }
 
+function showNewWorkspaceDialog() {
+    var bodyHtml =
+        '<p>Create a workspace with a name you will recognize later.</p>' +
+        '<p class="modal-note">SciQLop will restart and open the new workspace.</p>' +
+        '<label class="modal-field-label" for="new-workspace-name">Workspace name</label>' +
+        '<input id="new-workspace-name" class="modal-text-input" type="text" ' +
+        'placeholder="e.g. MMS burst study" autocomplete="off">';
+    showModal("Create a workspace", bodyHtml, "");
+
+    var input = document.getElementById("new-workspace-name");
+    var actions = document.getElementById("modal-actions");
+    var cancelBtn = document.createElement("button");
+    cancelBtn.textContent = "Cancel";
+    cancelBtn.addEventListener("click", hideModal);
+    actions.appendChild(cancelBtn);
+
+    var createBtn = document.createElement("button");
+    createBtn.textContent = "Create and restart";
+    createBtn.className = "primary";
+    createBtn.addEventListener("click", function() {
+        var name = input.value.trim();
+        if (!name) {
+            input.focus();
+            return;
+        }
+        hideModal();
+        backend.create_workspace(name);
+    });
+    actions.appendChild(createBtn);
+    input.addEventListener("keydown", function(e) {
+        if (e.key === "Enter") createBtn.click();
+        if (e.key === "Escape") hideModal();
+    });
+    input.focus();
+}
+
 // --- Example flow ---
 
 function openExample(exampleDir) {
@@ -902,16 +938,7 @@ function showWorkspacePicker(onPicked) {
             item.addEventListener("click", function() {
                 hideModal();
                 if (item.dataset.action === "new") {
-                    backend.create_workspace();
-                    backend.list_workspaces(function(json2) {
-                        var wsList = JSON.parse(json2);
-                        if (wsList.length > 0) {
-                            wsList.sort(function(a, b) {
-                                return b.last_modified.localeCompare(a.last_modified);
-                            });
-                            onPicked(wsList[0].directory);
-                        }
-                    });
+                    showNewWorkspaceDialog();
                 } else {
                     onPicked(item.dataset.dir);
                 }

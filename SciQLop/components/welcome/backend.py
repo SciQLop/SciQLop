@@ -297,9 +297,12 @@ class WelcomeBackend(QObject):
         from SciQLop.sciqlop_app import switch_workspace
         switch_workspace(directory)
 
-    @Slot()
-    def create_workspace(self) -> None:
-        workspaces_manager_instance().create_workspace()
+    @Slot(str)
+    def create_workspace(self, name: str) -> None:
+        name = name.strip()
+        if not name:
+            raise ValueError("workspace name must not be blank")
+        workspaces_manager_instance().create_workspace(name)
 
     @Slot(str)
     def delete_workspace(self, directory: str) -> None:
