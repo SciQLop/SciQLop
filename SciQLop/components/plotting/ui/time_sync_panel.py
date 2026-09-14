@@ -94,7 +94,10 @@ class _PlotHintsRegistry:
     def update_if_present(self, key: int, hints: PlotHints) -> None:
         if key in self._entries:
             self._entries[key] = hints
-            self._recompute()
+            # Deferred like _drop: a fetch completing mid-teardown would
+            # otherwise call apply_plot_hints -> plot.y_axis() through the
+            # dead vtable. A live plot still relabels on the next tick.
+            self._schedule_recompute()
 
     def graph_for_key(self, key: int):
         """Re-resolve the live graph for a C++-pointer key on this plot.

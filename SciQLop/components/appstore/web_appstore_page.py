@@ -18,7 +18,8 @@ class AppStorePage(WebChannelPage):
     def __init__(self, parent: QWidget | None = None):
         self._pending_package: str | None = None
         super().__init__("Plugin Store", parent)
-        self._view.loadFinished.connect(self._flush_pending_package)
+        if self._view is not None:
+            self._view.loadFinished.connect(self._flush_pending_package)
 
     def _create_backend(self):
         return AppStoreBackend(self)
@@ -33,11 +34,13 @@ class AppStorePage(WebChannelPage):
         if not name:
             return
         self._pending_package = name
+        if self._view is None:
+            return
         self._view.page().runJavaScript(
             f"showPackageDetailsByName({json.dumps(name)})")
 
     def _flush_pending_package(self, ok: bool) -> None:
         name, self._pending_package = self._pending_package, None
-        if ok and name:
+        if ok and name and self._view is not None:
             self._view.page().runJavaScript(
                 f"showPackageDetailsByName({json.dumps(name)})")

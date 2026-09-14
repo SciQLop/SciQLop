@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.13.0
+## v0.13.0 — 2026-09-14
 
 ### Agent chat
 

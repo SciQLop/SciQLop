@@ -89,6 +89,11 @@ def pytest_configure(config):
     os.environ["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
     os.environ["SCIQLOP_DEBUG"] = "1"
     os.environ["INSIDE_SCIQLOP"] = "1"
+    # Browser-free test sessions: WebChannelPage (welcome/appstore) skips the
+    # QWebEngineView, so plot/panel tests do not pay for Chromium renderer
+    # processes. setdefault lets a dev force the real browser back with
+    # SCIQLOP_TEST_NO_WEBENGINE=0 when working on the pages themselves.
+    os.environ.setdefault("SCIQLOP_TEST_NO_WEBENGINE", "1")
     if platform.system() == "Windows":
         os.environ["APPDATA"] = str(_config_dir)
 

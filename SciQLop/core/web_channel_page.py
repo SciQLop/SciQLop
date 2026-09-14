@@ -31,22 +31,31 @@ class WebChannelPage(QWidget):
         self._channel = QWebChannel(self)
         self._channel.registerObject("backend", self._backend)
 
-        self._view = QWebEngineView(self)
-        self._view.page().setWebChannel(self._channel)
-        settings = self._view.settings()
-        settings.setAttribute(
-            QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
-        # The page is loaded with a file:// base URL (setHtml below), so its
-        # origin is local; without this, remote plugin card/screenshot images
-        # are blocked and every card falls back to the emoji placeholder.
-        settings.setAttribute(
-            QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+        # Test hook: SCIQLOP_TEST_NO_WEBENGINE=1 (set by tests/conftest.py)
+        # skips the QWebEngineView so browser-free tests don't pay for
+        # Chromium renderer processes. Backend and channel still exist, so
+        # backend-logic tests keep working; view-touching code no-ops.
+        self._view: QWebEngineView | None = None
+        if os.environ.get("SCIQLOP_TEST_NO_WEBENGINE") == "1":
+            page_widget: QWidget = QWidget(self)
+        else:
+            view = QWebEngineView(self)
+            view.page().setWebChannel(self._channel)
+            settings = view.settings()
+            settings.setAttribute(
+                QWebEngineSettings.WebAttribute.LocalContentCanAccessFileUrls, True)
+            # The page is loaded with a file:// base URL (setHtml below), so its
+            # origin is local; without this, remote plugin card/screenshot images
+            # are blocked and every card falls back to the emoji placeholder.
+            settings.setAttribute(
+                QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+            page_widget = self._view = view
 
         self._load_html()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self._view)
+        layout.addWidget(page_widget)
 
         from SciQLop.core.sciqlop_application import sciqlop_app
         sciqlop_app().theme_changed.connect(self._on_theme_changed)
@@ -58,6 +67,8 @@ class WebChannelPage(QWidget):
         self._load_html()
 
     def _load_html(self):
+        if self._view is None:
+            return
         html = self._render_template()
         base_name = self.template_name.removesuffix(".j2")
         base_url = QUrl.fromLocalFile(os.path.join(self.resources_dir, base_name))

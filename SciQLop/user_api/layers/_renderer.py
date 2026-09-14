@@ -323,11 +323,11 @@ class LayerRenderer(QObject):
         for h in self._hlines:
             h.deleteLater()
         self._hlines.clear()
-        if self._marker_graph is not None:
-            self._marker_graph.set_data(
-                np.empty(0, dtype=np.float64),
-                np.empty(0, dtype=np.float64),
-            )
+        # The marker graph is owned by the plot: dispose() schedules its
+        # deletion right after clear(). Emptying it here would call
+        # set_data() through the wrapper while the plot may be mid-teardown
+        # (clear() only ever runs from dispose()), which segfaults inside
+        # QWidget::sharedPainter() — so just drop the reference.
 
     def dispose(self):
         """Tear down all visual items and signal connections.
