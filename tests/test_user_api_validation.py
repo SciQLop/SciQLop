@@ -395,3 +395,43 @@ class TestCreateVirtualProductValidation:
 
         with pytest.raises(ValueError, match="exactly three labels"):
             VirtualVector("fuzz//p5", self._cb, labels=[])
+
+    @pytest.mark.parametrize("path, expected", [
+        ("leadslash//p1", ["leadslash", "p1"]),
+        ("//leadslash//p2", ["leadslash", "p2"]),
+        ("/leadslash//p3", ["leadslash", "p3"]),
+        ("leadslash/p4", ["leadslash", "p4"]),
+        ("/leadslash/p5", ["leadslash", "p5"]),
+    ])
+    def test_leading_separators_normalize(self, qapp, path, expected):
+        """Leading '/' / '//' strip to the same product-tree path."""
+        from SciQLop.user_api.virtual_products import (
+            create_virtual_product, VirtualProductType)
+        from SciQLop.user_api.plot._plots import to_product_path
+        vp = create_virtual_product(path, self._cb, VirtualProductType.Scalar,
+                                    labels=["x"])
+        assert to_product_path(vp) == expected
+
+    def test_split_spellings_are_equivalent(self, qapp):
+        from SciQLop.core.snippets import split_product_path
+        assert (split_product_path("//a//b")
+                == split_product_path("/a//b")
+                == split_product_path("a//b") == ["a", "b"])
+        assert (split_product_path("/a/b")
+                == split_product_path("a/b") == ["a", "b"])
+
+    @pytest.mark.parametrize("bad", ["", " ", "/", "//", "///", "a////b"])
+    def test_blank_or_hollow_paths_rejected(self, qapp, bad):
+        from SciQLop.user_api.virtual_products import (
+            create_virtual_product, VirtualProductType)
+        with pytest.raises(ValueError, match="path"):
+            create_virtual_product(bad, self._cb, VirtualProductType.Scalar,
+                                   labels=["x"])
+
+    def test_leading_slash_product_resolves_in_tree(self, qapp):
+        from SciQLop.user_api.virtual_products import (
+            create_virtual_product, VirtualProductType)
+        from SciQLop.core.models import products
+        create_virtual_product("//leadslash//plotme", self._cb,
+                               VirtualProductType.Scalar, labels=["x"])
+        assert products.node(["leadslash", "plotme"]) is not None

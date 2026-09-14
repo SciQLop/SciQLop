@@ -17,7 +17,9 @@ def _validate_path(path) -> None:
     if not isinstance(path, str):
         raise TypeError(
             f"virtual product path must be a str, got {type(path).__name__}")
-    if not path.strip() or not all(seg.strip() for seg in path.replace('//', '/').split('/')):
+    from SciQLop.core.snippets import split_product_path
+    segments = split_product_path(path)
+    if not segments or not all(seg.strip() for seg in segments):
         raise ValueError(
             f"virtual product path must be a non-empty product-tree path "
             f"(e.g. 'my_products//density'), got {path!r}")

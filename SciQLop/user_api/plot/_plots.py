@@ -66,9 +66,8 @@ def is_xy_plot(impl):
 
 
 def _split_path(path: str) -> List[str]:
-    if '//' in path:
-        return path.split('//')
-    return path.split('/')
+    from SciQLop.core.snippets import split_product_path
+    return split_product_path(path)
 
 
 def _get_axis_scale_type(axis: _SciQLopPlotAxis):

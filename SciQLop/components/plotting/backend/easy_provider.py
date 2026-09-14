@@ -132,7 +132,9 @@ class EasyProvider(DataProvider):
                  display_name: Optional[str] = None):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(_name_callable(callback)), data_order=data_order,
                                            cacheable=cacheable)
-        self._path = path.split('/')
+        from SciQLop.core.snippets import split_product_path
+        self._path = split_product_path(path)
+        normalized_path = "//".join(self._path)
         # The node NAME is the product's identity: `ProductsModel::node(path)`
         # resolves a path by matching it, so it must stay the path leaf. A
         # display name is presentation and is set separately below — swapping
@@ -161,7 +163,7 @@ class EasyProvider(DataProvider):
         metadata = {
             "description": f"Virtual {parameter_type.name} product built from Python function: {self.name}",
             **metadata,
-            "stable_id": path,
+            "stable_id": normalized_path,
             **({"remote": "True"} if out_of_process else {}),
         }
         node = ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER,
