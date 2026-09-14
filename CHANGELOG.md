@@ -25,6 +25,8 @@ Round 2 (`docs/api-fuzzing-report-round2-2026-06-12.md`):
 - `TimeRange` now parses date strings and datetimes on the Python side: unparseable strings raise `ValueError` instead of silently producing a NaN range (rendered as 1970), and timezone-aware datetimes are no longer shifted by the host timezone (the C++ overload interpreted them as local time).
 - `create_virtual_product` validation: a non-enum `product_type` (e.g. the string `'Scalar'`) raises `TypeError` instead of silently returning `None`; empty or non-string paths are rejected; argument errors are reported in a sensible order (path, callback, type, labels) instead of everything being masked by the Scalar label message. The direct `VirtualScalar`/`VirtualVector`/`VirtualMultiComponent` constructors enforce the same label rules as `create_virtual_product`.
 - `catalogs.get(None)` and friends raise `TypeError: catalog path must be a str` instead of a raw `AttributeError`; a non-dict event meta raises a clear `TypeError`; `panel.add_layer(..., scope='bogus')` raises `ValueError` listing the allowed scopes; the `catalogs` docstring examples use the real provider names (`My Catalogs`, `Remote`).
+- Virtual product paths now accept a leading separator: `my//prod`, `//my//prod`, `/my//prod`, `my/prod` and `/my/prod` all resolve to the same product-tree path (a leading `/` used to be rejected as a side effect of the Round-2 validation); blank and hollow paths are still rejected.
+- Plot items (`Text`, `Ellipse`, `CurvedLine`, `Pixmap`, …) support `item.visible` again — the `NotImplementedError` guard is gone now that SciQLopPlots implements `visible()` / `set_visible()` upstream.
 
 ### DSP (`SciQLop.user_api.dsp`)
 
@@ -35,6 +37,7 @@ Round 2 (`docs/api-fuzzing-report-round2-2026-06-12.md`):
 
 - Bumped SciQLopPlots to 0.33.1 — a crash/UAF fix batch (products flat-model node pointers freed while still referenced, multigraph component wrappers going stale on column shrink, vertical spans surviving a direct plot destruction, empty-container `organize_plots`), plus correct rendering of C-order `(n, k)` 2-D curve buffers, double-precision FFT/spectrogram windows, sub-panel theme propagation and faster bulk product ingest.
 - Bumped matplotlib to 3.11.1 and PySide6-QtAds to 5.0.0.2 (same PySide6 6.11.1 ABI).
+- Bumped SciQLopPlots 0.33.1 → 0.36.1 and matplotlib 3.11.1 → 3.11.2; preinstalled `ipympl==0.10.0` so tutorial matplotlib cells render on the first session (previously the backend registered only after a restart).
 - `jupyqt` now requires >= 0.6.3: earlier versions call IPython's `run_cell_async` without `transformed_cell`, a hard `TypeError` since IPython 9.16, which silently kills every notebook execute request (shipped as a fix in v0.12.2).
 - Test/dev dependencies: `tscat >= 0.5.1` (what `tscat_gui` 0.7 resolves to anyway) and `mcp >= 1.19.0, < 2` — mcp < 1.19 has no branch for a `CallToolResult` returned by a low-level `call_tool` handler (the shape claude-agent-sdk's in-process server produces) and ships the pydantic model's `(field, value)` tuples as content, breaking every agent tool result; mcp 2.0 drops the low-level `Server` decorators the ACP tool server is built on.
 
@@ -54,6 +57,12 @@ Round 2 (`docs/api-fuzzing-report-round2-2026-06-12.md`):
 ### HTTP proxy support
 
 - SciQLop now works behind an HTTP proxy. A new **Settings › Application › Network** entry (`proxy_url`, `no_proxy`) is injected into the environment before workspace preparation, so the bundled `uv`, speasy data downloads, `requests`/`httpx` clients, and the Jupyter server all route through the proxy — fixing the launcher hanging at "Preparing workspace…" when started from a desktop shortcut (which inherits no shell environment). The same value is applied as Qt's application proxy (`QNetworkProxy.setApplicationProxy`) for in-process Qt networking and Qt WebEngine. An explicit in-app setting overrides the environment; when empty, any inherited `HTTP(S)_PROXY` is honored. The online installer also gained a proxy wizard page so its Python/uv/Node downloads can reach the network at install time.
+
+### Welcome page
+
+- Creating a workspace now asks for a name and confirms before restarting into it; blank names are rejected in the backend. The workspace picker no longer guesses the newest entry after creation.
+- "View in Store" on a plugin's details pane now opens that plugin's own store page instead of the store front.
+- The Updates banner lists the 0.13 highlights.
 ## v0.12.1 — 2026-08-05
 
 ### Bug fixes
@@ -108,6 +117,7 @@ Round 2 (`docs/api-fuzzing-report-round2-2026-06-12.md`):
 ### Documentation
 
 - Rewrote the bundled tutorial suite. Dropped the parallel `solutions/` tree, folded the standalone fluent-API tutorial into the basic plot panel chapter (tutorial 8 removed), reordered chapters, and added consistent "What you'll learn" / "Prerequisites" / "Next step" headers plus a shared glossary. `example.json` now declares `ipympl` so matplotlib cells render interactively in the embedded JupyterLab.
+- Display-oriented tutorial matplotlib cells now end with `plt.show()` (save-only helpers excepted).
 
 ### Catalogs
 

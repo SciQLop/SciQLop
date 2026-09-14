@@ -83,6 +83,11 @@ def _discover_examples() -> list[Example]:
 
 
 _MOCK_NEWS = [
+    {"icon": "🆕", "title": "New workspace dialog — name and confirm before SciQLop restarts into a fresh workspace", "date": "2026-09-14"},
+    {"icon": "👁️", "title": "Plot items can now be shown and hidden with item.visible", "date": "2026-09-14"},
+    {"icon": "🧲", "title": "View in Store opens the plugin's own store page", "date": "2026-09-14"},
+    {"icon": "📓", "title": "Tutorial figures now display with plt.show(); ipympl preinstalled for first sessions", "date": "2026-09-14"},
+    {"icon": "📦", "title": "Dependency refresh: SciQLopPlots 0.36.1, matplotlib 3.11.2", "date": "2026-09-14"},
     {"icon": "\U0001f39b\ufe0f", "title": "Parameterized data products \u2014 tune virtual products and speasy templated parameters live with knobs (sliders, choices, threshold lines, time-range spans)", "date": "2026-05-17"},
     {"icon": "\U0001f4cd", "title": "Annotation layers \u2014 draw markers / spans / hlines from a callback with the @register_layer decorator, the %%layer magic, or drag-and-drop from the product tree", "date": "2026-05-17"},
     {"icon": "\U0001f4cb", "title": "Copy Python code \u2014 right-click any plot to grab a runnable Speasy or SciQLop snippet that reproduces its graphs", "date": "2026-05-17"},
@@ -100,7 +105,7 @@ class WelcomeBackend(QObject):
 
     workspace_list_changed = Signal()
     quickstart_changed = Signal()
-    appstore_requested = Signal()
+    appstore_requested = Signal(str)
     latest_release_ready = Signal(str)
     templates_changed = Signal()
     dependency_install_finished = Signal(str)
@@ -367,9 +372,9 @@ class WelcomeBackend(QObject):
 
         threading.Thread(target=_install, daemon=True).start()
 
-    @Slot()
-    def open_appstore(self) -> None:
-        self.appstore_requested.emit()
+    @Slot(str)
+    def open_appstore(self, name: str = "") -> None:
+        self.appstore_requested.emit(name or "")
 
     @Slot(str)
     def run_quickstart(self, name: str) -> None:

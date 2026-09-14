@@ -6,6 +6,7 @@ var activePage = "explore";
 var activeSort = "stars";
 var heroTimer = null;
 var heroIndex = 0;
+var pendingDetailName = null;
 
 // --- Initialization ---
 
@@ -32,6 +33,11 @@ function refreshInstalledVersions() {
     backend.get_installed_versions(function(json_str) {
         installedVersions = JSON.parse(json_str);
         renderCards();
+        if (pendingDetailName) {
+            var pending = pendingDetailName;
+            pendingDetailName = null;
+            showPackageDetailsByName(pending);
+        }
     });
 }
 
@@ -427,6 +433,20 @@ function detailActionsHtml(pkg, status, latest) {
             '<button class="detail-btn uninstall" id="uninstall-btn" data-name="' + name + '" title="Remove this plugin from this workspace">Uninstall</button>';
     }
     return '<button class="detail-btn install" id="install-btn" data-name="' + name + '" title="Install this plugin into this workspace">Install</button>';
+}
+
+function showPackageDetailsByName(name) {
+    if (!name) return;
+    var found = null;
+    for (var i = 0; i < allPackages.length; i++) {
+        if (allPackages[i].name === name) { found = allPackages[i]; break; }
+    }
+    if (found) {
+        pendingDetailName = null;
+        showPackageDetails(found);
+    } else {
+        pendingDetailName = name;
+    }
 }
 
 function showPackageDetails(pkg) {

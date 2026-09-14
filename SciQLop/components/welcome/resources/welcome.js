@@ -33,7 +33,7 @@ function init() {
 
         document.getElementById("browse-all-link").addEventListener("click", function(e) {
             e.preventDefault();
-            backend.open_appstore();
+            backend.open_appstore('');
         });
     });
 }
@@ -718,7 +718,7 @@ function showFeaturedDetails(pkg) {
         '<div class="details-field"><label>Tags</label><span>' + tagsHtml + '</span></div>' +
         '<div class="details-field"><label>Stars</label><span>' + starsHtml + '</span></div>' +
         '<div class="details-actions">' +
-            '<button onclick="backend.open_appstore()">View in Store</button>' +
+            '<button onclick="backend.open_appstore(\'' + escapeJsStringAttr(pkg.name) + '\')">View in Store</button>' +
         '</div>';
 
     panel.classList.remove("hidden");

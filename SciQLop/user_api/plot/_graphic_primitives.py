@@ -67,22 +67,12 @@ class _PlotItem(Item):
     @property
     @on_main_thread
     def visible(self) -> bool:
-        # SciQLopPlots <= 0.27 leaves SciQLopItemInterface::visible() as an
-        # unimplemented pure-virtual stub for all item classes: the getter
-        # always returns False and the setter is a silent no-op. Raise instead
-        # of lying; delegate to the C++ side once it is implemented upstream.
-        self._get_impl_or_raise()
-        raise NotImplementedError(
-            "item visibility is not implemented in SciQLopPlots yet; "
-            "use remove() to take the item off the plot")
+        return self._get_impl_or_raise().visible()
 
     @visible.setter
     @on_main_thread
     def visible(self, visible: bool):
-        self._get_impl_or_raise()
-        raise NotImplementedError(
-            "item visibility is not implemented in SciQLopPlots yet; "
-            "use remove() to take the item off the plot")
+        self._get_impl_or_raise().set_visible(bool(visible))
 
     @on_main_thread
     def remove(self) -> None:

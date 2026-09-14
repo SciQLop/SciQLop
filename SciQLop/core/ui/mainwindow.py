@@ -506,7 +506,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             dw.toggleView(True)
             dw.raise_()
 
-    def _show_appstore(self):
+    def _show_appstore(self, name: str = ""):
         if self._appstore is None:
             from SciQLop.components.appstore import AppStorePage
             self._appstore = AppStorePage()
@@ -516,6 +516,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             if dw:
                 dw.toggleView(True)
                 dw.raise_()
+        if name:
+            self._appstore.show_package(name)
 
     def _update_usage(self):
         self._update_cpu_usage()

@@ -38,15 +38,18 @@ class TestGraphicPrimitives:
             with pytest.raises(ValueError, match="does not exist anymore"):
                 getattr(item, attr)
 
-    def test_item_visible_raises_not_implemented(self, ts_plot):
-        """SciQLopPlots <= 0.27 stubs item visibility (getter always False,
-        setter no-op) — the wrapper must fail honestly, not lie silently."""
-        from SciQLop.user_api.plot._graphic_primitives import Ellipse
-        e = Ellipse(ts_plot, 1.0, 1.0, 2.0, 2.0)
-        with pytest.raises(NotImplementedError):
-            _ = e.visible
-        with pytest.raises(NotImplementedError):
-            e.visible = False
+    def test_item_visible_round_trips(self, ts_plot):
+        """SciQLopPlots >= 0.29 implements item visibility upstream, so the
+        wrapper delegates instead of raising NotImplementedError."""
+        from SciQLop.user_api.plot._graphic_primitives import Ellipse, Text, CurvedLine
+        for item in (Ellipse(ts_plot, 1.0, 1.0, 2.0, 2.0),
+                     Text(ts_plot, "hello", 1.0, 1.0),
+                     CurvedLine(ts_plot, (0.0, 0.0), (10.0, 10.0))):
+            assert item.visible is True
+            item.visible = False
+            assert item.visible is False
+            item.visible = True
+            assert item.visible is True
 
     def test_remove_is_idempotent(self, ts_plot):
         from SciQLop.user_api.plot._graphic_primitives import Text
