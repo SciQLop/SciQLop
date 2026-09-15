@@ -12,6 +12,7 @@ from SciQLop.user_api.knobs import (
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob, StringListKnob,
     DatetimeKnob, TimeRangeKnob, ThresholdKnob,
 )
+from SciQLop.core.ui import fit_combo_to_content
 
 
 class KnobDelegate(QWidget):
@@ -112,6 +113,7 @@ class _ChoiceDelegate(KnobDelegate):
         self._combo = QComboBox()
         for label, value in spec.choices:
             self._combo.addItem(label, value)
+        fit_combo_to_content(self._combo)
         layout.addWidget(self._combo)
         self._combo.currentIndexChanged.connect(
             lambda i: self.value_changed.emit(self._combo.itemData(i))

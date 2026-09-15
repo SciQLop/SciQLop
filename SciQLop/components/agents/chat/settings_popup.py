@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+from SciQLop.core.ui import fit_combo_to_content
 
 _DEFAULT_LABEL = "Default"
 
@@ -35,10 +36,12 @@ class AgentSettingsPopup(QWidget):
         self._form = form
 
         self.model_combo = QComboBox(self)
+        fit_combo_to_content(self.model_combo)
         self.model_combo.setToolTip("Which model the backend should use.")
         form.addRow("Model", self.model_combo)
 
         self.effort_combo = QComboBox(self)
+        fit_combo_to_content(self.effort_combo)
         self.effort_combo.setToolTip(
             "How much reasoning effort the model should spend. "
             "Available levels depend on the selected model.")
@@ -48,6 +51,7 @@ class AgentSettingsPopup(QWidget):
         self.verbosity_combo = QComboBox(self)
         self.verbosity_combo.addItems(
             ["Activity: minimal", "Activity: + inputs", "Activity: + results"])
+        fit_combo_to_content(self.verbosity_combo)
         self.verbosity_combo.setToolTip(
             "How much of the agent's tool activity to show in the chat.")
         form.addRow("Activity", self.verbosity_combo)
@@ -56,6 +60,7 @@ class AgentSettingsPopup(QWidget):
         self.writes_combo.addItem("No writes", "none")
         self.writes_combo.addItem("Confirm writes", "confirm")
         self.writes_combo.addItem("Yolo (auto-approve)", "yolo")
+        fit_combo_to_content(self.writes_combo)
         self.writes_combo.setToolTip(
             "No writes: gated tools are denied. "
             "Confirm writes: ask before each gated tool. "

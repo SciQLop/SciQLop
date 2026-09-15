@@ -7,6 +7,10 @@
 - Agents can now inspect and rearrange a panel instead of guessing: `sciqlop_describe_panel` returns every subplot and graph with its index, and the gated `sciqlop_plot_product`, `sciqlop_remove_graph`, `sciqlop_remove_plot` and `sciqlop_move_plot` tools each return the resulting layout. The plotting workflow in the workspace `AGENTS.md` now goes through `sciqlop_plot_product` rather than hand-written `exec_python` code.
 - The workspace `AGENTS.md` guidance now teaches the Speasy NumPy layer (do the maths on the `SpeasyVariable`, never on `.values`) and pushes the declarative virtual-product form (`Depends(...)` inputs, `Scalar[...]`-style return annotations, `%%vp`) as the only form to write. The `virtual_products` API reference carries the same example.
 
+### UI
+
+- Comboboxes that were populated after creation (agent model/effort/backend pickers) or never sized (attribute type, knob choices, activity and writes pickers) clipped their item text in the popup. `fit_combo_to_content` now re-fits whenever items change, and every combobox in the app uses it.
+
 ### User API
 
 - `%workspace add-example` printed the result's dict keys (`name, is_update, missing_dependencies`) as the missing packages, and suggested installing them. It now lists the real missing dependencies and says "Updated" when the example was already installed.

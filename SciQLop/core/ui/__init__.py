@@ -102,11 +102,17 @@ def expand_size(size: QSize, horizontal: int, vertical: int) -> QSize:
 
 
 def fit_combo_to_content(combo: QComboBox) -> None:
-    """Set minimum width so the widest item text is fully visible.
-
-    On macOS the popup matches the widget width, so making the widget
-    wide enough prevents item text from being clipped.
+    """Keep the combo's minimum width at its widest item, now and after any
+    repopulation, so the popup never clips item text (on macOS the popup
+    matches the widget width). Call once, right after creating the combo.
     """
+    _refit_combo(combo)
+    model = combo.model()
+    for signal in (model.rowsInserted, model.rowsRemoved, model.modelReset, model.dataChanged):
+        signal.connect(lambda *_, c=combo: _refit_combo(c))
+
+
+def _refit_combo(combo: QComboBox) -> None:
     fm = combo.fontMetrics()
     widest = max((fm.horizontalAdvance(combo.itemText(i))
                   for i in range(combo.count())), default=0)

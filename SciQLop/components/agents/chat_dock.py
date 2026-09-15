@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from SciQLop import __version__ as _SCIQLop_VERSION
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLop.components.theming import get_icon
+from SciQLop.core.ui import fit_combo_to_content
 
 from .backend import AgentBackend, BackendContext
 from .chat import (
@@ -117,6 +118,7 @@ class AgentChatDock(QWidget):
         self._interactive: tuple = ()
 
         self._backend_combo = QComboBox()
+        fit_combo_to_content(self._backend_combo)
         self._backend_combo.setToolTip("Select which agent backend to chat with.")
         self._backend_combo.currentIndexChanged.connect(self._on_backend_changed)
         header.addWidget(self._backend_combo)

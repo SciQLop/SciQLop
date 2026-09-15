@@ -8,6 +8,7 @@ from SciQLop.core.knobs import (
     KnobSpec, StringKnob, IntKnob, FloatKnob, BoolKnob, StringListKnob, DatetimeKnob,
 )
 from SciQLop.core.ui.tooltips import rich_tooltip
+from SciQLop.core.ui import fit_combo_to_content
 
 
 # Order matters: first entry is the default selection.
@@ -44,6 +45,7 @@ class AddAttributeDialog(QDialog):
         self._type = QComboBox()
         for label, _ in _TYPE_OPTIONS:
             self._type.addItem(label)
+        fit_combo_to_content(self._type)
         self._type.setToolTip(rich_tooltip(
             "Type",
             "The kind of value this attribute holds."))

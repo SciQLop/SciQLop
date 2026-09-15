@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QWidget, QComboBox, QPushButton, QLabel, QLineEdit
 from PySide6.QtCore import QStringListModel
 
 from SciQLop.core.sciqlop_application import sciqlop_app, sciqlop_event_loop
+from SciQLop.core.ui import fit_combo_to_content
 
 
 
@@ -20,6 +21,7 @@ class ControlsPan(QWidget):
 
         self.combo = QComboBox()
         self.combo.addItems(["item1", "item2", "item3"])
+        fit_combo_to_content(self.combo)
         grid.addWidget(self.combo, 0, 1)
 
         self.button = QPushButton("This is a button")
