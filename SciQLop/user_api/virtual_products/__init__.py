@@ -1,3 +1,26 @@
+"""Virtual products: callbacks computed on demand for the visible time range.
+
+Preferred form — declare inputs with ``Depends`` and annotate the return type::
+
+    from typing import Annotated
+    from speasy.products import SpeasyVariable
+    from SciQLop.user_api.virtual_products import Depends, create_virtual_product, VirtualProductType
+    from SciQLop.user_api.virtual_products.types import Scalar
+
+    FGM = "speasy//cda//MMS//MMS1//FGM//MMS1_FGM_SRVY_L2"
+
+    def bt2(start: float, stop: float,
+            b: Annotated[SpeasyVariable, Depends(FGM + "//mms1_fgm_b_gse_srvy_l2", pad=30.0)],
+            ) -> Scalar["|B|^2"]:
+        return None if b is None else b["Bt"] ** 2
+
+    create_virtual_product("mms/bt2", bt2, VirtualProductType.Scalar)
+
+In a notebook, the ``%%vp --path "mms/bt2"`` cell magic registers the same
+function with hot reload; ``Scalar``/``Vector``/``MultiComponent``/``Spectrogram``
+are injected into the cell. Keep the arithmetic on ``SpeasyVariable`` (NumPy
+protocols keep the time axis and units) so the plot gets labels for free.
+"""
 from typing import List, Optional
 from enum import Enum
 

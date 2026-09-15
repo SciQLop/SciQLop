@@ -8,6 +8,7 @@ per call via the backend's confirm callback.
 from __future__ import annotations
 
 import asyncio
+import json
 import base64
 import os
 import tempfile
@@ -48,6 +49,7 @@ def build_sciqlop_tools(main_window) -> List[Dict[str, Any]]:
             "High-level snapshot of the SciQLop main window: panel count, active panel summary.",
             on_main_thread(lambda: context.main_window_snapshot(main_window)),
         ),
+        _describe_panel_tool(main_window),
         _screenshot_panel_tool(main_window),
         _screenshot_plot_tool(main_window),
         _api_reference_tool(),
@@ -870,9 +872,141 @@ def _write_tools(main_window) -> List[Dict[str, Any]]:
         gated=True,
     )
 
-    return [set_time_range, _create_panel_tool(main_window), _exec_python_tool(),
+    return [set_time_range, _create_panel_tool(main_window), _plot_product_tool(main_window),
+            _remove_plot_tool(main_window), _remove_graph_tool(main_window), _move_plot_tool(main_window),
+            _exec_python_tool(),
             _fetch_tool(), _ephemeris_tool(), _transform_tool(), _submit_job_tool(),
             _cancel_job_tool(), _install_package_tool()] + _notebook_write_tools() + [_run_notebook_cell_tool(), _interrupt_kernel_tool()]
+
+
+def _resolve_panel(main_window, name: Optional[str]):
+    panel = context._panel(name) if name else context._active_panel(main_window)
+    if panel is None:
+        raise ValueError(f"panel not found: {name!r}" if name else "no active panel")
+    return panel
+
+
+def _layout_content(panel) -> Dict[str, Any]:
+    layout = context.panel_layout(panel, panel.name)
+    return {"content": [{"type": "text", "text": json.dumps(layout, indent=1)}]}
+
+
+_PANEL_NAME_PROP = {"name": {"type": "string", "description": "Panel name; omit for the active panel."}}
+
+
+def _describe_panel_tool(main_window) -> Dict[str, Any]:
+    return _text_tool(
+        "sciqlop_describe_panel",
+        (
+            "Structured layout of a plot panel: every subplot with its 0-based "
+            "index and type, and every graph inside it with its index, legend "
+            "name and product path. Call it after each change to a panel to "
+            "confirm the result instead of guessing indices."
+        ),
+        {"type": "object", "properties": dict(_PANEL_NAME_PROP), "required": []},
+        on_main_thread(lambda p: _layout_content(_resolve_panel(main_window, p.get("name")))),
+    )
+
+
+def _plot_product_tool(main_window) -> Dict[str, Any]:
+    @on_main_thread
+    def _plot(p: Dict[str, Any]) -> Dict[str, Any]:
+        from SciQLop.user_api.plot import PlotType
+        panel = _resolve_panel(main_window, p.get("name"))
+        kwargs = {"plot_type": PlotType[p["plot_type"]]} if p.get("plot_type") else {}
+        panel.plot_product(p["product"], int(p.get("plot_index", -1)), **kwargs)
+        return _layout_content(panel)
+
+    return _text_tool(
+        "sciqlop_plot_product",
+        (
+            "Plot a product from `sciqlop_products_tree` on a panel and return "
+            "the resulting layout. plot_index -1 (default) appends a new subplot; "
+            "an existing index overlays the product on that subplot. Then call "
+            "`sciqlop_wait_for_plot_data` before any screenshot."
+        ),
+        {
+            "type": "object",
+            "properties": {
+                **_PANEL_NAME_PROP,
+                "product": {"type": "string", "description": "`//`-joined product tree path."},
+                "plot_index": {"type": "integer", "default": -1},
+                "plot_type": {"type": "string", "enum": ["TimeSeries", "Projection", "XY"]},
+            },
+            "required": ["product"],
+        },
+        _plot,
+        gated=True,
+    )
+
+
+def _remove_plot_tool(main_window) -> Dict[str, Any]:
+    @on_main_thread
+    def _remove(p: Dict[str, Any]) -> Dict[str, Any]:
+        panel = _resolve_panel(main_window, p.get("name"))
+        panel.remove_plot(int(p["plot_index"]))
+        return _layout_content(panel)
+
+    return _text_tool(
+        "sciqlop_remove_plot",
+        "Remove one subplot (and every graph in it) from a panel; returns the new layout. Remaining subplots slide up.",
+        {
+            "type": "object",
+            "properties": {**_PANEL_NAME_PROP, "plot_index": {"type": "integer"}},
+            "required": ["plot_index"],
+        },
+        _remove,
+        gated=True,
+    )
+
+
+def _remove_graph_tool(main_window) -> Dict[str, Any]:
+    @on_main_thread
+    def _remove(p: Dict[str, Any]) -> Dict[str, Any]:
+        panel = _resolve_panel(main_window, p.get("name"))
+        plot = panel.plots[int(p["plot_index"])]
+        plot.remove_graph(plot.graphs[int(p["graph_index"])])
+        return _layout_content(panel)
+
+    return _text_tool(
+        "sciqlop_remove_graph",
+        "Remove one graph from a subplot, keeping the subplot; returns the new layout. Indices come from `sciqlop_describe_panel`.",
+        {
+            "type": "object",
+            "properties": {
+                **_PANEL_NAME_PROP,
+                "plot_index": {"type": "integer"},
+                "graph_index": {"type": "integer"},
+            },
+            "required": ["plot_index", "graph_index"],
+        },
+        _remove,
+        gated=True,
+    )
+
+
+def _move_plot_tool(main_window) -> Dict[str, Any]:
+    @on_main_thread
+    def _move(p: Dict[str, Any]) -> Dict[str, Any]:
+        panel = _resolve_panel(main_window, p.get("name"))
+        panel.move_plot(int(p["from_index"]), int(p["to_index"]))
+        return _layout_content(panel)
+
+    return _text_tool(
+        "sciqlop_move_plot",
+        "Reorder subplots: move the subplot at from_index so it sits at to_index (0 = top); returns the new layout.",
+        {
+            "type": "object",
+            "properties": {
+                **_PANEL_NAME_PROP,
+                "from_index": {"type": "integer"},
+                "to_index": {"type": "integer"},
+            },
+            "required": ["from_index", "to_index"],
+        },
+        _move,
+        gated=True,
+    )
 
 
 def _create_panel_tool(main_window) -> Dict[str, Any]:

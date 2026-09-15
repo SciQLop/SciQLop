@@ -129,3 +129,21 @@ def test_load_guidance_returns_the_users_own_sections_too(tmp_path):
 def test_load_guidance_falls_back_to_the_constant_when_the_file_is_unusable(tmp_path):
     (tmp_path / "AGENTS.md").mkdir()  # unwritable and unreadable as a file
     assert load_guidance(tmp_path) == SCIQLOP_GUIDANCE.strip()
+
+
+def test_guidance_pushes_the_declarative_virtual_product_form():
+    assert "Depends(" in SCIQLOP_GUIDANCE
+    assert "%%vp" in SCIQLOP_GUIDANCE
+    assert "Scalar[" in SCIQLOP_GUIDANCE
+    assert "spz.get_data` in the body" in SCIQLOP_GUIDANCE
+
+
+def test_guidance_names_the_panel_layout_tools():
+    for tool in ("sciqlop_plot_product", "sciqlop_describe_panel",
+                 "sciqlop_remove_graph", "sciqlop_remove_plot", "sciqlop_move_plot"):
+        assert tool in SCIQLOP_GUIDANCE, tool
+
+
+def test_guidance_explains_speasy_numpy_layer():
+    assert "NumPy-compatible" in SCIQLOP_GUIDANCE
+    assert "v.values" in SCIQLOP_GUIDANCE

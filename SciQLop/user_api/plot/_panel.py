@@ -704,6 +704,18 @@ class PlotPanel:
         if bar:
             bar.step(-n)
 
+    @on_main_thread
+    def move_plot(self, from_index: int, to_index: int) -> None:
+        """Move the plot at ``from_index`` so that it ends up at ``to_index``.
+
+        Both indices are 0-based from the top; negative indices count from the
+        end. The other plots keep their relative order.
+        """
+        impl = self._get_impl_or_raise()
+        n_plots = len(impl.plots())
+        impl.move_plot(_normalize_plot_index(from_index, n_plots),
+                       _normalize_plot_index(to_index, n_plots))
+
     @property
     @on_main_thread
     def plots(self):

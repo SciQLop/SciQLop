@@ -1,6 +1,6 @@
 import numpy as np
 from .enums import PlotType, ScaleType, BinStrategy, GraphLineStyle, AxisType
-from .protocol import Plot
+from .protocol import Plot, Plottable
 from ._graphs import (Graph, ColorMap, Histogram2D, Waterfall, to_plottable,
                       ensure_arrays_of_double, _create_histogram2d,
                       _create_waterfall, _reject_if_colormap_already_present,
@@ -253,6 +253,17 @@ class _BasePlot(Plot):
 
     def _on_destroyed(self):
         self._impl = None
+
+    @property
+    @on_main_thread
+    def graphs(self) -> List[Plottable]:
+        """The plottables (lines, colormaps, ...) drawn in this plot, in draw order.
+
+        Pair with ``remove_graph`` to drop one by index:
+        ``plot.remove_graph(plot.graphs[0])``.
+        """
+        impl = self._get_impl_or_raise()
+        return [g for g in map(to_plottable, impl.plottables() or []) if g is not None]
 
     @property
     @on_main_thread
@@ -963,6 +974,17 @@ class ProjectionPlot:
         assert is_projection_plot(impl)
         self._impl: Optional[_SciQLopNDProjectionPlot] = _concrete_impl(impl)
         self._get_impl_or_raise().destroyed.connect(self._on_destroyed)
+
+    @property
+    @on_main_thread
+    def graphs(self) -> List[Plottable]:
+        """The plottables (lines, colormaps, ...) drawn in this plot, in draw order.
+
+        Pair with ``remove_graph`` to drop one by index:
+        ``plot.remove_graph(plot.graphs[0])``.
+        """
+        impl = self._get_impl_or_raise()
+        return [g for g in map(to_plottable, impl.plottables() or []) if g is not None]
 
     @property
     @on_main_thread

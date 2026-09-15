@@ -105,7 +105,17 @@ def _wire_destroyed(wrapper, impl):
         pass
 
 
-class Graph(Plottable):
+class _Named:
+    """`name` of a plottable, as shown in the legend."""
+
+    @property
+    def name(self) -> str:
+        if self._impl is None:
+            raise ValueError("The graph does not exist anymore.")
+        return self._impl.objectName()
+
+
+class Graph(_Named, Plottable):
     def __init__(self, impl, plot=None):
         self._impl = impl
         self._plot = plot
@@ -183,7 +193,7 @@ class Graph(Plottable):
             p.text(f"Graph({self._impl})")
 
 
-class ColorMap(Plottable):
+class ColorMap(_Named, Plottable):
     def __init__(self, impl):
         self._impl = impl
         _wire_destroyed(self, impl)
@@ -232,7 +242,7 @@ class ColorMap(Plottable):
             p.text(f"ColorMap({self._impl})")
 
 
-class Histogram2D(Plottable):
+class Histogram2D(_Named, Plottable):
     """A 2D density histogram. Bins (x, y) scatter into an x_bins x y_bins grid."""
 
     def __init__(self, impl, x_bin_edges=None, y_bin_edges=None):
@@ -328,7 +338,7 @@ class Histogram2D(Plottable):
             p.text(f"Histogram2D({self._impl})")
 
 
-class Waterfall(Plottable):
+class Waterfall(_Named, Plottable):
     """A waterfall graph: stacked line plots sharing the same x-axis.
 
     SciQLopPlots stores the 2-D data as ``(len(x), n_lines)``; this wrapper

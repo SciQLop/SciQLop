@@ -1,0 +1,107 @@
+"""Agent tools that inspect and rearrange the plots inside a panel."""
+import asyncio
+import json
+
+import numpy as np
+
+from .fixtures import *
+
+
+def _tool(main_window, tool_name):
+    from SciQLop.components.agents.tools._builder import build_sciqlop_tools
+    return next(t for t in build_sciqlop_tools(main_window) if t["name"] == tool_name)
+
+
+def _call(main_window, tool_name, **payload):
+    return asyncio.run(_tool(main_window, tool_name)["handler"](payload))["content"][0]["text"]
+
+
+def _layout(main_window, panel_name):
+    return json.loads(_call(main_window, "sciqlop_describe_panel", name=panel_name))
+
+
+def _panel_with_two_plots(qtbot):
+    from SciQLop.user_api.plot import create_plot_panel
+    panel = create_plot_panel()
+    x = np.arange(10, dtype=float)
+    panel.plot_data(x, x, name="first")
+    panel.plot_data(x, 2 * x, name="second")
+    panel.plot_data(x, 3 * x, plot_index=1, name="third")
+    qtbot.waitUntil(lambda: len(panel.plots) == 2, timeout=2000)
+    return panel
+
+
+def test_describe_panel_reports_each_plot_and_its_graphs(main_window, qtbot):
+    panel = _panel_with_two_plots(qtbot)
+    try:
+        layout = _layout(main_window, panel.name)
+        assert layout["name"] == panel.name
+        assert [p["index"] for p in layout["plots"]] == [0, 1]
+        assert [g["name"] for g in layout["plots"][0]["graphs"]] == ["first"]
+        assert [g["name"] for g in layout["plots"][1]["graphs"]] == ["second", "third"]
+        assert layout["plots"][0]["type"] == "TimeSeries"
+    finally:
+        panel.close()
+
+
+def test_describe_panel_unknown_name_is_an_error(main_window):
+    assert "panel not found" in _call(main_window, "sciqlop_describe_panel", name="nope")
+
+
+def test_move_plot_reorders_and_returns_new_layout(main_window, qtbot):
+    panel = _panel_with_two_plots(qtbot)
+    try:
+        out = json.loads(_call(main_window, "sciqlop_move_plot", name=panel.name,
+                               from_index=1, to_index=0))
+        assert [g["name"] for g in out["plots"][0]["graphs"]] == ["second", "third"]
+        assert [g["name"] for g in out["plots"][1]["graphs"]] == ["first"]
+    finally:
+        panel.close()
+
+
+def test_remove_graph_drops_only_that_graph(main_window, qtbot):
+    panel = _panel_with_two_plots(qtbot)
+    try:
+        out = json.loads(_call(main_window, "sciqlop_remove_graph", name=panel.name,
+                               plot_index=1, graph_index=0))
+        assert [g["name"] for g in out["plots"][1]["graphs"]] == ["third"]
+        assert len(out["plots"]) == 2
+    finally:
+        panel.close()
+
+
+def test_remove_plot_drops_the_subplot(main_window, qtbot):
+    panel = _panel_with_two_plots(qtbot)
+    try:
+        out = json.loads(_call(main_window, "sciqlop_remove_plot", name=panel.name, plot_index=0))
+        qtbot.waitUntil(lambda: len(panel.plots) == 1, timeout=2000)
+        assert [g["name"] for g in out["plots"][0]["graphs"]] == ["second", "third"]
+    finally:
+        panel.close()
+
+
+def test_plot_product_tool_is_gated_and_reports_unknown_product(main_window, qtbot):
+    from SciQLop.user_api.plot import create_plot_panel
+    panel = create_plot_panel()
+    try:
+        assert _tool(main_window, "sciqlop_plot_product")["gated"] is True
+        out = _call(main_window, "sciqlop_plot_product", name=panel.name, product="no//such//thing")
+        assert "no//such//thing" in out
+        assert len(_layout(main_window, panel.name)["plots"]) == 0
+    finally:
+        panel.close()
+
+
+def test_mutating_panel_tools_are_gated(main_window):
+    for name in ("sciqlop_move_plot", "sciqlop_remove_graph", "sciqlop_remove_plot"):
+        assert _tool(main_window, name)["gated"] is True, name
+
+
+def test_user_api_move_plot_and_graphs(main_window, qtbot):
+    panel = _panel_with_two_plots(qtbot)
+    try:
+        assert [g.name for g in panel.plots[1].graphs] == ["second", "third"]
+        panel.move_plot(0, 1)
+        assert [g.name for g in panel.plots[0].graphs] == ["second", "third"]
+    finally:
+        panel.close()

@@ -59,6 +59,37 @@ def _panel_snapshot(panel: PlotPanel, name: str) -> Dict[str, Any]:
         "name": name,
         "time_range": _time_range_dict(panel),
         "products": _panel_products(panel),
+        "plots": panel_layout(panel, name)["plots"],
+    }
+
+
+def _graph_entry(index: int, graph) -> Dict[str, Any]:
+    return {
+        "index": index,
+        "name": _safe(graph.objectName, ""),
+        "product": _safe(lambda: graph.property("sqp_product_path")) or None,
+        "kind": type(graph).__name__.removeprefix("SciQLop"),
+    }
+
+
+def _plot_entry(index: int, plot) -> Dict[str, Any]:
+    impl = getattr(plot, "_impl", None)
+    plottables = _safe(lambda: impl.plottables(), []) if impl is not None else []
+    return {
+        "index": index,
+        "type": _safe(lambda: plot.plot_type.name, "unknown"),
+        "graphs": [_graph_entry(i, g) for i, g in enumerate(plottables or [])],
+    }
+
+
+def panel_layout(panel: PlotPanel, name: str) -> Dict[str, Any]:
+    """Per-plot, per-graph structure of a panel — what an agent needs to place,
+    remove or move things by index instead of guessing."""
+    plots = _safe(lambda: panel.plots, []) or []
+    return {
+        "name": name,
+        "time_range": _time_range_dict(panel),
+        "plots": [_plot_entry(i, p) for i, p in enumerate(plots)],
     }
 
 

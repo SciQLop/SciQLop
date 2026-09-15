@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Agent chat
+
+- Agents can now inspect and rearrange a panel instead of guessing: `sciqlop_describe_panel` returns every subplot and graph with its index, and the gated `sciqlop_plot_product`, `sciqlop_remove_graph`, `sciqlop_remove_plot` and `sciqlop_move_plot` tools each return the resulting layout. The plotting workflow in the workspace `AGENTS.md` now goes through `sciqlop_plot_product` rather than hand-written `exec_python` code.
+- The workspace `AGENTS.md` guidance now teaches the Speasy NumPy layer (do the maths on the `SpeasyVariable`, never on `.values`) and pushes the declarative virtual-product form (`Depends(...)` inputs, `Scalar[...]`-style return annotations, `%%vp`) as the only form to write. The `virtual_products` API reference carries the same example.
+
+### User API
+
+- `PlotPanel.move_plot(from_index, to_index)` reorders subplots; `plot.graphs` lists a plot's plottables in draw order; every plottable wrapper exposes `name`.
+- The "+" new-panel button no longer appears in the title bar of auto-hide side panels (Products, Catalogs, Settings, Properties, Chat).
+
 ## v0.13.0 — 2026-09-14
 
 ### Agent chat
