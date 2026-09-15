@@ -13,7 +13,7 @@ import base64
 import os
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from SciQLop.user_api.threading import on_main_thread
 from SciQLop.user_api import jobs as user_api_jobs
@@ -153,9 +153,9 @@ def _screenshot_to_content(save_fn: Callable[[str], None]) -> Dict[str, Any]:
 def _screenshot_panel_tool(main_window) -> Dict[str, Any]:
     @on_main_thread
     def _shoot(name: Optional[str]):
-        panel = context._panel(name) if name else context._active_panel(main_window)
-        if panel is None:
-            return _error_content(f"panel not found: {name!r}" if name else "no active panel")
+        panel, error = _resolve_panel(main_window, name)
+        if error:
+            return error
         return _screenshot_to_content(lambda path: screenshot_api.capture_panel(panel, path))
 
     return {
@@ -173,9 +173,9 @@ def _screenshot_panel_tool(main_window) -> Dict[str, Any]:
 def _screenshot_plot_tool(main_window) -> Dict[str, Any]:
     @on_main_thread
     def _shoot(name: Optional[str], plot_index: int):
-        panel = context._panel(name) if name else context._active_panel(main_window)
-        if panel is None:
-            return _error_content(f"panel not found: {name!r}" if name else "no active panel")
+        panel, error = _resolve_panel(main_window, name)
+        if error:
+            return error
         plots = panel.plots
         if not plots:
             return _error_content("panel has no plots")
@@ -315,9 +315,9 @@ def _wait_for_plot_data_tool(main_window) -> Dict[str, Any]:
     import time
 
     async def _wait(name: Optional[str], timeout: float) -> Dict[str, Any]:
-        panel = context._panel(name) if name else context._active_panel(main_window)
-        if panel is None:
-            return _error_content(f"panel not found: {name!r}" if name else "no active panel")
+        panel, error = _resolve_panel(main_window, name)
+        if error:
+            return error
         # Poll via the public is_busy() helper so the asyncio loop stays responsive.
         has_plottables = False
         for plot in panel._get_impl_or_raise().plots() or []:
@@ -844,9 +844,9 @@ def _cancel_job_tool() -> Dict[str, Any]:
 def _write_tools(main_window) -> List[Dict[str, Any]]:
     @on_main_thread
     def _set_time_range(name: Optional[str], start: float, stop: float):
-        panel = context._panel(name) if name else context._active_panel(main_window)
-        if panel is None:
-            return _error_content(f"panel not found: {name!r}" if name else "no active panel")
+        panel, error = _resolve_panel(main_window, name)
+        if error:
+            return error
         from SciQLop.core import TimeRange
         panel.time_range = TimeRange(float(start), float(stop))
         label = name or "active panel"
@@ -879,11 +879,12 @@ def _write_tools(main_window) -> List[Dict[str, Any]]:
             _cancel_job_tool(), _install_package_tool()] + _notebook_write_tools() + [_run_notebook_cell_tool(), _interrupt_kernel_tool()]
 
 
-def _resolve_panel(main_window, name: Optional[str]):
+def _resolve_panel(main_window, name: Optional[str]) -> Tuple[Any, Optional[Dict[str, Any]]]:
+    """(panel, None) for `name` or the active panel, else (None, error content)."""
     panel = context._panel(name) if name else context._active_panel(main_window)
     if panel is None:
-        raise ValueError(f"panel not found: {name!r}" if name else "no active panel")
-    return panel
+        return None, _error_content(f"panel not found: {name!r}" if name else "no active panel")
+    return panel, None
 
 
 def _layout_content(panel) -> Dict[str, Any]:
@@ -895,6 +896,11 @@ _PANEL_NAME_PROP = {"name": {"type": "string", "description": "Panel name; omit 
 
 
 def _describe_panel_tool(main_window) -> Dict[str, Any]:
+    @on_main_thread
+    def _describe(p: Dict[str, Any]) -> Dict[str, Any]:
+        panel, error = _resolve_panel(main_window, p.get("name"))
+        return error or _layout_content(panel)
+
     return _text_tool(
         "sciqlop_describe_panel",
         (
@@ -904,7 +910,7 @@ def _describe_panel_tool(main_window) -> Dict[str, Any]:
             "confirm the result instead of guessing indices."
         ),
         {"type": "object", "properties": dict(_PANEL_NAME_PROP), "required": []},
-        on_main_thread(lambda p: _layout_content(_resolve_panel(main_window, p.get("name")))),
+        _describe,
     )
 
 
@@ -912,7 +918,9 @@ def _plot_product_tool(main_window) -> Dict[str, Any]:
     @on_main_thread
     def _plot(p: Dict[str, Any]) -> Dict[str, Any]:
         from SciQLop.user_api.plot import PlotType
-        panel = _resolve_panel(main_window, p.get("name"))
+        panel, error = _resolve_panel(main_window, p.get("name"))
+        if error:
+            return error
         kwargs = {"plot_type": PlotType[p["plot_type"]]} if p.get("plot_type") else {}
         panel.plot_product(p["product"], int(p.get("plot_index", -1)), **kwargs)
         return _layout_content(panel)
@@ -943,7 +951,9 @@ def _plot_product_tool(main_window) -> Dict[str, Any]:
 def _remove_plot_tool(main_window) -> Dict[str, Any]:
     @on_main_thread
     def _remove(p: Dict[str, Any]) -> Dict[str, Any]:
-        panel = _resolve_panel(main_window, p.get("name"))
+        panel, error = _resolve_panel(main_window, p.get("name"))
+        if error:
+            return error
         panel.remove_plot(int(p["plot_index"]))
         return _layout_content(panel)
 
@@ -963,7 +973,9 @@ def _remove_plot_tool(main_window) -> Dict[str, Any]:
 def _remove_graph_tool(main_window) -> Dict[str, Any]:
     @on_main_thread
     def _remove(p: Dict[str, Any]) -> Dict[str, Any]:
-        panel = _resolve_panel(main_window, p.get("name"))
+        panel, error = _resolve_panel(main_window, p.get("name"))
+        if error:
+            return error
         plot = panel.plots[int(p["plot_index"])]
         plot.remove_graph(plot.graphs[int(p["graph_index"])])
         return _layout_content(panel)
@@ -988,7 +1000,9 @@ def _remove_graph_tool(main_window) -> Dict[str, Any]:
 def _move_plot_tool(main_window) -> Dict[str, Any]:
     @on_main_thread
     def _move(p: Dict[str, Any]) -> Dict[str, Any]:
-        panel = _resolve_panel(main_window, p.get("name"))
+        panel, error = _resolve_panel(main_window, p.get("name"))
+        if error:
+            return error
         panel.move_plot(int(p["from_index"]), int(p["to_index"]))
         return _layout_content(panel)
 

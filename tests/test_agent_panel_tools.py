@@ -13,7 +13,10 @@ def _tool(main_window, tool_name):
 
 
 def _call(main_window, tool_name, **payload):
-    return asyncio.run(_tool(main_window, tool_name)["handler"](payload))["content"][0]["text"]
+    result = _tool(main_window, tool_name)["handler"](payload)
+    if asyncio.iscoroutine(result):
+        result = asyncio.run(result)
+    return result["content"][0]["text"]
 
 
 def _layout(main_window, panel_name):
@@ -105,3 +108,14 @@ def test_user_api_move_plot_and_graphs(main_window, qtbot):
         assert [g.name for g in panel.plots[0].graphs] == ["second", "third"]
     finally:
         panel.close()
+
+
+def test_every_panel_tool_reports_a_missing_panel_the_same_way(main_window):
+    for tool_name, extra in (("sciqlop_screenshot_panel", {}), ("sciqlop_screenshot_plot", {"plot_index": 0}),
+                             ("sciqlop_set_time_range", {"start": 0.0, "stop": 1.0}),
+                             ("sciqlop_wait_for_plot_data", {}), ("sciqlop_describe_panel", {}),
+                             ("sciqlop_move_plot", {"from_index": 0, "to_index": 1}),
+                             ("sciqlop_remove_plot", {"plot_index": 0}),
+                             ("sciqlop_remove_graph", {"plot_index": 0, "graph_index": 0}),
+                             ("sciqlop_plot_product", {"product": "x"})):
+        assert _call(main_window, tool_name, name="nope", **extra) == "panel not found: 'nope'", tool_name
