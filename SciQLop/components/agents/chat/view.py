@@ -5,7 +5,6 @@ dock once it knows which backend is active.
 """
 from __future__ import annotations
 
-import json as _json
 import uuid as _uuid
 from dataclasses import dataclass, field
 from html import escape as _html_escape
@@ -73,25 +72,13 @@ class ToolActivityBlock:
 ContentBlock = Union[TextBlock, ThinkingBlock, ImageBlock, ToolActivityBlock]
 
 
-def _input_one_line(tool_input: dict, cap: int = 80) -> str:
-    """A compact single-line preview of a tool call's arguments."""
-    if not tool_input:
-        return ""
-    parts = []
-    for k, v in tool_input.items():
-        sval = v if isinstance(v, str) else _json.dumps(v, default=str)
-        sval = " ".join(str(sval).split())
-        parts.append(f"{k}={sval}")
-    s = ", ".join(parts)
-    return s if len(s) <= cap else s[: cap - 1] + "…"
-
-
 def activity_group_html(blocks: List["ToolActivityBlock"], level: int,
                         expanded: bool, group_id: str, running: bool = False) -> str:
     """Render a run of tool calls as a collapsible dim block.
 
     Collapsed: a single summary line. Expanded: one line per call, with an input
     preview at level>=2 and a result summary at level>=3. ``level`` is 1-3."""
+    from .render_model import input_one_line, result_preview
     n = len(blocks)
     arrow = "▾" if expanded else "▸"
     if running and blocks:
@@ -107,13 +94,12 @@ def activity_group_html(blocks: List["ToolActivityBlock"], level: int,
     for b in blocks:
         line = f"&nbsp;&nbsp;▸ {_html_escape(b.tool_name)}"
         if level >= 2:
-            preview = _input_one_line(b.tool_input)
+            preview = input_one_line(b.tool_input)
             if preview:
                 line += f' · <span style="color:#9a9a9a">{_html_escape(preview)}</span>'
         out.append(f'<p style="color:#888888;margin:0 0 0 0">{line}</p>')
         if level >= 3 and b.result:
-            res = b.result.strip()
-            res = res if len(res) <= 200 else res[:199] + "…"
+            res = result_preview(b.result)
             out.append('<p style="color:#888888;margin:0">'
                        f'&nbsp;&nbsp;&nbsp;&nbsp;↳ {_html_escape(res)}</p>')
     return "".join(out)
