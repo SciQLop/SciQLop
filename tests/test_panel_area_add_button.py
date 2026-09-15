@@ -182,3 +182,15 @@ def test_splitting_a_plot_panel_into_a_new_area_gets_its_own_add_button(main_win
             release_name(name2)
     finally:
         main_window.remove_panel(panel1)
+
+
+def _auto_hide_areas(main_window):
+    return [dw.dockAreaWidget() for dw in main_window.dock_manager.dockWidgetsMap().values()
+            if dw.isAutoHide()]
+
+
+def test_auto_hide_side_panels_never_get_add_button(bare_main_window, qtbot):
+    areas = _auto_hide_areas(bare_main_window)
+    assert areas, "expected side panels (Products/Catalogs/...) to be auto-hide"
+    qtbot.waitUntil(lambda: _add_button(_welcome_area(bare_main_window)) is not None, timeout=1000)
+    assert all(_add_button(area) is None for area in areas)

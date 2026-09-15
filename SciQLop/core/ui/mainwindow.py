@@ -698,7 +698,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         QtCore.QTimer.singleShot(0, lambda: self._ensure_add_panel_button(area))
 
     def _ensure_add_panel_button(self, area: QtAds.CDockAreaWidget) -> None:
-        if not shiboken6.isValid(area):
+        if not shiboken6.isValid(area) or area.isAutoHide():
             return
         if area.property("sciqlop_add_panel_button") is not None:
             return
