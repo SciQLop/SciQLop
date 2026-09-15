@@ -130,6 +130,7 @@ _DEFAULT_ROLE_LABEL = {"user": "You", "assistant": "Assistant", "error": "Error"
 _ROLE_COLOR = {"user": "#3d6ab0", "assistant": "#2a7a3c", "error": "#a33"}
 
 _RENDER_INTERVAL_MS = 80
+_BOTTOM_SLACK_PX = 4
 
 
 class TranscriptView(QTextBrowser):
@@ -153,6 +154,15 @@ class TranscriptView(QTextBrowser):
         self._render_timer.setInterval(_RENDER_INTERVAL_MS)
         self._render_timer.timeout.connect(self._flush)
         self.anchorClicked.connect(self._on_anchor_clicked)
+        # Follow the newest text only while the reader is at the end; a reader
+        # who scrolled back keeps their place across re-renders (streaming
+        # updates, tool-node toggles, verbosity changes all rebuild the document).
+        self._follow_bottom = True
+        self._restore_value: Optional[int] = None
+        self._scrolling_programmatically = False
+        bar = self.verticalScrollBar()
+        bar.valueChanged.connect(self._on_scrolled)
+        bar.rangeChanged.connect(lambda *_: self._settle_scroll())
 
     def set_tool_verbosity(self, level: int) -> None:
         level = max(1, min(3, int(level)))
@@ -198,8 +208,18 @@ class TranscriptView(QTextBrowser):
                 cursor.insertBlock()
             self._write_message(cursor, doc, msg)
 
-        self.setDocument(doc)
-        self._scroll_to_end()
+        bar = self.verticalScrollBar()
+        self._restore_value = None if self._follow_bottom else bar.value()
+        self._scrolling_programmatically = True
+        try:
+            self.setDocument(doc)
+        finally:
+            self._scrolling_programmatically = False
+        self._settle_scroll()
+        # Layout is lazy: the range keeps growing after this returns, and
+        # rangeChanged re-applies the target until the reader's place is
+        # restored or, when following, for as long as the document grows.
+        QTimer.singleShot(0, self._forget_restore_target)
 
     def _write_message(self, cursor: QTextCursor, doc: QTextDocument, msg: ChatMessage) -> None:
         label = self._role_labels.get(msg.role, msg.role)
@@ -267,20 +287,26 @@ class TranscriptView(QTextBrowser):
         cursor.insertImage(fmt)
         cursor.insertBlock()
 
-    def _scroll_to_end(self) -> None:
-        # Each flush rebuilds the document via setDocument(), which resets the
-        # scroll to the top; the scrollbar's range is only recomputed on the next
-        # layout pass, so a single setValue(maximum()) here reads a stale (too
-        # small) maximum on a live widget and lands short of the newest message
-        # ("scrolls up"). Scroll now (covers the synchronous case) and again on
-        # the next event-loop cycle once layout has settled. The text cursor is
-        # left untouched so a user's selection survives streaming updates.
-        self._scroll_bottom_now()
-        QTimer.singleShot(0, self._scroll_bottom_now)
-
-    def _scroll_bottom_now(self) -> None:
+    def _settle_scroll(self) -> None:
         bar = self.verticalScrollBar()
-        bar.setValue(bar.maximum())
+        target = bar.maximum() if self._follow_bottom else self._restore_value
+        if target is None:
+            return
+        self._scrolling_programmatically = True
+        try:
+            bar.setValue(target)
+        finally:
+            self._scrolling_programmatically = False
+
+    def _forget_restore_target(self) -> None:
+        self._settle_scroll()
+        self._restore_value = None
+
+    def _on_scrolled(self, value: int) -> None:
+        if self._scrolling_programmatically:
+            return
+        bar = self.verticalScrollBar()
+        self._follow_bottom = value >= bar.maximum() - _BOTTOM_SLACK_PX
 
 
 class ChatInput(QTextEdit):
