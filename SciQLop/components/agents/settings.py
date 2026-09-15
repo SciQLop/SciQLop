@@ -1,6 +1,6 @@
 """Persisted settings for the agent chat dock."""
 from enum import StrEnum
-from typing import ClassVar, Dict, List
+from typing import ClassVar, Dict, List, Literal
 
 from pydantic import BaseModel, Field
 
@@ -48,6 +48,11 @@ class AgentChatSettings(ConfigEntry):
         description="Agent write permission: 'none' (deny gated tools), "
                     "'confirm' (ask per call), or 'yolo' (auto-approve).",
         json_schema_extra={"widget": "hidden"},
+    )
+    transcript_renderer: Literal["native", "web"] = Field(
+        default="native",
+        description="How the chat transcript is drawn. 'web' adds highlighted "
+                    "code and LaTeX math (uses the embedded browser).",
     )
 
 

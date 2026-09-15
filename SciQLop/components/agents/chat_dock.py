@@ -39,6 +39,7 @@ from .chat import (
     ToolActivityBlock,
     TranscriptView,
 )
+from .chat import web_view as _web_view
 from .chat.info_bar import ContextBreakdownPopup, SessionInfoBar
 from .chat.popup_placement import place_popup
 from .chat.session_panel import SessionListPanel
@@ -96,6 +97,7 @@ class AgentChatDock(QWidget):
             self._current_backend, self._apply_usage_snapshot)
 
         self._build_ui()
+        AgentChatSettings._notifier.changed.connect(self._on_agent_chat_setting_changed)
         self._set_writes_combo(self._write_mode)
         self._on_write_mode_changed(0)  # ensure badge text/style is set
         self.refresh_backends()
@@ -155,7 +157,7 @@ class AgentChatDock(QWidget):
         self._splitter = QSplitter(Qt.Orientation.Vertical, self)
         self._splitter.setChildrenCollapsible(False)
 
-        self._transcript = TranscriptView(self._splitter)
+        self._transcript = self._make_transcript(self._splitter)
         self._splitter.addWidget(self._transcript)
         self._init_tool_verbosity()
 
@@ -969,6 +971,51 @@ class AgentChatDock(QWidget):
         self._transcript.set_tool_verbosity(level)
         with AgentChatSettings() as s:
             s.tool_verbosity = level
+
+    def _make_transcript(self, parent: QWidget, renderer: Optional[str] = None):
+        """Native `TranscriptView` by default; `WebTranscriptView` when the
+        `transcript_renderer` setting says "web" and it actually constructs
+        (it needs QtWebEngine) — otherwise fall back to native and say so.
+
+        ``renderer`` lets a live settings-change notification pass the value
+        it just observed: `AgentChatSettings.__setattr__` emits its notifier
+        signal *before* `__exit__` persists the new value to disk, so a fresh
+        `AgentChatSettings()` read from inside that notification's handler
+        would still see the old value.
+        """
+        if renderer is None:
+            renderer = AgentChatSettings().transcript_renderer
+        if renderer != "web":
+            return TranscriptView(parent)
+        try:
+            return _web_view.WebTranscriptView(parent)
+        except Exception as error:
+            log.warning("web transcript renderer unavailable, falling back to native: %r", error)
+            self._set_status("Web transcript unavailable, using native")
+            return TranscriptView(parent)
+
+    def _on_agent_chat_setting_changed(self, field_name: str, value) -> None:
+        if field_name == "transcript_renderer":
+            self._apply_transcript_renderer(value)
+
+    def _apply_transcript_renderer(self, renderer: Optional[str] = None) -> None:
+        old_transcript = self._transcript
+        # No parent here: QSplitter.replaceWidget() reparents the widget it's
+        # given, and refuses one that is already one of its own children —
+        # which happens as soon as the constructor's parent= is the splitter
+        # itself (QSplitter tracks any child widget from the moment it's
+        # parented, not only through addWidget()).
+        self._transcript = self._make_transcript(None, renderer)
+        self._splitter.replaceWidget(0, self._transcript)
+        old_transcript.deleteLater()
+        self._transcript.set_tool_verbosity(AgentChatSettings().tool_verbosity)
+        backend = self._current_backend()
+        if backend is not None:
+            self._transcript.set_assistant_label(backend.display_name)
+        session = self._sessions.get(self._current)
+        if session is not None:
+            self._transcript.render_messages(session.messages)
+            self._transcript.flush_now()
 
     async def _refresh_completions_then_usage(self) -> None:
         """Ask for usage only after the backend has had a reason to connect.
