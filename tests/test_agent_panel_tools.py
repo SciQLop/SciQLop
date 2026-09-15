@@ -119,3 +119,12 @@ def test_every_panel_tool_reports_a_missing_panel_the_same_way(main_window):
                              ("sciqlop_remove_graph", {"plot_index": 0, "graph_index": 0}),
                              ("sciqlop_plot_product", {"product": "x"})):
         assert _call(main_window, tool_name, name="nope", **extra) == "panel not found: 'nope'", tool_name
+
+
+def test_every_tool_handler_is_a_coroutine_with_a_gated_flag(main_window):
+    from SciQLop.components.agents.tools._builder import build_sciqlop_tools
+    for tool in build_sciqlop_tools(main_window):
+        assert "gated" in tool, tool["name"]
+        result = tool["handler"]({"name": "nope", "plot_index": 0})
+        assert asyncio.iscoroutine(result), tool["name"]
+        result.close()

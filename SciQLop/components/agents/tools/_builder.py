@@ -34,20 +34,20 @@ async def _in_io_pool(fn: Callable[..., Any], *args: Any) -> Any:
 
 def build_sciqlop_tools(main_window) -> List[Dict[str, Any]]:
     tools: List[Dict[str, Any]] = [
-        _read_tool(
+        _snapshot_tool(
             "sciqlop_active_panel",
             "Return the currently active SciQLop plot panel: its name, time range, and the products currently plotted on it.",
-            on_main_thread(lambda: context.active_panel_snapshot(main_window)),
+            lambda: context.active_panel_snapshot(main_window),
         ),
-        _read_tool(
+        _snapshot_tool(
             "sciqlop_list_panels",
             "List all open SciQLop plot panels with their time ranges.",
-            on_main_thread(lambda: context.list_panels(main_window)),
+            lambda: context.list_panels(main_window),
         ),
-        _read_tool(
+        _snapshot_tool(
             "sciqlop_window_state",
             "High-level snapshot of the SciQLop main window: panel count, active panel summary.",
-            on_main_thread(lambda: context.main_window_snapshot(main_window)),
+            lambda: context.main_window_snapshot(main_window),
         ),
         _describe_panel_tool(main_window),
         _screenshot_panel_tool(main_window),
@@ -72,13 +72,12 @@ def build_sciqlop_tools(main_window) -> List[Dict[str, Any]]:
     return tools
 
 
-def _read_tool(name: str, description: str, handler: Callable[[], Any]) -> Dict[str, Any]:
-    return {
-        "name": name,
-        "description": description,
-        "input_schema": {"type": "object", "properties": {}, "required": []},
-        "handler": lambda _input: handler(),
-    }
+_NO_ARGS = {"type": "object", "properties": {}, "required": []}
+
+
+def _snapshot_tool(name: str, description: str, snapshot: Callable[[], Any]) -> Dict[str, Any]:
+    """Read-only, argument-less tool returning a GUI-state snapshot."""
+    return _text_tool(name, description, _NO_ARGS, on_main_thread(lambda _payload: snapshot()))
 
 
 def _text_tool(
@@ -158,16 +157,12 @@ def _screenshot_panel_tool(main_window) -> Dict[str, Any]:
             return error
         return _screenshot_to_content(lambda path: screenshot_api.capture_panel(panel, path))
 
-    return {
-        "name": "sciqlop_screenshot_panel",
-        "description": "Render a PNG screenshot of a SciQLop plot panel. Pass the panel name, or omit to screenshot the active panel.",
-        "input_schema": {
-            "type": "object",
-            "properties": {"name": {"type": "string"}},
-            "required": [],
-        },
-        "handler": lambda payload: _shoot(payload.get("name")),
-    }
+    return _text_tool(
+        "sciqlop_screenshot_panel",
+        "Render a PNG screenshot of a SciQLop plot panel. Pass the panel name, or omit to screenshot the active panel.",
+        {"type": "object", "properties": {"name": {"type": "string"}}, "required": []},
+        lambda payload: _shoot(payload.get("name")),
+    )
 
 
 def _screenshot_plot_tool(main_window) -> Dict[str, Any]:
@@ -183,10 +178,10 @@ def _screenshot_plot_tool(main_window) -> Dict[str, Any]:
             return _error_content(f"plot_index {plot_index} out of range (0..{len(plots) - 1})")
         return _screenshot_to_content(plots[plot_index]._impl.save_png)
 
-    return {
-        "name": "sciqlop_screenshot_plot",
-        "description": "Render a PNG screenshot of a single subplot inside a SciQLop panel. plot_index is 0-based. Omit name to target the active panel.",
-        "input_schema": {
+    return _text_tool(
+        "sciqlop_screenshot_plot",
+        "Render a PNG screenshot of a single subplot inside a SciQLop panel. plot_index is 0-based. Omit name to target the active panel.",
+        {
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
@@ -194,8 +189,8 @@ def _screenshot_plot_tool(main_window) -> Dict[str, Any]:
             },
             "required": ["plot_index"],
         },
-        "handler": lambda payload: _shoot(payload.get("name"), int(payload["plot_index"])),
-    }
+        lambda payload: _shoot(payload.get("name"), int(payload["plot_index"])),
+    )
 
 
 def _api_reference_tool() -> Dict[str, Any]:
