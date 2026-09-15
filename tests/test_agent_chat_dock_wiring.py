@@ -707,10 +707,45 @@ def test_switching_session_again_supersedes_the_previous_load(dock, qtbot):
     assert first_task.cancelled()
 
 
-def test_alignment_prompt_warns_against_stale_api_assumptions():
-    from SciQLop.components.agents import chat_dock as mod
-    assert "verify the current API" in mod._AGENT_ALIGNMENT
-    assert "sciqlop_api_reference" in mod._AGENT_ALIGNMENT
+def test_first_turn_is_sent_verbatim_the_guidance_file_carries_the_persona(dock, qtbot):
+    """The alignment preamble used to be glued onto the first prompt, which the
+    CLI then stored as the user's own words -- it came back on every replay as a
+    "You" turn and became the session label. AGENTS.md carries that now."""
+    from SciQLop.components.agents.chat_dock import _AgentSession
+    captured = []
+
+    class _CapturingBackend(_FakeBackend):
+        supports_sessions = True
+
+        def current_session_id(self):
+            return "session-123"
+
+        async def ask(self, prompt, image_paths=None):
+            captured.append(prompt)
+            if False:
+                yield None
+
+    session = _AgentSession(backend=_CapturingBackend())
+    dock._sessions[dock._current] = session
+    dock._spawn(dock._run_turn(session, "plot something", []))
+    _settle(qtbot)
+    assert captured == ["plot something"]
+
+
+def test_replaying_an_old_session_drops_the_legacy_preamble(dock, qtbot, monkeypatch):
+    from SciQLop.components.agents.chat import ChatMessage, TextBlock
+    from SciQLop.components.agents.guidance import LEGACY_ALIGNMENT
+
+    def _load(self, session_id, image_tempdir):
+        return [ChatMessage(role="user", blocks=[TextBlock(text=f"{LEGACY_ALIGNMENT}\nplot B", complete=True)], done=True),
+                ChatMessage(role="assistant", blocks=[TextBlock(text="done", complete=True)], done=True)]
+
+    monkeypatch.setattr(_FakeBackend, "supports_sessions", True)
+    monkeypatch.setattr(_FakeBackend, "load_session", _load)
+    dock._on_session_selected("old-session")
+    qtbot.waitUntil(lambda: "Resumed" in dock._status_label.text(), timeout=3000)
+    first = dock._sessions[dock._current].messages[0]
+    assert first.blocks[0].text == "plot B"
 
 
 def test_version_reminder_is_prefixed_on_next_turn_after_resume(dock, qtbot):

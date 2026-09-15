@@ -45,7 +45,7 @@ from .chat.session_panel import SessionListPanel
 from .chat.sessions_view import grouped_sessions, all_groups, all_tags, claimed_ids
 from .chat.settings_popup import AgentSettingsPopup
 from .chat.usage_refresh import UsageRefresher
-from .guidance import load_guidance
+from .guidance import load_guidance, strip_legacy_alignment
 from .registry import available_backends, create_backend
 from .settings import AgentChatSettings, AgentSessionMeta, AgentWriteMode
 from .tools import build_sciqlop_tools
@@ -54,17 +54,11 @@ from .workspace import current_workspace_dir
 log = getLogger(__name__)
 
 
-_AGENT_ALIGNMENT = (
-    "You are an astrophysicist and expert Python developer assisting inside SciQLop.\n"
-    "- Be concise, factual, and plain-spoken. Avoid marketing language.\n"
-    "- Prefer the public API under SciQLop.user_api (plot, catalogs, themes, virtual_products).\n"
-    "- Before writing code, call sciqlop_api_reference('<module>') for the relevant module.\n"
-    "- SciQLop's public API changes between releases. Never assume an API limitation "
-    "from earlier in this conversation; verify the current API with sciqlop_api_reference "
-    "before claiming something is impossible.\n"
-    "- Keep code examples minimal, correct, and idiomatic. Use real science intervals when possible.\n"
-    "- Do not guess method names or internal module paths.\n"
-)
+def _without_legacy_alignment(messages: List[ChatMessage]) -> List[ChatMessage]:
+    for message in messages:
+        if message.role == "user" and message.blocks and isinstance(message.blocks[0], TextBlock):
+            message.blocks[0].text = strip_legacy_alignment(message.blocks[0].text)
+    return messages
 
 
 @dataclass
@@ -72,7 +66,6 @@ class _AgentSession:
     backend: AgentBackend
     messages: List[ChatMessage] = field(default_factory=list)
     resume_id: Optional[str] = None
-    alignment_sent: bool = False
     version_reminder: Optional[str] = None
 
 
@@ -532,7 +525,7 @@ class AgentChatDock(QWidget):
             return
         if session.resume_id != session_id:
             return
-        session.messages = messages
+        session.messages = _without_legacy_alignment(messages)
         stored_version = AgentSessionMeta().get_sciqlop_version(
             backend.display_name, session_id)
         if stored_version and stored_version != _SCIQLop_VERSION:
@@ -542,7 +535,7 @@ class AgentChatDock(QWidget):
                 "may have changed; verify the current API with sciqlop_api_reference "
                 "before assuming limitations.\n"
             )
-        self._transcript.render_messages(messages)
+        self._transcript.render_messages(session.messages)
         self._transcript.flush_now()
         self._set_status(
             f"Resumed session {session_id[:8]} ({len(messages)} messages)")
@@ -805,9 +798,6 @@ class AgentChatDock(QWidget):
     ) -> None:
         self._set_running(True)
         self._set_status("Thinking…")
-        if not session.alignment_sent:
-            prompt = f"{_AGENT_ALIGNMENT}\n{prompt}"
-            session.alignment_sent = True
         if session.version_reminder:
             prompt = f"{session.version_reminder}{prompt}"
             session.version_reminder = None

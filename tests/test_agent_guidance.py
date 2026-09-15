@@ -147,3 +147,10 @@ def test_guidance_names_the_panel_layout_tools():
 def test_guidance_explains_speasy_numpy_layer():
     assert "NumPy-compatible" in SCIQLOP_GUIDANCE
     assert "v.values" in SCIQLOP_GUIDANCE
+
+
+def test_strip_legacy_alignment_removes_only_the_old_preamble():
+    from SciQLop.components.agents.guidance import LEGACY_ALIGNMENT, strip_legacy_alignment
+    assert strip_legacy_alignment(f"{LEGACY_ALIGNMENT}\nplot B") == "plot B"
+    assert strip_legacy_alignment("plot B") == "plot B"
+    assert strip_legacy_alignment(LEGACY_ALIGNMENT) == ""

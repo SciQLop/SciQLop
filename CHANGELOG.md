@@ -4,6 +4,7 @@
 
 ### Agent chat
 
+- Resuming a session no longer shows SciQLop's old persona preamble as your first message, nor uses it as the session's label: the preamble was glued onto the first prompt of every session until now, and the workspace `AGENTS.md` has carried that guidance since 0.12. New sessions send your words verbatim; old transcripts have the preamble stripped on replay.
 - Agents can now inspect and rearrange a panel instead of guessing: `sciqlop_describe_panel` returns every subplot and graph with its index, and the gated `sciqlop_plot_product`, `sciqlop_remove_graph`, `sciqlop_remove_plot` and `sciqlop_move_plot` tools each return the resulting layout. The plotting workflow in the workspace `AGENTS.md` now goes through `sciqlop_plot_product` rather than hand-written `exec_python` code.
 - The workspace `AGENTS.md` guidance now teaches the Speasy NumPy layer (do the maths on the `SpeasyVariable`, never on `.values`) and pushes the declarative virtual-product form (`Depends(...)` inputs, `Scalar[...]`-style return annotations, `%%vp`) as the only form to write. The `virtual_products` API reference carries the same example.
 

@@ -202,3 +202,26 @@ def load_guidance(workspace_dir: Path) -> str:
         return (Path(workspace_dir) / AGENTS_FILENAME).read_text(encoding="utf-8")
     except OSError:
         return SCIQLOP_GUIDANCE.strip()
+
+
+# Until 2026-09-15 the dock glued this persona onto the first prompt of every
+# session, so agent CLIs stored it as the user's own words. Kept only so
+# transcripts written back then replay and label cleanly.
+LEGACY_ALIGNMENT = (
+    "You are an astrophysicist and expert Python developer assisting inside SciQLop.\n"
+    "- Be concise, factual, and plain-spoken. Avoid marketing language.\n"
+    "- Prefer the public API under SciQLop.user_api (plot, catalogs, themes, virtual_products).\n"
+    "- Before writing code, call sciqlop_api_reference('<module>') for the relevant module.\n"
+    "- SciQLop's public API changes between releases. Never assume an API limitation "
+    "from earlier in this conversation; verify the current API with sciqlop_api_reference "
+    "before claiming something is impossible.\n"
+    "- Keep code examples minimal, correct, and idiomatic. Use real science intervals when possible.\n"
+    "- Do not guess method names or internal module paths.\n"
+)
+
+
+def strip_legacy_alignment(text: str) -> str:
+    """Return `text` without the pre-2026-09 persona preamble, if it starts with it."""
+    if text.startswith(LEGACY_ALIGNMENT):
+        return text[len(LEGACY_ALIGNMENT):].lstrip("\n")
+    return text
