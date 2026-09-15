@@ -46,10 +46,15 @@ def loop():
     """
     import asyncio
 
+    try:
+        prev = asyncio.get_event_loop()
+    except RuntimeError:
+        prev = None
     made = asyncio.new_event_loop()
     asyncio.set_event_loop(made)
     yield made
-    asyncio.set_event_loop(None)
+    # Restore, don't clear: later GUI tests expect the qasync loop to still be current.
+    asyncio.set_event_loop(prev)
     made.close()
 
 

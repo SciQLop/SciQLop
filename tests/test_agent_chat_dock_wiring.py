@@ -4,6 +4,7 @@ The dock keeps four controls in its header; model, effort, activity verbosity,
 write-actions and export moved into the settings popup, and session usage is
 reported by a strip under the input.
 """
+import asyncio
 import os
 import pytest
 
@@ -89,12 +90,27 @@ def dock(qtbot, sciqlop_resources, monkeypatch):
     saved = AgentChatSettings()
     restore = (dict(saved.effort), saved.tool_verbosity)
     register_agent_backend(_FakeBackend)
+    # qasync marks its loop "running" only inside exec()/run_until_complete(),
+    # which no test enters, while Qt still steps the dock's Tasks on every
+    # event pump. Python 3.14 refuses such a step ("is not the running loop"),
+    # so mirror qasync for the test's lifetime -- scoped, never process-wide
+    # (see pitfall-qasync-task-before-exec for the global variant that leaked).
+    # Set it current explicitly: any earlier test that used `asyncio.run`
+    # left the main thread with no current loop, and the session-scoped
+    # `sciqlop_resources` will not re-set it.
+    from SciQLop.core.sciqlop_application import sciqlop_event_loop
+    loop = sciqlop_event_loop()
+    asyncio.set_event_loop(loop)
     try:
+        asyncio.events._set_running_loop(loop)
         widget = AgentChatDock(main_window=None)
         qtbot.addWidget(widget)
         _settle(qtbot)
         yield widget
+        widget.close()
+        _settle(qtbot)
     finally:
+        asyncio.events._set_running_loop(None)
         unregister_agent_backend(_FAKE)
         with AgentChatSettings() as cfg:
             cfg.effort, cfg.tool_verbosity = restore
