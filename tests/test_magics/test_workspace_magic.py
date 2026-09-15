@@ -128,6 +128,37 @@ class TestWorkspaceExamples:
             assert ex.is_valid, f"Example '{ex.name}' should be valid after loading"
 
 
+class TestWorkspaceAddExample:
+    def _run(self, mock_examples, mock_manager, result):
+        from SciQLop.user_api.magics.workspace_magic import _cmd_add_example
+        ex = MagicMock()
+        ex.name = "MMS"
+        ex.directory = "/examples/mms"
+        mock_examples.return_value = [ex]
+        mock_manager.return_value.workspace.workspace_dir = "/ws"
+        mock_manager.return_value.add_example_to_workspace.return_value = result
+        _cmd_add_example(["MMS"])
+
+    @patch("SciQLop.components.workspaces.workspaces_manager_instance")
+    @patch("SciQLop.user_api.magics.workspace_magic._list_examples")
+    def test_lists_the_missing_packages_not_the_result_keys(self, mock_examples, mock_manager, capsys):
+        self._run(mock_examples, mock_manager,
+                  {"name": "MMS", "is_update": False, "missing_dependencies": ["pyspedas", "cdflib"]})
+        out = capsys.readouterr().out
+        assert "Missing dependencies: pyspedas, cdflib" in out
+        assert "Run: %workspace install pyspedas cdflib" in out
+        assert "is_update" not in out
+
+    @patch("SciQLop.components.workspaces.workspaces_manager_instance")
+    @patch("SciQLop.user_api.magics.workspace_magic._list_examples")
+    def test_nothing_missing_prints_only_the_confirmation(self, mock_examples, mock_manager, capsys):
+        self._run(mock_examples, mock_manager,
+                  {"name": "MMS", "is_update": True, "missing_dependencies": []})
+        out = capsys.readouterr().out
+        assert "Updated example 'MMS'" in out
+        assert "Missing" not in out
+
+
 class TestWorkspaceDispatch:
     @patch("SciQLop.user_api.magics.workspace_magic._get_workspace")
     def test_default_is_status(self, mock_get, capsys):

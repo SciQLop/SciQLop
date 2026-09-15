@@ -9,6 +9,7 @@
 
 ### User API
 
+- `%workspace add-example` printed the result's dict keys (`name, is_update, missing_dependencies`) as the missing packages, and suggested installing them. It now lists the real missing dependencies and says "Updated" when the example was already installed.
 - `PlotPanel.move_plot(from_index, to_index)` reorders subplots; `plot.graphs` lists a plot's plottables in draw order; every plottable wrapper exposes `name`.
 - The "+" new-panel button no longer appears in the title bar of auto-hide side panels (Products, Catalogs, Settings, Properties, Chat).
 

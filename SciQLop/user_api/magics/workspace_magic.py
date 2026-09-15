@@ -129,12 +129,12 @@ def _cmd_add_example(args: list[str]):
     def _do_add():
         from SciQLop.components.workspaces import workspaces_manager_instance
         wm = workspaces_manager_instance()
-        ws = wm.workspace
-        missing_deps = wm.add_example_to_workspace(match.directory, ws.workspace_dir)
-        return missing_deps
+        return wm.add_example_to_workspace(match.directory, wm.workspace.workspace_dir)
 
-    missing = invoke_on_main_thread(_do_add)
-    print(f"Added example '{match.name}' to workspace.")
+    result = invoke_on_main_thread(_do_add)
+    verb = "Updated" if result["is_update"] else "Added"
+    print(f"{verb} example '{match.name}' to workspace.")
+    missing = result["missing_dependencies"]
     if missing:
         print(f"Missing dependencies: {', '.join(missing)}")
         print("Run: %workspace install " + " ".join(missing))
