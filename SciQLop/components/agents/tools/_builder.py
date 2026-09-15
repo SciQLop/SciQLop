@@ -76,8 +76,9 @@ _NO_ARGS = {"type": "object", "properties": {}, "required": []}
 
 
 def _snapshot_tool(name: str, description: str, snapshot: Callable[[], Any]) -> Dict[str, Any]:
-    """Read-only, argument-less tool returning a GUI-state snapshot."""
-    return _text_tool(name, description, _NO_ARGS, on_main_thread(lambda _payload: snapshot()))
+    """Read-only, argument-less tool returning a GUI-state snapshot as JSON."""
+    return _text_tool(name, description, _NO_ARGS,
+                      on_main_thread(lambda _payload: _json_content(snapshot())))
 
 
 def _text_tool(
@@ -117,6 +118,10 @@ def _text_tool(
 
 def _error_content(msg: str) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": msg}]}
+
+
+def _json_content(value: Any) -> Dict[str, Any]:
+    return {"content": [{"type": "text", "text": json.dumps(value, indent=1)}]}
 
 
 def _format_install_result(result: Dict[str, Any]) -> str:
@@ -883,8 +888,7 @@ def _resolve_panel(main_window, name: Optional[str]) -> Tuple[Any, Optional[Dict
 
 
 def _layout_content(panel) -> Dict[str, Any]:
-    layout = context.panel_layout(panel, panel.name)
-    return {"content": [{"type": "text", "text": json.dumps(layout, indent=1)}]}
+    return _json_content(context.panel_layout(panel, panel.name))
 
 
 _PANEL_NAME_PROP = {"name": {"type": "string", "description": "Panel name; omit for the active panel."}}

@@ -128,3 +128,14 @@ def test_every_tool_handler_is_a_coroutine_with_a_gated_flag(main_window):
         result = tool["handler"]({"name": "nope", "plot_index": 0})
         assert asyncio.iscoroutine(result), tool["name"]
         result.close()
+
+
+def test_snapshot_tools_return_json(main_window, qtbot):
+    from SciQLop.user_api.plot import create_plot_panel
+    panel = create_plot_panel()
+    try:
+        for tool_name in ("sciqlop_active_panel", "sciqlop_list_panels", "sciqlop_window_state"):
+            parsed = json.loads(_call(main_window, tool_name))
+            assert panel.name in json.dumps(parsed), tool_name
+    finally:
+        panel.close()
