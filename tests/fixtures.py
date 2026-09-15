@@ -12,11 +12,20 @@ def qapp_cls():
 @pytest.fixture(scope="session")
 def sciqlop_resources(qapp):
     """One-time session setup: icons, event loop."""
+    from concurrent.futures import ThreadPoolExecutor
     from SciQLop.components.theming.icons import flush_deferred_icons
     from SciQLop.core.sciqlop_application import sciqlop_event_loop
 
     flush_deferred_icons()
-    sciqlop_event_loop()
+    loop = sciqlop_event_loop()
+    # qasync's lazily-created default executor runs on QThreads it only stops
+    # in loop.close(), which tests never reach: the interpreter then aborts
+    # with "QThread: Destroyed while thread is still running" after an
+    # otherwise green run. Python threads shut down cleanly instead.
+    executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="sciqlop-test-executor")
+    loop.set_default_executor(executor)
+    yield
+    executor.shutdown(wait=True)
 
 
 @pytest.fixture(scope="session")
