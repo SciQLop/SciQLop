@@ -1,0 +1,143 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 8px 12px 24px;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 0.95em;
+    background-color: var(--Base);
+    color: var(--Text);
+    overflow-wrap: break-word;
+}
+
+h4.role {
+    margin: 14px 0 4px;
+    font-size: 1em;
+}
+
+h4.role.role-user { color: #3d6ab0; }
+h4.role.role-assistant { color: #2a7a3c; }
+h4.role.role-error { color: #a33; }
+
+.text, .thinking {
+    margin: 4px 0;
+    line-height: 1.4;
+}
+
+.text p {
+    margin: 4px 0;
+}
+
+.text a, .text a:visited {
+    color: var(--Link);
+}
+
+.text pre {
+    background: var(--AlternateBase);
+    padding: 6px 8px;
+    border-radius: 4px;
+    overflow-x: auto;
+}
+
+.text code {
+    background: var(--AlternateBase);
+    padding: 1px 4px;
+    border-radius: 3px;
+}
+
+.text pre code {
+    background: none;
+    padding: 0;
+}
+
+.text blockquote {
+    margin: 4px 0;
+    padding-left: 10px;
+    border-left: 3px solid var(--Borders);
+    color: var(--UnselectedText);
+}
+
+.thinking {
+    color: var(--UnselectedText);
+    font-style: italic;
+}
+
+.image img {
+    max-width: 100%;
+    display: block;
+}
+
+details.tools {
+    margin: 2px 0;
+    color: var(--UnselectedText);
+}
+
+details.tools summary {
+    cursor: pointer;
+    list-style: none;
+}
+
+details.tools summary::-webkit-details-marker {
+    display: none;
+}
+
+.tools-body {
+    margin-left: 6px;
+}
+
+.tool-step {
+    margin: 0;
+}
+
+.tool-input {
+    color: var(--UnselectedText);
+    opacity: 0.85;
+}
+
+.tool-result {
+    margin: 0 0 0 12px;
+}
+
+/* highlight.js theme, palette-driven so it works in light and dark themes */
+.hljs {
+    background: var(--AlternateBase);
+    color: var(--Text);
+}
+
+.hljs-comment, .hljs-quote {
+    color: var(--UnselectedText);
+    font-style: italic;
+}
+
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-section, .hljs-link,
+.hljs-doctag, .hljs-type {
+    color: var(--Highlight);
+}
+
+.hljs-string, .hljs-title, .hljs-name, .hljs-attribute, .hljs-symbol,
+.hljs-bullet, .hljs-addition {
+    color: var(--Link);
+}
+
+.hljs-number, .hljs-meta, .hljs-built_in, .hljs-builtin-name, .hljs-variable,
+.hljs-template-variable {
+    color: var(--LinkVisited, var(--Highlight));
+}
+
+.hljs-deletion {
+    color: #a33;
+}
+
+.hljs-emphasis {
+    font-style: italic;
+}
+
+.hljs-strong {
+    font-weight: bold;
+}
+
+.katex {
+    font-size: 1.05em;
+}

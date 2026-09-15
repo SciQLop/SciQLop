@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SciQLop Agent Transcript</title>
+    <style>
+        :root {
+            {% for name, color in palette.items() %}
+            --{{ name }}: {{ color }};
+            {% endfor %}
+        }
+    </style>
+    <link rel="stylesheet" href="vendor/katex.min.css">
+    <link rel="stylesheet" href="transcript.css">
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <script src="vendor/markdown-it.min.js"></script>
+    <script src="vendor/highlight.min.js"></script>
+    <script src="vendor/katex.min.js"></script>
+</head>
+<body>
+    <div id="transcript"></div>
+    <script src="transcript.js"></script>
+</body>
+</html>
