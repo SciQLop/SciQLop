@@ -255,7 +255,9 @@ class TranscriptView(QTextBrowser):
     @staticmethod
     def _insert_markdown(cursor: QTextCursor, markdown: str) -> None:
         scratch = QTextDocument()
-        scratch.setMarkdown(markdown)
+        # NoHTML: a bare `<word>` in prose otherwise opens an HTML tag that
+        # swallows the rest of the message; agents and users both write them.
+        scratch.setMarkdown(markdown, QTextDocument.MarkdownFeature.MarkdownNoHTML)
         # insertFragment merges the fragment's first block into the current
         # block, keeping the current block's format — so create the new block
         # with the fragment's first-block format instead of inheriting the

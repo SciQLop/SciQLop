@@ -4,6 +4,7 @@
 
 ### Agent chat
 
+- A bare `<word>` in a chat message (for instance `sciqlop_api_reference('<module>')` outside backticks) no longer swallows the rest of the message: the transcript renders markdown with raw HTML disabled.
 - The transcript no longer jumps around: expanding or collapsing a tool node, changing the activity verbosity, or new agent output while you had scrolled back all kept teleporting the view to the bottom (every update rebuilds the document and used to scroll to the end unconditionally). The view now follows new output only while you are at the bottom, keeps your place otherwise, and re-pins itself as the document's layout grows so streaming output can no longer strand it mid-way.
 - Resuming a session no longer shows SciQLop's old persona preamble as your first message, nor uses it as the session's label: the preamble was glued onto the first prompt of every session until now, and the workspace `AGENTS.md` has carried that guidance since 0.12. New sessions send your words verbatim; old transcripts have the preamble stripped on replay.
 - Agents can now inspect and rearrange a panel instead of guessing: `sciqlop_describe_panel` returns every subplot and graph with its index, and the gated `sciqlop_plot_product`, `sciqlop_remove_graph`, `sciqlop_remove_plot` and `sciqlop_move_plot` tools each return the resulting layout. The plotting workflow in the workspace `AGENTS.md` now goes through `sciqlop_plot_product` rather than hand-written `exec_python` code.

@@ -94,3 +94,17 @@ def test_thinking_appears_in_transcript(qapp):
     view.render_messages([message])
     view.flush_now()
     assert "pondering the data" in view.document().toPlainText()
+
+
+def test_angle_brackets_in_prose_do_not_swallow_the_rest(qapp):
+    """`sciqlop_api_reference('<module>')` outside a code span read as an HTML
+    tag and everything after it vanished (empty bullets in the transcript)."""
+    from SciQLop.components.agents.chat import ChatMessage, TextBlock, TranscriptView
+    message = ChatMessage(role="user", blocks=[TextBlock(
+        text="- call sciqlop_api_reference('<module>') first\n- then plot <T> things\n- and finish",
+        complete=True)], done=True)
+    view = TranscriptView()
+    view.render_messages([message])
+    view.flush_now()
+    text = view.document().toPlainText()
+    assert "<module>" in text and "<T> things" in text and "and finish" in text
