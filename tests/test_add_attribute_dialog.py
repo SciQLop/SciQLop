@@ -148,3 +148,40 @@ def test_dialog_ok_disabled_until_name_is_given(qtbot, qapp):
     assert not ok.isEnabled()
     dialog._name.setText("note")
     assert ok.isEnabled()
+
+
+def test_dialog_ok_disabled_for_name_with_space(qtbot, qapp):
+    """A space (or any char outside tscat's `[A-Za-z][A-Za-z_0-9]*` key rule)
+    is silently dropped by tscat's backend on save -- see
+    pitfall-catalog-attribute-name-with-space. Must be rejected in the UI
+    before it ever reaches the provider."""
+    from PySide6.QtWidgets import QDialogButtonBox
+    from SciQLop.components.catalogs.ui.add_attribute_dialog import AddAttributeDialog
+
+    dialog = AddAttributeDialog()
+    qtbot.addWidget(dialog)
+    ok = dialog._buttons.button(QDialogButtonBox.StandardButton.Ok)
+    dialog._name.setText("my column")
+    assert not ok.isEnabled()
+
+
+def test_dialog_ok_disabled_for_name_starting_with_digit(qtbot, qapp):
+    from PySide6.QtWidgets import QDialogButtonBox
+    from SciQLop.components.catalogs.ui.add_attribute_dialog import AddAttributeDialog
+
+    dialog = AddAttributeDialog()
+    qtbot.addWidget(dialog)
+    ok = dialog._buttons.button(QDialogButtonBox.StandardButton.Ok)
+    dialog._name.setText("1st_column")
+    assert not ok.isEnabled()
+
+
+def test_dialog_build_spec_returns_none_for_invalid_name(qtbot, qapp):
+    """Defense in depth: build_spec() itself must refuse an invalid name,
+    not just the OK button -- mirrors the existing empty-name guard."""
+    from SciQLop.components.catalogs.ui.add_attribute_dialog import AddAttributeDialog
+
+    dialog = AddAttributeDialog()
+    qtbot.addWidget(dialog)
+    dialog._name.setText("my column")
+    assert dialog.build_spec() is None

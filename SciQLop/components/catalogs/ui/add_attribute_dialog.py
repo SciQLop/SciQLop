@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QFormLayout, QLineEdit, QComboBox, QLabel,
 )
@@ -10,6 +12,12 @@ from SciQLop.core.knobs import (
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.core.ui import fit_combo_to_content
 
+
+# Mirrors tscat's own attribute-key rule (tscat.base._valid_key, private).
+# tscat silently drops an attribute whose name doesn't match this -- both the
+# value write and any later read-back -- rather than raising, so a name
+# rejected here would otherwise vanish without a trace on the next reload.
+_VALID_ATTRIBUTE_NAME = re.compile(r"^[A-Za-z][A-Za-z_0-9]*$")
 
 # Order matters: first entry is the default selection.
 _TYPE_OPTIONS = (
@@ -39,8 +47,15 @@ class AddAttributeDialog(QDialog):
         self._name.setPlaceholderText("attribute_name")
         self._name.setToolTip(rich_tooltip(
             "Name",
-            "The metadata key stored on each event."))
+            "The metadata key stored on each event. Letters, digits and "
+            "underscores only, starting with a letter -- no spaces."))
         layout.addRow("Name:", self._name)
+
+        self._name_error = QLabel()
+        self._name_error.setWordWrap(True)
+        self._name_error.setStyleSheet("color: #cc4444;")
+        self._name_error.setVisible(False)
+        layout.addRow("", self._name_error)
 
         self._type = QComboBox()
         for label, _ in _TYPE_OPTIONS:
@@ -69,8 +84,15 @@ class AddAttributeDialog(QDialog):
         self._sync_ok_button()
 
     def _sync_ok_button(self) -> None:
+        name = self._name.text().strip()
+        valid = bool(name) and bool(_VALID_ATTRIBUTE_NAME.match(name))
         ok = self._buttons.button(QDialogButtonBox.StandardButton.Ok)
-        ok.setEnabled(bool(self._name.text().strip()))
+        ok.setEnabled(valid)
+        show_error = bool(name) and not valid
+        self._name_error.setText(
+            "Letters, digits and underscores only, starting with a letter." if show_error else ""
+        )
+        self._name_error.setVisible(show_error)
 
     def _select_type(self, label: str) -> None:
         index = self._type.findText(label)
@@ -79,7 +101,7 @@ class AddAttributeDialog(QDialog):
 
     def build_spec(self) -> KnobSpec | None:
         name = self._name.text().strip()
-        if not name:
+        if not _VALID_ATTRIBUTE_NAME.match(name):
             return None
         type_id = _TYPE_OPTIONS[self._type.currentIndex()][1]
         if type_id == "string":
