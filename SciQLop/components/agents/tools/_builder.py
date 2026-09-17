@@ -1026,12 +1026,9 @@ def _create_panel_tool(main_window) -> Dict[str, Any]:
     @on_main_thread
     def _create() -> Dict[str, Any]:
         from SciQLop.user_api.plot import create_plot_panel
-        before = set(context._panel_names())
         panel = create_plot_panel()
-        after = context._panel_names()
-        new_name = next((n for n in after if n not in before), after[-1] if after else "")
         tr = context._time_range_dict(panel) if panel is not None else None
-        body = f"created panel `{new_name}`"
+        body = f"created panel `{panel.name}`"
         if tr:
             body += f"\ntime_range: [{tr['start']}, {tr['stop']}]"
         return {"content": [{"type": "text", "text": body}]}

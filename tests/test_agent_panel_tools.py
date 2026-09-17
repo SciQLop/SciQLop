@@ -130,6 +130,25 @@ def test_every_tool_handler_is_a_coroutine_with_a_gated_flag(main_window):
         result.close()
 
 
+def test_create_panel_uses_the_panels_own_name_not_a_list_diff(main_window, monkeypatch):
+    from SciQLop.components.agents.tools import context
+
+    def _boom():
+        raise AssertionError("sciqlop_create_panel must not diff panel name lists")
+
+    monkeypatch.setattr(context, "_panel_names", _boom)
+    text = _call(main_window, "sciqlop_create_panel")
+    from SciQLop.user_api.plot import plot_panel
+    assert "created panel" in text
+    name = text.split("`")[1]
+    panel = plot_panel(name)
+    try:
+        assert panel is not None
+        assert panel.name == name
+    finally:
+        panel.close()
+
+
 def test_snapshot_tools_return_json(main_window, qtbot):
     from SciQLop.user_api.plot import create_plot_panel
     panel = create_plot_panel()
