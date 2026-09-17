@@ -119,6 +119,35 @@ class TestPrepareWorkspaceManifest:
         loaded = WorkspaceManifest.load(manifest_path)
         assert loaded.name == workspace_dir.name
 
+    def test_new_workspace_tracks_main_when_launcher_is_a_dev_build(self, workspace_dir, patches):
+        """A launcher built from `main` (unreleased, `.dev` version) must default
+        new workspaces to tracking `main` too -- an empty pin, not a stale
+        release -- see pitfall-uv-lock-freezes-git-main-forever."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        patches["running_sciqlop_version"].return_value = "0.13.1.dev0"
+
+        prepare_workspace(workspace_dir)
+
+        manifest_path = workspace_dir / "workspace.sciqlop"
+        loaded = WorkspaceManifest.load(manifest_path)
+        assert loaded.sciqlop_version == ""
+
+    def test_new_workspace_pins_the_release_when_launcher_is_a_release_build(
+        self, workspace_dir, patches
+    ):
+        """A launcher built from a tagged release must default new workspaces
+        to that exact release, reproducibly -- not to `main`."""
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        patches["running_sciqlop_version"].return_value = "0.13.0"
+
+        prepare_workspace(workspace_dir)
+
+        manifest_path = workspace_dir / "workspace.sciqlop"
+        loaded = WorkspaceManifest.load(manifest_path)
+        assert loaded.sciqlop_version == "0.13.0"
+
 
 class TestPrepareWorkspaceGeneratesPyproject:
     def test_calls_generate_pyproject_with_correct_args(self, workspace_dir, patches):
