@@ -279,14 +279,20 @@ def replay_to_messages(updates: list, image_tempdir: Path) -> List[ChatMessage]:
     for update in updates:
         if isinstance(update, UserMessageChunk):
             text = getattr(update.content, "text", "")
-            if not text:
+            if text:
+                msg = open_message("user")
+                last = msg.blocks[-1] if msg.blocks else None
+                if isinstance(last, TextBlock):
+                    last.text += text
+                else:
+                    msg.blocks.append(TextBlock(text=text, complete=True))
                 continue
-            msg = open_message("user")
-            last = msg.blocks[-1] if msg.blocks else None
-            if isinstance(last, TextBlock):
-                last.text += text
-            else:
-                msg.blocks.append(TextBlock(text=text, complete=True))
+            data = getattr(update.content, "data", None)
+            if data:
+                mime = getattr(update.content, "mime_type", None) or "image/png"
+                path = write_b64_image(data, mime, image_tempdir, prefix="replay")
+                if path:
+                    open_message("user").blocks.append(ImageBlock(path=path))
         elif isinstance(update, AgentMessageChunk):
             text = getattr(update.content, "text", "")
             if text:
