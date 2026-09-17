@@ -1112,9 +1112,14 @@ class CatalogBrowser(QWidget):
         return menu
 
     def _add_panel_toggle_action(self, menu: QMenu, catalog: Catalog) -> None:
-        panel = self._working_panel()
-        if panel is None:
+        if not self._panels:
             return
+        if len(self._panels) == 1:
+            self._add_single_panel_toggle(menu, catalog, self._panels[0])
+        else:
+            self._add_multi_panel_toggle(menu, catalog)
+
+    def _add_single_panel_toggle(self, menu: QMenu, catalog: Catalog, panel) -> None:
         manager = panel.catalog_manager
         title = panel.windowTitle()
         if catalog.uuid in manager.catalog_uuids:
@@ -1129,6 +1134,19 @@ class CatalogBrowser(QWidget):
                 f"Add to panel '{title}'",
                 "Overlay this catalog's events on the panel."))
             action.triggered.connect(lambda: manager.add_catalog(catalog))
+
+    def _add_multi_panel_toggle(self, menu: QMenu, catalog: Catalog) -> None:
+        panel_menu = menu.addMenu("Add to panel")
+        panel_menu.setToolTip(rich_tooltip(
+            "Add to panel",
+            "Overlay this catalog's events on one or more panels."))
+        for panel in self._panels:
+            manager = panel.catalog_manager
+            action = panel_menu.addAction(panel.windowTitle())
+            action.setCheckable(True)
+            action.setChecked(catalog.uuid in manager.catalog_uuids)
+            action.triggered.connect(
+                lambda checked, m=manager: m.add_catalog(catalog) if checked else m.remove_catalog(catalog))
 
     def _add_catalog_color_actions(self, menu: QMenu, catalog: Catalog) -> None:
         from .color_menus import add_catalog_color_actions

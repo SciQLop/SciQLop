@@ -140,3 +140,50 @@ def test_tree_menu_has_no_panel_entry_without_a_panel(qtbot, qapp, provider):
     menu = browser._build_tree_context_menu(_catalog_proxy_index(browser, provider.catalogs()[0]))
     assert _action(menu, "Add to panel") is None
     assert _action(menu, "Remove from panel") is None
+
+
+@pytest.fixture
+def other_panel(qtbot, qapp):
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+    p = TimeSyncPanel("removal-panel-2")
+    qtbot.addWidget(p)
+    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    p.time_range = TimeRange(base.timestamp(), (base + timedelta(days=200)).timestamp())
+    return p
+
+
+def test_tree_menu_offers_every_panel_when_more_than_one_is_connected(
+        qtbot, panel, other_panel, provider):
+    """A right-click on the tree always focuses the browser's own dock, not a
+    plot panel, so the single-toggle 'working panel' heuristic could only
+    ever reach self._panels[0]. With several panels open it must offer all
+    of them instead of silently pinning to the first one."""
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from PySide6.QtWidgets import QMenu
+    cat = provider.catalogs()[0]
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    browser.connect_to_panel(panel)
+    browser.connect_to_panel(other_panel)
+    idx = _catalog_proxy_index(browser, cat)
+
+    menu = browser._build_tree_context_menu(idx)
+    assert _action(menu, "Add to panel '") is None
+    assert _action(menu, "Remove from panel") is None
+    panel_menu = menu.findChild(QMenu)
+    assert panel_menu is not None and panel_menu.title() == "Add to panel"
+    entries = {a.text(): a for a in panel_menu.actions()}
+    assert set(entries) == {panel.windowTitle(), other_panel.windowTitle()}
+    assert all(a.isCheckable() and not a.isChecked() for a in entries.values())
+
+    entries[other_panel.windowTitle()].trigger()
+
+    assert cat.uuid in other_panel.catalog_manager.catalog_uuids
+    assert cat.uuid not in panel.catalog_manager.catalog_uuids
+
+    menu = browser._build_tree_context_menu(idx)
+    panel_menu = menu.findChild(QMenu)
+    entries = {a.text(): a for a in panel_menu.actions()}
+    assert entries[other_panel.windowTitle()].isChecked()
+    assert not entries[panel.windowTitle()].isChecked()
