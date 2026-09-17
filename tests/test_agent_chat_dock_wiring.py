@@ -748,6 +748,34 @@ def test_replaying_an_old_session_drops_the_legacy_preamble(dock, qtbot, monkeyp
     assert first.blocks[0].text == "plot B"
 
 
+def test_session_panel_delete_capability_follows_backend(dock):
+    """Most ACP-based backends (opencode, kimi, albert, copilot) support
+    sessions but don't implement delete_session -- the panel's delete option
+    must track the *active* backend's actual capability, not just whether it
+    supports sessions at all, so the menu never offers an action the backend
+    will refuse."""
+    from SciQLop.components.agents.chat_dock import _AgentSession
+
+    class _SessionsNoDeleteBackend(_FakeBackend):
+        supports_sessions = True
+
+    session = _AgentSession(backend=_SessionsNoDeleteBackend())
+    dock._sessions[dock._current] = session
+    dock._populate_session_list(session.backend)
+    assert dock._session_panel._can_delete is False
+
+    class _SessionsWithDeleteBackend(_FakeBackend):
+        supports_sessions = True
+
+        def delete_session(self, session_id):
+            pass
+
+    session = _AgentSession(backend=_SessionsWithDeleteBackend())
+    dock._sessions[dock._current] = session
+    dock._populate_session_list(session.backend)
+    assert dock._session_panel._can_delete is True
+
+
 def test_version_reminder_is_prefixed_on_next_turn_after_resume(dock, qtbot):
     from SciQLop.components.agents.chat_dock import _AgentSession
     from SciQLop.components.agents.settings import AgentSessionMeta

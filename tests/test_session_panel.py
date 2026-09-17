@@ -105,6 +105,25 @@ def test_session_menu_offers_delete_and_emits_the_id(qtbot):
     assert deleted == ["b"]
 
 
+def test_session_menu_omits_delete_when_backend_cannot_delete(qtbot):
+    p = _panel(qtbot)
+    p.set_groups(_groups(), can_delete=False)
+    menu = p.session_menu(p._tree.topLevelItem(1).child(1))  # "Plain", id b
+    labels = [a.text() for a in menu.actions() if a.text()]
+    assert "Delete session…" not in labels
+
+
+def test_session_menu_restores_delete_when_can_delete_flips_back(qtbot):
+    """set_groups() is called on every refresh -- a stale _can_delete from a
+    previous backend must not leak into the next one."""
+    p = _panel(qtbot)
+    p.set_groups(_groups(), can_delete=False)
+    p.set_groups(_groups(), can_delete=True)
+    menu = p.session_menu(p._tree.topLevelItem(1).child(1))
+    labels = [a.text() for a in menu.actions() if a.text()]
+    assert "Delete session…" in labels
+
+
 def test_synthetic_group_collapse_preserved(qtbot):
     p = _panel(qtbot)
     p.set_groups(_groups())

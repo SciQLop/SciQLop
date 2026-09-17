@@ -58,6 +58,7 @@ class SessionListPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._collapsed: set[str] = set()
+        self._can_delete = True
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(QLabel("Sessions"))
@@ -80,7 +81,12 @@ class SessionListPanel(QWidget):
         self._tree.dropped.connect(self.session_moved)
         layout.addWidget(self._tree, 1)
 
-    def set_groups(self, groups, current_id=None) -> None:
+    def set_groups(self, groups, current_id=None, can_delete: bool = True) -> None:
+        # The active backend may not implement delete_session (e.g. the ACP
+        # backends share a base that only supports usage reporting, not
+        # session archiving) -- offering an action the backend will refuse
+        # is worse than not offering it, so the menu is built per-backend.
+        self._can_delete = can_delete
         self._tree.blockSignals(True)
         self._tree.clear()
         for g in groups:
@@ -137,8 +143,9 @@ class SessionListPanel(QWidget):
                        lambda: self.pin_toggle_requested.emit(sid))
         menu.addAction("Move to group…", lambda: self.move_requested.emit(sid))
         menu.addAction("Edit tags…", lambda: self.tags_edit_requested.emit(sid))
-        menu.addSeparator()
-        menu.addAction("Delete session…", lambda: self.session_delete_requested.emit(sid))
+        if self._can_delete:
+            menu.addSeparator()
+            menu.addAction("Delete session…", lambda: self.session_delete_requested.emit(sid))
         return menu
 
     def _on_menu(self, pos) -> None:

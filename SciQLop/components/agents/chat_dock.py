@@ -426,7 +426,8 @@ class AgentChatDock(QWidget):
         groups = grouped_sessions(entries, AgentSessionMeta(),
                                   backend.display_name, self._session_filter,
                                   recent_limit=AgentChatSettings().recent_sessions)
-        self._session_panel.set_groups(groups, current_id)
+        can_delete = getattr(backend, "delete_session", None) is not None
+        self._session_panel.set_groups(groups, current_id, can_delete=can_delete)
 
     def _on_model_changed(self, index: int) -> None:
         if self._current is None:
