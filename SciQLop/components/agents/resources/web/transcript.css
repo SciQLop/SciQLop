@@ -12,6 +12,14 @@ body {
     overflow-wrap: break-word;
 }
 
+/* The browser's default selection color (e.g. macOS's system Highlight, a
+   light blue with black text) ignores the page's dark background and can
+   render illegible; match the rest of the app's own selection color instead. */
+::selection {
+    background-color: var(--Highlight);
+    color: var(--HighlightedText);
+}
+
 h4.role {
     margin: 14px 0 4px;
     font-size: 1em;

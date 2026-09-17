@@ -213,10 +213,37 @@
 
     let backend = null;
 
+    // Replacing the whole container on every tick destroys and recreates
+    // every message's DOM, including whatever the reader's mouse is
+    // currently pressed on — a <details> the reader is mid-click on loses
+    // its native open/close activation because the element it was pressed
+    // on no longer exists at mouseup, even though an identical-looking one
+    // replaces it. Diffing per message means only the message that actually
+    // changed (normally just the one still streaming in) gets rebuilt, so
+    // clicks and text selection on every other message stay intact.
+    let renderedMessageHtml = [];
+
     function render(json) {
         const model = JSON.parse(json);
         if (!followBottom) restoreScrollY = window.scrollY;
-        container.innerHTML = model.map(messageHtml).join("");
+
+        while (renderedMessageHtml.length > model.length) {
+            container.lastElementChild.remove();
+            renderedMessageHtml.pop();
+        }
+        model.forEach(function (message, i) {
+            const html = messageHtml(message);
+            if (renderedMessageHtml[i] === html) return;
+            renderedMessageHtml[i] = html;
+            let section = container.children[i];
+            if (!section) {
+                section = document.createElement("div");
+                section.className = "message";
+                container.appendChild(section);
+            }
+            section.innerHTML = html;
+        });
+
         settleScroll();
         setTimeout(settleScroll, 0);
     }
