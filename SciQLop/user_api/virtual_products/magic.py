@@ -273,10 +273,13 @@ def vp_magic(line: str, cell: str, local_ns=None):
                                   cachable=args.cachable)
     else:
         from SciQLop.components.plotting.backend.data_provider import providers
-        for p in providers.values():
-            if getattr(p, "_callback", None) is entry.wrapper:
-                if hasattr(p, "_refresh_knob_specs"):
-                    p._refresh_knob_specs()
+        provider = next((p for p in providers.values()
+                         if getattr(p, "_callback", None) is entry.wrapper), None)
+        if provider is not None:
+            if hasattr(provider, "_refresh_knob_specs"):
+                provider._refresh_knob_specs()
+            from SciQLop.components.plotting.ui.time_sync_panel import refetch_graphs_for_vp
+            refetch_graphs_for_vp("/".join(provider.path))
 
     if args.debug:
         from SciQLop.user_api.virtual_products.debug import handle_debug

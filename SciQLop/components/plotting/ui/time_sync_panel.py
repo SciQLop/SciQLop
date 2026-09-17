@@ -425,6 +425,30 @@ def _trigger_refetch(graph):
     on_main_thread(_trigger_refetch_impl)(graph)
 
 
+def refetch_graphs_for_vp(vp_path: str) -> None:
+    """Force every currently-plotted graph for *vp_path* to refetch its data.
+
+    Called after a %%vp hot reload (same signature, only the callback body
+    changed): the registry swaps the callback in place so future fetches see
+    the new body, but a graph plotted before the swap keeps showing data
+    fetched under the old body until something else triggers a new fetch
+    (pan, zoom, knob change). Mirrors _trigger_refetch, applied to every
+    graph already plotting this product instead of just one.
+    """
+    from SciQLop.user_api.gui import get_main_window
+    from SciQLop.core.graph_context import context_of
+    mw = get_main_window()
+    for panel_name in mw.plot_panels():
+        panel = mw.plot_panel(panel_name)
+        if panel is None:
+            continue
+        for plot in panel.plots():
+            for graph in plot.plottables():
+                ctx = context_of(graph)
+                if ctx is not None and ctx.kind == "vp" and ctx.vp_path == vp_path:
+                    _trigger_refetch(graph)
+
+
 def _trigger_remote_refetch_impl(graph):
     channel = getattr(graph, "_remote_channel", None)
     if channel is None:
