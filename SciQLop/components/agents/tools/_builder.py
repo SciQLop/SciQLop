@@ -70,6 +70,18 @@ def build_sciqlop_tools(main_window) -> List[Dict[str, Any]]:
         _orbit_bodies_frames_tool(),
     ]
     tools.extend(_write_tools(main_window))
+    return _journal_all_tool_calls(tools)
+
+
+def _journal_all_tool_calls(tools: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Record every tool call to the on-disk journal before/after it runs, so
+    a native crash (uncatchable in Python) still leaves behind which call was
+    in flight. One choke point here rather than inside `_text_tool` because
+    `sciqlop_exec_python` doesn't go through `_text_tool`'s `_run`."""
+    from . import _journal
+    journal = _journal.default_journal()
+    for tool in tools:
+        tool["handler"] = journal.wrap(tool["handler"], tool["name"])
     return tools
 
 
