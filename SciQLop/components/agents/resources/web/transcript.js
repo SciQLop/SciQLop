@@ -157,6 +157,88 @@
         );
     }
 
+    // Updates an existing <details class="tools"> element's summary/body in
+    // place instead of replacing it — a tool group keeps gaining steps while
+    // it runs, so recreating the element on every step would still drop a
+    // click landing on it mid-run, the same race fixed at the message level
+    // below but for the one part that keeps changing under the reader's cursor.
+    function updateToolsElement(el, part) {
+        const arrow = part.expanded ? "▾" : "▸";
+        let head;
+        if (part.running && part.steps.length) {
+            const last = part.steps[part.steps.length - 1];
+            head = "● " + escapeHtml(last.name) + "… (" + part.steps.length + ")";
+        } else {
+            const n = part.steps.length;
+            head = "🔧 " + n + " step" + (n !== 1 ? "s" : "");
+        }
+        const summaryHtml = head + " " + arrow;
+        const summary = el.querySelector(":scope > summary");
+        if (summary.innerHTML !== summaryHtml) summary.innerHTML = summaryHtml;
+        if (el.open !== part.expanded) el.open = part.expanded;
+        let body = el.querySelector(":scope > .tools-body");
+        if (part.expanded) {
+            const bodyHtml = part.steps.map(toolStepHtml).join("");
+            if (!body) {
+                body = document.createElement("div");
+                body.className = "tools-body";
+                el.appendChild(body);
+            }
+            if (body.innerHTML !== bodyHtml) body.innerHTML = bodyHtml;
+        } else if (body) {
+            body.remove();
+        }
+    }
+
+    function createElementFromHtml(html) {
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = html;
+        return wrapper.firstElementChild;
+    }
+
+    // Updates one message's <div class="message"> in place, part by part —
+    // a tools part is patched via updateToolsElement (never recreated, so a
+    // click mid-run survives); any other part is only replaced if its own
+    // html actually changed, which drops and rebuilds far less than
+    // rebuilding the whole message on every unrelated part's update.
+    function updateMessageSection(section, message) {
+        const headHtml =
+            '<h4 class="role role-' + message.role + '">' + escapeHtml(message.label) + "</h4>";
+        const head = section.querySelector(":scope > h4.role");
+        if (!head) {
+            section.insertAdjacentHTML("afterbegin", headHtml);
+        } else if (head.outerHTML !== headHtml) {
+            head.outerHTML = headHtml;
+        }
+
+        while (section.children.length - 1 > message.parts.length) {
+            section.lastElementChild.remove();
+        }
+        message.parts.forEach(function (part, j) {
+            const slot = j + 1; // +1 for the role <h4>
+            const existing = section.children[slot];
+            if (part.type === "tools") {
+                if (existing && existing.tagName === "DETAILS" && existing.dataset.id === part.id) {
+                    updateToolsElement(existing, part);
+                    return;
+                }
+                const el = document.createElement("details");
+                el.className = "tools";
+                el.dataset.id = part.id;
+                el.innerHTML = "<summary></summary>";
+                updateToolsElement(el, part);
+                if (existing) section.replaceChild(el, existing);
+                else section.appendChild(el);
+                return;
+            }
+            const html = partHtml(part);
+            if (existing && existing.outerHTML === html) return;
+            const fresh = createElementFromHtml(html);
+            if (existing) section.replaceChild(fresh, existing);
+            else section.appendChild(fresh);
+        });
+    }
+
     // --- Scroll policy: identical intent to TranscriptView (view.py) --
     // follow the bottom only while the reader is within BOTTOM_SLACK_PX of
     // it, otherwise keep their place across re-renders, and re-apply after
@@ -241,7 +323,7 @@
                 section.className = "message";
                 container.appendChild(section);
             }
-            section.innerHTML = html;
+            updateMessageSection(section, message);
         });
 
         settleScroll();
