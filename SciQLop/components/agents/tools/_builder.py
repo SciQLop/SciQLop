@@ -889,7 +889,8 @@ def _write_tools(main_window) -> List[Dict[str, Any]]:
         gated=True,
     )
 
-    return [set_time_range, _create_panel_tool(main_window), _plot_product_tool(main_window),
+    return [set_time_range, _create_panel_tool(main_window), _build_panel_tool(main_window),
+            _plot_product_tool(main_window),
             _remove_plot_tool(main_window), _remove_graph_tool(main_window), _move_plot_tool(main_window),
             _exec_python_tool(),
             _fetch_tool(), _ephemeris_tool(), _transform_tool(), _submit_job_tool(),
@@ -1073,6 +1074,74 @@ def _create_panel_tool(main_window) -> Dict[str, Any]:
         ),
         {"type": "object", "properties": {}, "required": []},
         lambda _: _create(),
+        gated=True,
+    )
+
+
+def _build_panel_tool(main_window) -> Dict[str, Any]:
+    from . import build_panel
+    from pydantic import ValidationError
+
+    @on_main_thread
+    def _build(p: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            spec = build_panel.parse_spec(p)
+        except ValidationError as e:
+            return _error_content(f"invalid panel spec: {e}")
+        unknown = build_panel.unknown_product_paths(spec)
+        if unknown:
+            return _error_content(
+                "unknown product path(s), nothing was created: " + ", ".join(unknown))
+        template = build_panel.template_from_spec(spec)
+        panel_impl = main_window.new_plot_panel()
+        try:
+            template.apply(panel_impl)
+        except Exception as e:
+            main_window.remove_panel(panel_impl)
+            return _error_content(f"failed to build panel, removed it: {type(e).__name__}: {e}")
+        from SciQLop.user_api.plot import PlotPanel
+        return _layout_content(PlotPanel(panel_impl))
+
+    return _text_tool(
+        "sciqlop_build_panel",
+        (
+            "Build a whole new plot panel from a declarative spec in one call: "
+            "{time_range: {start, stop} (optional, ISO 8601), plots: "
+            "[{products: ['a//b//c', ...], y_log: bool (optional)}, ...]} — one "
+            "entry per subplot top to bottom; several products in one entry "
+            "overlay on that subplot. Validates every product path against the "
+            "products tree before creating anything: an unknown path aborts "
+            "with no panel created. Always creates a NEW panel and only makes "
+            "TimeSeries subplots; use the incremental tools (sciqlop_plot_product, "
+            "sciqlop_move_plot, ...) to edit an existing panel instead. Returns "
+            "the same layout as sciqlop_describe_panel."
+        ),
+        {
+            "type": "object",
+            "properties": {
+                "time_range": {
+                    "type": "object",
+                    "properties": {
+                        "start": {"type": "string"},
+                        "stop": {"type": "string"},
+                    },
+                    "required": ["start", "stop"],
+                },
+                "plots": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "products": {"type": "array", "items": {"type": "string"}},
+                            "y_log": {"type": "boolean"},
+                        },
+                        "required": ["products"],
+                    },
+                },
+            },
+            "required": ["plots"],
+        },
+        _build,
         gated=True,
     )
 

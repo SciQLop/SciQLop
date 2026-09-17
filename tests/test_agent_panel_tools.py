@@ -234,6 +234,76 @@ def test_describe_panel_reports_axis_state(main_window, qtbot):
         panel.close()
 
 
+def _vp_path_for_build_panel_test(suffix):
+    from SciQLop.user_api.virtual_products import create_virtual_product, VirtualProductType
+
+    def f(start: float, stop: float):
+        return None
+
+    path = f"test_build_panel_agent//{suffix}"
+    create_virtual_product(path, f, VirtualProductType.Scalar, labels=["y"])
+    return path
+
+
+def test_build_panel_creates_a_multi_subplot_panel(main_window, qtbot):
+    p1 = _vp_path_for_build_panel_test("p1")
+    p2 = _vp_path_for_build_panel_test("p2")
+
+    before = len(json.loads(_call(main_window, "sciqlop_list_panels")))
+    out = json.loads(_call(main_window, "sciqlop_build_panel", plots=[
+        {"products": [p1]},
+        {"products": [p2], "y_log": True},
+    ]))
+    try:
+        after = len(json.loads(_call(main_window, "sciqlop_list_panels")))
+        assert after == before + 1
+        assert [p["index"] for p in out["plots"]] == [0, 1]
+        assert out["plots"][0]["graphs"][0]["product"] == p1
+        assert out["plots"][1]["graphs"][0]["product"] == p2
+        assert out["plots"][1]["y_axis"]["log"] is True
+        assert out["plots"][0]["y_axis"]["log"] is False
+    finally:
+        from SciQLop.user_api.plot import plot_panel
+        panel = plot_panel(out["name"])
+        if panel is not None:
+            panel.close()
+
+
+def test_build_panel_unknown_product_creates_nothing(main_window):
+    before = len(json.loads(_call(main_window, "sciqlop_list_panels")))
+    out = _call(main_window, "sciqlop_build_panel", plots=[{"products": ["no//such//product"]}])
+    assert "no//such//product" in out
+    after = len(json.loads(_call(main_window, "sciqlop_list_panels")))
+    assert after == before
+
+
+def test_build_panel_tool_is_gated(main_window):
+    assert _tool(main_window, "sciqlop_build_panel")["gated"] is True
+
+
+def test_build_panel_applies_the_requested_time_range(main_window):
+    p1 = _vp_path_for_build_panel_test("time_range")
+    out = json.loads(_call(main_window, "sciqlop_build_panel",
+                           time_range={"start": "2020-01-01T00:00:00Z", "stop": "2020-01-02T00:00:00Z"},
+                           plots=[{"products": [p1]}]))
+    try:
+        import datetime
+        expected_start = datetime.datetime(2020, 1, 1, tzinfo=datetime.timezone.utc).timestamp()
+        expected_stop = datetime.datetime(2020, 1, 2, tzinfo=datetime.timezone.utc).timestamp()
+        assert out["time_range"]["start"] == expected_start
+        assert out["time_range"]["stop"] == expected_stop
+    finally:
+        from SciQLop.user_api.plot import plot_panel
+        panel = plot_panel(out["name"])
+        if panel is not None:
+            panel.close()
+
+
+def test_build_panel_rejects_an_empty_plots_list(main_window):
+    out = _call(main_window, "sciqlop_build_panel", plots=[])
+    assert "invalid panel spec" in out
+
+
 def test_snapshot_tools_return_json(main_window, qtbot):
     from SciQLop.user_api.plot import create_plot_panel
     panel = create_plot_panel()

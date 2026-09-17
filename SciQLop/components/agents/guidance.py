@@ -41,6 +41,13 @@ section does not apply to you.
 
 ### Plotting workflow
 
+Building a new multi-plot panel: prefer `sciqlop_build_panel` — one call with
+the full `{time_range, plots: [{products, y_log}, ...]}` spec, validated
+against the products tree before anything is created, so a bad path never
+leaves a half-built panel behind. It always creates a new panel and only
+makes TimeSeries subplots. Use the step-by-step flow below only to edit an
+existing panel, or when you need a non-TimeSeries plot type.
+
 Follow this order every time; skipping a step produces empty plots or targets
 the wrong panel.
 
