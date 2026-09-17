@@ -55,6 +55,7 @@ def build_sciqlop_tools(main_window) -> List[Dict[str, Any]]:
         _api_reference_tool(),
         _speasy_inventory_tool(),
         _products_tree_tool(),
+        _list_virtual_products_tool(),
         _search_literature_tool(),
         _fetch_paper_tool(),
         _wait_for_plot_data_tool(main_window),
@@ -261,6 +262,20 @@ def _products_tree_tool() -> Dict[str, Any]:
             "required": [],
         },
         lambda p: products_tree.render(str(p.get("path", ""))),
+    )
+
+
+def _list_virtual_products_tool() -> Dict[str, Any]:
+    from SciQLop.user_api.virtual_products import list_virtual_products
+    return _text_tool(
+        "sciqlop_list_virtual_products",
+        (
+            "List every virtual product currently registered (via "
+            "create_virtual_product or the %%vp cell magic), as full "
+            "`//`-joined product-tree paths."
+        ),
+        _NO_ARGS,
+        lambda _: _json_content(list_virtual_products()),
     )
 
 

@@ -195,4 +195,22 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
                               display_name=display_name)
 
 
+def list_virtual_products() -> List[str]:
+    """Full `//`-joined product-tree paths of every virtual product currently
+    registered, whether created via ``create_virtual_product`` or the ``%%vp``
+    cell magic (the magic calls ``create_virtual_product`` too, so both go
+    through the same ``EasyProvider`` registration and there is one list to
+    read here).
+
+    Deduplicated by path: redeclaring the same path leaves the stale
+    ``EasyProvider`` python object registered too (nothing currently prunes
+    it), but the product tree itself only ever has one node per path.
+    """
+    from SciQLop.components.plotting.backend.data_provider import providers
+    from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+    seen = dict.fromkeys(
+        "//".join(p.path) for p in providers.values() if isinstance(p, EasyProvider))
+    return list(seen)
+
+
 from SciQLop.user_api.virtual_products.types import Scalar, Vector, MultiComponent, Spectrogram

@@ -133,6 +133,10 @@ it recomputes when the time range changes. Add `--start ... --stop ...` to
 `%%vp` for a one-off debug plot of the result. From plain Python (plugins,
 no IPython), `create_virtual_product(path, callback, VirtualProductType.X)`
 is the equivalent and accepts the same annotated callback.
+`sciqlop_list_virtual_products` lists every registered path — check it before
+reusing a scratch path so you don't collide with one from earlier in the
+session (there is no removal tool yet, so unused scratch products persist for
+the rest of the session).
 
 ### Voice and conduct
 
