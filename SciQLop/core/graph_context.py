@@ -52,6 +52,11 @@ class GraphRichRefs:
     """Python-only references that can't go in the C++ meta_data slot."""
     callback: Optional[Callable] = None
     knobs_model: Optional[type] = None
+    # The per-graph fetch callback (_plot_product_callback / _specgram_callback
+    # in time_sync_panel.py), whose .last_error survives here even after the
+    # Shiboken wrapper for the graph itself has been garbage collected and
+    # recreated (a plain attribute on the graph wrapper would not).
+    fetch_callback: Optional[Any] = None
 
 
 def _is_importable(module_name: str, qualname: str, obj: object) -> bool:
@@ -116,6 +121,19 @@ def context_of(graph) -> Optional[GraphContext]:
 
 def rich_of(graph_id: str) -> Optional[GraphRichRefs]:
     return _RICH.get(graph_id)
+
+
+def last_error_of(graph) -> Optional[str]:
+    """The most recent fetch-error message for *graph*, or None if its last
+    fetch succeeded, is still pending, or it has no attached fetch callback
+    (static/function graphs)."""
+    ctx = context_of(graph)
+    if ctx is None:
+        return None
+    rich = rich_of(ctx.graph_id)
+    if rich is None:
+        return None
+    return getattr(rich.fetch_callback, "last_error", None)
 
 
 def provider_for(ctx: GraphContext) -> Optional[DataProvider]:

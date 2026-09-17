@@ -181,6 +181,59 @@ def test_no_name_and_no_focused_panel_with_a_single_panel_still_resolves(main_wi
         p.close()
 
 
+def test_describe_panel_reports_last_error_for_a_failing_vp(main_window, qtbot):
+    from SciQLop.user_api.virtual_products import create_virtual_product, VirtualProductType
+    from SciQLop.user_api.plot import create_plot_panel
+
+    def bad_vp(start: float, stop: float):
+        raise RuntimeError("boom")
+
+    vp = create_virtual_product("test_describe_panel_agent/bad", bad_vp,
+                                VirtualProductType.Scalar, labels=["y"])
+    panel = create_plot_panel()
+    try:
+        panel.plot_product(vp)
+        qtbot.waitUntil(lambda: not panel.is_busy(), timeout=5000)
+        graph = _layout(main_window, panel.name)["plots"][0]["graphs"][0]
+        assert graph["last_error"] is not None
+        assert "boom" in graph["last_error"]
+    finally:
+        panel.close()
+
+
+def test_describe_panel_reports_no_error_and_point_count_for_a_working_vp(main_window, qtbot):
+    from SciQLop.user_api.virtual_products import create_virtual_product, VirtualProductType
+    from SciQLop.user_api.plot import create_plot_panel
+
+    def good_vp(start: float, stop: float):
+        import numpy as np
+        n = 5
+        return np.linspace(start, stop, n), np.arange(n, dtype=float)
+
+    vp = create_virtual_product("test_describe_panel_agent/good", good_vp,
+                                VirtualProductType.Scalar, labels=["y"])
+    panel = create_plot_panel()
+    try:
+        panel.plot_product(vp)
+        qtbot.waitUntil(lambda: not panel.is_busy(), timeout=5000)
+        graph = _layout(main_window, panel.name)["plots"][0]["graphs"][0]
+        assert graph["last_error"] is None
+        assert graph["busy"] is False
+        assert graph["n_points"] > 0
+    finally:
+        panel.close()
+
+
+def test_describe_panel_reports_axis_state(main_window, qtbot):
+    panel = _panel_with_two_plots(qtbot)
+    try:
+        layout = _layout(main_window, panel.name)
+        y_axis = layout["plots"][0]["y_axis"]
+        assert "log" in y_axis and "range" in y_axis
+    finally:
+        panel.close()
+
+
 def test_snapshot_tools_return_json(main_window, qtbot):
     from SciQLop.user_api.plot import create_plot_panel
     panel = create_plot_panel()

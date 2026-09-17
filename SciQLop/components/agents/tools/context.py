@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from SciQLop.components.plotting.panel_template import PanelTemplate
+from SciQLop.core.graph_context import last_error_of as _last_error_of
 from SciQLop.user_api.gui import get_main_window
 from SciQLop.user_api.plot import plot_panel as _plot_panel_by_name, PlotPanel
 
@@ -63,23 +65,48 @@ def _panel_snapshot(panel: PlotPanel, name: str) -> Dict[str, Any]:
     }
 
 
+def _graph_n_points(graph) -> Optional[int]:
+    data = _safe(lambda: graph.data())
+    if not data or not hasattr(data[0], "__len__"):
+        return None
+    return len(data[0])
+
+
 def _graph_entry(index: int, graph) -> Dict[str, Any]:
     return {
         "index": index,
         "name": _safe(graph.objectName, ""),
         "product": _safe(lambda: graph.property("sqp_product_path")) or None,
         "kind": type(graph).__name__.removeprefix("SciQLop"),
+        "busy": bool(_safe(lambda: graph.property("busy"), False)),
+        "n_points": _graph_n_points(graph),
+        "last_error": _safe(lambda: _last_error_of(graph)),
     }
+
+
+def _axis_dict(axis) -> Optional[Dict[str, Any]]:
+    if axis is None:
+        return None
+    return _safe(lambda: PanelTemplate._capture_axis(axis).model_dump())
+
+
+def _is_colormap(graph) -> bool:
+    return "ColorMap" in type(graph).__name__
 
 
 def _plot_entry(index: int, plot) -> Dict[str, Any]:
     impl = getattr(plot, "_impl", None)
     plottables = _safe(lambda: impl.plottables(), []) if impl is not None else []
-    return {
+    entry = {
         "index": index,
         "type": _safe(lambda: plot.plot_type.name, "unknown"),
         "graphs": [_graph_entry(i, g) for i, g in enumerate(plottables or [])],
     }
+    if impl is not None:
+        entry["y_axis"] = _axis_dict(_safe(impl.y_axis))
+        if any(_is_colormap(g) for g in plottables or []):
+            entry["z_axis"] = _axis_dict(_safe(impl.z_axis))
+    return entry
 
 
 def panel_layout(panel: PlotPanel, name: str) -> Dict[str, Any]:

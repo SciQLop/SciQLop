@@ -342,7 +342,9 @@ def _wait_for_plot_data_tool(main_window) -> Dict[str, Any]:
             "Polls the `busy` flag of every graph and reports when the panel has "
             "no plottables. Call this right after `plot_product` and before "
             "`sciqlop_screenshot_panel`, otherwise the screenshot captures an "
-            "empty plot. Default timeout 10 seconds."
+            "empty plot. Default timeout 10 seconds. Settling is not success — "
+            "check `sciqlop_describe_panel`'s last_error/n_points for each graph "
+            "afterward to confirm the fetch actually produced data."
         ),
         {
             "type": "object",
@@ -914,9 +916,11 @@ def _describe_panel_tool(main_window) -> Dict[str, Any]:
         "sciqlop_describe_panel",
         (
             "Structured layout of a plot panel: every subplot with its 0-based "
-            "index and type, and every graph inside it with its index, legend "
-            "name and product path. Call it after each change to a panel to "
-            "confirm the result instead of guessing indices."
+            "index, type and axis state, and every graph inside it with its "
+            "index, legend name, product path, busy/n_points/last_error data "
+            "status. Call it after each change to a panel to confirm the "
+            "result instead of guessing indices, and after waiting for data "
+            "to check last_error/n_points before assuming a plot has data."
         ),
         {"type": "object", "properties": dict(_PANEL_NAME_PROP), "required": []},
         _describe,

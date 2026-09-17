@@ -235,6 +235,16 @@ class _ProductCallbackBase:
         self.node = node
         self._post_fetch = post_fetch
         self.knob_state = knob_state
+        self.last_error: Optional[str] = None
+
+    def _record_error(self, exc: Exception) -> None:
+        # Runs on the fetch worker thread: a plain attribute, never a Qt call
+        # (e.g. setProperty) on the graph.
+        self.last_error = str(exc)
+        log.error(f"Error getting data for {self.node}: {exc}")
+
+    def _record_success(self) -> None:
+        self.last_error = None
 
     def _knob_values(self):
         return self.knob_state.values if self.knob_state is not None else None
@@ -256,8 +266,9 @@ class _plot_product_callback(_ProductCallbackBase):
         try:
             result = self._fetch(start, stop)
         except Exception as e:
-            log.error(f"Error getting data for {self.node}: {e}")
+            self._record_error(e)
             return []
+        self._record_success()
         if self.on_data_fetched is not None:
             try:
                 self.on_data_fetched(result, _time.monotonic() - t0, start, stop)
@@ -324,10 +335,11 @@ class _specgram_callback(_ProductCallbackBase):
         try:
             result = self._fetch(start, stop)
         except Exception as e:
-            log.error(f"Error getting data for {self.node}: {e}")
+            self._record_error(e)
             return empty, empty, empty
         if not result:
             # No data in the requested range — a routine outcome, not an error.
+            self._record_success()
             return empty, empty, empty
         try:
             x, y, z = result
@@ -337,9 +349,10 @@ class _specgram_callback(_ProductCallbackBase):
                 else:
                     y = y[:, ::-1].copy()
                 z = z[:, ::-1].copy()
+            self._record_success()
             return x, y, z
         except Exception as e:
-            log.error(f"Error getting data for {self.node}: {e}")
+            self._record_error(e)
             return empty, empty, empty
 
 
@@ -640,7 +653,7 @@ def _post_plot(r, provider, node, callback, target, product_path_str, existing_p
     _set_product_path(r, product_path_str)
     callback._post_fetch = _register_graph_hints(provider, node, r, target)
     _attach_knob_state(provider, node, callback, r, target)
-    _attach_graph_context(r, provider, node, target)
+    _attach_graph_context(r, provider, node, target, fetch_callback=callback)
     _seed_product_inputs(_graph_from_result(r), node, product_inputs)
     # Pin the ProductsModelNode's Python wrapper to the graph's lifetime.
     # Shiboken can otherwise GC the wrapper between plot setup and the
@@ -674,7 +687,7 @@ def _install_graph_context_ui(plot, graph) -> None:
         log.warning("graph_context inspector install failed", exc_info=True)
 
 
-def _attach_graph_context(r, provider, node, target):
+def _attach_graph_context(r, provider, node, target, fetch_callback=None):
     """Attach a GraphContext + rich refs to the graph just produced.
 
     Only acts on recognized provider types (EasyProvider, Speasy).
@@ -721,7 +734,8 @@ def _attach_graph_context(r, provider, node, target):
                 knobs=knobs,
             )
             rich = GraphRichRefs(callback=provider._callback,
-                                 knobs_model=provider._knobs_model)
+                                 knobs_model=provider._knobs_model,
+                                 fetch_callback=fetch_callback)
             attach_context(graph, ctx, rich)
             _install_graph_context_ui(plot, graph)
             return
@@ -735,7 +749,7 @@ def _attach_graph_context(r, provider, node, target):
                 product_path=product_path,
                 knobs=knobs,
             )
-            attach_context(graph, ctx)
+            attach_context(graph, ctx, GraphRichRefs(fetch_callback=fetch_callback))
             _install_graph_context_ui(plot, graph)
             return
         log.debug("graph_context: unknown provider %r — skipping attach",

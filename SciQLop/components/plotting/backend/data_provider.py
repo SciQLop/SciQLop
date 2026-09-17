@@ -178,7 +178,10 @@ class DataProvider:
         except Exception:
             log.error(
                 f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")
-            return []
+            # Re-raise instead of swallowing to []: _get_data's only caller
+            # (_ProductCallbackBase._fetch, in time_sync_panel.py) needs the
+            # exception to record it as the graph's last_error.
+            raise
 
     def get_data(self, node, start: float, stop: float, knobs=None) -> DataProviderReturnType:
         pass
