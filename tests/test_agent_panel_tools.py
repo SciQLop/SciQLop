@@ -149,6 +149,38 @@ def test_create_panel_uses_the_panels_own_name_not_a_list_diff(main_window, monk
         panel.close()
 
 
+def _unfocus_dock_manager(main_window, monkeypatch):
+    # Headless tests never click a dock (the chat dock is usually what's
+    # actually focused in a live session anyway); force the no-focus case.
+    monkeypatch.setattr(main_window.dock_manager, "focusedDockWidget", lambda: None)
+
+
+def test_no_name_and_no_focused_panel_with_several_panels_is_an_ambiguous_error(main_window, qtbot, monkeypatch):
+    from SciQLop.user_api.plot import create_plot_panel
+    p1 = create_plot_panel()
+    p2 = create_plot_panel()
+    try:
+        _unfocus_dock_manager(main_window, monkeypatch)
+        for tool_name, extra in (("sciqlop_describe_panel", {}), ("sciqlop_wait_for_plot_data", {})):
+            out = _call(main_window, tool_name, **extra)
+            assert "no unambiguous active panel" in out, tool_name
+            assert p1.name in out and p2.name in out, tool_name
+    finally:
+        p1.close()
+        p2.close()
+
+
+def test_no_name_and_no_focused_panel_with_a_single_panel_still_resolves(main_window, qtbot, monkeypatch):
+    from SciQLop.user_api.plot import create_plot_panel
+    p = create_plot_panel()
+    try:
+        _unfocus_dock_manager(main_window, monkeypatch)
+        layout = json.loads(_call(main_window, "sciqlop_describe_panel"))
+        assert layout["name"] == p.name
+    finally:
+        p.close()
+
+
 def test_snapshot_tools_return_json(main_window, qtbot):
     from SciQLop.user_api.plot import create_plot_panel
     panel = create_plot_panel()

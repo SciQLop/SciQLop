@@ -881,9 +881,19 @@ def _write_tools(main_window) -> List[Dict[str, Any]]:
 
 def _resolve_panel(main_window, name: Optional[str]) -> Tuple[Any, Optional[Dict[str, Any]]]:
     """(panel, None) for `name` or the active panel, else (None, error content)."""
-    panel = context._panel(name) if name else context._active_panel(main_window)
+    if name:
+        panel = context._panel(name)
+        if panel is None:
+            return None, _error_content(f"panel not found: {name!r}")
+        return panel, None
+    panel = context._active_panel(main_window)
     if panel is None:
-        return None, _error_content(f"panel not found: {name!r}" if name else "no active panel")
+        names = context._panel_names()
+        if not names:
+            return None, _error_content("no active panel: no panels are open")
+        return None, _error_content(
+            "no unambiguous active panel — pass name explicitly, one of: "
+            + ", ".join(names))
     return panel, None
 
 

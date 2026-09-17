@@ -94,16 +94,19 @@ def panel_layout(panel: PlotPanel, name: str) -> Dict[str, Any]:
 
 
 def _active_panel_name(main_window) -> Optional[str]:
-    dock_manager = getattr(main_window, "dock_manager", None)
-    if dock_manager is None:
-        return None
-    focused = _safe(dock_manager.focusedDockWidget)
-    if focused is not None:
-        name = _safe(focused.windowTitle, "") or ""
-        if name in _panel_names():
-            return name
+    """The panel a name-less tool call should target: the focused dock when
+    it is a panel, the only open panel when there is exactly one, else None
+    (ambiguous — the focused dock is usually the agent chat dock itself, so
+    guessing `names[0]` would silently target the wrong panel)."""
     names = _panel_names()
-    return names[0] if names else None
+    dock_manager = getattr(main_window, "dock_manager", None)
+    if dock_manager is not None:
+        focused = _safe(dock_manager.focusedDockWidget)
+        if focused is not None:
+            name = _safe(focused.windowTitle, "") or ""
+            if name in names:
+                return name
+    return names[0] if len(names) == 1 else None
 
 
 def main_window_snapshot(_main_window) -> Dict[str, Any]:
