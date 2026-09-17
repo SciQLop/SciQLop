@@ -149,6 +149,13 @@ def test_guidance_explains_speasy_numpy_layer():
     assert "v.values" in SCIQLOP_GUIDANCE
 
 
+def test_guidance_column_selection_example_is_not_a_hallucinated_label():
+    # `b["Bx"]` raises on real products (e.g. MMS FGM labels are 'Bx GSE', ...);
+    # guidance must tell agents to check v.columns instead of assuming a label.
+    assert 'b["Bx"]' not in SCIQLOP_GUIDANCE
+    assert ".columns" in SCIQLOP_GUIDANCE
+
+
 def test_strip_legacy_alignment_removes_only_the_old_preamble():
     from SciQLop.components.agents.guidance import LEGACY_ALIGNMENT, strip_legacy_alignment
     assert strip_legacy_alignment(f"{LEGACY_ALIGNMENT}\nplot B") == "plot B"

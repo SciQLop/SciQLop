@@ -81,7 +81,9 @@ survives a venv rebuild.
 when nothing covers the range — always check for `None`. A `SpeasyVariable`
 is NumPy-compatible: arithmetic (`b * 1e-9`, `tperp / tpara - 1`), ufuncs
 (`np.sqrt(v)`, `np.abs(v)`), `np.linalg.norm(v, axis=1)`, column selection
-(`b["Bx"]`, `v.filter_columns([...])`) and time slicing (`v[a:b]`) all return
+(labels are product-specific — check `v.columns` first, then select by exact
+label like `b["Bt"]`, or `v.filter_columns([...])`) and time slicing
+(`v[a:b]`) all return
 a `SpeasyVariable` that keeps the time axis, units and labels. Do the maths
 on the variable itself, never on `v.values` — a bare array has no time axis
 and cannot be plotted as a time series. Reductions along time
