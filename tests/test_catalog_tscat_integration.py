@@ -221,6 +221,47 @@ def test_add_event_persists_meta_to_tscat_backend(qapp, tscat_provider):
     assert "imported" in persisted.get("tags", [])
 
 
+def test_add_event_drops_invalid_meta_keys_instead_of_hanging(qapp, tscat_provider):
+    """Regression: tscat._Event(**kwargs) raises ValueError for a meta key
+    that isn't a valid Python-identifier-shaped attribute name (e.g. one
+    with a space). Since CreateEntityAction runs on tscat_gui's worker
+    QThread, which has no exception handling (driver.py's do_action never
+    catches), an uncaught raise there means action_done never fires -- the
+    add_event() call (and anything awaiting that catalog's load, like
+    provider.events()) hangs until the 5s deferred-load timeout.
+
+    A key like this could reach add_event() even though AddAttributeDialog
+    now rejects it at entry, because set_event_meta()/set_events_meta()
+    update event.meta in-memory unconditionally even when the backend write
+    silently no-ops for an invalid key (see pitfall-catalog-attribute-name-with-space) --
+    add_event must defend at its own boundary, not just trust callers."""
+    from SciQLop.plugins.tscat_catalogs.tscat_provider import _extract_meta
+    from tscat_gui.tscat_driver.model import tscat_model
+    from tscat_gui.model_base.constants import EntityRole
+
+    cat = tscat_provider.create_catalog("t_invalid_meta_key")
+    _process_events(qapp)
+    ev = CatalogEvent(
+        uuid=str(_uuid.uuid4()),
+        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+        meta={"good_column": "kept", "my column": "dropped"},
+    )
+    tscat_provider.add_event(cat, ev)
+    _process_events(qapp, rounds=30)
+
+    tscat_provider._events.pop(cat.uuid, None)
+    tscat_provider.events(cat)
+    _process_events(qapp, rounds=30)
+    catalog_model = tscat_model.catalog(cat.uuid)
+    assert catalog_model.rowCount() == 1
+    entity = catalog_model.index(0, 0).data(EntityRole)
+    persisted = _extract_meta(entity)
+
+    assert persisted.get("good_column") == "kept"
+    assert "my column" not in persisted
+
+
 def test_set_event_meta_updates_local_mirror(qapp, tscat_provider):
     """provider.set_event_meta must update event.meta synchronously and persist via tscat."""
     cat = tscat_provider.create_catalog("t_meta_edit")

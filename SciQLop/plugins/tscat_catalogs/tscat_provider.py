@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import re
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -25,6 +27,20 @@ from tscat_gui.model_base.constants import EntityRole
 
 
 SCHEMA_ATTR_PREFIX = "sciqlop_schema__"
+
+log = logging.getLogger(__name__)
+
+# Mirrors tscat's own attribute-key rule (tscat.base._valid_key, private).
+# tscat._Event.__init__ raises ValueError for a kwarg key that doesn't match
+# this, and that raise happens on tscat_gui's worker QThread (driver.py's
+# do_action has no exception handling), so an uncaught raise there means the
+# action never completes -- callers awaiting it (e.g. the catalog's
+# deferred_load poll) hang until their own timeout. AddAttributeDialog
+# blocks a bad name at entry, but event.meta can still carry a stale invalid
+# key from set_event_meta()/set_events_meta(), which update the in-memory
+# mirror even when the backend write silently no-ops -- so add_event must
+# guard at its own boundary too, not just trust its caller.
+_VALID_META_KEY = re.compile(r"^[A-Za-z][A-Za-z_0-9]*$")
 
 
 @dataclass
@@ -422,8 +438,12 @@ class TscatCatalogProvider(CatalogProvider):
                     uuid=event.uuid)
         meta = event.meta or {}
         for key, value in meta.items():
-            if key not in args:
-                args[key] = value
+            if key in args:
+                continue
+            if not _VALID_META_KEY.match(key):
+                log.warning("Dropping invalid event meta key %r (not a valid tscat attribute name)", key)
+                continue
+            args[key] = value
 
         with self._tracked_action():
             tscat_model.do(CreateEntityAction(
