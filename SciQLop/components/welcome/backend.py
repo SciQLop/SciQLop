@@ -316,8 +316,17 @@ class WelcomeBackend(QObject):
 
     @Slot(str)
     def duplicate_workspace(self, directory: str) -> None:
-        workspaces_manager_instance().duplicate_workspace(directory)
-        self.workspace_list_changed.emit()
+        # copytree over a workspace (which can carry a multi-GB .venv) must
+        # not run on the GUI thread -- see workspaces_manager.duplicate_workspace
+        # for what gets excluded. The list refreshes once the copy is done.
+        def _duplicate():
+            try:
+                workspaces_manager_instance().duplicate_workspace(directory)
+            except Exception as e:
+                log.error(f"Failed to duplicate workspace {directory}: {e}")
+            self.workspace_list_changed.emit()
+
+        threading.Thread(target=_duplicate, daemon=True).start()
 
     @Slot(result=str)
     def get_active_workspace_dir(self) -> str:

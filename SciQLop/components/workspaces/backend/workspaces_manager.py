@@ -7,6 +7,7 @@ from PySide6.QtCore import QObject, Signal, Slot, QFile
 from PySide6.QtGui import QIcon
 
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
+from SciQLop.components.workspaces.backend.workspace_archive import EXCLUDE_PATTERNS
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 from SciQLop.components.workspaces.backend.workspace import Workspace
 from SciQLop.components.theming.icons import register_icon
@@ -189,15 +190,26 @@ class WorkspaceManager(QObject):
 
     @Slot(str)
     def duplicate_workspace(self, workspace: str):
+        """Copy a workspace directory under a new name.
+
+        Excludes the same transient files as ``workspace_archive`` (notably
+        ``.venv``, which can be hundreds of MB to GBs and is fully
+        reconstructed from the manifest by ``prepare_workspace()`` the next
+        time the copy is opened). Does not switch to the copy: this is meant
+        to be run off the GUI thread by the caller, and duplicating must not
+        restart SciQLop into the new workspace.
+        """
         copy_dir = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, uuid.uuid4().hex)
-        shutil.copytree(workspace, copy_dir)
-        manifest_path = os.path.join(copy_dir, "workspace.sciqlop")
-        manifest = WorkspaceManifest.load_or_repair(manifest_path)
-        manifest.name = f"Copy of {manifest.name}"
-        manifest.default = False
-        manifest.save(manifest_path)
-        from SciQLop.sciqlop_app import switch_workspace
-        switch_workspace(copy_dir)
+        try:
+            shutil.copytree(workspace, copy_dir, ignore=shutil.ignore_patterns(*EXCLUDE_PATTERNS))
+            manifest_path = os.path.join(copy_dir, "workspace.sciqlop")
+            manifest = WorkspaceManifest.load_or_repair(manifest_path)
+            manifest.name = f"Copy of {manifest.name}"
+            manifest.default = False
+            manifest.save(manifest_path)
+        except Exception:
+            shutil.rmtree(copy_dir, ignore_errors=True)
+            raise
 
     @property
     def workspace(self) -> Workspace:
