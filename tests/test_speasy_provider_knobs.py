@@ -91,3 +91,16 @@ def test_notebook_snippet_renders_provider_kwargs():
                        knobs={"coordinate_frame": "GSE"})
     snippet = _plugin(_Index("cdpp3dview", "ACE")).python_snippets(ctx)["Notebook (matplotlib)"]
     assert 'spz.get_data("cdpp3dview/ACE", start, stop, coordinate_frame=\'GSE\')' in snippet
+
+
+def test_get_data_lets_a_speasy_failure_propagate(monkeypatch):
+    """A failing Speasy fetch must reach DataProvider._get_data (which logs the
+    backtrace and re-raises so the graph records it as last_error) instead of
+    being flattened into None, which is indistinguishable from "no data"."""
+    def failing_get_data(speasy_id, start, stop, **kwargs):
+        raise RuntimeError("server down")
+
+    monkeypatch.setattr(sp.spz, "get_data", failing_get_data)
+    plugin = _plugin(_Index("cdpp3dview", "ACE"))
+    with pytest.raises(RuntimeError, match="server down"):
+        plugin.get_data(_Node("cdpp3dview/ACE"), 0.0, 3600.0)

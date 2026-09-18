@@ -2,7 +2,6 @@ import os
 from typing import List, Optional
 from PySide6.QtGui import QIcon
 import threading
-import traceback
 import speasy as spz
 from speasy.core.inventory.indexes import ParameterIndex, ComponentIndex, CatalogIndex, TimetableIndex, ArgumentListIndex
 from speasy.products import SpeasyVariable
@@ -461,26 +460,26 @@ class SpeasyPlugin(DataProvider):
         return out
 
     def get_data(self, product, start, stop, knobs=None):
-        try:
-            speasy_id = product.metadata("speasy_id") if hasattr(product, "metadata") else product
-            kwargs = speasy_kwargs(speasy_id, knobs)
-            with tracing.zone("speasy.get_data", cat="speasy",
-                              speasy_id=str(speasy_id),
-                              start=float(start), stop=float(stop),
-                              n_seconds=float(stop) - float(start)):
-                v: SpeasyVariable = spz.get_data(speasy_id, start, stop, **kwargs)
-            n_points = int(len(v)) if v is not None else 0
-            n_bytes = int(v.values.nbytes) if v is not None else 0
-            tracing.counter("speasy.points", n_points, cat="speasy")
-            tracing.counter("speasy.bytes", n_bytes, cat="speasy")
-            if v:
-                with tracing.zone("speasy.fill_nan", cat="speasy",
-                                  speasy_id=str(speasy_id),
-                                  n_points=n_points, n_bytes=n_bytes):
-                    return v.replace_fillval_by_nan(inplace=True, convert_to_float=True)
-        except Exception:
-            log.error(f"Error getting data for {product} between {start} and {stop}: {traceback.format_exc()}")
+        # Fetch errors propagate: DataProvider._get_data logs the backtrace
+        # and the graph records them as last_error; returning None here would
+        # make a failure look like "no data in range".
+        speasy_id = product.metadata("speasy_id") if hasattr(product, "metadata") else product
+        kwargs = speasy_kwargs(speasy_id, knobs)
+        with tracing.zone("speasy.get_data", cat="speasy",
+                          speasy_id=str(speasy_id),
+                          start=float(start), stop=float(stop),
+                          n_seconds=float(stop) - float(start)):
+            v: SpeasyVariable = spz.get_data(speasy_id, start, stop, **kwargs)
+        n_points = int(len(v)) if v is not None else 0
+        n_bytes = int(v.values.nbytes) if v is not None else 0
+        tracing.counter("speasy.points", n_points, cat="speasy")
+        tracing.counter("speasy.bytes", n_bytes, cat="speasy")
+        if not v:
             return None
+        with tracing.zone("speasy.fill_nan", cat="speasy",
+                          speasy_id=str(speasy_id),
+                          n_points=n_points, n_bytes=n_bytes):
+            return v.replace_fillval_by_nan(inplace=True, convert_to_float=True)
 
     def labels(self, node: ProductsModelNode) -> List[str]:
         return node.metadata("components")
