@@ -165,6 +165,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self.welcome = WelcomePage()
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, self.welcome)
 
+        self.setWindowTitle("SciQLop")
         self._setup_side_panels()
         self._setup_toolbar()
         self._setup_status_bar()
@@ -362,6 +363,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._tour_timer.setInterval(500)
         self._tour_timer.timeout.connect(self._start_getting_started_tour)
         wm.workspace_loaded.connect(self._maybe_run_onboarding_tour)
+        if wm.has_workspace:
+            self._on_workspace_already_loaded(wm.workspace)
         sciqlop_app().add_quickstart_shortcut("JupyterLab", "Open JupyterLab",
                                               Icons.get_icon("Jupyter"),
                                               self.open_jupyterlab_widget)
@@ -394,7 +397,6 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
 
     def _setup_toolbar(self):
-        self.setWindowTitle("SciQLop")
         self.setWindowIcon(QtGui.QIcon("://icons/SciQLop.png"))
         self.toolBar = QtWidgets.QToolBar(self)
         self.toolBar.setWindowTitle("Toolbar")
@@ -748,6 +750,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _set_full_screen(self, full: bool) -> None:
         self.showFullScreen() if full else self.showNormal()
+
+    def _on_workspace_already_loaded(self, workspace) -> None:
+        """SCIQLOP_WORKSPACE_DIR makes the manager load its workspace while it is
+        being constructed, before this window could connect to `workspace_loaded`."""
+        self._show_workspace_name_in_title(workspace)
+        self._maybe_run_onboarding_tour()
 
     def _show_workspace_name_in_title(self, workspace) -> None:
         self.setWindowTitle(f"SciQLop - {workspace.name}")

@@ -33,3 +33,26 @@ def test_workspace_loaded_after_window_destroyed_is_silent(qapp, sciqlop_resourc
         qapp.processEvents()
 
     assert exceptions == []
+
+
+def test_window_built_after_a_workspace_autoload_still_gets_its_title_and_tour(
+        qapp, sciqlop_resources, tmp_path, monkeypatch):
+    """SCIQLOP_WORKSPACE_DIR makes the manager load its workspace while it is
+    being constructed -- before the window can connect to `workspace_loaded`."""
+    from SciQLop.components.onboarding.backend.settings import OnboardingSettings
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+    from SciQLop.core.ui.mainwindow import SciQLopMainWindow
+
+    ws_dir = tmp_path / "autoloaded"
+    ws_dir.mkdir()
+    WorkspaceManifest(name="autoloaded").save(ws_dir / "workspace.sciqlop")
+    monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(ws_dir))
+    monkeypatch.delattr(qapp, "workspaces_manager", raising=False)
+    with OnboardingSettings() as s:
+        s.completed_tours = {}
+
+    mw = SciQLopMainWindow()
+
+    assert mw.windowTitle() == "SciQLop - autoloaded"
+    assert mw._tour_timer.isActive()
+    destroy_main_window(mw)
