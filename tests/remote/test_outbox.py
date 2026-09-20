@@ -21,11 +21,13 @@ def test_frames_decode_with_connection_recv():
     box.push((P.INSTALL, 1, b"x" * 20000, 2))   # > 16384: the split-header path
     box.push((P.FREE, 1, "seg"))
     got = []
-    reader = threading.Thread(target=lambda: got.extend(_recv_all(b.detach(), 2)))
+    reader = threading.Thread(target=lambda: got.extend(_recv_all(b.detach(), 2)), daemon=True)
     reader.start()  # macOS socketpair buffers are ~8KB: a blocking send with no reader deadlocks
+    a.settimeout(10)  # a dead reader must fail the test, not hang it in a C call
     while box:
         box.consume(a.send(box.head()))
     reader.join(timeout=10)
+    assert not reader.is_alive()
     a.close()
     assert got == [(P.INSTALL, 1, b"x" * 20000, 2), (P.FREE, 1, "seg")]
 
