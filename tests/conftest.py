@@ -72,6 +72,17 @@ def _preserve_speasy_dirs():
     os.environ["XDG_CACHE_HOME"] = str(cache_dir)
 
 
+def _is_xdist_master(config) -> bool:
+    """Mirrors pytest_xvfb's own is_xdist_master(): true for the xdist
+    controller process, which dispatches tests to workers and never runs one
+    itself. pytest-xvfb already skips starting Xvfb for it; this module must
+    skip building a real QApplication for the same reason, or -n crashes the
+    whole run before a single test executes (see tests/test_xdist_master_boot.py).
+    """
+    import os as _os
+    return config.getoption("dist", "no") != "no" and not _os.environ.get("PYTEST_XDIST_WORKER")
+
+
 # trylast so pytest-xvfb's own pytest_configure — which starts Xvfb and exports
 # DISPLAY — has already run: conftest hooks are called before installed plugins',
 # and the QApplication built at the end of this hook aborts the whole process
@@ -96,6 +107,14 @@ def pytest_configure(config):
     os.environ.setdefault("SCIQLOP_TEST_NO_WEBENGINE", "1")
     if platform.system() == "Windows":
         os.environ["APPDATA"] = str(_config_dir)
+
+    if _is_xdist_master(config):
+        # The controller dispatches work to workers and never collects or runs
+        # a test itself, so it never needs a display or a real QApplication —
+        # same reasoning pytest-xvfb applies to skip starting Xvfb for it. Each
+        # worker is a separate process (PYTEST_XDIST_WORKER set) that re-enters
+        # this hook and takes the normal path below.
+        return
 
     # Qt OpenGL attributes — must be set before QApplication creation.
     from PySide6 import QtCore
@@ -188,6 +207,83 @@ def _clean_vp_state():
     _cleanup_vp_state()
 
 
+def _main_windows():
+    import sys
+    import shiboken6
+    mod = sys.modules.get("SciQLop.core.ui.mainwindow")
+    if mod is None:
+        return []
+    from PySide6.QtWidgets import QApplication
+    return [w for w in QApplication.topLevelWidgets()
+            if isinstance(w, mod.SciQLopMainWindow) and shiboken6.isValid(w)]
+
+
+def _standalone_panels():
+    """Top-level plot panels, i.e. built by a test directly (`TimeSyncPanel(...)`)
+    rather than docked in a main window. Each one builds a ProductSearchOverlay
+    whose ProductsFlatFilterModel re-scores the whole product tree on every
+    ProductsModel change, so leaked ones make every later test cost more."""
+    import shiboken6
+    from PySide6.QtWidgets import QApplication
+    from SciQLopPlots import SciQLopMultiPlotPanel
+    return [w for w in QApplication.topLevelWidgets()
+            if isinstance(w, SciQLopMultiPlotPanel) and shiboken6.isValid(w)]
+
+
+@pytest.fixture(autouse=True)
+def _release_gui_leftovers():
+    """Every SciQLopMainWindow is a ~1GB widget tree, and close() only hides it.
+    Tests build throwaway windows (and the shared one outlives every test), so
+    whatever a test leaves behind accumulates until the machine runs out of
+    memory. Destroy the extra windows this test created, restore
+    `app.main_window`, and remove panels it added to the shared window."""
+    import shiboken6
+    from PySide6.QtWidgets import QApplication
+    from tests.fixtures import destroy_main_window
+    before_windows = {id(w) for w in _main_windows()}
+    before_panels = {id(w) for w in _standalone_panels()}
+    app = QApplication.instance()
+    main = getattr(app, "main_window", None)
+    panels_before = set(main.plot_panels()) if main is not None and shiboken6.isValid(main) else None
+    yield
+    destroyed = False
+    for w in _main_windows():
+        if id(w) not in before_windows:
+            destroy_main_window(w)
+            destroyed = True
+    for w in _standalone_panels():
+        if id(w) not in before_panels:
+            w.hide()
+            w.deleteLater()
+            destroyed = True
+    if main is not None and shiboken6.isValid(main):
+        app.main_window = main
+        if panels_before is not None:
+            for name in set(main.plot_panels()) - panels_before:
+                main.remove_panel(name)
+                destroyed = True
+    if destroyed:
+        from PySide6 import QtCore
+        QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+
+
+@pytest.fixture(autouse=True)
+def _no_blocking_modal_dialogs(monkeypatch):
+    """Nobody can answer a modal dialog in a headless run, so it would block
+    until the timeout kills the whole process. Fail at the call site instead,
+    naming the dialog. A test that expects one patches it itself, which wins
+    over this since it runs later."""
+    from PySide6.QtWidgets import QMessageBox
+
+    def _fail(kind):
+        def blocked(parent, title, text, *args, **kwargs):
+            raise AssertionError(f"unexpected blocking QMessageBox.{kind}: {title!r}: {text}")
+        return staticmethod(blocked)
+
+    for kind in ("question", "warning", "information", "critical"):
+        monkeypatch.setattr(QMessageBox, kind, _fail(kind))
+
+
 @pytest.fixture(autouse=True)
 def _isolate_catalog_registry():
     """Snapshot/restore the global CatalogRegistry around each test.
@@ -210,6 +306,40 @@ def _isolate_catalog_registry():
     snapshot = set(id(p) for p in registry._providers)
     yield
     registry._providers[:] = [p for p in registry._providers if id(p) in snapshot]
+
+
+_MAX_RSS_MB = int(os.environ.get("SCIQLOP_TEST_MAX_RSS_MB", "6144"))
+_RSS_LOG = os.environ.get("SCIQLOP_TEST_RSS_LOG")
+
+
+def _rss_mb() -> float:
+    import psutil
+    return psutil.Process().memory_info().rss / 2**20
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_runtest_teardown(item):
+    """The GUI suite accumulates Qt state in one process; without a ceiling a
+    full run takes the whole machine down. Abort cleanly (fixtures torn down,
+    Xvfb stopped) instead. SCIQLOP_TEST_RSS_LOG=<file> logs RSS per test."""
+    rss = _rss_mb()
+    if _RSS_LOG:
+        from PySide6.QtWidgets import QApplication
+        with open(_RSS_LOG, "a") as f:
+            f.write(f"{rss:.0f} {item.nodeid} widgets={len(QApplication.allWidgets())}\n")
+    if rss > _MAX_RSS_MB:
+        pytest.exit(f"RSS {rss:.0f}MB > SCIQLOP_TEST_MAX_RSS_MB={_MAX_RSS_MB} "
+                    f"after {item.nodeid}", returncode=3)
+
+
+def pytest_sessionfinish(session):
+    if not _RSS_LOG:
+        return
+    import collections
+    from PySide6.QtWidgets import QApplication
+    counts = collections.Counter(type(w).__name__ for w in QApplication.allWidgets())
+    with open(_RSS_LOG + ".widgets", "w") as f:
+        f.writelines(f"{n} {name}\n" for name, n in counts.most_common(30))
 
 
 def pytest_unconfigure(config):

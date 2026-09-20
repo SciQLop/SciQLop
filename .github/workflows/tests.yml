@@ -41,8 +41,8 @@ jobs:
           # SciQLopMainWindow embeds a QWebEngineView (welcome page) which
           # spawns a Chromium subprocess. Inside CI's xvfb that subprocess
           # segfaults during init without these flags. Locally reproduced
-          # under `xvfb-run pytest`; identical 1250-pass result to a
-          # `--no-xvfb` run.
+          # under `xvfb-run pytest`; identical pass count (3081 tests
+          # collected as of 2026-09-18) to a `--no-xvfb` run.
           QTWEBENGINE_DISABLE_SANDBOX: 1
           QTWEBENGINE_CHROMIUM_FLAGS: "--disable-gpu --no-sandbox --disable-software-rasterizer --disable-dev-shm-usage"
         run: |

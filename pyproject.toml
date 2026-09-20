@@ -108,6 +108,7 @@ dev = [
     "tscat>=0.5.1",
     "tscat_gui>=0.7.0",
     "pytest-xdist>=3.8.0",
+    "pytest-timeout>=2.3.1",
     # runtime deps of the ACP layer (SciQLop/components/agents/acp), declared
     # for end users by the plugins that consume the layer; needed here so its
     # tests can run.
@@ -130,7 +131,9 @@ dev = [
 # `dev` extra, so the list lives in one place) keeps a dev checkout complete,
 # while `pip install -e ".[dev]"` still works for CI and for pip users.
 [dependency-groups]
-dev = ["SciQLop[dev]"]
+dev = [
+    "SciQLop[dev]",
+]
 
 [tool.uv]
 default-groups = ["dev"]
@@ -151,6 +154,21 @@ qt_api = "pyside6"
 xvfb_width = 2560
 xvfb_height = 1440
 xvfb_xauth = true
+# Parallel runs are opt-in: `pytest -n 2` roughly halves wall-clock (measured
+# 144.6s -> 72.7s on 389 tests), but every worker holds its own ~2-4GB Qt
+# process, so it doubles peak RAM. -n 4 was measured unstable; do not go above 2.
+# tests/conftest.py aborts any process cleanly above SCIQLOP_TEST_MAX_RSS_MB
+# (default 6144).
+# Global safety net against an unbounded hang (e.g. a stuck native Qt call
+# that never returns control to Python). method="thread" is required: the
+# default "signal" method delivers SIGALRM only when the interpreter next
+# processes signals, which never happens while stuck inside a C extension
+# call — it would silently fail to fire on exactly the hangs this guards
+# against. 120s covers the one-time ~30s session main_window+load_all()
+# cold-start plus real margin; per-file overrides can still use
+# @pytest.mark.timeout(N) for slower cases (see test_run_notebook_cell.py).
+timeout = 120
+timeout_method = "thread"
 
 [tool.bumpversion]
 current_version = "0.13.1.dev0"

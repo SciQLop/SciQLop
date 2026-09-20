@@ -28,9 +28,10 @@ def sciqlop_resources(qapp):
     executor.shutdown(wait=True)
 
 
-@pytest.fixture(scope="session")
-def main_window(qapp, sciqlop_resources):
-    """Session-scoped main window with plugins loaded."""
+_shared_main_window = []
+
+
+def _build_main_window(qapp):
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
     from SciQLop.components.plugins import load_all, loaded_plugins
     from SciQLop.components.command_palette.commands import register_builtin_commands
@@ -44,13 +45,40 @@ def main_window(qapp, sciqlop_resources):
     harvest_qactions(qapp.command_registry, mw)
     mw.push_variables_to_console({"plugins": loaded_plugins})
     qapp.processEvents()
+    return mw
 
-    yield mw
 
-    mw.close()
-    for cmd in list(qapp.command_registry.commands()):
-        qapp.command_registry.unregister(cmd.id)
-    qapp.processEvents()
+@pytest.fixture(scope="session")
+def main_window(qapp, sciqlop_resources):
+    """One main window with plugins loaded per process.
+
+    Test modules pull this in with `from .fixtures import *`, and pytest
+    registers every imported copy as its own fixture -- so without the shared
+    cache each of ~70 modules built its own ~1GB window that lived until the
+    end of the run.
+    """
+    creator = not _shared_main_window
+    if creator:
+        _shared_main_window.append(_build_main_window(qapp))
+    yield _shared_main_window[0]
+    if creator:
+        _shared_main_window[0].hide()
+        for cmd in list(qapp.command_registry.commands()):
+            qapp.command_registry.unregister(cmd.id)
+        qapp.processEvents()
+
+
+def destroy_main_window(mw):
+    """close() only hides a window, so its ~1GB widget tree stays alive; and it
+    runs closeEvent, whose unsaved-catalogs QMessageBox blocks a headless run
+    forever. hide() + deleteLater() frees it without either."""
+    import gc
+    from PySide6 import QtCore, QtWidgets
+    mw.hide()
+    mw.deleteLater()
+    QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
+    QtWidgets.QApplication.processEvents()
+    gc.collect()
 
 
 @pytest.fixture(scope="function")
