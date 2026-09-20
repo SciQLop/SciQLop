@@ -149,7 +149,7 @@ def test_get_data_routes_coordinate_system_top_level(monkeypatch, qapp, sciqlop_
     assert "product_inputs" not in captured["kwargs"]
 
 
-def test_get_data_does_not_pass_coordinate_system_for_non_ssc(monkeypatch, qapp, sciqlop_resources):
+def test_get_data_keeps_coordinate_system_as_template_param_for_non_ssc(monkeypatch, qapp, sciqlop_resources):
     from SciQLop.plugins.speasy_provider import speasy_provider as sp_mod
 
     captured = {}

@@ -284,21 +284,30 @@ def _release_gui_leftovers():
         QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
 
 
+_BLOCKING_STATIC_DIALOGS = {
+    "QMessageBox": ("question", "warning", "information", "critical"),
+    "QInputDialog": ("getText", "getInt", "getDouble", "getItem", "getMultiLineText"),
+    "QFileDialog": ("getOpenFileName", "getOpenFileNames", "getSaveFileName", "getExistingDirectory"),
+    "QColorDialog": ("getColor",),
+}
+
+
 @pytest.fixture(autouse=True)
 def _no_blocking_modal_dialogs(monkeypatch):
     """Nobody can answer a modal dialog in a headless run, so it would block
     until the timeout kills the whole process. Fail at the call site instead,
     naming the dialog. A test that expects one patches it itself, which wins
     over this since it runs later."""
-    from PySide6.QtWidgets import QMessageBox
+    from PySide6 import QtWidgets
 
-    def _fail(kind):
-        def blocked(parent, title, text, *args, **kwargs):
-            raise AssertionError(f"unexpected blocking QMessageBox.{kind}: {title!r}: {text}")
+    def _fail(cls_name, method):
+        def blocked(*args, **kwargs):
+            raise AssertionError(f"unexpected blocking {cls_name}.{method}{args[1:3]}")
         return staticmethod(blocked)
 
-    for kind in ("question", "warning", "information", "critical"):
-        monkeypatch.setattr(QMessageBox, kind, _fail(kind))
+    for cls_name, methods in _BLOCKING_STATIC_DIALOGS.items():
+        for method in methods:
+            monkeypatch.setattr(getattr(QtWidgets, cls_name), method, _fail(cls_name, method))
 
 
 @pytest.fixture(autouse=True)
@@ -369,7 +378,9 @@ def _stop_tscat_driver_worker():
     driver_mod = sys.modules.get("tscat_gui.tscat_driver.driver")
     if driver_mod is None:
         return
-    worker = driver_mod.tscat_driver._worker
+    worker = getattr(getattr(driver_mod, "tscat_driver", None), "_worker", None)
+    if worker is None:
+        return
     worker.quit()
     worker.wait(5000)
 
