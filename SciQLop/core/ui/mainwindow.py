@@ -352,7 +352,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         wm = workspaces_manager_instance()
         wm.push_variables({"main_window": wm.wrap_qt(self)})
-        wm.workspace_loaded.connect(lambda w: self.setWindowTitle(f"SciQLop - {w.name}"))
+        wm.workspace_loaded.connect(self._show_workspace_name_in_title)
         from SciQLop.components.onboarding.backend.registry import register_builtin_tours
         register_builtin_tours()
         self._onboarding_controller = None
@@ -744,6 +744,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
     def _set_full_screen(self, full: bool) -> None:
         self.showFullScreen() if full else self.showNormal()
+
+    def _show_workspace_name_in_title(self, workspace) -> None:
+        self.setWindowTitle(f"SciQLop - {workspace.name}")
 
     def closeEvent(self, event: QCloseEvent):
         if not getattr(self, '_closing', False) and self._warn_if_jobs_running(event):

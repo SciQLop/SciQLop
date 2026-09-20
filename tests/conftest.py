@@ -259,7 +259,10 @@ def _release_gui_leftovers():
     app = QApplication.instance()
     main = getattr(app, "main_window", None)
     panels_before = set(main.plot_panels()) if main is not None and shiboken6.isValid(main) else None
+    shortcuts_before = dict(app._quickstart_shortcuts)
     yield
+    app._quickstart_shortcuts.clear()
+    app._quickstart_shortcuts.update(shortcuts_before)
     destroyed = False
     for w in _main_windows():
         if id(w) not in before_windows:
