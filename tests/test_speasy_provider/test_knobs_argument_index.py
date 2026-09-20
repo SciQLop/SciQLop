@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from SciQLop.user_api.knobs import ChoiceKnob
@@ -24,6 +26,9 @@ def fake_argument_index_classes(monkeypatch, qapp, sciqlop_resources):
     class TemplatedParameterIndex:
         def __init__(self, args):
             self.spz_arguments_node = ArgumentListIndex(args)
+
+        def spz_provider(self):
+            return "amda"
 
         def __iter__(self):
             yield self.spz_arguments_node
@@ -63,7 +68,7 @@ def test_get_knobs_walks_argument_list(fake_argument_index_classes, monkeypatch)
 def test_get_knobs_returns_empty_for_non_templated(monkeypatch, qapp, sciqlop_resources):
     from SciQLop.plugins.speasy_provider import speasy_provider as mod
     plugin = mod.SpeasyPlugin.__new__(mod.SpeasyPlugin)
-    monkeypatch.setattr(plugin, "_resolve_index", lambda product: object(), raising=False)
+    monkeypatch.setattr(plugin, "_resolve_index", lambda product: SimpleNamespace(spz_provider=lambda: "amda"), raising=False)
     assert plugin.get_knobs("amda/regular_param") == []
 
 
@@ -148,14 +153,18 @@ def test_get_data_does_not_pass_coordinate_system_for_non_ssc(monkeypatch, qapp,
     from SciQLop.plugins.speasy_provider import speasy_provider as sp_mod
 
     captured = {}
-    monkeypatch.setattr(sp_mod.spz, "get_data",
-                        lambda s, a, b, **kw: captured.setdefault("kw", kw) or None)
+
+    def fake_get_data(s, a, b, **kw):
+        captured["kw"] = kw
+        return None
+
+    monkeypatch.setattr(sp_mod.spz, "get_data", fake_get_data)
 
     plugin = sp_mod.SpeasyPlugin.__new__(sp_mod.SpeasyPlugin)
-    # AMDA product, but knobs accidentally include coordinate_system —
-    # should NOT be forwarded.
+    # AMDA has no coordinate_system provider option: it must not become a
+    # top-level get_data kwarg, it stays an ordinary template parameter.
     plugin.get_data("amda/something", 0.0, 1.0,
                     knobs={"coordinate_system": "gsm", "alt": "high"})
 
     assert "coordinate_system" not in captured["kw"]
-    assert captured["kw"].get("product_inputs") == {"alt": "high"}
+    assert captured["kw"].get("product_inputs") == {"coordinate_system": "gsm", "alt": "high"}
