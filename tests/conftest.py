@@ -304,8 +304,19 @@ def _isolate_catalog_registry():
         return
     registry = reg_mod.CatalogRegistry.instance()
     snapshot = set(id(p) for p in registry._providers)
+    clean_before = [p for p in registry._providers if not p.is_dirty()]
     yield
     registry._providers[:] = [p for p in registry._providers if id(p) in snapshot]
+    _forget_dirty_state(clean_before)
+
+
+def _forget_dirty_state(providers):
+    """A test that edits a shared provider (e.g. the main window's "My Catalogs")
+    and never saves leaves it dirty; every later ``mw.close()`` then pops the
+    "Unsaved catalog changes" dialog."""
+    for p in providers:
+        p._dirty_catalogs.clear()
+        p._provider_dirty = False
 
 
 _MAX_RSS_MB = int(os.environ.get("SCIQLOP_TEST_MAX_RSS_MB", "6144"))
