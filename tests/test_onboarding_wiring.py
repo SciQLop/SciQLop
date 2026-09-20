@@ -13,6 +13,7 @@ def test_maybe_run_onboarding_tour_skips_when_getting_started_completed(main_win
     with OnboardingSettings() as s:
         s.completed_tours = {"getting_started": True}
 
+    qtbot.wait(600)  # a 500ms tour timer armed by an earlier test may still be pending
     main_window._onboarding_controller = None
     main_window._maybe_run_onboarding_tour(None)
     qtbot.wait(200)
