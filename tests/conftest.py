@@ -231,6 +231,20 @@ def _standalone_panels():
 
 
 @pytest.fixture(autouse=True)
+def _current_event_loop_is_sciqlops():
+    """`asyncio.run()` (used by several tests) leaves the main thread with no
+    current loop, and Python 3.14's `asyncio.get_event_loop()` then raises for
+    every later test that builds an AgentChatDock."""
+    import asyncio
+    import sys
+    app_mod = sys.modules.get("SciQLop.core.sciqlop_application")
+    loop = getattr(app_mod, "_event_loop", None)
+    if loop is not None:
+        asyncio.set_event_loop(loop)
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _release_gui_leftovers():
     """Every SciQLopMainWindow is a ~1GB widget tree, and close() only hides it.
     Tests build throwaway windows (and the shared one outlives every test), so

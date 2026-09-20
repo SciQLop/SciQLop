@@ -33,7 +33,12 @@ def _catalog_proxy_index(browser, catalog):
             for crow in range(model.rowCount(prov_idx)):
                 cat_idx = model.index(crow, 0, prov_idx)
                 if model.node_from_index(cat_idx).catalog is catalog:
-                    return browser._proxy_model.mapFromSource(cat_idx)
+                    proxy_idx = browser._proxy_model.mapFromSource(cat_idx)
+                    # With the shared main window's providers registered the
+                    # row sits thousands of px below the viewport, where a
+                    # double-click never becomes a `doubleClicked` signal.
+                    browser._catalog_tree.scrollTo(proxy_idx)
+                    return proxy_idx
     raise AssertionError("catalog node not found")
 
 
