@@ -1,6 +1,10 @@
 """The app-wide `workspace_loaded` signal must not keep a dead main window alive
 as a receiver: a lambda closing over `self` fired after the window was deleted
 and raised "Internal C++ object already deleted" inside a later test."""
+import sys
+
+import pytest
+
 from .fixtures import *
 
 
@@ -35,8 +39,23 @@ def test_workspace_loaded_after_window_destroyed_is_silent(qapp, sciqlop_resourc
     assert exceptions == []
 
 
+@pytest.fixture
+def fresh_workspace_manager(qapp, monkeypatch):
+    """Let the test build its own WorkspaceManager, then put the shared one back.
+    (`monkeypatch.delattr(raising=False)` records nothing when the attribute is
+    absent, which would leak the test's manager into later tests.)"""
+    monkeypatch.setattr(sys, "path", list(sys.path))  # Workspace.activate() prepends
+    previous = qapp.__dict__.pop("workspaces_manager", None)
+    yield
+    created = qapp.__dict__.pop("workspaces_manager", None)
+    if created is not None:
+        created.deleteLater()
+    if previous is not None:
+        qapp.workspaces_manager = previous
+
+
 def test_window_built_after_a_workspace_autoload_still_gets_its_title_and_tour(
-        qapp, sciqlop_resources, tmp_path, monkeypatch):
+        qapp, sciqlop_resources, tmp_path, monkeypatch, fresh_workspace_manager):
     """SCIQLOP_WORKSPACE_DIR makes the manager load its workspace while it is
     being constructed -- before the window can connect to `workspace_loaded`."""
     from SciQLop.components.onboarding.backend.settings import OnboardingSettings
@@ -47,7 +66,6 @@ def test_window_built_after_a_workspace_autoload_still_gets_its_title_and_tour(
     ws_dir.mkdir()
     WorkspaceManifest(name="autoloaded").save(ws_dir / "workspace.sciqlop")
     monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(ws_dir))
-    monkeypatch.delattr(qapp, "workspaces_manager", raising=False)
     with OnboardingSettings() as s:
         s.completed_tours = {}
 
