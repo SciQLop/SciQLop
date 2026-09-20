@@ -222,6 +222,7 @@ class TestSidebarSmartSearchWiring:
             _flush(qtbot)
 
         assert queried_texts == ["a", "abc"]  # "ab" was superseded before ever being queried
+        _wait_until_visible(qtbot, view, "final_leaf")
         names = _visible_names(_list_view_model(view))
         assert "final_leaf" in names
         assert "mid_leaf" not in names

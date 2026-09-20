@@ -1,6 +1,7 @@
 """Main-side outbound queue: byte-identical framing to multiprocessing's
 Connection, latest-REQUEST-per-channel coalescing, partial-write resume."""
 import socket
+import threading
 from multiprocessing.connection import Connection
 
 
@@ -19,9 +20,12 @@ def test_frames_decode_with_connection_recv():
     box = Outbox()
     box.push((P.INSTALL, 1, b"x" * 20000, 2))   # > 16384: the split-header path
     box.push((P.FREE, 1, "seg"))
+    got = []
+    reader = threading.Thread(target=lambda: got.extend(_recv_all(b.detach(), 2)))
+    reader.start()  # macOS socketpair buffers are ~8KB: a blocking send with no reader deadlocks
     while box:
         box.consume(a.send(box.head()))
-    got = _recv_all(b.detach(), 2)
+    reader.join(timeout=10)
     a.close()
     assert got == [(P.INSTALL, 1, b"x" * 20000, 2), (P.FREE, 1, "seg")]
 
