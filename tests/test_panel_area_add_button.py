@@ -117,7 +117,7 @@ def test_area_without_plot_panels_still_gets_add_button(main_window, qtbot):
         qtbot.waitUntil(lambda: _add_button(area) is not None, timeout=1000)
     finally:
         dw.takeWidget()
-        dw.closeDockWidget()
+        main_window.dock_manager.removeDockWidget(dw)
         plain.deleteLater()
         release_name(name)
 
