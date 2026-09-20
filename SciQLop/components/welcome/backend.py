@@ -119,12 +119,15 @@ class WelcomeBackend(QObject):
         self._watch_workspace_subdirs(workspaces_dir)
         self._watcher.directoryChanged.connect(self._on_directory_changed)
         from SciQLop.core.sciqlop_application import sciqlop_app
-        sciqlop_app().quickstart_shortcuts_added.connect(lambda _: self.quickstart_changed.emit())
+        sciqlop_app().quickstart_shortcuts_added.connect(self._on_quickstart_shortcuts_added)
         from SciQLop.components.plotting.panel_template import templates_dir
         tpl_dir = str(templates_dir())
         self._watcher.addPath(tpl_dir)
         self._watcher.directoryChanged.connect(self._on_templates_dir_changed)
         self._templates_dir = tpl_dir
+
+    def _on_quickstart_shortcuts_added(self, _):
+        self.quickstart_changed.emit()
 
     def _on_templates_dir_changed(self, path: str):
         if path == self._templates_dir:

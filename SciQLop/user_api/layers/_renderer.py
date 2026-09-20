@@ -1,4 +1,5 @@
 """Manages C++ annotation items on a SciQLopPlot for a single layer."""
+import shiboken6
 import numpy as np
 import re
 from typing import Optional
@@ -192,7 +193,7 @@ class LayerRenderer(QObject):
         QTimer.singleShot(0, self._deferred_try_bind)
 
     def _deferred_try_bind(self):
-        if self._data_source is not None:
+        if self._data_source is not None or not shiboken6.isValid(self._plot):
             return
         if self._try_bind():
             self._disconnect_watchers()

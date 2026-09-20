@@ -2,10 +2,11 @@ from functools import lru_cache
 from hashlib import md5
 from typing import ClassVar
 
-from PySide6.QtCore import QObject, QRect, Qt, Signal
-from PySide6.QtGui import QColor, QIcon, QIconEngine, QPainter
+from PySide6.QtCore import QObject, QPoint, QRect, QSize, Qt, Signal
+from PySide6.QtGui import QColor, QIcon, QIconEngine, QPainter, QPixmap
 
 from SciQLop.components.settings.backend.entry import ConfigEntry, SettingsCategory
+from SciQLop.components.theming.icons import _transparent_argb
 
 # Paul Tol's colorblind-safe "muted" qualitative scheme (9 colors, 80 alpha
 # for span fill). Replaces a tab10-derived set that paired a near-pure red
@@ -100,10 +101,6 @@ class _CatalogSwatchIconEngine(QIconEngine):
         self._color = color
 
     def paint(self, painter: QPainter, rect: QRect, mode, state):
-        # No custom pixmap()/scaledPixmap(): QIconEngine's default pixmap()
-        # already builds a proper ARGB32_Premultiplied buffer and calls
-        # paint() on it -- exactly the DPR-safe pattern
-        # theming/icons.py's _transparent_argb exists to guarantee by hand.
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(Qt.PenStyle.NoPen)
@@ -111,6 +108,19 @@ class _CatalogSwatchIconEngine(QIconEngine):
         margin = max(1, min(rect.width(), rect.height()) // 12)
         painter.drawEllipse(rect.adjusted(margin, margin, -margin, -margin))
         painter.restore()
+
+    def pixmap(self, size: QSize, mode, state) -> QPixmap:
+        return self.scaledPixmap(size, mode, state, 1.0)
+
+    def scaledPixmap(self, size: QSize, mode, state, scale: float) -> QPixmap:
+        # QIconEngine's default pixmap() allocates a screen-format QPixmap: RGB16
+        # on a 16-bit display (headless xvfb), which has no alpha and quantizes
+        # the color to RGB565. Same reason theming/icons.py builds its own.
+        pixmap = _transparent_argb(QSize(round(size.width() * scale), round(size.height() * scale)), scale)
+        painter = QPainter(pixmap)
+        self.paint(painter, QRect(QPoint(0, 0), size), mode, state)
+        painter.end()
+        return pixmap
 
     def clone(self) -> QIconEngine:
         return _CatalogSwatchIconEngine(self._color)

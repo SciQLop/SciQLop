@@ -669,10 +669,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         self._notify_panels_list_changed()
         panel.destroyed.connect(self._notify_panels_list_changed)
         panel_name = panel.name
-        panel.destroyed.connect(
-            lambda *_: QtCore.QTimer.singleShot(
-                0, lambda: self._drop_dead_panel_dock(panel_name)))
+        panel.destroyed.connect(lambda *_: self._schedule_dead_panel_drop(panel_name))
         return panel
+
+    def _schedule_dead_panel_drop(self, name: str) -> None:
+        # Also fires while this window itself is being destroyed, when its own
+        # C++ side is already gone: nothing left to clean up then.
+        if shiboken6.isValid(self):
+            QtCore.QTimer.singleShot(0, self, lambda: self._drop_dead_panel_dock(name))
 
     def _drop_dead_panel_dock(self, name: str) -> None:
         """A panel died without going through remove_panel (e.g. user code
@@ -695,7 +699,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         # before the triggering dock widget has been inserted into it —
         # defer the plot-panel check to the next event-loop turn so
         # dockWidgets() is populated by the time we look.
-        QtCore.QTimer.singleShot(0, lambda: self._ensure_add_panel_button(area))
+        QtCore.QTimer.singleShot(0, self, lambda: self._ensure_add_panel_button(area))
 
     def _ensure_add_panel_button(self, area: QtAds.CDockAreaWidget) -> None:
         if not shiboken6.isValid(area) or area.isAutoHide():
@@ -838,7 +842,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def _maybe_run_onboarding_tour(self, *_args) -> None:
         if OnboardingSettings().completed_tours.get("getting_started", False):
             return
-        QtCore.QTimer.singleShot(500, lambda: self._start_tour("getting_started"))
+        QtCore.QTimer.singleShot(500, self, lambda: self._start_tour("getting_started"))
 
     def _open_tour_picker(self) -> None:
         from SciQLop.components.onboarding.ui.tour_picker import TourPicker

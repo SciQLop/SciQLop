@@ -60,7 +60,7 @@ class ProductSearchOverlay(QWidget):
         self._smart_search_busy = False
         self._smart_search_pending_text = None
 
-        self._filter_model = ProductsFlatFilterModel(ProductsModel.instance())
+        self._filter_model: ProductsFlatFilterModel | None = None
         self._list_model = QStringListModel()
         self._result_paths: list[list[str]] = []
 
@@ -145,8 +145,6 @@ class ProductSearchOverlay(QWidget):
         self._search_box.textChanged.connect(self._on_text_changed)
         self._result_list.clicked.connect(self._on_result_clicked)
         self._result_list.activated.connect(self._on_result_clicked)
-        self._filter_model.layoutChanged.connect(self._on_filter_ready)
-        self._filter_model.modelReset.connect(self._on_filter_ready)
         self._smart_search_scores_ready.connect(self._apply_smart_search_scores)
 
     def _show_results(self, show: bool):
@@ -170,11 +168,21 @@ class ProductSearchOverlay(QWidget):
             return
         self._debounce.start()
 
+    def _ensure_filter_model(self) -> ProductsFlatFilterModel:
+        # Built on the first query, not in __init__: every proxy re-scores the
+        # whole product tree on each ProductsModel change, so one per panel that
+        # is never searched is pure overhead (and grows with the panel count).
+        if self._filter_model is None:
+            self._filter_model = ProductsFlatFilterModel(ProductsModel.instance())
+            self._filter_model.layoutChanged.connect(self._on_filter_ready)
+            self._filter_model.modelReset.connect(self._on_filter_ready)
+        return self._filter_model
+
     def _run_query(self):
         text = self._search_box.text().strip()
         if len(text) < _MIN_QUERY_LENGTH:
             return
-        self._filter_model.set_query(QueryParser.parse(text))
+        self._ensure_filter_model().set_query(QueryParser.parse(text))
         if smart_search.is_enabled():
             self._request_smart_search(text)
 
@@ -224,14 +232,15 @@ class ProductSearchOverlay(QWidget):
         # and since the underlying sort isn't stable, the relevant match can
         # end up buried behind an unrelated one. Once smart_search has an
         # opinion, it should be the sole authority.
-        self._filter_model.set_signal_enabled("smart_search", True)
-        self._filter_model.set_score_merge_strategy(ScoreMergeStrategy.Override)
-        self._filter_model.set_override_signal("smart_search")
-        self._filter_model.set_external_scores("smart_search", scores)
+        model = self._ensure_filter_model()
+        model.set_signal_enabled("smart_search", True)
+        model.set_score_merge_strategy(ScoreMergeStrategy.Override)
+        model.set_override_signal("smart_search")
+        model.set_external_scores("smart_search", scores)
 
     def _on_filter_ready(self):
         text = self._search_box.text().strip()
-        if len(text) < _MIN_QUERY_LENGTH:
+        if self._filter_model is None or len(text) < _MIN_QUERY_LENGTH:
             return
         count = min(self._filter_model.rowCount(), _MAX_RESULTS)
         if count == 0:
