@@ -357,6 +357,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         register_builtin_tours()
         self._onboarding_controller = None
         self._tour_picker = None
+        self._tour_timer = QtCore.QTimer(self)
+        self._tour_timer.setSingleShot(True)
+        self._tour_timer.setInterval(500)
+        self._tour_timer.timeout.connect(self._start_getting_started_tour)
         wm.workspace_loaded.connect(self._maybe_run_onboarding_tour)
         sciqlop_app().add_quickstart_shortcut("JupyterLab", "Open JupyterLab",
                                               Icons.get_icon("Jupyter"),
@@ -845,7 +849,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     def _maybe_run_onboarding_tour(self, *_args) -> None:
         if OnboardingSettings().completed_tours.get("getting_started", False):
             return
-        QtCore.QTimer.singleShot(500, self, lambda: self._start_tour("getting_started"))
+        self._tour_timer.start()
+
+    def _start_getting_started_tour(self) -> None:
+        self._start_tour("getting_started")
 
     def _open_tour_picker(self) -> None:
         from SciQLop.components.onboarding.ui.tour_picker import TourPicker

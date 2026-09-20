@@ -13,11 +13,28 @@ def test_maybe_run_onboarding_tour_skips_when_getting_started_completed(main_win
     with OnboardingSettings() as s:
         s.completed_tours = {"getting_started": True}
 
-    qtbot.wait(600)  # a 500ms tour timer armed by an earlier test may still be pending
+    main_window._tour_timer.stop()  # an earlier test may have armed it on the shared window
     main_window._onboarding_controller = None
     main_window._maybe_run_onboarding_tour(None)
     qtbot.wait(200)
     assert main_window._onboarding_controller is None
+
+
+def test_repeated_workspace_loads_start_the_tour_once(main_window, qtbot, monkeypatch):
+    from SciQLop.components.onboarding.backend.settings import OnboardingSettings
+
+    with OnboardingSettings() as s:
+        s.completed_tours = {}
+    started = []
+    monkeypatch.setattr(main_window, "_start_tour", started.append)
+    main_window._tour_timer.stop()
+
+    main_window._maybe_run_onboarding_tour(None)
+    main_window._maybe_run_onboarding_tour(None)
+    qtbot.waitUntil(lambda: bool(started), timeout=1500)
+    qtbot.wait(700)
+
+    assert started == ["getting_started"]
 
 
 def test_maybe_run_onboarding_tour_starts_when_not_completed(main_window, qtbot):
