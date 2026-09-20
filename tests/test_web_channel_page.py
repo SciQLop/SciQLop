@@ -8,12 +8,19 @@ blocks a local-origin document from loading remote URLs unless
 back to the emoji placeholder and the screenshot carousel stays empty.
 """
 import gc
+import os
 import weakref
+
+import pytest
 
 from PySide6.QtWebEngineCore import QWebEngineSettings
 from SciQLop.components.appstore.web_appstore_page import AppStorePage
 
 
+@pytest.mark.skipif(
+    os.environ.get("SCIQLOP_TEST_NO_WEBENGINE") == "1",
+    reason="needs a real QWebEngineView; tests/conftest.py disables it by default "
+           "because Chromium segfaults under the headless Xvfb without CI's flags")
 def test_local_page_can_load_remote_images(qapp):
     page = AppStorePage()
     settings = page._view.settings()
