@@ -15,8 +15,8 @@ from .view import (
     TextBlock,
     ThinkingBlock,
     ToolActivityBlock,
-    _input_one_line,
 )
+from .render_model import input_one_line
 
 _ROLE = {"user": "You", "assistant": "Claude", "error": "Error"}
 
@@ -33,7 +33,7 @@ def _block_md(block: Any) -> List[str]:
         return [f"![image]({block.path})"]
     if isinstance(block, ToolActivityBlock):
         line = f"- 🔧 `{block.tool_name}`"
-        preview = _input_one_line(block.tool_input, cap=120)
+        preview = input_one_line(block.tool_input, cap=120)
         if preview:
             line += f" · {preview}"
         out = [line]
