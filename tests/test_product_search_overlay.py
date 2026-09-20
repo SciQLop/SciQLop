@@ -6,6 +6,19 @@ from PySide6.QtWidgets import QLineEdit, QListView, QLabel
 from SciQLopPlots import ProductsModelNodeType
 
 
+
+def _visible_names(overlay):
+    model = overlay._filter_model
+    return [model.data(model.index(i, 0)) for i in range(model.rowCount())]
+
+
+def _wait_until_visible(qtbot, overlay, name):
+    """The flat filter model rebuilds incrementally; with the shared main
+    window's real product inventory loaded, a fixed number of event-loop
+    pumps is not enough for a synthetic leaf to show up."""
+    qtbot.waitUntil(lambda: name in _visible_names(overlay), timeout=10000)
+
+
 class TestProductSearchOverlayCreation:
     def test_overlay_has_search_box(self, qtbot):
         from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
@@ -205,13 +218,8 @@ class TestProductSearchOverlaySmartSearch:
         qtbot.addWidget(overlay)
         overlay._apply_smart_search_scores(0, {path_key: 100.0})
         overlay._filter_model.set_query(QueryParser.parse("magnetic field"))
-        from PySide6.QtCore import QCoreApplication
-        for _ in range(10):
-            QCoreApplication.processEvents()
-
-        names = [overlay._filter_model.data(overlay._filter_model.index(i, 0))
-                 for i in range(overlay._filter_model.rowCount())]
-        assert "acronym_only" in names
+        _wait_until_visible(qtbot, overlay, "acronym_only")
+        assert "acronym_only" in _visible_names(overlay)
 
     def test_smart_search_scores_use_override_not_max(self, qtbot):
         # Regression: default Max merge normalizes each signal independently
@@ -256,12 +264,8 @@ class TestProductSearchOverlaySmartSearch:
         qtbot.addWidget(overlay)
         overlay._apply_smart_search_scores(0, {target_key: 100.0})
         overlay._filter_model.set_query(QueryParser.parse(f"{token} magnetic field spacecraft"))
-        from PySide6.QtCore import QCoreApplication
-        for _ in range(10):
-            QCoreApplication.processEvents()
-
-        names = [overlay._filter_model.data(overlay._filter_model.index(i, 0))
-                 for i in range(overlay._filter_model.rowCount())]
+        _wait_until_visible(qtbot, overlay, "smart_target")
+        names = _visible_names(overlay)
         assert "smart_target" in names
         assert "native_best" not in names
 
@@ -362,12 +366,10 @@ class TestProductSearchOverlaySmartSearch:
             queued[0].run()  # the in-flight "aa" query finishes
             assert len(queued) == 2  # its completion immediately dispatches the latest pending
             queued[1].run()
-            for _ in range(10):
-                QCoreApplication.processEvents()
+            _wait_until_visible(qtbot, overlay, "final_leaf")
 
         assert queried_texts == ["aa", "aabc"]  # "aab" was superseded before ever being queried
-        names = [overlay._filter_model.data(overlay._filter_model.index(i, 0))
-                 for i in range(overlay._filter_model.rowCount())]
+        names = _visible_names(overlay)
         assert "final_leaf" in names
         assert "mid_leaf" not in names
 

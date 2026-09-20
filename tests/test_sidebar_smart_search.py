@@ -34,6 +34,13 @@ def _visible_names(model):
     return [model.data(model.index(i, 0)) for i in range(model.rowCount())]
 
 
+def _wait_until_visible(qtbot, view, name):
+    """The flat filter model rebuilds incrementally; with the shared main
+    window's real product inventory loaded, a fixed number of event-loop
+    pumps is not enough for a synthetic leaf to show up."""
+    qtbot.waitUntil(lambda: name in _visible_names(_list_view_model(view)), timeout=10000)
+
+
 class TestSidebarSmartSearchWiring:
     def test_query_changed_dispatches_and_scores_surface_a_match(self, qtbot):
         token = uuid.uuid4().hex[:8]
@@ -57,6 +64,7 @@ class TestSidebarSmartSearchWiring:
             _flush(qtbot)
 
         mock_query.assert_called_once_with("products", "magnetic field")
+        _wait_until_visible(qtbot, view, "acronym_only")
         assert "acronym_only" in _visible_names(_list_view_model(view))
 
     def test_scores_use_override_not_max(self, qtbot):
@@ -95,6 +103,7 @@ class TestSidebarSmartSearchWiring:
             view.findChild(QTextEdit).setPlainText(f"{token} magnetic field spacecraft")
             _flush(qtbot)
 
+        _wait_until_visible(qtbot, view, "smart_target")
         names = _visible_names(_list_view_model(view))
         assert "smart_target" in names
         assert "native_best" not in names
