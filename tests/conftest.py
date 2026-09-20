@@ -360,7 +360,22 @@ def pytest_runtest_teardown(item):
                     f"after {item.nodeid}", returncode=3)
 
 
+def _stop_tscat_driver_worker():
+    """tscat_gui starts a QThread at import and its own stop() only calls
+    quit() *after* a failed 1s wait, without waiting again: the thread is still
+    running when Qt tears down, and the interpreter aborts with exit 134 after
+    an otherwise green run."""
+    import sys
+    driver_mod = sys.modules.get("tscat_gui.tscat_driver.driver")
+    if driver_mod is None:
+        return
+    worker = driver_mod.tscat_driver._worker
+    worker.quit()
+    worker.wait(5000)
+
+
 def pytest_sessionfinish(session):
+    _stop_tscat_driver_worker()
     if not _RSS_LOG:
         return
     import collections
