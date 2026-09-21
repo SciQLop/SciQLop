@@ -28,6 +28,20 @@ def _format_tooltip(event: CatalogEvent, catalog_name: str) -> str:
     return "<br>".join(lines)
 
 
+def _disconnect_pairs(pairs: list[tuple]) -> None:
+    for signal, slot in pairs:
+        try:
+            signal.disconnect(slot)
+        except RuntimeError:
+            pass
+
+
+def _disconnect_all_events(connections: dict[str, list[tuple]]) -> None:
+    for pairs in connections.values():
+        _disconnect_pairs(pairs)
+    connections.clear()
+
+
 class CatalogOverlay(QObject):
     """Draws events from one Catalog as vertical spans on a TimeSyncPanel."""
 
@@ -45,6 +59,10 @@ class CatalogOverlay(QObject):
         self._span_collection = MultiPlotsVSpanCollection(panel)
         self._event_by_span_id: dict[str, CatalogEvent] = {}
         self._event_connections: dict[str, list[tuple]] = {}  # uuid -> [(signal, slot), ...]
+        # The slots are closures, which PySide cannot tie to this overlay's lifetime, and
+        # the events are provider-owned: when the panel dies without clear() they would
+        # keep calling into deleted spans. Only the dict and the events are touched here.
+        self.destroyed.connect(lambda *_, c=self._event_connections: _disconnect_all_events(c))
 
         # React to event list changes
         catalog.provider.events_changed.connect(self._on_events_changed)
@@ -199,11 +217,7 @@ class CatalogOverlay(QObject):
         return span
 
     def _disconnect_event(self, uuid: str) -> None:
-        for signal, slot in self._event_connections.pop(uuid, []):
-            try:
-                signal.disconnect(slot)
-            except RuntimeError:
-                pass
+        _disconnect_pairs(self._event_connections.pop(uuid, []))
 
     def _on_span_range_changed(self, new_range: TimeRange, event: CatalogEvent) -> None:
         event.start = make_utc_datetime(new_range.datetime_start())
