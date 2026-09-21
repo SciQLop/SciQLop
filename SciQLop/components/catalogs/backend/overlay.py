@@ -177,7 +177,12 @@ class CatalogOverlay(QObject):
                 self._on_span_range_changed(r, e)
                 src[0] = None
 
+        def _refresh_tooltip(*_, e=event, s=span):
+            s.set_tool_tip(_format_tooltip(e, self._catalog.name))
+
         event.range_changed.connect(_on_event_changed)
+        event.range_changed.connect(_refresh_tooltip)
+        event.meta_changed.connect(_refresh_tooltip)
         span.range_changed.connect(_on_span_changed)
         _on_selection = lambda selected, e=event: self._on_span_selected(selected, e)
         span.selection_changed.connect(_on_selection)
@@ -185,6 +190,8 @@ class CatalogOverlay(QObject):
         span.delete_requested.connect(_on_delete)
         self._event_connections[event.uuid] = [
             (event.range_changed, _on_event_changed),
+            (event.range_changed, _refresh_tooltip),
+            (event.meta_changed, _refresh_tooltip),
             (span.range_changed, _on_span_changed),
             (span.selection_changed, _on_selection),
             (span.delete_requested, _on_delete),

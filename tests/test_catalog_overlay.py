@@ -26,6 +26,39 @@ def test_format_tooltip_escapes_meta_values(qapp):
     assert "&lt;injected&gt;" in html
 
 
+def _overlay_with_one_event(qapp):
+    from SciQLop.components.catalogs.backend.overlay import CatalogOverlay
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+    from SciQLop.core import TimeRange
+
+    panel = TimeSyncPanel("test-panel")
+    base = datetime(2020, 1, 1, tzinfo=timezone.utc)
+    panel.time_range = TimeRange(base.timestamp(), (base + timedelta(days=200)).timestamp())
+    catalog = DummyProvider(num_catalogs=1, events_per_catalog=1).catalogs()[0]
+    overlay = CatalogOverlay(catalog=catalog, panel=panel)
+    (span,) = overlay._span_collection.spans()
+    return overlay, overlay._event_by_span_id[span.id()], span
+
+
+def test_overlay_tooltip_follows_event_range_edits(qtbot, qapp):
+    """GH #37: the hover text kept the range the span was created with."""
+    overlay, event, span = _overlay_with_one_event(qapp)
+
+    event.stop = event.start + timedelta(hours=5, minutes=7, seconds=9)
+
+    assert event.stop.strftime("%H:%M:%S") in span.tool_tip()
+
+
+def test_overlay_tooltip_follows_event_meta_edits(qtbot, qapp):
+    overlay, event, span = _overlay_with_one_event(qapp)
+
+    event.meta["note"] = "edited after creation"
+    event.meta_changed.emit("note")
+
+    assert "edited after creation" in span.tool_tip()
+
+
 def test_overlay_creates_spans(qtbot, qapp):
     from SciQLop.components.catalogs.backend.overlay import CatalogOverlay
     from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
