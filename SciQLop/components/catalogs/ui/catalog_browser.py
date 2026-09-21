@@ -29,6 +29,7 @@ from SciQLop.core.ui import Metrics
 from ..backend.provider import Capability, CatalogProvider, Catalog, CatalogEvent
 from .catalog_tree import CatalogTreeModel, DIRTY_PROVIDER_ROLE, LOADING_ROLE
 from .event_table import EventTableModel, EventSortProxy
+from .link_text import first_url
 
 
 class _CatalogFilterProxy(QSortFilterProxyModel):
@@ -941,13 +942,10 @@ class CatalogBrowser(QWidget):
             self._report_failure("Could not delete event", e)
 
     def _url_at(self, proxy_index) -> str | None:
-        """The cell's display text, if it looks like a clickable URL."""
+        """The first http(s) link in the cell's display text, if any."""
         if not proxy_index.isValid():
             return None
-        text = self._sort_proxy.data(proxy_index, Qt.ItemDataRole.DisplayRole)
-        if isinstance(text, str) and text.strip().startswith(("http://", "https://")):
-            return text.strip()
-        return None
+        return first_url(self._sort_proxy.data(proxy_index, Qt.ItemDataRole.DisplayRole))
 
     def _build_event_context_menu(self, url: str | None = None) -> QMenu:
         menu = QMenu(self)

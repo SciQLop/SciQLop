@@ -125,6 +125,9 @@ def test_event_table_context_menu_offers_open_link_for_a_url_cell(qtbot, qapp, m
     note_proxy_idx = browser._sort_proxy.mapFromSource(browser._event_model.index(0, note_col))
     assert browser._url_at(ref_proxy_idx) == "https://example.org/report"
     assert browser._url_at(note_proxy_idx) is None
+    event.meta["note"] = "cf. https://example.org/other, section 3"
+    event.meta_changed.emit("note")
+    assert browser._url_at(note_proxy_idx) == "https://example.org/other"
 
     open_action = next(a for a in url_menu.actions() if a.text() == "Open link")
     opened = []
