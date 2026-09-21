@@ -19,6 +19,11 @@
 
 - Settings that hold a size in bytes, such as the Speasy cache limit, are shown and edited as `20 GB` instead of `20000000000`. Input like `500MB`, `1.5 GB`, `2 TiB` or a plain number of bytes is accepted, and the value is saved when you press Enter or leave the field, not while you type.
 
+### Dependencies
+
+- Bumped SciQLopPlots 0.36.1 → 0.37.0. Curves and projection graphs can be coloured by a scalar with a real colour scale (`z_axis()`: pinned or automatic range, log scale, gradient, NaN gaps); a coloured curve now draws a colour bar, and `plot.set_curve_color_scale_enabled(False)` restores the old look. Projection plots emit `time_marker_changed`, projection graphs expose their components and visibility and can share one legend, and `set_plot_stretch` sets the relative height of the plots in a panel. `ProductsModel.remove_node` removes a product or folder from the tree.
+- SciQLopPlots 0.37.0 also fixes two problems reported here: destroying a graph no longer waits for a data callback that is still running (the freeze when closing a panel, #137), and adding a product from another thread is applied on the model thread (#138). SciQLop's own workarounds for both stay in place.
+
 ### User API
 
 - `%workspace add-example` printed the result's dict keys (`name, is_update, missing_dependencies`) as the missing packages, and suggested installing them. It now lists the real missing dependencies and says "Updated" when the example was already installed.

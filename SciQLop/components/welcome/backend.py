@@ -83,6 +83,7 @@ def _discover_examples() -> list[Example]:
 
 
 _MOCK_NEWS = [
+    {"icon": "📦", "title": "Dependency refresh: SciQLopPlots 0.37.0 — a colour scale for curves coloured by a scalar, and closing a busy panel no longer freezes SciQLop", "date": "2026-09-22"},
     {"icon": "🆕", "title": "New workspace dialog — name and confirm before SciQLop restarts into a fresh workspace", "date": "2026-09-14"},
     {"icon": "👁️", "title": "Plot items can now be shown and hidden with item.visible", "date": "2026-09-14"},
     {"icon": "🧲", "title": "View in Store opens the plugin's own store page", "date": "2026-09-14"},
