@@ -205,7 +205,7 @@ class TranscriptView(QTextBrowser):
         # Layout is lazy: the range keeps growing after this returns, and
         # rangeChanged re-applies the target until the reader's place is
         # restored or, when following, for as long as the document grows.
-        QTimer.singleShot(0, self._forget_restore_target)
+        QTimer.singleShot(0, self, self._forget_restore_target)
 
     def _write_message(self, cursor: QTextCursor, doc: QTextDocument, msg: ChatMessage) -> None:
         label = self._role_labels.get(msg.role, msg.role)

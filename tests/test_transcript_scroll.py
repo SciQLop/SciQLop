@@ -45,7 +45,7 @@ def test_scroll_to_end_schedules_deferred_scroll(qtbot, monkeypatch):
 
     class _FakeTimer:  # only intercepts the deferred-scroll scheduling in _flush
         @staticmethod
-        def singleShot(ms, fn):
+        def singleShot(ms, context, fn):
             calls.append((ms, fn))
 
     monkeypatch.setattr(vw, "QTimer", _FakeTimer)
@@ -57,3 +57,22 @@ def test_scroll_to_end_schedules_deferred_scroll(qtbot, monkeypatch):
     calls[0][1]()  # run the deferred scroll
     bar = v.verticalScrollBar()
     assert bar.value() == bar.maximum() and bar.maximum() > 0
+
+
+def test_deferred_scroll_settle_is_harmless_when_view_dies_first(qtbot):
+    """The trailing singleShot(0, ...) after a render must not call into a view
+    that was destroyed before it fired: in CI that raised 'TranscriptView already
+    deleted' inside the main-window teardown and left it half-destroyed, failing
+    every later test that needs the shared window."""
+    import shiboken6
+    from PySide6.QtWidgets import QApplication
+    from SciQLop.components.agents.chat.view import TranscriptView
+    v = TranscriptView()  # not registered with qtbot, which would close the deleted widget
+    v.render_messages([_assistant(0)])
+    v.flush_now()
+
+    with qtbot.captureExceptions() as exceptions:
+        shiboken6.delete(v)
+        QApplication.processEvents()
+
+    assert exceptions == []
