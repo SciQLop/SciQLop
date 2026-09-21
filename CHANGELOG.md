@@ -15,6 +15,8 @@
 
 - Comboboxes that were populated after creation (agent model/effort/backend pickers) or never sized (attribute type, knob choices, activity and writes pickers) clipped their item text in the popup. `fit_combo_to_content` now re-fits whenever items change, and every combobox in the app uses it.
 
+- Closing a plot panel whose data callback is still running (a slow or stalled network request, for instance) no longer freezes SciQLop until the call returns: the panel disappears at once and is destroyed when the call is over. This covers the tab's close button as well as `PlotPanel.close()`.
+
 ### User API
 
 - `%workspace add-example` printed the result's dict keys (`name, is_update, missing_dependencies`) as the missing packages, and suggested installing them. It now lists the real missing dependencies and says "Updated" when the example was already installed.

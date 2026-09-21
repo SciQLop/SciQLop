@@ -23,6 +23,7 @@ from SciQLop.core.unique_names import auto_name, release_name
 from SciQLop.components.workspaces import Workspace
 from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle, qtads_stylesheet
 from SciQLop.core.ui import Metrics
+from SciQLop.core.ui.deferred_delete import delete_when_idle
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel
@@ -97,6 +98,15 @@ def _extract_panel(dock_widget):
     if isinstance(w, SciQLopMultiPlotPanel):
         return w if shiboken6.isValid(w) else None
     return None
+
+
+def _docked_panel_is_busy(widget: QWidget) -> bool:
+    panel = widget.panel if isinstance(widget, PanelContainer) else widget
+    if not shiboken6.isValid(panel):
+        return False
+    return any(bool(graph.property("busy"))
+               for plot in panel.plots() or []
+               for graph in plot.plottables() or [])
 
 
 def _surface(size: QtCore.QSize):
@@ -617,7 +627,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 release_name(panel.name)
                 container = dw.takeWidget()
                 dw.closeDockWidget()
-                container.deleteLater()
+                container.hide()
+                delete_when_idle(container, _docked_panel_is_busy)
                 self._notify_panels_list_changed()
 
     def addWidgetIntoDock(self, allowed_area, widget, area=None, delete_on_close: bool = False,
@@ -637,13 +648,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             else:
                 dock_area = self.dock_manager.addDockWidget(allowed_area, doc)
             if delete_on_close:
+                doc.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
                 if custom_close_callback is not None:
                     doc.setFeature(QtAds.CDockWidget.CustomCloseHandling, True)
                     doc.closeRequested.connect(custom_close_callback)
-                else:
-                    doc.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
-                    if hasattr(widget, "delete_me"):
-                        widget.delete_me.connect(doc.closeDockWidget)
+                elif hasattr(widget, "delete_me"):
+                    widget.delete_me.connect(doc.closeDockWidget)
             else:
                 action = doc.toggleViewAction()
                 self.viewMenu.addAction(action)
@@ -662,7 +672,8 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                               time_range=self._default_time_range)
         container = PanelContainer(panel)
         self.addWidgetIntoDock(QtAds.DockWidgetArea.TopDockWidgetArea, container,
-                               area=area, delete_on_close=True)
+                               area=area, delete_on_close=True,
+                               custom_close_callback=lambda: self.remove_panel(panel))
         dock_widget = self.dock_manager.findDockWidget(panel.name)
         if dock_widget is not None:
             # addWidgetIntoDock may have tabbed this panel into an existing
