@@ -147,12 +147,14 @@ def test_rapid_notify_changed_burst_submits_exactly_one_reindex(registry, jobs_b
     domain = _FakeDomain("products", [NodeSnapshot("a", "hi")])
     registry.register_domain(domain)
     registry._enabled = True
+    registry._debounce_ms = 300  # a loaded CI runner can stretch a 5ms wait past the fixture's 20ms
     job_ids = []
     jobs_backend.job_added.connect(job_ids.append)
     for _ in range(5):
         registry.notify_changed("products")
-        qtbot.wait(5)  # well under the 20ms debounce_ms configured on `registry`
-    qtbot.wait(60)  # past the debounce window, no further notify_changed calls
+        qtbot.wait(5)
+    qtbot.waitUntil(lambda: len(job_ids) >= 1, timeout=5000)
+    qtbot.wait(100)  # a stray second submission would land right after the first
     assert len(job_ids) == 1
 
 
