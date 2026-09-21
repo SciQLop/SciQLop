@@ -1,6 +1,7 @@
 from typing import Any, List, Type, Mapping, Callable, get_origin, get_args
 import typing
 from enum import Enum
+from pydantic import ByteSize
 from pydantic.fields import FieldInfo
 from PySide6.QtCore import Signal
 from PySide6.QtGui import QPalette
@@ -13,6 +14,7 @@ from PySide6.QtWidgets import (
     QPushButton, QInputDialog,
 )
 from SciQLop.core.ui import Metrics, fit_combo_to_content
+from SciQLop.components.settings.backend.byte_size import format_byte_size, is_byte_size, parse_byte_size
 
 # ---------------------------------------------------------------------------
 # Registry: maps type names to delegate classes
@@ -186,6 +188,57 @@ class FloatDelegate(SettingDelegate):
             self._spin.setMaximum(maximum)
         if step:
             self._spin.setSingleStep(step)
+
+
+_INVALID_QSS = "QLineEdit { border: 1px solid #c0392b; border-radius: 2px; }"
+
+
+@register_delegate(ByteSize)
+class ByteSizeDelegate(SettingDelegate):
+    """A size in bytes edited as '20 GB'. The value is only emitted when the edit is
+    committed: the panel saves on every emission, and '2' on the way to '20 GB' must not
+    reach the settings."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._edit = QLineEdit()
+        self._edit.setMinimumWidth(Metrics.em(12))
+        self._edit.setPlaceholderText("e.g. 20 GB, 500MB, 2 TiB")
+        layout.addWidget(self._edit)
+        self._value = 0
+        self._invalid = False
+        self._edit.textChanged.connect(lambda text: self._set_invalid(not is_byte_size(text)))
+        self._edit.editingFinished.connect(self._commit)
+
+    def _commit(self) -> None:
+        text = self._edit.text()
+        if is_byte_size(text) and parse_byte_size(text) != self._value:
+            self._value = parse_byte_size(text)
+            self.value_changed.emit(self._value)
+        self._show(self._value)
+
+    def _show(self, value: int) -> None:
+        self._edit.blockSignals(True)
+        self._edit.setText(format_byte_size(value))
+        self._edit.blockSignals(False)
+        self._set_invalid(False)
+
+    def _set_invalid(self, invalid: bool) -> None:
+        self._invalid = invalid
+        self._edit.setStyleSheet(_INVALID_QSS if invalid else "")
+        self._edit.setToolTip("Invalid byte size" if invalid else "")
+
+    def is_valid(self) -> bool:
+        return not self._invalid
+
+    def get_value(self) -> int:
+        return self._value
+
+    def set_value(self, value: Any) -> None:
+        self._value = int(value)
+        self._show(self._value)
 
 
 @register_widget("combo")

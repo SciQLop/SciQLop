@@ -8,7 +8,7 @@ time — nothing is hardcoded.
 from __future__ import annotations
 
 from typing import ClassVar, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ByteSize, Field
 
 import speasy.config as spz_cfg
 
@@ -57,12 +57,19 @@ _WIDGET_HINTS: dict[str, dict[str, Any]] = {
 }
 
 
-def _field_for_entry(entry: spz_cfg.ConfigEntry) -> tuple[type, Any]:
+# Speasy entries holding a size in bytes, as (section, key). Shown and edited as '20 GB'
+# while Speasy keeps an integer.
+_BYTE_SIZE_ENTRIES: set[tuple[str, str]] = {("cache", "size")}
+
+
+def _field_for_entry(section_name: str, entry: spz_cfg.ConfigEntry) -> tuple[type, Any]:
     """Derive a (type, FieldInfo) pair from a Speasy ConfigEntry."""
     value = entry.get()
     py_type = type(value)
     extra = dict(_WIDGET_HINTS.get(entry.key2, {}))
-    if py_type is int and not (-(2**31) <= value <= 2**31 - 1):
+    if (section_name, entry.key2) in _BYTE_SIZE_ENTRIES:
+        py_type, value = ByteSize, ByteSize(value)
+    elif py_type is int and not (-(2**31) <= value <= 2**31 - 1):
         py_type = float
     return (py_type, Field(default=value, description=entry.description, json_schema_extra=extra or None))
 
@@ -79,7 +86,7 @@ def _build_bridge(section_name: str, class_name: str) -> type[ConfigEntry]:
         attr = getattr(section, attr_name)
         if not isinstance(attr, spz_cfg.ConfigEntry):
             continue
-        py_type, field_info = _field_for_entry(attr)
+        py_type, field_info = _field_for_entry(section_name, attr)
         field_defs[attr_name] = field_info
         annotations[attr_name] = py_type
 

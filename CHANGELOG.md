@@ -17,6 +17,8 @@
 
 - Closing a plot panel whose data callback is still running (a slow or stalled network request, for instance) no longer freezes SciQLop until the call returns: the panel disappears at once and is destroyed when the call is over. This covers the tab's close button as well as `PlotPanel.close()`.
 
+- Settings that hold a size in bytes, such as the Speasy cache limit, are shown and edited as `20 GB` instead of `20000000000`. Input like `500MB`, `1.5 GB`, `2 TiB` or a plain number of bytes is accepted, and the value is saved when you press Enter or leave the field, not while you type.
+
 ### User API
 
 - `%workspace add-example` printed the result's dict keys (`name, is_update, missing_dependencies`) as the missing packages, and suggested installing them. It now lists the real missing dependencies and says "Updated" when the example was already installed.
