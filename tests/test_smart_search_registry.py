@@ -129,10 +129,15 @@ def test_corpus_change_during_inflight_reindex_triggers_one_more_after(registry,
         qtbot.waitUntil(lambda: registry.is_enabled(), timeout=5000)
         state = registry._domains["products"]
         qtbot.waitUntil(lambda: state.job_id is not None, timeout=5000)
+        follow_up_job_ids = []
+        jobs_backend.job_added.connect(follow_up_job_ids.append)
         domain._nodes = [NodeSnapshot("a", "hi"), NodeSnapshot("b", "new")]
         registry.notify_changed("products")
-        qtbot.waitUntil(lambda: state.matrix is not None and len(state.path_keys) == 1, timeout=5000)
-        qtbot.waitUntil(lambda: state.matrix is not None and len(state.path_keys) == 2, timeout=5000)
+        # The one-key intermediate state lasts a single event-loop turn (the follow-up
+        # job is submitted the moment the first finishes), so it is not observable.
+        qtbot.waitUntil(lambda: state.matrix is not None and len(state.path_keys) == 2, timeout=15000)
+        qtbot.wait(100)
+        assert len(follow_up_job_ids) == 1
 
 
 def test_query_returns_empty_dict_when_disabled(registry):
