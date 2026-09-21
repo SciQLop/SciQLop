@@ -89,7 +89,8 @@ def test_cycle_mode_advances_view_jump_edit_view(chrome, qtbot):
 
 
 def test_mode_combo_tooltip_advertises_shortcut(chrome):
-    assert "Ctrl+Shift+M" in chrome._mode_combo.toolTip()
+    from SciQLop.core.ui.shortcuts import native_shortcut_text
+    assert native_shortcut_text("Ctrl+Shift+M") in chrome._mode_combo.toolTip()
 
 
 def test_set_targets_keeps_the_current_selection_when_still_present(chrome):

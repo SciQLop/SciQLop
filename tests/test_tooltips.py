@@ -1,3 +1,4 @@
+from SciQLop.core.ui.shortcuts import native_shortcut_text
 from SciQLop.core.ui.tooltips import rich_tooltip
 
 
@@ -11,15 +12,18 @@ def test_title_and_body():
     )
 
 
+_NATIVE_SHORTCUT = native_shortcut_text("Ctrl+Shift+H")
+
+
 def test_title_with_shortcut():
     assert rich_tooltip("Crosshair", shortcut="Ctrl+Shift+H") == (
-        '<b>Crosshair</b> <span style="color:gray">(Ctrl+Shift+H)</span>'
+        f'<b>Crosshair</b> <span style="color:gray">({_NATIVE_SHORTCUT})</span>'
     )
 
 
 def test_title_body_and_shortcut():
     assert rich_tooltip("Crosshair", "Toggle crosshair.", "Ctrl+Shift+H") == (
-        '<b>Crosshair</b> <span style="color:gray">(Ctrl+Shift+H)</span>'
+        f'<b>Crosshair</b> <span style="color:gray">({_NATIVE_SHORTCUT})</span>'
         "<br>Toggle crosshair."
     )
 

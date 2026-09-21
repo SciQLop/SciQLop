@@ -1,8 +1,14 @@
 import os
+import sys
 import threading
 import time
 
+import pytest
+
 from SciQLop.components.profiling.thread_cpu_top import hot_threads, own_python_native_tids
+
+pytestmark = pytest.mark.skipif(not sys.platform.startswith("linux"),
+                                reason="thread_cpu_top reads /proc, which only Linux has")
 
 
 def _spin(stop: threading.Event) -> None:

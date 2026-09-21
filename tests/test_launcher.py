@@ -702,6 +702,7 @@ def test_run_on_console_reports_nonzero_exit_with_log_pointer(monkeypatch, tmp_p
     monkeypatch.setattr(f"{MODULE}._prepare_workspace_dev", lambda *a, **k: None)
     monkeypatch.setattr(f"{MODULE}.check_xcb_cursor", lambda: None)
     monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr("SciQLop.core.common.macos.session_interpreter", lambda python, _ws: (python, {}))
     monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakeFailingPopen)
 
     exit_code, returned_workspace = _run_on_console(None, None)
