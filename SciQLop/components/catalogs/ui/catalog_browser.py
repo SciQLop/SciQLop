@@ -235,6 +235,7 @@ class CatalogBrowser(QWidget):
         from .event_table_delegate import EventTableDelegate
         self._event_delegate = EventTableDelegate(self._event_model, self._event_table)
         self._event_table.setItemDelegate(self._event_delegate)
+        self._event_table.viewport().installEventFilter(self)
 
         # --- event toolbar (above table) ---
         self._add_event_action = QAction(get_icon("add"), "Add event", self)
@@ -379,7 +380,27 @@ class CatalogBrowser(QWidget):
                 and event.type() == QEvent.Type.MouseButtonDblClick
                 and self._pick_color_at(event.position().toPoint())):
             return True
+        if obj is self._event_table.viewport():
+            url = self._ctrl_clicked_url(event)
+            if url is not None:
+                self._open_url(url)
+                return True
         return super().eventFilter(obj, event)
+
+    def _ctrl_clicked_url(self, event) -> str | None:
+        """Ctrl (Cmd on macOS) + left press on a URL cell; the press is consumed
+        so it does not also toggle the row selection."""
+        if (event.type() != QEvent.Type.MouseButtonPress
+                or event.button() != Qt.MouseButton.LeftButton
+                or not event.modifiers() & Qt.KeyboardModifier.ControlModifier):
+            return None
+        return self._url_at(self._event_table.indexAt(event.position().toPoint()))
+
+    @staticmethod
+    def _open_url(url: str) -> None:
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtCore import QUrl
+        QDesktopServices.openUrl(QUrl(url))
 
     def _swatch_rect(self, proxy_index: QModelIndex) -> QRect:
         from PySide6.QtWidgets import QStyle
@@ -932,13 +953,11 @@ class CatalogBrowser(QWidget):
         menu = QMenu(self)
         menu.setToolTipsVisible(True)
         if url is not None:
-            from PySide6.QtGui import QDesktopServices
-            from PySide6.QtCore import QUrl
             open_action = menu.addAction("Open link")
             open_action.setToolTip(rich_tooltip(
                 "Open link",
-                "Open the URL stored in this cell."))
-            open_action.triggered.connect(lambda: QDesktopServices.openUrl(QUrl(url)))
+                "Open the URL stored in this cell. Ctrl/Cmd+click on the cell does the same."))
+            open_action.triggered.connect(lambda: self._open_url(url))
             menu.addSeparator()
         if self._delete_action.isVisible():
             menu.addAction(self._delete_action)

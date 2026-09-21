@@ -134,6 +134,73 @@ def test_event_table_context_menu_offers_open_link_for_a_url_cell(qtbot, qapp, m
     assert opened == ["https://example.org/report"]
 
 
+def _browser_with_url_cell(qtbot):
+    from SciQLop.components.catalogs.backend.dummy_provider import DummyProvider
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+    from SciQLop.components.catalogs.ui.catalog_browser import CatalogBrowser
+    from datetime import datetime, timezone
+
+    provider = DummyProvider(num_catalogs=1, events_per_catalog=0, name="CtrlClickProv")
+    cat = provider.catalogs()[0]
+    provider.add_event(cat, CatalogEvent(
+        uuid="u1",
+        start=datetime(2020, 1, 1, tzinfo=timezone.utc),
+        stop=datetime(2020, 1, 1, 1, tzinfo=timezone.utc),
+        meta={"reference": "https://example.org/report", "note": "not a link"},
+    ))
+    browser = CatalogBrowser()
+    qtbot.addWidget(browser)
+    browser.resize(900, 400)
+    browser.show()
+    browser._current_provider = provider
+    browser._current_catalog = cat
+    browser._event_model.set_context(provider, cat)
+    browser._event_model.set_events(provider.events(cat))
+    return browser
+
+
+def _cell_center(browser, key):
+    model = browser._event_model
+    col = len(model._FIXED_COLUMNS) + model._meta_keys.index(key)
+    proxy_index = browser._sort_proxy.mapFromSource(model.index(0, col))
+    return browser._event_table.visualRect(proxy_index).center()
+
+
+def _click_cell(browser, key, modifier):
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    QTest.mouseClick(browser._event_table.viewport(), Qt.MouseButton.LeftButton, modifier,
+                     _cell_center(browser, key))
+
+
+def test_ctrl_click_on_a_url_cell_opens_the_link(qtbot, qapp, monkeypatch):
+    """GH #69: URLs in catalog metadata (e.g. paper DOIs) open on Ctrl+click,
+    the usual convention for links inside editable text."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QDesktopServices
+    opened = []
+    monkeypatch.setattr(QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
+    browser = _browser_with_url_cell(qtbot)
+
+    _click_cell(browser, "reference", Qt.KeyboardModifier.ControlModifier)
+
+    assert opened == ["https://example.org/report"]
+    assert browser._event_table.selectionModel().selectedRows() == []  # the press was consumed
+
+
+def test_plain_click_and_ctrl_click_elsewhere_do_not_open_anything(qtbot, qapp, monkeypatch):
+    from PySide6.QtCore import Qt
+    from PySide6.QtGui import QDesktopServices
+    opened = []
+    monkeypatch.setattr(QDesktopServices, "openUrl", lambda url: opened.append(url.toString()))
+    browser = _browser_with_url_cell(qtbot)
+
+    _click_cell(browser, "reference", Qt.KeyboardModifier.NoModifier)
+    _click_cell(browser, "note", Qt.KeyboardModifier.ControlModifier)
+
+    assert opened == []
+
+
 def test_on_event_table_context_menu_resolves_the_url_at_the_click_position(qtbot, qapp, monkeypatch):
     """Exercises the real slot's pos -> indexAt -> _url_at chain (opencode
     review: the narrower tests above call _build_event_context_menu and
