@@ -3,7 +3,7 @@ import inspect
 from typing import Callable, Optional
 
 from SciQLop.core.unique_names import make_simple_incr_name
-from SciQLop.core.models import products, ProductsModelNode, ProductsModelNodeType
+from SciQLop.core.models import add_product_node, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
 from SciQLop.user_api.knobs import extract_specs_from_callback
 from SciQLop.user_api.layers.types import infer_type_from_annotation
@@ -33,11 +33,10 @@ class LayerProvider:
             LAYER_META_KEY: "true",
         }
         product_path = self._path[:-1]
-        leaf = ProductsModelNode(
-            self._path[-1], self.name, metadata,
+        add_product_node(
+            product_path, self._path[-1], self.name, metadata,
             ProductsModelNodeType.PARAMETER, ParameterType.Scalar,
         )
-        products.add_node(product_path, leaf)
 
         _layer_providers[self.name] = self
 

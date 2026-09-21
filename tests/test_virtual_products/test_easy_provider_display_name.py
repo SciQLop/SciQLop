@@ -9,7 +9,7 @@ called "X".
 """
 import pytest
 
-import SciQLop.components.plotting.backend.easy_provider as ep
+from SciQLop.core.models import products
 from SciQLop.components.plotting.backend.easy_provider import EasyProvider
 from SciQLop.core.enums import ParameterType
 
@@ -22,8 +22,8 @@ def _spectrogram_callback(start: float, stop: float):
 def registered(monkeypatch):
     """Capture the ProductsModelNode a provider registers.
 
-    `easy_provider` calls `products.add_node(path, node)` (module-level
-    `products` imported from SciQLop.core.models). Spying on that is more
+    `easy_provider` registers through `add_product_node`, which calls
+    `products.add_node(path, node)` on the shared model. Spying on that is more
     direct than reading the node back out of the global model, and keeps each
     test from depending on registration order.
     """
@@ -33,7 +33,7 @@ def registered(monkeypatch):
         captured["path"] = path
         captured["node"] = node
 
-    monkeypatch.setattr(ep.products, "add_node", _add_node)
+    monkeypatch.setattr(products, "add_node", _add_node)
 
     def _make(path, **kwargs):
         EasyProvider(path, _spectrogram_callback, ParameterType.Spectrogram,
@@ -88,7 +88,7 @@ def test_virtual_spectrogram_forwards_display_name(monkeypatch):
     def _add_node(path, node):
         captured["node"] = node
 
-    monkeypatch.setattr(ep.products, "add_node", _add_node)
+    monkeypatch.setattr(products, "add_node", _add_node)
     vp.VirtualSpectrogram("test_display/via_virtual_spectrogram",
                           _spectrogram_callback,
                           display_name="e-CALLISTO BIR 01")

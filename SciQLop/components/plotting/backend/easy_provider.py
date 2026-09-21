@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from speasy.products import SpeasyVariable, DataContainer, VariableTimeAxis, VariableAxis
 from PySide6.QtGui import QIcon
 from SciQLop.core.unique_names import make_simple_incr_name
-from SciQLop.core.models import products, ProductsModelNode, ProductsModelNodeType
+from SciQLop.core.models import add_product_node, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder, DataProviderReturnType
 from SciQLop.components.plotting.backend.dependencies import (
@@ -147,7 +147,7 @@ class EasyProvider(DataProvider):
         # Extract and validate dependencies early, before any side effects
         dependency_specs = extract_dependencies_from_callback(callback)
 
-        # Guard: out_of_process incompatibilities must be checked before products.add_node()
+        # Guard: out_of_process incompatibilities must be checked before add_product_node()
         if out_of_process:
             if debug:
                 raise ValueError(
@@ -166,11 +166,8 @@ class EasyProvider(DataProvider):
             "stable_id": normalized_path,
             **({"remote": "True"} if out_of_process else {}),
         }
-        node = ProductsModelNode(product_name, self.name, metadata, ProductsModelNodeType.PARAMETER,
-                                 parameter_type, "", None)
-        if display_name:
-            node.set_display_name(display_name)
-        products.add_node(product_path, node)
+        add_product_node(product_path, product_name, self.name, metadata, ProductsModelNodeType.PARAMETER,
+                         parameter_type, "", None, display_name=display_name)
         self._callback = callback
         self._parameter_type = parameter_type
         self._debug = debug
