@@ -163,6 +163,20 @@ def test_rapid_notify_changed_burst_submits_exactly_one_reindex(registry, jobs_b
     assert len(job_ids) == 1
 
 
+def test_debounce_timer_does_not_reindex_a_change_that_is_already_indexed(registry, jobs_backend, qtbot):
+    """A reindex that finishes while the debounce timer is still pending picks the
+    change up itself (via `dirty`); the timer firing afterwards must not submit a
+    redundant third reindex."""
+    registry.register_domain(_FakeDomain("products", [NodeSnapshot("a", "hi")]))
+    registry._enabled = True
+    job_ids = []
+    jobs_backend.job_added.connect(job_ids.append)
+    registry.notify_changed("products")
+    registry._domains["products"].dirty = False  # what the finished in-flight job's follow-up does
+    qtbot.wait(100)
+    assert job_ids == []
+
+
 def test_query_falls_back_to_semantic_band_when_bm25_has_no_match(registry, qtbot):
     # "queryterm" shares no vocabulary with "hi"/"bye" at all, so BM25F
     # finds nothing confident and query() falls back entirely to the
