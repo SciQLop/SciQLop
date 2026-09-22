@@ -162,9 +162,8 @@ class PlotPanel:
     def close(self) -> None:
         """Safely close and destroy this plot panel.
 
-        The panel disappears immediately. If one of its data callbacks is still
-        running, the panel is only destroyed once that call returns, so a slow
-        fetch cannot freeze the application.
+        The panel disappears immediately, even if one of its data callbacks is
+        still running: a slow fetch cannot freeze the application.
 
         This is the public equivalent of
         ``SciQLopMainWindow.remove_panel(panel.name)``. Calling the internal

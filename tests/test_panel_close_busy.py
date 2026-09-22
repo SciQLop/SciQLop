@@ -1,6 +1,6 @@
-"""GH #137: destroying a graph joins its data-provider thread on the GUI thread, so
+"""GH #137: destroying a graph joined its data-provider thread on the GUI thread, so
 closing a panel whose callback was still running froze the whole application until
-the callback returned."""
+the callback returned. Fixed in SciQLopPlots 0.37.0: destroying a graph no longer waits."""
 import threading
 
 import numpy as np
@@ -77,8 +77,6 @@ def test_closing_a_panel_does_not_wait_for_its_running_callback(qtbot, qapp, mai
     QApplication.processEvents()
 
     assert not returned.is_set(), "the GUI thread waited for the callback"
-    assert shiboken6.isValid(container)
-
-    release.set()
-    qtbot.waitUntil(lambda: not shiboken6.isValid(container), timeout=15000)
+    assert not shiboken6.isValid(container)
     assert main_window.dock_manager.findDockWidget(panel_name) is None, "a hidden empty dock is left behind"
+    release.set()

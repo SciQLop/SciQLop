@@ -23,7 +23,6 @@ from SciQLop.core.unique_names import auto_name, release_name
 from SciQLop.components.workspaces import Workspace
 from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle, qtads_stylesheet
 from SciQLop.core.ui import Metrics
-from SciQLop.core.ui.deferred_delete import delete_when_idle
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel
@@ -100,13 +99,14 @@ def _extract_panel(dock_widget):
     return None
 
 
-def _docked_panel_is_busy(widget: QWidget) -> bool:
-    panel = widget.panel if isinstance(widget, PanelContainer) else widget
-    if not shiboken6.isValid(panel):
-        return False
-    return any(bool(graph.property("busy"))
-               for plot in panel.plots() or []
-               for graph in plot.plottables() or [])
+def _destroy_content_before_its_window(dock_widget: QtAds.CDockWidget) -> None:
+    """A force-closed dock (closeDockWidget(), skipping remove_panel) still holds its panel
+    when `closed` fires, and QtAds has already queued the deletion of its floating window.
+    Destroying the panel now, while that window and its QRhi are alive, keeps Qt's
+    QRhiWidget from touching the freed QRhi (docs/qt-bugs/qrhiwidget_reparent_uaf.py)."""
+    content = dock_widget.widget()
+    if content is not None and shiboken6.isValid(content):
+        shiboken6.delete(content)
 
 
 def _surface(size: QtCore.QSize):
@@ -626,9 +626,14 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             if dw:
                 release_name(panel.name)
                 container = dw.takeWidget()
-                dw.closeDockWidget()
                 container.hide()
-                delete_when_idle(container, _docked_panel_is_busy)
+                # Posted before closeDockWidget() so the plots die before QtAds destroys a
+                # floating dock's window: taking them out of that window leaves Qt's
+                # QRhiWidget holding its QRhi, freed along with the window
+                # (docs/qt-bugs/qrhiwidget_reparent_uaf.py). Not deleted right away:
+                # delete_me, emitted by the panel itself, also lands here.
+                container.deleteLater()
+                dw.closeDockWidget()
                 self._notify_panels_list_changed()
 
     def addWidgetIntoDock(self, allowed_area, widget, area=None, delete_on_close: bool = False,
@@ -681,6 +686,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             # than creating a fresh one — dockAreaCreated only fires for the
             # latter, so that path alone misses this, very common, case.
             self._ensure_add_panel_button(dock_widget.dockAreaWidget())
+            dock_widget.closed.connect(lambda: _destroy_content_before_its_window(dock_widget))
         panel.delete_me.connect(lambda: self.remove_panel(panel))
         self.panel_added.emit(panel)
         self._notify_panels_list_changed()
