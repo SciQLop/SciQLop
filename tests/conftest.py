@@ -230,6 +230,57 @@ def _standalone_panels():
             if isinstance(w, SciQLopMultiPlotPanel) and shiboken6.isValid(w)]
 
 
+def _release_leftover_widget_ownership(widgets=None):
+    """Hand Python's ownership of still-alive widgets to C++ so Shiboken's
+    interpreter-shutdown sweep (`PySide::destroyQCoreApplication` ->
+    `BindingManager::visitAllPyObjects` -> `destructionVisitor`) skips them.
+
+    That sweep force-destroys every QObject for which
+    `Shiboken::Object::hasOwnership()` still holds: Python-created objects with no C++
+    parent (the standalone `TimeSyncPanel(parent=None)` panels tests build and never
+    dock) *and* widgets of a Python subclass, which keep Python ownership even when
+    parented (a `TimeSyncPanel(parent=container)` is still force-destroyed). Destroying
+    those at interpreter exit runs outside
+    Qt's own teardown order and recurses through their Qt children, which is fatal for
+    a `QRhiWidget`: SIGSEGV in `QRhi::removeCleanupCallback` (seen on CI after bumping
+    SciQLopPlots to 0.37.0), and a use-after-free in `ads::CDockWidgetTab::setVisible`
+    for QtAds dock trees. `releaseOwnership` is pure bookkeeping -- it flips the flag
+    without running any destructor, so each widget just leaks until process exit
+    instead of crashing there. Force-destroy variants (`shiboken6.delete`,
+    `hide`+`deleteLater`+flush) were each tried and each crashed in a different piece
+    of Qt/QtAds this project does not own, hence not destroying anything at all.
+
+    Shiboken exposes `releaseOwnership` in C++ but not in its Python module, so call
+    the exported symbol directly. `SbkObject*` is the Python object itself, i.e.
+    `id(w)`; the symbol is Itanium-ABI, so this is a no-op on platforms without it
+    (Linux/macOS CI both have it)."""
+    import ctypes
+    import glob
+    import os
+
+    import shiboken6
+    from PySide6.QtWidgets import QApplication
+
+    libs = glob.glob(os.path.join(os.path.dirname(shiboken6.__file__),
+                                  "libshiboken6*.so*"))
+    if not libs:
+        return
+    release = getattr(ctypes.CDLL(libs[0]),
+                      "_ZN8Shiboken6Object16releaseOwnershipEP9SbkObject", None)
+    if release is None:
+        return
+    release.argtypes = [ctypes.c_void_p]
+    release.restype = None
+    if widgets is None:
+        app = QApplication.instance()
+        if app is None:
+            return
+        widgets = app.allWidgets()
+    for w in widgets:
+        if shiboken6.isValid(w):
+            release(ctypes.c_void_p(id(w)))
+
+
 @pytest.fixture(autouse=True)
 def _current_event_loop_is_sciqlops():
     """`asyncio.run()` (used by several tests) leaves the main thread with no
@@ -387,13 +438,18 @@ def _stop_tscat_driver_worker():
 
 def pytest_sessionfinish(session):
     _stop_tscat_driver_worker()
-    if not _RSS_LOG:
-        return
-    import collections
-    from PySide6.QtWidgets import QApplication
-    counts = collections.Counter(type(w).__name__ for w in QApplication.allWidgets())
-    with open(_RSS_LOG + ".widgets", "w") as f:
-        f.writelines(f"{n} {name}\n" for name, n in counts.most_common(30))
+    if _RSS_LOG:
+        import collections
+        from PySide6.QtWidgets import QApplication
+        counts = collections.Counter(type(w).__name__ for w in QApplication.allWidgets())
+        with open(_RSS_LOG + ".widgets", "w") as f:
+            f.writelines(f"{n} {name}\n" for name, n in counts.most_common(30))
+    # Whatever per-test cleanup missed (pytest-qt's own flush is a plain
+    # `processEvents()`, which does not deliver deferred deletes, so even a
+    # `deleteLater()`'d widget can survive to session end) is still alive here. Do not
+    # destroy it -- detach Python ownership so Shiboken's interpreter-exit sweep leaves
+    # it alone too. See `_release_leftover_widget_ownership`.
+    _release_leftover_widget_ownership()
 
 
 def pytest_unconfigure(config):

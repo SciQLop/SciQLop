@@ -24,7 +24,13 @@ def test_destroying_a_graph_does_not_wait_for_its_running_callback(qtbot, qapp, 
 
     assert not returned.is_set(), "destroying the graph joined the callback's thread"
     assert not shiboken6.isValid(container)
+
+    # The point of the fix is that this thread outlives the test's own assertions; join it
+    # here instead of leaving it to finish on its own, so a dangling worker thread from this
+    # test is never still running when a later test's Qt/Shiboken teardown runs its GC sweep.
     release.set()
+    qtbot.waitUntil(returned.is_set, timeout=5000)
+    qtbot.wait(50)
 
 
 def test_products_model_add_node_from_a_worker_thread_lands_on_the_gui_thread(qtbot, qapp):
