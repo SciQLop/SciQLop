@@ -230,6 +230,26 @@ def _standalone_panels():
             if isinstance(w, SciQLopMultiPlotPanel) and shiboken6.isValid(w)]
 
 
+def _shiboken_object_function(name, restype):
+    """`Shiboken::Object::<name>(SbkObject*)` from the already-loaded libshiboken, or None
+    where the Itanium-mangled symbol does not exist (Windows).
+
+    Resolved through the handle of the `Shiboken` extension module rather than by globbing
+    for the library file: its name differs per platform (`libshiboken6.abi3.so.6.11` on
+    Linux, `libshiboken6.abi3.6.11.dylib` on macOS), and dlsym on a module handle also
+    searches the libraries that module links against, on both platforms."""
+    import ctypes
+
+    from shiboken6 import Shiboken
+
+    fn = getattr(ctypes.CDLL(Shiboken.__file__),
+                 f"_ZN8Shiboken6Object{len(name)}{name}EP9SbkObject", None)
+    if fn is not None:
+        fn.argtypes = [ctypes.c_void_p]
+        fn.restype = restype
+    return fn
+
+
 def _release_leftover_widget_ownership(widgets=None):
     """Hand Python's ownership of still-alive widgets to C++ so Shiboken's
     interpreter-shutdown sweep (`PySide::destroyQCoreApplication` ->
@@ -255,22 +275,13 @@ def _release_leftover_widget_ownership(widgets=None):
     `id(w)`; the symbol is Itanium-ABI, so this is a no-op on platforms without it
     (Linux/macOS CI both have it)."""
     import ctypes
-    import glob
-    import os
 
     import shiboken6
     from PySide6.QtWidgets import QApplication
 
-    libs = glob.glob(os.path.join(os.path.dirname(shiboken6.__file__),
-                                  "libshiboken6*.so*"))
-    if not libs:
-        return
-    release = getattr(ctypes.CDLL(libs[0]),
-                      "_ZN8Shiboken6Object16releaseOwnershipEP9SbkObject", None)
+    release = _shiboken_object_function("releaseOwnership", restype=None)
     if release is None:
         return
-    release.argtypes = [ctypes.c_void_p]
-    release.restype = None
     if widgets is None:
         app = QApplication.instance()
         if app is None:

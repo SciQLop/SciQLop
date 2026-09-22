@@ -14,7 +14,7 @@ Shiboken's finalize sweep skips it instead of destroying it.
 import shiboken6
 from PySide6.QtWidgets import QWidget
 
-from tests.conftest import _release_leftover_widget_ownership
+from tests.conftest import _release_leftover_widget_ownership, _shiboken_object_function
 from tests.fixtures import *  # noqa: F401,F403
 
 
@@ -23,15 +23,8 @@ def _has_ownership(w):
     (`PySide::destructionVisitor`) tests. Not exposed in the Python module, so call the
     exported symbol the same way conftest does."""
     import ctypes
-    import glob
-    import os
 
-    lib = ctypes.CDLL(glob.glob(os.path.join(os.path.dirname(shiboken6.__file__),
-                                             "libshiboken6*.so*"))[0])
-    fn = lib._ZN8Shiboken6Object12hasOwnershipEP9SbkObject
-    fn.argtypes = [ctypes.c_void_p]
-    fn.restype = ctypes.c_bool
-    return bool(fn(id(w)))
+    return bool(_shiboken_object_function("hasOwnership", restype=ctypes.c_bool)(id(w)))
 
 
 def test_release_detaches_python_ownership_from_a_leftover_widget(qtbot, qapp):
