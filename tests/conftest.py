@@ -98,6 +98,11 @@ def pytest_configure(config):
     os.environ["XDG_DATA_HOME"] = str(_data_dir)
     os.environ["SCIQLOP_WORKSPACE_DIR"] = str(_workspace_dir)
     os.environ["SPEASY_SKIP_INIT_PROVIDERS"] = "1"
+    # SPEASY_SKIP_INIT_PROVIDERS only skips speasy's import-time init; the speasy plugin
+    # still calls init_providers() when the shared main window loads it. The archive
+    # provider then downloads master CDFs to build its inventory, which blew the 120 s
+    # test timeout on a slow CI network. No test uses archive products.
+    os.environ.setdefault("SPEASY_CORE_DISABLED_PROVIDERS", "archive")
     os.environ["SCIQLOP_DEBUG"] = "1"
     os.environ["INSIDE_SCIQLOP"] = "1"
     # Browser-free test sessions: WebChannelPage (welcome/appstore) skips the
