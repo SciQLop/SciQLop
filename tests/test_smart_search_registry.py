@@ -1,3 +1,4 @@
+import threading
 import time
 from unittest.mock import patch, MagicMock
 import numpy as np
@@ -120,19 +121,30 @@ def test_enabling_triggers_reindex_of_already_registered_domains(registry, jobs_
 def test_corpus_change_during_inflight_reindex_triggers_one_more_after(registry, jobs_backend, qtbot):
     domain = _FakeDomain("products", [NodeSnapshot("a", "hi")])
     registry.register_domain(domain)
+    # The first reindex is held in flight until the corpus has changed: polling for its
+    # transient job_id instead missed the window on a busy macOS CI runner.
+    encoding, release = threading.Event(), threading.Event()
+
+    def encode(texts, **kwargs):
+        encoding.set()
+        release.wait(15)  # failsafe: a failing test must not hang the worker thread
+        return np.array([[1.0, 0.0] for _ in texts])
+
     fake_model = MagicMock()
-    fake_model.encode.side_effect = lambda texts, **kwargs: np.array([[1.0, 0.0] for _ in texts])
+    fake_model.encode.side_effect = encode
     with patch.object(model_fetch, "download_model", return_value=None), \
          patch.object(model_fetch, "load_model", return_value=fake_model), \
          patch.object(index_worker.model_fetch, "load_model", return_value=fake_model):
         registry.set_enabled(True)
         qtbot.waitUntil(lambda: registry.is_enabled(), timeout=5000)
         state = registry._domains["products"]
-        qtbot.waitUntil(lambda: state.job_id is not None, timeout=5000)
+        qtbot.waitUntil(encoding.is_set, timeout=15000)
+        assert state.job_id is not None
         follow_up_job_ids = []
         jobs_backend.job_added.connect(follow_up_job_ids.append)
         domain._nodes = [NodeSnapshot("a", "hi"), NodeSnapshot("b", "new")]
         registry.notify_changed("products")
+        release.set()
         # The one-key intermediate state lasts a single event-loop turn (the follow-up
         # job is submitted the moment the first finishes), so it is not observable.
         qtbot.waitUntil(lambda: state.matrix is not None and len(state.path_keys) == 2, timeout=15000)
