@@ -7,15 +7,17 @@ These classes serve double duty:
 Import from here, from ``SciQLop.user_api.virtual_products.types``,
 or from ``SciQLop.user_api.layers`` — they all resolve to these classes.
 """
+import dataclasses
 import numpy as np
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Any, Optional, List
 
 
 @dataclass(frozen=True)
 class VPTypeInfo:
     product_type: str  # "scalar", "vector", "multicomponent", "spectrogram"
     labels: Optional[List[str]]
+    colored: bool = False
 
 
 class _DataType:
@@ -63,9 +65,33 @@ class Spectrogram(_DataType, product_type="spectrogram"):
     pass
 
 
+@dataclass(frozen=True)
+class _ColoredAnnotation:
+    inner: Any
+
+
+@dataclass(frozen=True)
+class Colored:
+    """A VP result coloured point by point: ``return Colored(data, color=c)``.
+
+    ``data`` is anything the inner type accepts (SpeasyVariable or ``(t, values)``);
+    ``color`` has one value per time sample. Annotate with ``-> Colored[Vector[...]]``.
+    """
+    data: Any
+    color: Any
+
+    def __class_getitem__(cls, inner):
+        if inner is Spectrogram or getattr(inner, "product_type", None) == "spectrogram":
+            raise TypeError("Colored[Spectrogram] is not supported: a spectrogram already has a colour axis")
+        return _ColoredAnnotation(inner)
+
+
 def extract_vp_type_info(annotation) -> Optional[VPTypeInfo]:
     if annotation is None:
         return None
+    if isinstance(annotation, _ColoredAnnotation):
+        inner = extract_vp_type_info(annotation.inner)
+        return dataclasses.replace(inner, colored=True) if inner is not None else None
     if isinstance(annotation, _DataTypeWithLabels):
         return VPTypeInfo(product_type=annotation.product_type, labels=annotation.labels)
     if isinstance(annotation, type) and issubclass(annotation, _DataType):

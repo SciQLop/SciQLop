@@ -7,5 +7,6 @@ from SciQLop.user_api.data_types import (  # noqa: F401
     Vector,
     MultiComponent,
     Spectrogram,
+    Colored,
     extract_vp_type_info,
 )
