@@ -9,6 +9,8 @@ from SciQLop.core import tracing
 from SciQLop.components import sciqlop_logging
 from speasy.products import SpeasyVariable, VariableAxis
 from speasy.core import datetime64_to_epoch
+from SciQLop.user_api.data_types import Colored
+from .color_axis import ColorAxis
 
 log = sciqlop_logging.getLogger(__name__)
 
@@ -144,37 +146,12 @@ class DataProvider:
                         else self.get_data(node, start, stop)
                 if v is not None and on_variable is not None:
                     try:
-                        on_variable(v)
+                        on_variable(v.data if isinstance(v, Colored) else v)
                     except Exception:
                         log.debug("on_variable callback failed", exc_info=True)
-                if v is None:
-                    tracing.counter("provider.points", 0, cat="data")
-                    return []
-                if isinstance(v, list) or isinstance(v, tuple):
-                    if _has_zero_width_component(v):
-                        log.warning(f"{product}: dropping data with a zero-width "
-                                    f"component (shapes {[getattr(a, 'shape', None) for a in v]})")
-                        return []
-                    return v
-                n_points, n_bytes = _variable_volume(v)
-                tracing.counter("provider.points", n_points, cat="data")
-                tracing.counter("provider.bytes", n_bytes, cat="data")
-                with tracing.zone("provider.post_process", cat="data",
-                                  provider=self._name, product=product,
-                                  n_points=n_points, n_bytes=n_bytes):
-                    if not _is_time_sorted(v.time):
-                        v = _sort_variable_by_time(v)
-                    time = datetime64_to_epoch(v.time)
-                    axes = _filter_axis_numeric_axes(v.axes[1:])
-                    if len(axes) == 0 or self.graph_type(node) in (GraphType.MultiLines, GraphType.SingleLine):
-                        result = [time, _ensure_contiguous(v.values)]
-                    else:
-                        result = [time, _ensure_contiguous(axes[0].values), _ensure_contiguous(v.values)]
-                    if _has_zero_width_component(result):
-                        log.warning(f"{product}: dropping data with a zero-width "
-                                    f"component (shapes {[a.shape for a in result]})")
-                        return []
-                    return result
+                if isinstance(v, Colored):
+                    return self._colored_buffers(node, product, v)
+                return self._to_buffers(node, product, v)
         except Exception:
             log.error(
                 f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")
@@ -182,6 +159,50 @@ class DataProvider:
             # (_ProductCallbackBase._fetch, in time_sync_panel.py) needs the
             # exception to record it as the graph's last_error.
             raise
+
+    def _colored_buffers(self, node, product, c: Colored):
+        try:
+            c = c.checked()
+        except ValueError as e:
+            log.error(f"{product}: dropping batch, bad colour values: {e}")
+            return []
+        data = self._to_buffers(node, product, c.data)
+        if not len(data):
+            return []
+        return {"data": list(data), "color": c.color}
+
+    def _to_buffers(self, node, product, v):
+        if v is None:
+            tracing.counter("provider.points", 0, cat="data")
+            return []
+        if isinstance(v, list) or isinstance(v, tuple):
+            if _has_zero_width_component(v):
+                log.warning(f"{product}: dropping data with a zero-width "
+                            f"component (shapes {[getattr(a, 'shape', None) for a in v]})")
+                return []
+            return v
+        n_points, n_bytes = _variable_volume(v)
+        tracing.counter("provider.points", n_points, cat="data")
+        tracing.counter("provider.bytes", n_bytes, cat="data")
+        with tracing.zone("provider.post_process", cat="data",
+                          provider=self._name, product=product,
+                          n_points=n_points, n_bytes=n_bytes):
+            if not _is_time_sorted(v.time):
+                v = _sort_variable_by_time(v)
+            time = datetime64_to_epoch(v.time)
+            axes = _filter_axis_numeric_axes(v.axes[1:])
+            if len(axes) == 0 or self.graph_type(node) in (GraphType.MultiLines, GraphType.SingleLine):
+                result = [time, _ensure_contiguous(v.values)]
+            else:
+                result = [time, _ensure_contiguous(axes[0].values), _ensure_contiguous(v.values)]
+            if _has_zero_width_component(result):
+                log.warning(f"{product}: dropping data with a zero-width "
+                            f"component (shapes {[a.shape for a in result]})")
+                return []
+            return result
+
+    def color_axis(self, node) -> Optional[ColorAxis]:
+        return None
 
     def get_data(self, node, start: float, stop: float, knobs=None) -> DataProviderReturnType:
         pass

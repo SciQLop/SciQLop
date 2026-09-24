@@ -85,6 +85,40 @@ class Colored:
             raise TypeError("Colored[Spectrogram] is not supported: a spectrogram already has a colour axis")
         return _ColoredAnnotation(inner)
 
+    def checked(self) -> "Colored":
+        """The colour as float64, one value per sample, sorted by time together with the data.
+
+        SciQLop sorts unsorted data by time; the colour has to follow or it lands on the
+        wrong points. Raises ValueError when the colour does not match the samples.
+        """
+        if self.data is None:
+            return self
+        t = _time_of(self.data)
+        color = _as_color_values(self.color, len(t))
+        order = np.argsort(t, kind="stable")
+        if np.array_equal(order, np.arange(len(t))):
+            return Colored(self.data, color)
+        return Colored(_take(self.data, order), color[order])
+
+
+def _time_of(data) -> np.ndarray:
+    return np.asarray(data.time if hasattr(data, "time") else data[0])
+
+
+def _take(data, order: np.ndarray):
+    if hasattr(data, "time"):
+        return data[order]
+    return tuple(np.asarray(a)[order] for a in data)
+
+
+def _as_color_values(color, n: int) -> np.ndarray:
+    values = np.squeeze(np.asarray(color))
+    if np.issubdtype(values.dtype, np.datetime64):
+        values = values.astype("datetime64[ns]").astype(np.int64) / 1e9
+    if values.ndim != 1 or len(values) != n:
+        raise ValueError(f"expected one colour value per time sample ({n}), got shape {np.shape(color)}")
+    return np.ascontiguousarray(values, dtype=np.float64)
+
 
 def extract_vp_type_info(annotation) -> Optional[VPTypeInfo]:
     if annotation is None:

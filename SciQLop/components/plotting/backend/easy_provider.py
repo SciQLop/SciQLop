@@ -12,6 +12,8 @@ from SciQLop.core.unique_names import make_simple_incr_name
 from SciQLop.core.models import add_product_node, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder, DataProviderReturnType
+from SciQLop.components.plotting.backend.color_axis import ColorAxis
+from SciQLop.user_api.data_types import Colored
 from SciQLop.components.plotting.backend.dependencies import (
     depends_marker, describe_target, extract_dependencies_from_callback, resolve_dependency,
 )
@@ -129,7 +131,8 @@ class EasyProvider(DataProvider):
                  knobs_model: Optional[type] = None,
                  knobs_kwarg_name: str = "knobs",
                  out_of_process: bool = False,
-                 display_name: Optional[str] = None):
+                 display_name: Optional[str] = None,
+                 color_axis: Optional[ColorAxis] = None):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(_name_callable(callback)), data_order=data_order,
                                            cacheable=cacheable)
         from SciQLop.core.snippets import split_product_path
@@ -170,6 +173,7 @@ class EasyProvider(DataProvider):
                          parameter_type, "", None, display_name=display_name)
         self._callback = callback
         self._parameter_type = parameter_type
+        self._color_axis = color_axis
         self._debug = debug
         self._knobs_model = knobs_model
         self._knobs_kwarg_name = knobs_kwarg_name
@@ -275,7 +279,27 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
             return self._callback(*rng, **kwargs)
 
     def get_data(self, product, start: float, stop: float, knobs=None) -> DataProviderReturnType:
-        return self._invoke_callback(start, stop, knobs)
+        res = self._checked_colored(self._invoke_callback(start, stop, knobs))
+        if res is None:
+            return None
+        if isinstance(res, Colored):
+            return Colored(self._to_variable(res.data), res.color)
+        return self._to_variable(res)
+
+    def _to_variable(self, res):
+        return res
+
+    def _checked_colored(self, res):
+        if res is None or (self._color_axis is not None) == isinstance(res, Colored):
+            return res
+        if isinstance(res, Colored):
+            log.error(f"{self.name}: returned Colored(...) but was not declared with colored=True")
+        else:
+            log.error(f"{self.name}: declared colored=True but did not return Colored(...)")
+        return None
+
+    def color_axis(self, node) -> Optional[ColorAxis]:
+        return self._color_axis
 
     @property
     def path(self):
@@ -361,16 +385,16 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
 class EasyScalar(EasyProvider):
     def __init__(self, path, get_data_callback: VirtualProductCallback, component_name: str, metadata: dict,
                  data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
-                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False):
+                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
+                 color_axis: Optional[ColorAxis] = None):
         super().__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.Scalar,
                          metadata={**metadata, "components": component_name},
                          data_order=data_order, cacheable=cacheable, debug=debug,
                          knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                         out_of_process=out_of_process)
+                         out_of_process=out_of_process, color_axis=color_axis)
         self._columns = [component_name]
 
-    def get_data(self, product, start, stop, knobs=None):
-        res = self._invoke_callback(start, stop, knobs)
+    def _to_variable(self, res):
         if type(res) is SpeasyVariable:
             return res
         elif type(res) is tuple:
@@ -384,16 +408,16 @@ class EasyScalar(EasyProvider):
 class EasyVector(EasyProvider):
     def __init__(self, path, get_data_callback: VirtualProductCallback, components_names: List[str], metadata: dict,
                  data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
-                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False):
+                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
+                 color_axis: Optional[ColorAxis] = None):
         super().__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.Vector,
                          metadata={**metadata, "components": ';'.join(components_names)},
                          data_order=data_order, cacheable=cacheable, debug=debug,
                          knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                         out_of_process=out_of_process)
+                         out_of_process=out_of_process, color_axis=color_axis)
         self._columns = components_names
 
-    def get_data(self, product, start, stop, knobs=None) -> Optional[DataProviderReturnType]:
-        res = self._invoke_callback(start, stop, knobs)
+    def _to_variable(self, res) -> Optional[DataProviderReturnType]:
         if type(res) is SpeasyVariable:
             return res
         elif type(res) in (tuple, list) and len(res) == 2:
@@ -410,14 +434,15 @@ class EasyVector(EasyProvider):
 class EasyMultiComponent(EasyVector):
     def __init__(self, path, get_data_callback: VirtualProductCallback, components_names: List[str], metadata: dict,
                  data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
-                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False):
+                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
+                 color_axis: Optional[ColorAxis] = None):
         # Skip EasyVector.__init__ intentionally — same logic but with Multicomponents type
         EasyProvider.__init__(self, path=path, callback=get_data_callback,
                               parameter_type=ParameterType.Multicomponents,
                               metadata={**metadata, "components": ';'.join(components_names)},
                               data_order=data_order, cacheable=cacheable, debug=debug,
                               knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                              out_of_process=out_of_process)
+                              out_of_process=out_of_process, color_axis=color_axis)
         self._columns = components_names
 
 
@@ -437,8 +462,7 @@ class EasySpectrogram(EasyProvider):
                          out_of_process=out_of_process,
                          display_name=display_name)
 
-    def get_data(self, product, start, stop, knobs=None) -> Optional[DataProviderReturnType]:
-        res = self._invoke_callback(start, stop, knobs)
+    def _to_variable(self, res) -> Optional[DataProviderReturnType]:
         if type(res) is SpeasyVariable:
             return res
         elif type(res) is tuple:
