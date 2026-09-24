@@ -23,8 +23,8 @@ log = _getLogger(__name__)
 AnyProductType = Union[str, VirtualProduct, List[str]]
 
 
-_GRADIENTS_BY_NAME = {n.lower(): getattr(_ColorGradient, n)
-                      for n in dir(_ColorGradient) if not n.startswith("_")}
+# __members__, not dir(): dir() on this Shiboken enum lists only 4 of its 12 gradients.
+_GRADIENTS_BY_NAME = {n.lower(): g for n, g in _ColorGradient.__members__.items()}
 
 
 def _as_color_gradient(gradient):

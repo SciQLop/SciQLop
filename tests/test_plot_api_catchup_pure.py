@@ -257,7 +257,7 @@ class TestHistogram2DGradientNames:
         rng = np.random.default_rng(0)
         return rng.normal(size=200), rng.normal(size=200)
 
-    @pytest.mark.parametrize("name", ["Hot", "hot", "COLD", "candy", " polar "])
+    @pytest.mark.parametrize("name", ["Hot", "hot", "COLD", "candy", " polar ", "jet", "Thermal", "grayscale"])
     def test_a_named_gradient_is_accepted(self, name):
         from SciQLopPlots import ColorGradient
 

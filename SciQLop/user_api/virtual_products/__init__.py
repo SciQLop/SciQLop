@@ -73,40 +73,43 @@ class VirtualProduct:
 class VirtualScalar(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, label: str,
                  debug: Optional[bool] = False, cachable: Optional[bool] = False,
-                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False):
+                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
+                 color_axis=None):
         super(VirtualScalar, self).__init__(path, callback, VirtualProductType.Scalar)
         if not isinstance(label, str) or not label.strip():
             raise ValueError("Scalar virtual products need exactly one non-empty label")
         self._impl = _EasyScalar(path, callback, component_name=label, metadata={},
                                  debug=debug, cacheable=cachable,
                                  knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                                 out_of_process=out_of_process)
+                                 out_of_process=out_of_process, color_axis=color_axis)
 
 
 class VirtualVector(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, labels: List[str],
                  debug: Optional[bool] = False, cachable: Optional[bool] = False,
-                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False):
+                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
+                 color_axis=None):
         super(VirtualVector, self).__init__(path, callback, VirtualProductType.Vector)
         if not isinstance(labels, (list, tuple)) or len(labels) != 3:
             raise ValueError("Vector virtual products need exactly three labels")
         self._impl = _EasyVector(path, callback, components_names=labels, metadata={},
                                  debug=debug, cacheable=cachable,
                                  knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                                 out_of_process=out_of_process)
+                                 out_of_process=out_of_process, color_axis=color_axis)
 
 
 class VirtualMultiComponent(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, labels: List[str],
                  debug: Optional[bool] = False, cachable: Optional[bool] = False,
-                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False):
+                 knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
+                 color_axis=None):
         super(VirtualMultiComponent, self).__init__(path, callback, VirtualProductType.MultiComponent)
         if not isinstance(labels, (list, tuple)) or not labels:
             raise ValueError("MultiComponent virtual products need a non-empty list of labels")
         self._impl = _EasyMultiComponent(path, callback, components_names=labels, metadata={},
                                          debug=debug, cacheable=cachable,
                                          knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                                         out_of_process=out_of_process)
+                                         out_of_process=out_of_process, color_axis=color_axis)
 
 
 class VirtualSpectrogram(VirtualProduct):
@@ -121,11 +124,23 @@ class VirtualSpectrogram(VirtualProduct):
                                       display_name=display_name)
 
 
+def _color_axis(colored: bool, label: str, gradient, product_type):
+    if not colored:
+        return None
+    if product_type == VirtualProductType.Spectrogram:
+        raise ValueError("Spectrogram virtual products cannot be colored: they already have a colour axis")
+    from SciQLop.components.plotting.backend.color_axis import ColorAxis
+    from SciQLop.user_api.plot._graphs import _as_color_gradient
+    return ColorAxis(label=label, gradient=_as_color_gradient(gradient))
+
+
 def create_virtual_product(path: str, callback: VirtualProductCallback,
                            product_type: VirtualProductType, labels: Optional[List[str]] = None,
                            debug: Optional[bool] = False, cachable: Optional[bool] = False,
                            knobs_model=None, knobs_kwarg_name="knobs",
-                           display_name: Optional[str] = None) -> Optional[VirtualProduct]:
+                           display_name: Optional[str] = None,
+                           colored: bool = False, color_label: str = "",
+                           color_gradient="jet") -> Optional[VirtualProduct]:
     """
     Create a new virtual product that will be listed in the product tree.
 
@@ -150,6 +165,13 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
     display_name : Optional[str]
         Name shown in the product tree and used as the plot label. Defaults to
         the last segment of `path`.
+    colored : bool
+        The callback returns ``Colored(data, color=c)``: one colour value per sample,
+        drawn on the plot's colour scale. Not for Spectrogram.
+    color_label : str
+        Label of the colour axis.
+    color_gradient : ColorGradient or str
+        Gradient of the colour axis, e.g. "thermal" (default "jet").
     Returns
     -------
     VirtualProduct
@@ -175,21 +197,25 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
         raise TypeError(
             f"product_type must be a VirtualProductType "
             f"(e.g. VirtualProductType.Scalar), got {product_type!r}")
+    color_axis = _color_axis(colored, color_label, color_gradient, product_type)
     if product_type == VirtualProductType.Scalar:
         if labels is None or len(labels) != 1:
             raise ValueError("Scalar virtual products need exactly one label")
         return VirtualScalar(path, callback, label=labels[0], debug=debug, cachable=cachable,
-                             knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
+                             knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
+                             color_axis=color_axis)
     elif product_type == VirtualProductType.Vector:
         if labels is None or len(labels) != 3:
             raise ValueError("Vector virtual products need exactly three labels")
         return VirtualVector(path, callback, labels=labels, debug=debug, cachable=cachable,
-                             knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
+                             knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
+                             color_axis=color_axis)
     elif product_type == VirtualProductType.MultiComponent:
         if labels is None:
             raise ValueError("MultiComponent virtual products need a list of labels")
         return VirtualMultiComponent(path, callback, labels=labels, debug=debug, cachable=cachable,
-                                     knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name)
+                                     knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
+                                     color_axis=color_axis)
     return VirtualSpectrogram(path, callback, debug=debug, cachable=cachable,
                               knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
                               display_name=display_name)
