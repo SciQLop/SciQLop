@@ -316,11 +316,31 @@ def validate_and_call(callback, start: float, stop: float,
     return validate_with_data(data, declared_type, labels, elapsed, start=start, stop=stop)
 
 
+def _check_color(c) -> List[Diagnostic]:
+    try:
+        c.checked()
+    except (ValueError, IndexError, TypeError) as e:
+        return [Diagnostic("error", f"Bad colour values: {e}")]
+    return []
+
+
 def validate_with_data(data, declared_type: str, labels: Optional[List[str]],
                        elapsed: float = 0.0, *,
                        start: Optional[float] = None,
                        stop: Optional[float] = None) -> ValidationResult:
     """Validate pre-computed data without re-calling the callback."""
+    from SciQLop.user_api.data_types import Colored
+    if not isinstance(data, Colored):
+        return _validate_plain(data, declared_type, labels, elapsed, start=start, stop=stop)
+    inner = _validate_plain(data.data, declared_type, labels, elapsed, start=start, stop=stop)
+    return ValidationResult(data=data, diagnostics=inner.diagnostics + _check_color(data),
+                            elapsed=inner.elapsed)
+
+
+def _validate_plain(data, declared_type: str, labels: Optional[List[str]],
+                    elapsed: float = 0.0, *,
+                    start: Optional[float] = None,
+                    stop: Optional[float] = None) -> ValidationResult:
     if data is None:
         return ValidationResult(
             data=None,

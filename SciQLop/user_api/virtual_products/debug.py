@@ -109,6 +109,9 @@ def _auto_scale_plots(panel):
 def _extract_data_info(data):
     """Extract (n_points, shape, dtype) from callback return data."""
     from speasy.products import SpeasyVariable
+    from SciQLop.user_api.data_types import Colored
+    if isinstance(data, Colored):
+        data = data.data
     if isinstance(data, SpeasyVariable):
         values = data.values
         return len(values), values.shape, str(values.dtype)
