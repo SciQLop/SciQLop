@@ -83,6 +83,7 @@ class RegistryEntry:
     labels: Optional[List[str]]
     signature_changed: bool = False
     panel: object = None  # will hold debug panel ref
+    colored: bool = False
 
 
 class VPRegistry:
@@ -90,10 +91,12 @@ class VPRegistry:
         self._entries: Dict[str, RegistryEntry] = {}
 
     def register(self, name: str, callback: Callable,
-                 product_type: str, labels: Optional[List[str]]) -> RegistryEntry:
+                 product_type: str, labels: Optional[List[str]],
+                 colored: bool = False) -> RegistryEntry:
         existing = self._entries.get(name)
         new_sig_kwargs = _signature_kwargs(callback)
-        if existing and existing.product_type == product_type and existing.labels == labels:
+        if (existing and existing.product_type == product_type and existing.labels == labels
+                and existing.colored == colored):
             old_sig_kwargs = _signature_kwargs(existing.wrapper.callback)
             if old_sig_kwargs == new_sig_kwargs:
                 existing.wrapper.callback = callback
@@ -106,6 +109,7 @@ class VPRegistry:
             product_type=product_type,
             labels=labels,
             signature_changed=existing is not None,
+            colored=colored,
         )
         self._entries[name] = entry
         return entry
@@ -147,7 +151,8 @@ def _infer_multicomponent_labels(cached_data: Any) -> List[str]:
 
 def register_virtual_product(name: str, wrapper: MutableCallback, product_type: str,
                               labels: Optional[List[str]], path: Optional[str],
-                              cached_data: Any = None, cachable: bool = False):
+                              cached_data: Any = None, cachable: bool = False,
+                              colored: bool = False):
     """Register a virtual product using the existing create_virtual_product API."""
     from SciQLop.user_api.virtual_products import create_virtual_product, VirtualProductType
 
@@ -168,6 +173,6 @@ def register_virtual_product(name: str, wrapper: MutableCallback, product_type: 
             create_virtual_product(vp_path, wrapper, vp_type, cachable=cachable)
         else:
             create_virtual_product(vp_path, wrapper, vp_type, labels=effective_labels,
-                                   cachable=cachable)
+                                   cachable=cachable, colored=colored)
 
     _invoke_on_main_thread(_do_register)

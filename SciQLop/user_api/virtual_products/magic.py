@@ -1,6 +1,7 @@
 # SciQLop/user_api/virtual_products/magic.py
 """%%vp cell magic — define and register virtual products from notebook cells."""
 import ast
+import dataclasses
 import inspect
 import time as _time
 from datetime import datetime, timezone
@@ -175,7 +176,9 @@ def _get_log():
 
 def _infer_type_from_data(data):
     """Infer product type from callback return value shape."""
-    from SciQLop.user_api.virtual_products.types import VPTypeInfo
+    from SciQLop.user_api.virtual_products.types import VPTypeInfo, Colored
+    if isinstance(data, Colored):
+        return dataclasses.replace(_infer_type_from_data(data.data), colored=True)
     if isinstance(data, (tuple, list)) and len(data) >= 2:
         y = data[1]
         if isinstance(y, np.ndarray):
@@ -191,11 +194,12 @@ def _infer_type_from_data(data):
 
 def _inject_type_names(user_ns: dict):
     """Make VP type names available in the user namespace for annotations."""
-    from SciQLop.user_api.virtual_products.types import Scalar, Vector, MultiComponent, Spectrogram
+    from SciQLop.user_api.virtual_products.types import Scalar, Vector, MultiComponent, Spectrogram, Colored
     user_ns.setdefault("Scalar", Scalar)
     user_ns.setdefault("Vector", Vector)
     user_ns.setdefault("MultiComponent", MultiComponent)
     user_ns.setdefault("Spectrogram", Spectrogram)
+    user_ns.setdefault("Colored", Colored)
 
 
 @needs_local_scope
@@ -211,7 +215,7 @@ def vp_magic(line: str, cell: str, local_ns=None):
     func_name = func.__name__
 
     try:
-        return_ann = inspect.get_annotations(inspect.unwrap(func)).get("return")
+        return_ann = inspect.get_annotations(inspect.unwrap(func), eval_str=True).get("return")
         type_info = extract_vp_type_info(return_ann)
     except Exception:
         type_info = None
@@ -265,12 +269,13 @@ def vp_magic(line: str, cell: str, local_ns=None):
 
     # Register (or hot-reload) the virtual product
     is_new = func_name not in _registry._entries
-    entry = _registry.register(func_name, func, type_info.product_type, type_info.labels)
+    entry = _registry.register(func_name, func, type_info.product_type, type_info.labels,
+                               colored=type_info.colored)
 
     if is_new or entry.signature_changed:
         _register_virtual_product(func_name, entry.wrapper, type_info.product_type,
                                   type_info.labels, args.path, cached_data=cached_data,
-                                  cachable=args.cachable)
+                                  cachable=args.cachable, colored=type_info.colored)
     else:
         from SciQLop.components.plotting.backend.data_provider import providers
         provider = next((p for p in providers.values()
