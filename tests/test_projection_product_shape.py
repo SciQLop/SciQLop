@@ -49,3 +49,20 @@ def test_attributes_of_the_wrapped_callback_stay_reachable():
             return None
 
     assert _projection_shaped_callback(Inner()).node == "some/product"
+
+
+def test_a_coloured_result_is_split_and_keeps_its_colour():
+    t = np.linspace(0.0, 10.0, 20)
+    values = np.random.rand(20, 3)
+    c = np.arange(20.0)
+    shaped = _projection_shaped_callback(lambda a, b: {"data": [t, values], "color": c})(0.0, 10.0)
+    assert shaped["color"] is c
+    assert len(shaped["data"]) == 4
+    for i in range(3):
+        assert np.array_equal(shaped["data"][i + 1], values[:, i])
+
+
+def test_a_coloured_scalar_cannot_be_projected():
+    t = np.linspace(0.0, 1.0, 5)
+    got = _projection_shaped_callback(lambda a, b: {"data": [t, np.arange(5.0)], "color": t})(0.0, 1.0)
+    assert got is None

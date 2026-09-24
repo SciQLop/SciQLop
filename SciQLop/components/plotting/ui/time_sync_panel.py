@@ -296,6 +296,12 @@ class _projection_shaped_callback:
 
     def __call__(self, start, stop):
         result = self._inner(start, stop)
+        if isinstance(result, dict):
+            data = self._split(result["data"])
+            return None if data is None else {"data": data, "color": result["color"]}
+        return self._split(result)
+
+    def _split(self, result):
         if result is None:
             return result
         if not isinstance(result, (tuple, list)) or len(result) != 2:
