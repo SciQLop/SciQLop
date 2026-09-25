@@ -26,6 +26,8 @@
 
 ### Dependencies
 
+- speasy is now `speasy[blosc]>=1.8.4`: data from the Speasy proxy can arrive Blosc-compressed (byte-shuffle + zstd per array), decoded with `numcodecs`. This also moves the cache backend to pysciqlop-cache 0.2.2.
+
 - Bumped SciQLopPlots 0.37.0 → 0.39.0. It brings seven new colour gradients (Viridis, Cividis, Magma, Inferno, Plasma, Turbo, Coolwarm; Jet stays the default), colour-by-scalar for line graphs and curves, and a remote graph that no longer stays greyed out after an error or an empty answer. Its enums are now plain `IntEnum`s, so `list(ColorGradient)` shows every gradient; a coloured graph no longer resets the plot's gradient to Jet.
 - Bumped SciQLopPlots 0.36.1 → 0.37.0. Curves and projection graphs can be coloured by a scalar with a real colour scale (`z_axis()`: pinned or automatic range, log scale, gradient, NaN gaps); a coloured curve now draws a colour bar, and `plot.set_curve_color_scale_enabled(False)` restores the old look. Projection plots emit `time_marker_changed`, projection graphs expose their components and visibility and can share one legend, and `set_plot_stretch` sets the relative height of the plots in a panel. `ProductsModel.remove_node` removes a product or folder from the tree.
 - SciQLopPlots 0.37.0 also fixes two problems reported here: destroying a graph no longer waits for a data callback that is still running (the freeze when closing a panel, #137), and adding a product from another thread is applied on the model thread (#138). SciQLop's workaround for #138 stays in place; the one for #137 (delaying a closed panel's destruction) is gone, since that delay is what let a floating panel outlive its window.
