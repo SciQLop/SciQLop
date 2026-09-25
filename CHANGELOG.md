@@ -27,6 +27,9 @@
 
 ### User API
 
+- A virtual product can colour its line, or its projection curve, by a scalar: return `Colored(data, color=c)` with one colour value per sample, and declare it with `create_virtual_product(..., colored=True, color_label="|B| (nT)", color_gradient="thermal")`, or annotate `-> Colored[Vector["X", "Y", "Z"]]` in a `%%vp` cell. The colour uses the plot's colour scale, works out of process too, and is sorted along with unsorted data. Needs the SciQLopPlots release that carries coloured data batches.
+- Every colour gradient can now be given by name (`"jet"`, `"thermal"`, `"grayscale"`, ...). Only `Candy`, `Cold`, `Hot` and `Polar` were recognised before, because the names were read with `dir()`, which lists only some members of that enum.
+- `%%vp` now reads return annotations written under `from __future__ import annotations`. They were strings, so they were ignored: the type was guessed from the data and the labels were lost.
 - `%workspace add-example` printed the result's dict keys (`name, is_update, missing_dependencies`) as the missing packages, and suggested installing them. It now lists the real missing dependencies and says "Updated" when the example was already installed.
 - `PlotPanel.move_plot(from_index, to_index)` reorders subplots; `plot.graphs` lists a plot's plottables in draw order; every plottable wrapper exposes `name`.
 - The "+" new-panel button no longer appears in the title bar of auto-hide side panels (Products, Catalogs, Settings, Properties, Chat).
