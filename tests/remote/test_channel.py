@@ -31,6 +31,9 @@ class FakePipeline:
     def release_oldest_extra(self):
         self._extra_retained.pop(0)
 
+    def request_done(self):
+        self.requests_done = getattr(self, "requests_done", 0) + 1
+
 
 class FakeTransport:
     def __init__(self):

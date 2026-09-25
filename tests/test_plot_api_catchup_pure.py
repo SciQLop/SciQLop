@@ -274,10 +274,10 @@ class TestHistogram2DGradientNames:
 
     def test_an_unknown_name_names_the_available_ones(self):
         x, y = self._scatter()
-        with pytest.raises(ValueError, match="viridis"):
-            _create_histogram2d(_MockPlot(), x, y, gradient="viridis")
+        with pytest.raises(ValueError, match="rainbowish"):
+            _create_histogram2d(_MockPlot(), x, y, gradient="rainbowish")
         with pytest.raises(ValueError, match="Candy.*Cold.*Hot.*Polar"):
-            _create_histogram2d(_MockPlot(), x, y, gradient="viridis")
+            _create_histogram2d(_MockPlot(), x, y, gradient="rainbowish")
 
     def test_a_nonsense_type_is_rejected(self):
         x, y = self._scatter()

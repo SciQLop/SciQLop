@@ -35,6 +35,9 @@ class _Pipeline:
     def set_data_colored(self, data, color):
         self.calls.append(("set_data_colored", len(data)))
 
+    def request_done(self):
+        self.calls.append(("request_done",))
+
 
 class _Log:
     def __init__(self):
@@ -63,14 +66,14 @@ def _views(n):
 def test_plain_channel_given_a_colour_says_so(monkeypatch):
     channel, pipeline, errors = _channel(monkeypatch, colored=False)
     channel._deliver(_views(3), arity=2)
-    assert pipeline.calls == []
+    assert pipeline.calls == [("request_done",)]
     assert any("plugin/traj" in e and "colored=True" in e for e in errors)
 
 
 def test_coloured_channel_given_plain_data_says_so(monkeypatch):
     channel, pipeline, errors = _channel(monkeypatch, colored=True)
     channel._deliver(_views(2), arity=2)
-    assert pipeline.calls == []
+    assert pipeline.calls == [("request_done",)]
     assert any("plugin/traj" in e and "Colored" in e for e in errors)
 
 
@@ -82,3 +85,17 @@ def test_matching_batches_are_delivered(monkeypatch):
     assert pipeline.calls == [("set_data_colored", 2)]
     assert plain_pipeline.calls == [("set_data", 2)]
     assert errors == []
+
+
+def test_an_empty_answer_ends_the_request(monkeypatch):
+    """Otherwise the remote graph stays busy (faded) forever."""
+    channel, pipeline, _ = _channel(monkeypatch, colored=False)
+    channel.on_empty(0)
+    assert pipeline.calls == [("request_done",)]
+
+
+def test_a_worker_error_ends_the_request(monkeypatch):
+    channel, pipeline, errors = _channel(monkeypatch, colored=False)
+    channel.on_error(0, "Traceback: boom")
+    assert pipeline.calls == [("request_done",)]
+    assert errors

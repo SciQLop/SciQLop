@@ -90,15 +90,19 @@ class RemoteChannel:
             self._pipeline.set_data(*views)
         elif self._colored:
             log.error("%s: declared colored=True but did not return Colored(...)", self._name)
+            self._pipeline.request_done()
         else:
             log.error("%s: returned Colored(...) but was not declared with colored=True", self._name)
+            self._pipeline.request_done()
 
     def on_empty(self, req_id: int) -> None:
         self._close_async_span(req_id)
+        self._pipeline.request_done()
 
     def on_error(self, req_id: int, tb: str) -> None:
         self._close_async_span(req_id)
         log.error("remote data source error (channel %s):\n%s", self.channel_id, tb)
+        self._pipeline.request_done()
 
     def _close_async_span(self, req_id: int) -> None:
         if req_id == self._latest_req_id and self._async_handle is not None:
