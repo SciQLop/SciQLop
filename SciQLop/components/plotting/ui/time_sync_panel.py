@@ -15,6 +15,7 @@ from SciQLop.core import TimeRange
 from SciQLop.core import listify
 from SciQLop.components import sciqlop_logging
 from SciQLop.components.plotting.backend.data_provider import providers, DataProvider
+from SciQLop.components.plotting.backend.color_axis import apply_color_axis
 from SciQLop.components.plotting.backend.easy_provider import EasyProvider
 from SciQLop.core.graph_context import (
     attach_context, attach_data_meta, build_speasy_ctx, build_vp_ctx,
@@ -764,6 +765,11 @@ def _attach_graph_context(r, provider, node, target, fetch_callback=None):
         log.warning("attach_graph_context failed", exc_info=True)
 
 
+def _apply_product_color_axis(r, target, provider, node) -> None:
+    plot, graph = r if hasattr(r, '__iter__') else (target, r)
+    apply_color_axis(plot, graph, provider.color_axis(node))
+
+
 def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):
     if not isinstance(product, list):
         return None
@@ -805,6 +811,7 @@ def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectio
             r[1].set_name(node.display_name())
         else:
             r.set_name(node.display_name())
+        _apply_product_color_axis(r, target, provider, node)
         return _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
                           product_inputs=product_inputs)
     if node.parameter_type() == ParameterType.Spectrogram:
