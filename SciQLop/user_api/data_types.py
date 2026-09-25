@@ -112,7 +112,9 @@ def _take(data, order: np.ndarray):
 
 
 def _as_color_values(color, n: int) -> np.ndarray:
-    values = np.squeeze(np.asarray(color))
+    values = np.asarray(color)
+    if values.ndim == 2 and values.shape[1] == 1:
+        values = values[:, 0]
     if np.issubdtype(values.dtype, np.datetime64):
         values = values.astype("datetime64[ns]").astype(np.int64) / 1e9
     if values.ndim != 1 or len(values) != n:

@@ -767,7 +767,9 @@ def _attach_graph_context(r, provider, node, target, fetch_callback=None):
 
 def _apply_product_color_axis(r, target, provider, node) -> None:
     plot, graph = r if hasattr(r, '__iter__') else (target, r)
-    apply_color_axis(plot, graph, provider.color_axis(node))
+    # getattr: providers are duck-typed; plugins may not subclass DataProvider.
+    color_axis = getattr(provider, "color_axis", None)
+    apply_color_axis(plot, graph, color_axis(node) if color_axis else None)
 
 
 def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):

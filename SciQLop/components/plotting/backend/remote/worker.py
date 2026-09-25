@@ -102,13 +102,13 @@ def _serve_request(conn, state, channel_id, req_id, start, stop, knobs) -> None:
         try:
             with tracing.zone("worker.callback", cat="remote"):
                 result = cb(start, stop, **knobs)
+            arrays = None if result is None else reduce_result(result, state.arity[channel_id])
         except Exception:
             conn.send((P.ERROR, channel_id, req_id, traceback.format_exc()))
             return
-        if result is None:
+        if arrays is None:
             conn.send((P.EMPTY, channel_id, req_id))
             return
-        arrays = reduce_result(result, state.arity[channel_id])
         seg = state.pool(channel_id).acquire(total_nbytes(arrays))
         layout = pack_arrays(seg.buf, arrays)
         conn.send((P.RESULT, channel_id, req_id, seg.name, layout, state.arity[channel_id]))

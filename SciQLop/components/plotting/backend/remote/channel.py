@@ -34,9 +34,11 @@ log = logging.getLogger(__name__)
 
 
 class RemoteChannel:
-    def __init__(self, pipeline, channel_id: int, transport, colored: bool = False):
+    def __init__(self, pipeline, channel_id: int, transport, colored: bool = False,
+                 name: str = ""):
         self._pipeline = pipeline
         self._colored = colored
+        self._name = name or f"channel {channel_id}"
         self.channel_id = channel_id
         self._transport = transport
         self._latest_req_id = 0
@@ -77,18 +79,19 @@ class RemoteChannel:
             return
         shm = shared_memory.SharedMemory(name=shm_name, create=False, track=False)
         views = unpack_arrays(shm.buf, layout)
-        self._deliver(views)
+        self._deliver(views, arity)
         self._register_release(shm, shm_name, views)
         self._held, self._held_name = shm, shm_name
 
-    def _deliver(self, views) -> None:
-        if not self._colored:
-            self._pipeline.set_data(*views)
-        elif len(views) == 3:
+    def _deliver(self, views, arity: int) -> None:
+        if self._colored and len(views) == arity + 1:
             self._pipeline.set_data_colored(list(views[:-1]), views[-1])
+        elif not self._colored and len(views) == arity:
+            self._pipeline.set_data(*views)
+        elif self._colored:
+            log.error("%s: declared colored=True but did not return Colored(...)", self._name)
         else:
-            log.error("coloured remote channel %s got %d arrays instead of 3 (did the "
-                      "callback return Colored(...)?)", self.channel_id, len(views))
+            log.error("%s: returned Colored(...) but was not declared with colored=True", self._name)
 
     def on_empty(self, req_id: int) -> None:
         self._close_async_span(req_id)

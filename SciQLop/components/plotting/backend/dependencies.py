@@ -84,6 +84,12 @@ def describe_target(target) -> str:
     return getattr(target, "__qualname__", None) or repr(target)
 
 
+def _without_colour(data):
+    """A dependency wants the data; a coloured VP's colour is for its own plot."""
+    from SciQLop.user_api.data_types import Colored
+    return data.data if isinstance(data, Colored) else data
+
+
 def _resolve_path(target, start: float, stop: float):
     from SciQLop.core.models import products
     from SciQLop.components.plotting.backend.data_provider import providers
@@ -94,7 +100,7 @@ def _resolve_path(target, start: float, stop: float):
     provider = providers.get(node.provider())
     if provider is None:
         raise ValueError(f"no provider for product: {'//'.join(path)}")
-    return provider.get_data(node, start, stop)
+    return _without_colour(provider.get_data(node, start, stop))
 
 
 def resolve_product_path(target, start: float, stop: float):
@@ -108,13 +114,13 @@ def _resolve_target(target, start: float, stop: float):
     if isinstance(target, (str, list)):
         return _resolve_path(target, start, stop)
     if callable(target):
-        return target(start, stop)
+        return _without_colour(target(start, stop))
     from SciQLop.user_api.virtual_products import VirtualProduct
     if isinstance(target, VirtualProduct):
         impl = getattr(target, "_impl", None)
         if impl is None:
             raise TypeError(f"VirtualProduct has no resolvable data source: {describe_target(target)}")
-        return impl.get_data(None, start, stop)
+        return _without_colour(impl.get_data(None, start, stop))
     raise TypeError(f"unsupported dependency target: {target!r}")
 
 

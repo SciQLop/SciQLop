@@ -65,7 +65,7 @@ def test_current_result_sets_data_and_frees_previous_on_supersede():
     ch.on_data_requested_values(0.0, 1.0)  # req 1 -> latest
     n1, l1, s1 = _make_segment([np.array([0.0, 1.0]), np.array([1.0])])
     n2, l2, s2 = _make_segment([np.array([1.0, 2.0]), np.array([2.0])])
-    ch.on_result(1, n1, l1, 1)
+    ch.on_result(1, n1, l1, 2)
     assert t.frees == []                    # nothing to supersede yet
     ch.on_data_requested_values(1.0, 2.0)  # req 2 -> latest
     ch.on_result(2, n2, l2, 2)
@@ -103,11 +103,11 @@ def test_previous_segment_not_released_while_still_referenced(monkeypatch):
     ch = RemoteChannel(pipeline=pipe, channel_id=5, transport=t)
     ch.on_data_requested_values(0.0, 1.0)  # req 1 -> latest
     n1, l1, s1 = _make_segment([np.array([0.0, 1.0]), np.array([1.0])])
-    ch.on_result(1, n1, l1, 1)  # pipe retains these views -- simulates an in-flight C++ reader
+    ch.on_result(1, n1, l1, 2)  # pipe retains these views -- simulates an in-flight C++ reader
 
     ch.on_data_requested_values(1.0, 2.0)  # req 2 -> latest
     n2, l2, s2 = _make_segment([np.array([1.0, 2.0]), np.array([2.0])])
-    ch.on_result(2, n2, l2, 1)
+    ch.on_result(2, n2, l2, 2)
     assert n1 not in closed_names, "must not unmap segment 1 while still referenced"
     assert (5, n1) not in t.frees
 

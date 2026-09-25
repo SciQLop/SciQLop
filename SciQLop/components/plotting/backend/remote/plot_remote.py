@@ -36,7 +36,8 @@ def plot_remote(target, node, provider, product: list, *, plot_type: PlotType = 
     pipeline = graph.remote_channel()
     worker = reg.worker_for(product)
     channel = RemoteChannel(pipeline=pipeline, channel_id=next(_channel_ids),
-                            transport=worker, colored=reg.is_colored(product))
+                            transport=worker, colored=reg.is_colored(product),
+                            name="/".join(product))
     graph._remote_channel = channel
     worker.register_channel(channel)
     blob, arity = reg.spec_for(product)

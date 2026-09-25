@@ -139,6 +139,9 @@ def _product_type_to_enum(product_type: str):
 
 def _infer_multicomponent_labels(cached_data: Any) -> List[str]:
     """Infer default labels from cached evaluation data."""
+    from SciQLop.user_api.data_types import Colored
+    if isinstance(cached_data, Colored):
+        cached_data = cached_data.data
     try:
         if isinstance(cached_data, (tuple, list)) and len(cached_data) >= 2:
             y = cached_data[1]
