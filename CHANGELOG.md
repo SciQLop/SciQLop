@@ -20,6 +20,10 @@
 
 - Settings that hold a size in bytes, such as the Speasy cache limit, are shown and edited as `20 GB` instead of `20000000000`. Input like `500MB`, `1.5 GB`, `2 TiB` or a plain number of bytes is accepted, and the value is saved when you press Enter or leave the field, not while you type.
 
+### Workspaces
+
+- Choosing "main (development)" as a workspace's SciQLop version now installs from `main`. It used to reinstall the version SciQLop itself was running (0.13.0 on a released install), because the choice was saved as an empty version, which means "same as SciQLop". It is now saved as `main`; workspaces with no version keep following SciQLop.
+
 ### Dependencies
 
 - Bumped SciQLopPlots 0.37.0 → 0.39.0. It brings seven new colour gradients (Viridis, Cividis, Magma, Inferno, Plasma, Turbo, Coolwarm; Jet stays the default), colour-by-scalar for line graphs and curves, and a remote graph that no longer stays greyed out after an error or an empty answer. Its enums are now plain `IntEnum`s, so `list(ColorGradient)` shows every gradient; a coloured graph no longer resets the plot's gradient to Jet.

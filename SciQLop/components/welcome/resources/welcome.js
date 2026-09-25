@@ -500,9 +500,16 @@ function bindFieldEditor(inputId, directory, field, ws, isActive) {
     });
 }
 
+var CORE_MAIN_PIN = "main";
+
+function coreVersionLabel(version) {
+    if (version === CORE_MAIN_PIN) return "main (development)";
+    return version || "same as SciQLop";
+}
+
 function buildCoreVersionSection(ws) {
     var current = ws.sciqlop_version || "";
-    var currentLabel = current ? current : "main (development)";
+    var currentLabel = coreVersionLabel(current);
     var html = '<div class="core-version-current">Current: <strong>' +
         escapeHtml(currentLabel) + '</strong></div>';
     html += '<select id="core-version-select" class="core-version-select" ' +
@@ -537,7 +544,7 @@ function populateCoreVersionSelect(result) {
     var current = (_currentDetailsWs && _currentDetailsWs.sciqlop_version) || "";
 
     var options = result.ok ? result.versions.slice() : (current ? [current] : []);
-    if (current && options.indexOf(current) === -1) {
+    if (current && current !== CORE_MAIN_PIN && options.indexOf(current) === -1) {
         options.unshift(current);
     }
 
@@ -549,12 +556,12 @@ function populateCoreVersionSelect(result) {
         select.appendChild(opt);
     });
     var mainOpt = document.createElement("option");
-    mainOpt.value = "";
-    mainOpt.textContent = "main (development)";
+    mainOpt.value = CORE_MAIN_PIN;
+    mainOpt.textContent = coreVersionLabel(CORE_MAIN_PIN);
     select.appendChild(mainOpt);
 
-    var defaultSelection = current === ""
-        ? ""
+    var defaultSelection = current === CORE_MAIN_PIN
+        ? CORE_MAIN_PIN
         : (result.ok && result.versions.length > 0 ? result.versions[0] : current);
     select.value = defaultSelection;
 
@@ -598,7 +605,7 @@ function onCoreUpdateFinished(resultJson) {
         var label = document.querySelector(".core-version-current");
         if (label) {
             label.innerHTML = "Current: <strong>" +
-                escapeHtml(result.version || "main (development)") + "</strong>";
+                escapeHtml(coreVersionLabel(result.version)) + "</strong>";
         }
         status.textContent = result.is_active_workspace
             ? "Pinned — restart SciQLop to install and apply."

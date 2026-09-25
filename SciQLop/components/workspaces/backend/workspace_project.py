@@ -54,6 +54,10 @@ _PINNED_BASE_PACKAGES = (
 # was actually built from.
 _DEV_BUILD_REQUIREMENT = "sciqlop[all] @ git+https://github.com/SciQLop/SciQLop.git@main"
 
+# The pin a user picks to follow main. Not "": an empty pin means "no pin,
+# follow the launcher" -- what workspaces created before pinning existed hold.
+MAIN_PIN = "main"
+
 # Source of truth for what SciQLop version a workspace can actually install
 # -- GitHub release tags (used by the read-only "update available" banner in
 # the welcome pane) are not assumed to correspond 1:1 with PyPI releases.
@@ -145,14 +149,15 @@ def running_sciqlop_version() -> str:
 def is_dev_build_version(pinned_version: str) -> bool:
     """Whether *pinned_version* resolves to the git-main dev-build requirement.
 
-    An empty version (no pin yet) or one containing ``.dev`` both mean the
-    workspace has no real PyPI release to install, so it installs from
-    ``git+...@main`` instead -- see ``sciqlop_requirement``. Exposed
+    An empty version (no pin, and a dev launcher), one containing ``.dev``, or
+    the explicit ``MAIN_PIN`` all mean the workspace has no real PyPI release
+    to install, so it installs from ``git+...@main`` instead -- see
+    ``sciqlop_requirement``. Exposed
     separately because callers outside pyproject generation (workspace_setup's
     ``uv sync --upgrade-package``, see
     ``pitfall-uv-lock-freezes-git-main-forever``) need the same test.
     """
-    return not pinned_version or ".dev" in pinned_version
+    return not pinned_version or ".dev" in pinned_version or pinned_version == MAIN_PIN
 
 
 def sciqlop_requirement(pinned_version: str = "") -> str:
@@ -391,8 +396,8 @@ def fetch_available_versions(*, timeout: float = 5.0) -> List[str]:
 def validate_core_version(version: str, available: Sequence[str]) -> bool:
     """True if *version* is safe to write into a workspace manifest.
 
-    Accepts the empty string (installs from ``git+...@main`` -- see
-    ``sciqlop_requirement``), an exact match against *available* (which
+    Accepts the empty string (no pin: follow the launcher's version),
+    ``MAIN_PIN`` (install from ``git+...@main``), an exact match against *available* (which
     should come from ``fetch_available_versions()``), or any string shaped
     like a bare release version (digits and dots only) even when it isn't
     in *available* -- covers a workspace whose pin is older than the
@@ -404,7 +409,7 @@ def validate_core_version(version: str, available: Sequence[str]) -> bool:
     quotes, ``@``, ``/``, or PEP 440 specifier/URL/VCS syntax can match the
     bare-version pattern.
     """
-    if version == "":
+    if version in ("", MAIN_PIN):
         return True
     if version in available:
         return True

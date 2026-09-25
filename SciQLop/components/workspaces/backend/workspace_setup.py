@@ -604,7 +604,7 @@ def apply_core_version(workspace_dir: Path | str, version: str) -> Path:
             manifest.save(manifest_path)
         except Exception as exc:
             raise RuntimeError(
-                f"SciQLop {version or 'main'} was installed, but recording it "
+                f"SciQLop {version or 'the launcher version'} was installed, but recording it "
                 f"in the workspace manifest failed: {exc}"
             ) from exc
     return python_path
