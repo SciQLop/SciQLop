@@ -4,7 +4,7 @@
 
 ### Agent chat
 
-- An opt-in web transcript renderer (Settings → Agent chat → Transcript renderer) draws the chat transcript with highlighted code, LaTeX math and native collapsible tool steps; native stays the default.
+- A web transcript renderer (Settings → Agent chat → Transcript renderer) draws the chat transcript with highlighted code, LaTeX math and native collapsible tool steps. It is the default for new configurations; an existing configuration keeps its saved choice, so switch it there to try it.
 - A bare `<word>` in a chat message (for instance `sciqlop_api_reference('<module>')` outside backticks) no longer swallows the rest of the message: the transcript renders markdown with raw HTML disabled.
 - The transcript no longer jumps around: expanding or collapsing a tool node, changing the activity verbosity, or new agent output while you had scrolled back all kept teleporting the view to the bottom (every update rebuilds the document and used to scroll to the end unconditionally). The view now follows new output only while you are at the bottom, keeps your place otherwise, and re-pins itself as the document's layout grows so streaming output can no longer strand it mid-way.
 - Resuming a session no longer shows SciQLop's old persona preamble as your first message, nor uses it as the session's label: the preamble was glued onto the first prompt of every session until now, and the workspace `AGENTS.md` has carried that guidance since 0.12. New sessions send your words verbatim; old transcripts have the preamble stripped on replay.

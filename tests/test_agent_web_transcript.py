@@ -287,8 +287,16 @@ def test_settings_notifier_triggers_the_live_swap(dock, qtbot):
     from SciQLop.components.agents.chat.web_view import WebTranscriptView
     from SciQLop.components.agents.settings import AgentChatSettings
 
+    with AgentChatSettings() as cfg:
+        cfg.transcript_renderer = "native"
+    _settle(qtbot)
     assert type(dock._transcript) is TranscriptView
     with AgentChatSettings() as cfg:
         cfg.transcript_renderer = "web"
     _settle(qtbot)
     assert isinstance(dock._transcript, WebTranscriptView)
+
+
+def test_new_configs_default_to_the_web_transcript():
+    from SciQLop.components.agents.settings import AgentChatSettings
+    assert AgentChatSettings.model_fields["transcript_renderer"].default == "web"

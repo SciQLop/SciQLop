@@ -50,7 +50,7 @@ class AgentChatSettings(ConfigEntry):
         json_schema_extra={"widget": "hidden"},
     )
     transcript_renderer: Literal["native", "web"] = Field(
-        default="native",
+        default="web",
         description="How the chat transcript is drawn. 'web' adds highlighted "
                     "code and LaTeX math (uses the embedded browser).",
     )
