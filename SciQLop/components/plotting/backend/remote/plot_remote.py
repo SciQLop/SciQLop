@@ -6,6 +6,7 @@ import itertools
 from SciQLopPlots import SciQLopPlot, ParameterType, PlotType
 from .channel import RemoteChannel
 from .registry import remote_registry
+from ..color_axis import apply_color_axis
 
 _channel_ids = itertools.count(1)
 
@@ -35,11 +36,12 @@ def plot_remote(target, node, provider, product: list, *, plot_type: PlotType = 
     pipeline = graph.remote_channel()
     worker = reg.worker_for(product)
     channel = RemoteChannel(pipeline=pipeline, channel_id=next(_channel_ids),
-                            transport=worker)
+                            transport=worker, colored=reg.is_colored(product))
     graph._remote_channel = channel
     worker.register_channel(channel)
     blob, arity = reg.spec_for(product)
     worker.install(channel.channel_id, blob, arity)
     pipeline.data_requested.connect(channel.on_data_requested)
     graph.destroyed.connect(lambda *_: channel.dispose())
+    apply_color_axis(plot, graph, provider.color_axis(node))
     return plot, graph

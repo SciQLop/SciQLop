@@ -203,7 +203,7 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
             remote_callback = _build_remote_callback(
                 callback, self._range_stack, knobs_model, knobs_kwarg_name)
             arity = 3 if parameter_type == ParameterType.Spectrogram else 2
-            remote_registry().register(path, remote_callback, arity)
+            remote_registry().register(path, remote_callback, arity, colored=color_axis is not None)
 
     @staticmethod
     def _compute_knob_specs(callback, knobs_model):

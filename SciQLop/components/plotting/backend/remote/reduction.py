@@ -1,9 +1,11 @@
 """Reduce a data-source callback result to native-dtype numpy arrays.
 
 `arity` is fixed by the graph type at INSTALL (2 = line/curve, 3 = colormap),
-so we never guess shape from the data."""
+so we never guess shape from the data. A coloured channel receives one extra,
+last array: the colour."""
 from __future__ import annotations
 
+import sys
 from typing import List
 import numpy as np
 
@@ -42,7 +44,17 @@ def _from_sequence(seq, arity: int) -> List[np.ndarray]:
     return out
 
 
+def _colored_type():
+    # Looked up, not imported: importing SciQLop.user_api pulls Qt into the worker,
+    # and a Colored result means the callback already imported it.
+    return getattr(sys.modules.get("SciQLop.user_api.data_types"), "Colored", None)
+
+
 def reduce_result(result, arity: int) -> List[np.ndarray]:
+    colored = _colored_type()
+    if colored is not None and isinstance(result, colored):
+        checked = result.checked()
+        return reduce_result(checked.data, arity) + [checked.color]
     if _is_speasy_variable(result):
         return _from_speasy(result, arity)
     return _from_sequence(result, arity)
