@@ -9,6 +9,11 @@ from tests.fixtures import *  # noqa: F401,F403
 
 
 def _flush():
+    # Timers first: when a tab closes, QtAds queues a 0 ms timer holding a raw
+    # pointer to the tab that becomes current (DockAreaTabBar.cpp). Flushing
+    # deferred deletes before it runs can free that tab (a leftover dock from
+    # an earlier test on the shared window) under it: a segfault.
+    QApplication.processEvents()
     QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     QApplication.processEvents()
 

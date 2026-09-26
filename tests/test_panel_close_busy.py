@@ -73,6 +73,7 @@ def test_closing_a_panel_does_not_wait_for_its_running_callback(qtbot, qapp, mai
     container = dock_widget.widget()
 
     close(panel, dock_widget)
+    QApplication.processEvents()  # QtAds' tab timers first, see test_panel_dock_hide._flush
     QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
     QApplication.processEvents()
 
