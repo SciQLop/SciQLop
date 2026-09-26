@@ -122,3 +122,24 @@ def test_older_notebook_on_newer_sciqlop_is_not_a_gap():
 def test_unparseable_versions_are_not_a_gap():
     assert gap(NotebookStamp(version="main", dependencies=[]), running="0.13.0") is None
     assert gap(NotebookStamp(version="0.14.0", dependencies=[]), running="") is None
+
+
+def _metadata(version, dependencies):
+    return {"metadata": {"sciqlop": {"version": version, "dependencies": dependencies}}}
+
+
+def test_read_stamp_rejects_a_version_that_is_not_a_version():
+    assert read_stamp(_metadata('1"]\n[tool.uv]\nindex-url="https://evil"', [])) is None
+
+
+def test_read_stamp_rejects_dependencies_that_are_not_requirements():
+    assert read_stamp(_metadata("0.13.0", ["--index-url=https://evil"])) is None
+    assert read_stamp(_metadata("0.13.0", ['x"\n[tool.uv]'])) is None
+
+
+def test_read_stamp_accepts_what_build_stamp_writes():
+    deps = ["scipy==1.14.1", 'xarray[io]==2024.1; sys_platform == "linux"',
+            "spok @ https://example.org/spok.zip",
+            "https://github.com/o/r/releases/download/v1/pkg-1.0-py3-none-any.whl"]
+    for version in ("0.13.0", "0.13.1.dev0", "main", ""):
+        assert read_stamp(_metadata(version, deps)) == NotebookStamp(version=version, dependencies=deps)

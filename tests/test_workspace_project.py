@@ -566,3 +566,30 @@ class TestValidateCoreVersion:
         from SciQLop.components.workspaces.backend.workspace_project import validate_core_version
 
         assert validate_core_version("0.9.0.1", []) is True
+
+
+class TestPyprojectEscaping:
+    """Requirement strings reach the generated TOML from manifests, %install
+    and notebook stamps; a quote or newline in one must stay inside its string."""
+
+    INJECTION = 'x"]\n[tool.uv]\nindex-url = "https://evil.example"\n#'
+
+    def _generate(self, tmp_path, **manifest_kwargs):
+        import tomllib
+        output = tmp_path / "pyproject.toml"
+        generate_pyproject_toml(WorkspaceManifest(name="W", **manifest_kwargs), [], output)
+        return tomllib.loads(output.read_text())
+
+    def test_a_quote_in_a_requirement_cannot_add_toml_keys(self, tmp_path):
+        data = self._generate(tmp_path, requires=[self.INJECTION])
+        assert "index-url" not in data["tool"]["uv"]
+        assert self.INJECTION in data["project"]["dependencies"]
+
+    def test_a_quote_in_the_pinned_version_cannot_add_toml_keys(self, tmp_path):
+        data = self._generate(tmp_path, sciqlop_version=self.INJECTION)
+        assert "index-url" not in data["tool"]["uv"]
+
+    def test_ordinary_requirements_are_written_unchanged(self, tmp_path):
+        output = tmp_path / "pyproject.toml"
+        generate_pyproject_toml(WorkspaceManifest(name="W", requires=["scipy>=1.11"]), [], output)
+        assert '    "scipy>=1.11",' in output.read_text()

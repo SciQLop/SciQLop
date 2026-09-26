@@ -32,7 +32,7 @@ def install_cmd(specs: List[str], override_file: Optional[str] = None,
         args += ["--override", override_file]
     if constraint_file:
         args += ["--constraint", constraint_file]
-    return uv_command(*args, *specs)
+    return uv_command(*args, "--", *specs)
 
 
 def write_requirements_file(directory: str, filename: str, lines: List[str]) -> Optional[str]:

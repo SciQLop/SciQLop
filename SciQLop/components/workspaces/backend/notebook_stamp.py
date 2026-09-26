@@ -19,21 +19,40 @@ from typing import Callable, Optional
 
 from packaging.requirements import InvalidRequirement, Requirement
 from packaging.version import InvalidVersion, Version
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, field_validator
 
 from .workspace_manifest import WorkspaceManifest
-from .workspace_project import running_sciqlop_version, strip_host_provided
+from .workspace_project import MAIN_PIN, running_sciqlop_version, strip_host_provided
 
 STAMP_KEY = "sciqlop"
 
 InstalledVersion = Callable[[str], Optional[str]]
 
 _LOCAL_SPEC = re.compile(r"^(\.|/|~|-e\b|file:|[A-Za-z]:[\\/])")
+_WHEEL_URL = re.compile(r"^https://[^\s\"'\\]+$")
 
 
 class NotebookStamp(BaseModel):
+    """A notebook's stamp. Notebooks are shared, so a stamp is untrusted input
+    that ends up in uv commands and pyproject files: anything ``build_stamp``
+    would not write is rejected."""
     version: str
     dependencies: list[str]
+
+    @field_validator("version")
+    @classmethod
+    def _a_version(cls, version: str) -> str:
+        if version not in ("", MAIN_PIN):
+            Version(version)
+        return version
+
+    @field_validator("dependencies")
+    @classmethod
+    def _requirements(cls, dependencies: list[str]) -> list[str]:
+        bad = [spec for spec in dependencies if _parse(spec) is None and not _WHEEL_URL.match(spec)]
+        if bad:
+            raise ValueError(f"not requirements: {bad}")
+        return dependencies
 
 
 @dataclass(frozen=True)
@@ -96,7 +115,7 @@ def read_stamp(notebook: dict) -> Optional[NotebookStamp]:
         return None
     try:
         return NotebookStamp.model_validate(raw)
-    except ValidationError:
+    except (ValidationError, InvalidVersion):
         return None
 
 

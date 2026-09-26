@@ -189,6 +189,12 @@ def sciqlop_requirement(pinned_version: str = "") -> str:
     return f"sciqlop[all]=={version}"
 
 
+def _toml_string(value: str) -> str:
+    """A TOML basic string: JSON's escapes are valid TOML, so a quote or newline
+    in a requirement (from a manifest, %install or a notebook stamp) stays inside it."""
+    return json.dumps(value)
+
+
 def _slugify(name: str) -> str:
     """Convert a human-readable name to a URL/package-safe slug.
 
@@ -322,7 +328,7 @@ def generate_pyproject_toml(
 
     # Format the dependencies list
     if all_deps:
-        deps_lines = "\n".join(f'    "{dep}",' for dep in all_deps)
+        deps_lines = "\n".join(f'    {_toml_string(dep)},' for dep in all_deps)
         deps_block = f"dependencies = [\n{deps_lines}\n]"
     else:
         deps_block = "dependencies = [\n]"
@@ -335,7 +341,7 @@ def generate_pyproject_toml(
     # being developed. It must repeat the extras: an override without [all]
     # silently drops them from the resolution.
     constraint_block = ""
-    override_block = f'override-dependencies = ["{core_requirement}"]'
+    override_block = f'override-dependencies = [{_toml_string(core_requirement)}]'
 
     # Restrict uv resolution to platforms SciQLop actually targets so that
     # marker splits like sys_platform == 'emscripten' (which has no wheels for

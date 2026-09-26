@@ -44,3 +44,10 @@ def test_the_install_magic_uses_the_guarded_install(tmp_path, monkeypatch):
     ws._manifest, ws._manifest_path = m, tmp_path / "workspace.sciqlop"
     assert ws.add_packages(["somepkg"])["ok"] is True
     assert "--constraint" in seen["cmd"]
+
+
+def test_specs_are_never_read_as_uv_options():
+    """A spec from a notebook stamp or app-store data such as
+    "--index-url=https://evil" must reach uv as a package name, not an option."""
+    cmd = live_install.install_cmd(["--index-url=https://evil.example", "scipy"])
+    assert cmd[cmd.index("--") + 1:] == ["--index-url=https://evil.example", "scipy"]

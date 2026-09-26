@@ -564,7 +564,7 @@ def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
     all_deps = strip_host_provided(plugin_deps + manifest.requires)
     if all_deps:
         try:
-            cmd = uv_command("pip", "install", "--native-tls", *all_deps)
+            cmd = uv_command("pip", "install", "--native-tls", "--", *all_deps)
             _run_uv(cmd, on_output)
         except Exception as e:
             print(f"Warning: failed to install plugin/workspace deps: {e}")
