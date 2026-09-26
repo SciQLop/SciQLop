@@ -13,6 +13,7 @@
 
 ### UI
 
+- Adding a plugin folder or enabling a plugin in Settings now loads it right away, without a restart; its python dependencies are installed first, with the running stack pinned. Only removing a folder or disabling a plugin still asks for a restart, since running code can't be unloaded.
 - Anything that only takes effect after a restart now offers a **Restart now** button: updating or uninstalling a plugin from the app store, changing the enabled plugins or the extra plugin folders in Settings, and pinning a new SciQLop version on the workspace you are running. SciQLop restarts into the same workspace. Updating a plugin no longer tries to load it a second time over the running version.
 - Comboboxes that were populated after creation (agent model/effort/backend pickers) or never sized (attribute type, knob choices, activity and writes pickers) clipped their item text in the popup. `fit_combo_to_content` now re-fits whenever items change, and every combobox in the app uses it.
 

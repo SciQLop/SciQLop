@@ -47,9 +47,23 @@ class SettingsLeftPanel(QWidget):
         self.filter.textChanged.connect(self.categories_list.filter)
 
 
-def _restart_required(field_info) -> bool:
+def _restart_mode(field_info):
+    """``json_schema_extra["restart_required"]``: True (any change) or
+    "on_removal" (only removing or disabling something), else None."""
     extra = field_info.json_schema_extra
-    return isinstance(extra, dict) and bool(extra.get("restart_required"))
+    return extra.get("restart_required") if isinstance(extra, dict) else None
+
+
+def _enabled_names(value) -> set:
+    if isinstance(value, dict):
+        return {k for k, v in value.items() if getattr(v, "enabled", True)}
+    return set(value or [])
+
+
+def needs_restart(mode, old, new) -> bool:
+    if mode == "on_removal":
+        return bool(_enabled_names(old) - _enabled_names(new))
+    return bool(mode)
 
 
 class RestartNotice(QFrame):
@@ -102,7 +116,8 @@ class SettingRow(QFrame):
 
         layout.addWidget(self._delegate)
 
-        self.restart_notice = RestartNotice() if _restart_required(field_info) else None
+        self._restart_mode = _restart_mode(field_info)
+        self.restart_notice = RestartNotice() if self._restart_mode else None
         if self.restart_notice is not None:
             self.restart_notice.hide()
             layout.addWidget(self.restart_notice)
@@ -114,9 +129,10 @@ class SettingRow(QFrame):
     @Slot(object)
     def _on_value_changed(self, value):
         try:
+            old = getattr(self._instance, self._field_name)
             setattr(self._instance, self._field_name, value)
             self._instance.save()
-            if self.restart_notice is not None:
+            if self.restart_notice is not None and needs_restart(self._restart_mode, old, value):
                 self.restart_notice.show()
         except Exception as e:
             log.error(f"Failed to save setting {self._field_name}: {e}")

@@ -158,6 +158,8 @@ def start_sciqlop():
     main_windows = SciQLopMainWindow()
     app.processEvents()
     load_all(main_windows)
+    from SciQLop.components.plugins.backend.live_loader import PluginsLiveLoader
+    main_windows._plugins_live_loader = PluginsLiveLoader(main_windows, parent=main_windows)
 
     from SciQLop.components.command_palette.commands import register_builtin_commands
     register_builtin_commands(app.command_registry)

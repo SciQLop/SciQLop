@@ -44,4 +44,4 @@ def test_plugin_settings_are_marked_restart_required():
     from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
     for name in ("plugins", "extra_plugins_folders"):
         extra = SciQLopPluginsSettings.model_fields[name].json_schema_extra
-        assert extra.get("restart_required") is True, name
+        assert extra.get("restart_required") == "on_removal", name

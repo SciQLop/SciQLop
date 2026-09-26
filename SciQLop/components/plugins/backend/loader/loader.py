@@ -150,43 +150,100 @@ def _load_entry_point_plugin(ep: importlib.metadata.EntryPoint, main_window):
         return None
 
 
-def load_all(main_window):
-    from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings, PluginConfig
+# Names load_all() or live loading already tried: a plugin is loaded at most once
+# per process, whether its load() returned something or not.
+_attempted: set = set()
+
+
+def _enabled_plugins(settings, ep_plugins) -> list:
+    """(folder, name) of every enabled, host-compatible plugin; folder is None
+    for an entry-point plugin. Registers newly found plugins in *settings*."""
     from .plugin_desc import PluginDesc
+    from SciQLop.components.plugins.backend.settings import PluginConfig
     plugin_list = []
+    for folder in plugins_folders(settings):
+        plugins = list_plugins(folder)
+        log.info(f"Plugins found: {plugins}")
+        for plugin in plugins:
+            if plugin not in settings.plugins:
+                try:
+                    desc = PluginDesc.from_json(os.path.join(folder, plugin, "plugin.json"))
+                except Exception as e:
+                    log.warning(f"Skipping plugin {plugin}: {e}")
+                    continue
+                settings.plugins[plugin] = PluginConfig()
+                if desc.disabled:
+                    log.info(f"Plugin {plugin} is disabled by default")
+                    settings.plugins[plugin].enabled = False
+                    continue
+            if settings.plugins[plugin].enabled and plugin_host_compatible(folder, plugin):
+                plugin_list.append((folder, plugin))
+
+    for name, ep in ep_plugins.items():
+        if name not in settings.plugins:
+            settings.plugins[name] = PluginConfig()
+        if not settings.plugins[name].enabled:
+            log.info(f"Entry-point plugin {name} is disabled")
+            continue
+        if entry_point_host_compatible(ep):
+            plugin_list.append((None, name))
+    return plugin_list
+
+
+def load_one(folder, name, main_window, ep_plugins=None):
+    _attempted.add(name)
+    if folder is None:
+        ep_plugins = ep_plugins if ep_plugins is not None else _discover_entry_point_plugins()
+        return _load_entry_point_plugin(ep_plugins[name], main_window)
+    return load_plugin(folder, name, main_window)
+
+
+def load_all(main_window):
+    from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
     ep_plugins = _discover_entry_point_plugins()
     with SciQLopPluginsSettings() as settings:
-        for folder in plugins_folders(settings):
-            plugins = list_plugins(folder)
-            log.info(f"Plugins found: {plugins}")
-            for plugin in plugins:
-                if plugin not in settings.plugins:
-                    try:
-                        desc = PluginDesc.from_json(os.path.join(folder, plugin, "plugin.json"))
-                    except Exception as e:
-                        log.warning(f"Skipping plugin {plugin}: {e}")
-                        continue
-                    settings.plugins[plugin] = PluginConfig()
-                    if desc.disabled:
-                        log.info(f"Plugin {plugin} is disabled by default")
-                        settings.plugins[plugin].enabled = False
-                        continue
-                if settings.plugins[plugin].enabled and plugin_host_compatible(folder, plugin):
-                    plugin_list.append((folder, plugin))
+        plugin_list = _enabled_plugins(settings, ep_plugins)
+    return {plugin: load_one(folder, plugin, main_window, ep_plugins) for folder, plugin in plugin_list}
 
-        for name, ep in ep_plugins.items():
-            if name not in settings.plugins:
-                settings.plugins[name] = PluginConfig()
-            if not settings.plugins[name].enabled:
-                log.info(f"Entry-point plugin {name} is disabled")
-                continue
-            if entry_point_host_compatible(ep):
-                plugin_list.append((None, name))
 
-    results = {}
-    for folder, plugin in plugin_list:
-        if folder is None:
-            results[plugin] = _load_entry_point_plugin(ep_plugins[plugin], main_window)
-        else:
-            results[plugin] = load_plugin(folder, plugin, main_window)
-    return results
+def new_enabled_plugins() -> list:
+    """Enabled, compatible plugins that were never loaded in this process."""
+    from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
+    with SciQLopPluginsSettings() as settings:
+        plugins = _enabled_plugins(settings, _discover_entry_point_plugins())
+    return [(folder, name) for folder, name in plugins if name not in _attempted]
+
+
+def plugin_requirements(folder, name) -> list:
+    """A folder plugin's declared python dependencies (entry points have none to add)."""
+    from .plugin_desc import PluginDesc
+    path = os.path.join(folder, name, "plugin.json") if folder else ""
+    if not path or not os.path.isfile(path):
+        return []
+    try:
+        return list(PluginDesc.from_json(path).python_dependencies)
+    except Exception:
+        return []
+
+
+def missing_requirements(requirements) -> list:
+    """The requirements the running environment does not satisfy (SciQLop excluded)."""
+    from packaging.requirements import InvalidRequirement, Requirement
+    from SciQLop.components.workspaces.backend.workspace_project import strip_host_provided
+    missing = []
+    for spec in strip_host_provided(list(requirements)):
+        try:
+            req = Requirement(spec)
+        except InvalidRequirement:
+            missing.append(spec)
+            continue
+        if req.marker is not None and not req.marker.evaluate():
+            continue
+        try:
+            installed = importlib.metadata.version(req.name)
+        except importlib.metadata.PackageNotFoundError:
+            missing.append(spec)
+            continue
+        if not req.specifier.contains(installed, prereleases=True):
+            missing.append(spec)
+    return missing

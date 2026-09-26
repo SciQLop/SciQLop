@@ -31,12 +31,12 @@ class SciQLopPluginsSettings(ConfigEntry):
     extra_plugins_folders: List[str] = Field(
         default=[],
         description="Additional folders scanned for plugins at startup.",
-        json_schema_extra={"widget": "list_path", "restart_required": True})
+        json_schema_extra={"widget": "list_path", "restart_required": "on_removal"})
     plugins: Dict[str, PluginConfig] = Field(
         default={},
-        description="Enable or disable installed plugins; changes take "
-                    "effect after restart.",
-        json_schema_extra={"widget": "plugins_dict", "restart_required": True})
+        description="Enable or disable installed plugins. Enabling one loads it "
+                    "right away; disabling one takes effect after a restart.",
+        json_schema_extra={"widget": "plugins_dict", "restart_required": "on_removal"})
     installed_packages: Dict[str, InstalledPackage] = Field(default={}, json_schema_extra={"widget": "hidden"})
 
     @model_validator(mode="after")
