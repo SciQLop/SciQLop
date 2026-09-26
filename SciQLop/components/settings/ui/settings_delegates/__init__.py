@@ -213,6 +213,8 @@ class ByteSizeDelegate(SettingDelegate):
 
     def _commit(self) -> None:
         text = self._edit.text()
+        if text == format_byte_size(self._value):
+            return  # the display is rounded (2 GiB shows as 2.1 GB): re-parsing it would change the value
         if is_byte_size(text) and parse_byte_size(text) != self._value:
             self._value = parse_byte_size(text)
             self.value_changed.emit(self._value)

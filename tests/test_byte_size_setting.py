@@ -88,6 +88,18 @@ class TestByteSizeDelegate:
         assert delegate.get_value() == 500_000_000
         assert delegate._edit.text() == "500 MB"
 
+    def test_leaving_a_rounded_display_untouched_keeps_the_exact_value(self, delegate):
+        """2 GiB displays as '2.1 GB'; focusing the field and leaving it must not
+        re-parse that text and save 2100000000 instead."""
+        delegate.set_value(2_147_483_648)
+        received = []
+        delegate.value_changed.connect(received.append)
+
+        _commit(delegate)
+
+        assert received == []
+        assert delegate.get_value() == 2_147_483_648
+
     def test_committing_an_unchanged_value_emits_nothing(self, delegate):
         received = []
         delegate.value_changed.connect(received.append)
