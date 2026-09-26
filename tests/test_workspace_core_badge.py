@@ -127,6 +127,29 @@ def test_an_unpinned_card_without_a_venv_falls_back_to_the_running_version(tmp_p
     assert backend._workspace_to_dict(ws)["core_badge"]["label"] == "0.13.0"
 
 
+def test_a_failed_release_fetch_is_retried_on_the_next_refresh(qtbot, tmp_path, monkeypatch):
+    """Offline at startup must not hide the "outdated" badges for the session."""
+    from unittest.mock import patch
+    from PySide6.QtCore import QObject
+    from SciQLop.components.welcome import backend as wb
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+
+    old = WorkspaceManifest(name="Old", sciqlop_version="0.12.0")
+    old._directory = str(tmp_path / "old")
+    monkeypatch.setattr(wb, "workspaces_manager_instance",
+                        lambda: type("M", (), {"list_workspaces": lambda self: [old]})())
+    backend = wb.WelcomeBackend.__new__(wb.WelcomeBackend)
+    QObject.__init__(backend)
+    backend._latest_core_release = None
+
+    with patch("SciQLop.components.workspaces.backend.workspace_project.fetch_available_versions",
+               side_effect=[[], ["0.13.1"]]):
+        for _ in range(2):
+            with qtbot.waitSignal(backend.core_badges_ready, timeout=2000) as blocker:
+                backend.fetch_core_version_badges()
+    assert json.loads(blocker.args[0])[old.directory]["outdated"] is True
+
+
 def test_example_dependencies_install_like_every_other_live_install(qtbot, tmp_path, monkeypatch):
     """Adding an example's dependencies to the running workspace used a bare
     `uv pip install`: unguarded (could move the running Qt stack) and aimed at

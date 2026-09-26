@@ -192,11 +192,12 @@ class WelcomeBackend(QObject):
                  for ws in workspaces_manager_instance().list_workspaces()}
 
         def _fetch():
-            # One PyPI query per session: the card list reloads on every workspace change.
-            if self._latest_core_release is None:
+            # One successful PyPI query per session: the card list reloads on every
+            # workspace change. A failed one (offline) is retried on the next reload.
+            if not self._latest_core_release:
                 versions = fetch_available_versions()
-                self._latest_core_release = versions[0] if versions else ""
-            latest = self._latest_core_release or None
+                self._latest_core_release = versions[0] if versions else None
+            latest = self._latest_core_release
             self.core_badges_ready.emit(json.dumps(
                 {d: core_version_badge(pin, unpinned, latest) for d, (pin, unpinned) in cards.items()}))
 
