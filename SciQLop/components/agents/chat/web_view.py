@@ -54,6 +54,7 @@ class TranscriptBridge(QObject):
 class WebTranscriptView(WebChannelPage):
     resources_dir = os.path.join(os.path.dirname(__file__), "..", "resources", "web")
     template_name = "transcript.html.j2"
+    allows_remote_content = False
 
     def __init__(self, parent=None):
         self._role_labels: Dict[str, str] = dict(_DEFAULT_ROLE_LABEL)
