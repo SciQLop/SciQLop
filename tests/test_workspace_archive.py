@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 
 from SciQLop.components.workspaces.backend.workspace_archive import (
-    EXCLUDE_PATTERNS,
+    EXCLUDED_ANYWHERE,
+    EXCLUDED_AT_ROOT,
     IMPORT_MARKER_NAME,
     export_workspace,
     import_workspace,
@@ -151,6 +152,23 @@ class TestImportWorkspace:
 
 class TestExcludePatterns:
     def test_exclude_patterns_contains_expected(self):
-        assert ".venv" in EXCLUDE_PATTERNS
-        assert "pyproject.toml" in EXCLUDE_PATTERNS
-        assert "__pycache__" in EXCLUDE_PATTERNS
+        assert ".venv" in EXCLUDED_ANYWHERE
+        assert "__pycache__" in EXCLUDED_ANYWHERE
+        assert "pyproject.toml" in EXCLUDED_AT_ROOT
+
+
+def test_a_nested_pyproject_is_kept_only_the_generated_root_one_is_dropped(tmp_path):
+    """The root pyproject.toml is regenerated from the manifest; a user's own
+    package inside the workspace (mylib/pyproject.toml) is part of their work."""
+    ws = tmp_path / "ws"
+    (ws / "mylib").mkdir(parents=True)
+    (ws / "workspace.sciqlop").write_text('[workspace]\nname = "w"\n')
+    (ws / "pyproject.toml").write_text("# generated")
+    (ws / "mylib" / "pyproject.toml").write_text("[project]\nname = 'mylib'\n")
+    archive = tmp_path / "ws.sciqlop-archive"
+
+    export_workspace(ws, archive)
+
+    names = zipfile.ZipFile(archive).namelist()
+    assert "mylib/pyproject.toml" in names
+    assert "pyproject.toml" not in names

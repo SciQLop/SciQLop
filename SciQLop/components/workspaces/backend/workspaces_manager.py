@@ -7,7 +7,7 @@ from PySide6.QtCore import QObject, Signal, Slot, QFile
 from PySide6.QtGui import QIcon
 
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
-from SciQLop.components.workspaces.backend.workspace_archive import EXCLUDE_PATTERNS
+from SciQLop.components.workspaces.backend.workspace_archive import is_excluded
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
 from SciQLop.components.workspaces.backend.workspace import Workspace
 from SciQLop.components.theming.icons import register_icon
@@ -18,6 +18,7 @@ from SciQLop.components.jupyter.kernel import KernelManager
 from SciQLop.core.common import background_run
 from SciQLop.components.sciqlop_logging import getLogger
 import uuid
+from pathlib import Path
 from SciQLopPlots import Icons
 
 register_icon("Jupyter", lambda: QIcon("://icons/Jupyter_logo.png"))
@@ -72,6 +73,14 @@ def _copy_example_tree(src: str, dest: str):
         else:
             os.makedirs(dest, exist_ok=True)
             shutil.copy2(src_path, dest_path)
+
+
+def _excluded_names(root: str):
+    """copytree ignore callback applying the same rule as a workspace archive."""
+    def ignore(directory, names):
+        rel = os.path.relpath(directory, root)
+        return {n for n in names if is_excluded(Path(os.path.normpath(os.path.join(rel, n))))}
+    return ignore
 
 
 class WorkspaceManager(QObject):
@@ -214,7 +223,7 @@ class WorkspaceManager(QObject):
         """
         copy_dir = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, uuid.uuid4().hex)
         try:
-            shutil.copytree(workspace, copy_dir, ignore=shutil.ignore_patterns(*EXCLUDE_PATTERNS))
+            shutil.copytree(workspace, copy_dir, ignore=_excluded_names(workspace))
             manifest_path = os.path.join(copy_dir, "workspace.sciqlop")
             manifest = WorkspaceManifest.load_or_repair(manifest_path)
             manifest.name = f"Copy of {manifest.name}"

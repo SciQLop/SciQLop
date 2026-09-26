@@ -103,3 +103,13 @@ def test_failed_duplicate_leaves_no_partial_workspace(tmp_path):
         with pytest.raises(OSError):
             manager.duplicate_workspace(str(source))
     assert list(dest_root.iterdir()) == []
+
+
+def test_duplicate_keeps_a_nested_pyproject(tmp_path):
+    source = _make_workspace(tmp_path)
+    (source / "pyproject.toml").write_text("# generated")
+    (source / "mylib").mkdir()
+    (source / "mylib" / "pyproject.toml").write_text("[project]\nname = 'mylib'\n")
+    copy_dir = _duplicate(tmp_path, source)
+    assert (copy_dir / "mylib" / "pyproject.toml").exists()
+    assert not (copy_dir / "pyproject.toml").exists()

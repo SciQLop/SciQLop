@@ -8,7 +8,10 @@ transient files (.venv, pyproject.toml, __pycache__).
 import zipfile
 from pathlib import Path
 
-EXCLUDE_PATTERNS = {".venv", "pyproject.toml", "__pycache__"}
+# Rebuilt from the manifest, so never copied: the venv and caches at any depth,
+# the generated pyproject.toml only at the root (a nested one is the user's own package).
+EXCLUDED_ANYWHERE = {".venv", "__pycache__"}
+EXCLUDED_AT_ROOT = {"pyproject.toml"}
 
 # Marker left by import_workspace() so prepare_workspace() knows to sync
 # --locked against the archive's shipped uv.lock, without every caller
@@ -16,9 +19,9 @@ EXCLUDE_PATTERNS = {".venv", "pyproject.toml", "__pycache__"}
 IMPORT_MARKER_NAME = ".sciqlop_imported"
 
 
-def _is_excluded(path: Path) -> bool:
-    """Return True if any component of *path* matches an exclude pattern."""
-    return any(part in EXCLUDE_PATTERNS for part in path.parts)
+def is_excluded(path: Path) -> bool:
+    """Whether *path*, relative to the workspace root, is left out of a copy or archive."""
+    return any(part in EXCLUDED_ANYWHERE for part in path.parts) or str(path) in EXCLUDED_AT_ROOT
 
 
 def export_workspace(workspace_dir: Path | str, archive_path: Path | str) -> None:
@@ -31,7 +34,7 @@ def export_workspace(workspace_dir: Path | str, archive_path: Path | str) -> Non
             if not file.is_file():
                 continue
             rel = file.relative_to(workspace_dir)
-            if _is_excluded(rel):
+            if is_excluded(rel):
                 continue
             zf.write(file, arcname=str(rel))
 
