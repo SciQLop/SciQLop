@@ -29,3 +29,24 @@ def test_vp_redeclare_same_signature_refetches_plotted_graph(qtbot, qapp, main_w
     vp_magic("--start 0 --stop 10", cell_b, local_ns=ns)
 
     qtbot.waitUntil(lambda: "b" in ns["_CALLS"], timeout=3000)
+
+
+def test_refetch_walks_the_panels_on_the_gui_thread(qtbot, qapp, main_window, monkeypatch):
+    """vp_magic runs on the kernel thread. Walking panels -> plots -> graphs
+    from there raced panel teardown, one proxied call at a time."""
+    import threading
+    from PySide6.QtCore import QThread
+    from SciQLop.components.plotting.ui import time_sync_panel
+
+    on_gui_thread = []
+
+    class _Window:
+        def plot_panels(self):
+            on_gui_thread.append(QThread.currentThread() is qapp.thread())
+            return []
+
+    monkeypatch.setattr("SciQLop.user_api.gui.get_main_window", lambda: _Window())
+    worker = threading.Thread(target=time_sync_panel.refetch_graphs_for_vp, args=("any/vp",))
+    worker.start()
+    qtbot.waitUntil(lambda: not worker.is_alive(), timeout=3000)
+    assert on_gui_thread == [True]

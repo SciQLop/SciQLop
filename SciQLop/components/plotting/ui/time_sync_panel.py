@@ -445,6 +445,7 @@ def _trigger_refetch(graph):
     on_main_thread(_trigger_refetch_impl)(graph)
 
 
+@on_main_thread
 def refetch_graphs_for_vp(vp_path: str) -> None:
     """Force every currently-plotted graph for *vp_path* to refetch its data.
 
