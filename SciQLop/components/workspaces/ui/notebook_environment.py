@@ -71,7 +71,7 @@ class NotebookEnvironmentPrompt(QObject):
     def _install(self, specs: list[str]) -> None:
         from SciQLop.components.workspaces import workspaces_manager_instance
         workspace = workspaces_manager_instance().workspace
-        threading.Thread(target=lambda: self._install_done.emit(workspace.add_packages(specs)),
+        threading.Thread(target=lambda: self._install_done.emit(_add_packages(workspace, specs)),
                          daemon=True).start()
 
     @Slot(object)
@@ -107,6 +107,14 @@ class NotebookEnvironmentPrompt(QObject):
         from SciQLop.components.workspaces.backend.workspaces_manager import WorkspaceManager
         from SciQLop.sciqlop_app import switch_workspace
         switch_workspace(WorkspaceManager.prepare_workspace_for_notebook(path, gap.stamp))
+
+
+def _add_packages(workspace, specs: list[str]) -> dict:
+    """add_packages' result, or a failure result if it raised: the dialog waits for one."""
+    try:
+        return workspace.add_packages(specs)
+    except Exception as exc:
+        return {"ok": False, "installed": [], "already_present": [], "error": str(exc)}
 
 
 def _restart() -> None:

@@ -121,3 +121,25 @@ def test_dialog_survives_after_show_returns(qtbot, tmp_path):
     assert len(boxes) == 1
     assert "x==1" in boxes[0].text()
     boxes[0].reject()
+
+
+def test_an_install_that_raises_still_reports_a_failure(qtbot, tmp_path, monkeypatch):
+    """add_packages can raise (uv not found, manifest save failing); the worker
+    thread must still report back, or the user never sees any outcome."""
+    from types import SimpleNamespace
+    prompt = NotebookEnvironmentPrompt(_workspace(tmp_path))
+
+    def broken(specs):
+        raise RuntimeError("Could not find uv executable")
+
+    monkeypatch.setattr("SciQLop.components.workspaces.workspaces_manager_instance",
+                        lambda: SimpleNamespace(workspace=SimpleNamespace(add_packages=broken)))
+    reported = []
+    prompt._install_done.disconnect()
+    prompt._install_done.connect(lambda result: reported.append(result))
+
+    prompt._install(["x==1"])
+
+    qtbot.waitUntil(lambda: bool(reported), timeout=3000)
+    assert reported[0]["ok"] is False
+    assert "Could not find uv" in reported[0]["error"]
