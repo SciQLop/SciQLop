@@ -161,3 +161,13 @@ def test_strip_legacy_alignment_removes_only_the_old_preamble():
     assert strip_legacy_alignment(f"{LEGACY_ALIGNMENT}\nplot B") == "plot B"
     assert strip_legacy_alignment("plot B") == "plot B"
     assert strip_legacy_alignment(LEGACY_ALIGNMENT) == ""
+
+
+def test_strip_legacy_alignment_also_after_a_version_reminder():
+    """0.13.0 sent `version_reminder + ALIGNMENT + prompt` when a session was
+    resumed across an update; the preamble wasn't at the start of those."""
+    from SciQLop.components.agents.guidance import LEGACY_ALIGNMENT, strip_legacy_alignment
+    reminder = ("Note: SciQLop was updated from 0.12.2 to 0.13.0 since this session started. "
+                "API capabilities may have changed; verify the current API with "
+                "sciqlop_api_reference before assuming limitations.\n")
+    assert strip_legacy_alignment(f"{reminder}{LEGACY_ALIGNMENT}\nplot B") == f"{reminder}plot B"

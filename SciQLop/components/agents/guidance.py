@@ -16,6 +16,7 @@ their own project rules in it, so a re-sync replaces only what SciQLop owns.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 BEGIN_MARKER = "<!-- BEGIN SCIQLOP MANAGED SECTION -->"
@@ -233,8 +234,15 @@ LEGACY_ALIGNMENT = (
 )
 
 
+# 0.13.0 put the version-update reminder (one line) in front of the preamble.
+_LEGACY_PREFIX_RE = re.compile(
+    r"(Note: SciQLop was updated from [^\n]*\n)?" + re.escape(LEGACY_ALIGNMENT) + r"\n*")
+
+
 def strip_legacy_alignment(text: str) -> str:
-    """Return `text` without the pre-2026-09 persona preamble, if it starts with it."""
-    if text.startswith(LEGACY_ALIGNMENT):
-        return text[len(LEGACY_ALIGNMENT):].lstrip("\n")
-    return text
+    """Return `text` without the pre-2026-09 persona preamble, keeping any
+    version reminder that was sent in front of it."""
+    match = _LEGACY_PREFIX_RE.match(text)
+    if match is None:
+        return text
+    return (match.group(1) or "") + text[match.end():]
