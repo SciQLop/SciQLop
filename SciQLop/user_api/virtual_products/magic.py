@@ -278,7 +278,7 @@ def vp_magic(line: str, cell: str, local_ns=None):
                                   cachable=args.cachable, colored=type_info.colored)
     else:
         from SciQLop.components.plotting.backend.data_provider import providers
-        provider = next((p for p in providers.values()
+        provider = next((p for p in list(providers.values())
                          if getattr(p, "_callback", None) is entry.wrapper), None)
         if provider is not None:
             if hasattr(provider, "_refresh_knob_specs"):

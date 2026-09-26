@@ -234,8 +234,10 @@ def list_virtual_products() -> List[str]:
     """
     from SciQLop.components.plotting.backend.data_provider import providers
     from SciQLop.components.plotting.backend.easy_provider import EasyProvider
+    # list() snapshots the dict in one step: another thread may register a
+    # provider while the paths below are being read.
     seen = dict.fromkeys(
-        "//".join(p.path) for p in providers.values() if isinstance(p, EasyProvider))
+        "//".join(p.path) for p in list(providers.values()) if isinstance(p, EasyProvider))
     return list(seen)
 
 
