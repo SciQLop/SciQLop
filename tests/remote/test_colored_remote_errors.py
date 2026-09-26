@@ -99,3 +99,16 @@ def test_a_worker_error_ends_the_request(monkeypatch):
     channel.on_error(0, "Traceback: boom")
     assert pipeline.calls == [("request_done",)]
     assert errors
+
+
+def test_colored_with_no_data_is_an_empty_answer_like_in_process():
+    """In-process, Colored(None, ...) means "no data here"; out of process it
+    used to die in reduce_result and show the user a traceback."""
+    from SciQLop.components.plotting.backend.remote import protocol as P
+    from SciQLop.components.plotting.backend.remote.worker import _WorkerState, _serve_request
+    state = _WorkerState()
+    state.callables[1] = lambda start, stop: Colored(None, color=np.zeros(0))
+    state.arity[1] = 2
+    conn = _Conn()
+    _serve_request(conn, state, 1, 7, 0.0, 1.0, {})
+    assert [m[0] for m in conn.sent] == [P.EMPTY]

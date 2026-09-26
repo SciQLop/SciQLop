@@ -6,7 +6,7 @@ last array: the colour."""
 from __future__ import annotations
 
 import sys
-from typing import List
+from typing import List, Optional
 import numpy as np
 
 
@@ -50,10 +50,13 @@ def _colored_type():
     return getattr(sys.modules.get("SciQLop.user_api.data_types"), "Colored", None)
 
 
-def reduce_result(result, arity: int) -> List[np.ndarray]:
+def reduce_result(result, arity: int) -> Optional[List[np.ndarray]]:
+    """The arrays to ship, or None for "no data" (as None or Colored(None, ...))."""
     colored = _colored_type()
     if colored is not None and isinstance(result, colored):
         checked = result.checked()
+        if checked.data is None:
+            return None
         return reduce_result(checked.data, arity) + [checked.color]
     if _is_speasy_variable(result):
         return _from_speasy(result, arity)
