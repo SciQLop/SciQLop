@@ -109,6 +109,7 @@ class _Named:
     """`name` of a plottable, as shown in the legend."""
 
     @property
+    @on_main_thread
     def name(self) -> str:
         if self._impl is None:
             raise ValueError("The graph does not exist anymore.")
