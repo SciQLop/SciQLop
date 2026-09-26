@@ -125,3 +125,29 @@ def test_an_unpinned_card_without_a_venv_falls_back_to_the_running_version(tmp_p
     ws = WorkspaceManifest(name="W")
     ws._directory = str(tmp_path)
     assert backend._workspace_to_dict(ws)["core_badge"]["label"] == "0.13.0"
+
+
+def test_example_dependencies_install_like_every_other_live_install(qtbot, tmp_path, monkeypatch):
+    """Adding an example's dependencies to the running workspace used a bare
+    `uv pip install`: unguarded (could move the running Qt stack) and aimed at
+    whatever .venv the current directory held. It must use guarded_install."""
+    from types import SimpleNamespace
+    from PySide6.QtCore import QObject
+    from SciQLop.components.welcome import backend as wb
+    from SciQLop.components.workspaces.backend import live_install
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+
+    WorkspaceManifest(name="W").save(tmp_path / "workspace.sciqlop")
+    monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
+    installed = []
+    monkeypatch.setattr(live_install, "guarded_install",
+                        lambda specs: installed.append(specs) or SimpleNamespace(returncode=0, stderr=""))
+    backend = wb.WelcomeBackend.__new__(wb.WelcomeBackend)
+    QObject.__init__(backend)
+
+    with qtbot.waitSignal(backend.dependency_install_finished, timeout=5000) as blocker:
+        backend.add_dependencies_to_workspace(str(tmp_path), json.dumps(["spok"]))
+
+    assert installed == [["spok"]]
+    assert json.loads(blocker.args[0])["ok"] is True
+    assert WorkspaceManifest.load(tmp_path / "workspace.sciqlop").requires == ["spok"]

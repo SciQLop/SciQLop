@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import sys
 import threading
 from importlib.metadata import PackageNotFoundError, distribution
 
@@ -31,7 +32,7 @@ def _installed_version(package_name: str) -> str | None:
 
 
 def _uv_uninstall_cmd(dist_name: str) -> list[str]:
-    return uv_command("pip", "uninstall", "--native-tls", dist_name)
+    return uv_command("pip", "uninstall", "--native-tls", "--python", sys.executable, "--", dist_name)
 
 
 def _save_installed_package(pip_spec: str, dist_name: str) -> None:

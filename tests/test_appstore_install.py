@@ -49,6 +49,11 @@ class TestNativeTls:
         assert "--native-tls" in cmd
         assert cmd[-1] == "some-plugin"
 
+    def test_uninstall_cmd_targets_the_running_interpreter(self):
+        import sys
+        cmd = _uv_uninstall_cmd("some-plugin")
+        assert cmd[cmd.index("--python") + 1] == sys.executable
+
 
 @pytest.mark.skipif(find_uv() is None, reason="uv binary not available")
 class TestHostIsolation:

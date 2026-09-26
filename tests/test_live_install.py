@@ -51,3 +51,11 @@ def test_specs_are_never_read_as_uv_options():
     "--index-url=https://evil" must reach uv as a package name, not an option."""
     cmd = live_install.install_cmd(["--index-url=https://evil.example", "scipy"])
     assert cmd[cmd.index("--") + 1:] == ["--index-url=https://evil.example", "scipy"]
+
+
+def test_installs_target_the_running_interpreter_whatever_the_cwd():
+    """uv otherwise looks for .venv in the current directory, and a notebook
+    os.chdir() moves that away from the workspace."""
+    import sys
+    cmd = live_install.install_cmd(["scipy"])
+    assert cmd[cmd.index("--python") + 1] == sys.executable

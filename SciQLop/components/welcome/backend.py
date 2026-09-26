@@ -65,6 +65,14 @@ def _workspace_to_dict(ws: WorkspaceManifest) -> dict:
     }
 
 
+def _guarded_install_or_raise(specs: list) -> None:
+    """Install into the running workspace like %install and the app store do."""
+    from SciQLop.components.workspaces.backend import live_install
+    result = live_install.guarded_install(specs)
+    if result.returncode != 0:
+        raise RuntimeError(result.stderr.strip() or "uv pip install failed")
+
+
 def _unpinned_version(workspace_dir: str) -> str:
     """What an unpinned workspace runs. It follows its launcher, which may not be
     the SciQLop showing this page, so its venv is the ground truth."""
@@ -404,10 +412,10 @@ class WelcomeBackend(QObject):
         def _install():
             try:
                 if is_active:
-                    cmd = uv_command("pip", "install", "--", *new_deps)
+                    _guarded_install_or_raise(new_deps)
                 else:
                     cmd = uv_command("pip", "install", "--dry-run", "--", *new_deps)
-                subprocess.run(cmd, check=True, capture_output=True, text=True)
+                    subprocess.run(cmd, check=True, capture_output=True, text=True)
             except Exception as e:
                 log.error(f"Failed to install dependencies: {e}")
                 self.dependency_install_finished.emit(

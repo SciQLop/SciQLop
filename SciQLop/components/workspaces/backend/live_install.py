@@ -5,6 +5,7 @@ of them keep the running stack in place.
 """
 import os
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import List, Optional
@@ -27,7 +28,7 @@ def install_cmd(specs: List[str], override_file: Optional[str] = None,
     dragging a mismatched SciQLop + pyside6/speasy/shiboken6 into the workspace
     venv, and can upgrade the Qt stack under the running process.
     """
-    args = ["pip", "install", "--native-tls"]
+    args = ["pip", "install", "--native-tls", "--python", sys.executable]
     if override_file:
         args += ["--override", override_file]
     if constraint_file:
