@@ -147,7 +147,7 @@ class AppStoreBackend(QObject):
     packages_ready = Signal(str)
     install_finished = Signal(str)
     uninstall_finished = Signal(str)
-    _hot_load_requested = Signal(str, str, str)  # dist_name, name, version
+    _hot_load_requested = Signal(str, str, str, bool)  # dist_name, name, version, was_installed
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
@@ -155,7 +155,7 @@ class AppStoreBackend(QObject):
         self._hot_load_requested.connect(self._do_hot_load)
 
     @Slot(str, str, str)
-    def _do_hot_load(self, dist_name: str, name: str, version: str) -> None:
+    def _do_hot_load(self, dist_name: str, name: str, version: str, was_installed: bool) -> None:
         """Hot-load *dist_name* on the GUI thread, then report the outcome.
 
         Runs after the install itself (see ``install_package``'s worker
@@ -164,11 +164,22 @@ class AppStoreBackend(QObject):
         it load (I1) instead of reporting a gated install as a plain
         success.
         """
+        if was_installed:
+            # The previous version is still imported; loading again would register it twice.
+            self.install_finished.emit(json.dumps({"name": name, "ok": True, "version": version,
+                                                   "loaded": True, "restart_required": True}))
+            return
         reason = _try_load_plugin(dist_name)
-        payload = {"name": name, "ok": True, "version": version, "loaded": reason is None}
+        payload = {"name": name, "ok": True, "version": version, "loaded": reason is None,
+                   "restart_required": False}
         if reason is not None:
             payload["reason"] = reason
         self.install_finished.emit(json.dumps(payload))
+
+    @Slot()
+    def restart_sciqlop(self) -> None:
+        from SciQLop.sciqlop_app import restart_sciqlop
+        restart_sciqlop()
 
     @Slot()
     def fetch_packages(self) -> None:
@@ -224,6 +235,8 @@ class AppStoreBackend(QObject):
                 return
             try:
                 pip_spec = latest["pip"]
+                dist_name = _package_name_from_pip(pip_spec) or canonical_package_name(name)
+                was_installed = _installed_version(dist_name) is not None
                 with tempfile.TemporaryDirectory() as isolation_dir:
                     override_file = _write_requirements_file(
                         isolation_dir, "overrides.txt", host_provided_overrides())
@@ -231,13 +244,12 @@ class AppStoreBackend(QObject):
                         isolation_dir, "constraints.txt", _base_constraints())
                     cmd = _uv_install_cmd(pip_spec, override_file, constraint_file)
                     subprocess.run(cmd, check=True, capture_output=True, text=True)
-                dist_name = _package_name_from_pip(pip_spec) or canonical_package_name(name)
                 _save_installed_package(pip_spec, dist_name)
                 # install_finished is emitted by _do_hot_load, on the GUI
                 # thread, once the hot-load attempt itself is known -- not
                 # here, or a gated wheel would be reported ok:true before
                 # the compat gate ever ran (I1).
-                self._hot_load_requested.emit(dist_name, name, latest["version"])
+                self._hot_load_requested.emit(dist_name, name, latest["version"], was_installed)
             except Exception as e:
                 detail = error_detail(e)
                 log.error(f"Failed to install {name}: {detail}")
@@ -263,7 +275,7 @@ class AppStoreBackend(QObject):
                     return
                 subprocess.run(_uv_uninstall_cmd(dist_name), check=True, capture_output=True, text=True)
                 _remove_installed_package(dist_name)
-                self.uninstall_finished.emit(json.dumps({"name": name, "ok": True}))
+                self.uninstall_finished.emit(json.dumps({"name": name, "ok": True, "restart_required": True}))
             except Exception as e:
                 detail = error_detail(e)
                 log.error(f"Failed to uninstall {name}: {detail}")

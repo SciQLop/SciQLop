@@ -606,6 +606,14 @@ function doCoreVersionInstall(dir) {
     backend.apply_core_version(dir, version);
 }
 
+function restartButton() {
+    var btn = document.createElement("button");
+    btn.className = "secondary restart-now-btn";
+    btn.textContent = "Restart now";
+    btn.addEventListener("click", function() { backend.restart_sciqlop(); });
+    return btn;
+}
+
 function onCoreUpdateFinished(resultJson) {
     var result = JSON.parse(resultJson);
     var isCurrentPanel = _currentDetailsWs && _currentDetailsWs.directory === result.dir;
@@ -632,6 +640,7 @@ function onCoreUpdateFinished(resultJson) {
         if (result.dropped && result.dropped.length) {
             status.textContent += " Left out (incompatible): " + result.dropped.join(", ") + ".";
         }
+        if (result.is_active_workspace) status.appendChild(restartButton());
         status.className = "core-version-status core-version-success";
     } else {
         status.textContent = "Update failed: " + (result.error || "unknown error");

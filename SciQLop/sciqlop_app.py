@@ -16,7 +16,7 @@ os.environ['TZ'] = 'UTC'
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from SciQLop.sciqlop_launcher import EXIT_SWITCH_WORKSPACE, SWITCH_WORKSPACE_FILE
+from SciQLop.sciqlop_launcher import EXIT_RESTART, EXIT_SWITCH_WORKSPACE, SWITCH_WORKSPACE_FILE
 
 
 def switch_workspace(workspace_name: str) -> None:
@@ -33,6 +33,14 @@ def switch_workspace(workspace_name: str) -> None:
     app = QApplication.instance()
     app._sciqlop_exit_code = EXIT_SWITCH_WORKSPACE
     QApplication.exit(EXIT_SWITCH_WORKSPACE)
+
+
+def restart_sciqlop() -> None:
+    """Quit so the launcher restarts SciQLop into the same workspace (exit code 64)."""
+    from PySide6.QtWidgets import QApplication
+    app = QApplication.instance()
+    app._sciqlop_exit_code = EXIT_RESTART
+    QApplication.exit(EXIT_RESTART)
 
 
 def _signal_ready_and_wait_for_splash(timeout: float = 5.0) -> None:

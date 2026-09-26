@@ -556,6 +556,9 @@ function onInstallFinished(json_str) {
     renderCards();
     if (result.ok) {
         refreshDetailActions();
+        if (result.restart_required) {
+            showRestartNotice("Updated to " + result.version + " — restart SciQLop to apply.");
+        }
         if (result.loaded === false) {
             showInstallError("Installed, but not loaded: " + result.reason);
         } else {
@@ -568,6 +571,24 @@ function onInstallFinished(json_str) {
     btn.textContent = "Failed";
     btn.disabled = false;
     showInstallError(result.error);
+}
+
+function showRestartNotice(message) {
+    var old = document.getElementById("restart-notice");
+    if (old) old.remove();
+    var actions = document.querySelector(".detail-actions");
+    if (!actions) return;
+    var box = document.createElement("div");
+    box.id = "restart-notice";
+    box.className = "restart-notice";
+    var text = document.createElement("span");
+    text.textContent = message;
+    var btn = document.createElement("button");
+    btn.textContent = "Restart now";
+    btn.addEventListener("click", function() { backend.restart_sciqlop(); });
+    box.appendChild(text);
+    box.appendChild(btn);
+    actions.parentNode.insertBefore(box, actions.nextSibling);
 }
 
 function clearInstallError() {
@@ -596,6 +617,9 @@ function onUninstallFinished(json_str) {
     if (result.ok) {
         clearInstallError();
         refreshDetailActions();
+        if (result.restart_required) {
+            showRestartNotice("Uninstalled — restart SciQLop to unload it.");
+        }
         return;
     }
     var unBtn = document.getElementById("uninstall-btn");

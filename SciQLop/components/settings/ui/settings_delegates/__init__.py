@@ -4,7 +4,6 @@ from enum import Enum
 from pydantic import ByteSize
 from pydantic.fields import FieldInfo
 from PySide6.QtCore import Signal
-from PySide6.QtGui import QPalette
 from PySide6.QtCore import QEvent, Qt
 from PySide6.QtWidgets import (
     QWidget, QLabel, QCheckBox, QLineEdit, QFrame,
@@ -537,14 +536,6 @@ class PluginsDictDelegate(SettingDelegate):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
-
-        hint = QLabel("Changes take effect after restart.")
-        hint.setObjectName("SettingDescription")
-        hint_font = hint.font()
-        hint_font.setPointSizeF(hint_font.pointSizeF() * 0.85)
-        hint.setFont(hint_font)
-        hint.setForegroundRole(QPalette.ColorRole.PlaceholderText)
-        layout.addWidget(hint)
 
         self._rows: dict[str, QCheckBox] = {}
         self._descriptions: dict[str, str] = {}

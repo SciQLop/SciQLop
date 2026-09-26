@@ -347,6 +347,19 @@ body.detail-open { overflow: hidden; }
     border-top: 1px solid var(--Borders); padding-top: 14px;
 }
 
+.restart-notice {
+    margin-top: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 1px solid #e67e22;
+    border-radius: 4px;
+    background: #e67e2218;
+    color: var(--Text);
+}
+
 .install-error {
     margin-top: 8px;
     padding: 8px 12px;

@@ -164,6 +164,11 @@ class WelcomeBackend(QObject):
         return json.dumps([_workspace_to_dict(ws) for ws in workspaces])
 
     @Slot()
+    def restart_sciqlop(self) -> None:
+        from SciQLop.sciqlop_app import restart_sciqlop
+        restart_sciqlop()
+
+    @Slot()
     def fetch_core_version_badges(self) -> None:
         """Re-send every card's badge once the latest release is known."""
         from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions

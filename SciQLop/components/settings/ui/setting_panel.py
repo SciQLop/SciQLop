@@ -2,7 +2,7 @@ from PySide6.QtCore import Slot, QModelIndex, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QListView, QLineEdit,
     QHBoxLayout, QSplitter, QScrollArea, QSpacerItem, QSizePolicy, QFrame,
-    QStackedWidget,
+    QStackedWidget, QPushButton,
 )
 from PySide6.QtGui import QFont, QPalette, QShowEvent
 from SciQLop.components.settings import SettingsCategory, ConfigEntry
@@ -47,6 +47,30 @@ class SettingsLeftPanel(QWidget):
         self.filter.textChanged.connect(self.categories_list.filter)
 
 
+def _restart_required(field_info) -> bool:
+    extra = field_info.json_schema_extra
+    return isinstance(extra, dict) and bool(extra.get("restart_required"))
+
+
+class RestartNotice(QFrame):
+    """Shown under a setting whose change only takes effect after a restart."""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("RestartNotice")
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(QLabel("Restart SciQLop to apply this change."))
+        layout.addStretch(1)
+        self.button = QPushButton("Restart now")
+        self.button.clicked.connect(self._restart)
+        layout.addWidget(self.button)
+
+    @staticmethod
+    def _restart():
+        from SciQLop.sciqlop_app import restart_sciqlop
+        restart_sciqlop()
+
+
 class SettingRow(QFrame):
     def __init__(self, field_name: str, field_info, instance, parent=None):
         super().__init__(parent)
@@ -78,6 +102,11 @@ class SettingRow(QFrame):
 
         layout.addWidget(self._delegate)
 
+        self.restart_notice = RestartNotice() if _restart_required(field_info) else None
+        if self.restart_notice is not None:
+            self.restart_notice.hide()
+            layout.addWidget(self.restart_notice)
+
         current_value = getattr(instance, field_name)
         self._delegate.set_value(current_value)
         self._delegate.value_changed.connect(self._on_value_changed)
@@ -87,6 +116,8 @@ class SettingRow(QFrame):
         try:
             setattr(self._instance, self._field_name, value)
             self._instance.save()
+            if self.restart_notice is not None:
+                self.restart_notice.show()
         except Exception as e:
             log.error(f"Failed to save setting {self._field_name}: {e}")
             current = getattr(self._instance, self._field_name)

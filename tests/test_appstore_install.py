@@ -232,13 +232,14 @@ class TestDoHotLoadPayload:
         received = []
         backend.install_finished.connect(lambda payload: received.append(json.loads(payload)))
 
-        backend._do_hot_load("future-plugin", "Future Plugin", "1.2.3")
+        backend._do_hot_load("future-plugin", "Future Plugin", "1.2.3", False)
 
         assert received == [{
             "name": "Future Plugin",
             "ok": True,
             "version": "1.2.3",
             "loaded": False,
+            "restart_required": False,
             "reason": "requires SciQLop >=0.20 but host is 0.13.0.dev0",
         }]
 
@@ -251,8 +252,51 @@ class TestDoHotLoadPayload:
         received = []
         backend.install_finished.connect(lambda payload: received.append(json.loads(payload)))
 
-        backend._do_hot_load("ok-plugin", "OK Plugin", "1.0.0")
+        backend._do_hot_load("ok-plugin", "OK Plugin", "1.0.0", False)
 
         assert received == [{
             "name": "OK Plugin", "ok": True, "version": "1.0.0", "loaded": True,
+            "restart_required": False,
         }]
+
+    def test_an_update_asks_for_a_restart_and_does_not_load_twice(self, monkeypatch):
+        """The old version is still imported: loading again would register it twice."""
+        calls = []
+        monkeypatch.setattr(
+            "SciQLop.components.appstore.backend._try_load_plugin",
+            lambda dist_name: calls.append(dist_name),
+        )
+        backend = AppStoreBackend()
+        received = []
+        backend.install_finished.connect(lambda payload: received.append(json.loads(payload)))
+
+        backend._do_hot_load("ok-plugin", "OK Plugin", "1.1.0", True)
+
+        assert calls == []
+        assert received == [{
+            "name": "OK Plugin", "ok": True, "version": "1.1.0", "loaded": True,
+            "restart_required": True,
+        }]
+
+
+class TestUninstallAsksForARestart:
+    """An uninstalled plugin's code stays loaded until SciQLop restarts."""
+
+    def test_uninstall_payload_asks_for_a_restart(self, qtbot, monkeypatch):
+        monkeypatch.setattr("SciQLop.components.appstore.backend.subprocess.run", lambda *a, **k: None)
+        monkeypatch.setattr("SciQLop.components.appstore.backend._remove_installed_package", lambda d: None)
+        backend = AppStoreBackend()
+        backend._packages = [{"name": "P", "versions": [{"version": "1.0", "pip": "p-plugin==1.0"}]}]
+        monkeypatch.setattr("SciQLop.components.appstore.backend._latest_version",
+                            lambda plugin: plugin["versions"][0])
+        with qtbot.waitSignal(backend.uninstall_finished, timeout=3000) as blocker:
+            backend.uninstall_package("P")
+        payload = json.loads(blocker.args[0])
+        assert payload["ok"] is True and payload["restart_required"] is True
+
+
+def test_the_store_can_restart_sciqlop(monkeypatch):
+    calls = []
+    monkeypatch.setattr("SciQLop.sciqlop_app.restart_sciqlop", lambda: calls.append(True))
+    AppStoreBackend().restart_sciqlop()
+    assert calls == [True]
