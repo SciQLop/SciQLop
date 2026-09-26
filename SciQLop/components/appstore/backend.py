@@ -75,7 +75,7 @@ def _try_load_plugin(dist_name: str) -> str | None:
     """
     import importlib.metadata
     from SciQLop.components.plugins.backend.loader.loader import (
-        ENTRY_POINT_GROUP, _load_entry_point_plugin, entry_point_host_compatible,
+        ENTRY_POINT_GROUP, entry_point_host_compatible, load_one,
     )
     from SciQLop.components.plugins.backend.settings import (
         SciQLopPluginsSettings, PluginConfig, canonical_package_name,
@@ -98,7 +98,7 @@ def _try_load_plugin(dist_name: str) -> str | None:
                     settings.plugins[ep.name] = PluginConfig()
             if not entry_point_host_compatible(ep):
                 return _incompatibility_reason(ep)
-            _load_entry_point_plugin(ep, main_window)
+            load_one(None, ep.name, main_window, {ep.name: ep})
             log.info(f"Hot-loaded plugin {ep.name} from {dist_name}")
     return None
 
@@ -116,7 +116,7 @@ class AppStoreBackend(QObject):
         self._packages: list[dict] = []
         self._hot_load_requested.connect(self._do_hot_load)
 
-    @Slot(str, str, str)
+    @Slot(str, str, str, bool)
     def _do_hot_load(self, dist_name: str, name: str, version: str, was_installed: bool) -> None:
         """Hot-load *dist_name* on the GUI thread, then report the outcome.
 

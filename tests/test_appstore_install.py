@@ -216,6 +216,32 @@ class TestTryLoadPluginSettingsBookkeeping:
         assert loaded == ["ok_plugin"]
         assert reason is None
 
+    def test_a_hot_loaded_plugin_is_not_loaded_again_by_live_loading(
+        self, tmp_config_dir, monkeypatch
+    ):
+        """The store's hot-load must mark the plugin loaded: otherwise the next
+        plugin-settings change makes PluginsLiveLoader find it enabled and
+        "never loaded" and call its load() a second time."""
+        from SciQLop.components.plugins.backend.loader import loader
+        monkeypatch.setattr(SciQLop, "__version__", "0.13.0.dev0")
+        monkeypatch.setattr(loader, "_attempted", set())
+        ep = SimpleNamespace(
+            name="ok_plugin",
+            dist=SimpleNamespace(name="ok-plugin", requires=["SciQLop>=0.13.0,<0.14.0"]),
+        )
+        monkeypatch.setattr("importlib.metadata.entry_points", lambda group=None: [ep])
+        monkeypatch.setattr(
+            "SciQLop.core.sciqlop_application.sciqlop_app",
+            lambda: SimpleNamespace(main_window=object()),
+        )
+        monkeypatch.setattr(loader, "_load_entry_point_plugin", lambda ep, main_window: None)
+        monkeypatch.setattr(loader, "_discover_entry_point_plugins", lambda: {"ok_plugin": ep})
+        monkeypatch.setattr(loader, "entry_point_host_compatible", lambda ep: True)
+
+        _try_load_plugin("ok-plugin")
+
+        assert ("ok_plugin" not in [name for _, name in loader.new_enabled_plugins()])
+
 
 class TestDoHotLoadPayload:
     """I1: the store used to report `ok: true` immediately, before the
