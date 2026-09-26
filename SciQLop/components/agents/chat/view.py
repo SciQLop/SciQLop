@@ -148,7 +148,7 @@ class TranscriptView(QTextBrowser):
         self._scrolling_programmatically = False
         bar = self.verticalScrollBar()
         bar.valueChanged.connect(self._on_scrolled)
-        bar.rangeChanged.connect(lambda *_: self._settle_scroll())
+        bar.rangeChanged.connect(self._on_scroll_range_changed)
 
     def set_tool_verbosity(self, level: int) -> None:
         level = max(1, min(3, int(level)))
@@ -274,6 +274,9 @@ class TranscriptView(QTextBrowser):
         cursor.insertBlock()
         cursor.insertImage(fmt)
         cursor.insertBlock()
+
+    def _on_scroll_range_changed(self, _minimum: int, _maximum: int) -> None:
+        self._settle_scroll()
 
     def _settle_scroll(self) -> None:
         bar = self.verticalScrollBar()
