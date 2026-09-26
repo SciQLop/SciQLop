@@ -82,12 +82,26 @@ def main():
     pump(1)
     view.resize(250, 380)
     pump(2)
+    scroll_y_after_resize = js(view, "window.scrollY")
+
+    view.render_messages([ChatMessage(role="assistant", done=True, blocks=[TextBlock(complete=True, text=(
+        "~~~\nls $HOME/$USER\n~~~\n\nand ``a $b$ c`` and [link](https://example.org \"$y$\") and $E=mc^2$ inline"))])])
+    view.flush_now()
+    pump(2)
+    tilde_code = js(view, "document.querySelector('pre code') && document.querySelector('pre code').textContent")
+    double_tick = js(view, "Array.from(document.querySelectorAll('code')).map(c => c.textContent).join('|')")
+    link_title = js(view, "document.querySelector('a') && document.querySelector('a').getAttribute('title')")
+    katex_count = js(view, "document.querySelectorAll('.katex').length")
 
     print(json.dumps({
+        "tilde_code": tilde_code,
+        "double_tick": double_tick,
+        "link_title": link_title,
+        "katex_count": katex_count,
         "remote_hits": remote_hits,
         "expanded_after_toggle": expanded_after_toggle,
         "expanded_after_reload": expanded_after_reload,
-        "scroll_y_after_resize": js(view, "window.scrollY"),
+        "scroll_y_after_resize": scroll_y_after_resize,
     }), flush=True)
 
 

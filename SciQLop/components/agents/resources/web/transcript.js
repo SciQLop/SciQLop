@@ -38,7 +38,8 @@
     // they survive inline parsing untouched. ---
     const MATH_MARK_START = "MATH";
     const MATH_MARK_END = "";
-    const CODE_SPLIT_RE = /(```[\s\S]*?```|`[^`\n]+`)/g;
+    const CODE_SPLIT_RE = /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]+`)/g;
+    const HTML_TAG_SPLIT_RE = /(<[^>]*>)/;
     const DISPLAY_MATH_RE = /\$\$([^$]+?)\$\$/g;
     const INLINE_MATH_RE = /\$([^\s$](?:[^$]*[^\s$])?)\$/g;
 
@@ -63,20 +64,35 @@
         return { text: rebuilt, blocks: blocks };
     }
 
+    // Inside a tag (a link title, an image's alt text) the placeholder can only
+    // go back as plain text: KaTeX markup there would end the attribute early.
     function injectMath(html, blocks) {
         const markRe = new RegExp(MATH_MARK_START + "(\\d+)" + MATH_MARK_END, "g");
-        return html.replace(markRe, function (_match, idxStr) {
-            const block = blocks[parseInt(idxStr, 10)];
-            if (!block) return "";
-            try {
-                return window.katex.renderToString(block.latex, {
-                    throwOnError: false,
-                    displayMode: block.display,
+        return html
+            .split(HTML_TAG_SPLIT_RE)
+            .map(function (segment, i) {
+                const insideTag = i % 2 === 1;
+                return segment.replace(markRe, function (_match, idxStr) {
+                    const block = blocks[parseInt(idxStr, 10)];
+                    if (!block) return "";
+                    const delimiter = block.display ? "$$" : "$";
+                    return insideTag
+                        ? md.utils.escapeHtml(delimiter + block.latex + delimiter)
+                        : renderLatex(block);
                 });
-            } catch (e) {
-                return md.utils.escapeHtml(block.latex);
-            }
-        });
+            })
+            .join("");
+    }
+
+    function renderLatex(block) {
+        try {
+            return window.katex.renderToString(block.latex, {
+                throwOnError: false,
+                displayMode: block.display,
+            });
+        } catch (e) {
+            return md.utils.escapeHtml(block.latex);
+        }
     }
 
     function renderMarkdown(markdown) {

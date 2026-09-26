@@ -37,3 +37,19 @@ def test_a_theme_reload_keeps_expanded_tool_groups(report):
 
 def test_a_resize_keeps_the_readers_scroll_position(report):
     assert report["scroll_y_after_resize"] == 100
+
+
+def test_dollars_in_a_tilde_fence_stay_code(report):
+    assert report["tilde_code"].strip() == "ls $HOME/$USER"
+
+
+def test_dollars_in_a_double_backtick_span_stay_code(report):
+    assert "a $b$ c" in report["double_tick"]
+
+
+def test_math_in_a_link_title_does_not_break_the_link(report):
+    assert report["link_title"] == "$y$"
+
+
+def test_ordinary_math_still_renders_with_katex(report):
+    assert report["katex_count"] == 1
