@@ -90,6 +90,18 @@ def _is_xdist_master(config) -> bool:
 # hits it; a dev shell has a real DISPLAY, and the canonical local run passes
 # --no-xvfb. Reproduce with: env -u DISPLAY -u WAYLAND_DISPLAY uv run pytest
 @pytest.hookimpl(trylast=True)
+def _mark_getting_started_tour_done():
+    """Every main window a test builds would otherwise start the getting-started
+    tour 500 ms later: coach marks popping over whatever the test is doing.
+    Tour tests reset completed_tours themselves. Written as YAML here because
+    SciQLop must not be imported yet."""
+    from platformdirs import user_config_dir
+    settings = Path(user_config_dir(appname="sciqlop", appauthor="LPP")) / "onboardingsettings.yaml"
+    if not settings.exists():
+        settings.parent.mkdir(parents=True, exist_ok=True)
+        settings.write_text("completed_tours:\n  getting_started: true\n")
+
+
 def pytest_configure(config):
     # These env vars MUST be set before any SciQLop or speasy import.
     # pytest_configure runs before collection, so no test module is imported yet.
@@ -112,6 +124,7 @@ def pytest_configure(config):
     os.environ.setdefault("SCIQLOP_TEST_NO_WEBENGINE", "1")
     if platform.system() == "Windows":
         os.environ["APPDATA"] = str(_config_dir)
+    _mark_getting_started_tour_done()
 
     if _is_xdist_master(config):
         # The controller dispatches work to workers and never collects or runs

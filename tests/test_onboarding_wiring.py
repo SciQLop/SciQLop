@@ -109,3 +109,11 @@ def test_take_a_tour_shortcut_opens_the_picker(main_window, qapp):
     shortcut["callback"]()
     assert main_window._tour_picker.isVisible()
     main_window._tour_picker.close()
+
+
+def test_the_getting_started_tour_is_off_for_the_test_session(main_window, qtbot):
+    """conftest marks it done so main windows built by tests don't pop coach
+    marks over the test 500 ms later."""
+    main_window._tour_timer.stop()
+    main_window._maybe_run_onboarding_tour()
+    assert not main_window._tour_timer.isActive()
