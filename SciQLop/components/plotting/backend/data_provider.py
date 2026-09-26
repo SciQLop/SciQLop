@@ -1,6 +1,5 @@
 from typing import Optional, Tuple, List, Union
 
-import traceback
 import numpy as np
 
 from SciQLop.core.enums import DataOrder, GraphType
@@ -153,11 +152,9 @@ class DataProvider:
                     return self._colored_buffers(node, product, v)
                 return self._to_buffers(node, product, v)
         except Exception:
-            log.error(
-                f"Error getting data for {node} between {start} and {stop}: \n\nbacktrace: {traceback.format_exc()}")
-            # Re-raise instead of swallowing to []: _get_data's only caller
-            # (_ProductCallbackBase._fetch, in time_sync_panel.py) needs the
-            # exception to record it as the graph's last_error.
+            # Not logged here: _get_data's only caller (_ProductCallbackBase._fetch,
+            # in time_sync_panel.py) records it as the graph's last_error and logs
+            # it with its traceback. Re-raised instead of swallowed to [] for that.
             raise
 
     def _colored_buffers(self, node, product, c: Colored):

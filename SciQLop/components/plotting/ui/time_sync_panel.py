@@ -2,6 +2,7 @@ from typing import Optional, List, Union
 
 import math
 import time as _time
+import traceback
 import numpy as np
 from PySide6.QtCore import QMimeData, QObject, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon
@@ -242,7 +243,8 @@ class _ProductCallbackBase:
         # Runs on the fetch worker thread: a plain attribute, never a Qt call
         # (e.g. setProperty) on the graph.
         self.last_error = str(exc)
-        log.error(f"Error getting data for {self.node}: {exc}")
+        backtrace = "".join(traceback.format_exception(exc))
+        log.error(f"Error getting data for {self.node}: {exc}\n\n{backtrace}")
 
     def _record_success(self) -> None:
         self.last_error = None
