@@ -216,3 +216,41 @@ def test_superseding_request_closes_previous_async_span(monkeypatch):
     assert tracer.ends == [tracer.begins[0][0]]   # req 1's span closed, req 2's still open
     ch.on_empty(2)
     assert tracer.ends == [tracer.begins[0][0], tracer.begins[1][0]]
+
+
+class _ColoredPipeline(FakePipeline):
+    def set_data_colored(self, data, color):
+        self.calls.append(("colored", len(data)))
+        self._current = (*data, color)
+
+
+def test_a_mismatched_result_does_not_block_the_segment_it_freed():
+    """A coloured VP returning plain data once frees that segment; the worker
+    then reuses it for the next result, which must still be plotted, not
+    mistaken for a re-delivery of the segment we (don't) hold."""
+    pipe, t = _ColoredPipeline(), FakeTransport()
+    ch = RemoteChannel(pipeline=pipe, channel_id=5, transport=t, colored=True)
+    ch.on_data_requested_values(0.0, 1.0)
+    three = [np.array([0.0, 1.0]), np.array([1.0, 2.0]), np.array([3.0, 4.0])]
+    name, colored, shm = _make_segment(three)
+    plain = pack_arrays(shm.buf, three[:2])
+    ch.on_result(1, name, plain, 2)
+    assert (5, name) in t.frees
+
+    colored = pack_arrays(shm.buf, three)
+    ch.on_data_requested_values(1.0, 2.0)
+    ch.on_result(2, name, colored, 2)
+
+    assert pipe.calls[-1] == ("colored", 2)
+    shm.unlink()
+
+
+def test_disposing_after_a_mismatched_result_frees_its_segment_once():
+    pipe, t = _ColoredPipeline(), FakeTransport()
+    ch = RemoteChannel(pipeline=pipe, channel_id=5, transport=t, colored=True)
+    ch.on_data_requested_values(0.0, 1.0)
+    name, layout, shm = _make_segment([np.array([0.0, 1.0]), np.array([1.0, 2.0])])
+    ch.on_result(1, name, layout, 2)
+    ch.dispose()
+    assert t.frees == [(5, name)]
+    shm.unlink()

@@ -79,21 +79,27 @@ class RemoteChannel:
             return
         shm = shared_memory.SharedMemory(name=shm_name, create=False, track=False)
         views = unpack_arrays(shm.buf, layout)
-        self._deliver(views, arity)
+        delivered = self._deliver(views, arity)
         self._register_release(shm, shm_name, views)
-        self._held, self._held_name = shm, shm_name
+        if delivered:
+            # A rejected segment is freed as soon as its views die (right
+            # after this returns); holding it would drop the worker's next
+            # result that reuses it as a "re-delivery".
+            self._held, self._held_name = shm, shm_name
 
-    def _deliver(self, views, arity: int) -> None:
+    def _deliver(self, views, arity: int) -> bool:
         if self._colored and len(views) == arity + 1:
             self._pipeline.set_data_colored(list(views[:-1]), views[-1])
-        elif not self._colored and len(views) == arity:
+            return True
+        if not self._colored and len(views) == arity:
             self._pipeline.set_data(*views)
-        elif self._colored:
+            return True
+        if self._colored:
             log.error("%s: declared colored=True but did not return Colored(...)", self._name)
-            self._pipeline.request_done()
         else:
             log.error("%s: returned Colored(...) but was not declared with colored=True", self._name)
-            self._pipeline.request_done()
+        self._pipeline.request_done()
+        return False
 
     def on_empty(self, req_id: int) -> None:
         self._close_async_span(req_id)
