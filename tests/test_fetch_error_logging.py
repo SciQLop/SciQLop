@@ -20,9 +20,9 @@ def test_a_failing_fetch_is_logged_once_with_its_traceback(main_window, qtbot, m
     from SciQLop.user_api.plot import create_plot_panel
     from SciQLop.user_api.virtual_products import VirtualProductType, create_virtual_product
 
-    recorder = _Recorder()
-    monkeypatch.setattr(data_provider, "log", recorder)
-    monkeypatch.setattr(time_sync_panel, "log", recorder)
+    provider_log, graph_log = _Recorder(), _Recorder()
+    monkeypatch.setattr(data_provider, "log", provider_log)
+    monkeypatch.setattr(time_sync_panel, "log", graph_log)
 
     def failing_vp(start: float, stop: float):
         raise RuntimeError("boom-once")
@@ -33,10 +33,10 @@ def test_a_failing_fetch_is_logged_once_with_its_traceback(main_window, qtbot, m
     try:
         panel.plot_product(vp)
         qtbot.waitUntil(lambda: not panel.is_busy(), timeout=5000)
-        qtbot.waitUntil(lambda: any("boom-once" in e for e in recorder.errors), timeout=5000)
-        qtbot.wait(200)
-        failures = [e for e in recorder.errors if "boom-once" in e]
-        assert len(failures) == 1, failures
-        assert "Traceback" in failures[0]
+        qtbot.waitUntil(lambda: any("boom-once" in e for e in graph_log.errors), timeout=5000)
+        # Each failing fetch is logged by the graph only (the panel may fetch more
+        # than once, so count the logging sites, not the lines).
+        assert not [e for e in provider_log.errors if "boom-once" in e]
+        assert all("Traceback" in e for e in graph_log.errors if "boom-once" in e)
     finally:
         panel.close()

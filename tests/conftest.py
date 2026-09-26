@@ -83,13 +83,6 @@ def _is_xdist_master(config) -> bool:
     return config.getoption("dist", "no") != "no" and not _os.environ.get("PYTEST_XDIST_WORKER")
 
 
-# trylast so pytest-xvfb's own pytest_configure — which starts Xvfb and exports
-# DISPLAY — has already run: conftest hooks are called before installed plugins',
-# and the QApplication built at the end of this hook aborts the whole process
-# ("could not connect to display", exit 134) when no display exists yet. Only CI
-# hits it; a dev shell has a real DISPLAY, and the canonical local run passes
-# --no-xvfb. Reproduce with: env -u DISPLAY -u WAYLAND_DISPLAY uv run pytest
-@pytest.hookimpl(trylast=True)
 def _mark_getting_started_tour_done():
     """Every main window a test builds would otherwise start the getting-started
     tour 500 ms later: coach marks popping over whatever the test is doing.
@@ -102,6 +95,13 @@ def _mark_getting_started_tour_done():
         settings.write_text("completed_tours:\n  getting_started: true\n")
 
 
+# trylast so pytest-xvfb's own pytest_configure — which starts Xvfb and exports
+# DISPLAY — has already run: conftest hooks are called before installed plugins',
+# and the QApplication built at the end of this hook aborts the whole process
+# ("could not connect to display", exit 134) when no display exists yet. Only CI
+# hits it; a dev shell has a real DISPLAY, and the canonical local run passes
+# --no-xvfb. Reproduce with: env -u DISPLAY -u WAYLAND_DISPLAY uv run pytest
+@pytest.hookimpl(trylast=True)
 def pytest_configure(config):
     # These env vars MUST be set before any SciQLop or speasy import.
     # pytest_configure runs before collection, so no test module is imported yet.

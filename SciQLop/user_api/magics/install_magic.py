@@ -15,6 +15,11 @@ def install_magic(line: str):
     packages = shlex.split(line)
     if not packages:
         raise UsageError("Usage: %install <package> [package2 ...]")
+    options = [p for p in packages if p.startswith("-")]
+    if options:
+        # Every argument is recorded in the manifest as a requirement: an option
+        # there breaks the next workspace sync.
+        raise UsageError(f"%install takes package names only, not options ({' '.join(options)}).")
 
     print(f"Installing: {' '.join(packages)}")
     result = install_packages(*packages)

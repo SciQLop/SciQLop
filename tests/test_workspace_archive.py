@@ -151,7 +151,7 @@ class TestImportWorkspace:
 
 
 class TestExcludePatterns:
-    def test_exclude_patterns_contains_expected(self):
+    def test_exclude_rules_contain_the_expected_names(self):
         assert ".venv" in EXCLUDED_ANYWHERE
         assert "__pycache__" in EXCLUDED_ANYWHERE
         assert "pyproject.toml" in EXCLUDED_AT_ROOT
