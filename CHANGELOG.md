@@ -13,6 +13,7 @@
 
 ### UI
 
+- "Add attribute" in the catalog browser refuses the names of built-in event fields (`start`, `stop`, `author`, `uuid`, `tags`, `products`, `rating`). An attribute named `author` with no rows selected blanked the author of every event in the catalog.
 - Adding a plugin folder or enabling a plugin in Settings now loads it right away, without a restart; its python dependencies are installed first, with the running stack pinned. Only removing a folder or disabling a plugin still asks for a restart, since running code can't be unloaded.
 - Anything that only takes effect after a restart now offers a **Restart now** button: updating or uninstalling a plugin from the app store, changing the enabled plugins or the extra plugin folders in Settings, and pinning a new SciQLop version on the workspace you are running. SciQLop restarts into the same workspace. Updating a plugin no longer tries to load it a second time over the running version.
 - Comboboxes that were populated after creation (agent model/effort/backend pickers) or never sized (attribute type, knob choices, activity and writes pickers) clipped their item text in the popup. `fit_combo_to_content` now re-fits whenever items change, and every combobox in the app uses it.
@@ -24,6 +25,9 @@
 
 ### Workspaces
 
+- `%install` and app-store installs and uninstalls go into the running SciQLop's environment even after a notebook calls `os.chdir()`; they used to fail with "No virtual environment found".
+- Adding an example's dependencies to the running workspace keeps the running stack pinned, like `%install` and the app store.
+- Duplicating or exporting a workspace keeps a `pyproject.toml` inside a sub-folder (your own package); only the generated one at the workspace root is left out.
 - Notebooks now remember what they were written with. Every save records the SciQLop version and the workspace's packages, with their installed versions, in the notebook metadata (`metadata.sciqlop`). Local packages and plugin folders are left out. Opening a notebook that needs packages this workspace lacks, or a newer SciQLop, offers to install them here or to create a new workspace that matches the notebook.
 - `%install` no longer risks upgrading the Qt stack, SciQLopPlots or numpy under the running SciQLop: it installs with the running versions pinned, like the app store already did.
 - Each workspace card on the welcome page shows the SciQLop version it runs (`0.13.0`, `main`, or, when the workspace has no pin, the version installed in it: an unpinned workspace follows the launcher, which is not always the SciQLop showing the page). A pinned release older than the newest one on PyPI is shown in orange; hover it for the version to update to.
@@ -41,6 +45,7 @@
 
 ### User API
 
+- A late empty or error answer from an out-of-process virtual product no longer marks the newer request as done while it is still running.
 - A virtual product can colour its line, or its projection curve, by a scalar: return `Colored(data, color=c)` with one colour value per sample, and declare it with `create_virtual_product(..., colored=True, color_label="|B| (nT)", color_gradient="thermal")`, or annotate `-> Colored[Vector["X", "Y", "Z"]]` in a `%%vp` cell. The colour uses the plot's colour scale, works out of process too, and is sorted along with unsorted data.
 - Every colour gradient can now be given by name (`"jet"`, `"thermal"`, `"grayscale"`, ...). Only `Candy`, `Cold`, `Hot` and `Polar` were recognised before, because the names were read with `dir()`, which lists only some members of that enum.
 - `%%vp` now reads return annotations written under `from __future__ import annotations`. They were strings, so they were ignored: the type was guessed from the data and the labels were lost.
