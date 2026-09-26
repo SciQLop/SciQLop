@@ -8,6 +8,7 @@ import sys
 
 import numpy as np
 import PySide6QtAds as QtAds
+import shiboken6
 from PySide6.QtCore import QCoreApplication, QEvent, QTimer
 from PySide6.QtWidgets import QApplication
 
@@ -57,6 +58,9 @@ def main(close_mode: str) -> int:
     close()
     pump(1000)
 
+    if shiboken6.isValid(panel):
+        print("the floating panel was not closed", flush=True)
+        return 2
     print("closed floating panel without crashing", flush=True)
     return 0
 
