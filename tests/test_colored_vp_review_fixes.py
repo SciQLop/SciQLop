@@ -44,3 +44,17 @@ def test_a_single_sample_batch_keeps_its_colour(color):
     t = np.array([1.0])
     checked = Colored((t, np.zeros((1, 3))), color=color).checked()
     assert np.array_equal(checked.color, [5.0])
+
+
+def test_a_colour_axis_on_a_graph_that_cannot_colour_warns_instead_of_raising(caplog):
+    """Waterfall graphs have no colour gradient: plotting a coloured VP as one
+    (graph_type=Waterfall) raised AttributeError halfway through setting it up."""
+    import logging
+    from SciQLop.components.plotting.backend.color_axis import ColorAxis, apply_color_axis
+
+    class _WaterfallLike:
+        pass
+
+    with caplog.at_level(logging.WARNING):
+        apply_color_axis(None, _WaterfallLike(), ColorAxis(label="T"))
+    assert "colour" in caplog.text
