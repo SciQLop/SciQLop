@@ -31,6 +31,7 @@
 
 ### Dependencies
 
+- model2vec is now `>=0.8`. Since huggingface_hub 2.0, which recent tokenizers reject, a workspace sync fell back to model2vec 0.2.4, and with it tokenizers 0.13.3, transformers and torch. tokenizers 0.13.3 has no Python 3.14 wheels, so creating or updating a workspace failed with "can't find Rust compiler".
 - jupyqt is now `>=0.6.5`, for the notebook save and open hooks behind the notebook stamp.
 - speasy is now `speasy[blosc]>=1.8.4`: data from the Speasy proxy can arrive Blosc-compressed (byte-shuffle + zstd per array), decoded with `numcodecs`. This also moves the cache backend to pysciqlop-cache 0.2.2.
 

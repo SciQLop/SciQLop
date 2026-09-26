@@ -3350,7 +3350,7 @@ requires-dist = [
     { name = "keyring", marker = "extra == 'all'" },
     { name = "matplotlib", marker = "extra == 'all'", specifier = "==3.11.2" },
     { name = "mcp", marker = "extra == 'dev'", specifier = ">=1.19.0,<2" },
-    { name = "model2vec", marker = "extra == 'all'" },
+    { name = "model2vec", marker = "extra == 'all'", specifier = ">=0.8" },
     { name = "numpy", marker = "extra == 'all'" },
     { name = "packaging" },
     { name = "platformdirs" },
