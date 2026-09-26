@@ -24,12 +24,14 @@
 
 ### Workspaces
 
+- Notebooks now remember what they were written with. Every save records the SciQLop version and the workspace's packages, with their installed versions, in the notebook metadata (`metadata.sciqlop`). Local packages and plugin folders are left out. Opening a notebook that needs packages this workspace lacks, or a newer SciQLop, offers to install them here or to create a new workspace that matches the notebook.
 - `%install` no longer risks upgrading the Qt stack, SciQLopPlots or numpy under the running SciQLop: it installs with the running versions pinned, like the app store already did.
 - Each workspace card on the welcome page shows the SciQLop version it runs (`0.13.0`, `main`, or the running SciQLop's version when the workspace has no pin). A pinned release older than the newest one on PyPI is shown in orange; hover it for the version to update to.
 - Choosing "main (development)" as a workspace's SciQLop version now installs from `main`. It used to reinstall the version SciQLop itself was running (0.13.0 on a released install), because the choice was saved as an empty version, which means "same as SciQLop". It is now saved as `main`; workspaces with no version keep following SciQLop.
 
 ### Dependencies
 
+- jupyqt is now `>=0.6.5`, for the notebook save and open hooks behind the notebook stamp.
 - speasy is now `speasy[blosc]>=1.8.4`: data from the Speasy proxy can arrive Blosc-compressed (byte-shuffle + zstd per array), decoded with `numcodecs`. This also moves the cache backend to pysciqlop-cache 0.2.2.
 
 - Bumped SciQLopPlots 0.37.0 → 0.39.0. It brings seven new colour gradients (Viridis, Cividis, Magma, Inferno, Plasma, Turbo, Coolwarm; Jet stays the default), colour-by-scalar for line graphs and curves, and a remote graph that no longer stays greyed out after an error or an empty answer. Its enums are now plain `IntEnum`s, so `list(ColorGradient)` shows every gradient; a coloured graph no longer resets the plot's gradient to Jet.

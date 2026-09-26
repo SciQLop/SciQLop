@@ -141,6 +141,19 @@ class WorkspaceManager(QObject):
         switch_workspace(directory)
 
     @staticmethod
+    def prepare_workspace_for_notebook(notebook_path: str, stamp) -> str:
+        """Create a workspace matching a stamped notebook and copy the notebook
+        into it; returns its directory. The caller switches to it."""
+        notebook_name = os.path.basename(notebook_path)
+        directory = os.path.join(SciQLopWorkspacesSettings().workspaces_dir, uuid.uuid4().hex)
+        WorkspaceManager._create_workspace(
+            os.path.splitext(notebook_name)[0], directory,
+            description=f"Created to run {notebook_name}",
+            sciqlop_version=stamp.version, requires=list(stamp.dependencies))
+        shutil.copy2(notebook_path, os.path.join(directory, notebook_name))
+        return directory
+
+    @staticmethod
     def add_example_to_workspace(example_path: str, workspace_dir: str) -> dict:
         from .workspace_manifest import InstalledExample
         example = Example(example_path)
@@ -234,6 +247,8 @@ class WorkspaceManager(QObject):
             "background_run": background_run,
         })
         cwd = self.workspace.workspace_dir
+        from SciQLop.components.workspaces.ui.notebook_environment import install_notebook_hooks
+        self._notebook_prompt = install_notebook_hooks(self._kernel_manager.notebook_hooks, cwd, self)
         self._kernel_manager.start(cwd=cwd)
 
     def quit(self):

@@ -121,6 +121,10 @@ class KernelManager(QObject):
     def shell(self):
         return self._jupyter.shell
 
+    @property
+    def notebook_hooks(self):
+        return self._jupyter.notebook_hooks
+
     def start(self, port=0, cwd=None):
         self._jupyter.start(port=port, cwd=cwd)
 

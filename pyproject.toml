@@ -73,7 +73,7 @@ all = [
     # killed, and reloads the view only when it isn't already on a Lab page.
     # open_jupyterlab_widget() re-requests the widget on every open and would
     # discard a live Lab's state on 0.6.3, which reloaded unconditionally.
-    "jupyqt>=0.6.4",
+    "jupyqt>=0.6.5",
     "matplotlib==3.11.2",
     "qasync",
     "jinja2",
