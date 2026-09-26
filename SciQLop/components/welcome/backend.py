@@ -13,6 +13,7 @@ from PySide6.QtCore import QBuffer, QFileSystemWatcher, QIODevice, QObject, Sign
 from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_project import core_version_badge, running_sciqlop_version
 from SciQLop.components.workspaces.backend.workspaces_manager import workspaces_manager_instance, WorkspaceManager
 from SciQLop.components.sciqlop_logging import getLogger
 
@@ -58,6 +59,7 @@ def _workspace_to_dict(ws: WorkspaceManifest) -> dict:
         "is_default": ws.default,
         "requires": ws.requires,
         "sciqlop_version": ws.sciqlop_version,
+        "core_badge": core_version_badge(ws.sciqlop_version, running_sciqlop_version(), None),
     }
 
 
@@ -112,9 +114,11 @@ class WelcomeBackend(QObject):
     dependency_install_finished = Signal(str)
     core_versions_ready = Signal(str)
     core_update_finished = Signal(str)
+    core_badges_ready = Signal(str)
 
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
+        self._latest_core_release: str | None = None
         workspaces_dir = SciQLopWorkspacesSettings().workspaces_dir
         self._watcher = QFileSystemWatcher([workspaces_dir], self)
         self._watch_workspace_subdirs(workspaces_dir)
@@ -158,6 +162,24 @@ class WelcomeBackend(QObject):
         workspaces = workspaces_manager_instance().list_workspaces()
         workspaces.sort(key=lambda ws: WorkspaceManifest.last_used(ws.directory), reverse=True)
         return json.dumps([_workspace_to_dict(ws) for ws in workspaces])
+
+    @Slot()
+    def fetch_core_version_badges(self) -> None:
+        """Re-send every card's badge once the latest release is known."""
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+        pins = {ws.directory: ws.sciqlop_version for ws in workspaces_manager_instance().list_workspaces()}
+        running = running_sciqlop_version()
+
+        def _fetch():
+            # One PyPI query per session: the card list reloads on every workspace change.
+            if self._latest_core_release is None:
+                versions = fetch_available_versions()
+                self._latest_core_release = versions[0] if versions else ""
+            latest = self._latest_core_release or None
+            self.core_badges_ready.emit(json.dumps(
+                {d: core_version_badge(pin, running, latest) for d, pin in pins.items()}))
+
+        threading.Thread(target=_fetch, daemon=True).start()
 
     @Slot(result=str)
     def list_examples(self) -> str:

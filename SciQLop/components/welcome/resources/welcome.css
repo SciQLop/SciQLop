@@ -464,6 +464,18 @@ h2 {
     background: #27ae60;
 }
 
+.card-badge.badge-version {
+    background: transparent;
+    color: var(--UnselectedText);
+    border: 1px solid var(--Borders);
+}
+
+.card-badge.badge-version.badge-outdated {
+    background: #e67e22;
+    color: #ffffff;
+    border-color: #e67e22;
+}
+
 .card-stars {
     font-size: 0.75em;
     color: var(--UnselectedText);

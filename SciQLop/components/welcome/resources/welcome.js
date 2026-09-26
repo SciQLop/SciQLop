@@ -28,6 +28,7 @@ function init() {
         backend.dependency_install_finished.connect(onDependencyInstallFinished);
         backend.core_versions_ready.connect(onCoreVersionsReady);
         backend.core_update_finished.connect(onCoreUpdateFinished);
+        backend.core_badges_ready.connect(onCoreBadgesReady);
         backend.fetch_latest_release();
         backend.fetch_featured_packages();
 
@@ -123,6 +124,7 @@ function loadWorkspaces() {
             workspaces.forEach(function(ws) {
                 container.appendChild(createWorkspaceCard(ws, activeDir));
             });
+            backend.fetch_core_version_badges();
 
             if (_initialLoad) {
                 _initialLoad = false;
@@ -321,6 +323,7 @@ function createWorkspaceCard(ws, activeDir) {
     let badges = "";
     if (isActive) badges += '<span class="card-badge badge-active">Active</span>';
     if (ws.is_default) badges += '<span class="card-badge">Default</span>';
+    if (ws.core_badge) badges += coreBadgeHtml(ws.core_badge);
 
     var accentColor = nameToColor(ws.name);
     card.style.borderLeftColor = accentColor;
@@ -501,6 +504,22 @@ function bindFieldEditor(inputId, directory, field, ws, isActive) {
 }
 
 var CORE_MAIN_PIN = "main";
+
+function coreBadgeHtml(badge) {
+    var cls = "card-badge badge-version" + (badge.outdated ? " badge-outdated" : "");
+    return '<span class="' + cls + '" title="' + escapeHtmlAttr(badge.tooltip) + '">' +
+        escapeHtml(badge.label) + '</span>';
+}
+
+function onCoreBadgesReady(badgesJson) {
+    var badges = JSON.parse(badgesJson);
+    document.querySelectorAll(".card[data-directory]").forEach(function(card) {
+        var badge = badges[card.dataset.directory];
+        var old = card.querySelector(".badge-version");
+        if (!badge || !old) return;
+        old.outerHTML = coreBadgeHtml(badge);
+    });
+}
 
 function coreVersionLabel(version) {
     if (version === CORE_MAIN_PIN) return "main (development)";

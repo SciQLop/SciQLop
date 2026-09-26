@@ -16,7 +16,7 @@ import re
 import sys
 import urllib.request
 from pathlib import Path
-from typing import List, Sequence, Union
+from typing import Optional, List, Sequence, Union
 
 import packaging.version
 
@@ -391,6 +391,35 @@ def fetch_available_versions(*, timeout: float = 5.0) -> List[str]:
     except Exception as exc:
         log.debug("Could not fetch PyPI release list: %s", exc)
         return []
+
+
+def _is_older(version: str, latest: Optional[str]) -> bool:
+    if not latest:
+        return False
+    try:
+        return packaging.version.Version(version) < packaging.version.Version(latest)
+    except packaging.version.InvalidVersion:
+        return False
+
+
+def core_version_badge(pin: str, running: str, latest: Optional[str]) -> dict:
+    """What a workspace card shows about the SciQLop it runs.
+
+    *pin* is the manifest's ``sciqlop_version`` ("" follows the launcher,
+    ``MAIN_PIN`` or a ``.dev`` pin follows main), *running* the launcher's own
+    version, *latest* the newest installable release (None until fetched).
+    Only a release older than *latest* is outdated; main never is.
+    """
+    effective = pin or running
+    if is_dev_build_version(effective):
+        return {"label": "main", "outdated": False,
+                "tooltip": "Follows the latest development code (main)."}
+    outdated = _is_older(effective, latest)
+    follows = "" if pin else " (same as SciQLop)"
+    tooltip = f"SciQLop {effective}{follows}."
+    if outdated:
+        tooltip += f" {latest} is available: open the workspace details to update."
+    return {"label": effective, "outdated": outdated, "tooltip": tooltip}
 
 
 def validate_core_version(version: str, available: Sequence[str]) -> bool:
