@@ -19,6 +19,19 @@ from SciQLop.core.ui import fit_combo_to_content
 # rejected here would otherwise vanish without a trace on the next reload.
 _VALID_ATTRIBUTE_NAME = re.compile(r"^[A-Za-z][A-Za-z_0-9]*$")
 
+# tscat's fixed event fields (tscat.base._Event._fixed_keys, private): a
+# SetAttributeAction with one of these names writes the real field, not
+# metadata, so a new attribute named `author` would overwrite every author.
+_BUILT_IN_FIELDS = frozenset({"start", "stop", "author", "uuid", "tags", "products", "rating"})
+
+
+def _name_problem(name: str) -> str:
+    if not _VALID_ATTRIBUTE_NAME.match(name):
+        return "Letters, digits and underscores only, starting with a letter."
+    if name in _BUILT_IN_FIELDS:
+        return f"'{name}' is a built-in event field; choose another name."
+    return ""
+
 # Order matters: first entry is the default selection.
 _TYPE_OPTIONS = (
     ("Text", "string"),
@@ -85,14 +98,11 @@ class AddAttributeDialog(QDialog):
 
     def _sync_ok_button(self) -> None:
         name = self._name.text().strip()
-        valid = bool(name) and bool(_VALID_ATTRIBUTE_NAME.match(name))
+        problem = _name_problem(name) if name else ""
         ok = self._buttons.button(QDialogButtonBox.StandardButton.Ok)
-        ok.setEnabled(valid)
-        show_error = bool(name) and not valid
-        self._name_error.setText(
-            "Letters, digits and underscores only, starting with a letter." if show_error else ""
-        )
-        self._name_error.setVisible(show_error)
+        ok.setEnabled(bool(name) and not problem)
+        self._name_error.setText(problem)
+        self._name_error.setVisible(bool(problem))
 
     def _select_type(self, label: str) -> None:
         index = self._type.findText(label)
@@ -101,7 +111,7 @@ class AddAttributeDialog(QDialog):
 
     def build_spec(self) -> KnobSpec | None:
         name = self._name.text().strip()
-        if not _VALID_ATTRIBUTE_NAME.match(name):
+        if _name_problem(name):
             return None
         type_id = _TYPE_OPTIONS[self._type.currentIndex()][1]
         if type_id == "string":

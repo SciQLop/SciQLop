@@ -185,3 +185,22 @@ def test_dialog_build_spec_returns_none_for_invalid_name(qtbot, qapp):
     qtbot.addWidget(dialog)
     dialog._name.setText("my column")
     assert dialog.build_spec() is None
+
+
+import pytest
+
+
+@pytest.mark.parametrize("name", ["author", "start", "stop", "uuid", "tags", "products", "rating"])
+def test_dialog_rejects_the_names_of_built_in_event_fields(qtbot, qapp, name):
+    """tscat routes these names to the event's real fields, not its metadata:
+    'Add attribute' named `author` with no rows selected blanked the author
+    of every event in the catalog."""
+    from PySide6.QtWidgets import QDialogButtonBox
+    from SciQLop.components.catalogs.ui.add_attribute_dialog import AddAttributeDialog
+
+    dialog = AddAttributeDialog()
+    qtbot.addWidget(dialog)
+    dialog._name.setText(name)
+    assert dialog.build_spec() is None
+    assert not dialog._buttons.button(QDialogButtonBox.StandardButton.Ok).isEnabled()
+    assert "built-in" in dialog._name_error.text()
