@@ -611,11 +611,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             _apply_dock_view_tooltip(doc, action)
 
     def remove_native_plot_panel(self, panel: TimeSyncPanel):
-        dw = self.dock_manager.findDockWidget(panel.name)
-        if dw:
-            container = dw.takeWidget()
-            dw.closeDockWidget()
-            container.deleteLater()
+        self.remove_panel(panel)
 
     def remove_panel(self, panel: Union[TimeSyncPanel, str]):
         log.debug(f"Removing panel {panel}")
@@ -686,7 +682,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             # than creating a fresh one — dockAreaCreated only fires for the
             # latter, so that path alone misses this, very common, case.
             self._ensure_add_panel_button(dock_widget.dockAreaWidget())
-            dock_widget.closed.connect(lambda: _destroy_content_before_its_window(dock_widget))
+            dock_widget.closed.connect(lambda: self._on_panel_dock_closed(dock_widget))
         panel.delete_me.connect(lambda: self.remove_panel(panel))
         self.panel_added.emit(panel)
         self._notify_panels_list_changed()
@@ -694,6 +690,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         panel_name = panel.name
         panel.destroyed.connect(lambda *_: self._schedule_dead_panel_drop(panel_name))
         return panel
+
+    def _on_panel_dock_closed(self, dock_widget: QtAds.CDockWidget) -> None:
+        # QtAds also emits `closed` when a dock is only hidden (toggleView(False));
+        # a dock being deleted is unregistered from the manager before it emits.
+        if self.dock_manager.findDockWidget(dock_widget.objectName()) is None:
+            _destroy_content_before_its_window(dock_widget)
 
     def _schedule_dead_panel_drop(self, name: str) -> None:
         # Also fires while this window itself is being destroyed, when its own
