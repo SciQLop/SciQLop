@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import base64
 import json as _json
+import os
+from functools import lru_cache
 from typing import Dict, List, Optional, Set
 
 from PySide6.QtCore import QBuffer, QIODevice, Qt
@@ -38,6 +40,19 @@ def result_preview(result: str, cap: int = _RESULT_PREVIEW_CAP) -> str:
 
 
 def _image_data_url(path: str) -> Optional[str]:
+    """PNG data URL for *path*, encoded once per file version: the transcript
+    rebuilds its model on every streaming refresh."""
+    try:
+        stat = os.stat(path)
+    except OSError:
+        return None
+    return _encoded_image(path, stat.st_mtime_ns, stat.st_size)
+
+
+# simplify: a fixed-size LRU; a session with more than 64 distinct images
+# re-encodes the oldest on each refresh. Raise it (or cache per message) then.
+@lru_cache(maxsize=64)
+def _encoded_image(path: str, _mtime_ns: int, _size: int) -> Optional[str]:
     image = QImage(path)
     if image.isNull():
         return None

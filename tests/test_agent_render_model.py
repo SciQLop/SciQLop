@@ -156,3 +156,38 @@ def test_model_output_survives_json_dumps():
     restored = json.loads(serialized)
     assert restored[0]["role"] == "user"
     assert restored[1]["parts"][0]["expanded"] is True
+
+
+def test_an_image_is_encoded_once_not_on_every_refresh(tmp_path, monkeypatch):
+    """The transcript rebuilds its whole model every 80 ms while a reply
+    streams; re-decoding and re-encoding every screenshot each time stutters
+    the GUI. An image is encoded again only when its file changes."""
+    import os
+    from PySide6.QtGui import QImage
+    from SciQLop.components.agents.chat import ChatMessage, ImageBlock
+    from SciQLop.components.agents.chat import render_model
+
+    path = tmp_path / "shot.png"
+    image = QImage(4, 4, QImage.Format.Format_RGB32)
+    image.fill(0xFF0000)
+    assert image.save(str(path), "PNG")
+    decoded = []
+
+    class CountingImage(QImage):
+        def __init__(self, *args):
+            decoded.append(args)
+            super().__init__(*args)
+
+    monkeypatch.setattr(render_model, "QImage", CountingImage)
+    message = ChatMessage(role="assistant", blocks=[ImageBlock(path=str(path))], done=True)
+
+    first = _model([message])
+    assert _model([message]) == first
+    assert len(decoded) == 1
+
+    image.fill(0x00FF00)
+    assert image.save(str(path), "PNG")
+    stat = os.stat(path)
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+    assert _model([message]) != first
+    assert len(decoded) == 2
