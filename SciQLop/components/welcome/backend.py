@@ -13,7 +13,9 @@ from PySide6.QtCore import QBuffer, QFileSystemWatcher, QIODevice, QObject, Sign
 from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
-from SciQLop.components.workspaces.backend.workspace_project import core_version_badge, running_sciqlop_version
+from SciQLop.components.workspaces.backend.workspace_project import (
+    core_version_badge, installed_sciqlop_version, running_sciqlop_version,
+)
 from SciQLop.components.workspaces.backend.workspaces_manager import workspaces_manager_instance, WorkspaceManager
 from SciQLop.components.sciqlop_logging import getLogger
 
@@ -59,8 +61,14 @@ def _workspace_to_dict(ws: WorkspaceManifest) -> dict:
         "is_default": ws.default,
         "requires": ws.requires,
         "sciqlop_version": ws.sciqlop_version,
-        "core_badge": core_version_badge(ws.sciqlop_version, running_sciqlop_version(), None),
+        "core_badge": core_version_badge(ws.sciqlop_version, _unpinned_version(ws_dir), None),
     }
+
+
+def _unpinned_version(workspace_dir: str) -> str:
+    """What an unpinned workspace runs. It follows its launcher, which may not be
+    the SciQLop showing this page, so its venv is the ground truth."""
+    return installed_sciqlop_version(workspace_dir) or running_sciqlop_version()
 
 
 def _example_to_dict(ex: Example) -> dict:
@@ -172,8 +180,8 @@ class WelcomeBackend(QObject):
     def fetch_core_version_badges(self) -> None:
         """Re-send every card's badge once the latest release is known."""
         from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
-        pins = {ws.directory: ws.sciqlop_version for ws in workspaces_manager_instance().list_workspaces()}
-        running = running_sciqlop_version()
+        cards = {ws.directory: (ws.sciqlop_version, _unpinned_version(ws.directory))
+                 for ws in workspaces_manager_instance().list_workspaces()}
 
         def _fetch():
             # One PyPI query per session: the card list reloads on every workspace change.
@@ -182,7 +190,7 @@ class WelcomeBackend(QObject):
                 self._latest_core_release = versions[0] if versions else ""
             latest = self._latest_core_release or None
             self.core_badges_ready.emit(json.dumps(
-                {d: core_version_badge(pin, running, latest) for d, pin in pins.items()}))
+                {d: core_version_badge(pin, unpinned, latest) for d, (pin, unpinned) in cards.items()}))
 
         threading.Thread(target=_fetch, daemon=True).start()
 

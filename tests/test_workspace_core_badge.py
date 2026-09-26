@@ -3,7 +3,9 @@ import json
 
 import pytest
 
-from SciQLop.components.workspaces.backend.workspace_project import core_version_badge
+from SciQLop.components.workspaces.backend.workspace_project import (
+    core_version_badge, installed_sciqlop_version,
+)
 
 
 def test_a_pinned_release_shows_its_version():
@@ -26,7 +28,7 @@ def test_an_unpinned_workspace_follows_the_running_sciqlop():
     badge = core_version_badge("", running="0.13.0", latest="0.13.1")
     assert badge["label"] == "0.13.0"
     assert badge["outdated"] is True
-    assert "same as SciQLop" in badge["tooltip"]
+    assert "not pinned" in badge["tooltip"]
 
 
 def test_an_unpinned_workspace_on_a_dev_launcher_follows_main():
@@ -82,3 +84,44 @@ def test_badges_are_resent_with_the_latest_release_fetched_once(qtbot, tmp_path,
     badge = json.loads(blocker.args[0])[old.directory]
     assert badge["outdated"] is True and badge["label"] == "0.12.0"
     assert fetch.call_count == 1
+
+
+def _fake_install(workspace_dir, version, site="lib/python3.14/site-packages"):
+    dist_info = workspace_dir / ".venv" / site / f"sciqlop-{version}.dist-info"
+    dist_info.mkdir(parents=True)
+    (dist_info / "METADATA").write_text(f"Metadata-Version: 2.1\nName: SciQLop\nVersion: {version}\n")
+
+
+def test_installed_version_is_read_from_the_workspace_venv(tmp_path):
+    _fake_install(tmp_path, "0.13.0")
+    assert installed_sciqlop_version(tmp_path) == "0.13.0"
+
+
+def test_installed_version_reads_the_windows_venv_layout(tmp_path):
+    _fake_install(tmp_path, "0.13.0", site="Lib/site-packages")
+    assert installed_sciqlop_version(tmp_path) == "0.13.0"
+
+
+def test_installed_version_is_empty_without_a_venv(tmp_path):
+    assert installed_sciqlop_version(tmp_path) == ""
+
+
+def test_an_unpinned_card_shows_what_the_workspace_has_installed(tmp_path, monkeypatch):
+    """An unpinned workspace follows the launcher, not the SciQLop showing the page:
+    a main build listing a workspace its 0.13.0 launcher installed must say 0.13.0."""
+    from SciQLop.components.welcome import backend
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+    monkeypatch.setattr(backend, "running_sciqlop_version", lambda: "0.13.1.dev0")
+    _fake_install(tmp_path, "0.13.0")
+    ws = WorkspaceManifest(name="W")
+    ws._directory = str(tmp_path)
+    assert backend._workspace_to_dict(ws)["core_badge"]["label"] == "0.13.0"
+
+
+def test_an_unpinned_card_without_a_venv_falls_back_to_the_running_version(tmp_path, monkeypatch):
+    from SciQLop.components.welcome import backend
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+    monkeypatch.setattr(backend, "running_sciqlop_version", lambda: "0.13.0")
+    ws = WorkspaceManifest(name="W")
+    ws._directory = str(tmp_path)
+    assert backend._workspace_to_dict(ws)["core_badge"]["label"] == "0.13.0"

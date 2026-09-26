@@ -146,6 +146,16 @@ def running_sciqlop_version() -> str:
         return ""
 
 
+def installed_sciqlop_version(workspace_dir: Path | str) -> str:
+    """Version of SciQLop installed in *workspace_dir*'s venv, or "" before its first sync."""
+    venv = Path(workspace_dir) / ".venv"
+    site_dirs = [*venv.glob("lib/python*/site-packages"), venv / "Lib" / "site-packages"]
+    paths = [str(d) for d in site_dirs if d.is_dir()]
+    if not paths:
+        return ""
+    return next((d.version for d in importlib.metadata.distributions(name="sciqlop", path=paths)), "")
+
+
 def is_dev_build_version(pinned_version: str) -> bool:
     """Whether *pinned_version* resolves to the git-main dev-build requirement.
 
@@ -406,8 +416,9 @@ def core_version_badge(pin: str, running: str, latest: Optional[str]) -> dict:
     """What a workspace card shows about the SciQLop it runs.
 
     *pin* is the manifest's ``sciqlop_version`` ("" follows the launcher,
-    ``MAIN_PIN`` or a ``.dev`` pin follows main), *running* the launcher's own
-    version, *latest* the newest installable release (None until fetched).
+    ``MAIN_PIN`` or a ``.dev`` pin follows main), *running* what an unpinned
+    workspace runs (its installed version when known), *latest* the newest
+    installable release (None until fetched).
     Only a release older than *latest* is outdated; main never is.
     """
     effective = pin or running
@@ -415,7 +426,7 @@ def core_version_badge(pin: str, running: str, latest: Optional[str]) -> dict:
         return {"label": "main", "outdated": False,
                 "tooltip": "Follows the latest development code (main)."}
     outdated = _is_older(effective, latest)
-    follows = "" if pin else " (same as SciQLop)"
+    follows = "" if pin else " (not pinned)"
     tooltip = f"SciQLop {effective}{follows}."
     if outdated:
         tooltip += f" {latest} is available: open the workspace details to update."
