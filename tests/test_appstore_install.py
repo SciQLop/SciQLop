@@ -27,9 +27,11 @@ from SciQLop.components.appstore.backend import (
     _remove_installed_package,
     _save_installed_package,
     _try_load_plugin,
-    _uv_install_cmd,
     _uv_uninstall_cmd,
-    _write_requirements_file,
+)
+from SciQLop.components.workspaces.backend.live_install import (
+    install_cmd as _install_cmd,
+    write_requirements_file as _write_requirements_file,
 )
 from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings
 from SciQLop.components.workspaces.backend.uv import find_uv
@@ -38,7 +40,7 @@ from SciQLop.components.workspaces.backend.uv import find_uv
 @pytest.mark.skipif(find_uv() is None, reason="uv binary not available")
 class TestNativeTls:
     def test_install_cmd_requests_native_tls(self):
-        cmd = _uv_install_cmd("some-plugin==1.2.3")
+        cmd = _install_cmd(["some-plugin==1.2.3"])
         assert "--native-tls" in cmd
         assert cmd[-1] == "some-plugin==1.2.3"
 
@@ -58,8 +60,8 @@ class TestHostIsolation:
     """
 
     def test_install_cmd_passes_override_and_constraint(self):
-        cmd = _uv_install_cmd(
-            "some-plugin==1.2.3",
+        cmd = _install_cmd(
+            ["some-plugin==1.2.3"],
             override_file="/tmp/overrides.txt",
             constraint_file="/tmp/constraints.txt",
         )
@@ -69,7 +71,7 @@ class TestHostIsolation:
         assert cmd[-1] == "some-plugin==1.2.3"
 
     def test_install_cmd_omits_flags_when_no_files(self):
-        cmd = _uv_install_cmd("some-plugin==1.2.3")
+        cmd = _install_cmd(["some-plugin==1.2.3"])
         assert "--override" not in cmd
         assert "--constraint" not in cmd
 

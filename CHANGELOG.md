@@ -23,6 +23,7 @@
 
 ### Workspaces
 
+- `%install` no longer risks upgrading the Qt stack, SciQLopPlots or numpy under the running SciQLop: it installs with the running versions pinned, like the app store already did.
 - Each workspace card on the welcome page shows the SciQLop version it runs (`0.13.0`, `main`, or the running SciQLop's version when the workspace has no pin). A pinned release older than the newest one on PyPI is shown in orange; hover it for the version to update to.
 - Choosing "main (development)" as a workspace's SciQLop version now installs from `main`. It used to reinstall the version SciQLop itself was running (0.13.0 on a released install), because the choice was saved as an empty version, which means "same as SciQLop". It is now saved as `main`; workspaces with no version keep following SciQLop.
 

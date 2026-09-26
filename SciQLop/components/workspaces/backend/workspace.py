@@ -7,7 +7,6 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal
 
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
-from SciQLop.components.workspaces.backend.uv import uv_command
 from SciQLop.components.workspaces.backend.workspace_project import _deduplicate_requirements
 from SciQLop.components.sciqlop_logging import getLogger
 
@@ -48,7 +47,8 @@ class Workspace(QObject):
         return self._manifest.requires
 
     def _uv_install(self, packages: list[str]) -> subprocess.CompletedProcess:
-        return subprocess.run(uv_command("pip", "install", *packages), capture_output=True, text=True)
+        from .live_install import guarded_install
+        return guarded_install(packages)
 
     def add_packages(self, specs: list[str]) -> dict:
         """Install packages into the workspace venv (uv) and record the newly
