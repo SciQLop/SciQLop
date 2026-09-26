@@ -178,3 +178,40 @@ def test_warns_about_an_unfinished_call_followed_by_a_finished_one(tmp_path, cap
     ToolCallJournal(path=path)
 
     assert any("sciqlop_exec_python" in r.message for r in caplog.records)
+
+
+def test_each_workspace_has_its_own_journal(monkeypatch):
+    """Two SciQLop instances (two workspaces) overwrote one shared file."""
+    from SciQLop.components.agents.tools import _journal
+    monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", "/ws/a")
+    a = _journal.default_path()
+    monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", "/ws/b")
+    assert _journal.default_path() != a
+
+
+def test_a_clean_quit_during_a_call_is_not_reported_as_a_crash(tmp_path, caplog):
+    """Quitting SciQLop while a long exec_python runs left the entry unfinished,
+    so the next start warned about a crash that never happened."""
+    from SciQLop.components.agents.tools._journal import ToolCallJournal
+
+    path = tmp_path / "journal.json"
+    journal = ToolCallJournal(path=path)
+    in_flight = []
+
+    async def handler(payload):
+        journal.mark_interrupted_by_quit()
+        in_flight.append(json.loads(path.read_text(encoding="utf-8"))[-1])
+        return {}
+
+    _run(journal.wrap(handler, "sciqlop_exec_python")({}))
+    assert in_flight[0]["finished"] is not None
+
+    unfinished = [{"name": "t", "started": "x", "finished": None, "error": None}]
+    path.write_text(json.dumps(unfinished), encoding="utf-8")
+    quitting = ToolCallJournal(path=path)
+    quitting._entries.extend(unfinished)
+    quitting.mark_interrupted_by_quit()
+    caplog.clear()
+    with caplog.at_level(logging.WARNING):
+        ToolCallJournal(path=path)
+    assert "ended during tool call" not in caplog.text

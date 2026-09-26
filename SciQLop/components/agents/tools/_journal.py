@@ -8,6 +8,8 @@ it finishes, so the file left behind after a crash names the culprit.
 from __future__ import annotations
 
 import asyncio
+import atexit
+import hashlib
 import json
 import logging
 import os
@@ -20,12 +22,14 @@ log = logging.getLogger(__name__)
 
 _MAX_ENTRIES = 20
 _MAX_STRING_LEN = 2000
-_FILENAME = "agent_tool_calls.json"
 
 
 def default_path() -> Path:
+    """One journal per workspace: two SciQLop instances run two workspaces."""
     from SciQLop.components.storage import user_data_dir
-    return user_data_dir("diagnostics") / _FILENAME
+    workspace = os.path.realpath(os.environ.get("SCIQLOP_WORKSPACE_DIR", ""))
+    tag = hashlib.sha1(workspace.encode()).hexdigest()[:10]
+    return user_data_dir("diagnostics") / f"agent_tool_calls-{tag}.json"
 
 
 def _now_iso() -> str:
@@ -69,6 +73,16 @@ class ToolCallJournal:
                         entry.get("name"), entry.get("started"), self._path)
         except Exception:
             log.debug("agent tool journal startup check failed", exc_info=True)
+
+    def mark_interrupted_by_quit(self) -> None:
+        """Close the entries still in flight when SciQLop quits normally, so the
+        next start doesn't report them as a crash. A crash never gets here."""
+        unfinished = [e for e in self._entries if e["finished"] is None]
+        for entry in unfinished:
+            entry["finished"] = _now_iso()
+            entry["error"] = "SciQLop quit during the call"
+        if unfinished:
+            self._write()
 
     def _write(self) -> None:
         try:
@@ -119,4 +133,5 @@ def default_journal() -> ToolCallJournal:
     global _default_journal
     if _default_journal is None:
         _default_journal = ToolCallJournal()
+        atexit.register(_default_journal.mark_interrupted_by_quit)
     return _default_journal
