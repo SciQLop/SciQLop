@@ -254,3 +254,17 @@ def test_disposing_after_a_mismatched_result_frees_its_segment_once():
     ch.dispose()
     assert t.frees == [(5, name)]
     shm.unlink()
+
+
+def test_a_stale_empty_or_error_reply_does_not_end_the_newer_request():
+    """Like a stale RESULT: a late EMPTY/ERROR for request N must not report
+    the request finished while N+1 is still being computed."""
+    pipe, t = FakePipeline(), FakeTransport()
+    ch = RemoteChannel(pipeline=pipe, channel_id=5, transport=t)
+    ch.on_data_requested_values(0.0, 1.0)   # req 1
+    ch.on_data_requested_values(1.0, 2.0)   # req 2 -> latest
+    ch.on_empty(1)
+    ch.on_error(1, "Traceback: boom")
+    assert getattr(pipe, "requests_done", 0) == 0
+    ch.on_empty(2)
+    assert pipe.requests_done == 1
