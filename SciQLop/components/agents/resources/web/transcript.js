@@ -175,6 +175,9 @@
         const summaryHtml = head + " " + arrow;
         const summary = el.querySelector(":scope > summary");
         if (summary.innerHTML !== summaryHtml) summary.innerHTML = summaryHtml;
+        // Setting .open fires 'toggle' like a click does; the listener below
+        // tells them apart by comparing against the state the model asked for.
+        el.dataset.expanded = String(part.expanded);
         if (el.open !== part.expanded) el.open = part.expanded;
         let body = el.querySelector(":scope > .tools-body");
         if (part.expanded) {
@@ -268,6 +271,9 @@
     window.addEventListener("scroll", function () {
         if (programmaticScroll) return;
         followBottom = atBottom();
+        // The reader's own scrolling is the position to keep; the one captured
+        // at the last render goes stale as soon as they scroll again.
+        restoreScrollY = followBottom ? null : window.scrollY;
     });
 
     if (window.ResizeObserver) {
@@ -278,9 +284,9 @@
         "toggle",
         function (event) {
             const details = event.target;
-            if (backend && details && details.dataset && details.dataset.id) {
-                backend.toggle(details.dataset.id);
-            }
+            if (!backend || !details || !details.dataset || !details.dataset.id) return;
+            if (String(details.open) === details.dataset.expanded) return; // set by the model, not the reader
+            backend.toggle(details.dataset.id);
         },
         true // 'toggle' does not bubble; capture it on the way down instead.
     );
