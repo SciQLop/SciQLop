@@ -11,11 +11,19 @@ at `pytest_sessionfinish` and detaches Python ownership from whatever is left, s
 Shiboken's finalize sweep skips it instead of destroying it.
 """
 
+import platform
+
+import pytest
 import shiboken6
 from PySide6.QtWidgets import QWidget
 
 from tests.conftest import _release_leftover_widget_ownership, _shiboken_object_function
 from tests.fixtures import *  # noqa: F401,F403
+
+pytestmark = pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="Shiboken::Object::releaseOwnership is looked up by its Itanium-mangled name, "
+           "which MSVC builds don't export: the release is a no-op there")
 
 
 def _has_ownership(w):
