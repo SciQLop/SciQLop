@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal
 
-from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest, edit_manifest
 from SciQLop.components.workspaces.backend.workspace_project import _deduplicate_requirements
 from SciQLop.components.sciqlop_logging import getLogger
 
@@ -38,13 +38,14 @@ class Workspace(QObject):
 
     @name.setter
     def name(self, value: str):
-        self._manifest.name = value
-        self._manifest.save(self._manifest_path)
+        with edit_manifest(self._manifest_path) as manifest:
+            manifest.name = value
+        self._manifest = manifest
         self.name_changed.emit(value)
 
     @property
     def dependencies(self) -> list[str]:
-        return self._manifest.requires
+        return WorkspaceManifest.load_or_repair(self._manifest_path).requires
 
     def _uv_install(self, packages: list[str]) -> subprocess.CompletedProcess:
         from .live_install import guarded_install
@@ -56,8 +57,9 @@ class Workspace(QObject):
         rebuilds. Synchronous/blocking — call off the GUI thread.
 
         Returns {"ok", "installed", "already_present", "error"}."""
-        already_present = [s for s in specs if s in self._manifest.requires]
-        to_install = [s for s in specs if s not in self._manifest.requires]
+        recorded = WorkspaceManifest.load_or_repair(self._manifest_path).requires
+        already_present = [s for s in specs if s in recorded]
+        to_install = [s for s in specs if s not in recorded]
         if not to_install:
             return {"ok": True, "installed": [],
                     "already_present": already_present, "error": ""}
@@ -66,12 +68,12 @@ class Workspace(QObject):
             log.error("Failed to install %s: %s", to_install, result.stderr)
             return {"ok": False, "installed": [],
                     "already_present": already_present, "error": result.stderr}
-        self._manifest.requires.extend(to_install)
-        # Collapse any same-package duplicates (e.g. "scipy" + "scipy>=1.11"),
-        # last spec wins — same canonical-name rule the launcher applies when it
-        # regenerates pyproject.toml, so the manifest matches the resolved venv.
-        self._manifest.requires[:] = _deduplicate_requirements(self._manifest.requires)
-        self._manifest.save(self._manifest_path)
+        with edit_manifest(self._manifest_path) as manifest:
+            # Collapse any same-package duplicates (e.g. "scipy" + "scipy>=1.11"),
+            # last spec wins — same canonical-name rule the launcher applies when it
+            # regenerates pyproject.toml, so the manifest matches the resolved venv.
+            manifest.requires[:] = _deduplicate_requirements(manifest.requires + to_install)
+        self._manifest = manifest
         return {"ok": True, "installed": to_install,
                 "already_present": already_present, "error": ""}
 

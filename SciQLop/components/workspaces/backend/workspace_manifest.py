@@ -22,11 +22,14 @@ Manifest format::
 
 from __future__ import annotations
 
+import contextlib
 import logging
+import threading
 import tomllib
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import Iterator
 
 import tomli_w
 
@@ -179,3 +182,19 @@ class WorkspaceManifest:
             }
 
         write_text_atomic(path, tomli_w.dumps(data))
+
+
+# Serializes every read-modify-write of a manifest in this process (the app
+# store, %install, the welcome page and notebook installs run on different
+# threads). Re-entrant so a nested edit on the same thread can't deadlock.
+_EDIT_LOCK = threading.RLock()
+
+
+@contextlib.contextmanager
+def edit_manifest(path: Path | str) -> Iterator[WorkspaceManifest]:
+    """Change a manifest without losing what others saved: re-read it from disk,
+    let the caller change it, then save. Never write back a copy loaded earlier."""
+    with _EDIT_LOCK:
+        manifest = WorkspaceManifest.load_or_repair(path)
+        yield manifest
+        manifest.save(path)

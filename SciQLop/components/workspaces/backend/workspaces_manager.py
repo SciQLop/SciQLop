@@ -8,7 +8,7 @@ from PySide6.QtGui import QIcon
 
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
 from SciQLop.components.workspaces.backend.workspace_archive import is_excluded
-from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest, edit_manifest
 from SciQLop.components.workspaces.backend.workspace import Workspace
 from SciQLop.components.theming.icons import register_icon
 from SciQLop.components.workspaces.backend.example import Example
@@ -169,21 +169,17 @@ class WorkspaceManager(QObject):
         slug = re_sub(r'[^\w\-]', '_', example.name).strip('_')
         dest = os.path.join(workspace_dir, slug)
         manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
-        manifest = WorkspaceManifest.load_or_repair(manifest_path)
-
-        existing = next((e for e in manifest.examples if e.name == example.name), None)
-        is_update = existing is not None
-
         _copy_example_tree(example_path, dest)
 
-        if existing:
-            existing.version = example.version
-            existing.source = example_path
-        else:
-            manifest.examples.append(InstalledExample(
-                name=example.name, source=example_path, version=example.version))
-
-        manifest.save(manifest_path)
+        with edit_manifest(manifest_path) as manifest:
+            existing = next((e for e in manifest.examples if e.name == example.name), None)
+            is_update = existing is not None
+            if existing:
+                existing.version = example.version
+                existing.source = example_path
+            else:
+                manifest.examples.append(InstalledExample(
+                    name=example.name, source=example_path, version=example.version))
         missing_deps = [d for d in example.dependencies if d not in manifest.requires]
         return {
             "name": example.name,

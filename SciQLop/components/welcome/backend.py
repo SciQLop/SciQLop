@@ -12,7 +12,7 @@ from PySide6.QtCore import QBuffer, QFileSystemWatcher, QIODevice, QObject, Sign
 
 from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
-from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest, edit_manifest
 from SciQLop.components.workspaces.backend.workspace_project import (
     core_version_badge, installed_sciqlop_version, running_sciqlop_version,
 )
@@ -422,8 +422,8 @@ class WelcomeBackend(QObject):
                 self.dependency_install_finished.emit(
                     json.dumps({"ok": False, "deps": new_deps, "dir": workspace_dir, "error": str(e)}))
                 return
-            manifest.requires.extend(new_deps)
-            manifest.save(manifest_path)
+            with edit_manifest(manifest_path) as current:
+                current.requires.extend(d for d in new_deps if d not in current.requires)
             self.dependency_install_finished.emit(
                 json.dumps({"ok": True, "deps": new_deps, "dir": workspace_dir}))
 
@@ -444,9 +444,8 @@ class WelcomeBackend(QObject):
     def remove_dependency_from_workspace(self, workspace_dir: str, dependency: str) -> None:
         manifest_path = os.path.join(workspace_dir, "workspace.sciqlop")
         try:
-            manifest = WorkspaceManifest.load_or_repair(manifest_path)
-            manifest.requires = [d for d in manifest.requires if d != dependency]
-            manifest.save(manifest_path)
+            with edit_manifest(manifest_path) as manifest:
+                manifest.requires = [d for d in manifest.requires if d != dependency]
         except Exception as e:
             log.error(f"Failed to remove dependency: {e}")
 
@@ -540,10 +539,9 @@ class WelcomeBackend(QObject):
         update = json.loads(field_json)
         manifest_path = os.path.join(directory, "workspace.sciqlop")
         try:
-            manifest = WorkspaceManifest.load_or_repair(manifest_path)
             field, value = update["field"], update["value"]
-            if hasattr(manifest, field):
-                setattr(manifest, field, value)
-                manifest.save(manifest_path)
+            with edit_manifest(manifest_path) as manifest:
+                if hasattr(manifest, field):
+                    setattr(manifest, field, value)
         except Exception as e:
             log.error(f"Failed to update workspace field: {e}")

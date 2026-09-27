@@ -18,7 +18,7 @@ from SciQLop.components.plugins.plugin_deps import collect_plugin_dependencies
 from SciQLop.components.plugins.plugin_registry import resolve_plugin_updates
 from SciQLop.components.workspaces.backend.workspace_archive import IMPORT_MARKER_NAME
 from SciQLop.components.workspaces.backend.workspace_lock import workspace_lock
-from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest, edit_manifest
 from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
 from SciQLop.components.workspaces.backend.lab_assets import repair_lab_assets
 from SciQLop.components.workspaces.backend.workspace_project import (
@@ -601,7 +601,9 @@ def apply_core_version(workspace_dir: Path | str, version: str) -> Path:
             workspace_dir, manifest=manifest, strict=True, on_output=output_lines.append,
         )
         try:
-            manifest.save(manifest_path)
+            # Re-read: anything else saved during the (long) sync must survive.
+            with edit_manifest(manifest_path) as current:
+                current.sciqlop_version = version
         except Exception as exc:
             raise RuntimeError(
                 f"SciQLop {version or 'the launcher version'} was installed, but recording it "
@@ -629,7 +631,5 @@ def pin_core_version(workspace_dir: Path | str, version: str) -> None:
     if not manifest_path.exists():
         raise FileNotFoundError(f"No workspace manifest at {manifest_path}")
 
-    with workspace_lock(workspace_dir):
-        manifest = WorkspaceManifest.load_or_repair(manifest_path)
+    with workspace_lock(workspace_dir), edit_manifest(manifest_path) as manifest:
         manifest.sciqlop_version = version
-        manifest.save(manifest_path)

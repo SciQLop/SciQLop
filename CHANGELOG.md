@@ -25,6 +25,7 @@
 
 ### Workspaces
 
+- Changes to the running workspace's settings made from the welcome page (a pinned SciQLop version, an example's dependencies, an installed example) are no longer undone by the next `%install` or rename in the same session: those wrote back the copy loaded at startup. Every change now re-reads the workspace file first, and changes made at the same time no longer overwrite each other.
 - `%install` and app-store installs and uninstalls go into the running SciQLop's environment even after a notebook calls `os.chdir()`; they used to fail with "No virtual environment found".
 - Adding an example's dependencies to the running workspace keeps the running stack pinned, like `%install` and the app store.
 - Duplicating or exporting a workspace keeps a `pyproject.toml` inside a sub-folder (your own package); only the generated one at the workspace root is left out.
