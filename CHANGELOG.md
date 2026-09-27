@@ -23,6 +23,13 @@
 
 - Settings that hold a size in bytes, such as the Speasy cache limit, are shown and edited as `20 GB` instead of `20000000000`. Input like `500MB`, `1.5 GB`, `2 TiB` or a plain number of bytes is accepted, and the value is saved when you press Enter or leave the field, not while you type.
 
+### Performance
+
+- Plot panels stay more responsive while data loads. The panel used to watch every event of every plot from Python just to catch right-clicks, so each repaint and mouse move waited for the data-loading threads. It now only runs Python on an actual right-click.
+- The highlight that blinks the start-time field on a new panel, and the zoom-limit field when you zoom past the limit, is now animated by Qt itself instead of restyling the field from Python on every frame.
+- Dragging a plot updates the time-range bar at most ten times a second instead of on every frame; the bar still shows the final range as soon as you stop.
+- Opening a template no longer fetches a wrong time window first. Raising the template's zoom limit made every new graph fetch the panel's previous range before the template's own range was set.
+
 ### Workspaces
 
 - Changes to the running workspace's settings made from the welcome page (a pinned SciQLop version, an example's dependencies, an installed example) are no longer undone by the next `%install` or rename in the same session: those wrote back the copy loaded at startup. Every change now re-reads the workspace file first, and changes made at the same time no longer overwrite each other.

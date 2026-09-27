@@ -64,7 +64,36 @@ def _restore_axis(axis, model: AxisModel) -> None:
         axis.set_range(*model.range)
 
 
+def _plot_model(panel, plot_model: PlotModel) -> None:
+    from SciQLop.components.plotting.ui.time_sync_panel import plot_product
+    from SciQLopPlots import PlotType as _PlotType
+    subplot = None
+    for product in plot_model.products:
+        if not product.path:
+            log.warning(f"Not reproducible from a product, skipping: {product.label}")
+            continue
+        resolved = resolve_product_path(product.path)
+        inputs = {"product_inputs": product.knobs} if product.knobs else {}
+        if subplot is None:
+            r = plot_product(panel, resolved, plot_type=_PlotType.TimeSeries, **inputs)
+            if r is not None:
+                subplot = r[0] if hasattr(r, '__iter__') else panel.plots()[-1]
+            else:
+                log.warning(f"Product not found, skipping: {product.path}")
+        else:
+            r = plot_product(subplot, resolved, **inputs)
+            if r is None:
+                log.warning(f"Product not found, skipping: {product.path}")
+    if subplot is not None:
+        _restore_axis(subplot.y_axis(), plot_model.y_axis)
+        _restore_axis(subplot.z_axis(), plot_model.z_axis)
+
+
 def _read_max_zoom(panel) -> float | None:
+    # A cleared panel has no plots left to ask; its bar still holds the limit.
+    bar = getattr(panel, '_time_range_bar', None)
+    if bar is not None:
+        return bar.max_range_seconds or None
     for plot in panel.plots():
         limit = plot.time_axis().max_range_size()
         if limit != float('inf'):
@@ -138,33 +167,15 @@ class PanelTemplate(BaseModel):
         return panel
 
     def apply(self, panel) -> None:
-        from SciQLop.components.plotting.ui.time_sync_panel import plot_product
-        from SciQLopPlots import PlotType as _PlotType
+        # Limit and range go first: a graph fetches on its first range change,
+        # so plotting at the panel's previous range fetched a wrong window (GH #143).
         panel.clear()
-        for plot_model in self.plots:
-            subplot = None
-            for product in plot_model.products:
-                if not product.path:
-                    log.warning(f"Not reproducible from a product, skipping: {product.label}")
-                    continue
-                resolved = resolve_product_path(product.path)
-                inputs = {"product_inputs": product.knobs} if product.knobs else {}
-                if subplot is None:
-                    r = plot_product(panel, resolved, plot_type=_PlotType.TimeSeries, **inputs)
-                    if r is not None:
-                        subplot = r[0] if hasattr(r, '__iter__') else panel.plots()[-1]
-                    else:
-                        log.warning(f"Product not found, skipping: {product.path}")
-                else:
-                    r = plot_product(subplot, resolved, **inputs)
-                    if r is None:
-                        log.warning(f"Product not found, skipping: {product.path}")
-            if subplot is not None:
-                _restore_axis(subplot.y_axis(), plot_model.y_axis)
-                _restore_axis(subplot.z_axis(), plot_model.z_axis)
         self._apply_zoom_limit(panel)
         if self.time_range is not None:
             panel.set_time_axis_range(self._time_range())
+        for plot_model in self.plots:
+            _plot_model(panel, plot_model)
+        self._apply_zoom_limit(panel)
 
     def _time_range(self):
         from SciQLop.core import TimeRange as TR

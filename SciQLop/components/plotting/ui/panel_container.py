@@ -26,6 +26,8 @@ class PanelContainer(QWidget):
 
         self.chrome_row = self._build_chrome_row()
         self._current_limit = self.time_range_bar.max_range_seconds
+        self._bar_sync_timer = self._make_bar_sync_timer()
+        self._pending_bar_range = None
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -107,8 +109,26 @@ class PanelContainer(QWidget):
         self.time_range_bar.set_range(tr)
         self.panel.set_time_axis_range(tr)
 
+    def _make_bar_sync_timer(self) -> QTimer:
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+        timer.setInterval(100)
+        timer.timeout.connect(self._sync_bar_to_pending_range)
+        return timer
+
     def _on_panel_range_changed(self, tr: TimeRange):
-        self.time_range_bar.set_range(tr)
+        # Leading-edge throttle: a drag emits at 60 Hz and every bar repaint
+        # uploads the whole window backing store (GH #143).
+        self._pending_bar_range = tr
+        if not self._bar_sync_timer.isActive():
+            self._sync_bar_to_pending_range()
+
+    def _sync_bar_to_pending_range(self):
+        if self._pending_bar_range is None:
+            return
+        self.time_range_bar.set_range(self._pending_bar_range)
+        self._pending_bar_range = None
+        self._bar_sync_timer.start()
 
     def _on_bar_range_changed(self, tr: TimeRange):
         self.panel.set_time_axis_range(tr)

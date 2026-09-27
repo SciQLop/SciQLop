@@ -1,5 +1,8 @@
-from PySide6.QtCore import Qt, Signal, QDateTime, QTimeZone, Property, QPropertyAnimation
-from PySide6.QtWidgets import QWidget, QHBoxLayout, QDateTimeEdit, QComboBox, QPushButton, QLabel
+from PySide6.QtCore import Qt, Signal, QDateTime, QTimeZone, QPropertyAnimation
+from PySide6.QtWidgets import (
+    QWidget, QHBoxLayout, QDateTimeEdit, QComboBox, QPushButton, QLabel, QFrame,
+    QGraphicsOpacityEffect,
+)
 
 from SciQLop.core import TimeRange
 from SciQLop.core.ui import Metrics, fit_combo_to_content
@@ -50,6 +53,35 @@ def _make_nav_button(text, parent, tooltip=""):
     if tooltip:
         b.setToolTip(tooltip)
     return b
+
+
+class _PulseOverlay(QFrame):
+    """A border over `target` that Qt fades natively.
+
+    Animating a Python Property instead re-entered Python and restyled the
+    target on every frame, taking the GIL 60 times a second (GH #143)."""
+
+    def __init__(self, target, color, keyframes, duration_ms):
+        super().__init__(target)
+        self.setObjectName("pulse_overlay")
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.setStyleSheet(
+            f"#pulse_overlay {{ border: 0.4ex solid {color}; border-radius: 0.5ex; }}")
+        effect = QGraphicsOpacityEffect(self)
+        self.setGraphicsEffect(effect)
+        self._anim = QPropertyAnimation(effect, b"opacity", self)
+        self._anim.setDuration(duration_ms)
+        for step, value in keyframes:
+            self._anim.setKeyValueAt(step, value)
+        self._anim.finished.connect(self.hide)
+        self.hide()
+
+    def pulse(self):
+        self._anim.stop()
+        self.setGeometry(self.parentWidget().rect())
+        self.raise_()
+        self.show()
+        self._anim.start()
 
 
 def _closest_duration_index(seconds):
@@ -113,6 +145,13 @@ class TimeRangeBar(QWidget):
         self._fast_forward_btn.clicked.connect(lambda: self.step(5))
         self._zoom_limit_combo.currentTextChanged.connect(self._on_zoom_limit_changed)
 
+        self._start_pulse = _PulseOverlay(
+            self._start_picker, "rgb(230, 50, 50)",
+            [(0.0, 1.0), (0.25, 0.2), (0.5, 1.0), (0.75, 0.2), (1.0, 0.0)], 2000)
+        self._limit_pulse = _PulseOverlay(
+            self._zoom_limit_combo, "rgb(230, 160, 50)",
+            [(0.0, 1.0), (0.3, 0.2), (0.6, 1.0), (1.0, 0.0)], 1500)
+
     @property
     def _duration_seconds(self):
         return dict(DURATION_PRESETS).get(self._duration_combo.currentText(), 86400)
@@ -174,49 +213,8 @@ class TimeRangeBar(QWidget):
     def _on_zoom_limit_changed(self, _text: str):
         self.limit_changed.emit(self.max_range_seconds)
 
-    def _get_highlight(self):
-        return getattr(self, '_highlight_value', 0.0)
-
-    def _set_highlight(self, v):
-        self._highlight_value = v
-        width = max(1, int(v * 4))
-        alpha = int(v * 255)
-        self._start_picker.setStyleSheet(
-            f"QDateTimeEdit {{ border: {width}px solid rgba(230, 50, 50, {alpha}); border-radius: 4px; }}"
-        )
-
-    highlight = Property(float, _get_highlight, _set_highlight)
-
     def pulse(self):
-        anim = QPropertyAnimation(self, b"highlight", self)
-        anim.setDuration(2000)
-        anim.setKeyValueAt(0.0, 1.0)
-        anim.setKeyValueAt(0.25, 0.2)
-        anim.setKeyValueAt(0.5, 1.0)
-        anim.setKeyValueAt(0.75, 0.2)
-        anim.setKeyValueAt(1.0, 0.0)
-        anim.finished.connect(lambda: self._start_picker.setStyleSheet(""))
-        anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
-
-    def _get_limit_highlight(self):
-        return getattr(self, '_limit_highlight_value', 0.0)
-
-    def _set_limit_highlight(self, v):
-        self._limit_highlight_value = v
-        width = max(1, int(v * 4))
-        alpha = int(v * 255)
-        self._zoom_limit_combo.setStyleSheet(
-            f"QComboBox {{ border: {width}px solid rgba(230, 160, 50, {alpha}); border-radius: 4px; }}"
-        )
-
-    limit_highlight = Property(float, _get_limit_highlight, _set_limit_highlight)
+        self._start_pulse.pulse()
 
     def pulse_limit(self):
-        anim = QPropertyAnimation(self, b"limit_highlight", self)
-        anim.setDuration(1500)
-        anim.setKeyValueAt(0.0, 1.0)
-        anim.setKeyValueAt(0.3, 0.2)
-        anim.setKeyValueAt(0.6, 1.0)
-        anim.setKeyValueAt(1.0, 0.0)
-        anim.finished.connect(lambda: self._zoom_limit_combo.setStyleSheet(""))
-        anim.start(QPropertyAnimation.DeletionPolicy.DeleteWhenStopped)
+        self._limit_pulse.pulse()

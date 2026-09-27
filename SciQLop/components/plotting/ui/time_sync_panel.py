@@ -6,7 +6,7 @@ import traceback
 import numpy as np
 from PySide6.QtCore import QMimeData, QObject, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QColor
 from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
     ParameterType, GraphType, SciQLopNDProjectionPlot, OverlayLevel, OverlaySizeMode, OverlayPosition
@@ -1153,8 +1153,6 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
         from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager
         self._catalog_manager = PanelCatalogManager(self)
-        self.installEventFilter(self)
-        self.plot_added.connect(self._install_filter_on_plot)
         self.plot_added.connect(self._apply_theme_to_plot)
         from SciQLop.components.plotting.backend.autoscale_percentile import (
             apply_defaults_to_plot,
@@ -1216,17 +1214,11 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
     def catalog_manager(self):
         return self._catalog_manager
 
-    def _install_filter_on_plot(self, plot):
-        plot.installEventFilter(self)
-        for child in plot.findChildren(QWidget):
-            child.installEventFilter(self)
-
-    def eventFilter(self, obj, event):
-        from PySide6.QtCore import QEvent
-        if event.type() == QEvent.Type.ContextMenu:
-            self._show_context_menu(event.globalPos(), obj)
-            return True
-        return super().eventFilter(obj, event)
+    def contextMenuEvent(self, event):
+        # Unhandled right-clicks bubble up here from any plot child. A Python
+        # eventFilter on every child instead took the GIL on each event (GH #143).
+        source = QApplication.widgetAt(event.globalPos())
+        self._show_context_menu(event.globalPos(), source)
 
     def _show_context_menu(self, global_pos, source=None):
         self._build_context_menu(source).exec(global_pos)

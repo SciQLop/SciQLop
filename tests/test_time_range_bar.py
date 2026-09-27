@@ -133,3 +133,14 @@ def test_set_max_range_seconds_zero_selects_unlimited(bar):
 
 def test_pulse_limit_runs_without_error(bar):
     bar.pulse_limit()
+
+
+@pytest.mark.parametrize("pulse, target", [
+    ("pulse", "_start_picker"), ("pulse_limit", "_zoom_limit_combo")])
+def test_pulse_does_not_restyle_target_per_frame(bar, qtbot, pulse, target):
+    """Restyling on every frame re-entered Python and re-polished the widget
+    60 times per second (GH #143)."""
+    bar.show()
+    getattr(bar, pulse)()
+    qtbot.wait(100)
+    assert getattr(bar, target).styleSheet() == ""

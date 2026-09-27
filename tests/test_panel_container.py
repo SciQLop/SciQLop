@@ -46,6 +46,21 @@ def test_panel_change_updates_bar(container):
     assert abs(bar_tr.start() - start) < 1
 
 
+def test_drag_burst_updates_bar_once_then_settles_on_last_range(container, qtbot, monkeypatch):
+    """A 60 Hz drag repainted the bar's editors every frame, and each repaint
+    uploaded the whole window backing store (GH #143)."""
+    calls = []
+    real_set_range = container.time_range_bar.set_range
+    monkeypatch.setattr(container.time_range_bar, "set_range",
+                        lambda tr: (calls.append(tr), real_set_range(tr)))
+    starts = [4_000_000.0 + 60 * i for i in range(20)]
+    for start in starts:
+        container.panel.time_range = TimeRange(start, start + 86400)
+    assert len(calls) == 1
+    qtbot.waitUntil(lambda: abs(container.time_range_bar.time_range.start() - starts[-1]) < 1)
+    assert len(calls) == 2
+
+
 def test_crosshair_toggle_propagates_to_existing_plots(container):
     """Toggling the crosshair button should disable/enable crosshair on all plots."""
     from SciQLopPlots import PlotType
