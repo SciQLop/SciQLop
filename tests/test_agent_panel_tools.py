@@ -193,8 +193,9 @@ def test_describe_panel_reports_last_error_for_a_failing_vp(main_window, qtbot):
     panel = create_plot_panel()
     try:
         panel.plot_product(vp)
-        # Not "until not busy": a panel can report idle before its first fetch
-        # has even started, which left last_error still None (order-dependent).
+        # Waits for what it asserts. (This test once failed depending on test
+        # order: an earlier graph with the same legend name evicted this one's
+        # rich refs on destruction -- fixed in graph_context._rich_key.)
         qtbot.waitUntil(
             lambda: _layout(main_window, panel.name)["plots"][0]["graphs"][0]["last_error"] is not None,
             timeout=5000)

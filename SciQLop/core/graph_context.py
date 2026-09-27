@@ -5,6 +5,7 @@ import importlib
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Literal, Optional
 
+import shiboken6
 from pydantic import BaseModel, Field
 
 from SciQLop.components import sciqlop_logging
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 
 log = sciqlop_logging.getLogger(__name__)
 
-_RICH: dict[str, GraphRichRefs] = {}
+_RICH: dict[int, GraphRichRefs] = {}  # keyed by _rich_key(graph)
 
 GraphKind = Literal["speasy", "vp", "static", "function"]
 
@@ -91,11 +92,10 @@ def attach_context(graph, ctx: GraphContext,
     except Exception:
         log.debug("set_meta_data failed for %s", ctx.graph_id, exc_info=True)
     if rich is not None:
-        _RICH[ctx.graph_id] = rich
+        key = _rich_key(graph)
+        _RICH[key] = rich
         try:
-            graph.destroyed.connect(
-                lambda _=None, gid=ctx.graph_id: _RICH.pop(gid, None)
-            )
+            graph.destroyed.connect(lambda _=None, k=key: _RICH.pop(k, None))
         except (AttributeError, RuntimeError):
             log.debug("attach_context: no destroyed signal for %s; "
                       "rich ref will leak", ctx.graph_id)
@@ -119,18 +119,26 @@ def context_of(graph) -> Optional[GraphContext]:
         return None
 
 
-def rich_of(graph_id: str) -> Optional[GraphRichRefs]:
-    return _RICH.get(graph_id)
+def _rich_key(graph) -> int:
+    """The graph's C++ object address. Not graph_id, the legend name: two graphs
+    can share it (one product plotted twice, mms1/B and mms2/B), and one's
+    destruction would evict the other's refs. `destroyed` fires during the
+    destruction, so the entry is gone before the address can be reused."""
+    try:
+        return shiboken6.getCppPointer(graph)[0]
+    except Exception:
+        return id(graph)
+
+
+def rich_of(graph) -> Optional[GraphRichRefs]:
+    return _RICH.get(_rich_key(graph))
 
 
 def last_error_of(graph) -> Optional[str]:
     """The most recent fetch-error message for *graph*, or None if its last
     fetch succeeded, is still pending, or it has no attached fetch callback
     (static/function graphs)."""
-    ctx = context_of(graph)
-    if ctx is None:
-        return None
-    rich = rich_of(ctx.graph_id)
+    rich = rich_of(graph)
     if rich is None:
         return None
     return getattr(rich.fetch_callback, "last_error", None)

@@ -1,3 +1,4 @@
+import shiboken6
 import pytest
 from pydantic import ValidationError
 from PySide6.QtCore import QObject
@@ -194,21 +195,23 @@ def test_rich_of_returns_refs(qtbot):
     cb = lambda s, e: None
     refs = GraphRichRefs(callback=cb)
     attach_context(g, ctx, refs)
-    out = rich_of("g6")
+    out = rich_of(g)
     assert out is refs
 
 
 def test_destroy_evicts_rich_refs(qtbot):
-    from SciQLop.core.graph_context import attach_context, rich_of
+    from SciQLop.core import graph_context as gc
+    from SciQLop.core.graph_context import attach_context
     g = _FakeGraph("g7")
     ctx = GraphContext(
         kind="vp", graph_id="g7", panel_name="P", plot_index=0,
         graph_type="Line", vp_path="x", provider_name="vp-1",
     )
     attach_context(g, ctx, GraphRichRefs(callback=lambda s, e: None))
-    assert rich_of("g7") is not None
+    key = gc._rich_key(g)
+    assert gc._RICH.get(key) is not None
     g.deleteLater()
-    qtbot.waitUntil(lambda: rich_of("g7") is None, timeout=1000)
+    qtbot.waitUntil(lambda: key not in gc._RICH, timeout=1000)
 
 
 def test_is_importable_module_level_true():
@@ -347,3 +350,24 @@ def test_graph_time_range_walks_past_qrhi_to_plot(qtbot):
     assert abs(rng[1] - 2000.0) < 1.0
 
 
+
+
+def test_graphs_with_the_same_name_keep_their_own_refs(qtbot):
+    """Rich refs were keyed by the legend name: the same product plotted twice
+    (or mms1/B and mms2/B) shared one entry, the second overwrote the first,
+    and destroying the older graph evicted the newer one's refs, so
+    last_error_of() went None for good (seen as an order-dependent test)."""
+    from SciQLop.core.graph_context import attach_context, rich_of
+    older, newer = _FakeGraph("B"), _FakeGraph("B")
+    ctx = GraphContext(kind="vp", graph_id="B", panel_name="P", plot_index=0,
+                       graph_type="Line", vp_path="x", provider_name="vp-1")
+    older_refs, newer_refs = GraphRichRefs(), GraphRichRefs()
+    attach_context(older, ctx, older_refs)
+    attach_context(newer, ctx, newer_refs)
+    assert rich_of(older) is older_refs
+    assert rich_of(newer) is newer_refs
+
+    older.deleteLater()
+    qtbot.waitUntil(lambda: not shiboken6.isValid(older), timeout=1000)
+
+    assert rich_of(newer) is newer_refs
