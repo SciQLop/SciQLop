@@ -1,5 +1,6 @@
 import os
 import platform
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -34,8 +35,16 @@ def _symlink_if_exists(real_dir: Path, target_parent: Path, name: str):
             target.symlink_to(real_dir)
 
 
+def _copy_if_exists(real_dir: Path, target: Path):
+    """A copy, not a symlink: speasy saves its resolved settings (such as the
+    session's temp cache path) back to config.ini, which must not reach the
+    user's real file."""
+    if real_dir.exists() and not target.exists():
+        shutil.copytree(real_dir, target, symlinks=True)
+
+
 def _preserve_speasy_dirs():
-    """Symlink speasy's config/cache/data dirs, and the smart-search caches,
+    """Symlink speasy's cache/data dirs (config is copied), and the smart-search caches,
     from the real home into temp dirs.
 
     Without this, redirecting XDG vars empties speasy's cache, causing
@@ -54,7 +63,7 @@ def _preserve_speasy_dirs():
     real_config = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config")))
 
     _symlink_if_exists(real_data / "speasy", _data_dir, "speasy")
-    _symlink_if_exists(real_config / "speasy", _config_dir, "speasy")
+    _copy_if_exists(real_config / "speasy", _config_dir / "speasy")
 
     cache_dir = _test_tmp / "cache"
     cache_dir.mkdir(exist_ok=True)
