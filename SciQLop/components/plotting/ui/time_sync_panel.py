@@ -676,7 +676,19 @@ def _post_plot(r, provider, node, callback, target, product_path_str, existing_p
     if graph is not None:
         graph._product_node_keepalive = node
         graph._product_callback_keepalive = callback
+        _apply_prefetch_margin(graph, provider)
     return r
+
+
+# Each fetch covers 2x the view, so a pan or zoom inside it fetches nothing (GH #143).
+PREFETCH_MARGIN = 0.5
+
+
+def _apply_prefetch_margin(graph, provider) -> None:
+    # Only cacheable providers: a plain VP may return a fixed number of points
+    # for any range, and a widened fetch would keep coarse data after a zoom-in.
+    if getattr(provider, "cacheable", False):
+        graph.set_prefetch_margin(PREFETCH_MARGIN)
 
 
 def _install_graph_context_ui(plot, graph) -> None:

@@ -28,6 +28,7 @@
 - Plot panels stay more responsive while data loads. The panel used to watch every event of every plot from Python just to catch right-clicks, so each repaint and mouse move waited for the data-loading threads. It now only runs Python on an actual right-click.
 - The highlight that blinks the start-time field on a new panel, and the zoom-limit field when you zoom past the limit, is now animated by Qt itself instead of restyling the field from Python on every frame.
 - Dragging a plot updates the time-range bar at most ten times a second instead of on every frame; the bar still shows the final range as soon as you stop.
+- Speasy products, and virtual products declared `cachable=True`, now fetch half a view extra on each side. Panning or zooming within that range no longer fetches or re-bins anything. Other virtual products keep exact fetches, since they may return a fixed number of points for any range.
 - Opening a template no longer fetches a wrong time window first. Raising the template's zoom limit made every new graph fetch the panel's previous range before the template's own range was set.
 
 ### Workspaces
@@ -47,6 +48,7 @@
 - jupyqt is now `>=0.6.5`, for the notebook save and open hooks behind the notebook stamp.
 - speasy is now `speasy[blosc]>=1.8.4`: data from the Speasy proxy can arrive Blosc-compressed (byte-shuffle + zstd per array), decoded with `numcodecs`. This also moves the cache backend to pysciqlop-cache 0.2.2.
 
+- Bumped SciQLopPlots 0.39.1 → 0.40.0. Graphs can fetch a margin around the view (`set_prefetch_margin`), row-major and float32 data (what Speasy returns) take the fast resampling path, and axis and tick labels are cached instead of laid out on every replot.
 - Bumped SciQLopPlots 0.39.0 → 0.39.1: zoomed-out spectrograms on a log colour scale no longer look a decade too bright.
 - Bumped SciQLopPlots 0.37.0 → 0.39.0. It brings seven new colour gradients (Viridis, Cividis, Magma, Inferno, Plasma, Turbo, Coolwarm; Jet stays the default), colour-by-scalar for line graphs and curves, and a remote graph that no longer stays greyed out after an error or an empty answer. Its enums are now plain `IntEnum`s, so `list(ColorGradient)` shows every gradient; a coloured graph no longer resets the plot's gradient to Jet.
 - Bumped SciQLopPlots 0.36.1 → 0.37.0. Curves and projection graphs can be coloured by a scalar with a real colour scale (`z_axis()`: pinned or automatic range, log scale, gradient, NaN gaps); a coloured curve now draws a colour bar, and `plot.set_curve_color_scale_enabled(False)` restores the old look. Projection plots emit `time_marker_changed`, projection graphs expose their components and visibility and can share one legend, and `set_plot_stretch` sets the relative height of the plots in a panel. `ProductsModel.remove_node` removes a product or folder from the tree.
