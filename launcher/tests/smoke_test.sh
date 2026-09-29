@@ -184,6 +184,8 @@ expect "SCIQLOP_SESSION_LOG names that log, so Python does not write a second on
     test -f "$(cat "$ROOT/case1-session-log" 2>/dev/null)"
 expect "the log starts with the launcher header" \
     log_contains "SciQLop launcher"
+expect "each tee'd line starts with its local time, to the millisecond" \
+    log_contains "^[0-9]\{4\}-[0-9][0-9]-[0-9][0-9] [0-9:]\{8\}\.[0-9]\{3\} \[out\] Starting SciQLop \.\.\.$"
 
 # --- case 1b: rotation keeps the ten newest logs, this launch's included ----
 start_case "case 1b: log rotation"
@@ -389,7 +391,13 @@ if command -v xdotool >/dev/null 2>&1; then
     window_id="$(find_error_window)"
     if [ -n "$window_id" ]; then
         # Centre of the Restart button: x = WIDTH - PAD - 75, y = 406 + 16.
-        xdotool mousemove --window "$window_id" 625 422 click 1
+        # The window can reach its final size a moment before the button
+        # takes clicks, so retry until the second round has started.
+        for _ in $(seq 1 20); do
+            xdotool mousemove --window "$window_id" 625 422 click 1 2>/dev/null
+            sleep 0.5
+            [ "$(cat "$ROOT/case7-count" 2>/dev/null)" = 2 ] && break
+        done
         wait_bounded "$LAUNCHER_PID" 20
         case7_exit=$?
         LAUNCHER_PID=""

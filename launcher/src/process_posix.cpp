@@ -170,7 +170,8 @@ int run_supervised(const Command& command,
     log << '\n' << std::flush;
 
     auto tee = [&log](const char* label, const std::string& line) {
-        log << '[' << label << "] " << line << '\n' << std::flush;
+        log << log_timestamp(std::chrono::system_clock::now()) << " [" << label << "] " << line
+            << '\n' << std::flush;
     };
 
     return pump(

@@ -311,6 +311,21 @@ void test_prune_logs_keeps_the_newest() {
     check(std::filesystem::exists(dir / "notes.txt"), "unrelated files are left alone");
 }
 
+void test_log_timestamp_has_millisecond_local_time() {
+    std::tm local{};
+    local.tm_year = 2026 - 1900;
+    local.tm_mon = 8;
+    local.tm_mday = 29;
+    local.tm_hour = 7;
+    local.tm_min = 5;
+    local.tm_sec = 3;
+    local.tm_isdst = -1;
+    const auto when = std::chrono::system_clock::from_time_t(std::mktime(&local)) +
+                      std::chrono::milliseconds(42);
+    check(sciqlop::log_timestamp(when) == "2026-09-29 07:05:03.042",
+          "log lines are prefixed with local date, time and milliseconds");
+}
+
 void test_prune_logs_on_missing_directory_is_harmless() {
     sciqlop::prune_logs(make_tmp_dir() / "missing", 10);
     check(true, "prune_logs on a missing directory does not throw");
@@ -322,6 +337,7 @@ int main() {
     test_session_log_name_is_dated_and_carries_the_pid();
     test_prune_logs_keeps_the_newest();
     test_prune_logs_on_missing_directory_is_harmless();
+    test_log_timestamp_has_millisecond_local_time();
     test_parse_args_splits_workspace_file_and_passthrough();
     test_parse_args_short_workspace_flag();
     test_parse_args_on_empty_argv();

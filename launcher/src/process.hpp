@@ -6,6 +6,9 @@
 #pragma once
 
 #include <cctype>
+#include <chrono>
+#include <cstdio>
+#include <ctime>
 #include <filesystem>
 #include <functional>
 #include <map>
@@ -38,6 +41,25 @@ inline std::string env_key_upper(const std::string& key) {
     std::string upper = key;
     for (char& c : upper) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
     return upper;
+}
+
+/// "YYYY-MM-DD HH:MM:SS.mmm" in local time: the prefix of every line tee'd to
+/// the session log, so a crash can be placed relative to the last lines
+/// before it. sciqlop_launcher.py writes the same format.
+inline std::string log_timestamp(std::chrono::system_clock::time_point when) {
+    const std::time_t seconds = std::chrono::system_clock::to_time_t(when);
+    const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            when.time_since_epoch()).count() % 1000;
+    std::tm local{};
+#ifdef _WIN32
+    localtime_s(&local, &seconds);
+#else
+    localtime_r(&seconds, &local);
+#endif
+    char buffer[32];
+    const size_t length = std::strftime(buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", &local);
+    std::snprintf(buffer + length, sizeof buffer - length, ".%03d", static_cast<int>(millis));
+    return buffer;
 }
 
 /// Run to completion, tee-ing stdout and stderr to *log_file*. Both streams are
