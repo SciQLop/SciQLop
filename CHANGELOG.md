@@ -48,6 +48,7 @@
 - jupyqt is now `>=0.6.5`, for the notebook save and open hooks behind the notebook stamp.
 - speasy is now `speasy[blosc]>=1.8.4`: data from the Speasy proxy can arrive Blosc-compressed (byte-shuffle + zstd per array), decoded with `numcodecs`. This also moves the cache backend to pysciqlop-cache 0.2.2.
 
+- speasy is now `speasy[blosc]>=1.8.5`, which brings pysciqlop-cache 0.3 and pycdfpp 0.15. The cache now stores arrays out of band, so loading cached data no longer copies it while holding the GIL.
 - Bumped SciQLopPlots 0.39.1 → 0.40.0. Graphs can fetch a margin around the view (`set_prefetch_margin`), row-major and float32 data (what Speasy returns) take the fast resampling path, and axis and tick labels are cached instead of laid out on every replot.
 - Bumped SciQLopPlots 0.39.0 → 0.39.1: zoomed-out spectrograms on a log colour scale no longer look a decade too bright.
 - Bumped SciQLopPlots 0.37.0 → 0.39.0. It brings seven new colour gradients (Viridis, Cividis, Magma, Inferno, Plasma, Turbo, Coolwarm; Jet stays the default), colour-by-scalar for line graphs and curves, and a remote graph that no longer stays greyed out after an error or an empty answer. Its enums are now plain `IntEnum`s, so `list(ColorGradient)` shows every gradient; a coloured graph no longer resets the plot's gradient to Jet.
