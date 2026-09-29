@@ -144,6 +144,15 @@ def test_guidance_names_the_panel_layout_tools():
         assert tool in SCIQLOP_GUIDANCE, tool
 
 
+def test_guidance_forbids_calling_qt_object_methods_generically():
+    # GH #145: an agent looped over a graph component's zero-argument methods
+    # from the kernel thread, called deleteLater() and segfaulted SciQLop.
+    assert "kernel thread" in SCIQLOP_GUIDANCE
+    assert "_impl" in SCIQLOP_GUIDANCE
+    assert "deleteLater" in SCIQLOP_GUIDANCE
+    assert "sciqlop_describe_panel" in SCIQLOP_GUIDANCE
+
+
 def test_guidance_explains_speasy_numpy_layer():
     assert "NumPy-compatible" in SCIQLOP_GUIDANCE
     assert "v.values" in SCIQLOP_GUIDANCE

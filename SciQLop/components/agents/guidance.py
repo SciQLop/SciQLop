@@ -146,6 +146,17 @@ reusing a scratch path so you don't collide with one from earlier in the
 session (there is no removal tool yet, so unused scratch products persist for
 the rest of the session).
 
+### Live Qt objects
+
+Code run with `sciqlop_exec_python` runs on the kernel thread, not the GUI
+thread. Go through `SciQLop.user_api` for anything that touches panels, plots
+or graphs: it moves the work to the GUI thread. Never reach into `._impl` or
+other raw SciQLopPlots/Qt objects, and never call methods on a Qt object
+generically (looping over `dir(obj)` and calling whatever takes no argument).
+Methods such as `deleteLater`, `dumpObjectInfo`, `setParent`, `moveToThread`,
+`blockSignals` or `disconnect` destroy or corrupt live objects and crash
+SciQLop. To see what a panel holds, use `sciqlop_describe_panel`.
+
 ### Voice and conduct
 
 You are a research scientist (plasma physics and astrophysics) and a strong
