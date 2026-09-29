@@ -61,8 +61,8 @@ def test_investigate_starts_an_agent_conversation(parent, crashed, monkeypatch):
 
     started = []
     monkeypatch.setattr(offer, "available_backends", lambda: ["FakeAgent"])
-    monkeypatch.setattr(offer, "start_agent_conversation",
-                        lambda window, prompt: started.append((window, prompt)) or True)
+    monkeypatch.setattr(offer, "draft_agent_conversation",
+                        lambda window, prompt, backend=None: started.append((window, prompt)) or True)
     box = offer.offer_crash_report(parent)
     investigate = next(b for b in box.buttons() if b.text() == "Investigate and report")
     investigate.click()
@@ -71,6 +71,34 @@ def test_investigate_starts_an_agent_conversation(parent, crashed, monkeypatch):
     assert window is parent
     assert "sciqlop_read_crash_report" in prompt
     assert "sciqlop_open_bug_report" in prompt
+
+
+def _investigate_button(box):
+    return next(b for b in box.buttons() if b.text() == "Investigate and report")
+
+
+def test_with_several_agents_the_user_picks_which_one_investigates(parent, crashed, monkeypatch):
+    from SciQLop.components.crash_report import offer
+
+    started = []
+    monkeypatch.setattr(offer, "available_backends", lambda: ["Claude", "OpenCode"])
+    monkeypatch.setattr(offer, "current_agent_backend", lambda window: "OpenCode")
+    monkeypatch.setattr(offer, "draft_agent_conversation",
+                        lambda window, prompt, backend=None: started.append(backend) or True)
+    box = offer.offer_crash_report(parent)
+    menu = _investigate_button(box).menu()
+    assert [a.text() for a in menu.actions()] == ["OpenCode", "Claude"]
+    next(a for a in menu.actions() if a.text() == "Claude").trigger()
+    assert started == ["Claude"]
+    assert not box.isVisible()
+
+
+def test_with_one_agent_there_is_nothing_to_pick(parent, crashed, monkeypatch):
+    from SciQLop.components.crash_report import offer
+
+    monkeypatch.setattr(offer, "available_backends", lambda: ["Claude"])
+    box = offer.offer_crash_report(parent)
+    assert _investigate_button(box).menu() is None
 
 
 def test_the_offer_says_the_log_goes_to_the_model_provider(parent, crashed, monkeypatch):

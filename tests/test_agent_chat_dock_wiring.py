@@ -847,9 +847,9 @@ def test_version_reminder_is_prefixed_on_next_turn_after_resume(dock, qtbot):
     assert AgentSessionMeta().get_sciqlop_version(_FAKE, "session-123") == SciQLop.__version__
 
 
-def test_start_conversation_resets_first_then_sends_the_prompt(dock, qtbot):
-    """A flow SciQLop starts for the user (the crash report) must not land in
-    the middle of whatever conversation was open, nor race the reset."""
+def test_draft_conversation_opens_a_fresh_session_with_the_prompt_unsent(dock, qtbot):
+    """A flow SciQLop starts for the user (the crash report) prepares the
+    prompt but lets the user pick the model, edit it and send it."""
     from SciQLop.components.agents.chat import ChatMessage, TextBlock
 
     session = dock._sessions[_FAKE]
@@ -857,19 +857,31 @@ def test_start_conversation_resets_first_then_sends_the_prompt(dock, qtbot):
     calls = []
 
     async def _reset():
-        await asyncio.sleep(0.05)
         calls.append("reset")
 
-    async def _answer(prompt):
-        calls.append(("ask", prompt))
-        yield TextBlock(text="on it", complete=True)
-
     session.backend.reset = _reset
-    session.backend.ask = lambda prompt, image_paths=None: _answer(prompt)
+    session.backend.ask = lambda prompt, image_paths=None: calls.append(("ask", prompt))
 
-    dock.start_conversation("investigate the crash")
+    dock.draft_conversation("investigate the crash")
 
-    qtbot.waitUntil(lambda: ("ask", "investigate the crash") in calls, timeout=3000)
-    assert calls[0] == "reset"
-    user_texts = [b.text for m in session.messages if m.role == "user" for b in m.blocks]
-    assert user_texts == ["investigate the crash"]
+    qtbot.waitUntil(lambda: "reset" in calls, timeout=3000)
+    _settle(qtbot)
+    assert session.messages == []
+    assert dock._input.toPlainText() == "investigate the crash"
+    assert not any(isinstance(c, tuple) for c in calls)
+
+
+def test_draft_conversation_on_a_chosen_backend_switches_to_it(dock, qtbot):
+    """With several agents installed, the user picks which one investigates;
+    the dock must not just use whichever it last had selected."""
+    from SciQLop.components.agents.registry import unregister_agent_backend
+
+    try:
+        _with_two_backends(dock)
+        assert dock._current == _FAKE
+        dock.draft_conversation("investigate", backend="AlphaAgent")
+        assert dock._current == "AlphaAgent"
+        assert dock._backend_combo.currentText() == "AlphaAgent"
+        assert dock._input.toPlainText() == "investigate"
+    finally:
+        unregister_agent_backend("AlphaAgent")

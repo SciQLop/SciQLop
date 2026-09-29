@@ -10,13 +10,14 @@
 - Resuming a session no longer shows SciQLop's old persona preamble as your first message, nor uses it as the session's label: the preamble was glued onto the first prompt of every session until now, and the workspace `AGENTS.md` has carried that guidance since 0.12. New sessions send your words verbatim; old transcripts have the preamble stripped on replay.
 - Agents can now inspect and rearrange a panel instead of guessing: `sciqlop_describe_panel` returns every subplot and graph with its index, and the gated `sciqlop_plot_product`, `sciqlop_remove_graph`, `sciqlop_remove_plot` and `sciqlop_move_plot` tools each return the resulting layout. The plotting workflow in the workspace `AGENTS.md` now goes through `sciqlop_plot_product` rather than hand-written `exec_python` code.
 - The workspace `AGENTS.md` guidance now teaches the Speasy NumPy layer (do the maths on the `SpeasyVariable`, never on `.values`) and pushes the declarative virtual-product form (`Depends(...)` inputs, `Scalar[...]`-style return annotations, `%%vp`) as the only form to write. The `virtual_products` API reference carries the same example.
-- After a crash, the next start offers to let the agent investigate it. The agent reads the session log (with the Python stack of every thread) and, on macOS, the system crash report, works out what crashed, looks for an existing issue, and drafts a bug report. Once you agree, it opens the prefilled GitHub issue in your browser for you to submit. The report carries a diagnosis, not raw stack dumps, and your home path and user name are replaced before anything leaves the machine. Without an agent, the offer opens the log.
+- After a crash, the next start offers to let an agent investigate it. You pick the agent (Claude, OpenCode, …); the request lands in the agent panel unsent, so you can choose the model or edit it before sending. The agent reads the session log (with the Python stack of every thread) and, on macOS, the system crash report, works out what crashed, looks for an existing issue, and drafts a bug report. Once you agree, it opens the prefilled GitHub issue in your browser for you to submit. The report carries a diagnosis, not raw stack dumps, and your home path and user name are replaced before anything leaves the machine. Without an agent, the offer opens the log.
 
 ### Diagnostics
 
 - Every launch now keeps its own log, `logs/sciqlop-<date>-<time>-<pid>.log` in SciQLop's data folder, and the 10 most recent are kept. `last-launch.log` was overwritten by the next launch, so the log of a crash was usually gone by the time anyone looked. Under the native launcher it was also garbled: two processes wrote it at once, and every line of SciQLop's output appeared twice.
 - A crash now writes the Python stack of every thread into that log, not only in debug mode.
 - Debug mode (`SCIQLOP_DEBUG`) no longer fails to start on Windows.
+- The launcher's error window has a **Restart SciQLop** button. After a crash it starts SciQLop again in the same workspace, where the crash-report offer is waiting.
 
 ### UI
 

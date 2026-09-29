@@ -138,9 +138,14 @@ silently. Otherwise show a non-blocking banner:
 
 ## 5. Agent session
 
-New API: `chat_dock.start_agent_conversation(main_window, prompt)` reveals
-the agent panel, resets to a fresh session, and sends the prompt once the
-reset has landed (`AgentChatDock.start_conversation`).
+New API: `chat_dock.draft_agent_conversation(main_window, prompt, backend)`
+reveals the agent panel, switches to the chosen agent, resets to a fresh
+session and puts the prompt in the input box **unsent**: the user picks the
+model, may edit it, and sends it. With several agents installed,
+"Investigate and report" opens a menu of them, the current one first.
+
+The launcher error window has a "Restart SciQLop" button (launcher 0.2.1):
+after a crash it starts a new round, and that start shows the offer.
 
 The agent reads the crash through a SciQLop tool rather than its own file
 tools: `sciqlop_read_crash_report` (ungated) returns the marker, the

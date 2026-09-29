@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtGui import QKeySequence, QShortcut, QTextCursor
 from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
@@ -477,13 +477,24 @@ class AgentChatDock(QWidget):
             return
         self._spawn(self._reset_backend(self._clear_session()))
 
-    def start_conversation(self, prompt: str) -> None:
-        """Open a fresh session and send *prompt* as if the user had typed it,
-        for flows SciQLop starts on the user's behalf (the crash report). The
-        prompt waits for the reset, or it would land in the old session."""
+    def draft_conversation(self, prompt: str, backend: Optional[str] = None) -> None:
+        """Open a fresh session with *prompt* in the input box, unsent, for
+        flows SciQLop prepares on the user's behalf (the crash report): the
+        user still picks the model, edits the prompt and sends it. *backend*
+        switches to that agent first; None keeps the current one."""
+        if backend is not None:
+            self._select_backend(backend)
         if self._current is None:
             return
-        self._spawn(self._reset_then_send(self._clear_session(), prompt))
+        self._on_reset()
+        self._input.setPlainText(prompt)
+        self._input.moveCursor(QTextCursor.MoveOperation.End)
+        self._input.setFocus()
+
+    def _select_backend(self, name: str) -> None:
+        index = self._backend_combo.findData(name)
+        if index >= 0:
+            self._backend_combo.setCurrentIndex(index)  # → _on_backend_changed
 
     def _clear_session(self) -> _AgentSession:
         session = self._sessions[self._current]
@@ -492,10 +503,6 @@ class AgentChatDock(QWidget):
         self._purge_replay_tempdir(self._current)
         self._transcript.render_messages(session.messages)
         return session
-
-    async def _reset_then_send(self, session: _AgentSession, prompt: str) -> None:
-        await self._reset_backend(session)
-        self._submit(session, prompt, [])
 
     async def _reset_backend(self, session: _AgentSession) -> None:
         await session.backend.reset()
@@ -799,9 +806,7 @@ class AgentChatDock(QWidget):
         body, image_paths = self._input.take_payload()
         if not body and not image_paths:
             return
-        self._submit(self._sessions[self._current], body, image_paths)
-
-    def _submit(self, session: _AgentSession, body: str, image_paths: list) -> None:
+        session = self._sessions[self._current]
         user_blocks: list = []
         if body:
             user_blocks.append(TextBlock(text=body))
@@ -1112,9 +1117,15 @@ def ensure_agent_dock(main_window) -> AgentChatDock:
     return dock
 
 
-def start_agent_conversation(main_window, prompt: str) -> bool:
-    """Reveal the agent panel and send *prompt* in a fresh session. False when
-    no backend plugin ever created the dock."""
+def current_agent_backend(main_window) -> Optional[str]:
+    """The agent the chat panel has selected, or None without a panel."""
+    dock = getattr(main_window, _DOCK_ATTR, None)
+    return dock._current if dock is not None else None
+
+
+def draft_agent_conversation(main_window, prompt: str, backend: Optional[str] = None) -> bool:
+    """Reveal the agent panel with *prompt* ready to send in a fresh session,
+    on *backend* if given. False when no backend plugin ever created the dock."""
     dock = getattr(main_window, _DOCK_ATTR, None)
     if dock is None:
         return False
@@ -1122,7 +1133,7 @@ def start_agent_conversation(main_window, prompt: str) -> bool:
     dock_widget = dock_manager.findDockWidget(_DOCK_TITLE) if dock_manager else None
     if dock_widget is not None:
         dock_widget.toggleView(True)
-    dock.start_conversation(prompt)
+    dock.draft_conversation(prompt, backend)
     return True
 
 
