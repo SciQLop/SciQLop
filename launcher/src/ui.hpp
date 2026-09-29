@@ -26,8 +26,13 @@ public:
     virtual void post_warning(const std::string& message) = 0;
 
     /// Terminal state: replaces the splash and keeps the window up until the
-    /// user quits, so a failed launch can never disappear silently.
+    /// user quits or asks to restart, so a failed launch can never disappear
+    /// silently.
     virtual void post_error(const std::string& text) = 0;
+
+    /// True once the user chose "Restart SciQLop" on the error view. Read it
+    /// after run_with_worker() returns.
+    virtual bool restart_requested() const = 0;
 
     /// Hide the splash immediately — e.g. once the real app window is up —
     /// without waiting for run_with_worker's *work* to return (which only

@@ -216,6 +216,7 @@ public:
         error_->show();
         copy_->show();
         quit_->show();
+        restart_->show();
         window_->size(WIDTH, 458);
         centre();
         window_->redraw();
@@ -247,6 +248,7 @@ public:
     void post_warning(const std::string& message) override { post(PostKind::Warning, message, 0.0); }
     void post_error(const std::string& text) override { post(PostKind::Error, text, 0.0); }
     void dismiss() override { post(PostKind::Dismiss, {}, 0.0); }
+    bool restart_requested() const override { return restart_requested_; }
 
 private:
     void build(const std::filesystem::path& splash_png) {
@@ -296,11 +298,14 @@ private:
         error_->hide();
 
         copy_ = new FlatButton(PAD, 406, 150, 32, "Copy to clipboard");
-        quit_ = new FlatButton(PAD + 160, 406, 90, 32, "Quit", true);
+        quit_ = new FlatButton(PAD + 160, 406, 90, 32, "Quit");
+        restart_ = new FlatButton(WIDTH - PAD - 150, 406, 150, 32, "Restart SciQLop", true);
         copy_->callback(on_copy, this);
         quit_->callback(on_quit, this);
+        restart_->callback(on_restart, this);
         copy_->hide();
         quit_->hide();
+        restart_->hide();
 
         window_->callback(on_window_close, this);
 
@@ -377,6 +382,12 @@ private:
 
     static void on_quit(Fl_Widget*, void* data) { static_cast<FltkUi*>(data)->close(); }
 
+    static void on_restart(Fl_Widget*, void* data) {
+        auto* self = static_cast<FltkUi*>(data);
+        self->restart_requested_ = true;
+        self->close();
+    }
+
     /// The WM's own close button (or Alt+F4, or a WM_DELETE_WINDOW client
     /// message) reaches here. Without this callback FLTK's default behaviour
     /// is to just hide() the window — invisible but keepalive_ still keeps
@@ -398,8 +409,10 @@ private:
     FlatButton* continue_ = nullptr;
     FlatButton* copy_ = nullptr;
     FlatButton* quit_ = nullptr;
+    FlatButton* restart_ = nullptr;
     Fl_Text_Display* error_ = nullptr;
     bool error_shown_ = false;
+    bool restart_requested_ = false;
 };
 
 }  // namespace

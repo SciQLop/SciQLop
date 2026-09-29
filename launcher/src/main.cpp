@@ -86,11 +86,25 @@ int main(int argc, char** argv) {
                     " times in 60 s); giving up.\n\nFull output: " +
                     sciqlop::session_log().string();
                 ui->run_with_worker([&] { ui->post_error(message); });
-                return 1;
+                if (!ui->restart_requested()) return 1;
+                restart_times.clear();
+                ++round;
+                continue;
             }
         }
 
         const sciqlop::SessionResult result = sciqlop::run_session(options, *ui, round, kind);
+
+        // The user chose "Restart SciQLop" on the error view. A crash has
+        // already left its marker, so the app offers to investigate it on this
+        // next start. A deliberate restart is not a crash loop: it resets the
+        // restart budget.
+        if (ui->restart_requested()) {
+            restart_times.clear();
+            ++round;
+            kind = sciqlop::RoundKind::Restart;
+            continue;
+        }
 
         if (result.exit_code == sciqlop::EXIT_RESTART) {
             options = sciqlop::options_for_next_round(std::move(options), result.exit_code,

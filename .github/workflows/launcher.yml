@@ -71,7 +71,10 @@ jobs:
         if: runner.os == 'Linux'
         working-directory: launcher
         run: |
-          dnf install -y xorg-x11-server-Xvfb > /dev/null
+          dnf install -y xorg-x11-server-Xvfb epel-release > /dev/null
+          # xdotool clicks the error window's buttons; without it those
+          # checks are skipped.
+          dnf install -y xdotool > /dev/null
           tests/smoke_test.sh build/sciqlop-launcher
 
       # A binary built here but linked against a newer glibc than the oldest

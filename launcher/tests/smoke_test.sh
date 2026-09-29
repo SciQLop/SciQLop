@@ -336,6 +336,51 @@ else
     echo "  skip: restart-budget error window sub-check not exercised (xdotool unavailable or window not found)"
 fi
 
+# --- case 7: "Restart SciQLop" on the error view starts a new round ---------
+cat > "$ROOT/bin/python3" <<EOF
+#!/usr/bin/env bash
+count=\$(( \$(cat "$ROOT/case7-count" 2>/dev/null || echo 0) + 1 ))
+echo "\$count" > "$ROOT/case7-count"
+if [ "\$count" -eq 1 ]; then
+    echo "first run crashes" >&2
+    exit 139
+fi
+: > "\$SCIQLOP_STARTUP_READY_FILE"
+exit 0
+EOF
+chmod +x "$ROOT/bin/python3"
+
+start_case "case 7: Restart SciQLop after a crash"
+if command -v xdotool >/dev/null 2>&1; then
+    "$LAUNCHER" --workspace crashy &
+    LAUNCHER_PID=$!
+    window_id=""
+    for _ in $(seq 1 100); do
+        window_id="$(xdotool search --name "startup failed" 2>/dev/null | head -n1)"
+        [ -n "$window_id" ] && break
+        sleep 0.1
+    done
+    if [ -n "$window_id" ]; then
+        # Centre of the Restart button: x = WIDTH - PAD - 75, y = 406 + 16.
+        xdotool mousemove --window "$window_id" 625 422 click 1
+        timeout 20 tail --pid="$LAUNCHER_PID" -f /dev/null
+        wait "$LAUNCHER_PID"
+        case7_exit=$?
+        LAUNCHER_PID=""
+        expect "Restart ran the app a second time" equals "$(cat "$ROOT/case7-count" 2>/dev/null)" 2
+        expect "the restarted round exits cleanly" equals "$case7_exit" 0
+        expect "both rounds share one session log" equals "$(log_count)" 1
+        expect "the log shows the restart round" log_contains "=== round 2 (restart) ==="
+    else
+        kill "$LAUNCHER_PID" 2>/dev/null
+        wait "$LAUNCHER_PID" 2>/dev/null
+        LAUNCHER_PID=""
+        expect "the error window with the Restart button appeared" false
+    fi
+else
+    echo "  skip: xdotool not installed, the Restart button cannot be clicked"
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then
     echo "smoke test passed"
