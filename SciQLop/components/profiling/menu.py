@@ -6,25 +6,53 @@ is reflected correctly even though we never called enable() ourselves.
 """
 import os
 import threading
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QObject, Signal
-from PySide6.QtGui import QFontDatabase
+from PySide6.QtCore import QObject, Qt, Signal
+from PySide6.QtGui import QFontDatabase, QKeySequence
 from PySide6.QtWidgets import (
     QDialog, QFileDialog, QMenu, QMessageBox, QPlainTextEdit, QVBoxLayout, QWidget,
 )
 
 from SciQLop.components import sciqlop_logging
+from SciQLop.components.storage import user_data_dir
 from SciQLop.core import tracing
 from SciQLop.core.ui.tooltips import rich_tooltip
 from .perfetto import open_trace_in_perfetto
+from .settings import ProfilingSettings
 from .speasy_tracing import install as install_speasy_tracing
 from . import hang_dump
 from . import sampler as sampler_module
 from .thread_cpu_top import hot_threads
 
 log = sciqlop_logging.getLogger(__name__)
+
+
+def traces_dir() -> Path:
+    return user_data_dir("traces")
+
+
+_TRACE_PREFIX = "sciqlop-trace-"
+
+
+def prune_traces(directory: Path, keep: int) -> None:
+    """Delete the oldest dated traces beyond *keep*, each with its remote-worker
+    files (`<trace>.worker-N.json`). Dated names sort chronologically; files
+    with any other name are the user's and are left alone."""
+    traces = sorted(p for p in directory.glob(f"{_TRACE_PREFIX}*.json")
+                    if ".worker-" not in p.name)
+    for old in traces[:-keep]:
+        for worker in directory.glob(f"{old.stem}.worker-*.json"):
+            worker.unlink(missing_ok=True)
+        old.unlink(missing_ok=True)
+
+
+def _bind(action, key: str) -> None:
+    """Application-wide, so the shortcut also works from a floating panel."""
+    action.setShortcut(QKeySequence(key))
+    action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
 
 
 class _HotThreadsDispatcher(QObject):
@@ -43,14 +71,20 @@ class ProfilingMenu(QObject):
         self.menu.menuAction().setToolTip(rich_tooltip(
             "Profiling",
             "Record and inspect where SciQLop spends its time."))
-        self._start = self.menu.addAction("Start trace…", self._on_start)
+        settings = ProfilingSettings()
+        self._start = self.menu.addAction("Start trace", self._on_quick_start)
+        self._start_to = self.menu.addAction("Start trace to file…", self._on_start)
         self._stop = self.menu.addAction("Stop trace", self._on_stop)
         self._start.setToolTip(rich_tooltip(
             "Start trace",
-            "Begin recording a Perfetto performance trace."))
+            "Begin recording a Perfetto performance trace, to a dated file"
+            " in the traces folder.", settings.start_trace_shortcut))
+        self._start_to.setToolTip(rich_tooltip(
+            "Start trace to file",
+            "Begin recording a Perfetto performance trace to a file you choose."))
         self._stop.setToolTip(rich_tooltip(
             "Stop trace",
-            "Stop recording and save the current trace."))
+            "Stop recording and save the current trace.", settings.stop_trace_shortcut))
         self.menu.addSeparator()
         self._hot_threads = None
         self._hot_threads_dispatcher = None
@@ -88,7 +122,8 @@ class ProfilingMenu(QObject):
             "Open last trace in Perfetto", self._on_open_last)
         self._open_last.setToolTip(rich_tooltip(
             "Open last trace",
-            "Reopens the most recently captured trace in Perfetto."))
+            "Reopens the most recently captured trace in Perfetto, or asks"
+            " for a trace file when there is none yet.", settings.open_trace_shortcut))
         self._open_pick = self.menu.addAction(
             "Open trace in Perfetto…", self._on_open_pick)
         self._open_pick.setToolTip(rich_tooltip(
@@ -97,6 +132,9 @@ class ProfilingMenu(QObject):
             " default browser. The trace is served from localhost and"
             " never uploaded — Perfetto runs entirely client-side."))
         self.menu.addSeparator()
+        _bind(self._start, settings.start_trace_shortcut)
+        _bind(self._stop, settings.stop_trace_shortcut)
+        _bind(self._open_last, settings.open_trace_shortcut)
         self._status = self.menu.addAction("Status: idle")
         self._status.setEnabled(False)
         self._current_path: Optional[str] = None
@@ -107,23 +145,27 @@ class ProfilingMenu(QObject):
     def _refresh(self) -> None:
         recording = tracing.is_enabled()
         self._start.setEnabled(not recording)
+        self._start_to.setEnabled(not recording)
         self._stop.setEnabled(recording)
-        self._open_last.setEnabled(
-            self._last_path is not None and Path(self._last_path).is_file()
-        )
         if recording:
             label = self._current_path or "(SCIQLOP_TRACE)"
             self._status.setText(f"Recording → {label}")
         else:
             self._status.setText("Status: idle")
 
+    def _on_quick_start(self) -> None:
+        name = f"{_TRACE_PREFIX}{datetime.now():%Y%m%d-%H%M%S}.json"
+        self._start_tracing(str(traces_dir() / name))
+
     def _on_start(self) -> None:
         path, _ = QFileDialog.getSaveFileName(
             self._host, "Start runtime trace",
             "sciqlop_trace.json", "Chrome trace JSON (*.json)",
         )
-        if not path:
-            return
+        if path:
+            self._start_tracing(path)
+
+    def _start_tracing(self, path: str) -> None:
         tracing.enable(path)
         if not tracing.is_enabled():
             QMessageBox.warning(
@@ -135,6 +177,7 @@ class ProfilingMenu(QObject):
         self._current_path = path
         self._last_path = path
         self._refresh()
+        self._show_status(f"Recording a trace to {path}")
 
     def _on_stop(self) -> None:
         path = self._current_path
@@ -147,6 +190,16 @@ class ProfilingMenu(QObject):
                 log.info("Merged %d remote-worker trace(s) into %s", merged, path)
         self._current_path = None
         self._refresh()
+        if path:
+            self._show_status(f"Trace saved to {path}")
+            if Path(path).parent == traces_dir():
+                prune_traces(traces_dir(), ProfilingSettings().traces_to_keep)
+
+    def _show_status(self, message: str) -> None:
+        status_bar = getattr(self._host, "statusBar", None)
+        if status_bar is not None:
+            status_bar().showMessage(message, 10_000)
+        log.info(message)
 
     def _on_show_hot_threads(self) -> None:
         self._hot_threads.setEnabled(False)
@@ -194,9 +247,10 @@ class ProfilingMenu(QObject):
                                 f"Sampling history dumped to:\n{path}")
 
     def _on_open_last(self) -> None:
-        if not self._last_path:
-            return
-        self._open_path(self._last_path)
+        if self._last_path and Path(self._last_path).is_file():
+            self._open_path(self._last_path)
+        else:
+            self._on_open_pick()
 
     def _on_open_pick(self) -> None:
         default_dir = ""

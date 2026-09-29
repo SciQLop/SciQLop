@@ -9,6 +9,26 @@ class ProfilingSettings(ConfigEntry):
     category: ClassVar[str] = SettingsCategory.APPLICATION
     subcategory: ClassVar[str] = "Profiling"
 
+    # Shortcuts (menu.py). Application-wide, so they also work from a
+    # floating plot panel.
+    start_trace_shortcut: str = Field(
+        default="Ctrl+Alt+P",
+        description="Start recording a trace, to a dated file in the traces "
+                    "folder (Tools > Profiling).")
+    stop_trace_shortcut: str = Field(
+        default="Ctrl+Alt+S",
+        description="Stop recording and save the trace.")
+    open_trace_shortcut: str = Field(
+        default="Ctrl+Alt+O",
+        description="Open the last trace in Perfetto (asks for a file when "
+                    "there is none yet).")
+
+    traces_to_keep: int = Field(
+        default=10, ge=1, le=1000,
+        description="How many traces started with the shortcut (or Start "
+                    "trace) to keep in the traces folder; older ones are "
+                    "deleted when a trace is saved.")
+
     # Sampler (sampler.py). Ships default-off: a real measurement (idle-ish
     # dev process, ~10-15 threads, 200ms interval) showed unmeasurably small
     # CPU cost, but that hasn't been re-measured at real SciQLop's thread
