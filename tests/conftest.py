@@ -43,6 +43,25 @@ def _copy_if_exists(real_dir: Path, target: Path):
         shutil.copytree(real_dir, target, symlinks=True)
 
 
+def _isolate_speasy_config():
+    """Point speasy at a session copy of its config dir, before speasy is imported.
+
+    speasy has no env override for it: it asks appdirs once, at import. XDG_CONFIG_HOME
+    redirects that on Linux only; on macOS appdirs always answers
+    ~/Library/Application Support/speasy, so the suite wrote the user's real config."""
+    import appdirs
+    real_user_config_dir = appdirs.user_config_dir
+    session_dir = _config_dir / "speasy"
+    _copy_if_exists(Path(real_user_config_dir("speasy", "LPP")), session_dir)
+
+    def user_config_dir(appname=None, *args, **kwargs):
+        if appname == "speasy":
+            return str(session_dir)
+        return real_user_config_dir(appname, *args, **kwargs)
+
+    appdirs.user_config_dir = user_config_dir
+
+
 def _preserve_speasy_dirs():
     """Symlink speasy's cache/data dirs (config is copied), and the smart-search caches,
     from the real home into temp dirs.
@@ -60,10 +79,9 @@ def _preserve_speasy_dirs():
     home = Path.home()
     real_data = Path(os.environ.get("XDG_DATA_HOME", str(home / ".local" / "share")))
     real_cache = Path(os.environ.get("XDG_CACHE_HOME", str(home / ".cache")))
-    real_config = Path(os.environ.get("XDG_CONFIG_HOME", str(home / ".config")))
 
     _symlink_if_exists(real_data / "speasy", _data_dir, "speasy")
-    _copy_if_exists(real_config / "speasy", _config_dir / "speasy")
+    _isolate_speasy_config()
 
     cache_dir = _test_tmp / "cache"
     cache_dir.mkdir(exist_ok=True)
