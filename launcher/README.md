@@ -161,7 +161,14 @@ target (plain text) to the path in `SCIQLOP_SWITCH_HANDOFF_FILE`
 `SCIQLOP_STARTUP_READY_FILE`, and `_switch_handoff_path()` raises rather than
 falling back to some other path if it's ever missing in native mode.
 
-The session log (`last-launch.log`) is truncated once per launcher process —
-on round 1 only — and gets a `=== round N (start|restart|switch) ===` marker
-at the start of every round after that; a failing round's output must survive
-into the next round's log, since the error window points at this file.
+Each launcher process writes its own session log,
+`<user data dir>/logs/sciqlop-YYYYMMDD-HHMMSS-<pid>.log`; only the 10 newest
+are kept. Every round appends a `=== round N (start|restart|switch) ===`
+marker to it; a failing round's output must survive into the next round,
+since the error window points at this file. The launcher passes the path to
+Python as `SCIQLOP_SESSION_LOG`: `sciqlop_launcher.py` then leaves the file
+alone (this process already tees its output there), and the GUI writes its
+crash stacks into it. When SciQLop crashes, `sciqlop_launcher.py` — the only
+process that knows the GUI's pid and signal — leaves a `crash-pending.json`
+next to `logs/` for the next start to offer a bug report
+(`SciQLop/core/session_log.py`).

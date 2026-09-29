@@ -39,7 +39,7 @@ trap cleanup EXIT
 export FLTK_BACKEND=x11
 
 export XDG_DATA_HOME="$ROOT/data"
-LOG="$ROOT/data/sciqlop/last-launch.log"
+LOG_DIR="$ROOT/data/sciqlop/logs"
 mkdir -p "$ROOT/bin"
 export PATH="$ROOT/bin:$PATH"
 
@@ -59,9 +59,18 @@ file_contains() { grep -q -- "$2" "$1" 2>/dev/null; }
 equals() { [ "$1" = "$2" ]; }
 nonzero() { [ "$1" != "0" ]; }
 
+# Every launcher process writes its own dated log; each case starts from an
+# empty logs/ directory so a check only ever sees its own case's output.
+start_case() {
+    rm -rf "$LOG_DIR"
+    echo "$1"
+}
+log_contains() { cat "$LOG_DIR"/sciqlop-*.log 2>/dev/null | grep -q -- "$1"; }
+log_count() { find "$LOG_DIR" -name 'sciqlop-*.log' 2>/dev/null | wc -l | tr -d ' '; }
+
 wait_for_log_contains() {
-    local file="$1" needle="$2" timeout_s="${3:-10}" waited=0
-    while ! grep -q -- "$needle" "$file" 2>/dev/null; do
+    local needle="$1" timeout_s="${2:-10}" waited=0
+    while ! log_contains "$needle"; do
         sleep 0.1
         waited=$((waited + 1))
         [ "$waited" -ge $((timeout_s * 10)) ] && return 1
@@ -112,6 +121,7 @@ cat > "$ROOT/bin/python3" <<EOF
 echo "Preparing workspace /x ..."
 echo "Starting SciQLop ..."
 printf '%s\n' "\$@" > "$ROOT/case1-argv"
+printf '%s' "\$SCIQLOP_SESSION_LOG" > "$ROOT/case1-session-log"
 : > "\$SCIQLOP_STARTUP_READY_FILE"
 for _ in \$(seq 1 50); do
     if [ ! -e "\$SCIQLOP_STARTUP_READY_FILE" ]; then
@@ -124,19 +134,35 @@ exit 0
 EOF
 chmod +x "$ROOT/bin/python3"
 
-echo "case 1: successful launch"
+start_case "case 1: successful launch"
 timeout 30 "$LAUNCHER" --workspace foo bar.sciqlop-archive
 launcher_exit=$?
 
 expect "launcher exits 0" equals "$launcher_exit" 0
 expect "log contains the 'Preparing workspace' phase line" \
-    file_contains "$LOG" "Preparing workspace /x ..."
+    log_contains "Preparing workspace /x ..."
 expect "log contains the 'Starting SciQLop' phase line" \
-    file_contains "$LOG" "Starting SciQLop ..."
+    log_contains "Starting SciQLop ..."
 expect "the stub observed the ready-file being acknowledged (deleted)" \
     test -f "$ROOT/case1-ack-seen"
 expect "argv (--workspace foo bar.sciqlop-archive) was forwarded verbatim, in order" \
     equals "$(tail -n 3 "$ROOT/case1-argv" | tr '\n' ' ')" "--workspace foo bar.sciqlop-archive "
+expect "exactly one dated session log was written" equals "$(log_count)" 1
+expect "SCIQLOP_SESSION_LOG names that log, so Python does not write a second one" \
+    test -f "$(cat "$ROOT/case1-session-log" 2>/dev/null)"
+expect "the log starts with the launcher header" \
+    log_contains "SciQLop launcher"
+
+# --- case 1b: rotation keeps the ten newest logs, this launch's included ----
+start_case "case 1b: log rotation"
+mkdir -p "$LOG_DIR"
+for day in 10 11 12 13 14 15 16 17 18 19 20 21; do
+    : > "$LOG_DIR/sciqlop-202001${day}-000000-1.log"
+done
+timeout 30 "$LAUNCHER" --workspace foo
+expect "rotation leaves 10 logs" equals "$(log_count)" 10
+expect "the oldest logs are gone" test ! -e "$LOG_DIR/sciqlop-20200112-000000-1.log"
+expect "this launch's log survived" log_contains "Starting SciQLop ..."
 
 # --- case 2: a crashing app must stay on screen, not vanish -----------------
 cat > "$ROOT/bin/python3" <<'EOF'
@@ -146,15 +172,15 @@ exit 3
 EOF
 chmod +x "$ROOT/bin/python3"
 
-echo "case 2: application crash"
+start_case "case 2: application crash"
 "$LAUNCHER" --workspace failing &
 LAUNCHER_PID=$!
 
-wait_for_log_contains "$LOG" "boom" 15
+wait_for_log_contains "boom" 15
 close_error_window_or_kill "$LAUNCHER_PID" case2_exit case2_via_xdotool
 LAUNCHER_PID=""
 
-expect "the crash reason reached the log" file_contains "$LOG" "boom"
+expect "the crash reason reached the log" log_contains "boom"
 if [ "$case2_via_xdotool" = "yes" ]; then
     expect "WM close on the error window quits the launcher with the app's exit code (C5)" \
         equals "$case2_exit" 3
@@ -183,18 +209,18 @@ for dir in "${path_dirs[@]}"; do
     done
 done
 
-echo "case 3: python3 missing from PATH"
+start_case "case 3: python3 missing from PATH"
 # No subshell wrapper: PATH=... cmd & backgrounds the launcher itself, so
 # LAUNCHER_PID is the real process — killing a wrapping subshell instead would
 # risk orphaning the launcher rather than actually terminating it.
 PATH="$no_python_dir" "$LAUNCHER" --workspace nopython &
 LAUNCHER_PID=$!
 
-wait_for_log_contains "$LOG" "python3" 15
+wait_for_log_contains "python3" 15
 close_error_window_or_kill "$LAUNCHER_PID" case3_exit case3_via_xdotool
 LAUNCHER_PID=""
 
-expect "the log names the command it failed to run" file_contains "$LOG" "python3"
+expect "the log names the command it failed to run" log_contains "python3"
 expect "the launcher exits non-zero rather than hanging forever" nonzero "$case3_exit"
 
 # --- case 4: restart round (exit 64, then a normal exit) --------------------
@@ -219,13 +245,13 @@ exit 0
 EOF
 chmod +x "$ROOT/bin/python3"
 
-echo "case 4: restart round (round 1 exits 64, round 2 exits 0)"
+start_case "case 4: restart round (round 1 exits 64, round 2 exits 0)"
 timeout 30 "$LAUNCHER" --workspace foo
 case4_exit=$?
 
 expect "launcher exits 0 once the restart round finishes cleanly" equals "$case4_exit" 0
-expect "log shows round 1 as a start" file_contains "$LOG" "=== round 1 (start) ==="
-expect "log shows round 2 as a restart" file_contains "$LOG" "=== round 2 (restart) ==="
+expect "log shows round 1 as a start" log_contains "=== round 1 (start) ==="
+expect "log shows round 2 as a restart" log_contains "=== round 2 (restart) ==="
 
 # --- case 5: workspace-switch round (exit 65, target via the handoff file) --
 # The launcher itself sets SCIQLOP_SWITCH_HANDOFF_FILE per round, pointing at
@@ -254,7 +280,7 @@ exit 0
 EOF
 chmod +x "$ROOT/bin/python3"
 
-echo "case 5: workspace switch (round 1 exits 65 and names 'foo')"
+start_case "case 5: workspace switch (round 1 exits 65 and names 'foo')"
 timeout 30 "$LAUNCHER" bar.sciqlop-archive
 case5_exit=$?
 
@@ -287,7 +313,7 @@ exit 64
 EOF
 chmod +x "$ROOT/bin/python3"
 
-echo "case 6: restart-budget exhausted (app keeps asking to restart)"
+start_case "case 6: restart-budget exhausted (app keeps asking to restart)"
 "$LAUNCHER" --workspace loop &
 LAUNCHER_PID=$!
 
@@ -315,7 +341,7 @@ if [ "$failures" -eq 0 ]; then
     echo "smoke test passed"
 else
     echo "smoke test failed ($failures checks)"
-    echo "--- last-launch.log ---"
-    cat "$LOG" 2>/dev/null
+    echo "--- session log ---"
+    cat "$LOG_DIR"/sciqlop-*.log 2>/dev/null
 fi
 exit "$failures"

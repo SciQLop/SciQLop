@@ -84,7 +84,7 @@ int main(int argc, char** argv) {
                 const std::string message =
                     "SciQLop keeps restarting (" + std::to_string(restart_times.size()) +
                     " times in 60 s); giving up.\n\nFull output: " +
-                    sciqlop::paths::last_launch_log().string();
+                    sciqlop::session_log().string();
                 ui->run_with_worker([&] { ui->post_error(message); });
                 return 1;
             }

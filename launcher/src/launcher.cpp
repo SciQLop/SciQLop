@@ -46,6 +46,12 @@ constexpr const char* PYTHON_EXECUTABLE = "python3";
 constexpr const char* READY_FILE_ENV = "SCIQLOP_STARTUP_READY_FILE";
 constexpr const char* SWITCH_HANDOFF_ENV = "SCIQLOP_SWITCH_HANDOFF_FILE";
 
+/// Tells sciqlop_launcher.py which log this launcher owns, so it does not
+/// write the file itself (this process already tees its output there), and
+/// tells the GUI where to dump its stacks on a crash (see
+/// SciQLop/core/session_log.py).
+constexpr const char* SESSION_LOG_ENV = "SCIQLOP_SESSION_LOG";
+
 /// A path's bytes as UTF-8, independent of the platform's native/ANSI
 /// encoding — the only form that survives unchanged through Command's argv
 /// and extra_env into process_win32.cpp's UTF-8-decoding widen().
@@ -59,6 +65,21 @@ unsigned long current_pid() { return GetCurrentProcessId(); }
 #else
 long current_pid() { return static_cast<long>(getpid()); }
 #endif
+
+std::tm local_now() {
+    const std::time_t now = std::time(nullptr);
+    std::tm local{};
+#ifdef _WIN32
+    localtime_s(&local, &now);
+#else
+    localtime_r(&now, &local);
+#endif
+    return local;
+}
+
+bool is_session_log(const fs::path& path) {
+    return path.filename().string().rfind("sciqlop-", 0) == 0 && path.extension() == ".log";
+}
 
 std::string read_file(const fs::path& path) {
     std::ifstream in(path, std::ios::binary);
@@ -83,16 +104,10 @@ std::string round_kind_name(RoundKind kind) {
     return "start";
 }
 
-/// One log per launcher process: truncated only for round 1, then appended to
-/// by every subprocess and every later round — a restart/switch round must
-/// never erase the previous round's failure output, since the error window
-/// points at this file.
+/// A restart/switch round must never erase the previous round's failure
+/// output, since the error window points at this file — rounds only append.
 void prepare_round_log(int round, RoundKind kind) {
-    if (round == 1) {
-        std::ofstream fresh(paths::last_launch_log(), std::ios::binary | std::ios::trunc);
-        fresh << "SciQLop launcher " << SCIQLOP_LAUNCHER_VERSION << "\n\n";
-    }
-    std::ofstream log(paths::last_launch_log(), std::ios::binary | std::ios::app);
+    std::ofstream log(session_log(), std::ios::binary | std::ios::app);
     log << "=== round " << round << " (" << round_kind_name(kind) << ") ===\n";
 }
 
@@ -170,7 +185,8 @@ int run_app(const Options& options, Ui& ui, int round, RoundKind kind,
 
     std::map<std::string, std::string> extra_env{
         {READY_FILE_ENV, to_utf8(scratch.ready_marker)},
-        {SWITCH_HANDOFF_ENV, to_utf8(scratch.switch_handoff)}};
+        {SWITCH_HANDOFF_ENV, to_utf8(scratch.switch_handoff)},
+        {SESSION_LOG_ENV, to_utf8(session_log())}};
     if (bundled_python) {
         // Command's extra_env *replaces* an inherited entry of the same name
         // rather than merging into it (see process.hpp's Command::extra_env
@@ -218,7 +234,7 @@ int run_app(const Options& options, Ui& ui, int round, RoundKind kind,
     };
 
     const int code = run_supervised(
-        app, paths::last_launch_log(), report_stdout, report_stderr,
+        app, session_log(), report_stdout, report_stderr,
         [&] {
             std::error_code ec;
             if (!fs::is_regular_file(scratch.ready_marker, ec)) return;
@@ -341,12 +357,45 @@ SessionResult run_session(const Options& options, Ui& ui, int round, RoundKind k
             }
         } else if (result.exit_code != 0 && result.exit_code != EXIT_RESTART) {
             ui.post_error("SciQLop exited with code " + std::to_string(result.exit_code) +
-                          ".\n\nFull output: " + paths::last_launch_log().string() + "\n\n" +
+                          ".\n\nFull output: " + session_log().string() + "\n\n" +
                           stderr_tail);
         }
     });
 
     return result;
+}
+
+std::string session_log_name(const std::tm& local_time, long pid) {
+    char stamp[32];
+    std::strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", &local_time);
+    return "sciqlop-" + std::string(stamp) + "-" + std::to_string(pid) + ".log";
+}
+
+void prune_logs(const fs::path& directory, std::size_t keep) {
+    std::error_code ec;
+    std::vector<fs::path> logs;
+    for (const auto& entry : fs::directory_iterator(directory, ec)) {
+        if (is_session_log(entry.path())) logs.push_back(entry.path());
+    }
+    if (logs.size() <= keep) return;
+    std::sort(logs.begin(), logs.end());
+    for (auto it = logs.begin(); it != logs.end() - static_cast<std::ptrdiff_t>(keep); ++it)
+        fs::remove(*it, ec);
+}
+
+const fs::path& session_log() {
+    static const fs::path log = [] {
+        const fs::path directory = paths::user_data_dir() / "logs";
+        std::error_code ec;
+        fs::create_directories(directory, ec);
+        const fs::path path =
+            directory / session_log_name(local_now(), static_cast<long>(current_pid()));
+        std::ofstream(path, std::ios::binary | std::ios::trunc)
+            << "SciQLop launcher " << SCIQLOP_LAUNCHER_VERSION << "\n\n";
+        prune_logs(directory, KEPT_LOGS);
+        return path;
+    }();
+    return log;
 }
 
 std::string xcb_cursor_warning() {

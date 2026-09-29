@@ -8,6 +8,7 @@
 #include "process.hpp"
 
 #include <chrono>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -281,9 +282,46 @@ void test_session_argv_uses_given_executable_as_argv0() {
           "session_argv assembles -I -m SciQLop.app plus app_argv(options)");
 }
 
+// --- session_log_name / prune_logs ------------------------------------------
+
+void test_session_log_name_is_dated_and_carries_the_pid() {
+    std::tm local{};
+    local.tm_year = 2026 - 1900;
+    local.tm_mon = 8;
+    local.tm_mday = 29;
+    local.tm_hour = 7;
+    local.tm_min = 5;
+    local.tm_sec = 3;
+    check(sciqlop::session_log_name(local, 4242) == "sciqlop-20260929-070503-4242.log",
+          "session log name is sciqlop-YYYYMMDD-HHMMSS-<pid>.log, zero padded");
+}
+
+void test_prune_logs_keeps_the_newest() {
+    const auto dir = make_tmp_dir();
+    for (int day = 10; day <= 21; ++day)
+        write_file(dir / ("sciqlop-202609" + std::to_string(day) + "-000000-1.log"), "");
+    write_file(dir / "notes.txt", "");
+    sciqlop::prune_logs(dir, 10);
+    check(!std::filesystem::exists(dir / "sciqlop-20260910-000000-1.log") &&
+              !std::filesystem::exists(dir / "sciqlop-20260911-000000-1.log"),
+          "the two oldest logs are removed");
+    check(std::filesystem::exists(dir / "sciqlop-20260912-000000-1.log") &&
+              std::filesystem::exists(dir / "sciqlop-20260921-000000-1.log"),
+          "the ten newest logs are kept");
+    check(std::filesystem::exists(dir / "notes.txt"), "unrelated files are left alone");
+}
+
+void test_prune_logs_on_missing_directory_is_harmless() {
+    sciqlop::prune_logs(make_tmp_dir() / "missing", 10);
+    check(true, "prune_logs on a missing directory does not throw");
+}
+
 }  // namespace
 
 int main() {
+    test_session_log_name_is_dated_and_carries_the_pid();
+    test_prune_logs_keeps_the_newest();
+    test_prune_logs_on_missing_directory_is_harmless();
     test_parse_args_splits_workspace_file_and_passthrough();
     test_parse_args_short_workspace_flag();
     test_parse_args_on_empty_argv();

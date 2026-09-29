@@ -14,8 +14,16 @@ from SciQLop.sciqlop_launcher import (
     _switch_handoff_path, main,
 )
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+from SciQLop.core.session_log import SESSION_LOG_ENV, CRASH_MARKER_NAME
 
 MODULE = "SciQLop.sciqlop_launcher"
+
+
+@pytest.fixture(autouse=True)
+def _not_under_a_native_launcher(monkeypatch):
+    """pytest started from a SciQLop terminal inherits the session-log env var,
+    which would switch the launcher into native mode."""
+    monkeypatch.delenv(SESSION_LOG_ENV, raising=False)
 
 
 def _wait_for(predicate, timeout=2.0):
@@ -508,7 +516,7 @@ def test_run_on_console_resolution_failure_returns_1_and_logs(monkeypatch, tmp_p
     log_path = tmp_path / "last-launch.log"
     monkeypatch.setattr(f"{MODULE}._apply_proxy_settings", lambda: None)
     monkeypatch.setattr(f"{MODULE}.resolve_workspace_dir", _boom)
-    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
 
     exit_code, workspace_dir = _run_on_console(None, None)
 
@@ -579,6 +587,8 @@ def test_resolve_workspace_dir_expands_user_in_workspace_name(tmp_path, monkeypa
 class _FakePopen:
     """Stand-in for subprocess.Popen: fixed stdout/stderr lines, no real process."""
 
+    pid = 4321
+
     def __init__(self, *args, **kwargs):
         self.stdout = ["hello out\n"]
         self.stderr = ["hello err\n"]
@@ -595,7 +605,7 @@ def test_spawn_app_logged_writes_log_and_captures_stderr(tmp_path, monkeypatch):
     from SciQLop.sciqlop_launcher import _spawn_app_logged
 
     log_path = tmp_path / "last-launch.log"
-    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
     monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakePopen)
 
     proc, stderr_lines, returned_log_path = _spawn_app_logged(Path("/usr/bin/python3"), {})
@@ -612,7 +622,7 @@ def test_spawn_app_logged_echoes_to_console_when_requested(tmp_path, monkeypatch
     from SciQLop.sciqlop_launcher import _spawn_app_logged
 
     log_path = tmp_path / "last-launch.log"
-    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
     monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakePopen)
 
     _spawn_app_logged(Path("/usr/bin/python3"), {}, echo=True)
@@ -627,7 +637,7 @@ def test_spawn_app_logged_does_not_echo_by_default(tmp_path, monkeypatch, capsys
     from SciQLop.sciqlop_launcher import _spawn_app_logged
 
     log_path = tmp_path / "last-launch.log"
-    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
     monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakePopen)
 
     _spawn_app_logged(Path("/usr/bin/python3"), {})
@@ -645,7 +655,7 @@ def test_spawn_app_logged_passes_utf8_encoding_to_popen(tmp_path, monkeypatch):
     from SciQLop.sciqlop_launcher import _spawn_app_logged
 
     log_path = tmp_path / "last-launch.log"
-    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
     captured = {}
 
     class _CapturingPopen(_FakePopen):
@@ -667,7 +677,7 @@ def test_spawn_app_logged_closes_log_file_if_popen_raises(tmp_path, monkeypatch)
     from SciQLop.sciqlop_launcher import _spawn_app_logged
 
     log_path = tmp_path / "last-launch.log"
-    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
     fake_file = MagicMock()
     monkeypatch.setattr(f"{MODULE}.open", lambda *a, **k: fake_file, raising=False)
 
@@ -701,7 +711,7 @@ def test_run_on_console_reports_nonzero_exit_with_log_pointer(monkeypatch, tmp_p
     monkeypatch.setattr(f"{MODULE}._is_editable_install", lambda: True)
     monkeypatch.setattr(f"{MODULE}._prepare_workspace_dev", lambda *a, **k: None)
     monkeypatch.setattr(f"{MODULE}.check_xcb_cursor", lambda: None)
-    monkeypatch.setattr(f"{MODULE}._last_launch_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
     monkeypatch.setattr("SciQLop.core.common.macos.session_interpreter", lambda python, _ws: (python, {}))
     monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakeFailingPopen)
 
@@ -714,6 +724,120 @@ def test_run_on_console_reports_nonzero_exit_with_log_pointer(monkeypatch, tmp_p
     assert "hello out" in captured.out
     assert "hello err" in captured.err
     assert f"SciQLop exited with code 3. Full output: {log_path}" in captured.err
+
+
+# --- dated session log + crash marker (crash-report-agent spec) ---
+
+def test_spawn_app_logged_appends_to_the_session_log(tmp_path, monkeypatch):
+    """Restart/switch rounds of one launcher process share one log: a round
+    must not erase the previous round's output."""
+    from SciQLop.sciqlop_launcher import _spawn_app_logged
+
+    log_path = tmp_path / "session.log"
+    log_path.write_text("earlier round\n")
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakePopen)
+
+    _spawn_app_logged(Path("/usr/bin/python3"), {})
+
+    assert _wait_for(lambda: "[err]" in log_path.read_text())
+    assert log_path.read_text().startswith("earlier round\n")
+
+
+def test_spawn_app_logged_leaves_the_log_to_the_native_launcher(tmp_path, monkeypatch):
+    """Under the C++ launcher, it already tees this process's output into the
+    log; writing it here too corrupted the file and doubled every line."""
+    from SciQLop.sciqlop_launcher import _spawn_app_logged
+
+    log_path = tmp_path / "from-cpp.log"
+    log_path.write_text("SciQLop launcher 0.1.2\n")
+    monkeypatch.setenv(SESSION_LOG_ENV, str(log_path))
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakePopen)
+
+    _proc, stderr_lines, returned = _spawn_app_logged(Path("/usr/bin/python3"), {})
+
+    assert _wait_for(lambda: stderr_lines == ["hello err\n"])
+    assert returned == log_path
+    assert log_path.read_text() == "SciQLop launcher 0.1.2\n"
+
+
+def test_spawn_app_logged_tells_the_gui_where_the_log_is(tmp_path, monkeypatch):
+    from SciQLop.sciqlop_launcher import _spawn_app_logged
+
+    log_path = tmp_path / "session.log"
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
+    captured = {}
+
+    class _CapturingPopen(_FakePopen):
+        def __init__(self, *args, **kwargs):
+            captured.update(kwargs)
+            super().__init__(*args, **kwargs)
+
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _CapturingPopen)
+
+    _spawn_app_logged(Path("/usr/bin/python3"), {})
+
+    assert captured["env"][SESSION_LOG_ENV] == str(log_path)
+
+
+def _console_session(monkeypatch, tmp_path, popen_cls):
+    from SciQLop.sciqlop_launcher import _run_on_console
+
+    log_path = tmp_path / "session.log"
+    log_path.write_text("")
+    monkeypatch.setattr(f"{MODULE}._apply_proxy_settings", lambda: None)
+    monkeypatch.setattr(f"{MODULE}.resolve_workspace_dir", lambda *a, **k: tmp_path / "ws")
+    monkeypatch.setattr(f"{MODULE}._is_editable_install", lambda: True)
+    monkeypatch.setattr(f"{MODULE}._prepare_workspace_dev", lambda *a, **k: None)
+    monkeypatch.setattr(f"{MODULE}.check_xcb_cursor", lambda: None)
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
+    monkeypatch.setattr("SciQLop.core.common.macos.session_interpreter", lambda python, _ws: (python, {}))
+    monkeypatch.setattr("SciQLop.core.session_log.launcher_data_dir", lambda: tmp_path)
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", popen_cls)
+    return _run_on_console(None, None), log_path
+
+
+def test_run_on_console_records_a_crash_marker(monkeypatch, tmp_path):
+    class _SegfaultingPopen(_FakePopen):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.returncode = -11
+
+    (exit_code, _ws), log_path = _console_session(monkeypatch, tmp_path, _SegfaultingPopen)
+
+    import json
+    marker = json.loads((tmp_path / CRASH_MARKER_NAME).read_text())
+    assert exit_code == -11
+    assert marker["pid"] == _FakePopen.pid
+    assert marker["signal"] == 11
+    assert marker["log"] == str(log_path)
+
+
+def test_run_on_console_handled_failure_leaves_no_crash_marker(monkeypatch, tmp_path):
+    (exit_code, _ws), _log = _console_session(monkeypatch, tmp_path, _FakeFailingPopen)
+
+    assert exit_code == 3
+    assert not (tmp_path / CRASH_MARKER_NAME).exists()
+
+
+def test_workspace_prep_failure_appends_to_the_session_log(monkeypatch, tmp_path):
+    from SciQLop.sciqlop_launcher import _run_on_console
+
+    def _boom(workspace_name, sciqlop_file):
+        raise RuntimeError("resolution exploded")
+
+    log_path = tmp_path / "session.log"
+    log_path.write_text("SciQLop launcher 0.1.2\n")
+    monkeypatch.setattr(f"{MODULE}._apply_proxy_settings", lambda: None)
+    monkeypatch.setattr(f"{MODULE}.resolve_workspace_dir", _boom)
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
+
+    _run_on_console(None, None)
+
+    content = log_path.read_text()
+    assert content.startswith("SciQLop launcher 0.1.2\n")
+    assert "resolution exploded" in content
 
 
 # --- C3: pyproject.toml exposes a console entry point alongside the GUI one ---

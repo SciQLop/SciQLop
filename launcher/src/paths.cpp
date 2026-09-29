@@ -67,8 +67,6 @@ fs::path user_data_dir() {
 #endif
 }
 
-fs::path last_launch_log() { return user_data_dir() / "last-launch.log"; }
-
 std::optional<fs::path> bundled_python(const fs::path& exe_dir) {
     std::error_code ec;
     const fs::path candidate = bundled_python_candidate(exe_dir);

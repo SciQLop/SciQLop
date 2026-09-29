@@ -151,17 +151,30 @@ def _apply_proxy_settings() -> None:
     apply_proxy_settings(os.environ)
 
 
-def _last_launch_log_path() -> Path:
-    """Stable on-disk log location for the most recent SciQLop subprocess.
+def _session_log_path() -> Path:
+    """This launcher process's dated log (see ``SciQLop.core.session_log``).
 
-    The bundled Windows launcher (``launcher.c``) spawns the Python entry
-    point with ``CREATE_NO_WINDOW``, so any output written to stdout/stderr
-    is otherwise lost.  Tee the subprocess output here so users (and bug
-    reports) have something to point to when SciQLop fails to start.
-    """
-    from platformdirs import user_data_dir
-    log_dir = Path(user_data_dir(appname="sciqlop", appauthor="LPP", ensure_exists=True))
-    return log_dir / "last-launch.log"
+    A GUI-launched SciQLop has no console, so its output is otherwise lost;
+    users (and crash reports) need something to point to."""
+    from SciQLop.core.session_log import session_log
+    return session_log()
+
+
+def _native_launcher_owns_log() -> bool:
+    """The C++ launcher created the log and already tees this process's
+    output into it — writing it here too would duplicate every line."""
+    from SciQLop.core.session_log import SESSION_LOG_ENV
+    return SESSION_LOG_ENV in os.environ
+
+
+def _open_log_sink(log_path: Path):
+    import io
+    if _native_launcher_owns_log():
+        return io.StringIO(), log_path
+    try:
+        return open(log_path, "a", encoding="utf-8", errors="replace"), log_path
+    except OSError:
+        return io.StringIO(), None
 
 
 def _switch_handoff_path() -> Path:
@@ -246,8 +259,8 @@ def _gui_command(python_path: Path, env: dict) -> tuple[list[str], dict]:
 def _spawn_app_logged(
     python_path: Path, env: dict, echo: bool = False
 ) -> tuple[subprocess.Popen, list[str], Path | None]:
-    """Start the SciQLop subprocess, tee-ing its stdout/stderr into
-    last-launch.log on background threads.
+    """Start the SciQLop subprocess, tee-ing its stdout/stderr into the
+    session log on background threads (unless the native launcher owns it).
 
     Returns the process, the stderr lines captured so far (mutated in place as
     more arrive — used to show an error if the process exits early), and the
@@ -261,18 +274,15 @@ def _spawn_app_logged(
 
     The caller isn't given the drain threads to join, so a return right after
     the subprocess exits can race a few lines of trailing output still being
-    flushed to last-launch.log (each drain thread closes the log itself once
-    its stream hits EOF).
+    flushed to the log (each drain thread closes the log itself once its
+    stream hits EOF).
     """
     import threading
+    from SciQLop.core.session_log import SESSION_LOG_ENV
 
-    log_path = _last_launch_log_path()
-    try:
-        log_file = open(log_path, "w", encoding="utf-8", errors="replace")
-    except OSError:
-        import io
-        log_file = io.StringIO()
-        log_path = None
+    log_file, log_path = _open_log_sink(_session_log_path())
+    if log_path is not None:
+        env = {**env, SESSION_LOG_ENV: str(log_path)}
 
     argv, env = _gui_command(python_path, env)
     log_file.write(f"$ {' '.join(argv)}\n")
@@ -428,6 +438,7 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
         timer.stop()
 
         exit_code = proc.wait() if proc.poll() is None else proc.returncode
+        _record_if_crashed(proc, log_path)
         return exit_code, workspace_dir
     except Exception:
         # If anything in the subprocess setup raised, surface it to the user
@@ -485,7 +496,7 @@ def _choose_run_session():
 def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tuple[int, Path | None]:
     """Prepare the workspace and run SciQLop with no splash.
 
-    Output goes straight to the terminal (and last-launch.log) rather than
+    Output goes straight to the terminal (and the session log) rather than
     only a log file: the user is already looking at one.
     """
     _apply_proxy_settings()
@@ -504,10 +515,7 @@ def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tup
         import traceback
         message = "Workspace preparation failed:\n" + traceback.format_exc()
         print(message, file=sys.stderr)
-        try:
-            _last_launch_log_path().write_text(message, encoding="utf-8")
-        except OSError:
-            pass
+        _append_to_own_log(message)
         return 1, workspace_dir
 
     if warning := check_xcb_cursor():
@@ -529,9 +537,30 @@ def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tup
         python_path, env, echo=sys.stdout is not None
     )
     exit_code = proc.wait()
+    _record_if_crashed(proc, log_path)
     if exit_code != 0:
         print(f"SciQLop exited with code {exit_code}. Full output: {log_path}", file=sys.stderr)
     return exit_code, workspace_dir
+
+
+def _record_if_crashed(proc: subprocess.Popen, log_path: Path | None) -> None:
+    """Leave a marker for the next start to offer a crash report. Only this
+    process can: it alone knows the GUI's pid and how it died (the native
+    launcher just sees this process's exit code)."""
+    from SciQLop.core.session_log import record_if_crashed
+    record_if_crashed(proc, log_path)
+
+
+def _append_to_own_log(message: str) -> None:
+    """The message was just printed to stderr, which the native launcher
+    tees into the log — only write it when nobody else does."""
+    if _native_launcher_owns_log():
+        return
+    try:
+        with open(_session_log_path(), "a", encoding="utf-8") as log:
+            log.write(message)
+    except OSError:
+        pass
 
 
 def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:

@@ -11,6 +11,7 @@
 #include "ui.hpp"
 
 #include <chrono>
+#include <ctime>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -98,6 +99,23 @@ struct SessionResult {
 /// Run one round to completion, driving *ui*. *round* is 1 for the very first
 /// round of this launcher process; *kind* says why this round is running.
 SessionResult run_session(const Options& options, Ui& ui, int round, RoundKind kind);
+
+/// How many session logs survive rotation, this launch's included.
+inline constexpr std::size_t KEPT_LOGS = 10;
+
+/// `sciqlop-YYYYMMDD-HHMMSS-<pid>.log` — sorts chronologically, and the pid
+/// keeps two launches in the same second apart. Same scheme as
+/// SciQLop/core/session_log.py, which creates one when no native launcher does.
+std::string session_log_name(const std::tm& local_time, long pid);
+
+/// Delete the oldest `sciqlop-*.log` files in *directory* so at most *keep*
+/// remain. Anything else in the directory is left alone.
+void prune_logs(const std::filesystem::path& directory, std::size_t keep);
+
+/// This launcher process's log, created (with its header, and rotation of the
+/// older ones) on first call; every round and every subprocess appends to it.
+/// Python learns its path through SCIQLOP_SESSION_LOG.
+const std::filesystem::path& session_log();
 
 /// Warning text when libxcb-cursor is missing on Linux, empty otherwise.
 std::string xcb_cursor_warning();
