@@ -129,6 +129,9 @@ jobs:
       - name: Publish
         uses: softprops/action-gh-release@v2
         with:
+          # The repo's "Latest" release is what users download SciQLop from;
+          # a launcher release must never take it over.
+          make_latest: false
           files: dist/*
           body: |
             Prebuilt SciQLop launcher binaries.
