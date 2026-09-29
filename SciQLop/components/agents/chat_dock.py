@@ -475,12 +475,27 @@ class AgentChatDock(QWidget):
     def _on_reset(self) -> None:
         if self._current is None:
             return
+        self._spawn(self._reset_backend(self._clear_session()))
+
+    def start_conversation(self, prompt: str) -> None:
+        """Open a fresh session and send *prompt* as if the user had typed it,
+        for flows SciQLop starts on the user's behalf (the crash report). The
+        prompt waits for the reset, or it would land in the old session."""
+        if self._current is None:
+            return
+        self._spawn(self._reset_then_send(self._clear_session(), prompt))
+
+    def _clear_session(self) -> _AgentSession:
         session = self._sessions[self._current]
         session.messages = []
         session.resume_id = None
         self._purge_replay_tempdir(self._current)
         self._transcript.render_messages(session.messages)
-        self._spawn(self._reset_backend(session))
+        return session
+
+    async def _reset_then_send(self, session: _AgentSession, prompt: str) -> None:
+        await self._reset_backend(session)
+        self._submit(session, prompt, [])
 
     async def _reset_backend(self, session: _AgentSession) -> None:
         await session.backend.reset()
@@ -784,7 +799,9 @@ class AgentChatDock(QWidget):
         body, image_paths = self._input.take_payload()
         if not body and not image_paths:
             return
-        session = self._sessions[self._current]
+        self._submit(self._sessions[self._current], body, image_paths)
+
+    def _submit(self, session: _AgentSession, body: str, image_paths: list) -> None:
         user_blocks: list = []
         if body:
             user_blocks.append(TextBlock(text=body))
@@ -1093,6 +1110,20 @@ def ensure_agent_dock(main_window) -> AgentChatDock:
         dock.refresh_backends()
     _register_agent_ui(main_window, dock)
     return dock
+
+
+def start_agent_conversation(main_window, prompt: str) -> bool:
+    """Reveal the agent panel and send *prompt* in a fresh session. False when
+    no backend plugin ever created the dock."""
+    dock = getattr(main_window, _DOCK_ATTR, None)
+    if dock is None:
+        return False
+    dock_manager = getattr(main_window, "dock_manager", None)
+    dock_widget = dock_manager.findDockWidget(_DOCK_TITLE) if dock_manager else None
+    if dock_widget is not None:
+        dock_widget.toggleView(True)
+    dock.start_conversation(prompt)
+    return True
 
 
 def _register_agent_ui(main_window, dock) -> None:

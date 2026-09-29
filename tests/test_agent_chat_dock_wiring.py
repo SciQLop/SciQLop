@@ -845,3 +845,31 @@ def test_version_reminder_is_prefixed_on_next_turn_after_resume(dock, qtbot):
     assert captured[0].startswith("Note: SciQLop was updated from 0.11.0 to 0.12.0")
     assert "plot something" in captured[0]
     assert AgentSessionMeta().get_sciqlop_version(_FAKE, "session-123") == SciQLop.__version__
+
+
+def test_start_conversation_resets_first_then_sends_the_prompt(dock, qtbot):
+    """A flow SciQLop starts for the user (the crash report) must not land in
+    the middle of whatever conversation was open, nor race the reset."""
+    from SciQLop.components.agents.chat import ChatMessage, TextBlock
+
+    session = dock._sessions[_FAKE]
+    session.messages.append(ChatMessage(role="user", blocks=[TextBlock(text="old")], done=True))
+    calls = []
+
+    async def _reset():
+        await asyncio.sleep(0.05)
+        calls.append("reset")
+
+    async def _answer(prompt):
+        calls.append(("ask", prompt))
+        yield TextBlock(text="on it", complete=True)
+
+    session.backend.reset = _reset
+    session.backend.ask = lambda prompt, image_paths=None: _answer(prompt)
+
+    dock.start_conversation("investigate the crash")
+
+    qtbot.waitUntil(lambda: ("ask", "investigate the crash") in calls, timeout=3000)
+    assert calls[0] == "reset"
+    user_texts = [b.text for m in session.messages if m.role == "user" for b in m.blocks]
+    assert user_texts == ["investigate the crash"]

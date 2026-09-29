@@ -68,6 +68,7 @@ def build_sciqlop_tools(main_window) -> List[Dict[str, Any]]:
         _job_status_tool(),
         _list_jobs_tool(),
         _orbit_bodies_frames_tool(),
+        *_crash_report_tools(),
     ]
     tools.extend(_write_tools(main_window))
     return _journal_all_tool_calls(tools)
@@ -127,6 +128,44 @@ def _text_tool(
         "handler": _run,
         "gated": gated,
     }
+
+
+def _crash_report_tools() -> List[Dict[str, Any]]:
+    """Both ungated: reading is local, and publishing only opens a prefilled
+    page the user reviews and submits — so the crash flow works even with
+    writes disabled, and never runs `gh` behind the user's back."""
+    from SciQLop.components.crash_report import backend as crash
+
+    @on_main_thread
+    def _open_issue(title: str, body: str) -> str:
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+        QDesktopServices.openUrl(QUrl(crash.issue_url(title, body)))
+        return "Opened the prefilled issue in the browser; the user reviews and submits it."
+
+    return [
+        _text_tool(
+            "sciqlop_read_crash_report",
+            "Return what SciQLop recorded about its previous crash: the crash marker "
+            "(pid, signal), versions, the tail of the session log (with the Python stack "
+            "of every thread), and on macOS the crashed thread of the system crash report. "
+            "Home paths are already replaced by ~.",
+            _NO_ARGS,
+            lambda _payload: crash.pending_crash_context()
+            or "No crash was recorded before this session.",
+            thread=True,
+        ),
+        _text_tool(
+            "sciqlop_open_bug_report",
+            "Open a prefilled SciQLop GitHub issue in the user's browser, for them to "
+            "review and submit. Pass a short title and a markdown body with your "
+            "diagnosis: never raw stack dumps, personal paths or data the report does not need.",
+            {"type": "object",
+             "properties": {"title": {"type": "string"}, "body": {"type": "string"}},
+             "required": ["title", "body"]},
+            lambda payload: _open_issue(payload["title"], payload["body"]),
+        ),
+    ]
 
 
 def _error_content(msg: str) -> Dict[str, Any]:

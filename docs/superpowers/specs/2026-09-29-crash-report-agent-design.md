@@ -1,6 +1,6 @@
 # Crash → agent-written bug report
 
-Status: design, not implemented. 2026-09-29. Revised after an opencode review
+Status: implemented 2026-09-29. Revised after an opencode review
 (findings verified against the code).
 
 ## Goal
@@ -138,41 +138,43 @@ silently. Otherwise show a non-blocking banner:
 
 ## 5. Agent session
 
-New API on the chat dock: start a fresh session and send a given prompt.
-Today the dock has no such entry point (`_on_send` reads the input widget,
-`_on_reset` resets the current session, and the dock only exists once a
-backend plugin's `load()` has created it). So this is: ensure the dock,
-reset to a new session, submit the text.
+New API: `chat_dock.start_agent_conversation(main_window, prompt)` reveals
+the agent panel, resets to a fresh session, and sends the prompt once the
+reset has landed (`AgentChatDock.start_conversation`).
 
-The session runs in CONFIRM write mode regardless of the user's setting —
-in YOLO mode gated tools run without a prompt, and this session was not
-typed by the user.
+The agent reads the crash through a SciQLop tool rather than its own file
+tools: `sciqlop_read_crash_report` (ungated) returns the marker, the
+versions, the last 300 lines of the session log, and on macOS the crashed
+thread of the `.ips` whose JSON `pid` matches (exception, termination, up
+to 40 frames with image names), all scrubbed. This works in every write
+mode, including "writes disabled", and needs no permission for
+`~/Library/Logs` — so the session is *not* forced into CONFIRM mode.
 
-The prompt is a markdown template in `components/agents/resources/`
-(new directory), filled from the marker. It tells the agent to:
+The prompt is `components/crash_report/resources/investigate_crash.md`. It
+asks the agent to:
 
-1. Read the session log, and on macOS the `.ips` in
-   `~/Library/Logs/DiagnosticReports/` whose JSON `pid` matches (file names
-   do not contain the pid; some may be `.ips.gz`).
+1. Call `sciqlop_read_crash_report`.
 2. Identify the crashing component (SciQLop, SciQLopPlots, a plugin, Qt)
-   and the likely trigger.
-3. Search SciQLop's GitHub issues for an existing report. A duplicate gets a
-   comment rather than a new issue.
+   and the likely trigger, with a confidence.
+3. Search the GitHub issues for an existing report. A duplicate gets a link
+   and a suggested comment, not a new issue.
 4. Draft a short issue: summary, suspected cause, steps to reproduce if
    inferable, versions. A few key frames at most, no home paths, no
    data/product names that were not needed.
-5. Show the draft and publish only after the user approves.
+5. Show the draft, and only after the user agrees call
+   `sciqlop_open_bug_report`.
 
 ## 6. Publishing
 
-Before anything leaves the machine, the issue body goes through a mechanical
-scrub: the home directory and user name are replaced by `~` / `<user>`. This
-backs up the prompt instruction; it is a few lines, not a redaction engine.
+`sciqlop_open_bug_report(title, body)` (ungated) scrubs both — home
+directory to `~`, user name to `<user>` — and opens
+`https://github.com/SciQLop/SciQLop/issues/new?title=…&body=…` in the
+browser, with the body capped at 6000 characters. The user submits it there;
+that page is the final confirmation.
 
-- `gh` installed and authenticated → `gh issue create` / `gh issue comment`,
-  after an explicit confirmation of that exact action.
-- Otherwise → open `https://github.com/SciQLop/SciQLop/issues/new?title=…&body=…`
-  in the browser; the user submits it there.
+→ skipped: `gh issue create`. The prefilled page needs no GitHub login and
+cannot post behind the user's back; add `gh` if users ask for one-click
+posting.
 
 ## Testing
 

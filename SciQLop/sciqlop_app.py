@@ -175,9 +175,13 @@ def start_sciqlop():
     app.processEvents()
     _notify_dropped_dependencies(main_windows)
     _notify_incompatible_plugins(main_windows)
+    from SciQLop.components.crash_report.offer import offer_crash_report
+    offer_crash_report(main_windows)
     return main_windows
 
 def main():
+    from SciQLop.core.session_log import enable_crash_traces
+    enable_crash_traces()
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
     from SciQLop.core.sciqlop_application import sciqlop_event_loop
