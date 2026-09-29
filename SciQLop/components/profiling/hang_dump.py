@@ -62,10 +62,10 @@ def dump_now(reason: str, directory: Optional[Path] = None) -> Path:
     return path
 
 
-def install_signal_dump(directory: Optional[Path] = None) -> Path:
+def install_signal_dump(directory: Optional[Path] = None) -> Optional[Path]:
     """Arm SIGUSR1 to append an all-threads traceback dump to a log file
     under `directory` for the rest of the process lifetime. Idempotent.
-    Returns the log path.
+    Returns the log path, or None where SIGUSR1 does not exist (Windows).
 
     Unlike `dump_now`, entries here are bare `faulthandler` output -- ident
     only, no thread-name header -- because the whole point of using
@@ -75,6 +75,8 @@ def install_signal_dump(directory: Optional[Path] = None) -> Path:
     reference idents against a `dump_now()` taken around the same time (or
     `thread_cpu_top`) to attach names."""
     global _signal_log_file
+    if not hasattr(signal, "SIGUSR1"):
+        return None
     directory = directory or default_directory()
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / "signal_dumps.log"
@@ -90,7 +92,8 @@ def install_signal_dump(directory: Optional[Path] = None) -> Path:
 def uninstall_signal_dump() -> None:
     """Undo `install_signal_dump()`. Mainly for tests."""
     global _signal_log_file
-    faulthandler.unregister(signal.SIGUSR1)
+    if hasattr(signal, "SIGUSR1"):
+        faulthandler.unregister(signal.SIGUSR1)
     if _signal_log_file is not None:
         _signal_log_file.close()
         _signal_log_file = None

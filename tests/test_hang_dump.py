@@ -54,3 +54,12 @@ def test_install_signal_dump_writes_on_sigusr1(tmp_path):
     finally:
         marker.set()
         t.join()
+
+
+def test_install_signal_dump_is_a_no_op_without_sigusr1(tmp_path, monkeypatch):
+    # Windows has no SIGUSR1 and no faulthandler.register(); debug mode must
+    # still start there.
+    monkeypatch.delattr(signal, "SIGUSR1")
+    assert hang_dump.install_signal_dump(tmp_path) is None
+    hang_dump.uninstall_signal_dump()
+    assert not (tmp_path / "signal_dumps.log").exists()
