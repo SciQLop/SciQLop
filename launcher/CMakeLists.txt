@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(sciqlop_launcher VERSION 0.1.3 LANGUAGES CXX)
+project(sciqlop_launcher VERSION 0.2.0 LANGUAGES CXX)
 if(APPLE)
     enable_language(OBJCXX)
 endif()
