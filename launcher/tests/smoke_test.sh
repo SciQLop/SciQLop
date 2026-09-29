@@ -78,28 +78,55 @@ wait_for_log_contains() {
     return 0
 }
 
-# Waits (up to 5s) for the error window to appear, then closes it through
-# xdotool's WM_DELETE_WINDOW (what a real WM close button sends) — the C5
-# regression check. Falls back to killing the process when xdotool is not
-# installed or the window never appears, in which case the C5-specific
-# assertion is skipped rather than failed.
+# `wait` for *pid*, but kill it after *timeout_s* seconds: a click that
+# misses must fail the test, never hang it (and CI with it).
+wait_bounded() {
+    local pid="$1" timeout_s="$2"
+    ( sleep "$timeout_s"; kill "$pid" 2>/dev/null ) &
+    local watchdog=$!
+    wait "$pid"
+    local code=$?
+    kill "$watchdog" 2>/dev/null
+    wait "$watchdog" 2>/dev/null
+    return "$code"
+}
+
+# The title changes before the window grows to the error layout, so wait for
+# the layout's height (458, see ui_fltk.cpp show_error) before clicking.
+find_error_window() {
+    local window_id=""
+    for _ in $(seq 1 100); do
+        window_id="$(xdotool search --name "startup failed" 2>/dev/null | head -n1)"
+        if [ -n "$window_id" ] &&
+            xdotool getwindowgeometry "$window_id" 2>/dev/null | grep -q "x458"; then
+            echo "$window_id"
+            return
+        fi
+        sleep 0.1
+    done
+}
+
+# `windowclose` only exists in xdotool >= 3.2021; EPEL 8 ships the 2016 one.
+xdotool_can_close() { xdotool help 2>&1 | grep -qw windowclose; }
+
+# Waits for the error window to appear, then closes it through xdotool's
+# WM_DELETE_WINDOW (what a real WM close button sends) — the C5 regression
+# check. Falls back to killing the process when xdotool is not installed, is
+# too old to send WM_DELETE_WINDOW, or the window never appears, in which
+# case the C5-specific assertion is skipped rather than failed.
 close_error_window_or_kill() {
     local pid="$1" exit_code_var="$2" via_xdotool_var="$3"
     local window_id=""
 
-    if command -v xdotool >/dev/null 2>&1; then
-        for _ in $(seq 1 50); do
-            window_id="$(xdotool search --name "startup failed" 2>/dev/null | head -n1)"
-            [ -n "$window_id" ] && break
-            sleep 0.1
-        done
+    if command -v xdotool >/dev/null 2>&1 && xdotool_can_close; then
+        window_id="$(find_error_window)"
     else
-        echo "  note: xdotool not installed, skipping the WM-close sub-check (C5)"
+        echo "  note: xdotool missing or without windowclose, skipping the WM-close sub-check (C5)"
     fi
 
     if [ -n "$window_id" ]; then
         xdotool windowclose "$window_id"
-        wait "$pid"
+        wait_bounded "$pid" 20
         printf -v "$exit_code_var" '%s' "$?"
         printf -v "$via_xdotool_var" '%s' "yes"
     else
@@ -110,10 +137,15 @@ close_error_window_or_kill() {
     fi
 }
 
-Xvfb :91 -screen 0 1024x768x24 >/dev/null 2>&1 &
+# -displayfd lets Xvfb pick a free display: a fixed one silently lands every
+# window on whatever other X server already holds it.
+Xvfb -displayfd 3 -screen 0 1024x768x24 3>"$ROOT/display" >/dev/null 2>&1 &
 XVFB_PID=$!
-export DISPLAY=:91
-sleep 2
+for _ in $(seq 1 50); do
+    [ -s "$ROOT/display" ] && break
+    sleep 0.1
+done
+export DISPLAY=":$(tr -d '[:space:]' < "$ROOT/display")"
 
 # --- case 1: successful launch, argv forwarded, ready-file ack -------------
 cat > "$ROOT/bin/python3" <<EOF
@@ -354,17 +386,11 @@ start_case "case 7: Restart SciQLop after a crash"
 if command -v xdotool >/dev/null 2>&1; then
     "$LAUNCHER" --workspace crashy &
     LAUNCHER_PID=$!
-    window_id=""
-    for _ in $(seq 1 100); do
-        window_id="$(xdotool search --name "startup failed" 2>/dev/null | head -n1)"
-        [ -n "$window_id" ] && break
-        sleep 0.1
-    done
+    window_id="$(find_error_window)"
     if [ -n "$window_id" ]; then
         # Centre of the Restart button: x = WIDTH - PAD - 75, y = 406 + 16.
         xdotool mousemove --window "$window_id" 625 422 click 1
-        timeout 20 tail --pid="$LAUNCHER_PID" -f /dev/null
-        wait "$LAUNCHER_PID"
+        wait_bounded "$LAUNCHER_PID" 20
         case7_exit=$?
         LAUNCHER_PID=""
         expect "Restart ran the app a second time" equals "$(cat "$ROOT/case7-count" 2>/dev/null)" 2
