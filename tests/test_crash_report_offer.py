@@ -47,6 +47,22 @@ def test_the_offer_is_shown_once_and_keeps_the_crash_for_the_agent(parent, crash
     assert offer.offer_crash_report(parent) is None
 
 
+def test_the_offer_snapshots_the_tool_calls_before_any_new_one_overwrites_them(
+        parent, crashed, monkeypatch, tmp_path):
+    """The journal is rewritten before every tool call, including the agent's
+    own sciqlop_read_crash_report: read it when the offer is shown."""
+    import json
+    from SciQLop.components.crash_report import backend, offer
+
+    journal = tmp_path / "journal.json"
+    journal.write_text(json.dumps([{"name": "sciqlop_exec_python", "started": "t", "finished": None}]))
+    monkeypatch.setattr(backend, "tool_journal_path", lambda: journal)
+    monkeypatch.setattr(offer, "available_backends", lambda: [])
+    offer.offer_crash_report(parent)
+    journal.write_text("[]")
+    assert "sciqlop_exec_python" in backend.pending_crash_context()
+
+
 def test_without_an_agent_only_the_log_is_offered(parent, crashed, monkeypatch):
     from SciQLop.components.crash_report import offer
 

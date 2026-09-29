@@ -69,6 +69,22 @@ def is_crash(returncode: int) -> bool:
     return returncode < 0 or returncode >= _NTSTATUS_ERROR
 
 
+def describe_exit(returncode: int) -> str:
+    """One wording for every place that reports how SciQLop ended."""
+    import signal
+    if returncode == 0:
+        return "exited normally"
+    if returncode < 0:
+        try:
+            name = signal.Signals(-returncode).name
+        except ValueError:
+            name = "unknown signal"
+        return f"crashed ({name}, signal {-returncode})"
+    if returncode >= _NTSTATUS_ERROR:
+        return f"crashed (Windows exception 0x{returncode:08X})"
+    return f"exited with code {returncode}"
+
+
 def crash_marker(returncode: int, pid: int, log: Path,
                  now: Optional[datetime] = None) -> dict:
     return {

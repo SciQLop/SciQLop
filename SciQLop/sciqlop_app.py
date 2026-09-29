@@ -19,6 +19,17 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from SciQLop.sciqlop_launcher import EXIT_RESTART, EXIT_SWITCH_WORKSPACE, SWITCH_WORKSPACE_FILE
 
 
+QT_MESSAGE_PATTERN = (
+    "%{time yyyy-MM-dd hh:mm:ss.zzz t} qt.%{type} %{if-category}%{category}: %{endif}%{message}"
+)
+
+
+def configure_qt_messages() -> None:
+    """Qt writes its warnings to stderr, which lands in the session log; give
+    them a time and a category. A pattern the user set is kept."""
+    os.environ.setdefault("QT_MESSAGE_PATTERN", QT_MESSAGE_PATTERN)
+
+
 def switch_workspace(workspace_name: str) -> None:
     """Signal the launcher to restart with a different workspace.
 
@@ -182,6 +193,7 @@ def start_sciqlop():
 def main():
     from SciQLop.core.session_log import enable_crash_traces
     enable_crash_traces()
+    configure_qt_messages()
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
     from SciQLop.core.sciqlop_application import sciqlop_event_loop

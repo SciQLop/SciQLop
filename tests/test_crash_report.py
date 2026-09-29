@@ -118,6 +118,33 @@ def test_crash_context_attaches_the_macos_report(tmp_path, monkeypatch):
     assert "QWidget::sharedPainter() const" in context
 
 
+def test_previous_tool_calls_reads_the_last_entries_of_the_journal(tmp_path):
+    journal = tmp_path / "agent_tool_calls.json"
+    journal.write_text(json.dumps([{"name": f"tool{i}", "started": "t", "finished": "t"}
+                                   for i in range(15)]))
+    calls = backend.previous_tool_calls(journal)
+    assert [c["name"] for c in calls] == [f"tool{i}" for i in range(5, 15)]
+
+
+def test_previous_tool_calls_without_a_journal(tmp_path):
+    assert backend.previous_tool_calls(tmp_path / "missing.json") == []
+    (tmp_path / "broken.json").write_text("{nope")
+    assert backend.previous_tool_calls(tmp_path / "broken.json") == []
+
+
+def test_crash_context_lists_the_agent_tool_calls_before_the_crash(tmp_path):
+    # GH #139: the last tool call is usually what identifies the trigger.
+    log = tmp_path / "session.log"
+    log.write_text("boom\n")
+    marker = {"time": "2026-09-29T17:19:03+02:00", "pid": 42, "platform": "linux",
+              "signal": 11, "ntstatus": None, "log": str(log),
+              "tool_calls": [{"name": "sciqlop_exec_python", "args": {"code": "g.deleteLater()"},
+                              "started": "2026-09-29T15:19:01+00:00", "finished": None}]}
+    context = backend.crash_context(marker)
+    assert "sciqlop_exec_python" in context
+    assert "g.deleteLater()" in context
+
+
 def test_no_pending_crash_means_no_context():
     backend.set_pending(None)
     assert backend.pending_crash_context() is None

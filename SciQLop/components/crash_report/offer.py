@@ -22,7 +22,7 @@ def offer_crash_report(main_window):
     marker = take_crash_marker()
     if marker is None:
         return None
-    backend.set_pending(marker)
+    backend.set_pending({**marker, "tool_calls": backend.previous_tool_calls(backend.tool_journal_path())})
     return _show_offer(main_window, marker)
 
 

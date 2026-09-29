@@ -72,6 +72,19 @@ def test_is_crash_only_for_abnormal_termination(returncode, crashed):
     assert sl.is_crash(returncode) is crashed
 
 
+@pytest.mark.parametrize("returncode, text", [
+    (0, "exited normally"),
+    (3, "exited with code 3"),
+    (-11, "crashed (SIGSEGV, signal 11)"),
+    (-6, "crashed (SIGABRT, signal 6)"),
+    (0xC0000005, "crashed (Windows exception 0xC0000005)"),
+])
+def test_describe_exit_names_the_signal(returncode, text):
+    # GH #139: the same crash read "exited with code 251" in one place and
+    # "exited with code -5" in another.
+    assert sl.describe_exit(returncode) == text
+
+
 def test_crash_marker_on_posix_records_the_signal(tmp_path):
     marker = sl.crash_marker(-11, 1234, tmp_path / "x.log", now=datetime(2026, 9, 29, 17, 19, 3))
     assert marker["pid"] == 1234

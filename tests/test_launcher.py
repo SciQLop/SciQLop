@@ -744,6 +744,24 @@ def test_spawn_app_logged_appends_to_the_session_log(tmp_path, monkeypatch):
     assert log_path.read_text().startswith("earlier round\n")
 
 
+def test_spawn_app_logged_timestamps_every_line(tmp_path, monkeypatch):
+    """GH #139: without a time on each line, nobody can tell whether the last
+    line before a crash came milliseconds or minutes earlier."""
+    import re
+    from SciQLop.sciqlop_launcher import _spawn_app_logged
+
+    log_path = tmp_path / "session.log"
+    monkeypatch.setattr(f"{MODULE}._session_log_path", lambda: log_path)
+    monkeypatch.setattr(f"{MODULE}.subprocess.Popen", _FakePopen)
+
+    _spawn_app_logged(Path("/usr/bin/python3"), {})
+
+    assert _wait_for(lambda: "[err]" in log_path.read_text())
+    stamp = r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3}"
+    assert re.search(rf"^{stamp} \[out\] hello out$", log_path.read_text(), re.M)
+    assert re.search(rf"^{stamp} \[err\] hello err$", log_path.read_text(), re.M)
+
+
 def test_spawn_app_logged_leaves_the_log_to_the_native_launcher(tmp_path, monkeypatch):
     """Under the C++ launcher, it already tees this process's output into the
     log; writing it here too corrupted the file and doubled every line."""
@@ -812,6 +830,17 @@ def test_run_on_console_records_a_crash_marker(monkeypatch, tmp_path):
     assert marker["pid"] == _FakePopen.pid
     assert marker["signal"] == 11
     assert marker["log"] == str(log_path)
+
+
+def test_run_on_console_names_the_signal_of_a_crash(monkeypatch, tmp_path, capsys):
+    class _SegfaultingPopen(_FakePopen):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.returncode = -11
+
+    _console_session(monkeypatch, tmp_path, _SegfaultingPopen)
+
+    assert "SciQLop crashed (SIGSEGV, signal 11)." in capsys.readouterr().err
 
 
 def test_run_on_console_handled_failure_leaves_no_crash_marker(monkeypatch, tmp_path):

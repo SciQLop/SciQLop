@@ -17,6 +17,9 @@
 
 - Every launch now keeps its own log, `logs/sciqlop-<date>-<time>-<pid>.log` in SciQLop's data folder, and the 10 most recent are kept. `last-launch.log` was overwritten by the next launch, so the log of a crash was usually gone by the time anyone looked. Under the native launcher it was also garbled: two processes wrote it at once, and every line of SciQLop's output appeared twice.
 - A crash now writes the Python stack of every thread into that log, not only in debug mode.
+- Every line of the session log starts with its time, to the millisecond, so the last lines before a crash can be placed in time. Qt's own warnings carry their time zone and category too (#139).
+- A crash is reported by its signal name, as in "SciQLop crashed (SIGSEGV, signal 11)", instead of a raw exit code that read differently in the dialog and the log (#139).
+- The crash report the agent reads includes the last agent tool calls of the crashed session, with their arguments and times: the call still in flight is usually the trigger (#139).
 - Debug mode (`SCIQLOP_DEBUG`) no longer fails to start on Windows.
 - The launcher's error window has a **Restart SciQLop** button. After a crash it starts SciQLop again in the same workspace, where the crash-report offer is waiting.
 

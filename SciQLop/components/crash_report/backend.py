@@ -19,6 +19,7 @@ DIAGNOSTIC_REPORTS = Path.home() / "Library" / "Logs" / "DiagnosticReports"
 ISSUES_URL = "https://github.com/SciQLop/SciQLop/issues/new"
 LOG_TAIL_LINES = 300
 MAX_FRAMES = 40
+MAX_TOOL_CALLS = 10
 # GitHub rejects prefilled issue URLs past ~8 kB.
 MAX_BODY_CHARS = 6000
 _VERSIONED = ("SciQLop", "SciQLopPlots", "speasy", "PySide6", "jupyqt")
@@ -35,12 +36,32 @@ def pending_crash_context() -> Optional[str]:
     return crash_context(_pending) if _pending else None
 
 
+def tool_journal_path() -> Path:
+    from SciQLop.components.agents.tools._journal import default_path
+    return default_path()
+
+
+def previous_tool_calls(journal: Path) -> list:
+    """The crashed session's last agent tool calls. Read it before any new
+    call: the journal is rewritten as soon as the next one starts."""
+    try:
+        calls = json.loads(journal.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return calls[-MAX_TOOL_CALLS:] if isinstance(calls, list) else []
+
+
 def crash_context(marker: dict) -> str:
+    marker = dict(marker)
+    tool_calls = marker.pop("tool_calls", [])
     sections = [
         ("Crash marker", json.dumps(marker, indent=1)),
         ("Versions (running now)", json.dumps(_versions(), indent=1)),
         (f"Session log, last {LOG_TAIL_LINES} lines", _log_tail(Path(marker["log"]))),
     ]
+    if tool_calls:
+        sections.append(("Agent tool calls before the crash (UTC, finished=null means "
+                         "in flight)", json.dumps(tool_calls, indent=1)))
     ips = find_ips(marker["pid"], DIAGNOSTIC_REPORTS, since=_crash_time(marker) - 60)
     if ips is not None:
         sections.append((f"macOS crash report {ips.name}", json.dumps(ips_summary(ips), indent=1)))

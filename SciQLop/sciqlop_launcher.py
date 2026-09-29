@@ -167,6 +167,13 @@ def _native_launcher_owns_log() -> bool:
     return SESSION_LOG_ENV in os.environ
 
 
+def _log_timestamp() -> str:
+    """Local time to the millisecond; the same format the native launcher
+    writes (launcher/src/process.hpp)."""
+    from datetime import datetime
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+
+
 def _open_log_sink(log_path: Path):
     import io
     if _native_launcher_owns_log():
@@ -320,7 +327,7 @@ def _spawn_app_logged(
                     except Exception:
                         pass
                 try:
-                    log_file.write(f"[{label}] {line}")
+                    log_file.write(f"{_log_timestamp()} [{label}] {line}")
                     log_file.flush()
                 except Exception:
                     pass
@@ -425,7 +432,7 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
             elif proc.poll() is not None:
                 timer.stop()
                 window.show_error(
-                    f"SciQLop process exited with code {proc.returncode}.\n\n"
+                    f"SciQLop {_describe_exit(proc.returncode)}.\n\n"
                     f"Full output: {log_path}\n\n"
                     f"{''.join(stderr_lines)}"
                 )
@@ -539,8 +546,13 @@ def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tup
     exit_code = proc.wait()
     _record_if_crashed(proc, log_path)
     if exit_code != 0:
-        print(f"SciQLop exited with code {exit_code}. Full output: {log_path}", file=sys.stderr)
+        print(f"SciQLop {_describe_exit(exit_code)}. Full output: {log_path}", file=sys.stderr)
     return exit_code, workspace_dir
+
+
+def _describe_exit(returncode: int) -> str:
+    from SciQLop.core.session_log import describe_exit
+    return describe_exit(returncode)
 
 
 def _record_if_crashed(proc: subprocess.Popen, log_path: Path | None) -> None:
