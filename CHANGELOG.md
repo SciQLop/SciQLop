@@ -23,6 +23,10 @@
 
 - Settings that hold a size in bytes, such as the Speasy cache limit, are shown and edited as `20 GB` instead of `20000000000`. Input like `500MB`, `1.5 GB`, `2 TiB` or a plain number of bytes is accepted, and the value is saved when you press Enter or leave the field, not while you type.
 
+### Catalogs
+
+- The catalog mode picked in a panel's chrome row (or with Ctrl+Shift+M) now takes effect right away and shows in the right-click Mode menu. On a fresh panel it only changed the combo: the panel stayed in its previous mode, so Edit did not allow editing, until a catalog was added or the mode was set from the menu.
+
 ### Performance
 
 - Plot panels stay more responsive while data loads. The panel used to watch every event of every plot from Python just to catch right-clicks, so each repaint and mouse move waited for the data-loading threads. It now only runs Python on an actual right-click.

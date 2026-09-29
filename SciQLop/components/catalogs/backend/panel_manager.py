@@ -44,7 +44,6 @@ class PanelCatalogManager(QObject):
         self._panel = panel
         self._overlays: dict[str, CatalogOverlay] = {}
         self._mode = InteractionMode.VIEW
-        self._bar_connected = False
         self._panel.span_created.connect(self._on_span_created)
         registry = CatalogRegistry.instance()
         for provider in registry.providers():
@@ -238,15 +237,18 @@ class PanelCatalogManager(QObject):
                 result.append(cat)
         return result
 
+    def attach_chrome(self, chrome) -> None:
+        """Wire the panel's chrome row as soon as its container adds it. Wiring
+        it lazily on first use missed a mode picked in the chrome combo (or by
+        Ctrl+Shift+M) before anything else touched the manager: the combo
+        showed one mode while the panel and its right-click menu kept another."""
+        chrome.target_changed.connect(lambda _: self._apply_span_creation_state())
+        chrome.mode_changed.connect(self._on_chrome_mode_changed)
+        chrome.zoom_out_changed.connect(self._on_zoom_out_changed)
+        chrome.mode = self._mode.value
+
     def _catalog_chrome(self):
-        chrome = getattr(self._panel, '_catalog_chrome', None)
-        if chrome is not None and not self._bar_connected:
-            chrome.target_changed.connect(lambda _: self._apply_span_creation_state())
-            chrome.mode_changed.connect(self._on_chrome_mode_changed)
-            chrome.zoom_out_changed.connect(self._on_zoom_out_changed)
-            chrome.mode = self._mode.value
-            self._bar_connected = True
-        return chrome
+        return getattr(self._panel, '_catalog_chrome', None)
 
     @staticmethod
     def _on_zoom_out_changed(value: float) -> None:

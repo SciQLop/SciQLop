@@ -22,6 +22,7 @@ class PanelContainer(QWidget):
 
         panel._time_range_bar = self.time_range_bar
         panel._catalog_chrome = self.catalog_chrome
+        panel.catalog_manager.attach_chrome(self.catalog_chrome)
         panel._crosshair_toggle = self.crosshair_toggle
 
         self.chrome_row = self._build_chrome_row()
