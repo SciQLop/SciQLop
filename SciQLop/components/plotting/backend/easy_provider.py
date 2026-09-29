@@ -465,6 +465,10 @@ class EasySpectrogram(EasyProvider):
     def _to_variable(self, res) -> Optional[DataProviderReturnType]:
         if type(res) is SpeasyVariable:
             return res
+        elif type(res) is tuple and len(res) == 2:
+            x, z = res
+            return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x))],
+                                  values=DataContainer(np.ascontiguousarray(z)))
         elif type(res) is tuple:
             x, y, z = res
             return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x)), VariableAxis(np.ascontiguousarray(y))],

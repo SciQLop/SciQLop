@@ -328,6 +328,15 @@ def _y_is_descending(y):
         return None
 
 
+def _with_y_axis(result):
+    """Some spectrogram products have no second axis, only time and 2D values
+    (GH #144): plot them against the channel index."""
+    if len(result) == 2:
+        x, z = result
+        return x, np.arange(np.shape(z)[1], dtype=np.float64), z
+    return result
+
+
 class _specgram_callback(_ProductCallbackBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -351,7 +360,10 @@ class _specgram_callback(_ProductCallbackBase):
             self._record_success()
             return empty, empty, empty
         try:
-            x, y, z = result
+            x, y, z = _with_y_axis(result)
+            if len(x) == 0:
+                self._record_success()
+                return empty, empty, empty
             if self._y_is_descending(y):
                 if len(y.shape) == 1:
                     y = y[::-1].copy()

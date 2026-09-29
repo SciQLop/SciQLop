@@ -78,3 +78,68 @@ def test_real_data_still_flows_through(monkeypatch):
     assert y.shape == (3,)
     assert z.shape == (4, 3)
     assert errors == []
+
+
+def _spectrogram_without_y_axis(n_rows: int, n_channels: int = 3):
+    """What some AMDA spectrogram products return: time plus 2D values, no
+    second axis (GH #144)."""
+    from speasy.core import epoch_to_datetime64
+    from speasy.core.data_containers import DataContainer
+    from speasy.products import SpeasyVariable, VariableTimeAxis
+
+    epoch = np.arange(n_rows, dtype=np.float64)
+    values = np.arange(n_rows * n_channels, dtype=np.float64).reshape(n_rows, n_channels) + 1.0
+    return SpeasyVariable(axes=[VariableTimeAxis(values=epoch_to_datetime64(epoch))],
+                          values=DataContainer(values=values, name="flux"))
+
+
+def _collect_errors(monkeypatch):
+    from SciQLop.components.plotting.ui import time_sync_panel
+    errors = []
+    monkeypatch.setattr(time_sync_panel.log, "error", lambda *a, **k: errors.append(a))
+    return errors
+
+
+def test_spectrogram_without_y_axis_uses_the_channel_index(monkeypatch):
+    from SciQLop.components.plotting.ui.time_sync_panel import _specgram_callback
+
+    errors = _collect_errors(monkeypatch)
+    cb = _specgram_callback(provider=_make_spectrogram(lambda start, stop: _spectrogram_without_y_axis(5)),
+                            node=None)
+
+    x, y, z = cb(0.0, 10.0)
+
+    assert x.shape == (5,)
+    assert list(y) == [0.0, 1.0, 2.0]
+    assert z.shape == (5, 3)
+    assert cb.last_error is None
+    assert errors == []
+
+
+def test_a_two_array_result_uses_the_channel_index(monkeypatch):
+    from SciQLop.components.plotting.ui.time_sync_panel import _specgram_callback
+
+    errors = _collect_errors(monkeypatch)
+
+    def f(start: float, stop: float):
+        return np.linspace(start, stop, 4), np.ones((4, 2))
+
+    x, y, z = _specgram_callback(provider=_make_spectrogram(f), node=None)(0.0, 1.0)
+
+    assert list(y) == [0.0, 1.0]
+    assert z.shape == (4, 2)
+    assert errors == []
+
+
+def test_an_empty_window_is_no_data_not_an_error(monkeypatch):
+    from SciQLop.components.plotting.ui.time_sync_panel import _specgram_callback
+
+    errors = _collect_errors(monkeypatch)
+    cb = _specgram_callback(provider=_make_spectrogram(lambda start, stop: _spectrogram_without_y_axis(0)),
+                            node=None)
+
+    x, y, z = cb(0.0, 1.0)
+
+    assert x.size == 0 and z.size == 0
+    assert cb.last_error is None
+    assert errors == []
