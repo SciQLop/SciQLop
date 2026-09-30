@@ -61,6 +61,24 @@ def _filter_axis_numeric_axes(axes: List[VariableAxis]) -> List[VariableAxis]:
     ]
 
 
+_EPOCH_CHUNK = 1 << 20
+
+
+def epoch_in_place(time: np.ndarray) -> np.ndarray:
+    """datetime64[ns] -> float64 epoch seconds in the same buffer (both are 8 bytes wide).
+    Chunked: one whole-array in-place multiply makes numpy copy the overlapping input
+    first, which is the very allocation this avoids. Other layouts get a copy."""
+    if time.dtype != np.dtype("datetime64[ns]") or not time.flags.c_contiguous \
+            or not time.flags.writeable:
+        return datetime64_to_epoch(time)
+    ticks = time.view(np.int64)
+    seconds = ticks.view(np.float64)
+    for start in range(0, len(ticks), _EPOCH_CHUNK):
+        chunk = slice(start, start + _EPOCH_CHUNK)
+        np.multiply(ticks[chunk], 1e-9, out=seconds[chunk], casting="unsafe")
+    return seconds
+
+
 def _is_time_sorted(time: np.ndarray) -> bool:
     """True if `time` is non-decreasing along the last axis (matches np.diff's
     default axis). Avoids np.diff's subtraction pass -- ~2x faster."""
@@ -82,12 +100,17 @@ def _sort_variable_by_time(variable: SpeasyVariable) -> SpeasyVariable:
 
 
 class DataProvider:
-    def __init__(self, name: str, data_order: DataOrder = DataOrder.X_FIRST, cacheable: bool = False):
+    def __init__(self, name: str, data_order: DataOrder = DataOrder.X_FIRST, cacheable: bool = False,
+                 owns_fetched_variables: bool = False):
         global providers  # noqa: F824
         providers[name] = self
         self._name = name
         self._data_order = data_order
         self._cacheable = cacheable
+        # True when get_data returns a fresh variable nobody else keeps, so its buffers
+        # may be reused (the time array becomes the epoch array). A virtual product may
+        # return a variable it keeps, hence the default.
+        self._owns_fetched_variables = owns_fetched_variables
 
     @property
     def name(self) -> str:
@@ -192,7 +215,8 @@ class DataProvider:
                           n_points=n_points, n_bytes=n_bytes):
             if not _is_time_sorted(v.time):
                 v = _sort_variable_by_time(v)
-            time = datetime64_to_epoch(v.time)
+            time = epoch_in_place(v.time) if self._owns_fetched_variables \
+                else datetime64_to_epoch(v.time)
             axes = _filter_axis_numeric_axes(v.axes[1:])
             if len(axes) == 0 or self.graph_type(node) in (GraphType.MultiLines, GraphType.SingleLine):
                 result = [time, _ensure_contiguous(v.values)]

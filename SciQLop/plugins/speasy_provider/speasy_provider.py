@@ -447,7 +447,8 @@ def speasy_coverage(speasy_id) -> Optional[TimeRange]:
 
 class SpeasyPlugin(DataProvider):
     def __init__(self):
-        super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST, cacheable=True)
+        super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST, cacheable=True,
+                                          owns_fetched_variables=True)
         from speasy.core.requests_scheduling.request_dispatch import init_providers
         import speasy.core.http as http
         http.USER_AGENT = f"SciQLop/{sciqlop_version}/{http.USER_AGENT}"

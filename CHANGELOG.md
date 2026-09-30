@@ -46,6 +46,7 @@
 
 ### Performance
 
+- A Speasy fetch no longer holds a second copy of its time axis: the timestamps are turned into epoch seconds in place. On a 68-million-point fetch (a 1 kHz product over two days) that is 0.55 GB less held and 1.1 GB less at the peak, which matters on an 8 GB machine that was already swapping. Other providers keep their variables untouched, since a virtual product may return one it keeps.
 - Plot panels stay more responsive while data loads. The panel used to watch every event of every plot from Python just to catch right-clicks, so each repaint and mouse move waited for the data-loading threads. It now only runs Python on an actual right-click.
 - The highlight that blinks the start-time field on a new panel, and the zoom-limit field when you zoom past the limit, is now animated by Qt itself instead of restyling the field from Python on every frame.
 - Dragging a plot updates the time-range bar at most ten times a second instead of on every frame; the bar still shows the final range as soon as you stop.
