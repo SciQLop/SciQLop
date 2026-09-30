@@ -29,6 +29,7 @@ import weakref
 from SciQLop.core.plot_hints import apply_plot_hints, combine_hints, merge_hints, PlotHints
 from SciQLop.core.property import SciQLopProperty
 from SciQLop.core.mime import decode_mime
+from SciQLop.components.plotting.ui.coverage_notice import offer_jump_to_data
 from SciQLop.core.mime.types import PRODUCT_LIST_MIME_TYPE, TIME_RANGE_MIME_TYPE, CATALOG_LIST_MIME_TYPE
 from SciQLop.components.plotting.backend.palette import Palette, make_color_list
 from SciQLop.components.plotting.ui.product_search_overlay import ProductSearchOverlay
@@ -1129,6 +1130,7 @@ class ProductDnDCallback(PlotDragNDropCallback):
                     attach_layer(plot, product, panel=self.parent())
                 else:
                     plot_product(plot, product)
+                    offer_jump_to_data(self.parent(), product)
 
 
 class TimeRangeDnDCallback(PlotDragNDropCallback):
@@ -1199,6 +1201,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
     def _on_overlay_product_selected(self, product_path: list[str]):
         from SciQLopPlots import PlotType
         plot_product(self, product_path, plot_type=PlotType.TimeSeries)
+        offer_jump_to_data(self, product_path)
 
     def _on_overlay_proxy_config(self, config: dict):
         from SciQLop.components.plotting.ui.proxy_share import apply_proxy_config

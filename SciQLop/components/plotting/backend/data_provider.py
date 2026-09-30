@@ -2,6 +2,7 @@ from typing import Optional, Tuple, List, Union
 
 import numpy as np
 
+from SciQLop.core import TimeRange
 from SciQLop.core.enums import DataOrder, GraphType
 from SciQLop.core.plot_hints import PlotHints
 from SciQLop.core import tracing
@@ -126,6 +127,11 @@ class DataProvider:
         return QVariant/JSON-friendly values (see speasy_hints.jsonable_meta).
         """
         return {}
+
+    def coverage(self, node) -> Optional[TimeRange]:
+        """The product's time coverage as its inventory states it, or None when
+        unknown. Defaults to unknown."""
+        return None
 
     def get_knobs(self, product) -> list:
         """Return a list of KnobSpec for this product (empty = not parameterized)."""

@@ -11,7 +11,7 @@ from SciQLop.components.theming import register_icon, get_icon
 from SciQLop.components import sciqlop_logging
 from SciQLop.core.enums import ParameterType, GraphType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder
-from SciQLop.core import tracing
+from SciQLop.core import tracing, TimeRange
 from SciQLop.core.plot_hints import PlotHints
 from SciQLop.core.istp_hints import istp_metadata_to_hints
 from SciQLop.core.speasy_hints import variable_as_istp_meta, jsonable_meta
@@ -418,6 +418,33 @@ def build_product_tree(root_node: ProductsModelNode, provider):
     return root_node
 
 
+def _speasy_index(speasy_id):
+    if not speasy_id:
+        return None
+    try:
+        provider, uid = speasy_id.split("/", 1)
+        provider_fi = getattr(spz.inventories.flat_inventories, provider, None)
+        if provider_fi is None:
+            return None
+        return provider_fi.parameters.get(uid)
+    except Exception:
+        return None
+
+
+def speasy_coverage(speasy_id) -> Optional[TimeRange]:
+    """Inventory-only (no request). An empty range, as datasets without data
+    advertise (1970 → 1970), is unknown coverage rather than "no data ever"."""
+    index = _speasy_index(speasy_id)
+    if index is None:
+        return None
+    try:
+        dt_range = getattr(spz, speasy_id.split("/", 1)[0]).parameter_range(index)
+        start, stop = dt_range.start_time.timestamp(), dt_range.stop_time.timestamp()
+    except Exception:
+        return None
+    return TimeRange(start, stop) if stop > start else None
+
+
 class SpeasyPlugin(DataProvider):
     def __init__(self):
         super(SpeasyPlugin, self).__init__(name="Speasy", data_order=DataOrder.Y_FIRST, cacheable=True)
@@ -435,16 +462,10 @@ class SpeasyPlugin(DataProvider):
             speasy_id = product.metadata("speasy_id")
         else:
             speasy_id = product
-        if not speasy_id:
-            return None
-        try:
-            provider, uid = speasy_id.split("/", 1)
-            provider_fi = getattr(spz.inventories.flat_inventories, provider, None)
-            if provider_fi is None:
-                return None
-            return provider_fi.parameters.get(uid)
-        except Exception:
-            return None
+        return _speasy_index(speasy_id)
+
+    def coverage(self, node) -> Optional[TimeRange]:
+        return speasy_coverage(node.metadata("speasy_id"))
 
     def get_knobs(self, product) -> list:
         index = self._resolve_index(product)
