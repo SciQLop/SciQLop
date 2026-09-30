@@ -148,3 +148,15 @@ def test_open_without_any_trace_asks_for_a_file(profiling, monkeypatch):
     menu._open_last.trigger()
 
     assert opened == [str(picked)]
+
+
+def test_show_traces_folder_opens_it_in_the_file_browser(profiling, monkeypatch):
+    from SciQLop.components.profiling import menu as menu_module
+
+    menu, _tracer, _opened, traces = profiling
+    urls = []
+    monkeypatch.setattr(menu_module.QDesktopServices, "openUrl", urls.append)
+
+    menu._show_folder.trigger()
+
+    assert [u.toLocalFile() for u in urls] == [str(traces)]

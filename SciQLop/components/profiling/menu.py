@@ -10,8 +10,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QObject, Qt, Signal
-from PySide6.QtGui import QFontDatabase, QKeySequence
+from PySide6.QtCore import QObject, Qt, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QFontDatabase, QKeySequence
 from PySide6.QtWidgets import (
     QDialog, QFileDialog, QMenu, QMessageBox, QPlainTextEdit, QVBoxLayout, QWidget,
 )
@@ -131,6 +131,11 @@ class ProfilingMenu(QObject):
             "Loads a trace file into https://ui.perfetto.dev/ in your"
             " default browser. The trace is served from localhost and"
             " never uploaded — Perfetto runs entirely client-side."))
+        self._show_folder = self.menu.addAction(
+            "Show traces folder", self._on_show_folder)
+        self._show_folder.setToolTip(rich_tooltip(
+            "Show traces folder",
+            "Opens the folder holding the dated traces in your file browser."))
         self.menu.addSeparator()
         _bind(self._start, settings.start_trace_shortcut)
         _bind(self._stop, settings.stop_trace_shortcut)
@@ -262,6 +267,9 @@ class ProfilingMenu(QObject):
         )
         if path:
             self._open_path(path)
+
+    def _on_show_folder(self) -> None:
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(traces_dir())))
 
     def _open_path(self, path: str) -> None:
         try:

@@ -22,6 +22,7 @@
 - The crash report the agent reads includes the last agent tool calls of the crashed session, with their arguments and times: the call still in flight is usually the trigger (#139).
 - Debug mode (`SCIQLOP_DEBUG`) no longer fails to start on Windows.
 - Profiling has keyboard shortcuts: **Ctrl+Alt+P** starts a trace straight away, to a dated file in SciQLop's `traces` folder, **Ctrl+Alt+S** stops it, and **Ctrl+Alt+O** opens the last trace in Perfetto (Cmd+Option on macOS). They work from floating panels too, and can be changed in Settings › Profiling, as can the number of traces kept in that folder (10 by default; older ones are deleted when a trace is saved). **Tools › Profiling › Start trace to file…** still lets you pick the file.
+- **Tools › Profiling › Show traces folder** opens that `traces` folder in your file browser.
 - The launcher's error window has a **Restart SciQLop** button. After a crash it starts SciQLop again in the same workspace, where the crash-report offer is waiting.
 
 ### UI
