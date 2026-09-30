@@ -4,9 +4,9 @@ import math
 import time as _time
 import traceback
 import numpy as np
-from PySide6.QtCore import QMimeData, QObject, QTimer, QUrl, Signal
+from PySide6.QtCore import QMimeData, QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtGui import QDesktopServices, QIcon
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QWidget
 from PySide6.QtGui import QColor
 from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
     ParameterType, GraphType, SciQLopNDProjectionPlot, OverlayLevel, OverlaySizeMode, OverlayPosition
@@ -1179,6 +1179,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
         from SciQLop.components.catalogs.backend.panel_manager import PanelCatalogManager
         self._catalog_manager = PanelCatalogManager(self)
+        self.plot_added.connect(self._route_canvas_context_menus)
         self.plot_added.connect(self._apply_theme_to_plot)
         from SciQLop.components.plotting.backend.autoscale_percentile import (
             apply_defaults_to_plot,
@@ -1240,6 +1241,16 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
     @property
     def catalog_manager(self):
         return self._catalog_manager
+
+    def _route_canvas_context_menus(self, plot):
+        # NeoQCP canvases set WA_NoMousePropagation, so their right-clicks never bubble
+        # up to contextMenuEvent below. Their customContextMenuRequested signal fires on
+        # right-clicks only, unlike a Python eventFilter, which saw every event (GH #143).
+        for canvas in plot.findChildren(QWidget):
+            if canvas.testAttribute(Qt.WidgetAttribute.WA_NoMousePropagation):
+                canvas.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+                canvas.customContextMenuRequested.connect(
+                    lambda pos, c=canvas: self._show_context_menu(c.mapToGlobal(pos), c))
 
     def contextMenuEvent(self, event):
         # Unhandled right-clicks bubble up here from any plot child. A Python

@@ -38,6 +38,24 @@ def _right_click(widget):
     QApplication.sendEvent(widget, event)
 
 
+def _real_right_click(widget):
+    """Through the window, as the platform delivers it: Qt picks the deepest child
+    under the cursor and synthesises the QContextMenuEvent itself."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtTest import QTest
+    window = widget.window().windowHandle()
+    local = widget.mapTo(widget.window(), QPoint(widget.width() // 2, widget.height() // 2))
+    QTest.mouseClick(window, Qt.MouseButton.RightButton, Qt.KeyboardModifier.NoModifier, local)
+
+
+def test_real_right_click_on_plot_opens_panel_menu(qtbot, monkeypatch):
+    panel, plot = _shown_panel_with_plot(qtbot)
+    requests = _record_menu_requests(panel, monkeypatch)
+    _real_right_click(plot)
+    qtbot.waitUntil(lambda: len(requests) == 1, timeout=1000)
+    assert panel._plot_containing(requests[0]) is plot
+
+
 def test_panel_does_not_filter_every_event():
     from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
     assert "eventFilter" not in vars(TimeSyncPanel)
