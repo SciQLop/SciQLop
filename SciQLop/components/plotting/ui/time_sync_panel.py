@@ -693,8 +693,11 @@ def _post_plot(r, provider, node, callback, target, product_path_str, existing_p
     return r
 
 
-# Each fetch covers 2x the view, so a pan or zoom inside it fetches nothing (GH #143).
+# Each fetch covers 2x the view, so a pan or zoom inside it fetches nothing (GH #143)...
 PREFETCH_MARGIN = 0.5
+# ...within this many bytes: SciQLopPlots narrows the margin from the last fetch's
+# density, so a 1 kHz product zoomed out to days (~1 GB per view) is not doubled.
+PREFETCH_BUDGET_BYTES = 256_000_000
 
 
 def _apply_prefetch_margin(graph, provider) -> None:
@@ -702,6 +705,7 @@ def _apply_prefetch_margin(graph, provider) -> None:
     # for any range, and a widened fetch would keep coarse data after a zoom-in.
     if getattr(provider, "cacheable", False):
         graph.set_prefetch_margin(PREFETCH_MARGIN)
+        graph.set_prefetch_budget_bytes(PREFETCH_BUDGET_BYTES)
 
 
 def _install_graph_context_ui(plot, graph) -> None:

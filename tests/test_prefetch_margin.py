@@ -48,6 +48,14 @@ def test_margin_follows_provider_cacheability(qtbot, main_window, cachable, marg
     assert graph.prefetch_margin() == pytest.approx(margin)
 
 
+@pytest.mark.parametrize("cachable", [True, False])
+def test_cacheable_products_get_a_prefetch_byte_budget(qtbot, main_window, cachable):
+    from SciQLop.components.plotting.ui.time_sync_panel import PREFETCH_BUDGET_BYTES
+    calls = []
+    _panel, graph = _plot(qtbot, main_window, f"budget_probe/set_{cachable}", calls, cachable)
+    assert graph.prefetch_budget_bytes() == (PREFETCH_BUDGET_BYTES if cachable else 0)
+
+
 def test_pan_inside_margin_does_not_refetch_cacheable_product(qtbot, main_window):
     calls = []
     panel, _graph = _plot(qtbot, main_window, "margin_probe/pan_cached", calls, cachable=True)
