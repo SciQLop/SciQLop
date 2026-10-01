@@ -1,5 +1,5 @@
 """Thread-safety primitives for the plot user_api."""
-from SciQLop.user_api.threading import on_main_thread, MainThreadProxy, _on_main_thread
+from SciQLop.user_api.threading import on_main_thread, main_thread_safe
 
 
 class GuardedImpl:
@@ -13,10 +13,7 @@ class GuardedImpl:
 
     @property
     def _impl(self):
-        impl = self.__dict__.get("_GuardedImpl__impl")
-        if impl is None or _on_main_thread():
-            return impl
-        return MainThreadProxy(impl)
+        return main_thread_safe(self.__dict__.get("_GuardedImpl__impl"))
 
     @_impl.setter
     def _impl(self, value):

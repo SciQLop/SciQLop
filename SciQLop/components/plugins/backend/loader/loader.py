@@ -18,6 +18,26 @@ loaded_plugins = SimpleNamespace()
 log = getLogger(__name__)
 
 
+class _KernelPluginsView:
+    """`plugins` in the kernel namespace: the loaded plugins, read live.
+
+    Cells run on the kernel thread, so plugin objects are handed out proxied
+    there. The namespace itself stays a plain object so `dir()` and tab
+    completion keep listing the plugin names.
+    """
+
+    def __getattr__(self, name):
+        from SciQLop.user_api.threading import main_thread_safe
+        return main_thread_safe(getattr(loaded_plugins, name))
+
+    def __dir__(self):
+        return sorted(vars(loaded_plugins))
+
+
+def kernel_plugins_view() -> _KernelPluginsView:
+    return _KernelPluginsView()
+
+
 def import_from_path(module_name, file_path):
     import sys
     spec = importlib.util.spec_from_file_location(module_name, file_path)

@@ -149,8 +149,12 @@ def unwrap_all(values):
 
 
 def main_thread_safe(obj):
-    """Return `obj` on the GUI thread, a MainThreadProxy of it anywhere else."""
-    return obj if _on_main_thread() else MainThreadProxy(obj)
+    """Return `obj` on the GUI thread; elsewhere, proxy the QObjects in it.
+
+    Anything that is not a QObject (or a container of them) passes through, so
+    `None` stays `None` and plain values need no round-trip.
+    """
+    return obj if _on_main_thread() else _wrap_for_main_thread(obj)
 
 
 def on_main_thread(func):

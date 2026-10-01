@@ -164,7 +164,8 @@ def start_sciqlop():
     sciqlop_event_loop()
 
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
-    from SciQLop.components.plugins import load_all, loaded_plugins
+    from SciQLop.components.plugins import load_all
+    from SciQLop.components.plugins.backend.loader.loader import kernel_plugins_view
     app.processEvents()
     main_windows = SciQLopMainWindow()
     app.processEvents()
@@ -178,7 +179,7 @@ def start_sciqlop():
     from SciQLop.components.command_palette.backend.harvester import harvest_qactions
     harvest_qactions(app.command_registry, main_windows)
 
-    main_windows.push_variables_to_console({"plugins": loaded_plugins})
+    main_windows.push_variables_to_console({"plugins": kernel_plugins_view()})
 
     app.processEvents()
     _signal_ready_and_wait_for_splash()

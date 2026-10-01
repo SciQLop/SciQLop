@@ -186,3 +186,34 @@ def test_find_children_return_proxies(qapp, qtbot, invoker):
     assert "error" not in box, box.get("error")
     assert box["result"] == "ok"
     assert child.objectName() == "renamed-from-worker"
+
+
+def test_main_thread_safe_proxies_only_qobjects_off_the_gui_thread(qapp, qtbot, invoker, probe):
+    from SciQLop.user_api.threading import MainThreadProxy, main_thread_safe
+
+    def work():
+        return main_thread_safe(None), main_thread_safe(3), main_thread_safe([probe])
+
+    t, box = _in_worker(work)
+    qtbot.waitUntil(lambda: not t.is_alive(), timeout=5000)
+    assert "error" not in box, box.get("error")
+    none, three, widgets = box["result"]
+    assert none is None and three == 3
+    assert isinstance(widgets[0], MainThreadProxy)
+
+
+def test_kernel_plugins_namespace_proxies_plugin_objects(qapp, qtbot, invoker, probe, monkeypatch):
+    """`plugins` in the kernel namespace must not hand out raw plugin QObjects."""
+    from types import SimpleNamespace
+    from SciQLop.components.plugins.backend.loader import loader
+    from SciQLop.user_api.threading import MainThreadProxy
+
+    monkeypatch.setattr(loader, "loaded_plugins", SimpleNamespace(probe_plugin=probe))
+    view = loader.kernel_plugins_view()
+
+    t, box = _in_worker(lambda: view.probe_plugin.record())
+    qtbot.waitUntil(lambda: not t.is_alive(), timeout=5000)
+    assert "error" not in box, box.get("error")
+    assert box["result"] == threading.main_thread().name
+    assert "probe_plugin" in dir(view)
+    assert not isinstance(view.probe_plugin, MainThreadProxy)
