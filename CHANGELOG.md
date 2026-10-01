@@ -73,6 +73,7 @@
 
 - speasy is now `speasy[blosc]>=1.8.5`, which brings pysciqlop-cache 0.3 and pycdfpp 0.15. The cache now stores arrays out of band, so loading cached data no longer copies it while holding the GIL.
 - Bumped SciQLopPlots 0.39.1 → 0.40.0. Graphs can fetch a margin around the view (`set_prefetch_margin`), row-major and float32 data (what Speasy returns) take the fast resampling path, and axis and tick labels are cached instead of laid out on every replot.
+- Bumped SciQLopPlots 0.42.0 → 0.42.1: adds Windows ARM64 wheels.
 - Bumped SciQLopPlots 0.41.0 → 0.42.0. Zooming into a burst of dense line data (a 1 kHz product, or many samples per timestamp) no longer draws every raw point in view on each frame: the resampler used to count its coarse bins, not the points, to decide the view was sparse. Speasy products now prefetch within a 256 MB budget, so zooming out on a dense product no longer fetches twice the view. The plot's own drawing and resampling steps now show in SciQLop traces.
 - Bumped SciQLopPlots 0.40.0 → 0.41.0: one abi3 wheel per platform, text tick labels at fixed values, `set_gap_threshold` on line graphs, and a destroyed graph component is no longer referenced.
 - Bumped SciQLopPlots 0.39.0 → 0.39.1: zoomed-out spectrograms on a log colour scale no longer look a decade too bright.
