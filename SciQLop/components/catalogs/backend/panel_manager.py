@@ -95,10 +95,11 @@ class PanelCatalogManager(QObject):
         if chrome is not None:
             chrome.mode = value.value
 
-    def add_catalog(self, catalog: Catalog) -> None:
+    def add_catalog(self, catalog: Catalog, show_spans: bool = True) -> None:
         if catalog.uuid in self._overlays:
             return
         overlay = CatalogOverlay(catalog=catalog, panel=self._panel, parent=self)
+        overlay.spans_visible = show_spans
         overlay.event_clicked.connect(lambda event, c=catalog: self._on_event_clicked(event, c))
         self._overlays[catalog.uuid] = overlay
         # Apply current mode
@@ -206,9 +207,20 @@ class PanelCatalogManager(QObject):
             "Remove from panel",
             "Stop showing this catalog's events on the panel."))
         remove_action.triggered.connect(lambda: self.remove_catalog(catalog))
+        self._add_show_spans_action(sub, catalog)
         sub.addSeparator()
         add_catalog_color_actions(sub, catalog, dialog_parent=self._panel)
         build_color_by_menu(sub, catalog, sample_events(catalog), dialog_parent=self._panel)
+
+    def _add_show_spans_action(self, menu: QMenu, catalog: Catalog) -> None:
+        overlay = self._overlays[catalog.uuid]
+        action = menu.addAction("Show spans")
+        action.setToolTip(rich_tooltip(
+            "Show spans",
+            "Untick to keep only Jump mode: picking an event still moves the panel."))
+        action.setCheckable(True)
+        action.setChecked(overlay.spans_visible)
+        action.toggled.connect(lambda visible: setattr(overlay, "spans_visible", visible))
 
     @staticmethod
     def _get_or_create_submenu(menu: QMenu, path: list[str]) -> QMenu:

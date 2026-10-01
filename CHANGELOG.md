@@ -50,6 +50,7 @@
 
 ### Catalogs
 
+- A catalog shown on a panel can stop drawing its events: untick **Show spans** in its entry of the panel's **Catalogs** menu, or pass `show_spans=False` to `panel.add_catalog_overlay(...)`. It stays attached, so Jump mode still moves the panel to the event you pick. Useful for a catalog you only navigate with, like a list of flybys.
 - The catalog mode picked in a panel's chrome row (or with Ctrl+Shift+M) now takes effect right away and shows in the right-click Mode menu. On a fresh panel it only changed the combo: the panel stayed in its previous mode, so Edit did not allow editing, until a catalog was added or the mode was set from the menu.
 - Removing a catalog overlay from a notebook or agent cell no longer crashes SciQLop (#147). The cell reached the panel through its internal `_impl` and deleted the overlay's spans off the GUI thread, under a pending redraw. A user_api object's `_impl` is now a proxy outside the GUI thread, so any call made through it runs on the GUI thread. The kernel's `plugins` variable now hands out plugin objects the same way.
 
@@ -94,6 +95,7 @@
 ### User API
 
 - Timeline-style plots (on/off lanes, instrument modes) no longer need workarounds (#146). `plot_data(...)` and `plot.plot(...)` take `line_shape=LineShape.StepLeft` (or `StepRight`, `StepCenter`) for steps, and `gap_threshold=0` so a line graph never breaks at a long flat stretch. Both are also `Graph` properties. `plot.set_axis_tick_labels("y", {0: "MAG", -1: "SWA"})` shows names instead of numbers on an axis; `None` restores the numbers. `LineShape` is separate from `GraphLineStyle`, which keeps meaning the dash pattern.
+- Plugins can add their own submenu to the plot panel's right-click menu with `SciQLop.user_api.plot.register_panel_menu(title, entries)`: `entries(panel)` returns `(label, callback)` pairs each time the menu opens. `unregister_panel_menu(title)` removes it.
 - A late empty or error answer from an out-of-process virtual product no longer marks the newer request as done while it is still running.
 - A virtual product can colour its line, or its projection curve, by a scalar: return `Colored(data, color=c)` with one colour value per sample, and declare it with `create_virtual_product(..., colored=True, color_label="|B| (nT)", color_gradient="thermal")`, or annotate `-> Colored[Vector["X", "Y", "Z"]]` in a `%%vp` cell. The colour uses the plot's colour scale, works out of process too, and is sorted along with unsorted data.
 - Every colour gradient can now be given by name (`"jet"`, `"thermal"`, `"grayscale"`, ...). Only `Candy`, `Cold`, `Hot` and `Polar` were recognised before, because the names were read with `dir()`, which lists only some members of that enum.

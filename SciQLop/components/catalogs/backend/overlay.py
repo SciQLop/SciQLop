@@ -53,6 +53,7 @@ class CatalogOverlay(QObject):
         self._panel = panel
         self._color = color_for_catalog(catalog.uuid)
         self._read_only = True
+        self._spans_visible = True
         self._lazy = False
         self._mapper = get_color_mapper(catalog)
 
@@ -94,11 +95,7 @@ class CatalogOverlay(QObject):
                 self._panel.time_range_changed.disconnect(self._on_time_range_changed)
             except RuntimeError:
                 pass
-        for uuid in list(self._event_connections):
-            self._disconnect_event(uuid)
-        for span in self._span_collection.spans():
-            self._span_collection.delete_span(span)
-        self._event_by_span_id.clear()
+        self._delete_spans()
 
     @property
     def catalog(self) -> Catalog:
@@ -114,13 +111,38 @@ class CatalogOverlay(QObject):
         # Redraw existing spans with the new color.
         all_events = list(self._event_by_span_id.values())
         self._event_colors = self._mapper(all_events, self._color)
+        self._delete_spans()
+        for event in all_events:
+            self._add_span(event)
+
+    @property
+    def spans_visible(self) -> bool:
+        """Hidden spans keep the catalog attached, so Jump mode still drives the panel."""
+        return self._spans_visible
+
+    @spans_visible.setter
+    def spans_visible(self, visible: bool) -> None:
+        # Hidden means no span at all: SciQLopPlots re-shows a span hidden with
+        # set_visible() as soon as it scrolls into view (updateVisibleSpans).
+        if visible == self._spans_visible:
+            return
+        self._spans_visible = visible
+        if not visible:
+            self._delete_spans()
+        elif self._lazy:
+            self._refresh_visible()
+        else:
+            all_events = self._catalog.provider.events(self._catalog)
+            self._event_colors = self._mapper(all_events, self._color)
+            for event in all_events:
+                self._add_span(event)
+
+    def _delete_spans(self) -> None:
         for uuid in list(self._event_connections):
             self._disconnect_event(uuid)
         for span in self._span_collection.spans():
             self._span_collection.delete_span(span)
         self._event_by_span_id.clear()
-        for event in all_events:
-            self._add_span(event)
 
     @property
     def span_count(self) -> int:
@@ -145,15 +167,13 @@ class CatalogOverlay(QObject):
         self._mapper = mapper
         all_events = list(self._event_by_span_id.values())
         self._event_colors = self._mapper(all_events, self._color)
-        for uuid in list(self._event_connections):
-            self._disconnect_event(uuid)
-        for span in self._span_collection.spans():
-            self._span_collection.delete_span(span)
-        self._event_by_span_id.clear()
+        self._delete_spans()
         for event in all_events:
             self._add_span(event)
 
     def _add_span(self, event: CatalogEvent):
+        if not self._spans_visible:
+            return
         color = self._event_colors.get(event.uuid, self._color)
         tr = TimeRange(event.start.timestamp(), event.stop.timestamp())
         span = self._span_collection.create_span(
