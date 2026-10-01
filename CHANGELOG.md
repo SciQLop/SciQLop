@@ -57,6 +57,7 @@
 
 ### Workspaces
 
+- A workspace whose pinned SciQLop can no longer be installed now starts on the newer release you are running, and keeps it as its new pin. A workspace created by 0.13.0 failed on every launch, even after installing 0.13.1, because its pin still asked for 0.13.0 and that version's dependencies no longer installed. It could only be fixed by wiping the workspace. This only happens when nothing is installed to fall back to: it never moves a workspace to an older or development version, or overrides a version you chose explicitly.
 - Changes to the running workspace's settings made from the welcome page (a pinned SciQLop version, an example's dependencies, an installed example) are no longer undone by the next `%install` or rename in the same session: those wrote back the copy loaded at startup. Every change now re-reads the workspace file first, and changes made at the same time no longer overwrite each other.
 - `%install` and app-store installs and uninstalls go into the running SciQLop's environment even after a notebook calls `os.chdir()`; they used to fail with "No virtual environment found".
 - Adding an example's dependencies to the running workspace keeps the running stack pinned, like `%install` and the app store.

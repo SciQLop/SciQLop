@@ -419,6 +419,77 @@ def _sync_workspace_venv(
     return False
 
 
+def _newer_running_release(pinned: str) -> str | None:
+    """The running SciQLop, when it is a release newer than *pinned*."""
+    from packaging.version import InvalidVersion, Version
+
+    running = running_sciqlop_version()
+    if not pinned or is_dev_build_version(running):
+        return None
+    try:
+        return running if Version(running) > Version(pinned) else None
+    except InvalidVersion:
+        return None
+
+
+def _sync_or_move_to_running_release(
+    venv: WorkspaceVenv,
+    manifest: WorkspaceManifest,
+    deps: list[str],
+    pyproject_path: Path,
+    locked: bool,
+    on_output: Callable[[str], None] | None,
+    *,
+    strict: bool,
+    upgrade_package: str | None,
+    manifest_path: Path | None,
+) -> bool:
+    """Sync the venv; if the workspace cannot start at all on its pinned SciQLop,
+    move it to the newer release the user is running.
+
+    A pinned release whose own dependencies stopped resolving (0.13.0 once
+    huggingface_hub 2.0 was out) fails every rung of ``_sync_workspace_venv``,
+    so a newer installer alone never fixed it: the workspace kept asking for
+    the broken pin until wiped. Only a workspace with nothing working to fall
+    back to gets here (``_sync_workspace_venv`` raises only then, or when
+    ``strict``), and never for an explicit version change (``strict``) or a
+    move to an older or development SciQLop. ``manifest_path`` is where to
+    save the new pin; ``None`` keeps it in memory.
+    """
+    try:
+        return _sync_workspace_venv(
+            venv, manifest, deps, pyproject_path, locked, on_output,
+            strict=strict, upgrade_package=upgrade_package,
+        )
+    except Exception:
+        target = None if strict else _newer_running_release(manifest.sciqlop_version)
+        if target is None:
+            raise
+    pinned = manifest.sciqlop_version
+    if on_output is not None:
+        on_output(f"SciQLop {pinned}, the version this workspace is pinned to, cannot be "
+                  f"installed. Trying {target}, the version you are running...")
+    manifest.sciqlop_version = target
+    generate_pyproject_toml(manifest, deps, pyproject_path)
+    try:
+        synced = _sync_workspace_venv(
+            venv, manifest, deps, pyproject_path, False, on_output,
+            strict=False, upgrade_package=None,
+        )
+    except Exception:
+        manifest.sciqlop_version = pinned
+        generate_pyproject_toml(manifest, deps, pyproject_path)
+        raise
+    if manifest_path is not None:
+        with edit_manifest(manifest_path) as on_disk:
+            on_disk.sciqlop_version = target
+    log.warning("Workspace moved from SciQLop %s to %s: the pinned version cannot be installed",
+                pinned, target)
+    if on_output is not None:
+        on_output(f"This workspace now uses SciQLop {target}.")
+    return synced
+
+
 def prepare_workspace(
     workspace_dir: Path | str,
     workspace_name: str | None = None,
@@ -468,6 +539,7 @@ def prepare_workspace(
         log.info("Workspace migrated from old format in %s", workspace_dir)
 
     manifest_path = workspace_dir / MANIFEST_FILENAME
+    manifest_on_disk = manifest is None
 
     # Step 1: Use the given manifest, or load/create one
     if manifest is not None:
@@ -548,9 +620,10 @@ def prepare_workspace(
     # pitfall-uv-lock-freezes-git-main-forever). Force a fresh resolve of
     # just that one package on every launch instead.
     upgrade_package = "sciqlop" if is_dev_build_version(resolved_version) else None
-    synced = _sync_workspace_venv(
+    synced = _sync_or_move_to_running_release(
         venv, manifest, plugin_deps + appstore_deps, pyproject_path, effective_locked, on_output,
         strict=strict, upgrade_package=upgrade_package,
+        manifest_path=manifest_path if manifest_on_disk else None,
     )
     if synced and import_marker.exists():
         try:

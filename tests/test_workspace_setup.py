@@ -447,6 +447,78 @@ class TestPrepareWorkspaceStrictMode:
         assert result == python_path
 
 
+class TestUninstallablePinMovesToTheRunningRelease:
+    """A workspace pinned to a release whose own dependencies can no longer be
+    installed (0.13.0 pulled tokenizers 0.13.3, with no Python 3.14 wheels)
+    must start on the newer release the user just installed, instead of
+    failing until they wipe the workspace."""
+
+    def _pinned_workspace(self, workspace_dir, patches, tmp_path, *, pin="0.13.0", running="0.13.1"):
+        workspace_dir.mkdir(parents=True)
+        WorkspaceManifest(name="Test", sciqlop_version=pin).save(workspace_dir / "workspace.sciqlop")
+        patches["running_sciqlop_version"].return_value = running
+        venv = patches["venv"]
+        venv.python_path = tmp_path / "python"
+        venv.python_path.write_text("")
+        venv.has_sciqlop_installed = False
+        generate = patches["generate_pyproject_toml"]
+
+        def sync(**_):
+            if generate.call_args[0][0].sciqlop_version == pin:
+                raise RuntimeError("Failed to build `tokenizers==0.13.3`")
+        venv.sync.side_effect = sync
+
+    def _saved_pin(self, workspace_dir):
+        return WorkspaceManifest.load(workspace_dir / "workspace.sciqlop").sciqlop_version
+
+    def test_starts_on_the_running_release_and_saves_the_new_pin(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._pinned_workspace(workspace_dir, patches, tmp_path)
+        cb = MagicMock()
+
+        assert prepare_workspace(workspace_dir, on_output=cb) == patches["venv"].python_path
+        assert self._saved_pin(workspace_dir) == "0.13.1"
+        assert any("0.13.0" in c.args[0] and "0.13.1" in c.args[0] for c in cb.call_args_list)
+
+    def test_strict_keeps_the_pin_and_fails(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._pinned_workspace(workspace_dir, patches, tmp_path)
+
+        with pytest.raises(RuntimeError, match="tokenizers"):
+            prepare_workspace(workspace_dir, strict=True)
+        assert self._saved_pin(workspace_dir) == "0.13.0"
+
+    def test_never_moves_to_an_older_launcher(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._pinned_workspace(workspace_dir, patches, tmp_path, pin="0.13.1", running="0.13.0")
+
+        with pytest.raises(RuntimeError, match="tokenizers"):
+            prepare_workspace(workspace_dir)
+        assert self._saved_pin(workspace_dir) == "0.13.1"
+
+    def test_never_moves_to_a_dev_build(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._pinned_workspace(workspace_dir, patches, tmp_path, running="0.14.0.dev0")
+
+        with pytest.raises(RuntimeError, match="tokenizers"):
+            prepare_workspace(workspace_dir)
+        assert self._saved_pin(workspace_dir) == "0.13.0"
+
+    def test_keeps_the_pin_when_the_running_release_fails_too(self, workspace_dir, patches, tmp_path):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        self._pinned_workspace(workspace_dir, patches, tmp_path)
+        patches["venv"].sync.side_effect = RuntimeError("Network is unreachable")
+
+        with pytest.raises(RuntimeError, match="unreachable"):
+            prepare_workspace(workspace_dir)
+        assert self._saved_pin(workspace_dir) == "0.13.0"
+
+
 class TestPrepareWorkspacePluginIsolation:
     """A single incompatible plugin/appstore dependency (e.g. a plugin's
     published release still pinned to an old SciQLop range) must not prevent
