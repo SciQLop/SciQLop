@@ -1,6 +1,6 @@
 """Plotting API. This module provides the public API for plotting data and managing plot panels.
 """
-from .enums import ScaleType, PlotType, OverlayLevel, OverlaySizeMode, OverlayPosition
+from .enums import ScaleType, PlotType, OverlayLevel, OverlaySizeMode, OverlayPosition, LineShape
 from .protocol import Plot, Plottable
 
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
@@ -17,7 +17,7 @@ from SciQLop.user_api.data_types import Scalar, Vector, MultiComponent, Spectrog
 
 log = _getLogger(__name__)
 
-__all__ = ['ScaleType', 'PlotType', 'Plot', 'Plottable', 'Histogram2D', 'Waterfall', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
+__all__ = ['ScaleType', 'PlotType', 'LineShape', 'Plot', 'Plottable', 'Histogram2D', 'Waterfall', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
            'create_plot_panel', 'plot_panel', 'TimeRange', 'Pixmap', 'Ellipse', 'Text', 'CurvedLine', 'HorizontalLine',
            'VerticalLine', 'StraightLine', 'RectangularSpan', 'HorizontalSpan',
            'LineTermination', 'fluent',

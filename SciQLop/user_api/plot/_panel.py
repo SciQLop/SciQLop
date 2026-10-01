@@ -16,11 +16,12 @@ from SciQLop.components.plotting.ui.time_sync_panel import (TimeSyncPanel as _Im
                                                             plot_function as _plot_function)
 from SciQLop.components.plotting.backend.palette import Palette as _Palette, make_color_list as _make_color_list
 from ._plots import to_product_path, plot_product_or_raise, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
-    is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product, _apply_line_style
+    is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product, _apply_line_style, \
+    _apply_graph_options, _given
 from ._graphs import (ensure_arrays_of_double, Histogram2D, Waterfall,
                       _create_histogram2d, _create_waterfall,
                       validate_histogram_bins as _validate_histogram_bins,
-                      _UNSET, _with_explicit)
+                      _UNSET, _with_explicit, _check_line_options)
 from ._thread_safety import on_main_thread, GuardedImpl
 import numpy as np
 from speasy.products import SpeasyVariable as _SpeasyVariable
@@ -248,6 +249,7 @@ class PlotPanel(GuardedImpl):
     def plot_data(self, x, y=None, z=None, plot_index=-1, *, labels=_UNSET,
                   name=_UNSET, plot_type=_UNSET, graph_type=_UNSET, colors=_UNSET,
                   y_log_scale=_UNSET, z_log_scale=_UNSET, line_style=_UNSET,
+                  line_shape=_UNSET, gap_threshold=_UNSET,
                   **kwargs) -> Tuple[
             ProjectionPlot | TimeSeriesPlot, Plottable]:
         """Plot static data or a SpeasyVariable in the panel.
@@ -277,6 +279,11 @@ class PlotPanel(GuardedImpl):
             Use a logarithmic Y / Z scale.
         line_style : GraphLineStyle, optional
             Line style for the created graph. Defaults to upstream style.
+        line_shape : LineShape, optional
+            Straight segments (default) or steps (``LineShape.StepLeft`` ...).
+        gap_threshold : float, optional
+            Line graphs only: break the line where a step is more than this many
+            times its neighbours'. ``0`` never breaks it, for step or state data.
         **kwargs
             Forwarded to SciQLopPlots.
 
@@ -292,6 +299,7 @@ class PlotPanel(GuardedImpl):
         # goes through `line()`. Applying it via `set_name()` on the created
         # graph works uniformly across every graph type (same pattern as
         # `plot_function`), so that is the only path used here.
+        _check_line_options(_given(line_shape), _given(gap_threshold))
         kwargs = _with_explicit(kwargs, labels=labels,
                                 plot_type=plot_type, graph_type=graph_type,
                                 colors=colors, y_log_scale=y_log_scale,
@@ -309,7 +317,7 @@ class PlotPanel(GuardedImpl):
                                    **kwargs)
         if name is not _UNSET:
             _g.set_name(name)
-        _apply_line_style(_g, line_style)
+        _apply_graph_options(_g, line_style, line_shape, gap_threshold)
         wrapped_plot = to_plot(_p)
         return wrapped_plot, to_plottable(_g, plot=wrapped_plot)
 

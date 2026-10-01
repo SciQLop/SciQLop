@@ -4,7 +4,7 @@ from .protocol import Plot, Plottable
 from ._graphs import (Graph, ColorMap, Histogram2D, Waterfall, to_plottable,
                       ensure_arrays_of_double, _create_histogram2d,
                       _create_waterfall, _reject_if_colormap_already_present,
-                      _UNSET, _with_explicit)
+                      _UNSET, _with_explicit, _check_line_options, _apply_line_options)
 from ._graphic_primitives import HorizontalLine
 from typing import Optional, Union, List, Any
 from ..virtual_products import VirtualProduct
@@ -103,6 +103,24 @@ _LINE_STYLE_TO_QT = {
     GraphLineStyle.DashDot: _Qt.PenStyle.DashDotLine,
     GraphLineStyle.DashDotDot: _Qt.PenStyle.DashDotDotLine,
 }
+
+
+def _given(value):
+    return None if value is _UNSET else value
+
+
+def _checked_tick_labels(labels) -> dict[float, str]:
+    try:
+        return {float(value): str(text) for value, text in labels.items()}
+    except (AttributeError, TypeError, ValueError):
+        raise ValueError(
+            "tick labels must be a dict of {numeric position: text}, "
+            f"got {labels!r}") from None
+
+
+def _apply_graph_options(plottable, line_style, line_shape, gap_threshold):
+    _apply_line_style(plottable, line_style)
+    _apply_line_options(plottable, _given(line_shape), _given(gap_threshold))
 
 
 def _apply_line_style(plottable, line_style):
@@ -457,6 +475,29 @@ class _BasePlot(GuardedImpl, Plot):
         self._resolve_axis(axis).set_range(lo, hi)
 
     @on_main_thread
+    def set_axis_tick_labels(self, axis: _AxisName,
+                             labels: Optional[dict[float, str]]) -> None:
+        """Show text instead of numbers on an axis, e.g. lane names on a timeline.
+
+        Parameters
+        ----------
+        axis : {"x", "y", "y2", "z"}
+            Which axis to label. A time axis keeps its date ticks.
+        labels : dict[float, str] or None
+            One tick per entry, at that value, showing that text. ``None`` or
+            ``{}`` goes back to the automatic numeric ticks.
+
+        Examples
+        --------
+        >>> plot.set_axis_tick_labels("y", {0: "MAG", -1: "SWA"})
+        """
+        target = self._resolve_axis(axis)
+        if not labels:
+            target.clear_tick_labels()
+            return
+        target.set_tick_labels(_checked_tick_labels(labels))
+
+    @on_main_thread
     def set_axis_type(self, axis: _AxisName, axis_type: AxisType) -> None:
         """Set a single axis type (linear, logarithmic, or datetime).
 
@@ -551,7 +592,8 @@ class XYPlot(_BasePlot):
     @on_main_thread
     def plot(self, *args, labels=_UNSET, name=_UNSET, colors=_UNSET,
              graph_type=_UNSET, y_log_scale=_UNSET, z_log_scale=_UNSET,
-             line_style=_UNSET, y_axis="y", **kwargs):
+             line_style=_UNSET, line_shape=_UNSET, gap_threshold=_UNSET,
+             y_axis="y", **kwargs):
         """Plot on this XY plot: two vectors ``(x, y)``, three ``(x, y, z)`` →
         colormap, or a callback ``f(start, stop) -> (x, y)``. Product paths are
         not accepted here — use ``PlotPanel.plot_product`` or
@@ -571,6 +613,11 @@ class XYPlot(_BasePlot):
             Logarithmic Y / Z scale.
         line_style : GraphLineStyle, optional
             Line style for the created graph. Defaults to upstream style.
+        line_shape : LineShape, optional
+            Straight segments (default) or steps (``LineShape.StepLeft`` ...).
+        gap_threshold : float, optional
+            Line graphs only: break the line where a step is more than this many
+            times its neighbours'. ``0`` never breaks it, for step or state data.
         y_axis : {"y", "y2"}
             Bind the graph to the primary or secondary y-axis (line / curve /
             scatter only — not colormaps).
@@ -584,6 +631,7 @@ class XYPlot(_BasePlot):
         >>> y = x ** 2
         >>> graph = plot.plot(x, y, name="parabola")
         """
+        _check_line_options(_given(line_shape), _given(gap_threshold))
         kwargs = _with_explicit(kwargs, labels=labels, colors=colors,
                                 graph_type=graph_type, y_log_scale=y_log_scale,
                                 z_log_scale=z_log_scale)
@@ -591,20 +639,20 @@ class XYPlot(_BasePlot):
         if len(args) == 1:
             if callable(args[0]):
                 raw = _apply_name(self._get_impl_or_raise().plot(*args, **kwargs), name)
-                _apply_line_style(raw, line_style)
+                _apply_graph_options(raw, line_style, line_shape, gap_threshold)
                 return _bind_y_axis(Graph(raw, plot=self), y_axis)
             else:
                 raise ValueError("Invalid arguments")
         elif len(args) == 2:
             raw = _apply_name(
                 self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs), name)
-            _apply_line_style(raw, line_style)
+            _apply_graph_options(raw, line_style, line_shape, gap_threshold)
             return _bind_y_axis(Graph(raw, plot=self), y_axis)
         elif len(args) == 3:
             _reject_if_colormap_already_present(self._get_impl_or_raise())
             raw = _apply_name(
                 self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs), name)
-            _apply_line_style(raw, line_style)
+            _apply_graph_options(raw, line_style, line_shape, gap_threshold)
             return ColorMap(raw)
         return None
 
@@ -767,7 +815,8 @@ class TimeSeriesPlot(_BasePlot):
     @on_main_thread
     def plot(self, *args, labels=_UNSET, name=_UNSET, colors=_UNSET,
              graph_type=_UNSET, y_log_scale=_UNSET, z_log_scale=_UNSET,
-             line_style=_UNSET, y_axis="y", **kwargs):
+             line_style=_UNSET, line_shape=_UNSET, gap_threshold=_UNSET,
+             y_axis="y", **kwargs):
         """Plot on this time-series plot: two/three vectors ``(x, y[, z])``, a
         product path, or a callback ``f(start, stop) -> (x, y[, z])``.
 
@@ -785,6 +834,11 @@ class TimeSeriesPlot(_BasePlot):
             Logarithmic Y / Z scale.
         line_style : GraphLineStyle, optional
             Line style for the created graph. Defaults to upstream style.
+        line_shape : LineShape, optional
+            Straight segments (default) or steps (``LineShape.StepLeft`` ...).
+        gap_threshold : float, optional
+            Line graphs only: break the line where a step is more than this many
+            times its neighbours'. ``0`` never breaks it, for step or state data.
         y_axis : {"y", "y2"}
             Bind the graph to the primary or secondary y-axis.
         **kwargs
@@ -809,25 +863,26 @@ class TimeSeriesPlot(_BasePlot):
         >>> y = np.sin(t / 10.0)
         >>> graph = plot.plot(t, y, name="sine wave")
         """
+        _check_line_options(_given(line_shape), _given(gap_threshold))
         kwargs = _with_explicit(kwargs, labels=labels, colors=colors,
                                 graph_type=graph_type, y_log_scale=y_log_scale,
                                 z_log_scale=z_log_scale)
         if len(args) == 1:
             if callable(args[0]):
                 raw = _apply_name(self._get_impl_or_raise().plot(*args, **kwargs), name)
-                _apply_line_style(raw, line_style)
+                _apply_graph_options(raw, line_style, line_shape, gap_threshold)
                 return _bind_y_axis(to_plottable(raw, plot=self), y_axis)
             else:
                 raw = _apply_name(
                     plot_product_or_raise(self._get_impl_or_raise(), args[0], **kwargs), name)
-                _apply_line_style(raw, line_style)
+                _apply_graph_options(raw, line_style, line_shape, gap_threshold)
                 return _bind_y_axis(to_plottable(raw, plot=self), y_axis)
         elif 3 >= len(args) >= 2:
             if len(args) == 3:
                 _reject_if_colormap_already_present(self._get_impl_or_raise())
             raw = _apply_name(
                 self._get_impl_or_raise().plot(*ensure_arrays_of_double(*args), **kwargs), name)
-            _apply_line_style(raw, line_style)
+            _apply_graph_options(raw, line_style, line_shape, gap_threshold)
             return _bind_y_axis(to_plottable(raw, plot=self), y_axis)
         raise ValueError("Invalid arguments")
 

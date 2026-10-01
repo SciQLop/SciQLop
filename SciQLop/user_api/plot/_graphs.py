@@ -2,7 +2,9 @@ from typing import Optional, Union, List
 
 import numpy as np
 
-from .enums import BinStrategy
+import math
+
+from .enums import BinStrategy, LineShape
 from .protocol import Plot, Plottable
 from ..virtual_products import VirtualProduct
 from SciQLopPlots import SciQLopHistogram2D as _SciQLopHistogram2D
@@ -10,6 +12,7 @@ from SciQLopPlots import SciQLopColorMapBase as _SciQLopColorMapBase
 from SciQLopPlots import SciQLopWaterfallGraph as _SciQLopWaterfallGraph
 from SciQLopPlots import WaterfallOffsetMode as _WaterfallOffsetMode
 from SciQLopPlots import ColorGradient as _ColorGradient
+from SciQLopPlots import GraphLineStyle as _SqpLineShape
 from PySide6.QtGui import QColor as _QColor
 from ._thread_safety import on_main_thread, GuardedImpl
 from SciQLop.core import tracing as _tracing
@@ -41,6 +44,60 @@ def _as_color_gradient(gradient):
             ) from None
     raise TypeError("gradient must be a ColorGradient or one of its names, got "
                     f"{type(gradient).__name__}")
+
+
+# SciQLopPlots calls the shape of a line its "GraphLineStyle"; SciQLop's own
+# GraphLineStyle is the dash pattern, so the shape is LineShape here.
+_LINE_SHAPES = {shape: getattr(_SqpLineShape, shape.name) for shape in LineShape}
+
+
+def _checked_line_shape(shape) -> LineShape:
+    if not isinstance(shape, LineShape):
+        raise TypeError(f"line_shape must be a LineShape, got {type(shape).__name__}")
+    return shape
+
+
+def _checked_gap_threshold(threshold) -> float:
+    value = float(threshold)
+    if not math.isfinite(value) or value < 0:
+        raise ValueError(f"gap_threshold must be a finite number >= 0, got {threshold!r}")
+    return value
+
+
+def _set_line_shape(impl, shape) -> None:
+    sqp_shape = _LINE_SHAPES[_checked_line_shape(shape)]
+    for component in impl.components():
+        component.set_line_style(sqp_shape)
+
+
+def _line_shape(impl) -> Optional[LineShape]:
+    shapes = {component.line_style() for component in impl.components()}
+    return next((s for s, sqp in _LINE_SHAPES.items() if {sqp} == shapes), None)
+
+
+def _set_gap_threshold(impl, threshold) -> None:
+    """Break a line graph where a step is more than *threshold* times its
+    neighbours'; ``0`` never breaks it."""
+    value = _checked_gap_threshold(threshold)
+    if not hasattr(impl, "set_gap_threshold"):
+        raise ValueError("gap_threshold only applies to line graphs")
+    impl.set_gap_threshold(value)
+
+
+def _check_line_options(line_shape, gap_threshold) -> None:
+    """Validate the line_shape / gap_threshold plot keywords before plotting.
+    ``None`` stands for "not given", like the keywords' unset default."""
+    if line_shape is not None:
+        _checked_line_shape(line_shape)
+    if gap_threshold is not None:
+        _checked_gap_threshold(gap_threshold)
+
+
+def _apply_line_options(impl, line_shape, gap_threshold) -> None:
+    if line_shape is not None:
+        _set_line_shape(impl, line_shape)
+    if gap_threshold is not None:
+        _set_gap_threshold(impl, gap_threshold)
 
 
 def is_array_of_double(a):
@@ -186,6 +243,32 @@ class Graph(GuardedImpl, _Named, Plottable):
     @on_main_thread
     def visible(self, visible):
         self._get_impl_or_raise().set_visible(visible)
+
+    @property
+    @on_main_thread
+    def line_shape(self) -> Optional[LineShape]:
+        """How the line joins its points, or ``None`` if its components differ."""
+        return _line_shape(self._get_impl_or_raise())
+
+    @line_shape.setter
+    @on_main_thread
+    def line_shape(self, shape: LineShape) -> None:
+        _set_line_shape(self._get_impl_or_raise(), shape)
+
+    @property
+    @on_main_thread
+    def gap_threshold(self) -> float:
+        """A line graph breaks where a step is more than this many times its
+        neighbours'. ``0`` never breaks it, for step or state data."""
+        impl = self._get_impl_or_raise()
+        if not hasattr(impl, "gap_threshold"):
+            raise ValueError("gap_threshold only applies to line graphs")
+        return impl.gap_threshold()
+
+    @gap_threshold.setter
+    @on_main_thread
+    def gap_threshold(self, threshold: float) -> None:
+        _set_gap_threshold(self._get_impl_or_raise(), threshold)
 
     def _repr_pretty_(self, p, cycle):
         if cycle:

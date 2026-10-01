@@ -40,6 +40,20 @@ class GraphLineStyle(Enum):
     DashDotDot = 4
 
 
+class LineShape(Enum):
+    """How a line graph joins its points.
+
+    ``Line`` draws straight segments. The step shapes hold each value flat:
+    ``StepLeft`` until the next point, ``StepRight`` from the previous one, and
+    ``StepCenter`` changing halfway between them. Independent of
+    :class:`GraphLineStyle`, which sets the dash pattern.
+    """
+    Line = 0
+    StepLeft = 1
+    StepRight = 2
+    StepCenter = 3
+
+
 class AxisType(Enum):
     Linear = 0
     Logarithmic = 1

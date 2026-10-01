@@ -85,6 +85,7 @@
 
 ### User API
 
+- Timeline-style plots (on/off lanes, instrument modes) no longer need workarounds (#146). `plot_data(...)` and `plot.plot(...)` take `line_shape=LineShape.StepLeft` (or `StepRight`, `StepCenter`) for steps, and `gap_threshold=0` so a line graph never breaks at a long flat stretch. Both are also `Graph` properties. `plot.set_axis_tick_labels("y", {0: "MAG", -1: "SWA"})` shows names instead of numbers on an axis; `None` restores the numbers. `LineShape` is separate from `GraphLineStyle`, which keeps meaning the dash pattern.
 - A late empty or error answer from an out-of-process virtual product no longer marks the newer request as done while it is still running.
 - A virtual product can colour its line, or its projection curve, by a scalar: return `Colored(data, color=c)` with one colour value per sample, and declare it with `create_virtual_product(..., colored=True, color_label="|B| (nT)", color_gradient="thermal")`, or annotate `-> Colored[Vector["X", "Y", "Z"]]` in a `%%vp` cell. The colour uses the plot's colour scale, works out of process too, and is sorted along with unsorted data.
 - Every colour gradient can now be given by name (`"jet"`, `"thermal"`, `"grayscale"`, ...). Only `Candy`, `Cold`, `Hot` and `Polar` were recognised before, because the names were read with `dir()`, which lists only some members of that enum.
