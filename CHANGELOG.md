@@ -67,7 +67,6 @@
 
 ### Dependencies
 
-- model2vec is now `>=0.8`. Since huggingface_hub 2.0, which recent tokenizers reject, a workspace sync fell back to model2vec 0.2.4, and with it tokenizers 0.13.3, transformers and torch. tokenizers 0.13.3 has no Python 3.14 wheels, so creating or updating a workspace failed with "can't find Rust compiler".
 - jupyqt is now `>=0.6.5`, for the notebook save and open hooks behind the notebook stamp.
 - speasy is now `speasy[blosc]>=1.8.4`: data from the Speasy proxy can arrive Blosc-compressed (byte-shuffle + zstd per array), decoded with `numcodecs`. This also moves the cache backend to pysciqlop-cache 0.2.2.
 
@@ -90,6 +89,12 @@
 - `%workspace add-example` printed the result's dict keys (`name, is_update, missing_dependencies`) as the missing packages, and suggested installing them. It now lists the real missing dependencies and says "Updated" when the example was already installed.
 - `PlotPanel.move_plot(from_index, to_index)` reorders subplots; `plot.graphs` lists a plot's plottables in draw order; every plottable wrapper exposes `name`.
 - The "+" new-panel button no longer appears in the title bar of auto-hide side panels (Products, Catalogs, Settings, Properties, Chat).
+
+## v0.13.1 — 2026-10-01
+
+### Dependencies
+
+- model2vec is now `>=0.8`. Since huggingface_hub 2.0, which recent tokenizers reject, a workspace sync fell back to model2vec 0.2.4, and with it tokenizers 0.13.3, transformers and torch. tokenizers 0.13.3 has no Python 3.14 wheels, so creating or updating a workspace failed with "can't find Rust compiler".
 
 ## v0.13.0 — 2026-09-14
 
