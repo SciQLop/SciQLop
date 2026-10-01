@@ -7,6 +7,7 @@ from SciQLop.components.sciqlop_logging import getLogger as _getLogger
 from ._plots import XYPlot, TimeSeriesPlot, ProjectionPlot, TimeRange
 from ._graphs import Histogram2D, Waterfall
 from ._panel import PlotPanel, create_plot_panel, plot_panel
+from ._panel_menus import register_panel_menu, unregister_panel_menu
 from ._graphic_primitives import (Pixmap, Ellipse, Text, CurvedLine, HorizontalLine,
                                    VerticalLine, StraightLine, RectangularSpan, HorizontalSpan,
                                    LineTermination)
@@ -17,7 +18,7 @@ from SciQLop.user_api.data_types import Scalar, Vector, MultiComponent, Spectrog
 
 log = _getLogger(__name__)
 
-__all__ = ['ScaleType', 'PlotType', 'LineShape', 'Plot', 'Plottable', 'Histogram2D', 'Waterfall', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
+__all__ = ['register_panel_menu', 'unregister_panel_menu', 'ScaleType', 'PlotType', 'LineShape', 'Plot', 'Plottable', 'Histogram2D', 'Waterfall', 'XYPlot', 'TimeSeriesPlot', 'ProjectionPlot', 'PlotPanel',
            'create_plot_panel', 'plot_panel', 'TimeRange', 'Pixmap', 'Ellipse', 'Text', 'CurvedLine', 'HorizontalLine',
            'VerticalLine', 'StraightLine', 'RectangularSpan', 'HorizontalSpan',
            'LineTermination', 'fluent',
