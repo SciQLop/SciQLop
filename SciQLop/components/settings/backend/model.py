@@ -2,6 +2,7 @@ from __future__ import annotations
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, QPersistentModelIndex, QSortFilterProxyModel
 from PySide6.QtGui import Qt
 from SciQLop.components.settings import SettingsCategory, ConfigEntry
+from SciQLop.components.settings.backend.entry import is_advanced
 from pydantic import BaseModel
 from typing import Any
 
@@ -9,17 +10,21 @@ from typing import Any
 class SettingsNode:
     """A node in the settings tree. Lightweight, no Pydantic overhead."""
 
-    __slots__ = ("name", "parent", "children", "entry_cls", "field_name", "field_info")
+    __slots__ = ("name", "parent", "children", "entry_cls", "field_name", "field_info",
+                 "advanced", "hidden")
 
     def __init__(self, name: str, parent: SettingsNode | None = None,
                  entry_cls: type[ConfigEntry] | None = None,
-                 field_name: str | None = None, field_info: Any = None):
+                 field_name: str | None = None, field_info: Any = None,
+                 advanced: bool = False, hidden: bool = False):
         self.name = name
         self.parent = parent
         self.children: list[SettingsNode] = []
         self.entry_cls = entry_cls
         self.field_name = field_name
         self.field_info = field_info
+        self.advanced = advanced
+        self.hidden = hidden
 
     def row(self) -> int:
         if self.parent is not None:
@@ -30,6 +35,11 @@ class SettingsNode:
         child.parent = self
         self.children.append(child)
         return child
+
+
+def _is_hidden_widget(field_info) -> bool:
+    extra = field_info.json_schema_extra
+    return isinstance(extra, dict) and extra.get("widget") == "hidden"
 
 
 def _build_entry_node(entry_cls: type[ConfigEntry], parent: SettingsNode) -> SettingsNode:
@@ -46,7 +56,9 @@ def _build_entry_node(entry_cls: type[ConfigEntry], parent: SettingsNode) -> Set
         else:
             node.children.append(
                 SettingsNode(name=field_name, parent=node,
-                             field_name=field_name, field_info=field_info)
+                             field_name=field_name, field_info=field_info,
+                             advanced=is_advanced(entry_cls, field_info),
+                             hidden=_is_hidden_widget(field_info))
             )
     return node
 
@@ -122,11 +134,14 @@ class SettingsModel(QAbstractItemModel):
 
 
 class SettingsFilterProxyModel(QSortFilterProxyModel):
-    """Proxy that filters the category list. A category is shown if its name
-    or any descendant node name matches the filter string."""
+    """Proxy that filters the category list. A category is shown if it holds
+    at least one shown setting and its name, or the name of anything below
+    it, matches the filter string. Advanced settings count as shown only
+    once ``set_show_advanced(True)``."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._show_advanced = False
         self._source_model = SettingsModel(self)
         self.setSourceModel(self._source_model)
 
@@ -134,19 +149,19 @@ class SettingsFilterProxyModel(QSortFilterProxyModel):
         """Rebuild the underlying source model from current entries."""
         self._source_model.rebuild()
 
-    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
-        pattern = self.filterRegularExpression().pattern()
-        if not pattern:
-            return True
-        index = self.sourceModel().index(source_row, 0, source_parent)
-        return self._matches_recursive(index)
+    def set_show_advanced(self, show: bool):
+        self._show_advanced = show
+        self.invalidateRowsFilter()
 
-    def _matches_recursive(self, index: QModelIndex) -> bool:
-        node: SettingsNode = index.internalPointer()
-        if self.filterRegularExpression().match(node.name).hasMatch():
-            return True
-        for i in range(self.sourceModel().rowCount(index)):
-            child_index = self.sourceModel().index(i, 0, index)
-            if self._matches_recursive(child_index):
-                return True
-        return False
+    def filterAcceptsRow(self, source_row: int, source_parent: QModelIndex) -> bool:
+        index = self.sourceModel().index(source_row, 0, source_parent)
+        return self._accepts(index.internalPointer(), matched_above=False)
+
+    def _is_shown(self, node: SettingsNode) -> bool:
+        return not node.hidden and (self._show_advanced or not node.advanced)
+
+    def _accepts(self, node: SettingsNode, matched_above: bool) -> bool:
+        matched = matched_above or self.filterRegularExpression().match(node.name).hasMatch()
+        if node.field_name is not None and not node.children:
+            return matched and self._is_shown(node)
+        return any(self._accepts(child, matched) for child in node.children)

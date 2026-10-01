@@ -14,7 +14,7 @@ from SciQLop.components.catalogs.backend.color_palette import (
     color_for_catalog, catalog_color_changed, catalog_swatch_icon,
 )
 from SciQLop.core.ui.tooltips import rich_tooltip
-from SciQLop.core.ui.shortcuts import native_shortcut_text
+from SciQLop.components.shortcuts import shortcut_text
 
 
 class InteractionMode(Enum):
@@ -173,7 +173,7 @@ class PanelCatalogManager(QObject):
                 )
 
         menu.addSeparator()
-        mode_menu = QMenu("Mode\t" + native_shortcut_text("Ctrl+Shift+M"), menu)
+        mode_menu = QMenu("Mode\t" + shortcut_text("panel.cycle_catalog_mode"), menu)
         mode_menu.setToolTipsVisible(True)
         menu.addMenu(mode_menu)
         for m in InteractionMode:

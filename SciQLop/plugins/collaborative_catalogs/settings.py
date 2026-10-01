@@ -12,6 +12,7 @@ class CollaborativeCatalogsSettings(ConfigEntry):
     server_url: str = Field(
         default="https://sciqlop.lpp.polytechnique.fr/cocat/",
         description="CoCat server URL",
+        json_schema_extra={"advanced": True},
     )
     username: str = Field(
         default="",

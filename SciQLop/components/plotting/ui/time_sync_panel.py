@@ -1288,7 +1288,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def _add_layout_actions(self, menu, source):
         from PySide6.QtWidgets import QMenu
-        from SciQLop.core.ui.shortcuts import native_shortcut_text
+        from SciQLop.components.shortcuts import shortcut_text
         plots = self.plots()
         if not plots:
             return
@@ -1301,7 +1301,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         plot_under_cursor = self._plot_containing(source)
         if plot_under_cursor is not None:
             action = sub.addAction(
-                "Autoscale &this plot\t" + native_shortcut_text("M"),
+                "Autoscale &this plot\t" + shortcut_text("plot.autoscale"),
                 plot_under_cursor.rescale_axes)
             action.setToolTip(
                 "Auto-fit this plot's axes to the currently visible data.\n"
@@ -1310,14 +1310,14 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
                 "and skips any axis you've frozen.")
 
         autoscale_all = sub.addAction(
-            "Autoscale &all plots\t" + native_shortcut_text("Ctrl+Shift+A"),
+            "Autoscale &all plots\t" + shortcut_text("panel.autoscale_all"),
             self._autoscale_all_plots)
         autoscale_all.setToolTip(
             "Auto-fit every plot in this panel to the currently visible data.")
 
         if len(plots) >= 2:
             equalize = sub.addAction(
-                "&Equalize plot heights\t" + native_shortcut_text("Ctrl+Shift+E"),
+                "&Equalize plot heights\t" + shortcut_text("panel.equalize_heights"),
                 self._equalize_plot_heights)
             equalize.setToolTip(
                 "Reset all plots in this panel to the same height.")
@@ -1344,7 +1344,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
     def _add_selection_actions(self, menu, source):
         from PySide6.QtWidgets import QMenu
-        from SciQLop.core.ui.shortcuts import native_shortcut_text
+        from SciQLop.components.shortcuts import shortcut_text
         plot = self._plot_containing(source)
         if plot is None:
             return
@@ -1361,7 +1361,7 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
         if axis is not None:
             action = sub.addAction(
-                "&Toggle log scale\t" + native_shortcut_text("L"))
+                "&Toggle log scale\t" + shortcut_text("plot.toggle_log"))
             action.setCheckable(True)
             action.setChecked(axis.log())
             action.setToolTip(
@@ -1377,15 +1377,15 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
 
             label = "&Hide" if graph.visible() else "&Show"
             action = sub.addAction(
-                label + "\t" + native_shortcut_text("H"), _toggle_visible)
+                label + "\t" + shortcut_text("plot.toggle_selection_visibility"), _toggle_visible)
             action.setToolTip(f"Toggle visibility of “{graph_name(graph)}”.")
 
     def _add_crosshair_action(self, menu):
-        from SciQLop.core.ui.shortcuts import native_shortcut_text
+        from SciQLop.components.shortcuts import shortcut_text
         toggle = getattr(self, "_crosshair_toggle", None)
         if toggle is None:
             return
-        shortcut = native_shortcut_text("Ctrl+Shift+H")
+        shortcut = shortcut_text("panel.toggle_crosshair")
         action = menu.addAction("Crosshair\t" + shortcut)
         action.setCheckable(True)
         action.setChecked(toggle.isChecked())

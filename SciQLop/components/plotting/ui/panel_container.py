@@ -1,5 +1,4 @@
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QKeySequence, QShortcut
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 
 from SciQLop.components.plotting.ui.catalog_chrome import CatalogChrome
@@ -7,6 +6,7 @@ from SciQLop.components.plotting.ui.crosshair_toggle import CrosshairToggle
 from SciQLop.components.plotting.ui.plot_shortcuts import install_plot_shortcuts
 from SciQLop.components.plotting.ui.time_range_bar import TimeRangeBar
 from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
+from SciQLop.components.shortcuts import add_shortcut
 from SciQLop.core import TimeRange
 from SciQLop.core.ui import Metrics
 
@@ -72,24 +72,15 @@ class PanelContainer(QWidget):
         self.panel.plot_added.connect(install_plot_shortcuts)
 
     def _install_shortcuts(self):
-        self._toggle_shortcut = QShortcut(QKeySequence("Ctrl+Shift+H"), self)
-        self._toggle_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self._toggle_shortcut.activated.connect(self.crosshair_toggle.toggle)
-        self._mode_shortcut = QShortcut(QKeySequence("Ctrl+Shift+M"), self)
-        self._mode_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self._mode_shortcut.activated.connect(self.catalog_chrome.cycle_mode)
-        self._autoscale_shortcut = QShortcut(QKeySequence("Ctrl+Shift+A"), self)
-        self._autoscale_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self._autoscale_shortcut.activated.connect(self.panel._autoscale_all_plots)
-        self._equalize_shortcut = QShortcut(QKeySequence("Ctrl+Shift+E"), self)
-        self._equalize_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self._equalize_shortcut.activated.connect(self.panel._equalize_plot_heights)
-        self._organize_shortcut = QShortcut(QKeySequence("O"), self)
-        self._organize_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self._organize_shortcut.activated.connect(self.panel.organize_plots)
-        self._deselect_shortcut = QShortcut(QKeySequence("Escape"), self)
-        self._deselect_shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        self._deselect_shortcut.activated.connect(self.panel.deselect_all)
+        slots = {
+            "panel.toggle_crosshair": self.crosshair_toggle.toggle,
+            "panel.cycle_catalog_mode": self.catalog_chrome.cycle_mode,
+            "panel.autoscale_all": self.panel._autoscale_all_plots,
+            "panel.equalize_heights": self.panel._equalize_plot_heights,
+            "panel.organize": self.panel.organize_plots,
+            "panel.deselect_all": self.panel.deselect_all,
+        }
+        self.shortcuts = {sid: add_shortcut(self, sid, slot) for sid, slot in slots.items()}
         for plot in self.panel.plots():
             install_plot_shortcuts(plot)
 

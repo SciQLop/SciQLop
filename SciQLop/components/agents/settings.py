@@ -19,7 +19,7 @@ class AgentChatSettings(ConfigEntry):
     category: ClassVar[str] = SettingsCategory.APPLICATION
     subcategory: ClassVar[str] = "Agent chat"
     tool_verbosity: int = Field(
-        default=1, ge=1, le=3,
+        default=1, ge=1, le=3, json_schema_extra={"advanced": True},
         description="How much of the agent's tool activity to show in the chat "
                     "(1 = step names, 2 = + inputs, 3 = + result summaries).",
     )
@@ -30,7 +30,7 @@ class AgentChatSettings(ConfigEntry):
         json_schema_extra={"widget": "hidden"},
     )
     recent_sessions: int = Field(
-        default=30, ge=1,
+        default=30, ge=1, json_schema_extra={"advanced": True},
         description="How many recent agent sessions to list. Sessions you "
                     "renamed, pinned, grouped or tagged are always listed, "
                     "however old they are.",
@@ -53,6 +53,7 @@ class AgentChatSettings(ConfigEntry):
         default="web",
         description="How the chat transcript is drawn. 'web' adds highlighted "
                     "code and LaTeX math (uses the embedded browser).",
+        json_schema_extra={"advanced": True},
     )
 
 
@@ -65,7 +66,7 @@ class AdsCredentialsSettings(ConfigEntry):
     token: str = Field(
         default="",
         description="NASA ADS API token (https://ui.adsabs.harvard.edu/user/settings/token)",
-        json_schema_extra={"widget": "password"},
+        json_schema_extra={"widget": "password", "advanced": True},
     )
 
 

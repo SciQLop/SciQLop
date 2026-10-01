@@ -124,67 +124,67 @@ def test_crosshair_state_applied_to_new_plots(container):
 def test_mode_shortcut_is_ctrl_shift_m_scoped_to_container(container):
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QKeySequence
-    assert container._mode_shortcut.key() == QKeySequence("Ctrl+Shift+M")
-    assert container._mode_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+    assert container.shortcuts["panel.cycle_catalog_mode"].key() == QKeySequence("Ctrl+Shift+M")
+    assert container.shortcuts["panel.cycle_catalog_mode"].context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
 
 
 def test_mode_shortcut_cycles_catalog_mode(container):
     assert container.catalog_chrome.mode == "view"
-    container._mode_shortcut.activated.emit()
+    container.shortcuts["panel.cycle_catalog_mode"].activated.emit()
     assert container.catalog_chrome.mode == "jump"
-    container._mode_shortcut.activated.emit()
+    container.shortcuts["panel.cycle_catalog_mode"].activated.emit()
     assert container.catalog_chrome.mode == "edit"
-    container._mode_shortcut.activated.emit()
+    container.shortcuts["panel.cycle_catalog_mode"].activated.emit()
     assert container.catalog_chrome.mode == "view"
 
 
 def test_autoscale_shortcut_is_ctrl_shift_a_scoped_to_container(container):
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QKeySequence
-    assert container._autoscale_shortcut.key() == QKeySequence("Ctrl+Shift+A")
-    assert container._autoscale_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+    assert container.shortcuts["panel.autoscale_all"].key() == QKeySequence("Ctrl+Shift+A")
+    assert container.shortcuts["panel.autoscale_all"].context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
 
 
 def test_autoscale_shortcut_triggers_autoscale_all_plots(container, monkeypatch):
     calls = []
     monkeypatch.setattr(container.panel, "_autoscale_all_plots", lambda: calls.append(True))
-    container._autoscale_shortcut.activated.emit()
+    container.shortcuts["panel.autoscale_all"].activated.emit()
     assert calls == [True]
 
 
 def test_equalize_shortcut_is_ctrl_shift_e_scoped_to_container(container):
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QKeySequence
-    assert container._equalize_shortcut.key() == QKeySequence("Ctrl+Shift+E")
-    assert container._equalize_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+    assert container.shortcuts["panel.equalize_heights"].key() == QKeySequence("Ctrl+Shift+E")
+    assert container.shortcuts["panel.equalize_heights"].context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
 
 
 def test_equalize_shortcut_triggers_equalize_plot_heights(container, monkeypatch):
     calls = []
     monkeypatch.setattr(container.panel, "_equalize_plot_heights", lambda: calls.append(True))
-    container._equalize_shortcut.activated.emit()
+    container.shortcuts["panel.equalize_heights"].activated.emit()
     assert calls == [True]
 
 
 def test_organize_shortcut_is_o_scoped_to_container(container):
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QKeySequence
-    assert container._organize_shortcut.key() == QKeySequence("O")
-    assert container._organize_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+    assert container.shortcuts["panel.organize"].key() == QKeySequence("O")
+    assert container.shortcuts["panel.organize"].context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
 
 
 def test_organize_shortcut_triggers_organize_plots(container, monkeypatch):
     calls = []
     monkeypatch.setattr(container.panel, "organize_plots", lambda: calls.append(True))
-    container._organize_shortcut.activated.emit()
+    container.shortcuts["panel.organize"].activated.emit()
     assert calls == [True]
 
 
 def test_deselect_shortcut_is_escape_scoped_to_container(container):
     from PySide6.QtCore import Qt
     from PySide6.QtGui import QKeySequence
-    assert container._deselect_shortcut.key() == QKeySequence("Escape")
-    assert container._deselect_shortcut.context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
+    assert container.shortcuts["panel.deselect_all"].key() == QKeySequence("Escape")
+    assert container.shortcuts["panel.deselect_all"].context() == Qt.ShortcutContext.WidgetWithChildrenShortcut
 
 
 def test_deselect_shortcut_triggers_deselect_all(container):
@@ -195,7 +195,7 @@ def test_deselect_shortcut_triggers_deselect_all(container):
     axis.set_selected(True)
     assert axis.selected() is True
 
-    container._deselect_shortcut.activated.emit()
+    container.shortcuts["panel.deselect_all"].activated.emit()
     assert axis.selected() is False
 
 

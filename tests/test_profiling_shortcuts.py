@@ -52,13 +52,10 @@ def _no_dialog(monkeypatch):
 
 
 def test_start_stop_and_open_have_shortcuts_that_work_in_every_window(profiling):
-    from SciQLop.components.profiling.settings import ProfilingSettings
-
     menu, *_ = profiling
-    settings = ProfilingSettings()
-    for action, key in ((menu._start, settings.start_trace_shortcut),
-                        (menu._stop, settings.stop_trace_shortcut),
-                        (menu._open_last, settings.open_trace_shortcut)):
+    for action, key in ((menu._start, "Ctrl+Alt+P"),
+                        (menu._stop, "Ctrl+Alt+S"),
+                        (menu._open_last, "Ctrl+Alt+O")):
         assert action.shortcut() == QKeySequence(key)
         assert action.shortcutContext() == Qt.ShortcutContext.ApplicationShortcut
 

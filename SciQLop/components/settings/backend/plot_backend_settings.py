@@ -10,27 +10,32 @@ class PlotBackendSettings(ConfigEntry):
     default_speasy_backend: Literal["matplotlib", "sciqlop"] = Field(
         default="matplotlib",
         description="Library used when a Speasy snippet plots outside "
-                    "SciQLop.")
+                    "SciQLop.",
+        json_schema_extra={"advanced": True})
     default_zoom_limit: Literal["1h", "1d", "1w", "1y", "Unlimited"] = Field(
         default="1d",
         description="How far new panels let you zoom out on the time axis.")
 
     graph_autoscale_percentile_low: float = Field(
+        json_schema_extra={"advanced": True},
         default=0.0, ge=0.0, le=100.0,
         description="Percentile of the data used as the lower bound when a "
                     "plot auto-scales its Y axis; keeps outliers from "
                     "flattening the curve.")
     graph_autoscale_percentile_high: float = Field(
+        json_schema_extra={"advanced": True},
         default=100.0, ge=0.0, le=100.0,
         description="Percentile of the data used as the upper bound when a "
                     "plot auto-scales its Y axis; keeps outliers from "
                     "flattening the curve.")
     colormap_autoscale_percentile_low: float = Field(
+        json_schema_extra={"advanced": True},
         default=2.0, ge=0.0, le=100.0,
         description="Percentile of the data used as the lower bound when a "
                     "spectrogram auto-scales its color scale; keeps "
                     "outliers from flattening the curve.")
     colormap_autoscale_percentile_high: float = Field(
+        json_schema_extra={"advanced": True},
         default=98.0, ge=0.0, le=100.0,
         description="Percentile of the data used as the upper bound when a "
                     "spectrogram auto-scales its color scale; keeps "

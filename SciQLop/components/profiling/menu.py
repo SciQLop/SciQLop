@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import QObject, Qt, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QFontDatabase, QKeySequence
+from PySide6.QtGui import QDesktopServices, QFontDatabase
 from PySide6.QtWidgets import (
     QDialog, QFileDialog, QMenu, QMessageBox, QPlainTextEdit, QVBoxLayout, QWidget,
 )
@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 from SciQLop.components import sciqlop_logging
 from SciQLop.components.storage import user_data_dir
 from SciQLop.core import tracing
+from SciQLop.components.shortcuts import bind_shortcut, bind_tooltip
 from SciQLop.core.ui.tooltips import rich_tooltip
 from .perfetto import open_trace_in_perfetto
 from .settings import ProfilingSettings
@@ -49,10 +50,11 @@ def prune_traces(directory: Path, keep: int) -> None:
         old.unlink(missing_ok=True)
 
 
-def _bind(action, key: str) -> None:
+def _bind(action, shortcut_id: str, title: str, body: str) -> None:
     """Application-wide, so the shortcut also works from a floating panel."""
-    action.setShortcut(QKeySequence(key))
+    bind_shortcut(action, shortcut_id)
     action.setShortcutContext(Qt.ShortcutContext.ApplicationShortcut)
+    bind_tooltip(action, shortcut_id, title, body)
 
 
 class _HotThreadsDispatcher(QObject):
@@ -71,20 +73,17 @@ class ProfilingMenu(QObject):
         self.menu.menuAction().setToolTip(rich_tooltip(
             "Profiling",
             "Record and inspect where SciQLop spends its time."))
-        settings = ProfilingSettings()
         self._start = self.menu.addAction("Start trace", self._on_quick_start)
         self._start_to = self.menu.addAction("Start trace to file…", self._on_start)
         self._stop = self.menu.addAction("Stop trace", self._on_stop)
-        self._start.setToolTip(rich_tooltip(
-            "Start trace",
-            "Begin recording a Perfetto performance trace, to a dated file"
-            " in the traces folder.", settings.start_trace_shortcut))
+        _bind(self._start, "profiling.start", "Start trace",
+              "Begin recording a Perfetto performance trace, to a dated file"
+              " in the traces folder.")
         self._start_to.setToolTip(rich_tooltip(
             "Start trace to file",
             "Begin recording a Perfetto performance trace to a file you choose."))
-        self._stop.setToolTip(rich_tooltip(
-            "Stop trace",
-            "Stop recording and save the current trace.", settings.stop_trace_shortcut))
+        _bind(self._stop, "profiling.stop", "Stop trace",
+              "Stop recording and save the current trace.")
         self.menu.addSeparator()
         self._hot_threads = None
         self._hot_threads_dispatcher = None
@@ -120,10 +119,9 @@ class ProfilingMenu(QObject):
             self.menu.addSeparator()
         self._open_last = self.menu.addAction(
             "Open last trace in Perfetto", self._on_open_last)
-        self._open_last.setToolTip(rich_tooltip(
-            "Open last trace",
-            "Reopens the most recently captured trace in Perfetto, or asks"
-            " for a trace file when there is none yet.", settings.open_trace_shortcut))
+        _bind(self._open_last, "profiling.open_last", "Open last trace",
+              "Reopens the most recently captured trace in Perfetto, or asks"
+              " for a trace file when there is none yet.")
         self._open_pick = self.menu.addAction(
             "Open trace in Perfetto…", self._on_open_pick)
         self._open_pick.setToolTip(rich_tooltip(
@@ -137,9 +135,6 @@ class ProfilingMenu(QObject):
             "Show traces folder",
             "Opens the folder holding the dated traces in your file browser."))
         self.menu.addSeparator()
-        _bind(self._start, settings.start_trace_shortcut)
-        _bind(self._stop, settings.stop_trace_shortcut)
-        _bind(self._open_last, settings.open_trace_shortcut)
         self._status = self.menu.addAction("Status: idle")
         self._status.setEnabled(False)
         self._current_path: Optional[str] = None

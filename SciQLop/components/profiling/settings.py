@@ -8,20 +8,7 @@ from SciQLop.components.settings.backend.entry import ConfigEntry, SettingsCateg
 class ProfilingSettings(ConfigEntry):
     category: ClassVar[str] = SettingsCategory.APPLICATION
     subcategory: ClassVar[str] = "Profiling"
-
-    # Shortcuts (menu.py). Application-wide, so they also work from a
-    # floating plot panel.
-    start_trace_shortcut: str = Field(
-        default="Ctrl+Alt+P",
-        description="Start recording a trace, to a dated file in the traces "
-                    "folder (Tools > Profiling).")
-    stop_trace_shortcut: str = Field(
-        default="Ctrl+Alt+S",
-        description="Stop recording and save the trace.")
-    open_trace_shortcut: str = Field(
-        default="Ctrl+Alt+O",
-        description="Open the last trace in Perfetto (asks for a file when "
-                    "there is none yet).")
+    advanced: ClassVar[bool] = True
 
     traces_to_keep: int = Field(
         default=10, ge=1, le=1000,

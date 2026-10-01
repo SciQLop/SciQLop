@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QToolButton
 from SciQLop.core.ui import Metrics
 from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.theming import theme_adapted_icon
+from SciQLop.components.shortcuts import key_for, on_shortcuts_changed
 
 
 class CrosshairToggle(QToolButton):
@@ -27,6 +28,7 @@ class CrosshairToggle(QToolButton):
         self.setFixedSize(Metrics.em(2.5), Metrics.em(2.5))
         self.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.toggled.connect(self._refresh_appearance)
+        on_shortcuts_changed(self, lambda owner: owner._refresh_appearance())
         self._refresh_appearance()
 
     def _refresh_appearance(self, *_):
@@ -37,4 +39,4 @@ class CrosshairToggle(QToolButton):
             "Crosshair & hover tooltip",
             f"Currently {state}. Shows a crosshair and value read-out"
             " as you move over plots.",
-            "Ctrl+Shift+H"))
+            key_for("panel.toggle_crosshair")))

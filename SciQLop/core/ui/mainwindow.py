@@ -27,6 +27,8 @@ from SciQLop.core.ui.tooltips import rich_tooltip
 from SciQLop.components.sciqlop_logging import getLogger
 from SciQLopPlots import SciQLopMultiPlotPanel
 from SciQLop.components.settings.ui import SettingsPanel
+from SciQLop.components.shortcuts import bind_shortcut, bind_tooltip
+from SciQLop.components.shortcuts.ui import ShortcutsHelp
 from SciQLop.components.catalogs.ui import CatalogBrowser
 from SciQLop.components.onboarding.backend.settings import OnboardingSettings
 from SciQLop.components.onboarding.ui.tour_controller import run_tour
@@ -317,12 +319,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         self.fullScreenAction = self.viewMenu.addAction("Full screen")
         self.fullScreenAction.setCheckable(True)
-        self.fullScreenAction.setShortcut(QtGui.QKeySequence("F11"))
+        bind_shortcut(self.fullScreenAction, "app.full_screen")
         self.fullScreenAction.toggled.connect(self._set_full_screen)
-        self.fullScreenAction.setToolTip(rich_tooltip(
-            "Full screen",
-            "Show SciQLop without window decorations.",
-            shortcut="F11"))
+        bind_tooltip(self.fullScreenAction, "app.full_screen",
+                     "Full screen", "Show SciQLop without window decorations.")
 
         self.toolsMenu = QMenu("Tools")
         self.toolsMenu.setToolTipsVisible(True)
@@ -343,6 +343,23 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         take_a_tour.setToolTip(rich_tooltip(
             "Take a tour",
             "Pick a guided walkthrough of a SciQLop feature."))
+
+        self.helpMenu = QMenu("Help")
+        self.helpMenu.setToolTipsVisible(True)
+        self._menubar.addMenu(self.helpMenu)
+        self._shortcuts_help = None
+        self.shortcutsHelpAction = self.helpMenu.addAction(
+            "Keyboard shortcuts", self.show_shortcuts_help)
+        bind_shortcut(self.shortcutsHelpAction, "app.shortcuts_help")
+        bind_tooltip(self.shortcutsHelpAction, "app.shortcuts_help",
+                     "Keyboard shortcuts", "List every keyboard shortcut.")
+
+    def show_shortcuts_help(self):
+        if self._shortcuts_help is None:
+            self._shortcuts_help = ShortcutsHelp(self)
+        self._shortcuts_help.show()
+        self._shortcuts_help.raise_()
+        self._shortcuts_help.activateWindow()
 
     def _setup_side_panels(self):
         self.productTree = ProductsView(self)
@@ -508,11 +525,9 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
 
         self.commandPaletteAction = self.viewMenu.addAction(
             "Command palette…", self._command_palette.toggle)
-        self.commandPaletteAction.setShortcut(QtGui.QKeySequence(palette_settings.keybinding))
-        self.commandPaletteAction.setToolTip(rich_tooltip(
-            "Command palette",
-            "Search and run any command, product, panel or catalog.",
-            shortcut=palette_settings.keybinding))
+        bind_shortcut(self.commandPaletteAction, "app.command_palette")
+        bind_tooltip(self.commandPaletteAction, "app.command_palette",
+                     "Command palette", "Search and run any command, product, panel or catalog.")
 
     def _show_logs(self):
         dw = self.dock_manager.findDockWidget(self.logs.windowTitle())

@@ -31,7 +31,8 @@ class SciQLopPluginsSettings(ConfigEntry):
     extra_plugins_folders: List[str] = Field(
         default=[],
         description="Additional folders scanned for plugins at startup.",
-        json_schema_extra={"widget": "list_path", "restart_required": "on_removal"})
+        json_schema_extra={"widget": "list_path", "restart_required": "on_removal",
+                           "advanced": True})
     plugins: Dict[str, PluginConfig] = Field(
         default={},
         description="Enable or disable installed plugins. Enabling one loads it "

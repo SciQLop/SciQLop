@@ -2,6 +2,7 @@ from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget, QHBoxLayout, QComboBox, QLabel, QDoubleSpinBox
 
 from SciQLop.core.ui import fit_combo_to_content
+from SciQLop.components.shortcuts import bind_tooltip
 from SciQLop.core.ui.tooltips import rich_tooltip
 
 
@@ -12,13 +13,12 @@ def _make_mode_combo(parent):
     w = QComboBox(parent)
     for label, value in CATALOG_MODES:
         w.addItem(label, userData=value)
-    w.setToolTip(rich_tooltip(
-        "Catalog interaction mode",
+    bind_tooltip(
+        w, "panel.cycle_catalog_mode", "Catalog interaction mode",
         "View: click an event to select it. Jump: picking an event in the "
         "catalog list sets the panel range to it (zoom-out factor on the "
         "right). Edit: hold Shift and click to start a new event, move, "
-        "then click again to finish (Esc cancels).",
-        "Ctrl+Shift+M"))
+        "then click again to finish (Esc cancels).")
     fit_combo_to_content(w)
     return w
 

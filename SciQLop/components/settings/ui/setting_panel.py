@@ -2,10 +2,12 @@ from PySide6.QtCore import Slot, QModelIndex, Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QListView, QLineEdit,
     QHBoxLayout, QSplitter, QScrollArea, QSpacerItem, QSizePolicy, QFrame,
-    QStackedWidget, QPushButton,
+    QStackedWidget, QPushButton, QCheckBox,
 )
 from PySide6.QtGui import QFont, QPalette, QShowEvent
 from SciQLop.components.settings import SettingsCategory, ConfigEntry
+from SciQLop.components.settings.backend import SciQLopConfigEntry
+from SciQLop.components.settings.backend.entry import is_advanced
 from SciQLop.components.sciqlop_logging import getLogger
 from ..backend.model import SettingsFilterProxyModel
 from .settings_delegates import get_delegate_for_field, is_field_editable
@@ -45,6 +47,12 @@ class SettingsLeftPanel(QWidget):
         self.categories_list = SettingsCategories()
         self.layout.addWidget(self.categories_list)
         self.filter.textChanged.connect(self.categories_list.filter)
+
+        self.show_advanced = QCheckBox("Show advanced settings")
+        self.show_advanced.setToolTip(
+            "Also list expert settings: diagnostics, tuning knobs and "
+            "rarely needed options.")
+        self.layout.addWidget(self.show_advanced)
 
 
 def _restart_mode(field_info):
@@ -126,6 +134,10 @@ class SettingRow(QFrame):
         self._delegate.set_value(current_value)
         self._delegate.value_changed.connect(self._on_value_changed)
 
+    @property
+    def field_name(self) -> str:
+        return self._field_name
+
     @Slot(object)
     def _on_value_changed(self, value):
         try:
@@ -161,25 +173,30 @@ class SectionHeader(QWidget):
         layout.addWidget(HLine())
 
 
-def _build_entry_widgets(entry_cls: type[ConfigEntry], instance: ConfigEntry,
-                         parent_layout: QVBoxLayout, level: int = 0):
-    """Recursively build SettingRow widgets for an entry, nesting into
-    child ConfigEntry fields."""
+def _entry_widgets(entry_cls: type[ConfigEntry], instance: ConfigEntry,
+                   show_advanced: bool, level: int = 0) -> list[QWidget]:
+    """SettingRow widgets for the entry's shown fields, nesting child
+    ConfigEntry fields as sub-sections (omitted when they show nothing)."""
+    widgets: list[QWidget] = []
     for field_name, field_info in entry_cls.model_fields.items():
         annotation = field_info.annotation
         if isinstance(annotation, type) and issubclass(annotation, ConfigEntry):
-            # Nested ConfigEntry — render as a sub-section
-            child_instance = getattr(instance, field_name)
-            parent_layout.addWidget(
-                SectionHeader(field_name.replace('_', ' '), level=level + 1)
-            )
-            _build_entry_widgets(annotation, child_instance, parent_layout, level=level + 1)
-        elif is_field_editable(field_name, field_info):
-            row = SettingRow(field_name, field_info, instance)
-            if level > 0:
-                indent = Metrics.em(1.5 + level * 1.5)
-                row.layout().setContentsMargins(indent, Metrics.spacing(), Metrics.em(1.5), Metrics.spacing())
-            parent_layout.addWidget(row)
+            nested = _entry_widgets(annotation, getattr(instance, field_name),
+                                    show_advanced, level + 1)
+            if nested:
+                widgets.append(SectionHeader(field_name.replace('_', ' '), level=level + 1))
+                widgets.extend(nested)
+        elif is_field_editable(field_name, field_info) and (
+                show_advanced or not is_advanced(entry_cls, field_info)):
+            widgets.append(_indented(SettingRow(field_name, field_info, instance), level))
+    return widgets
+
+
+def _indented(row: QWidget, level: int) -> QWidget:
+    if level > 0:
+        indent = Metrics.em(1.5 + level * 1.5)
+        row.layout().setContentsMargins(indent, Metrics.spacing(), Metrics.em(1.5), Metrics.spacing())
+    return row
 
 
 class CategoryView(QWidget):
@@ -204,6 +221,14 @@ class CategoryView(QWidget):
         layout.addWidget(self._stack)
 
         self._page_cache: dict[str, int] = {}
+        self._show_advanced = False
+        self._current: str | None = None
+
+    def set_show_advanced(self, show: bool):
+        self._show_advanced = show
+        self.clear_cache()
+        if self._current is not None:
+            self.show_category(self._current)
 
     def clear_cache(self):
         """Remove all cached pages so they are rebuilt on next selection."""
@@ -214,6 +239,7 @@ class CategoryView(QWidget):
         self._page_cache.clear()
 
     def show_category(self, category_name: str):
+        self._current = category_name
         self._header.setText(category_name.title())
 
         if category_name in self._page_cache:
@@ -247,11 +273,12 @@ class CategoryView(QWidget):
         inner_layout.setSpacing(Metrics.spacing())
 
         for subcategory, entry_classes in sorted_groups:
-            if multiple_subcategories:
+            widgets = [w for entry_cls in entry_classes
+                       for w in _entry_widgets(entry_cls, entry_cls(), self._show_advanced)]
+            if widgets and multiple_subcategories:
                 inner_layout.addWidget(SectionHeader(subcategory, level=0))
-            for entry_cls in entry_classes:
-                instance = entry_cls()
-                _build_entry_widgets(entry_cls, instance, inner_layout, level=0)
+            for widget in widgets:
+                inner_layout.addWidget(widget)
 
         inner_layout.addSpacerItem(
             QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
@@ -286,6 +313,11 @@ class SettingsPanel(QWidget):
         sel = self._left_panel.categories_list.selectionModel()
         sel.currentChanged.connect(self._on_category_changed)
 
+        self.show_advanced = self._left_panel.show_advanced
+        self.show_advanced.setChecked(SciQLopConfigEntry().show_advanced_settings)
+        self._apply_show_advanced(self.show_advanced.isChecked())
+        self.show_advanced.toggled.connect(self._on_show_advanced_toggled)
+
     def sizeHint(self):
         return Metrics.size(55, 35)
 
@@ -306,6 +338,24 @@ class SettingsPanel(QWidget):
             self._left_panel.categories_list.setCurrentIndex(
                 model.index(0, 0, QModelIndex())
             )
+
+    def _apply_show_advanced(self, show: bool):
+        proxy = self._left_panel.categories_list.model()
+        if isinstance(proxy, SettingsFilterProxyModel):
+            proxy.set_show_advanced(show)
+        self._category_view.set_show_advanced(show)
+
+    @Slot(bool)
+    def _on_show_advanced_toggled(self, show: bool):
+        with SciQLopConfigEntry() as settings:
+            settings.show_advanced_settings = show
+        self._apply_show_advanced(show)
+        self._select_first_category_if_none()
+
+    def _select_first_category_if_none(self):
+        categories = self._left_panel.categories_list
+        if not categories.currentIndex().isValid() and categories.model().rowCount() > 0:
+            categories.setCurrentIndex(categories.model().index(0, 0))
 
     @Slot(QModelIndex, QModelIndex)
     def _on_category_changed(self, current: QModelIndex, _previous: QModelIndex):

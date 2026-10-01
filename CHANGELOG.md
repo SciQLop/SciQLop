@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Settings and shortcuts
+
+- Settings hide expert options by default, so the panel is less daunting: diagnostics, autoscale percentiles, plugin folders, agent-chat tuning and similar knobs appear once you tick **Show advanced settings** at the bottom of the category list. SciQLop remembers the choice. A plugin marks a setting as advanced with `json_schema_extra={"advanced": True}`, or a whole settings class with `advanced = True`.
+- Every keyboard shortcut can now be changed in **Settings › Keyboard Shortcuts**: click a shortcut, press the new keys, or clear it to disable the shortcut. Changes apply right away, menus and tooltips included, and a warning marks two actions sharing a key. Plugins add their own with `SciQLop.components.shortcuts.register_shortcut`.
+- **Help › Keyboard shortcuts** (**F1**) lists every shortcut, searchable. It also shows up in the command palette.
+- The command palette and profiling shortcuts moved to the new page. A key you had changed for them there is back to its default (Ctrl+K, Ctrl+Alt+P/S/O).
+
 ### Agent chat
 
 - A web transcript renderer (Settings → Agent chat → Transcript renderer) draws the chat transcript with highlighted code, LaTeX math and native collapsible tool steps. It is the default for new configurations; an existing configuration keeps its saved choice, so switch it there to try it.
@@ -21,7 +28,7 @@
 - A crash is reported by its signal name, as in "SciQLop crashed (SIGSEGV, signal 11)", instead of a raw exit code that read differently in the dialog and the log (#139).
 - The crash report the agent reads includes the last agent tool calls of the crashed session, with their arguments and times: the call still in flight is usually the trigger (#139).
 - Debug mode (`SCIQLOP_DEBUG`) no longer fails to start on Windows.
-- Profiling has keyboard shortcuts: **Ctrl+Alt+P** starts a trace straight away, to a dated file in SciQLop's `traces` folder, **Ctrl+Alt+S** stops it, and **Ctrl+Alt+O** opens the last trace in Perfetto (Cmd+Option on macOS). They work from floating panels too, and can be changed in Settings › Profiling, as can the number of traces kept in that folder (10 by default; older ones are deleted when a trace is saved). **Tools › Profiling › Start trace to file…** still lets you pick the file.
+- Profiling has keyboard shortcuts: **Ctrl+Alt+P** starts a trace straight away, to a dated file in SciQLop's `traces` folder, **Ctrl+Alt+S** stops it, and **Ctrl+Alt+O** opens the last trace in Perfetto (Cmd+Option on macOS). They work from floating panels too, and can be changed in Settings › Keyboard Shortcuts. Settings › Profiling sets the number of traces kept in that folder (10 by default; older ones are deleted when a trace is saved). **Tools › Profiling › Start trace to file…** still lets you pick the file.
 - **Tools › Profiling › Show traces folder** opens that `traces` folder in your file browser.
 - The launcher's error window has a **Restart SciQLop** button. After a crash it starts SciQLop again in the same workspace, where the crash-report offer is waiting.
 

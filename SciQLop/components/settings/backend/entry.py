@@ -60,6 +60,7 @@ class SettingsCategory(str, Enum):
     APPLICATION = "application"
     APPEARANCE = "appearance"
     CATALOGS = "catalogs"
+    SHORTCUTS = "keyboard shortcuts"
 
 
 class KeyringMapping:
@@ -122,9 +123,17 @@ def _save_keyring(mapping: KeyringMapping, data: dict) -> None:
         log.error("Cannot write credentials to keyring for %s: %s", service, e)
 
 
+def is_advanced(entry_cls: type["ConfigEntry"], field_info) -> bool:
+    extra = field_info.json_schema_extra
+    return entry_cls.advanced or (isinstance(extra, dict) and bool(extra.get("advanced")))
+
+
 class ConfigEntry(BaseModel):
     category: ClassVar[str]
     subcategory: ClassVar[str]
+    # True hides every field of the entry behind "Show advanced settings";
+    # a single field opts in with json_schema_extra={"advanced": True}.
+    advanced: ClassVar[bool] = False
 
     _entries_: ClassVar[dict[str, Type["ConfigEntry"]]] = {}
     _notifier: ClassVar[_SettingsNotifier]

@@ -5,14 +5,14 @@ act on the plot holding keyboard focus, so a plot gets them the first time focus
 lands inside it: plugin plots outside any panel (CDF workbench preview, MSA fit
 inspector) get them with nothing to call.
 """
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QKeySequence, QShortcut
 from SciQLopPlots import SciQLopPlotInterface
 
+from SciQLop.components.shortcuts import add_shortcut
+
 PLOT_SHORTCUTS = {
-    "M": "rescale_hovered_or_selected_axes",
-    "L": "toggle_log_scale_hovered_or_selected_axes",
-    "H": "toggle_selected_objects_visibility",
+    "plot.autoscale": "rescale_hovered_or_selected_axes",
+    "plot.toggle_log": "toggle_log_scale_hovered_or_selected_axes",
+    "plot.toggle_selection_visibility": "toggle_selected_objects_visibility",
 }
 
 _INSTALLED = "sciqlop_plot_shortcuts"
@@ -23,10 +23,8 @@ def install_plot_shortcuts(plot) -> None:
     if plot.property(_INSTALLED):
         return
     plot.setProperty(_INSTALLED, True)
-    for key, action in PLOT_SHORTCUTS.items():
-        shortcut = QShortcut(QKeySequence(key), plot)
-        shortcut.setContext(Qt.ShortcutContext.WidgetWithChildrenShortcut)
-        shortcut.activated.connect(getattr(plot, action))
+    for shortcut_id, action in PLOT_SHORTCUTS.items():
+        add_shortcut(plot, shortcut_id, getattr(plot, action))
 
 
 def _enclosing_plot(widget):

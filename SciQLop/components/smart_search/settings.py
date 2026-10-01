@@ -21,4 +21,5 @@ class SmartSearchSettings(ConfigEntry):
     ] = Field(
         default=AVAILABLE_MODELS[0],
         description="Embedding model used for ranking; the larger one is "
-                    "slower but more accurate.")
+                    "slower but more accurate.",
+        json_schema_extra={"advanced": True})
