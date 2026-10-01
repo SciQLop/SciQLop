@@ -531,7 +531,7 @@ class PlotPanel(GuardedImpl):
 
     @experimental_api()
     @on_main_thread
-    def add_catalog_overlay(self, catalog_path: str, *, override_color=None):
+    def add_catalog_overlay(self, catalog_path: str, *, override_color=None, show_spans: bool = True):
         """Attach a catalog overlay to this panel.
 
         Parameters
@@ -540,6 +540,9 @@ class PlotPanel(GuardedImpl):
             Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
         override_color : str, optional
             Display color for the overlay spans.
+        show_spans : bool, optional
+            ``False`` attaches the catalog without drawing its events: the
+            panel's Jump mode still jumps to them.
 
         Returns
         -------
@@ -548,7 +551,7 @@ class PlotPanel(GuardedImpl):
         """
         from SciQLop.user_api.catalogs._overlay import add_catalog_overlay
         return add_catalog_overlay(self, catalog_path,
-                                   override_color=override_color)
+                                   override_color=override_color, show_spans=show_spans)
 
     @experimental_api()
     @on_main_thread

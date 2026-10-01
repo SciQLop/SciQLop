@@ -21,6 +21,9 @@ class CatalogOverlay:
         Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
     override_color : str or None
         Optional color override for the overlay spans.
+    show_spans : bool
+        Whether the catalog's events are drawn. Hidden, the catalog stays
+        attached, so the panel's Jump mode still jumps to its events.
     """
 
     def __init__(
@@ -43,6 +46,22 @@ class CatalogOverlay:
     def override_color(self) -> Optional[str]:
         return self._override_color
 
+    @property
+    @on_main_thread
+    def show_spans(self) -> bool:
+        return self._manager_overlay().spans_visible
+
+    @show_spans.setter
+    @on_main_thread
+    def show_spans(self, visible: bool) -> None:
+        self._manager_overlay().spans_visible = visible
+
+    def _manager_overlay(self):
+        overlay = self._panel._get_impl_or_raise().catalog_manager.overlay(self._catalog.uuid)
+        if overlay is None:
+            raise RuntimeError(f"{self._catalog_path} is no longer attached to its panel")
+        return overlay
+
     @on_main_thread
     def remove(self) -> None:
         """Detach this overlay from its panel."""
@@ -61,6 +80,7 @@ def add_catalog_overlay(
     catalog_path: str,
     *,
     override_color: Optional[str] = None,
+    show_spans: bool = True,
 ) -> CatalogOverlay:
     """Attach a catalog overlay to ``panel``.
 
@@ -72,6 +92,9 @@ def add_catalog_overlay(
         Fully-qualified catalog path, e.g. ``"My Catalogs//events"``.
     override_color : str, optional
         Display color for the overlay spans.
+    show_spans : bool, optional
+        ``False`` attaches the catalog without drawing its events: the
+        panel's Jump mode still jumps to them.
 
     Returns
     -------
@@ -90,7 +113,7 @@ def add_catalog_overlay(
     provider, catalog = _resolve_catalog(catalog_path)
     impl = panel._get_impl_or_raise()
     manager: PanelCatalogManager = impl.catalog_manager
-    manager.add_catalog(catalog)
+    manager.add_catalog(catalog, show_spans=show_spans)
     if override_color is not None:
         overlay = manager.overlay(catalog.uuid)
         if overlay is not None:
