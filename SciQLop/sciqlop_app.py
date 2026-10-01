@@ -161,6 +161,8 @@ def start_sciqlop():
     register_smart_search_domain()
     from SciQLop.components.smart_search import initialize as initialize_smart_search
     initialize_smart_search()
+    from SciQLop.components.plotting.ui.plot_shortcuts import enable_plot_shortcuts_everywhere
+    enable_plot_shortcuts_everywhere(app)
     sciqlop_event_loop()
 
     from SciQLop.core.ui.mainwindow import SciQLopMainWindow
