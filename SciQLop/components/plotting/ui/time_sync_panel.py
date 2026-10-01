@@ -1276,8 +1276,13 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         menu.addSeparator()
         self._build_export_share_menu(menu)
         self._build_templates_menu(menu)
+        self._add_plugin_menus(menu)
         self._append_knob_reset_actions(menu)
         return menu
+
+    def _add_plugin_menus(self, menu):
+        from SciQLop.components.plotting.backend.panel_menus import add_plugin_menus
+        add_plugin_menus(menu, self)
 
     def _plot_containing(self, obj):
         while obj is not None and obj is not self:
