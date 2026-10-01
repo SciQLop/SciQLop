@@ -21,7 +21,7 @@ from ._graphs import (ensure_arrays_of_double, Histogram2D, Waterfall,
                       _create_histogram2d, _create_waterfall,
                       validate_histogram_bins as _validate_histogram_bins,
                       _UNSET, _with_explicit)
-from ._thread_safety import on_main_thread
+from ._thread_safety import on_main_thread, GuardedImpl
 import numpy as np
 from speasy.products import SpeasyVariable as _SpeasyVariable
 from speasy.core import datetime64_to_epoch as _datetime64_to_epoch
@@ -124,7 +124,7 @@ def _normalize_plot_kwargs(kwargs: dict) -> dict:
     return kwargs
 
 
-class PlotPanel:
+class PlotPanel(GuardedImpl):
     """A class representing a plot panel in the SciQLop application.
     This class provides methods to create and manage plots within the panel.
     """

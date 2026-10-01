@@ -15,7 +15,7 @@ from SciQLopPlots import (Coordinates as _Coordinates, LineTermination, SciQLopP
 from .protocol import Plot, Item
 from .enums import CoordinateSystem
 from .._annotations import experimental_api
-from ._thread_safety import on_main_thread
+from ._thread_safety import on_main_thread, GuardedImpl
 from PySide6.QtCore import QRectF, QPointF
 from PySide6.QtGui import QColor, QBrush, QFont, QPalette, QPixmap, Qt
 
@@ -42,7 +42,7 @@ def _default_foreground(plot_impl) -> QColor:
         return QColor("black")
 
 
-class _PlotItem(Item):
+class _PlotItem(GuardedImpl, Item):
     """Shared concrete surface for plot items: visibility toggle, removal,
     and a friendly error once the underlying C++ item is gone.
 
@@ -56,8 +56,6 @@ class _PlotItem(Item):
 
        Keep the handle for as long as the item should be visible.
     """
-
-    _impl = None
 
     def _get_impl_or_raise(self):
         if self._impl is None:
@@ -525,7 +523,7 @@ class CurvedLine(_PlotItem):
         self._get_impl_or_raise().set_stop_termination(termination)
 
 
-class HorizontalLine:
+class HorizontalLine(GuardedImpl):
     """A horizontal line at a fixed Y value on a plot.
 
     Parameters

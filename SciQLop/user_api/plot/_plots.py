@@ -17,7 +17,7 @@ from SciQLopPlots import SciQLopNDProjectionPlot as _SciQLopNDProjectionPlot
 from SciQLopPlots import GraphType as _GraphType, GraphMarkerShape as _GraphMarkerShape
 from SciQLopPlots import ColorGradient as _ColorGradient
 from SciQLop.components.plotting.ui.time_sync_panel import plot_product as _plot_product
-from ._thread_safety import on_main_thread
+from ._thread_safety import on_main_thread, GuardedImpl
 from ._overlay import Overlay
 from .._annotations import experimental_api
 from PySide6.QtCore import Qt as _Qt
@@ -241,7 +241,7 @@ def _concrete_impl(impl):
     return data() if callable(data) else impl
 
 
-class _BasePlot(Plot):
+class _BasePlot(GuardedImpl, Plot):
     def __init__(self, impl):
         self._impl: Optional[_SciQLopPlot] = _concrete_impl(impl)
         self._get_impl_or_raise().destroyed.connect(self._on_destroyed)
@@ -959,7 +959,7 @@ class TimeSeriesPlot(_BasePlot):
             p.text(f"TimeSeriesPlot({self._impl})")
 
 
-class ProjectionPlot:
+class ProjectionPlot(GuardedImpl):
     """A class representing a projection plot. The x-axis and y-axis can represent any type of data.
     The plot can be used to visualize data in a Cartesian coordinate system.
     Usually users won't directly create a ProjectionPlot, but rather use the PlotPanel plot method to create one.

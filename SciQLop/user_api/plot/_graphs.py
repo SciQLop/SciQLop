@@ -11,7 +11,7 @@ from SciQLopPlots import SciQLopWaterfallGraph as _SciQLopWaterfallGraph
 from SciQLopPlots import WaterfallOffsetMode as _WaterfallOffsetMode
 from SciQLopPlots import ColorGradient as _ColorGradient
 from PySide6.QtGui import QColor as _QColor
-from ._thread_safety import on_main_thread
+from ._thread_safety import on_main_thread, GuardedImpl
 from SciQLop.core import tracing as _tracing
 
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
@@ -116,7 +116,7 @@ class _Named:
         return self._impl.objectName()
 
 
-class Graph(_Named, Plottable):
+class Graph(GuardedImpl, _Named, Plottable):
     def __init__(self, impl, plot=None):
         self._impl = impl
         self._plot = plot
@@ -194,7 +194,7 @@ class Graph(_Named, Plottable):
             p.text(f"Graph({self._impl})")
 
 
-class ColorMap(_Named, Plottable):
+class ColorMap(GuardedImpl, _Named, Plottable):
     def __init__(self, impl):
         self._impl = impl
         _wire_destroyed(self, impl)
@@ -243,7 +243,7 @@ class ColorMap(_Named, Plottable):
             p.text(f"ColorMap({self._impl})")
 
 
-class Histogram2D(_Named, Plottable):
+class Histogram2D(GuardedImpl, _Named, Plottable):
     """A 2D density histogram. Bins (x, y) scatter into an x_bins x y_bins grid."""
 
     def __init__(self, impl, x_bin_edges=None, y_bin_edges=None):
@@ -339,7 +339,7 @@ class Histogram2D(_Named, Plottable):
             p.text(f"Histogram2D({self._impl})")
 
 
-class Waterfall(_Named, Plottable):
+class Waterfall(GuardedImpl, _Named, Plottable):
     """A waterfall graph: stacked line plots sharing the same x-axis.
 
     SciQLopPlots stores the 2-D data as ``(len(x), n_lines)``; this wrapper

@@ -5,7 +5,7 @@ from SciQLopPlots import (SciQLopOverlay as _SciQLopOverlay,
 
 from .enums import OverlayLevel, OverlaySizeMode, OverlayPosition
 from .._annotations import experimental_api
-from ._thread_safety import on_main_thread
+from ._thread_safety import on_main_thread, GuardedImpl
 
 __all__ = ['Overlay']
 
@@ -34,7 +34,7 @@ def _from_sqp_position(position: _OverlayPosition) -> OverlayPosition:
     return OverlayPosition(position.value)
 
 
-class Overlay:
+class Overlay(GuardedImpl):
     """A class wrapping the in-canvas message overlay attached to a plot.
 
     Use `plot.overlay` to access it. The overlay can show informational, warning,

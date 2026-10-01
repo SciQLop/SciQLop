@@ -43,6 +43,7 @@
 ### Catalogs
 
 - The catalog mode picked in a panel's chrome row (or with Ctrl+Shift+M) now takes effect right away and shows in the right-click Mode menu. On a fresh panel it only changed the combo: the panel stayed in its previous mode, so Edit did not allow editing, until a catalog was added or the mode was set from the menu.
+- Removing a catalog overlay from a notebook or agent cell no longer crashes SciQLop (#147). The cell reached the panel through its internal `_impl` and deleted the overlay's spans off the GUI thread, under a pending redraw. A user_api object's `_impl` is now a proxy outside the GUI thread, so any call made through it runs on the GUI thread.
 
 ### Performance
 
