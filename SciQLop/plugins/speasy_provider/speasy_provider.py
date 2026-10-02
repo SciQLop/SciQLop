@@ -83,10 +83,18 @@ _3DVIEW_FALLBACK_FRAMES = ("J2000", "ECLIPJ2000", "HEE", "HEEQ", "HCI", "GSE", "
                            "GEO", "MSO", "VSO", "JSO", "KSO")
 
 
+def _speasy_provider(name: str):
+    """The live provider instance, or None when disabled or down.
+    Not getattr(spz, name): speasy binds spz.<name> at import, and SciQLop
+    inits the providers later, so those stay None."""
+    from speasy.core.requests_scheduling.request_dispatch import PROVIDERS
+    return PROVIDERS.get(name)
+
+
 def _3dview_frames() -> list:
     """Live frame list from the 3DView service, falling back to the usual
     frames when the service (or the provider) is unavailable."""
-    provider = getattr(spz, "cdpp3dview", None)
+    provider = _speasy_provider("cdpp3dview")
     try:
         frames = provider.get_frames() if provider is not None else []
     except Exception:
@@ -438,7 +446,7 @@ def speasy_coverage(speasy_id) -> Optional[TimeRange]:
     if index is None:
         return None
     try:
-        dt_range = getattr(spz, speasy_id.split("/", 1)[0]).parameter_range(index)
+        dt_range = _speasy_provider(speasy_id.split("/", 1)[0]).parameter_range(index)
         start, stop = dt_range.start_time.timestamp(), dt_range.stop_time.timestamp()
     except Exception:
         return None

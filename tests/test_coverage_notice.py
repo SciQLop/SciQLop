@@ -47,11 +47,17 @@ def _fake_speasy(monkeypatch, start, stop):
     index = object()
     dt = SimpleNamespace(start_time=datetime.fromtimestamp(start, timezone.utc),
                          stop_time=datetime.fromtimestamp(stop, timezone.utc))
+    from speasy.core.requests_scheduling import request_dispatch
+
+    # SciQLop inits Speasy's providers after import, so spz.amda stays None;
+    # only the live PROVIDERS registry holds them.
     fake = SimpleNamespace(
         inventories=SimpleNamespace(flat_inventories=SimpleNamespace(
             amda=SimpleNamespace(parameters={"p": index}))),
-        amda=SimpleNamespace(parameter_range=lambda i: dt if i is index else None))
+        amda=None)
     monkeypatch.setattr(speasy_provider, "spz", fake)
+    monkeypatch.setitem(request_dispatch.PROVIDERS, "amda", SimpleNamespace(
+        parameter_range=lambda i: dt if i is index else None))
 
 
 def test_speasy_coverage_comes_from_the_inventory(monkeypatch):

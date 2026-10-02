@@ -51,7 +51,8 @@ def test_3dview_knob_is_a_frame_choice_from_the_live_list(monkeypatch):
 
 
 def test_3dview_frames_fall_back_when_the_service_is_unreachable(monkeypatch):
-    monkeypatch.setattr(sp.spz, "cdpp3dview", None)
+    from speasy.core.requests_scheduling.request_dispatch import PROVIDERS
+    monkeypatch.delitem(PROVIDERS, "cdpp3dview", raising=False)
     frames = sp._3dview_frames()
     assert "J2000" in frames and "GSE" in frames
 
