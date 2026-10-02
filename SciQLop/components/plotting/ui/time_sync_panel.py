@@ -840,6 +840,9 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         target, _ = _resolve_plot_target(p, kwargs)
         plot_type = kwargs.get("plot_type", PlotType.TimeSeries)
         r = plot_remote(target, node, provider, product, plot_type=plot_type)
+        # Only arrays come back from the worker, so the post-fetch refinement
+        # (plot_hints_from_variable) can't run; the static hints still apply.
+        _register_graph_hints(provider, node, r, target)
         graph = _graph_from_result(r)
         channel = getattr(graph, "_remote_channel", None) if graph is not None else None
         if channel is not None:

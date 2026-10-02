@@ -69,6 +69,32 @@ def test_plot_product_remote_spectrogram_builds_remote_graph(qtbot, main_window)
     qtbot.wait(500)
 
 
+def test_plot_product_remote_applies_provider_plot_hints(qtbot, main_window):
+    """A remote product's static provider.plot_hints(node) reach its plot,
+    as they do in process (only arrays come back, so this is all it gets)."""
+    from SciQLop.components.plotting.backend.easy_provider import EasySpectrogram
+    from SciQLop.components.plotting.ui.time_sync_panel import plot_product
+    from SciQLop.core.plot_hints import AxisHints, PlotHints
+    from SciQLop.user_api.plot import create_plot_panel
+
+    class _LogSpectrogram(EasySpectrogram):
+        def plot_hints(self, node):
+            return PlotHints(y2=AxisHints(scale="log"), z=AxisHints(scale="log"))
+
+    _LogSpectrogram(
+        path="test_remote_plot/log_spec",
+        get_data_callback=_spec_source,
+        metadata={},
+        out_of_process=True,
+    )
+
+    panel = create_plot_panel()
+    plot, graph = plot_product(panel._impl, ["test_remote_plot", "log_spec"])
+
+    assert plot.y2_axis().log()
+    assert plot.z_axis().log()
+
+
 def test_plot_product_remote_scalar_builds_remote_graph(qtbot, main_window):
     """plot_product on an out_of_process scalar returns (plot, graph) with a
     remote channel (line graph path, not colormap)."""
