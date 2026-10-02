@@ -6,6 +6,8 @@ import sys
 import threading
 from importlib.metadata import PackageNotFoundError, distribution
 
+import packaging.version
+
 from PySide6.QtCore import QObject, Signal, Slot
 
 from SciQLop.components.plugins.plugin_registry import (
@@ -29,6 +31,27 @@ def _installed_version(package_name: str) -> str | None:
         return distribution(package_name).version
     except PackageNotFoundError:
         return None
+
+
+def _is_newer(candidate: str, installed: str) -> bool:
+    try:
+        return packaging.version.parse(candidate) > packaging.version.parse(installed)
+    except packaging.version.InvalidVersion:
+        return False
+
+
+def available_updates(packages: list[dict]) -> list[dict]:
+    """Installed store packages with a newer compatible version, as the store's
+    Updates page lists them. *packages* is already filtered to compatible
+    versions (``filter_packages``)."""
+    updates = []
+    for pkg in packages:
+        latest = _latest_version(pkg)
+        dist_name = _package_name_from_pip(latest["pip"]) if latest else None
+        installed = _installed_version(dist_name) if dist_name else None
+        if installed and _is_newer(latest["version"], installed):
+            updates.append({"name": pkg["name"], "installed": installed, "latest": latest["version"]})
+    return updates
 
 
 def _uv_uninstall_cmd(dist_name: str) -> list[str]:

@@ -24,6 +24,7 @@ function init() {
         backend.quickstart_changed.connect(loadQuickstart);
         backend.templates_changed.connect(loadTemplates);
         backend.latest_release_ready.connect(showLatestRelease);
+        backend.plugin_updates_ready.connect(showPluginUpdates);
         backend.featured_packages_ready.connect(onFeaturedReady);
         backend.dependency_install_finished.connect(onDependencyInstallFinished);
         backend.core_versions_ready.connect(onCoreVersionsReady);
@@ -31,6 +32,12 @@ function init() {
         backend.core_badges_ready.connect(onCoreBadgesReady);
         backend.fetch_latest_release();
         backend.fetch_featured_packages();
+        backend.fetch_plugin_updates();
+        // Re-checked when the page is shown again, so updates done in the
+        // store drop out of the banner.
+        document.addEventListener("visibilitychange", function() {
+            if (!document.hidden) backend.fetch_plugin_updates();
+        });
 
         document.getElementById("browse-all-link").addEventListener("click", function(e) {
             e.preventDefault();
@@ -287,6 +294,33 @@ function showLatestRelease(json_str) {
                 backend.open_url(release.url);
             });
         }
+    });
+}
+
+function pluginUpdatesSummary(updates) {
+    return updates.map(function(u) {
+        return u.name + " " + u.installed + " \u2192 " + u.latest;
+    }).join(", ");
+}
+
+function showPluginUpdates(json_str) {
+    var container = document.getElementById("plugin-updates");
+    var updates = JSON.parse(json_str);
+    if (!updates.length) {
+        container.className = "hidden";
+        container.innerHTML = "";
+        return;
+    }
+    var label = updates.length === 1 ? "1 plugin update available" : updates.length + " plugin updates available";
+    container.className = "release-update";
+    container.innerHTML =
+        '<span class="release-label">\u2B06\uFE0F ' + escapeHtml(label) + '</span>' +
+        '<span class="plugin-updates-names" title="' + escapeHtmlAttr(pluginUpdatesSummary(updates)) + '">' +
+            escapeHtml(pluginUpdatesSummary(updates)) +
+        '</span>' +
+        '<button id="plugin-updates-review" title="Open the Plugin Store on its Updates page">Review updates</button>';
+    document.getElementById("plugin-updates-review").addEventListener("click", function() {
+        backend.open_appstore_updates();
     });
 }
 

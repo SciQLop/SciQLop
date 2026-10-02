@@ -189,6 +189,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             "Plugin Store",
             "Browse and install community plugins."))
         self.welcome.backend.appstore_requested.connect(self._show_appstore)
+        self.welcome.backend.appstore_updates_requested.connect(self._show_appstore_updates)
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -549,6 +550,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 dw.raise_()
         if name:
             self._appstore.show_package(name)
+
+    def _show_appstore_updates(self):
+        self._show_appstore()
+        self._appstore.show_page("updates")
 
     def _update_usage(self):
         self._update_cpu_usage()

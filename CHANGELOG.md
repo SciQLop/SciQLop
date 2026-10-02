@@ -15,6 +15,7 @@
 
 ### Plugin Store
 
+- The welcome page says when installed plugins have updates, listing each with its installed and new version. **Review updates** opens the Plugin Store on its Updates page. The banner goes away once they are updated.
 - The **Updates** page has an **Update all** button. It updates every listed item one after another, so one that fails to install does not stop the others, then offers a single restart. Failures are listed with their error, and the button stays for another try.
 
 ### Agent chat

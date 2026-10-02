@@ -16,10 +16,10 @@ class AppStorePage(WebChannelPage):
     template_name = "appstore.html.j2"
 
     def __init__(self, parent: QWidget | None = None):
-        self._pending_package: str | None = None
+        self._pending_js: list[str] = []
         super().__init__("Plugin Store", parent)
         if self._view is not None:
-            self._view.loadFinished.connect(self._flush_pending_package)
+            self._view.loadFinished.connect(self._flush_pending_js)
 
     def _create_backend(self):
         return AppStoreBackend(self)
@@ -31,16 +31,20 @@ class AppStorePage(WebChannelPage):
         re-issued from loadFinished, and the JS side holds its own pending
         selection until the package list arrives.
         """
-        if not name:
-            return
-        self._pending_package = name
-        if self._view is None:
-            return
-        self._view.page().runJavaScript(
-            f"showPackageDetailsByName({json.dumps(name)})")
+        if name:
+            self._run_js(f"showPackageDetailsByName({json.dumps(name)})")
 
-    def _flush_pending_package(self, ok: bool) -> None:
-        name, self._pending_package = self._pending_package, None
-        if ok and name and self._view is not None:
-            self._view.page().runJavaScript(
-                f"showPackageDetailsByName({json.dumps(name)})")
+    def show_page(self, page: str) -> None:
+        """Switch the store to one of its pages: explore, installed or updates."""
+        self._run_js(f"showPage({json.dumps(page)})")
+
+    def _run_js(self, js: str) -> None:
+        self._pending_js.append(js)
+        if self._view is not None:
+            self._view.page().runJavaScript(js)
+
+    def _flush_pending_js(self, ok: bool) -> None:
+        pending, self._pending_js = self._pending_js, []
+        if ok and self._view is not None:
+            for js in pending:
+                self._view.page().runJavaScript(js)

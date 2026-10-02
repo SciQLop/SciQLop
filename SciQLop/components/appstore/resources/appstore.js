@@ -703,18 +703,24 @@ function closeLightbox() {
     document.getElementById("lightbox-img").src = "";
 }
 
+// --- Pages ---
+
+function showPage(page) {
+    var btn = document.querySelector('.page-btn[data-page="' + page + '"]');
+    if (!btn) return;
+    document.querySelector(".page-btn.active").classList.remove("active");
+    btn.classList.add("active");
+    activePage = page;
+    hideDetails();
+    renderCards();
+    window.scrollTo(0, 0);
+}
+
 // --- Event listeners ---
 
 document.addEventListener("DOMContentLoaded", function() {
     document.querySelectorAll(".page-btn").forEach(function(btn) {
-        btn.addEventListener("click", function() {
-            document.querySelector(".page-btn.active").classList.remove("active");
-            btn.classList.add("active");
-            activePage = btn.dataset.page;
-            hideDetails();
-            renderCards();
-            window.scrollTo(0, 0);
-        });
+        btn.addEventListener("click", function() { showPage(btn.dataset.page); });
     });
 
     document.getElementById("search-input").addEventListener("input", function() {

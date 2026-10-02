@@ -504,6 +504,44 @@ h2 {
     display: none;
 }
 
+#plugin-updates {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    border-radius: 6px;
+    font-size: 0.9em;
+}
+
+#plugin-updates.hidden {
+    display: none;
+}
+
+.plugin-updates-names {
+    color: var(--UnselectedText);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+#plugin-updates button {
+    margin-left: auto;
+    flex-shrink: 0;
+    padding: 4px 14px;
+    border: 1px solid #e67e22;
+    border-radius: 6px;
+    background: #e67e22;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+#plugin-updates button:hover {
+    opacity: 0.9;
+}
+
 .release-current {
     background: color-mix(in srgb, var(--Highlight) 8%, var(--Window));
     border: 1px solid var(--Borders);

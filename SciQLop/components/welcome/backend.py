@@ -10,6 +10,8 @@ import urllib.request
 
 from PySide6.QtCore import QBuffer, QFileSystemWatcher, QIODevice, QObject, Signal, Slot
 
+from SciQLop.components.appstore.backend import available_updates
+from SciQLop.components.plugins.plugin_registry import DEFAULT_STORE_URL, fetch_index, filter_packages
 from SciQLop.components.workspaces.backend.example import Example
 from SciQLop.components.workspaces.backend.settings import SciQLopWorkspacesSettings
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest, edit_manifest
@@ -125,6 +127,8 @@ class WelcomeBackend(QObject):
     workspace_list_changed = Signal()
     quickstart_changed = Signal()
     appstore_requested = Signal(str)
+    appstore_updates_requested = Signal()
+    plugin_updates_ready = Signal(str)
     latest_release_ready = Signal(str)
     templates_changed = Signal()
     dependency_install_finished = Signal(str)
@@ -135,6 +139,7 @@ class WelcomeBackend(QObject):
     def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
         self._latest_core_release: str | None = None
+        self._store_packages: list[dict] | None = None
         workspaces_dir = SciQLopWorkspacesSettings().workspaces_dir
         self._watcher = QFileSystemWatcher([workspaces_dir], self)
         self._watch_workspace_subdirs(workspaces_dir)
@@ -432,6 +437,26 @@ class WelcomeBackend(QObject):
     @Slot(str)
     def open_appstore(self, name: str = "") -> None:
         self.appstore_requested.emit(name or "")
+
+    @Slot()
+    def open_appstore_updates(self) -> None:
+        self.appstore_updates_requested.emit()
+
+    @Slot()
+    def fetch_plugin_updates(self) -> None:
+        def _fetch():
+            # The index is fetched once per session; installed versions are
+            # re-read on every call, so updates done in the store drop out.
+            try:
+                if self._store_packages is None:
+                    self._store_packages = filter_packages(fetch_index(DEFAULT_STORE_URL))
+                updates = available_updates(self._store_packages)
+            except Exception as e:
+                log.debug(f"Could not check plugin updates: {e}")
+                updates = []
+            self.plugin_updates_ready.emit(json.dumps(updates))
+
+        threading.Thread(target=_fetch, daemon=True).start()
 
     @Slot(str)
     def run_quickstart(self, name: str) -> None:
