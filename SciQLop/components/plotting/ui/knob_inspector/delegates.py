@@ -2,7 +2,7 @@ from typing import Any
 
 from PySide6.QtCore import QRegularExpression, Signal
 from PySide6.QtGui import QRegularExpressionValidator
-from PySide6.QtCore import QDateTime, Qt
+from PySide6.QtCore import QDateTime, QTimeZone, Qt
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QSpinBox, QDoubleSpinBox, QCheckBox, QComboBox, QLineEdit, QLabel,
     QSlider, QDateTimeEdit,
@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 
 from SciQLop.user_api.knobs import (
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob, StringListKnob,
-    DatetimeKnob, TimeRangeKnob, ThresholdKnob,
+    DatetimeKnob, TimeRangeKnob, ThresholdKnob, CursorKnob,
 )
 from SciQLop.core.ui import fit_combo_to_content
 
@@ -172,6 +172,24 @@ class _TimeRangeDelegate(KnobDelegate):
             self._label.setText(f"{value.start():.1f} – {value.stop():.1f}")
 
 
+class _CursorDelegate(KnobDelegate):
+    def __init__(self, spec: CursorKnob, parent=None):
+        super().__init__(spec, parent)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self._label = QLabel("(set on plot)")
+        self._value = spec.default
+        layout.addWidget(self._label)
+
+    def get_value(self):
+        return self._value
+
+    def set_value(self, value):
+        self._value = float(value)
+        when = QDateTime.fromMSecsSinceEpoch(int(self._value * 1000), QTimeZone.utc())
+        self._label.setText(when.toString("yyyy-MM-dd HH:mm:ss.zzz"))
+
+
 class _ThresholdDelegate(KnobDelegate):
     def __init__(self, spec: ThresholdKnob, parent=None):
         super().__init__(spec, parent)
@@ -329,6 +347,7 @@ _DELEGATES = {
     StringKnob: _StringDelegate,
     TimeRangeKnob: _TimeRangeDelegate,
     ThresholdKnob: _ThresholdDelegate,
+    CursorKnob: _CursorDelegate,
     StringListKnob: _StringListDelegate,
     DatetimeKnob: _DatetimeDelegate,
 }

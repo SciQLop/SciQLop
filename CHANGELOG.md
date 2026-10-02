@@ -104,6 +104,7 @@
 
 ### User API
 
+- Virtual products and layers can take a time cursor: `t: Annotated[float, Knob(widget="vline")] = 0.5` puts a draggable vertical line on the plot and passes its time (epoch seconds) to the callback. A default between 0 and 1 is a fraction of the visible range, so the line starts in view and follows pans and zooms; dragging it keeps its place in the view. Any other default is an absolute time and stays put. The line shows on the product's own plot only, not across the panel yet.
 - Timeline-style plots (on/off lanes, instrument modes) no longer need workarounds (#146). `plot_data(...)` and `plot.plot(...)` take `line_shape=LineShape.StepLeft` (or `StepRight`, `StepCenter`) for steps, and `gap_threshold=0` so a line graph never breaks at a long flat stretch. Both are also `Graph` properties. `plot.set_axis_tick_labels("y", {0: "MAG", -1: "SWA"})` shows names instead of numbers on an axis; `None` restores the numbers. `LineShape` is separate from `GraphLineStyle`, which keeps meaning the dash pattern.
 - Plugins can add their own submenu to the plot panel's right-click menu with `SciQLop.user_api.plot.register_panel_menu(title, entries)`: `entries(panel)` returns `(label, callback)` pairs each time the menu opens. `unregister_panel_menu(title)` removes it.
 - A late empty or error answer from an out-of-process virtual product no longer marks the newer request as done while it is still running.

@@ -424,6 +424,28 @@ class TestWireLayerRenderer:
         assert received_knobs[-1]["threshold"] == 20.0
         assert received_knobs[-1]["window"] == 10
 
+    def test_wire_layer_with_cursor_knob(self, plot_panel, ts_plot, qtbot):
+        from typing import Annotated
+        from SciQLopPlots import SciQLopPlotRange
+        from SciQLop.components.plotting.ui.time_sync_panel import wire_layer_renderer
+        from SciQLop.user_api.knobs import Knob
+
+        panel = plot_panel._get_impl_or_raise()
+        panel.set_time_axis_range(SciQLopPlotRange(100.0, 200.0))
+        qtbot.wait(50)
+        cursors = []
+
+        def at_cursor(start: float, stop: float,
+                      t: Annotated[float, Knob(widget="vline")] = 0.5):
+            cursors.append(t)
+            return []
+
+        wire_layer_renderer(ts_plot, at_cursor)
+        qtbot.waitUntil(lambda: cursors and cursors[-1] == pytest.approx(150.0), timeout=2000)
+
+        panel.set_time_axis_range(SciQLopPlotRange(1000.0, 1100.0))
+        qtbot.waitUntil(lambda: cursors[-1] == pytest.approx(1050.0), timeout=2000)
+
     def test_wire_with_mutable_callback_wrapper(self, ts_plot, qtbot):
         """MutableCallback (from register_layer) must preserve type hints."""
         from SciQLop.components.plotting.ui.time_sync_panel import wire_layer_renderer

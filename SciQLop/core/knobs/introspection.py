@@ -8,7 +8,7 @@ from SciQLopPlots import SciQLopPlotRange
 
 from SciQLop.core.knobs.specs import (
     BoolKnob, ChoiceKnob, FloatKnob, IntKnob, KnobSpec, StringKnob,
-    TimeRangeKnob, ThresholdKnob,
+    TimeRangeKnob, ThresholdKnob, CursorKnob,
 )
 
 log = logging.getLogger(__name__)
@@ -63,6 +63,10 @@ def _is_threshold(marker) -> bool:
     return marker is not None and marker.widget == "hline"
 
 
+def _is_cursor(marker) -> bool:
+    return marker is not None and marker.widget == "vline"
+
+
 def _spec_from_kwarg(name: str, annot, default: Any) -> KnobSpec | None:
     base, markers = _split_annotation(annot)
     marker = markers[0] if markers else None
@@ -72,6 +76,11 @@ def _spec_from_kwarg(name: str, annot, default: Any) -> KnobSpec | None:
         color = meta.pop("color", "") or "#3498db"
         return TimeRangeKnob(name=name, default=default or SciQLopPlotRange(0.25, 0.75),
                              color=color, **meta)
+
+    if _is_cursor(marker):
+        meta = _kwargs_meta(marker)
+        color = meta.pop("color", "") or "#2ecc71"
+        return CursorKnob(name=name, default=float(default), color=color, **meta)
 
     if _is_threshold(marker):
         meta = _kwargs_meta(marker)

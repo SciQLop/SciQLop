@@ -7,7 +7,7 @@ from SciQLopPlots import SciQLopPlotRange
 
 from SciQLop.core.knobs.specs import (
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob,
-    TimeRangeKnob, ThresholdKnob,
+    TimeRangeKnob, ThresholdKnob, CursorKnob,
 )
 
 
@@ -44,6 +44,8 @@ def _coerce_time_range(value: Any) -> SciQLopPlotRange:
 def coerce_value(spec: KnobSpec, value: Any) -> Any:
     if isinstance(spec, TimeRangeKnob):
         return _coerce_time_range(value)
+    if isinstance(spec, CursorKnob):
+        return float(value)
     if isinstance(spec, ThresholdKnob):
         v = float(value)
         return _clamp(v, spec.min, spec.max)

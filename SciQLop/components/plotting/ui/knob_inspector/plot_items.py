@@ -1,15 +1,15 @@
-"""Creates interactive plot items (VSpan, HLine) for visual knobs and
+"""Creates interactive plot items (VSpan, VLine, HLine) for visual knobs and
 wires them bidirectionally with GraphKnobState."""
 
 import math
 
 from PySide6.QtGui import QColor
 from SciQLopPlots import (
-    SciQLopHorizontalLine, SciQLopPlotRange,
+    SciQLopHorizontalLine, SciQLopVerticalLine, SciQLopPlotRange,
     MultiPlotsVerticalSpan, SciQLopMultiPlotPanel,
 )
 
-from SciQLop.user_api.knobs.specs import TimeRangeKnob, ThresholdKnob
+from SciQLop.user_api.knobs.specs import TimeRangeKnob, ThresholdKnob, CursorKnob
 from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
 from SciQLop.components import sciqlop_logging
 
@@ -156,6 +156,90 @@ class _DataSpan:
         self._span.deleteLater()
 
 
+class _DataCursor:
+    """Movable vertical line synced with a CursorKnob.
+
+    Same anchoring rule as `_DataSpan`: a fractional default sits at that
+    fraction of the panel's visible time range and follows pans/zooms; a drag
+    re-records the fraction. An absolute default stays put.
+
+    simplify: the line lives on the VP's own plot only — SciQLopPlots has no
+    multi-plot vertical line yet; add one (like MultiPlotsVerticalSpan) to
+    show the cursor across the whole panel (SciQLopPlots#124)."""
+
+    def __init__(self, plot, spec: CursorKnob, state: GraphKnobState, panel=None):
+        panel = panel if panel is not None else _find_panel(plot)
+        self._spec = spec
+        self._state = state
+        self._panel = panel
+        self._reentry = False
+        self._fraction = spec.default if 0.0 <= spec.default <= 1.0 and panel is not None else None
+
+        initial = self._resolve(panel.time_axis_range()) if self._fraction is not None else spec.default
+        self._line = SciQLopVerticalLine(plot, initial, True)
+        self._line.set_color(QColor(spec.color))
+        self._line.set_line_width(2.0)
+        self._state.set_value(spec.name, initial)
+        self._line.position_changed.connect(self._on_line_moved)
+
+        # Cached at connect time for cleanup during panel teardown, see _DataSpan.
+        self._panel_time_range_changed = None
+        if self._fraction is not None:
+            self._panel_time_range_changed = panel.time_range_changed
+            self._panel_time_range_changed.connect(self._on_panel_range_changed)
+
+    def _resolve(self, view: SciQLopPlotRange) -> float:
+        if not _is_valid_time_range(view):
+            return self._fraction
+        return view.start() + self._fraction * (view.stop() - view.start())
+
+    def _set(self, position: float, move_line: bool):
+        self._reentry = True
+        try:
+            if move_line:
+                self._line.set_position(position)
+            self._state.set_value(self._spec.name, position)
+        finally:
+            self._reentry = False
+
+    def _on_panel_range_changed(self, new_range: SciQLopPlotRange):
+        if self._reentry or not _is_valid_time_range(new_range):
+            return
+        self._set(self._resolve(new_range), move_line=True)
+
+    def _on_line_moved(self, new_pos: float):
+        if self._reentry:
+            return
+        if self._fraction is not None:
+            self._record_fraction_from_view(new_pos)
+        self._set(new_pos, move_line=False)
+
+    def _record_fraction_from_view(self, position: float):
+        view = self._panel.time_axis_range()
+        if _is_valid_time_range(view):
+            self._fraction = (position - view.start()) / (view.stop() - view.start())
+
+    def update_from_state(self, values: dict):
+        if self._reentry:
+            return
+        value = values.get(self._spec.name)
+        if value is not None:
+            self._reentry = True
+            try:
+                self._line.set_position(float(value))
+            finally:
+                self._reentry = False
+
+    def cleanup(self):
+        if self._panel_time_range_changed is not None:
+            try:
+                self._panel_time_range_changed.disconnect(self._on_panel_range_changed)
+            except (RuntimeError, TypeError):
+                pass
+            self._panel_time_range_changed = None
+        self._line.deleteLater()
+
+
 class _MovableHLine:
     """Movable horizontal line synced with a ThresholdKnob."""
 
@@ -202,6 +286,8 @@ def create_plot_items(plot, state: GraphKnobState, panel=None):
     for spec in state.specs:
         if isinstance(spec, TimeRangeKnob):
             items.append(_DataSpan(plot, spec, state, panel=panel))
+        elif isinstance(spec, CursorKnob):
+            items.append(_DataCursor(plot, spec, state, panel=panel))
         elif isinstance(spec, ThresholdKnob):
             items.append(_MovableHLine(plot, spec, state))
 

@@ -72,6 +72,16 @@ class TimeRangeKnob(KnobSpec):
 
 
 @dataclass(frozen=True, slots=True)
+class CursorKnob(KnobSpec):
+    """One time value, set by dragging a vertical line on the plot. A default
+    in [0, 1] is a fraction of the visible time range; anything else is an
+    absolute time in epoch seconds."""
+    default: float = 0.5
+    widget: str = "vline"
+    color: str = "#2ecc71"
+
+
+@dataclass(frozen=True, slots=True)
 class ThresholdKnob(FloatKnob):
     widget: str = "hline"
     color: str = "#e74c3c"
@@ -85,7 +95,8 @@ class ThresholdKnob(FloatKnob):
 # ThresholdKnob carry SciQLopPlotRange defaults and aren't covered.
 _SERIALIZABLE_SPECS: dict[str, type[KnobSpec]] = {
     cls.__name__: cls
-    for cls in (IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob, StringListKnob, DatetimeKnob)
+    for cls in (IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob, StringListKnob, DatetimeKnob,
+                CursorKnob)
 }
 
 

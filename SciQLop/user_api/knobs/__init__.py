@@ -13,7 +13,7 @@ from SciQLopPlots import SciQLopPlotRange
 from SciQLop.core.knobs import (
     Knob,
     KnobSpec, IntKnob, FloatKnob, BoolKnob, ChoiceKnob, StringKnob,
-    StringListKnob, DatetimeKnob, TimeRangeKnob, ThresholdKnob,
+    StringListKnob, DatetimeKnob, TimeRangeKnob, ThresholdKnob, CursorKnob,
     spec_to_dict, spec_from_dict,
     coerce_value, validate_dict, canonical_hash, defaults_for,
     extract_specs_from_callback, extract_specs_from_model,
@@ -36,7 +36,7 @@ introspection = _introspection
 __all__ = [
     "Knob",
     "KnobSpec", "IntKnob", "FloatKnob", "BoolKnob", "ChoiceKnob", "StringKnob",
-    "StringListKnob", "DatetimeKnob", "TimeRangeKnob", "ThresholdKnob",
+    "StringListKnob", "DatetimeKnob", "TimeRangeKnob", "ThresholdKnob", "CursorKnob",
     "SciQLopPlotRange",
     "spec_to_dict", "spec_from_dict",
     "coerce_value", "validate_dict", "canonical_hash", "defaults_for",
