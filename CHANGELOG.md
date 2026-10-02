@@ -9,6 +9,10 @@
 - **Help › Keyboard shortcuts** (**F1**) lists every shortcut, searchable. It also shows up in the command palette.
 - The command palette and profiling shortcuts moved to the new page. A key you had changed for them there is back to its default (Ctrl+K, Ctrl+Alt+P/S/O).
 
+### Linux AppImage
+
+- The AppImage no longer needs `libfuse2`. It now embeds the static AppImage runtime, so it starts on systems that only ship fuse3, such as recent Fedora, and on Ubuntu 22.04+ without installing `libfuse2`. It still needs the `fusermount3` (or `fusermount`) tool, which desktop installs ship. Where FUSE is unavailable altogether (containers, some clusters), run it with `--appimage-extract-and-run`.
+
 ### Plugin Store
 
 - The **Updates** page has an **Update all** button. It updates every listed item one after another, so one that fails to install does not stop the others, then offers a single restart. Failures are listed with their error, and the button stays for another try.

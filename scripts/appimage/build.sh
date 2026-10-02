@@ -167,12 +167,17 @@ rsync -avhu $WORK/node-v$NODE_VERSION-linux-x64/* $APPDIR/usr/local/
 # Build final AppImage
 ########################################
 
-if [ ! -f ./appimagetool-x86_64.AppImage ]; then
-    wget https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
-    chmod +x appimagetool-x86_64.AppImage
+# The AppImage/appimagetool build embeds the static type2 runtime: the AppImage
+# then needs no libfuse on the host (only fusermount/fusermount3), unlike the
+# deprecated AppImageKit tool whose runtime loads libfuse.so.2. Cached under a
+# distinct name so an old AppImageKit download in $WORK is never reused.
+APPIMAGETOOL=./appimagetool-static-runtime-x86_64.AppImage
+if [ ! -f $APPIMAGETOOL ]; then
+    wget -O $APPIMAGETOOL https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+    chmod +x $APPIMAGETOOL
 fi
 
-./appimagetool-x86_64.AppImage --appimage-extract-and-run -n $APPDIR SciQLop-x86_64.AppImage
+ARCH=x86_64 $APPIMAGETOOL --appimage-extract-and-run -n $APPDIR SciQLop-x86_64.AppImage
 
 mkdir -p $SCIQLOP_ROOT/dist
 mv SciQLop-x86_64.AppImage* $SCIQLOP_ROOT/dist/
