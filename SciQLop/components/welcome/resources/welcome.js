@@ -261,7 +261,7 @@ function onFeaturedReady(json_str) {
     var packages = JSON.parse(json_str);
     var container = document.getElementById("featured-cards");
     container.innerHTML = "";
-    packages.forEach(function(pkg) {
+    packages.filter(function(pkg) { return (pkg.type || "plugin") === "plugin"; }).forEach(function(pkg) {
         container.appendChild(createFeaturedCard(pkg));
     });
 }
@@ -427,7 +427,28 @@ function createExampleCard(ex) {
     return card;
 }
 
-var FEATURED_TYPE_ICONS = {plugin: "\uD83D\uDD0C", workspace: "\uD83D\uDCC1", template: "\uD83D\uDCC4", example: "\uD83D\uDCD6"};
+// Same rule as the Plugin Store's tiles: explicit image, else first screenshot.
+function featuredImageUrl(pkg) {
+    if (pkg.image) return pkg.image;
+    var shots = pkg.screenshots || [];
+    return shots.length > 0 ? shots[0] : null;
+}
+
+// Deterministic hue from the name, as the store does, so an image-less
+// plugin always gets the same tile.
+function featuredPlaceholderHtml(pkg) {
+    var name = pkg.name || "?";
+    var hue = 0;
+    for (var i = 0; i < name.length; i++) hue = (hue * 31 + name.charCodeAt(i)) % 360;
+    return '<div class="card-image placeholder featured-placeholder" style="background:linear-gradient(135deg,' +
+        'hsl(' + hue + ',38%,32%),hsl(' + ((hue + 40) % 360) + ',32%,18%))">' +
+        escapeHtml(name.trim().charAt(0).toUpperCase()) + '</div>';
+}
+
+function featuredImageHtml(pkg) {
+    var url = featuredImageUrl(pkg);
+    return url ? '<img class="card-image" src="' + escapeHtmlAttr(url) + '">' : featuredPlaceholderHtml(pkg);
+}
 
 function createFeaturedCard(pkg) {
     var card = document.createElement("div");
@@ -435,17 +456,14 @@ function createFeaturedCard(pkg) {
     card.dataset.name = pkg.name.toLowerCase();
     card.dataset.tags = (pkg.tags || []).join(" ").toLowerCase();
 
-    var type = pkg.type || "plugin";
-    var icon = FEATURED_TYPE_ICONS[type] || "\uD83D\uDCE6";
     var versions = pkg.versions || [];
     var latest = versions.length > 0 ? versions[versions.length - 1] : null;
     var versionStr = latest ? "v" + latest.version : "";
     var starsStr = pkg.stars != null ? "\u2B50 " + escapeHtml(pkg.stars) : "";
 
     card.innerHTML =
-        '<div class="card-image-wrapper"><div class="card-image placeholder">' + icon + '</div></div>' +
+        '<div class="card-image-wrapper">' + featuredImageHtml(pkg) + '</div>' +
         '<div class="card-body">' +
-            '<span class="card-badge">' + escapeHtml(type) + '</span>' +
             '<span class="card-name">' + escapeHtml(pkg.name) + '</span>' +
             '<div class="card-stars">' + escapeHtml(pkg.author) +
                 (versionStr ? ' \u00B7 ' + escapeHtml(versionStr) : '') +
@@ -453,6 +471,10 @@ function createFeaturedCard(pkg) {
             '</div>' +
         '</div>';
 
+    var img = card.querySelector("img.card-image");
+    if (img) {
+        img.addEventListener("error", function() { img.outerHTML = featuredPlaceholderHtml(pkg); });
+    }
     card.addEventListener("click", function() {
         selectCard(card);
         showFeaturedDetails(pkg);

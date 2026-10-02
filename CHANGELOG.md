@@ -15,6 +15,7 @@
 
 ### Plugin Store
 
+- The welcome page's **Featured** pane is now **Featured plugins**: it lists only plugins, each with its picture from the Plugin Store (or a coloured tile with its initial when it has none), instead of the same generic icon for every entry.
 - The welcome page says when installed plugins have updates, listing each with its installed and new version. **Review updates** opens the Plugin Store on its Updates page. The banner goes away once they are updated.
 - The **Updates** page has an **Update all** button. It updates every listed item one after another, so one that fails to install does not stop the others, then offers a single restart. Failures are listed with their error, and the button stays for another try.
 
