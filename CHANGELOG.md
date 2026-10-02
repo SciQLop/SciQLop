@@ -9,6 +9,12 @@
 - **Help › Keyboard shortcuts** (**F1**) lists every shortcut, searchable. It also shows up in the command palette.
 - The command palette and profiling shortcuts moved to the new page. A key you had changed for them there is back to its default (Ctrl+K, Ctrl+Alt+P/S/O).
 
+### Tutorials
+
+- The bundled tutorials were checked against the current API and brought up to date. Examples that failed or misbehaved are fixed: panel names in the magics tutorial (`Panel0`, not `"Panel 1"`), a catalogs tutorial that failed on a second run, a DSP spectrogram that dropped everything after the first data gap, and a |B| envelope that misaligned after a gap.
+- Text that no longer matched SciQLop is corrected, such as mouse-wheel controls, plot item lifetime, workspace folders per OS, and inspector section names.
+- New material where it fits: timeline plots, coloured and `Depends(...)` virtual products, the cursor knob and `scope`, `background_subtract`, catalog overlays from Python, the extra line and span items, log-binned histograms, and the keyboard shortcuts, command palette and guided tour.
+
 ### Linux AppImage
 
 - The AppImage no longer needs `libfuse2`. It now embeds the static AppImage runtime, so it starts on systems that only ship fuse3, such as recent Fedora, and on Ubuntu 22.04+ without installing `libfuse2`. It still needs the `fusermount3` (or `fusermount`) tool, which desktop installs ship. Where FUSE is unavailable altogether (containers, some clusters), run it with `--appimage-extract-and-run`.
