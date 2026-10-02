@@ -7,6 +7,8 @@ var activeSort = "stars";
 var heroTimer = null;
 var heroIndex = 0;
 var pendingDetailName = null;
+// Set while "Update all" runs and after: {pending: Set, updated: [], failed: [{name, error}]}.
+var bulkUpdate = null;
 
 // --- Initialization ---
 
@@ -216,6 +218,7 @@ function renderCards() {
     container.innerHTML = "";
     renderHero();
     updateUpdatesCount();
+    renderUpdatesBar();
 
     if (activePage === "installed") {
         container.className = "cards-grid";
@@ -258,10 +261,68 @@ function emptyStateIfNeeded(container, message) {
     container.innerHTML = '<p>' + escapeHtml(message) + '</p>';
 }
 
+function updatablePackages() {
+    return allPackages.filter(function(p) { return installStatus(p) === "update-available"; });
+}
+
 function updateUpdatesCount() {
-    var n = allPackages.filter(function(p) { return installStatus(p) === "update-available"; }).length;
+    var n = updatablePackages().length;
     var el = document.getElementById("updates-count");
     if (el) el.textContent = n > 0 ? "(" + n + ")" : "";
+}
+
+// --- Update all ---
+
+function startUpdateAll() {
+    var names = updatablePackages().map(function(p) { return p.name; });
+    if (!names.length) return;
+    bulkUpdate = {pending: new Set(names), updated: [], failed: []};
+    renderUpdatesBar();
+    backend.update_packages(JSON.stringify(names));
+}
+
+function trackBulkUpdate(result) {
+    if (!bulkUpdate || !bulkUpdate.pending.has(result.name)) return;
+    bulkUpdate.pending.delete(result.name);
+    if (result.ok) bulkUpdate.updated.push(result.name);
+    else bulkUpdate.failed.push({name: result.name, error: result.error || "failed"});
+}
+
+function updateAllButtonHtml(count) {
+    if (count === 0) return "";
+    return '<button class="detail-btn update" id="update-all-btn" title="Update every item listed below, one after another">' +
+        'Update all (' + count + ')</button>';
+}
+
+function bulkResultHtml(b) {
+    var html = "";
+    if (b.updated.length) {
+        html += '<div class="restart-notice"><span>Updated ' + b.updated.length +
+            (b.updated.length === 1 ? ' item' : ' items') + ' — restart SciQLop to apply.</span>' +
+            '<button id="bulk-restart-btn">Restart now</button></div>';
+    }
+    if (b.failed.length) {
+        html += '<pre class="install-error">' + b.failed.map(function(f) {
+            return escapeHtml(f.name + ": " + f.error);
+        }).join("\n\n") + '</pre>';
+    }
+    return html;
+}
+
+function renderUpdatesBar() {
+    var bar = document.getElementById("updates-bar");
+    if (!bar) return;
+    if (activePage !== "updates") { bar.innerHTML = ""; return; }
+    if (bulkUpdate && bulkUpdate.pending.size > 0) {
+        bar.innerHTML = '<button class="detail-btn update" disabled>Updating… ' +
+            bulkUpdate.pending.size + ' left</button>';
+        return;
+    }
+    bar.innerHTML = updateAllButtonHtml(updatablePackages().length) + (bulkUpdate ? bulkResultHtml(bulkUpdate) : "");
+    var btn = document.getElementById("update-all-btn");
+    if (btn) btn.addEventListener("click", startUpdateAll);
+    var restart = document.getElementById("bulk-restart-btn");
+    if (restart) restart.addEventListener("click", function() { backend.restart_sciqlop(); });
 }
 
 // --- Tile creation ---
@@ -553,6 +614,7 @@ function onInstallFinished(json_str) {
     if (result.ok && result.version) {
         installedVersions[result.name] = result.version;
     }
+    trackBulkUpdate(result);
     renderCards();
     if (result.ok) {
         refreshDetailActions();

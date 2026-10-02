@@ -183,39 +183,52 @@ class AppStoreBackend(QObject):
                 result[pkg["name"]] = installed
         return json.dumps(result)
 
-    @Slot(str)
-    def install_package(self, name: str) -> None:
+    def _install_one(self, name: str) -> None:
+        """Install or update *name*; runs on a worker thread."""
         from SciQLop.components.plugins.backend.settings import canonical_package_name
 
-        def _install():
-            plugin = next((p for p in self._packages if p["name"] == name), None)
-            if not plugin:
-                self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": "not found"}))
-                return
-            latest = _latest_version(plugin)
-            if not latest:
-                self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": "no versions"}))
-                return
-            try:
-                pip_spec = latest["pip"]
-                dist_name = _package_name_from_pip(pip_spec) or canonical_package_name(name)
-                was_installed = _installed_version(dist_name) is not None
-                result = guarded_install([pip_spec])
-                if result.returncode != 0:
-                    raise subprocess.CalledProcessError(
-                        result.returncode, "uv pip install", result.stdout, result.stderr)
-                _save_installed_package(pip_spec, dist_name)
-                # install_finished is emitted by _do_hot_load, on the GUI
-                # thread, once the hot-load attempt itself is known -- not
-                # here, or a gated wheel would be reported ok:true before
-                # the compat gate ever ran (I1).
-                self._hot_load_requested.emit(dist_name, name, latest["version"], was_installed)
-            except Exception as e:
-                detail = error_detail(e)
-                log.error(f"Failed to install {name}: {detail}")
-                self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": detail}))
+        plugin = next((p for p in self._packages if p["name"] == name), None)
+        if not plugin:
+            self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": "not found"}))
+            return
+        latest = _latest_version(plugin)
+        if not latest:
+            self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": "no versions"}))
+            return
+        try:
+            pip_spec = latest["pip"]
+            dist_name = _package_name_from_pip(pip_spec) or canonical_package_name(name)
+            was_installed = _installed_version(dist_name) is not None
+            result = guarded_install([pip_spec])
+            if result.returncode != 0:
+                raise subprocess.CalledProcessError(
+                    result.returncode, "uv pip install", result.stdout, result.stderr)
+            _save_installed_package(pip_spec, dist_name)
+            # install_finished is emitted by _do_hot_load, on the GUI
+            # thread, once the hot-load attempt itself is known -- not
+            # here, or a gated wheel would be reported ok:true before
+            # the compat gate ever ran (I1).
+            self._hot_load_requested.emit(dist_name, name, latest["version"], was_installed)
+        except Exception as e:
+            detail = error_detail(e)
+            log.error(f"Failed to install {name}: {detail}")
+            self.install_finished.emit(json.dumps({"name": name, "ok": False, "error": detail}))
 
-        threading.Thread(target=_install, daemon=True).start()
+    @Slot(str)
+    def install_package(self, name: str) -> None:
+        threading.Thread(target=self._install_one, args=(name,), daemon=True).start()
+
+    @Slot(str)
+    def update_packages(self, names_json: str) -> None:
+        """Update several packages one after another, so a package that fails
+        to resolve does not block the others; each reports install_finished."""
+        names = json.loads(names_json)
+
+        def _update_all():
+            for name in names:
+                self._install_one(name)
+
+        threading.Thread(target=_update_all, daemon=True).start()
 
     @Slot(str)
     def uninstall_package(self, name: str) -> None:

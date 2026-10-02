@@ -9,6 +9,10 @@
 - **Help › Keyboard shortcuts** (**F1**) lists every shortcut, searchable. It also shows up in the command palette.
 - The command palette and profiling shortcuts moved to the new page. A key you had changed for them there is back to its default (Ctrl+K, Ctrl+Alt+P/S/O).
 
+### Plugin Store
+
+- The **Updates** page has an **Update all** button. It updates every listed item one after another, so one that fails to install does not stop the others, then offers a single restart. Failures are listed with their error, and the button stays for another try.
+
 ### Agent chat
 
 - A web transcript renderer (Settings → Agent chat → Transcript renderer) draws the chat transcript with highlighted code, LaTeX math and native collapsible tool steps. It is the default for new configurations; an existing configuration keeps its saved choice, so switch it there to try it.

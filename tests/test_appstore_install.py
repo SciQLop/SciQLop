@@ -328,6 +328,38 @@ class TestUninstallAsksForARestart:
         assert payload["ok"] is True and payload["restart_required"] is True
 
 
+class TestUpdateAll:
+    """The Updates page updates every listed item in one click, one after
+    another, so a broken package does not block the others."""
+
+    def test_each_package_is_updated_in_turn_and_a_failure_does_not_stop_the_rest(
+            self, qtbot, monkeypatch):
+        installed = []
+
+        def fake_install(specs):
+            installed.extend(specs)
+            failed = specs == ["b-plugin==2.0"]
+            return SimpleNamespace(returncode=1 if failed else 0, stdout="", stderr="resolution failed")
+
+        monkeypatch.setattr("SciQLop.components.appstore.backend.guarded_install", fake_install)
+        monkeypatch.setattr("SciQLop.components.appstore.backend._save_installed_package", lambda *a: None)
+        monkeypatch.setattr("SciQLop.components.appstore.backend._installed_version", lambda d: "1.0")
+        backend = AppStoreBackend()
+        backend._packages = [{"name": n, "versions": [{"version": "2.0", "pip": f"{n.lower()}-plugin==2.0"}]}
+                             for n in ("A", "B", "C")]
+        received = []
+        backend.install_finished.connect(lambda payload: received.append(json.loads(payload)))
+
+        backend.update_packages(json.dumps(["A", "B", "C"]))
+        qtbot.waitUntil(lambda: len(received) == 3, timeout=3000)
+
+        assert installed == ["a-plugin==2.0", "b-plugin==2.0", "c-plugin==2.0"]
+        by_name = {r["name"]: r for r in received}
+        assert by_name["A"]["ok"] and by_name["C"]["ok"]
+        assert by_name["A"]["restart_required"] is True
+        assert by_name["B"]["ok"] is False and "resolution failed" in by_name["B"]["error"]
+
+
 def test_the_store_can_restart_sciqlop(monkeypatch):
     calls = []
     monkeypatch.setattr("SciQLop.sciqlop_app.restart_sciqlop", lambda: calls.append(True))
