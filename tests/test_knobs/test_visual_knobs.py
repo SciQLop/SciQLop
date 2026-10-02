@@ -404,6 +404,53 @@ def test_data_span_syncs_from_state(sciqlop_panel, sciqlop_plot, qtbot):
     span.cleanup()
 
 
+def test_knob_rejects_unknown_scope():
+    with pytest.raises(ValueError, match="scope"):
+        Knob(widget="vspan", scope="everywhere")
+
+
+def test_introspection_carries_span_scope():
+    def f(start, stop,
+          a: SciQLopPlotRange = SciQLopPlotRange(0.3, 0.7),
+          b: Annotated[SciQLopPlotRange, Knob(widget="vspan", scope="plot")] = SciQLopPlotRange(0.3, 0.7)):
+        pass
+    by_name = {s.name: s for s in extract_specs_from_callback(f)}
+    assert by_name["a"].scope == "panel"
+    assert by_name["b"].scope == "plot"
+
+
+def test_plot_scoped_span_stays_on_its_plot(sciqlop_panel, sciqlop_plot, qtbot):
+    from SciQLopPlots import SciQLopVerticalSpan
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
+
+    spec = TimeRangeKnob(name="window", default=SciQLopPlotRange(0.3, 0.7), scope="plot")
+    state = GraphKnobState([spec])
+    span = _DataSpan(sciqlop_plot, spec, state)
+
+    assert isinstance(span._span, SciQLopVerticalSpan)
+    assert state.values["window"].start() == pytest.approx(130.0)
+    sciqlop_panel.set_time_axis_range(SciQLopPlotRange(1000.0, 1100.0))
+    qtbot.waitUntil(lambda: state.values["window"].start() == pytest.approx(1030.0), timeout=1000)
+    span._span.set_range(SciQLopPlotRange(1010.0, 1020.0))
+    qtbot.waitUntil(lambda: state.values["window"].stop() == pytest.approx(1020.0), timeout=1000)
+    span.cleanup()
+
+
+def test_plot_scoped_span_works_without_panel(qtbot):
+    from SciQLopPlots import SciQLopPlot
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataSpan
+
+    plot = SciQLopPlot()
+    qtbot.addWidget(plot)
+    spec = TimeRangeKnob(name="window", default=SciQLopPlotRange(10.0, 20.0), scope="plot")
+    state = GraphKnobState([spec])
+    span = _DataSpan(plot, spec, state)
+    assert state.values["window"].stop() == pytest.approx(20.0)
+    span.cleanup()
+
+
 def test_data_span_requires_panel_in_parent_chain(qtbot):
     """A bare plot with no panel parent raises a clear error."""
     from SciQLopPlots import SciQLopPlot

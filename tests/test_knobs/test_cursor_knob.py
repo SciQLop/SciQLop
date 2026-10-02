@@ -27,6 +27,16 @@ def test_introspection_vline_marker_gives_cursor_knob():
     assert spec.label == "At"
 
 
+def test_introspection_carries_cursor_scope():
+    def f(start, stop,
+          a: Annotated[float, Knob(widget="vline")] = 0.5,
+          b: Annotated[float, Knob(widget="vline", scope="plot")] = 0.5):
+        pass
+    by_name = {s.name: s for s in extract_specs_from_callback(f)}
+    assert by_name["a"].scope == "panel"
+    assert by_name["b"].scope == "plot"
+
+
 def test_coerce_cursor_to_float():
     spec = CursorKnob(name="t")
     assert coerce_value(spec, "12.5") == pytest.approx(12.5)

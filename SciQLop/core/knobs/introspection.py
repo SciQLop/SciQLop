@@ -51,6 +51,10 @@ def _kwargs_meta(marker: Knob | None) -> dict:
     return meta
 
 
+def _scope(marker: Knob | None) -> str:
+    return marker.scope if marker is not None else "panel"
+
+
 def _is_time_range(base, marker, default) -> bool:
     if marker is not None and marker.widget == "vspan":
         return True
@@ -75,12 +79,13 @@ def _spec_from_kwarg(name: str, annot, default: Any) -> KnobSpec | None:
         meta = _kwargs_meta(marker)
         color = meta.pop("color", "") or "#3498db"
         return TimeRangeKnob(name=name, default=default or SciQLopPlotRange(0.25, 0.75),
-                             color=color, **meta)
+                             color=color, scope=_scope(marker), **meta)
 
     if _is_cursor(marker):
         meta = _kwargs_meta(marker)
         color = meta.pop("color", "") or "#2ecc71"
-        return CursorKnob(name=name, default=float(default), color=color, **meta)
+        return CursorKnob(name=name, default=float(default), color=color,
+                          scope=_scope(marker), **meta)
 
     if _is_threshold(marker):
         meta = _kwargs_meta(marker)

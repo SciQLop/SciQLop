@@ -69,6 +69,7 @@ class TimeRangeKnob(KnobSpec):
     default: SciQLopPlotRange = field(default_factory=lambda: SciQLopPlotRange(0.25, 0.75))
     widget: str = "vspan"
     color: str = "#3498db"
+    scope: Literal["panel", "plot"] = "panel"
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +80,7 @@ class CursorKnob(KnobSpec):
     default: float = 0.5
     widget: str = "vline"
     color: str = "#2ecc71"
+    scope: Literal["panel", "plot"] = "panel"
 
 
 @dataclass(frozen=True, slots=True)

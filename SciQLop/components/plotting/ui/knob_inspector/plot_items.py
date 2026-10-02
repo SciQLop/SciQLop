@@ -5,7 +5,7 @@ import math
 
 from PySide6.QtGui import QColor
 from SciQLopPlots import (
-    SciQLopHorizontalLine, SciQLopVerticalLine, SciQLopPlotRange,
+    SciQLopHorizontalLine, SciQLopVerticalLine, SciQLopVerticalSpan, SciQLopPlotRange,
     MultiPlotsVerticalSpan, SciQLopMultiPlotPanel,
 )
 
@@ -50,12 +50,13 @@ def _find_panel(plot) -> SciQLopMultiPlotPanel | None:
 
 
 class _DataSpan:
-    """Panel-wide VSpan synced with a TimeRangeKnob.
+    """VSpan synced with a TimeRangeKnob.
 
-    Always rendered as a `MultiPlotsVerticalSpan` so the analysis window
-    appears on every plot in the panel — the user can position it against
-    ANY signal, not just the VP's own (often transformed) output. The panel
-    is auto-derived from the plot's parent chain when not passed explicitly.
+    With `scope="panel"` (the default) it is a `MultiPlotsVerticalSpan`, so the
+    analysis window appears on every plot in the panel — the user can position
+    it against ANY signal, not just the VP's own (often transformed) output.
+    `scope="plot"` keeps it on the VP's own plot. The panel is auto-derived
+    from the plot's parent chain when not passed explicitly.
 
     For a fractional default (e.g. (0.3, 0.7)) the span is **anchored to the
     visible window**: it sits at that fraction of the panel's current time
@@ -66,22 +67,17 @@ class _DataSpan:
 
     def __init__(self, plot, spec: TimeRangeKnob, state: GraphKnobState, panel=None):
         panel = panel if panel is not None else _find_panel(plot)
-        if panel is None:
+        if panel is None and spec.scope == "panel":
             raise ValueError("TimeRangeKnob requires a SciQLopMultiPlotPanel "
                              "in the plot's parent chain")
         self._spec = spec
         self._state = state
         self._panel = panel
         self._reentry = False
-        self._fraction = spec.default if _is_fractional(spec.default) else None
+        self._fraction = spec.default if _is_fractional(spec.default) and panel is not None else None
 
-        color = QColor(spec.color)
-        color.setAlpha(_DEFAULT_SPAN_ALPHA)
-        initial = self._resolve_initial(spec.default, panel)
-
-        self._span = MultiPlotsVerticalSpan(
-            panel, initial, color, False, True, spec.label or spec.name,
-        )
+        initial = self._resolve_initial(spec.default, panel) if panel is not None else spec.default
+        self._span = self._make_span(plot, panel, spec, initial)
         self._state.set_value(spec.name, initial)
         self._span.range_changed.connect(self._on_span_dragged)
 
@@ -94,6 +90,18 @@ class _DataSpan:
         if self._fraction is not None:
             self._panel_time_range_changed = panel.time_range_changed
             self._panel_time_range_changed.connect(self._on_panel_range_changed)
+
+    @staticmethod
+    def _make_span(plot, panel, spec: TimeRangeKnob, initial: SciQLopPlotRange):
+        color = QColor(spec.color)
+        color.setAlpha(_DEFAULT_SPAN_ALPHA)
+        label = spec.label or spec.name
+        if spec.scope == "panel":
+            return MultiPlotsVerticalSpan(panel, initial, color, False, True, label)
+        span = SciQLopVerticalSpan(plot, initial)
+        span.set_color(color)
+        span.set_tool_tip(label)
+        return span
 
     @staticmethod
     def _resolve_initial(default: SciQLopPlotRange, panel) -> SciQLopPlotRange:
@@ -163,9 +171,9 @@ class _DataCursor:
     fraction of the panel's visible time range and follows pans/zooms; a drag
     re-records the fraction. An absolute default stays put.
 
-    simplify: the line lives on the VP's own plot only — SciQLopPlots has no
-    multi-plot vertical line yet; add one (like MultiPlotsVerticalSpan) to
-    show the cursor across the whole panel (SciQLopPlots#124)."""
+    simplify: the line lives on the VP's own plot whatever its `scope` —
+    SciQLopPlots has no multi-plot vertical line yet; once it has one
+    (SciQLopPlots#124), use it for `scope="panel"` like `_DataSpan` does."""
 
     def __init__(self, plot, spec: CursorKnob, state: GraphKnobState, panel=None):
         panel = panel if panel is not None else _find_panel(plot)
