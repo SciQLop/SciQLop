@@ -141,3 +141,23 @@ def test_the_drop_callback_offers_the_jump(qtbot, main_window, product_with_cove
 
     qtbot.waitUntil(lambda: any(n.isVisible() for n in panel.findChildren(CoverageNotice)),
                     timeout=1000)
+
+
+@pytest.mark.parametrize("on_plot", [False, True], ids=["panel", "existing-plot"])
+def test_every_plot_path_offers_the_jump(qtbot, main_window, product_with_coverage, on_plot):
+    """Context menu, command palette, notebooks and agents all go through
+    plot_product, not only the drop callback."""
+    from SciQLopPlots import PlotType
+    from SciQLop.components.plotting.ui.time_sync_panel import plot_product
+    from SciQLop.components.plotting.ui.coverage_notice import CoverageNotice
+
+    panel = _panel(main_window, (250 * DAY, 252 * DAY))
+    if on_plot:
+        panel.create_plot(0, PlotType.TimeSeries)
+    if on_plot:
+        plot_product(panel.plots()[0], product_with_coverage)
+    else:
+        plot_product(panel, product_with_coverage, plot_type=PlotType.TimeSeries)
+
+    qtbot.waitUntil(lambda: any(n.isVisible() for n in panel.findChildren(CoverageNotice)),
+                    timeout=1000)

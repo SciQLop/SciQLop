@@ -804,7 +804,23 @@ def _apply_product_color_axis(r, target, provider, node) -> None:
     apply_color_axis(plot, graph, color_axis(node) if color_axis else None)
 
 
+def _owning_time_sync_panel(widget) -> Optional["TimeSyncPanel"]:
+    # Duck-typed: panel.plots() hands out SciQLopPlotInterfacePtr, not a QWidget.
+    while widget is not None and not isinstance(widget, TimeSyncPanel):
+        parent_widget = getattr(widget, "parentWidget", None)
+        widget = parent_widget() if callable(parent_widget) else None
+    return widget
+
+
 def plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):
+    r = _plot_product(p, product, **kwargs)
+    panel = _owning_time_sync_panel(p) if r is not None else None
+    if panel is not None:
+        offer_jump_to_data(panel, product)
+    return r
+
+
+def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjectionPlot], product: List[str], **kwargs):
     if not isinstance(product, list):
         return None
     node = ProductsModel.node(product)
@@ -1134,7 +1150,6 @@ class ProductDnDCallback(PlotDragNDropCallback):
                     attach_layer(plot, product, panel=self.parent())
                 else:
                     plot_product(plot, product)
-                    offer_jump_to_data(self.parent(), product)
 
 
 class TimeRangeDnDCallback(PlotDragNDropCallback):
@@ -1206,7 +1221,6 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
     def _on_overlay_product_selected(self, product_path: list[str]):
         from SciQLopPlots import PlotType
         plot_product(self, product_path, plot_type=PlotType.TimeSeries)
-        offer_jump_to_data(self, product_path)
 
     def _on_overlay_proxy_config(self, config: dict):
         from SciQLop.components.plotting.ui.proxy_share import apply_proxy_config
