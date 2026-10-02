@@ -1,7 +1,10 @@
-from typing import Callable, List, Tuple
+from typing import TYPE_CHECKING, Callable, List, Tuple
 
 from SciQLop.components.plotting.backend import panel_menus as _panel_menus
 from ._thread_safety import on_main_thread
+
+if TYPE_CHECKING:
+    from ._panel import PlotPanel
 
 
 @on_main_thread
