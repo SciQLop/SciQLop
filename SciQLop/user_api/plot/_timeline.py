@@ -139,6 +139,18 @@ class Timeline(GuardedImpl):
 
     @property
     @on_main_thread
+    def style(self) -> str:
+        """``"wave"`` (bus-shaped bars and an idle line per lane, like a logic analyzer;
+        the default) or ``"bars"`` (plain bars)."""
+        return self._get_impl_or_raise().style
+
+    @style.setter
+    @on_main_thread
+    def style(self, name: str):
+        self._get_impl_or_raise().style = name
+
+    @property
+    @on_main_thread
     def lane_height(self) -> int:
         """Height of one lane in pixels."""
         return self._get_impl_or_raise().lane_height()

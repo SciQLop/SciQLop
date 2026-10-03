@@ -117,6 +117,14 @@ def test_editing_options(timeline):
     assert timeline.editable and timeline.edit_modes == {"move", "resize"} and timeline.snap_to == 60
 
 
+def test_style_defaults_to_wave_and_switches_to_bars(timeline):
+    assert timeline.style == "wave"
+    timeline.style = "bars"
+    assert timeline.style == "bars"
+    with pytest.raises(ValueError):
+        timeline.style = "gantt"
+
+
 def test_category_colours_accept_css_names(timeline):
     timeline.set_category_colors({"LM": "#f59e0b"})
     assert timeline.category_color("LM") == "#f59e0b"
