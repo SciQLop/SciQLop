@@ -18,6 +18,7 @@ from SciQLop.components.plotting.backend.palette import Palette as _Palette, mak
 from ._plots import to_product_path, plot_product_or_raise, ProjectionPlot, TimeSeriesPlot, XYPlot, to_plottable, is_time_series_plot, \
     is_projection_plot, is_xy_plot, to_plot, AnyProductType, is_product, _apply_line_style, \
     _apply_graph_options, _given
+from ._timeline import Timeline
 from ._graphs import (ensure_arrays_of_double, Histogram2D, Waterfall,
                       _create_histogram2d, _create_waterfall,
                       validate_histogram_bins as _validate_histogram_bins,
@@ -396,6 +397,33 @@ class PlotPanel(GuardedImpl):
             _g.set_name(resolved_name)
         wrapped_plot = to_plot(_p)
         return wrapped_plot, to_plottable(_g, plot=wrapped_plot)
+
+    @experimental_api()
+    @on_main_thread
+    def add_timeline(self, *, lane_height: int = 14, plot_index: int = -1) -> Tuple[TimeSeriesPlot, Timeline]:
+        """Add a compact plot of interval lanes, synced with the panel's time axis.
+
+        Parameters
+        ----------
+        lane_height : int
+            Height of one lane in pixels; the plot grows with the number of lanes.
+        plot_index : int
+            Index in the panel where the plot is created. -1 = append.
+
+        Returns
+        -------
+        Tuple[TimeSeriesPlot, Timeline]
+            The new plot and the timeline to feed with :meth:`Timeline.set_intervals`.
+
+        Examples
+        --------
+        >>> plot, tl = panel.add_timeline()
+        >>> tl.set_intervals(["2026-01-01T00:00", "2026-01-01T02:00"],
+        ...                  ["2026-01-01T01:00", "2026-01-01T03:00"],
+        ...                  lane=["MAG", "MAG"], category=["survey", "burst"])
+        """
+        plot_impl, timeline_impl = self._get_impl_or_raise().add_timeline(int(lane_height), int(plot_index))
+        return TimeSeriesPlot(plot_impl), Timeline(timeline_impl)
 
     @experimental_api()
     @on_main_thread

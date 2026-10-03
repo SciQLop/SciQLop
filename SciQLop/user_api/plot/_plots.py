@@ -1,6 +1,7 @@
 import numpy as np
 from .enums import PlotType, ScaleType, BinStrategy, GraphLineStyle, AxisType
 from .protocol import Plot, Plottable
+from ._timeline import Timeline
 from ._graphs import (Graph, ColorMap, Histogram2D, Waterfall, to_plottable,
                       ensure_arrays_of_double, _create_histogram2d,
                       _create_waterfall, _reject_if_colormap_already_present,
@@ -474,6 +475,17 @@ class _BasePlot(GuardedImpl, Plot):
         _reject_zero_width_range(axis, lo, hi)
         self._resolve_axis(axis).set_range(lo, hi)
 
+    @property
+    @on_main_thread
+    def legend_visible(self) -> bool:
+        """Whether the plot shows its legend."""
+        return self._get_impl_or_raise().legend().is_visible()
+
+    @legend_visible.setter
+    @on_main_thread
+    def legend_visible(self, visible: bool):
+        self._get_impl_or_raise().legend().set_visible(bool(visible))
+
     @on_main_thread
     def set_axis_tick_labels(self, axis: _AxisName,
                              labels: Optional[dict[float, str]]) -> None:
@@ -885,6 +897,16 @@ class TimeSeriesPlot(_BasePlot):
             _apply_graph_options(raw, line_style, line_shape, gap_threshold)
             return _bind_y_axis(to_plottable(raw, plot=self), y_axis)
         raise ValueError("Invalid arguments")
+
+    @experimental_api()
+    @on_main_thread
+    def add_timeline(self, *, lane_height: int = 12) -> Timeline:
+        """Add a strip of interval lanes to this plot, stacked next to its data.
+
+        Several timelines on one plot share lanes by name. Feed it with
+        :meth:`Timeline.set_intervals`.
+        """
+        return Timeline(self._get_impl_or_raise().add_timeline(int(lane_height)))
 
     @experimental_api()
     @on_main_thread

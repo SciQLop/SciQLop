@@ -35,6 +35,8 @@ NOT_MARSHALED_ON_PURPOSE = {
                             "LayerProvider.resolve_scope", "LayerProvider.update_callback"},
     "layers/registry.py": {"LayerRegistry.get", "LayerRegistry.register", "MutableCallback.callback"},
     "plot/_graphic_primitives.py": {"StraightLine.orientation"},
+    # Read the intervals kept from the last set_intervals call, not the C++ timeline.
+    "plot/_timeline.py": {"Interval.duration", "Timeline.interval"},
     "plot/_graphs.py": {"Histogram2D.x_bin_edges", "Histogram2D.y_bin_edges",
                         "ensure_arrays_of_double", "is_array_of_double", "validate_histogram_bins"},
     "plot/_plots.py": {"is_meta_object_instance", "is_product", "is_projection_plot",
