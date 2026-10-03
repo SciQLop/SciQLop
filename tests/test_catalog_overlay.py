@@ -38,7 +38,16 @@ def _overlay_with_one_event(qapp):
     catalog = DummyProvider(num_catalogs=1, events_per_catalog=1).catalogs()[0]
     overlay = CatalogOverlay(catalog=catalog, panel=panel)
     (span,) = overlay._span_collection.spans()
-    return overlay, overlay._event_by_span_id[span.id()], span
+    return overlay, overlay._event_by_span_id[span.id], span
+
+
+def test_select_event_selects_its_span(qtbot, qapp):
+    """`span.selected = True` silently did nothing before SciQLopPlots 0.44."""
+    overlay, event, span = _overlay_with_one_event(qapp)
+
+    overlay.select_event(event)
+
+    assert span.selected
 
 
 def test_overlay_tooltip_follows_event_range_edits(qtbot, qapp):

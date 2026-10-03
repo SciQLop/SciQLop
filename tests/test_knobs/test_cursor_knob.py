@@ -83,6 +83,23 @@ def _cursor(plot, default):
     return _DataCursor(plot, spec, state), state
 
 
+def test_panel_scoped_cursor_is_a_multi_plot_line(sciqlop_plot, qtbot):
+    from SciQLopPlots import MultiPlotsVerticalLine
+    cursor, _ = _cursor(sciqlop_plot, 0.5)
+    assert isinstance(cursor._line, MultiPlotsVerticalLine)
+    cursor.cleanup()
+
+
+def test_plot_scoped_cursor_stays_on_its_plot(sciqlop_plot, qtbot):
+    from SciQLopPlots import SciQLopVerticalLine
+    from SciQLop.components.plotting.backend.graph_knobs import GraphKnobState
+    from SciQLop.components.plotting.ui.knob_inspector.plot_items import _DataCursor
+    spec = CursorKnob(name="t", default=0.5, scope="plot")
+    cursor = _DataCursor(sciqlop_plot, spec, GraphKnobState([spec]))
+    assert isinstance(cursor._line, SciQLopVerticalLine)
+    cursor.cleanup()
+
+
 def test_fractional_default_resolves_against_view(sciqlop_plot, qtbot):
     cursor, state = _cursor(sciqlop_plot, 0.3)
     assert state.values["t"] == pytest.approx(130.0)

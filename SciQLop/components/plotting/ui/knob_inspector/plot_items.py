@@ -6,7 +6,7 @@ import math
 from PySide6.QtGui import QColor
 from SciQLopPlots import (
     SciQLopHorizontalLine, SciQLopVerticalLine, SciQLopVerticalSpan, SciQLopPlotRange,
-    MultiPlotsVerticalSpan, SciQLopMultiPlotPanel,
+    MultiPlotsVerticalSpan, MultiPlotsVerticalLine, SciQLopMultiPlotPanel,
 )
 
 from SciQLop.user_api.knobs.specs import TimeRangeKnob, ThresholdKnob, CursorKnob
@@ -171,9 +171,9 @@ class _DataCursor:
     fraction of the panel's visible time range and follows pans/zooms; a drag
     re-records the fraction. An absolute default stays put.
 
-    simplify: the line lives on the VP's own plot whatever its `scope` —
-    SciQLopPlots has no multi-plot vertical line yet; once it has one
-    (SciQLopPlots#124), use it for `scope="panel"` like `_DataSpan` does."""
+    With `scope="panel"` (the default) the line is drawn on every plot of the
+    panel; `scope="plot"`, or a plot outside any panel, keeps it on the VP's
+    own plot."""
 
     def __init__(self, plot, spec: CursorKnob, state: GraphKnobState, panel=None):
         panel = panel if panel is not None else _find_panel(plot)
@@ -184,9 +184,7 @@ class _DataCursor:
         self._fraction = spec.default if 0.0 <= spec.default <= 1.0 and panel is not None else None
 
         initial = self._resolve(panel.time_axis_range()) if self._fraction is not None else spec.default
-        self._line = SciQLopVerticalLine(plot, initial, True)
-        self._line.set_color(QColor(spec.color))
-        self._line.set_line_width(2.0)
+        self._line = self._make_line(plot, panel, spec, initial)
         self._state.set_value(spec.name, initial)
         self._line.position_changed.connect(self._on_line_moved)
 
@@ -195,6 +193,17 @@ class _DataCursor:
         if self._fraction is not None:
             self._panel_time_range_changed = panel.time_range_changed
             self._panel_time_range_changed.connect(self._on_panel_range_changed)
+
+    @staticmethod
+    def _make_line(plot, panel, spec: CursorKnob, initial: float):
+        if spec.scope == "panel" and panel is not None:
+            line = MultiPlotsVerticalLine(panel, initial, QColor(spec.color), False, True,
+                                          spec.label or spec.name)
+        else:
+            line = SciQLopVerticalLine(plot, initial, True)
+            line.set_color(QColor(spec.color))
+        line.set_line_width(2.0)
+        return line
 
     def _resolve(self, view: SciQLopPlotRange) -> float:
         if not _is_valid_time_range(view):

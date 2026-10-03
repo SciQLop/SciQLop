@@ -94,6 +94,7 @@
 
 ### Dependencies
 
+- SciQLopPlots 0.44.0 (from 0.42.2). A time cursor now draws one line across every plot of the panel, using SciQLopPlots' new `MultiPlotsVerticalLine` (SciQLopPlots#124). Selecting an event in the catalog browser now really selects its span on the plot; that step did nothing since SciQLopPlots 0.20. The release also brings interval timelines (0.43) and fixes for panning, log axes and restyled lines.
 - jupyqt is now `>=0.6.5`, for the notebook save and open hooks behind the notebook stamp.
 - speasy is now `speasy[blosc]>=1.8.4`: data from the Speasy proxy can arrive Blosc-compressed (byte-shuffle + zstd per array), decoded with `numcodecs`. This also moves the cache backend to pysciqlop-cache 0.2.2.
 
@@ -110,8 +111,8 @@
 
 ### User API
 
-- Virtual products and layers can take a time cursor: `t: Annotated[float, Knob(widget="vline")] = 0.5` puts a draggable vertical line on the plot and passes its time (epoch seconds) to the callback. A default between 0 and 1 is a fraction of the visible range, so the line starts in view and follows pans and zooms; dragging it keeps its place in the view. Any other default is an absolute time and stays put. The line shows on the product's own plot only, not across the panel yet.
-- Time spans and cursors take `Knob(scope="panel" | "plot")`. A span has been drawn on every plot of the panel since April (`"panel"`, still the default); `scope="plot"` keeps it on the product's own plot. The cursor accepts the option too, but stays on its own plot until SciQLopPlots can draw a line across plots. The MVA tutorial now has a cell that plots the raw field and the MVA output together, so the span shows on both.
+- Virtual products and layers can take a time cursor: `t: Annotated[float, Knob(widget="vline")] = 0.5` puts a draggable vertical line on the plot and passes its time (epoch seconds) to the callback. A default between 0 and 1 is a fraction of the visible range, so the line starts in view and follows pans and zooms; dragging it keeps its place in the view. Any other default is an absolute time and stays put. By default the line shows on every plot of the panel; `scope="plot"` keeps it on the product's own plot.
+- Time spans and cursors take `Knob(scope="panel" | "plot")`. A span has been drawn on every plot of the panel since April (`"panel"`, still the default); `scope="plot"` keeps it on the product's own plot. The cursor takes the same option. The MVA tutorial now has a cell that plots the raw field and the MVA output together, so the span shows on both.
 - Timeline-style plots (on/off lanes, instrument modes) no longer need workarounds (#146). `plot_data(...)` and `plot.plot(...)` take `line_shape=LineShape.StepLeft` (or `StepRight`, `StepCenter`) for steps, and `gap_threshold=0` so a line graph never breaks at a long flat stretch. Both are also `Graph` properties. `plot.set_axis_tick_labels("y", {0: "MAG", -1: "SWA"})` shows names instead of numbers on an axis; `None` restores the numbers. `LineShape` is separate from `GraphLineStyle`, which keeps meaning the dash pattern.
 - Plugins can add their own submenu to the plot panel's right-click menu with `SciQLop.user_api.plot.register_panel_menu(title, entries)`: `entries(panel)` returns `(label, callback)` pairs each time the menu opens. `unregister_panel_menu(title)` removes it.
 - A histogram driven by a callback, `panel.histogram2d(callback)`, now loads as soon as it is created. Before, it stayed empty until the panel's time range changed. Panning or zooming the histogram's own plot no longer calls the callback with that plot's x values as the time range.

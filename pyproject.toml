@@ -51,7 +51,7 @@ dependencies = [
 # The application. `pip install SciQLop[all]` is what an end user wants, and
 # what a workspace venv installs.
 all = [
-    "SciQLopPlots==0.42.2",
+    "SciQLopPlots==0.44.0",
     "cloudpickle",
     "defusedxml",
     "speasy[blosc]>=1.8.5",

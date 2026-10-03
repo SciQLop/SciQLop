@@ -23,7 +23,7 @@ def panel_and_catalog(qtbot, qapp):
 
 
 def _visible(overlay):
-    return [span.visible() for span in overlay._span_collection.spans()]
+    return [span.visible for span in overlay._span_collection.spans()]
 
 
 # A hidden overlay draws no span at all rather than invisible ones: SciQLopPlots
