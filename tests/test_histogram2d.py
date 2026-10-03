@@ -11,6 +11,44 @@ def _scatter(n: int = 5000, seed: int = 0):
     return x, y
 
 
+class TestCallbackHistogram2D:
+    """A callback histogram follows the panel's time range, and only that."""
+
+    @pytest.fixture
+    def calls(self):
+        return []
+
+    @pytest.fixture
+    def callback(self, calls):
+        def histogram_source(start, stop):
+            calls.append((start, stop))
+            return _scatter(500)
+        return histogram_source
+
+    def test_loads_without_panning(self, plot_panel, callback, calls, qtbot):
+        from SciQLop.user_api import TimeRange
+        plot_panel.time_range = TimeRange(100.0, 200.0)
+        plot_panel.histogram2d(callback)
+        qtbot.waitUntil(lambda: (100.0, 200.0) in calls, timeout=2000)
+
+    def test_follows_panel_time_range(self, plot_panel, callback, calls, qtbot):
+        from SciQLop.user_api import TimeRange
+        plot_panel.time_range = TimeRange(100.0, 200.0)
+        plot_panel.histogram2d(callback)
+        plot_panel.time_range = TimeRange(300.0, 400.0)
+        qtbot.waitUntil(lambda: (300.0, 400.0) in calls, timeout=2000)
+
+    def test_panning_its_own_plot_does_not_call_back(self, plot_panel, callback, calls, qtbot):
+        from SciQLopPlots import SciQLopPlotRange
+        from SciQLop.user_api import TimeRange
+        plot_panel.time_range = TimeRange(100.0, 200.0)
+        plot, _ = plot_panel.histogram2d(callback)
+        qtbot.waitUntil(lambda: (100.0, 200.0) in calls, timeout=2000)
+        plot._get_impl_or_raise().x_axis().set_range(SciQLopPlotRange(-5.0, 5.0))
+        qtbot.wait(300)
+        assert (-5.0, 5.0) not in calls
+
+
 class TestPanelHistogram2D:
     def test_creates_xy_plot_and_histogram(self, plot_panel):
         from SciQLop.user_api.plot import Histogram2D, XYPlot

@@ -125,6 +125,21 @@ def _normalize_plot_kwargs(kwargs: dict) -> dict:
     return kwargs
 
 
+def _follow_panel_time_range(panel_impl, function_graph) -> None:
+    """Drive a callback graph on an XY plot from the panel's time range.
+
+    The graph is fed the current range right away; otherwise it stays empty until
+    the time range changes."""
+    # SciQLopPlots wires a callback graph to its own plot's x axis. On an XY plot
+    # that axis holds data values, not time, so panning it would call back with
+    # them as (start, stop). observe() replaces that link; None leaves none.
+    function_graph.observe(None)
+    panel_impl.time_range_changed.connect(function_graph.set_range)
+    current = panel_impl.time_axis_range()
+    if not (_math.isnan(current.start()) or _math.isnan(current.stop())):
+        function_graph.set_range(current)
+
+
 class PlotPanel(GuardedImpl):
     """A class representing a plot panel in the SciQLop application.
     This class provides methods to create and manage plots within the panel.
@@ -436,7 +451,7 @@ class PlotPanel(GuardedImpl):
                                    y_bin_strategy=y_bin_strategy,
                                    z_log_scale=z_log_scale, gradient=gradient)
         if len(args) == 1 and callable(args[0]):
-            impl.time_range_changed.connect(hist._impl.set_range)
+            _follow_panel_time_range(impl, hist._impl)
         return XYPlot(plot_impl), hist
 
     @experimental_api()
