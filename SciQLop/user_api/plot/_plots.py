@@ -900,13 +900,15 @@ class TimeSeriesPlot(_BasePlot):
 
     @experimental_api()
     @on_main_thread
-    def add_timeline(self, *, lane_height: int = 12) -> Timeline:
+    def add_timeline(self, *, lane_height: Optional[int] = None) -> Timeline:
         """Add a strip of interval lanes to this plot, stacked next to its data.
 
         Several timelines on one plot share lanes by name. Feed it with
-        :meth:`Timeline.set_intervals`.
+        :meth:`Timeline.set_intervals`. ``lane_height`` in pixels; None keeps
+        SciQLopPlots' default.
         """
-        return Timeline(self._get_impl_or_raise().add_timeline(int(lane_height)))
+        impl = self._get_impl_or_raise()
+        return Timeline(impl.add_timeline() if lane_height is None else impl.add_timeline(int(lane_height)))
 
     @experimental_api()
     @on_main_thread

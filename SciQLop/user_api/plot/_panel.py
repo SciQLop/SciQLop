@@ -400,13 +400,14 @@ class PlotPanel(GuardedImpl):
 
     @experimental_api()
     @on_main_thread
-    def add_timeline(self, *, lane_height: int = 14, plot_index: int = -1) -> Tuple[TimeSeriesPlot, Timeline]:
+    def add_timeline(self, *, lane_height: Optional[int] = None,
+                     plot_index: int = -1) -> Tuple[TimeSeriesPlot, Timeline]:
         """Add a compact plot of interval lanes, synced with the panel's time axis.
 
         Parameters
         ----------
-        lane_height : int
-            Height of one lane in pixels; the plot grows with the number of lanes.
+        lane_height : int, optional
+            Minimum height of one lane in pixels. None keeps SciQLopPlots' default.
         plot_index : int
             Index in the panel where the plot is created. -1 = append.
 
@@ -422,7 +423,9 @@ class PlotPanel(GuardedImpl):
         ...                  ["2026-01-01T01:00", "2026-01-01T03:00"],
         ...                  lane=["MAG", "MAG"], category=["survey", "burst"])
         """
-        plot_impl, timeline_impl = self._get_impl_or_raise().add_timeline(int(lane_height), int(plot_index))
+        impl = self._get_impl_or_raise()
+        plot_impl, timeline_impl = (impl.add_timeline(index=int(plot_index)) if lane_height is None
+                                    else impl.add_timeline(int(lane_height), int(plot_index)))
         return TimeSeriesPlot(plot_impl), Timeline(timeline_impl)
 
     @experimental_api()

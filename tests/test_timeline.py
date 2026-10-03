@@ -25,6 +25,17 @@ def test_panel_add_timeline_returns_a_time_series_plot_and_timeline(plot_panel):
     assert isinstance(tl, Timeline)
 
 
+def test_lane_height_defaults_follow_sciqlopplots(plot_panel, qtbot):
+    from SciQLopPlots import SciQLopTimeSeriesPlot
+    raw = SciQLopTimeSeriesPlot()
+    qtbot.addWidget(raw)
+    upstream = raw.add_timeline().lane_height()
+    _plot, tl = plot_panel.add_timeline()
+    plot, _ = plot_panel.plot_data(np.array([T0, T0 + 3600.0]), np.array([0.0, 1.0]), labels=["x"])
+    assert tl.lane_height == upstream
+    assert plot.add_timeline().lane_height == upstream
+
+
 def test_strip_over_an_existing_time_series_plot(plot_panel):
     from SciQLop.user_api.plot import Timeline
     plot, _ = plot_panel.plot_data(np.array([T0, T0 + 3600.0]), np.array([0.0, 1.0]), labels=["x"])
