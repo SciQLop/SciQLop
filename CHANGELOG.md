@@ -94,7 +94,7 @@
 
 ### Dependencies
 
-- SciQLopPlots 0.44.0 (from 0.42.2). A time cursor now draws one line across every plot of the panel, using SciQLopPlots' new `MultiPlotsVerticalLine` (SciQLopPlots#124). Selecting an event in the catalog browser now really selects its span on the plot; that step did nothing since SciQLopPlots 0.20. The release also brings interval timelines (0.43) and fixes for panning, log axes and restyled lines.
+- SciQLopPlots 0.44.1 (from 0.42.2). Log axes spanning about a decade or less, such as a spectrogram's frequency axis, now get readable ticks at round values (1, 2, 5 × 10ⁿ) instead of crowded evenly spaced ones. A time cursor now draws one line across every plot of the panel, using SciQLopPlots' new `MultiPlotsVerticalLine` (SciQLopPlots#124). Selecting an event in the catalog browser now really selects its span on the plot; that step did nothing since SciQLopPlots 0.20. The release also brings interval timelines (0.43) and fixes for panning, log axes and restyled lines.
 - jupyqt is now `>=0.6.5`, for the notebook save and open hooks behind the notebook stamp.
 - speasy is now `speasy[blosc]>=1.8.4`: data from the Speasy proxy can arrive Blosc-compressed (byte-shuffle + zstd per array), decoded with `numcodecs`. This also moves the cache backend to pysciqlop-cache 0.2.2.
 
