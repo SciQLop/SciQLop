@@ -11,6 +11,7 @@
 
 ### Tutorials
 
+- Every notebook cell now imports what it uses, so a section runs on its own after the cells that set up its panel or data. Before, 54 cells across 11 notebooks relied on imports from earlier sections. A test keeps it that way.
 - The bundled tutorials were checked against the current API and brought up to date. Examples that failed or misbehaved are fixed: panel names in the magics tutorial (`Panel0`, not `"Panel 1"`), a catalogs tutorial that failed on a second run, a DSP spectrogram that dropped everything after the first data gap, and a |B| envelope that misaligned after a gap.
 - Text that no longer matched SciQLop is corrected, such as mouse-wheel controls, plot item lifetime, workspace folders per OS, and inspector section names.
 - New material where it fits: timeline plots, coloured and `Depends(...)` virtual products, the cursor knob and `scope`, `background_subtract`, catalog overlays from Python, the extra line and span items, log-binned histograms, and the keyboard shortcuts, command palette and guided tour.
