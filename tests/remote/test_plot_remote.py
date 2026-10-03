@@ -69,6 +69,34 @@ def test_plot_product_remote_spectrogram_builds_remote_graph(qtbot, main_window)
     qtbot.wait(500)
 
 
+def _tree_index(model, segments):
+    from PySide6.QtCore import QModelIndex
+    parent = QModelIndex()
+    for name in segments:
+        parent = next(model.index(r, 0, parent) for r in range(model.rowCount(parent))
+                      if model.data(model.index(r, 0, parent)) == name)
+    return parent
+
+
+def test_product_dropped_from_the_tree_runs_out_of_process(qtbot, main_window):
+    """A drop decodes to ["root", ...]; it must still find the remote registration."""
+    from SciQLopPlots import ProductsModel
+    from SciQLop.components.plotting.backend.easy_provider import EasySpectrogram
+    from SciQLop.components.plotting.ui.time_sync_panel import plot_product
+    from SciQLop.user_api.plot import create_plot_panel
+
+    EasySpectrogram(path="test_remote_plot/dropped spec", get_data_callback=_spec_source,
+                    metadata={}, out_of_process=True)
+    model = ProductsModel.instance()
+    index = _tree_index(model, ["test_remote_plot", "dropped spec"])
+    (dropped,) = ProductsModel.decode_mime_data(model.mimeData([index]))
+    assert dropped[0] == "root"
+
+    panel = create_plot_panel()
+    _plot, graph = plot_product(panel._impl, dropped)
+    assert graph.remote_channel() is not None
+
+
 def test_plot_product_remote_applies_provider_plot_hints(qtbot, main_window):
     """A remote product's static provider.plot_hints(node) reach its plot,
     as they do in process (only arrays come back, so this is all it gets)."""
