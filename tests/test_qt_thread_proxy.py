@@ -36,9 +36,11 @@ class _Probe(QWidget):
 def invoker():
     """Install the same main-thread invoker KernelManager installs at runtime."""
     from jupyqt.qt.proxy import MainThreadInvoker
+    from SciQLop.user_api import threading as sqp_threading
+    previous = sqp_threading._invoker  # the session main_window's kernel invoker, if any
     init_invoker(MainThreadInvoker())
     yield
-    init_invoker(None)
+    init_invoker(previous)
 
 
 @pytest.fixture
