@@ -657,6 +657,28 @@ def prepare_workspace(
     return venv.python_path
 
 
+def _build_inactive_slot(workspace_dir: Path, manifest: WorkspaceManifest | None = None) -> tuple[str, Path]:
+    """Sync the workspace's inactive venv slot (see ``venv_slots``); returns it and its Python.
+
+    Strict: a failure raises and leaves the live slot untouched. Callers hold
+    ``workspace_lock``.
+    """
+    slot = venv_slots.inactive_slot(workspace_dir)
+    venv_slots.clear_pending(workspace_dir)
+    python_path = prepare_workspace(workspace_dir, manifest=manifest, strict=True,
+                                    on_output=lambda _line: None, venv_slot=slot)
+    return slot, python_path
+
+
+def stage_environment(workspace_dir: Path | str) -> None:
+    """Rebuild the inactive venv slot from the workspace's current manifest and
+    installed plugins, to go live on the next start (e.g. after a plugin update)."""
+    workspace_dir = Path(workspace_dir)
+    with workspace_lock(workspace_dir):
+        slot, _python = _build_inactive_slot(workspace_dir)
+        venv_slots.mark_pending(workspace_dir, slot)
+
+
 def _build_core_version(workspace_dir: Path, version: str) -> tuple[str, Path]:
     """Install SciQLop *version* into the workspace's inactive venv slot; returns
     that slot and its Python.
@@ -673,10 +695,7 @@ def _build_core_version(workspace_dir: Path, version: str) -> tuple[str, Path]:
     with workspace_lock(workspace_dir):
         manifest = WorkspaceManifest.load_or_repair(manifest_path)
         manifest.sciqlop_version = version
-        slot = venv_slots.inactive_slot(workspace_dir)
-        venv_slots.clear_pending(workspace_dir)
-        python_path = prepare_workspace(workspace_dir, manifest=manifest, strict=True,
-                                        on_output=lambda _line: None, venv_slot=slot)
+        slot, python_path = _build_inactive_slot(workspace_dir, manifest)
         try:
             # Re-read: anything else saved during the (long) sync must survive.
             with edit_manifest(manifest_path) as current:

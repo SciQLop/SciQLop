@@ -328,6 +328,66 @@ class TestUninstallAsksForARestart:
         assert payload["ok"] is True and payload["restart_required"] is True
 
 
+class TestUpdatesAreStagedInTheOtherSlot:
+    """Running from a workspace's live venv slot, an update of an installed
+    plugin is built into the other slot (venv_slots), never into the running
+    venv; a new plugin still installs live so it can be hot-loaded."""
+
+    @pytest.fixture
+    def running_from_workspace(self, tmp_path, monkeypatch):
+        live = tmp_path / ".venv"
+        live.mkdir()
+        monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
+        monkeypatch.setattr("SciQLop.components.appstore.backend.sys.prefix", str(live))
+        return tmp_path
+
+    @pytest.fixture
+    def store(self, monkeypatch):
+        live_installs, staged, saved = [], [], {}
+        monkeypatch.setattr("SciQLop.components.appstore.backend.guarded_install",
+                            lambda specs: live_installs.extend(specs) or SimpleNamespace(returncode=0))
+        monkeypatch.setattr("SciQLop.components.appstore.backend._save_installed_package",
+                            lambda pip, dist: saved.__setitem__(dist, pip))
+        monkeypatch.setattr("SciQLop.components.appstore.backend._installed_spec",
+                            lambda dist: saved.get(dist))
+        monkeypatch.setattr("SciQLop.components.appstore.backend._remove_installed_package",
+                            lambda dist: saved.pop(dist, None))
+        monkeypatch.setattr("SciQLop.components.workspaces.backend.workspace_setup.stage_environment",
+                            lambda ws: staged.append((ws, dict(saved))))
+        monkeypatch.setattr("SciQLop.components.appstore.backend._try_load_plugin", lambda d: None)
+        backend = AppStoreBackend()
+        backend._packages = [{"name": "A", "versions": [{"version": "2.0", "pip": "a-plugin==2.0"}]}]
+        received = []
+        backend.install_finished.connect(lambda payload: received.append(json.loads(payload)))
+        return SimpleNamespace(backend=backend, live=live_installs, staged=staged, saved=saved,
+                               received=received)
+
+    def test_an_update_is_staged_not_installed_live(self, qtbot, running_from_workspace, store, monkeypatch):
+        monkeypatch.setattr("SciQLop.components.appstore.backend._installed_version", lambda d: "1.0")
+        store.saved["a-plugin"] = "a-plugin==1.0"
+        store.backend.install_package("A")
+        qtbot.waitUntil(lambda: bool(store.received), timeout=3000)
+        assert store.live == []
+        assert store.staged == [(running_from_workspace, {"a-plugin": "a-plugin==2.0"})]
+        assert store.received[0]["ok"] and store.received[0]["restart_required"] is True
+
+    def test_a_failed_stage_keeps_the_previous_version(self, qtbot, running_from_workspace, store, monkeypatch):
+        monkeypatch.setattr("SciQLop.components.appstore.backend._installed_version", lambda d: "1.0")
+        monkeypatch.setattr("SciQLop.components.workspaces.backend.workspace_setup.stage_environment",
+                            lambda ws: (_ for _ in ()).throw(RuntimeError("no network")))
+        store.saved["a-plugin"] = "a-plugin==1.0"
+        store.backend.install_package("A")
+        qtbot.waitUntil(lambda: bool(store.received), timeout=3000)
+        assert store.saved == {"a-plugin": "a-plugin==1.0"}
+        assert store.received[0]["ok"] is False and "no network" in store.received[0]["error"]
+
+    def test_a_new_plugin_still_installs_live(self, qtbot, running_from_workspace, store, monkeypatch):
+        monkeypatch.setattr("SciQLop.components.appstore.backend._installed_version", lambda d: None)
+        store.backend.install_package("A")
+        qtbot.waitUntil(lambda: bool(store.received), timeout=3000)
+        assert store.live == ["a-plugin==2.0"] and store.staged == []
+
+
 class TestUpdateAll:
     """The Updates page updates every listed item in one click, one after
     another, so a broken package does not block the others."""

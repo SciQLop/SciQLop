@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import threading
+from pathlib import Path
 from importlib.metadata import PackageNotFoundError, distribution
 
 import packaging.version
@@ -65,6 +67,43 @@ def _save_installed_package(pip_spec: str, dist_name: str) -> None:
     with SciQLopPluginsSettings() as settings:
         settings.installed_packages[canonical_package_name(dist_name)] = InstalledPackage(
             pip=pip_spec, name=dist_name)
+
+
+def _installed_spec(dist_name: str) -> str | None:
+    """The pip spec saved for *dist_name* in the plugin settings, if any."""
+    from SciQLop.components.plugins.backend.settings import SciQLopPluginsSettings, canonical_package_name
+    entry = SciQLopPluginsSettings().installed_packages.get(canonical_package_name(dist_name))
+    return entry.pip if entry is not None else None
+
+
+def _staging_workspace() -> Path | None:
+    """The workspace whose live venv slot runs this process, or None (e.g. a dev checkout,
+    which runs from its own venv): only then can an update go to the other slot."""
+    from SciQLop.components.workspaces.backend.venv_slots import active_venv_dir
+    workspace = os.environ.get("SCIQLOP_WORKSPACE_DIR")
+    if not workspace:
+        return None
+    running_from_live_slot = Path(sys.prefix).resolve() == active_venv_dir(workspace).resolve()
+    return Path(workspace) if running_from_live_slot else None
+
+
+def _stage_update(workspace_dir: Path, pip_spec: str, dist_name: str) -> None:
+    """Build the update into the workspace's other venv slot, live after a restart.
+
+    The running venv is never touched (Windows can't replace a loaded file).
+    On failure the previously saved spec is put back, so nothing changes.
+    """
+    from SciQLop.components.workspaces.backend import workspace_setup
+    previous = _installed_spec(dist_name)
+    _save_installed_package(pip_spec, dist_name)
+    try:
+        workspace_setup.stage_environment(workspace_dir)
+    except Exception:
+        if previous is None:
+            _remove_installed_package(dist_name)
+        else:
+            _save_installed_package(previous, dist_name)
+        raise
 
 
 def _remove_installed_package(dist_name: str) -> None:
@@ -222,6 +261,12 @@ class AppStoreBackend(QObject):
             pip_spec = latest["pip"]
             dist_name = _package_name_from_pip(pip_spec) or canonical_package_name(name)
             was_installed = _installed_version(dist_name) is not None
+            if was_installed and (workspace := _staging_workspace()):
+                _stage_update(workspace, pip_spec, dist_name)
+                self.install_finished.emit(json.dumps({
+                    "name": name, "ok": True, "version": latest["version"],
+                    "loaded": True, "restart_required": True}))
+                return
             result = guarded_install([pip_spec])
             if result.returncode != 0:
                 raise subprocess.CalledProcessError(

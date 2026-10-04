@@ -1728,6 +1728,16 @@ class TestCoreVersionUpdatesUseTheOtherSlot:
         assert venv_slots.pending_slot(workspace) is None
         assert WorkspaceManifest.load(workspace / "workspace.sciqlop").sciqlop_version == "0.13.0"
 
+    def test_stage_environment_rebuilds_the_other_slot_from_current_settings(self, workspace, patches):
+        from SciQLop.components.workspaces.backend import venv_slots
+        from SciQLop.components.workspaces.backend.workspace_setup import stage_environment
+
+        stage_environment(workspace)
+        assert self._slots_synced(patches) == [".venv-b"]
+        assert venv_slots.active_slot(workspace) == ".venv"
+        assert venv_slots.pending_slot(workspace) == ".venv-b"
+        assert WorkspaceManifest.load(workspace / "workspace.sciqlop").sciqlop_version == "0.13.0"
+
     def test_another_workspace_switches_at_once(self, workspace, patches):
         from SciQLop.components.workspaces.backend import venv_slots
         from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
