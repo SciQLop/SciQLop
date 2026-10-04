@@ -18,7 +18,8 @@ class PanelBuilder:
             .subplot()
                 .plot("speasy//amda//density")
                 .log_y()
-            .time_range("2020-01-01", "2020-01-02"))
+            .time_range("2020-01-01", "2020-01-02")
+            .panel)
     """
 
     def __init__(self, panel: PlotPanel):

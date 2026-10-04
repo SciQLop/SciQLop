@@ -18,6 +18,7 @@ from .._annotations import experimental_api
 from ._thread_safety import on_main_thread, GuardedImpl
 from PySide6.QtCore import QRectF, QPointF
 from PySide6.QtGui import QColor, QBrush, QFont, QPalette, QPixmap, Qt
+from SciQLop.core.colors import to_qcolor
 
 __all__ = ['Pixmap', 'Ellipse', 'Text', 'CurvedLine', 'HorizontalLine', 'VerticalLine', 'StraightLine',
            'RectangularSpan', 'HorizontalSpan', 'LineTermination']
@@ -211,7 +212,7 @@ class Ellipse(_PlotItem):
     def line_color(self, line_color: Union[int, str, QColor]):
         impl = self._get_impl_or_raise()
         pen = impl.pen()
-        pen.setColor(QColor(line_color))
+        pen.setColor(to_qcolor(line_color))
         impl.set_pen(pen)
 
     @property
@@ -227,7 +228,7 @@ class Ellipse(_PlotItem):
         if fill_color is None:
             brush.setStyle(Qt.NoBrush)
         else:
-            brush.setColor(QColor(fill_color))
+            brush.setColor(to_qcolor(fill_color))
             brush.setStyle(Qt.SolidPattern)
         impl.set_brush(brush)
 
@@ -286,7 +287,7 @@ class Text(_PlotItem):
         self._impl: _SciQLopTextItem = _SciQLopTextItem(
             impl, text, QPointF(x, y), False,
             _coordinate_system_to_sqp(coordinate_system))
-        self._get_impl_or_raise().set_color(QColor(color) if color is not None else _default_foreground(impl))
+        self._get_impl_or_raise().set_color(to_qcolor(color) if color is not None else _default_foreground(impl))
         if font_size is not None:
             self._get_impl_or_raise().set_font_size(font_size)
         if font_family is not None:
@@ -321,7 +322,7 @@ class Text(_PlotItem):
     @color.setter
     @on_main_thread
     def color(self, c: Union[str, QColor]):
-        self._get_impl_or_raise().set_color(QColor(c))
+        self._get_impl_or_raise().set_color(to_qcolor(c))
 
     @property
     @on_main_thread
@@ -480,7 +481,7 @@ class CurvedLine(_PlotItem):
     @color.setter
     @on_main_thread
     def color(self, c: Union[str, QColor]):
-        self._get_impl_or_raise().set_color(QColor(c))
+        self._get_impl_or_raise().set_color(to_qcolor(c))
 
     @property
     @on_main_thread
@@ -523,7 +524,7 @@ class CurvedLine(_PlotItem):
         self._get_impl_or_raise().set_stop_termination(termination)
 
 
-class HorizontalLine(GuardedImpl):
+class HorizontalLine(_PlotItem):
     """A horizontal line at a fixed Y value on a plot.
 
     Parameters
@@ -533,8 +534,8 @@ class HorizontalLine(GuardedImpl):
     value : float
         The Y-axis position of the line.
     color : str or QColor, optional
-        Line color. Accepts CSS color strings (e.g. ``"#2ecc71"``)
-        or ``QColor`` instances. Defaults to green.
+        Line colour: a name, ``"#2ecc71"``, ``"rgba(46, 204, 113, 0.5)"`` or a
+        ``QColor``. Defaults to the plot's palette text colour.
     movable : bool
         Whether the user can drag the line. Defaults to False.
     """
@@ -544,15 +545,9 @@ class HorizontalLine(GuardedImpl):
     def __init__(self, plot: Plot, value: float, *,
                  color: Optional[Union[str, QColor]] = None,
                  movable: bool = False):
-        self._impl: _SciQLopHorizontalLine = _SciQLopHorizontalLine(
-            plot._get_impl_or_raise(), value, movable)
-        if color is not None:
-            self._impl.set_color(QColor(color))
-
-    def _get_impl_or_raise(self):
-        if self._impl is None:
-            raise ValueError("The item does not exist anymore.")
-        return self._impl
+        impl = plot._get_impl_or_raise()
+        self._impl: _SciQLopHorizontalLine = _SciQLopHorizontalLine(impl, value, movable)
+        self.color = color if color is not None else _default_foreground(impl)
 
     @property
     @on_main_thread
@@ -572,7 +567,7 @@ class HorizontalLine(GuardedImpl):
     @color.setter
     @on_main_thread
     def color(self, c: Union[str, QColor]):
-        self._get_impl_or_raise().set_color(QColor(c))
+        self._get_impl_or_raise().set_color(to_qcolor(c))
 
     @property
     @on_main_thread
@@ -583,13 +578,6 @@ class HorizontalLine(GuardedImpl):
     @on_main_thread
     def line_width(self, w: float):
         self._get_impl_or_raise().set_line_width(w)
-
-    @on_main_thread
-    def remove(self) -> None:
-        """Remove this line from the plot and release C++ resources."""
-        if self._impl is not None:
-            self._impl.deleteLater()
-            self._impl = None
 
 
 class VerticalLine(_PlotItem):
@@ -650,7 +638,7 @@ class VerticalLine(_PlotItem):
     @color.setter
     @on_main_thread
     def color(self, c: Union[str, QColor]):
-        self._get_impl_or_raise().set_color(QColor(c))
+        self._get_impl_or_raise().set_color(to_qcolor(c))
 
     @property
     @on_main_thread
@@ -758,7 +746,7 @@ class StraightLine(_PlotItem):
     @color.setter
     @on_main_thread
     def color(self, c: Union[str, QColor]):
-        self._get_impl_or_raise().set_color(QColor(c))
+        self._get_impl_or_raise().set_color(to_qcolor(c))
 
     @property
     @on_main_thread
@@ -833,7 +821,7 @@ class RectangularSpan(_PlotItem):
         default_color = _default_span_color(impl)
         self._impl: _SciQLopRectangularSpan = _SciQLopRectangularSpan(
             impl, _SciQLopPlotRange(x1, x2), _SciQLopPlotRange(y1, y2),
-            color or default_color, read_only, visible, tool_tip)
+            to_qcolor(color) if color is not None else default_color, read_only, visible, tool_tip)
         self.borders_color = borders_color if borders_color is not None else (color if color is not None else default_color)
         if line_width is not None:
             self.line_width = line_width
@@ -848,7 +836,7 @@ class RectangularSpan(_PlotItem):
     @color.setter
     @on_main_thread
     def color(self, c: Union[str, QColor]):
-        self._get_impl_or_raise().set_color(QColor(c))
+        self._get_impl_or_raise().set_color(to_qcolor(c))
 
     @property
     @on_main_thread
@@ -858,7 +846,7 @@ class RectangularSpan(_PlotItem):
     @borders_color.setter
     @on_main_thread
     def borders_color(self, c: Union[str, QColor]):
-        self._get_impl_or_raise().set_borders_color(QColor(c))
+        self._get_impl_or_raise().set_borders_color(to_qcolor(c))
 
     @property
     @on_main_thread
@@ -978,7 +966,7 @@ class HorizontalSpan(_PlotItem):
         default_color = _default_span_color(impl)
         self._impl: _SciQLopHorizontalSpan = _SciQLopHorizontalSpan(
             impl, _SciQLopPlotRange(y1, y2),
-            color or default_color, read_only, visible, tool_tip)
+            to_qcolor(color) if color is not None else default_color, read_only, visible, tool_tip)
         self.borders_color = borders_color if borders_color is not None else (color if color is not None else default_color)
         if line_width is not None:
             self.line_width = line_width
@@ -993,7 +981,7 @@ class HorizontalSpan(_PlotItem):
     @color.setter
     @on_main_thread
     def color(self, c: Union[str, QColor]):
-        self._get_impl_or_raise().set_color(QColor(c))
+        self._get_impl_or_raise().set_color(to_qcolor(c))
 
     @property
     @on_main_thread
@@ -1003,7 +991,7 @@ class HorizontalSpan(_PlotItem):
     @borders_color.setter
     @on_main_thread
     def borders_color(self, c: Union[str, QColor]):
-        self._get_impl_or_raise().set_borders_color(QColor(c))
+        self._get_impl_or_raise().set_borders_color(to_qcolor(c))
 
     @property
     @on_main_thread

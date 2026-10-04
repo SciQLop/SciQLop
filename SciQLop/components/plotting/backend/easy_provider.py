@@ -386,12 +386,13 @@ class EasyScalar(EasyProvider):
     def __init__(self, path, get_data_callback: VirtualProductCallback, component_name: str, metadata: dict,
                  data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
                  knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
-                 color_axis: Optional[ColorAxis] = None):
+                 color_axis: Optional[ColorAxis] = None, display_name: Optional[str] = None):
         super().__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.Scalar,
                          metadata={**metadata, "components": component_name},
                          data_order=data_order, cacheable=cacheable, debug=debug,
                          knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                         out_of_process=out_of_process, color_axis=color_axis)
+                         out_of_process=out_of_process, color_axis=color_axis,
+                         display_name=display_name)
         self._columns = [component_name]
 
     def _to_variable(self, res):
@@ -409,12 +410,13 @@ class EasyVector(EasyProvider):
     def __init__(self, path, get_data_callback: VirtualProductCallback, components_names: List[str], metadata: dict,
                  data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
                  knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
-                 color_axis: Optional[ColorAxis] = None):
+                 color_axis: Optional[ColorAxis] = None, display_name: Optional[str] = None):
         super().__init__(path=path, callback=get_data_callback, parameter_type=ParameterType.Vector,
                          metadata={**metadata, "components": ';'.join(components_names)},
                          data_order=data_order, cacheable=cacheable, debug=debug,
                          knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                         out_of_process=out_of_process, color_axis=color_axis)
+                         out_of_process=out_of_process, color_axis=color_axis,
+                         display_name=display_name)
         self._columns = components_names
 
     def _to_variable(self, res) -> Optional[DataProviderReturnType]:
@@ -435,14 +437,15 @@ class EasyMultiComponent(EasyVector):
     def __init__(self, path, get_data_callback: VirtualProductCallback, components_names: List[str], metadata: dict,
                  data_order: DataOrder = DataOrder.Y_FIRST, cacheable=False, debug=False,
                  knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
-                 color_axis: Optional[ColorAxis] = None):
+                 color_axis: Optional[ColorAxis] = None, display_name: Optional[str] = None):
         # Skip EasyVector.__init__ intentionally — same logic but with Multicomponents type
         EasyProvider.__init__(self, path=path, callback=get_data_callback,
                               parameter_type=ParameterType.Multicomponents,
                               metadata={**metadata, "components": ';'.join(components_names)},
                               data_order=data_order, cacheable=cacheable, debug=debug,
                               knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                              out_of_process=out_of_process, color_axis=color_axis)
+                              out_of_process=out_of_process, color_axis=color_axis,
+                              display_name=display_name)
         self._columns = components_names
 
 

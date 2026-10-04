@@ -14,6 +14,7 @@ from SciQLopPlots import WaterfallOffsetMode as _WaterfallOffsetMode
 from SciQLopPlots import ColorGradient as _ColorGradient
 from SciQLopPlots import GraphLineStyle as _SqpLineShape
 from PySide6.QtGui import QColor as _QColor
+from SciQLop.core.colors import to_qcolor
 from ._thread_safety import on_main_thread, GuardedImpl
 from SciQLop.core import tracing as _tracing
 
@@ -581,11 +582,11 @@ def _to_qcolor_list(colors, line_count: int) -> List[_QColor]:
     if colors is None:
         return []
     if isinstance(colors, (str, _QColor)):
-        return [_QColor(colors)] * line_count
+        return [to_qcolor(colors)] * line_count
     seq = list(colors)
     if len(seq) == 1:
-        return [_QColor(seq[0])] * line_count
-    return [_QColor(c) for c in seq]
+        return [to_qcolor(seq[0])] * line_count
+    return [to_qcolor(c) for c in seq]
 
 
 def _validate_waterfall_shapes(x, y, z):
@@ -766,12 +767,12 @@ def _create_histogram2d(plot_impl, *args, name: str = "histogram",
 
     if x_is_edges or y_is_edges:
         raise NotImplementedError(
-            "SciQLopPlots 0.34.0 histogram2d only accepts integer bin counts; "
+            "SciQLopPlots histogram2d only accepts integer bin counts; "
             "explicit bin edges are not supported"
         )
     if x_bin_strategy == BinStrategy.SymLog or y_bin_strategy == BinStrategy.SymLog:
         raise NotImplementedError(
-            "SciQLopPlots 0.34.0 histogram2d does not support SymLog binning"
+            "SciQLopPlots histogram2d does not support SymLog binning"
         )
 
     def _upstream_kwargs(x_count, y_count):

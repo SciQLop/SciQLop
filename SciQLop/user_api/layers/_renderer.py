@@ -1,7 +1,6 @@
 """Manages C++ annotation items on a SciQLopPlot for a single layer."""
 import shiboken6
 import numpy as np
-import re
 from typing import Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
@@ -15,6 +14,7 @@ from SciQLop.user_api.layers.types import Marker, Span, HLine, Annotation
 from SciQLop.user_api.layers._introspection import DataTypeInfo
 from SciQLop.user_api.data_types import wrap_graph_data, data_class_for_product_type
 from SciQLop.components.sciqlop_logging import getLogger as _getLogger
+from SciQLop.core.colors import css_rgb
 
 log = _getLogger(__name__)
 
@@ -67,29 +67,6 @@ def _partition(items: list[Annotation]) -> dict[str, list]:
     return groups
 
 
-_CSS_RGB = re.compile(
-    r"^\s*rgba?\(\s*([0-9.]+)\s*,\s*([0-9.]+)\s*,\s*([0-9.]+)\s*"
-    r"(?:,\s*([0-9.]+)\s*)?\)\s*$", re.IGNORECASE)
-
-
-def _css_rgb(text: str) -> Optional[QColor]:
-    """QColor from a CSS ``rgb()``/``rgba()`` string, or None if it is not one.
-
-    QColor does not accept these: it returns an *invalid* colour, which paints
-    nothing, so the annotation simply vanishes with no error anywhere.
-    """
-    m = _CSS_RGB.match(text)
-    if not m:
-        return None
-    r, g, b, a = m.groups()
-    c = QColor(int(float(r)), int(float(g)), int(float(b)))
-    if a is not None:
-        # CSS writes alpha 0..1; accept 0..255 too, since Qt users reach for it
-        av = float(a)
-        c.setAlpha(round(av * 255) if av <= 1.0 else round(av))
-    return c
-
-
 def _parse_color(color_str: Optional[str], default: str, alpha: int = 255):
     """Colour from a Qt name, ``#RRGGBB``/``#AARRGGBB``, or CSS ``rgb()``/``rgba()``.
 
@@ -98,7 +75,7 @@ def _parse_color(color_str: Optional[str], default: str, alpha: int = 255):
     painting nothing.
     """
     text = (color_str or default).strip()
-    c = _css_rgb(text)
+    c = css_rgb(text)
     carries_alpha = c is not None and c.alpha() < 255
     if c is None:
         c = QColor(text)

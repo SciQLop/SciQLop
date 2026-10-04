@@ -4,6 +4,7 @@ from typing import Callable, Dict, Hashable, List, NamedTuple, Optional, Sequenc
 
 import numpy as np
 from PySide6.QtGui import QColor
+from SciQLop.core.colors import to_qcolor
 from speasy.core import make_utc_datetime
 
 from ._graphs import _wire_destroyed
@@ -167,8 +168,8 @@ class Timeline(GuardedImpl):
 
     @on_main_thread
     def set_category_colors(self, colors: Dict[str, Union[str, QColor]]):
-        """Colour per category, as ``QColor`` or any Qt colour string (``"#f59e0b"``, ``"red"``)."""
-        self._get_impl_or_raise().set_category_colors({name: QColor(c) for name, c in colors.items()})
+        """Colour per category, as ``QColor``, a Qt colour string (``"#f59e0b"``, ``"red"``) or CSS ``rgba()``."""
+        self._get_impl_or_raise().set_category_colors({name: to_qcolor(c) for name, c in colors.items()})
 
     @on_main_thread
     def category_color(self, category: str) -> str:

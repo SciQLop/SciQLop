@@ -27,6 +27,8 @@ class ScaleType(Enum):
 
 
 class BinStrategy(Enum):
+    """Histogram bin spacing. ``SymLog`` is reserved: SciQLopPlots histograms
+    do not support it yet, so passing it raises NotImplementedError."""
     Linear = "linear"
     Log = "log"
     SymLog = "symlog"

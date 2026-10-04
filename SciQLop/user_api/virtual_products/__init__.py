@@ -74,42 +74,45 @@ class VirtualScalar(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, label: str,
                  debug: Optional[bool] = False, cachable: Optional[bool] = False,
                  knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
-                 color_axis=None):
+                 color_axis=None, display_name: Optional[str] = None):
         super(VirtualScalar, self).__init__(path, callback, VirtualProductType.Scalar)
         if not isinstance(label, str) or not label.strip():
             raise ValueError("Scalar virtual products need exactly one non-empty label")
         self._impl = _EasyScalar(path, callback, component_name=label, metadata={},
                                  debug=debug, cacheable=cachable,
                                  knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                                 out_of_process=out_of_process, color_axis=color_axis)
+                                 out_of_process=out_of_process, color_axis=color_axis,
+                                 display_name=display_name)
 
 
 class VirtualVector(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, labels: List[str],
                  debug: Optional[bool] = False, cachable: Optional[bool] = False,
                  knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
-                 color_axis=None):
+                 color_axis=None, display_name: Optional[str] = None):
         super(VirtualVector, self).__init__(path, callback, VirtualProductType.Vector)
         if not isinstance(labels, (list, tuple)) or len(labels) != 3:
             raise ValueError("Vector virtual products need exactly three labels")
         self._impl = _EasyVector(path, callback, components_names=labels, metadata={},
                                  debug=debug, cacheable=cachable,
                                  knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                                 out_of_process=out_of_process, color_axis=color_axis)
+                                 out_of_process=out_of_process, color_axis=color_axis,
+                                 display_name=display_name)
 
 
 class VirtualMultiComponent(VirtualProduct):
     def __init__(self, path: str, callback: VirtualProductCallback, labels: List[str],
                  debug: Optional[bool] = False, cachable: Optional[bool] = False,
                  knobs_model=None, knobs_kwarg_name="knobs", out_of_process: bool = False,
-                 color_axis=None):
+                 color_axis=None, display_name: Optional[str] = None):
         super(VirtualMultiComponent, self).__init__(path, callback, VirtualProductType.MultiComponent)
         if not isinstance(labels, (list, tuple)) or not labels:
             raise ValueError("MultiComponent virtual products need a non-empty list of labels")
         self._impl = _EasyMultiComponent(path, callback, components_names=labels, metadata={},
                                          debug=debug, cacheable=cachable,
                                          knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                                         out_of_process=out_of_process, color_axis=color_axis)
+                                         out_of_process=out_of_process, color_axis=color_axis,
+                                         display_name=display_name)
 
 
 class VirtualSpectrogram(VirtualProduct):
@@ -154,6 +157,7 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
         The type of the virtual product, either Scalar, Vector, MultiComponent or Spectrogram.
     labels : Optional[List[str]]
         The labels of the virtual product, either one for Scalar, three for Vector, or any number for MultiComponent. The labels are the names of the components of the virtual product.
+        Defaults to the labels of the callback's return annotation (``-> Scalar["|B|"]``).
     debug : Optional[bool]
         The debug flag, prints stack traces of exceptions if True. Handy for debugging the callback function.
     cachable : Optional[bool]
@@ -163,8 +167,8 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
     knobs_kwarg_name : str
         Name of the keyword argument used to pass the knobs model instance to the callback (default: "knobs").
     display_name : Optional[str]
-        Name shown in the product tree and used as the plot label. Defaults to
-        the last segment of `path`.
+        Name shown in the product tree and used as the plot label, for every
+        product type. Defaults to the last segment of `path`.
     colored : bool
         The callback returns ``Colored(data, color=c)``: one colour value per sample,
         drawn on the plot's colour scale. Not for Spectrogram.
@@ -198,27 +202,37 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
             f"product_type must be a VirtualProductType "
             f"(e.g. VirtualProductType.Scalar), got {product_type!r}")
     color_axis = _color_axis(colored, color_label, color_gradient, product_type)
+    labels = labels if labels is not None else _annotated_labels(callback)
+    common = dict(debug=debug, cachable=cachable, knobs_model=knobs_model,
+                  knobs_kwarg_name=knobs_kwarg_name, display_name=display_name)
     if product_type == VirtualProductType.Scalar:
         if labels is None or len(labels) != 1:
-            raise ValueError("Scalar virtual products need exactly one label")
-        return VirtualScalar(path, callback, label=labels[0], debug=debug, cachable=cachable,
-                             knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                             color_axis=color_axis)
+            raise ValueError("Scalar virtual products need exactly one label "
+                             "(labels=[...] or a `-> Scalar[\"name\"]` return annotation)")
+        return VirtualScalar(path, callback, label=labels[0], color_axis=color_axis, **common)
     elif product_type == VirtualProductType.Vector:
         if labels is None or len(labels) != 3:
-            raise ValueError("Vector virtual products need exactly three labels")
-        return VirtualVector(path, callback, labels=labels, debug=debug, cachable=cachable,
-                             knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                             color_axis=color_axis)
+            raise ValueError("Vector virtual products need exactly three labels "
+                             "(labels=[...] or a `-> Vector[\"x\", \"y\", \"z\"]` return annotation)")
+        return VirtualVector(path, callback, labels=labels, color_axis=color_axis, **common)
     elif product_type == VirtualProductType.MultiComponent:
         if labels is None:
-            raise ValueError("MultiComponent virtual products need a list of labels")
-        return VirtualMultiComponent(path, callback, labels=labels, debug=debug, cachable=cachable,
-                                     knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                                     color_axis=color_axis)
-    return VirtualSpectrogram(path, callback, debug=debug, cachable=cachable,
-                              knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
-                              display_name=display_name)
+            raise ValueError("MultiComponent virtual products need a list of labels "
+                             "(labels=[...] or a `-> MultiComponent[...]` return annotation)")
+        return VirtualMultiComponent(path, callback, labels=labels, color_axis=color_axis, **common)
+    return VirtualSpectrogram(path, callback, **common)
+
+
+def _annotated_labels(callback) -> Optional[List[str]]:
+    """Labels from a ``-> Scalar["|B|"]``-style return annotation, if any."""
+    import inspect
+    from SciQLop.user_api.data_types import extract_vp_type_info
+    try:
+        annotation = inspect.signature(callback, eval_str=True).return_annotation
+    except Exception:  # unresolvable string annotation: no labels, the caller says what is missing
+        return None
+    info = extract_vp_type_info(None if annotation is inspect.Signature.empty else annotation)
+    return list(info.labels) if info is not None and info.labels else None
 
 
 def list_virtual_products() -> List[str]:

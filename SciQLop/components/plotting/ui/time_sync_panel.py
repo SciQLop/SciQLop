@@ -1447,8 +1447,8 @@ class TimeSyncPanel(SciQLopMultiPlotPanel):
         sub.setToolTipsVisible(True)
         menu.addMenu(sub)
         template_tooltip = (
-            "A panel template stores the plots, products and styling of this "
-            "panel \u2014 not the time range or the workspace.")
+            "A panel template stores the plots, products, styling and time "
+            "range of this panel \u2014 not the workspace.")
         sub.menuAction().setToolTip(template_tooltip)
         if self._template_source_path:
             update = sub.addAction("Update template", self._update_template)

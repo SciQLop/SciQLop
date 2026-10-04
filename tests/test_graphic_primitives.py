@@ -114,3 +114,35 @@ def test_horizontal_span_can_be_added_and_removed(any_plot):
     span = HorizontalSpan(any_plot, 2.0, 7.0)
     assert span is not None
     span.remove()
+
+
+@pytest.mark.parametrize("make", [
+    lambda p, c: RectangularSpan(p, 2.0, 2.0, 7.0, 7.0, color=c),
+    lambda p, c: HorizontalSpan(p, 2.0, 7.0, color=c),
+], ids=["rectangular", "horizontal"])
+def test_spans_accept_css_rgba(direct_plot, make):
+    span = make(direct_plot, "rgba(200, 50, 50, 0.4)")
+    assert (span.color.red(), span.color.green(), span.color.blue(), span.color.alpha()) == (200, 50, 50, 102)
+    assert span.borders_color.red() == 200
+
+
+def test_primitive_colour_setter_accepts_css_rgb(direct_plot):
+    line = VerticalLine(direct_plot, 5.0)
+    line.color = "rgb(10, 20, 30)"
+    assert line.color.name() == "#0a141e"
+
+
+def test_unparseable_primitive_colour_is_refused(direct_plot):
+    line = VerticalLine(direct_plot, 5.0)
+    with pytest.raises(ValueError, match="colour"):
+        line.color = "not-a-colour"
+
+
+def test_horizontal_line_has_visible_and_palette_default(direct_plot):
+    from SciQLop.user_api.plot import HorizontalLine
+
+    hline = HorizontalLine(direct_plot, 0.5)
+    vline = VerticalLine(direct_plot, 5.0)
+    assert hline.color == vline.color
+    hline.visible = False
+    assert hline.visible is False

@@ -119,10 +119,10 @@ def _normalize_plot_kwargs(kwargs: dict) -> dict:
     plot_type after consuming it).
     """
     kwargs["plot_type"] = _to_sqp_plot_type(kwargs.get("plot_type", PlotType.TimeSeries))
-    if kwargs["plot_type"] != _PlotType.TimeSeries:
-        kwargs["graph_type"] = _GraphType.ParametricCurve
-    elif "graph_type" in kwargs:
+    if kwargs.get("graph_type") is not None:
         kwargs["graph_type"] = _to_sqp_graph_type(kwargs["graph_type"])
+    elif kwargs["plot_type"] != _PlotType.TimeSeries:
+        kwargs["graph_type"] = _GraphType.ParametricCurve
     return kwargs
 
 
@@ -448,11 +448,12 @@ class PlotPanel(GuardedImpl):
             Both paths create an XY plot.
         name : str
             Histogram label (shown in legend).
-        x_bins, y_bins : int or array-like
-            Number of bins along each axis, or explicit monotonic bin edges.
+        x_bins, y_bins : int
+            Number of bins along each axis. Explicit bin edges are not
+            supported yet (NotImplementedError).
         x_bin_strategy, y_bin_strategy : BinStrategy
-            Spacing strategy used when the corresponding bin count is an
-            integer. Ignored when explicit edges are supplied.
+            ``Linear`` or ``Log`` bin spacing. ``SymLog`` is not supported
+            yet (NotImplementedError).
         z_log_scale : bool
             Use a logarithmic color scale.
         gradient
@@ -699,9 +700,7 @@ class PlotPanel(GuardedImpl):
             raise ValueError(
                 f"time range bounds must be finite (got start={t0}, stop={t1})")
         if t0 == t1:
-            raise ValueError(
-                f"zero-width time range ({t0} == {t1}); note that TimeRange "
-                "silently parses unrecognized date strings to epoch 0")
+            raise ValueError(f"zero-width time range ({t0} == {t1})")
         with _tracing.zone("panel.set_time_range", cat="panel",
                            n_plots=len(plots), t0=t0, t1=t1, dt=t1 - t0):
             with _tracing.zone("panel.set_time_axis_range", cat="panel", t0=t0, t1=t1):
@@ -867,10 +866,22 @@ def plot_panel(name: str) -> Optional[PlotPanel]:
 
 
 @on_main_thread
-def create_plot_panel() -> PlotPanel:
+def create_plot_panel(name: Optional[str] = None) -> PlotPanel:
     """Create a new plot panel.
+
+    Args:
+        name (Optional[str]): The panel name. Made unique if already taken;
+            defaults to an automatic "Panel" name.
 
     Returns:
         PlotPanel: The newly created plot panel.
     """
-    return PlotPanel(_get_main_window().new_plot_panel())
+    if name is not None and not isinstance(name, str):
+        raise TypeError(f"panel name must be a str, got {type(name).__name__}")
+    return PlotPanel(_get_main_window().new_plot_panel(name=name))
+
+
+@on_main_thread
+def list_plot_panels() -> List[str]:
+    """Names of every open plot panel; pass one to :func:`plot_panel` to get it."""
+    return _get_main_window().plot_panels()

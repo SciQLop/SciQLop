@@ -1,11 +1,15 @@
 """SciQLop DSP user API.
 
-Public functions accept either numpy arrays or a SpeasyVariable. When given
-a SpeasyVariable, the result is rewrapped as a new SpeasyVariable preserving
-metadata; for arrays, the result mirrors ``SciQLopPlots.dsp``.
+Public functions take a SpeasyVariable and return a new SpeasyVariable that
+keeps its metadata; they raise TypeError for anything else. For raw numpy
+arrays use the same functions from ``SciQLop.user_api.dsp.arrays``, which
+mirror ``SciQLopPlots.dsp``.
 
-Functions whose semantics change the time axis (``fft``, ``spectrogram``,
-``resample``) document their rewrap behavior in the per-function docstring.
+The gap-aware filters (``filtfilt``, ``sosfiltfilt``, ``fir_filter``,
+``iir_sos``, ``rolling_mean``, ``rolling_std``) insert one NaN sample in each
+data gap, so a plot breaks the line there: the result has one more sample per
+gap than the input. Functions that build a new time axis (``fft``,
+``spectrogram``, ``resample``) document it in their own docstring.
 
 All public functions are marked @experimental_api().
 """

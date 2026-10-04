@@ -684,10 +684,12 @@ class XYPlot(_BasePlot):
             Scatter data to bin.
         name : str
             Histogram label.
-        x_bins, y_bins : int or array-like
-            Bin counts along X and Y, or explicit monotonic bin edges.
+        x_bins, y_bins : int
+            Bin counts along X and Y. Explicit bin edges are not supported
+            yet (NotImplementedError).
         x_bin_strategy, y_bin_strategy : BinStrategy
-            Spacing strategy used when *x_bins* / *y_bins* are integers.
+            ``Linear`` or ``Log`` bin spacing. ``SymLog`` is not supported
+            yet (NotImplementedError).
         z_log_scale : bool
             Use a logarithmic color scale.
 

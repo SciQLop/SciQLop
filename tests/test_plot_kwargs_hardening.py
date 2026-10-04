@@ -365,3 +365,15 @@ def test_scatter_name_applied_without_forwarding(plot_panel, monkeypatch):
     graph = plot.scatter(x, np.cos(x), name="my_scatter")
     assert "name" not in captured
     assert graph._impl.name == "my_scatter"
+
+
+def test_plot_data_xy_honours_an_explicit_graph_type(plot_panel):
+    from SciQLop.user_api.plot import PlotType
+    from SciQLop.user_api.plot.enums import GraphType
+    x = np.linspace(0, 1, 20)
+    plot, curve = plot_panel.plot_data(x, np.sin(x), plot_type=PlotType.XY)
+    _plot, scatter = plot_panel.plot_data(x, np.cos(x), plot_type=PlotType.XY,
+                                          graph_type=GraphType.Scatter)
+    reference = plot.scatter(x, np.cos(x))
+    assert type(scatter._impl) is type(reference._impl)
+    assert type(scatter._impl) is not type(curve._impl)
