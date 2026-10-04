@@ -87,15 +87,20 @@ def _staging_workspace() -> Path | None:
     return Path(workspace) if running_from_live_slot else None
 
 
-def _stage_update(workspace_dir: Path, pip_spec: str, dist_name: str) -> None:
-    """Build the update into the workspace's other venv slot, live after a restart.
+def _stage_change(workspace_dir: Path, dist_name: str, pip_spec: str | None) -> None:
+    """Build an update (*pip_spec*) or removal (None) of *dist_name* into the
+    workspace's other venv slot, live after a restart.
 
-    The running venv is never touched (Windows can't replace a loaded file).
-    On failure the previously saved spec is put back, so nothing changes.
+    The running venv is never touched (Windows can't replace or delete a
+    loaded file). On failure the previously saved spec is put back, so
+    nothing changes.
     """
     from SciQLop.components.workspaces.backend import workspace_setup
     previous = _installed_spec(dist_name)
-    _save_installed_package(pip_spec, dist_name)
+    if pip_spec is None:
+        _remove_installed_package(dist_name)
+    else:
+        _save_installed_package(pip_spec, dist_name)
     try:
         workspace_setup.stage_environment(workspace_dir)
     except Exception:
@@ -262,7 +267,7 @@ class AppStoreBackend(QObject):
             dist_name = _package_name_from_pip(pip_spec) or canonical_package_name(name)
             was_installed = _installed_version(dist_name) is not None
             if was_installed and (workspace := _staging_workspace()):
-                _stage_update(workspace, pip_spec, dist_name)
+                _stage_change(workspace, dist_name, pip_spec)
                 self.install_finished.emit(json.dumps({
                     "name": name, "ok": True, "version": latest["version"],
                     "loaded": True, "restart_required": True}))
@@ -314,8 +319,11 @@ class AppStoreBackend(QObject):
                 if not dist_name:
                     self.uninstall_finished.emit(json.dumps({"name": name, "ok": False, "error": "cannot determine package name"}))
                     return
-                subprocess.run(_uv_uninstall_cmd(dist_name), check=True, capture_output=True, text=True)
-                _remove_installed_package(dist_name)
+                if workspace := _staging_workspace():
+                    _stage_change(workspace, dist_name, None)
+                else:
+                    subprocess.run(_uv_uninstall_cmd(dist_name), check=True, capture_output=True, text=True)
+                    _remove_installed_package(dist_name)
                 self.uninstall_finished.emit(json.dumps({"name": name, "ok": True, "restart_required": True}))
             except Exception as e:
                 detail = error_detail(e)

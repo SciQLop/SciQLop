@@ -381,6 +381,28 @@ class TestUpdatesAreStagedInTheOtherSlot:
         assert store.saved == {"a-plugin": "a-plugin==1.0"}
         assert store.received[0]["ok"] is False and "no network" in store.received[0]["error"]
 
+    def test_an_uninstall_is_staged_not_removed_live(self, qtbot, running_from_workspace, store, monkeypatch):
+        live_removals = []
+        monkeypatch.setattr("SciQLop.components.appstore.backend.subprocess.run",
+                            lambda cmd, **kw: live_removals.append(cmd))
+        store.saved["a-plugin"] = "a-plugin==1.0"
+        with qtbot.waitSignal(store.backend.uninstall_finished, timeout=3000) as blocker:
+            store.backend.uninstall_package("A")
+        payload = json.loads(blocker.args[0])
+        assert live_removals == []
+        assert store.staged == [(running_from_workspace, {})]
+        assert payload["ok"] is True and payload["restart_required"] is True
+
+    def test_a_failed_uninstall_stage_keeps_the_plugin(self, qtbot, running_from_workspace, store, monkeypatch):
+        monkeypatch.setattr("SciQLop.components.workspaces.backend.workspace_setup.stage_environment",
+                            lambda ws: (_ for _ in ()).throw(RuntimeError("no network")))
+        store.saved["a-plugin"] = "a-plugin==1.0"
+        with qtbot.waitSignal(store.backend.uninstall_finished, timeout=3000) as blocker:
+            store.backend.uninstall_package("A")
+        payload = json.loads(blocker.args[0])
+        assert store.saved == {"a-plugin": "a-plugin==1.0"}
+        assert payload["ok"] is False and "no network" in payload["error"]
+
     def test_a_new_plugin_still_installs_live(self, qtbot, running_from_workspace, store, monkeypatch):
         monkeypatch.setattr("SciQLop.components.appstore.backend._installed_version", lambda d: None)
         store.backend.install_package("A")
