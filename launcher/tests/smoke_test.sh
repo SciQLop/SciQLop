@@ -415,6 +415,55 @@ else
     echo "  skip: xdotool not installed, the Restart button cannot be clicked"
 fi
 
+# --- case 8: "Reset environment" restarts once with --reset-environment ------
+cat > "$ROOT/bin/python3" <<EOF
+#!/usr/bin/env bash
+count=\$(( \$(cat "$ROOT/case8-count" 2>/dev/null || echo 0) + 1 ))
+echo "\$count" > "$ROOT/case8-count"
+echo "\$*" > "$ROOT/case8-argv-\$count"
+if [ "\$count" -eq 1 ]; then
+    echo "first run crashes" >&2
+    exit 139
+fi
+: > "\$SCIQLOP_STARTUP_READY_FILE"
+[ "\$count" -eq 2 ] && exit 64   # the reset round asks for one plain restart
+exit 0
+EOF
+chmod +x "$ROOT/bin/python3"
+
+start_case "case 8: Reset environment after a crash"
+if command -v xdotool >/dev/null 2>&1; then
+    "$LAUNCHER" --workspace crashy &
+    LAUNCHER_PID=$!
+    window_id="$(find_error_window)"
+    if [ -n "$window_id" ]; then
+        # Centre of the Reset button: x = WIDTH - PAD - 150 - 10 - 85, y = 406 + 16,
+        # then Enter accepts the confirmation dialog's default "Reset and restart".
+        for _ in $(seq 1 20); do
+            xdotool mousemove --window "$window_id" 455 422 click 1 2>/dev/null
+            sleep 0.5
+            xdotool key Return 2>/dev/null
+            sleep 0.5
+            [ -f "$ROOT/case8-argv-2" ] && break
+        done
+        wait_bounded "$LAUNCHER_PID" 20
+        case8_exit=$?
+        LAUNCHER_PID=""
+        expect "the reset round passes --reset-environment" equals \
+            "$(grep -c -- '--reset-environment' "$ROOT/case8-argv-2" 2>/dev/null)" 1
+        expect "the next restart does not reset again" equals \
+            "$(grep -c -- '--reset-environment' "$ROOT/case8-argv-3" 2>/dev/null)" 0
+        expect "the launcher exits cleanly after the rounds" equals "$case8_exit" 0
+    else
+        kill "$LAUNCHER_PID" 2>/dev/null
+        wait "$LAUNCHER_PID" 2>/dev/null
+        LAUNCHER_PID=""
+        expect "the error window with the Reset button appeared" false
+    fi
+else
+    echo "  skip: xdotool not installed, the Reset button cannot be clicked"
+fi
+
 echo
 if [ "$failures" -eq 0 ]; then
     echo "smoke test passed"

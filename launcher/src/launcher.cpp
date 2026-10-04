@@ -273,6 +273,8 @@ Options parse_args(const std::vector<std::string>& args) {
             // forwarded as-is, so it need not be re-parsed on every round.
             options.passthrough.push_back(arg);
             options.passthrough.push_back(args[++i]);
+        } else if (arg == "--reset-environment") {
+            options.reset_environment = true;
         } else if (!arg.empty() && arg.front() != '-') {
             options.sciqlop_file = arg;
         } else {
@@ -284,6 +286,7 @@ Options parse_args(const std::vector<std::string>& args) {
 
 std::vector<std::string> app_argv(const Options& options) {
     std::vector<std::string> argv = options.passthrough;
+    if (options.reset_environment) argv.push_back("--reset-environment");
     if (!options.workspace.empty()) {
         argv.push_back("--workspace");
         argv.push_back(options.workspace);
@@ -300,6 +303,7 @@ std::vector<std::string> session_argv(const std::string& executable, const Optio
 }
 
 Options options_for_next_round(Options options, int exit_code, const std::string& switch_target) {
+    options.reset_environment = false;
     if (exit_code == EXIT_SWITCH_WORKSPACE) {
         options.workspace = switch_target;
         options.sciqlop_file.clear();

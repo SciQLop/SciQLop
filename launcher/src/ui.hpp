@@ -34,6 +34,10 @@ public:
     /// after run_with_worker() returns.
     virtual bool restart_requested() const = 0;
 
+    /// True once the user chose "Reset environment" on the error view (which
+    /// also requests a restart). Read it after run_with_worker() returns.
+    virtual bool reset_requested() const = 0;
+
     /// Hide the splash immediately — e.g. once the real app window is up —
     /// without waiting for run_with_worker's *work* to return (which only
     /// happens once the supervised app process exits entirely). Safe to call

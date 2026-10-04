@@ -1657,3 +1657,43 @@ class TestPrepareWorkspaceAppstorePluginAutoUpdate:
         deps = gen.call_args_list[0].args[1]
         assert "demo==2.0.0" in deps
         assert "demo==1.0.0" not in deps
+
+
+class TestPrepareWorkspaceReset:
+    """The launcher's "Reset environment" button (--reset-environment)."""
+
+    LATEST = "SciQLop.components.workspaces.backend.workspace_reset.fetch_available_versions"
+
+    @pytest.fixture
+    def pinned_workspace(self, workspace_dir):
+        (workspace_dir / ".venv" / "lib").mkdir(parents=True)
+        manifest = WorkspaceManifest.default_manifest("ws")
+        manifest.sciqlop_version = "0.13.0"
+        manifest.save(workspace_dir / "workspace.sciqlop")
+        return workspace_dir
+
+    def test_reset_moves_the_venv_away_before_rebuilding(self, pinned_workspace, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        venv_seen_by_ensure = []
+        patches["venv"].ensure.side_effect = lambda **_: venv_seen_by_ensure.append(
+            (pinned_workspace / ".venv").exists())
+        with patch(self.LATEST, return_value=["0.14.2"]):
+            prepare_workspace(pinned_workspace, reset_environment=True)
+        assert venv_seen_by_ensure == [False]
+
+    def test_reset_builds_on_the_newest_release(self, pinned_workspace, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        with patch(self.LATEST, return_value=["0.14.2"]):
+            prepare_workspace(pinned_workspace, reset_environment=True)
+        manifest = patches["generate_pyproject_toml"].call_args.args[0]
+        assert manifest.sciqlop_version == "0.14.2"
+
+    def test_a_normal_start_only_cleans_old_leftovers(self, pinned_workspace, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        (pinned_workspace / ".venv.reset-20261004-070000").mkdir()
+        prepare_workspace(pinned_workspace)
+        assert (pinned_workspace / ".venv").exists()
+        assert not (pinned_workspace / ".venv.reset-20261004-070000").exists()

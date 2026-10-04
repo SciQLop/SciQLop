@@ -50,6 +50,9 @@ struct Options {
     std::string workspace;                 ///< from --workspace/-w; empty => let Python resolve
     std::string sciqlop_file;              ///< positional .sciqlop/.sciqlop-archive file
     std::vector<std::string> passthrough;  ///< every other argument, in argv order
+    /// Rebuild the workspace's Python environment this round (the error view's
+    /// "Reset environment" button, or --reset-environment). Never replayed.
+    bool reset_environment = false;
 };
 
 /// *args* is argv[1..] (no program name) — see main.cpp for how each platform
@@ -57,7 +60,8 @@ struct Options {
 Options parse_args(const std::vector<std::string>& args);
 
 /// The argv this round hands to python3 -I -m SciQLop.app: passthrough, then
-/// --workspace <workspace> if set, then the positional file if set. Exposed
+/// --reset-environment if asked, then --workspace <workspace> if set, then the
+/// positional file if set. Exposed
 /// so command building is unit-testable without spawning a process.
 std::vector<std::string> app_argv(const Options& options);
 
@@ -73,7 +77,8 @@ std::vector<std::string> session_argv(const std::string& executable, const Optio
 /// for — same workspace, positional file and passthrough args. A workspace
 /// switch (EXIT_SWITCH_WORKSPACE) moves to *switch_target* and drops the
 /// positional file, which named a location in the old workspace. Any other
-/// exit code returns *options* unchanged.
+/// exit code returns *options* unchanged. An environment reset applies to one
+/// round only, so it is always cleared.
 Options options_for_next_round(Options options, int exit_code, const std::string& switch_target);
 
 /// Classify one line of the supervised app's STDOUT as a phase transition.

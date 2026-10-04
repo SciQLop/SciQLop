@@ -29,6 +29,7 @@ from SciQLop.components.workspaces.backend.workspace_project import (
     running_sciqlop_version,
     strip_host_provided,
 )
+from SciQLop.components.workspaces.backend import workspace_reset
 from SciQLop.components.workspaces.backend.workspace_venv import WorkspaceVenv
 from SciQLop.core.common.files import write_text_atomic
 
@@ -497,6 +498,7 @@ def prepare_workspace(
     on_output: Callable[[str], None] | None = None,
     manifest: WorkspaceManifest | None = None,
     strict: bool = False,
+    reset_environment: bool = False,
 ) -> Path:
     """Prepare a workspace: ensure manifest, generate pyproject.toml, sync venv.
 
@@ -525,6 +527,11 @@ def prepare_workspace(
         start offline with a stale-but-working venv; that permissiveness is
         wrong for an explicit, user-requested version change, which must
         fail loudly rather than silently keep the old version.
+    reset_environment:
+        If ``True``, drop the workspace's ``.venv`` and ``uv.lock`` first and
+        pin the newest SciQLop release, so this run rebuilds everything (see
+        ``workspace_reset``). Otherwise environments an earlier reset could not
+        fully delete are cleaned up.
 
     Returns
     -------
@@ -533,6 +540,10 @@ def prepare_workspace(
     """
     workspace_dir = Path(workspace_dir)
     workspace_dir.mkdir(parents=True, exist_ok=True)
+    if reset_environment:
+        workspace_reset.reset_environment(workspace_dir, on_output=on_output)
+    else:
+        workspace_reset.remove_reset_leftovers(workspace_dir, on_output=on_output)
 
     # Migrate from old workspace.json format if needed
     if migrate_workspace(workspace_dir):

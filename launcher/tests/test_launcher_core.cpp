@@ -7,6 +7,7 @@
 #include "paths.hpp"
 #include "process.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 #include <fstream>
@@ -143,6 +144,38 @@ void test_options_for_next_round_switch_replaces_workspace_and_drops_file() {
     check(next.workspace == "other-workspace",
           "switch replaces the workspace with the handoff target");
     check(next.sciqlop_file.empty(), "switch drops the positional file");
+}
+
+// --- environment reset ("Reset environment" button) ------------------------
+
+void test_parse_args_reset_environment_is_a_flag_not_passthrough() {
+    const sciqlop::Options options =
+        sciqlop::parse_args({"--reset-environment", "-w", "ws"});
+    check(options.reset_environment, "--reset-environment sets the flag");
+    check(options.passthrough.empty(), "--reset-environment is not replayed as passthrough");
+}
+
+void test_app_argv_forwards_reset_only_when_asked() {
+    sciqlop::Options options;
+    options.workspace = "ws";
+    const auto plain = sciqlop::app_argv(options);
+    check(std::find(plain.begin(), plain.end(), "--reset-environment") == plain.end(),
+          "no reset unless asked");
+    options.reset_environment = true;
+    const auto reset = sciqlop::app_argv(options);
+    check(std::find(reset.begin(), reset.end(), "--reset-environment") != reset.end(),
+          "the reset round forwards --reset-environment");
+}
+
+void test_options_for_next_round_never_carries_the_reset_over() {
+    sciqlop::Options options;
+    options.workspace = "ws";
+    options.reset_environment = true;
+    check(!sciqlop::options_for_next_round(options, sciqlop::EXIT_RESTART, "").reset_environment,
+          "a restart after a reset does not reset again");
+    check(!sciqlop::options_for_next_round(options, sciqlop::EXIT_SWITCH_WORKSPACE, "other")
+               .reset_environment,
+          "a switch after a reset does not reset the next workspace");
 }
 
 // --- restart_budget_exhausted -----------------------------------------------
@@ -347,6 +380,9 @@ int main() {
     test_app_argv_omits_absent_workspace_and_file();
     test_options_for_next_round_restart_keeps_everything();
     test_options_for_next_round_switch_replaces_workspace_and_drops_file();
+    test_parse_args_reset_environment_is_a_flag_not_passthrough();
+    test_app_argv_forwards_reset_only_when_asked();
+    test_options_for_next_round_never_carries_the_reset_over();
     test_restart_budget_three_in_window_is_fine();
     test_restart_budget_fourth_in_window_is_exhausted();
     test_restart_budget_ignores_restarts_outside_window();

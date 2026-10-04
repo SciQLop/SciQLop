@@ -87,6 +87,7 @@ int main(int argc, char** argv) {
                     sciqlop::session_log().string();
                 ui->run_with_worker([&] { ui->post_error(message); });
                 if (!ui->restart_requested()) return 1;
+                options.reset_environment = ui->reset_requested();
                 restart_times.clear();
                 ++round;
                 continue;
@@ -94,8 +95,9 @@ int main(int argc, char** argv) {
         }
 
         const sciqlop::SessionResult result = sciqlop::run_session(options, *ui, round, kind);
+        options.reset_environment = ui->reset_requested();
 
-        // The user chose "Restart SciQLop" on the error view. A crash has
+        // The user chose "Restart SciQLop" (or "Reset environment") on the error view. A crash has
         // already left its marker, so the app offers to investigate it on this
         // next start. A deliberate restart is not a crash loop: it resets the
         // restart budget.

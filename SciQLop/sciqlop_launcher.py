@@ -54,6 +54,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Path to a .sciqlop or .sciqlop-archive file")
     parser.add_argument("--sciqlop-version", default=None,
                         help="reserved; currently ignored")
+    parser.add_argument("--reset-environment", action="store_true",
+                        help="rebuild the workspace's Python environment on the newest SciQLop "
+                             "(the native launcher's \"Reset environment\" button)")
     return parser.parse_args(argv if argv is not None else sys.argv[1:])
 
 
@@ -346,7 +349,8 @@ def _spawn_app_logged(
     return proc, stderr_lines, log_path
 
 
-def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | None) -> tuple[int, Path | None]:
+def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | None,
+                             reset_environment: bool = False) -> tuple[int, Path | None]:
     from PySide6.QtCore import QEventLoop, QTimer
     from PySide6.QtWidgets import QApplication
     from SciQLop.components.startup.startup_window import StartupWindow
@@ -383,7 +387,8 @@ def _run_with_startup_window(workspace_name: str | None, sciqlop_file: str | Non
     else:
         def prepare_fn(on_output):
             from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
-            return prepare_workspace(workspace_dir, on_output=on_output)
+            return prepare_workspace(workspace_dir, on_output=on_output,
+                                     reset_environment=reset_environment)
 
     window.set_phase("Preparing workspace...")
     app.processEvents()
@@ -500,7 +505,8 @@ def _choose_run_session():
     return _run_with_startup_window if _qt_available() else _run_on_console
 
 
-def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tuple[int, Path | None]:
+def _run_on_console(workspace_name: str | None, sciqlop_file: str | None,
+                    reset_environment: bool = False) -> tuple[int, Path | None]:
     """Prepare the workspace and run SciQLop with no splash.
 
     Output goes straight to the terminal (and the session log) rather than
@@ -517,7 +523,8 @@ def _run_on_console(workspace_name: str | None, sciqlop_file: str | None) -> tup
             python_path = Path(sys.executable)
         else:
             from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
-            python_path = prepare_workspace(workspace_dir, on_output=print)
+            python_path = prepare_workspace(workspace_dir, on_output=print,
+                                            reset_environment=reset_environment)
     except Exception:
         import traceback
         message = "Workspace preparation failed:\n" + traceback.format_exc()
@@ -618,7 +625,8 @@ def _prepare_workspace_dev(workspace_dir: Path, on_output=None) -> None:
     repair_lab_assets(dev_venv_dir, on_output=on_output)
 
 
-def _run_single_session_for_native_launcher(workspace_name: str | None, sciqlop_file: str | None) -> int:
+def _run_single_session_for_native_launcher(workspace_name: str | None, sciqlop_file: str | None,
+                                            reset_environment: bool = False) -> int:
     """Run exactly one session under the native C++ launcher, which owns the
     restart (64) / workspace-switch (65) round loop itself (see
     ``launcher/src/main.cpp``) — this must never loop internally, or the two
@@ -630,7 +638,7 @@ def _run_single_session_for_native_launcher(workspace_name: str | None, sciqlop_
     for another iteration.
     """
     run_session = _choose_run_session()
-    exit_code, workspace_dir = run_session(workspace_name, sciqlop_file)
+    exit_code, workspace_dir = run_session(workspace_name, sciqlop_file, reset_environment=reset_environment)
 
     if exit_code == EXIT_SWITCH_WORKSPACE:
         target = _read_switch_target(workspace_dir) if workspace_dir else None
@@ -646,15 +654,18 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     workspace_name = args.workspace
     sciqlop_file = args.sciqlop_file
+    reset_environment = args.reset_environment
 
     if READY_FILE_ENV in os.environ:
-        return _run_single_session_for_native_launcher(workspace_name, sciqlop_file)
+        return _run_single_session_for_native_launcher(workspace_name, sciqlop_file, reset_environment)
 
     run_session = _choose_run_session()
 
     while True:
-        exit_code, workspace_dir = run_session(workspace_name, sciqlop_file)
+        exit_code, workspace_dir = run_session(workspace_name, sciqlop_file,
+                                               reset_environment=reset_environment)
         sciqlop_file = None  # only consumed once, on the first iteration
+        reset_environment = False
 
         if exit_code == EXIT_RESTART:
             continue

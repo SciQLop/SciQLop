@@ -9,6 +9,7 @@
 #include <FL/Fl_Text_Buffer.H>
 #include <FL/Fl_Text_Display.H>
 #include <FL/Fl_Window.H>
+#include <FL/fl_ask.H>
 #include <FL/fl_draw.H>
 
 #include <algorithm>
@@ -217,6 +218,7 @@ public:
         copy_->show();
         quit_->show();
         restart_->show();
+        reset_->show();
         window_->size(WIDTH, 458);
         centre();
         window_->redraw();
@@ -249,6 +251,7 @@ public:
     void post_error(const std::string& text) override { post(PostKind::Error, text, 0.0); }
     void dismiss() override { post(PostKind::Dismiss, {}, 0.0); }
     bool restart_requested() const override { return restart_requested_; }
+    bool reset_requested() const override { return reset_requested_; }
 
 private:
     void build(const std::filesystem::path& splash_png) {
@@ -300,12 +303,17 @@ private:
         copy_ = new FlatButton(PAD, 406, 150, 32, "Copy to clipboard");
         quit_ = new FlatButton(PAD + 160, 406, 90, 32, "Quit");
         restart_ = new FlatButton(WIDTH - PAD - 150, 406, 150, 32, "Restart SciQLop", true);
+        reset_ = new FlatButton(WIDTH - PAD - 150 - 10 - 170, 406, 170, 32, "Reset environment");
+        reset_->tooltip("Rebuild this workspace's Python environment on the newest SciQLop, "
+                        "then restart. Notebooks and settings are kept.");
         copy_->callback(on_copy, this);
         quit_->callback(on_quit, this);
         restart_->callback(on_restart, this);
+        reset_->callback(on_reset, this);
         copy_->hide();
         quit_->hide();
         restart_->hide();
+        reset_->hide();
 
         window_->callback(on_window_close, this);
 
@@ -388,6 +396,24 @@ private:
         self->close();
     }
 
+    static void on_reset(Fl_Widget*, void* data) {
+        auto* self = static_cast<FltkUi*>(data);
+        const int choice = fl_choice(
+            // fl_choice sizes itself to the longest line: keep lines short, or
+            // the dialog outgrows the screen and its buttons end up off-screen.
+            "Reset this workspace's Python environment?\n\n"
+            "Its packages are removed and reinstalled\n"
+            "on the newest SciQLop release.\n"
+            "Notebooks and settings are kept.\n\n"
+            "This needs an internet connection\n"
+            "and takes a few minutes.",
+            "Cancel", "Reset and restart", nullptr);
+        if (choice != 1) return;
+        self->reset_requested_ = true;
+        self->restart_requested_ = true;
+        self->close();
+    }
+
     /// The WM's own close button (or Alt+F4, or a WM_DELETE_WINDOW client
     /// message) reaches here. Without this callback FLTK's default behaviour
     /// is to just hide() the window — invisible but keepalive_ still keeps
@@ -410,9 +436,11 @@ private:
     FlatButton* copy_ = nullptr;
     FlatButton* quit_ = nullptr;
     FlatButton* restart_ = nullptr;
+    FlatButton* reset_ = nullptr;
     Fl_Text_Display* error_ = nullptr;
     bool error_shown_ = false;
     bool restart_requested_ = false;
+    bool reset_requested_ = false;
 };
 
 }  // namespace

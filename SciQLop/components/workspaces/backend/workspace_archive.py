@@ -8,8 +8,11 @@ transient files (.venv, pyproject.toml, __pycache__).
 import zipfile
 from pathlib import Path
 
+from .workspace_reset import is_reset_leftover
+
 # Rebuilt from the manifest, so never copied: the venv and caches at any depth,
-# the generated pyproject.toml only at the root (a nested one is the user's own package).
+# the generated pyproject.toml only at the root (a nested one is the user's own package),
+# and environments a reset renamed aside (see workspace_reset).
 EXCLUDED_ANYWHERE = {".venv", "__pycache__"}
 EXCLUDED_AT_ROOT = {"pyproject.toml"}
 
@@ -21,7 +24,8 @@ IMPORT_MARKER_NAME = ".sciqlop_imported"
 
 def is_excluded(path: Path) -> bool:
     """Whether *path*, relative to the workspace root, is left out of a copy or archive."""
-    return any(part in EXCLUDED_ANYWHERE for part in path.parts) or str(path) in EXCLUDED_AT_ROOT
+    return (any(part in EXCLUDED_ANYWHERE for part in path.parts) or str(path) in EXCLUDED_AT_ROOT
+            or bool(path.parts) and is_reset_leftover(path.parts[0]))
 
 
 def export_workspace(workspace_dir: Path | str, archive_path: Path | str) -> None:
