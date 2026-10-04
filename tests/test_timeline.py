@@ -47,6 +47,8 @@ def test_strip_over_an_existing_time_series_plot(plot_panel):
     np.array(["2026-01-01T00:00:00", "2026-01-01T00:01:00"], dtype="datetime64[s]"),
     [datetime(2026, 1, 1, tzinfo=timezone.utc), datetime(2026, 1, 1, 0, 1, tzinfo=timezone.utc)],
     ["2026-01-01T00:00", "2026-01-01T00:01"],
+    [datetime(2026, 1, 1, tzinfo=timezone.utc), np.datetime64("2026-01-01T00:01")],
+    ["2026-01-01T00:00", T0 + 60],
 ])
 def test_times_accept_epoch_datetime64_and_datetime(plot_panel, starts):
     _plot, tl = plot_panel.add_timeline()
@@ -134,6 +136,53 @@ def test_style_defaults_to_wave_and_switches_to_bars(timeline):
     assert timeline.style == "bars"
     with pytest.raises(ValueError):
         timeline.style = "gantt"
+
+
+class _RecordingTimeline:
+    """Stands in for SciQLopTimeline to see what the wrapper hands to SciQLopPlots."""
+    snap_to = None
+    stack = None
+    category_order = ()
+    forbid_overlap = False
+
+
+def test_snap_to_times_accept_datetimes_and_strings(timeline):
+    timeline._impl = _RecordingTimeline()
+    timeline.snap_to = [datetime(2026, 1, 1, tzinfo=timezone.utc), "2026-01-01T00:01",
+                        np.datetime64("2026-01-01T00:02"), T0 + 180]
+    assert list(timeline._impl.snap_to) == [T0, T0 + 60, T0 + 120, T0 + 180]
+
+
+@pytest.mark.parametrize("value", ["edges", 60, None])
+def test_snap_to_modes_pass_through(timeline, value):
+    timeline._impl = _RecordingTimeline()
+    timeline.snap_to = value
+    assert timeline._impl.snap_to == value
+
+
+def test_stacking_and_overlap_rules_pass_through(timeline):
+    timeline._impl = _RecordingTimeline()
+    timeline.stack = "category"
+    timeline.category_order = ("BASE", "HKM", "LM")
+    timeline.forbid_overlap = 1
+    impl = timeline._impl
+    assert (impl.stack, impl.category_order, impl.forbid_overlap) == ("category", ["BASE", "HKM", "LM"], True)
+    assert not {"stack", "category_order", "forbid_overlap"} & set(vars(timeline))
+
+
+def test_stacking_options_round_trip_on_sciqlopplots(timeline):
+    timeline.stack = "category"
+    timeline.category_order = ["survey", "LM"]
+    timeline.forbid_overlap = True
+    assert (timeline.stack, timeline.category_order, timeline.forbid_overlap) == (
+        "category", ["survey", "LM"], True)
+    with pytest.raises(ValueError):
+        timeline.stack = "lanes"
+
+
+def test_snap_to_times_round_trip_on_sciqlopplots(timeline):
+    timeline.snap_to = ["2026-01-01T00:01", T0]
+    assert timeline.snap_to == [T0, T0 + 60]
 
 
 def test_category_colours_accept_css_names(timeline):

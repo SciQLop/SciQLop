@@ -38,11 +38,16 @@ def _epoch_seconds_of(value) -> float:
         return make_utc_datetime(str(value)).timestamp()
     if isinstance(value, datetime):
         return make_utc_datetime(value).timestamp()
+    if isinstance(value, np.datetime64):
+        return value.astype("datetime64[ns]").astype(np.int64) / 1e9
     return float(value)
 
 
 def _epoch_seconds(values) -> np.ndarray:
-    a = np.asarray(values)
+    if not isinstance(values, np.ndarray):
+        # Element by element: np.asarray would turn [ "2026-01-01", 1.7e9 ] into strings.
+        return np.array([_epoch_seconds_of(v) for v in values], dtype=np.float64)
+    a = values
     if np.issubdtype(a.dtype, np.datetime64):
         return a.astype("datetime64[ns]").astype(np.int64) / 1e9
     if a.dtype == object or a.dtype.kind in "US":
@@ -203,13 +208,52 @@ class Timeline(GuardedImpl):
     @property
     @on_main_thread
     def snap_to(self):
-        """``"edges"``, a step in seconds, or ``None``."""
+        """``"edges"``, a step in seconds, a list of times to snap to (epoch seconds,
+        ``datetime64``, datetimes or date strings), or ``None``."""
         return self._get_impl_or_raise().snap_to
 
     @snap_to.setter
     @on_main_thread
     def snap_to(self, value):
+        if not (value is None or isinstance(value, (str, int, float))):
+            value = _epoch_seconds(value)
         self._get_impl_or_raise().snap_to = value
+
+    @property
+    @on_main_thread
+    def stack(self) -> Optional[str]:
+        """How overlapping intervals of one lane are laid out: ``None`` (drawn on top of
+        each other), ``"time"`` (into sub-rows as needed) or ``"category"`` (one fixed
+        sub-row per category, in ``category_order``)."""
+        return self._get_impl_or_raise().stack
+
+    @stack.setter
+    @on_main_thread
+    def stack(self, mode: Optional[str]):
+        self._get_impl_or_raise().stack = mode
+
+    @property
+    @on_main_thread
+    def category_order(self) -> List[str]:
+        """Sub-row order for ``stack="category"``; defaults to first-seen."""
+        return list(self._get_impl_or_raise().category_order)
+
+    @category_order.setter
+    @on_main_thread
+    def category_order(self, names: Sequence[str]):
+        self._get_impl_or_raise().category_order = list(names)
+
+    @property
+    @on_main_thread
+    def forbid_overlap(self) -> bool:
+        """Stop drags at the neighbouring block of the same row (same lane, and same
+        category with ``stack="category"``)."""
+        return self._get_impl_or_raise().forbid_overlap
+
+    @forbid_overlap.setter
+    @on_main_thread
+    def forbid_overlap(self, value: bool):
+        self._get_impl_or_raise().forbid_overlap = bool(value)
 
     @on_main_thread
     def on_edit(self, callback: Callable[[List[IntervalEdit]], None]):
