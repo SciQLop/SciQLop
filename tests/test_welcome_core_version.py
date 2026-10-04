@@ -76,7 +76,7 @@ class TestApplyCoreVersionSlot:
             patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.13.0"]),
             patch(f"{WORKSPACE_PROJECT_MODULE}.validate_core_version", return_value=True),
             patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version", return_value=tmp_path / "python") as mock_apply,
-            patch(f"{WORKSPACE_SETUP_MODULE}.pin_core_version") as mock_pin,
+            patch(f"{WORKSPACE_SETUP_MODULE}.stage_core_version") as mock_pin,
         ):
             with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
                 backend.apply_core_version(str(tmp_path), "0.13.0")
@@ -104,7 +104,7 @@ class TestApplyCoreVersionSlot:
             patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.13.0"]),
             patch(f"{WORKSPACE_PROJECT_MODULE}.validate_core_version", return_value=True),
             patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version", return_value=tmp_path / "python"),
-            patch(f"{WORKSPACE_SETUP_MODULE}.pin_core_version"),
+            patch(f"{WORKSPACE_SETUP_MODULE}.stage_core_version"),
         ):
             with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
                 backend.apply_core_version(str(tmp_path), "0.13.0")
@@ -150,13 +150,15 @@ class TestApplyCoreVersionSlot:
         assert payload["ok"] is False
         assert "uv sync failed" in payload["error"]
 
-    def test_active_workspace_calls_pin_not_apply(self, qtbot, tmp_path, monkeypatch):
+    def test_active_workspace_is_staged_not_applied(self, qtbot, tmp_path, monkeypatch):
+        """The running workspace gets the new version built in its other venv
+        slot (venv_slots); applying in place would rewrite the running venv."""
         monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
         backend = _make_backend()
         with (
             patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.13.0"]),
             patch(f"{WORKSPACE_PROJECT_MODULE}.validate_core_version", return_value=True),
-            patch(f"{WORKSPACE_SETUP_MODULE}.pin_core_version") as mock_pin,
+            patch(f"{WORKSPACE_SETUP_MODULE}.stage_core_version") as mock_stage,
             patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version") as mock_apply,
         ):
             with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
@@ -164,31 +166,25 @@ class TestApplyCoreVersionSlot:
         payload = json.loads(blocker.args[0])
         assert payload["is_active_workspace"] is True
         assert payload["ok"] is True
-        mock_pin.assert_called_once_with(str(tmp_path), "0.13.0")
+        mock_stage.assert_called_once_with(str(tmp_path), "0.13.0")
         mock_apply.assert_not_called()
 
-    def test_active_workspace_pin_never_reports_a_stale_drop_notice(
-        self, qtbot, tmp_path, monkeypatch
-    ):
-        """The pin path only writes the manifest -- it never syncs -- so a
-        drop-notice left over from an earlier real sync must not be reported
-        as if this pin caused it."""
+    def test_active_workspace_reports_what_staging_left_out(self, qtbot, tmp_path, monkeypatch):
         from SciQLop.components.workspaces.backend.workspace_setup import DROPPED_DEPS_FILENAME
 
         monkeypatch.setenv("SCIQLOP_WORKSPACE_DIR", str(tmp_path))
-        (tmp_path / DROPPED_DEPS_FILENAME).write_text(
-            json.dumps({"dropped": ["radio-plugin"], "error": "boom"})
-        )
         backend = _make_backend()
+
+        def stage(workspace_dir, version):
+            (tmp_path / DROPPED_DEPS_FILENAME).write_text(
+                json.dumps({"dropped": ["radio-plugin"], "error": "boom"}))
+
         with (
             patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.13.0"]),
             patch(f"{WORKSPACE_PROJECT_MODULE}.validate_core_version", return_value=True),
-            patch(f"{WORKSPACE_SETUP_MODULE}.pin_core_version"),
-            patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version") as mock_apply,
+            patch(f"{WORKSPACE_SETUP_MODULE}.stage_core_version", side_effect=stage),
         ):
             with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
                 backend.apply_core_version(str(tmp_path), "0.13.0")
         payload = json.loads(blocker.args[0])
-        assert payload["is_active_workspace"] is True
-        assert "dropped" not in payload
-        mock_apply.assert_not_called()
+        assert payload["dropped"] == ["radio-plugin"]

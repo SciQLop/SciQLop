@@ -170,7 +170,7 @@ class TestPrepareWorkspaceVenv:
 
         prepare_workspace(workspace_dir, workspace_name="Test")
 
-        patches["WorkspaceVenv"].assert_called_once_with(workspace_dir)
+        patches["WorkspaceVenv"].assert_called_once_with(workspace_dir, slot=None)
         patches["venv"].ensure.assert_called_once_with(on_output=None)
         patches["venv"].sync.assert_called_once_with(
             locked=False, on_output=None, upgrade_package="sciqlop"
@@ -1459,60 +1459,42 @@ class TestApplyCoreVersion:
             apply_core_version(workspace_dir, "0.13.0")
 
 
-class TestPinCoreVersion:
+class TestStageCoreVersion:
+    """The workspace SciQLop runs from gets its update staged in the other slot."""
+
     def _make_existing_workspace(self, workspace_dir, sciqlop_version="0.12.0"):
         workspace_dir.mkdir(parents=True)
         WorkspaceManifest(name="My Workspace", sciqlop_version=sciqlop_version).save(
             workspace_dir / "workspace.sciqlop")
         return workspace_dir
 
-    def test_updates_and_saves_the_manifest(self, workspace_dir, patches):
-        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
-
-        self._make_existing_workspace(workspace_dir)
-        pin_core_version(workspace_dir, "0.13.0")
-
-        reloaded = WorkspaceManifest.load(workspace_dir / "workspace.sciqlop")
-        assert reloaded.sciqlop_version == "0.13.0"
-
     def test_empty_string_pins_to_main(self, workspace_dir, patches):
-        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
+        from SciQLop.components.workspaces.backend.workspace_setup import stage_core_version
 
         self._make_existing_workspace(workspace_dir)
-        pin_core_version(workspace_dir, "")
+        stage_core_version(workspace_dir, "")
 
         reloaded = WorkspaceManifest.load(workspace_dir / "workspace.sciqlop")
         assert reloaded.sciqlop_version == ""
 
-    def test_does_not_sync_the_venv(self, workspace_dir, patches):
-        """The whole point: no uv sync, no pyproject.toml regeneration --
-        only the manifest changes."""
-        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
-
-        self._make_existing_workspace(workspace_dir)
-        pin_core_version(workspace_dir, "0.13.0")
-
-        patches["generate_pyproject_toml"].assert_not_called()
-        patches["venv"].sync.assert_not_called()
-
     def test_missing_manifest_raises_file_not_found(self, tmp_path, patches):
-        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
+        from SciQLop.components.workspaces.backend.workspace_setup import stage_core_version
 
         empty_dir = tmp_path / "no_manifest_here"
         empty_dir.mkdir()
 
         with pytest.raises(FileNotFoundError):
-            pin_core_version(empty_dir, "0.13.0")
+            stage_core_version(empty_dir, "0.13.0")
 
     def test_concurrent_call_for_the_same_workspace_raises_lock_error(self, workspace_dir, patches):
         from SciQLop.components.workspaces.backend.workspace_lock import workspace_lock
-        from SciQLop.components.workspaces.backend.workspace_setup import pin_core_version
+        from SciQLop.components.workspaces.backend.workspace_setup import stage_core_version
 
         self._make_existing_workspace(workspace_dir)
 
         with workspace_lock(workspace_dir):
             with pytest.raises(WorkspaceLockError):
-                pin_core_version(workspace_dir, "0.13.0")
+                stage_core_version(workspace_dir, "0.13.0")
 
 
 @pytest.fixture
@@ -1697,3 +1679,60 @@ class TestPrepareWorkspaceReset:
         prepare_workspace(pinned_workspace)
         assert (pinned_workspace / ".venv").exists()
         assert not (pinned_workspace / ".venv.reset-20261004-070000").exists()
+
+
+class TestCoreVersionUpdatesUseTheOtherSlot:
+    """A/B updates (venv_slots): a new SciQLop is built next to the live venv."""
+
+    @pytest.fixture
+    def workspace(self, workspace_dir):
+        workspace_dir.mkdir(parents=True)
+        manifest = WorkspaceManifest.default_manifest("ws")
+        manifest.sciqlop_version = "0.13.0"
+        manifest.save(workspace_dir / "workspace.sciqlop")
+        return workspace_dir
+
+    @staticmethod
+    def _slots_synced(patches):
+        return [c.kwargs.get("slot") for c in patches["WorkspaceVenv"].call_args_list]
+
+    def test_the_running_workspace_is_staged_not_touched(self, workspace, patches):
+        from SciQLop.components.workspaces.backend import venv_slots
+        from SciQLop.components.workspaces.backend.workspace_setup import stage_core_version
+
+        stage_core_version(workspace, "0.14.0")
+        assert self._slots_synced(patches) == [".venv-b"]
+        assert venv_slots.active_slot(workspace) == ".venv"
+        assert venv_slots.pending_slot(workspace) == ".venv-b"
+        assert WorkspaceManifest.load(workspace / "workspace.sciqlop").sciqlop_version == "0.14.0"
+
+    def test_the_next_start_switches_to_the_staged_slot(self, workspace, patches):
+        from SciQLop.components.workspaces.backend import venv_slots
+        from SciQLop.components.workspaces.backend.workspace_setup import (
+            prepare_workspace, stage_core_version)
+
+        stage_core_version(workspace, "0.14.0")
+        patches["WorkspaceVenv"].reset_mock()
+        prepare_workspace(workspace)
+        assert venv_slots.active_slot(workspace) == ".venv-b"
+        assert venv_slots.pending_slot(workspace) is None
+
+    def test_a_failed_stage_leaves_the_live_slot_and_pin_alone(self, workspace, patches):
+        from SciQLop.components.workspaces.backend import venv_slots
+        from SciQLop.components.workspaces.backend.workspace_setup import stage_core_version
+
+        patches["venv"].sync.side_effect = RuntimeError("no network")
+        with pytest.raises(RuntimeError):
+            stage_core_version(workspace, "0.14.0")
+        assert venv_slots.active_slot(workspace) == ".venv"
+        assert venv_slots.pending_slot(workspace) is None
+        assert WorkspaceManifest.load(workspace / "workspace.sciqlop").sciqlop_version == "0.13.0"
+
+    def test_another_workspace_switches_at_once(self, workspace, patches):
+        from SciQLop.components.workspaces.backend import venv_slots
+        from SciQLop.components.workspaces.backend.workspace_setup import apply_core_version
+
+        apply_core_version(workspace, "0.14.0")
+        assert self._slots_synced(patches) == [".venv-b"]
+        assert venv_slots.active_slot(workspace) == ".venv-b"
+        assert venv_slots.pending_slot(workspace) is None

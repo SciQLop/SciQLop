@@ -503,8 +503,8 @@ class WelcomeBackend(QObject):
         from SciQLop.components.workspaces.backend.workspace_setup import (
             apply_core_version as _apply_core_version,
             dropped_package_names,
-            pin_core_version as _pin_core_version,
             read_dropped_dependencies,
+            stage_core_version as _stage_core_version,
         )
 
         active_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", "")
@@ -520,16 +520,15 @@ class WelcomeBackend(QObject):
                     }))
                     return
                 try:
+                    # The running workspace gets the new version built in its
+                    # other venv slot, live after a restart; another one
+                    # switches at once (see venv_slots).
                     if is_active:
-                        # Pin only writes the manifest -- it never syncs, so
-                        # any drop-notice on disk predates this call and
-                        # must not be reported as caused by it.
-                        _pin_core_version(workspace_dir, version)
-                        dropped = None
+                        _stage_core_version(workspace_dir, version)
                     else:
                         _apply_core_version(workspace_dir, version)
-                        notice = read_dropped_dependencies(workspace_dir)
-                        dropped = dropped_package_names(notice["dropped"]) if notice else []
+                    notice = read_dropped_dependencies(workspace_dir)
+                    dropped = dropped_package_names(notice["dropped"]) if notice else []
                 except Exception as e:
                     log.error(f"Failed to update SciQLop core version: {e}")
                     self.core_update_finished.emit(json.dumps({
@@ -541,8 +540,7 @@ class WelcomeBackend(QObject):
                     "ok": True, "dir": workspace_dir, "version": version,
                     "is_active_workspace": is_active,
                 }
-                if dropped is not None:
-                    result["dropped"] = dropped
+                result["dropped"] = dropped
                 self.core_update_finished.emit(json.dumps(result))
             except Exception as e:
                 log.error(f"Unexpected error updating SciQLop core version: {e}")

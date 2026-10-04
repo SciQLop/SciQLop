@@ -13,8 +13,8 @@ from .workspace_reset import is_reset_leftover
 # Rebuilt from the manifest, so never copied: the venv and caches at any depth,
 # the generated pyproject.toml only at the root (a nested one is the user's own package),
 # and environments a reset renamed aside (see workspace_reset).
-EXCLUDED_ANYWHERE = {".venv", "__pycache__"}
-EXCLUDED_AT_ROOT = {"pyproject.toml"}
+EXCLUDED_ANYWHERE = {".venv", ".venv-b", "__pycache__"}
+EXCLUDED_AT_ROOT = {"pyproject.toml", ".sciqlop_venv", ".sciqlop_venv_next"}  # see venv_slots
 
 # Marker left by import_workspace() so prepare_workspace() knows to sync
 # --locked against the archive's shipped uv.lock, without every caller

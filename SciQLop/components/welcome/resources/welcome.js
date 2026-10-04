@@ -691,7 +691,7 @@ function onCoreUpdateFinished(resultJson) {
                 escapeHtml(coreVersionLabel(result.version)) + "</strong>";
         }
         status.textContent = result.is_active_workspace
-            ? "Pinned — restart SciQLop to install and apply."
+            ? "Installed — restart SciQLop to switch to it."
             : "Installed.";
         if (result.dropped && result.dropped.length) {
             status.textContent += " Left out (incompatible): " + result.dropped.join(", ") + ".";

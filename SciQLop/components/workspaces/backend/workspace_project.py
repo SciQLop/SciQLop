@@ -147,8 +147,9 @@ def running_sciqlop_version() -> str:
 
 
 def installed_sciqlop_version(workspace_dir: Path | str) -> str:
-    """Version of SciQLop installed in *workspace_dir*'s venv, or "" before its first sync."""
-    venv = Path(workspace_dir) / ".venv"
+    """Version of SciQLop installed in *workspace_dir*'s live venv, or "" before its first sync."""
+    from SciQLop.components.workspaces.backend.venv_slots import active_venv_dir
+    venv = active_venv_dir(workspace_dir)
     site_dirs = [*venv.glob("lib/python*/site-packages"), venv / "Lib" / "site-packages"]
     paths = [str(d) for d in site_dirs if d.is_dir()]
     if not paths:

@@ -29,7 +29,7 @@ from SciQLop.components.workspaces.backend.workspace_project import (
     running_sciqlop_version,
     strip_host_provided,
 )
-from SciQLop.components.workspaces.backend import workspace_reset
+from SciQLop.components.workspaces.backend import venv_slots, workspace_reset
 from SciQLop.components.workspaces.backend.workspace_venv import WorkspaceVenv
 from SciQLop.core.common.files import write_text_atomic
 
@@ -499,6 +499,7 @@ def prepare_workspace(
     manifest: WorkspaceManifest | None = None,
     strict: bool = False,
     reset_environment: bool = False,
+    venv_slot: str | None = None,
 ) -> Path:
     """Prepare a workspace: ensure manifest, generate pyproject.toml, sync venv.
 
@@ -532,6 +533,10 @@ def prepare_workspace(
         pin the newest SciQLop release, so this run rebuilds everything (see
         ``workspace_reset``). Otherwise environments an earlier reset could not
         fully delete are cleaned up.
+    venv_slot:
+        Sync this venv slot instead of the live one (see ``venv_slots``), to
+        build an update next to a running SciQLop. Without it, a slot staged
+        by an earlier update goes live first.
 
     Returns
     -------
@@ -544,6 +549,8 @@ def prepare_workspace(
         workspace_reset.reset_environment(workspace_dir, on_output=on_output)
     else:
         workspace_reset.remove_reset_leftovers(workspace_dir, on_output=on_output)
+    if venv_slot is None and (staged := venv_slots.activate_pending(workspace_dir)):
+        log.info("Switched workspace %s to its updated environment %s", workspace_dir, staged)
 
     # Migrate from old workspace.json format if needed
     if migrate_workspace(workspace_dir):
@@ -623,7 +630,7 @@ def prepare_workspace(
             log.warning("Could not remove stale uv.lock: %s", exc)
 
     # Step 6: Ensure venv exists and sync
-    venv = WorkspaceVenv(workspace_dir)
+    venv = WorkspaceVenv(workspace_dir, slot=venv_slot)
     venv.ensure(on_output=on_output)
     # A dev-build workspace's SciQLop dependency is `git+...@main` -- text
     # that never changes between pushes, so plain `uv sync` would otherwise
@@ -650,40 +657,26 @@ def prepare_workspace(
     return venv.python_path
 
 
-def apply_core_version(workspace_dir: Path | str, version: str) -> Path:
-    """Change the SciQLop version pinned for *workspace_dir* and sync its venv.
+def _build_core_version(workspace_dir: Path, version: str) -> tuple[str, Path]:
+    """Install SciQLop *version* into the workspace's inactive venv slot; returns
+    that slot and its Python.
 
-    *version* must already be validated by the caller (see
-    ``workspace_project.validate_core_version``) — this trusts it and writes
-    it straight into the manifest's ``sciqlop_version``.
-
-    Reuses ``prepare_workspace`` in strict mode so the full dependency set
-    (plugins + appstore packages, not just SciQLop itself) is preserved, and
-    only saves the manifest change after the sync actually succeeds — a
-    failed update never leaves the manifest pointing at a version that
-    isn't installed. Serializes against other calls for the same
-    *workspace_dir* via ``workspace_lock``.
-
-    Raises ``FileNotFoundError`` if *workspace_dir* has no existing
-    manifest, ``WorkspaceLockError`` if another update is already in
-    progress for it, or whatever ``prepare_workspace`` raises on sync
-    failure. A failure saving the manifest *after* a successful sync (disk
-    full, permissions) is re-raised as a distinctly worded ``RuntimeError``,
-    since at that point the venv genuinely was updated and the failure is
-    not the ordinary "nothing changed" case.
+    The live slot is never touched, so a failed update changes nothing (see
+    ``venv_slots``). Reuses ``prepare_workspace`` in strict mode so the full
+    dependency set (plugins + appstore packages, not just SciQLop itself) is
+    installed, and only saves the manifest pin after the sync succeeds.
+    Serializes against other calls for the same workspace via ``workspace_lock``.
     """
-    workspace_dir = Path(workspace_dir)
     manifest_path = workspace_dir / MANIFEST_FILENAME
     if not manifest_path.exists():
         raise FileNotFoundError(f"No workspace manifest at {manifest_path}")
-
     with workspace_lock(workspace_dir):
         manifest = WorkspaceManifest.load_or_repair(manifest_path)
         manifest.sciqlop_version = version
-        output_lines: list[str] = []
-        python_path = prepare_workspace(
-            workspace_dir, manifest=manifest, strict=True, on_output=output_lines.append,
-        )
+        slot = venv_slots.inactive_slot(workspace_dir)
+        venv_slots.clear_pending(workspace_dir)
+        python_path = prepare_workspace(workspace_dir, manifest=manifest, strict=True,
+                                        on_output=lambda _line: None, venv_slot=slot)
         try:
             # Re-read: anything else saved during the (long) sync must survive.
             with edit_manifest(manifest_path) as current:
@@ -693,27 +686,34 @@ def apply_core_version(workspace_dir: Path | str, version: str) -> Path:
                 f"SciQLop {version or 'the launcher version'} was installed, but recording it "
                 f"in the workspace manifest failed: {exc}"
             ) from exc
+    return slot, python_path
+
+
+def apply_core_version(workspace_dir: Path | str, version: str) -> Path:
+    """Move a workspace that is not running to SciQLop *version*, atomically.
+
+    *version* must already be validated by the caller (see
+    ``workspace_project.validate_core_version``). The new version is built in
+    the inactive venv slot, which then goes live; returns its Python.
+
+    Raises ``FileNotFoundError`` if *workspace_dir* has no manifest,
+    ``WorkspaceLockError`` if another update is in progress for it, or
+    whatever ``prepare_workspace`` raises on sync failure -- in which case the
+    workspace keeps running its current version.
+    """
+    workspace_dir = Path(workspace_dir)
+    slot, python_path = _build_core_version(workspace_dir, version)
+    venv_slots.set_active(workspace_dir, slot)
     return python_path
 
 
-def pin_core_version(workspace_dir: Path | str, version: str) -> None:
-    """Update *workspace_dir*'s pinned SciQLop version without syncing now.
+def stage_core_version(workspace_dir: Path | str, version: str) -> None:
+    """Prepare SciQLop *version* for the workspace SciQLop is running from.
 
-    For the workspace the running process itself launched from: syncing its
-    venv while the interpreter is using it would rewrite the running
-    process's own site-packages underneath it. This only updates the
-    manifest -- the actual venv sync happens naturally the next time this
-    workspace launches, through the ordinary (non-strict) prepare_workspace()
-    call every startup already makes.
-
-    Raises ``FileNotFoundError`` if *workspace_dir* has no existing
-    manifest, ``WorkspaceLockError`` if another update is already in
-    progress for it.
+    Built in the inactive venv slot while SciQLop keeps running from the live
+    one, and made live by the next start (``prepare_workspace``), before
+    anything loads from it. Same errors as ``apply_core_version``.
     """
     workspace_dir = Path(workspace_dir)
-    manifest_path = workspace_dir / MANIFEST_FILENAME
-    if not manifest_path.exists():
-        raise FileNotFoundError(f"No workspace manifest at {manifest_path}")
-
-    with workspace_lock(workspace_dir), edit_manifest(manifest_path) as manifest:
-        manifest.sciqlop_version = version
+    slot, _python = _build_core_version(workspace_dir, version)
+    venv_slots.mark_pending(workspace_dir, slot)

@@ -16,12 +16,13 @@ from typing import Callable, Iterable, List, Optional
 
 from packaging.version import InvalidVersion, Version
 
+from . import venv_slots
 from .workspace_manifest import WorkspaceManifest
 from .workspace_project import fetch_available_versions, is_dev_build_version
 
 log = logging.getLogger(__name__)
 
-ENVIRONMENT_FILES = (".venv", "uv.lock")
+ENVIRONMENT_FILES = (*venv_slots.SLOTS, "uv.lock")
 RESET_MARK = ".reset-"
 
 Output = Optional[Callable[[str], None]]
@@ -124,6 +125,8 @@ def reset_environment(workspace_dir: Path | str, on_output: Output = None,
     stamp = _stamp()
     for name in ENVIRONMENT_FILES:
         _move_aside(workspace_dir / name, stamp, on_output)
+    venv_slots.clear_pending(workspace_dir)
+    venv_slots.set_active(workspace_dir, venv_slots.SLOTS[0])
     remove_reset_leftovers(workspace_dir, on_output)
     pin_latest_release(workspace_dir / "workspace.sciqlop", latest_versions or fetch_available_versions,
                        on_output)

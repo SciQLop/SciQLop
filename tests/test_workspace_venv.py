@@ -4,7 +4,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import ANY, patch, MagicMock
 
 import pytest
 
@@ -116,7 +116,7 @@ class TestSync:
         mock_uv_cmd.assert_called_once_with("sync", "--native-tls")
         mock_run.assert_called_once_with(
             mock_uv_cmd.return_value, check=True, stderr=subprocess.PIPE, text=True,
-            cwd=str(workspace_dir),
+            cwd=str(workspace_dir), env=ANY,
         )
 
     @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
@@ -128,7 +128,7 @@ class TestSync:
         mock_uv_cmd.assert_called_once_with("sync", "--locked", "--native-tls")
         mock_run.assert_called_once_with(
             mock_uv_cmd.return_value, check=True, stderr=subprocess.PIPE, text=True,
-            cwd=str(workspace_dir),
+            cwd=str(workspace_dir), env=ANY,
         )
 
     @patch("SciQLop.components.workspaces.backend.workspace_venv.subprocess.run")
@@ -146,7 +146,7 @@ class TestSync:
         )
         mock_run.assert_called_once_with(
             mock_uv_cmd.return_value, check=True, stderr=subprocess.PIPE, text=True,
-            cwd=str(workspace_dir),
+            cwd=str(workspace_dir), env=ANY,
         )
 
 
@@ -216,7 +216,7 @@ class TestSyncWithCallback:
         assert lines == ["Resolved 10 packages"]
         mock_popen.assert_called_once_with(
             mock_uv_cmd.return_value, stderr=subprocess.PIPE, text=True,
-            cwd=str(workspace_dir),
+            cwd=str(workspace_dir), env=ANY,
         )
 
 

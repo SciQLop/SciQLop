@@ -11,6 +11,7 @@ from pathlib import Path
 from SciQLop.core.common.files import remove_tree, write_text_atomic
 from SciQLop.core.common.python import get_python
 from SciQLop.components.workspaces.backend.uv import uv_command
+from SciQLop.components.workspaces.backend import venv_slots
 
 _WINDOWS = os.name == "nt"
 
@@ -40,11 +41,12 @@ def _run_uv(cmd: list[str], on_output: Callable[[str], None] | None = None, **kw
 
 
 class WorkspaceVenv:
-    """Manages a virtual environment inside a workspace directory."""
+    """Manages one of a workspace's venv slots (the live one unless *slot* says otherwise,
+    see ``venv_slots``)."""
 
-    def __init__(self, workspace_dir: Path | str):
+    def __init__(self, workspace_dir: Path | str, slot: str | None = None):
         self._workspace_dir = Path(workspace_dir)
-        self._venv_dir = self._workspace_dir / ".venv"
+        self._venv_dir = self._workspace_dir / (slot or venv_slots.active_slot(self._workspace_dir))
 
     @property
     def venv_dir(self) -> Path:
@@ -128,7 +130,8 @@ class WorkspaceVenv:
         if upgrade_package:
             args += ("--upgrade-package", upgrade_package)
         cmd = uv_command(*args)
-        _run_uv(cmd, on_output, cwd=str(self._workspace_dir))
+        env = {**os.environ, "UV_PROJECT_ENVIRONMENT": str(self._venv_dir)}
+        _run_uv(cmd, on_output, cwd=str(self._workspace_dir), env=env)
 
     def _read_pyvenv_cfg(self) -> dict[str, str]:
         cfg = self._venv_dir / "pyvenv.cfg"

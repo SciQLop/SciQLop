@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 _PRUNED_DIRS = {
-    ".venv", "venv", ".ipynb_checkpoints", "__pycache__", ".git",
+    ".venv", ".venv-b", "venv", ".ipynb_checkpoints", "__pycache__", ".git",
     "node_modules", "site-packages", "archive", ".tox", ".mypy_cache",
 }
 
