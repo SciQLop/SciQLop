@@ -388,6 +388,10 @@ def _release_gui_leftovers():
                 destroyed = True
     if destroyed:
         from PySide6 import QtCore
+        # Queued calls first: removing a tabbed panel queues QtAds' ensureWidgetVisible
+        # on the next tab, and flushing deletes ahead of it frees that tab first (SIGSEGV
+        # in QScrollArea::ensureWidgetVisible). The app's event loop keeps this order.
+        app.processEvents()
         QtCore.QCoreApplication.sendPostedEvents(None, QtCore.QEvent.Type.DeferredDelete)
 
 
