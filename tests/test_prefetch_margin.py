@@ -80,7 +80,7 @@ def _plot_trajectory(qtbot, main_window, path, calls, plot_type):
     panel.set_time_axis_range(TimeRange(T0, T0 + SPAN))
     plot, graph = plot_product(panel, path.split("/"), plot_type=plot_type)
     qtbot.waitUntil(lambda: len(calls) == 1, timeout=5000)
-    return graph
+    return panel, graph
 
 
 def test_cacheable_projection_fetches_exactly_the_view(qtbot, main_window):
@@ -88,10 +88,22 @@ def test_cacheable_projection_fetches_exactly_the_view(qtbot, main_window):
     prefetched point, e.g. a whole orbit for a one-hour view."""
     from SciQLopPlots import PlotType
     calls = []
-    graph = _plot_trajectory(qtbot, main_window, "margin_probe/projection", calls,
-                             PlotType.Projections)
+    _panel, graph = _plot_trajectory(qtbot, main_window, "margin_probe/projection", calls,
+                                     PlotType.Projections)
     assert graph.prefetch_margin() == 0.0
     assert calls[0] == pytest.approx((T0, T0 + SPAN))
+
+
+def test_cacheable_projection_refetches_on_zoom_in(qtbot, main_window):
+    from SciQLopPlots import PlotType
+    from SciQLop.core import TimeRange
+    calls = []
+    panel, _graph = _plot_trajectory(qtbot, main_window, "margin_probe/projection_zoom", calls,
+                                     PlotType.Projections)
+    zoomed = (T0 + SPAN / 4, T0 + SPAN / 2)
+    panel.set_time_axis_range(TimeRange(*zoomed))
+    qtbot.waitUntil(lambda: len(calls) == 2, timeout=5000)
+    assert calls[1] == pytest.approx(zoomed)
 
 
 def test_pan_refetches_non_cacheable_product(qtbot, main_window):
