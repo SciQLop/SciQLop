@@ -3,7 +3,7 @@ from typing import Iterable
 from PySide6.QtCore import QObject, Signal
 
 from SciQLop.user_api.knobs import (
-    KnobSpec, coerce_value, validate_dict, defaults_for, canonical_hash,
+    KnobSpec, coerce_value, validate_dict, defaults_for,
 )
 
 
@@ -44,6 +44,3 @@ class GraphKnobState(QObject):
         self._specs = list(specs)
         self._values = validate_dict(self._specs, self._values)
         self.knobs_changed.emit(dict(self._values))
-
-    def cache_key(self) -> str:
-        return canonical_hash(self._values)
