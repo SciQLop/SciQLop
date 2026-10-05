@@ -123,7 +123,7 @@ class DataProvider:
     @property
     def cacheable(self) -> bool:
         """True when get_data returns full-resolution data whatever the range: each
-        graph then prefetches 2x its view and SciQLopPlots serves pans inside it
+        key-axis graph then prefetches 2x its view and SciQLopPlots serves pans inside it
         from its own cache (``time_sync_panel._apply_prefetch_margin``, read via
         getattr). SciQLop keeps no result cache of its own."""
         return self._cacheable

@@ -162,11 +162,15 @@ def create_virtual_product(path: str, callback: VirtualProductCallback,
         The debug flag, prints stack traces of exceptions if True. Handy for debugging the callback function.
     cachable : Optional[bool]
         Promise that the callback returns the same full-resolution data for a
-        given interval, whatever range is requested. Each plot then fetches
-        twice the visible window and serves pans and zooms inside it without
-        calling the callback again. Leave it off for a callback that returns a
-        fixed number of points per request: a widened fetch would keep coarse
-        data after a zoom-in. A knob change always refetches.
+        given interval, whatever range is requested. Line, spectrogram and
+        waterfall graphs then fetch twice the visible window and serve pans and
+        zooms inside it without calling the callback again. Projections, curves
+        and 2D histograms draw every point, so they always fetch exactly the
+        visible window. Leave it off for a callback that returns a fixed
+        number of points per request: a widened fetch would keep coarse data
+        after a zoom-in. Leave it off too when the output depends on the whole
+        requested interval (e.g. an average over it). A knob change always
+        refetches.
     knobs_model : Optional[type]
         A Pydantic BaseModel class whose fields define the knobs for this product. When provided, the model instance is passed to the callback under knobs_kwarg_name.
     knobs_kwarg_name : str

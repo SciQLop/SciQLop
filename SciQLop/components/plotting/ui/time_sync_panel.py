@@ -9,7 +9,8 @@ from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import QApplication, QWidget
 from PySide6.QtGui import QColor
 from SciQLopPlots import SciQLopMultiPlotPanel, SciQLopTheme, PlotDragNDropCallback, ProductsModel, SciQLopPlot, \
-    ParameterType, GraphType, SciQLopNDProjectionPlot, OverlayLevel, OverlaySizeMode, OverlayPosition
+    ParameterType, GraphType, SciQLopNDProjectionPlot, OverlayLevel, OverlaySizeMode, OverlayPosition, \
+    SciQLopLineGraph, SciQLopSingleLineGraph, SciQLopWaterfallGraph, SciQLopColorMap
 
 from SciQLop.components.theming import register_icon
 from SciQLop.core import TimeRange
@@ -700,10 +701,16 @@ PREFETCH_MARGIN = 0.5
 PREFETCH_BUDGET_BYTES = 256_000_000
 
 
+# Graphs drawn against their key axis, which clips a widened fetch off screen.
+# Curves, projections and 2D histograms draw every point they hold, so a margin
+# would show data outside the view (e.g. a whole orbit for a one-hour view).
+_KEY_AXIS_GRAPHS = (SciQLopLineGraph, SciQLopSingleLineGraph, SciQLopWaterfallGraph, SciQLopColorMap)
+
+
 def _apply_prefetch_margin(graph, provider) -> None:
     # Only cacheable providers: a plain VP may return a fixed number of points
     # for any range, and a widened fetch would keep coarse data after a zoom-in.
-    if getattr(provider, "cacheable", False):
+    if getattr(provider, "cacheable", False) and isinstance(graph, _KEY_AXIS_GRAPHS):
         graph.set_prefetch_margin(PREFETCH_MARGIN)
         graph.set_prefetch_budget_bytes(PREFETCH_BUDGET_BYTES)
 
