@@ -116,6 +116,7 @@
 
 - `create_virtual_product` reads labels from the callback's return annotation, so `-> Scalar["|B|^2"]` needs no `labels=`. Explicit `labels=` still wins. Before, the docstring's own example raised `ValueError`.
 - `display_name=` now works for every virtual product type. Before, only spectrograms used it.
+- Out-of-process virtual products can call `speasy.get_data` again. The worker process never set up Speasy's providers, so every such fetch failed with "Can't find a provider" and the plot stayed empty.
 - Plot items accept CSS colours such as `"rgba(200, 50, 50, 0.3)"`: lines, spans, text, ellipses, curves, waterfall lines and timeline categories. Before, these colours were invalid and the item drew nothing. A colour string that can't be read now raises `ValueError` instead.
 - `HorizontalLine` has `visible`, like the other plot items. Its default colour follows the theme, like `VerticalLine`; it was black.
 - `plot_data(..., plot_type=PlotType.XY, graph_type=GraphType.Scatter)` draws a scatter. Before, XY and projection plots always drew a curve. Without `graph_type`, they still draw a curve.

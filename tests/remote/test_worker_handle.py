@@ -136,6 +136,16 @@ def test_worker_can_import_callable_from_extra_plugins_folder(qtbot, tmp_path):
             settings.extra_plugins_folders = []
 
 
+def test_worker_env_lets_speasy_init_its_providers(monkeypatch):
+    # The launcher sets SPEASY_SKIP_INIT_PROVIDERS=1 so the GUI process can
+    # init Speasy itself (SpeasyPlugin). The worker never does, so with the
+    # flag inherited every speasy.get_data in an out-of-process VP raised
+    # "Can't find a provider" (sciqlop_radio's Speasy aliases plotted empty).
+    monkeypatch.setenv("SPEASY_SKIP_INIT_PROVIDERS", "1")
+    env = RemoteWorker(plugin_key="test_speasy_env")._worker_env()
+    assert "SPEASY_SKIP_INIT_PROVIDERS" not in env
+
+
 def test_derive_worker_trace_path_empty_when_no_session_active(monkeypatch):
     monkeypatch.setattr(tracing, "current_path", lambda: None)
     worker = RemoteWorker(plugin_key="test_plugin")

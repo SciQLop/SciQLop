@@ -61,6 +61,12 @@ class RemoteWorker(QObject):
         # folder (index 0): those already resolve as SciQLop.plugins.<name>
         # submodules, which the worker's own SciQLop install already sees.
         env = os.environ.copy()
+        # The launcher's skip flag exists so SpeasyPlugin can init Speasy in
+        # the GUI process. Nothing inits it in the worker, so with the flag
+        # every speasy.get_data in a callback fails ("Can't find a provider").
+        # Without it Speasy inits on first import: workers that never touch
+        # Speasy pay nothing.
+        env.pop("SPEASY_SKIP_INIT_PROVIDERS", None)
         extra = list(plugins_folders()[1:])
         existing = env.get("PYTHONPATH")
         if existing:
