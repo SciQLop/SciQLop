@@ -2,6 +2,10 @@
 
 ## v0.14.0 — 2026-10-05
 
+### Python version
+
+- SciQLop now needs Python 3.13 or 3.14; 3.11 and 3.12 are no longer supported. The installers bring their own Python, so this only matters if you install SciQLop with pip.
+
 ### Settings and shortcuts
 
 - Settings hide expert options by default, so the panel is less daunting: diagnostics, autoscale percentiles, plugin folders, agent-chat tuning and similar knobs appear once you tick **Show advanced settings** at the bottom of the category list. SciQLop remembers the choice. A plugin marks a setting as advanced with `json_schema_extra={"advanced": True}`, or a whole settings class with `advanced = True`.
