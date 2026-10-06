@@ -1407,7 +1407,7 @@ wheels = [
 
 [[package]]
 name = "jupyqt"
-version = "0.6.5"
+version = "0.6.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
@@ -1417,9 +1417,9 @@ dependencies = [
     { name = "jupyverse", extra = ["jupyterlab"] },
     { name = "pyside6" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5f/07/1c007e28df4854840fba955c69f6f4e14786ec17a9374a9188609832cbcc/jupyqt-0.6.5.tar.gz", hash = "sha256:c50a763630f4692e1bf74f1330f8966d502ea65aad0d7f9ece56d69ed56a9cd6", size = 82131, upload-time = "2026-09-26T08:04:30.551Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/ac/ae266d5af88b6893d5522bfa2de1f532901b99ac867c49b04bfa68f98e94/jupyqt-0.6.6.tar.gz", hash = "sha256:b2eb4362ea475cd836f37beadfca96acf3bd4bf4670290c51e25973920d471ac", size = 83452, upload-time = "2026-10-06T08:12:17.097Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/63/c9/1241ca2cf074e8e087e575450ea16e8dae4d8bef7f4057c25f26a3572048/jupyqt-0.6.5-py3-none-any.whl", hash = "sha256:d36c8bc6f0eff1bee66f40a8eef76c83646219dfd43893a26d5ae752dd824bbe", size = 33301, upload-time = "2026-09-26T08:04:29.312Z" },
+    { url = "https://files.pythonhosted.org/packages/33/31/5714335db44ed41200ec0f71e34dfbe60cb9e14551132026170fd26b8f7b/jupyqt-0.6.6-py3-none-any.whl", hash = "sha256:0f8b44d0cbe5ff0e045d73db5cc1e423f7a16ed4e8681fa7228e297655825158", size = 34199, upload-time = "2026-10-06T08:12:15.61Z" },
 ]
 
 [[package]]
@@ -3348,7 +3348,7 @@ requires-dist = [
     { name = "ipython", marker = "extra == 'all'" },
     { name = "ipywidgets", marker = "extra == 'all'" },
     { name = "jinja2", marker = "extra == 'all'" },
-    { name = "jupyqt", marker = "extra == 'all'", specifier = ">=0.6.5" },
+    { name = "jupyqt", marker = "extra == 'all'", specifier = ">=0.6.6" },
     { name = "jupyterlab-widgets", marker = "extra == 'all'" },
     { name = "keyring", marker = "extra == 'all'" },
     { name = "matplotlib", marker = "extra == 'all'", specifier = "==3.11.2" },

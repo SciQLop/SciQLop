@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### JupyterLab
+
+- The JupyterLab panel no longer stays blank white until you reload it. If the page fails to load, or loads without Lab starting, it is loaded again on its own (jupyqt 0.6.6). This happened mostly on a busy start, such as the first one after an update.
+
 ## v0.14.0 — 2026-10-05
 
 ### Python version
