@@ -47,6 +47,24 @@ def test_describe_panel_reports_each_plot_and_its_graphs(main_window, qtbot):
         panel.close()
 
 
+def test_set_time_range_accepts_iso_strings_like_the_other_tools(main_window, qtbot):
+    """sciqlop_fetch and sciqlop_describe_product take ISO-8601 or epoch
+    seconds; set_time_range only took numbers and failed with 'could not
+    convert string to float' on the ISO times an agent naturally passes."""
+    from SciQLop.user_api.plot import create_plot_panel
+    panel = create_plot_panel()
+    try:
+        assert _call(main_window, "sciqlop_set_time_range", name=panel.name,
+                     start="2025-10-10T06:00:00", stop="2025-10-10T18:00:00").startswith("ok")
+        assert panel.time_range.start() == 1760076000.0
+        assert panel.time_range.stop() == 1760119200.0
+        assert _call(main_window, "sciqlop_set_time_range", name=panel.name,
+                     start=1760076000.0, stop=1760079600.0).startswith("ok")
+        assert panel.time_range.stop() == 1760079600.0
+    finally:
+        panel.close()
+
+
 def test_describe_panel_unknown_name_is_an_error(main_window):
     assert "panel not found" in _call(main_window, "sciqlop_describe_panel", name="nope")
 

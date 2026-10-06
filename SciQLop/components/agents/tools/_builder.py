@@ -911,28 +911,29 @@ def _cancel_job_tool() -> Dict[str, Any]:
 
 def _write_tools(main_window) -> List[Dict[str, Any]]:
     @on_main_thread
-    def _set_time_range(name: Optional[str], start: float, stop: float):
+    def _set_time_range(name: Optional[str], start, stop):
         panel, error = _resolve_panel(main_window, name)
         if error:
             return error
         from SciQLop.core import TimeRange
-        panel.time_range = TimeRange(float(start), float(stop))
+        from .fetch import to_epoch
+        panel.time_range = TimeRange(to_epoch(start), to_epoch(stop))
         label = name or "active panel"
         return {"content": [{"type": "text", "text": f"ok: set {label} time range"}]}
 
     set_time_range = _text_tool(
         "sciqlop_set_time_range",
         (
-            "Set a plot panel's time range. Arguments are POSIX timestamps in "
-            "seconds. Pass `name` to target a specific panel, or omit to target "
-            "the active panel."
+            "Set a plot panel's time range. `start`/`stop` are ISO-8601 strings "
+            "(UTC when no zone is given) or POSIX seconds. Pass `name` to target a "
+            "specific panel, or omit to target the active panel."
         ),
         {
             "type": "object",
             "properties": {
                 "name": {"type": "string"},
-                "start": {"type": "number"},
-                "stop": {"type": "number"},
+                "start": {"type": ["string", "number"]},
+                "stop": {"type": ["string", "number"]},
             },
             "required": ["start", "stop"],
         },

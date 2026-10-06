@@ -187,6 +187,13 @@ def test_the_virtual_products_skill_is_bundled():
 
 
 @pytest.mark.parametrize("skill_dir", _bundled_skills(), ids=lambda d: d.name)
+def test_agents_md_points_at_every_bundled_skill(skill_dir):
+    # Agents that do not load skills (Albert, Copilot, ...) only find a skill
+    # through the file path written in AGENTS.md.
+    assert f"{skill_dir.name}/SKILL.md" in SCIQLOP_GUIDANCE
+
+
+@pytest.mark.parametrize("skill_dir", _bundled_skills(), ids=lambda d: d.name)
 def test_bundled_skill_frontmatter_matches_the_agent_skills_format(skill_dir):
     # opencode rejects a skill whose name differs from its directory or is not
     # lowercase-hyphenated, and needs a description to decide when to load it.

@@ -167,6 +167,18 @@ Before designing, writing or debugging a SciQLop plugin, read
 `.claude/skills/sciqlop-plugin-design/SKILL.md` in this workspace. It holds
 the plugin contract and the traps that make plugins load but show nothing.
 
+### Skills in this workspace
+
+`.claude/skills/` holds SciQLop's step-by-step guides. Agents that load
+skills get them on their own; otherwise read the file before the matching
+task:
+
+- `sciqlop-finding-data/SKILL.md`: locating a product, its coverage and cadence.
+- `sciqlop-virtual-products/SKILL.md`: computed quantities.
+- `sciqlop-catalogs/SKILL.md`: labeling events, catalogs, overlays on panels.
+- `sciqlop-troubleshooting/SKILL.md`: empty, wrong or slow plots, hangs, crashes.
+- `sciqlop-plugin-design/SKILL.md`: writing SciQLop plugins.
+
 ### Live Qt objects
 
 Code run with `sciqlop_exec_python` runs on the kernel thread, not the GUI

@@ -9,7 +9,8 @@
 
 ### Agent chat
 
-- Agents get two skills, published into each workspace's `.claude/skills/` folder, where opencode and Claude Code find them: one on designing and testing virtual products, one on writing SciQLop plugins. They load only when a task needs them, so they don't lengthen every session. Agents that don't load skills are pointed at the files from `AGENTS.md`.
+- Agents get skills, published into each workspace's `.claude/skills/` folder, where opencode and Claude Code find them: finding the right data product, designing and testing virtual products, labeling events in catalogs, troubleshooting empty or slow plots, and writing SciQLop plugins. They load only when a task needs them, so they don't lengthen every session. Agents that don't load skills are pointed at the files from `AGENTS.md`.
+- `sciqlop_set_time_range` accepts ISO-8601 times as well as epoch seconds, like `sciqlop_fetch` and `sciqlop_describe_product`. It failed with "could not convert string to float" on the ISO times agents pass to the other tools.
 - The `AGENTS.md` guidance tells agents how to try a virtual product's maths before writing it: load the inputs with `sciqlop_fetch` from their product-tree paths, compute on them, then run the product once with `--debug`. An agent asked for |V_alpha − V_p| spent about ten tool calls hunting Speasy identifiers instead.
 
 ### JupyterLab
