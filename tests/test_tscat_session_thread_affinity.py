@@ -69,6 +69,12 @@ def test_save_commits_on_driver_thread(tscat_provider, qapp, monkeypatch):
     )
 
 
+def test_tests_use_their_own_tscat_database():
+    """appdirs ignores XDG_DATA_HOME on macOS, so tests wrote the developer's
+    real tscat database and shared it across processes."""
+    assert "sciqlop_test_" in str(_session().get_bind().url)
+
+
 def _committed_event_uuids(qapp, catalogue_uuid: str) -> list[str]:
     """Drop everything uncommitted, then list the catalogue's events, on the
     driver thread like every other session touch."""
@@ -85,6 +91,10 @@ def _committed_event_uuids(qapp, catalogue_uuid: str) -> list[str]:
             tscat.discard()
             catalogue = next(c for c in tscat.get_catalogues() if c.uuid == catalogue_uuid)
             self.uuids = [e.uuid for e in tscat.get_events(catalogue)[0]]
+            # Reading opened a transaction; an open one keeps a lock on the
+            # sqlite file, and another process's BEGIN EXCLUSIVE then fails
+            # with "database is locked".
+            tscat.discard()
 
     probe = _ReadCommitted(user_callback=None)
     tscat_model.do(probe)
@@ -115,6 +125,7 @@ def test_save_right_after_adding_an_event_commits_its_catalogue_link(tscat_provi
 
     assert _spin(qapp, lambda: commits and tscat_provider._pending_actions == 0, timeout=10)
     assert _committed_event_uuids(qapp, catalog.uuid) == [event.uuid]
+    assert not session.in_transaction(), "the probe left a transaction open, locking the sqlite file"
 
 
 def test_failed_flush_recovery_rolls_back_on_driver_thread(tscat_provider, qapp, monkeypatch):

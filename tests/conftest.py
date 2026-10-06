@@ -174,6 +174,13 @@ def pytest_configure(config):
     # singleton; the tscat_gui driver QThread races the test thread on first
     # access and re-runs the migration ("table alembic_version already exists"
     # / "not an error" on retry). Touching it here pins the init to one thread.
+    #
+    # tscat finds its database with appdirs, which ignores XDG_DATA_HOME on
+    # macOS: there every test process (and the developer's own catalogs)
+    # shared ~/Library/Application Support/tscat, and a test holding a read
+    # lock made other processes fail with "database is locked".
+    import tscat.orm_sqlalchemy as _tscat_orm
+    _tscat_orm.user_data_dir = lambda appname: str(_data_dir / appname)
     from tscat.base import backend as _tscat_backend
     _tscat_backend()
 
