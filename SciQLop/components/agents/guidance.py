@@ -19,6 +19,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from .skills import sync_skills
+
 BEGIN_MARKER = "<!-- BEGIN SCIQLOP MANAGED SECTION -->"
 END_MARKER = "<!-- END SCIQLOP MANAGED SECTION -->"
 
@@ -146,6 +148,12 @@ reusing a scratch path so you don't collide with one from earlier in the
 session (there is no removal tool yet, so unused scratch products persist for
 the rest of the session).
 
+### Writing plugins
+
+Before designing, writing or debugging a SciQLop plugin, read
+`.claude/skills/sciqlop-plugin-design/SKILL.md` in this workspace. It holds
+the plugin contract and the traps that make plugins load but show nothing.
+
 ### Live Qt objects
 
 Code run with `sciqlop_exec_python` runs on the kernel thread, not the GUI
@@ -215,7 +223,7 @@ def sync_agents_md(workspace_dir: Path) -> None:
 
 
 def load_guidance(workspace_dir: Path) -> str:
-    """Publish the guidance, then return what a backend should be told.
+    """Publish the guidance and skills, then return what a backend should be told.
 
     The return value is the *whole* `AGENTS.md` — SciQLop's block plus the
     user's own workspace-specific sections — because backends that cannot read
@@ -223,6 +231,7 @@ def load_guidance(workspace_dir: Path) -> str:
     Falls back to the managed block alone when the file cannot be read.
     """
     sync_agents_md(workspace_dir)
+    sync_skills(workspace_dir)
     try:
         return (Path(workspace_dir) / AGENTS_FILENAME).read_text(encoding="utf-8")
     except OSError:
