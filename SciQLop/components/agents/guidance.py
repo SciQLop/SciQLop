@@ -152,11 +152,12 @@ Try the maths on real data before writing the product. `sciqlop_fetch`
 loads the inputs into the kernel from the same `//` paths `Depends` takes
 (drop a leading `root//`), as a dict of `SpeasyVariable`s under the `name`
 you give; compute on them with `sciqlop_exec_python`, never by hunting
-speasy uids for `spz.get_data`. Once the product is registered, plot it,
-call `sciqlop_wait_for_plot_data`, then read the graph's `last_error` and
-`n_points` from `sciqlop_describe_panel`: a registered product has not run
-yet, so this is where its errors show. `%%vp --debug` reports only on screen
-(an overlay on its debug panel), not in the cell output. Before writing a
+speasy uids for `spz.get_data`. A product with a return annotation is
+registered without running, so add `--debug --start ... --stop ...` to the
+`%%vp` line: it runs once and the cell output lists each input, the result
+(shape, unit, NaN share, value range) and the checks, or the error with its
+traceback. After plotting, call `sciqlop_wait_for_plot_data`, then read the
+graph's `last_error` and `n_points` from `sciqlop_describe_panel`. Before writing a
 virtual product, read `.claude/skills/sciqlop-virtual-products/SKILL.md` in
 this workspace: it has the full workflow and the common traps.
 

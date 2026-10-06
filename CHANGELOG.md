@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### Virtual products
+
+- `%%vp --debug` now prints a report in the cell output, not only on the debug panel: each input with its shape, unit, columns, NaN share, value range and time span, then the same for the result, then the checks. When the function fails, the report shows the error and its traceback. Before, a failing function printed nothing in the cell.
+- Tracebacks of a failing virtual product show your own code again. The line in your function that raised was hidden whenever SciQLop's code called it, which is always. In a development checkout, frames from installed libraries such as speasy were hidden too.
+
+### Agent chat
+
+- Agents get two skills, published into each workspace's `.claude/skills/` folder, where opencode and Claude Code find them: one on designing and testing virtual products, one on writing SciQLop plugins. They load only when a task needs them, so they don't lengthen every session. Agents that don't load skills are pointed at the files from `AGENTS.md`.
+- The `AGENTS.md` guidance tells agents how to try a virtual product's maths before writing it: load the inputs with `sciqlop_fetch` from their product-tree paths, compute on them, then run the product once with `--debug`. An agent asked for |V_alpha − V_p| spent about ten tool calls hunting Speasy identifiers instead.
+
 ### JupyterLab
 
 - The JupyterLab panel no longer stays blank white until you reload it. If the page fails to load, or loads without Lab starting, it is loaded again on its own (jupyqt 0.6.6). This happened mostly on a busy start, such as the first one after an update.

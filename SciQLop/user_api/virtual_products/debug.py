@@ -4,17 +4,23 @@ import traceback
 from typing import Optional
 
 from SciQLop.user_api.virtual_products.registry import RegistryEntry, _invoke_on_main_thread
+from SciQLop.user_api.virtual_products.report import debug_report
 from SciQLop.user_api.virtual_products.validation import validate_with_data, Diagnostic
 
 
 def handle_debug(args, func, func_name: str, entry: RegistryEntry, type_info,
                  start: float, stop: float,
-                 cached_data=None, eval_error=None, eval_elapsed: float = 0.0):
-    """Open/reuse a scratch pad panel and run callback with validation."""
+                 cached_data=None, eval_error=None, eval_elapsed: float = 0.0,
+                 inputs=None):
+    """Print a text report, then open/reuse a scratch pad panel showing the same
+    findings in an overlay."""
     result = None
     if eval_error is None:
         result = validate_with_data(cached_data, type_info.product_type, type_info.labels,
                                     eval_elapsed, start=start, stop=stop)
+    print(debug_report(func_name, start, stop, inputs or {}, data=cached_data,
+                       diagnostics=result.diagnostics if result is not None else (),
+                       error=eval_error, elapsed=eval_elapsed))
 
     def _do_debug_ui():
         from SciQLop.components.plotting.ui.diagnostic_overlay import DiagnosticOverlay

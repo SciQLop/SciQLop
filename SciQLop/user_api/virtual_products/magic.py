@@ -224,6 +224,7 @@ def vp_magic(line: str, cell: str, local_ns=None):
     cached_data = None
     eval_error = None
     eval_elapsed = 0.0
+    deps = {}
     needs_eval = type_info is None or args.debug
 
     if needs_eval:
@@ -293,7 +294,7 @@ def vp_magic(line: str, cell: str, local_ns=None):
         handle_debug(args, func, func_name, entry, type_info,
                      start, stop,
                      cached_data=cached_data, eval_error=eval_error,
-                     eval_elapsed=eval_elapsed)
+                     eval_elapsed=eval_elapsed, inputs=deps)
 
         try:
             from SciQLop.user_api.virtual_products.ipywidgets_binding import (

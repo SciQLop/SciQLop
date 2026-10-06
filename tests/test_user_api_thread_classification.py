@@ -24,6 +24,7 @@ QT_FREE_MODULES = {
     "templates.py",
     "threading.py",
     "virtual_products/validation.py",
+    "virtual_products/report.py",
     # ipywidgets live in the kernel, not in Qt.
     "virtual_products/ipywidgets_binding.py",
 }

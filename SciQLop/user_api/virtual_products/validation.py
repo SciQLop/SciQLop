@@ -1,8 +1,10 @@
 # SciQLop/user_api/virtual_products/validation.py
+import os
 import time
 import traceback
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
 import numpy as np
@@ -32,23 +34,24 @@ def _is_accepted_time_dtype(dtype) -> bool:
     return dtype == np.dtype("float64") or np.issubdtype(dtype, np.datetime64)
 
 
+_SCIQLOP_FRAME = f'File "{Path(__file__).parents[2]}{os.sep}'
+
+
 def _filter_traceback(tb_text: str) -> str:
-    """Keep only frames from user code, not SciQLop internals."""
-    lines = tb_text.strip().split("\n")
-    filtered = []
-    skip = False
-    for line in lines:
-        if 'File "' in line and "SciQLop/" in line:
-            skip = True
-        else:
-            if line.startswith("  ") and skip:
-                continue
-            skip = False
-        if not skip:
-            filtered.append(line)
-    if filtered and filtered[-1] != lines[-1]:
-        filtered.append(lines[-1])
-    return "\n".join(filtered) if filtered else tb_text
+    """Keep only frames from user code, not SciQLop internals.
+
+    A frame is internal when its file lies inside the SciQLop package; matching
+    a bare "SciQLop/" also hid every library installed in a checkout's venv.
+    """
+    kept, in_sciqlop_frame = [], False
+    for line in tb_text.strip().split("\n"):
+        if line.lstrip().startswith('File "'):
+            in_sciqlop_frame = _SCIQLOP_FRAME in line
+        elif not line.startswith(" "):
+            in_sciqlop_frame = False
+        if not in_sciqlop_frame:
+            kept.append(line)
+    return "\n".join(kept)
 
 
 # ---------------------------------------------------------------------------

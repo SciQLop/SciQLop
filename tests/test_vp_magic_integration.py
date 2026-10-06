@@ -173,6 +173,45 @@ def test_vp_magic_debug_flags_dependency_with_no_data(qtbot, qapp, main_window):
     assert entry is not None
 
 
+def test_vp_magic_debug_prints_the_error_in_the_cell_output(qtbot, qapp, main_window, capsys):
+    """--debug catches the callback's exception to draw it on the debug panel;
+    it used to print nothing, so an agent (or a user reading the cell output)
+    saw a silent success."""
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl
+
+    cell = (
+        "def debug_raises(start: float, stop: float) -> Scalar:\n"
+        "    raise ValueError('kaboom in the callback')\n"
+    )
+    _vp_magic_impl("--start 0 --stop 10 --debug", cell)
+    out = capsys.readouterr().out
+    assert "error: ValueError: kaboom in the callback" in out
+
+
+def test_vp_magic_debug_prints_inputs_and_result(qtbot, qapp, main_window, capsys):
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl
+
+    cell = (
+        "from typing import Annotated\n"
+        "import numpy as np\n"
+        "from SciQLop.user_api.virtual_products import Depends\n"
+        "\n"
+        "def _source(start, stop):\n"
+        "    x = np.linspace(start, stop, 50)\n"
+        "    return x, np.sin(x)\n"
+        "\n"
+        "def debug_doubled(start: float, stop: float,\n"
+        "                  series: Annotated[object, Depends(_source)]) -> Scalar:\n"
+        "    x, y = series\n"
+        "    return x, 2 * y\n"
+    )
+    _vp_magic_impl("--start 0 --stop 10 --debug", cell)
+    out = capsys.readouterr().out
+    assert "debug_doubled" in out
+    assert "series:" in out
+    assert "result:" in out and "(50,)" in out
+
+
 def test_vp_magic_none_dependency_without_annotation_registers_as_scalar(qtbot, qapp, main_window):
     """Without --debug or a return annotation, a Depends() target resolving
     to no data must short-circuit the eval (no callback call, no TypeError)

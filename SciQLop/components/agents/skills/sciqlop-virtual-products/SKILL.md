@@ -34,13 +34,18 @@ Follow these steps in order. Each one catches a mistake the next one cannot.
    the notebook with `sciqlop_create_notebook`, add the cell with
    `sciqlop_insert_notebook_cell`, and run it with
    `sciqlop_run_notebook_cell`. That runs it in the same kernel.
+   A VP with a return annotation is registered without running. Add
+   `--debug --start "<iso>" --stop "<iso>"` to the `%%vp` line to run it once
+   right away: the cell output lists each input, the result (shape, unit, NaN
+   share, min/median/max) and the checks, or the error with its traceback.
+   It also opens a scratch debug panel showing the result.
 5. **Plot it** with `sciqlop_plot_product(product="<the --path>",
    name="<panel>")`. The default `plot_index=-1` adds a new subplot below the
    others; an existing index overlays it on that subplot.
-6. **Check it.** Call `sciqlop_wait_for_plot_data(name=...)`, then
-   `sciqlop_describe_panel(name=...)`: the new graph's `last_error` must be
-   empty and `n_points` above zero. Registering a VP does not run it, so this
-   is where its errors show. Then `sciqlop_screenshot_panel` to look at it.
+6. **Check it on the panel.** Call `sciqlop_wait_for_plot_data(name=...)`,
+   then `sciqlop_describe_panel(name=...)`: the new graph's `last_error` must
+   be empty and `n_points` above zero. Then `sciqlop_screenshot_panel` to
+   look at it.
 7. **Fix and rerun.** Edit the cell and run it again with the same function
    name. The product is updated in place, and plots that show it fetch again.
 
@@ -107,9 +112,9 @@ def dv_alpha_proton(
   the view, so panning stays smooth. Leave it out when the function returns a
   fixed number of points for any range, such as a resampled or binned
   product.
-- **`--debug`** reports only on screen, as an overlay on its own debug
-  panel. You cannot read it from the cell output; take a screenshot of that
-  panel if you use it.
+- **Read the `--debug` report before plotting.** A value range far from what
+  the physics allows, a NaN share near 100% or a time span shorter than the
+  requested range are bugs to fix first, even when the checks say ok.
 
 For anything not covered here (spectrogram axes, coloured lines, knob
 widgets), call `sciqlop_api_reference('virtual_products')` and
