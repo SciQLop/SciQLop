@@ -20,6 +20,27 @@ def _mark(qtbot, host):
     return mark
 
 
+def _drop_an_undisposed_mark_with_its_host():
+    from SciQLop.components.onboarding.ui.coach_mark import CoachMark
+    host = QMainWindow()
+    target = QPushButton("target", host)
+    host.show()
+    CoachMark(host).show_step(target, "Title", "Body")
+
+
+def test_collecting_an_undisposed_mark_with_its_host_raises_nothing(qtbot, monkeypatch):
+    """A mark in a reference cycle with its host had its attributes cleared
+    by the cyclic GC while still filtering the host's events, so every
+    event of the dying host raised AttributeError from eventFilter."""
+    import gc
+    import sys
+    errors = []
+    monkeypatch.setattr(sys, "unraisablehook", lambda u: errors.append(u.exc_value))
+    _drop_an_undisposed_mark_with_its_host()
+    gc.collect()
+    assert errors == []
+
+
 def test_show_step_covers_the_host_and_shows_the_bubble(qtbot):
     host, target = _host(qtbot)
     mark = _mark(qtbot, host)

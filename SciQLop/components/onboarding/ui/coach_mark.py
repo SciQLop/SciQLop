@@ -189,7 +189,6 @@ class CoachMark(QWidget):
 
     def __init__(self, main_window: QWidget):
         super().__init__(main_window)
-        self._main_window = main_window
         self._target: QWidget | None = None
         self._target_local_rect: QRect | None = None
         self._watched_docks: list = []
@@ -201,6 +200,13 @@ class CoachMark(QWidget):
         self._bubble.skip_clicked.connect(self.skip_requested)
         main_window.installEventFilter(self)
         self.hide()
+
+    @property
+    def _main_window(self) -> QWidget:
+        # Read from Qt, not stored: an attribute closes a reference cycle with
+        # the parent, and the cyclic GC then empties this object's attributes
+        # while it still filters the main window's events.
+        return self.parentWidget()
 
     @property
     def bubble(self) -> TourBubble:
