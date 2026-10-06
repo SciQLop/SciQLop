@@ -22,9 +22,9 @@ contacts:
   email: "alexis.jeandet@lpp.polytechnique.fr"
 title: "SciQLop"
 license: "GPL-3.0-or-later"
-version: 0.14.0
+version: 0.14.1
 doi: 10.5281/zenodo.7379012
-date-released: 2026-10-05
+date-released: 2026-10-06
 url: "https://github.com/SciQLop/SciQLop"
 keywords:
 - "space physics"
