@@ -72,6 +72,8 @@ and Ctrl+Shift+M:
 
 ## Workflow for "find and label events"
 
+0. Settle the criterion, the target catalog and whether to save before
+   starting (see the `sciqlop-clarify` skill).
 1. Fetch the data with `sciqlop_fetch` and compute the criterion with
    `sciqlop_exec_python` (threshold, jump, rotation, ...).
 2. Turn it into intervals: start and stop times, merging samples closer than

@@ -165,6 +165,14 @@ def test_guidance_column_selection_example_is_not_a_hallucinated_label():
     assert ".columns" in SCIQLOP_GUIDANCE
 
 
+def test_guidance_asks_agents_to_settle_open_choices_before_acting():
+    # An agent asked for |V_alpha - V_p| started fetching and building before
+    # anyone confirmed what the user meant; one question up front is cheaper.
+    assert "### Before you start" in SCIQLOP_GUIDANCE
+    assert "at most three" in SCIQLOP_GUIDANCE
+    assert SCIQLOP_GUIDANCE.index("### Before you start") < SCIQLOP_GUIDANCE.index("### Plotting workflow")
+
+
 def test_guidance_tells_agents_to_try_the_maths_before_writing_a_vp():
     # An agent spent ~10 tool calls hunting speasy uids to test its maths,
     # unaware sciqlop_fetch loads `//` tree paths into the kernel.
@@ -184,6 +192,12 @@ def _frontmatter(skill_md):
 
 def test_the_virtual_products_skill_is_bundled():
     assert "sciqlop-virtual-products" in [d.name for d in _bundled_skills()]
+
+
+def test_every_skill_agents_md_points_at_is_bundled():
+    import re
+    named = set(re.findall(r"(sciqlop-[a-z-]+)/SKILL\.md", SCIQLOP_GUIDANCE))
+    assert named and named <= {d.name for d in _bundled_skills()}, sorted(named)
 
 
 @pytest.mark.parametrize("skill_dir", _bundled_skills(), ids=lambda d: d.name)

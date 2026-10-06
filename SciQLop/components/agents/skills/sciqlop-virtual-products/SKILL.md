@@ -16,6 +16,8 @@ zoom. It shows up in the product tree and plots like any other product.
 ## Workflow
 
 Follow these steps in order. Each one catches a mistake the next one cannot.
+When the definition, the inputs or the deliverable are open, settle them with
+the user first (see the `sciqlop-clarify` skill).
 
 1. **Find the inputs.** If the user points at what is on screen, call
    `sciqlop_describe_panel(name=...)` and take the product paths from it,

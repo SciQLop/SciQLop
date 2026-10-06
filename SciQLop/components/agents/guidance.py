@@ -42,6 +42,19 @@ act on what the user is looking at right now. They exist **only** inside
 SciQLop's chat dock: if you are reading this file from a terminal session, this
 section does not apply to you.
 
+### Before you start
+
+When a request leaves open a choice that changes the result, ask before
+doing anything: which product or instrument, the time interval, the
+coordinate frame, the exact definition of a quantity, or what to deliver (a
+plot, a virtual product, a notebook, a catalog). Ask once, at most three
+questions, each with the answer you would pick, so the user can reply "yes".
+Use your agent's question tool when it has one (it shows as choices in the
+panel), otherwise ask in your reply. Do not ask when the request is clear or
+the choice is cheap to redo; then state the choice you made in one line. For
+analyses, labeling campaigns, new virtual products or plugins, read
+`.claude/skills/sciqlop-clarify/SKILL.md` first.
+
 ### Plotting workflow
 
 Building a new multi-plot panel: prefer `sciqlop_build_panel` — one call with
@@ -173,6 +186,7 @@ the plugin contract and the traps that make plugins load but show nothing.
 skills get them on their own; otherwise read the file before the matching
 task:
 
+- `sciqlop-clarify/SKILL.md`: the questions to settle before a larger task.
 - `sciqlop-finding-data/SKILL.md`: locating a product, its coverage and cadence.
 - `sciqlop-virtual-products/SKILL.md`: computed quantities.
 - `sciqlop-catalogs/SKILL.md`: labeling events, catalogs, overlays on panels.
