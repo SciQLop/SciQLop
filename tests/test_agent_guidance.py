@@ -165,6 +165,46 @@ def test_guidance_column_selection_example_is_not_a_hallucinated_label():
     assert ".columns" in SCIQLOP_GUIDANCE
 
 
+def test_guidance_tells_agents_to_try_the_maths_before_writing_a_vp():
+    # An agent spent ~10 tool calls hunting speasy uids to test its maths,
+    # unaware sciqlop_fetch loads `//` tree paths into the kernel.
+    assert "sciqlop_fetch" in SCIQLOP_GUIDANCE
+    assert ".claude/skills/sciqlop-virtual-products/SKILL.md" in SCIQLOP_GUIDANCE
+
+
+def _bundled_skills():
+    from SciQLop.components.agents.skills import BUNDLED_SKILLS_DIR
+    return sorted(p.parent for p in BUNDLED_SKILLS_DIR.glob("*/SKILL.md"))
+
+
+def _frontmatter(skill_md):
+    head = skill_md.read_text(encoding="utf-8").split("---", 2)[1]
+    return dict(line.split(":", 1) for line in head.strip().splitlines())
+
+
+def test_the_virtual_products_skill_is_bundled():
+    assert "sciqlop-virtual-products" in [d.name for d in _bundled_skills()]
+
+
+@pytest.mark.parametrize("skill_dir", _bundled_skills(), ids=lambda d: d.name)
+def test_bundled_skill_frontmatter_matches_the_agent_skills_format(skill_dir):
+    # opencode rejects a skill whose name differs from its directory or is not
+    # lowercase-hyphenated, and needs a description to decide when to load it.
+    import re
+    meta = _frontmatter(skill_dir / "SKILL.md")
+    assert meta["name"].strip() == skill_dir.name
+    assert re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", skill_dir.name)
+    assert meta["description"].strip().startswith("Use when")
+    assert len(meta["description"].strip()) <= 1024
+
+
+def test_load_guidance_publishes_every_bundled_skill(tmp_path):
+    load_guidance(tmp_path)
+    for skill_dir in _bundled_skills():
+        published = tmp_path / ".claude" / "skills" / skill_dir.name / "SKILL.md"
+        assert published.read_text(encoding="utf-8") == (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+
+
 def test_strip_legacy_alignment_removes_only_the_old_preamble():
     from SciQLop.components.agents.guidance import LEGACY_ALIGNMENT, strip_legacy_alignment
     assert strip_legacy_alignment(f"{LEGACY_ALIGNMENT}\nplot B") == "plot B"

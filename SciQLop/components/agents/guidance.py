@@ -148,6 +148,18 @@ reusing a scratch path so you don't collide with one from earlier in the
 session (there is no removal tool yet, so unused scratch products persist for
 the rest of the session).
 
+Try the maths on real data before writing the product. `sciqlop_fetch`
+loads the inputs into the kernel from the same `//` paths `Depends` takes
+(drop a leading `root//`), as a dict of `SpeasyVariable`s under the `name`
+you give; compute on them with `sciqlop_exec_python`, never by hunting
+speasy uids for `spz.get_data`. Once the product is registered, plot it,
+call `sciqlop_wait_for_plot_data`, then read the graph's `last_error` and
+`n_points` from `sciqlop_describe_panel`: a registered product has not run
+yet, so this is where its errors show. `%%vp --debug` reports only on screen
+(an overlay on its debug panel), not in the cell output. Before writing a
+virtual product, read `.claude/skills/sciqlop-virtual-products/SKILL.md` in
+this workspace: it has the full workflow and the common traps.
+
 ### Writing plugins
 
 Before designing, writing or debugging a SciQLop plugin, read
