@@ -78,6 +78,9 @@ class SpeasyCatalogProvider(CatalogProvider):
             self._start_async_load(catalog)
         return super().events(catalog, start, stop)
 
+    def is_loading(self, catalog: Catalog) -> bool:
+        return self._speasy_ids.get(catalog.uuid) in self._loading
+
     def _start_async_load(self, catalog: Catalog):
         sid = self._speasy_ids.get(catalog.uuid)
         if sid is None:

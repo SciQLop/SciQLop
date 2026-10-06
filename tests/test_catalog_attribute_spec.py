@@ -29,7 +29,9 @@ def test_attribute_spec_can_be_overridden_to_return_intknob(qapp):
     assert provider.attribute_spec(cat, "other") is None
 
 
-def test_tscat_attribute_spec_rating_is_intknob_1_5(qapp):
+def test_tscat_attribute_spec_rating_is_intknob_1_10(qapp):
+    # tscat itself accepts ratings 1-10; a narrower editor range clamped
+    # events rated above 5 by other tscat tools as soon as they were edited.
     from SciQLop.plugins.tscat_catalogs.tscat_provider import TscatCatalogProvider
     from SciQLop.core.knobs import IntKnob
 
@@ -38,7 +40,7 @@ def test_tscat_attribute_spec_rating_is_intknob_1_5(qapp):
     spec = provider.attribute_spec(cat, "rating")
     assert isinstance(spec, IntKnob)
     assert spec.min == 1
-    assert spec.max == 5
+    assert spec.max == 10
     assert spec.name == "rating"
 
 
@@ -94,9 +96,9 @@ def test_user_spec_takes_precedence_over_builtin(qapp):
 
     provider = BuiltinDummy(num_catalogs=1, events_per_catalog=1)
     cat = provider.catalogs()[0]
-    # Built-in "rating" is IntKnob(1, 5)
+    # Built-in "rating" is IntKnob(1, 10)
     builtin = provider.attribute_spec(cat, "rating")
-    assert isinstance(builtin, IntKnob) and builtin.max == 5
+    assert isinstance(builtin, IntKnob) and builtin.max == 10
 
     # User overrides
     user_spec = FloatKnob(name="rating", min=0.0, max=10.0, default=5.0)

@@ -7,6 +7,14 @@
 - `%%vp --debug` now prints a report in the cell output, not only on the debug panel: each input with its shape, unit, columns, NaN share, value range and time span, then the same for the result, then the checks. When the function fails, the report shows the error and its traceback. Before, a failing function printed nothing in the cell.
 - Tracebacks of a failing virtual product show your own code again. The line in your function that raised was hidden whenever SciQLop's code called it, which is always. In a development checkout, frames from installed libraries such as speasy were hidden too.
 
+### Catalogs
+
+- Saving right after adding events now keeps them in their catalog. The Save was committed before the step that puts a new event in its catalog, so after a restart the catalog came back empty and the events sat in "Orphan events". This hit the catalog browser's Save too when pressed right after an import, and could also lose the folder of a catalog created just before saving.
+- `catalogs.persist(path)` writes a catalog to disk from a notebook or an agent, like the catalog browser's Save. Writing events from Python only changed them in memory, and nothing in Python could save them.
+- `panel.catalog_mode` reads and sets a panel's catalog mode (`"view"`, `"jump"` or `"edit"`), like the mode combo and Ctrl+Shift+M.
+- Reading or changing a catalog from a cell right after startup waits for its events to load. `catalogs.get()` returned an empty catalog while they were still loading, and `add_events` or `save` then worked from that empty list, so the catalog showed only the new events.
+- The event editor accepts ratings from 1 to 10, the range the catalog store uses. It stopped at 5, so editing an event rated higher by another tool lowered its rating to 5.
+
 ### Agent chat
 
 - Agents get skills, published into each workspace's `.claude/skills/` folder, where opencode and Claude Code find them: finding the right data product, designing and testing virtual products, labeling events in catalogs, troubleshooting empty or slow plots, and writing SciQLop plugins. They load only when a task needs them, so they don't lengthen every session. Agents that don't load skills are pointed at the files from `AGENTS.md`.

@@ -613,6 +613,27 @@ class PlotPanel(GuardedImpl):
         from SciQLop.user_api.catalogs._overlay import remove_catalog_overlay
         remove_catalog_overlay(self, overlay)
 
+    @property
+    @on_main_thread
+    def catalog_mode(self) -> str:
+        """How the panel's catalog overlays react: ``"view"`` (clicking an
+        event selects it), ``"jump"`` (picking an event in the catalog browser
+        moves the panel to it) or ``"edit"`` (Shift+click draws a new event;
+        spans of editable catalogs can be moved). The same as the panel's mode
+        combo and Ctrl+Shift+M."""
+        return self._get_impl_or_raise().catalog_manager.mode.value
+
+    @catalog_mode.setter
+    @on_main_thread
+    def catalog_mode(self, mode: str) -> None:
+        from SciQLop.components.catalogs.backend.panel_manager import InteractionMode
+        try:
+            value = InteractionMode(str(mode).lower())
+        except ValueError:
+            choices = ", ".join(m.value for m in InteractionMode)
+            raise ValueError(f"unknown catalog mode {mode!r}: expected one of {choices}") from None
+        self._get_impl_or_raise().catalog_manager.mode = value
+
     @on_main_thread
     def plot(self, *args, plot_index=-1, **kwargs) -> Tuple[ProjectionPlot | TimeSeriesPlot, Plottable] | None:
         """Omnibus plotting entry point — dispatches on argument type.

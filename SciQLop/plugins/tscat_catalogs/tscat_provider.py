@@ -416,8 +416,14 @@ class TscatCatalogProvider(CatalogProvider):
         # main-thread tscat.save() here used to race them and leave the
         # session stuck in SQLAlchemy's 'prepared' state. Dirty flags are
         # cleared optimistically by CatalogProvider.save().
-        self._ensure_clean_session()
-        tscat_model.do(SaveAction(user_callback=None))
+        #
+        # The SaveAction is queued from the cleanup action's callback, not
+        # right away: some actions queue a follow-up from their own callback
+        # (add_event links the event to its catalogue once created). Those
+        # callbacks run in queue order before this one, so their follow-ups
+        # are queued ahead of the commit. A depth-2 chain would need another hop.
+        tscat_model.do(_EnsureCleanSessionAction(
+            user_callback=lambda _action: tscat_model.do(SaveAction(user_callback=None))))
 
     def add_event(self, catalog: Catalog, event: CatalogEvent) -> None:
         self._ensure_clean_session()
@@ -543,6 +549,9 @@ class TscatCatalogProvider(CatalogProvider):
             e.set_meta(key, value)
             self.event_meta_changed.emit(catalog, e, key)
         self.mark_dirty(catalog)
+
+    def is_loading(self, catalog: Catalog) -> bool:
+        return catalog.uuid in self._loading_uuids
 
     def _load_events(self, catalog: Catalog, emit: bool = True) -> None:
         catalog_model = tscat_model.catalog(catalog.uuid)

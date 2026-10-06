@@ -69,6 +69,54 @@ def test_save_commits_on_driver_thread(tscat_provider, qapp, monkeypatch):
     )
 
 
+def _committed_event_uuids(qapp, catalogue_uuid: str) -> list[str]:
+    """Drop everything uncommitted, then list the catalogue's events, on the
+    driver thread like every other session touch."""
+    from dataclasses import dataclass, field
+    from tscat_gui.tscat_driver.actions import Action
+    from tscat_gui.tscat_driver.model import tscat_model
+
+    @dataclass
+    class _ReadCommitted(Action):
+        uuids: list = field(default_factory=list)
+
+        def action(self) -> None:
+            import tscat
+            tscat.discard()
+            catalogue = next(c for c in tscat.get_catalogues() if c.uuid == catalogue_uuid)
+            self.uuids = [e.uuid for e in tscat.get_events(catalogue)[0]]
+
+    probe = _ReadCommitted(user_callback=None)
+    tscat_model.do(probe)
+    assert _spin(qapp, lambda: probe.completed, timeout=10), "probe action never ran"
+    return probe.uuids
+
+
+def test_save_right_after_adding_an_event_commits_its_catalogue_link(tscat_provider, qapp, monkeypatch):
+    """add_event links the new event to its catalogue from the create action's
+    callback, so that link is queued only after the create has run. A save
+    requested right after add_event was queued before the link: the commit
+    held an orphan event, and the catalogue came back empty after a restart."""
+    import uuid
+    from datetime import datetime, timezone
+    from SciQLop.components.catalogs.backend.provider import CatalogEvent
+
+    session = _session()
+    commits = []
+    real_commit = session.commit
+    monkeypatch.setattr(session, "commit", lambda: (commits.append(1), real_commit()))
+
+    catalog = tscat_provider.create_catalog(f"save-race-{uuid.uuid4().hex[:8]}")
+    event = CatalogEvent(uuid=str(uuid.uuid4()),
+                         start=datetime(2025, 10, 10, 8, tzinfo=timezone.utc),
+                         stop=datetime(2025, 10, 10, 9, tzinfo=timezone.utc))
+    tscat_provider.add_event(catalog, event)
+    tscat_provider.save()
+
+    assert _spin(qapp, lambda: commits and tscat_provider._pending_actions == 0, timeout=10)
+    assert _committed_event_uuids(qapp, catalog.uuid) == [event.uuid]
+
+
 def test_failed_flush_recovery_rolls_back_on_driver_thread(tscat_provider, qapp, monkeypatch):
     from sqlalchemy.orm import Session
 

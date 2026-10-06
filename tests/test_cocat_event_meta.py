@@ -101,7 +101,7 @@ def test_cocat_attribute_spec_rating_and_author(qapp):
     rating_spec = provider.attribute_spec(None, "rating")
     assert isinstance(rating_spec, IntKnob)
     assert rating_spec.min == 1
-    assert rating_spec.max == 5
+    assert rating_spec.max == 10
 
     author_spec = provider.attribute_spec(None, "author")
     assert isinstance(author_spec, StringKnob)

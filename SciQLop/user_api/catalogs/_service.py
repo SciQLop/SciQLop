@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import time
 import uuid as _uuid
+from functools import wraps
 from typing import Any
 
 from speasy.products.catalog import Catalog as SpeasyCatalog, Event as SpeasyEvent
@@ -12,9 +14,35 @@ from SciQLop.components.catalogs.backend.provider import (
     Capability,
 )
 from SciQLop.components.catalogs.backend.registry import CatalogRegistry
-from SciQLop.user_api.threading import on_main_thread
+from SciQLop.user_api.threading import _on_main_thread, on_main_thread
 
 _UUID_KEY = "__sciqlop_uuid__"
+
+_WRITE_CAPABILITIES = {Capability.EDIT_EVENTS, Capability.CREATE_EVENTS,
+                       Capability.DELETE_EVENTS, Capability.CREATE_CATALOGS,
+                       Capability.DELETE_CATALOGS}
+
+_LOAD_TIMEOUT_S = 30.0
+
+
+def _on_main_thread_once_loaded(method):
+    """`on_main_thread`, after waiting for the catalog's events to finish
+    loading in the background. Reading or appending to a half-loaded catalog
+    silently works on the events that have arrived so far.
+
+    Only a caller off the GUI thread (a cell, an agent) can wait: on the GUI
+    thread the wait would block the load itself.
+    """
+    marshalled = on_main_thread(method)
+
+    @wraps(method)
+    def wrapper(self, path, *args, **kwargs):
+        if not _on_main_thread():
+            deadline = time.monotonic() + _LOAD_TIMEOUT_S
+            while self._still_loading(path) and time.monotonic() < deadline:
+                time.sleep(0.05)
+        return marshalled(self, path, *args, **kwargs)
+    return wrapper
 
 
 def _split_segments(path: str) -> list[str]:
@@ -113,6 +141,15 @@ class CatalogService:
                 return cat
         return None
 
+    @on_main_thread
+    def _still_loading(self, path: str) -> bool:
+        try:
+            provider, catalog = self._resolve(path)
+        except (KeyError, ValueError, TypeError):
+            return False  # nothing to wait for; the real call reports it
+        provider.events(catalog)  # starts the background load if needed
+        return provider.is_loading(catalog)
+
     def _resolve(self, path: str) -> tuple[CatalogProvider, Catalog]:
         provider_name, segments, name = _parse_path(path)
         provider = self._find_provider(provider_name)
@@ -156,8 +193,8 @@ class CatalogService:
             # Don't call save() here — providers like tscat queue mutations
             # asynchronously (QThread worker), so saving immediately would
             # race with pending ORM actions. The cache below is authoritative;
-            # disk persistence happens via provider.save() called explicitly
-            # or on shutdown. Prefer the provider's own cached objects (then
+            # disk persistence happens only through provider.save(), from the
+            # browser's Save or CatalogService.persist(). Prefer the provider's own cached objects (then
             # the pre-save ones) over our plain copies, so persistence-wired
             # wrappers (e.g. TscatEvent) stay in the cache.
             current_by_uuid = {e.uuid: e for e in provider.events(catalog)}
@@ -195,7 +232,7 @@ class CatalogService:
             if cat.path[:len(path_prefix)] == path_prefix
         ]
 
-    @on_main_thread
+    @_on_main_thread_once_loaded
     def get(self, path: str) -> SpeasyCatalog:
         """Retrieve a catalog as a ``speasy.Catalog``.
 
@@ -220,7 +257,7 @@ class CatalogService:
         speasy_events = [_event_to_speasy(e) for e in events]
         return SpeasyCatalog(name=catalog.name, events=speasy_events)
 
-    @on_main_thread
+    @_on_main_thread_once_loaded
     def save(self, path: str, data) -> None:
         """Save events to a catalog, creating it if it doesn't exist (upsert).
 
@@ -276,6 +313,39 @@ class CatalogService:
         provider.remove_catalog(catalog)
 
     @on_main_thread
+    def persist(self, path: str) -> None:
+        """Write a catalog's pending changes to storage, like the catalog
+        browser's Save.
+
+        Writing events (``create``, ``add_events``, ``save``, ...) only changes
+        them in memory; they are lost when SciQLop closes unless saved. Where
+        the provider can only save as a whole (the local "My Catalogs" store),
+        this saves every pending change of that provider, as the browser does.
+        Providers that store each change as it happens ("Shared") need no save,
+        and this does nothing for them.
+
+        Parameters
+        ----------
+        path : str
+            Fully-qualified catalog path.
+
+        Raises
+        ------
+        KeyError
+            If the provider or catalog is not found.
+        PermissionError
+            If the catalog is read-only.
+        """
+        provider, catalog = self._resolve(path)
+        caps = provider.capabilities(catalog)
+        if Capability.SAVE_CATALOG in caps:
+            provider.save_catalog(catalog)
+        elif Capability.SAVE in caps:
+            provider.save()
+        elif not caps & _WRITE_CAPABILITIES:
+            raise PermissionError(f"Catalog {path!r} is read-only")
+
+    @on_main_thread
     def create(self, path: str, data) -> None:
         """Create a new catalog with the given events (strict — fails if exists).
 
@@ -308,7 +378,7 @@ class CatalogService:
         if new_events:
             self._persist(provider, catalog, new_events)
 
-    @on_main_thread
+    @_on_main_thread_once_loaded
     def add_events(self, path: str, data) -> None:
         """Append events to an existing catalog.
 
@@ -331,7 +401,7 @@ class CatalogService:
         new_events = [_event_to_internal(e) for e in speasy_cat]
         self._persist(provider, catalog, existing + new_events)
 
-    @on_main_thread
+    @_on_main_thread_once_loaded
     def remove_events(self, path: str, events) -> None:
         """Remove specific events from a catalog.
 

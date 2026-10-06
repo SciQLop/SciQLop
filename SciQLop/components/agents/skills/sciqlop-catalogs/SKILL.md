@@ -42,6 +42,14 @@ for e in cat:
   - `catalogs.remove_events(path, [events from get()])` removes events.
   - `catalogs.remove(path)` deletes the whole catalog. Ask first.
 - **Editing** an event: `get()` the catalog, change the events, `save()` it.
+- **Writing to disk:** all of the above change the catalog in memory only.
+  `catalogs.persist(path)` writes it, like the catalog browser's Save. For
+  `My Catalogs` it saves every pending change of that store, the user's
+  included; `Shared` stores each change by itself; `Remote` raises
+  `PermissionError`.
+- Reads and writes wait for a catalog whose events are still loading in the
+  background (right after startup), so `get()` never returns a half-loaded
+  catalog.
 
 ## Showing a catalog on a panel
 
@@ -52,10 +60,15 @@ panel.remove_catalog_overlay(overlay)                        # or overlay.remove
 ```
 
 `panel` is a `PlotPanel` from `SciQLop.user_api.plot` (for example
-`plot_panel("Panel0")`; check with `sciqlop_api_reference('plot')`). The
-user switches the panel's catalog mode (View, Jump to the picked event, Edit
-to draw new events with Shift+click) from the panel's toolbar or with
-Ctrl+Shift+M; there is no API for it.
+`plot_panel("Panel0")`; check with `sciqlop_api_reference('plot')`).
+
+`panel.catalog_mode` sets how the overlays react, like the panel's mode combo
+and Ctrl+Shift+M:
+- `"view"`: clicking an event selects it.
+- `"jump"`: picking an event in the catalog browser moves the panel to it.
+  Set this when the user wants to step through the events.
+- `"edit"`: the user draws new events with Shift+click and moves the spans of
+  editable catalogs.
 
 ## Workflow for "find and label events"
 
@@ -71,9 +84,10 @@ Ctrl+Shift+M; there is no API for it.
    `{"criterion": "Bt > 50 nT", "product": "<tree path>"}`.
 5. Overlay it on the panel and take a screenshot to check the spans sit on
    the features.
-6. **Tell the user to save.** The API does not write catalogs to disk: they
-   live in memory until the user presses Save in the catalog browser, and
-   SciQLop warns about unsaved catalogs when it closes.
+6. **Save it** with `catalogs.persist(path)` once the user agrees with the
+   events. Until then they live in memory only, and SciQLop warns about
+   unsaved catalogs when it closes. In `My Catalogs`, persisting also saves
+   the user's own pending edits, so say that you are saving.
 
 ## Traps
 
@@ -84,7 +98,8 @@ Ctrl+Shift+M; there is no API for it.
   start == stop is allowed (an instant).
 - **Reserved names:** `start`, `stop`, `author`, `uuid`, `tags`, `products`
   and `rating` are built-in fields, not free attributes. `tags` is a list of
-  strings, `rating` an integer, and `author` is always set to "SciQLop".
+  strings, `rating` an integer from 1 to 10, and `author` is always set to
+  "SciQLop".
 - **Attribute names** must start with a letter and use only letters, digits
   and `_` (`shock_angle`, not `shock angle`). Others still show in
   `catalogs.get()` but are not saved: they are dropped, with a warning, when

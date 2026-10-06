@@ -179,6 +179,11 @@ class CatalogProvider(QObject):
     def capabilities(self, catalog: Catalog | None = None) -> set[str]:
         return set()
 
+    def is_loading(self, catalog: Catalog) -> bool:
+        """True while *catalog*'s events are still being fetched in the
+        background; meanwhile `events()` returns only what has arrived."""
+        return False
+
     def attribute_spec(self, catalog: Catalog, key: str):
         """Return the typed spec (`KnobSpec`) for an event metadata attribute,
         or ``None`` if the provider has no schema for *key* (free-form).
@@ -207,8 +212,10 @@ class CatalogProvider(QObject):
         """Built-in spec defaults shared across providers."""
         from SciQLop.core.knobs import IntKnob, StringKnob, StringListKnob
         if key == "rating":
-            return IntKnob(name=key, min=1, max=5, default=3,
-                           description="Event rating (1-5)")
+            # tscat stores 1-10 and cocat any integer; a narrower editor
+            # range would clamp events rated by other tools when edited.
+            return IntKnob(name=key, min=1, max=10, default=3,
+                           description="Event rating (1-10)")
         if key == "author":
             return StringKnob(name=key, default="",
                               description="Event author")
