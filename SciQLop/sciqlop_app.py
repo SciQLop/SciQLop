@@ -141,6 +141,21 @@ def _notify_incompatible_plugins(parent) -> None:
 
 
 def start_sciqlop():
+    from PySide6.QtWidgets import QApplication
+    main_windows = build_sciqlop()
+    app = QApplication.instance()
+    _signal_ready_and_wait_for_splash()
+    main_windows.show()
+    app.processEvents()
+    _notify_dropped_dependencies(main_windows)
+    _notify_incompatible_plugins(main_windows)
+    from SciQLop.components.crash_report.offer import offer_crash_report
+    offer_crash_report(main_windows)
+    return main_windows
+
+
+def build_sciqlop():
+    """The app and its main window, plugins loaded, not shown yet."""
     os.environ['INSIDE_SCIQLOP'] = '1'
     from PySide6 import QtPrintSupport, QtQml
 
@@ -184,13 +199,6 @@ def start_sciqlop():
     main_windows.push_variables_to_console({"plugins": kernel_plugins_view()})
 
     app.processEvents()
-    _signal_ready_and_wait_for_splash()
-    main_windows.show()
-    app.processEvents()
-    _notify_dropped_dependencies(main_windows)
-    _notify_incompatible_plugins(main_windows)
-    from SciQLop.components.crash_report.offer import offer_crash_report
-    offer_crash_report(main_windows)
     return main_windows
 
 def main():
@@ -200,23 +208,36 @@ def main():
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
     from SciQLop.core.sciqlop_application import sciqlop_event_loop
+    from SciQLop.core.batch import BatchRequest
 
     loop = sciqlop_event_loop()
+    batch = BatchRequest.from_env(os.environ)
+
+    def _quit(code: int):
+        app = QApplication.instance()
+        if app is not None:
+            app._sciqlop_exit_code = code
+        QApplication.exit(code)
+
+    def _run_interactive():
+        main_windows = start_sciqlop()
+        try:
+            main_windows.start()
+        except Exception as e:
+            print(e)
+
+    def _run_batch():
+        from SciQLop.core.batch import run_batch_script
+        build_sciqlop()
+        _quit(run_batch_script(batch))
 
     def _run_startup():
         try:
-            main_windows = start_sciqlop()
-            try:
-                main_windows.start()
-            except Exception as e:
-                print(e)
+            _run_batch() if batch else _run_interactive()
         except Exception:
             import traceback
             traceback.print_exc(file=sys.stderr)
-            app = QApplication.instance()
-            if app is not None:
-                app._sciqlop_exit_code = 1
-            QApplication.exit(1)
+            _quit(1)
 
     # Deferred via a zero-delay timer scheduled *before* exec() below, rather
     # than called directly here: start_sciqlop() builds the whole MainWindow

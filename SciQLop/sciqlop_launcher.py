@@ -57,6 +57,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--reset-environment", action="store_true",
                         help="rebuild the workspace's Python environment on the newest SciQLop "
                              "(the native launcher's \"Reset environment\" button)")
+    parser.add_argument("--batch", nargs=argparse.REMAINDER, metavar="SCRIPT [ARGS]",
+                        help="run SCRIPT inside SciQLop with no window, then exit with its "
+                             "exit code; every argument after SCRIPT is passed to it")
     return parser.parse_args(argv if argv is not None else sys.argv[1:])
 
 
@@ -557,6 +560,19 @@ def _run_on_console(workspace_name: str | None, sciqlop_file: str | None,
     return exit_code, workspace_dir
 
 
+def _run_batch(batch_argv: list[str], workspace_name: str | None, sciqlop_file: str | None,
+               reset_environment: bool) -> int:
+    """One console session running a script; a batch run has no restart or
+    workspace switch to loop on. Offscreen by default so it runs without a
+    display (a container, a cron job); an explicit QT_QPA_PLATFORM still wins."""
+    from SciQLop.core.batch import BATCH_ENV, BatchRequest
+    os.environ[BATCH_ENV] = BatchRequest.from_command_line(batch_argv).to_env()
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    exit_code, _ = _run_on_console(workspace_name, sciqlop_file,
+                                   reset_environment=reset_environment)
+    return exit_code
+
+
 def _describe_exit(returncode: int) -> str:
     from SciQLop.core.session_log import describe_exit
     return describe_exit(returncode)
@@ -658,6 +674,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if READY_FILE_ENV in os.environ:
         return _run_single_session_for_native_launcher(workspace_name, sciqlop_file, reset_environment)
+
+    if args.batch:
+        return _run_batch(args.batch, workspace_name, sciqlop_file, reset_environment)
 
     run_session = _choose_run_session()
 
