@@ -1,6 +1,6 @@
 """The web transcript renderer: a QWebEngineView-backed view with the same
 public surface as the native TranscriptView, driven by a QWebChannel bridge.
-Runs browser-free (SCIQLOP_TEST_NO_WEBENGINE=1, set in conftest.py): the
+Runs browser-free (SCIQLOP_NO_WEBENGINE=1, set in conftest.py): the
 QWebEngineView itself is swapped for a plain placeholder widget, but the
 backend QObject and channel exist, so the Python-side model computation and
 signal emission are fully exercised here.

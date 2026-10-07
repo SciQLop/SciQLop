@@ -1,7 +1,7 @@
 """Runs the web transcript in a real QWebEngineView and prints what it did.
 
 Driven by test_web_transcript_browser.py in a subprocess: the test suite
-itself runs without WebEngine (SCIQLOP_TEST_NO_WEBENGINE=1)."""
+itself runs without WebEngine (SCIQLOP_NO_WEBENGINE=1)."""
 import json
 import threading
 import time

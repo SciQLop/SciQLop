@@ -5,6 +5,7 @@
 ### Batch mode
 
 - `sciqlop --batch script.py [args...]` runs a Python script inside SciQLop with no window, then exits with the script's exit code. The script uses the usual API: build panels, set the time range, `panel.save("ql.png")`, in a loop if needed. Relative paths are relative to the folder you ran the command from. It needs no display: Qt renders offscreen unless `QT_QPA_PLATFORM` says otherwise, so it runs in a container or a cron job. Arguments after the script name are passed to it in `sys.argv`; `-w` picks the workspace as usual.
+- `sciqlop --no-webengine` starts SciQLop without its embedded browser (Chromium): the welcome page, plugin store and agent chat stay blank, and no browser processes run. `--batch` implies it.
 - `panel.settle(timeout=None)` waits until a panel shows its data, ready to export. It raises `TimeoutError` if the panel is still loading after `timeout` seconds; with no timeout it waits as long as it takes.
 - `panel.wait_for_data()` and the agents' `sciqlop_wait_for_plot_data` returned as soon as the download ended, before the plot had drawn the new data and rescaled its axes. An export made right after could show the old axis range, with the loading marker still in the legend. Both now wait until the panel has settled.
 

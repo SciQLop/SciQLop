@@ -28,6 +28,7 @@ EXIT_SWITCH_WORKSPACE = 65
 SWITCH_WORKSPACE_FILE = ".sciqlop_switch_target"
 READY_FILE_ENV = "SCIQLOP_STARTUP_READY_FILE"
 SWITCH_HANDOFF_FILE_ENV = "SCIQLOP_SWITCH_HANDOFF_FILE"
+NO_WEBENGINE_ENV = "SCIQLOP_NO_WEBENGINE"
 
 
 def _is_editable_install() -> bool:
@@ -57,9 +58,13 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--reset-environment", action="store_true",
                         help="rebuild the workspace's Python environment on the newest SciQLop "
                              "(the native launcher's \"Reset environment\" button)")
+    parser.add_argument("--no-webengine", action="store_true",
+                        help="don't start the embedded browser (Chromium): the welcome page, "
+                             "plugin store and agent chat stay blank")
     parser.add_argument("--batch", nargs=argparse.REMAINDER, metavar="SCRIPT [ARGS]",
                         help="run SCRIPT inside SciQLop with no window, then exit with its "
-                             "exit code; every argument after SCRIPT is passed to it")
+                             "exit code; every argument after SCRIPT is passed to it. "
+                             "Implies --no-webengine")
     return parser.parse_args(argv if argv is not None else sys.argv[1:])
 
 
@@ -671,6 +676,8 @@ def main(argv: list[str] | None = None) -> int:
     workspace_name = args.workspace
     sciqlop_file = args.sciqlop_file
     reset_environment = args.reset_environment
+    if args.no_webengine or args.batch:
+        os.environ[NO_WEBENGINE_ENV] = "1"
 
     if READY_FILE_ENV in os.environ:
         return _run_single_session_for_native_launcher(workspace_name, sciqlop_file, reset_environment)

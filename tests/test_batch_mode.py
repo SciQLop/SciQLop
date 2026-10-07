@@ -57,6 +57,46 @@ def test_launcher_runs_one_console_session_and_returns_the_script_exit_code(monk
                                             args=["x"], cwd=str(tmp_path)))]
 
 
+def _session_env(monkeypatch, tmp_path, argv):
+    """os.environ as the app process would inherit it, for launcher argv."""
+    from SciQLop import sciqlop_launcher
+
+    for name in (BATCH_ENV, "SCIQLOP_NO_WEBENGINE", "QT_QPA_PLATFORM"):
+        monkeypatch.setenv(name, "")  # setenv records the value to restore
+        monkeypatch.delenv(name)
+    monkeypatch.delenv(sciqlop_launcher.READY_FILE_ENV, raising=False)
+    monkeypatch.chdir(tmp_path)
+    seen = []
+
+    def fake_session(*args, **kwargs):
+        seen.append(dict(os.environ))
+        return 0, None
+
+    monkeypatch.setattr(sciqlop_launcher, "_run_on_console", fake_session)
+    monkeypatch.setattr(sciqlop_launcher, "_choose_run_session", lambda: fake_session)
+    sciqlop_launcher.main(argv)
+    return seen[0]
+
+
+def test_no_webengine_flag_reaches_the_app_process(monkeypatch, tmp_path):
+    env = _session_env(monkeypatch, tmp_path, ["--no-webengine"])
+
+    assert env["SCIQLOP_NO_WEBENGINE"] == "1"
+
+
+def test_without_the_flag_webengine_stays_on(monkeypatch, tmp_path):
+    env = _session_env(monkeypatch, tmp_path, [])
+
+    assert "SCIQLOP_NO_WEBENGINE" not in env
+
+
+def test_batch_runs_without_webengine(monkeypatch, tmp_path):
+    env = _session_env(monkeypatch, tmp_path, ["--batch", "s.py"])
+
+    assert env["SCIQLOP_NO_WEBENGINE"] == "1"
+    assert env["QT_QPA_PLATFORM"] == "offscreen"
+
+
 def test_request_survives_the_environment_round_trip():
     request = BatchRequest(script="/a/b.py", args=["--day", "été"], cwd="/c")
 

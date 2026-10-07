@@ -34,12 +34,13 @@ class WebChannelPage(QWidget):
         self._channel = QWebChannel(self)
         self._channel.registerObject("backend", self._backend)
 
-        # Test hook: SCIQLOP_TEST_NO_WEBENGINE=1 (set by tests/conftest.py)
-        # skips the QWebEngineView so browser-free tests don't pay for
-        # Chromium renderer processes. Backend and channel still exist, so
-        # backend-logic tests keep working; view-touching code no-ops.
+        # SCIQLOP_NO_WEBENGINE=1 (`sciqlop --no-webengine`, `--batch`, the
+        # tests) skips the QWebEngineView: no Chromium renderer processes,
+        # which a container or a browser-free test does not want. Backend and
+        # channel still exist, so backend logic keeps working; view-touching
+        # code no-ops.
         self._view: QWebEngineView | None = None
-        if os.environ.get("SCIQLOP_TEST_NO_WEBENGINE") == "1":
+        if os.environ.get("SCIQLOP_NO_WEBENGINE") == "1":
             page_widget: QWidget = QWidget(self)
         else:
             view = QWebEngineView(self)

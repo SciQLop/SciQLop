@@ -18,7 +18,7 @@ from SciQLop.components.appstore.web_appstore_page import AppStorePage
 
 
 @pytest.mark.skipif(
-    os.environ.get("SCIQLOP_TEST_NO_WEBENGINE") == "1",
+    os.environ.get("SCIQLOP_NO_WEBENGINE") == "1",
     reason="needs a real QWebEngineView; tests/conftest.py disables it by default "
            "because Chromium segfaults under the headless Xvfb without CI's flags")
 def test_local_page_can_load_remote_images(qapp):

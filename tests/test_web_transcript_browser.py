@@ -14,7 +14,7 @@ pytestmark = pytest.mark.skipif(os.environ.get("SCIQLOP_WEBENGINE_TESTS") != "1"
 
 @pytest.fixture(scope="module")
 def report():
-    env = {k: v for k, v in os.environ.items() if k != "SCIQLOP_TEST_NO_WEBENGINE"}
+    env = {k: v for k, v in os.environ.items() if k != "SCIQLOP_NO_WEBENGINE"}
     child = Path(__file__).with_name("_web_transcript_child.py")
     run = subprocess.run([sys.executable, str(child)], env=env, capture_output=True,
                          text=True, timeout=120, cwd=Path(__file__).parent.parent)
