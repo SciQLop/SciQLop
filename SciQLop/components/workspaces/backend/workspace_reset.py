@@ -12,14 +12,14 @@ import os
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, List, Optional
+from typing import Callable, Iterable, List, Optional
 
 from packaging.version import InvalidVersion, Version
 
 from . import venv_slots
 from .workspace_manifest import WorkspaceManifest
-from .launcher_compat import runs_here
-from .workspace_project import fetch_available_versions, is_dev_build_version, running_sciqlop_version
+from .launcher_compat import preferred_release
+from .workspace_project import is_dev_build_version, running_sciqlop_version
 
 log = logging.getLogger(__name__)
 
@@ -98,14 +98,13 @@ def _newer(candidate: str, pinned: str) -> bool:
         return True
 
 
-def releases_this_launcher_runs() -> Iterator[str]:
-    """Installable releases, newest first, that this launcher is known to run.
+def _preferred_release() -> List[str]:
+    """The release the "SciQLop version" setting asks for, if any.
 
     A reset runs in the launcher process, so its own version is the launcher's.
-    Lazy: usually only the newest release gets checked.
     """
-    launcher = running_sciqlop_version()
-    return (v for v in fetch_available_versions() if runs_here(v, launcher) is True)
+    version = preferred_release(running_sciqlop_version())
+    return [version] if version else []
 
 
 def pin_latest_release(manifest_path: Path, latest_versions: Callable[[], Iterable[str]],
@@ -139,5 +138,5 @@ def reset_environment(workspace_dir: Path | str, on_output: Output = None,
     venv_slots.clear_pending(workspace_dir)
     venv_slots.set_active(workspace_dir, venv_slots.SLOTS[0])
     remove_reset_leftovers(workspace_dir, on_output)
-    pin_latest_release(workspace_dir / "workspace.sciqlop", latest_versions or releases_this_launcher_runs,
+    pin_latest_release(workspace_dir / "workspace.sciqlop", latest_versions or _preferred_release,
                        on_output)

@@ -102,14 +102,19 @@ def test_leftovers_stay_out_of_archives_and_copies():
     assert not is_excluded(Path("uv.lock"))
 
 
-def test_by_default_pins_the_newest_release_this_installer_runs(workspace, monkeypatch):
-    """A release needing a newer installer would leave the workspace unable to start."""
-    runnable = {"0.15.0": False, "0.14.2": None, "0.14.1": True}
+def test_by_default_pins_the_release_the_update_setting_prefers(workspace, monkeypatch):
+    """Latest release or the installer's own, never one the installer cannot run."""
     asked = []
-    monkeypatch.setattr(workspace_reset, "fetch_available_versions", lambda: list(runnable))
     monkeypatch.setattr(workspace_reset, "running_sciqlop_version", lambda: "0.14.1")
-    monkeypatch.setattr(workspace_reset, "runs_here",
-                        lambda version, launcher: asked.append(launcher) or runnable[version])
+    monkeypatch.setattr(workspace_reset, "preferred_release",
+                        lambda launcher: asked.append(launcher) or "0.14.3")
     workspace_reset.reset_environment(workspace)
-    assert WorkspaceManifest.load(workspace / "workspace.sciqlop").sciqlop_version == "0.14.1"
-    assert set(asked) == {"0.14.1"}
+    assert WorkspaceManifest.load(workspace / "workspace.sciqlop").sciqlop_version == "0.14.3"
+    assert asked == ["0.14.1"]
+
+
+def test_a_development_launcher_keeps_the_pin(workspace, monkeypatch):
+    monkeypatch.setattr(workspace_reset, "running_sciqlop_version", lambda: "0.14.2.dev0")
+    monkeypatch.setattr(workspace_reset, "preferred_release", lambda launcher: "")
+    workspace_reset.reset_environment(workspace)
+    assert WorkspaceManifest.load(workspace / "workspace.sciqlop").sciqlop_version == "0.13.0"

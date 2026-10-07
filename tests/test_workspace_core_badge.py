@@ -113,10 +113,40 @@ def test_outdated_means_behind_the_newest_release_this_installer_runs(qtbot, tmp
               return_value=["0.14.0", "0.13.1"]),
         patch("SciQLop.components.workspaces.backend.launcher_compat.runs_here",
               side_effect=lambda v: v != "0.14.0"),
+        patch("SciQLop.components.workspaces.backend.launcher_compat.follows_latest_release",
+              return_value=True),
     ):
         with qtbot.waitSignal(backend.core_badges_ready, timeout=2000) as blocker:
             backend.fetch_core_version_badges()
     assert json.loads(blocker.args[0])[current.directory]["outdated"] is False
+
+
+def test_sticking_to_the_installer_outdated_means_behind_the_installer(qtbot, tmp_path, monkeypatch):
+    from unittest.mock import patch
+    from PySide6.QtCore import QObject
+    from SciQLop.components.welcome import backend as wb
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+
+    old = WorkspaceManifest(name="Old", sciqlop_version="0.13.0")
+    old._directory = str(tmp_path / "old")
+    monkeypatch.setattr(wb, "workspaces_manager_instance",
+                        lambda: type("M", (), {"list_workspaces": lambda self: [old]})())
+    backend = wb.WelcomeBackend.__new__(wb.WelcomeBackend)
+    QObject.__init__(backend)
+    backend._latest_core_release = None
+
+    with (
+        patch("SciQLop.components.workspaces.backend.workspace_project.fetch_available_versions",
+              return_value=["0.15.0", "0.13.1", "0.13.0"]),
+        patch("SciQLop.components.workspaces.backend.launcher_compat.follows_latest_release",
+              return_value=False),
+        patch("SciQLop.components.workspaces.backend.launcher_compat.launcher_version",
+              return_value="0.13.1"),
+    ):
+        with qtbot.waitSignal(backend.core_badges_ready, timeout=2000) as blocker:
+            backend.fetch_core_version_badges()
+    badge = json.loads(blocker.args[0])[old.directory]
+    assert badge["outdated"] is True and "0.13.1" in badge["tooltip"]
 
 
 def _fake_install(workspace_dir, version, site="lib/python3.14/site-packages"):

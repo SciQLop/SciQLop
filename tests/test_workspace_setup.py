@@ -42,6 +42,9 @@ def patches(mock_venv):
         patch(f"{MODULE}.WorkspaceVenv", return_value=mock_venv) as mock_venv_cls,
         patch(f"{MODULE}.repair_lab_assets") as mock_repair,
         patch(f"{MODULE}.running_sciqlop_version", return_value="0.13.0.dev0") as mock_version,
+        # As the "installer's version" setting would: no network.
+        patch(f"{MODULE}.preferred_release",
+              side_effect=lambda launcher: "" if ".dev" in launcher else launcher) as mock_preferred,
     ):
         yield {
             "generate_pyproject_toml": mock_gen,
@@ -49,6 +52,7 @@ def patches(mock_venv):
             "venv": mock_venv,
             "repair_lab_assets": mock_repair,
             "running_sciqlop_version": mock_version,
+            "preferred_release": mock_preferred,
         }
 
 
@@ -147,6 +151,41 @@ class TestPrepareWorkspaceManifest:
         manifest_path = workspace_dir / "workspace.sciqlop"
         loaded = WorkspaceManifest.load(manifest_path)
         assert loaded.sciqlop_version == "0.13.0"
+
+
+class TestNewWorkspacesFollowTheUpdateSetting:
+    """A workspace without a pin nor an environment yet is new, however it was
+    created (the launcher, or the welcome page which leaves the pin empty)."""
+
+    def test_a_new_workspace_pins_the_preferred_release(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        patches["running_sciqlop_version"].return_value = "0.13.0"
+        patches["preferred_release"].side_effect = None
+        patches["preferred_release"].return_value = "0.13.2"
+        prepare_workspace(workspace_dir)
+        assert WorkspaceManifest.load(workspace_dir / "workspace.sciqlop").sciqlop_version == "0.13.2"
+        patches["preferred_release"].assert_called_once_with("0.13.0")
+
+    def test_a_workspace_created_from_the_welcome_page_gets_pinned(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        workspace_dir.mkdir(parents=True)
+        WorkspaceManifest.default_manifest("ws").save(workspace_dir / "workspace.sciqlop")
+        patches["preferred_release"].side_effect = None
+        patches["preferred_release"].return_value = "0.13.2"
+        prepare_workspace(workspace_dir)
+        assert WorkspaceManifest.load(workspace_dir / "workspace.sciqlop").sciqlop_version == "0.13.2"
+        assert patches["generate_pyproject_toml"].call_args.args[0].sciqlop_version == "0.13.2"
+
+    def test_an_old_unpinned_workspace_keeps_following_the_launcher(self, workspace_dir, patches):
+        from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
+
+        (workspace_dir / ".venv").mkdir(parents=True)
+        WorkspaceManifest.default_manifest("ws").save(workspace_dir / "workspace.sciqlop")
+        prepare_workspace(workspace_dir)
+        assert WorkspaceManifest.load(workspace_dir / "workspace.sciqlop").sciqlop_version == ""
+        patches["preferred_release"].assert_not_called()
 
 
 class TestPrepareWorkspaceGeneratesPyproject:
@@ -1644,7 +1683,7 @@ class TestPrepareWorkspaceAppstorePluginAutoUpdate:
 class TestPrepareWorkspaceReset:
     """The launcher's "Reset environment" button (--reset-environment)."""
 
-    LATEST = "SciQLop.components.workspaces.backend.workspace_reset.releases_this_launcher_runs"
+    LATEST = "SciQLop.components.workspaces.backend.workspace_reset.preferred_release"
 
     @pytest.fixture
     def pinned_workspace(self, workspace_dir):
@@ -1660,14 +1699,14 @@ class TestPrepareWorkspaceReset:
         venv_seen_by_ensure = []
         patches["venv"].ensure.side_effect = lambda **_: venv_seen_by_ensure.append(
             (pinned_workspace / ".venv").exists())
-        with patch(self.LATEST, return_value=["0.14.2"]):
+        with patch(self.LATEST, return_value="0.14.2"):
             prepare_workspace(pinned_workspace, reset_environment=True)
         assert venv_seen_by_ensure == [False]
 
     def test_reset_builds_on_the_newest_release(self, pinned_workspace, patches):
         from SciQLop.components.workspaces.backend.workspace_setup import prepare_workspace
 
-        with patch(self.LATEST, return_value=["0.14.2"]):
+        with patch(self.LATEST, return_value="0.14.2"):
             prepare_workspace(pinned_workspace, reset_environment=True)
         manifest = patches["generate_pyproject_toml"].call_args.args[0]
         assert manifest.sciqlop_version == "0.14.2"

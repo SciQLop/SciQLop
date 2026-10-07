@@ -14,10 +14,13 @@ import os
 import platform
 import tomllib
 import urllib.request
+from itertools import takewhile
 from typing import NamedTuple, Optional
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 from packaging.version import InvalidVersion, Version
+
+from .workspace_project import fetch_available_versions, is_dev_build_version
 
 log = logging.getLogger(__name__)
 
@@ -89,3 +92,23 @@ def runs_here(version: str, launcher: Optional[str] = None) -> Optional[bool]:
     return supports(fetch_release_needs(version),
                     launcher_version() if launcher is None else launcher,
                     platform.python_version())
+
+
+def follows_latest_release() -> bool:
+    """The "SciQLop version" setting: the latest release, or the installer's own."""
+    from .settings import LATEST_RELEASE, SciQLopWorkspacesSettings
+    return SciQLopWorkspacesSettings().sciqlop_version == LATEST_RELEASE
+
+
+def preferred_release(launcher: str) -> str:
+    """The release workspaces should run under *launcher*, per the "SciQLop version" setting.
+
+    The newest release *launcher* runs, or *launcher* itself; *launcher* too
+    when offline. "" for a development or unknown launcher, which is no release.
+    """
+    if not launcher or is_dev_build_version(launcher):
+        return ""
+    if not follows_latest_release():
+        return launcher
+    newer = takewhile(lambda v: Version(v) > Version(launcher), fetch_available_versions())
+    return next((v for v in newer if runs_here(v, launcher) is True), launcher)

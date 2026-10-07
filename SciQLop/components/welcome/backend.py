@@ -34,26 +34,48 @@ def _is_newer(latest: str, running: str) -> bool:
         return False
 
 
+def _in_place_target(latest: str, running: str) -> str:
+    """The release the running workspace can move to in place, or "".
+
+    Following the latest release: *latest*, when this installer runs it.
+    Sticking to the installer: the installer's version, unless a newer release
+    is out, which comes with a new installer first.
+    """
+    from SciQLop.components.workspaces.backend import launcher_compat
+
+    if launcher_compat.follows_latest_release():
+        return latest if launcher_compat.runs_here(latest) is True else ""
+    launcher = launcher_compat.launcher_version()
+    return launcher if launcher and not _is_newer(latest, launcher) and _is_newer(launcher, running) else ""
+
+
 def release_offer(latest: str, running: str, workspace_dir: str) -> dict:
     """What the welcome banner proposes for the newest release *latest*.
 
-    "workspace": install it in the running workspace, which this installer can
-    run. "installer": download a new installer -- also when that cannot be told
-    (offline, an installer from before 0.14.2), or for a workspace following main.
+    "workspace": move the running workspace to ``version`` in place. "installer":
+    download a new installer -- also when that cannot be told (offline, an
+    installer from before 0.14.2), or for a workspace following main.
     """
-    from SciQLop.components.workspaces.backend import launcher_compat
     from SciQLop.components.workspaces.backend.workspace_project import is_dev_build_version
 
-    is_update = _is_newer(latest, running)
-    in_place = (is_update and bool(workspace_dir) and not is_dev_build_version(running)
-                and launcher_compat.runs_here(latest) is True)
+    target = "" if not workspace_dir or is_dev_build_version(running) else _in_place_target(latest, running)
     return {
-        "version": latest,
-        "is_update": is_update,
-        "route": "workspace" if in_place else "installer",
+        "version": target or latest,
+        "is_update": _is_newer(latest, running),
+        "route": "workspace" if target else "installer",
         "workspace_dir": workspace_dir,
         "url": f"https://github.com/SciQLop/SciQLop/releases/tag/v{latest}",
     }
+
+
+def _newest_offered_release(versions: list[str]) -> str | None:
+    """The release a workspace card calls "outdated" against: one the workspace
+    picker offers, so never one needing a newer installer."""
+    from SciQLop.components.workspaces.backend import launcher_compat
+
+    if not launcher_compat.follows_latest_release():
+        return launcher_compat.launcher_version() or None
+    return next((v for v in versions if launcher_compat.runs_here(v) is not False), None)
 
 
 def _icon_to_data_uri(icon) -> str:
@@ -211,7 +233,6 @@ class WelcomeBackend(QObject):
     @Slot()
     def fetch_core_version_badges(self) -> None:
         """Re-send every card's badge once the latest release is known."""
-        from SciQLop.components.workspaces.backend import launcher_compat
         from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
         cards = {ws.directory: (ws.sciqlop_version, _unpinned_version(ws.directory))
                  for ws in workspaces_manager_instance().list_workspaces()}
@@ -220,9 +241,7 @@ class WelcomeBackend(QObject):
             # One successful PyPI query per session: the card list reloads on every
             # workspace change. A failed one (offline) is retried on the next reload.
             if not self._latest_core_release:
-                # A release needing a newer installer is not an update a card can offer.
-                self._latest_core_release = next(
-                    (v for v in fetch_available_versions() if launcher_compat.runs_here(v) is not False), None)
+                self._latest_core_release = _newest_offered_release(fetch_available_versions())
             latest = self._latest_core_release
             self.core_badges_ready.emit(json.dumps(
                 {d: core_version_badge(pin, unpinned, latest) for d, (pin, unpinned) in cards.items()}))

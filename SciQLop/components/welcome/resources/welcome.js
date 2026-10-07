@@ -300,8 +300,8 @@ function showLatestRelease(json_str) {
             });
         } else {
             container.innerHTML =
-                '<span class="release-label">\u2B06\uFE0F SciQLop ' + escapeHtml(release.version) + ' needs a new installer</span>' +
-                '<a class="release-link" href="' + escapeHtmlAttr(release.url) + '">Download</a>' +
+                '<span class="release-label">\u2B06\uFE0F SciQLop ' + escapeHtml(release.version) + ' is available</span>' +
+                '<a class="release-link" href="' + escapeHtmlAttr(release.url) + '">Download the new installer</a>' +
                 '<span class="release-current-version">Current: ' + escapeHtml(currentVersion) + '</span>';
             container.querySelector(".release-link").addEventListener("click", function(e) {
                 e.preventDefault();

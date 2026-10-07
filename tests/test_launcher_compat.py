@@ -53,6 +53,44 @@ class TestFetchReleaseNeeds:
         launcher_compat._needs_cache.clear()
 
 
+class TestPreferredRelease:
+    """The release workspaces should run, per the "SciQLop version" setting."""
+
+    @staticmethod
+    def _preferred(launcher, latest, runnable=None, available=("0.16.0", "0.15.1", "0.15.0", "0.14.0")):
+        asked = []
+
+        def runs(version, launcher):
+            asked.append(version)
+            return (runnable or {}).get(version, True)
+
+        with (
+            patch.object(launcher_compat, "follows_latest_release", return_value=latest),
+            patch.object(launcher_compat, "fetch_available_versions", return_value=list(available)),
+            patch.object(launcher_compat, "runs_here", side_effect=runs),
+        ):
+            return launcher_compat.preferred_release(launcher), asked
+
+    def test_latest_is_the_newest_release_the_installer_runs(self):
+        assert self._preferred("0.15.0", True, runnable={"0.16.0": False})[0] == "0.15.1"
+
+    def test_latest_never_looks_at_releases_older_than_the_installer(self):
+        version, asked = self._preferred("0.15.0", True, runnable={"0.16.0": None, "0.15.1": False})
+        assert version == "0.15.0"
+        assert "0.14.0" not in asked
+
+    def test_offline_falls_back_to_the_installer_version(self):
+        assert self._preferred("0.15.0", True, available=())[0] == "0.15.0"
+
+    def test_installer_mode_is_the_installer_version(self):
+        version, asked = self._preferred("0.15.0", False)
+        assert version == "0.15.0" and asked == []
+
+    @pytest.mark.parametrize("launcher", ["", "0.15.1.dev2"])
+    def test_a_development_or_unknown_launcher_has_no_release(self, launcher):
+        assert self._preferred(launcher, True)[0] == ""
+
+
 class TestThisReleaseDeclaresWhatTheInstallerShips:
     """Changing what the installers ship must come with a decision on the minimum.
 

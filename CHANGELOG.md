@@ -13,6 +13,7 @@
 
 - A new SciQLop release no longer always means downloading a new installer. When your installer can run the new release, the welcome page offers "Update this workspace". It installs the release and the dependency versions it needs in the background; restart to switch to it. A new installer is proposed only when the release needs one: a newer launcher, a different Python, or startup code the old installer lacks. This works from installers of this version on. Older installers still get the download link.
 - A workspace can no longer be switched to a release its installer cannot run. "Reset environment" moves a workspace to the newest release the installer can run, not the newest release. A workspace's version badge only shows "outdated" for such releases.
+- New setting, Settings › Workspaces › "SciQLop version". "Latest release" is the default. New workspaces start on the newest release your installer can run, and the welcome page offers in-place updates. "Installer's version" keeps workspaces on the version your installer came with. A newer release then shows a link to the new installer. Once it is installed, the welcome page offers to move the workspace to it. Existing workspaces keep their version in both modes until you update them.
 - Each release says which installers can run it, in `pyproject.toml` under `[tool.sciqlop.launcher]`. When the native launcher or the bundled Python changes, a test fails until `minimum` is looked at.
 
 ### Catalogs

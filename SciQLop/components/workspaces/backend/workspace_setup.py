@@ -21,6 +21,7 @@ from SciQLop.components.workspaces.backend.workspace_lock import workspace_lock
 from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest, edit_manifest
 from SciQLop.components.workspaces.backend.workspace_migration import migrate_workspace
 from SciQLop.components.workspaces.backend.lab_assets import repair_lab_assets
+from SciQLop.components.workspaces.backend.launcher_compat import preferred_release
 from SciQLop.components.workspaces.backend.workspace_project import (
     _extract_package_name,
     _normalize_url_requirement,
@@ -491,6 +492,24 @@ def _sync_or_move_to_running_release(
     return synced
 
 
+def _pin_new_workspace(workspace_dir: Path, manifest: WorkspaceManifest, manifest_path: Path) -> None:
+    """Pin a new workspace to the release the "SciQLop version" setting prefers,
+    so it keeps resolving the same environment once the launcher moves on.
+
+    New means no pin and no environment yet, whether the launcher or the welcome
+    page created it. Older unpinned workspaces keep following the launcher; an
+    imported archive keeps what its lockfile was made with. Development builds
+    stay unpinned: their version does not exist on any index.
+    """
+    if (manifest.sciqlop_version or venv_slots.active_venv_dir(workspace_dir).exists()
+            or (workspace_dir / IMPORT_MARKER_NAME).exists()):
+        return
+    version = preferred_release(running_sciqlop_version())
+    if version:
+        manifest.sciqlop_version = version
+        manifest.save(manifest_path)
+
+
 def prepare_workspace(
     workspace_dir: Path | str,
     workspace_name: str | None = None,
@@ -569,13 +588,9 @@ def prepare_workspace(
         name = workspace_name or workspace_dir.name
         log.info("Creating default manifest for workspace %r", name)
         manifest = WorkspaceManifest.default_manifest(name)
-        # Pin the SciQLop this workspace was created against, so it keeps
-        # resolving the same environment once the launcher moves on. Left empty
-        # for development builds, whose version does not exist on any index.
-        version = running_sciqlop_version()
-        if version and ".dev" not in version:
-            manifest.sciqlop_version = version
         manifest.save(manifest_path)
+    if manifest_on_disk:
+        _pin_new_workspace(workspace_dir, manifest, manifest_path)
 
     resolved_version = manifest.sciqlop_version or running_sciqlop_version()
 

@@ -231,9 +231,13 @@ class TestReleaseOffer:
     """The welcome banner: update the workspace in place, or get a new installer."""
 
     @staticmethod
-    def _offer(runs, latest="0.15.0", running="0.14.2", workspace_dir="/ws"):
+    def _offer(runs, latest="0.15.0", running="0.14.2", workspace_dir="/ws", follow_latest=True, launcher="0.14.2"):
         from SciQLop.components.welcome.backend import release_offer
-        with patch(f"{LAUNCHER_COMPAT_MODULE}.runs_here", return_value=runs):
+        with (
+            patch(f"{LAUNCHER_COMPAT_MODULE}.runs_here", return_value=runs),
+            patch(f"{LAUNCHER_COMPAT_MODULE}.follows_latest_release", return_value=follow_latest),
+            patch(f"{LAUNCHER_COMPAT_MODULE}.launcher_version", return_value=launcher),
+        ):
             return release_offer(latest, running, workspace_dir)
 
     def test_a_release_this_installer_runs_is_installed_in_the_workspace(self):
@@ -256,3 +260,25 @@ class TestReleaseOffer:
 
     def test_without_a_workspace_there_is_nothing_to_update_in_place(self):
         assert self._offer(True, workspace_dir="")["route"] == "installer"
+
+
+class TestReleaseOfferStickingToTheInstaller:
+    """The "Installer's version" setting: updates come with installers."""
+
+    def _offer(self, **kwargs):
+        return TestReleaseOffer._offer(True, follow_latest=False, **kwargs)
+
+    def test_a_release_newer_than_the_installer_needs_a_new_installer(self):
+        offer = self._offer(latest="0.15.0", running="0.14.2", launcher="0.14.2")
+        assert offer["is_update"] is True and offer["route"] == "installer"
+
+    def test_a_workspace_behind_its_installer_moves_to_the_installer_version(self):
+        offer = self._offer(latest="0.15.0", running="0.14.2", launcher="0.15.0")
+        assert offer["route"] == "workspace" and offer["version"] == "0.15.0"
+
+    def test_an_installer_behind_the_latest_release_is_proposed_first(self):
+        offer = self._offer(latest="0.16.0", running="0.14.2", launcher="0.15.0")
+        assert offer["route"] == "installer" and offer["version"] == "0.16.0"
+
+    def test_up_to_date_with_its_installer(self):
+        assert self._offer(latest="0.15.0", running="0.15.0", launcher="0.15.0")["is_update"] is False
