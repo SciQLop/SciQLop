@@ -379,6 +379,7 @@ def _fetch_paper_tool() -> Dict[str, Any]:
 
 def _wait_for_plot_data_tool(main_window) -> Dict[str, Any]:
     import time
+    from SciQLop.user_api.plot._panel import SETTLE_QUIET_S
 
     async def _wait(name: Optional[str], timeout: float) -> Dict[str, Any]:
         panel, error = _resolve_panel(main_window, name)
@@ -393,12 +394,15 @@ def _wait_for_plot_data_tool(main_window) -> Dict[str, Any]:
         if not has_plottables:
             return _error_content("panel has no plottables — call plot_product first")
         deadline = time.monotonic() + max(0.0, float(timeout))
+        idle_since = None
         while True:
-            if not panel.is_busy():
+            now = time.monotonic()
+            idle_since = None if panel.is_busy() else (idle_since or now)
+            if idle_since is not None and now - idle_since >= SETTLE_QUIET_S:
                 return {"content": [{"type": "text", "text": "ok: all plottables settled"}]}
-            if time.monotonic() >= deadline:
+            if now >= deadline:
                 break
-            await asyncio.sleep(0.2)
+            await asyncio.sleep(0.05)
         return {"content": [{"type": "text", "text": f"timeout after {timeout:.1f}s — plottables still busy"}]}
 
     return _text_tool(

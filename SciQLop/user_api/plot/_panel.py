@@ -28,6 +28,14 @@ import numpy as np
 from speasy.products import SpeasyVariable as _SpeasyVariable
 from speasy.core import datetime64_to_epoch as _datetime64_to_epoch
 
+# A graph's busy flag drops when the fetch ends, but its resampled data (and the
+# axis rescale) lands ~20 ms later, and the legend's busy marker lingers for
+# SciQLopTheme.busy_hide_delay_ms (500 ms by default). So "settled" means idle
+# for this long, not idle once.
+# simplify: a time window, not an event; upgrade if SciQLopPlots gains a
+# "rendered" signal that covers the resampler and the legend marker.
+SETTLE_QUIET_S = 0.6
+
 __all__ = ['PlotPanel', 'plot_panel', 'create_plot_panel']
 
 def _to_sqp_plot_type(plot_type: Union[PlotType, _PlotType]) -> _PlotType:
@@ -203,23 +211,47 @@ class PlotPanel(GuardedImpl):
                     return True
         return False
 
+    @on_main_thread
+    def settle(self, timeout: Optional[float] = None) -> None:
+        """Block until the panel shows its data: fetched, drawn and rescaled.
+
+        Call it after changing the time range and before ``save()``, so the
+        export holds the new data. Qt events keep being processed meanwhile.
+
+        Parameters
+        ----------
+        timeout : float, optional
+            Seconds to wait at most. ``None`` waits as long as it takes.
+
+        Raises
+        ------
+        TimeoutError
+            If the panel is still loading after ``timeout`` seconds.
+        """
+        if not self._settle(timeout, poll_interval=0.01):
+            raise TimeoutError(f"panel {self.name!r} still loading after {timeout} s")
+
     @experimental_api()
     @on_main_thread
     def wait_for_data(self, timeout: float = 10.0, poll_interval: float = 0.1) -> bool:
-        """Block until no graph in this panel is busy, or until timeout.
+        """Like ``settle()``, but returns False on timeout instead of raising.
 
-        Processes Qt events while polling so the asynchronous data fetch
-        continues and the UI stays responsive. Returns True if all graphs
-        settled before the timeout, False otherwise.
+        Returns True if the panel settled before the timeout.
         """
+        return self._settle(timeout, poll_interval)
+
+    def _settle(self, timeout: Optional[float], poll_interval: float) -> bool:
         import time
         from PySide6.QtCore import QCoreApplication
 
-        deadline = time.monotonic() + max(0.0, float(timeout))
-        while time.monotonic() < deadline:
-            if not self.is_busy():
-                return True
+        deadline = None if timeout is None else time.monotonic() + max(0.0, float(timeout))
+        idle_since = None
+        while deadline is None or time.monotonic() < deadline:
             QCoreApplication.processEvents()
+            now = time.monotonic()
+            idle_since = None if self.is_busy() else (idle_since or now)
+            if idle_since is not None and now - idle_since >= SETTLE_QUIET_S:
+                return True
             time.sleep(max(0.001, float(poll_interval)))
         return False
 
