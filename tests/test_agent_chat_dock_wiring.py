@@ -885,3 +885,38 @@ def test_draft_conversation_on_a_chosen_backend_switches_to_it(dock, qtbot):
         assert dock._input.toPlainText() == "investigate"
     finally:
         unregister_agent_backend("AlphaAgent")
+
+
+class _BrokenBackend(_FakeBackend):
+    display_name = "AAA-Broken"
+
+    def __init__(self, ctx=None):
+        raise RuntimeError("missing API key")
+
+
+def test_a_backend_failing_to_start_stays_contained(dock, qtbot):
+    """One backend raising in __init__ (Albert without an API key) used to
+    escape ensure_agent_dock() and fail every agent plugin loaded after it."""
+    from SciQLop.components.agents.registry import (
+        register_agent_backend, unregister_agent_backend)
+    from SciQLop.components.agents.settings import AgentChatSettings
+
+    register_agent_backend(_BrokenBackend)
+    try:
+        dock.refresh_backends()
+        combo = dock._backend_combo
+        combo.setCurrentIndex(combo.findText(_BrokenBackend.display_name))
+        _settle(qtbot)
+
+        assert dock._current_backend() is None
+        assert "missing API key" in dock._status_label.text()
+        assert not dock._send_btn.isEnabled()
+        assert combo.isEnabled()
+        assert AgentChatSettings().last_backend != _BrokenBackend.display_name
+
+        combo.setCurrentIndex(combo.findText(_FAKE))
+        _settle(qtbot)
+        assert dock._current_backend().display_name == _FAKE
+        assert dock._send_btn.isEnabled()
+    finally:
+        unregister_agent_backend(_BrokenBackend.display_name)

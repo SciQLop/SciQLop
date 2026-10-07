@@ -321,12 +321,29 @@ class AgentChatDock(QWidget):
         name = self._backend_combo.itemData(index)
         if not name:
             return
+        try:
+            session = self._sessions.get(name) or self._create_session(name)
+        except Exception as error:
+            self._show_backend_failure(name, error)
+            return
+        if self._current is None:
+            self._set_status("")
         self._current = name
         with AgentChatSettings() as cfg:
             cfg.last_backend = name
-        session = self._sessions.get(name) or self._create_session(name)
         self._sessions[name] = session
+        self._set_enabled()
         self._bind_to_session(session)
+
+    def _show_backend_failure(self, name: str, error: Exception) -> None:
+        """A plugin's backend raising in __init__ must not escape: this runs
+        inside ensure_agent_dock(), so it would fail every agent plugin loaded
+        after it. The dropdown stays usable to pick another backend."""
+        log.error("Agent backend %s failed to start", name, exc_info=error)
+        self._current = None
+        message = f"{name} could not start: {type(error).__name__}: {error}"
+        self._set_empty(message)
+        self._set_status(message)
 
     def _create_session(self, name: str) -> _AgentSession:
         be_tempdir = self._tempdir / name / "tool_images"
