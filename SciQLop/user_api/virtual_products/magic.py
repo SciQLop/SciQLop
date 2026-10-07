@@ -213,6 +213,9 @@ def vp_magic(line: str, cell: str, local_ns=None):
     args = _parse_args(line)
     func = _extract_function(cell, user_ns)
     func_name = func.__name__
+    # Keyed by product path, not function name: notebooks sharing one kernel
+    # may reuse a function name for different products.
+    vp_key = args.path or func_name
 
     try:
         return_ann = inspect.get_annotations(inspect.unwrap(func), eval_str=True).get("return")
@@ -229,7 +232,7 @@ def vp_magic(line: str, cell: str, local_ns=None):
 
     if needs_eval:
         start, stop = _resolve_time_range(args, func)
-        preserved = _persisted_knob_values(_registry.get(func_name))
+        preserved = _persisted_knob_values(_registry.get(vp_key))
         from SciQLop.user_api.virtual_products.registry import _resolve_range_defaults
         preserved = _resolve_range_defaults(func, start, stop, preserved)
         t0 = _time.monotonic()
@@ -269,8 +272,8 @@ def vp_magic(line: str, cell: str, local_ns=None):
         type_info = VPTypeInfo(product_type="scalar", labels=None)
 
     # Register (or hot-reload) the virtual product
-    is_new = func_name not in _registry._entries
-    entry = _registry.register(func_name, func, type_info.product_type, type_info.labels,
+    is_new = vp_key not in _registry._entries
+    entry = _registry.register(vp_key, func, type_info.product_type, type_info.labels,
                                colored=type_info.colored)
 
     if is_new or entry.signature_changed:

@@ -77,8 +77,37 @@ def test_vp_magic_custom_path(qtbot, qapp, main_window):
     from SciQLop.user_api.virtual_products.magic import _vp_magic_impl, _registry
 
     _vp_magic_impl('--path "custom/path/sine"', VP_CELL_SCALAR)
-    entry = _registry.get("sine_wave")
+    entry = _registry.get("custom/path/sine")
     assert entry is not None
+
+
+def _vp_callback_at(path):
+    from SciQLop.components.plotting.backend.data_provider import providers
+    return next(p._callback for p in list(providers.values())
+                if "/".join(getattr(p, "path", [])) == path)
+
+
+def _constant_cell(value):
+    return (
+        "def shared_name(start: float, stop: float) -> Scalar:\n"
+        "    import numpy as np\n"
+        "    x = np.linspace(start, stop, 10)\n"
+        f"    return x, np.full_like(x, {value})\n"
+    )
+
+
+def test_vp_magic_same_function_name_different_paths_do_not_collide(qtbot, qapp, main_window):
+    """Two notebooks sharing one kernel may reuse a function name; --path must
+    keep them as two independent products instead of hot-swapping the first."""
+    from SciQLop.user_api.virtual_products.magic import _vp_magic_impl
+
+    _vp_magic_impl('--path "nb_a/shared_name"', _constant_cell(1.0))
+    _vp_magic_impl('--path "nb_b/shared_name"', _constant_cell(2.0))
+
+    _, y_a = _vp_callback_at("nb_a/shared_name")(0., 1.)
+    _, y_b = _vp_callback_at("nb_b/shared_name")(0., 1.)
+    assert np.all(y_a == 1.0)
+    assert np.all(y_b == 2.0)
 
 
 def test_vp_magic_eval_failure_raises_usage_error(qtbot, qapp, main_window):
