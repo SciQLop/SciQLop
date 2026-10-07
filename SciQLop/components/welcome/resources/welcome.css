@@ -531,7 +531,8 @@ h2 {
     min-width: 0;
 }
 
-#plugin-updates button {
+#plugin-updates button,
+#latest-release button {
     margin-left: auto;
     flex-shrink: 0;
     padding: 4px 14px;
@@ -543,7 +544,8 @@ h2 {
     font-weight: 600;
 }
 
-#plugin-updates button:hover {
+#plugin-updates button:hover,
+#latest-release button:hover {
     opacity: 0.9;
 }
 

@@ -671,11 +671,20 @@ def _run_single_session_for_native_launcher(workspace_name: str | None, sciqlop_
     return exit_code
 
 
+def _export_launcher_version() -> None:
+    """Tell the app which SciQLop launched it: the app decides from it whether a
+    newer release can be installed in place or needs a new installer."""
+    from SciQLop.components.workspaces.backend.launcher_compat import LAUNCHER_VERSION_ENV
+    from SciQLop.components.workspaces.backend.workspace_project import running_sciqlop_version
+    os.environ[LAUNCHER_VERSION_ENV] = running_sciqlop_version()
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     workspace_name = args.workspace
     sciqlop_file = args.sciqlop_file
     reset_environment = args.reset_environment
+    _export_launcher_version()
     if args.no_webengine or args.batch:
         os.environ[NO_WEBENGINE_ENV] = "1"
 

@@ -24,6 +24,8 @@ def _not_under_a_native_launcher(monkeypatch):
     """pytest started from a SciQLop terminal inherits the session-log env var,
     which would switch the launcher into native mode."""
     monkeypatch.delenv(SESSION_LOG_ENV, raising=False)
+    # main() exports it; setenv records the original so teardown restores it.
+    monkeypatch.setenv("SCIQLOP_LAUNCHER_VERSION", "")
 
 
 def _wait_for(predicate, timeout=2.0):
@@ -85,6 +87,25 @@ def test_main_resets_only_the_first_session(monkeypatch, native):
     monkeypatch.setattr(f"{MODULE}._choose_run_session", lambda: run_session)
     assert main(["--reset-environment"]) == 0
     assert calls == ([True] if native else [True, False])
+
+
+@pytest.mark.parametrize("native", [True, False])
+def test_main_tells_the_app_which_launcher_started_it(monkeypatch, native):
+    """The app compares it with a release's minimum launcher (launcher_compat)."""
+    from SciQLop.components.workspaces.backend.launcher_compat import LAUNCHER_VERSION_ENV
+
+    seen = []
+    if native:
+        monkeypatch.setenv(READY_FILE_ENV, "/tmp/ready")
+    else:
+        monkeypatch.delenv(READY_FILE_ENV, raising=False)
+    monkeypatch.delenv(LAUNCHER_VERSION_ENV, raising=False)
+    monkeypatch.setattr("SciQLop.components.workspaces.backend.workspace_project.running_sciqlop_version",
+                        lambda: "0.14.2")
+    monkeypatch.setattr(f"{MODULE}._choose_run_session", lambda: lambda *a, **k: (
+        seen.append(os.environ.get(LAUNCHER_VERSION_ENV)) or (0, None)))
+    assert main([]) == 0
+    assert seen == ["0.14.2"]
 
 
 def test_console_session_passes_the_reset_to_workspace_preparation(tmp_path, monkeypatch):

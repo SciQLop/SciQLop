@@ -134,6 +134,16 @@ dev = [
     "SciQLop[dev]",
 ]
 
+# The oldest installer this release runs under, as the SciQLop version it
+# shipped. A workspace on an older installer is offered a new installer instead
+# of an in-place update. `native` and `python` mirror what the installers ship
+# (tests/test_launcher_compat.py): when either changes, set `minimum` to the
+# version being released, unless older installers still run it fine.
+[tool.sciqlop.launcher]
+minimum = "0.14.0"
+native = "0.2.2"
+python = "3.14"
+
 [tool.uv]
 default-groups = ["dev"]
 

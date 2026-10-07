@@ -100,3 +100,16 @@ def test_leftovers_stay_out_of_archives_and_copies():
     assert is_excluded(Path(".venv.reset-20261004-070000-2/lib/x.py"))
     assert is_excluded(Path("uv.lock.reset-20261004-070000"))
     assert not is_excluded(Path("uv.lock"))
+
+
+def test_by_default_pins_the_newest_release_this_installer_runs(workspace, monkeypatch):
+    """A release needing a newer installer would leave the workspace unable to start."""
+    runnable = {"0.15.0": False, "0.14.2": None, "0.14.1": True}
+    asked = []
+    monkeypatch.setattr(workspace_reset, "fetch_available_versions", lambda: list(runnable))
+    monkeypatch.setattr(workspace_reset, "running_sciqlop_version", lambda: "0.14.1")
+    monkeypatch.setattr(workspace_reset, "runs_here",
+                        lambda version, launcher: asked.append(launcher) or runnable[version])
+    workspace_reset.reset_environment(workspace)
+    assert WorkspaceManifest.load(workspace / "workspace.sciqlop").sciqlop_version == "0.14.1"
+    assert set(asked) == {"0.14.1"}

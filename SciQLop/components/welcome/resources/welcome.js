@@ -266,35 +266,63 @@ function onFeaturedReady(json_str) {
     });
 }
 
+// The newest release, as offered by the banner; its in-place update reports
+// through onCoreUpdateFinished like the workspace details picker.
+var _bannerRelease = null;
+
 function showLatestRelease(json_str) {
     var container = document.getElementById("latest-release");
     var release = JSON.parse(json_str);
+    _bannerRelease = release;
     if (!release) {
         container.classList.add("hidden");
         return;
     }
 
     backend.get_current_version(function(currentVersion) {
-        var isNewer = !!release.is_update;
         container.classList.remove("hidden");
-        container.className = isNewer ? "release-update" : "release-current";
-        container.innerHTML = isNewer
-            ? '<span class="release-label">\u2B06\uFE0F Update available!</span>' +
-              '<a class="release-link" href="' + escapeHtmlAttr(release.url) + '">' +
-                  escapeHtml(release.name || release.tag) +
-              '</a>' +
-              '<span class="release-current-version">Current: ' + escapeHtml(currentVersion) + '</span>'
-            : '<span class="release-label">\u2705 Up to date</span>' +
-              '<span class="release-version">' + escapeHtml(currentVersion) + '</span>';
-
-        var link = container.querySelector(".release-link");
-        if (link) {
-            link.addEventListener("click", function(e) {
+        container.className = release.is_update ? "release-update" : "release-current";
+        if (!release.is_update) {
+            container.innerHTML = '<span class="release-label">\u2705 Up to date</span>' +
+                '<span class="release-version">' + escapeHtml(currentVersion) + '</span>';
+        } else if (release.route === "workspace") {
+            container.innerHTML =
+                '<span class="release-label">\u2B06\uFE0F SciQLop ' + escapeHtml(release.version) + ' is available</span>' +
+                '<button id="release-update-workspace" title="Install SciQLop ' + escapeHtmlAttr(release.version) +
+                    ' and its dependencies in this workspace; the current version keeps running until you restart">' +
+                    'Update this workspace</button>' +
+                '<span class="release-current-version">Current: ' + escapeHtml(currentVersion) + '</span>' +
+                '<span id="release-update-status"></span>';
+            document.getElementById("release-update-workspace").addEventListener("click", function() {
+                this.disabled = true;
+                document.getElementById("release-update-status").textContent = "Installing\u2026";
+                backend.apply_core_version(release.workspace_dir, release.version);
+            });
+        } else {
+            container.innerHTML =
+                '<span class="release-label">\u2B06\uFE0F SciQLop ' + escapeHtml(release.version) + ' needs a new installer</span>' +
+                '<a class="release-link" href="' + escapeHtmlAttr(release.url) + '">Download</a>' +
+                '<span class="release-current-version">Current: ' + escapeHtml(currentVersion) + '</span>';
+            container.querySelector(".release-link").addEventListener("click", function(e) {
                 e.preventDefault();
                 backend.open_url(release.url);
             });
         }
     });
+}
+
+function showBannerUpdateResult(result) {
+    var status = document.getElementById("release-update-status");
+    if (!status || !_bannerRelease || _bannerRelease.workspace_dir !== result.dir) return;
+    var btn = document.getElementById("release-update-workspace");
+    if (result.ok) {
+        status.textContent = "Installed \u2014 restart SciQLop to switch to it.";
+        if (btn) btn.remove();
+        status.appendChild(restartButton());
+    } else {
+        status.textContent = "Update failed: " + (result.error || "unknown error");
+        if (btn) btn.disabled = false;
+    }
 }
 
 function pluginUpdatesSummary(updates) {
@@ -672,6 +700,7 @@ function restartButton() {
 
 function onCoreUpdateFinished(resultJson) {
     var result = JSON.parse(resultJson);
+    showBannerUpdateResult(result);
     var isCurrentPanel = _currentDetailsWs && _currentDetailsWs.directory === result.dir;
 
     var select = document.getElementById("core-version-select");

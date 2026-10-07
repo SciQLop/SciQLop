@@ -41,6 +41,7 @@ def test_launcher_runs_one_console_session_and_returns_the_script_exit_code(monk
     # setenv, not delenv: delenv of an unset variable records nothing to undo,
     # and main() writes the request into os.environ for the app process.
     monkeypatch.setenv(BATCH_ENV, "")
+    monkeypatch.setenv("SCIQLOP_LAUNCHER_VERSION", "")
     monkeypatch.setenv("QT_QPA_PLATFORM", os.environ.get("QT_QPA_PLATFORM", "offscreen"))
     monkeypatch.delenv(sciqlop_launcher.READY_FILE_ENV, raising=False)
     monkeypatch.chdir(tmp_path)
@@ -61,7 +62,7 @@ def _session_env(monkeypatch, tmp_path, argv):
     """os.environ as the app process would inherit it, for launcher argv."""
     from SciQLop import sciqlop_launcher
 
-    for name in (BATCH_ENV, "SCIQLOP_NO_WEBENGINE", "QT_QPA_PLATFORM"):
+    for name in (BATCH_ENV, "SCIQLOP_NO_WEBENGINE", "QT_QPA_PLATFORM", "SCIQLOP_LAUNCHER_VERSION"):
         monkeypatch.setenv(name, "")  # setenv records the value to restore
         monkeypatch.delenv(name)
     monkeypatch.delenv(sciqlop_launcher.READY_FILE_ENV, raising=False)

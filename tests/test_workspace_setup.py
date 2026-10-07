@@ -1644,7 +1644,7 @@ class TestPrepareWorkspaceAppstorePluginAutoUpdate:
 class TestPrepareWorkspaceReset:
     """The launcher's "Reset environment" button (--reset-environment)."""
 
-    LATEST = "SciQLop.components.workspaces.backend.workspace_reset.fetch_available_versions"
+    LATEST = "SciQLop.components.workspaces.backend.workspace_reset.releases_this_launcher_runs"
 
     @pytest.fixture
     def pinned_workspace(self, workspace_dir):
@@ -1727,6 +1727,26 @@ class TestCoreVersionUpdatesUseTheOtherSlot:
         assert venv_slots.active_slot(workspace) == ".venv"
         assert venv_slots.pending_slot(workspace) is None
         assert WorkspaceManifest.load(workspace / "workspace.sciqlop").sciqlop_version == "0.13.0"
+
+    def test_a_new_version_resolves_every_dependency_afresh(self, workspace, patches):
+        """uv keeps a lockfile's pins wherever they still satisfy the project, so an
+        update that kept uv.lock would carry the old release's dependencies over."""
+        import os
+        from SciQLop.components.workspaces.backend.workspace_project import generate_pyproject_toml
+        from SciQLop.components.workspaces.backend.workspace_setup import stage_core_version
+
+        patches["generate_pyproject_toml"].side_effect = generate_pyproject_toml
+        manifest = WorkspaceManifest.load(workspace / "workspace.sciqlop")
+        generate_pyproject_toml(manifest, [], workspace / "pyproject.toml")
+        (workspace / "uv.lock").write_text("# pins of the 0.13.0 environment")
+        os.utime(workspace / "pyproject.toml", (1, 1))
+        lock_seen_by_sync = []
+        patches["venv"].sync.side_effect = lambda **_: lock_seen_by_sync.append(
+            (workspace / "uv.lock").exists())
+
+        stage_core_version(workspace, "0.14.0")
+        assert '"sciqlop[all]==0.14.0"' in (workspace / "pyproject.toml").read_text()
+        assert lock_seen_by_sync == [False]
 
     def test_stage_environment_rebuilds_the_other_slot_from_current_settings(self, workspace, patches):
         from SciQLop.components.workspaces.backend import venv_slots

@@ -2,6 +2,13 @@
 import json
 
 import pytest
+from unittest.mock import patch as _patch
+
+
+@pytest.fixture(autouse=True)
+def _no_release_needs_fetch():
+    with _patch("SciQLop.components.workspaces.backend.launcher_compat.fetch_release_needs", return_value=None):
+        yield
 
 from SciQLop.components.workspaces.backend.workspace_project import (
     core_version_badge, installed_sciqlop_version,
@@ -84,6 +91,32 @@ def test_badges_are_resent_with_the_latest_release_fetched_once(qtbot, tmp_path,
     badge = json.loads(blocker.args[0])[old.directory]
     assert badge["outdated"] is True and badge["label"] == "0.12.0"
     assert fetch.call_count == 1
+
+
+def test_outdated_means_behind_the_newest_release_this_installer_runs(qtbot, tmp_path, monkeypatch):
+    """A release needing a new installer is not offered by the workspace picker."""
+    from unittest.mock import patch
+    from PySide6.QtCore import QObject
+    from SciQLop.components.welcome import backend as wb
+    from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceManifest
+
+    current = WorkspaceManifest(name="Current", sciqlop_version="0.13.1")
+    current._directory = str(tmp_path / "current")
+    monkeypatch.setattr(wb, "workspaces_manager_instance",
+                        lambda: type("M", (), {"list_workspaces": lambda self: [current]})())
+    backend = wb.WelcomeBackend.__new__(wb.WelcomeBackend)
+    QObject.__init__(backend)
+    backend._latest_core_release = None
+
+    with (
+        patch("SciQLop.components.workspaces.backend.workspace_project.fetch_available_versions",
+              return_value=["0.14.0", "0.13.1"]),
+        patch("SciQLop.components.workspaces.backend.launcher_compat.runs_here",
+              side_effect=lambda v: v != "0.14.0"),
+    ):
+        with qtbot.waitSignal(backend.core_badges_ready, timeout=2000) as blocker:
+            backend.fetch_core_version_badges()
+    assert json.loads(blocker.args[0])[current.directory]["outdated"] is False
 
 
 def _fake_install(workspace_dir, version, site="lib/python3.14/site-packages"):

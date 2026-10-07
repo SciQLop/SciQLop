@@ -26,15 +26,34 @@ log = getLogger(__name__)
 _EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "examples")
 
 
-def _is_update_available(latest_tag: str) -> bool:
+def _is_newer(latest: str, running: str) -> bool:
     from packaging.version import InvalidVersion, parse as _parse_version
-    from SciQLop import __version__
     try:
-        latest = _parse_version(latest_tag.lstrip("v"))
-        current = _parse_version(__version__)
+        return _parse_version(latest) > _parse_version(running)
     except InvalidVersion:
         return False
-    return latest > current
+
+
+def release_offer(latest: str, running: str, workspace_dir: str) -> dict:
+    """What the welcome banner proposes for the newest release *latest*.
+
+    "workspace": install it in the running workspace, which this installer can
+    run. "installer": download a new installer -- also when that cannot be told
+    (offline, an installer from before 0.14.2), or for a workspace following main.
+    """
+    from SciQLop.components.workspaces.backend import launcher_compat
+    from SciQLop.components.workspaces.backend.workspace_project import is_dev_build_version
+
+    is_update = _is_newer(latest, running)
+    in_place = (is_update and bool(workspace_dir) and not is_dev_build_version(running)
+                and launcher_compat.runs_here(latest) is True)
+    return {
+        "version": latest,
+        "is_update": is_update,
+        "route": "workspace" if in_place else "installer",
+        "workspace_dir": workspace_dir,
+        "url": f"https://github.com/SciQLop/SciQLop/releases/tag/v{latest}",
+    }
 
 
 def _icon_to_data_uri(icon) -> str:
@@ -192,6 +211,7 @@ class WelcomeBackend(QObject):
     @Slot()
     def fetch_core_version_badges(self) -> None:
         """Re-send every card's badge once the latest release is known."""
+        from SciQLop.components.workspaces.backend import launcher_compat
         from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
         cards = {ws.directory: (ws.sciqlop_version, _unpinned_version(ws.directory))
                  for ws in workspaces_manager_instance().list_workspaces()}
@@ -200,8 +220,9 @@ class WelcomeBackend(QObject):
             # One successful PyPI query per session: the card list reloads on every
             # workspace change. A failed one (offline) is retried on the next reload.
             if not self._latest_core_release:
-                versions = fetch_available_versions()
-                self._latest_core_release = versions[0] if versions else None
+                # A release needing a newer installer is not an update a card can offer.
+                self._latest_core_release = next(
+                    (v for v in fetch_available_versions() if launcher_compat.runs_here(v) is not False), None)
             latest = self._latest_core_release
             self.core_badges_ready.emit(json.dumps(
                 {d: core_version_badge(pin, unpinned, latest) for d, (pin, unpinned) in cards.items()}))
@@ -321,26 +342,17 @@ class WelcomeBackend(QObject):
         from SciQLop import __version__
         return __version__
 
-    _GITHUB_RELEASE_URL = "https://api.github.com/repos/SciQLop/SciQLop/releases/latest"
-
     @Slot()
     def fetch_latest_release(self) -> None:
+        from SciQLop import __version__
+        from SciQLop.components.workspaces.backend.workspace_project import fetch_available_versions
+        workspace_dir = os.environ.get("SCIQLOP_WORKSPACE_DIR", "")
+
         def _fetch():
+            # PyPI, not GitHub releases: an in-place update installs from PyPI.
             try:
-                req = urllib.request.Request(
-                    self._GITHUB_RELEASE_URL,
-                    headers={"Accept": "application/vnd.github.v3+json"},
-                )
-                with urllib.request.urlopen(req, timeout=5) as resp:
-                    data = json.loads(resp.read())
-                tag = data["tag_name"]
-                result = json.dumps({
-                    "tag": tag,
-                    "name": data.get("name", tag),
-                    "url": data["html_url"],
-                    "published": data.get("published_at", ""),
-                    "is_update": _is_update_available(tag),
-                })
+                versions = fetch_available_versions()
+                result = json.dumps(release_offer(versions[0], __version__, workspace_dir)) if versions else "null"
             except Exception as e:
                 log.debug(f"Could not fetch latest release: {e}")
                 result = "null"
@@ -496,6 +508,7 @@ class WelcomeBackend(QObject):
 
     @Slot(str, str)
     def apply_core_version(self, workspace_dir: str, version: str) -> None:
+        from SciQLop.components.workspaces.backend import launcher_compat
         from SciQLop.components.workspaces.backend.uv import error_detail
         from SciQLop.components.workspaces.backend.workspace_project import (
             fetch_available_versions, validate_core_version,
@@ -517,6 +530,13 @@ class WelcomeBackend(QObject):
                     self.core_update_finished.emit(json.dumps({
                         "ok": False, "dir": workspace_dir, "version": version,
                         "error": f"{version!r} is not an installable SciQLop version",
+                    }))
+                    return
+                if launcher_compat.runs_here(version) is False:
+                    self.core_update_finished.emit(json.dumps({
+                        "ok": False, "dir": workspace_dir, "version": version,
+                        "error": f"SciQLop {version} needs a newer SciQLop installer: "
+                                 f"download it from {launcher_compat.INSTALLER_DOWNLOAD_URL}",
                     }))
                     return
                 try:

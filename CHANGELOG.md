@@ -9,6 +9,12 @@
 - `panel.settle(timeout=None)` waits until a panel shows its data, ready to export. It raises `TimeoutError` if the panel is still loading after `timeout` seconds; with no timeout it waits as long as it takes.
 - `panel.wait_for_data()` and the agents' `sciqlop_wait_for_plot_data` returned as soon as the download ended, before the plot had drawn the new data and rescaled its axes. An export made right after could show the old axis range, with the loading marker still in the legend. Both now wait until the panel has settled.
 
+### Updates
+
+- A new SciQLop release no longer always means downloading a new installer. When your installer can run the new release, the welcome page offers "Update this workspace". It installs the release and the dependency versions it needs in the background; restart to switch to it. A new installer is proposed only when the release needs one: a newer launcher, a different Python, or startup code the old installer lacks. This works from installers of this version on. Older installers still get the download link.
+- A workspace can no longer be switched to a release its installer cannot run. "Reset environment" moves a workspace to the newest release the installer can run, not the newest release. A workspace's version badge only shows "outdated" for such releases.
+- Each release says which installers can run it, in `pyproject.toml` under `[tool.sciqlop.launcher]`. When the native launcher or the bundled Python changes, a test fails until `minimum` is looked at.
+
 ### Catalogs
 
 - Quitting SciQLop while a catalog operation was still running (opening the catalog database at startup, a save) made it crash on exit. It now waits for that operation to finish.

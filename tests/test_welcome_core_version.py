@@ -11,6 +11,14 @@ from SciQLop.components.workspaces.backend.workspace_manifest import WorkspaceMa
 
 WORKSPACE_PROJECT_MODULE = "SciQLop.components.workspaces.backend.workspace_project"
 WORKSPACE_SETUP_MODULE = "SciQLop.components.workspaces.backend.workspace_setup"
+LAUNCHER_COMPAT_MODULE = "SciQLop.components.workspaces.backend.launcher_compat"
+
+
+@pytest.fixture(autouse=True)
+def _no_release_needs_fetch():
+    """Whether a release runs under this installer is fetched from GitHub: unknown here."""
+    with patch(f"{LAUNCHER_COMPAT_MODULE}.fetch_release_needs", return_value=None):
+        yield
 
 
 def _make_backend():
@@ -188,3 +196,63 @@ class TestApplyCoreVersionSlot:
                 backend.apply_core_version(str(tmp_path), "0.13.0")
         payload = json.loads(blocker.args[0])
         assert payload["dropped"] == ["radio-plugin"]
+
+
+class TestApplyCoreVersionNeedsAnInstallerThatRunsIt:
+    def test_a_version_needing_a_newer_installer_is_refused(self, qtbot, tmp_path):
+        backend = _make_backend()
+        with (
+            patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.15.0"]),
+            patch(f"{LAUNCHER_COMPAT_MODULE}.runs_here", return_value=False),
+            patch(f"{WORKSPACE_SETUP_MODULE}.stage_core_version") as mock_stage,
+            patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version") as mock_apply,
+        ):
+            with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
+                backend.apply_core_version(str(tmp_path), "0.15.0")
+        payload = json.loads(blocker.args[0])
+        assert payload["ok"] is False
+        assert "installer" in payload["error"]
+        mock_stage.assert_not_called()
+        mock_apply.assert_not_called()
+
+    def test_unknown_compatibility_does_not_block_the_picker(self, qtbot, tmp_path):
+        backend = _make_backend()
+        with (
+            patch(f"{WORKSPACE_PROJECT_MODULE}.fetch_available_versions", return_value=["0.15.0"]),
+            patch(f"{LAUNCHER_COMPAT_MODULE}.runs_here", return_value=None),
+            patch(f"{WORKSPACE_SETUP_MODULE}.apply_core_version"),
+        ):
+            with qtbot.waitSignal(backend.core_update_finished, timeout=2000) as blocker:
+                backend.apply_core_version(str(tmp_path), "0.15.0")
+        assert json.loads(blocker.args[0])["ok"] is True
+
+
+class TestReleaseOffer:
+    """The welcome banner: update the workspace in place, or get a new installer."""
+
+    @staticmethod
+    def _offer(runs, latest="0.15.0", running="0.14.2", workspace_dir="/ws"):
+        from SciQLop.components.welcome.backend import release_offer
+        with patch(f"{LAUNCHER_COMPAT_MODULE}.runs_here", return_value=runs):
+            return release_offer(latest, running, workspace_dir)
+
+    def test_a_release_this_installer_runs_is_installed_in_the_workspace(self):
+        offer = self._offer(True)
+        assert offer["is_update"] is True
+        assert offer["route"] == "workspace"
+        assert offer["workspace_dir"] == "/ws"
+
+    @pytest.mark.parametrize("runs", [False, None])
+    def test_otherwise_a_new_installer_is_proposed(self, runs):
+        offer = self._offer(runs)
+        assert offer["route"] == "installer"
+        assert offer["url"].startswith("https://github.com/SciQLop/SciQLop/releases")
+
+    def test_up_to_date(self):
+        assert self._offer(True, latest="0.14.2")["is_update"] is False
+
+    def test_a_workspace_on_main_is_not_moved_to_a_release(self):
+        assert self._offer(True, running="0.15.0.dev1", latest="0.15.0")["route"] == "installer"
+
+    def test_without_a_workspace_there_is_nothing_to_update_in_place(self):
+        assert self._offer(True, workspace_dir="")["route"] == "installer"

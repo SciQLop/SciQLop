@@ -89,6 +89,28 @@ all-zero placeholder digest — `scripts/appimage/build.sh` treats that as fatal
 when `$RELEASE` is set (a real release must not silently ship without the
 launcher) and as a warn-and-continue-without-it otherwise.
 
+An installer is a launcher *and* a Python, uv and the SciQLop that prepares
+workspaces (`sciqlop_launcher.py`). Users only need a new installer when a
+release cannot run under the old one. Each release states the oldest
+installer it runs under, as the SciQLop version that installer shipped, in
+`pyproject.toml`:
+
+```toml
+[tool.sciqlop.launcher]
+minimum = "0.14.0"
+native = "0.2.2"   # mirrors LAUNCHER_VERSION above
+python = "3.14"    # mirrors the installers' PYTHON_VERSION
+```
+
+`tests/test_launcher_compat.py` fails when `native` or `python` drifts from the
+build scripts. Bumping either is the moment to decide on `minimum`: set it to
+the version being released, unless older installers still run it. Also raise
+it when the app starts relying on something new in workspace preparation,
+since that code runs from the installer, not the workspace. The app reads its
+installer from `SCIQLOP_LAUNCHER_VERSION`, set by `sciqlop_launcher.py`. It
+reads a release's needs from that release's tag
+(`SciQLop/components/workspaces/backend/launcher_compat.py`).
+
 To iterate without cutting a release:
 
 ```bash
