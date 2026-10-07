@@ -19,6 +19,15 @@
 ### Catalogs
 
 - Quitting SciQLop while a catalog operation was still running (opening the catalog database at startup, a save) made it crash on exit. It now waits for that operation to finish.
+- A local catalog operation that failed in the background was never reported, and it blocked catalog refreshes until restart. It only showed up later, as a "Timeout loading events" message. The failure now shows right away, and the catalogs keep refreshing.
+
+### Virtual products
+
+- `%%vp --path` now names the product. Before, a product was tracked by its function name. A second cell with the same function name silently replaced the first product's code, whatever `--path` said. This happened most often with two notebooks sharing one kernel.
+
+### Agents
+
+- An agent plugin that failed to start, for example Albert without an API key, made every agent plugin loaded after it fail too. Now the chat panel shows the error, and you can pick another agent from the list.
 
 ## v0.14.1 — 2026-10-06
 

@@ -175,6 +175,28 @@ class TestTrackedActionExceptionSafety:
                 raise RuntimeError("simulated failure")
         assert tscat_provider._pending_actions == before
 
+    def test_an_action_failing_on_the_driver_thread_is_reported_and_released(
+            self, qapp, tscat_provider):
+        """tscat_gui's worker runs actions with no exception handling: a raise
+        there used to leave the action pending forever, which blocks every
+        later catalog refresh and only surfaced as a load timeout."""
+        from tscat import _Event
+        from tscat_gui.tscat_driver.actions import CreateEntityAction
+        from tscat_gui.tscat_driver.model import tscat_model
+
+        errors = []
+        tscat_provider.error_occurred.connect(errors.append)
+        before = tscat_provider._pending_actions
+        with tscat_provider._tracked_action():
+            tscat_model.do(CreateEntityAction(
+                user_callback=None, cls=_Event,
+                args={"start": datetime(2020, 1, 1), "stop": datetime(2020, 1, 2),
+                      "author": "test", "my column": 1}))
+        _process_events(qapp, rounds=30)
+
+        assert tscat_provider._pending_actions == before
+        assert any("my column" in e for e in errors)
+
 
 def test_add_event_persists_meta_to_tscat_backend(qapp, tscat_provider):
     """Regression: when an event is added with arbitrary metadata (the case

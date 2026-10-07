@@ -25,6 +25,8 @@ from tscat_gui.tscat_driver.actions import (
 import tscat
 from tscat_gui.model_base.constants import EntityRole
 
+from ._patches import driver_action_failures
+
 
 SCHEMA_ATTR_PREFIX = "sciqlop_schema__"
 
@@ -162,6 +164,7 @@ class TscatCatalogProvider(CatalogProvider):
         self._orphan_refresh_timer.setInterval(250)
         self._orphan_refresh_timer.timeout.connect(self._do_dispatch_orphan_refresh)
         tscat_model.action_done.connect(self._on_action_done)
+        driver_action_failures().failed.connect(self._on_action_failed)
         self._root_model.rowsInserted.connect(self._on_root_rows_changed)
         self._root_model.rowsRemoved.connect(self._on_root_rows_changed)
         self._root_model.modelReset.connect(self._on_root_rows_changed)
@@ -677,6 +680,14 @@ class TscatCatalogProvider(CatalogProvider):
         # so they re-read from the freshly updated cache — including the
         # "deleted everything" case where the node disappears.
         self.events_changed.emit(self._make_orphan_catalog())
+
+    @Slot(object, str)
+    def _on_action_failed(self, action, message: str) -> None:
+        if isinstance(action, self._TRACKED_ACTIONS) and self._pending_actions > 0:
+            self._pending_actions -= 1
+            if self._pending_actions == 0:
+                self._refresh_catalogs_and_notify()
+        self.error_occurred.emit(f"Catalog operation failed: {message}")
 
     @Slot()
     def _on_action_done(self, action) -> None:

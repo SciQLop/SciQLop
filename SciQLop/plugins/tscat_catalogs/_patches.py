@@ -15,12 +15,19 @@ Fixes three issues until addressed upstream:
 
 3. Quitting while the driver's worker runs an action aborts the process:
    TscatDriver.stop() never waits for the worker after quit().
+
+4. An action raising on the driver's worker thread is never completed, so
+   whoever waits on it hangs. ``driver_action_failures()`` reports it instead.
 """
 
 import atexit
+import logging
 from datetime import datetime
 
+from PySide6.QtCore import QObject, Signal
 from tscat.base import _BackendBasedEntity, _Event
+
+log = logging.getLogger(__name__)
 
 
 def _strip_tz(value):
@@ -57,6 +64,38 @@ def _stop_after_running_action(self):
     ends, and cutting a catalog write short is worse than a slower exit."""
     self._worker.quit()
     self._worker.wait()
+
+
+class _DriverActionFailures(QObject):
+    failed = Signal(object, str)
+
+
+def _do_action_reporting_failure(self, action):
+    """_TscatDriverWorker.do_action that survives a failing action.
+
+    action_done is still not emitted for a failed action: tscat_gui's own
+    handler reads the action's result (e.g. asserts on a created entity)."""
+    try:
+        action.action()
+    except Exception as error:
+        log.error("tscat action %s failed", type(action).__name__, exc_info=True)
+        driver_action_failures().failed.emit(action, f"{type(error).__name__}: {error}")
+        return
+    action.completed = True
+    self.action_done.emit(action)
+
+
+def driver_action_failures() -> _DriverActionFailures:
+    """Signal source for actions that raised on the driver thread; installs
+    the worker patch on first use. Stored on tscat_gui's driver so both module
+    identities of this plugin (see orphans.py) share one instance."""
+    from tscat_gui.tscat_driver.driver import _TscatDriverWorker, tscat_driver
+    failures = getattr(tscat_driver, "_sciqlop_action_failures", None)
+    if failures is None:
+        failures = _DriverActionFailures()
+        tscat_driver._sciqlop_action_failures = failures
+        _TscatDriverWorker.do_action = _do_action_reporting_failure
+    return failures
 
 
 def apply_tscat_gui_patches():
