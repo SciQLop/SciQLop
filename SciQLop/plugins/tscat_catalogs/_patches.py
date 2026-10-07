@@ -1,6 +1,6 @@
-"""Monkey-patches for tscat / tscat_gui datetime handling.
+"""Monkey-patches for tscat / tscat_gui.
 
-Fixes two issues until addressed upstream:
+Fixes three issues until addressed upstream:
 
 1. Naive-vs-aware mismatch: QDateTimeEdit.toPython() strips tzinfo,
    while other code paths may produce aware datetimes.  We strip
@@ -12,8 +12,12 @@ Fixes two issues until addressed upstream:
    happens naturally when moving an event interactively (start and
    stop are written separately through an async queue).  We remove
    this validation — the UI already ensures final consistency.
+
+3. Quitting while the driver's worker runs an action aborts the process:
+   TscatDriver.stop() never waits for the worker after quit().
 """
 
+import atexit
 from datetime import datetime
 
 from tscat.base import _BackendBasedEntity, _Event
@@ -44,8 +48,25 @@ def _event_setattr_no_order_check(self, key, value):
     _BackendBasedEntity.__setattr__(self, key, value)
 
 
+def _stop_after_running_action(self):
+    """TscatDriver.stop() that lets the running action finish.
+
+    The original waits for a worker that only stops after quit(), then calls
+    quit() without waiting: a worker busy at exit is destroyed while running
+    and Qt aborts the process. No timeout: an action is a database call that
+    ends, and cutting a catalog write short is worse than a slower exit."""
+    self._worker.quit()
+    self._worker.wait()
+
+
 def apply_tscat_gui_patches():
     from tscat_gui.tscat_driver.actions import SetAttributeAction
+    from tscat_gui.tscat_driver.driver import TscatDriver, tscat_driver
+
+    TscatDriver.stop = _stop_after_running_action
+    # tscat_gui registered the original bound stop() at import; atexit runs
+    # last-registered first, so this one finishes the worker before it.
+    atexit.register(tscat_driver.stop)
 
     _original_action = SetAttributeAction.action
 
