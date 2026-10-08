@@ -226,10 +226,18 @@ def main():
         except Exception as e:
             print(e)
 
+    async def _close_then_quit(main_window, code: int):
+        try:
+            await main_window.close_without_prompts()
+        finally:
+            _quit(code)
+
     def _run_batch():
+        import asyncio
         from SciQLop.core.batch import run_batch_script
-        build_sciqlop()
-        _quit(run_batch_script(batch))
+        main_window = build_sciqlop()
+        code = run_batch_script(batch)
+        asyncio.ensure_future(_close_then_quit(main_window, code), loop=loop)
 
     def _run_startup():
         try:

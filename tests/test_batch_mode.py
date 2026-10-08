@@ -98,6 +98,19 @@ def test_batch_runs_without_webengine(monkeypatch, tmp_path):
     assert env["QT_QPA_PLATFORM"] == "offscreen"
 
 
+def test_batch_can_opt_into_webengine(monkeypatch, tmp_path):
+    env = _session_env(monkeypatch, tmp_path, ["--webengine", "--batch", "s.py"])
+
+    assert "SCIQLOP_NO_WEBENGINE" not in env
+
+
+def test_webengine_and_no_webengine_are_exclusive():
+    from SciQLop.sciqlop_launcher import parse_args
+
+    with pytest.raises(SystemExit):
+        parse_args(["--webengine", "--no-webengine"])
+
+
 def test_request_survives_the_environment_round_trip():
     request = BatchRequest(script="/a/b.py", args=["--day", "été"], cwd="/c")
 
@@ -155,6 +168,31 @@ def test_batch_session_exports_a_panel_without_a_display(tmp_path):
 
     assert proc.returncode == 0, _without_faulthandler_noise(proc.stderr)
     assert (tmp_path / "quicklook.png").stat().st_size > 0
+
+
+def test_batch_exit_closes_plugins_and_keeps_the_script_exit_code(tmp_path):
+    marker = tmp_path / "plugin_closed"
+    script = _write_script(tmp_path / "exit3.py", f"""
+        import sys
+        from SciQLop.components.plugins import loaded_plugins
+
+        class _Plugin:
+            async def close(self):
+                open({str(marker)!r}, "w").close()
+
+        loaded_plugins.quit_probe = _Plugin()
+        sys.exit(3)
+    """)
+    env = {k: v for k, v in os.environ.items() if k not in ("DISPLAY", "WAYLAND_DISPLAY", "QT_QPA_PLATFORM")}
+    env[BATCH_ENV] = BatchRequest(script=str(script), args=[], cwd=str(tmp_path)).to_env()
+    env["QT_QPA_PLATFORM"] = "offscreen"
+    env["SCIQLOP_NO_WEBENGINE"] = "1"
+
+    proc = subprocess.run([sys.executable, "-m", "SciQLop.sciqlop_app"], env=env,
+                          capture_output=True, text=True, timeout=180)
+
+    assert proc.returncode == 3, _without_faulthandler_noise(proc.stderr)
+    assert marker.exists()
 
 
 def test_closing_the_main_window_closes_plugins_and_exits_cleanly(tmp_path):

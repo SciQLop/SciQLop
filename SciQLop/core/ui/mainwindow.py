@@ -873,6 +873,12 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
                 if inspect.isawaitable(result):
                     result.close()
 
+    async def close_without_prompts(self):
+        """Close plugins, then the window, skipping the running-jobs and
+        unsaved-catalogs questions: in --batch nobody is there to answer them."""
+        self._closing = True
+        await self._async_close()
+
     async def _async_close(self):
         import asyncio
         import inspect
