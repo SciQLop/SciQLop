@@ -518,28 +518,26 @@ def test_qt_available_true_non_linux_without_display_env(mock_sys, monkeypatch):
     assert _qt_available() is True
 
 
-class _BrokenPySide6Finder:
-    """L-p3: simulates a PySide6 install with missing shared libraries — the
-    import raises OSError, not ImportError."""
-
-    def find_spec(self, fullname, path=None, target=None):
-        if fullname == "PySide6" or fullname.startswith("PySide6."):
-            raise OSError("libQt6Core.so.6: cannot open shared object file")
-        return None
-
-
 @patch(f"{MODULE}.platform.system", return_value="Linux")
 def test_qt_available_false_when_pyside6_has_broken_shared_libs(mock_sys, monkeypatch):
+    """L-p3: a PySide6 install with missing shared libraries raises OSError,
+    not ImportError. Simulated at __import__: unloading the real PySide6
+    modules from this Qt-running process breaks later tests (PySide6 6.11.2
+    then hands pytest-qt's message handler enum values it cannot look up)."""
+    import builtins
     from SciQLop.sciqlop_launcher import _qt_available
 
-    for name in [n for n in sys.modules if n == "PySide6" or n.startswith("PySide6.")]:
-        monkeypatch.delitem(sys.modules, name, raising=False)
-    finder = _BrokenPySide6Finder()
-    sys.meta_path.insert(0, finder)
-    try:
-        assert _qt_available() is False
-    finally:
-        sys.meta_path.remove(finder)
+    real_import = builtins.__import__
+
+    def broken_pyside6(name, *args, **kwargs):
+        if name == "PySide6" or name.startswith("PySide6."):
+            raise OSError("libQt6Core.so.6: cannot open shared object file")
+        return real_import(name, *args, **kwargs)
+
+    with monkeypatch.context() as patched:
+        patched.setattr(builtins, "__import__", broken_pyside6)
+        available = _qt_available()
+    assert available is False
 
 
 # --- M15: an externally-provided ready file must force the console path ---
