@@ -129,3 +129,20 @@ def test_hiding_a_column_does_not_record_a_zero_width(browser):
     browser._save_view_state()
     from SciQLop.components.catalogs.backend.event_table_view_state import get_view_state
     assert "class" not in get_view_state(cat.uuid).column_widths
+
+
+def test_event_filter_does_not_query_the_views_on_every_event(browser, monkeypatch):
+    """The filter sees every paint and hover of both views; asking each view
+    for its viewport per event is wasted work, and during teardown the views
+    may already be gone (docs/qt-lifetime-patterns.md, pattern 2)."""
+    from PySide6.QtCore import QEvent
+
+    calls = []
+    for view in (browser._catalog_tree, browser._event_table):
+        original = view.viewport
+        monkeypatch.setattr(view, "viewport", lambda o=original: calls.append(1) or o())
+
+    for viewport in (browser._tree_viewport, browser._table_viewport):
+        for _ in range(5):
+            browser.eventFilter(viewport, QEvent(QEvent.Type.HoverMove))
+    assert calls == []

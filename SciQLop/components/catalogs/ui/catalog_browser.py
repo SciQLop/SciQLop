@@ -162,6 +162,8 @@ class CatalogBrowser(QWidget):
         self._expanded_before_filter: list[QPersistentModelIndex] = []
         self._highlighting = False
         self._manual_widths: dict[str, int] = {}
+        self._tree_viewport: QWidget | None = None
+        self._table_viewport: QWidget | None = None
 
         # --- filter bar ---
         self._filter_bar = QLineEdit()
@@ -190,7 +192,8 @@ class CatalogBrowser(QWidget):
         self._catalog_tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._catalog_tree.customContextMenuRequested.connect(self._on_tree_context_menu)
         self._catalog_tree.doubleClicked.connect(self._on_tree_double_clicked)
-        self._catalog_tree.viewport().installEventFilter(self)
+        self._tree_viewport = self._catalog_tree.viewport()
+        self._tree_viewport.installEventFilter(self)
         self._catalog_tree.selectionModel().currentChanged.connect(self._on_catalog_selected)
         self._filter_bar.textChanged.connect(self._on_filter_changed)
         delete_shortcut = QShortcut(QKeySequence.StandardKey.Delete, self._catalog_tree)
@@ -236,7 +239,8 @@ class CatalogBrowser(QWidget):
         from .event_table_delegate import EventTableDelegate
         self._event_delegate = EventTableDelegate(self._event_model, self._event_table)
         self._event_table.setItemDelegate(self._event_delegate)
-        self._event_table.viewport().installEventFilter(self)
+        self._table_viewport = self._event_table.viewport()
+        self._table_viewport.installEventFilter(self)
 
         # --- event toolbar (above table) ---
         self._add_event_action = QAction(get_icon("add"), "Add event", self)
@@ -377,11 +381,11 @@ class CatalogBrowser(QWidget):
         self._expanded_before_filter = []
 
     def eventFilter(self, obj, event):
-        if (obj is self._catalog_tree.viewport()
+        if (obj is self._tree_viewport
                 and event.type() == QEvent.Type.MouseButtonDblClick
                 and self._pick_color_at(event.position().toPoint())):
             return True
-        if obj is self._event_table.viewport():
+        if obj is self._table_viewport:
             url = self._ctrl_clicked_url(event)
             if url is not None:
                 self._open_url(url)
