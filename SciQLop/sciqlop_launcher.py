@@ -58,13 +58,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--reset-environment", action="store_true",
                         help="rebuild the workspace's Python environment on the newest SciQLop "
                              "(the native launcher's \"Reset environment\" button)")
-    parser.add_argument("--no-webengine", action="store_true",
-                        help="don't start the embedded browser (Chromium): the welcome page, "
-                             "plugin store and agent chat stay blank")
+    webengine = parser.add_mutually_exclusive_group()
+    webengine.add_argument("--no-webengine", action="store_true",
+                           help="don't start the embedded browser (Chromium): the welcome page, "
+                                "plugin store and agent chat stay blank")
+    webengine.add_argument("--webengine", action="store_true",
+                           help="start the embedded browser in --batch mode, where it is off "
+                                "by default; put it before --batch")
     parser.add_argument("--batch", nargs=argparse.REMAINDER, metavar="SCRIPT [ARGS]",
                         help="run SCRIPT inside SciQLop with no window, then exit with its "
                              "exit code; every argument after SCRIPT is passed to it. "
-                             "Implies --no-webengine")
+                             "No embedded browser unless --webengine comes first")
     return parser.parse_args(argv if argv is not None else sys.argv[1:])
 
 
@@ -685,7 +689,7 @@ def main(argv: list[str] | None = None) -> int:
     sciqlop_file = args.sciqlop_file
     reset_environment = args.reset_environment
     _export_launcher_version()
-    if args.no_webengine or args.batch:
+    if args.no_webengine or (args.batch and not args.webengine):
         os.environ[NO_WEBENGINE_ENV] = "1"
 
     if READY_FILE_ENV in os.environ:
