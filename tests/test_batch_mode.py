@@ -155,3 +155,39 @@ def test_batch_session_exports_a_panel_without_a_display(tmp_path):
 
     assert proc.returncode == 0, _without_faulthandler_noise(proc.stderr)
     assert (tmp_path / "quicklook.png").stat().st_size > 0
+
+
+def test_closing_the_main_window_closes_plugins_and_exits_cleanly(tmp_path):
+    """The in-process suite tears windows down without closeEvent, so plugin
+    close() and the async close path only ever ran in production."""
+    marker = tmp_path / "plugin_closed"
+    script = _write_script(tmp_path / "quit.py", f"""
+        import os
+        import time
+        from PySide6.QtWidgets import QApplication
+        from SciQLop.components.plugins import loaded_plugins
+        from SciQLop.user_api.gui import get_main_window
+
+        class _Plugin:
+            async def close(self):
+                open({str(marker)!r}, "w").close()
+
+        loaded_plugins.quit_probe = _Plugin()
+        window = get_main_window()
+        window.close()
+        deadline = time.monotonic() + 30
+        while not os.path.exists({str(marker)!r}):
+            if time.monotonic() > deadline:
+                raise SystemExit("plugin close() never ran")
+            QApplication.processEvents()
+            time.sleep(0.01)
+    """)
+    env = {k: v for k, v in os.environ.items() if k not in ("DISPLAY", "WAYLAND_DISPLAY", "QT_QPA_PLATFORM")}
+    env[BATCH_ENV] = BatchRequest(script=str(script), args=[], cwd=str(tmp_path)).to_env()
+    env["QT_QPA_PLATFORM"] = "offscreen"
+
+    proc = subprocess.run([sys.executable, "-m", "SciQLop.sciqlop_app"], env=env,
+                          capture_output=True, text=True, timeout=180)
+
+    assert proc.returncode == 0, _without_faulthandler_noise(proc.stderr)
+    assert marker.exists()
