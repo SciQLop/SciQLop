@@ -53,3 +53,14 @@ def test_math_in_a_link_title_does_not_break_the_link(report):
 
 def test_ordinary_math_still_renders_with_katex(report):
     assert report["katex_count"] == 1
+
+
+def test_dollars_in_an_indented_code_block_stay_code(report):
+    assert "total = $a$ + $b$" in report["indented_code"]
+
+
+def test_an_unchanged_part_is_not_rebuilt_when_its_message_changes(report):
+    """Parts were compared by outerHTML, which the browser normalises (<br/>
+    becomes <br>, quotes in text are re-escaped), so thinking parts never
+    matched and were rebuilt on every streamed tick."""
+    assert report["unchanged_part_kept"] is True

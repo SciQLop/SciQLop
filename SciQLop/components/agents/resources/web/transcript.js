@@ -32,16 +32,40 @@
 
     // --- LaTeX math: markdown-it-texmath has no browser-ready build on npm,
     // so $$...$$ (display) and $...$ (inline) are pulled out of the raw
-    // markdown before rendering (skipping fenced/backtick code) and swapped
+    // markdown before rendering (skipping code) and swapped
     // back in as KaTeX HTML afterwards. Placeholders use control characters
     // that cannot occur in real prose and are never markdown-significant, so
     // they survive inline parsing untouched. ---
     const MATH_MARK_START = "MATH";
     const MATH_MARK_END = "";
-    const CODE_SPLIT_RE = /(```[\s\S]*?```|~~~[\s\S]*?~~~|`[^`\n]+`)/g;
+    const CODE_SPAN_SPLIT_RE = /(`[^`\n]+`)/g;
     const HTML_TAG_SPLIT_RE = /(<[^>]*>)/;
     const DISPLAY_MATH_RE = /\$\$([^$]+?)\$\$/g;
     const INLINE_MATH_RE = /\$([^\s$](?:[^$]*[^\s$])?)\$/g;
+
+    // Code blocks come from markdown-it's own parse rather than a regex: only
+    // the parser can tell indented code from an indented list item.
+    function codeBlockLines(text) {
+        const lines = new Set();
+        md.parse(text, {}).forEach(function (token) {
+            if ((token.type === "fence" || token.type === "code_block") && token.map) {
+                for (let line = token.map[0]; line < token.map[1]; line++) lines.add(line);
+            }
+        });
+        return lines;
+    }
+
+    function splitByCodeBlocks(text) {
+        const code = codeBlockLines(text);
+        const chunks = [];
+        text.split("\n").forEach(function (line, i) {
+            const isCode = code.has(i);
+            const last = chunks[chunks.length - 1];
+            if (last && last.isCode === isCode) last.lines.push(line);
+            else chunks.push({ isCode: isCode, lines: [line] });
+        });
+        return chunks;
+    }
 
     function extractMath(text) {
         const blocks = [];
@@ -52,15 +76,23 @@
                 return MATH_MARK_START + id + MATH_MARK_END;
             };
         }
-        const rebuilt = text
-            .split(CODE_SPLIT_RE)
-            .map(function (segment, i) {
-                if (i % 2 === 1) return segment; // a captured code span/fence
-                return segment
-                    .replace(DISPLAY_MATH_RE, stash(true))
-                    .replace(INLINE_MATH_RE, stash(false));
+        function stashOutsideCodeSpans(prose) {
+            return prose
+                .split(CODE_SPAN_SPLIT_RE)
+                .map(function (segment, i) {
+                    if (i % 2 === 1) return segment; // a captured code span
+                    return segment
+                        .replace(DISPLAY_MATH_RE, stash(true))
+                        .replace(INLINE_MATH_RE, stash(false));
+                })
+                .join("");
+        }
+        const rebuilt = splitByCodeBlocks(text)
+            .map(function (chunk) {
+                const joined = chunk.lines.join("\n");
+                return chunk.isCode ? joined : stashOutsideCodeSpans(joined);
             })
-            .join("");
+            .join("\n");
         return { text: rebuilt, blocks: blocks };
     }
 
@@ -251,8 +283,11 @@
                 return;
             }
             const html = partHtml(part);
-            if (existing && existing.outerHTML === html) return;
+            // Compared against the html it was built from: outerHTML is the
+            // browser's normalised form (<br/> reads back as <br>), never equal.
+            if (existing && existing.sourceHtml === html) return;
             const fresh = createElementFromHtml(html);
+            fresh.sourceHtml = html;
             if (existing) section.replaceChild(fresh, existing);
             else section.appendChild(fresh);
         });

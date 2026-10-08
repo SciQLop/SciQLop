@@ -24,10 +24,13 @@
 ### Virtual products
 
 - `%%vp --path` now names the product. Before, a product was tracked by its function name. A second cell with the same function name silently replaced the first product's code, whatever `--path` said. This happened most often with two notebooks sharing one kernel.
+- A new virtual product appeared in the product tree before it was fully set up. Code reacting to the new entry could find it without its function or its column names. It now appears only once it is ready.
 
 ### Agents
 
 - An agent plugin that failed to start, for example Albert without an API key, made every agent plugin loaded after it fail too. Now the chat panel shows the error, and you can pick another agent from the list.
+- In the chat, `$...$` inside an indented code block was rendered as math. It now stays code, like in fenced code blocks.
+- While an answer streamed in, the chat rebuilt its thinking parts on every update, even when they hadn't changed. It now rebuilds only the parts that changed.
 
 ## v0.14.1 — 2026-10-06
 

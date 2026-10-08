@@ -15,7 +15,7 @@ from SciQLop.core.sciqlop_application import sciqlop_app  # noqa: E402
 
 app = sciqlop_app()
 
-from SciQLop.components.agents.chat.view import ChatMessage, TextBlock, ToolActivityBlock  # noqa: E402
+from SciQLop.components.agents.chat.view import ChatMessage, TextBlock, ThinkingBlock, ToolActivityBlock  # noqa: E402
 from SciQLop.components.agents.chat.web_view import WebTranscriptView  # noqa: E402
 
 remote_hits = []
@@ -85,19 +85,35 @@ def main():
     scroll_y_after_resize = js(view, "window.scrollY")
 
     view.render_messages([ChatMessage(role="assistant", done=True, blocks=[TextBlock(complete=True, text=(
-        "~~~\nls $HOME/$USER\n~~~\n\nand ``a $b$ c`` and [link](https://example.org \"$y$\") and $E=mc^2$ inline"))])])
+        "~~~\nls $HOME/$USER\n~~~\n\nand ``a $b$ c`` and [link](https://example.org \"$y$\") and $E=mc^2$ inline"
+        "\n\nIndented:\n\n    total = $a$ + $b$\n\nend"))])])
     view.flush_now()
     pump(2)
     tilde_code = js(view, "document.querySelector('pre code') && document.querySelector('pre code').textContent")
     double_tick = js(view, "Array.from(document.querySelectorAll('code')).map(c => c.textContent).join('|')")
     link_title = js(view, "document.querySelector('a') && document.querySelector('a').getAttribute('title')")
     katex_count = js(view, "document.querySelectorAll('.katex').length")
+    indented_code = js(view, "Array.from(document.querySelectorAll('pre code')).map(c => c.textContent).join('|')")
+
+    thinking = ThinkingBlock(text='say "hi"\nthen <go>')
+    view.render_messages([ChatMessage(role="assistant", done=False, blocks=[
+        thinking, TextBlock(text="a", complete=False)])])
+    view.flush_now()
+    pump(1)
+    js(view, "document.querySelector('.thinking').probe = 1")
+    view.render_messages([ChatMessage(role="assistant", done=False, blocks=[
+        thinking, TextBlock(text="a b", complete=False)])])
+    view.flush_now()
+    pump(1)
+    unchanged_part_kept = js(view, "document.querySelector('.thinking').probe === 1")
 
     print(json.dumps({
         "tilde_code": tilde_code,
         "double_tick": double_tick,
         "link_title": link_title,
         "katex_count": katex_count,
+        "indented_code": indented_code,
+        "unchanged_part_kept": unchanged_part_kept,
         "remote_hits": remote_hits,
         "expanded_after_toggle": expanded_after_toggle,
         "expanded_after_reload": expanded_after_reload,
