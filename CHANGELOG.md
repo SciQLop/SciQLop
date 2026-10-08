@@ -33,6 +33,10 @@
 - In the chat, `$...$` inside an indented code block was rendered as math. It now stays code, like in fenced code blocks.
 - While an answer streamed in, the chat rebuilt its thinking parts on every update, even when they hadn't changed. It now rebuilds only the parts that changed.
 
+### Dependencies
+
+- SciQLopPlots 0.49.0 (from 0.47.1), with Qt and PySide6 6.11.2 and PySide6-QtAds 5.1.1. A line plotted from one column can now be coloured by a third variable and shows a colour scale, like multi-column lines (SciQLopPlots#113). Plots of plain arrays, colour maps and waterfalls now fit their data when first shown. N-D projection plots can be saved as PNG, JPG, BMP or PDF.
+
 ## v0.14.1 — 2026-10-06
 
 ### Virtual products
