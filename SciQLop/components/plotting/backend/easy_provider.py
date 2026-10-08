@@ -132,7 +132,8 @@ class EasyProvider(DataProvider):
                  knobs_kwarg_name: str = "knobs",
                  out_of_process: bool = False,
                  display_name: Optional[str] = None,
-                 color_axis: Optional[ColorAxis] = None):
+                 color_axis: Optional[ColorAxis] = None,
+                 columns: Optional[List[str]] = None):
         super(EasyProvider, self).__init__(name=make_simple_incr_name(_name_callable(callback)), data_order=data_order,
                                            cacheable=cacheable)
         from SciQLop.core.snippets import split_product_path
@@ -169,9 +170,8 @@ class EasyProvider(DataProvider):
             "stable_id": normalized_path,
             **({"remote": "True"} if out_of_process else {}),
         }
-        add_product_node(product_path, product_name, self.name, metadata, ProductsModelNodeType.PARAMETER,
-                         parameter_type, "", None, display_name=display_name)
         self._callback = callback
+        self._columns = columns
         self._parameter_type = parameter_type
         self._color_axis = color_axis
         self._debug = debug
@@ -204,6 +204,10 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
                 callback, self._range_stack, knobs_model, knobs_kwarg_name)
             arity = 3 if parameter_type == ParameterType.Spectrogram else 2
             remote_registry().register(path, remote_callback, arity, colored=color_axis is not None)
+
+        # Last: the node announces the provider, GUI code may call it right away.
+        add_product_node(product_path, product_name, self.name, metadata, ProductsModelNodeType.PARAMETER,
+                         parameter_type, "", None, display_name=display_name)
 
     @staticmethod
     def _compute_knob_specs(callback, knobs_model):
@@ -392,8 +396,7 @@ class EasyScalar(EasyProvider):
                          data_order=data_order, cacheable=cacheable, debug=debug,
                          knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
                          out_of_process=out_of_process, color_axis=color_axis,
-                         display_name=display_name)
-        self._columns = [component_name]
+                         display_name=display_name, columns=[component_name])
 
     def _to_variable(self, res):
         if type(res) is SpeasyVariable:
@@ -416,8 +419,7 @@ class EasyVector(EasyProvider):
                          data_order=data_order, cacheable=cacheable, debug=debug,
                          knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
                          out_of_process=out_of_process, color_axis=color_axis,
-                         display_name=display_name)
-        self._columns = components_names
+                         display_name=display_name, columns=components_names)
 
     def _to_variable(self, res) -> Optional[DataProviderReturnType]:
         if type(res) is SpeasyVariable:
@@ -445,8 +447,7 @@ class EasyMultiComponent(EasyVector):
                               data_order=data_order, cacheable=cacheable, debug=debug,
                               knobs_model=knobs_model, knobs_kwarg_name=knobs_kwarg_name,
                               out_of_process=out_of_process, color_axis=color_axis,
-                              display_name=display_name)
-        self._columns = components_names
+                              display_name=display_name, columns=components_names)
 
 
 class EasySpectrogram(EasyProvider):
