@@ -195,6 +195,36 @@ def test_batch_exit_closes_plugins_and_keeps_the_script_exit_code(tmp_path):
     assert marker.exists()
 
 
+def test_batch_exit_warns_about_unsaved_catalogs(tmp_path):
+    """Batch mode skips the unsaved-catalogs question; the console must still
+    say what is being lost."""
+    script = _write_script(tmp_path / "dirty.py", """
+        from SciQLop.components.catalogs.backend.provider import Capability, CatalogProvider
+
+        class _Unsaved(CatalogProvider):
+            def catalogs(self):
+                return []
+
+            def capabilities(self, catalog=None):
+                return {Capability.SAVE}
+
+            def is_dirty(self, catalog=None):
+                return True
+
+        provider = _Unsaved(name="UnsavedProbe")
+    """)
+    env = {k: v for k, v in os.environ.items() if k not in ("DISPLAY", "WAYLAND_DISPLAY", "QT_QPA_PLATFORM")}
+    env[BATCH_ENV] = BatchRequest(script=str(script), args=[], cwd=str(tmp_path)).to_env()
+    env["QT_QPA_PLATFORM"] = "offscreen"
+    env["SCIQLOP_NO_WEBENGINE"] = "1"
+
+    proc = subprocess.run([sys.executable, "-m", "SciQLop.sciqlop_app"], env=env,
+                          capture_output=True, text=True, timeout=180)
+
+    assert proc.returncode == 0, _without_faulthandler_noise(proc.stderr)
+    assert "unsaved changes" in proc.stderr and "UnsavedProbe" in proc.stderr
+
+
 def test_closing_the_main_window_closes_plugins_and_exits_cleanly(tmp_path):
     """The in-process suite tears windows down without closeEvent, so plugin
     close() and the async close path only ever ran in production."""

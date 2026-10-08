@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime, timedelta
 from typing import Optional, Union, List
 
@@ -131,6 +132,25 @@ def _confirm_close_with_running_jobs(parent, event, jobs: list) -> bool:
         event.ignore()
         return True
     return False
+
+
+def _dirty_catalog_names() -> List[str]:
+    from SciQLop.components.catalogs.backend.registry import CatalogRegistry
+    from SciQLop.components.catalogs.backend.provider import Capability
+    from SciQLop.components.sciqlop_logging import getLogger
+    try:
+        providers = CatalogRegistry.instance().providers()
+    except Exception:
+        return []
+    dirty = []
+    for p in providers:
+        try:
+            if Capability.SAVE in p.capabilities() and p.is_dirty():
+                dirty.append(p.name)
+        except Exception:
+            getLogger(__name__).warning(
+                "Could not check dirty state of provider %r", p, exc_info=True)
+    return dirty
 
 
 def _confirm_close_with_dirty_catalogs(parent, event, dirty_providers: list) -> bool:
@@ -822,22 +842,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         return _confirm_close_with_running_jobs(self, event, jobs)
 
     def _warn_if_catalogs_dirty(self, event: QCloseEvent) -> bool:
-        from SciQLop.components.catalogs.backend.registry import CatalogRegistry
-        from SciQLop.components.catalogs.backend.provider import Capability
-        from SciQLop.components.sciqlop_logging import getLogger
-        try:
-            providers = CatalogRegistry.instance().providers()
-        except Exception:
-            return False
-        dirty = []
-        for p in providers:
-            try:
-                if Capability.SAVE in p.capabilities() and p.is_dirty():
-                    dirty.append(p.name)
-            except Exception:
-                getLogger(__name__).warning(
-                    "Could not check dirty state of provider %r", p, exc_info=True)
-        return _confirm_close_with_dirty_catalogs(self, event, dirty)
+        return _confirm_close_with_dirty_catalogs(self, event, _dirty_catalog_names())
 
     @staticmethod
     def _usable_event_loop():
@@ -876,6 +881,10 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
     async def close_without_prompts(self):
         """Close plugins, then the window, skipping the running-jobs and
         unsaved-catalogs questions: in --batch nobody is there to answer them."""
+        dirty = _dirty_catalog_names()
+        if dirty:
+            print(f"Warning: quitting with unsaved changes in: {', '.join(dirty)}. "
+                  "Call save() on these catalogs in the script to keep them.", file=sys.stderr)
         self._closing = True
         await self._async_close()
 
