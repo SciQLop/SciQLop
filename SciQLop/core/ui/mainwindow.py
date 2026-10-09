@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import datetime, timedelta
-from typing import Optional, Union, List
+from typing import Optional, Union, List, Tuple
 
 import humanize
 import psutil
@@ -20,7 +20,7 @@ from SciQLop.components.plotting.ui.panel_container import PanelContainer
 from SciQLop.components.welcome import WelcomePage
 from SciQLop.core import TimeRange
 from SciQLop.core.sciqlop_application import sciqlop_app
-from SciQLop.core.unique_names import auto_name, release_name
+from SciQLop.core.unique_names import auto_name, release_name, reserve_name
 from SciQLop.components.workspaces import Workspace
 from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle, qtads_stylesheet
 from SciQLop.core.ui import Metrics
@@ -100,6 +100,19 @@ def _extract_panel(dock_widget):
     if isinstance(w, SciQLopMultiPlotPanel):
         return w if shiboken6.isValid(w) else None
     return None
+
+
+def _follow_panel_renames(panel, dock_widget: QtAds.CDockWidget) -> None:
+    """The Properties inspector renames a panel with setObjectName (#152). QtAds keys
+    docks by the name they were added with and never re-keys them, so the dock keeps
+    that name as an internal id; only its title follows the panel's name."""
+    def _on_renamed(new_name: str) -> None:
+        if not shiboken6.isValid(dock_widget):
+            return
+        release_name(dock_widget.windowTitle())
+        reserve_name(new_name)
+        dock_widget.setWindowTitle(new_name)
+    panel.objectNameChanged.connect(_on_renamed)
 
 
 def _destroy_content_before_its_window(dock_widget: QtAds.CDockWidget) -> None:
@@ -658,7 +671,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if isinstance(panel, str):
             panel = self.plot_panel(panel)
         if panel:
-            dw = self.dock_manager.findDockWidget(panel.name)
+            dw = self._dock_of(panel)
             if dw:
                 release_name(panel.name)
                 container = dw.takeWidget()
@@ -722,6 +735,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             # than creating a fresh one — dockAreaCreated only fires for the
             # latter, so that path alone misses this, very common, case.
             self._ensure_add_panel_button(dock_widget.dockAreaWidget())
+            _follow_panel_renames(panel, dock_widget)
             dock_widget.closed.connect(lambda: self._on_panel_dock_closed(dock_widget))
         panel.delete_me.connect(lambda: self.remove_panel(panel))
         self.panel_added.emit(panel)
@@ -752,7 +766,7 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
             return
         log.warning(f"Panel {name!r} was destroyed without remove_panel; "
                     "cleaning up its dock entry")
-        release_name(name)
+        release_name(dw.windowTitle())
         container = dw.takeWidget()
         dw.closeDockWidget()
         if container is not None:
@@ -797,15 +811,20 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         if shiboken6.isValid(area):
             self.new_native_plot_panel(area=area)
 
+    def _panel_docks(self) -> List[Tuple[QtAds.CDockWidget, TimeSyncPanel]]:
+        # dockWidgetsMap(), not dockWidgets(): the latter skips floating docks.
+        pairs = ((dw, _extract_panel(dw)) for dw in self.dock_manager.dockWidgetsMap().values())
+        return [(dw, p) for dw, p in pairs if p is not None]
+
+    def _dock_of(self, panel: TimeSyncPanel) -> Optional[QtAds.CDockWidget]:
+        return next((dw for dw, p in self._panel_docks() if p is panel), None)
+
     def plot_panels(self) -> List[str]:
-        panels = [_extract_panel(dw) for dw in self.dock_manager.dockWidgets()]
-        return [p.name for p in panels if p is not None]
+        return [p.name for _, p in self._panel_docks()]
 
     def plot_panel(self, name: str) -> Union[TimeSyncPanel, None]:
-        dw: QtAds.CDockWidget = self.dock_manager.findDockWidget(name)
-        if dw:
-            return _extract_panel(dw)
-        return None
+        # Not findDockWidget(name): docks stay keyed by their creation name after a rename.
+        return next((p for _, p in self._panel_docks() if p.name == name), None)
 
     def _set_full_screen(self, full: bool) -> None:
         self.showFullScreen() if full else self.showNormal()
