@@ -182,6 +182,9 @@ def _format_install_result(result: Dict[str, Any]) -> str:
         parts.append(f"installed and recorded: {', '.join(result['installed'])}")
     if result.get("already_present"):
         parts.append(f"already present: {', '.join(result['already_present'])}")
+    if result.get("restart_required"):
+        parts.append(f"restart SciQLop to use the new version of: {', '.join(result['restart_required'])}")
+    parts += [f"{name} not loaded: {reason}" for name, reason in result.get("not_loaded", {}).items()]
     if not result.get("ok"):
         parts.append(f"error: {result.get('error', '')}")
     return "\n".join(parts) if parts else "ok (nothing to do)"

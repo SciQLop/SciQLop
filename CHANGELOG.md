@@ -17,6 +17,12 @@
 - New setting, Settings › Workspaces › "SciQLop version". "Latest release" is the default. New workspaces start on the newest release your installer can run, and the welcome page offers in-place updates. "Installer's version" keeps workspaces on the version your installer came with. A newer release then shows a link to the new installer. Once it is installed, the welcome page offers to move the workspace to it. Existing workspaces keep their version in both modes until you update them.
 - Each release says which installers can run it, in `pyproject.toml` under `[tool.sciqlop.launcher]`. When the native launcher or the bundled Python changes, a test fails until `minimum` is looked at.
 
+### Plugins
+
+- `%install` now loads a new plugin right away, like the plugin store does. Before, you had to restart SciQLop. Only an upgrade of a plugin that is already loaded still asks for a restart. `install_packages()` and the agents' install tool behave the same way.
+- `%install gh:owner/repo@tag` installs a package straight from GitHub. A GitHub URL works too. The package name is taken from the repo name.
+- `%install name @ git+https://...` works without quotes. Before, the spaces split it into three separate arguments.
+
 ### Catalogs
 
 - Quitting SciQLop while a catalog operation was still running (opening the catalog database at startup, a save) made it crash on exit. It now waits for that operation to finish.

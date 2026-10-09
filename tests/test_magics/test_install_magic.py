@@ -29,6 +29,38 @@ def test_install_failure_raises(capsys):
     assert "boom" in capsys.readouterr().out
 
 
+def _ok(installed, **extra):
+    return {"ok": True, "installed": installed, "already_present": [], "error": "",
+            "restart_required": [], "not_loaded": {}, **extra}
+
+
+def test_unquoted_pep508_url_spec_stays_one_package():
+    """Without quotes the space-separated `name @ url` was split into three
+    bogus packages: "sciqlop-vdf", "@" and the URL."""
+    spec = "sciqlop-vdf @ git+https://github.com/nicolasaunai/sciqlop-vdf@v0.3.0"
+    with patch("SciQLop.user_api.magics.install_magic.install_packages") as m:
+        m.return_value = _ok([spec])
+        install_magic(f"{spec} astropy")
+    m.assert_called_once_with(spec, "astropy")
+
+
+def test_install_reports_what_still_needs_a_restart_or_was_refused(capsys):
+    with patch("SciQLop.user_api.magics.install_magic.install_packages") as m:
+        m.return_value = _ok(["a", "b"], restart_required=["a"],
+                             not_loaded={"b": "needs SciQLop >=9"})
+        install_magic("a b")
+    out = capsys.readouterr().out
+    assert "Restart SciQLop to use the new version of: a" in out
+    assert "b was not loaded: needs SciQLop >=9" in out
+
+
+def test_a_plain_install_does_not_mention_restart(capsys):
+    with patch("SciQLop.user_api.magics.install_magic.install_packages") as m:
+        m.return_value = _ok(["sciqlop-vdf"])
+        install_magic("sciqlop-vdf")
+    assert "estart" not in capsys.readouterr().out
+
+
 @pytest.mark.parametrize("line", ["-e .", "--no-deps foo", "foo --upgrade"])
 def test_install_refuses_uv_options(line):
     """Every token is recorded in the manifest as a requirement, so an option

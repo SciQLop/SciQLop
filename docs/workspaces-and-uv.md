@@ -44,6 +44,14 @@ This does two things:
 1. Installs the packages immediately using uv
 2. Records them in the `.sciqlop` manifest so they're automatically reinstalled next time you open the workspace
 
+A plugin is loaded as soon as it is installed; no restart needed. Only an upgrade
+of an already-loaded plugin asks for a restart. Plugins hosted on GitHub install
+with a shorthand, no quotes needed:
+
+```python
+%install gh:nicolasaunai/sciqlop-vdf@v0.3.0
+```
+
 You can also install from a terminal, but packages won't be recorded in the manifest:
 
 ```bash
