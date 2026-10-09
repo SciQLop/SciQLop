@@ -177,7 +177,7 @@ def test_splitting_a_plot_panel_into_a_new_area_gets_its_own_add_button(main_win
             assert new_area is not area
         finally:
             dw2.takeWidget()
-            dw2.closeDockWidget()
+            main_window.dock_manager.removeDockWidget(dw2)
             container2.deleteLater()
             release_name(name2)
     finally:
