@@ -58,3 +58,43 @@ def test_floating_panel_is_still_listed_and_found(qtbot, qapp, main_window):
     main_window.remove_panel(panel)
     _flush()
     assert name not in main_window.plot_panels()
+
+
+def test_new_panel_with_a_taken_name_gets_a_unique_one(qtbot, qapp, main_window):
+    first = main_window.new_native_plot_panel(name="Clash152")
+    second = main_window.new_native_plot_panel(name="Clash152")
+
+    assert first.name == "Clash152"
+    assert second.name != "Clash152"
+    assert main_window.plot_panel(second.name) is second
+    main_window.remove_panel(first)
+    main_window.remove_panel(second)
+    _flush()
+
+
+def test_renaming_to_a_taken_name_picks_a_unique_one(qtbot, qapp, main_window):
+    first = main_window.new_native_plot_panel(name="Taken152")
+    second = main_window.new_native_plot_panel()
+    dock_widget = main_window.dock_manager.findDockWidget(second.name)
+
+    second.setObjectName("Taken152")
+
+    assert second.name != "Taken152"
+    assert second.name.startswith("Taken152")
+    assert dock_widget.windowTitle() == second.name
+    assert main_window.plot_panel("Taken152") is first
+    main_window.remove_panel(first)
+    main_window.remove_panel(second)
+    _flush()
+
+
+def test_renaming_to_an_empty_name_keeps_the_old_one(qtbot, qapp, main_window):
+    panel = main_window.new_native_plot_panel()
+    old_name = panel.name
+
+    panel.setObjectName("")
+
+    assert panel.name == old_name
+    assert main_window.dock_manager.findDockWidget(old_name).windowTitle() == old_name
+    main_window.remove_panel(panel)
+    _flush()

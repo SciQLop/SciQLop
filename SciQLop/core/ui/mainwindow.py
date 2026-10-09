@@ -20,7 +20,7 @@ from SciQLop.components.plotting.ui.panel_container import PanelContainer
 from SciQLop.components.welcome import WelcomePage
 from SciQLop.core import TimeRange
 from SciQLop.core.sciqlop_application import sciqlop_app
-from SciQLop.core.unique_names import auto_name, release_name, reserve_name
+from SciQLop.core.unique_names import auto_name, claim_name, release_name
 from SciQLop.components.workspaces import Workspace
 from SciQLop.components.theming import register_icon, get_icon, get_current_style_icon, theme_icon, theme_adapted_icon, SciQLopStyle, qtads_stylesheet
 from SciQLop.core.ui import Metrics
@@ -105,13 +105,17 @@ def _extract_panel(dock_widget):
 def _follow_panel_renames(panel, dock_widget: QtAds.CDockWidget) -> None:
     """The Properties inspector renames a panel with setObjectName (#152). QtAds keys
     docks by the name they were added with and never re-keys them, so the dock keeps
-    that name as an internal id; only its title follows the panel's name."""
+    that name as an internal id; only its title follows the panel's name. A taken or
+    empty name is replaced, and setObjectName shows the replacement in the inspector."""
     def _on_renamed(new_name: str) -> None:
-        if not shiboken6.isValid(dock_widget):
+        old_name = dock_widget.windowTitle() if shiboken6.isValid(dock_widget) else new_name
+        if new_name == old_name:
             return
-        release_name(dock_widget.windowTitle())
-        reserve_name(new_name)
-        dock_widget.setWindowTitle(new_name)
+        release_name(old_name)
+        unique = claim_name(new_name or old_name)
+        dock_widget.setWindowTitle(unique)
+        if unique != new_name:
+            panel.setObjectName(unique)
     panel.objectNameChanged.connect(_on_renamed)
 
 

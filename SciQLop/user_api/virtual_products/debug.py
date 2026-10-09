@@ -147,7 +147,7 @@ def _find_existing_debug_dock(mw):
 
 def _create_debug_panel(func_name: str):
     from SciQLop.user_api.gui import get_main_window
-    from SciQLop.core.ui.mainwindow import auto_name
+    from SciQLop.core.unique_names import auto_name, release_name
     from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
     import PySide6QtAds as QtAds
 
@@ -182,5 +182,7 @@ def _create_debug_panel(func_name: str):
     mw.panel_added.emit(panel)
     mw._notify_panels_list_changed()
     panel.destroyed.connect(mw._notify_panels_list_changed)
+    name = panel.name
+    panel.destroyed.connect(lambda *_: release_name(name))
 
     return panel
