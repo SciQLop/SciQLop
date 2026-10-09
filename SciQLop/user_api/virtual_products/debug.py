@@ -139,15 +139,16 @@ def _panel_is_alive(panel) -> bool:
 def _find_existing_debug_dock(mw):
     """Find an existing VP Debug dock widget to stack below."""
     import PySide6QtAds as QtAds
-    for doc in mw.dock_manager.dockWidgetsMap().values():
-        if doc.windowTitle().startswith("VP Debug:") and not doc.isClosed():
+    # Keys are the docks' creation names, which survive a user rename; titles don't.
+    for name, doc in mw.dock_manager.dockWidgetsMap().items():
+        if name.startswith("VP Debug:") and not doc.isClosed():
             return doc
     return None
 
 
 def _create_debug_panel(func_name: str):
     from SciQLop.user_api.gui import get_main_window
-    from SciQLop.core.unique_names import auto_name, release_name
+    from SciQLop.core.unique_names import auto_name
     from SciQLop.components.plotting.ui.time_sync_panel import TimeSyncPanel
     import PySide6QtAds as QtAds
 
@@ -161,6 +162,7 @@ def _create_debug_panel(func_name: str):
     doc.setWidget(panel)
     doc.setMinimumSizeHintMode(QtAds.CDockWidget.MinimumSizeHintFromContent)
     doc.setFeature(QtAds.CDockWidget.DockWidgetDeleteOnClose, True)
+    mw._track_panel_dock(panel, doc)
 
     existing_debug = _find_existing_debug_dock(mw)
     if existing_debug is not None:
@@ -182,7 +184,5 @@ def _create_debug_panel(func_name: str):
     mw.panel_added.emit(panel)
     mw._notify_panels_list_changed()
     panel.destroyed.connect(mw._notify_panels_list_changed)
-    name = panel.name
-    panel.destroyed.connect(lambda *_: release_name(name))
 
     return panel

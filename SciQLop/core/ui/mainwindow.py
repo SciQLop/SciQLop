@@ -749,6 +749,13 @@ class SciQLopMainWindow(QtWidgets.QMainWindow):
         panel.destroyed.connect(lambda *_: self._schedule_dead_panel_drop(panel_name))
         return panel
 
+    def _track_panel_dock(self, panel: TimeSyncPanel, dock_widget: QtAds.CDockWidget) -> None:
+        """For panels docked outside new_native_plot_panel (e.g. VP debug panels):
+        the X goes through remove_panel, and renames follow, like any other panel."""
+        dock_widget.setFeature(QtAds.CDockWidget.CustomCloseHandling, True)
+        dock_widget.closeRequested.connect(lambda: self.remove_panel(panel))
+        _follow_panel_renames(panel, dock_widget)
+
     def _on_panel_dock_closed(self, dock_widget: QtAds.CDockWidget) -> None:
         # QtAds also emits `closed` when a dock is only hidden (toggleView(False));
         # a dock being deleted is unregistered from the manager before it emits.
