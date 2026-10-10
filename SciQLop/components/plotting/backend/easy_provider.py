@@ -93,6 +93,27 @@ def _returns_speasy_variable(callback: VirtualProductCallback):
     return inspect.get_annotations(inspect.unwrap(callback)).get("return") == SpeasyVariable
 
 
+def _unsupported_return(res, expected: str) -> TypeError:
+    return TypeError(f"returned a {type(res).__name__}; expected {expected}, a SpeasyVariable or None")
+
+
+def _iso(epoch: float) -> str:
+    return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _ensure_overlaps_request(variable: SpeasyVariable, start: float, stop: float) -> None:
+    """Data entirely outside the requested range draws nothing; usually the
+    times are not epoch seconds (milliseconds land in the far future)."""
+    t = variable.time
+    if len(t) == 0:
+        return
+    lo, hi = np.datetime64(int(start * 1e9), "ns"), np.datetime64(int(stop * 1e9), "ns")
+    if not np.any((t >= lo) & (t <= hi)):
+        raise ValueError(
+            f"returned {len(t)} samples, none inside the requested range {_iso(start)} .. {_iso(stop)}. "
+            "Times must be seconds since 1970-01-01 UTC, or datetime64")
+
+
 def _to_datetime(start: float, stop: float) -> Tuple[datetime, datetime]:
     return datetime.fromtimestamp(start, tz=timezone.utc), datetime.fromtimestamp(stop, tz=timezone.utc)
 
@@ -287,8 +308,14 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
         if res is None:
             return None
         if isinstance(res, Colored):
-            return Colored(self._to_variable(res.data), res.color)
-        return self._to_variable(res)
+            return Colored(self._checked_variable(res.data, start, stop), res.color)
+        return self._checked_variable(res, start, stop)
+
+    def _checked_variable(self, res, start, stop):
+        variable = self._to_variable(tuple(res) if isinstance(res, list) else res)
+        if isinstance(variable, SpeasyVariable):
+            _ensure_overlaps_request(variable, start, stop)
+        return variable
 
     def _to_variable(self, res):
         return res
@@ -297,10 +324,8 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
         if res is None or (self._color_axis is not None) == isinstance(res, Colored):
             return res
         if isinstance(res, Colored):
-            log.error(f"{self.name}: returned Colored(...) but was not declared with colored=True")
-        else:
-            log.error(f"{self.name}: declared colored=True but did not return Colored(...)")
-        return None
+            raise TypeError("returned Colored(...) but was not created with colored=True")
+        raise TypeError("was created with colored=True but did not return Colored(data, color=...)")
 
     def color_axis(self, node) -> Optional[ColorAxis]:
         return self._color_axis
@@ -399,14 +424,14 @@ class EasyScalar(EasyProvider):
                          display_name=display_name, columns=[component_name])
 
     def _to_variable(self, res):
-        if type(res) is SpeasyVariable:
+        if isinstance(res, SpeasyVariable):
             return res
         elif type(res) is tuple:
             x, y = res
             return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x))],
                                   values=DataContainer(np.ascontiguousarray(y)),
                                   columns=self._columns)
-        return None
+        raise _unsupported_return(res, "an (x, y) tuple")
 
 
 class EasyVector(EasyProvider):
@@ -422,17 +447,16 @@ class EasyVector(EasyProvider):
                          display_name=display_name, columns=components_names)
 
     def _to_variable(self, res) -> Optional[DataProviderReturnType]:
-        if type(res) is SpeasyVariable:
+        if isinstance(res, SpeasyVariable):
             return res
-        elif type(res) in (tuple, list) and len(res) == 2:
+        elif type(res) is tuple and len(res) == 2:
             x, y = res
             return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x))],
                                   values=DataContainer(np.ascontiguousarray(y)),
                                   columns=self._columns)
-        elif type(res) in (tuple, list) and len(res) >= 3:
+        elif type(res) is tuple and len(res) >= 3:
             return res
-        else:
-            return None
+        raise _unsupported_return(res, "an (x, y) tuple")
 
 
 class EasyMultiComponent(EasyVector):
@@ -467,7 +491,7 @@ class EasySpectrogram(EasyProvider):
                          display_name=display_name)
 
     def _to_variable(self, res) -> Optional[DataProviderReturnType]:
-        if type(res) is SpeasyVariable:
+        if isinstance(res, SpeasyVariable):
             return res
         elif type(res) is tuple and len(res) == 2:
             x, z = res
@@ -477,5 +501,4 @@ class EasySpectrogram(EasyProvider):
             x, y, z = res
             return SpeasyVariable(axes=[VariableTimeAxis(ensure_dt64(x)), VariableAxis(np.ascontiguousarray(y))],
                                   values=DataContainer(np.ascontiguousarray(z)))
-        else:
-            return None
+        raise _unsupported_return(res, "an (x, z) or (x, y, z) tuple")

@@ -53,9 +53,9 @@ class _Target:
     def __init__(self):
         self.kwargs = None
         self.graph = _Graph()
-        self.plot = _Plot()
+        self.subplot = _Plot()
 
-    def plots(self): return [self.plot]
+    def plots(self): return [self.subplot]
 
     def windowTitle(self): return "T"
 
@@ -63,7 +63,7 @@ class _Target:
 
     def plot_(self, callback, **kwargs):
         self.kwargs = kwargs
-        return (self.plot, self.graph)
+        return (self.subplot, self.graph)
 
 
 @pytest.fixture

@@ -72,18 +72,19 @@ def test_wrong_colour_length_is_rejected_with_an_error(errors):
     assert any("colour" in e for e in errors)
 
 
-def test_coloured_vp_returning_plain_data_is_an_error(errors):
+def test_coloured_vp_returning_plain_data_is_an_error():
+    """Raised, not logged: the fetch error is what reaches the plot's overlay."""
     t = np.linspace(0.0, 10.0, 5)
     p = _vector(lambda start, stop: (t, np.zeros((5, 3))))
-    assert _fetch(p) == []
-    assert any("Colored" in e for e in errors)
+    with pytest.raises(TypeError, match="Colored"):
+        _fetch(p)
 
 
-def test_plain_vp_returning_colored_is_an_error(errors):
+def test_plain_vp_returning_colored_is_an_error():
     t = np.linspace(0.0, 10.0, 5)
     p = _vector(lambda start, stop: Colored((t, np.zeros((5, 3))), color=t), colored=False)
-    assert _fetch(p) == []
-    assert any("colored=True" in e for e in errors)
+    with pytest.raises(TypeError, match="colored=True"):
+        _fetch(p)
 
 
 @pytest.mark.parametrize("color", [

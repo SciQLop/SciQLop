@@ -23,6 +23,15 @@
 
 - SciQLopPlots 0.50.1. `TimeRange(start, stop)` accepts `np.datetime64` of any unit. Before, units coarser than nanoseconds raised `TypeError`, and nanoseconds were read as seconds, which put the range billions of years away (#150). Moving the mouse over a plot no longer aborts SciQLop when a text item sits far outside the view, for example at a time with no data (#151).
 
+### Virtual products
+
+- A product that fails to load now says why on its plot. Before, the error only went to the log, and the plot just stayed empty. This covers virtual products and data products alike, for example an archive that can't be reached.
+- Several virtual-product mistakes used to give an empty plot with no message. They are now errors shown on the plot:
+  - returning something other than a tuple, a `SpeasyVariable` or `None`, such as a DataFrame or a bare array;
+  - returning data entirely outside the requested time range, usually because the times are not seconds since 1970 (milliseconds, for example);
+  - returning `Colored(...)` without `colored=True`, or the reverse.
+- A virtual product may return a list instead of a tuple.
+
 ### Plugins
 
 - `%install` now loads a new plugin right away, like the plugin store does. Before, you had to restart SciQLop. Only an upgrade of a plugin that is already loaded still asks for a restart. `install_packages()` and the agents' install tool behave the same way.

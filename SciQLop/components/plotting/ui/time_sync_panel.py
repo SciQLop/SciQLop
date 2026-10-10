@@ -240,16 +240,21 @@ class _ProductCallbackBase:
         self._post_fetch = post_fetch
         self.knob_state = knob_state
         self.last_error: Optional[str] = None
+        # Created with the callback: the first fetch can fail before the plot exists.
+        self.error_reporter = _PlotErrorReporter(
+            node.display_name() if hasattr(node, "display_name") else str(node))
 
     def _record_error(self, exc: Exception) -> None:
         # Runs on the fetch worker thread: a plain attribute, never a Qt call
         # (e.g. setProperty) on the graph.
         self.last_error = str(exc)
+        self.error_reporter.report(str(exc))
         backtrace = "".join(traceback.format_exception(exc))
         log.error(f"Error getting data for {self.node}: {exc}\n\n{backtrace}")
 
     def _record_success(self) -> None:
         self.last_error = None
+        self.error_reporter.clear()
 
     def _knob_values(self):
         return self.knob_state.values if self.knob_state is not None else None
@@ -670,11 +675,21 @@ def _resolve_plot_target(p, kwargs):
     return p, None
 
 
+def _attach_error_reporter(callback, r, target) -> None:
+    # The projection wrapper forwards attribute reads only: the reporter lives
+    # on the product callback it wraps.
+    reporter = getattr(getattr(callback, "_inner", callback), "error_reporter", None)
+    plot = _plot_from_result(r, target)
+    if reporter is not None and plot is not None:
+        reporter.attach(plot)
+
+
 def _post_plot(r, provider, node, callback, target, product_path_str, existing_plot,
                product_inputs: Optional[dict] = None):
     if not hasattr(r, '__iter__') and existing_plot is not None:
         r = (existing_plot, r)
     _set_product_path(r, product_path_str)
+    _attach_error_reporter(callback, r, target)
     callback._post_fetch = _register_graph_hints(provider, node, r, target)
     _attach_knob_state(provider, node, callback, r, target)
     _attach_graph_context(r, provider, node, target, fetch_callback=callback)
@@ -908,19 +923,25 @@ def plot_static_data(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProje
     return r
 
 
-class _CallbackErrorOverlay(QObject):
-    """Routes exceptions raised by a plot-function callback (worker thread) to
-    the plot's in-canvas overlay (main thread). Without this the error is only
-    a console traceback while the plot is created 'successfully' and stays
-    empty forever."""
+class _PlotErrorReporter(QObject):
+    """Shows a data callback's errors on its plot's in-canvas overlay. Without
+    it an error is only a console traceback, and the plot stays empty with no
+    explanation.
+
+    report() and clear() run on the fetch worker thread; the overlay is only
+    touched on the main thread, through queued signals. An error raised before
+    the plot exists is held until attach().
+
+    simplify: one overlay per plot, so with several failing graphs on one plot
+    the last one shown wins, and its recovery clears the others' message too.
+    """
 
     _error = Signal(str)
     _success = Signal()
 
-    def __init__(self, f):
+    def __init__(self, name: str):
         super().__init__()
-        self._f = f
-        self.__name__ = getattr(f, "__name__", "function")
+        self.name = name
         self._plot = None
         self._pending: Optional[str] = None
         self._shown = False
@@ -933,34 +954,48 @@ class _CallbackErrorOverlay(QObject):
         if self._pending is not None:
             self._show(self._pending)
 
-    def __call__(self, *args, **kwargs):
-        try:
-            result = self._f(*args, **kwargs)
-        except Exception as e:
-            log.error("plot function %r failed", self.__name__, exc_info=True)
-            message = f"{type(e).__name__}: {e}"
-            if self._plot is None:
-                self._pending = message
-            else:
-                self._error.emit(message)
-            return None
-        if self._shown or self._pending is not None:
+    def report(self, message: str) -> None:
+        if self._plot is None:
+            self._pending = message
+        elif shiboken6.isValid(self):  # a fetch can finish after its plot closed
+            self._error.emit(message)
+
+    def clear(self) -> None:
+        if (self._shown or self._pending is not None) and shiboken6.isValid(self):
             self._pending = None
             self._success.emit()
-        return result
 
     def _show(self, message: str) -> None:
         self._pending = None
         self._shown = True
         if self._plot is not None:
             self._plot.overlay().show_message(
-                f"{self.__name__}: {message}", OverlayLevel.Error,
+                f"{self.name}: {message}", OverlayLevel.Error,
                 OverlaySizeMode.FitContent, OverlayPosition.Top)
 
     def _clear(self) -> None:
         if self._shown and self._plot is not None:
             self._shown = False
             self._plot.overlay().clear_message()
+
+
+class _CallbackErrorOverlay(_PlotErrorReporter):
+    """A plot-function callback that reports its exceptions on its plot."""
+
+    def __init__(self, f):
+        super().__init__(getattr(f, "__name__", "function"))
+        self._f = f
+        self.__name__ = self.name
+
+    def __call__(self, *args, **kwargs):
+        try:
+            result = self._f(*args, **kwargs)
+        except Exception as e:
+            log.error("plot function %r failed", self.__name__, exc_info=True)
+            self.report(f"{type(e).__name__}: {e}")
+            return None
+        self.clear()
+        return result
 
 
 def _is_plain_xy_plot(plot) -> bool:
