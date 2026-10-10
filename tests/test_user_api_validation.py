@@ -308,6 +308,14 @@ class TestTimeRangeStringParsing:
                       datetime(2020, 1, 2, tzinfo=timezone.utc))
         assert r.start() == 1577836800.0
 
+    @pytest.mark.parametrize("unit", ["D", "s", "ms", "us", "ns"])
+    def test_datetime64_of_any_unit_is_utc_epoch_seconds(self, unit):
+        """#150: units coarser than ns raised TypeError, and ns gave nanoseconds."""
+        from SciQLop.user_api import TimeRange
+
+        r = TimeRange(np.datetime64("2020-01-01", unit), np.datetime64("2020-01-02", unit))
+        assert (r.start(), r.stop()) == (1577836800.0, 1577836800.0 + 86400.0)
+
     def test_is_still_a_sciqlopplotrange(self):
         from SciQLopPlots import SciQLopPlotRange
         from SciQLop.user_api import TimeRange

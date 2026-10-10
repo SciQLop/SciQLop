@@ -19,11 +19,10 @@ def _to_utc_epoch(value):
 
 
 class TimeRange(_SciQLopPlotRange):
-    """SciQLopPlotRange with date inputs parsed on the Python side: the C++
-    (str, str) overload silently turns unparseable strings into a NaN range,
-    and the datetime overload shifts by the host timezone instead of using
-    UTC. Strings and datetimes go through speasy's UTC parser, which raises
-    ``ValueError`` on garbage."""
+    """SciQLopPlotRange with strings and datetimes parsed by speasy's UTC
+    parser, so dates mean exactly what they mean in speasy calls, and garbage
+    raises ``ValueError``. Other inputs (epoch floats, ``np.datetime64``) go
+    straight to SciQLopPlotRange."""
 
     def __init__(self, *args):
         super().__init__(*(_to_utc_epoch(a) for a in args))

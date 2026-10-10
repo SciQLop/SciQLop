@@ -17,6 +17,10 @@
 - New setting, Settings › Workspaces › "SciQLop version". "Latest release" is the default. New workspaces start on the newest release your installer can run, and the welcome page offers in-place updates. "Installer's version" keeps workspaces on the version your installer came with. A newer release then shows a link to the new installer. Once it is installed, the welcome page offers to move the workspace to it. Existing workspaces keep their version in both modes until you update them.
 - Each release says which installers can run it, in `pyproject.toml` under `[tool.sciqlop.launcher]`. When the native launcher or the bundled Python changes, a test fails until `minimum` is looked at.
 
+### Dependencies
+
+- SciQLopPlots 0.50.1. `TimeRange(start, stop)` accepts `np.datetime64` of any unit. Before, units coarser than nanoseconds raised `TypeError`, and nanoseconds were read as seconds, which put the range billions of years away (#150). Moving the mouse over a plot no longer aborts SciQLop when a text item sits far outside the view, for example at a time with no data (#151).
+
 ### Plugins
 
 - `%install` now loads a new plugin right away, like the plugin store does. Before, you had to restart SciQLop. Only an upgrade of a plugin that is already loaded still asks for a restart. `install_packages()` and the agents' install tool behave the same way.
