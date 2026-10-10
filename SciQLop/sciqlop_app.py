@@ -154,6 +154,21 @@ def start_sciqlop():
     return main_windows
 
 
+BATCH_WINDOW_SIZE = (1920, 1080)
+
+
+def _lay_out_off_screen(main_window) -> None:
+    """Show the batch window without putting it on any screen.
+
+    Qt only lays out shown widgets: in a hidden window a panel keeps a few
+    pixels of height and exports as a thin strip."""
+    from PySide6.QtCore import Qt
+    main_window.setAttribute(Qt.WidgetAttribute.WA_DontShowOnScreen)
+    main_window.show()
+    # After show(), or the size is clamped to the small offscreen screen.
+    main_window.resize(*BATCH_WINDOW_SIZE)
+
+
 def build_sciqlop():
     """The app and its main window, plugins loaded, not shown yet."""
     os.environ['INSIDE_SCIQLOP'] = '1'
@@ -236,6 +251,7 @@ def main():
         import asyncio
         from SciQLop.core.batch import run_batch_script
         main_window = build_sciqlop()
+        _lay_out_off_screen(main_window)
         code = run_batch_script(batch)
         asyncio.ensure_future(_close_then_quit(main_window, code), loop=loop)
 

@@ -158,6 +158,7 @@ def test_batch_session_exports_a_panel_without_a_display(tmp_path):
         panel.time_range = ("2020-01-01", "2020-01-01T02:00")
         panel.settle(timeout=30)
         panel.save("quicklook.png")
+        panel.save("sized.png", width=800, height=450)
     """)
     env = {k: v for k, v in os.environ.items() if k not in ("DISPLAY", "WAYLAND_DISPLAY", "QT_QPA_PLATFORM")}
     env[BATCH_ENV] = BatchRequest(script=str(script), args=[], cwd=str(tmp_path)).to_env()
@@ -167,7 +168,12 @@ def test_batch_session_exports_a_panel_without_a_display(tmp_path):
                           capture_output=True, text=True, timeout=180)
 
     assert proc.returncode == 0, _without_faulthandler_noise(proc.stderr)
-    assert (tmp_path / "quicklook.png").stat().st_size > 0
+    from PIL import Image
+    # The hidden main window was never laid out: a one-plot panel came out as a
+    # 727x50 strip.
+    width, height = Image.open(tmp_path / "quicklook.png").size
+    assert width >= 1200 and height >= 600
+    assert Image.open(tmp_path / "sized.png").size == (800, 450)
 
 
 def test_batch_exit_closes_plugins_and_keeps_the_script_exit_code(tmp_path):

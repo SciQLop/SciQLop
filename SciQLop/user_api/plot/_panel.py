@@ -844,7 +844,7 @@ class PlotPanel(GuardedImpl):
         return list(filter(lambda p: p is not None, map(wrap_plot, self._get_impl_or_raise().plots())))
 
     @on_main_thread
-    def save(self, path: str) -> None:
+    def save(self, path: str, *, width: int = 0, height: int = 0, scale: float = 1.0) -> None:
         """Save the panel as an image (PNG, PDF, JPG, JPEG, or BMP).
 
         The format is inferred from the file extension.
@@ -853,21 +853,32 @@ class PlotPanel(GuardedImpl):
         ----------
         path : str
             Destination file path. Supported extensions: .png, .pdf, .jpg, .jpeg, .bmp
+        width, height : int
+            Image size in pixels (points for PDF). 0 keeps the panel's size.
+        scale : float
+            Multiplies the panel's size for raster formats, e.g. 2 for a
+            high-resolution PNG. Ignored along an axis given explicitly.
+
+        Examples
+        --------
+        >>> panel.save("quicklook.png", width=1600, height=900)
         """
         import os
         impl = self._get_impl_or_raise()
         ext = os.path.splitext(path)[1].lower()
         exporters = {
-            '.png': impl.save_png,
-            '.pdf': impl.save_pdf,
-            '.jpg': impl.save_jpg,
-            '.jpeg': impl.save_jpg,
-            '.bmp': impl.save_bmp,
+            '.png': lambda: impl.save_png(path, width, height, scale),
+            '.pdf': lambda: impl.save_pdf(path, width, height),
+            '.jpg': lambda: impl.save_jpg(path, width, height, scale),
+            '.jpeg': lambda: impl.save_jpg(path, width, height, scale),
+            '.bmp': lambda: impl.save_bmp(path, width, height, scale),
         }
         exporter = exporters.get(ext)
         if exporter is None:
             raise ValueError(f"Unsupported format '{ext}'. Use one of: {', '.join(exporters)}")
-        if not exporter(path):
+        if ext == '.pdf' and scale != 1.0:
+            raise ValueError("scale only applies to raster formats; give width and height for a PDF")
+        if not exporter():
             raise OSError(
                 f"failed to save {path!r}: check that the directory exists "
                 "and is writable")
