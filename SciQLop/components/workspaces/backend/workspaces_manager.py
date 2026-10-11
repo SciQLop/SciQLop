@@ -92,6 +92,7 @@ class WorkspaceManager(QObject):
         self._workspace: Optional[Workspace] = None
 
         self._kernel_manager = KernelManager(parent=self)
+        self._kernel_started = False
         self._default_workspace: WorkspaceManifest = self._ensure_default_workspace_exists()
         self._auto_load_workspace()
 
@@ -119,10 +120,17 @@ class WorkspaceManager(QObject):
         return manifest
 
     def open_in_browser(self):
+        self._ensure_started()
         self._kernel_manager.open_in_browser()
 
     def widget(self):
+        self._ensure_started()
         return self._kernel_manager.widget()
+
+    def _ensure_started(self):
+        """Batch mode never starts the kernel: JupyterLab starts it on demand."""
+        if not self._kernel_started:
+            self.start()
 
     def wrap_qt(self, obj):
         return self._kernel_manager.wrap_qt(obj)
@@ -255,6 +263,7 @@ class WorkspaceManager(QObject):
         from SciQLop.components.workspaces.ui.notebook_environment import install_notebook_hooks
         self._notebook_prompt = install_notebook_hooks(self._kernel_manager.notebook_hooks, cwd, self)
         self._kernel_manager.start(cwd=cwd)
+        self._kernel_started = True
 
     def quit(self):
         self._kernel_manager.shutdown()

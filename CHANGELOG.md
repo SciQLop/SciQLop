@@ -13,6 +13,7 @@
 - `panel.wait_for_data()` and the agents' `sciqlop_wait_for_plot_data` returned as soon as the download ended, before the plot had drawn the new data and rescaled its axes. An export made right after could show the old axis range, with the loading marker still in the legend. Both now wait until the panel has settled.
 - `capture_window()` now shows the plots in batch mode. On a headless (offscreen) platform the plots came out blank, because they draw through the GPU path, which isn't available there.
 - Batch sessions no longer start the guided tour. It had no one to follow it and covered the screenshots.
+- JupyterLab opens from a batch script started with `--webengine`. Batch mode doesn't start the Jupyter server, and opening Lab raised "Call start() before requesting widget or browser". The server now starts the first time Lab is opened.
 - `PlotPanel.save()` now exports at the screen's pixel ratio by default, so a PNG matches what is on screen. Before, a HiDPI display gave an image at half its resolution.
 
 ### Plotting
