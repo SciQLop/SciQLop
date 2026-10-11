@@ -39,6 +39,17 @@
 
 ### Dependencies
 
+- SciQLopPlots 0.51.1:
+  - A plot made before its time range was set fits its data. A stale fetch for the panel's previous range used to take the plot's one-time fit, leaving the axis at 0..5.
+  - Axis and colour-bar labels too long for their plot are shortened in the middle, instead of being cut at both ends.
+  - A sub-panel follows its parent panel's time range, and plots side by side all keep their time labels.
+  - Reference curves on projection plots show their name, and the linked time marker appears once their data has arrived.
+  - `dsp.spectrogram(..., overlap=0)` now means no overlap. Leaving `overlap` out still gives half a window.
+  - Saving a plot that is on screen keeps its lines and fills.
+  - The default grid is dotted on screen too, as it already was in exports.
+  - Spans are no longer framed in black in exports, dashed span borders are dashed on screen, and a span on a lower layer stays under the data.
+  - Escape cancels a zoom or selection rectangle.
+  - Changing a colormap keeps a colour range set by hand.
 - SciQLopPlots 0.50.1. `TimeRange(start, stop)` accepts `np.datetime64` of any unit. Before, units coarser than nanoseconds raised `TypeError`, and nanoseconds were read as seconds, which put the range billions of years away (#150). Moving the mouse over a plot no longer aborts SciQLop when a text item sits far outside the view, for example at a time with no data (#151).
 
 ### Virtual products

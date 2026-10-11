@@ -5,7 +5,7 @@ This module is internal — public users should import from
 Functions here accept and return numpy arrays only.
 """
 from __future__ import annotations
-from typing import Tuple, List
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -86,7 +86,7 @@ def rolling_std(x: np.ndarray, y: np.ndarray, window: int, *,
 
 
 def spectrogram(x: np.ndarray, y: np.ndarray, *,
-                col: int = 0, window_size: int = 256, overlap: int = 0,
+                col: int = 0, window_size: int = 256, overlap: Optional[int] = None,
                 gap_factor: float = 3.0, window: str = 'hann',
                 has_gaps: bool = True) -> List[Tuple[np.ndarray, np.ndarray, np.ndarray]]:
     """Per-segment spectrogram. Returns a list of ``(t, f, power)`` per segment."""

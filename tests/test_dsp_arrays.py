@@ -84,6 +84,14 @@ class TestPassthrough:
         st, sf, sp = result[0]
         assert sp.shape == (sf.shape[0], st.shape[0]) or sp.shape == (st.shape[0], sf.shape[0])
 
+    def test_spectrogram_overlaps_half_a_window_by_default(self, dsp, synthetic_signal):
+        """SciQLopPlots 0.51 made overlap=0 mean no overlap; SciQLop passed 0 as
+        its own default, which silently halved the time resolution."""
+        t, y = synthetic_signal
+        default = dsp.spectrogram(t, y, window_size=128)[0][0]
+        no_overlap = dsp.spectrogram(t, y, window_size=128, overlap=0)[0][0]
+        assert len(default) > 1.8 * len(no_overlap)
+
     def test_reduce_norm(self, dsp, synthetic_signal):
         t, y = synthetic_signal
         y2 = np.column_stack([y, y, y]).astype(np.float64)

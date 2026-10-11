@@ -14,7 +14,7 @@ gap than the input. Functions that build a new time axis (``fft``,
 All public functions are marked @experimental_api().
 """
 from __future__ import annotations
-from typing import Tuple, List, Union
+from typing import List, Optional, Tuple, Union
 
 import numpy as np
 from speasy.products import SpeasyVariable
@@ -191,7 +191,7 @@ def fft(data, *, gap_factor: float = 3.0, window: str = 'hann') -> List[Tuple[np
 
 
 @experimental_api()
-def spectrogram(data, *, col: int = 0, window_size: int = 256, overlap: int = 0,
+def spectrogram(data, *, col: int = 0, window_size: int = 256, overlap: Optional[int] = None,
                 gap_factor: float = 3.0, window: str = 'hann') -> List[SpeasyVariable]:
     """Per-segment spectrogram.
 
