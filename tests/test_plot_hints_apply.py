@@ -77,3 +77,39 @@ def test_missing_axis_getter_is_tolerated():
     )
     apply_plot_hints(plot, hints)
     plot.y_axis.return_value.set_label.assert_called_once_with("Bt")
+
+
+class _Axis:
+    def __init__(self):
+        self._label, self._log = "", False
+
+    def label(self): return self._label
+
+    def set_label(self, v): self._label = v
+
+    def log(self): return self._log
+
+    def set_log(self, v): self._log = v
+
+
+class _Plot:
+    def __init__(self):
+        self.axis = _Axis()
+
+    def y_axis(self): return self.axis
+
+
+def test_a_label_or_scale_set_by_the_user_survives_new_hints():
+    plot, owned = _Plot(), {}
+    apply_plot_hints(plot, PlotHints(y=AxisHints(label="N", unit="cm^-3", scale="linear")), owned)
+    plot.axis.set_label("density")
+    plot.axis.set_log(True)
+    apply_plot_hints(plot, PlotHints(y=AxisHints(label="Ion density", unit="cm^-3", scale="linear")), owned)
+    assert (plot.axis.label(), plot.axis.log()) == ("density", True)
+
+
+def test_hints_keep_updating_what_the_user_never_touched():
+    plot, owned = _Plot(), {}
+    apply_plot_hints(plot, PlotHints(y=AxisHints(label="N")), owned)
+    apply_plot_hints(plot, PlotHints(y=AxisHints(label="N, T", scale="log")), owned)
+    assert (plot.axis.label(), plot.axis.log()) == ("N, T", True)

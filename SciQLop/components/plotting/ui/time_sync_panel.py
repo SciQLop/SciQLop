@@ -84,6 +84,7 @@ class _PlotHintsRegistry:
     def __init__(self, plot):
         self._plot = plot  # strong ref; evicted from _PLOT_REGISTRIES on destroyed
         self._entries: dict[int, PlotHints] = {}
+        self._owned_axis_values: dict = {}  # see apply_plot_hints
 
     def register(self, graph, hints: PlotHints) -> int:
         key = _graph_key(graph)
@@ -137,7 +138,10 @@ class _PlotHintsRegistry:
         # Defer to the event loop: a real single-graph removal relabels on the
         # next tick, while a teardown finds the plot gone and skips. See
         # docs/qt-lifetime-patterns.md.
-        QTimer.singleShot(0, self._recompute_if_alive)
+        # The app as context runs it on the GUI thread: update_if_present is
+        # called on the fetch worker, where a bare timer fires off the GUI
+        # thread, or never. Unlike on_main_thread, the worker doesn't block.
+        QTimer.singleShot(0, QApplication.instance(), self._recompute_if_alive)
 
     def _recompute_if_alive(self) -> None:
         if shiboken6.isValid(self._plot):
@@ -145,7 +149,8 @@ class _PlotHintsRegistry:
 
     def _recompute(self) -> None:
         try:
-            apply_plot_hints(self._plot, combine_hints(list(self._entries.values())))
+            apply_plot_hints(self._plot, combine_hints(list(self._entries.values())),
+                             self._owned_axis_values)
         except RuntimeError:
             log.debug("plot already destroyed during hints recompute")
 

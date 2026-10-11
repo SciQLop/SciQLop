@@ -36,14 +36,28 @@ class PlotHints(BaseModel):
     fill_value: Optional[float] = None
 
 
-def _apply_axis(axis, hints: AxisHints) -> None:
+def _apply_axis(axis, hints: AxisHints, owned: dict) -> None:
     if axis is None:
         return
-    label = hints.composed_label()
-    if label is not None and hasattr(axis, "set_label"):
-        axis.set_label(label)
-    if hints.scale is not None and hasattr(axis, "set_log"):
-        axis.set_log(hints.scale == "log")
+    scale = None if hints.scale is None else hints.scale == "log"
+    _set_unless_user_changed(axis, owned, "label", hints.composed_label())
+    _set_unless_user_changed(axis, owned, "log", scale)
+
+
+def _set_unless_user_changed(axis, owned: dict, field: str, value) -> None:
+    """*owned* remembers what the axis held when hints last wrote *field*, or
+    when they first saw it; a different value now was set by someone else
+    (user API, Inspector, L key), and theirs wins. The first sighting is
+    recorded even with nothing to write: a scale that only arrives with the
+    data must not mistake the user's choice for the starting state."""
+    setter, getter = getattr(axis, f"set_{field}", None), getattr(axis, field, None)
+    if setter is None:
+        return
+    if getter is not None and owned.setdefault(field, getter()) != getter():
+        return
+    if value is not None:
+        setter(value)
+        owned[field] = value
 
 
 def _get_axis(plot: Any, name: str):
@@ -127,15 +141,16 @@ def merge_hints(base: PlotHints, extra: PlotHints) -> PlotHints:
     )
 
 
-def apply_plot_hints(plot: Any, hints: PlotHints) -> None:
+def apply_plot_hints(plot: Any, hints: PlotHints, owned: Optional[dict] = None) -> None:
     """Apply a `PlotHints` object to a SciQLopPlot-like plot instance.
 
     Only writes fields that are set. Safe to call with an empty `PlotHints()`.
     Tolerates plots that don't expose a given axis (returns silently).
+    Pass the same *owned* dict on every call for one plot: a label or scale
+    changed since the previous call is then left alone.
     """
     if plot is None:
         return
-    _apply_axis(_get_axis(plot, "y_axis"), hints.y)
-    _apply_axis(_get_axis(plot, "y2_axis"), hints.y2)
-    _apply_axis(_get_axis(plot, "z_axis"), hints.z)
-    _apply_axis(_get_axis(plot, "x_axis"), hints.x)
+    owned = {} if owned is None else owned
+    for name in ("y", "y2", "z", "x"):
+        _apply_axis(_get_axis(plot, f"{name}_axis"), getattr(hints, name), owned.setdefault(name, {}))

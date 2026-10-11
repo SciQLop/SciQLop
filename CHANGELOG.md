@@ -15,6 +15,11 @@
 - Batch sessions no longer start the guided tour. It had no one to follow it and covered the screenshots.
 - `PlotPanel.save()` now exports at the screen's pixel ratio by default, so a PNG matches what is on screen. Before, a HiDPI display gave an image at half its resolution.
 
+### Plotting
+
+- An axis label or log scale you set now stays. When a product's data arrived, its metadata overwrote them. The plot-templates tutorial lost its log scales this way, and a label set right after `plot()` was replaced by the product's own label. Labels and scales you never touched still follow the metadata.
+- The metadata labels of a product loaded from a background thread could fail to appear. They are now applied on the GUI thread.
+
 ### Updates
 
 - A new SciQLop release no longer always means downloading a new installer. When your installer can run the new release, the welcome page offers "Update this workspace". It installs the release and the dependency versions it needs in the background; restart to switch to it. A new installer is proposed only when the release needs one: a newer launcher, a different Python, or startup code the old installer lacks. This works from installers of this version on. Older installers still get the download link.
