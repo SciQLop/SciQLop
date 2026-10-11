@@ -193,6 +193,14 @@ class WelcomeBackend(QObject):
         self._watcher.directoryChanged.connect(self._on_templates_dir_changed)
         self._templates_dir = tpl_dir
 
+    def _emit_from_worker(self, signal_name: str, *payload) -> None:
+        """Emit a fetch thread's result. The thread can outlive the page (at
+        shutdown), and then its result has no one left to read it."""
+        try:
+            getattr(self, signal_name).emit(*payload)
+        except RuntimeError:  # "Signal source has been deleted" / wrapper gone
+            log.debug("welcome page closed before %s was delivered", signal_name)
+
     def _on_quickstart_shortcuts_added(self, _):
         self.quickstart_changed.emit()
 
@@ -243,7 +251,7 @@ class WelcomeBackend(QObject):
             if not self._latest_core_release:
                 self._latest_core_release = _newest_offered_release(fetch_available_versions())
             latest = self._latest_core_release
-            self.core_badges_ready.emit(json.dumps(
+            self._emit_from_worker("core_badges_ready", json.dumps(
                 {d: core_version_badge(pin, unpinned, latest) for d, (pin, unpinned) in cards.items()}))
 
         threading.Thread(target=_fetch, daemon=True).start()
@@ -349,10 +357,10 @@ class WelcomeBackend(QObject):
                 )
                 with urllib.request.urlopen(req, timeout=5) as resp:
                     packages = json.loads(resp.read())
-                self.featured_packages_ready.emit(json.dumps(packages))
+                self._emit_from_worker("featured_packages_ready", json.dumps(packages))
             except Exception as e:
                 log.debug(f"Could not fetch featured packages: {e}")
-                self.featured_packages_ready.emit(json.dumps([]))
+                self._emit_from_worker("featured_packages_ready", json.dumps([]))
 
         threading.Thread(target=_fetch, daemon=True).start()
 
@@ -375,7 +383,7 @@ class WelcomeBackend(QObject):
             except Exception as e:
                 log.debug(f"Could not fetch latest release: {e}")
                 result = "null"
-            self.latest_release_ready.emit(result)
+            self._emit_from_worker("latest_release_ready", result)
 
         threading.Thread(target=_fetch, daemon=True).start()
 
@@ -408,7 +416,7 @@ class WelcomeBackend(QObject):
                 workspaces_manager_instance().duplicate_workspace(directory)
             except Exception as e:
                 log.error(f"Failed to duplicate workspace {directory}: {e}")
-            self.workspace_list_changed.emit()
+            self._emit_from_worker("workspace_list_changed")
 
         threading.Thread(target=_duplicate, daemon=True).start()
 
@@ -455,12 +463,12 @@ class WelcomeBackend(QObject):
                     subprocess.run(cmd, check=True, capture_output=True, text=True)
             except Exception as e:
                 log.error(f"Failed to install dependencies: {e}")
-                self.dependency_install_finished.emit(
+                self._emit_from_worker("dependency_install_finished",
                     json.dumps({"ok": False, "deps": new_deps, "dir": workspace_dir, "error": str(e)}))
                 return
             with edit_manifest(manifest_path) as current:
                 current.requires.extend(d for d in new_deps if d not in current.requires)
-            self.dependency_install_finished.emit(
+            self._emit_from_worker("dependency_install_finished",
                 json.dumps({"ok": True, "deps": new_deps, "dir": workspace_dir}))
 
         threading.Thread(target=_install, daemon=True).start()
@@ -485,7 +493,7 @@ class WelcomeBackend(QObject):
             except Exception as e:
                 log.debug(f"Could not check plugin updates: {e}")
                 updates = []
-            self.plugin_updates_ready.emit(json.dumps(updates))
+            self._emit_from_worker("plugin_updates_ready", json.dumps(updates))
 
         threading.Thread(target=_fetch, daemon=True).start()
 
@@ -512,14 +520,14 @@ class WelcomeBackend(QObject):
         def _fetch():
             try:
                 versions = fetch_available_versions()
-                self.core_versions_ready.emit(json.dumps({
+                self._emit_from_worker("core_versions_ready", json.dumps({
                     "ok": bool(versions),
                     "dir": workspace_dir,
                     "versions": versions,
                 }))
             except Exception as e:
                 log.error(f"Failed to fetch available SciQLop versions: {e}")
-                self.core_versions_ready.emit(json.dumps({
+                self._emit_from_worker("core_versions_ready", json.dumps({
                     "ok": False, "dir": workspace_dir, "versions": [],
                 }))
 
@@ -546,13 +554,13 @@ class WelcomeBackend(QObject):
             try:
                 available = fetch_available_versions()
                 if not validate_core_version(version, available):
-                    self.core_update_finished.emit(json.dumps({
+                    self._emit_from_worker("core_update_finished", json.dumps({
                         "ok": False, "dir": workspace_dir, "version": version,
                         "error": f"{version!r} is not an installable SciQLop version",
                     }))
                     return
                 if launcher_compat.runs_here(version) is False:
-                    self.core_update_finished.emit(json.dumps({
+                    self._emit_from_worker("core_update_finished", json.dumps({
                         "ok": False, "dir": workspace_dir, "version": version,
                         "error": f"SciQLop {version} needs a newer SciQLop installer: "
                                  f"download it from {launcher_compat.INSTALLER_DOWNLOAD_URL}",
@@ -570,7 +578,7 @@ class WelcomeBackend(QObject):
                     dropped = dropped_package_names(notice["dropped"]) if notice else []
                 except Exception as e:
                     log.error(f"Failed to update SciQLop core version: {e}")
-                    self.core_update_finished.emit(json.dumps({
+                    self._emit_from_worker("core_update_finished", json.dumps({
                         "ok": False, "dir": workspace_dir, "version": version,
                         "error": error_detail(e),
                     }))
@@ -580,10 +588,10 @@ class WelcomeBackend(QObject):
                     "is_active_workspace": is_active,
                 }
                 result["dropped"] = dropped
-                self.core_update_finished.emit(json.dumps(result))
+                self._emit_from_worker("core_update_finished", json.dumps(result))
             except Exception as e:
                 log.error(f"Unexpected error updating SciQLop core version: {e}")
-                self.core_update_finished.emit(json.dumps({
+                self._emit_from_worker("core_update_finished", json.dumps({
                     "ok": False, "dir": workspace_dir, "version": version,
                     "error": str(e),
                 }))
