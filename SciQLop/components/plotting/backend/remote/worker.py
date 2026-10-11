@@ -18,7 +18,7 @@ import cloudpickle
 from SciQLop.core import tracing
 from . import protocol as P
 from .protocol import pack_arrays, total_nbytes
-from .reduction import reduce_result
+from .reduction import ensure_overlaps_request, reduce_result
 from .shm_pool import ShmPool
 
 _AUTHKEY_SIZE = 32  # os.urandom(32) in worker_handle.py -- always this size
@@ -103,6 +103,8 @@ def _serve_request(conn, state, channel_id, req_id, start, stop, knobs) -> None:
             with tracing.zone("worker.callback", cat="remote"):
                 result = cb(start, stop, **knobs)
             arrays = None if result is None else reduce_result(result, state.arity[channel_id])
+            if arrays is not None:
+                ensure_overlaps_request(arrays[0], start, stop)
         except Exception:
             conn.send((P.ERROR, channel_id, req_id, traceback.format_exc()))
             return

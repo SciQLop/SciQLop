@@ -14,6 +14,7 @@ from SciQLop.core.models import add_product_node, ProductsModelNodeType
 from SciQLop.core.enums import ParameterType
 from SciQLop.components.plotting.backend.data_provider import DataProvider, DataOrder, DataProviderReturnType
 from SciQLop.components.plotting.backend.color_axis import ColorAxis
+from SciQLop.components.plotting.backend.remote.reduction import ensure_overlaps_request, epoch_seconds
 from SciQLop.user_api.data_types import Colored
 from SciQLop.components.plotting.backend.dependencies import (
     depends_marker, describe_target, extract_dependencies_from_callback, resolve_dependency,
@@ -96,23 +97,6 @@ def _returns_speasy_variable(callback: VirtualProductCallback):
 
 def _unsupported_return(res, expected: str) -> TypeError:
     return TypeError(f"returned a {type(res).__name__}; expected {expected}, a SpeasyVariable or None")
-
-
-def _iso(epoch: float) -> str:
-    return datetime.fromtimestamp(epoch, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-
-
-def _ensure_overlaps_request(variable: SpeasyVariable, start: float, stop: float) -> None:
-    """Data entirely outside the requested range draws nothing; usually the
-    times are not epoch seconds (milliseconds land in the far future)."""
-    t = variable.time
-    if len(t) == 0:
-        return
-    lo, hi = np.datetime64(int(start * 1e9), "ns"), np.datetime64(int(stop * 1e9), "ns")
-    if not np.any((t >= lo) & (t <= hi)):
-        raise ValueError(
-            f"returned {len(t)} samples, none inside the requested range {_iso(start)} .. {_iso(stop)}. "
-            "Times must be seconds since 1970-01-01 UTC, or datetime64")
 
 
 def _to_datetime(start: float, stop: float) -> Tuple[datetime, datetime]:
@@ -326,7 +310,7 @@ def {self.name}(start: float, stop: float) -> Optional[SpeasyVariable]:
     def _checked_variable(self, res, start, stop):
         variable = self._to_variable(tuple(res) if isinstance(res, list) else res)
         if isinstance(variable, SpeasyVariable):
-            _ensure_overlaps_request(variable, start, stop)
+            ensure_overlaps_request(epoch_seconds(variable.time), start, stop)
         return variable
 
     def _to_variable(self, res):

@@ -31,6 +31,7 @@
   - returning data entirely outside the requested time range, usually because the times are not seconds since 1970 (milliseconds, for example);
   - returning `Colored(...)` without `colored=True`, or the reverse.
 - A virtual product may return a list instead of a tuple.
+- Out-of-process virtual products (`out_of_process=True`) now report the same mistakes on their plot. Before, their errors and colour mismatches only went to the log, and data outside the requested range drew nothing without a word.
 - `debug=True` now checks each result against the declared product type and labels. A vector with 2 columns instead of 3, or a misshaped spectrogram, is now reported. Its errors show on the plot instead of only in the log. It also no longer breaks on callbacks that take `datetime` arguments.
 
 ### Plugins

@@ -33,10 +33,16 @@ from .protocol import unpack_arrays
 log = logging.getLogger(__name__)
 
 
+def _last_line(tb: str) -> str:
+    """The exception line of a formatted traceback, e.g. 'ValueError: bad input'."""
+    return tb.strip().splitlines()[-1] if tb.strip() else "remote data source error"
+
+
 class RemoteChannel:
     def __init__(self, pipeline, channel_id: int, transport, colored: bool = False,
-                 name: str = ""):
+                 name: str = "", error_reporter=None):
         self._pipeline = pipeline
+        self.error_reporter = error_reporter  # shows errors on the plot; see _PlotErrorReporter
         self._colored = colored
         self._name = name or f"channel {channel_id}"
         self.channel_id = channel_id
@@ -90,27 +96,41 @@ class RemoteChannel:
     def _deliver(self, views, arity: int) -> bool:
         if self._colored and len(views) == arity + 1:
             self._pipeline.set_data_colored(list(views[:-1]), views[-1])
+            self._clear_error()
             return True
         if not self._colored and len(views) == arity:
             self._pipeline.set_data(*views)
+            self._clear_error()
             return True
         if self._colored:
-            log.error("%s: declared colored=True but did not return Colored(...)", self._name)
+            self._report_error("declared colored=True but did not return Colored(...)")
         else:
-            log.error("%s: returned Colored(...) but was not declared with colored=True", self._name)
+            self._report_error("returned Colored(...) but was not declared with colored=True")
         self._pipeline.request_done()
         return False
 
     def on_empty(self, req_id: int) -> None:
         self._close_async_span(req_id)
         if req_id == self._latest_req_id:  # a stale reply must not end the newer request
+            self._clear_error()
             self._pipeline.request_done()
 
     def on_error(self, req_id: int, tb: str) -> None:
         self._close_async_span(req_id)
         log.error("remote data source error (channel %s):\n%s", self.channel_id, tb)
         if req_id == self._latest_req_id:
+            if self.error_reporter is not None:
+                self.error_reporter.report(_last_line(tb))
             self._pipeline.request_done()
+
+    def _report_error(self, message: str) -> None:
+        log.error("%s: %s", self._name, message)
+        if self.error_reporter is not None:
+            self.error_reporter.report(message)
+
+    def _clear_error(self) -> None:
+        if self.error_reporter is not None:
+            self.error_reporter.clear()
 
     def _close_async_span(self, req_id: int) -> None:
         if req_id == self._latest_req_id and self._async_handle is not None:

@@ -861,13 +861,15 @@ def _plot_product(p: Union[SciQLopPlot, SciQLopMultiPlotPanel, SciQLopNDProjecti
         from SciQLopPlots import PlotType
         target, _ = _resolve_plot_target(p, kwargs)
         plot_type = kwargs.get("plot_type", PlotType.TimeSeries)
-        r = plot_remote(target, node, provider, product, plot_type=plot_type)
+        r = plot_remote(target, node, provider, product, plot_type=plot_type,
+                        error_reporter=_PlotErrorReporter(node.display_name()))
         # Only arrays come back from the worker, so the post-fetch refinement
         # (plot_hints_from_variable) can't run; the static hints still apply.
         _register_graph_hints(provider, node, r, target)
         graph = _graph_from_result(r)
         channel = getattr(graph, "_remote_channel", None) if graph is not None else None
         if channel is not None:
+            _attach_error_reporter(channel, r, target)
             _attach_remote_knob_state(provider, node, channel, r, target)
             _seed_product_inputs(graph, node, product_inputs)
         return r

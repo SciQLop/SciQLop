@@ -17,7 +17,8 @@ def _new_plot(target, plot_type: PlotType):
     return target.create_plot(plot_type=plot_type)
 
 
-def plot_remote(target, node, provider, product: list, *, plot_type: PlotType = PlotType.TimeSeries):
+def plot_remote(target, node, provider, product: list, *, plot_type: PlotType = PlotType.TimeSeries,
+                error_reporter=None):
     """Create a remote-backed graph for *product* on *target*.
 
     Returns (plot, graph).  The graph's destroyed signal disposes the channel
@@ -37,7 +38,7 @@ def plot_remote(target, node, provider, product: list, *, plot_type: PlotType = 
     worker = reg.worker_for(product)
     channel = RemoteChannel(pipeline=pipeline, channel_id=next(_channel_ids),
                             transport=worker, colored=reg.is_colored(product),
-                            name="/".join(product))
+                            name="/".join(product), error_reporter=error_reporter)
     graph._remote_channel = channel
     worker.register_channel(channel)
     blob, arity = reg.spec_for(product)
