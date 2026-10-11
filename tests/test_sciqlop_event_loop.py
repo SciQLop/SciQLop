@@ -20,9 +20,7 @@ run_forever()/run_until_complete(), instead of manually pumping Qt events
 ahead of exec() ever being entered.
 
 This test pins the underlying invariant that fix relies on directly, without
-going through Qt's quit()/aboutToQuit lifecycle at all (which has its own,
-separate, pre-existing shutdown-timing quirk around app_close_event.wait() --
-unrelated to this bug and not exercised here): once the loop is genuinely
+going through Qt's quit() lifecycle at all: once the loop is genuinely
 marked as the running loop, scheduling and stepping a Task through it must
 not raise, regardless of Python version.
 """
@@ -40,11 +38,7 @@ def test_main_exits_with_code_1_when_startup_raises(qapp, monkeypatch):
 
     Reuses the module-level event loop singleton from
     SciQLop.core.sciqlop_application (the same one the test above operates
-    on), rewiring aboutToQuit to a fresh asyncio.Event for the duration of
-    the test so this is the first thing to ever drive it through a real
-    exec() -- and restoring the original wiring afterward so a later test in
-    the same process isn't left with a loop whose app_close_event is
-    permanently set.
+    on), so this is the first thing to ever drive it through a real exec().
     """
     from PySide6.QtCore import QTimer
     import SciQLop.sciqlop_app as sciqlop_app_module
@@ -63,18 +57,13 @@ def test_main_exits_with_code_1_when_startup_raises(qapp, monkeypatch):
     # would get back a loop with `_closed=True`). Keep close() a no-op for the
     # duration of this test so the singleton survives for whatever runs next.
     monkeypatch.setattr(loop, "close", lambda: None)
-    original_event = loop.app_close_event
-    qapp.aboutToQuit.disconnect(original_event.set)
-    fresh_event = asyncio.Event()
-    loop.app_close_event = fresh_event
-    qapp.aboutToQuit.connect(fresh_event.set)
     # Without the fix, an exception raised inside the QTimer.singleShot(0, ...)
     # callback is swallowed by PySide6's default hook and nothing ever calls
     # quit() -- loop.exec() below would hang forever instead of failing fast.
     # This watchdog turns that hang into a bounded, readable test failure.
     watchdog = QTimer()
     watchdog.setSingleShot(True)
-    watchdog.timeout.connect(fresh_event.set)
+    watchdog.timeout.connect(lambda: qapp.exit(99))
     watchdog.start(5000)
     try:
         sciqlop_app_module.main()
@@ -82,9 +71,6 @@ def test_main_exits_with_code_1_when_startup_raises(qapp, monkeypatch):
         assert getattr(qapp, "_sciqlop_exit_code", None) == 1
     finally:
         watchdog.stop()
-        qapp.aboutToQuit.disconnect(fresh_event.set)
-        loop.app_close_event = original_event
-        qapp.aboutToQuit.connect(original_event.set)
 
 
 def test_task_step_succeeds_once_loop_is_marked_running(qapp):

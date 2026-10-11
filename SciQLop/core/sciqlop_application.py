@@ -132,19 +132,13 @@ class _SciQLopEventLoop(QEventLoop):
     def __init__(self):
         super().__init__(sciqlop_app())
         asyncio.set_event_loop(self)
-        app = sciqlop_app()
-        self.app_close_event = asyncio.Event()
-        app.aboutToQuit.connect(self.app_close_event.set)
 
     def exec(self):
+        # run_forever returns when the Qt loop exits. Waiting on an Event set by
+        # aboutToQuit instead left a task that aboutToQuit woke on the already
+        # stopped loop: "is not the running loop", "Task was destroyed".
         with self:
-            try:
-                self.run_until_complete(self.app_close_event.wait())
-            except RuntimeError:
-                # qasync raises "Event loop stopped before Future completed."
-                # when the Qt event loop exits before aboutToQuit fires —
-                # this is normal shutdown on macOS (Cmd+Q / window close).
-                pass
+            self.run_forever()
 
     def active_sleep(self, delay: float):
         start = time.time()

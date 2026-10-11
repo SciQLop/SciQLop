@@ -238,6 +238,9 @@ def test_batch_exit_closes_plugins_and_keeps_the_script_exit_code(tmp_path):
 
     assert proc.returncode == 3, _without_faulthandler_noise(proc.stderr)
     assert marker.exists()
+    # aboutToQuit woke a task on the already-stopped asyncio loop.
+    assert "is not the running loop" not in proc.stderr
+    assert "Task was destroyed but it is pending" not in proc.stderr
 
 
 def test_batch_exit_warns_about_unsaved_catalogs(tmp_path):
